@@ -46,10 +46,10 @@ function atrapaKataloguNcRfg(url: string): Response {
 
 // Karta FAB-J: `SekcjaWiazanKrzywych` (sekcja „wiazania" pod wynikiem PQ) czyta
 // operatorów NC RfG + krzywe P(f) WYŁĄCZNIE z backendu (`derRemoteCatalogs.ts`
-// / `audit2-api.ts`) — ten ekran potrzebuje profili ride-through, nie listy operatorów
+// / `katalogi-stacji-api.ts`) — ten ekran potrzebuje profili ride-through, nie listy operatorów
 // okna P–Q. Mock na granicy modułu klienta, ten sam wzorzec co `vi.mock('../../api', ...)`.
 const fetchNcRfgOperatorsSekcjaMock = vi.fn();
-const fetchAudit2CatalogSnapshotSekcjaMock = vi.fn();
+const fetchKatalogiStacjiSnapshotSekcjaMock = vi.fn();
 vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
   fetchNcRfgOperators: () => fetchNcRfgOperatorsSekcjaMock(),
   getNcRfgOperator: (
@@ -57,8 +57,8 @@ vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
     operatorId: string | null,
   ) => (operatorId ? operators.find((o) => o.operator_id === operatorId) ?? null : null),
 }));
-vi.mock('../../../../ui/network-build/station-der/audit2-api', () => ({
-  fetchAudit2CatalogSnapshot: () => fetchAudit2CatalogSnapshotSekcjaMock(),
+vi.mock('../../../../ui/network-build/station-der/katalogi-stacji-api', () => ({
+  fetchKatalogiStacjiSnapshot: () => fetchKatalogiStacjiSnapshotSekcjaMock(),
 }));
 
 const TYP_Z_KRZYWA = 'conv-pv-card-sungrow-sg3150u-mv';
@@ -74,11 +74,11 @@ function ustawKatalogGotowy() {
   // nadpisze — `SekcjaWiazanKrzywych` renderuje się dopiero po biegu PQ, ale
   // Promise.all musi się rozstrzygnąć, żeby stan nie utknął w „ładowaniu".
   fetchNcRfgOperatorsSekcjaMock.mockResolvedValue([]);
-  fetchAudit2CatalogSnapshotSekcjaMock.mockResolvedValue({
+  fetchKatalogiStacjiSnapshotSekcjaMock.mockResolvedValue({
     bess_operation_modes: [],
     tap_changers: [],
     hv_fuses: [],
-    device_withstand: [],
+   
     pf_curves: [],
     block_transformers: [],
   });
@@ -282,11 +282,11 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
     // wiązań to P(f). Intencja oryginalnego testu (pominięcie ≠ null, zapis
     // wysyła WYŁĄCZNIE dotknięte pole) zostaje — na jedynym polu, które nadal
     // jest niezależnym wyborem.
-    fetchAudit2CatalogSnapshotSekcjaMock.mockResolvedValue({
+    fetchKatalogiStacjiSnapshotSekcjaMock.mockResolvedValue({
       bess_operation_modes: [],
       tap_changers: [],
       hv_fuses: [],
-      device_withstand: [],
+     
       pf_curves: [
         {
           id: 'pf_droop_5',

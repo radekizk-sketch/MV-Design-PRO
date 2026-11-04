@@ -14,11 +14,12 @@ NOT-A-SOLVER: tu jest wyłącznie przygotowanie wejścia z katalogu/normy (IEC 6
 §6: c per pasmo, korekta temperaturowa MIN, Z0 z grupy połączeń) — fizyka sieci liczy
 się w ``network_model/solvers/**``.
 
-BEZ BAZY (CV-4.2b): assembler jest funkcją (migawka, opcje, dane) — nie otwiera sesji
-ani silnika. Stan zapisany w bazie (konfiguracja audytu 2 stacji) dostarcza wykonawca
-biegu fabryką ``UnitOfWork`` swojego wołającego i podaje tu jako ``rozszerzenia_audit2``.
-Własny silnik z ``DATABASE_URL`` (``_uow_factory_biezacy``/``_maybe_load_audit2_extensions``)
-został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_guard.py``.
+BEZ BAZY: assembler jest funkcją (migawka, opcje) — nie otwiera sesji ani silnika i nie
+dostaje żadnych danych spoza migawki modelu. Karta JEDNA-SCIEŻKA-EDYCJI skasowała boczne
+wejście solvera (zapisaną konfigurację rozszerzeń stacji obok modelu, korygującą graf przed
+solverem): przełącznik zaczepów, dane źródeł i przekładniki żyją w elementach ENM i trafiają
+do grafu wyłącznie mapowaniem migawki. Bramka wskrzeszenia:
+``scripts/legacy_public_path_guard.py``.
 """
 
 from __future__ import annotations
@@ -563,15 +564,6 @@ class WejscieRozplywu:
     base_mva: float
     slack_node_id: str
     requested_solver_method: str
-    audit2_extensions: dict[str, object] | None
-    #: Ślad zastosowanych korekt audit2 na grafie (karta CV-4.2, pole addytywne):
-    #: `None`, gdy audit2 nie było żądane (`audit2_extensions is None`); w
-    #: przeciwnym razie zwrot `apply_audit2_to_network_model` (zawsze te same
-    #: trzy klucze — `tap_position_changes`/`block_transformer_z_changes`/
-    #: `pf_droop_changes` — możliwie puste). Wykonawca dokłada je do
-    #: `raw_result` WYŁĄCZNIE, gdy nie jest `None` — parytet golden PF (żadna
-    #: sieć rejestru nie używa audit2) zostaje bit w bit.
-    audit2_applied: dict[str, Any] | None
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
     wyspy: tuple[WyspaRozplywu, ...]
@@ -786,21 +778,11 @@ def zloz_wejscie_rozplywu(
     snapshot: dict[str, Any] | None,
     options: dict[str, Any],
     graph: NetworkGraph | None = None,
-    *,
-    rozszerzenia_audit2: dict[str, Any] | None = None,
 ) -> WejscieRozplywu:
     """Złóż wejście rozpływu (przeniesione 1:1 z ``canonical_analysis._execute_power_flow``).
 
     ``graph``: opcjonalny GOTOWY graf zbudowany z TEJ SAMEJ migawki (oszczędzenie
     powtórnej budowy, wynik ten sam co do bitu) — patrz docstring wykonawcy.
-
-    ``rozszerzenia_audit2`` (CV-4.2b): rozszerzenia solvera z zapisanej konfiguracji
-    audytu 2 stacji (``solver_input.audit2_der_payload.rozszerzenia_audit2_z_konfiguracji``),
-    dostarczone przez WOŁAJĄCEGO — wykonawca biegu czyta je fabryką ``UnitOfWork``
-    swojego żądania (``canonical_analysis.rozszerzenia_audit2_dla_opcji``). Assembler
-    jest funkcją (migawka, opcje, dane) i NIE otwiera bazy: do tej karty budował tu
-    własny silnik z ``DATABASE_URL``, niezależny od reszty procesu, więc konfiguracja
-    zapisana przez API bywała dla biegu niewidoczna. ``None`` = bez korekt audytu 2.
     """
     snapshot = snapshot or {}
     graph = zbuduj_graf(snapshot) if graph is None else graph
@@ -983,18 +965,6 @@ def zloz_wejscie_rozplywu(
         trace_level=str(options.get("trace_level", "full")),
     )
     # base_mva obliczone wyżej (przed PQSpec — potrzebne dla regulacji falownika OZE).
-    # Phase 41 / CV-4.2b: opt-in rozszerzenia audytu 2 (zaczepy, statyzm, impedancja
-    # transformatora blokowego) przychodzą od WOŁAJĄCEGO jako dane — assembler nie
-    # czyta bazy; korekty idą na graf PRZED solverem.
-    audit2_extensions = rozszerzenia_audit2
-    audit2_applied: dict[str, Any] | None = None
-    if audit2_extensions is not None:
-        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
-
-        audit2_applied = apply_audit2_to_network_model(
-            graph=graph, audit2_extensions=audit2_extensions
-        )
-
     # D-06c + karta UX-04/POLE-BKR-MODEL: baterie kondensatorów → istniejący mechanizm
     # boczników solvera, admitancja Q(U) z pierwszych zasad (stopnie, straty, dławik, baza
     # szyny); te same admitancje niesie zapis White Box biegu (``baterie``). Solver nietknięty.
@@ -1041,7 +1011,6 @@ def zloz_wejscie_rozplywu(
                     shunts=shunty_wyspy,
                     options=options_solvera,
                     base_frequency_hz=base_frequency_hz,
-                    audit2_extensions=audit2_extensions,
                 ),
             )
         )
@@ -1055,8 +1024,6 @@ def zloz_wejscie_rozplywu(
         base_mva=base_mva,
         slack_node_id=slack_node_id,
         requested_solver_method=requested_solver_method,
-        audit2_extensions=audit2_extensions,
-        audit2_applied=audit2_applied,
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
         wyspy=tuple(wyspy),
@@ -1071,15 +1038,8 @@ def zloz_wejscie_rozplywu(
 def zloz_wejscie_zwarcia(
     snapshot: dict[str, Any] | None,
     options: dict[str, Any],
-    *,
-    rozszerzenia_audit2: dict[str, Any] | None = None,
 ) -> WejscieZwarcia:
-    """Złóż wejście zwarciowe (przeniesione 1:1 z ``canonical_analysis._execute_short_circuit``).
-
-    ``rozszerzenia_audit2`` (CV-4.2b): jak w ``zloz_wejscie_rozplywu`` — dane od
-    wołającego (uziemienie punktu neutralnego SN → Z0/Z1, impedancja transformatora
-    blokowego), assembler nie otwiera bazy. ``None`` = bez korekt audytu 2.
-    """
+    """Złóż wejście zwarciowe (przeniesione 1:1 z ``canonical_analysis._execute_short_circuit``)."""
     snapshot = snapshot or {}
     enm = EnergyNetworkModel.model_validate(snapshot)
     graph = map_enm_to_network_graph(enm)
@@ -1087,15 +1047,6 @@ def zloz_wejscie_zwarcia(
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
     short_circuit_type = _short_circuit_type_from_options(options)
-
-    # Phase 43 / CV-4.2b: opt-in rozszerzenia audytu 2 dla SC (uziemienie Z0/Z1,
-    # impedancja transformatora blokowego) od WOŁAJĄCEGO jako dane — assembler nie
-    # czyta bazy. Aplikowane przed build_zero_sequence_zbus.
-    audit2_extensions_sc = rozszerzenia_audit2
-    from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
-
-    if audit2_extensions_sc is not None:
-        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
     # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
@@ -1157,11 +1108,9 @@ def zloz_wejscie_zwarcia(
     if scenario_c == "MIN":
         # CV-4.3 K7: graf solvera dla MIN dostaje Z_Qmin źródeł sieciowych (c_min·U²/S''_kQmin,
         # IEC 60909-0:2016 eq. 6) — albo Z_Qmax z JAWNYM założeniem, gdy S''_kQmin nie ma
-        # (``zalozenia`` niżej). ``graph`` (topologia raportowalna, MAX) bez zmian; te same
-        # rozszerzenia audytu 2 co dla grafu MAX, bo solver widzi WYŁĄCZNIE ``solve_graph``.
+        # (``zalozenia`` niżej). ``graph`` (topologia raportowalna, MAX) bez zmian; solver
+        # widzi WYŁĄCZNIE ``solve_graph``.
         graf_min = map_enm_to_network_graph(enm, scenario="MIN")
-        if audit2_extensions_sc is not None:
-            apply_audit2_to_network_model(graph=graf_min, audit2_extensions=audit2_extensions_sc)
         min_scenario_graph_result = build_min_scenario_graph(graf_min)
         solve_graph = min_scenario_graph_result.graph
         temperature_correction_notes = tuple(

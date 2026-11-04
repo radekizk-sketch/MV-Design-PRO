@@ -15,12 +15,12 @@
  *     tam, gdzie backend mówi „niezgodne".
  *
  * ZERO REGUŁY I ZERO KATALOGU W PREZENTACJI: typy pochodzą z `/api/catalog/vt-types`,
- * werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`. Ten plik nic nie liczy
+ * werdykt z `/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding`. Ten plik nic nie liczy
  * i niczego nie rozstrzyga — pokazuje odpowiedzi backendu i uczciwie nazywa braki.
  *
  * SPOSÓB UZIEMIENIA Z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Typ punktu
  * neutralnego sieci SN pola nie pochodzi już z wyboru w konfiguratorze (katalog
- * „wariantów uziemienia” audytu 2 był drugą prawdą obok modelu), tylko z backendu:
+ * „wariantów uziemienia” dawnego katalogu stacji był drugą prawdą obok modelu), tylko z backendu:
  * `fetchUziemienieSnStacji` czyta zespół uziemiający sekcji pola (`enm.uziemienie_sekcji`)
  * tą samą regułą co dowód zgodności przekładników w pakiecie dowodów. Pole bez
  * ustalonego typu dostaje nazwaną przyczynę backendu — nigdy domysł.
@@ -29,7 +29,7 @@
 import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
-import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/audit2-api';
+import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/katalogi-stacji-api';
 
 /** Stacja projektu, której model niesie uziemienie sieci SN pól. */
 export interface KontekstUziemieniaStacji {

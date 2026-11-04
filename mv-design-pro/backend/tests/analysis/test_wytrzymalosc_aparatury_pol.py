@@ -2,9 +2,9 @@
 
 INTENCJA: inżynier, który policzył zwarcie w stacji, ma dostać odpowiedź „czy
 aparatura pól to wytrzyma" BEZ uprzedniego ręcznego konfigurowania aparatów —
-model wie, jaki aparat stoi w każdym polu (pozycja katalogu APARAT_SN). Zapisana
-konfiguracja pozostaje nadrzędna tam, gdzie inżynier jej użył, a każdy wiersz
-mówi wprost, skąd wziął aparat (`zrodlo`).
+model wie, jaki aparat stoi w każdym polu (pozycja katalogu APARAT_SN). Dawne drugie
+źródło (ręczne wskazanie „klasy wytrzymałości" w zapisanej konfiguracji stacji obok
+modelu) skasowała karta JEDNA-SCIEZKA-EDYCJI — każdy wiersz ma `zrodlo` = model.
 
 Karta WYTRZYMALOSC-PRAD-POLA: prądy biorą się PER POLE z wiersza zapisanego biegu dla
 punktu zabudowy pola (``prady_pol_z_biegu``), a każdy wiersz niesie dwa rekordy werdyktu
@@ -22,8 +22,6 @@ from application.analyses.wytrzymalosc_aparatury_pol import (
     READINESS_BRAK_ZDOLNOSCI_WYLACZANIA,
     READINESS_POZYCJA_BEZ_ZNAMION,
     READINESS_STACJA_NIEZNANA,
-    RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI,
-    ZRODLO_KONFIGURACJA,
     ZRODLO_MODEL,
     PradyPola,
     prady_pol_z_biegu,
@@ -39,10 +37,7 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.rola_pola_sn import NAZWA_ROLI_POLA_SN_PL
-from network_model.catalog.audit2_catalogs import (
-    DEVICE_WITHSTAND_CATALOG,
-    ocen_wytrzymalosc_aparatu,
-)
+from network_model.catalog.katalogi_stacji import ocen_wytrzymalosc_aparatu
 from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
@@ -51,8 +46,6 @@ WYLACZNIK = "sw-cb-abb-vd4-12kv-630a"
 BEZPIECZNIK = "sw-fuse-eti-vv-12kv-63a"
 #: Wyłącznik, którego karta katalogowa nie podaje znamion zwarciowych (brak danych, nie zero).
 WYLACZNIK_BEZ_ZNAMION = "sw-cb-110kv"
-#: Pozycja katalogu WYTRZYMAŁOŚCI (ręczne wskazanie w konfiguracji stacji).
-APARAT_KONFIGURACJI = "wstd_breaker_vacuum_15_25"
 RUN = "bieg-zwarciowy-testu"
 
 
@@ -198,35 +191,6 @@ def test_bez_czasu_wylaczenia_kryterium_cieplne_ma_brak_podstawy() -> None:
     assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
 
 
-def test_zapisana_konfiguracja_ma_pierwszenstwo_i_jest_tak_oznaczona() -> None:
-    """Inżynier, który wskazał aparat ręcznie, dostaje SWÓJ aparat, nie modelowy."""
-    widok = _widok(
-        bay_device_withstand={
-            "P-01": {
-                "device_id": APARAT_KONFIGURACJI,
-                "i_peak_calculated_ka": 1.0,
-                "i_thermal_calculated_ka": 1.0,
-                "t_clearing_s": 0.5,
-            }
-        }
-    )
-
-    pierwsze, drugie = widok["pola"]
-    assert pierwsze["pole"] == "P-01"
-    assert pierwsze["zrodlo"] == ZRODLO_KONFIGURACJA
-    assert pierwsze["aparat_catalog_ref"] == APARAT_KONFIGURACJI
-    assert pierwsze["czas_wylaczenia"]["t_clearing_s"] == 0.5
-    # Czas z konfiguracji domyka kryterium cieplne; prąd i tak z biegu dla TEGO pola.
-    assert pierwsze["werdykt"]["i_th_ok"] is True
-    cieplna = _ocena(pierwsze, "cieplna")
-    assert cieplna["status_maszynowy"] == "SPELNIA"
-    # 0,5 s < 1 s znamionowej: limit = I_th 25 kA, BEZ przeliczenia w górę (IEC 60865-1).
-    assert cieplna["limit"]["wartosc"]["wartosc"] == 25.0
-    assert cieplna["limit"]["podstawa"]["rodzaj"] == "KATALOG_PRODUCENTA"
-    # Pole nieskonfigurowane nadal jedzie z modelu — konfiguracja nie wygasza reszty.
-    assert drugie["zrodlo"] == ZRODLO_MODEL
-
-
 def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny() -> None:
     """Wyłącznik, którego karta nie podaje Icw: brak podstawy do oceny, nie „nie wytrzymuje".
 
@@ -304,29 +268,6 @@ def test_nieznana_stacja_nie_udaje_pustej_stacji() -> None:
 
     assert widok["status"] == "brak danych"
     assert widok["kody_gotowosci"] == [READINESS_STACJA_NIEZNANA]
-
-
-def test_wpis_konfiguracji_bez_odpowiednika_w_modelu_nie_znika() -> None:
-    """Świadomy zapis inżyniera zostaje widoczny, nawet gdy nie pasuje do pola — ale bez
-    punktu zabudowy nie ma prądu, więc nie dostaje werdyktu z cudzego prądu."""
-    widok = _widok(
-        bay_device_withstand={
-            "P-99": {
-                "device_id": APARAT_KONFIGURACJI,
-                "i_peak_calculated_ka": 1.0,
-                "i_thermal_calculated_ka": 1.0,
-                "t_clearing_s": 1.0,
-            }
-        }
-    )
-
-    osierocone = [p for p in widok["pola"] if p["pole"] == "P-99"]
-    assert len(osierocone) == 1
-    assert osierocone[0]["zrodlo"] == ZRODLO_KONFIGURACJA
-    assert osierocone[0]["pole_ref"] is None
-    assert osierocone[0]["werdykt"] is None
-    assert READINESS_BRAK_PRADU_POLA in osierocone[0]["kody_gotowosci"]
-    assert {o["status_maszynowy"] for o in osierocone[0]["oceny"]} == {"NIE_OCENIONO"}
 
 
 def test_widok_jest_deterministyczny() -> None:
@@ -441,7 +382,7 @@ def test_status_cieplny_rekordu_jest_rozstrzygnieciem_jadra(t_k: float, ith: flo
 # Karta SC-IB-ITH-ZRODLA — kryterium zdolności wyłączania (trzeci rekord K)
 #
 # Iloczyn cech: {rodzaj aparatu: wyłącznik SN, reklozer, bezpiecznik, rozłącznik, odłącznik,
-# uziemnik, wyłącznik z konfiguracji, rozłącznik i tor szynowy z konfiguracji} × {pasmo
+# uziemnik} × {pasmo
 # punktu: SN, nN, brak napięcia} × {prąd: I_b = I″k (sieć odległa), I_b < I″k (maszyny,
 # t_b podane), I_b brak (maszyny bez t_b)} × {I_cu ≥ wartość, I_cu < wartość}. Wiersze
 # „I_b < I_cu < I″k" rozróżniają wielkości: porównanie złej wielkości odwraca status.
@@ -451,8 +392,6 @@ REKLOZER = "sw-rec-abb-rec615-17kv-630a"  # I_cu 12,5 kA
 ROZLACZNIK = "sw-ls-abb-nal-12kv-400a"
 ODLACZNIK = "sw-ds-abb-ojs-12kv-630a"
 UZIEMNIK = "sw-es-generic-12kv"
-KONF_ROZLACZNIK = "wstd_switch_load_15_25"
-KONF_SZYNA = "wstd_busbar_15_2000_50"
 
 
 def _prady_wyl(
@@ -683,41 +622,6 @@ def test_aparat_bez_zdolnosci_wylaczania_ma_nie_dotyczy(aparat: str, prady: Prad
     assert pole["znamiona"]["i_cu_nie_dotyczy"] is True
     assert READINESS_BRAK_ZDOLNOSCI_WYLACZANIA not in pole["kody_gotowosci"]
     assert not any("czas_tb" in k for k in pole["kody_gotowosci"])
-
-
-@pytest.mark.parametrize(
-    ("device_id", "status", "kod_braku"),
-    [
-        (APARAT_KONFIGURACJI, "BRAK_PODSTAWY", True),
-        (KONF_ROZLACZNIK, "NIE_DOTYCZY", False),
-        (KONF_SZYNA, "NIE_DOTYCZY", False),
-    ],
-    ids=["wylacznik_konfiguracji", "rozlacznik_konfiguracji", "tor_szynowy_konfiguracji"],
-)
-def test_aparat_z_konfiguracji_bez_zdolnosci_w_katalogu_wytrzymalosci(
-    device_id: str, status: str, kod_braku: bool
-) -> None:
-    """Katalog wytrzymałości nie niesie I_cu: wyłącznik → brak podstawy z kodem, nie
-    „spełnia"; rozłącznik i tor szynowy → nie dotyczy."""
-    widok = _widok(
-        prady_pol={"pole/in": _prady_wyl(ik=18.0, ib=18.0, tb=0.1, un=15.0)},
-        bay_device_withstand={"P-01": {"device_id": device_id, "t_clearing_s": 0.5}},
-    )
-    pole = next(p for p in widok["pola"] if p["pole"] == "P-01")
-    ocena = _ocena(pole, "wylaczanie")
-
-    assert ocena["status_maszynowy"] == status
-    assert (READINESS_BRAK_ZDOLNOSCI_WYLACZANIA in pole["kody_gotowosci"]) is kod_braku
-    if kod_braku:
-        assert ocena["limit"] is None
-        assert ocena["wynik"]["wartosc"]["wartosc"] == 18.0
-
-
-def test_kazda_pozycja_katalogu_wytrzymalosci_ma_rodzaj_wylaczania() -> None:
-    """Lista rodzajów katalogu wytrzymałości jest ZAMKNIĘTA — nowa pozycja bez wpisu dałaby
-    brak podstawy zamiast rozstrzygnięcia „nie dotyczy" / „wyłącza"."""
-    rodzaje = {pozycja.device_type for pozycja in DEVICE_WITHSTAND_CATALOG}
-    assert rodzaje == set(RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI)
 
 
 def test_slad_wylaczania_niesie_tb_i_skladowa_nieokresowa_informacyjnie() -> None:

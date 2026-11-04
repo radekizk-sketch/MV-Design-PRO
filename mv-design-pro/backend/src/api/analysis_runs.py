@@ -555,7 +555,6 @@ def get_pakiet_dowodowy(
             run,
             punkt=punkt,
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
-            uow_factory=uow_factory,
         )
     except PakietBieguError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY) from exc
@@ -637,7 +636,6 @@ def get_pakiet_dowodowy_nastaw(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
@@ -688,7 +686,6 @@ def get_nastawy(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
@@ -733,7 +730,6 @@ def get_nastawy_dopasowanie(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
         )
     except PakietNastawError as exc:
@@ -765,7 +761,6 @@ def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
 def get_short_circuit_rozplyw(
     run_id: UUID,
     target_id: str = Query(...),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
     # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
@@ -773,11 +768,8 @@ def get_short_circuit_rozplyw(
     # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
     run = _require_canonical_run(run_id)
     try:
-        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu
-        # (opcje audytu 2 czytane tą samą bazą, którą zapisano konfigurację).
-        return canonicalize_json(
-            build_short_circuit_rozplyw_response(run, target_id, uow_factory=uow_factory)
-        )
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu.
+        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
     except BrakZasobuError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -786,10 +778,7 @@ def get_short_circuit_rozplyw(
 
 
 @router.get("/analysis-runs/{run_id}/results/short-circuit/pasmo")
-def get_short_circuit_band(
-    run_id: UUID,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
+def get_short_circuit_band(run_id: UUID) -> dict[str, Any]:
     # Karta W3-G3 (aneks D7, mapa domkniecia 3 #12): oba scenariusze c_max/c_min
     # JEDNEGO przypadku obok siebie, z proweniencja kazdej strony. `run_id` jest
     # kotwica (dowolny zakonczony bieg zwarciowy — nie musi byc MAX); orkiestracja
@@ -797,7 +786,7 @@ def get_short_circuit_band(
     # odmowa) w `dobierz_pasmo_min_max_zwarcia`, zero fizyki w tym module.
     run = _require_canonical_run(run_id)
     try:
-        return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
+        return canonicalize_json(build_short_circuit_band_response(run))
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 

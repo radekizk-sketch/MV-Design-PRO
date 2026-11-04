@@ -1,6 +1,6 @@
 /**
  * Pakiet dowodów walidacji rozszerzeń stacji — prezentacja pakietu złożonego przez BACKEND
- * (`POST /api/v1/projects/{id}/audit2-station-config/_validate-all`, karta PROOFPACK-KONTRAKT).
+ * (`POST /api/v1/projects/{id}/stations/_validate-all`, karta PROOFPACK-KONTRAKT).
  *
  * Ekran niczego nie liczy i niczego nie składa: pokazuje dla każdej stacji w zakresie jej
  * nazwę z modelu, dowody z polską nazwą rodzaju i jawne braki danych z przyczyną. Rodzaj
@@ -8,22 +8,22 @@
  */
 
 import type {
-  Audit2ProjectProofPackResponse,
-  Audit2ProofPackResponse,
+  PakietRozszerzenProjektu,
+  PakietRozszerzenStacji,
 } from '../network-build/station-der';
 import { auditProofPackStatus } from './routerPureHelpers';
 
-function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Element {
+function PakietStacji({ pakiet }: { pakiet: PakietRozszerzenStacji }): JSX.Element {
   const status = auditProofPackStatus(pakiet);
   return (
     <div
-      data-testid="audit2-pakiet-stacji"
+      data-testid="rozszerzenia-pakiet-stacji"
       data-station-name={pakiet.station_nazwa}
       className="space-y-1 rounded border border-slate-200 bg-white p-2"
     >
       <div className="text-xs">
         <strong>{pakiet.station_nazwa}</strong>{' '}
-        <span data-testid="audit2-pakiet-status" className={status.className}>
+        <span data-testid="rozszerzenia-pakiet-status" className={status.className}>
           {status.label}
         </span>{' '}
         · {pakiet.proof_count} dowodów, {pakiet.fail_count} pozycji kontroli,{' '}
@@ -32,7 +32,7 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
       {pakiet.proofs.map((dowod) => (
         <div
           key={dowod.proof_id}
-          data-testid="audit2-proof"
+          data-testid="rozszerzenia-proof"
           data-proof-type={dowod.proof_type}
           className={
             'rounded border px-2 py-1 text-[11px] '
@@ -47,7 +47,7 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
       {pakiet.braki_danych.map((brak, indeks) => (
         <div
           key={`${brak.proof_type}-${indeks}`}
-          data-testid="audit2-brak-danych"
+          data-testid="rozszerzenia-brak-danych"
           data-proof-type={brak.proof_type}
           className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-900"
         >
@@ -61,17 +61,17 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
 export function PakietDowodowProjektu({
   dane,
 }: {
-  dane: Audit2ProjectProofPackResponse;
+  dane: PakietRozszerzenProjektu;
 }): JSX.Element {
   if (dane.per_station.length === 0) {
     return (
-      <div data-testid="audit2-proof-result" className="mt-3 text-xs text-slate-600">
+      <div data-testid="rozszerzenia-proof-result" className="mt-3 text-xs text-slate-600">
         Projekt nie ma stacji w modelu ani zapisanych konfiguracji stacji — pakiet jest pusty.
       </div>
     );
   }
   return (
-    <div data-testid="audit2-proof-result" className="mt-3 space-y-2">
+    <div data-testid="rozszerzenia-proof-result" className="mt-3 space-y-2">
       {dane.per_station.map((pakiet) => (
         <PakietStacji key={pakiet.station_id} pakiet={pakiet} />
       ))}

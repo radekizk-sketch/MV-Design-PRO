@@ -137,7 +137,7 @@ class TestWspolczynnikNapieciowy:
 
     def test_siec_uziemiona_przez_rezystor_tez_wymaga_1_9(self) -> None:
         # Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona — to byl
-        # rozjazd z `audit2_catalogs`, ktory dopuszczal tam 1,5 (V12K-256).
+        # rozjazd z dawnym katalogiem rozszerzen stacji, ktory dopuszczal tam 1,5 (V12K-256).
         k = kryterium(
             sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="resistor_grounded")),
             "vt.wspolczynnik_napieciowy",

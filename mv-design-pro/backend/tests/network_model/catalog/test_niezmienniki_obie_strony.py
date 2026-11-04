@@ -26,12 +26,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from network_model.catalog.audit2_catalogs import (
-    DeviceWithstandItem,
-    HvFusePasmoTcc,
-    PfCurveItem,
+from network_model.catalog.karty_widmowe import (
+    karta_widmowa_z_rekordu,
+    wczytaj_karty_statyczne,
 )
-from network_model.catalog.karty_widmowe import karta_widmowa_z_rekordu, wczytaj_karty_statyczne
+from network_model.catalog.katalogi_stacji import HvFusePasmoTcc, PfCurveItem
 from network_model.catalog.lv_ampacity_iec60364_5_52 import WpisNormyNN
 from network_model.catalog.lv_disconnection_times_iec60364_4_41 import WpisCzasuWylaczenia
 from network_model.catalog.niezmienniki_katalogu import (
@@ -101,22 +100,6 @@ def _wkladka(**nadpisania: object) -> LVFuseLinkType:
     }
     parametry.update(nadpisania)
     return LVFuseLinkType(**parametry)  # type: ignore[arg-type]
-
-
-def _aparat_sn(**nadpisania: object) -> DeviceWithstandItem:
-    parametry: dict[str, object] = {
-        "id": "syntetyczny-aparat-sn",
-        "catalog_namespace": "APARAT_SN",
-        "catalog_version": "v1",
-        "label_pl": "Aparat syntetyczny",
-        "device_type": "WYLACZNIK",
-        "nominal_voltage_kv": 24.0,
-        "nominal_current_a": 630.0,
-        "i_th_1s_ka": 16.0,
-        "i_th_duration_s": 1.0,
-    }
-    parametry.update(nadpisania)
-    return DeviceWithstandItem(**parametry)  # type: ignore[arg-type]
 
 
 def _krzywa_pf(**nadpisania: object) -> PfCurveItem:
@@ -350,7 +333,7 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _wkladka(breaking_capacity_ka=None),
         lambda: (_wkladka(breaking_capacity_ka=0.1), _wkladka(breaking_capacity_ka=120.0)),
     ),
-    # --- audit2: pasmo TCC -------------------------------------------------
+    # --- katalogi stacji: pasmo TCC -------------------------------------------------
     "KAT-T-023": (
         lambda: HvFusePasmoTcc(zrodlo_url="katalog-producenta.pdf", punkty=((100.0, 1.0),)),
         lambda: HvFusePasmoTcc(zrodlo_url="http://przyklad.test/tabela", punkty=((100.0, 1.0),)),
@@ -360,17 +343,7 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         # Pasmo jednopunktowe jest nietypowe, ale jest pasmem.
         lambda: HvFusePasmoTcc(zrodlo_url="https://przyklad.test/tabela", punkty=((100.0, 1.0),)),
     ),
-    # --- audit2: znamiona zwarciowe aparatu SN ----------------------------
-    "KAT-T-025": (
-        lambda: _aparat_sn(i_th_1s_ka=17.0),
-        # Skraje szeregu (6,3 kA i 63 kA) MUSZA przejsc.
-        lambda: (_aparat_sn(i_th_1s_ka=6.3), _aparat_sn(i_th_1s_ka=63.0)),
-    ),
-    "KAT-T-026": (
-        lambda: _aparat_sn(i_th_duration_s=1.5),
-        lambda: (_aparat_sn(i_th_duration_s=0.5), _aparat_sn(i_th_duration_s=3.0)),
-    ),
-    # --- audit2: profil LFSM ----------------------------------------------
+    # --- katalogi stacji: profil LFSM ----------------------------------------------
     "KAT-T-027": (
         lambda: _krzywa_pf(droop_percent=15.0),
         lambda: (_krzywa_pf(droop_percent=2.0), _krzywa_pf(droop_percent=12.0)),

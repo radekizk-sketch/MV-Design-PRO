@@ -20,7 +20,7 @@ from enm.models import (
 )
 from enm.models import LineDropCompensation as EnmLdc
 from enm.models import TapChanger as EnmTapChanger
-from network_model.catalog.audit2_catalogs import (
+from network_model.catalog.katalogi_stacji import (
     get_tap_changer,
     tap_changer_fields_from_catalog,
 )

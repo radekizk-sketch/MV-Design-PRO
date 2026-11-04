@@ -268,7 +268,7 @@ class TestWiazanieMusiIstniecWKatalogu:
         self,
     ) -> None:
         # Karta FAB-L: `bess_operation_mode_refs` dostał dostawcę
-        # (`network_model.catalog.audit2_catalogs.get_bess_operation_mode`) —
+        # (`network_model.catalog.katalogi_stacji.get_bess_operation_mode`) —
         # KAŻDY element listy jest sprawdzany, nie tylko pierwszy/ostatni (iloczyn
         # cech: jeden dobry + jeden zły element w tej samej liście).
         wynik = _wykonaj(

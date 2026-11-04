@@ -5,7 +5,7 @@ Defines the versioned, deterministic envelope and payload schemas
 for all supported analysis types. These schemas constitute a LOCKED
 contract — changes require an explicit version bump.
 
-Contract version: 2.0 (historia: komentarz przy SOLVER_INPUT_CONTRACT_VERSION)
+Contract version: 3.0 (historia: komentarz przy SOLVER_INPUT_CONTRACT_VERSION)
 """
 
 from __future__ import annotations
@@ -29,7 +29,11 @@ from pydantic import BaseModel, Field
 #: voltage_factor.py`, tabela 1 IEC 60909-0, nN +6 %/+10 % z tolerancji wyspy nN),
 #: a nośnikiem t_k biegu jest scenariusz zwarciowy; BusPayload.c_factor_iec60909
 #: jest None w payloadzie rozpływu (c nie jest wielkością rozpływu).
-SOLVER_INPUT_CONTRACT_VERSION = "2.0"
+#: 3.0 (karta JEDNA-SCIEZKA-EDYCJI): zmiana łamiąca — koperta traci pole rozszerzeń
+#: zapisanej konfiguracji stacji (boczne wejście solvera z magazynu obok modelu,
+#: skasowanego razem z tym polem). Dane, które niosło (przełącznik zaczepów,
+#: dane źródeł), żyją w elementach ENM i trafiają do payloadu z modelu.
+SOLVER_INPUT_CONTRACT_VERSION = "3.0"
 
 
 # ---------------------------------------------------------------------------
@@ -320,16 +324,6 @@ class SolverInputEnvelope(BaseModel):
     trace: list[ProvenanceEntrySchema] = Field(
         default_factory=list,
         description="Per-field provenance trace entries",
-    )
-    # Phase 12: audit2 extensions — additive (nie zmienia frozen Result API).
-    # Solvery moga je czytac aby uwzglednic tap-changer settings, BESS modes,
-    # block-trafo Z, MV grounding type. Brak (None) = solver dziala jak dotychczas.
-    audit2_extensions: dict[str, Any] | None = Field(
-        default=None,
-        description=(
-            "Audit2 extensions: {sc_iec60909_extensions, power_flow_extensions, "
-            "protection_extensions} — additive, optional"
-        ),
     )
 
     model_config = {"frozen": True}

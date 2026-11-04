@@ -262,11 +262,11 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl=(
             "Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu "
-            "pola albo usunięcie wyposażenia"
+            "pola, usunięcie wyposażenia albo wskazanie wkładki bezpiecznikowej SN"
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("bay_ref", "mode"),
-        optional_fields=("devices", "bay_template_ref"),
+        optional_fields=("devices", "bay_template_ref", "catalog_ref"),
         creates_elements=False,
     ),
     "add_sn_bay": OperationSpec(

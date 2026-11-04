@@ -95,8 +95,12 @@ from application.solvers.voltage_drop_binding import (
     odcinki_spadku_napiecia,
 )
 from enm.assembler import impedancja_zwarcia_z_opcji
-from enm.canonical_analysis import CanonicalRun, rozszerzenia_audit2_dla_opcji
-from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
+from enm.canonical_analysis import CanonicalRun
+from enm.nazwy_elementow import (
+    ELEMENT_SPOZA_MODELU,
+    nazwy_galezi_grafu,
+    nazwy_wezlow_grafu,
+)
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -412,7 +416,6 @@ def zbuduj_pakiet_biegu(
     *,
     punkt: str | None = None,
     nazwa_przypadku: str,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy przebiegu: ``(nazwa_pliku, zawartość ZIP)``.
 
@@ -425,10 +428,6 @@ def zbuduj_pakiet_biegu(
     pierwszy z listy biegu (deterministycznie: najmniejszy identyfikator). Punkt
     spoza biegu i rodzaj bez pakietu kończą się ``PakietBieguError`` z powodem po
     polsku — API tłumaczy go na odpowiedź HTTP, a ekran pokazuje wprost.
-
-    ``uow_factory`` — fabryka UnitOfWork wołającego: bieg z konfiguracją audytu 2
-    stacji liczy się z jej rozszerzeniami, więc dowód zwarciowy tego biegu musi je
-    odczytać tak samo (`rozszerzenia_audit2_dla_opcji`) — jedna fizyka biegu i dowodu.
     """
     dostepnosc = dostepnosc_pakietu(run)
     if not dostepnosc["dostepny"]:
@@ -469,10 +468,10 @@ def zbuduj_pakiet_biegu(
         wybrany = znaleziony
 
     if rodzaj == RODZAJ_SC3F:
-        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek, uow_factory)
+        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek)
         nazwa_pliku = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
     else:
-        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek, uow_factory)
+        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek)
         nazwa_pliku = f"pakiet_dowodowy_zwarcia_niesymetryczne__{run.id}__{wybrany.target_id}.zip"
     return nazwa_pliku, zawartosc
 
@@ -513,12 +512,9 @@ class _ParametryZwarciaBiegu:
     nadpisanie_c: NadpisanieC | None
     tk_s: float
     tb_s: float | None
-    rozszerzenia_audit2: dict[str, Any] | None
 
 
-def _parametry_zwarcia_biegu(
-    run: CanonicalRun, uow_factory: Callable[[], Any] | None
-) -> _ParametryZwarciaBiegu:
+def _parametry_zwarcia_biegu(run: CanonicalRun) -> _ParametryZwarciaBiegu:
     scenariusz = str(run.options.get("scenario", "max")).strip().upper()
     if scenariusz not in ("MAX", "MIN"):
         raise PakietBieguError(
@@ -529,7 +525,6 @@ def _parametry_zwarcia_biegu(
         nadpisanie_c=nadpisanie_c_z_danych(run.options.get("nadpisanie_c")),
         tk_s=float(run.options.get("thermal_time_seconds", 1.0)),
         tb_s=czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB)),
-        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
     )
 
 
@@ -707,9 +702,8 @@ def _zbuduj_sc3f(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
-    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
-    parametry = _parametry_zwarcia_biegu(run, uow_factory)
+    parametry = _parametry_zwarcia_biegu(run)
     pack_input = SC3FPackInput(
         project_name=naglowek.projekt,
         case_name=naglowek.przypadek,
@@ -721,7 +715,6 @@ def _zbuduj_sc3f(
         nadpisanie_c=parametry.nadpisanie_c,
         tk_s=parametry.tk_s,
         tb_s=parametry.tb_s,
-        rozszerzenia_audit2=parametry.rozszerzenia_audit2,
         z_f_ohm=_z_f_ohm(run),
     )
     try:
@@ -739,9 +732,8 @@ def _zbuduj_sc_niesymetryczne(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
-    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
-    parametry = _parametry_zwarcia_biegu(run, uow_factory)
+    parametry = _parametry_zwarcia_biegu(run)
     try:
         pack_input = SCAsymmetricalProofPack.wejscie_ze_snapshotu(
             snapshot=run.snapshot,
@@ -753,7 +745,6 @@ def _zbuduj_sc_niesymetryczne(
             scenariusz=parametry.scenariusz,
             nadpisanie_c=parametry.nadpisanie_c,
             tk_s=parametry.tk_s,
-            rozszerzenia_audit2=parametry.rozszerzenia_audit2,
             z_f_ohm=_z_f_ohm(run),
         )
     except OdmowaDanychError as exc:

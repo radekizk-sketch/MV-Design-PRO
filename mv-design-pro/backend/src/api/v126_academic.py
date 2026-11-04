@@ -381,7 +381,7 @@ def run_v126_analysis(
     # klient odpytuje `GET /api/execution/runs/{run_id}` do stanu końcowego, a wynik
     # (z odciskiem deterministycznym) czyta `result_url` po FINISHED. Adresy wyniku są
     # funkcją identyfikatora biegu, więc są znane od chwili zlecenia.
-    run = wykonawca_biegow.zlec_bieg(run.id, uow_factory=None)
+    run = wykonawca_biegow.zlec_bieg(run.id)
     return _odpowiedz_biegu_v126(run, case_id, analysis_type)
 
 

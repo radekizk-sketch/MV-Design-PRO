@@ -11,9 +11,6 @@ from infrastructure.persistence.repositories.project_repository import ProjectRe
 from infrastructure.persistence.repositories.protection_catalog_repository import (
     ProtectionCatalogRepository,
 )
-from infrastructure.persistence.repositories.station_audit2_config_repository import (
-    StationAudit2ConfigRepository,
-)
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -61,7 +58,6 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.cases: CaseRepository | None = None
         self.analysis_runs: AnalysisRunRepository | None = None
         self.protection_catalog: ProtectionCatalogRepository | None = None
-        self.audit2_station_configs: StationAudit2ConfigRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -69,7 +65,6 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.cases = CaseRepository(self.session)
         self.analysis_runs = AnalysisRunRepository(self.session)
         self.protection_catalog = ProtectionCatalogRepository(self.session)
-        self.audit2_station_configs = StationAudit2ConfigRepository(self.session)
         return self
 
     def __exit__(

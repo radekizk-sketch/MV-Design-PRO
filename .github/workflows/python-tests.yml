@@ -83,20 +83,17 @@ jobs:
       - name: Testy guardow (mv-design-pro/scripts, poza testpaths backendu)
         working-directory: mv-design-pro/backend
         run: poetry run python -m pytest -q -n auto ../scripts
-      - name: Run audit2 backend integration tests (Phase 8-30)
+      - name: Testy integracji katalogow stacji i pakietu rozszerzen (backend)
         working-directory: mv-design-pro/backend
         run: |
           poetry run pytest -q \
-            tests/api/test_audit2_catalogs_api.py \
-            tests/api/test_audit2_station_config_api.py \
-            tests/api/test_solver_input_audit2_integration.py \
-            tests/solver_input/test_audit2_der_payload.py \
-            tests/solver_input/test_audit2_solver_adjuster.py \
-            tests/solver_input/test_audit2_real_graph_integration.py \
-            tests/solver_input/test_audit2_pf_wrapper.py \
-            tests/solver_input/test_audit2_builder_integration.py \
-            tests/proof_engine/test_audit2_validation_pack.py \
-            tests/analysis/reporting/test_audit2_report.py
+            tests/api/test_katalogi_stacji_api.py \
+            tests/api/test_pakiet_rozszerzen_stacji_api.py \
+            tests/proof_engine/test_pakiet_rozszerzen_stacji.py \
+            tests/analysis/reporting/test_raport_rozszerzen_stacji.py \
+            tests/network_model/test_katalogi_stacji_parytet.py \
+            tests/enm/test_wyposazenie_pola.py \
+            tests/enm/test_usuniecie_przekladnika.py
       - name: PCC Zero Guard
         working-directory: mv-design-pro
         run: python scripts/pcc_zero_guard.py

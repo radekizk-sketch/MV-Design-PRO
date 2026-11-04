@@ -11,7 +11,7 @@ import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
 import katalogNcRfg from '../../../harness-fixtures/generated/ncrfg_katalog.json';
 
-// Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
+// Faza 8: WorkspaceSurfaceRouter uzywa hookow katalogow stacji (React Query).
 // Wszystkie testy wymagaja QueryClientProvider.
 const render = renderWithQueryClient;
 void rtlRender; // keep import for type compat

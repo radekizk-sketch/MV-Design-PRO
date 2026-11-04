@@ -7,7 +7,7 @@ import { AppShell } from '../AppShell';
 import { useShellStore } from '../useShellStore';
 import { SHELL_STRINGS } from '../strings';
 import { App } from '../../../App';
-// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot audytu 2 przez React Query —
+// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot katalogów stacji przez React Query —
 // produkcja dostaje `QueryClientProvider` w `main.tsx`; test montujący pełne
 // drzewo dostaje go tym samym helperem co pozostałe testy korzenia aplikacji.
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';

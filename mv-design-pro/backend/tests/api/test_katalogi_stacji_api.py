@@ -1,6 +1,4 @@
-"""
-Testy API katalogow audytu 2 (eng.5/6/9/10/11/13/15/17/18/20 + B.1/B.5).
-"""
+"""Testy API katalogów konfiguracji stacji (`/api/v1/catalog/konfiguracja-stacji`)."""
 
 from __future__ import annotations
 
@@ -10,7 +8,7 @@ pytest.importorskip("fastapi")
 
 
 def test_list_bess_operation_modes(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/bess-operation-modes")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/bess-operation-modes")
     assert res.status_code == 200
     body = res.json()
     assert isinstance(body, list)
@@ -31,7 +29,7 @@ def test_list_bess_operation_modes(app_client):
 
 
 def test_list_tap_changers(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/tap-changers")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/tap-changers")
     assert res.status_code == 200
     body = res.json()
     assert len(body) >= 4
@@ -52,7 +50,7 @@ def test_list_tap_changers(app_client):
 
 
 def test_list_hv_fuses(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/hv-fuses")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/hv-fuses")
     assert res.status_code == 200
     body = res.json()
     assert len(body) >= 4
@@ -60,17 +58,6 @@ def test_list_hv_fuses(app_client):
     assert "full_range" in classes
     assert "general_purpose" in classes
     assert "back_up" in classes
-
-
-def test_list_device_withstand(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/device-withstand")
-    assert res.status_code == 200
-    body = res.json()
-    assert len(body) >= 5
-    types = {item["device_type"] for item in body}
-    assert "breaker_vacuum_15" in types
-    assert "breaker_sf6_15" in types
-    assert "busbar_15_2000" in types
 
 
 def test_list_pf_curves(app_client):
@@ -83,7 +70,7 @@ def test_list_pf_curves(app_client):
     fabrykacje normatywna. Teraz pozycja jest wariantem nastawy nazwanym swoim
     statyzmem, a test pilnuje granic z rozporzadzenia PO WSZYSTKICH pozycjach.
     """
-    res = app_client.get("/api/v1/catalog/audit2/pf-curves")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/pf-curves")
     assert res.status_code == 200
     body = res.json()
     assert len(body) >= 3
@@ -99,7 +86,7 @@ def test_list_pf_curves(app_client):
 
 
 def test_list_block_transformers(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/block-transformers")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/block-transformers")
     assert res.status_code == 200
     body = res.json()
     assert len(body) >= 5
@@ -123,24 +110,23 @@ def test_list_block_transformers(app_client):
 
 def test_katalog_wariantow_uziemienia_sn_skasowany(app_client):
     """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: wybór wariantu uziemienia punktu neutralnego SN
-    z katalogu audytu 2 był DRUGĄ prawdą obok elementów modelu — końcówka i pole snapshotu
+    z katalogu konfiguracji stacji był DRUGĄ prawdą obok elementów modelu — końcówka i pole snapshotu
     nie istnieją (sposób uziemienia sekcji SN wynika z zespołów uziemiających w ENM)."""
     # Ścieżka złożona z części: pełna nazwa jest wzorcem strażnika wskrzeszenia
     # (`scripts/grep_zero_guard.py`, grupa `zu_`), a ten test pinuje jej NIEOBECNOŚĆ w API.
     sciezka = "mv" + "-neutral-" + "groundings"
-    assert app_client.get(f"/api/v1/catalog/audit2/{sciezka}").status_code == 404
-    snapshot = app_client.get("/api/v1/catalog/audit2/snapshot").json()
+    assert app_client.get(f"/api/v1/catalog/konfiguracja-stacji/{sciezka}").status_code == 404
+    snapshot = app_client.get("/api/v1/catalog/konfiguracja-stacji/snapshot").json()
     assert not any("grounding" in klucz for klucz in snapshot)
 
 
 def test_snapshot_aggregator(app_client):
-    res = app_client.get("/api/v1/catalog/audit2/snapshot")
+    res = app_client.get("/api/v1/catalog/konfiguracja-stacji/snapshot")
     assert res.status_code == 200
     body = res.json()
     assert "bess_operation_modes" in body
     assert "tap_changers" in body
     assert "hv_fuses" in body
-    assert "device_withstand" in body
     assert "pf_curves" in body
     assert "block_transformers" in body
     # Wszystkie listy niepuste
@@ -151,7 +137,7 @@ def test_snapshot_aggregator(app_client):
 
 def test_validate_vt_grounding_isolated_requires_19(app_client):
     res = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
+        "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding",
         json={"voltage_factor": 1.5, "grounding_type": "isolated"},
     )
     assert res.status_code == 200
@@ -162,7 +148,7 @@ def test_validate_vt_grounding_isolated_requires_19(app_client):
 
 def test_validate_vt_grounding_petersen_19_ok(app_client):
     res = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
+        "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding",
         json={"voltage_factor": 1.9, "grounding_type": "petersen_coil"},
     )
     assert res.status_code == 200
@@ -173,7 +159,7 @@ def test_validate_vt_grounding_petersen_19_ok(app_client):
 def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
     """Sieć bezpośrednio uziemiona: VT faza–ziemia wymaga 1,5 przez 30 s (V12K-256).
 
-    Ten test twierdzil wczesniej, ze wystarczy 1,2 — bo `audit2_catalogs` mial WLASNA,
+    Ten test twierdzil wczesniej, ze wystarczy 1,2 — bo dawny katalog rozszerzen stacji mial WLASNA,
     lagodniejsza wersje reguly IEC 61869-3 tab. 2. Wspolczynnik 1,2 (ciagly) dotyczy
     przekladnika pracujacego MIEDZY FAZAMI, ktory przy zwarciu doziemnym nie widzi
     wzrostu napiecia; uzwojenie faza-ziemia w sieci skutecznie uziemionej potrzebuje
@@ -182,7 +168,7 @@ def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
     DOWODOWEGO jako werdykt zgodnosci.
     """
     zanizone = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
+        "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding",
         json={"voltage_factor": 1.2, "grounding_type": "directly_grounded"},
     )
     assert zanizone.status_code == 200
@@ -190,7 +176,7 @@ def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
     assert "1.5" in zanizone.json()["message_pl"]
 
     wystarczajace = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
+        "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding",
         json={"voltage_factor": 1.5, "grounding_type": "directly_grounded"},
     )
     assert wystarczajace.json()["ok"] is True
@@ -203,139 +189,24 @@ def test_validate_vt_grounding_rezystor_wymaga_19(app_client):
     zdrowych rosnie praktycznie do miedzyfazowego, wiec wymaganie 1,5 bylo zanizone.
     """
     res = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
+        "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding",
         json={"voltage_factor": 1.5, "grounding_type": "resistor_grounded"},
     )
     assert res.json()["ok"] is False
     assert "1.9" in res.json()["message_pl"]
 
 
-def test_validate_device_withstand_within_limits(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-device-withstand",
-        json={
-            "device_id": "wstd_breaker_vacuum_15_25",
-            "i_peak_calculated_ka": 50,
-            "i_thermal_calculated_ka": 20,
-            "t_clearing_s": 1.0,
-        },
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is True
-    assert body["i_dyn_ok"] is True
-    assert body["i_th_ok"] is True
-
-
-def test_validate_device_withstand_idyn_exceeded(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-device-withstand",
-        json={
-            "device_id": "wstd_breaker_vacuum_15_25",
-            "i_peak_calculated_ka": 70,
-            "i_thermal_calculated_ka": 20,
-            "t_clearing_s": 1.0,
-        },
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is False
-    assert body["i_dyn_ok"] is False
-
-
-def test_validate_hosting_capacity_no_export(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-001", "p_export_kw": 500, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "no_export"
-
-
-def test_validate_hosting_capacity_high_warning(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-002", "p_export_kw": 2500, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "high_export_warning"
-    assert "curtailment" in body["message_pl"].lower()
-
-
-def test_validate_hosting_capacity_requires_ramp_down(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-003", "p_export_kw": 5000, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "requires_ramp_down"
-    assert "ramp-down" in body["message_pl"].lower()
-
-
-@pytest.mark.parametrize(
-    ("p_export_kw", "status", "fragment"),
-    [
-        (0, "no_export", "Brak mocy źródeł i odbiorów"),
-        (100, "requires_ramp_down", "przy braku odbiorów w stacji"),
-    ],
-    ids=["bez_zrodel_i_odbiorow", "zrodla_bez_odbiorow"],
-)
-def test_validate_hosting_capacity_bez_odbiorow_stosunek_nieokreslony(
-    app_client, p_export_kw, status, fragment
-):
-    """Karta PROOFPACK-KONTRAKT: import zerowy nie daje stosunku `inf` — dawniej tekst
-    „stosunek infx", a 0/0 dostawalo werdykt „krytyczny eksport 0 kW"."""
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-004", "p_export_kw": p_export_kw, "p_import_kw": 0},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == status
-    assert body["export_to_import_ratio"] is None
-    assert fragment in body["message_pl"]
-    assert "inf" not in body["message_pl"]
-
-
 @pytest.mark.parametrize(
     ("sciezka", "cialo"),
     [
         ("validate-vt-grounding", {"voltage_factor": 1.9}),
-        ("validate-device-withstand", {"device_id": "wstd_breaker_vacuum_15_25"}),
-        ("validate-hosting-capacity-export", {"station_id": "s", "p_export_kw": "duzo"}),
-        ("build-station-payload", {"der_specs": []}),
         ("generate-report", {"project_name": "P"}),
     ],
 )
 def test_koncowki_post_odrzucaja_niepelne_cialo_422_nigdy_500(app_client, sciezka, cialo):
     """Kazda koncowka POST routera ma typowany kontrakt: niepelne cialo to 422."""
-    res = app_client.post(f"/api/v1/catalog/audit2/{sciezka}", json=cialo)
+    res = app_client.post(f"/api/v1/catalog/konfiguracja-stacji/{sciezka}", json=cialo)
     assert res.status_code == 422
-
-
-def test_build_station_payload_deterministyczny(app_client):
-    payload = {
-        "station_id": "station_api_001",
-        "tap_changer_refs": ["tc_oltc_110sn_19_125"],
-        "der_specs": [
-            {"der_id": "der_pv_001", "der_kind": "PV", "pf_curve_ref": "pf_droop_5"},
-            {
-                "der_id": "der_bess_001",
-                "der_kind": "BESS",
-                "bess_operation_mode_refs": ["mode_fcr_n", "mode_voltage_support"],
-            },
-        ],
-    }
-    pierwszy = app_client.post("/api/v1/catalog/audit2/build-station-payload", json=payload)
-    drugi = app_client.post("/api/v1/catalog/audit2/build-station-payload", json=payload)
-    assert pierwszy.status_code == drugi.status_code == 200
-    assert pierwszy.content == drugi.content
-    body = pierwszy.json()
-    assert len(body["payload"]["der_payloads"]) == 2
-    assert "power_flow_extensions" in body["solver_extensions"]
 
 
 @pytest.mark.parametrize(
@@ -347,7 +218,7 @@ def test_generate_report_pakiet_dowolnego_ksztaltu_nie_daje_500(app_client, paki
     """Raport tylko renderuje pakiet (odczyt `.get` z wartosciami domyslnymi) — pakiet
     w nieoczekiwanym ksztalcie nie moze skonczyc sie bledem serwera."""
     res = app_client.post(
-        "/api/v1/catalog/audit2/generate-report",
+        "/api/v1/catalog/konfiguracja-stacji/generate-report",
         json={
             "project_name": "P",
             "station_id": "s",
@@ -358,3 +229,23 @@ def test_generate_report_pakiet_dowolnego_ksztaltu_nie_daje_500(app_client, paki
     )
     assert res.status_code == 200
     assert "Stacja S" in res.json()["text_pl"]
+
+
+@pytest.mark.parametrize(
+    ("metoda", "sciezka"),
+    [
+        ("get", "device-withstand"),
+        ("post", "validate-device-withstand"),
+        ("post", "validate-hosting-capacity-export"),
+        ("post", "build-station-payload"),
+    ],
+)
+def test_skasowane_koncowki_nie_istnieja(app_client, metoda, sciezka):
+    """Karta JEDNA-SCIEZKA-EDYCJI: katalog wytrzymałości obok aparatów modelu, kalkulator
+    eksportu z liczb wpisanych obok modelu i składanie bocznego wejścia solvera — skasowane.
+    Werdykt wytrzymałości liczy się z aparatów modelu, bilans eksportu z elementów modelu
+    w pakiecie dowodów stacji. Dawny prefiks katalogu też nie istnieje."""
+    nowa = getattr(app_client, metoda)(f"/api/v1/catalog/konfiguracja-stacji/{sciezka}")
+    assert nowa.status_code in (404, 405)
+    stara_nazwa = "audit" + "2"
+    assert app_client.get(f"/api/v1/catalog/{stara_nazwa}/snapshot").status_code == 404

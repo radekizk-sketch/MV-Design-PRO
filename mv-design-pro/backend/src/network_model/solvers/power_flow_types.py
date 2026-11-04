@@ -135,10 +135,6 @@ class PowerFlowInput:
     # nominal the factor is 1.0 (reduce-to-NR). Input-only; Frozen Result API
     # unchanged.
     base_frequency_hz: float = 50.0
-    # Phase 30: audit2 extensions — opcjonalnie czytane przez solver wrapper
-    # dla per-element adjustments (tap_changer, BESS reserved, P(f) droop, Z0/Z1).
-    # NIE zmienia frozen Result API (nowe pole input, output bez zmian).
-    audit2_extensions: dict[str, Any] | None = None
 
     def typed_graph(self) -> NetworkGraph:
         return self.graph

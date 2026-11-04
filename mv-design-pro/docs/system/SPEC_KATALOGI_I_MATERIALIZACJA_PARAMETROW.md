@@ -135,7 +135,7 @@ ARCHIWUM-CANONICAL-COMPLIANCE-2):
 ## Zalacznik: Moc regul katalogu (klasy) i przeglad wiarygodnosci
 
 Karta KATALOG-NIEZMIENNIKI (2026-09-17). Katalog mial 33 twarde bramki rekordu
-rozsiane po pieciu modulach (`types.py` 22, `audit2_catalogs.py` 7,
+rozsiane po pieciu modulach (`types.py` 22, `audit2_catalogs.py` 7 — dziś `katalogi_stacji.py`,
 `lv_disconnection_times_iec60364_4_41.py` 2, `lv_ampacity_iec60364_5_52.py` 2) i
 ZADNA nie mowila, na czym stoi. Regula, ktora dzis przechodzi na wszystkich
 rekordach, nie jest przez to prawem fizyki: odrzucilaby pierwszy poprawny rekord

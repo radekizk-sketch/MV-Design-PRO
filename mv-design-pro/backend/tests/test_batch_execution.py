@@ -983,16 +983,16 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
 
 
 # =============================================================================
-# CV-4.2b: seria podaje biegom pozycji fabryke `UnitOfWork` ZADANIA (bez zapasu)
+# Karta JEDNA-SCIEZKA-EDYCJI: bieg pozycji serii czyta wylacznie migawke i opcje
 # =============================================================================
 
 
-def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypatch):
-    """`execute_batch(..., uow_factory=)` -> `execute_run(run.id, uow_factory=TA SAMA)`.
+def test_seria_wola_bieg_pozycji_bez_dostepu_do_bazy(monkeypatch):
+    """`execute_batch` -> `execute_run(run.id)` BEZ fabryki `UnitOfWork`.
 
-    Do CV-4.2b serwis wolal `execute_run(run.id)` bez fabryki, wiec bieg pozycji ze
-    scenariuszem wskazujacym konfiguracje audytu 2 stacji czytalby ja WLASNYM
-    silnikiem z `DATABASE_URL` (inna baza niz `app.state.uow_factory`).
+    Dawniej (CV-4.2b) seria podawala biegowi fabryke zadania, bo bieg pozycji czytal
+    zapisana konfiguracje stacji obok modelu. Ten magazyn skasowano — bieg ma jedno
+    wejscie (migawka modelu + opcje), wiec zadna droga bazy do biegu nie prowadzi.
     """
     from api import batch_execution as api_batch
     from application.batch_execution_service import BatchExecutionService
@@ -1001,7 +1001,7 @@ def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypat
     widziane: list[object] = []
 
     def _wykonaj(run_id, **kwargs):
-        widziane.append(kwargs.get("uow_factory"))
+        widziane.append(kwargs)
         return execute_run(run_id, **kwargs)
 
     monkeypatch.setattr(
@@ -1024,7 +1024,7 @@ def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypat
 
     assert done["status"] == "FINISHED", done
     assert len(widziane) == 2
-    assert all(fabryka is app.state.uow_factory for fabryka in widziane)
+    assert widziane == [{}, {}]
 
 
 # =============================================================================

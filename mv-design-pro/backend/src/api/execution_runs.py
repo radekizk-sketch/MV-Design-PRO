@@ -268,23 +268,17 @@ def _stan_biegu_z_postepem(run: CanonicalRun) -> dict[str, Any]:
     response_model=RunResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
+def execute_run(run_id: str) -> dict[str, Any]:
     # Karta DYNAMIKA-W-TLE: bieg NIE wykonuje się w żądaniu — trafia do kolejki
     # wykonawcy w tle (jeden ciężki bieg naraz), odpowiedź 202 niesie stan QUEUED
     # (albo stan bieżący, gdy bieg był już zlecony/zakończony), a klient odpytuje
     # `GET /api/execution/runs/{run_id}` do stanu końcowego (DONE/FAILED/CANCELLED).
-    # CV-4.2b: bieg wykonuje się TĄ SAMĄ fabryką `UnitOfWork`, którą widzi reszta
-    # żądania — bieg zabezpieczeń (konfiguracja przypadku) i rozpływ/zwarcie z
-    # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
-    # budował własne połączenie z `DATABASE_URL` (inna baza niż `app.state`).
+    # Bieg czyta wyłącznie migawkę modelu i opcje biegu — nie sięga do bazy.
     # (Komentarz, nie docstring: opis operacji jest częścią snapshotu OpenAPI.)
     parsed_run_id = _parse_uuid(run_id, "run_id")
 
     try:
-        run = wykonawca_biegow.zlec_bieg(
-            parsed_run_id,
-            uow_factory=getattr(http_request.app.state, "uow_factory", None),
-        )
+        run = wykonawca_biegow.zlec_bieg(parsed_run_id)
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_404_NOT_FOUND) from exc
 

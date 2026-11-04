@@ -1,12 +1,13 @@
 /**
  * Karta 8 — Zabezpieczenia i automatyka (PR-8a, brief §8 karta 8).
  *
- * Dwa werdykty inżynierskie tej karty pochodzą Z BACKENDU i karta ich NIE LICZY:
- *  - zgodność przekładnika napięciowego ze sposobem uziemienia (IEC 61869-3) —
- *    `WalidacjaVtPolaSekcja` (V12K-257),
- *  - wytrzymałość zwarciowa aparatury I_dyn / I_th (IEC 60909) —
- *    `WalidacjaWytrzymalosciAparaturySekcja` (K7-B, 2026-07-31).
- * Karta zestawia dane pól i pokazuje odpowiedzi; reguła NOT-A-SOLVER.
+ * Werdykt zgodności przekładnika napięciowego ze sposobem uziemienia (IEC 61869-3) pochodzi
+ * Z BACKENDU i karta go NIE LICZY (`WalidacjaVtPolaSekcja`, V12K-257); reguła NOT-A-SOLVER.
+ * Przekładnik napięciowy pola to element MODELU (`Measurement` typu VT wskazujący pole) —
+ * wybór typu idzie operacjami modelu (karta JEDNA-SCIEZKA-EDYCJI; dawny zapis w osobnej
+ * konfiguracji stacji skasowany). Wytrzymałość aparatury pól liczy ekran wyników zwarć
+ * z aparatów modelu (`ui2/wyniki/zwarcia/aparatura`) — dawna sekcja tej karty, karmiona
+ * ręcznym wskazaniem „klasy wytrzymałości", skasowana razem z tym wskazaniem.
  *
  * Przekaźniki pochodzą z modelu (`przekaznikiStacji.ts`: `Bay.protection_ref` →
  * `ProtectionAssignment`). Dawne sekcje „Automatyka”, „Uzależnienia łączeniowe” i „Sterowanie”
@@ -19,7 +20,6 @@ import { useEffect, useState } from 'react';
 import { fetchVtTypes } from '../../../catalog/api';
 import type { VTCatalogType } from '../../../catalog/types';
 import { WalidacjaVtPolaSekcja, type KontekstUziemieniaStacji } from './WalidacjaVtPolaSekcja';
-import { WalidacjaWytrzymalosciAparaturySekcja } from './WalidacjaWytrzymalosciAparaturySekcja';
 
 export interface ProtectionRow {
   readonly relayId: string;
@@ -29,17 +29,10 @@ export interface ProtectionRow {
   readonly settingsCount: number;
   /** `ProtectionAssignment.is_enabled` — zabezpieczenie wyłączone w modelu jest widoczne jako takie. */
   readonly enabled: boolean;
-  /** Naprawa eng.20: catalog_ref VT używanego dla pól zabezpieczeniowych. */
+  /** Pole modelu, którego dotyczy zabezpieczenie (`Bay.ref_id`) — adres zmiany VT pola. */
+  readonly bayRef: string;
+  /** Naprawa eng.20: catalog_ref VT pola z modelu (`Measurement` typu VT wskazujący pole). */
   readonly vtCatalogRef?: string | null;
-}
-
-/** Naprawa eng.18: dane wytrzymałości aparatury w polu (z katalogu device_withstand). */
-export interface DeviceWithstandRow {
-  readonly bayDesignation: string;
-  readonly deviceCatalogRef: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
 }
 
 export interface StationConfigProtectionCardProps {
@@ -47,10 +40,8 @@ export interface StationConfigProtectionCardProps {
   /** Stacja projektu, z której modelu backend czyta sposób uziemienia sieci SN pól
    *  (zgodność przekładników, karta UX-04/POLE-ZU); `null` — brak projektu albo stacji. */
   readonly kontekstUziemienia?: KontekstUziemieniaStacji | null;
-  /** Naprawa eng.18: lista aparatów do walidacji wytrzymałości. */
-  readonly deviceWithstandRows?: readonly DeviceWithstandRow[];
-  /** Phase 18: VT onChange (per bay). */
-  readonly onChangeVt?: (bayDesignation: string, vtId: string | null) => void;
+  /** Zmiana typu VT pola (`null` — rezygnacja z przekładnika); typ z katalogu backendu. */
+  readonly onChangeVt?: (bayRef: string, typ: VTCatalogType | null) => void;
 }
 
 export function StationConfigProtectionCard(
@@ -59,7 +50,6 @@ export function StationConfigProtectionCard(
   const {
     relays,
     kontekstUziemienia,
-    deviceWithstandRows,
     onChangeVt,
   } = props;
 
@@ -122,12 +112,17 @@ export function StationConfigProtectionCard(
                   <td className="font-mono text-[10px]">{r.functionsPl.join(', ')}</td>
                   <td className="text-right font-mono">{r.settingsCount}</td>
                   <td>
-                    {/* Phase 18: VT select per row gdy onChangeVt dostarczony. */}
+                    {/* Wybór typu VT pola z katalogu — zapis operacjami modelu. */}
                     {onChangeVt ? (
                       <select
                         data-testid={`relay-vt-select-${r.relayId}`}
                         value={r.vtCatalogRef ?? ''}
-                        onChange={(e) => onChangeVt(r.bayDesignation, e.target.value || null)}
+                        onChange={(e) =>
+                          onChangeVt(
+                            r.bayRef,
+                            (typyVt ?? []).find((v) => v.id === e.target.value) ?? null,
+                          )
+                        }
                         className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
                       >
                         <option value="">—</option>
@@ -157,8 +152,6 @@ export function StationConfigProtectionCard(
         }))}
         kontekst={kontekstUziemienia ?? null}
       />
-
-      <WalidacjaWytrzymalosciAparaturySekcja pola={deviceWithstandRows ?? []} />
     </div>
   );
 }

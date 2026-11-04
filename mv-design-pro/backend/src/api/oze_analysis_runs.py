@@ -33,11 +33,9 @@ interpretacji. Zły rodzaj przebiegu → 422 z komunikatem w języku polskim.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
 from api.klucz_twin_dep import KluczTwin, klucz_twin_z_sciezki
 from application.analyses.certyfikat_zgodnosci import (
@@ -94,9 +92,8 @@ from catalog.profiles.nc_rfg.loader import list_available_operators, load_nc_rfg
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.store import get_enm, has_enm
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import Response
-from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field
@@ -185,7 +182,6 @@ def get_hosting_capacity(
     candidate_bus_refs: list[str] | None = Query(default=None),
     step_mw: float = Query(default=DEFAULT_STEP_MW),
     max_steps: int = Query(default=DEFAULT_MAX_STEPS),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
     return build_hosting_capacity_view(
@@ -193,7 +189,6 @@ def get_hosting_capacity(
         candidate_bus_refs=candidate_bus_refs,
         step_mw=step_mw,
         max_steps=max_steps,
-        uow_factory=uow_factory,
     )
 
 
@@ -205,7 +200,6 @@ def get_pq_area(
     step_q_mvar: float = Query(default=DEFAULT_STEP_Q_MVAR),
     max_steps_p: int = Query(default=DEFAULT_MAX_STEPS_P),
     max_steps_q: int = Query(default=DEFAULT_MAX_STEPS_Q),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
     return build_pq_area_view(
@@ -215,7 +209,6 @@ def get_pq_area(
         step_q_mvar=step_q_mvar,
         max_steps_p=max_steps_p,
         max_steps_q=max_steps_q,
-        uow_factory=uow_factory,
     )
 
 

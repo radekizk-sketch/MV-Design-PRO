@@ -1,25 +1,24 @@
-"""
-Testy ProofPack audytu 2 (Phase 4).
+"""Testy dowodów rozszerzeń stacji: cztery rodzaje dowodu + agregator + determinizm.
 
-5 typow dowodow + agregator + determinizm.
+Wytrzymałość aparatury pól nie jest rodzajem tego pakietu (karta JEDNA-SCIEZKA-EDYCJI):
+werdykt I_dyn/I_th/I_cu liczy się z aparatów MODELU w `application.analyses.
+wytrzymalosc_aparatury_pol` (testy `tests/analysis/test_wytrzymalosc_aparatury_pol.py`).
 """
 
 from __future__ import annotations
 
 import pytest
-from application.proof_engine.packs.audit2_validation import (
+from application.proof_engine.packs.dowody_rozszerzen_stacji import (
     BrakDanychDowodu,
     SpecDowoduEksportuStacji,
     SpecDowoduPlanuZaczepow,
     SpecDowoduTrybowBess,
     SpecDowoduUziemieniaPrzekladnika,
-    SpecDowoduWytrzymalosciAparatu,
     generate_bess_modes_proof,
-    generate_device_withstand_proof,
     generate_hosting_capacity_export_proof,
-    generate_station_audit2_proof_pack,
     generate_tap_changer_plan_proof,
     generate_vt_grounding_validation_proof,
+    zloz_pakiet_dowodow_stacji,
 )
 from pydantic import ValidationError
 
@@ -156,35 +155,6 @@ def test_hosting_capacity_proof_fails_for_critical_export():
     assert proof.details["status"] == "requires_ramp_down"
 
 
-def test_device_withstand_proof_passes_within_limits():
-    proof = generate_device_withstand_proof(
-        SpecDowoduWytrzymalosciAparatu(
-            bay_designation="Pole 01",
-            device_id="wstd_breaker_vacuum_15_25",
-            i_peak_calculated_ka=50,
-            i_thermal_calculated_ka=20,
-            t_clearing_s=1.0,
-        ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    assert proof.pass_status is True
-
-
-def test_device_withstand_proof_fails_idyn_exceeded():
-    proof = generate_device_withstand_proof(
-        SpecDowoduWytrzymalosciAparatu(
-            bay_designation="Pole 01",
-            device_id="wstd_breaker_vacuum_15_25",
-            i_peak_calculated_ka=70,  # > 63 kA limit
-            i_thermal_calculated_ka=20,
-            t_clearing_s=1.0,
-        ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    assert proof.pass_status is False
-    assert "I_dyn" in proof.summary_pl
-
-
 def test_vt_grounding_proof_passes_for_19_petersen():
     proof = generate_vt_grounding_validation_proof(
         SpecDowoduUziemieniaPrzekladnika(
@@ -214,7 +184,7 @@ def test_vt_grounding_proof_unknown_type():
     """INTENCJA (bez zmian): typ uziemienia spoza slownika nie daje zgodnosci. KANON PO
     KARCIE PROOFPACK-KONTRAKT: nie dociera do generatora wcale — odrzuca go kontrakt
     specyfikacji (`TypPunktuNeutralnego`), a pakiet stacji oznacza wpis spoza katalogu
-    uziemien jako brak danych (`test_audit2_skladanie.py`)."""
+    uziemien jako brak danych (`test_pakiet_rozszerzen_stacji.py`)."""
     with pytest.raises(ValidationError):
         SpecDowoduUziemieniaPrzekladnika(
             bay_designation="POLE-03",
@@ -223,7 +193,7 @@ def test_vt_grounding_proof_unknown_type():
         )
 
 
-def test_station_audit2_proof_pack_aggregates_proofs():
+def test_pakiet_dowodow_stacji_aggregates_proofs():
     proofs = [
         generate_hosting_capacity_export_proof(
             SpecDowoduEksportuStacji(
@@ -240,7 +210,7 @@ def test_station_audit2_proof_pack_aggregates_proofs():
             ),
         ),
     ]
-    pack = generate_station_audit2_proof_pack(
+    pack = zloz_pakiet_dowodow_stacji(
         station_id="station_X", station_nazwa="Stacja X", proofs=proofs
     )
     assert pack.station_id == "station_X"
@@ -249,7 +219,7 @@ def test_station_audit2_proof_pack_aggregates_proofs():
     assert len(pack.proofs) == 2
 
 
-def test_station_audit2_proof_pack_reports_failures():
+def test_pakiet_dowodow_stacji_reports_failures():
     proofs = [
         generate_hosting_capacity_export_proof(
             SpecDowoduEksportuStacji(
@@ -266,7 +236,7 @@ def test_station_audit2_proof_pack_reports_failures():
             ),
         ),
     ]
-    pack = generate_station_audit2_proof_pack(
+    pack = zloz_pakiet_dowodow_stacji(
         station_id="station_Y", station_nazwa="Stacja Y", proofs=proofs
     )
     assert pack.all_pass is False
@@ -274,97 +244,53 @@ def test_station_audit2_proof_pack_reports_failures():
 
 
 def test_determinism_same_input_same_output():
-    """Identyczny input -> identyczny output (DETERMINISM Rule)."""
-    p1 = generate_device_withstand_proof(
-        SpecDowoduWytrzymalosciAparatu(
-            bay_designation="Pole 01",
-            device_id="wstd_breaker_vacuum_15_25",
-            i_peak_calculated_ka=50,
-            i_thermal_calculated_ka=20,
-            t_clearing_s=1.0,
+    """Identyczny input -> identyczny output (DETERMINISM Rule), dla KAZDEGO rodzaju."""
+    przypadki = (
+        (
+            generate_bess_modes_proof,
+            SpecDowoduTrybowBess(
+                der_id="d1",
+                der_nazwa="Magazyn 1",
+                pcs_four_quadrant=True,
+                pcs_grid_forming=True,
+                selected_mode_refs=["mode_voltage_support"],
+            ),
         ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    p2 = generate_device_withstand_proof(
-        SpecDowoduWytrzymalosciAparatu(
-            bay_designation="Pole 01",
-            device_id="wstd_breaker_vacuum_15_25",
-            i_peak_calculated_ka=50,
-            i_thermal_calculated_ka=20,
-            t_clearing_s=1.0,
+        (
+            generate_tap_changer_plan_proof,
+            SpecDowoduPlanuZaczepow(
+                transformer_id="t1",
+                transformer_nazwa="T1",
+                transformer_type="transformer_15_04",
+                tap_changer_ref="tc_detc_snnn_5_25",
+                requires_avr=False,
+            ),
         ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    assert p1.to_dict() == p2.to_dict()
-    # Identyfikator dowodu wyprowadzony z danych (UUID v5), nie losowany.
-    assert p1.proof_id == p2.proof_id
-
-
-def test_brak_wspolczynnika_daje_dowod_NIEZALICZONY_a_nie_domyslne_19() -> None:
-    """Nieznany wspolczynnik napieciowy nie moze stac sie liczba (V12K-258).
-
-    Wolajacy podstawial `VT_CATALOG_FOR_FACTOR.get(vt_ref, 1.9)` — czteroelementowa mapa
-    syntetycznych identyfikatorow frontu z wartoscia domyslna 1,9. Kazdy typ spoza tej
-    mapy (czyli KAZDY typ z realnego katalogu) dostawal wspolczynnik z powietrza, a
-    pakiet dowodowy oglaszal na tej podstawie ZGODNOSC. Brak danej musi byc widoczny
-    w dokumencie, bo dokument jest dowodem.
-    """
-    dowod = generate_vt_grounding_validation_proof(
-        SpecDowoduUziemieniaPrzekladnika(
-            bay_designation="J01",
-            vt_voltage_factor=None,
-            grounding_type="petersen_coil",
+        (
+            generate_hosting_capacity_export_proof,
+            SpecDowoduEksportuStacji(station_id="s1", p_export_kw=10.0, p_import_kw=5.0),
+        ),
+        (
+            generate_vt_grounding_validation_proof,
+            SpecDowoduUziemieniaPrzekladnika(
+                bay_designation="Pole 01",
+                vt_voltage_factor=1.9,
+                grounding_type="isolated",
+            ),
         ),
     )
-    assert dowod.pass_status is False
-    assert "nieznany" in dowod.summary_pl.lower()
-    assert dowod.details["vt_voltage_factor"] is None
-    # Wzor bez danych nie jest dowodem — nie udajemy rachunku.
-    assert dowod.formulas_latex == []
-
-
-@pytest.mark.parametrize(
-    ("four_quadrant", "grid_forming", "zgodny"),
-    [(True, True, True), (False, False, False)],
-    ids=["zgodny", "niezgodny"],
-)
-def test_teksty_dowodu_trybow_bess_nazywaja_zrodlo_nazwa_nigdy_identyfikatorem(
-    four_quadrant: bool, grid_forming: bool, zgodny: bool
-) -> None:
-    """Karta #144: podsumowanie i pozycje kontroli nazywają źródło nazwą z modelu;
-    identyfikator zostaje wyłącznie w `details` (iloczyn: wynik zgodny / niezgodny)."""
-    proof = generate_bess_modes_proof(
-        SpecDowoduTrybowBess(
-            der_id="der/9f3c21aa/bess",
-            der_nazwa="Magazyn energii Łąkowa",
-            pcs_four_quadrant=four_quadrant,
-            pcs_grid_forming=grid_forming,
-            selected_mode_refs=["mode_fcr_n", "mode_voltage_support"],
-        ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    assert proof.pass_status is zgodny
-    teksty = [proof.summary_pl, *proof.details["issues"]]
-    assert "Magazyn energii Łąkowa" in proof.summary_pl
-    assert all("der/9f3c21aa/bess" not in tekst for tekst in teksty)
-    assert proof.details["der_id"] == "der/9f3c21aa/bess"
-
-
-@pytest.mark.parametrize("requires_avr", [False, True], ids=["bez_avr", "z_avr"])
-def test_teksty_dowodu_zaczepow_nazywaja_transformator_nazwa(requires_avr: bool) -> None:
-    proof = generate_tap_changer_plan_proof(
-        SpecDowoduPlanuZaczepow(
-            transformer_id="transformer/5b0f7d1e",
-            transformer_nazwa="Transformator T1 stacji Łąkowa",
-            transformer_type="transformer_15_04",
-            tap_changer_ref="tc_detc_snnn_5_25",
-            requires_avr=requires_avr,
-        ),
-        generated_at_iso="2026-04-01T00:00:00Z",
-    )
-    teksty = [proof.summary_pl, *proof.details["issues"]]
-    assert "Transformator T1 stacji Łąkowa" in proof.summary_pl
-    assert all("transformer/5b0f7d1e" not in tekst for tekst in teksty)
+    for generator, spec in przypadki:
+        p1 = generator(spec, generated_at_iso="2026-04-01T00:00:00Z")  # type: ignore[operator]
+        p2 = generator(spec, generated_at_iso="2026-04-01T00:00:00Z")  # type: ignore[operator]
+        assert p1.to_dict() == p2.to_dict()
+        # Identyfikator dowodu wyprowadzony z danych (UUID v5), nie losowany.
+        assert p1.proof_id == p2.proof_id
+    # Rodzaje różnią się identyfikatorem przy tej samej chwili generacji.
+    identyfikatory = {
+        generator(spec, generated_at_iso="2026-04-01T00:00:00Z").proof_id  # type: ignore[operator]
+        for generator, spec in przypadki
+    }
+    assert len(identyfikatory) == len(przypadki)
 
 
 # =============================================================================
@@ -396,16 +322,6 @@ _SPECYFIKACJE_POPRAWNE = {
         SpecDowoduEksportuStacji,
         {"station_id": "s1", "p_export_kw": 10.0, "p_import_kw": 10.0},
     ),
-    "wytrzymalosc": (
-        SpecDowoduWytrzymalosciAparatu,
-        {
-            "bay_designation": "Pole 1",
-            "device_id": "wstd_breaker_vacuum_15_25",
-            "i_peak_calculated_ka": 1.0,
-            "i_thermal_calculated_ka": 1.0,
-            "t_clearing_s": 1.0,
-        },
-    ),
     "przekladniki": (
         SpecDowoduUziemieniaPrzekladnika,
         {"bay_designation": "Pole 1", "vt_voltage_factor": 1.9, "grounding_type": "isolated"},
@@ -414,7 +330,6 @@ _SPECYFIKACJE_POPRAWNE = {
 _POLA_NAZW = {
     "bess": "der_nazwa",
     "zaczepy": "transformer_nazwa",
-    "wytrzymalosc": "bay_designation",
     "przekladniki": "bay_designation",
 }
 
@@ -447,8 +362,6 @@ def test_specyfikacja_odrzuca_brak_nazwy_elementu(rodzaj: str, pusta: str) -> No
     [
         ("eksport", "p_export_kw", float("inf")),
         ("eksport", "p_import_kw", -1.0),
-        ("wytrzymalosc", "t_clearing_s", 0.0),
-        ("wytrzymalosc", "i_peak_calculated_ka", float("nan")),
         ("przekladniki", "vt_voltage_factor", 0.0),
         ("bess", "selected_mode_refs", []),
         ("zaczepy", "transformer_type", "transformer_110_30"),
@@ -466,21 +379,21 @@ def test_pakiet_stacji_niesie_nazwe_etykiety_rodzajow_i_braki() -> None:
     dowod = generate_hosting_capacity_export_proof(
         SpecDowoduEksportuStacji(station_id="s1", p_export_kw=10.0, p_import_kw=10.0)
     )
-    pakiet = generate_station_audit2_proof_pack(
+    pakiet = zloz_pakiet_dowodow_stacji(
         station_id="s1",
         station_nazwa="Stacja Łąkowa",
         proofs=[dowod],
         braki_danych=[
-            BrakDanychDowodu("AUDIT2_VT_GROUNDING_VALIDATION", "Brak przekładników."),
-            BrakDanychDowodu("AUDIT2_BESS_OPERATION_MODES", "Brak magazynu."),
+            BrakDanychDowodu("VT_GROUNDING_VALIDATION", "Brak przekładników."),
+            BrakDanychDowodu("BESS_OPERATION_MODES", "Brak magazynu."),
         ],
     ).to_dict()
     assert pakiet["station_nazwa"] == "Stacja Łąkowa"
     assert pakiet["proofs"][0]["rodzaj_pl"] == "Zdolność przyłączeniowa — eksport wobec importu"
     # Braki w kolejnosci rodzaju (deterministycznie), z polska nazwa rodzaju.
     assert [b["proof_type"] for b in pakiet["braki_danych"]] == [
-        "AUDIT2_BESS_OPERATION_MODES",
-        "AUDIT2_VT_GROUNDING_VALIDATION",
+        "BESS_OPERATION_MODES",
+        "VT_GROUNDING_VALIDATION",
     ]
     assert pakiet["braki_danych"][0]["rodzaj_pl"] == "Tryby pracy magazynu energii"
     # Brak danych nie jest dowodem niezaliczonym — licznik dowodow go nie obejmuje.

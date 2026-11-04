@@ -319,7 +319,10 @@ FORBIDDEN_W1_TABLE_NAMES = {
 # `dynamika_rms`, ten sam wzorzec co `canonical_run_branch_flows` (PERF-SC-50:
 # szeregi NIGDY inline w wierszu `canonical_runs`). Nowa tabela swiadoma, nie
 # resurekcja zadnej z `FORBIDDEN_W1_TABLE_NAMES` powyzej.
-W1_TABLENAME_PIN = 16
+# Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): 16 -> 15, tabela zapisanej konfiguracji stacji
+# skasowana razem z modelem ORM i repozytorium — przelacznik zaczepow, wkladka SN pola,
+# przekladnik napieciowy pola i dane zrodel OZE stacji zyja wylacznie w modelu sieci (ENM).
+W1_TABLENAME_PIN = 15
 W1_MODELS_RELATIVE_PATH = "infrastructure/persistence/models.py"
 
 # Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia FRONTENDOWA (jedyna

@@ -1710,11 +1710,8 @@ def zbuduj_werdykt_projektowy(
     Funkcja jest CZYSTA wobec magazynu: biegi i snapshot przychodzą argumentami,
     dzieki czemu agregacja jest testowalna bez repozytorium (a serwis nizej
     dostarcza je z magazynu). ``uow_factory`` — fabryka `UnitOfWork` wołającego
-    (`app.state.uow_factory`), przekazywana dostawcy cieplnemu: od PERF-SC-50 wkłady
-    gałęziowe liczą się na żądanie z wejścia biegu, a bieg z opcjami audytu 2 czyta
-    swoją konfigurację wyłącznie tą fabryką (bez niej dostawca odmawia nazwanym
-    `ValueError`, a kryterium cieplne spadałoby do „niesprawdzone" z powodu, który
-    nie jest brakiem danych inżynierskich).
+    (`app.state.uow_factory`), przekazywana dostawcy cieplnemu do oceny aktualności
+    wyniku wobec bieżącego modelu przypadku.
     """
     pozycje_po_id: dict[str, PozycjaWerdyktu] = {}
     zrodla: list[ZrodloWerdyktu] = []

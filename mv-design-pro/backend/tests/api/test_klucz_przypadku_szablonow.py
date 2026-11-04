@@ -331,10 +331,10 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # czytają model i magazyn scenariuszy nazwanych tą samą drogą co dynamika —
     # `case_id: str` obok `klucz: KluczTwin` z tego samego segmentu adresu.
     "scenariusze_laczeniowe.py": KLUCZ_SUROWY,
-    # W1 (2026-09-09): agregacja odbiorów per stacja dla audytu 2 czyta ENM projektu
-    # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
-    # projektem przez tłumacza, zero własnej konwersji klucza przypadku.
-    "audit2_station_config.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
+    # Karta JEDNA-SCIEZKA-EDYCJI: pakiet dowodów rozszerzeń stacji i uziemienie SN pól
+    # czytają ENM projektu — adres projektem przez tłumacza, zero własnej konwersji
+    # klucza przypadku.
+    "pakiet_rozszerzen_stacji.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
     # Karta BIEG-ZABEZPIECZEN-Z-MODELU: świeżość wyniku biegu oceny zabezpieczeń porównuje
     # sieć biegu źródłowego z BIEŻĄCYM modelem pod kluczem zapisanym na biegu (`klucz_twin`
     # koperty, wyprowadzony przy tworzeniu jedynym tłumaczem `klucz_twin_z_uow`) — klucz

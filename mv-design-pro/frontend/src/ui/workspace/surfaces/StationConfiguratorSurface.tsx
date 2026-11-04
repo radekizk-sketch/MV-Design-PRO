@@ -5,9 +5,10 @@
  * przyłączeniowe przypięte do tej stacji oraz otwiera właściwe powierzchnie
  * konfiguracji z zachowaniem kontekstu stacji.
  *
- * Punkt 3 Phase 4: konfiguracja audytu 2 (zaczepy, wkładki, przekładniki itd.)
- * pull-from-backend przez `useStationAudit2Config` + UPSERT przez
- * `useUpdateStationAudit2Config` (React Query, optimistic updates).
+ * Karta JEDNA-SCIEZKA-EDYCJI: dane stacji (przełącznik zaczepów, wkładka bezpiecznikowa pola,
+ * przekładnik napięciowy pola, tryby pracy magazynu) są czytane z MODELU i zmieniane
+ * WYŁĄCZNIE operacjami domenowymi — dawny magazyn „konfiguracji stacji" obok modelu
+ * (odczyt, zapis, synchronizacja źródeł) skasowany.
  */
 
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
@@ -28,11 +29,9 @@ import {
   AddDerWizard,
   deryStacjiZModelu,
   mergeStationDers,
-  useAudit2CatalogSnapshot,
+  useKatalogiStacjiSnapshot,
   useNcRfgOperatorCatalog,
-  useStationAudit2Config,
   useStationDerStore,
-  useUpdateStationAudit2Config,
   useUziemienieSnStacji,
   selectDersOfStation,
   type StationDerConnection,
@@ -67,7 +66,7 @@ import {
   type RekordModelu,
 } from '../../../ui2/model/rejestrPol';
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
-import type { MVApparatusType, TapChangerCatalogType, TransformerType } from '../../catalog/types';
+import type { MVApparatusType, TapChangerCatalogType, TransformerType, VTCatalogType } from '../../catalog/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import type {
@@ -141,14 +140,12 @@ function buildBaseStationProps(stationName: string) {
       reservesCount: 0,
       readinessLabelPl: 'do konfiguracji',
     },
-    // Karta FAB-M: `hvFuses` nadpisane niżej danymi ze snapshotu audytu 2 —
+    // Karta FAB-M: `hvFuses` nadpisane niżej danymi ze snapshotu katalogów stacji —
     // pusta lista jest stanem PRZED pobraniem, nie brakiem katalogu.
     bays: { bays: [], hvFuses: [] },
-    // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
+    // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu katalogów stacji.
     transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
-    protection: {
-      deviceWithstandRows: [],
-    },
+    protection: {},
     readiness: { items: [] },
   };
 }
@@ -523,9 +520,30 @@ function deriveStationBayRows(
       hasMeasurements: pomiaryPol.has(bay.ref_id),
       // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
       statusPl: hasEquipment ? 'kompletne' : 'częściowe',
-      hvFuseCatalogRef: null,
+      // Wkładka bezpiecznikowa SN pola z MODELU: `catalog_ref` aparatów `FUSE` pola
+      // (operacja `set_bay_equipment`, tryb `wkladka`). Pole bez bezpieczników nie ma
+      // czego wskazać — wybór wkładki jest dla niego niedostępny (z powodem w karcie).
+      hvFuseCatalogRef: wkladkaPola(bay),
+      maBezpieczniki: (bay.primary_devices ?? []).some((aparat) => aparat.kind === 'FUSE'),
     };
   });
+}
+
+/** Wkładka z katalogu wkładek SN wskazana na bezpiecznikach pola albo `null`. */
+function wkladkaPola(bay: { primary_devices?: readonly { kind: string; catalog_ref?: string | null }[] }): string | null {
+  const bezpieczniki = (bay.primary_devices ?? []).filter((aparat) => aparat.kind === 'FUSE');
+  return bezpieczniki.find((aparat) => aparat.catalog_ref)?.catalog_ref ?? null;
+}
+
+/** Pierwszy (wg `ref_id`) przekładnik napięciowy pola z typem katalogowym — wiersz VT karty. */
+function przekladnikVtPola(
+  snapshot: EnergyNetworkModel | null,
+  bayRef: string,
+): { readonly refId: string; readonly catalogRef: string } | null {
+  const vt = (snapshot?.measurements ?? [])
+    .filter((m) => m.measurement_type === 'VT' && m.bay_ref === bayRef && m.catalog_ref)
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id))[0];
+  return vt ? { refId: vt.ref_id, catalogRef: vt.catalog_ref as string } : null;
 }
 
 function deriveStationTransformerRows(
@@ -546,7 +564,7 @@ function deriveStationTransformerRows(
     pkKw: transformer.pk_kw ?? null,
     p0Kw: transformer.p0_kw ?? null,
     // Karta JEDNA-SCIEZKA-EDYCJI: zaczep i przełącznik z MODELU (podzespół `tap_changer`,
-    // inaczej pola `tap_*`) — dawniej przełącznik czytany z konfiguracji stacji audytu 2.
+    // inaczej pola `tap_*`) — dawniej przełącznik czytany z zapisanej konfiguracji stacji.
     tapPosition: POLE_ZACZEP_TRANSFORMATORA.odczyt(transformer as unknown as RekordModelu) as number | null,
     tapMin: transformer.tap_changer?.min_position ?? transformer.tap_min ?? null,
     tapMax: transformer.tap_changer?.max_position ?? transformer.tap_max ?? null,
@@ -630,16 +648,16 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const runIdOgladany = useRunIdOgladany();
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
-  // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
+  // Karta FAB-J: snapshot katalogów stacji dla inferencji transformatora dedykowanego
   // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
   // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
   // Karta FAB-L: TEN SAM snapshot niesie też `tap_changers` — zero drugiego
   // zapytania sieciowego dla katalogów, które konfigurator już potrzebuje (Karta 5
   // transformatora). Uziemienie punktu neutralnego SN nie jest pozycją katalogu
-  // audytu 2 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): niesie je zespół uziemiający
+  // konfiguracji stacji (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): niesie je zespół uziemiający
   // sekcji w modelu, a karta zabezpieczeń czyta je z backendu.
-  const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
-  const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
+  const katalogiStacjiQuery = useKatalogiStacjiSnapshot();
+  const blockTransformers = katalogiStacjiQuery.data?.block_transformers ?? [];
   // Karta JEDNA-SCIEZKA-EDYCJI: katalog przełączników zaczepów z katalogu backendu
   // (`/api/catalog/tap-changers`) — wybór trafia do podzespołu `tap_changer` modelu.
   const [tapChangers, setTapChangers] = useState<TapChangerCatalogType[]>([]);
@@ -664,10 +682,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       cancelled = true;
     };
   }, []);
-  // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
+  // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot katalogów stacji
   // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
   // (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`).
-  const hvFuses = audit2CatalogSnapshotQuery.data?.hv_fuses ?? [];
+  const hvFuses = katalogiStacjiQuery.data?.hv_fuses ?? [];
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const snapshotDers = useMemo(
     () => deryStacjiZModelu(snapshot, stationRef, projectId, blockTransformers),
@@ -719,17 +737,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     };
   }, []);
 
-  // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
-  const audit2Config = useStationAudit2Config(projectId, stationRef);
-  const updateAudit2Config = useUpdateStationAudit2Config();
   // Karta UX-04/POLE-ZU: uziemienie punktu neutralnego sieci SN stacji czytane z MODELU
   // (backend, `enm.uziemienie_sekcji`); rewizja modelu w kluczu — zmiana modelu = odczyt.
   const rewizjaModelu = snapshot?.header?.revision ?? null;
   const uziemienieSn = useUziemienieSnStacji(projectId, stationRef, rewizjaModelu);
 
-  // Punkt 3 Phase 5: sync der_specs -> backend gdy DERs zmieniaja sie w lokalnym
-  // Zustand store. Zustand pozostaje dla SLD rendering (kompatybilnosc z istniejacym
-  // kodem); backend persystuje audit2-specific pola (BESS modes, transformator dedykowany, P(f)).
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent('mvdesignpro:station-configurator-opened', {
@@ -737,31 +749,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       }),
     );
   }, [stationRef]);
-
-  useEffect(() => {
-    if (!projectId || !stationRef || !audit2Config.data) return;
-    const targetDerSpecs = ders.map((d) => ({
-      der_id: d.id,
-      der_kind: d.der_kind,
-      bess_operation_mode_refs: d.profiles.bess_operation_mode_refs ?? [],
-      block_transformer_catalog_ref: d.catalogs.block_transformer_catalog_ref ?? null,
-      pf_curve_ref: d.profiles.pf_curve_ref ?? null,
-      // Phase 23: real device + nominal power (z catalogu, projekcja deterministic).
-      device_catalog_ref: d.catalogs.device_catalog_ref ?? null,
-      nominal_power_kw: d.nominal_power_kw,
-    }));
-    const currentDerSpecs = audit2Config.data.der_specs;
-    // Compare by serialization — proste i deterministyczne.
-    if (JSON.stringify(targetDerSpecs) === JSON.stringify(currentDerSpecs)) return;
-    updateAudit2Config.mutate({
-      projectId,
-      stationId: stationRef,
-      body: {
-        tap_changer_refs: audit2Config.data.tap_changer_refs,
-        der_specs: targetDerSpecs,
-      },
-    });
-  }, [ders, projectId, stationRef, audit2Config.data]);
 
   // Nasłuch event'a wystawianego przez DerSourcesCard.
   useEffect(() => {
@@ -813,7 +800,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     () =>
       przekaznikiStacji(
         snapshot?.protection_assignments ?? [],
-        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, protectionRef: bay.protection_ref })),
+        polaSnStacji.map(({ bay, oznaczenie }) => ({
+          bayRef: bay.ref_id,
+          oznaczenie,
+          protectionRef: bay.protection_ref,
+        })),
       ),
     [snapshot?.protection_assignments, polaSnStacji],
   );
@@ -1167,42 +1158,59 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     notify(`Odłączono "${name}" od stacji.`, 'info');
   }, [pendingDetach, derWModelu, activeCaseId, executeDomainOperation, detachDer]);
 
-  // Phase 8: helper do mutacji audit2 config (centralizuje budowe body).
-  const mutateAudit2 = useCallback(
-    (patch: Partial<{
-      tap_changer_refs: readonly string[];
-      transformer_tap_changers: Record<string, string>;
-      bay_hv_fuses: Record<string, string>;
-      bay_vts: Record<string, string>;
-    }>) => {
-      if (!projectId || !stationRef) {
-        notify('Najpierw wybierz aktywny projekt i stację.', 'warning');
+  // Karta JEDNA-SCIEZKA-EDYCJI: wkładka bezpiecznikowa SN pola — operacja modelu
+  // `set_bay_equipment` (tryb `wkladka`; `null` usuwa wskazanie). Odmowa backendu
+  // (np. wkładka niższego napięcia niż sieć) wraca zdaniem do projektanta.
+  const zmienWkladkePola = useCallback(
+    async (bayRef: string, wkladka: string | null) => {
+      if (!activeCaseId) {
+        notify('Najpierw wybierz aktywny zakres obliczeń.', 'warning');
         return;
       }
-      const current = audit2Config.data;
-      updateAudit2Config.mutate({
-        projectId,
-        stationId: stationRef,
-        body: {
-          tap_changer_refs: [...(patch.tap_changer_refs ?? current?.tap_changer_refs ?? [])],
-          der_specs: current?.der_specs ?? [],
-          transformer_tap_changers: {
-            ...(current?.transformer_tap_changers ?? {}),
-            ...(patch.transformer_tap_changers ?? {}),
-          },
-          bay_hv_fuses: {
-            ...(current?.bay_hv_fuses ?? {}),
-            ...(patch.bay_hv_fuses ?? {}),
-          },
-          bay_vts: {
-            ...(current?.bay_vts ?? {}),
-            ...(patch.bay_vts ?? {}),
-          },
-          bay_device_withstand: current?.bay_device_withstand ?? {},
-        },
+      const odpowiedz = await executeDomainOperation(activeCaseId, 'set_bay_equipment', {
+        bay_ref: bayRef,
+        mode: 'wkladka',
+        catalog_ref: wkladka,
       });
+      if (!odpowiedz || odpowiedz.error) {
+        notify(odpowiedz?.error ?? 'Nie udało się zmienić wkładki bezpiecznikowej pola.', 'error');
+      }
     },
-    [projectId, stationRef, audit2Config.data, updateAudit2Config],
+    [activeCaseId, executeDomainOperation],
+  );
+
+  // Przekładnik napięciowy pola — element modelu (`Measurement` typu VT). Zmiana typu =
+  // usunięcie dotychczasowego VT pola i `add_vt` z nowym typem (przekładnia z katalogu);
+  // rezygnacja = samo usunięcie. Jedna droga edycji: operacje modelu.
+  const zmienPrzekladnikVtPola = useCallback(
+    async (bayRef: string, typ: VTCatalogType | null) => {
+      if (!activeCaseId) {
+        notify('Najpierw wybierz aktywny zakres obliczeń.', 'warning');
+        return;
+      }
+      const obecny = przekladnikVtPola(snapshot, bayRef);
+      if (obecny && obecny.catalogRef === typ?.id) return;
+      if (obecny) {
+        const usuniecie = await executeDomainOperation(activeCaseId, 'delete_element', {
+          element_ref: obecny.refId,
+        });
+        if (!usuniecie || usuniecie.error) {
+          notify(usuniecie?.error ?? 'Nie udało się usunąć przekładnika napięciowego pola.', 'error');
+          return;
+        }
+      }
+      if (!typ) return;
+      const dodanie = await executeDomainOperation(activeCaseId, 'add_vt', {
+        bay_ref: bayRef,
+        catalog_ref: typ.id,
+        ratio_primary_v: typ.ratio_primary_v,
+        ratio_secondary_v: typ.ratio_secondary_v,
+      });
+      if (!dodanie || dodanie.error) {
+        notify(dodanie?.error ?? 'Nie udało się dodać przekładnika napięciowego pola.', 'error');
+      }
+    },
+    [activeCaseId, executeDomainOperation, snapshot],
   );
 
   const rodzajKonfiguratora = useMemo(
@@ -1213,10 +1221,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const configuratorProps = useMemo(() => {
     const base = buildBaseStationProps(stationName);
     const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
-    // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
-    const bayFuses = audit2Config.data?.bay_hv_fuses ?? {};
-    const bayVts = audit2Config.data?.bay_vts ?? {};
-    const bayWithstand = audit2Config.data?.bay_device_withstand ?? {};
     return {
       ...base,
       basic: {
@@ -1323,17 +1327,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         ...base.bays,
         // Cast wymagany bo `base.bays.bays` w pustym stanie ma typ never[].
         // Mapowanie dziala poprawnie gdy snapshot dostarcza realne wpisy.
-        bays: stationBays.map((b) => ({
-          ...b,
-          hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
-        })),
-        // Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2.
+        bays: stationBays,
+        // Karta FAB-M: katalog wkładek SN — ze snapshotu katalogów stacji.
         hvFuses,
-        // Phase 18: HV fuse onChange propaguje do mutateAudit2.
         onChangeHvFuse: (bayId: string, fuseId: string | null) => {
-          mutateAudit2({
-            bay_hv_fuses: { [bayId]: fuseId ?? '' },
-          });
+          void zmienWkladkePola(bayId, fuseId);
         },
       },
       protection: {
@@ -1344,24 +1342,13 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           projectId && stationRef
             ? { projectId, stationId: stationRef, rewizja: rewizjaModelu }
             : null,
-        // Phase 8: VT per-bay z audit2Config.bay_vts.
+        // Przekładnik napięciowy pola z modelu (`Measurement` typu VT wskazujący pole).
         relays: stationRelays.map((r) => ({
           ...r,
-          vtCatalogRef: bayVts[r.bayDesignation] ?? null,
+          vtCatalogRef: przekladnikVtPola(snapshot, r.bayRef)?.catalogRef ?? null,
         })),
-        // Phase 8: device withstand per-bay z audit2Config.
-        deviceWithstandRows: Object.entries(bayWithstand).map(([bayDesignation, spec]) => ({
-          bayDesignation,
-          deviceCatalogRef: (spec as { device_id: string }).device_id,
-          i_peak_calculated_ka: (spec as { i_peak_calculated_ka: number }).i_peak_calculated_ka,
-          i_thermal_calculated_ka: (spec as { i_thermal_calculated_ka: number }).i_thermal_calculated_ka,
-          t_clearing_s: (spec as { t_clearing_s: number }).t_clearing_s,
-        })),
-        // Phase 18: VT onChange per bay (select propaguje do mutateAudit2).
-        onChangeVt: (bayDesignation: string, vtId: string | null) => {
-          mutateAudit2({
-            bay_vts: { [bayDesignation]: vtId ?? '' },
-          });
+        onChangeVt: (bayRef: string, typ: VTCatalogType | null) => {
+          void zmienPrzekladnikVtPola(bayRef, typ);
         },
       },
       nnSwitchgear: {
@@ -1414,7 +1401,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     transformerRecord,
     zapiszPoleModelu,
     requestDetach,
-    audit2Config.data,
     uziemienieSn.data,
     uziemienieSn.error,
     uziemienieSn.isError,
@@ -1422,8 +1408,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     openOperationForm,
     projectId,
     station,
-    snapshot?.buses,
-    mutateAudit2,
+    snapshot,
+    zmienWkladkePola,
+    zmienPrzekladnikVtPola,
     transformerCatalogError,
     transformerCatalogLoading,
     blockTransformers,

@@ -571,7 +571,7 @@ export function emptyReadinessMatrix(): DerReadinessMatrix {
 // =============================================================================
 
 // `sumStationLoadImportKw` USUNIĘTE kartą PROOFPACK-KONTRAKT: import mocy
-// stacji sumuje backend (`audit2_skladanie.moce_odbiorow_stacji_kw`) — ta sama reguła
+// stacji sumuje backend (`pakiet_rozszerzen_stacji.moce_odbiorow_stacji_kw`) — ta sama reguła
 // (odbiór należy do stacji przez szyny stacji `enm.tor_pola.szyny_stacji` — szyny główne,
 // zaciski pól SN, końce aparatów pól nN; stacja spoza modelu albo bez szyn = import
 // NIEZNANY, nie zero), przypięta testami backendu.

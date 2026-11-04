@@ -22,7 +22,7 @@ describe('auditProofPackStatus', () => {
     const r = auditProofPackStatus({
       proof_count: 1,
       all_pass: true,
-      braki_danych: [{ proof_type: 'AUDIT2_TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
+      braki_danych: [{ proof_type: 'TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
     } as never);
     expect(r.label).toContain('Niekompletny');
     expect(r.label).not.toContain('pozytywna');
@@ -33,7 +33,7 @@ describe('auditProofPackStatus', () => {
     const r = auditProofPackStatus({
       proof_count: 1,
       all_pass: false,
-      braki_danych: [{ proof_type: 'AUDIT2_TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
+      braki_danych: [{ proof_type: 'TAP_CHANGER_PLAN', rodzaj_pl: 'x', przyczyna_pl: 'y' }],
     } as never);
     expect(r.label).toContain('sprawdzenia');
   });

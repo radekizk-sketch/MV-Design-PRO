@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import type {
   BessOperationModeItem,
   TapChangerItem,
-} from '../audit2-api';
+} from '../katalogi-stacji-api';
 import {
   CONNECTION_LEVEL_CATALOG,
   SN_CONNECTION_POINT_KIND_CATALOG,
@@ -35,7 +35,7 @@ import klasyTransformatora from './klasy_transformatora_przelacznika.json';
 //
 // USUNIĘTE (karta FAB-L, 2026-09-05) — katalog wariantów uziemienia SN (karta
 // UX-04/POLE-ZU: skasowany na amen, pilnuje `grep_zero_guard` grupa `zu_`),
-// `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG` (→ snapshot audytu 2,
+// `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG` (→ snapshot katalogów stacji,
 // selektory poniżej przyjmują katalog jako parametr), `DER_FAULT_CURRENT_DATA_
 // CATALOG` + `computeKappa` + `getFaultCurrentDataForDevice` (fizyka bez
 // konsumenta solvera — usunięte bez zamiennika, κ pochodzi z
@@ -62,7 +62,7 @@ describe('Katalogi usunięte z frontu (karty FAB-J/K/L)', () => {
     expect(modul.selectHvrtCurvesForProfile).toBeUndefined();
     expect(modul.selectPvInvertersForVoltage).toBeUndefined();
     expect(modul.selectBessPcsForVoltage).toBeUndefined();
-    // FAB-L: mirrory backendu → snapshot audytu 2
+    // FAB-L: mirrory backendu → snapshot katalogów stacji
     expect(modul.BESS_OPERATION_MODE_CATALOG).toBeUndefined();
     expect(modul.TAP_CHANGER_CATALOG).toBeUndefined();
     // FAB-L: fizyka bez konsumenta solvera
@@ -141,11 +141,11 @@ describe('SnConnectionPointKindCatalog', () => {
 /**
  * Karta FAB-L: `selectBessModesForPcs`/
  * `selectTapChangersForTransformer`/`getTapChanger` przyjmują katalog jako
- * PARAMETR (snapshot audytu 2), zamiast czytać statyk modułowy — fikstury
- * poniżej są kształtem 1:1 z backendowym `to_dict()` (`audit2_catalogs.py`),
+ * PARAMETR (snapshot katalogów stacji), zamiast czytać statyk modułowy — fikstury
+ * poniżej są kształtem 1:1 z backendowym `to_dict()` (`katalogi_stacji.py`),
  * nie wymyślonymi wartościami.
  */
-describe('Selektory snapshotu audytu 2 (parametryzowane, karta FAB-L)', () => {
+describe('Selektory snapshotu katalogów stacji (parametryzowane, karta FAB-L)', () => {
 
   const bessModes: readonly BessOperationModeItem[] = [
     {

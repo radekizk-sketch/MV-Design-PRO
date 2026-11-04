@@ -292,10 +292,7 @@ def create_protection_run(
     response_model=ProtectionRunResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-def execute_protection_run(
-    run_id: UUID,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
+def execute_protection_run(run_id: UUID) -> dict[str, Any]:
     """
     Execute a protection analysis run.
 
@@ -307,13 +304,9 @@ def execute_protection_run(
 
     Returns:
     - Run metadata with the current status (QUEUED right after acceptance)
-
-    `uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ
-    zwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji
-    przez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.
     """
     _require_protection_run(run_id)
-    run = wykonawca_biegow.zlec_bieg(run_id, uow_factory=uow_factory)
+    run = wykonawca_biegow.zlec_bieg(run_id)
     return _run_to_response(run)
 
 

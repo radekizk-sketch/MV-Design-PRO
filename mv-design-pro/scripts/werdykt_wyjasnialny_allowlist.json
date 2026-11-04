@@ -472,7 +472,7 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.catalog.audit2_catalogs:is_vt_voltage_factor_valid_for_grounding()",
+   "tozsamosc": "network_model.catalog.katalogi_stacji:is_vt_voltage_factor_valid_for_grounding()",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A37 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "A37"
@@ -1242,14 +1242,14 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "analysis.reporting.audit2_report:render_audit2_report_latex:OK",
+   "tozsamosc": "analysis.reporting.raport_rozszerzen_stacji:render_raport_latex:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B17 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "B17"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "analysis.reporting.audit2_report:render_audit2_report_text:OK",
+   "tozsamosc": "analysis.reporting.raport_rozszerzen_stacji:render_raport_tekst:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B17 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "B17"
@@ -1312,21 +1312,21 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.audit2_validation:generate_bess_modes_proof.summary:OK",
+   "tozsamosc": "application.proof_engine.packs.dowody_rozszerzen_stacji:generate_bess_modes_proof.summary:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A36 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.audit2_validation:generate_tap_changer_plan_proof.summary:OK",
+   "tozsamosc": "application.proof_engine.packs.dowody_rozszerzen_stacji:generate_tap_changer_plan_proof.summary:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A36 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.audit2_validation:generate_vt_grounding_validation_proof.summary_pl:OK",
+   "tozsamosc": "application.proof_engine.packs.dowody_rozszerzen_stacji:generate_vt_grounding_validation_proof.summary_pl:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A36 (dopasowanie po pliku)"
@@ -1403,7 +1403,7 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "network_model.catalog.audit2_catalogs:ocen_wytrzymalosc_aparatu.message:OK",
+   "tozsamosc": "network_model.catalog.katalogi_stacji:ocen_wytrzymalosc_aparatu.message:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A37 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A37"

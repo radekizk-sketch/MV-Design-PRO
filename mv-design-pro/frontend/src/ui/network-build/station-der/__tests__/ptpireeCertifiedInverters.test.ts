@@ -8,7 +8,7 @@
  *    lokalny, a `?search=` końcówki służy klientom API) — odpowiedź spoza kontraktu jest
  *    BŁĘDEM, a nie pustym wykazem;
  *  - JAWNEGO stanu hooków (`ladowanie` → `gotowy` / `blad`) na zamockowanej granicy `fetch`
- *    (wzorzec `audit2-hooks.test.tsx`) — brak odpowiedzi backendu nigdy nie daje stanu
+ *    (wzorzec `katalogi-stacji-hooks.test.tsx`) — brak odpowiedzi backendu nigdy nie daje stanu
  *    `gotowy` z pustą listą;
  *  - funkcji czystych na rejestrze podanym przez wołającego.
  *

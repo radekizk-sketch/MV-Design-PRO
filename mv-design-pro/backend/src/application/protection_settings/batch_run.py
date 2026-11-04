@@ -65,7 +65,6 @@ kodu (ten sam princyp co wybór odcinka w `voltage_drop_binding.py`).
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -310,27 +309,12 @@ def _opcjonalna_liczba(wartosc: Any) -> float | None:
     return liczba if math.isfinite(liczba) else None
 
 
-def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
-    """Para opcji konfiguracji audytu 2 stacji przejęta z kotwicy (CV-4.2b).
-
-    Warianty nastaw liczą TEN SAM model co kotwica — jeśli kotwicę policzono z
-    korektami audytu 2 (uziemienie punktu neutralnego → Z0, zaczepy), warianty
-    bez tej pary liczyłyby inną sieć (do tej karty: cicho, bez korekt). Brak
-    pary w kotwicy = brak pary w wariantach.
-    """
-    return {
-        klucz: kotwica.options[klucz]
-        for klucz in ("audit2_project_id", "audit2_station_id")
-        if klucz in kotwica.options
-    }
-
-
 def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> dict[str, Any]:
     """Opcje wariantu gałęzi minimalnej (CV-3-W): `fault_type` WŁASNY wariantu i
     scenariusz MIN — c dobiera assembler per węzeł z tabeli 1 IEC 60909-0 (`voltage_factor`;
     nN wg tolerancji sieci nN, SN/WN) razem z korektą R_θ i Z_Qmin źródeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
-    rozdział MAX/MIN po przełączniku, nie po liczbie). `thermal_time_seconds` i para
-    audytu 2 przejęte z opcji kotwicy (ten sam model stacji co kotwica). Nadpisanie c
+    rozdział MAX/MIN po przełączniku, nie po liczbie). `thermal_time_seconds` przejęty
+    z opcji kotwicy. Nadpisanie c
     kotwicy NIE przechodzi na wariant: dotyczy gałęzi maksymalnej, dla której je
     uzasadniono."""
     return {
@@ -351,7 +335,6 @@ def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> di
             if KLUCZ_OPCJI_STANU_AWSC in kotwica.options
             else {}
         ),
-        **_opcje_audit2_kotwicy(kotwica),
     }
 
 
@@ -411,17 +394,12 @@ def zbuduj_wejscie_nastaw(
     t_upstream_s: float = 0.0,
     spz_enabled: bool = True,
     spz_pause_s: float = 0.5,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> WejscieNastawZBiegow:
     """Zbuduj komplet wejścia silnika nastaw z kotwicy + dwóch wariantów zwarciowych
     + jednego wariantu rozpływu — WSZYSTKIE trzy na migawce kotwicy.
 
     Podnosi `BrakDanychNastawError` (powód po polsku) na każdym brakującym ogniwie —
     nigdy nie zwraca wejścia z podstawioną wartością.
-
-    `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wołającego — trzy warianty
-    dziedziczą parę audytu 2 kotwicy, więc kotwica z konfiguracją audytu 2
-    stacji wymaga jej do odczytu tej konfiguracji (`wykonaj_bieg_w_pamieci`).
 
     `zacisk_zabezpieczenia` (decyzja O-51, wariant (b)): jawne wskazanie inżyniera
     (`od`/`do`) albo `None`. BEZ wartości domyślnej — rozstrzyga `rozstrzygnij_zacisk`
@@ -516,7 +494,7 @@ def zbuduj_wejscie_nastaw(
         options=_opcje_wariantu_minimalnego(kotwica, fault_type="3F"),
     )
     try:
-        wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
+        wykonaj_bieg_w_pamieci(wariant_3f_cmin)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = odmowa z powodem
         raise BrakDanychNastawError(
             "Wariant zwarcia trójfazowego scenariusza MIN przerwany błędem "
@@ -537,7 +515,7 @@ def zbuduj_wejscie_nastaw(
         options=_opcje_wariantu_minimalnego(kotwica, fault_type="2F"),
     )
     try:
-        wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
+        wykonaj_bieg_w_pamieci(wariant_2f_cmin)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyzej
         raise BrakDanychNastawError(
             "Wariant zwarcia dwufazowego scenariusza MIN przerwany błędem "
@@ -553,7 +531,7 @@ def zbuduj_wejscie_nastaw(
     # W3-G1 (2026-09-10): kotwica jest ZAWSZE short_circuit_sn (asercja u góry funkcji)
     # — nie ma bazowego biegu PF, więc `options=None` nie miałby czego dziedziczyć
     # (`bieg_wariantu` dziedziczy `bazowy.options`, a `kotwica.options` nigdy nie
-    # niesie `solver_method`). Metoda wariantu PF audytu 2 jest więc jawnie NR:
+    # niesie `solver_method`). Metoda wariantu PF jest więc jawnie NR:
     # ten sam prąd obciążeniowy referencyjny niezależnie od tego, jaką metodą
     # policzono INNE, niepowiązane biegi PF w projekcie (dowód pakietu nastaw ma
     # być powtarzalny, nie zależny od wyboru operatora gdzie indziej).
@@ -561,10 +539,10 @@ def zbuduj_wejscie_nastaw(
         kotwica,
         migawka_kotwicy,
         analysis_type="PF",
-        options={**_opcje_audit2_kotwicy(kotwica), "solver_method": "newton-raphson"},
+        options={"solver_method": "newton-raphson"},
     )
     try:
-        wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
+        wykonaj_bieg_w_pamieci(wariant_pf)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant rozpływu mocy migawki kotwicy przerwany odmową solvera: {exc}"
@@ -688,7 +666,6 @@ def oblicz_nastawy(
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> NastawyZBiegu:
     """Nastawy I>/I>> dla kotwicy + wyboru inżyniera — silnik Hoppela wywołany
     RAZ na kompletnym wejściu zbudowanym z trzech biegów (kotwica c_max + wariant
@@ -705,7 +682,6 @@ def oblicz_nastawy(
         delta_t_s=delta_t_s,
         k_b=k_b,
         k_bth=k_bth,
-        uow_factory=uow_factory,
     )
     wynik = ProtectionSettingsEngine.calculate(wejscie.engine_input)
     return NastawyZBiegu(wynik=wynik, wejscie=wejscie)

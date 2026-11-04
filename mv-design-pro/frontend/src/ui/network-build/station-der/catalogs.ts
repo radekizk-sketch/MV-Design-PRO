@@ -17,9 +17,9 @@
  * PROWENIENCJA (karta FAB-L, 2026-09-05) — usunięto DRUGĄ KOPIĘ danych
  * katalogowych backendu i JEDNĄ klasę fizyki liczonej w UI:
  *   * `BESS_OPERATION_MODE_CATALOG` / `TAP_CHANGER_CATALOG` — czytane teraz
- *     WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
- *     `audit2-api.ts::BessOperationModeItem` / `TapChangerItem`), który backend
- *     już wystawia (`/api/v1/catalog/audit2/snapshot`). Dawny katalog wariantów
+ *     WYŁĄCZNIE ze snapshotu katalogów stacji (`useKatalogiStacjiSnapshot`,
+ *     `katalogi-stacji-api.ts::BessOperationModeItem` / `TapChangerItem`), który backend
+ *     już wystawia (`/api/v1/catalog/konfiguracja-stacji/snapshot`). Dawny katalog wariantów
  *     uziemienia SN nie wrócił nawet do snapshotu: sposób
  *     uziemienia punktu neutralnego SN niesie zespół uziemiający sekcji w modelu
  *     (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Selektory
@@ -72,11 +72,11 @@
  *
  * ZNALEZISKO TEJ SAMEJ KLASY POZA PLIKIEM (zgłoszone, nie naprawione w tej
  * karcie): `protection-catalogs.ts::HV_FUSE_CATALOG` (4 pozycje, identyfikatory
- * IDENTYCZNE z backendowym `audit2_catalogs.HV_FUSE_CATALOG` —
+ * IDENTYCZNE z backendowym `katalogi_stacji.HV_FUSE_CATALOG` —
  * `fuse_15kv_50a_full` i in.) jest DOKŁADNIE tym samym mirrorem, konsumowanym
  * przez `station-configurator/cards/StationConfigBaysCard.tsx`. Backend już
- * wystawia `hv_fuses` w snapshocie audytu 2 (pole `AuditCatalogSnapshot.
- * hv_fuses` w `audit2-api.ts` zostaje CELOWO nietypowane — `unknown[]` — bo
+ * wystawia `hv_fuses` w snapshocie katalogów stacji (pole `KatalogiStacjiSnapshot.
+ * hv_fuses` w `katalogi-stacji-api.ts` zostaje CELOWO nietypowane — `unknown[]` — bo
  * typowanie go bez migracji konsumenta byłoby dekoracją bez skutku) — migracja
  * konsumenta wymaga osobnej karty: plik `protection-catalogs.ts` (673 linie,
  * 5 katalogów: PROTECTION_FUNCTION/SPZ/SZR/HV_FUSE + CtClass) nie był w
@@ -91,7 +91,7 @@ import type {
   BessOperationModeItem,
   BlockTransformerItem,
   TapChangerItem,
-} from './audit2-api';
+} from './katalogi-stacji-api';
 import {
   napiecieNajwyzszeSieciKv,
   powyzejPasmaNn,
@@ -99,16 +99,6 @@ import {
   wPasmieNn,
 } from '../../../ui2/model/pasmaNapieciowe';
 
-/**
- * Wersja katalogów = DATA PRZEGLĄDU PROWENIENCJI (ISO-8601), nie wymyślony numer.
- *
- * Wartość jest identyczna ze stałą `AUDIT2_CATALOG_VERSION` w backendzie
- * (`network_model/catalog/audit2_catalogs.py`) i w `protection-catalogs.ts`
- * (który ją stąd importuje) — jeden punkt odniesienia dla daty przeglądu
- * proweniencji wszystkich katalogów tej rodziny, niezależnie od tego, który
- * plik dziś niesie ich dane.
- */
-export const AUDIT2_CATALOG_VERSION = '2026-08-14';
 
 // =============================================================================
 // 4. ConnectionLevelCatalog (karta FAB-K — zastępuje ConnectionVariantCatalog)
@@ -233,8 +223,8 @@ export function getSnConnectionPointKindLabelPl(
  * Naprawa B.5: filtruje transformatory dedykowane dla danej kombinacji DER + napięć.
  * Zwraca pozycje katalogowe pasujące do device_voltage / station_voltage.
  *
- * Karta FAB-J: katalog przychodzi WYŁĄCZNIE ze snapshotu audytu 2
- * (`useAudit2CatalogSnapshot`, `audit2-api.ts::BlockTransformerItem`) — funkcja
+ * Karta FAB-J: katalog przychodzi WYŁĄCZNIE ze snapshotu katalogów stacji
+ * (`useKatalogiStacjiSnapshot`, `katalogi-stacji-api.ts::BlockTransformerItem`) — funkcja
  * przyjmuje go jako parametr, zero statyku modułowego.
  */
 export function selectBlockTransformersForDer(
@@ -275,8 +265,8 @@ export function getBlockTransformer(
 /**
  * Filtruje tryby pracy magazynu dostępne dla zdolności danego przekształtnika.
  *
- * Karta FAB-L: katalog przychodzi WYŁĄCZNIE ze snapshotu audytu 2
- * (`useAudit2CatalogSnapshot`, `audit2-api.ts::BessOperationModeItem`) — funkcja
+ * Karta FAB-L: katalog przychodzi WYŁĄCZNIE ze snapshotu katalogów stacji
+ * (`useKatalogiStacjiSnapshot`, `katalogi-stacji-api.ts::BessOperationModeItem`) — funkcja
  * przyjmuje go jako parametr, zero statyku modułowego (dawny
  * `BESS_OPERATION_MODE_CATALOG` niósł te same 10 pozycji co backend, więc
  * mirror był wyłącznie ryzykiem rozjazdu, nigdy niezależną daną).
@@ -302,8 +292,8 @@ export function selectBessModesForPcs(
 /**
  * Filtruje przełączniki zaczepów dla danego typu transformatora.
  *
- * Karta FAB-L: katalog przychodzi WYŁĄCZNIE ze snapshotu audytu 2
- * (`useAudit2CatalogSnapshot`, `audit2-api.ts::TapChangerItem`) — funkcja
+ * Karta FAB-L: katalog przychodzi WYŁĄCZNIE ze snapshotu katalogów stacji
+ * (`useKatalogiStacjiSnapshot`, `katalogi-stacji-api.ts::TapChangerItem`) — funkcja
  * przyjmuje go jako parametr, zero statyku modułowego.
  */
 export type KlasaTransformatoraPrzelacznika =
@@ -324,7 +314,7 @@ export function selectTapChangersForTransformer<T extends TapChangerItem>(
  *
  * JEDNA REGUŁA NA DWIE STRONY (karta PROOFPACK-KONTRAKT): ta sama klasyfikacja wybiera tu
  * przełączniki OFEROWANE transformatorowi, a w backendzie
- * (`audit2_catalogs.klasa_transformatora_przelacznika`) przełącznik SPRAWDZANY w pakiecie
+ * (`katalogi_stacji.klasa_transformatora_przelacznika`) przełącznik SPRAWDZANY w pakiecie
  * dowodów. Obie strony czytają jedną tabelę przypadków
  * (`__tests__/klasy_transformatora_przelacznika.json`) — oferta i dowód nie mogą się
  * rozjechać. Transformator spoza klas daje `null` (brak oferty), a nie domysł „blokowy",
@@ -364,4 +354,4 @@ export function getTapChanger<T extends TapChangerItem>(
 // Ta funkcja była drugą kopią reguły backendu (`validate_hosting_capacity_export`):
 // sumy mocy i werdykt progami 0,8/1,5/3,0 liczone w warstwie prezentacji. Bilans
 // eksportu wobec importu składa i ocenia wyłącznie backend w pakiecie dowodów
-// (`POST /api/v1/projects/{id}/audit2-station-config/_validate-all`).
+// (`POST /api/v1/projects/{id}/stations/_validate-all`).

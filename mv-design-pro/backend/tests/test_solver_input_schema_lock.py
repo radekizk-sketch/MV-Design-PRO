@@ -25,13 +25,13 @@ def _normalize_schema(schema: dict) -> str:
 
 
 class TestSchemaLock:
-    """Schema snapshot tests for solver-input contract v2.0."""
+    """Schema snapshot tests for solver-input contract v3.0."""
 
-    def test_contract_version_is_2_0(self):
-        """Contract version is 2.0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: usunięcie
-        płaskich `c_factor`/`thermal_time_seconds` z ShortCircuitPayload to zmiana
-        łamiąca, więc wersja główna; poprzednio 1.1 z karty FAB-D2)."""
-        assert SOLVER_INPUT_CONTRACT_VERSION == "2.0"
+    def test_contract_version_is_3_0(self):
+        """Contract version is 3.0 (karta JEDNA-SCIEZKA-EDYCJI: usunięcie pola rozszerzeń
+        zapisanej konfiguracji stacji z koperty to zmiana łamiąca, więc wersja główna;
+        poprzednio 2.0 z karty WSPOLCZYNNIK-C-JEDEN-NOSNIK, wcześniej 1.1 z FAB-D2)."""
+        assert SOLVER_INPUT_CONTRACT_VERSION == "3.0"
 
     def test_envelope_schema_has_required_fields(self):
         """SolverInputEnvelope schema has all required top-level fields."""
@@ -90,7 +90,8 @@ class TestSchemaLock:
         schema = SolverInputEnvelope.model_json_schema()
         props = set(schema.get("properties", {}).keys())
 
-        # Frozen set of expected properties for v1.0 (audit2_extensions added in Phase 52)
+        # Frozen set of expected properties for v3.0 (karta JEDNA-SCIEZKA-EDYCJI: pole
+        # rozszerzeń zapisanej konfiguracji stacji usunięte razem z magazynem obok modelu).
         expected_props = {
             "solver_input_version",
             "case_id",
@@ -100,7 +101,6 @@ class TestSchemaLock:
             "provenance_summary",
             "payload",
             "trace",
-            "audit2_extensions",
         }
         assert props == expected_props, (
             f"Envelope schema changed. "

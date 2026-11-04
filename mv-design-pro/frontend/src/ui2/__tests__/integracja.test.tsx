@@ -15,7 +15,7 @@ import { AppRoot } from '../AppRoot';
 import { subskrybuj, type ZdarzenieSelekcja } from '../events';
 import { OTWORZ_STRINGS } from '../spaces/projekt/otworz';
 import { useShellStore } from '../shell/useShellStore';
-// Karta FAB-J: `useSynchronizacjaDerZModelu` w `AppRoot` czyta snapshot audytu 2
+// Karta FAB-J: `useSynchronizacjaDerZModelu` w `AppRoot` czyta snapshot katalogów stacji
 // przez React Query — produkcja dostaje `QueryClientProvider` w `main.tsx`, test
 // tego samego drzewa musi dostać go tak samo (ten sam helper co testy kreatora DER).
 import { renderWithQueryClient } from '../../test/queryClientTestUtils';

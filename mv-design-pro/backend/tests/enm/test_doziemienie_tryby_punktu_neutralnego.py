@@ -33,7 +33,7 @@ from typing import Any
 
 import pytest
 from api.analysis_run_exports import _sc_row_bilans_linie
-from application.proof_engine.packs.audit2_skladanie import uziemienie_sn_stacji
+from application.proof_engine.packs.pakiet_rozszerzen_stacji import uziemienie_sn_stacji
 from enm import doziemienie_sieci as modul_wiersza
 from enm import uziemienie_sekcji as modul_sekcji
 from enm.domain_operations import execute_domain_operation

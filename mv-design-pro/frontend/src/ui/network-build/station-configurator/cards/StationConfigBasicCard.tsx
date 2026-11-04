@@ -7,7 +7,7 @@
  * `update_element_parameters` (ta sama, którą otwiera karta stacji w drzewie).
  *
  * Usunięte na amen:
- *  - wybór „uziemienia neutralnego SN z katalogu audytu 2” — był drugą prawdą obok modelu:
+ *  - wybór „uziemienia neutralnego SN z katalogu konfiguracji stacji” — był drugą prawdą obok modelu:
  *    sposób uziemienia punktu neutralnego sieci SN niesie zespół uziemiający sekcji
  *    (`enm.uziemienie_sekcji`), a zgodność przekładników czyta go z backendu
  *    (`WalidacjaVtPolaSekcja`);

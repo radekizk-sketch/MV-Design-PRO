@@ -6,7 +6,7 @@
  * Poprzednio te same testy przechodziły dzięki CICHEMU podstawieniu statycznej
  * listy `catalogs.ts` (`fallbackDeviceCatalog`), gdy mock `fetch` poniżej nie
  * zwracał kształtu, którego oczekiwał `fetchDerConverterTypes` — DOWÓD: mock
- * zwracał ten sam obiekt audit2-snapshot dla KAŻDEGO adresu, więc konwertery
+ * zwracał ten sam obiekt snapshotu katalogów stacji dla KAŻDEGO adresu, więc konwertery
  * zawsze kończyły w gałęzi błędu, a wybieralne identyfikatory (`pv_inv_*`,
  * `bess_pcs_*`) pochodziły z lokalnego pliku, nie z tego mocka. Teraz mock
  * granicy `fetch` odpowiada realnym kształtem `ConverterType[]` per `kind`
@@ -67,7 +67,7 @@ const PTPIREE_MANIFEST_FIXTURE = {
   integration_policy: 'MV-DESIGN-PRO przechowuje znormalizowany snapshot wykazu.',
 };
 
-// Karta FAB-J: krzywe P(f) fikstury reprezentują ich REALNY zapis (audit2
+// Karta FAB-J: krzywe P(f) fikstury reprezentują ich REALNY zapis (katalog stacji
 // snapshot) — kreator je czyta stamtąd, nie z lokalnego katalogu (usuniętego).
 const PF_CURVE_FIXTURES = [
   {
@@ -83,7 +83,7 @@ const PF_CURVE_FIXTURES = [
 ];
 
 // Karta FAB-J: transformatory dedykowane DER — kształt 1:1 z backendu
-// (`audit2_catalogs.py::BlockTransformerItem.to_dict`). Typoszereg 15/0,69 kV: dobór pyta
+// (`katalogi_stacji.py::BlockTransformerItem.to_dict`). Typoszereg 15/0,69 kV: dobór pyta
 // backend próbą zapisu każdego kandydata (kontrola mocy O-53), więc PV o S_n = 1 MVA dostaje
 // 1000 kVA (dawny próg P/0,9 we froncie żądał 1111 kVA i dobierał 1250 kVA).
 function blockTransformerFixture(
@@ -128,7 +128,7 @@ const TRANSFORMER_TYPE_FIXTURES = [
 ];
 
 // Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
-// (`audit2_catalogs.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
+// (`katalogi_stacji.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
 // napięciowe wymagają 4Q (oba testowe PCS mają symetryczny qmin/qmax < 0 < qmax,
 // więc `deviceFourQuadrantCapable` w `AddDerWizard.tsx` rozpoznaje je jako 4Q).
 const BESS_OPERATION_MODE_FIXTURES = [
@@ -144,11 +144,10 @@ const BESS_OPERATION_MODE_FIXTURES = [
   },
 ];
 
-const AUDIT2_SNAPSHOT_BODY = {
+const SNAPSHOT_KATALOGOW_STACJI = {
   bess_operation_modes: BESS_OPERATION_MODE_FIXTURES,
   tap_changers: [],
   hv_fuses: [],
-  device_withstand: [],
   pf_curves: PF_CURVE_FIXTURES,
   block_transformers: BLOCK_TRANSFORMER_FIXTURES,
 };
@@ -232,8 +231,8 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
  * `/api/catalog/bess-battery-types` odpowiadają realnym kształtem backendu;
  * próba zapisu (`POST …/generators` z `dry_run`) — werdykt atrapy backendu
  * (`atrapaProbyZapisuDer.ts`, kontrola mocy O-53); `/api/catalog/transformer-types` — katalog
- * transformatorów SN/nN; wszystko inne (audit2 snapshot, zapis właściwy,
- * `assign_catalog_to_element`) dostaje neutralny kształt audit2.
+ * transformatorów SN/nN; wszystko inne (snapshot katalogów stacji, zapis właściwy,
+ * `assign_catalog_to_element`) dostaje neutralny kształt snapshotu katalogów stacji.
  */
 function mockDerWizardFetch(
   converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
@@ -290,7 +289,7 @@ function mockDerWizardFetch(
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+    return new Response(JSON.stringify(SNAPSHOT_KATALOGOW_STACJI), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -1071,7 +1070,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
           { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'application/json' } },
         );
       }
-      return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+      return new Response(JSON.stringify(SNAPSHOT_KATALOGOW_STACJI), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

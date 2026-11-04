@@ -14,7 +14,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { DoziemienieSieci } from '../../../results-inspector/types';
-import type { UziemienieSekcjiSn } from '../../station-der/audit2-api';
+import type { UziemienieSekcjiSn } from '../../station-der/katalogi-stacji-api';
 import { StationConfigurator, type StationEarthingProps } from '../StationConfigurator';
 
 const minimalProps = {

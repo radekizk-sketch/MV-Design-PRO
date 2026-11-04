@@ -25,7 +25,7 @@ Decyzje:
 - sieci z rejestru budowane ``registry.zbuduj_wszystkie`` (tylko ``PostacSieci.ENM``;
   dialekt benchmarków B-BENCH nie idzie torem kanonicznym — do zwinięcia w CV-4.3);
 - bieg w pamięci: stały ``id``/``case_id``/``snapshot_hash``/``created_at`` (proof_ref
-  liczony z tych pól jest wtedy stały), zero magazynu, zero DB (opcje audit2 puste);
+  liczony z tych pól jest wtedy stały), zero magazynu, zero DB (bieg czyta wylacznie migawke i opcje);
 - klucz: ``<id rejestru>/<nr>:<nazwa nagłówka ENM>/<analiza>``.
 """
 

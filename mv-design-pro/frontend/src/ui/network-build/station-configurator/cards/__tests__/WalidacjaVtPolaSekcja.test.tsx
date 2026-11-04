@@ -61,7 +61,7 @@ function zamontujFetch(
     if (url.includes('/api/catalog/vt-types')) {
       return { ok: true, status: 200, json: async () => TYPY_VT } as Response;
     }
-    if (url.endsWith('/audit2-station-config/st-1/_uziemienie-sn')) {
+    if (url.endsWith('/stations/st-1/_uziemienie-sn')) {
       const body = JSON.parse(String(init?.body ?? '{}')) as { pola?: string[] };
       return {
         ok: true,

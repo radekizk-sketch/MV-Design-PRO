@@ -277,7 +277,7 @@ export async function fetchGrupyPolaczen(): Promise<string[]> {
 }
 
 export async function fetchTapChangers(): Promise<TapChangerCatalogType[]> {
-  return fetchCatalogJson<TapChangerCatalogType[]>('/api/v1/catalog/audit2/tap-changers');
+  return fetchCatalogJson<TapChangerCatalogType[]>('/api/v1/catalog/konfiguracja-stacji/tap-changers');
 }
 
 export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]> {

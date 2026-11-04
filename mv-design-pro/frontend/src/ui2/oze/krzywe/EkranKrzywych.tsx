@@ -23,7 +23,7 @@ import { SladAnalizy } from '../pulpit';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import {
-  fetchAudit2CatalogSnapshot,
+  fetchKatalogiStacjiSnapshot,
   fetchNcRfgOperators,
   getNcRfgOperator,
   selectAllDers,
@@ -220,8 +220,8 @@ function WynikPokrycia({
 // (PATCH .../generators/{ref}/bindings), pominięcie ≠ null: wysyłane są
 // WYŁĄCZNIE pola z wybraną krzywą.
 //
-// Karta FAB-J: P(f) WYŁĄCZNIE ze snapshotu audytu 2 (`GET /api/v1/catalog/
-// audit2/snapshot`) — zero drugiej kopii katalogu w froncie. LVRT/HVRT NIE SĄ
+// Karta FAB-J: P(f) WYŁĄCZNIE ze snapshotu katalogów stacji (`GET /api/v1/catalog/
+// konfiguracja-stacji/snapshot`) — zero drugiej kopii katalogu w froncie. LVRT/HVRT NIE SĄ
 // tu już niezależnie wybieralne: backend niesie JEDNĄ parę krzywych
 // ride-through na operatora NC RfG (`GET /api/ncrfg-tests/catalog`), więc
 // `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo związane z
@@ -247,7 +247,7 @@ function SekcjaWiazanKrzywych() {
   useEffect(() => {
     let aktywny = true;
     setKatalogKrzywych({ rodzaj: 'ladowanie' });
-    Promise.all([fetchNcRfgOperators(), fetchAudit2CatalogSnapshot()])
+    Promise.all([fetchNcRfgOperators(), fetchKatalogiStacjiSnapshot()])
       .then(([operatorzy, snapshot]) => {
         if (!aktywny) return;
         setKatalogKrzywych({

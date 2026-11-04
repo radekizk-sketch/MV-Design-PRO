@@ -88,7 +88,7 @@ const BLOCK_TRANSFORMER_FIXTURES = [
 ];
 
 // Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
-// (`audit2_catalogs.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
+// (`katalogi_stacji.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
 // napięciowe wymagają 4Q (testowy PCS ma symetryczny qmin/qmax < 0 < qmax,
 // więc `deviceFourQuadrantCapable` w `AddDerWizard.tsx` rozpoznaje go jako 4Q).
 const BESS_OPERATION_MODE_FIXTURES = [
@@ -104,11 +104,10 @@ const BESS_OPERATION_MODE_FIXTURES = [
   },
 ];
 
-const AUDIT2_SNAPSHOT_BODY = {
+const SNAPSHOT_KATALOGOW_STACJI = {
   bess_operation_modes: BESS_OPERATION_MODE_FIXTURES,
   tap_changers: [],
   hv_fuses: [],
-  device_withstand: [],
   pf_curves: PF_CURVE_FIXTURES,
   block_transformers: BLOCK_TRANSFORMER_FIXTURES,
 };
@@ -188,7 +187,7 @@ function mockDerWizardFetch(
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+    return new Response(JSON.stringify(SNAPSHOT_KATALOGOW_STACJI), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

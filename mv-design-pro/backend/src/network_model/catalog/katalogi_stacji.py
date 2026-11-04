@@ -1,14 +1,21 @@
 """
-Katalogi audytu 2 — pozycje, ktore projektant wybiera w konfiguracji stacji.
+Katalogi konfiguracji stacji — pozycje, ktore projektant wybiera w konfiguratorze stacji.
 
-6 katalogow:
+Wybor pozycji trafia WYLACZNIE do modelu sieci (ENM) operacja domenowa — katalog nie ma
+wlasnego magazynu wyborow (karta JEDNA-SCIEZKA-EDYCJI skasowala dawna zapisana konfiguracje
+stacji, druga prawde obok modelu).
+
+5 katalogow:
   - BESS_OPERATION_MODES (eng.10): tryby pracy magazynu (peak shaving / FCR / aFRR / etc.)
-  - TAP_CHANGERS (eng.13): przelaczniki zaczepow OLTC/DETC
-  - HV_FUSES (eng.17): wkladki topikowe SN
-  - DEVICE_WITHSTAND (eng.18): wytrzymalosc zwarciowa aparatury (IEC 62271-1 / IEC 60909)
+    -> `Generator.materialized_params.profiles.bess_operation_mode_refs`
+  - TAP_CHANGERS (eng.13): przelaczniki zaczepow OLTC/DETC -> `Transformer.tap_changer`
+  - HV_FUSES (eng.17): wkladki topikowe SN -> aparat `FUSE` pola (`Bay.primary_devices`)
   - PF_CURVES (eng.9): nastawy trybu czestotliwosciowego LFSM-O / FSM (NC RfG)
   - BLOCK_TRANSFORMERS (B.5): transformatory dedykowane DER (PV/BESS/FW)
 
+Dawny katalog „klas wytrzymalosci aparatury” (eng.18) skasowano karta JEDNA-SCIEZKA-EDYCJI:
+wskazywala go wylacznie zapisana konfiguracja stacji obok modelu; znamiona I_dyn/I_th pola
+daje pozycja APARAT_SN w modelu (`application/analyses/wytrzymalosc_aparatury_pol.py`).
 Dawny siodmy katalog — warianty uziemienia punktu neutralnego SN wybierane w konfiguracji
 stacji (B.1) — skasowano na amen kartą UX-04/POLE-ZU-SKLADOWA-ZEROWA: była to DRUGA prawda
 o punkcie neutralnym SN obok elementów modelu. Sposób uziemienia sekcji SN wynika wyłącznie
@@ -17,7 +24,7 @@ z zespołów uziemiających i punktów neutralnych uzwojeń transformatorów w E
 
 AUTORYTET DANYCH I PROWENIENCJA (karta K-Q, 2026-08-14) — REGULA TEGO PLIKU
 ==========================================================================
-Ten modul jest ZRODLEM danych dla `/api/v1/catalog/audit2` i dla mirrorow we
+Ten modul jest ZRODLEM danych dla `/api/v1/catalog/konfiguracja-stacji` i dla mirrorow we
 frontendzie, wiec obowiazuje go ostrzejsza regula niz warstwe prezentacji:
 
 1. LICZBA BEZ ZRODLA NIE ISTNIEJE. Kazda wartosc liczbowa jest albo (a)
@@ -53,14 +60,14 @@ from network_model.pochodne.pasma_napieciowe import (
     w_pasmie_nn,
 )
 
-#: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
+#: Wersja katalogow konfiguracji stacji = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
 #: Do karty K-Q pozycje deklarowaly `catalog_version = "2024.1"` — numer, ktory
 #: nie odpowiadal zadnemu wydaniu zadnego zrodla i ktorego nie dalo sie z niczym
 #: skonfrontowac. Wersja jest teraz MIERZALNA: to dzien, w ktorym kazda pozycja
 #: zostala zestawiona ze swoim zrodlem (albo z niego usunieta). Kolejna zmiana
 #: danych podnosi te date razem z wpisem, skad dana pochodzi.
-AUDIT2_CATALOG_VERSION = "2026-08-14"
+WERSJA_KATALOGOW_STACJI = "2026-08-14"
 
 # =============================================================================
 # 1. BESS Operation Mode Catalog (eng.10)
@@ -135,7 +142,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_peak_shaving",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Peak shaving (redukcja szczytu)",
         description_pl=(
             "Wyładowanie magazynu w szczytach obciążenia odbiorcy, żeby obniżyć "
@@ -148,7 +155,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_arbitrage",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Arbitraż cenowy (przesunięcie energii w czasie)",
         description_pl=(
             "Ładowanie w godzinach niskich cen energii, wyładowanie w godzinach "
@@ -162,7 +169,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_fcr_n",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="FCR-N (rezerwa pierwotna symetryczna)",
         description_pl=(
             "Symetryczna rezerwa pierwotna: magazyn zmienia moc czynną w obie "
@@ -177,7 +184,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_fcr_d_up",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="FCR-D (rezerwa awaryjna w górę)",
         description_pl=(
             "Rezerwa pierwotna asymetryczna w górę, uruchamiana przy zakłóceniu "
@@ -191,7 +198,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_afrr",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="aFRR (rezerwa wtórna automatyczna)",
         description_pl=(
             "Rezerwa wtórna sterowana automatycznie sygnałem operatora systemu "
@@ -205,7 +212,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_mfrr",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="mFRR (rezerwa wtórna ręczna)",
         description_pl=(
             "Rezerwa uruchamiana ręcznie komendą dyspozytora operatora systemu "
@@ -219,7 +226,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_voltage_support",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Wsparcie napięciowe Q(U)",
         description_pl=(
             "Regulacja mocy biernej w funkcji napięcia w punkcie przyłączenia "
@@ -234,7 +241,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_island_backup",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Praca wyspowa (przekształtnik tworzący napięcie)",
         description_pl=(
             "Tworzenie napięcia po zaniku zasilania. Wymaga przekształtnika "
@@ -248,7 +255,7 @@ BESS_OPERATION_MODE_CATALOG: tuple[BessOperationModeItem, ...] = (
     BessOperationModeItem(
         id="mode_self_consumption",
         catalog_namespace="bess_operation_mode",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Autokonsumpcja PV z magazynem",
         description_pl=(
             "Maksymalizacja autokonsumpcji instalacji PV: ładowanie nadwyżek "
@@ -321,7 +328,7 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
     TapChangerItem(
         id="tc_oltc_110sn_19_125",
         catalog_namespace="tap_changer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="OLTC 110/SN · 19 zaczepów · ±11,25% · AVR",
         type="oltc",
         neutral_position=0,
@@ -335,7 +342,7 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
     TapChangerItem(
         id="tc_oltc_110sn_17_125",
         catalog_namespace="tap_changer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="OLTC 110/SN · 17 zaczepów · ±10% · AVR",
         type="oltc",
         neutral_position=0,
@@ -349,7 +356,7 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
     TapChangerItem(
         id="tc_detc_snnn_5_25",
         catalog_namespace="tap_changer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="DETC SN/nN · 5 zaczepów · ±5% (off-load)",
         type="detc",
         neutral_position=0,
@@ -363,7 +370,7 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
     TapChangerItem(
         id="tc_oltc_snnn_9_15",
         catalog_namespace="tap_changer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="OLTC SN/nN · 9 zaczepów · ±6% · AVR (przemysłowe)",
         type="oltc",
         neutral_position=0,
@@ -560,7 +567,7 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
     HvFuseItem(
         id="fuse_15kv_50a_full",
         catalog_namespace="hv_fuse",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe",
         nominal_voltage_kv=15,
         nominal_current_a=50,
@@ -570,7 +577,7 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
     HvFuseItem(
         id="fuse_15kv_100a_full",
         catalog_namespace="hv_fuse",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Bezpiecznik SN 15 kV / 100 A · full-range · pole transformatorowe",
         nominal_voltage_kv=15,
         nominal_current_a=100,
@@ -580,7 +587,7 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
     HvFuseItem(
         id="fuse_20kv_25a_gp",
         catalog_namespace="hv_fuse",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Bezpiecznik SN 20 kV / 25 A · general-purpose · pole liniowe",
         nominal_voltage_kv=20,
         nominal_current_a=25,
@@ -590,7 +597,7 @@ HV_FUSE_CATALOG: tuple[HvFuseItem, ...] = (
     HvFuseItem(
         id="fuse_15kv_160a_backup",
         catalog_namespace="hv_fuse",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Bezpiecznik SN 15 kV / 160 A · back-up · bateria kondensatorów",
         nominal_voltage_kv=15,
         nominal_current_a=160,
@@ -605,173 +612,7 @@ def get_hv_fuse(fuse_id: str) -> HvFuseItem | None:
 
 
 # =============================================================================
-# 4. Device Withstand Catalog (eng.18)
-# =============================================================================
-#
-# PROWENIENCJA (karta K-Q, 2026-08-14). Ten katalog NIE opisuje wyrobu zadnego
-# producenta — opisuje KLASE WYTRZYMALOSCI, ktora projektant zadaje aparaturze
-# pola, i dlatego jego liczby maja zrodlo normatywne, a nie karte katalogowa:
-#
-#   * `i_th_ka` — znamionowy prad krotkotrwaly wytrzymywany, WYLACZNIE z
-#     znormalizowanego szeregu (6,3 - 8 - 10 - 12,5 - 16 - 20 - 25 - 31,5 - 40 -
-#     50 - 63 kA);
-#   * `i_th_duration_s` — znamionowy czas trwania zwarcia: wartosc standardowa
-#     1 s, wartosci zalecane 0,5 / 2 / 3 s;
-#   * `i_dyn_ka` — NIE JEST WPISYWANY RECZNIE. Wynika ze szczytowej wartosci
-#     pradu krotkotrwalego: I_dyn = 2,5 * I_th dla 50 Hz (IEC 62271-1 § 4.6).
-#     Jedno zrodlo prawdy: `_i_dyn_z_i_th()`. Do tej karty pozycje nioslly
-#     wartosci wpisane z reki (63 kA przy 25 kA, 80 kA przy 31,5 kA), ktorych
-#     nie dawalo sie wyprowadzic ani z normy (62,5 i 78,75 kA), ani z karty
-#     zadnego producenta — a werdykt „aparatura wytrzymala" trafia z nich do
-#     PAKIETU DOWODOWEGO. Wartosc normatywna jest przy tym ZACHOWAWCZA: nizszy
-#     limit moze werdykt tylko zaostrzyc, nigdy falszywie zaliczyc.
-#
-# Zrodlo publiczne, na ktorym zmierzono obie reguly (§ 4.6 i § 4.7 IEC 62271-1
-# zacytowane wprost, wraz z szeregiem znormalizowanym): Schneider Electric,
-# „Medium Voltage technical guide" AMTED300014EN, s. 50 —
-# https://www.cablejoints.co.uk/upload/Schneider--Medium-Voltage-Equipment-Design-Guide.pdf
-
-#: Adres publicznego przewodnika, na ktorym zweryfikowano regule 2,5 x I_th.
-IEC_62271_1_PRZEWODNIK_URL = (
-    "https://www.cablejoints.co.uk/upload/Schneider--Medium-Voltage-Equipment-Design-Guide.pdf"
-)
-
-#: Znormalizowany szereg znamionowych pradow krotkotrwalych wytrzymywanych [kA].
-IEC_62271_1_SZEREG_I_TH_KA = (6.3, 8.0, 10.0, 12.5, 16.0, 20.0, 25.0, 31.5, 40.0, 50.0, 63.0)
-
-#: Znormalizowane czasy trwania zwarcia [s]: 1 s standardowy, reszta zalecana.
-IEC_62271_1_CZASY_ZWARCIA_S = (0.5, 1.0, 2.0, 3.0)
-
-#: Mnoznik szczytu wg IEC 62271-1 § 4.6 dla czestotliwosci znamionowej 50 Hz.
-IEC_62271_1_MNOZNIK_SZCZYTU_50HZ = 2.5
-
-
-def _i_dyn_z_i_th(i_th_ka: float) -> float:
-    """Znamionowy prad szczytowy wytrzymywany z pradu krotkotrwalego (50 Hz).
-
-    JEDNO ZRODLO PRAWDY dla wszystkich pozycji katalogu — para (I_th, I_dyn) nie
-    moze rozjechac sie na jednej pozycji, bo obie liczby powstaja tutaj.
-    """
-    return round(i_th_ka * IEC_62271_1_MNOZNIK_SZCZYTU_50HZ, 3)
-
-
-@dataclass(frozen=True)
-class DeviceWithstandItem:
-    id: str
-    catalog_namespace: str
-    catalog_version: str
-    label_pl: str
-    device_type: str
-    nominal_voltage_kv: float
-    nominal_current_a: float
-    #: Znamionowy prad krotkotrwaly wytrzymywany [kA] — z szeregu normatywnego.
-    i_th_1s_ka: float
-    #: Znamionowy czas trwania zwarcia [s] — z szeregu normatywnego.
-    i_th_duration_s: float
-
-    def __post_init__(self) -> None:
-        if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
-            odmowa_twarda(
-                "KAT-T-025",
-                f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
-                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
-            )
-        if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
-            odmowa_twarda(
-                "KAT-T-026",
-                f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
-                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
-            )
-
-    @property
-    def i_dyn_ka(self) -> float:
-        """Znamionowy prad szczytowy wytrzymywany [kA] — wyprowadzony, nie wpisany."""
-        return _i_dyn_z_i_th(self.i_th_1s_ka)
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "catalog_namespace": self.catalog_namespace,
-            "catalog_version": self.catalog_version,
-            "label_pl": self.label_pl,
-            "device_type": self.device_type,
-            "nominal_voltage_kv": self.nominal_voltage_kv,
-            "nominal_current_a": self.nominal_current_a,
-            "i_dyn_ka": self.i_dyn_ka,
-            "i_th_1s_ka": self.i_th_1s_ka,
-            "i_th_duration_s": self.i_th_duration_s,
-            "zrodlo_pl": (
-                "IEC 62271-1 § 4.6 (I_dyn = 2,5 · I_th dla 50 Hz) i § 4.7 "
-                f"(czas trwania zwarcia); {IEC_62271_1_PRZEWODNIK_URL}"
-            ),
-        }
-
-
-DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
-    DeviceWithstandItem(
-        id="wstd_breaker_vacuum_15_25",
-        catalog_namespace="device_withstand",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
-        device_type="breaker_vacuum_15",
-        nominal_voltage_kv=15,
-        nominal_current_a=1250,
-        i_th_1s_ka=25,
-        i_th_duration_s=1,
-    ),
-    DeviceWithstandItem(
-        id="wstd_breaker_sf6_15_31_5",
-        catalog_namespace="device_withstand",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Wyłącznik SF6 15 kV · I_th=31,5 kA/3s · I_dyn=78,75 kA",
-        device_type="breaker_sf6_15",
-        nominal_voltage_kv=15,
-        nominal_current_a=1250,
-        i_th_1s_ka=31.5,
-        i_th_duration_s=3,
-    ),
-    DeviceWithstandItem(
-        id="wstd_busbar_15_2000_50",
-        catalog_namespace="device_withstand",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Szyna SN 15 kV · 2000 A · I_th=50 kA/1s · I_dyn=125 kA",
-        device_type="busbar_15_2000",
-        nominal_voltage_kv=15,
-        nominal_current_a=2000,
-        i_th_1s_ka=50,
-        i_th_duration_s=1,
-    ),
-    DeviceWithstandItem(
-        id="wstd_busbar_15_1250_25",
-        catalog_namespace="device_withstand",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Szyna SN 15 kV · 1250 A · I_th=25 kA/1s · I_dyn=62,5 kA",
-        device_type="busbar_15_1250",
-        nominal_voltage_kv=15,
-        nominal_current_a=1250,
-        i_th_1s_ka=25,
-        i_th_duration_s=1,
-    ),
-    DeviceWithstandItem(
-        id="wstd_switch_load_15_25",
-        catalog_namespace="device_withstand",
-        catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Rozłącznik z bezpiecznikami 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
-        device_type="switch_load_15",
-        nominal_voltage_kv=15,
-        nominal_current_a=630,
-        i_th_1s_ka=25,
-        i_th_duration_s=1,
-    ),
-)
-
-
-def get_device_withstand(device_id: str) -> DeviceWithstandItem | None:
-    return next((d for d in DEVICE_WITHSTAND_CATALOG if d.id == device_id), None)
-
-
-# =============================================================================
-# 5. PF Curve Catalog (eng.9)
+# 4. PF Curve Catalog (eng.9)
 # =============================================================================
 
 
@@ -877,7 +718,7 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
         id="pf_droop_5",
         catalog_namespace="p_f_curve",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="P(f) · statyzm 5% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=5.0,
@@ -888,7 +729,7 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
         id="pf_droop_4",
         catalog_namespace="p_f_curve",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="P(f) · statyzm 4% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=4.0,
@@ -899,7 +740,7 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
         id="pf_droop_3",
         catalog_namespace="p_f_curve",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="P(f) · statyzm 3% · strefa nieczułości 0,2 Hz",
         f_ref_hz=50.0,
         droop_percent=3.0,
@@ -910,7 +751,7 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
         id="pf_droop_2",
         catalog_namespace="p_f_curve",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="P(f) · statyzm 2% · strefa nieczułości 0,2 Hz (najostrzejszy nastawialny)",
         f_ref_hz=50.0,
         droop_percent=2.0,
@@ -921,7 +762,7 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
     PfCurveItem(
         id="pf_droop_12",
         catalog_namespace="p_f_curve",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="P(f) · statyzm 12% · strefa nieczułości 0,5 Hz (najłagodniejszy nastawialny)",
         f_ref_hz=50.0,
         droop_percent=12.0,
@@ -932,12 +773,8 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
 )
 
 
-def get_pf_curve(curve_id: str) -> PfCurveItem | None:
-    return next((c for c in PF_CURVE_CATALOG if c.id == curve_id), None)
-
-
 # =============================================================================
-# 6. Block Transformer Catalog (B.5)
+# 5. Block Transformer Catalog (B.5)
 # =============================================================================
 #
 # PROWENIENCJA (karta K-Q, 2026-08-14) — naprawa przez USUNIECIE DRUGIEJ KOPII.
@@ -979,7 +816,7 @@ class BlockTransformerItem:
 
     Ta klasa nie przechowuje ANI JEDNEJ liczby elektrycznej — wszystkie czyta z
     typu wskazanego przez `transformer_type_ref` (`mv_transformer_catalog.py`).
-    Dzieki temu para (katalog audytu 2, katalog transformatorow) nie moze sie
+    Dzieki temu para (katalog konfiguracji stacji, katalog transformatorow) nie moze sie
     rozjechac: nie ma czego rozjezdzac.
     """
 
@@ -1094,7 +931,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_800",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 800 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-0p8mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1102,7 +939,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_1000",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1000 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-1mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1110,7 +947,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_1250",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-1p25mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1118,7 +955,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_1600",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1600 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-1p6mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1126,7 +963,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_069_2500",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-2p5mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1134,7 +971,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_pv_15_04_1000",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1142,7 +979,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_bess_15_04_1600",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-04-1600kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1150,7 +987,7 @@ BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
         id="btr_der_15_069_3150",
         catalog_namespace="block_transformer",
-        catalog_version=AUDIT2_CATALOG_VERSION,
+        catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 3150 kVA · Dyn11",
         transformer_type_ref="tr-sn-nn-15-0p69-3p15mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
@@ -1163,20 +1000,8 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 
 
 # =============================================================================
-# Helpers — selektory uzywane przez solver_input + proof_engine
+# Helpers — selektory uzywane przez proof_engine (dowody rozszerzen stacji)
 # =============================================================================
-
-
-def select_bess_modes_for_pcs(
-    *, four_quadrant: bool, grid_forming_capable: bool
-) -> tuple[BessOperationModeItem, ...]:
-    """Naprawa eng.10: filtr trybow BESS dostepnych dla danego PCS."""
-    return tuple(
-        m
-        for m in BESS_OPERATION_MODE_CATALOG
-        if (not m.requires_four_quadrant or four_quadrant)
-        and (not m.requires_grid_forming or grid_forming_capable)
-    )
 
 
 # USUNIETY (karta K-Q, 2026-08-14): `select_required_bess_modes_for_module`.
@@ -1241,11 +1066,11 @@ def ocen_wytrzymalosc_aparatu(
 ) -> dict:
     """JĄDRO WERDYKTU wytrzymałości (I_dyn / I_th) — jedno na cały system.
 
-    Wydzielone z ``validate_device_withstand`` w karcie KD-6 (poz. 2), bo ten sam
-    rachunek musi obsłużyć DWA źródła znamion: pozycję katalogu wytrzymałości
-    wskazaną ręcznie w konfiguracji stacji ORAZ pozycję APARAT_SN, którą pole
-    stacji ma w MODELU. Kopiowanie porównania do warstwy aplikacji zrobiłoby
-    drugą fizykę — jest jedna, tutaj.
+    Znamiona daje pozycja APARAT_SN, którą pole stacji ma w MODELU (karta KD-6, poz. 2).
+    Dawne drugie źródło — katalog „klas wytrzymałości” wskazywany ręcznie w zapisanej
+    konfiguracji stacji obok modelu — skasowano kartą JEDNA-SCIEZKA-EDYCJI (druga prawda
+    o aparaturze pola bez pisarza w interfejsie). Kopiowanie porównania do warstwy
+    aplikacji zrobiłoby drugą fizykę — jest jedna, tutaj.
 
     KRYTERIA (IEC 62271-1 / IEC 60865-1):
       dynamiczne:  i_p ≤ I_dyn
@@ -1341,51 +1166,6 @@ def ocen_wytrzymalosc_aparatu(
     }
 
 
-def validate_device_withstand(
-    *,
-    device_id: str,
-    i_peak_calculated_ka: float,
-    i_thermal_calculated_ka: float,
-    t_clearing_s: float,
-) -> dict:
-    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).
-
-    JEDYNE ZRODLO WERDYKTU (K7-B, 2026-07-31). Do tej karty rownolegly rachunek
-    zyl w warstwie prezentacji (`frontend/src/ui/network-build/station-der/
-    protection-catalogs.ts::validateDeviceWithstand` + wlasna kopia katalogu
-    `DEVICE_WITHSTAND_CATALOG`) i to ON zasilal karte zabezpieczen. Ekran mowil
-    „wytrzymala" na podstawie liczb, ktorych zaden solver nie widzial i ktorych
-    nie obejmowal zaden slad. Karta zabezpieczen wola teraz to wyliczenie przez
-    `POST /api/v1/catalog/audit2/validate-device-withstand`, a `message_pl` jest
-    tekstem POKAZYWANYM UZYTKOWNIKOWI — stad pelna polszczyzna z diakrytykami.
-
-    KONTRAKT ODPOWIEDZI NIEZMIENIONY (KD-6): ta koncowka zawsze dostaje komplet
-    znamion z katalogu wytrzymalosci i jawny czas wylaczenia, wiec `i_dyn_ok` /
-    `i_th_ok` pozostaja logiczne, a pola dodane przez jadro (`i_th_effective_ka`)
-    sa ADDYTYWNE.
-    """
-    device = get_device_withstand(device_id)
-    if device is None:
-        return {
-            "ok": False,
-            "i_dyn_ok": False,
-            "i_th_ok": False,
-            # Identyfikator zostaje w żądaniu — zdanie dla człowieka go nie powtarza.
-            "message_pl": "Brak aparatury w katalogu wytrzymałości zwarciowej.",
-            "utilization_dyn_percent": 0,
-            "utilization_th_percent": 0,
-        }
-    return ocen_wytrzymalosc_aparatu(
-        etykieta_pl=device.label_pl,
-        i_dyn_ka=device.i_dyn_ka,
-        i_th_ka=device.i_th_1s_ka,
-        i_th_duration_s=device.i_th_duration_s,
-        i_peak_calculated_ka=i_peak_calculated_ka,
-        i_thermal_calculated_ka=i_thermal_calculated_ka,
-        t_clearing_s=t_clearing_s,
-    )
-
-
 # =============================================================================
 # Lookup VT -> wspolczynnik napieciowy — USUNIETY (V12K-258)
 # =============================================================================
@@ -1472,20 +1252,19 @@ def validate_hosting_capacity_export(
 
 
 # =============================================================================
-# Aggregator (uzywany przez solver_input + proof_engine + report)
+# Agregat (interfejs konfiguratora stacji i raport pakietu rozszerzen)
 # =============================================================================
 
 
 @dataclass(frozen=True)
-class Audit2CatalogSnapshot:
-    """Snapshot wszystkich katalogow audytu 2 — uzywany przez solvery i raporty."""
+class SnapshotKatalogowStacji:
+    """Snapshot katalogow konfiguracji stacji — jedno zrodlo dla interfejsu i raportow."""
 
     bess_operation_modes: tuple[BessOperationModeItem, ...] = field(
         default=BESS_OPERATION_MODE_CATALOG
     )
     tap_changers: tuple[TapChangerItem, ...] = field(default=TAP_CHANGER_CATALOG)
     hv_fuses: tuple[HvFuseItem, ...] = field(default=HV_FUSE_CATALOG)
-    device_withstand: tuple[DeviceWithstandItem, ...] = field(default=DEVICE_WITHSTAND_CATALOG)
     pf_curves: tuple[PfCurveItem, ...] = field(default=PF_CURVE_CATALOG)
     block_transformers: tuple[BlockTransformerItem, ...] = field(default=BLOCK_TRANSFORMER_CATALOG)
 
@@ -1494,11 +1273,10 @@ class Audit2CatalogSnapshot:
             "bess_operation_modes": [m.to_dict() for m in self.bess_operation_modes],
             "tap_changers": [tc.to_dict() for tc in self.tap_changers],
             "hv_fuses": [f.to_dict() for f in self.hv_fuses],
-            "device_withstand": [d.to_dict() for d in self.device_withstand],
             "pf_curves": [c.to_dict() for c in self.pf_curves],
             "block_transformers": [b.to_dict() for b in self.block_transformers],
         }
 
 
-def get_audit2_catalog_snapshot() -> Audit2CatalogSnapshot:
-    return Audit2CatalogSnapshot()
+def snapshot_katalogow_stacji() -> SnapshotKatalogowStacji:
+    return SnapshotKatalogowStacji()

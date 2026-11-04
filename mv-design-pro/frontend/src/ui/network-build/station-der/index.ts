@@ -19,8 +19,8 @@ export * from './ctZKatalogu';
 // dostarcza backend: `api/protection_coordination.py` (`SelectivityCheck`:
 // verdict / margin_s / required_margin_s / notes_pl) — ten sam wzorzec, którym
 // R3 (2026-07-18) zamknęło `tmsCoordination.ts`.
-export * from './audit2-api';
-export * from './audit2-hooks';
+export * from './katalogi-stacji-api';
+export * from './katalogi-stacji-hooks';
 export * from './derRemoteCatalogs';
 export { AddDerWizard } from './AddDerWizard';
 export type { AddDerWizardProps } from './AddDerWizard';

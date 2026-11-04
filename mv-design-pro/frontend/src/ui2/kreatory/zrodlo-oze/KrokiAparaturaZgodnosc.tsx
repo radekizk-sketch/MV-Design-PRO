@@ -23,7 +23,7 @@ import {
 } from '../../../ui/catalog/api';
 import type { CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../../ui/catalog/types';
 import {
-  fetchAudit2CatalogSnapshot,
+  fetchKatalogiStacjiSnapshot,
   fetchDerDynamicProfiles,
   fetchNcRfgOperators,
   formatDerDynamicProfileLabelPl,
@@ -186,8 +186,8 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
  * Krok „Zgodność przyłączeniowa" — profil operatora + krzywe graniczne NC RfG.
  *
  * Karta FAB-J: profil operatora i krzywe LVRT/HVRT WYŁĄCZNIE z backendu
- * (`GET /api/ncrfg-tests/catalog`) i P(f) ze snapshotu audytu 2
- * (`GET /api/v1/catalog/audit2/snapshot`) — zero drugiej kopii katalogu w
+ * (`GET /api/ncrfg-tests/catalog`) i P(f) ze snapshotu katalogów stacji
+ * (`GET /api/v1/catalog/konfiguracja-stacji/snapshot`) — zero drugiej kopii katalogu w
  * froncie. Backend niesie JEDNĄ parę krzywych ride-through na operatora (nie
  * katalog wariantów), więc `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo
  * związane z `nc_rfg_profile_ref` (ten sam operator), a nie osobnym wyborem —
@@ -203,7 +203,7 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
     let cancelled = false;
     setStatus('loading');
     setBladKatalogu(null);
-    Promise.all([fetchNcRfgOperators(), fetchAudit2CatalogSnapshot()])
+    Promise.all([fetchNcRfgOperators(), fetchKatalogiStacjiSnapshot()])
       .then(([operatorzy, snapshot]) => {
         if (cancelled) return;
         setNcRfgOperatorzy(Array.isArray(operatorzy) ? [...operatorzy] : []);

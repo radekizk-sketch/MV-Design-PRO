@@ -47,7 +47,7 @@ import {
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
 import type { MeasurementRow } from './przekladnikiStacji';
-import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
+import type { UziemienieSekcjiSn } from '../station-der/katalogi-stacji-api';
 import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { wielkoscPl } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';

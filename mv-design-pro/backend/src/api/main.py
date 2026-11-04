@@ -8,8 +8,6 @@ from contextlib import asynccontextmanager
 from api.analysis_insights import router as analysis_insights_router
 from api.analysis_runs import router as analysis_runs_router
 from api.archive_diff import router as archive_diff_router
-from api.audit2_catalogs import router as audit2_catalogs_router
-from api.audit2_station_config import router as audit2_station_config_router
 from api.batch_execution import router as batch_execution_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
@@ -29,10 +27,12 @@ from api.grid_source_preview import router as grid_source_preview_router
 from api.health import router as health_router
 from api.incremental_archive import router as incremental_archive_router
 from api.karty_widmowe import router as karty_widmowe_router
+from api.katalogi_stacji import router as katalogi_stacji_router
 from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
 from api.nn_proof import router as nn_proof_router
 from api.oze_analysis_runs import router as oze_analysis_runs_router
+from api.pakiet_rozszerzen_stacji import router as pakiet_rozszerzen_stacji_router
 from api.power_flow_comparisons import router as power_flow_comparisons_router
 from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
@@ -143,9 +143,9 @@ register_exception_handlers(app)
 # Odstepstwo od kanonu lapie `scripts/route_prefix_guard.py`.
 app.include_router(analysis_insights_router)
 app.include_router(analysis_runs_router, prefix="/api")
-app.include_router(audit2_catalogs_router)
-app.include_router(audit2_station_config_router)
 app.include_router(catalog_router)
+app.include_router(katalogi_stacji_router)
+app.include_router(pakiet_rozszerzen_stacji_router)
 app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)

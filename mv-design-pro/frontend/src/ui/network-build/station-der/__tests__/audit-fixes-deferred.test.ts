@@ -9,12 +9,12 @@ import {
   selectBlockTransformersForDer,
   getBlockTransformer,
 } from '..';
-import type { BlockTransformerItem } from '../audit2-api';
+import type { BlockTransformerItem } from '../katalogi-stacji-api';
 
 /**
  * Karta FAB-J: `BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts` — jedyne
- * źródło jest teraz snapshot audytu 2 backendu (`useAudit2CatalogSnapshot`,
- * `audit2-api.ts::BlockTransformerItem`). `selectBlockTransformersForDer`/
+ * źródło jest teraz snapshot katalogów stacji backendu (`useKatalogiStacjiSnapshot`,
+ * `katalogi-stacji-api.ts::BlockTransformerItem`). `selectBlockTransformersForDer`/
  * `getBlockTransformer` przyjmują listę jako parametr zamiast czytać statyk
  * modułowy — testy podają ją fikstury jawnie.
  */
@@ -63,7 +63,7 @@ const BLOCK_TRANSFORMER_FIXTURES: readonly BlockTransformerItem[] = [
   }),
 ];
 
-describe('Naprawa B.5 — BlockTransformerCatalog (przez fikstury audytu 2)', () => {
+describe('Naprawa B.5 — BlockTransformerCatalog (przez fikstury katalogów stacji)', () => {
   it('front NIE MA już własnego katalogu transformatorów dedykowanych', async () => {
     const modul = (await import('../catalogs')) as Record<string, unknown>;
     expect(modul.BLOCK_TRANSFORMER_CATALOG).toBeUndefined();

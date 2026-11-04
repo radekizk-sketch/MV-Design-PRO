@@ -130,7 +130,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 // Karta FAB-J: profil NC RfG + krzywe ride-through i P(f) WYŁĄCZNIE z backendu
-// (`derRemoteCatalogs.ts` / `audit2-api.ts`) — mock na granicy modułu klienta,
+// (`derRemoteCatalogs.ts` / `katalogi-stacji-api.ts`) — mock na granicy modułu klienta,
 // ten sam wzorzec co `ui/catalog/api` powyżej. Identyfikator operatora jest
 // REALNY (`pse`, nie wymyślone przez front `ncrfg_pse`).
 // Karta CV-4.1b (A3-04): `voltage_control_modes` 1:1 z profilami realnymi backendu
@@ -188,13 +188,13 @@ vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
   ) => profiles.filter((p) => p.der_kind === kind),
   formatDerDynamicProfileLabelPl: (profile: { profile_name_pl: string }) => profile.profile_name_pl,
 }));
-vi.mock('../../../../ui/network-build/station-der/audit2-api', () => ({
-  fetchAudit2CatalogSnapshot: () =>
+vi.mock('../../../../ui/network-build/station-der/katalogi-stacji-api', () => ({
+  fetchKatalogiStacjiSnapshot: () =>
     Promise.resolve({
       bess_operation_modes: [],
       tap_changers: [],
       hv_fuses: [],
-      device_withstand: [],
+     
       pf_curves: [
         {
           id: 'pf_droop_5', catalog_namespace: 'pf_curve', catalog_version: '1.0',

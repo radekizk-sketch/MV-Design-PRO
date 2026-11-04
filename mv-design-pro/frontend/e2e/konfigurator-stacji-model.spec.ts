@@ -1,0 +1,379 @@
+/**
+ * E2E (realny backend): konfigurator stacji edytuje WYŁĄCZNIE model sieci (ENM).
+ *
+ * Karta JEDNA-SCIEZKA-EDYCJI usunęła zapisaną konfigurację stacji obok modelu (tabela,
+ * repozytorium, końcówki, klient frontu). Każdy wybór konfiguratora jest operacją domenową
+ * modelu, więc po odświeżeniu strony wraca z modelu, a migawka modelu przypadku (ta sama,
+ * z której liczą solvery) niesie wybraną wartość. Trzy ścieżki użytkownika, każda z
+ * natywnym klikiem/wyborem w kontrolce, przeładowaniem strony i odczytem migawki API:
+ *
+ *   1. przełącznik zaczepów transformatora (karta „Transformator") → `tap_changer` w ENM,
+ *   2. odłączenie źródła OZE (karta „PV, BESS i FW", „Usuń" + potwierdzenie) → źródło znika
+ *      z modelu (nie tylko z lokalnej nakładki),
+ *   3. wkładka bezpiecznikowa pola SN (karta „Pola SN") i przekładnik napięciowy pola
+ *      (karta „Zabezpieczenia") → aparat FUSE pola z pozycją katalogu wkładek oraz
+ *      `Measurement` typu VT w polu; rezygnacja z VT usuwa przekładnik z modelu.
+ *
+ * Konfigurator otwiera adres z zaznaczeniem stacji (`#?sel=<stacja>&type=Station`) — ta
+ * sama droga, którą odtwarza odświeżenie strony po kliknięciu stacji na schemacie.
+ */
+
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+
+const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
+const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
+
+const ROZLACZNIK_BEZPIECZNIKOWY = 'sw-fuse-eti-vv-17kv-100a';
+const WKLADKA = 'fuse_15kv_50a_full';
+const PRZEKLADNIK_CT = 'ct_400_5_5p20_15va_abb';
+const PRZEKAZNIK = 'REF-OC-100';
+
+interface Pole {
+  ref_id: string;
+  bay_role?: string;
+  substation_ref?: string;
+  primary_devices?: Array<{ kind: string; catalog_ref?: string | null }>;
+}
+interface Migawka {
+  buses: Array<{ ref_id: string; voltage_kv: number }>;
+  substations: Array<{ ref_id: string; name: string; station_type?: string; bus_refs?: string[] }>;
+  transformers: Array<{
+    ref_id: string;
+    hv_bus_ref: string;
+    lv_bus_ref: string;
+    tap_changer?: { catalog_ref?: string | null } | null;
+  }>;
+  generators: Array<{ ref_id: string; name: string }>;
+  bays: Pole[];
+  measurements: Array<{ ref_id: string; measurement_type: string; bay_ref?: string; catalog_ref?: string }>;
+  protection_assignments: Array<{ ref_id: string; bay_ref?: string }>;
+  corridors?: Array<{ ordered_segment_refs?: string[] }>;
+}
+
+interface Kontekst {
+  pid: string;
+  projektNazwa: string;
+  caseId: string;
+  migawka: Migawka;
+  stacja: Migawka['substations'][number];
+}
+
+async function backendUp(request: APIRequestContext): Promise<boolean> {
+  try {
+    return (await request.get(`${BACKEND_BASE}/api/v1/catalog/konfiguracja-stacji/snapshot`)).ok();
+  } catch {
+    return false;
+  }
+}
+
+let licznikOperacji = 0;
+
+/** Jedna operacja domenowa na przypadku; zwraca migawkę modelu po operacji. */
+async function operacja(
+  request: APIRequestContext,
+  caseId: string,
+  name: string,
+  payload: Record<string, unknown>,
+): Promise<Migawka> {
+  licznikOperacji += 1;
+  const res = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
+    data: {
+      project_id: '',
+      snapshot_base_hash: '',
+      operation: { name, idempotency_key: `e2e-konf-${licznikOperacji}-${Date.now()}`, payload },
+    },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  const body = (await res.json()) as Record<string, unknown>;
+  expect(body.error ?? null, String(body.error)).toBeNull();
+  return body.snapshot as Migawka;
+}
+
+/** Migawka modelu przypadku — ta sama, z której składa się wejście solverów. */
+async function migawkaModelu(request: APIRequestContext, caseId: string): Promise<Migawka> {
+  const res = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm`);
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return (await res.json()) as Migawka;
+}
+
+/** Projekt + przypadek + GPZ, magistrala kablowa i stacja B z transformatorem SN/nN. */
+async function zbudujProjekt(request: APIRequestContext, nazwa: string): Promise<Kontekst> {
+  const projektNazwa = `${nazwa} ${Date.now()}`;
+  const projectRes = await request.post(`${BACKEND_BASE}/api/projects`, { data: { name: projektNazwa } });
+  expect(projectRes.status()).toBe(201);
+  const pid = (await projectRes.json()).id as string;
+  const caseRes = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+    data: { project_id: pid, name: 'Przypadek konfiguratora', description: '', config: {}, set_active: true },
+  });
+  expect(caseRes.ok()).toBeTruthy();
+  const caseId = (await caseRes.json()).id as string;
+
+  await operacja(request, caseId, 'add_grid_source_sn', {
+    voltage_kv: 15.0,
+    sk3_mva: 250.0,
+    rx_ratio: 0.1,
+    catalog_binding: {
+      catalog_namespace: 'ZRODLO_SN',
+      catalog_item_id: 'src-gpz-15kv-250mva-rx010',
+      catalog_item_version: '2024.1',
+    },
+  });
+  const magistrala = await operacja(request, caseId, 'continue_trunk_segment_sn', {
+    segment: {
+      rodzaj: 'KABEL',
+      dlugosc_m: 500,
+      catalog_binding: {
+        catalog_namespace: 'KABEL_SN',
+        catalog_item_id: 'cable-tfk-yakxs-3x120',
+        catalog_item_version: '2024.1',
+      },
+    },
+  });
+  const segmenty = magistrala.corridors?.[0]?.ordered_segment_refs ?? [];
+  expect(segmenty.length).toBeGreaterThan(0);
+  const migawka = await operacja(request, caseId, 'insert_station_on_segment_sn', {
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+    segment_id: segmenty[segmenty.length - 1],
+    station_type: 'B',
+    insert_at: { value: 0.5 },
+    station: {
+      sn_voltage_kv: 15.0,
+      nn_voltage_kv: 0.4,
+      station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
+      nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
+    },
+    sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
+    transformer: {
+      create: true,
+      catalog_binding: {
+        catalog_namespace: 'TRAFO_SN_NN',
+        catalog_item_id: 'tr-sn-nn-15-04-630kva-dyn11',
+        catalog_item_version: '2024.1',
+      },
+    },
+  });
+  const stacja = migawka.substations.find(
+    (s) => s.station_type !== 'gpz' && (s.bus_refs ?? []).length > 0,
+  );
+  expect(stacja, 'stacja SN/nN w modelu').toBeTruthy();
+  return { pid, projektNazwa, caseId, migawka, stacja: stacja! };
+}
+
+function poleStacji(migawka: Migawka, stacjaRef: string, rola: string): Pole {
+  const pole = migawka.bays.find((b) => b.substation_ref === stacjaRef && b.bay_role === rola);
+  expect(pole, `pole ${rola} stacji`).toBeTruthy();
+  return pole!;
+}
+
+/** Zimne wejście do aplikacji z kontekstem projektu i przypadku; konfigurator stacji z adresu. */
+async function otworzKonfigurator(page: Page, k: Kontekst): Promise<void> {
+  await page.addInitScript((dane) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: dane.pid,
+          activeProjectName: dane.projektNazwa,
+          activeCaseId: dane.caseId,
+          activeCaseName: 'Przypadek konfiguratora',
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'NONE',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeAnalysisType: null,
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, { pid: k.pid, projektNazwa: k.projektNazwa, caseId: k.caseId });
+  await page.goto(
+    `${FRONTEND_BASE}/#?sel=${encodeURIComponent(k.stacja.ref_id)}&type=Station`,
+    { waitUntil: 'commit' },
+  );
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
+  await expect(page.getByTestId('station-configurator')).toBeVisible({ timeout: 60000 });
+}
+
+async function przejdzDoKarty(page: Page, karta: string): Promise<void> {
+  await page.getByTestId(`station-config-tab-${karta}`).click();
+  await expect(page.getByTestId(`station-config-content-${karta}`)).toBeVisible({ timeout: 20000 });
+}
+
+/** Odświeżenie strony — stan konfiguratora odtwarza się wyłącznie z modelu. */
+async function odswiez(page: Page): Promise<void> {
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
+  await expect(page.getByTestId('station-configurator')).toBeVisible({ timeout: 60000 });
+}
+
+test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', () => {
+  test.beforeAll(async ({ request }) => {
+    test.skip(!(await backendUp(request)), `Backend nie uruchomiony pod ${BACKEND_BASE}.`);
+  });
+
+  test('przełącznik zaczepów transformatora trafia do modelu i wraca po odświeżeniu', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(240000);
+    const k = await zbudujProjekt(request, 'E2E Zaczepy z konfiguratora');
+    const szynyStacji = new Set(k.stacja.bus_refs ?? []);
+    const transformator = k.migawka.transformers.find(
+      (t) => szynyStacji.has(t.lv_bus_ref) || szynyStacji.has(t.hv_bus_ref),
+    );
+    expect(transformator, 'transformator stacji').toBeTruthy();
+    expect(transformator!.tap_changer ?? null).toBeNull();
+
+    await otworzKonfigurator(page, k);
+    await przejdzDoKarty(page, 'transformer');
+    const wybor = page.getByTestId(`tr-tap-changer-${transformator!.ref_id}`);
+    await expect(wybor).toBeVisible();
+    // Pierwsza pozycja katalogu dopuszczona dla napięć tego transformatora (selektor karty).
+    const pozycja = await wybor.locator('option:not([value=""])').first().getAttribute('value');
+    expect(pozycja, 'katalog przełączników ma pozycję dla 15/0,4 kV').toBeTruthy();
+    await wybor.selectOption(pozycja!);
+
+    await expect
+      .poll(
+        async () =>
+          (await migawkaModelu(request, k.caseId)).transformers.find(
+            (t) => t.ref_id === transformator!.ref_id,
+          )?.tap_changer?.catalog_ref ?? null,
+        { timeout: 20000 },
+      )
+      .toBe(pozycja);
+
+    await odswiez(page);
+    await przejdzDoKarty(page, 'transformer');
+    await expect(page.getByTestId(`tr-tap-changer-${transformator!.ref_id}`)).toHaveValue(pozycja!);
+  });
+
+  test('odłączenie źródła OZE usuwa je z modelu, nie tylko z ekranu', async ({ page, request }) => {
+    test.setTimeout(240000);
+    const k = await zbudujProjekt(request, 'E2E Odłączenie źródła');
+    const szynaNn = k.migawka.buses.find(
+      (b) => (k.stacja.bus_refs ?? []).includes(b.ref_id) && b.voltage_kv < 1.0,
+    );
+    expect(szynaNn, 'szyna nN stacji').toBeTruthy();
+    const poMagazynie = await operacja(request, k.caseId, 'add_converter_source', {
+      source_technology: 'BESS',
+      connection_variant: 'nn_side',
+      station_ref: k.stacja.ref_id,
+      bus_nn_ref: szynaNn!.ref_id,
+      source_name: 'Magazyn do odłączenia',
+      bess_mode: 'DWUKIERUNKOWY',
+      power_setpoint_mw: 0.01,
+      catalog_binding: {
+        catalog_namespace: 'ZRODLO_NN_BESS',
+        catalog_item_id: 'conv-bess-nn-0p5mw-0p4kv',
+        catalog_item_version: '2024.1',
+      },
+      source_field: { field_name: 'Pole magazynu nN', source_field_kind: 'BESS' },
+    });
+    const magazyn = poMagazynie.generators.find((g) => g.name === 'Magazyn do odłączenia');
+    expect(magazyn, 'magazyn w modelu').toBeTruthy();
+
+    await otworzKonfigurator(page, k);
+    await przejdzDoKarty(page, 'der-sources');
+    await expect(page.getByTestId(`der-row-${magazyn!.ref_id}`)).toBeVisible({ timeout: 20000 });
+    await page.getByTestId(`der-action-detach-${magazyn!.ref_id}`).click();
+    await expect(page.getByTestId('der-detach-confirm')).toBeVisible();
+    await page.getByTestId('der-detach-ok').click();
+
+    await expect
+      .poll(
+        async () =>
+          (await migawkaModelu(request, k.caseId)).generators.some((g) => g.ref_id === magazyn!.ref_id),
+        { timeout: 20000 },
+      )
+      .toBe(false);
+
+    await odswiez(page);
+    await przejdzDoKarty(page, 'der-sources');
+    await expect(page.getByTestId(`der-row-${magazyn!.ref_id}`)).toHaveCount(0);
+  });
+
+  test('wkładka bezpiecznikowa i przekładnik napięciowy pola zapisane w modelu', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(300000);
+    const k = await zbudujProjekt(request, 'E2E Wkładka i przekładnik pola');
+    const poleTr = poleStacji(k.migawka, k.stacja.ref_id, 'TR');
+    const poleIn = poleStacji(k.migawka, k.stacja.ref_id, 'IN');
+    // Pole transformatorowe z rozłącznikiem bezpiecznikowym (bez wskazanej wkładki) —
+    // wyposażenie pola operacją modelu, ta sama co edytor wyposażenia pola.
+    await operacja(request, k.caseId, 'set_bay_equipment', {
+      bay_ref: poleTr.ref_id,
+      mode: 'katalog',
+      devices: [
+        { kind: 'LOAD_SWITCH', placement: 'MIDSTREAM', catalog_ref: ROZLACZNIK_BEZPIECZNIKOWY },
+        { kind: 'FUSE', placement: 'MIDSTREAM', designation: 'F1' },
+      ],
+    });
+    // Pole liniowe z zabezpieczeniem (przekaźnik + CT) — wiersz karty zabezpieczeń niesie
+    // wybór przekładnika napięciowego pola.
+    const poCt = await operacja(request, k.caseId, 'add_ct', {
+      field_ref: poleIn.ref_id,
+      catalog_ref: PRZEKLADNIK_CT,
+      ratio_primary_a: 400.0,
+      ratio_secondary_a: 5.0,
+    });
+    const ct = poCt.measurements.find((m) => m.measurement_type === 'CT' && m.bay_ref === poleIn.ref_id);
+    expect(ct, 'CT pola liniowego').toBeTruthy();
+    const poPrzekazniku = await operacja(request, k.caseId, 'add_relay', {
+      field_ref: poleIn.ref_id,
+      ct_ref: ct!.ref_id,
+      catalog_ref: PRZEKAZNIK,
+    });
+    const zabezpieczenia = poPrzekazniku.protection_assignments;
+    const zabezpieczenie = zabezpieczenia[zabezpieczenia.length - 1];
+    expect(zabezpieczenie, 'zabezpieczenie pola').toBeTruthy();
+
+    const wkladkaWModelu = async (): Promise<string | null> =>
+      (await migawkaModelu(request, k.caseId)).bays
+        .find((b) => b.ref_id === poleTr.ref_id)
+        ?.primary_devices?.find((a) => a.kind === 'FUSE')?.catalog_ref ?? null;
+    const vtPola = async (): Promise<Array<string | undefined>> =>
+      (await migawkaModelu(request, k.caseId)).measurements
+        .filter((m) => m.measurement_type === 'VT' && m.bay_ref === poleIn.ref_id)
+        .map((m) => m.catalog_ref);
+
+    await otworzKonfigurator(page, k);
+
+    // Wkładka pola — wybór z katalogu wkładek SN.
+    await przejdzDoKarty(page, 'bays');
+    const wyborWkladki = page.getByTestId(`bay-fuse-select-${poleTr.ref_id}`);
+    await expect(wyborWkladki).toBeVisible({ timeout: 20000 });
+    // Pole bez bezpieczników nie oferuje wyboru wkładki.
+    await expect(page.getByTestId(`bay-fuse-brak-bezpiecznikow-${poleIn.ref_id}`)).toBeVisible();
+    await wyborWkladki.selectOption(WKLADKA);
+    await expect.poll(wkladkaWModelu, { timeout: 20000 }).toBe(WKLADKA);
+
+    // Przekładnik napięciowy pola — wybór typu z katalogu przekładników.
+    await przejdzDoKarty(page, 'protection');
+    const wyborVt = page.getByTestId(`relay-vt-select-${zabezpieczenie!.ref_id}`);
+    await expect(wyborVt).toBeVisible({ timeout: 20000 });
+    await expect(wyborVt.locator('option:not([value=""])').first()).toBeAttached({ timeout: 20000 });
+    const typVt = await wyborVt.locator('option:not([value=""])').first().getAttribute('value');
+    expect(typVt).toBeTruthy();
+    await wyborVt.selectOption(typVt!);
+    await expect.poll(vtPola, { timeout: 20000 }).toEqual([typVt]);
+
+    // Po odświeżeniu oba wybory wracają z modelu.
+    await odswiez(page);
+    await przejdzDoKarty(page, 'bays');
+    await expect(page.getByTestId(`bay-fuse-select-${poleTr.ref_id}`)).toHaveValue(WKLADKA);
+    await przejdzDoKarty(page, 'protection');
+    await expect(page.getByTestId(`relay-vt-select-${zabezpieczenie!.ref_id}`)).toHaveValue(typVt!);
+
+    // Rezygnacja: brak przekładnika i brak wkładki — oba znikają z modelu.
+    await page.getByTestId(`relay-vt-select-${zabezpieczenie!.ref_id}`).selectOption('');
+    await expect.poll(vtPola, { timeout: 20000 }).toEqual([]);
+    await przejdzDoKarty(page, 'bays');
+    await page.getByTestId(`bay-fuse-select-${poleTr.ref_id}`).selectOption('');
+    await expect.poll(wkladkaWModelu, { timeout: 20000 }).toBeNull();
+  });
+});

@@ -41,7 +41,7 @@ import type {
 } from '../../../types/enm';
 import { toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../../shared/szynyStacji';
-import type { BlockTransformerItem } from './audit2-api';
+import type { BlockTransformerItem } from './katalogi-stacji-api';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -210,8 +210,8 @@ export function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnifi
 }
 
 /**
- * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu audytu 2
- * (`useAudit2CatalogSnapshot`) — bez niego (lista pusta, jeszcze nie
+ * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu katalogów stacji
+ * (`useKatalogiStacjiSnapshot`) — bez niego (lista pusta, jeszcze nie
  * pobrana) inferencja uczciwie zwraca `null` zamiast zgadywać z pustego
  * katalogu. JEDNA implementacja — czyta ją także widok źródła (`DerSurfaces.tsx`),
  * który miał własną kopię tej funkcji.
@@ -378,7 +378,7 @@ function derZGeneratora(
 /**
  * Wszyscy wytwórcy DER z migawki (kolejność deterministyczna: sort po `id`).
  *
- * `blockTransformers` (opcjonalne, karta FAB-J): snapshot audytu 2, żeby
+ * `blockTransformers` (opcjonalne, karta FAB-J): snapshot katalogów stacji, żeby
  * inferencja transformatora dedykowanego dla wytwórców bez jawnego
  * `meta.block_transformer_catalog_ref` czytała z realnego katalogu. Pominięcie
  * nie jest błędem — inferencja po prostu nie znajdzie dopasowania (`null`).

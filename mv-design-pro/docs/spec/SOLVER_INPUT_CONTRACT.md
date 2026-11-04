@@ -7,7 +7,7 @@
 # SOLVER_INPUT_CONTRACT — v1.0
 
 **Status: BINDING**
-**Contract version: 1.0**
+**Contract version: 3.0**
 **Package: `backend/src/solver_input/`**
 
 ---
@@ -47,7 +47,7 @@ Rules:
 
 ```
 SolverInputEnvelope:
-  solver_input_version: "1.0"          # Contract version (locked)
+  solver_input_version: "3.0"          # Contract version (locked)
   case_id: str                          # Study case identifier
   enm_revision: str                     # ENM snapshot/revision ID
   analysis_type: SolverAnalysisType     # Target analysis type
@@ -237,8 +237,10 @@ the ENM supports it. In v1.0, each element is a single entry.)
 
 ## 10. Versioning
 
-- Contract version is `SOLVER_INPUT_CONTRACT_VERSION = "2.0"` (1.1: karta FAB-D2;
-  2.0: karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — usunięcie płaskich `c_factor`/`thermal_time_seconds`)
+- Contract version is `SOLVER_INPUT_CONTRACT_VERSION = "3.0"` (1.1: karta FAB-D2;
+  2.0: karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — usunięcie płaskich `c_factor`/`thermal_time_seconds`;
+  3.0: karta JEDNA-SCIEZKA-EDYCJI — usunięcie z koperty pola rozszerzeń zapisanej
+  konfiguracji stacji; przełącznik zaczepów i dane źródeł żyją w elementach modelu)
 - Schema changes require an explicit version bump
 - Schema lock tests (`test_solver_input_schema_lock.py`) enforce stability
 - Breaking changes create a new major version (2.0)

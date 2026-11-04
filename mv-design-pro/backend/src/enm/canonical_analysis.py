@@ -959,8 +959,6 @@ def get_run(run_id: UUID) -> CanonicalRun | None:
 def pobierz_rozplyw_biegu(
     run: CanonicalRun,
     fault_node_id: str,
-    *,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Surowe wkłady gałęziowe solvera dla punktu zwarcia — JEDNA prawda dostępu.
 
@@ -970,20 +968,17 @@ def pobierz_rozplyw_biegu(
        stare bazy czytane bez migracji danych),
     2. osobna tabela rozpływu (zapis rozdzielony albo punkt policzony wcześniej na żądanie),
     3. PERF-SC-50: obliczenie NA ŻĄDANIE z wejścia biegu (`_policz_rozplyw_punktu_na_zadanie`)
-       — bieg domyślnie nie liczy wkładów, wiersz niesie tylko flagę dostępności;
-       ``uow_factory`` potrzebna wyłącznie biegom z opcjami audytu 2 (jak przy biegu).
+       — bieg domyślnie nie liczy wkładów, wiersz niesie tylko flagę dostępności.
 
     Brak w źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
     nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_ROZPLYWU)
+    return _rozplyw_punktu(run, fault_node_id).get(KLUCZ_ROZPLYWU)
 
 
 def pobierz_slad_rozplywu_biegu(
     run: CanonicalRun,
     fault_node_id: str,
-    *,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Ślad WHITE BOX podziału prądu zwarciowego punktu (`branch_flow_trace`, TH-1).
 
@@ -991,14 +986,12 @@ def pobierz_slad_rozplywu_biegu(
     (`_rozplyw_punktu`). Brak → ``None``: bieg policzony bez wkładów, punkt nieznany
     albo zapis sprzed dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_SLADU_ROZPLYWU)
+    return _rozplyw_punktu(run, fault_node_id).get(KLUCZ_SLADU_ROZPLYWU)
 
 
 def pobierz_wklady_pominiete_biegu(
     run: CanonicalRun,
     fault_node_id: str,
-    *,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Zestawienie wkładów pominiętych punktu (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW).
 
@@ -1006,7 +999,7 @@ def pobierz_wklady_pominiete_biegu(
     (`_rozplyw_punktu`). ``None``: punkt bez wkładów pominiętych (rdzeń nie emituje pustego
     zestawienia), bieg policzony bez wkładów albo punkt nieznany.
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_WKLADOW_POMINIETYCH)
+    return _rozplyw_punktu(run, fault_node_id).get(KLUCZ_WKLADOW_POMINIETYCH)
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -1384,7 +1377,6 @@ def create_run(
 def _wykonaj_analize_biegu(
     run: CanonicalRun,
     graf: NetworkGraph | None = None,
-    uow_factory: Callable[[], Any] | None = None,
     kontekst: KontekstWykonania | None = None,
 ) -> None:
     """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
@@ -1410,19 +1402,9 @@ def _wykonaj_analize_biegu(
     bledem kontraktu (zwarcie buduje wlasny graf i jego kopie MIN), nie cicho
     ignorowanym argumentem — graf jest DANYMI wejsciowymi biegu.
 
-    `uow_factory` — fabryka `UnitOfWork` WOLAJACEGO (np. `Depends(get_uow_factory)`
-    warstwy API, `app.state.uow_factory`). To ZDOLNOSC kontekstu wykonania, nie
-    dane biegu: dyspozytor podaje ja kazdemu wykonawcy, ktory siega po stan
-    zapisany w bazie — rozplyw i zwarcie (konfiguracja audytu 2 stacji wskazana
-    opcjami `audit2_project_id`/`audit2_station_id`, CV-4.2b) oraz
-    zabezpieczenia (rozpływ na żądanie biegu zwarciowego źródłowego z opcjami audytu 2 —
-    nastawy żyją w migawce modelu, karta BIEG-ZABEZPIECZEN-Z-MODELU). Wykonawca bez
-    odczytu bazy (stan fazowy, stabilnosc, zgodnosc zrodla) jej nie potrzebuje
-    i jej nie dostaje. ZADEN wykonawca nie buduje wlasnego silnika/sesji z
-    `DATABASE_URL` (kasacja `_uow_factory_biezacy`): bieg, ktory potrzebuje bazy,
-    a fabryki nie dostal, konczy sie jawnym `ValueError` (status FAILED z
-    powodem), nie cichym wynikiem bez korekt ani odczytem z innej bazy niz
-    reszta procesu.
+    Bieg czyta WYLACZNIE migawke modelu i opcje biegu — zaden wykonawca nie siega
+    do bazy (karta JEDNA-SCIEZKA-EDYCJI skasowala ostatni odczyt bazy w biegu:
+    zapisana konfiguracje rozszerzen stacji obok modelu; dane stacji zyja w ENM).
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
@@ -1430,17 +1412,17 @@ def _wykonaj_analize_biegu(
             f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
         )
     if run.analysis_type == "PF":
-        _execute_power_flow(run, graf, uow_factory=uow_factory)
+        _execute_power_flow(run, graf)
     elif run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
         _execute_power_flow_unbalanced(run)
     elif run.analysis_type == "short_circuit_sn":
-        _execute_short_circuit(run, uow_factory=uow_factory, kontekst=kontekst)
+        _execute_short_circuit(run, kontekst=kontekst)
     elif run.analysis_type == "phase_state_sn":
         _execute_phase_state_sn(run)
     elif run.analysis_type == "dynamika_rms":
         _execute_dynamika_rms(run, kontekst=kontekst)
     elif run.analysis_type == "protection_sn":
-        _execute_protection(run, uow_factory)
+        _execute_protection(run)
     elif run.analysis_type.startswith("v126:"):
         _execute_v126(run)
     else:
@@ -1472,7 +1454,6 @@ ODMOWY_OBLICZENIA_BIEGU: tuple[type[Exception], ...] = (ValueError, ArithmeticEr
 def wykonaj_bieg_w_pamieci(
     run: CanonicalRun,
     graf: NetworkGraph | None = None,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> None:
     """Wykonaj bieg WARIANTU w pamieci — bez persystencji i bez zmiany statusu.
 
@@ -1491,14 +1472,8 @@ def wykonaj_bieg_w_pamieci(
     i oddaje TEN SAM obiekt do rozplywu zamiast budowac go drugi raz z tej samej
     migawki (wynik identyczny co do bitu: graf jest funkcja migawki). Wolajacy
     ODDAJE graf na wlasnosc (regulator zaczepow moze go zmodyfikowac).
-
-    `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wolajacego — wariant dziedziczy
-    opcje biegu bazowego (`bieg_wariantu(options=None)`), wiec bieg bazowy
-    liczony z konfiguracja audytu 2 stacji daje warianty, ktore te sama
-    konfiguracje musza odczytac; bez fabryki taki wariant konczy sie jawnym
-    `ValueError` (patrz `_wykonaj_analize_biegu`), nie cichym biegiem bez korekt.
     """
-    _wykonaj_analize_biegu(run, graf, uow_factory)
+    _wykonaj_analize_biegu(run, graf)
 
 
 def bieg_wariantu(
@@ -1628,7 +1603,6 @@ POWOD_ANULOWANIA_W_TOKU = "Bieg anulowany przez użytkownika w trakcie obliczeń
 
 def execute_run(
     run_id: UUID,
-    uow_factory: Callable[[], Any] | None = None,
     kontekst: KontekstWykonania | None = None,
 ) -> CanonicalRun:
     """Wykonaj bieg persystowany (dyspozycja fizyki: `_wykonaj_analize_biegu`).
@@ -1638,16 +1612,6 @@ def execute_run(
     CANCELLED z wyjasnieniem i BEZ wyniku czesciowego (`raw_result` zostaje puste,
     szeregi czasowe nie sa zapisywane, bo rdzen przerywa PRZED zbudowaniem wyniku).
     Wywolanie bez kontekstu (skrypty, pozycje serii, testy) liczy dokladnie to samo.
-
-    `uow_factory`: fabryka `UnitOfWork` WOŁAJĄCEGO (routera API), przekazywana
-    w dół dyspozytorowi (`_wykonaj_analize_biegu`) — potrzebna każdemu biegowi,
-    który czyta stan zapisany w bazie: zabezpieczeniom (`StudyCase.protection_
-    config`) oraz rozpływowi/zwarciu z konfiguracją audytu 2 stacji (opcje
-    `audit2_project_id`/`audit2_station_id`). Bieg bez odczytu bazy działa i bez
-    niej. Pominięcie dla biegu, który bazy potrzebuje, kończy się statusem
-    FAILED z jawnym powodem — od CV-4.2b NIE ma zapasowej fabryki z
-    `DATABASE_URL` (była drugim, niezależnym połączeniem z bazą w tym samym
-    procesie).
     """
     run = get_run(run_id)
     if run is None:
@@ -1674,7 +1638,7 @@ def execute_run(
     run.error_message = None
 
     try:
-        _wykonaj_analize_biegu(run, uow_factory=uow_factory, kontekst=kontekst)
+        _wykonaj_analize_biegu(run, kontekst=kontekst)
         run.status = "FINISHED"
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -2221,8 +2185,6 @@ def _execute_v126(run: CanonicalRun) -> None:
 def ocen_zabezpieczenia_biegu(
     model: EnergyNetworkModel,
     sc_run: CanonicalRun,
-    *,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> WynikOceny:
     """JEDNA ścieżka oceny zabezpieczeń nadprądowych na zapisanym biegu zwarciowym.
 
@@ -2245,7 +2207,7 @@ def ocen_zabezpieczenia_biegu(
         enm=model,
         graph=graph,
         wiersze_zwarcia=list(sc_raw["results"]),
-        rozplyw_punktu=lambda punkt: pobierz_rozplyw_biegu(sc_run, punkt, uow_factory=uow_factory),
+        rozplyw_punktu=lambda punkt: pobierz_rozplyw_biegu(sc_run, punkt),
         nazwy_wezlow=nazwy_wezlow_grafu(sc_raw),
         odniesienie_biegu=(
             f"bieg zwarciowy {sc_raw['short_circuit_type']} "
@@ -2254,7 +2216,7 @@ def ocen_zabezpieczenia_biegu(
     )
 
 
-def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
+def _execute_protection(run: CanonicalRun) -> None:
     """Bieg oceny zabezpieczeń nadprądowych — INTERPRETACJA, zero fizyki poza rdzeniami.
 
     Urządzenia i nastawy pochodzą z MIGAWKI MODELU biegu (``protection_assignments``,
@@ -2265,8 +2227,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``.
 
     `create_run` zwalidował istnienie, rodzaj, status, rodzaj zwarcia i projekt biegu
-    źródłowego (`_validate_protection_sc_reference`). ``uow_factory`` wołającego trafia
-    wyłącznie do rozpływu na żądanie biegu z opcjami audytu 2 (jak przy samym biegu SC).
+    źródłowego (`_validate_protection_sc_reference`).
     """
     from domain.protection_analysis import (
         ProtectionEvaluation,
@@ -2286,7 +2247,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         )
 
     model = EnergyNetworkModel.model_validate(run.snapshot)
-    wynik = ocen_zabezpieczenia_biegu(model, sc_run, uow_factory=uow_factory)
+    wynik = ocen_zabezpieczenia_biegu(model, sc_run)
     pozycje_katalogu = {n.urzadzenie_ref: n.pozycja_katalogu for n in wynik.nastawy}
 
     evaluations = tuple(
@@ -2402,60 +2363,6 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     }
     run.white_box_trace = [step.to_dict() for step in trace.steps]
     run.power_flow_trace = None
-
-
-def rozszerzenia_audit2_dla_opcji(
-    options: Mapping[str, Any], uow_factory: Callable[[], Any] | None
-) -> dict[str, Any] | None:
-    """Rozszerzenia audytu 2 stacji wskazanej opcjami biegu — JEDYNY odczyt dla wykonawców.
-
-    Karta CV-4.2b. Opcje `audit2_project_id` + `audit2_station_id` (para) wskazują
-    zapisaną konfigurację audytu 2 (`station_audit2_configs`); wykonawca rozpływu i
-    zwarcia podaje wynik assemblerowi jako dane (`rozszerzenia_audit2`), a assembler
-    nie otwiera bazy. Odczyt idzie WYŁĄCZNIE fabryką `UnitOfWork` wołającego —
-    tą samą, którą zapisano konfigurację przez API — więc „zapisane" i „widoczne
-    dla biegu" to jedna baza (do tej karty assembler budował własny silnik z
-    `DATABASE_URL`, niezależny od `app.state.uow_factory`, i konfiguracja bywała
-    dla biegu niewidoczna).
-
-    Rozstrzygnięcia (bez cichych zapasów, klasa A6-12):
-    - brak OBU opcji → `None` (bieg bez korekt audytu 2; baza nietknięta);
-    - połowa pary, niepoprawny UUID projektu, brak fabryki → jawny `ValueError`
-      (bieg FAILED z powodem), nie wynik liczony bez korekt, o które proszono;
-    - para wskazuje stację bez zapisanej konfiguracji → `None` (opt-in nieobecny —
-      to legalny stan, nie błąd: konfiguracja audytu 2 jest nadpisaniem inżyniera).
-    """
-    project_id_str = options.get("audit2_project_id")
-    station_id = options.get("audit2_station_id")
-    if not project_id_str and not station_id:
-        return None
-    if not project_id_str or not station_id:
-        raise OdmowaDanychError(
-            "Opcje biegu wskazują konfigurację audytu 2 połową pary: potrzebne są OBA "
-            "`audit2_project_id` i `audit2_station_id`"
-        )
-    try:
-        project_uuid = UUID(str(project_id_str))
-    except ValueError as exc:
-        raise OdmowaNazwana(
-            "Projekt konfiguracji audytu stacji wskazany w opcjach biegu nie jest poprawnym "
-            "identyfikatorem projektu",
-            kod="bieg.audit2_projekt_niepoprawny",
-            dane={"audit2_project_ref": str(project_id_str)},
-        ) from exc
-    if uow_factory is None:
-        raise ValueError(
-            "Opcje biegu wskazują konfigurację audytu 2 stacji "
-            f"({project_id_str}/{station_id}), a wykonawca nie dostał fabryki UnitOfWork "
-            "wołającego — bieg nie buduje własnego połączenia z bazą (CV-4.2b)"
-        )
-    from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
-
-    with uow_factory() as uow:
-        cfg = uow.audit2_station_configs.get(project_uuid, str(station_id))
-        if cfg is None:
-            return None
-        return rozszerzenia_audit2_z_konfiguracji(cfg)
 
 
 def _dobor_c_punktu(wejscie: WejscieZwarcia, node_id: str) -> DoborC:
@@ -2671,13 +2578,13 @@ def _zalozenie_czasu_tb_roboczego(
 
 #: Pola wiersza zwarcia porównywane przy wkładach na żądanie z wynikiem odtworzonym z
 #: migawki i opcji biegu (bramka spójności PERF-SC-50): rdzeń jest deterministyczny,
-#: więc rozjazd oznacza, że dane wejściowe (migawka, opcje, konfiguracja audytu 2)
+#: więc rozjazd oznacza, że dane wejściowe (migawka, opcje)
 #: zmieniły się od biegu — wtedy wkłady nie należą do tego biegu i są ODMAWIANE.
 _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva", "kappa")
 
 
 def _policz_rozplyw_punktu_na_zadanie(
-    run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
+    run: CanonicalRun, fault_node_id: str
 ) -> dict[str, Any] | None:
     """Ładunek rozpływu JEDNEGO punktu (cała klasa `KLUCZE_ROZPLYWU`: wkłady gałęziowe,
     ślad podziału prądu, wkłady pominięte, wkłady źródeł i ich ślad) policzony z wejścia
@@ -2693,7 +2600,6 @@ def _policz_rozplyw_punktu_na_zadanie(
     wejscie = zloz_wejscie_zwarcia(
         run.snapshot or {},
         run.options,
-        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
     )
     if fault_node_id not in wejscie.reportable_fault_node_ids:
         return None
@@ -2722,7 +2628,7 @@ def _policz_rozplyw_punktu_na_zadanie(
         raise ValueError(
             "Wkłady gałęziowe na żądanie niespójne z biegiem "
             f"{run.id} (punkt {fault_node_id}, pola {rozjazd}): dane wejściowe biegu "
-            "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
+            "(migawka, opcje) zmieniły się od jego wykonania — "
             "uruchom analizę ponownie."
         )
     rozplyw: dict[str, Any] = {klucz: odtworzony.get(klucz) for klucz in KLUCZE_ROZPLYWU}
@@ -2737,9 +2643,7 @@ def _policz_rozplyw_punktu_na_zadanie(
     return rozplyw
 
 
-def _rozplyw_punktu(
-    run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> dict[str, Any]:
+def _rozplyw_punktu(run: CanonicalRun, fault_node_id: str) -> dict[str, Any]:
     """Ładunek rozpływu punktu — JEDNA prawda dostępu dla akcesorów.
 
     Słownik po kluczach `KLUCZE_ROZPLYWU` (wkłady gałęziowe, ślad podziału prądu, wkłady
@@ -2764,20 +2668,18 @@ def _rozplyw_punktu(
             z_tabeli = repository.get_rozplyw_punktu(run.id, fault_node_id)
         if z_tabeli is not None:
             return z_tabeli
-        policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id, uow_factory)
+        policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id)
         return brak if policzone is None else policzone
     return brak
 
 
 def _execute_short_circuit(
     run: CanonicalRun,
-    uow_factory: Callable[[], Any] | None = None,
     kontekst: KontekstWykonania | None = None,
 ) -> None:
     wejscie = zloz_wejscie_zwarcia(
         run.snapshot or {},
         run.options,
-        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
     )
     graph = wejscie.graph
     graph_nodes = wejscie.graph_nodes
@@ -3254,7 +3156,6 @@ def _run_oltc_study(
 def _execute_power_flow(
     run: CanonicalRun,
     graph: NetworkGraph | None = None,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> None:
     """Wykonaj rozpływ mocy dla przebiegu.
 
@@ -3268,15 +3169,11 @@ def _execute_power_flow(
             (pętla regulatora zaczepowego przestawia pozycje zaczepów), więc grafu
             NIE wolno po tym wywołaniu czytać jako „stanu sprzed rozpływu".
             ``None`` = zbuduj graf z migawki (ścieżka kanoniczna).
-        uow_factory: fabryka ``UnitOfWork`` wołającego — potrzebna WYŁĄCZNIE, gdy
-            opcje biegu wskazują konfigurację audytu 2 stacji (patrz
-            ``rozszerzenia_audit2_dla_opcji``).
     """
     wejscie = zloz_wejscie_rozplywu(
         run.snapshot or {},
         run.options,
         graph=graph,
-        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
     )
     graph = wejscie.graph
     graph_nodes = wejscie.graph_nodes
@@ -3475,14 +3372,6 @@ def _execute_power_flow(
             },
         },
     }
-    # Karta CV-4.2: ślad zastosowanych korekt audit2 (tap/droop/impedancja
-    # transformatora blokowego) — additive, tylko gdy audit2 było żądane
-    # (`options.audit2_project_id`/`audit2_station_id`); żadna sieć rejestru
-    # golden PF ich nie używa, więc parytet `parytet_assemblera` jest bit w
-    # bit nietknięty dla wszystkich istniejących wpisów.
-    if wejscie.audit2_applied is not None:
-        run.raw_result["audit2_applied"] = wejscie.audit2_applied
-
     # V12K-045 (OLTC F2): surface the regulator decision trace only when the
     # OLTC control loop actually ran (additive — non-OLTC runs unchanged).
     if oltc_trace is not None:
@@ -4520,9 +4409,7 @@ def build_short_circuit_results(
     return odpowiedz
 
 
-def build_short_circuit_rozplyw(
-    run: CanonicalRun, target_id: str, *, uow_factory: Callable[[], Any] | None = None
-) -> dict[str, Any]:
+def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, Any]:
     """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia na żądanie (V12K-281, K13).
 
     Lista wierszy zbiorczych (`build_short_circuit_results`) nie niesie już
@@ -4544,7 +4431,7 @@ def build_short_circuit_rozplyw(
     for item in raw_result.get("results", []):
         if item.get("fault_node_id") == target_id:
             # PERF-SC-50: wkłady i ślad JEDNYM odczytem/obliczeniem punktu (`_rozplyw_punktu`).
-            rozplyw = _rozplyw_punktu(run, target_id, uow_factory)
+            rozplyw = _rozplyw_punktu(run, target_id)
             wklady = rozplyw[KLUCZ_ROZPLYWU]
             slad = rozplyw[KLUCZ_SLADU_ROZPLYWU]
             pominiete = rozplyw[KLUCZ_WKLADOW_POMINIETYCH]
@@ -4668,11 +4555,7 @@ class PasmoMinMaxZwarcia:
     zrodlo_min: str | None
 
 
-def dobierz_pasmo_min_max_zwarcia(
-    run: CanonicalRun,
-    *,
-    uow_factory: Callable[[], Any] | None = None,
-) -> PasmoMinMaxZwarcia:
+def dobierz_pasmo_min_max_zwarcia(run: CanonicalRun) -> PasmoMinMaxZwarcia:
     """Dobiera parę biegów MAX/MIN zwarcia z JEDNEGO przypadku (karta W3-G3).
 
     ISTNIEJĄCE WEJŚCIA WYKONANIA, ZERO NOWEJ FIZYKI. Kotwica = `run` (dowolny
@@ -4767,7 +4650,7 @@ def dobierz_pasmo_min_max_zwarcia(
                     analysis_type="short_circuit_sn",
                     options=opcje_wariantu,
                 )
-                wykonaj_bieg_w_pamieci(wariant, uow_factory=uow_factory)
+                wykonaj_bieg_w_pamieci(wariant)
             except ODMOWY_OBLICZENIA_BIEGU as exc:
                 powod_niedostepnosci = f"blad_solvera_wariantu:{type(exc).__name__}"
             else:
@@ -5403,8 +5286,8 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "applicability_status": raw_result.get("applicability_status"),
             "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
         }
-        # V12K-045/046 (OLTC H2) + karta CV-4.2 (audit2_applied): surface the
-        # regulator trace, study results and audit2 apply trail so the UI can
+        # V12K-045/046 (OLTC H2): surface the
+        # regulator trace and study results so the UI can
         # read them from the run result set. Additive — each key is present
         # only when the corresponding feature ran (determinism preserved).
         for oltc_key in (
@@ -5412,7 +5295,6 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "oltc_sweep",
             "oltc_annual_profile",
             "oltc_optimization",
-            "audit2_applied",
             # Karta LINIA-110: założenia biegu (linie 110 kV z wartością roboczą geometrii).
             "zalozenia",
         ):

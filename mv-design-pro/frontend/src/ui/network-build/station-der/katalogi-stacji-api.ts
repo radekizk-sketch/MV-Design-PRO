@@ -1,26 +1,16 @@
 /**
- * API client dla katalogow audytu 2 (Phase 2 backend integration).
+ * Klient katalogów konfiguracji stacji i pakietu dowodów rozszerzeń stacji.
  *
- * Pobiera katalogi z backendu (`/api/v1/catalog/audit2/*`) zamiast uzywac
- * frontendowych staticow.
+ * Katalogi (`/api/v1/catalog/konfiguracja-stacji/*`): tryby pracy magazynu, przełączniki
+ * zaczepów, wkładki bezpiecznikowe SN, krzywe P(f), transformatory dedykowane — backend jest
+ * JEDYNYM źródłem (karty FAB-J/FAB-L/FAB-M skasowały statyczne kopie we froncie). Zero
+ * fallbacku lokalnego: niedostępność backendu jest stanem błędu/ładowania widocznym w UI.
  *
- * Karta FAB-L: `bess_operation_modes`/`tap_changers` dopisane jako typy 1:1
- * z backendem (dotad `ReadonlyArray<unknown>`) — front czyta je WYLACZNIE stad,
- * statyczne mirrory (`BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG`)
- * skasowane z `catalogs.ts`. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: katalog
- * „wariantow uziemienia punktu neutralnego SN" skasowany na amen — sposob
- * uziemienia niesie zespol uziemiajacy sekcji w modelu, a konfigurator czyta go
- * z backendu (`fetchUziemienieSnStacji`). Zero fallbacku lokalnego — backend jest jedynym zrodlem;
- * niedostepnosc backendu jest stanem bledu/ladowania widocznym w UI, nie
- * cichym podstawieniem drugiej kopii danych.
- *
- * Karta FAB-M: `hv_fuses` dopisane jako typ 1:1 z backendem (dotad
- * `ReadonlyArray<unknown>`) — front czyta je WYLACZNIE stad, statyczny mirror
- * (`HV_FUSE_CATALOG` w `protection-catalogs.ts`, 4 pozycje identyczne z
- * backendowym `audit2_catalogs.HV_FUSE_CATALOG`) skasowany. Zero fallbacku
- * lokalnego — backend jest jedynym zrodlem; niedostepnosc backendu jest
- * stanem bledu/ladowania widocznym w UI, nie cichym podstawieniem drugiej
- * kopii danych.
+ * Karta JEDNA-SCIEZKA-EDYCJI: dane stacji (tryby magazynu, przełącznik zaczepów, wkładka
+ * i przekładnik napięciowy pola) żyją WYŁĄCZNIE w modelu sieci i zmieniają się operacjami
+ * domenowymi. Dawny magazyn „konfiguracji stacji" obok modelu (zapis, odczyt, usunięcie)
+ * skasowano razem z klientem; pakiet dowodów i uziemienie SN pól czytają model
+ * (`/api/v1/projects/{id}/stations/...`).
  */
 
 import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
@@ -29,7 +19,7 @@ import type { DoziemienieSieci } from '../../results-inspector/types';
 
 /**
  * Krzywa P(f) (eng.9, NC RfG art. 13/15) — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::PfCurveItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::PfCurveItem.to_dict`).
  * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii (`PF_CURVE_CATALOG`
  * usunięty z `catalogs.ts`).
  */
@@ -48,7 +38,7 @@ export interface PfCurveItem {
 
 /**
  * Transformator dedykowany DER (B.5) — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::BlockTransformerItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::BlockTransformerItem.to_dict`).
  * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii
  * (`BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts`).
  */
@@ -75,7 +65,7 @@ export interface BlockTransformerItem {
 
 /**
  * Tryb pracy magazynu (BESS) — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::BessOperationModeItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::BessOperationModeItem.to_dict`).
  * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
  * (`BESS_OPERATION_MODE_CATALOG` usunięty z `catalogs.ts`).
  */
@@ -102,7 +92,7 @@ export interface BessOperationModeItem {
 
 /**
  * Przełącznik zaczepów transformatora — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::TapChangerItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::TapChangerItem.to_dict`).
  * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
  * (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
  */
@@ -123,7 +113,7 @@ export interface TapChangerItem {
 
 /**
  * Pasmo czasowo-prądowe wkładki SN — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::HvFusePasmoTcc.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::HvFusePasmoTcc.to_dict`).
  */
 export interface HvFusePasmoTcc {
   readonly zrodlo_url: string;
@@ -132,7 +122,7 @@ export interface HvFusePasmoTcc {
 
 /**
  * Bezpiecznik SN/HV (eng.17) — kształt 1:1 z backendu
- * (`network_model/catalog/audit2_catalogs.py::HvFuseItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::HvFuseItem.to_dict`).
  * Karta FAB-M: JEDYNE źródło — front nie ma już własnej kopii
  * (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`, gdzie był DRUGĄ
  * kopią tych samych 4 pozycji, identyczne identyfikatory `fuse_15kv_50a_full`
@@ -154,23 +144,16 @@ export interface HvFuseItem {
   readonly pasmo_brak_etykieta_pl: string | null;
 }
 
-/**
- * `device_withstand` NIE typowane tu: ma już konsumenta typowanego osobno
- * (`DeviceWithstandCatalogItem` niżej, przez `fetchDeviceWithstandCatalog`, nie
- * przez snapshot). Karty FAB-L/FAB-M: `bess_operation_modes`/`tap_changers`/
- * `hv_fuses` typowane 1:1 z backendem — ZERO `unknown`
- * tam, gdzie front te dane konsumuje.
- */
-export interface AuditCatalogSnapshot {
+/** Snapshot katalogów konfiguracji stacji — kształt 1:1 z `SnapshotKatalogowStacji.to_dict`. */
+export interface KatalogiStacjiSnapshot {
   readonly bess_operation_modes: readonly BessOperationModeItem[];
   readonly tap_changers: readonly TapChangerItem[];
   readonly hv_fuses: readonly HvFuseItem[];
-  readonly device_withstand: ReadonlyArray<unknown>;
   readonly pf_curves: readonly PfCurveItem[];
   readonly block_transformers: readonly BlockTransformerItem[];
 }
 
-const BASE = '/api/v1/catalog/audit2';
+const BASE = '/api/v1/catalog/konfiguracja-stacji';
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -192,31 +175,9 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/** Pobiera snapshot wszystkich 6 katalogow audytu 2. */
-export async function fetchAudit2CatalogSnapshot(): Promise<AuditCatalogSnapshot> {
-  return getJson<AuditCatalogSnapshot>(`${BASE}/snapshot`);
-}
-
-/** Pozycja katalogu wytrzymalosci aparatury (eng.18, IEC 60909). */
-export interface DeviceWithstandCatalogItem {
-  readonly id: string;
-  readonly label_pl: string;
-  readonly device_type: string;
-  readonly nominal_voltage_kv: number;
-  readonly nominal_current_a: number;
-  readonly i_dyn_ka: number;
-  readonly i_th_1s_ka: number;
-  readonly i_th_duration_s: number;
-}
-
-/**
- * Katalog aparatury wytrzymalosciowej — JEDYNE zrodlo (K7-B).
- * Front nie ma juz wlasnej kopii tej listy.
- */
-export async function fetchDeviceWithstandCatalog(): Promise<
-  readonly DeviceWithstandCatalogItem[]
-> {
-  return getJson<readonly DeviceWithstandCatalogItem[]>(`${BASE}/device-withstand`);
+/** Snapshot wszystkich katalogów konfiguracji stacji. */
+export async function fetchKatalogiStacjiSnapshot(): Promise<KatalogiStacjiSnapshot> {
+  return getJson<KatalogiStacjiSnapshot>(`${BASE}/snapshot`);
 }
 
 export interface VtGroundingValidationResponse {
@@ -232,133 +193,10 @@ export async function validateVtGroundingApi(args: {
   return postJson<VtGroundingValidationResponse>(`${BASE}/validate-vt-grounding`, args);
 }
 
-export interface DeviceWithstandValidationResponse {
-  readonly ok: boolean;
-  readonly i_dyn_ok: boolean;
-  readonly i_th_ok: boolean;
-  readonly message_pl: string;
-  readonly utilization_dyn_percent: number;
-  readonly utilization_th_percent: number;
-}
-
-/** Naprawa eng.18: walidacja I_dyn / I_th aparatury (backend, IEC 60909). */
-export async function validateDeviceWithstandApi(args: {
-  readonly device_id: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
-}): Promise<DeviceWithstandValidationResponse> {
-  return postJson<DeviceWithstandValidationResponse>(`${BASE}/validate-device-withstand`, args);
-}
-
-export interface HostingCapacityExportResponse {
-  readonly station_id: string;
-  readonly p_export_kw: number;
-  readonly p_import_kw: number;
-  readonly p_net_export_kw: number;
-  /** `null` przy imporcie zerowym — stosunek nie istnieje (karta PROOFPACK-KONTRAKT). */
-  readonly export_to_import_ratio: number | null;
-  readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
-  readonly message_pl: string;
-}
-
-/** Naprawa eng.15: walidacja eksportu vs import (backend). */
-export async function validateHostingCapacityExportApi(args: {
-  readonly station_id: string;
-  readonly p_export_kw: number;
-  readonly p_import_kw: number;
-}): Promise<HostingCapacityExportResponse> {
-  return postJson<HostingCapacityExportResponse>(
-    `${BASE}/validate-hosting-capacity-export`,
-    args,
-  );
-}
-
-// =============================================================================
-// Station config persistence (Punkt 3 Phase 2)
-// =============================================================================
-
-export interface DerAudit2SpecBody {
-  readonly der_id: string;
-  readonly der_kind: 'PV' | 'BESS' | 'FW';
-  readonly bess_operation_mode_refs?: readonly string[] | null;
-  readonly block_transformer_catalog_ref?: string | null;
-  readonly pf_curve_ref?: string | null;
-  // Phase 23: real device + power.
-  readonly device_catalog_ref?: string | null;
-  readonly nominal_power_kw?: number | null;
-}
-
-export interface BayDeviceWithstandSpec {
-  readonly device_id: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
-}
-
-export interface StationAudit2ConfigBody {
-  readonly tap_changer_refs: readonly string[];
-  readonly der_specs: readonly DerAudit2SpecBody[];
-  readonly transformer_tap_changers?: Readonly<Record<string, string>>;
-  readonly bay_hv_fuses?: Readonly<Record<string, string>>;
-  readonly bay_vts?: Readonly<Record<string, string>>;
-  readonly bay_device_withstand?: Readonly<Record<string, BayDeviceWithstandSpec>>;
-}
-
-export interface StationAudit2ConfigResponse extends StationAudit2ConfigBody {
-  readonly id: string;
-  readonly project_id: string;
-  readonly station_id: string;
-  readonly created_at: string | null;
-  readonly updated_at: string | null;
-}
-
-const STATION_CONFIG_BASE = '/api/v1/projects';
-
-function stationAudit2ConfigUrl(projectId: string, stationId?: string): string {
-  const base = `${STATION_CONFIG_BASE}/${encodeURIComponent(projectId)}/audit2-station-config`;
+/** Adres zasobów stacji projektu czytanych z modelu sieci. */
+function stacjeProjektuUrl(projectId: string, stationId?: string): string {
+  const base = `/api/v1/projects/${encodeURIComponent(projectId)}/stations`;
   return stationId ? `${base}/${encodeURIComponent(stationId)}` : base;
-}
-
-export async function listStationAudit2Configs(
-  projectId: string,
-): Promise<readonly StationAudit2ConfigResponse[]> {
-  return getJson<readonly StationAudit2ConfigResponse[]>(
-    stationAudit2ConfigUrl(projectId),
-  );
-}
-
-export async function getStationAudit2Config(
-  projectId: string,
-  stationId: string,
-): Promise<StationAudit2ConfigResponse | null> {
-  const res = await fetch(
-    stationAudit2ConfigUrl(projectId, stationId),
-  );
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(`GET station config failed: ${res.status} ${res.statusText}`);
-  }
-  return res.json() as Promise<StationAudit2ConfigResponse>;
-}
-
-export async function putStationAudit2Config(args: {
-  readonly projectId: string;
-  readonly stationId: string;
-  readonly body: StationAudit2ConfigBody;
-}): Promise<StationAudit2ConfigResponse> {
-  const res = await fetch(
-    stationAudit2ConfigUrl(args.projectId, args.stationId),
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(args.body),
-    },
-  );
-  if (!res.ok) {
-    throw new Error(`PUT station config failed: ${res.status} ${res.statusText}`);
-  }
-  return res.json() as Promise<StationAudit2ConfigResponse>;
 }
 
 /** Typ punktu neutralnego sieci SN pola stacji — z modelu albo z nazwaną przyczyną braku. */
@@ -428,39 +266,37 @@ export async function fetchUziemienieSnStacji(args: {
   readonly pola: readonly string[];
 }): Promise<UziemienieSnStacjiResponse> {
   return postJson<UziemienieSnStacjiResponse>(
-    `${stationAudit2ConfigUrl(args.projectId, args.stationId)}/_uziemienie-sn`,
+    `${stacjeProjektuUrl(args.projectId, args.stationId)}/_uziemienie-sn`,
     { pola: args.pola },
   );
 }
 
-export async function deleteStationAudit2Config(args: {
-  readonly projectId: string;
-  readonly stationId: string;
-}): Promise<void> {
-  const res = await fetch(
-    stationAudit2ConfigUrl(args.projectId, args.stationId),
-    { method: 'DELETE' },
-  );
-  if (res.status !== 204 && res.status !== 404) {
-    throw new Error(`DELETE station config failed: ${res.status} ${res.statusText}`);
-  }
+// =============================================================================
+// Pakiet dowodów rozszerzeń stacji + raport
+// =============================================================================
+
+/** Szczegóły dowodu bilansu eksportu stacji (`HOSTING_CAPACITY_EXPORT`) — liczone w backendzie. */
+export interface SzczegolyBilansuEksportu {
+  readonly station_id: string;
+  readonly p_export_kw: number;
+  readonly p_import_kw: number;
+  readonly p_net_export_kw: number;
+  /** `null` przy imporcie zerowym — stosunek nie istnieje (karta PROOFPACK-KONTRAKT). */
+  readonly export_to_import_ratio: number | null;
+  readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
+  readonly message_pl: string;
 }
 
-// =============================================================================
-// Phase 10/11: ProofPack + Report API clients
-// =============================================================================
+/** Rodzaj dowodu rozszerzeń stacji (kod maszynowy — ekran pokazuje `rodzaj_pl`). */
+export type RodzajDowoduRozszerzen =
+  | 'BESS_OPERATION_MODES'
+  | 'TAP_CHANGER_PLAN'
+  | 'HOSTING_CAPACITY_EXPORT'
+  | 'VT_GROUNDING_VALIDATION';
 
-/** Rodzaj dowodu walidacji rozszerzeń (kod maszynowy — ekran pokazuje `rodzaj_pl`). */
-export type Audit2ProofType =
-  | 'AUDIT2_BESS_OPERATION_MODES'
-  | 'AUDIT2_TAP_CHANGER_PLAN'
-  | 'AUDIT2_HOSTING_CAPACITY_EXPORT'
-  | 'AUDIT2_DEVICE_WITHSTAND'
-  | 'AUDIT2_VT_GROUNDING_VALIDATION';
-
-export interface Audit2Proof {
+export interface DowodRozszerzenStacji {
   readonly proof_id: string;
-  readonly proof_type: Audit2ProofType;
+  readonly proof_type: RodzajDowoduRozszerzen;
   /** Polska nazwa rodzaju dowodu (backend, jedno źródło etykiet). */
   readonly rodzaj_pl: string;
   readonly pass_status: boolean;
@@ -471,67 +307,63 @@ export interface Audit2Proof {
 }
 
 /** Rodzaj (albo pozycja) dowodu, którego nie da się wygenerować — brak danych ≠ spełnia. */
-export interface Audit2BrakDanych {
-  readonly proof_type: Audit2ProofType;
+export interface BrakDanychDowodu {
+  readonly proof_type: RodzajDowoduRozszerzen;
   readonly rodzaj_pl: string;
   readonly przyczyna_pl: string;
 }
 
-/** Pakiet dowodów jednej stacji — kształt 1:1 z `StationAudit2ProofPack.to_dict`. */
-export interface Audit2ProofPackResponse {
+/** Pakiet dowodów jednej stacji — kształt 1:1 z `PakietRozszerzenStacji.to_dict`. */
+export interface PakietRozszerzenStacji {
   readonly station_id: string;
   /** Nazwa stacji z modelu (albo „Stacja spoza modelu") — ekran nigdy nie pokazuje id. */
   readonly station_nazwa: string;
   readonly all_pass: boolean;
   readonly fail_count: number;
   readonly proof_count: number;
-  readonly proofs: readonly Audit2Proof[];
-  readonly braki_danych: readonly Audit2BrakDanych[];
+  readonly proofs: readonly DowodRozszerzenStacji[];
+  readonly braki_danych: readonly BrakDanychDowodu[];
   readonly generated_at: string;
 }
 
-/** Pakiety dowodów KAŻDEJ stacji z zapisaną konfiguracją projektu. */
-export interface Audit2ProjectProofPackResponse {
+/** Pakiety dowodów KAŻDEJ stacji modelu sieci projektu. */
+export interface PakietRozszerzenProjektu {
   readonly project_id: string;
   readonly all_pass: boolean;
   readonly station_count: number;
-  readonly per_station: readonly Audit2ProofPackResponse[];
+  readonly per_station: readonly PakietRozszerzenStacji[];
 }
 
 /**
- * Pakiet dowodów walidacji rozszerzeń projektu — składa go BACKEND z utrwalonych
- * konfiguracji stacji i z modelu sieci (karta PROOFPACK-KONTRAKT). Dawny klient
- * `generateAudit2ProofPack` (specyfikacje składane w interfejsie, suma mocy w UI,
- * identyfikator stacji `configs[0] ?? 'aggregate'`) usunięty razem z końcówką.
+ * Pakiet dowodów rozszerzeń projektu — składa go BACKEND z modelu sieci (karty
+ * PROOFPACK-KONTRAKT, JEDNA-SCIEZKA-EDYCJI): nazwy z modelu, bilans mocy w backendzie,
+ * rodzaj bez danych jawnie oznaczony z przyczyną.
  */
-export async function generateProjectAudit2ProofPack(
+export async function generatePakietRozszerzenProjektu(
   projectId: string,
-): Promise<Audit2ProjectProofPackResponse> {
-  return postJson<Audit2ProjectProofPackResponse>(
-    `${stationAudit2ConfigUrl(projectId)}/_validate-all`,
-    {},
-  );
+): Promise<PakietRozszerzenProjektu> {
+  return postJson<PakietRozszerzenProjektu>(`${stacjeProjektuUrl(projectId)}/_validate-all`, {});
 }
 
-export interface Audit2ReportRequest {
+export interface RaportRozszerzenRequest {
   readonly project_name: string;
   readonly station_id: string;
   /** Nazwa stacji z modelu — raport pokazuje ją projektantowi zamiast identyfikatora. */
   readonly station_name: string;
-  readonly proof_pack: Audit2ProofPackResponse;
+  readonly proof_pack: PakietRozszerzenStacji;
   readonly operator_pl?: string;
   readonly generated_at_iso?: string;
   readonly formats?: readonly ('json' | 'text_pl' | 'latex')[];
 }
 
-export interface Audit2ReportResponse {
+export interface RaportRozszerzenResponse {
   readonly json?: Record<string, unknown>;
   readonly text_pl?: string;
   readonly latex?: string;
 }
 
-export async function generateAudit2Report(
-  req: Audit2ReportRequest,
-): Promise<Audit2ReportResponse> {
-  return postJson<Audit2ReportResponse>(`${BASE}/generate-report`, req);
+export async function generateRaportRozszerzen(
+  req: RaportRozszerzenRequest,
+): Promise<RaportRozszerzenResponse> {
+  return postJson<RaportRozszerzenResponse>(`${BASE}/generate-report`, req);
 }

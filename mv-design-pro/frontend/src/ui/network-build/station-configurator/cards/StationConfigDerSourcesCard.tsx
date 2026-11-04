@@ -39,8 +39,8 @@ export interface StationConfigDerSourcesCardProps {
   /** Czy dany DER moze byc odlaczony przez te karte bez pustej akcji. */
   readonly canDetachDer?: (derId: string) => boolean;
   /**
-   * Karta FAB-J: snapshot audytu 2 (transformatory dedykowane) i katalog
-   * operatorów NC RfG — WYŁĄCZNIE z backendu (`useAudit2CatalogSnapshot`,
+   * Karta FAB-J: snapshot katalogów stacji (transformatory dedykowane) i katalog
+   * operatorów NC RfG — WYŁĄCZNIE z backendu (`useKatalogiStacjiSnapshot`,
    * `useNcRfgOperatorCatalog`). Pominięcie nie jest błędem: etykiety
    * pokazują wtedy uczciwy stan „brak danych z katalogu backendu", nie
    * fabrykowaną nazwę z listy lokalnej.

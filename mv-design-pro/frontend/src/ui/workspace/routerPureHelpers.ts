@@ -7,7 +7,7 @@
 
 import type { ExecutionRun } from '../study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
-import type { Audit2ProofPackResponse } from '../network-build/station-der';
+import type { PakietRozszerzenStacji } from '../network-build/station-der';
 import { calculationScopeDisplayName } from '../shell/publicNames';
 import { formatDateTime } from './routerDisplayHelpers';
 
@@ -40,7 +40,7 @@ export interface AuditProofPackStatus {
  * pakiet, w którym część rodzajów jest jawnym brakiem, nie dostaje „Weryfikacja pozytywna",
  * nawet gdy wszystkie wygenerowane dowody są zaliczone.
  */
-export function auditProofPackStatus(data: Audit2ProofPackResponse): AuditProofPackStatus {
+export function auditProofPackStatus(data: PakietRozszerzenStacji): AuditProofPackStatus {
   if (data.proof_count <= 0) {
     return {
       label: 'Brak dowodów do oceny',

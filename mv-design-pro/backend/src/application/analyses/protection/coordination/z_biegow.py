@@ -107,7 +107,6 @@ def koordynacja_z_biegow(
     pf_run_id: str | None,
     pary_wskazane: Sequence[tuple[str, str]] | None,
     config: CoordinationConfig,
-    uow_factory: Any = None,
 ) -> CoordinationAnalysisResult:
     """Koordynacja urządzeń modelu na biegach — albo ``OdmowaKoordynacji``/``BiegNiemiarodajny``."""
     wejscie_biegow = wejscie_koordynacji_z_biegow(run_id_max=sc_run_id, run_id_min=sc_run_id_min)
@@ -118,8 +117,8 @@ def koordynacja_z_biegow(
     rodzaj_min = _rodzaj_zwarcia(bieg_min, "minimalny")
     _sprawdz_siec(model, bieg_max, "zwarciowy maksymalny")
 
-    ocena_max = ocen_zabezpieczenia_biegu(model, bieg_max, uow_factory=uow_factory)
-    ocena_min = ocen_zabezpieczenia_biegu(model, bieg_min, uow_factory=uow_factory)
+    ocena_max = ocen_zabezpieczenia_biegu(model, bieg_max)
+    ocena_min = ocen_zabezpieczenia_biegu(model, bieg_min)
     if not ocena_max.nastawy:
         raise OdmowaKoordynacji(
             "BRAK_ZABEZPIECZEN_W_MODELU",

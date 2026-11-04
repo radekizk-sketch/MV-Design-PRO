@@ -25,7 +25,6 @@ predykatu).
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from application.analyses.protection.catalog.mapper import wymaganie_z_nastaw
@@ -246,7 +245,6 @@ def zbuduj_pakiet_nastaw(
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
-    uow_factory: Callable[[], Any] | None = None,
     nazwa_przypadku: str,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy nastaw: ``(nazwa_pliku, zawartość ZIP)``.
@@ -265,7 +263,6 @@ def zbuduj_pakiet_nastaw(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
         raise PakietNastawError(str(exc), kod=exc.kod) from exc
@@ -327,7 +324,6 @@ def zbuduj_odpowiedz_nastaw_json(
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
-    uow_factory: Callable[[], Any] | None = None,
     nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Nastawy I>/I>> w postaci JSON — TA SAMA fizyka co pakiet dowodowy ZIP
@@ -349,7 +345,6 @@ def zbuduj_odpowiedz_nastaw_json(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
         raise PakietNastawError(str(exc), kod=exc.kod) from exc
@@ -378,7 +373,6 @@ def zbuduj_odpowiedz_dopasowania(
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
-    uow_factory: Callable[[], Any] | None = None,
     nazwa_przypadku: str,
 ) -> dict[str, Any]:
     """Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).
@@ -397,7 +391,6 @@ def zbuduj_odpowiedz_dopasowania(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
-            uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
         raise PakietNastawError(str(exc), kod=exc.kod) from exc

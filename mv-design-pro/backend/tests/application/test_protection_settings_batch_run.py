@@ -589,61 +589,22 @@ def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
 
 
 # ---------------------------------------------------------------------------
-# CV-4.2b: warianty nastaw licza TEN SAM model stacji co kotwica (para audytu 2
-# dziedziczona), a bez fabryki wolajacego odmawiaja jawnie.
+# Karta JEDNA-SCIEZKA-EDYCJI: warianty nastaw liczą TEN SAM model co kotwica (migawka
+# biegu) — bez bazy i bez opcji wskazujących zapisaną konfigurację stacji obok modelu
+# (skasowaną). Dawniej (CV-4.2b) wariant dziedziczył parę opcji takiej konfiguracji
+# i bez fabryki `UnitOfWork` odmawiał.
 # ---------------------------------------------------------------------------
 
 
-def test_warianty_nastaw_dziedzicza_pare_audit2_kotwicy() -> None:
-    from application.protection_settings.batch_run import (
-        _opcje_audit2_kotwicy,
-        _opcje_wariantu_minimalnego,
-    )
+def test_warianty_nastaw_licza_sie_z_migawki_bez_bazy() -> None:
+    from application.protection_settings.batch_run import _opcje_wariantu_minimalnego
 
-    kotwica = _kotwica(_siec_promieniowa(), wykonaj=False)
-    assert _opcje_audit2_kotwicy(kotwica) == {}
-    bez_pary = _opcje_wariantu_minimalnego(kotwica, fault_type="3F")
-    assert "audit2_project_id" not in bez_pary and "audit2_station_id" not in bez_pary
-
-    para = {"audit2_project_id": str(uuid4()), "audit2_station_id": "stacja-nastaw"}
-    kotwica.options = {**kotwica.options, **para}
-    assert _opcje_audit2_kotwicy(kotwica) == para
-    z_para = _opcje_wariantu_minimalnego(kotwica, fault_type="2F")
-    assert {k: z_para[k] for k in para} == para
-    assert z_para["fault_type"] == "2F" and z_para["scenario"] == "min"
-
-
-def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
     kotwica = _kotwica(_siec_promieniowa())
-    kotwica.options = {
-        **kotwica.options,
-        "audit2_project_id": str(uuid4()),
-        "audit2_station_id": "stacja-nastaw",
-    }
-
-    with pytest.raises(BrakDanychNastawError, match="nie dostał fabryki UnitOfWork"):
-        zbuduj_wejscie_nastaw(
-            kotwica,
-            line_id="ln1",
-            next_bus_id="b_b",
-            zacisk_zabezpieczenia="od",
-        )
-
-
-def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) -> None:
-    kotwica = _kotwica(_siec_promieniowa())
-    kotwica.options = {
-        **kotwica.options,
-        "audit2_project_id": str(uuid4()),
-        "audit2_station_id": "stacja-nastaw",
-    }
+    wariant = _opcje_wariantu_minimalnego(kotwica, fault_type="2F")
+    assert wariant["fault_type"] == "2F" and wariant["scenario"] == "min"
 
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica,
-        line_id="ln1",
-        next_bus_id="b_b",
-        uow_factory=uow_factory,
-        zacisk_zabezpieczenia="od",
+        kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
 
     assert wejscie.engine_input is not None

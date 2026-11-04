@@ -245,15 +245,15 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/odgałęzieniu', ()
 // USUNIĘTE (karta FAB-L, 2026-09-05) — „katalog ma ≥9 trybów…"/„FCR-N wymaga
 // 4Q…"/„Island backup wymaga grid-forming PCS"/„selectBessModesForPcs filtruje
 // po 4Q + grid-forming". `BESS_OPERATION_MODE_CATALOG` USUNIĘTY z `catalogs.ts`
-// jako blok statyczny (front czyta go WYŁĄCZNIE ze snapshotu audytu 2), a
+// jako blok statyczny (front czyta go WYŁĄCZNIE ze snapshotu katalogów stacji), a
 // `selectBessModesForPcs` przyjmuje dziś katalog jako PARAMETR. Pokrycie:
 //   - zawartość katalogu (≥9 pozycji, kody, `requires_four_quadrant`/
 //     `requires_grid_forming` per kod, zero pól bez proweniencji):
-//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_bess_operation_modes`
-//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     `backend/tests/api/test_katalogi_stacji_api.py::test_list_bess_operation_modes`
+//     + `backend/tests/network_model/test_katalogi_stacji_parytet.py`
 //     (`response_time_s` dopisany do `POLA_BEZ_PROWENIENCJI_ZAKAZANE`).
 //   - zachowanie selektora na PODANYM katalogu:
-//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu katalogów stacji").
 describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs.test.ts)', () => {
   it('nie ma już selektora trybów rzekomo wymaganych przez NC RfG', async () => {
     // INTENCJA POPRZEDNIEGO TESTU: pilnował, że moduł C „wymaga" FCR-N i Q(U).
@@ -271,14 +271,14 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 
 // USUNIĘTE (karta FAB-L, 2026-09-05) — całe „eng.13 — TapChangerCatalog":
 // `TAP_CHANGER_CATALOG` USUNIĘTY z `catalogs.ts` jako blok statyczny (front
-// czyta go WYŁĄCZNIE ze snapshotu audytu 2), a `selectTapChangersForTransformer`/
+// czyta go WYŁĄCZNIE ze snapshotu katalogów stacji), a `selectTapChangersForTransformer`/
 // `getTapChanger` przyjmują dziś katalog jako PARAMETR. Pokrycie:
 //   - zawartość katalogu (≥4 pozycje, typy oltc/detc, tap_count 17/19,
 //     step_percent=1.25, supports_avr, zero pól bez proweniencji):
-//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_tap_changers`
-//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`.
+//     `backend/tests/api/test_katalogi_stacji_api.py::test_list_tap_changers`
+//     + `backend/tests/network_model/test_katalogi_stacji_parytet.py`.
 //   - zachowanie selektorów na PODANYM katalogu:
-//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu katalogów stacji").
 
 // =============================================================================
 // Pakiet D — eng.15 (Hosting capacity export check)
@@ -286,8 +286,8 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 
 // Karta PROOFPACK-KONTRAKT: frontowa kopia reguły (`validateHostingCapacityExport`)
 // usunięta — progi 0,8/1,5/3,0 i stan „stacja bez odbiorów" przypinają testy backendu
-// (`tests/api/test_audit2_catalogs_api.py::test_validate_hosting_capacity_*`,
-// `tests/proof_engine/test_audit2_skladanie.py`), jedynego miejsca tego rachunku.
+// (`tests/proof_engine/test_pakiet_rozszerzen_stacji.py`,
+// `tests/api/test_pakiet_rozszerzen_stacji_api.py`), jedynego miejsca tego rachunku.
 
 
 // =============================================================================
@@ -295,13 +295,13 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 // =============================================================================
 //
 // Tu stał komplet asercji na `HV_FUSE_CATALOG` — DRUGIEJ kopii tych samych 4
-// pozycji już serwowanych przez backend (`network_model/catalog/audit2_catalogs
+// pozycji już serwowanych przez backend (`network_model/catalog/katalogi_stacji
 // .py::HV_FUSE_CATALOG`, identyczne identyfikatory `fuse_15kv_50a_full` i in.),
 // zgłoszonej jako znalezisko poza zakresem karty FAB-L (§0 nazwał WYŁĄCZNIE
 // `catalogs.ts`; ten katalog mieszkał w `protection-catalogs.ts`, patrz jej
 // nota proweniencji). `HV_FUSE_CATALOG` USUNIĘTY z `protection-catalogs.ts`:
-// front czyta go WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
-// typowane 1:1 w `audit2-api.ts::HvFuseItem`) — karta pola (`StationConfig
+// front czyta go WYŁĄCZNIE ze snapshotu katalogów stacji (`useKatalogiStacjiSnapshot`,
+// typowane 1:1 w `katalogi-stacji-api.ts::HvFuseItem`) — karta pola (`StationConfig
 // BaysCard.tsx`) dostaje katalog jako prop `hvFuses` z `StationConfigurator
 // Surface.tsx`. `selectHvFusesForRating` (jedyny selektor tego katalogu) NIE
 // MIAŁ żadnego konsumenta produkcyjnego (karta pola czytała `HV_FUSE_CATALOG`
@@ -323,13 +323,13 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 //   - zawartość katalogu HV_FUSE (≥4 pozycje, napięcie 6-36 kV, lista pól
 //     ZAMKNIĘTA, brak `manufacturer`/punktów pasma bez źródła, `pasmo_tcc`
 //     PARA z URL, każda pozycja dziś `pasmo_tcc: null`):
-//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_hv_fuses` +
-//     `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     `backend/tests/api/test_katalogi_stacji_api.py::test_list_hv_fuses` +
+//     `backend/tests/network_model/test_katalogi_stacji_parytet.py`
 //     (`POLA_BEZ_PROWENIENCJI_ZAKAZANE` pilnuje pól wyrobu bez źródła, nowy
 //     test identyfikatorów bezpieczników użytych w froncie).
 //   - zero cudzej tożsamości w SPZ (dawny operator bez źródła): ten sam
-//     katalog `test_audit2_katalogi_parytet.py::
-//     test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2` — a skoro
+//     katalog `test_katalogi_stacji_parytet.py::
+//     test_cudze_imie_nie_wraca_do_danych_katalogow_stacji` — a skoro
 //     `SPZ_CATALOG` usunięty CAŁKOWICIE (nie migrowany), sam katalog, którego
 //     dotyczył ten pin, już nie istnieje po żadnej stronie.
 
@@ -343,13 +343,12 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 // prezentacji, poza zasięgiem solvera i śladu WHITE BOX. Rachunek został usunięty
 // z frontu; jego intencji pilnują teraz:
 //
-//   * `backend/tests/network_model/test_device_withstand_parity.py` — PARYTET
-//     liczbowy z rachunkiem, który był w UI (twarde literały: wykorzystanie I_dyn/I_th,
-//     skalowanie I_th czasem wyłączenia, ograniczenie t do 0,01 s, brak aparatu
-//     w katalogu) oraz zgodność identyfikatorów i danych znamionowych katalogu,
-//   * `backend/tests/api/test_audit2_catalogs_api.py` — końcówka HTTP,
-//   * `WalidacjaWytrzymalosciAparaturySekcja.test.tsx` — że ekran PYTA backend
-//     (i uczciwie nazywa stan, w którym odpowiedzi nie ma), zamiast liczyć sam.
+//   * `backend/tests/analysis/test_wytrzymalosc_aparatury_pol.py` — weryfikacja
+//     wytrzymałości aparatów pola z danych znamionowych modelu sieci i wyniku zwarcia
+//     (jedyne miejsce tego kryterium; karta JEDNA-SCIEZKA-EDYCJI usunęła drugą drogę —
+//     katalog wytrzymałości zapisanej konfiguracji stacji),
+//   * `src/ui2/wyniki/zwarcia/aparatura/__tests__/` — że ekran wyników zwarciowych
+//     PYTA backend (i uczciwie nazywa stan, w którym odpowiedzi nie ma), zamiast liczyć sam.
 
 // =============================================================================
 // Pakiet F — eng.20: regula PRZENIESIONA DO BACKENDU (V12K-256 / V12K-257)
@@ -361,7 +360,7 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 // pakiet dowodowy mowia „niezgodne". Regula zostala usunieta z frontu; jej intencje
 // pilnuja teraz:
 //
-//   * `backend/tests/api/test_audit2_catalogs_api.py` — progi wg sposobu uziemienia,
+//   * `backend/tests/api/test_katalogi_stacji_api.py` — progi wg sposobu uziemienia,
 //   * `backend/tests/domain/test_dobor_przekladnika_napieciowego.py` — pelne kryterium
 //     wspolczynnika napieciowego wraz z ukladem pracy uzwojenia,
 //   * `WalidacjaVtPolaSekcja.test.tsx` — ze ekran PYTA backend, zamiast liczyc sam.

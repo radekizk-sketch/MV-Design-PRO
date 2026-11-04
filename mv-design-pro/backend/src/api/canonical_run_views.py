@@ -675,13 +675,11 @@ def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     return payload
 
 
-def build_short_circuit_rozplyw_response(
-    run: CanonicalRun, target_id: str, *, uow_factory: Callable[[], Any] | None = None
-) -> dict[str, Any]:
+def build_short_circuit_rozplyw_response(run: CanonicalRun, target_id: str) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy jednego punktu zwarcia na żądanie —
     # wiersze zbiorcze nie niosą już rozpływu (raport/odpowiedź 730 MB).
-    # PERF-SC-50: treść liczona na żądanie z wejścia biegu (fabryka UoW dla audytu 2).
-    payload = build_short_circuit_rozplyw(run, target_id, uow_factory=uow_factory)
+    # PERF-SC-50: treść liczona na żądanie z wejścia biegu.
+    payload = build_short_circuit_rozplyw(run, target_id)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
@@ -739,9 +737,7 @@ def _strona_pasma_zwarcia(bieg: CanonicalRun | None, zrodlo: str | None) -> dict
     }
 
 
-def build_short_circuit_band_response(
-    run: CanonicalRun, *, uow_factory: Callable[[], Any] | None = None
-) -> dict[str, Any]:
+def build_short_circuit_band_response(run: CanonicalRun) -> dict[str, Any]:
     """Pasmo MIN/MAX zwarcia z JEDNEGO przypadku obok siebie (karta W3-G3,
     aneks D7, mapa domknięcia 3 #12) — projekcja `PasmoMinMaxZwarcia` na JSON.
 
@@ -754,7 +750,7 @@ def build_short_circuit_band_response(
     (`ui2/freshness`) porównuje obie liczby tym samym mechanizmem, którym już
     ostrzega o pojedynczym biegu nieaktualnym względem modelu.
     """
-    pasmo = dobierz_pasmo_min_max_zwarcia(run, uow_factory=uow_factory)
+    pasmo = dobierz_pasmo_min_max_zwarcia(run)
     return {
         "run_id_kotwicy": str(pasmo.run_kotwicy_id),
         "scenariusz_kotwicy": pasmo.scenariusz_kotwicy,

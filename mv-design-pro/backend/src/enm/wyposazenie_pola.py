@@ -19,19 +19,27 @@ operacja ją daje, catalog-first, a stan danych każdego aparatu jest nazwany:
 Stan wyprowadza ``stan_danych_aparatu`` / ``stan_danych_wyposazenia`` z ``catalog_ref``
 — bez nowego pola zapisanego obok (jedna prawda).
 
-TRZY TRYBY (``mode``):
+CZTERY TRYBY (``mode``):
 
 * ``katalog`` — lista ``devices`` od projektanta. Rodzaj z katalogiem SN (wyłącznik,
   rozłącznik, odłącznik, uziemnik — APARAT_SN; przekładnik prądowy — CT; przekładnik
   napięciowy — VT; ogranicznik przepięć — OGRANICZNIK_SN) WYMAGA ``catalog_ref`` tej
   przestrzeni (brama istnienia ``domain_operations_v2._pozycja_katalogu``), a dla APARAT_SN —
-  zgodnego ``device_kind`` pozycji. Rodzaj bez katalogu SN nie przyjmuje ``catalog_ref``.
+  zgodnego ``device_kind`` pozycji. Rodzaj bez katalogu SN nie przyjmuje ``catalog_ref`` —
+  z jednym wyjątkiem: bezpieczniki (``FUSE``) przyjmują OPCJONALNIE wkładkę z katalogu
+  wkładek SN (``network_model.catalog.katalogi_stacji.HV_FUSE_CATALOG``, przestrzeń
+  ``hv_fuse``); bez wkładki aparat pozostaje wartością roboczą (zasada nr 4).
   Rodzina rozdzielnicy pola (``switchgear_family_ref``) zawęża rodzaje do
   ``allowed_apparatus_kinds``.
 * ``szablon`` — aparaty z szablonu pola (``bay_template_ref`` z ładunku albo z rekordu)
   przez TEN SAM resolver, co budowa pola (``pole_katalogowe.aparaty_pola_z_referencji``):
   szablon kanoniczny daje propozycję, katalogowe pole rodziny — aparaty z BOM-u.
 * ``wyczysc`` — usunięcie wyposażenia (stan ``BRAK_DANYCH``).
+* ``wkladka`` — wkładka bezpiecznikowa SN (``catalog_ref`` z katalogu wkładek albo ``None``
+  = usunięcie wskazania) na KAŻDYM aparacie ``FUSE`` pola, bez przebudowy listy aparatów.
+  Jedyny nośnik wyboru wkładki w konfiguratorze stacji (karta JEDNA-SCIEZKA-EDYCJI
+  skasowała mapę wkładek w zapisanej konfiguracji stacji obok modelu). Pole bez aparatu
+  ``FUSE`` = odmowa ``bay_equipment.fuse_missing``.
 
 POZIOM IZOLACJI (reguła modelu, nie ocena doboru). Aparat z katalogu o napięciu najwyższym
 U_m (aparatura rozdzielcza: U_r, PN-EN 62271-1 p. 5.2; ogranicznik: U_m typu) niższym od
@@ -72,7 +80,10 @@ from .slownik_komunikatow import lista_pl, opis_elementu, pole
 from .topology import TYPY_LACZNIKOW_ENM
 
 StanDanychAparatu = Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"]
-TrybWyposazenia = Literal["katalog", "szablon", "wyczysc"]
+TrybWyposazenia = Literal["katalog", "szablon", "wyczysc", "wkladka"]
+
+#: Przestrzeń katalogu wkładek bezpiecznikowych SN (``HvFuseItem.catalog_namespace``).
+PRZESTRZEN_WKLADKI_SN = "hv_fuse"
 
 #: Rodzaj aparatu pierwotnego pola → przestrzeń katalogu SN. JEDYNA tablica tej reguły.
 PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
@@ -99,8 +110,9 @@ RODZAJE_KATALOGOWE_APARATU: dict[str, frozenset[str]] = {
     "ES": frozenset({"UZIEMNIK"}),
 }
 
-#: Rodzaje aparatu pola SN bez katalogu SN w repozytorium — przyjmowane wyłącznie jako
-#: wartość robocza (``PROPOZYCJA``), nigdy z ``catalog_ref``.
+#: Rodzaje aparatu pola SN bez katalogu SN w repozytorium — przyjmowane jako wartość robocza
+#: (``PROPOZYCJA``) bez ``catalog_ref``. Wyjątek: bezpieczniki (``FUSE``) przyjmują
+#: opcjonalną wkładkę z katalogu wkładek SN (``PRZESTRZEN_WKLADKI_SN``, ``odmowa_wkladki``).
 RODZAJE_BEZ_KATALOGU_SN: frozenset[str] = frozenset({"FUSE", "CABLE_HEAD", "TRANSFORMER_DEVICE"})
 
 #: Rodzaje aparatu wskazujące gałąź łącznikową modelu (``linked_ref``) — ich stan
@@ -160,10 +172,15 @@ def dane_przyjete_wyposazenia(aparaty: list[dict[str, Any]]) -> list[dict[str, A
         oznaczenie = aparat.get("designation")
         nazwa = f"{rodzaj} {oznaczenie}" if oznaczenie else rodzaj
         powod = (
-            "rodzaj aparatu bez katalogu SN — przyjęty z szablonu pola jako wartość robocza"
-            if aparat.get("kind") in RODZAJE_BEZ_KATALOGU_SN
-            else "aparat z szablonu pola bez pozycji katalogowej — wartość robocza do "
-            "zastąpienia wyborem z katalogu"
+            "bezpieczniki bez wskazanej wkładki z katalogu wkładek SN — wartość robocza do "
+            "zastąpienia wyborem wkładki"
+            if aparat.get("kind") == "FUSE"
+            else (
+                "rodzaj aparatu bez katalogu SN — przyjęty z szablonu pola jako wartość robocza"
+                if aparat.get("kind") in RODZAJE_BEZ_KATALOGU_SN
+                else "aparat z szablonu pola bez pozycji katalogowej — wartość robocza do "
+                "zastąpienia wyborem z katalogu"
+            )
         )
         wynik.append(
             DanaPrzyjeta(
@@ -193,6 +210,46 @@ def napiecie_najwyzsze_aparatu_kv(rodzaj: object, catalog_ref: object) -> float 
     if przestrzen == "OGRANICZNIK_SN":
         ogranicznik = katalog.get_surge_arrester_type(catalog_ref)
         return float(ogranicznik.u_m_kv) if ogranicznik is not None else None
+    return None
+
+
+def odmowa_wkladki(
+    enm: dict[str, Any], rekord: dict[str, Any], catalog_ref: object, opis_pl: str
+) -> dict[str, Any] | None:
+    """Odmowa wskazania wkładki bezpiecznikowej SN albo ``None`` — JEDNA reguła trybów
+    ``katalog`` i ``wkladka``.
+
+    Wkładka musi istnieć w katalogu wkładek SN (``get_hv_fuse``), a jej napięcie
+    znamionowe (oznaczenie znamionowe IEC 60282-1, pozycja katalogu) nie może być niższe od
+    napięcia znamionowego szyny pola — wkładka niższego poziomu napięcia nie jest wkładką
+    tego pola.
+    """
+    from network_model.catalog.katalogi_stacji import get_hv_fuse
+
+    from .domain_operations_v2 import _bus_voltage_kv
+
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return _error_response(
+            f"{opis_pl}: wskaż wkładkę z katalogu wkładek SN albo usuń wskazanie.",
+            "bay_equipment.fuse_catalog_missing",
+        )
+    wkladka = get_hv_fuse(catalog_ref)
+    if wkladka is None:
+        return _error_response(
+            f"{opis_pl}: wskazanej wkładki nie ma w katalogu wkładek SN — wybierz pozycję "
+            "z listy katalogu.",
+            "bay_equipment.fuse_catalog_unknown",
+        )
+    bus_ref = rekord.get("bus_ref")
+    napiecie_szyny = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
+    if napiecie_szyny is not None and float(wkladka.nominal_voltage_kv) < napiecie_szyny:
+        return _error_response(
+            f"{opis_pl}: wkładka {wkladka.label_pl} ma napięcie znamionowe "
+            f"{wkladka.nominal_voltage_kv:g} kV, niższe od napięcia szyny "
+            f"{opis_elementu(enm, str(rekord.get('ref_id')), 'pola')} ({napiecie_szyny:g} kV) — "
+            "wybierz wkładkę o napięciu znamionowym nie niższym od napięcia sieci.",
+            "bay_equipment.fuse_voltage_insufficient",
+        )
     return None
 
 
@@ -335,7 +392,11 @@ def _sprawdz_aparat(
 
     catalog_ref = wpis.get("catalog_ref")
     przestrzen = PRZESTRZEN_KATALOGU_APARATU.get(str(rodzaj))
-    if przestrzen is None:
+    if przestrzen is None and rodzaj == "FUSE" and catalog_ref is not None:
+        blad_wkladki = odmowa_wkladki(enm, rekord, catalog_ref, f"Aparat {numer} ({nazwa_rodzaju})")
+        if blad_wkladki is not None:
+            return blad_wkladki
+    elif przestrzen is None:
         if catalog_ref is not None:
             return _error_response(
                 f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) "
@@ -444,12 +505,14 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     tryb = payload.get("mode")
     if tryb not in get_args(TrybWyposazenia):
         return _error_response(
-            f"Uzupełnij pole {pole('mode', 'set_bay_equipment')} — z katalogu, z szablonu pola "
-            "albo usunięcie wyposażenia.",
+            f"Uzupełnij pole {pole('mode', 'set_bay_equipment')} — z katalogu, z szablonu pola, "
+            "wkładka bezpiecznikowa albo usunięcie wyposażenia.",
             "bay_equipment.mode_invalid",
         )
 
     zmiany: dict[str, Any] = {}
+    if tryb == "wkladka":
+        return _ustaw_wkladke(nowy, rekord, payload.get("catalog_ref"))
     if tryb == "wyczysc":
         aparaty: list[dict[str, Any]] = []
     elif tryb == "szablon":
@@ -495,4 +558,32 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         return odmowa_izolacji
 
     zmien_pole(nowy, bay_ref, primary_devices=aparaty, **zmiany)
+    return _odpowiedz(nowy, bay_ref, aparaty)
+
+
+def _ustaw_wkladke(
+    nowy: dict[str, Any], rekord: dict[str, Any], catalog_ref: object
+) -> dict[str, Any]:
+    """Tryb ``wkladka``: wkładka (albo jej brak — ``None``) na każdym aparacie ``FUSE`` pola."""
+    bay_ref = str(rekord["ref_id"])
+    aparaty = [dict(a) for a in rekord.get("primary_devices") or [] if isinstance(a, Mapping)]
+    if not any(a.get("kind") == "FUSE" for a in aparaty):
+        return _error_response(
+            f"{opis_elementu(nowy, bay_ref, 'Pole')} nie ma bezpieczników w wyposażeniu — "
+            "wkładkę wskazuje się w polu z bezpiecznikami (ustaw wyposażenie pola z szablonu "
+            "albo z katalogu).",
+            "bay_equipment.fuse_missing",
+        )
+    if catalog_ref is not None:
+        blad = odmowa_wkladki(nowy, rekord, catalog_ref, "Wkładka bezpiecznikowa pola")
+        if blad is not None:
+            return blad
+    for aparat in aparaty:
+        if aparat.get("kind") != "FUSE":
+            continue
+        if catalog_ref is None:
+            aparat.pop("catalog_ref", None)
+        else:
+            aparat["catalog_ref"] = catalog_ref
+    zmien_pole(nowy, bay_ref, primary_devices=aparaty)
     return _odpowiedz(nowy, bay_ref, aparaty)

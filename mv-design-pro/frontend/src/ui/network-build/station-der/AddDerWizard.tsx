@@ -29,8 +29,8 @@ import {
 } from '../../sld/v2/canvas/derPersistenceApi';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../types/enm';
-import { useAudit2CatalogSnapshot } from './audit2-hooks';
-import type { BlockTransformerItem } from './audit2-api';
+import { useKatalogiStacjiSnapshot } from './katalogi-stacji-hooks';
+import type { BlockTransformerItem } from './katalogi-stacji-api';
 import {
   formatLvVoltageLabelPl,
   getNcRfgOperator,
@@ -682,12 +682,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [deviceVoltageFilter, setDeviceVoltageFilter] = useState('all');
   const [deviceModeFilter, setDeviceModeFilter] = useState('all');
   // Karta FAB-J: PF curves + transformatory dedykowane WYŁĄCZNIE ze snapshotu
-  // audytu 2 już pobieranego przez kreator — zero drugiego zapytania sieciowego
+  // katalogów stacji już pobieranego przez kreator — zero drugiego zapytania sieciowego
   // dla danych, które i tak przychodzą (decyzja #1/#7 karty).
-  const auditCatalogSnapshotQuery = useAudit2CatalogSnapshot();
+  const auditCatalogSnapshotQuery = useKatalogiStacjiSnapshot();
   const pfCurves = auditCatalogSnapshotQuery.data?.pf_curves ?? [];
   const blockTransformers = auditCatalogSnapshotQuery.data?.block_transformers ?? [];
-  // Karta FAB-L: tryby pracy BESS WYŁĄCZNIE ze snapshotu audytu 2 — zero
+  // Karta FAB-L: tryby pracy BESS WYŁĄCZNIE ze snapshotu katalogów stacji — zero
   // statyku modułowego usuniętego z `catalogs.ts` (`BESS_OPERATION_MODE_CATALOG`).
   const bessOperationModes = auditCatalogSnapshotQuery.data?.bess_operation_modes ?? [];
   // Karta FAB-J: operatorzy NC RfG (profil + ride-through LVRT/HVRT 1:1 na

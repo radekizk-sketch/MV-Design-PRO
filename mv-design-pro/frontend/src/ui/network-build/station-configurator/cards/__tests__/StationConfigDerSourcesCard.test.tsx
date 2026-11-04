@@ -17,8 +17,8 @@ import {
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
 /**
- * Karta FAB-J: transformator dedykowany JEST danym backendu (snapshot audytu 2,
- * `useAudit2CatalogSnapshot`) — karta go już nie ma lokalnie, więc test podaje
+ * Karta FAB-J: transformator dedykowany JEST danym backendu (snapshot katalogów stacji,
+ * `useKatalogiStacjiSnapshot`) — karta go już nie ma lokalnie, więc test podaje
  * fikstury jawnie zamiast liczyć na usunięty `BLOCK_TRANSFORMER_CATALOG`.
  */
 const BLOCK_TRANSFORMER_FIXTURE: BlockTransformerItem = {

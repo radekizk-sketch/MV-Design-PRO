@@ -12,12 +12,12 @@
  *
  *   * `HV_FUSE_CATALOG` (+ `HvFuseItem`/`HvFusePasmoTcc`/dwie stałe PL/
  *     `selectHvFusesForRating`) — DRUGA KOPIA tych samych 4 pozycji, które
- *     backend już serwuje (`network_model/catalog/audit2_catalogs.py::
+ *     backend już serwuje (`network_model/catalog/katalogi_stacji.py::
  *     HV_FUSE_CATALOG`, identyczne identyfikatory `fuse_15kv_50a_full` i in.,
- *     `GET /api/v1/catalog/audit2/hv-fuses` + pole `hv_fuses` snapshotu).
+ *     `GET /api/v1/catalog/konfiguracja-stacji/hv-fuses` + pole `hv_fuses` snapshotu).
  *     Jedyny konsument produkcyjny (`station-configurator/cards/
- *     StationConfigBaysCard.tsx`) czyta teraz WYŁĄCZNIE ze snapshotu audytu 2
- *     (`useAudit2CatalogSnapshot`, `audit2-api.ts::HvFuseItem`) — katalog
+ *     StationConfigBaysCard.tsx`) czyta teraz WYŁĄCZNIE ze snapshotu katalogów stacji
+ *     (`useKatalogiStacjiSnapshot`, `katalogi-stacji-api.ts::HvFuseItem`) — katalog
  *     dostarczany jako prop `hvFuses` z `StationConfiguratorSurface.tsx`.
  *     `selectHvFusesForRating` (jedyny selektor tego katalogu) nie miał
  *     ŻADNEGO konsumenta produkcyjnego (karta pola czytała `HV_FUSE_CATALOG`

@@ -3,7 +3,10 @@
  *
  * Naprawa eng.17: bezpieczniki HV z katalogu.
  *
- * Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`hvFuses` prop,
+ * Karta JEDNA-SCIEZKA-EDYCJI: wkładka to `catalog_ref` aparatów `FUSE` pola w MODELU
+ * (operacja `set_bay_equipment`, tryb `wkladka`) — pole bez bezpieczników nie ma wyboru.
+ *
+ * Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu katalogów stacji (`hvFuses` prop,
  * dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
  * modułowego (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`, gdzie
  * był DRUGĄ kopią backendowego katalogu). Powód braku pasma czytany wprost z
@@ -11,7 +14,7 @@
  * backend) — nie z lokalnej kopii tych samych dwóch zdań PL.
  */
 
-import type { HvFuseItem } from '../../station-der/audit2-api';
+import type { HvFuseItem } from '../../station-der/katalogi-stacji-api';
 import { fieldRoleLabelPl } from '../../../sld/v2/station-rozdzielnia/contract';
 
 export interface StationConfigBayRow {
@@ -33,6 +36,8 @@ export interface StationConfigBayRow {
    * małej mocy lub feeder z fuse). Null oznacza brak bezpiecznika (wyłącznik).
    */
   readonly hvFuseCatalogRef?: string | null;
+  /** Pole ma w wyposażeniu bezpieczniki (`FUSE`) — tylko takiemu polu wskazuje się wkładkę. */
+  readonly maBezpieczniki?: boolean;
 }
 
 export interface StationConfigBaysCardProps {
@@ -41,7 +46,7 @@ export interface StationConfigBaysCardProps {
   readonly onShowOnSld?: (bayId: string) => void;
   readonly onCopyConfig?: (bayId: string) => void;
   readonly onDeleteBay?: (bayId: string) => void;
-  /** Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2. */
+  /** Karta FAB-M: katalog bezpieczników HV — ze snapshotu katalogów stacji. */
   readonly hvFuses: readonly HvFuseItem[];
   /** Phase 18: HV fuse onChange (per bay). */
   readonly onChangeHvFuse?: (bayId: string, fuseId: string | null) => void;
@@ -103,7 +108,15 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                 </td>
                 <td className={STATUS_CLASS[b.statusPl]}>{STATUS_LABEL[b.statusPl]}</td>
                 <td data-testid={`bay-fuse-${b.bayId}`} className="text-[10px]">
-                  {onChangeHvFuse ? (
+                  {onChangeHvFuse && !b.maBezpieczniki ? (
+                    <span
+                      data-testid={`bay-fuse-brak-bezpiecznikow-${b.bayId}`}
+                      className="italic text-scada-muted"
+                      title="Wkładkę wskazuje się w polu z bezpiecznikami — ustaw wyposażenie pola z szablonu albo z katalogu."
+                    >
+                      pole bez bezpieczników
+                    </span>
+                  ) : onChangeHvFuse ? (
                     <select
                       data-testid={`bay-fuse-select-${b.bayId}`}
                       value={b.hvFuseCatalogRef ?? ''}

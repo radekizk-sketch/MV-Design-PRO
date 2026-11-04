@@ -193,17 +193,20 @@ INIEKCJE_ZU: tuple[tuple[str, str], ...] = (
         "    mv_neutral_grounding_ref: Mapped[str | None] = mapped_column(String(64))\n",
     ),
     (
-        "backend/migrations/audit2_station_configs.sql",
+        "backend/src/infrastructure/migrations/011_station_configs.sql",
         "    mv_neutral_grounding_ref VARCHAR(64),\n",
     ),
-    ("backend/src/api/audit2_catalogs.py", '@router.get("/mv-neutral-groundings")\n'),
-    ("backend/src/network_model/catalog/audit2_catalogs.py", "MV_NEUTRAL_GROUNDING_CATALOG = ()\n"),
+    ("backend/src/api/katalogi_stacji.py", '@router.get("/mv-neutral-groundings")\n'),
+    (
+        "backend/src/network_model/catalog/katalogi_stacji.py",
+        "MV_NEUTRAL_GROUNDING_CATALOG = ()\n",
+    ),
     ("backend/schemas/openapi_snapshot.json", '{"mv_neutral_grounding_ref": null}\n'),
     (
         "frontend/src/ui/network-build/station-der/catalogs.ts",
         "export const mvNeutralGroundings = [];\n",
     ),
-    ("frontend/e2e/audit2.spec.ts", "await wybierz('mng_petersen');\n"),
+    ("frontend/e2e/konfigurator-stacji.spec.ts", "await wybierz('mng_petersen');\n"),
 )
 
 

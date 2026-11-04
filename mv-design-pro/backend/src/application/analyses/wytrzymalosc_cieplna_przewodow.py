@@ -624,12 +624,9 @@ def _odtworz_wynik_zwarciowy(
         tb_zrodlo=payload.get("tb_zrodlo"),
         # Karta PODSTAWA-Q: odtworzenie wyniku kompletne (ocena cieplna I_b nie czyta).
         zalozenia_zaniku=payload.get("zalozenia_zaniku"),
-        # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
-        # biegu — opcje audytu 2 czytane tą samą bazą).
+        # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu.
         branch_contributions=_odtworz_wklady_galeziowe(
-            pobierz_rozplyw_biegu(
-                run, str(payload.get("fault_node_id", "")), uow_factory=uow_factory
-            )
+            pobierz_rozplyw_biegu(run, str(payload.get("fault_node_id", "")))
         ),
     )
     return sc_result

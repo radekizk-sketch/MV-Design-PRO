@@ -178,7 +178,7 @@ _RODZAJE_GALEZI_WYMAGAJACE_KATALOGU: frozenset[str] = frozenset({"cable", "line_
 #: warstwa NIZSZA niz `enm`, wiec import na poziomie modulu odwracalby
 #: kierunek zaleznosci (wzorzec juz uzywany w tym repo do tego samego celu:
 #: `api/domain_ops_policy.py` importuje `network_model.catalog.repository`/
-#: `audit2_catalogs` wewnatrz funkcji z tego samego powodu).
+#: `katalogi_stacji` wewnatrz funkcji z tego samego powodu).
 def _generator_przeksztaltnikowy(gen_type: str | None) -> bool:
     from enm.mapping import FULL_CONVERTER_SC_GEN_TYPES
 

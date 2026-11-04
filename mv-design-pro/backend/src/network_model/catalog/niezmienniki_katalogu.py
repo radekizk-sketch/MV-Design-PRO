@@ -8,7 +8,9 @@ jest DOPUSZCZALNY (twarda bramka), a jesli jest, to czy jest WIARYGODNY
 roznych dziedzinach, ktore zlaczone w jeden plik zaczelyby udawac jedna regule.
 
 PO CO REJESTR MOCY. Przed ta karta katalog mial 33 twarde bramki rekordu
-(22 w `types.py`, 7 w `audit2_catalogs.py`, 2 + 2 w tablicach nN) i ZADNA z nich
+(22 w `types.py`, 7 w module katalogow konfiguracji stacji — dzis `katalogi_stacji.py`,
+z ktorego karta JEDNA-SCIEZKA-EDYCJI usunela katalog wytrzymalosci aparatury i jego dwie
+bramki KAT-T-025/026 — 2 + 2 w tablicach nN) i ZADNA z nich
 nie mowila, na czym stoi: czy lamanie reguly opisuje obiekt, ktory nie moze
 istniec, czy tylko rekord nietypowy dla zbioru, ktory akurat mamy. Reguła, ktora
 dzis przechodzi na wszystkich rekordach, nie jest przez to prawem fizyki —
@@ -483,7 +485,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         ),
     ),
     # -----------------------------------------------------------------------
-    # network_model/catalog/audit2_catalogs.py
+    # network_model/catalog/katalogi_stacji.py
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-023",
@@ -503,26 +505,6 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         uzasadnienie=(
             "Pasmo bez punktów nie jest pasmem; brak danych zapisujemy `None`, żeby "
             "konsument nie policzył pustej listy jako „brak ograniczenia czasowego”."
-        ),
-    ),
-    RegulaKatalogu(
-        kod="KAT-T-025",
-        nazwa="Prąd krótkotrwały aparatu SN z szeregu znormalizowanego",
-        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 62271-1 — szereg znamionowych prądów krótkotrwałych wytrzymywanych",
-        uzasadnienie=(
-            "Norma wymienia szereg wartości znamionowych; aparat SN o I_th spoza szeregu "
-            "nie ma znamionowania, które produkt potrafi zestawić z wynikiem zwarciowym."
-        ),
-    ),
-    RegulaKatalogu(
-        kod="KAT-T-026",
-        nazwa="Czas trwania zwarcia aparatu SN z szeregu znormalizowanego",
-        klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 62271-1 — szereg znamionowych czasów trwania zwarcia",
-        uzasadnienie=(
-            "Prąd krótkotrwały jest znamionowany ŁĄCZNIE z czasem odniesienia; czas spoza "
-            "szeregu unieruchamialby przeliczenie I_th na inny czas (reguła I^2t)."
         ),
     ),
     RegulaKatalogu(

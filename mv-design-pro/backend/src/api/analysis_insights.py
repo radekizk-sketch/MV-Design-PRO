@@ -99,7 +99,6 @@ def get_n_1_contingency_scope(run_id: UUID = Query(...)) -> dict[str, Any]:
 def get_n_1_contingency(
     run_id: UUID = Query(...),
     element_refs: list[str] | None = Query(default=None),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    return build_kontyngencje_n1_view(run, element_refs=element_refs, uow_factory=uow_factory)
+    return build_kontyngencje_n1_view(run, element_refs=element_refs)

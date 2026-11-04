@@ -1,8 +1,8 @@
-"""Parytet katalogow audytu 2: BACKEND (autorytet) vs MIRROR WE FRONTENDZIE.
+"""Parytet katalogow konfiguracji stacji: BACKEND (autorytet) vs MIRROR WE FRONTENDZIE.
 
 PO CO TEN PLIK (karta K-Q, 2026-08-14; zakres zwezony kartą FAB-L, 2026-09-05).
-Katalogi audytu 2 zyly pierwotnie w dwoch miejscach: `backend/src/network_model/
-catalog/audit2_catalogs.py` (autorytet — z niego czyta `/api/v1/catalog/audit2`)
+Katalogi konfiguracji stacji zyly pierwotnie w dwoch miejscach: `backend/src/network_model/
+catalog/katalogi_stacji.py` (autorytet — z niego czyta `/api/v1/catalog/konfiguracja-stacji`)
 oraz frontendowy mirror. Dwie kopie tej samej listy to dwa zrodla prawdy, a wiec
 przyszly rozjazd — i wlasnie tak powstal dlug, ktory zamykaly karty K-O i K-Q:
 front wyczyszczono z fabrykacji, a backend niosl je dalej i serwowal przez API.
@@ -12,7 +12,7 @@ Karta FAB-L usunela OSTATNI powod takiego mirrora dla trzech z czterech katalogo
 front juz nie ma WLASNEJ kopii tych list w `catalogs.ts` (selektory
 `selectBessModesForPcs`/`selectTapChangersForTransformer`/
 `getTapChanger` przyjmuja katalog jako PARAMETR — kreator czyta go WYLACZNIE ze
-snapshotu `useAudit2CatalogSnapshot`). Rozjazd frontu z backendem jest wiec
+snapshotu `useKatalogiStacjiSnapshot`). Rozjazd frontu z backendem jest wiec
 STRUKTURALNIE niemozliwy dla tych trzech (jedno zrodlo danych), a nie tylko
 pilnowany testem — patrz `test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie`
 ponizej. `HV_FUSE_CATALOG` (wkladki SN) NADAL ma lokalny mirror we froncie (poza
@@ -37,7 +37,7 @@ KARTA FAB-M (2026-09-05) zamyka DRUGA KOPIE `HV_FUSE_CATALOG`: front czytal
 dotad WLASNY mirror w `protection-catalogs.ts` (4 pozycje identyczne z
 backendem), ktory `test_wkladki_sn_maja_te_same_pozycje_po_obu_stronach`
 porownywal 1:1. Ten mirror zostal USUNIETY (front czyta katalog WYLACZNIE ze
-snapshotu audytu 2, `useAudit2CatalogSnapshot`), wiec test zmienia ksztalt z
+snapshotu katalogow stacji, `useKatalogiStacjiSnapshot`), wiec test zmienia ksztalt z
 "te same pozycje po obu stronach" na "front NIE MA juz bloku mirrora" —
 pozytywne potwierdzenie nieobecnosci, wzorem `test_trzy_katalogi_nie_maja_juz_
 bloku_mirrora_w_froncie` (karta FAB-L, katalog uziemienia SN/
@@ -55,7 +55,7 @@ import re
 from pathlib import Path
 
 import pytest
-from network_model.catalog.audit2_catalogs import (
+from network_model.catalog.katalogi_stacji import (
     BESS_OPERATION_MODE_CATALOG,
     HV_FUSE_CATALOG,
     TAP_CHANGER_CATALOG,
@@ -120,7 +120,7 @@ POLA_BEZ_PROWENIENCJI_ZAKAZANE = (
 #: `PGE`/`PSE` dopisane karta FAB-L (2026-09-05) — migracja pinu z usunietego
 #: frontendowego testu katalogu wariantow uziemienia SN (katalog uziemienia SN
 #: nie mial tu wczesniej ODPOWIADAJACEGO backendowego pinu operatorow).
-IMIONA_ZAKAZANE_W_KATALOGACH_AUDYTU2 = (
+IMIONA_ZAKAZANE_W_KATALOGACH_STACJI = (
     "Schneider",
     "Energa",
     "Tauron",
@@ -135,7 +135,7 @@ def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     """Karta FAB-L: `BESS_OPERATION_MODE_CATALOG`/`TAP_CHANGER_CATALOG` — jak wcześniej `BLOCK_TRANSFORMER_CATALOG`/`PF_CURVE_CATALOG`
     (karta FAB-J) — USUNIĘTE z `catalogs.ts` jako bloki `export const`, nie dlatego,
     że przestały istnieć, tylko dlatego, że przestały mieć DRUGĄ KOPIĘ do porównania.
-    Kreator czyta je dziś WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`),
+    Kreator czyta je dziś WYŁĄCZNIE ze snapshotu katalogow stacji (`useKatalogiStacjiSnapshot`),
     a selektory (`selectBessModesForPcs`/
     `selectTapChangersForTransformer`/`getTapChanger`) przyjmują katalog jako PARAMETR.
     Test potwierdza NIEOBECNOŚĆ wprost — sam brak wyjątku przy parsowaniu (stary
@@ -152,7 +152,7 @@ def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     ):
         assert f"export const {const_name}" not in front, (
             f"{const_name}: mirror wrócił do catalogs.ts — karta FAB-L wymaga "
-            "czytania WYŁĄCZNIE ze snapshotu audytu 2 (useAudit2CatalogSnapshot), "
+            "czytania WYŁĄCZNIE ze snapshotu katalogow stacji (useKatalogiStacjiSnapshot), "
             "nie drugiej kopii statycznej."
         )
     # Katalogi wciąż realne w backendzie (autorytet, serwowany przez snapshot) —
@@ -165,7 +165,7 @@ def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
 def test_wkladki_sn_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     """Karta FAB-M: `HV_FUSE_CATALOG` (mirror wkladek SN w `protection-catalogs.ts`,
     karta K-O) USUNIETY jako blok `export const` — front czyta katalog WYLACZNIE
-    ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`), a jedyny konsument
+    ze snapshotu katalogow stacji (`useKatalogiStacjiSnapshot`), a jedyny konsument
     produkcyjny (`StationConfigBaysCard.tsx`) dostaje go jako prop `hvFuses`.
     Test potwierdza NIEOBECNOSC wprost (wzorem FAB-L) — sam brak wyjatku przy
     parsowaniu nie odrozniałby "katalog usuniety celowo" od "test sie zepsul".
@@ -173,7 +173,7 @@ def test_wkladki_sn_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     front = _front_source(_FRONT_PROTECTION_CATALOGS_TS)
     assert "export const HV_FUSE_CATALOG" not in front, (
         "HV_FUSE_CATALOG: mirror wrocil do protection-catalogs.ts — karta FAB-M "
-        "wymaga czytania WYLACZNIE ze snapshotu audytu 2 (useAudit2CatalogSnapshot), "
+        "wymaga czytania WYLACZNIE ze snapshotu katalogow stacji (useKatalogiStacjiSnapshot), "
         "nie drugiej kopii statycznej."
     )
     # Katalog wciaz realny w backendzie (autorytet, serwowany przez snapshot) —
@@ -181,7 +181,7 @@ def test_wkladki_sn_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     assert len(HV_FUSE_CATALOG) > 0
 
 
-#: Wzorzec identyfikatora bezpiecznika SN katalogu audytu 2, np.
+#: Wzorzec identyfikatora bezpiecznika SN katalogu wkladek SN, np.
 #: `fuse_15kv_50a_full` / `fuse_20kv_25a_gp` — odrozniony od NIEPOWIAZANEGO
 #: literalu `fuse_set` (rodzaj aparatu pola, `konfiguratorRozdzielnicy.ts`) i od
 #: identyfikatorow z myslnikami rodziny ETI VV (`sw-fuse-eti-vv-17kv-63a`,
@@ -227,22 +227,18 @@ def test_kazdy_identyfikator_bezpiecznika_uzyty_w_froncie_istnieje_w_backendzie(
 
 
 def _wszystkie_pozycje_backendu() -> list[tuple[str, dict]]:
-    """Kazda pozycja KAZDEGO z siedmiu katalogow, w postaci serwowanej przez API.
+    """Kazda pozycja KAZDEGO katalogu snapshotu, w postaci serwowanej przez API.
 
     Sprawdzamy DANE, nie tekst zrodla: nota proweniencji w komentarzu wolno
     wymieniac usuniete pola i cudze imiona (po to jest), ale odpowiedz API — nie.
     """
-    from network_model.catalog.audit2_catalogs import (
-        DEVICE_WITHSTAND_CATALOG,
-        get_audit2_catalog_snapshot,
-    )
+    from network_model.catalog.katalogi_stacji import snapshot_katalogow_stacji
 
     pozycje: list[tuple[str, dict]] = []
-    for nazwa, lista in get_audit2_catalog_snapshot().to_dict().items():
+    for nazwa, lista in snapshot_katalogow_stacji().to_dict().items():
         for item in lista:
             pozycje.append((f"{nazwa}/{item['id']}", item))
-    assert pozycje, "snapshot katalogow audytu 2 nie moze byc pusty"
-    assert len(DEVICE_WITHSTAND_CATALOG) > 0
+    assert pozycje, "snapshot katalogow stacji nie moze byc pusty"
     return pozycje
 
 
@@ -266,8 +262,8 @@ def test_pole_bez_proweniencji_nie_wraca_do_zadnej_z_warstw(pole: str) -> None:
 POLA_PROWENIENCJI = ("zrodlo_pl", "source_reference", "pasmo_brak_powod_pl")
 
 
-@pytest.mark.parametrize("imie", IMIONA_ZAKAZANE_W_KATALOGACH_AUDYTU2)
-def test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2(imie: str) -> None:
+@pytest.mark.parametrize("imie", IMIONA_ZAKAZANE_W_KATALOGACH_STACJI)
+def test_cudze_imie_nie_wraca_do_danych_katalogow_stacji(imie: str) -> None:
     for opis, item in _wszystkie_pozycje_backendu():
         for klucz, wartosc in item.items():
             if klucz in POLA_PROWENIENCJI or not isinstance(wartosc, str):

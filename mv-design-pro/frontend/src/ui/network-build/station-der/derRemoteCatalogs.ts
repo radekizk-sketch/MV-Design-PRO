@@ -20,8 +20,8 @@
  * a typy operatora są typami kontraktu V2 (zero drugiej definicji).
  *
  * `PF_CURVE_CATALOG` / `BLOCK_TRANSFORMER_CATALOG` NIE są tutaj — te dwa
- * czyta się ze snapshotu audytu 2 już pobieranego przez kreator
- * (`useAudit2CatalogSnapshot`, `audit2-hooks.ts`), zgodnie z decyzją karty
+ * czyta się ze snapshotu katalogów stacji już pobieranego przez kreator
+ * (`useKatalogiStacjiSnapshot`, `katalogi-stacji-hooks.ts`), zgodnie z decyzją karty
  * (zero nowego zapytania sieciowego dla danych, które i tak już przychodzą).
  *
  * Karta FAB-L dopisuje:

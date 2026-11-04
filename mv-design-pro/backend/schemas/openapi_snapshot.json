@@ -515,39 +515,6 @@
     "title": "BatchResponse",
     "type": "object"
    },
-   "BayDeviceWithstandSpec": {
-    "description": "Prady zwarciowe w miejscu pola i czas wylaczenia — dane wejscia dowodu wytrzymalosci.\n\nOgraniczenia sa te same co w specyfikacji dowodu (`SpecDowoduWytrzymalosciAparatu`):\nzapis przyjmuje wylacznie dane, z ktorych dowod da sie zlozyc (prady nieujemne i\nskonczone, czas wylaczenia dodatni) — odmowa 422 przy zapisie zamiast bledu przy\nskladaniu pakietu.",
-    "properties": {
-     "device_id": {
-      "minLength": 1,
-      "title": "Device Id",
-      "type": "string"
-     },
-     "i_peak_calculated_ka": {
-      "minimum": 0.0,
-      "title": "I Peak Calculated Ka",
-      "type": "number"
-     },
-     "i_thermal_calculated_ka": {
-      "minimum": 0.0,
-      "title": "I Thermal Calculated Ka",
-      "type": "number"
-     },
-     "t_clearing_s": {
-      "exclusiveMinimum": 0.0,
-      "title": "T Clearing S",
-      "type": "number"
-     }
-    },
-    "required": [
-     "device_id",
-     "i_peak_calculated_ka",
-     "i_thermal_calculated_ka",
-     "t_clearing_s"
-    ],
-    "title": "BayDeviceWithstandSpec",
-    "type": "object"
-   },
    "BladArkuszaModel": {
     "description": "Zastrzeżenie do zawartości arkusza (arkusz/wiersz/kolumna/komunikat).\n\n`arkusz = \"model\"` oznacza zastrzeżenie kompilatora grafu albo walidatora modelu\n(dotyczy sieci złożonej ze wszystkich arkuszy naraz, np. szyna bez zasilania).",
     "properties": {
@@ -3459,136 +3426,6 @@
     "title": "DeklaracjeModulu",
     "type": "object"
    },
-   "DerAudit2Spec": {
-    "properties": {
-     "bess_operation_mode_refs": {
-      "anyOf": [
-       {
-        "items": {
-         "type": "string"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Bess Operation Mode Refs"
-     },
-     "block_transformer_catalog_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Block Transformer Catalog Ref"
-     },
-     "der_id": {
-      "title": "Der Id",
-      "type": "string"
-     },
-     "der_kind": {
-      "title": "Der Kind",
-      "type": "string"
-     },
-     "pf_curve_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Pf Curve Ref"
-     }
-    },
-    "required": [
-     "der_id",
-     "der_kind"
-    ],
-    "title": "DerAudit2Spec",
-    "type": "object"
-   },
-   "DerAudit2SpecPayload": {
-    "properties": {
-     "bess_operation_mode_refs": {
-      "anyOf": [
-       {
-        "items": {
-         "type": "string"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Bess Operation Mode Refs"
-     },
-     "block_transformer_catalog_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Block Transformer Catalog Ref"
-     },
-     "der_id": {
-      "title": "Der Id",
-      "type": "string"
-     },
-     "der_kind": {
-      "title": "Der Kind",
-      "type": "string"
-     },
-     "device_catalog_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Device Catalog Ref"
-     },
-     "nominal_power_kw": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Nominal Power Kw"
-     },
-     "pf_curve_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Pf Curve Ref"
-     }
-    },
-    "required": [
-     "der_id",
-     "der_kind"
-    ],
-    "title": "DerAudit2SpecPayload",
-    "type": "object"
-   },
    "DerCatalogBindingsRequest": {
     "description": "Wiązania katalogowe i profile zgodności wytwórcy wybierane PO jego utworzeniu.\n\nV12K-238 (pomiar: V12K-237). Kreator DER wysyła przy tworzeniu katalog urządzenia,\nbaterii i transformatora blokowego. Katalog zabezpieczeń, przekładniki CT/VT, dane\nprądu zwarciowego, model dynamiczny i profile zgodności są wybierane później — i do\ntej pory nie miały GDZIE spłynąć, bo konfigurator pisał wyłącznie do store\nprzeglądarki. Sześć osi gotowości opierało więc werdykt na danych, których model nie\nzna, a które przepadały po odświeżeniu strony.\n\nKAŻDE pole jest opcjonalne, ale ich brak i jawne ``null`` znaczą CO INNEGO: pole\npominięte zostawia wiązanie w modelu bez zmian, a ``null`` je USUWA (reguła gotowości\nznów widzi brak danej). Dlatego pola nie mają wartości domyślnych podstawianych po\ncichu — o rozróżnienie dba ``model_fields_set``.\n\nUWAGA: samo ``model_fields_set`` chroni tylko przed kasowaniem pól przez KSZTAŁT\nżądania. Przed kasowaniem ich przez WYŚCIG (dwa równoległe żądania czytające ten\nsam model przed zapisem) chroni dopiero blokada całego cyklu w końcówce.",
     "properties": {
@@ -4137,34 +3974,6 @@
      "name_pl"
     ],
     "title": "DeviceRatingPayload",
-    "type": "object"
-   },
-   "DeviceWithstandValidationRequest": {
-    "properties": {
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "i_peak_calculated_ka": {
-      "title": "I Peak Calculated Ka",
-      "type": "number"
-     },
-     "i_thermal_calculated_ka": {
-      "title": "I Thermal Calculated Ka",
-      "type": "number"
-     },
-     "t_clearing_s": {
-      "title": "T Clearing S",
-      "type": "number"
-     }
-    },
-    "required": [
-     "device_id",
-     "i_peak_calculated_ka",
-     "i_thermal_calculated_ka",
-     "t_clearing_s"
-    ],
-    "title": "DeviceWithstandValidationRequest",
     "type": "object"
    },
    "DiffSummaryResponse": {
@@ -5473,57 +5282,6 @@
     "title": "FreshnessReason",
     "type": "string"
    },
-   "GenerateAudit2ReportRequest": {
-    "properties": {
-     "formats": {
-      "default": [
-       "json",
-       "text_pl",
-       "latex"
-      ],
-      "items": {
-       "type": "string"
-      },
-      "title": "Formats",
-      "type": "array"
-     },
-     "generated_at_iso": {
-      "default": "1970-01-01T00:00:00Z",
-      "title": "Generated At Iso",
-      "type": "string"
-     },
-     "operator_pl": {
-      "default": "",
-      "title": "Operator Pl",
-      "type": "string"
-     },
-     "project_name": {
-      "title": "Project Name",
-      "type": "string"
-     },
-     "proof_pack": {
-      "additionalProperties": true,
-      "title": "Proof Pack",
-      "type": "object"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     },
-     "station_name": {
-      "title": "Station Name",
-      "type": "string"
-     }
-    },
-    "required": [
-     "project_name",
-     "station_id",
-     "station_name",
-     "proof_pack"
-    ],
-    "title": "GenerateAudit2ReportRequest",
-    "type": "object"
-   },
    "GeometriaSlupaLinii": {
     "description": "Geometria słupa linii napowietrznej — DANA PROJEKTU (karta LINIA-110).\n\nKażda składowa opcjonalna: ``None`` = projekt jej nie podaje, a obliczenie parametrów linii\nbiegnie z wartością roboczą rejestru ``network_model.catalog.wartosci_robocze`` (jakość\n``ESTIMATED``, kompletność dowodu ``NIEPELNY``). ``odgromowe == []`` to jawna deklaracja\nlinii BEZ przewodu odgromowego. ``liczba_w_wiazce`` — przewody w fazie (1 = przewód\npojedynczy, jak w standardzie ENEA linii 110 kV §4.1).",
     "properties": {
@@ -5943,29 +5701,6 @@
      }
     },
     "title": "HTTPValidationError",
-    "type": "object"
-   },
-   "HostingCapacityExportRequest": {
-    "properties": {
-     "p_export_kw": {
-      "title": "P Export Kw",
-      "type": "number"
-     },
-     "p_import_kw": {
-      "title": "P Import Kw",
-      "type": "number"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "station_id",
-     "p_export_kw",
-     "p_import_kw"
-    ],
-    "title": "HostingCapacityExportRequest",
     "type": "object"
    },
    "ImportArkuszaResponse": {
@@ -12530,6 +12265,57 @@
     "title": "PutOverridesRequest",
     "type": "object"
    },
+   "RaportPakietuRozszerzenRequest": {
+    "properties": {
+     "formats": {
+      "default": [
+       "json",
+       "text_pl",
+       "latex"
+      ],
+      "items": {
+       "type": "string"
+      },
+      "title": "Formats",
+      "type": "array"
+     },
+     "generated_at_iso": {
+      "default": "1970-01-01T00:00:00Z",
+      "title": "Generated At Iso",
+      "type": "string"
+     },
+     "operator_pl": {
+      "default": "",
+      "title": "Operator Pl",
+      "type": "string"
+     },
+     "project_name": {
+      "title": "Project Name",
+      "type": "string"
+     },
+     "proof_pack": {
+      "additionalProperties": true,
+      "title": "Proof Pack",
+      "type": "object"
+     },
+     "station_id": {
+      "title": "Station Id",
+      "type": "string"
+     },
+     "station_name": {
+      "title": "Station Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "project_name",
+     "station_id",
+     "station_name",
+     "proof_pack"
+    ],
+    "title": "RaportPakietuRozszerzenRequest",
+    "type": "object"
+   },
    "RegulaWiarygodnosciOdpowiedz": {
     "description": "Opis reguly wiarygodnosci — zeby front nie mial wlasnej kopii uzasadnien.",
     "properties": {
@@ -14344,18 +14130,6 @@
       "title": "Analysis Type",
       "type": "string"
      },
-     "audit2_extensions": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Audit2 Extensions"
-     },
      "case_id": {
       "title": "Case Id",
       "type": "string"
@@ -14710,89 +14484,6 @@
      "krawedzie_pominiete"
     ],
     "title": "StanZasileniaOdpowiedz",
-    "type": "object"
-   },
-   "StationAudit2BuildRequest": {
-    "properties": {
-     "der_specs": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/DerAudit2Spec"
-      },
-      "title": "Der Specs",
-      "type": "array"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     },
-     "tap_changer_refs": {
-      "anyOf": [
-       {
-        "items": {
-         "type": "string"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Tap Changer Refs"
-     }
-    },
-    "required": [
-     "station_id"
-    ],
-    "title": "StationAudit2BuildRequest",
-    "type": "object"
-   },
-   "StationAudit2ConfigBody": {
-    "properties": {
-     "bay_device_withstand": {
-      "additionalProperties": {
-       "$ref": "#/components/schemas/BayDeviceWithstandSpec"
-      },
-      "title": "Bay Device Withstand",
-      "type": "object"
-     },
-     "bay_hv_fuses": {
-      "additionalProperties": {
-       "type": "string"
-      },
-      "title": "Bay Hv Fuses",
-      "type": "object"
-     },
-     "bay_vts": {
-      "additionalProperties": {
-       "type": "string"
-      },
-      "title": "Bay Vts",
-      "type": "object"
-     },
-     "der_specs": {
-      "items": {
-       "$ref": "#/components/schemas/DerAudit2SpecPayload"
-      },
-      "title": "Der Specs",
-      "type": "array"
-     },
-     "tap_changer_refs": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Tap Changer Refs",
-      "type": "array"
-     },
-     "transformer_tap_changers": {
-      "additionalProperties": {
-       "type": "string"
-      },
-      "title": "Transformer Tap Changers",
-      "type": "object"
-     }
-    },
-    "title": "StationAudit2ConfigBody",
     "type": "object"
    },
    "StatusDanych": {
@@ -19730,38 +19421,6 @@
      },
      {
       "in": "query",
-      "name": "project_id",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Project Id"
-      }
-     },
-     {
-      "in": "query",
-      "name": "station_id",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Station Id"
-      }
-     },
-     {
-      "in": "query",
       "name": "scenario",
       "required": false,
       "schema": {
@@ -21220,7 +20879,7 @@
   },
   "/api/cases/{case_id}/enm/wytrzymalosc-aparatury": {
    "post": {
-    "description": "Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).\n\nAparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),\na zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —\nkażdy wiersz niesie jawne ``zrodlo``. Prądy pola i czas wyłączenia pola liczone są\nz wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka\nporównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.",
+    "description": "Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).\n\nAparaty biorą się WYŁĄCZNIE z MODELU (pozycja katalogu APARAT_SN wskazana na aparacie\npola) — każdy wiersz niesie ``zrodlo`` = ``model``. Prądy pola i czas wyłączenia pola liczone są\nz wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka\nporównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.",
     "operationId": "post_wytrzymalosc_aparatury_api_cases__case_id__enm_wytrzymalosc_aparatury_post",
     "parameters": [
      {
@@ -29666,7 +29325,7 @@
   },
   "/api/protection-runs/{run_id}/execute": {
    "post": {
-    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. Karta DYNAMIKA-W-TLE: this endpoint queues the\nrun on the in-process executor (202, status QUEUED) — the protection evaluation\nengine (interpretation, zero physics) runs in the background and stores the\nresult on the CanonicalRun (R1); poll `GET /protection-runs/{run_id}` until\nFINISHED, FAILED or CANCELLED.\n\nReturns:\n- Run metadata with the current status (QUEUED right after acceptance)\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B): rozpływ\nzwarciowy na żądanie biegu źródłowego z opcjami audytu 2 czyta konfigurację stacji\nprzez `UnitOfWork` TEGO żądania, nie przez fabrykę zbudowaną z `DATABASE_URL`.",
+    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. Karta DYNAMIKA-W-TLE: this endpoint queues the\nrun on the in-process executor (202, status QUEUED) — the protection evaluation\nengine (interpretation, zero physics) runs in the background and stores the\nresult on the CanonicalRun (R1); poll `GET /protection-runs/{run_id}` until\nFINISHED, FAILED or CANCELLED.\n\nReturns:\n- Run metadata with the current status (QUEUED right after acceptance)",
     "operationId": "execute_protection_run_api_protection_runs__run_id__execute_post",
     "parameters": [
      {
@@ -32698,10 +32357,10 @@
     ]
    }
   },
-  "/api/v1/catalog/audit2/bess-operation-modes": {
+  "/api/v1/catalog/konfiguracja-stacji/bess-operation-modes": {
    "get": {
     "description": "Tryby pracy BESS (eng.10): peak shaving / FCR / aFRR / mFRR / Q(U) / island / etc.",
-    "operationId": "list_bess_operation_modes_api_v1_catalog_audit2_bess_operation_modes_get",
+    "operationId": "list_bess_operation_modes_api_v1_catalog_konfiguracja_stacji_bess_operation_modes_get",
     "responses": {
      "200": {
       "content": {
@@ -32711,7 +32370,7 @@
           "additionalProperties": true,
           "type": "object"
          },
-         "title": "Response List Bess Operation Modes Api V1 Catalog Audit2 Bess Operation Modes Get",
+         "title": "Response List Bess Operation Modes Api V1 Catalog Konfiguracja Stacji Bess Operation Modes Get",
          "type": "array"
         }
        }
@@ -32721,14 +32380,14 @@
     },
     "summary": "List Bess Operation Modes",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/block-transformers": {
+  "/api/v1/catalog/konfiguracja-stacji/block-transformers": {
    "get": {
-    "description": "Transformatory dedykowane block-trafo (B.5) dla DER PV/BESS/FW.",
-    "operationId": "list_block_transformers_api_v1_catalog_audit2_block_transformers_get",
+    "description": "Transformatory dedykowane zrodel (B.5) — wybor pozycji katalogu transformatorow.",
+    "operationId": "list_block_transformers_api_v1_catalog_konfiguracja_stacji_block_transformers_get",
     "responses": {
      "200": {
       "content": {
@@ -32738,7 +32397,7 @@
           "additionalProperties": true,
           "type": "object"
          },
-         "title": "Response List Block Transformers Api V1 Catalog Audit2 Block Transformers Get",
+         "title": "Response List Block Transformers Api V1 Catalog Konfiguracja Stacji Block Transformers Get",
          "type": "array"
         }
        }
@@ -32748,19 +32407,19 @@
     },
     "summary": "List Block Transformers",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/build-station-payload": {
+  "/api/v1/catalog/konfiguracja-stacji/generate-report": {
    "post": {
-    "description": "Naprawy Phase 3: buduje deterministyczny payload audytu 2 dla stacji + DERs.\nZwraca rozwiniete katalogi (BESS modes, block-trafo, P(f), tap-changer)\n+ ekstraktor dla solverow (SC/PF/Protection).",
-    "operationId": "build_station_audit2_payload_endpoint_api_v1_catalog_audit2_build_station_payload_post",
+    "description": "Raport pakietu dowodow rozszerzen stacji: struktura JSON, tekst PL i LaTeX.",
+    "operationId": "generate_report_endpoint_api_v1_catalog_konfiguracja_stacji_generate_report_post",
     "requestBody": {
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/StationAudit2BuildRequest"
+        "$ref": "#/components/schemas/RaportPakietuRozszerzenRequest"
        }
       }
      },
@@ -32772,7 +32431,7 @@
        "application/json": {
         "schema": {
          "additionalProperties": true,
-         "title": "Response Build Station Audit2 Payload Endpoint Api V1 Catalog Audit2 Build Station Payload Post",
+         "title": "Response Generate Report Endpoint Api V1 Catalog Konfiguracja Stacji Generate Report Post",
          "type": "object"
         }
        }
@@ -32790,87 +32449,16 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Build Station Audit2 Payload Endpoint",
+    "summary": "Generate Report Endpoint",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/device-withstand": {
-   "get": {
-    "description": "Wytrzymalosc aparatury I_dyn / I_th (eng.18, IEC 60909).",
-    "operationId": "list_device_withstand_api_v1_catalog_audit2_device_withstand_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response List Device Withstand Api V1 Catalog Audit2 Device Withstand Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "summary": "List Device Withstand",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/generate-report": {
-   "post": {
-    "description": "Naprawy Phase 5: generuje raport audytu 2 w wybranych formatach.\nZwraca JSON struktury + text PL + LaTeX (defaults). PDF/DOCX dostepne\nprzez osobne endpointy `/generate-report.pdf` i `/generate-report.docx`.",
-    "operationId": "generate_audit2_report_endpoint_api_v1_catalog_audit2_generate_report_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/GenerateAudit2ReportRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Generate Audit2 Report Endpoint Api V1 Catalog Audit2 Generate Report Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Generate Audit2 Report Endpoint",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/hv-fuses": {
+  "/api/v1/catalog/konfiguracja-stacji/hv-fuses": {
    "get": {
     "description": "Bezpieczniki SN/HV (eng.17): full-range / general-purpose / back-up.",
-    "operationId": "list_hv_fuses_api_v1_catalog_audit2_hv_fuses_get",
+    "operationId": "list_hv_fuses_api_v1_catalog_konfiguracja_stacji_hv_fuses_get",
     "responses": {
      "200": {
       "content": {
@@ -32880,7 +32468,7 @@
           "additionalProperties": true,
           "type": "object"
          },
-         "title": "Response List Hv Fuses Api V1 Catalog Audit2 Hv Fuses Get",
+         "title": "Response List Hv Fuses Api V1 Catalog Konfiguracja Stacji Hv Fuses Get",
          "type": "array"
         }
        }
@@ -32890,14 +32478,14 @@
     },
     "summary": "List Hv Fuses",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/pf-curves": {
+  "/api/v1/catalog/konfiguracja-stacji/pf-curves": {
    "get": {
-    "description": "Krzywe P(f) (eng.9, NC RfG Art. 13/15).",
-    "operationId": "list_pf_curves_api_v1_catalog_audit2_pf_curves_get",
+    "description": "Nastawy trybu czestotliwosciowego P(f) (eng.9, NC RfG art. 13/15).",
+    "operationId": "list_pf_curves_api_v1_catalog_konfiguracja_stacji_pf_curves_get",
     "responses": {
      "200": {
       "content": {
@@ -32907,7 +32495,7 @@
           "additionalProperties": true,
           "type": "object"
          },
-         "title": "Response List Pf Curves Api V1 Catalog Audit2 Pf Curves Get",
+         "title": "Response List Pf Curves Api V1 Catalog Konfiguracja Stacji Pf Curves Get",
          "type": "array"
         }
        }
@@ -32917,21 +32505,21 @@
     },
     "summary": "List Pf Curves",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/snapshot": {
+  "/api/v1/catalog/konfiguracja-stacji/snapshot": {
    "get": {
-    "description": "Snapshot wszystkich katalogow audytu 2 (jednym wywolaniem).",
-    "operationId": "get_snapshot_api_v1_catalog_audit2_snapshot_get",
+    "description": "Wszystkie katalogi konfiguracji stacji jednym wywolaniem.",
+    "operationId": "get_snapshot_api_v1_catalog_konfiguracja_stacji_snapshot_get",
     "responses": {
      "200": {
       "content": {
        "application/json": {
         "schema": {
          "additionalProperties": true,
-         "title": "Response Get Snapshot Api V1 Catalog Audit2 Snapshot Get",
+         "title": "Response Get Snapshot Api V1 Catalog Konfiguracja Stacji Snapshot Get",
          "type": "object"
         }
        }
@@ -32941,14 +32529,14 @@
     },
     "summary": "Get Snapshot",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/tap-changers": {
+  "/api/v1/catalog/konfiguracja-stacji/tap-changers": {
    "get": {
     "description": "Przelaczniki zaczepow (eng.13): OLTC 110/SN, DETC SN/nN, OLTC SN/nN.",
-    "operationId": "list_tap_changers_api_v1_catalog_audit2_tap_changers_get",
+    "operationId": "list_tap_changers_api_v1_catalog_konfiguracja_stacji_tap_changers_get",
     "responses": {
      "200": {
       "content": {
@@ -32958,7 +32546,7 @@
           "additionalProperties": true,
           "type": "object"
          },
-         "title": "Response List Tap Changers Api V1 Catalog Audit2 Tap Changers Get",
+         "title": "Response List Tap Changers Api V1 Catalog Konfiguracja Stacji Tap Changers Get",
          "type": "array"
         }
        }
@@ -32968,102 +32556,14 @@
     },
     "summary": "List Tap Changers",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/catalog/audit2/validate-device-withstand": {
-   "post": {
-    "description": "Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).",
-    "operationId": "validate_device_withstand_endpoint_api_v1_catalog_audit2_validate_device_withstand_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/DeviceWithstandValidationRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Validate Device Withstand Endpoint Api V1 Catalog Audit2 Validate Device Withstand Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Validate Device Withstand Endpoint",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/validate-hosting-capacity-export": {
-   "post": {
-    "description": "Naprawa eng.15: walidacja eksportu vs import dla stacji.",
-    "operationId": "validate_hosting_capacity_export_endpoint_api_v1_catalog_audit2_validate_hosting_capacity_export_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/HostingCapacityExportRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Validate Hosting Capacity Export Endpoint Api V1 Catalog Audit2 Validate Hosting Capacity Export Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Validate Hosting Capacity Export Endpoint",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
-  "/api/v1/catalog/audit2/validate-vt-grounding": {
+  "/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding": {
    "post": {
     "description": "Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia.",
-    "operationId": "validate_vt_grounding_api_v1_catalog_audit2_validate_vt_grounding_post",
+    "operationId": "validate_vt_grounding_api_v1_catalog_konfiguracja_stacji_validate_vt_grounding_post",
     "requestBody": {
      "content": {
       "application/json": {
@@ -33080,7 +32580,7 @@
        "application/json": {
         "schema": {
          "additionalProperties": true,
-         "title": "Response Validate Vt Grounding Api V1 Catalog Audit2 Validate Vt Grounding Post",
+         "title": "Response Validate Vt Grounding Api V1 Catalog Konfiguracja Stacji Validate Vt Grounding Post",
          "type": "object"
         }
        }
@@ -33100,63 +32600,14 @@
     },
     "summary": "Validate Vt Grounding",
     "tags": [
-     "Audit2 Catalogs"
+     "Katalogi konfiguracji stacji"
     ]
    }
   },
-  "/api/v1/projects/{project_id}/audit2-station-config": {
-   "get": {
-    "description": "Lista wszystkich konfiguracji audytu 2 dla projektu.",
-    "operationId": "list_station_audit2_configs_api_v1_projects__project_id__audit2_station_config_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response List Station Audit2 Configs Api V1 Projects  Project Id  Audit2 Station Config Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "List Station Audit2 Configs",
-    "tags": [
-     "Audit2 Station Config"
-    ]
-   }
-  },
-  "/api/v1/projects/{project_id}/audit2-station-config/_validate-all": {
+  "/api/v1/projects/{project_id}/stations/_validate-all": {
    "post": {
-    "description": "Pakiet dowodów walidacji rozszerzeń dla KAŻDEJ stacji z zapisaną konfiguracją.\n\nJedyna droga produktu do pakietu (karta PROOFPACK-KONTRAKT): pakiet składa backend\nz utrwalonych konfiguracji stacji i z modelu sieci projektu\n(`application.proof_engine.packs.audit2_skladanie`) — nazwy z modelu, bilans mocy\nw backendzie, rodzaj bez danych jawnie oznaczony z przyczyną. Dawna końcówka\n`POST /api/v1/catalog/audit2/generate-proof-pack` (nietypowane specyfikacje\nskładane przez interfejs) została usunięta.\n\nBezpieczne: nie modyfikuje modelu ani konfiguracji; te same dane dają te same bajty.",
-    "operationId": "validate_all_audit2_api_v1_projects__project_id__audit2_station_config__validate_all_post",
+    "description": "Pakiet dowodów walidacji rozszerzeń dla KAŻDEJ stacji modelu sieci projektu.\n\nJedyna droga produktu do pakietu (karta PROOFPACK-KONTRAKT): pakiet składa backend\nz modelu sieci — nazwy z modelu, bilans mocy w backendzie, rodzaj bez danych jawnie\noznaczony z przyczyną. Bezpieczne: nie modyfikuje modelu; te same dane dają te same bajty.",
+    "operationId": "pakiet_dowodow_rozszerzen_api_v1_projects__project_id__stations__validate_all_post",
     "parameters": [
      {
       "in": "path",
@@ -33175,7 +32626,7 @@
        "application/json": {
         "schema": {
          "additionalProperties": true,
-         "title": "Response Validate All Audit2 Api V1 Projects  Project Id  Audit2 Station Config  Validate All Post",
+         "title": "Response Pakiet Dowodow Rozszerzen Api V1 Projects  Project Id  Stations  Validate All Post",
          "type": "object"
         }
        }
@@ -33193,233 +32644,16 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Validate All Audit2",
+    "summary": "Pakiet Dowodow Rozszerzen",
     "tags": [
-     "Audit2 Station Config"
+     "Pakiet dowodów rozszerzeń stacji"
     ]
    }
   },
-  "/api/v1/projects/{project_id}/audit2-station-config/{station_id}": {
-   "delete": {
-    "description": "Usuwa konfiguracje audytu 2 dla (project_id, station_id).",
-    "operationId": "delete_station_audit2_config_api_v1_projects__project_id__audit2_station_config__station_id__delete",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "204": {
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Delete Station Audit2 Config",
-    "tags": [
-     "Audit2 Station Config"
-    ]
-   },
-   "get": {
-    "description": "Pobiera konfiguracje audytu 2 dla (project_id, station_id).",
-    "operationId": "get_station_audit2_config_api_v1_projects__project_id__audit2_station_config__station_id__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Station Audit2 Config Api V1 Projects  Project Id  Audit2 Station Config  Station Id  Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Station Audit2 Config",
-    "tags": [
-     "Audit2 Station Config"
-    ]
-   },
-   "put": {
-    "description": "UPSERT konfiguracji audytu 2.\n\nJesli wiersz istnieje (project_id, station_id) - update.\nJesli nie - insert nowy.",
-    "operationId": "upsert_station_audit2_config_api_v1_projects__project_id__audit2_station_config__station_id__put",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/StationAudit2ConfigBody"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Upsert Station Audit2 Config Api V1 Projects  Project Id  Audit2 Station Config  Station Id  Put",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Upsert Station Audit2 Config",
-    "tags": [
-     "Audit2 Station Config"
-    ]
-   }
-  },
-  "/api/v1/projects/{project_id}/audit2-station-config/{station_id}/_apply-to-network-model": {
+  "/api/v1/projects/{project_id}/stations/{station_id}/_uziemienie-sn": {
    "post": {
-    "description": "Phase 26: aplikuje audit2 config (z DB) do dummy graph i zwraca audit trail\naplikowanych zmian. Sprawdza ze pelna petla dziala:\n  DB audit2 config -> build_station_audit2_payload ->\n  extract_solver_extensions -> apply_audit2_to_network_model -> applied dict.\n\nEndpoint dla diagnostyki + integracji UI (uruchamia adjustment przed run'em).",
-    "operationId": "apply_audit2_to_network_model_endpoint_api_v1_projects__project_id__audit2_station_config__station_id___apply_to_network_model_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Apply Audit2 To Network Model Endpoint Api V1 Projects  Project Id  Audit2 Station Config  Station Id   Apply To Network Model Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Apply Audit2 To Network Model Endpoint",
-    "tags": [
-     "Audit2 Station Config"
-    ]
-   }
-  },
-  "/api/v1/projects/{project_id}/audit2-station-config/{station_id}/_uziemienie-sn": {
-   "post": {
-    "description": "Sposób uziemienia punktu neutralnego sieci SN pól stacji — z MODELU sieci projektu.\n\nKarta UX-04/POLE-ZU-SKLADOWA-ZEROWA: jedyną prawdą o uziemieniu sieci SN jest zespół\nuziemiający sekcji (albo uziemiony punkt neutralny uzwojenia transformatora) —\n``enm.uziemienie_sekcji``. Konfigurator stacji nie trzyma już własnego wyboru\nuziemienia; zgodność przekładników napięciowych sprawdza z typem stąd. Pole bez\nustalonego typu niesie nazwaną przyczynę (stacja spoza modelu, brak szyn SN, odmowa\nsekcji, pole w sekcjach różnie uziemionych); ``sekcje`` — opis każdej sieci SN stacji\n(wariant, punkty uziemienia, prąd pojemnościowy, rozstrojenie, odmowy, kompletność).\nOdczyt — nie zmienia modelu.",
-    "operationId": "uziemienie_sn_pol_stacji_api_v1_projects__project_id__audit2_station_config__station_id___uziemienie_sn_post",
+    "description": "Sposób uziemienia punktu neutralnego sieci SN pól stacji — z MODELU sieci projektu.\n\nKarta UX-04/POLE-ZU-SKLADOWA-ZEROWA: jedyną prawdą o uziemieniu sieci SN jest zespół\nuziemiający sekcji (albo uziemiony punkt neutralny uzwojenia transformatora) —\n``enm.uziemienie_sekcji``. Pole bez ustalonego typu niesie nazwaną przyczynę (stacja spoza\nmodelu, brak szyn SN, odmowa sekcji, pole w sekcjach różnie uziemionych); ``sekcje`` — opis\nkażdej sieci SN stacji. Odczyt — nie zmienia modelu.",
+    "operationId": "uziemienie_sn_pol_stacji_api_v1_projects__project_id__stations__station_id___uziemienie_sn_post",
     "parameters": [
      {
       "in": "path",
@@ -33457,7 +32691,7 @@
        "application/json": {
         "schema": {
          "additionalProperties": true,
-         "title": "Response Uziemienie Sn Pol Stacji Api V1 Projects  Project Id  Audit2 Station Config  Station Id   Uziemienie Sn Post",
+         "title": "Response Uziemienie Sn Pol Stacji Api V1 Projects  Project Id  Stations  Station Id   Uziemienie Sn Post",
          "type": "object"
         }
        }
@@ -33477,7 +32711,7 @@
     },
     "summary": "Uziemienie Sn Pol Stacji",
     "tags": [
-     "Audit2 Station Config"
+     "Pakiet dowodów rozszerzeń stacji"
     ]
    }
   },

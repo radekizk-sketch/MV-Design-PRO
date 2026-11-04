@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 import pytest
-from network_model.catalog.audit2_catalogs import (
+from network_model.catalog.katalogi_stacji import (
     ETYKIETY_KLAS_TRANSFORMATORA,
     TAP_CHANGER_CATALOG,
     klasa_transformatora_przelacznika,

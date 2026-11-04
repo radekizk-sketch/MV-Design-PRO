@@ -50,7 +50,7 @@ from enm.store import set_enm as _set_enm
 from enm.topology import transformatory_zasilajace_gpz
 from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from network_model.catalog.audit2_catalogs import get_block_transformer
+from network_model.catalog.katalogi_stacji import get_block_transformer
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,

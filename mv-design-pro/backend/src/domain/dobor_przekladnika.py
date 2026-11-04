@@ -606,7 +606,8 @@ def wymagany_wspolczynnik_napieciowy(tryb: str | None, uklad: str | None = None)
     „rezystor" nalezy do rodziny 1,9 SWIADOMIE: siec uziemiona przez rezystor NIE jest
     siecia skutecznie uziemiona — przy zwarciu doziemnym napiecie faz zdrowych rosnie
     praktycznie do miedzyfazowego, wiec wymaganie 1,5 byloby zanizone. Tak brzmial
-    rozjazd V12K-256: `audit2_catalogs` mial wlasna, lagodniejsza wersje tej samej reguly.
+    rozjazd V12K-256: katalog konfiguracji stacji mial wlasna, lagodniejsza wersje tej samej
+    reguly.
 
     `None` = nie da sie ustalic (nieznane uziemienie albo nierozpoznany uklad pracy);
     wymagania NIE zgadujemy (V12K-246).

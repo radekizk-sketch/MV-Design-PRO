@@ -320,7 +320,6 @@ class BatchExecutionService:
         batch_id: UUID,
         *,
         klucz_twin: str,
-        uow_factory: Callable[[], Any] | None = None,
     ) -> RunBatch:
         """Przyjmij serię do kolejki wykonawcy w tle (CREATED → QUEUED atomowo) i wróć.
 
@@ -343,9 +342,7 @@ class BatchExecutionService:
             raise BatchNotPendingError(str(batch_id), batch.status.value)
         wykonawca_biegow.zlec(
             klucz_serii(batch_id),
-            lambda kontekst: self.execute_batch(
-                batch_id, klucz_twin=klucz_twin, uow_factory=uow_factory, kontekst=kontekst
-            ),
+            lambda kontekst: self.execute_batch(batch_id, klucz_twin=klucz_twin, kontekst=kontekst),
         )
         return self._get_batch(batch_id)
 
@@ -383,7 +380,6 @@ class BatchExecutionService:
         batch_id: UUID,
         *,
         klucz_twin: str,
-        uow_factory: Callable[[], Any] | None = None,
         kontekst: KontekstWykonania | None = None,
     ) -> RunBatch:
         """Wykonaj serię sekwencyjnie torem kanonicznym.
@@ -413,12 +409,6 @@ class BatchExecutionService:
         przypadku serii. Serwis jest bezstanowy wobec bazy danych domenowej —
         tłumaczenie `case_id -> klucz` dzieje się WYŁĄCZNIE u wołającego
         (`api/batch_execution.py`).
-
-        `uow_factory` (CV-4.2b) — fabryka `UnitOfWork` wołającego, podawana
-        każdemu biegowi pozycji (`execute_run(run.id, uow_factory=...)`): bieg
-        zwarciowy ze scenariuszem, którego opcje wskazują konfigurację audytu 2
-        stacji, czyta ją TĄ SAMĄ bazą, którą widzi reszta żądania — serwis nie
-        buduje własnego połączenia.
         """
         batch = self._get_batch(batch_id)
         # Przejęcie ATOMOWE (CREATED/QUEUED → RUNNING w jednym UPDATE) — dawny odczyt
@@ -455,7 +445,7 @@ class BatchExecutionService:
                     self._zapisz(batch)
                     return batch
             try:
-                zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
+                zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja)
             except Exception as exc:
                 # Błąd PROGRAMU (karta #151) nie jest awarią pozycji: seria nie może
                 # zostać w RUNNING, więc bieżąca i wszystkie niewykonane pozycje dostają
@@ -501,7 +491,6 @@ class BatchExecutionService:
         klucz_twin: str,
         batch: RunBatch,
         pozycja: RunBatchItem,
-        uow_factory: Callable[[], Any] | None,
     ) -> RunBatchItem:
         """Wykonaj JEDNĄ pozycję — zwraca pozycję w stanie KOŃCOWYM (FINISHED/FAILED).
 
@@ -528,7 +517,7 @@ class BatchExecutionService:
                 # scenariusz z aktywnym biegiem serii.
                 scenariusz=wpis,
             )
-            run = self._execute_canonical_run(run.id, uow_factory=uow_factory)
+            run = self._execute_canonical_run(run.id)
             if run.status != "FINISHED":
                 return RunBatchItem(
                     position=pozycja.position,

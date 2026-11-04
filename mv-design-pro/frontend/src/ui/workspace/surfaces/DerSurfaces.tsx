@@ -42,7 +42,7 @@ import {
   selectAllDers,
   selectDerById,
   snPointKindForBus,
-  useAudit2CatalogSnapshot,
+  useKatalogiStacjiSnapshot,
   useBessBatteryTypes,
   useDerDynamicProfiles,
   opisKlasyfikacjiNcRfg,
@@ -1124,10 +1124,10 @@ function DerSurfaceShell({
     derId ? selectDerById(state, derId) : null,
   );
   const snapshot = useSnapshotStore((state) => state.snapshot);
-  // Karta FAB-J: snapshot audytu 2 pobrany TU (przed jego pierwszym użyciem w
+  // Karta FAB-J: snapshot katalogów stacji pobrany TU (przed jego pierwszym użyciem w
   // `snapshotDer` niżej) — transformatory dedykowane WYŁĄCZNIE z backendu,
   // zero statyku modułowego usuniętego z `catalogs.ts`.
-  const blockTransformers = useAudit2CatalogSnapshot().data?.block_transformers ?? [];
+  const blockTransformers = useKatalogiStacjiSnapshot().data?.block_transformers ?? [];
   const snapshotDer = useMemo(
     () => buildDerFromGenerator(
       derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
@@ -1179,11 +1179,11 @@ function DerSurfaceShell({
       aktualne = false;
     };
   }, []);
-  // Karta FAB-J: PF curves ze snapshotu audytu 2 (`blockTransformers` już
+  // Karta FAB-J: PF curves ze snapshotu katalogów stacji (`blockTransformers` już
   // pobrany wyżej) + katalog operatorów NC RfG (profil + ride-through) +
   // katalog baterii BESS — WYŁĄCZNIE z backendu, zero statyku modułowego
   // usuniętego z `catalogs.ts`.
-  const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
+  const pfCurves = useKatalogiStacjiSnapshot().data?.pf_curves ?? [];
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const bessBatteries = useBessBatteryTypes().data ?? [];
   // Karta FAB-L: profile dynamiczne DER — WYŁĄCZNIE z backendu, zero statyku

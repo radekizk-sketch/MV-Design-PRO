@@ -288,7 +288,7 @@ def execute_batch(
     klucz = klucz_twin_z_sciezki(str(batch_przed.case_id), http_request)
 
     try:
-        batch = service.zlec_serie(parsed_batch_id, klucz_twin=klucz, uow_factory=uow_factory)
+        batch = service.zlec_serie(parsed_batch_id, klucz_twin=klucz)
         return _do_odpowiedzi(batch, uow_factory)
     except BatchNotFoundError as exc:
         raise HTTPException(

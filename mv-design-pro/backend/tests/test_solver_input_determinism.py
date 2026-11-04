@@ -209,7 +209,7 @@ class TestSolverInputDeterminism:
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
-        assert env.solver_input_version == "2.0"
+        assert env.solver_input_version == "3.0"
 
     def test_bus_order_deterministic(self):
         """Buses are sorted by ref_id regardless of insertion order."""

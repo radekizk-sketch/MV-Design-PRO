@@ -201,7 +201,7 @@ test('ZU × GPZ-MODEL: kreator źródła — uziemienie sieci SN zespołem uziem
 
   // Odczyt uziemienia stacji — ta sama funkcja, którą czyta konfigurator stacji.
   const odczyt = await request.post(
-    `${BACKEND_BASE}/api/v1/projects/${projectId}/audit2-station-config/${gpz?.ref_id}/_uziemienie-sn`,
+    `${BACKEND_BASE}/api/v1/projects/${projectId}/stations/${encodeURIComponent(gpz?.ref_id ?? "")}/_uziemienie-sn`,
     { data: { pola: [] }, timeout: 30000 },
   );
   expect(odczyt.ok()).toBeTruthy();

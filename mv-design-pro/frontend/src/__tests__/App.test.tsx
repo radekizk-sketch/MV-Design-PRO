@@ -14,7 +14,7 @@ import { App } from '../App';
 import type { EnergyNetworkModel } from '../types/enm';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useThemeModeStore } from '../ui2/theme/themeMode';
-// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot audytu 2 przez React Query —
+// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot katalogów stacji przez React Query —
 // produkcja dostaje `QueryClientProvider` w `main.tsx`, test tego samego drzewa
 // dostaje go tym samym helperem co testy kreatora DER.
 import { renderWithQueryClient } from '../test/queryClientTestUtils';

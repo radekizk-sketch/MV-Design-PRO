@@ -89,7 +89,7 @@ w `docs/v12xx/REJESTR_KONFLIKTOW.md` (wiersz PACK-BEZ-KONSUMENTA), nie z powodu 
 ## 4. Powierzchnia API (`backend/src/api/`, 61 modułów — pomiar 2026-09-09, karta K2: 62→61,
 `api/reference_networks.py` skasowany)
 
-Routery wpięte w `main.py` (38, stan HEAD `b30249d`): analysis_runs, audit2_catalogs, audit2_station_config,
+Routery wpięte w `main.py` (38, stan HEAD `b30249d`): analysis_runs, ~~audit2_catalogs~~ (przemianowany na `katalogi_stacji` — katalogi stacji pod `/api/v1/catalog/konfiguracja-stacji`), ~~audit2_station_config~~ (skasowany karta JEDNA-SCIEZKA-EDYCJI 2026-11-04 — zapisana konfiguracja stacji obok modelu; pakiet uzasadnień i odczyt uziemienia stacji z modelu: `pakiet_rozszerzen_stacji`),
 catalog, comparison, diagnostics, equipment_proof_pack, health, ncrfg_ptpiree_tests,
 power_flow_comparisons, power_flow_runs, ~~reference_networks~~ (skasowany K2 2026-09-09), project_archive, projects, proof_pack,
 protection_comparisons, protection_analysis_runs, reference_patterns, ~~sld~~ (skasowany W1 2026-09-09), station_templates,

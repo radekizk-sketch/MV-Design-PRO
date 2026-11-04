@@ -958,8 +958,9 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
             # identyfikator realny, nie dowolny lancuch (`dyn_pv_wecc` nie istnieje).
             "dynamic_model_ref": "default_pv_gfl",
             "nc_rfg_profile_ref": "pse",
-            # Karta FAB-L: tryby pracy BESS trafiają teraz do tego samego wiązania
-            # (DER_PROFILE_KEYS), nie tylko do `station_audit2_configs`.
+            # Karta FAB-L: tryby pracy BESS trafiają do tego samego wiązania
+            # (DER_PROFILE_KEYS) — od karty JEDNA-SCIEZKA-EDYCJI jedyne miejsce trybów
+            # (zapisana konfiguracja stacji obok modelu skasowana).
             "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
         },
     )

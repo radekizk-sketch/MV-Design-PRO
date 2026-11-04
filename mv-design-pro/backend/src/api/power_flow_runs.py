@@ -398,16 +398,11 @@ def create_power_flow_run(
 
 
 @router.post("/power-flow-runs/{run_id}/execute", status_code=status.HTTP_202_ACCEPTED)
-def execute_power_flow_run(
-    run_id: UUID,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
+def execute_power_flow_run(run_id: UUID) -> dict[str, Any]:
     _require_canonical_run(run_id)
     # Karta DYNAMIKA-W-TLE: bieg trafia do kolejki wykonawcy w tle (202, stan QUEUED);
     # klient odpytuje `GET /power-flow-runs/{run_id}` do stanu końcowego.
-    # CV-4.2b: fabryka `UnitOfWork` żądania idzie do wykonawcy — rozpływ z
-    # konfiguracją audytu 2 stacji czyta ją tą samą bazą, którą ją zapisano.
-    run = wykonawca_biegow.zlec_bieg(run_id, uow_factory=uow_factory)
+    run = wykonawca_biegow.zlec_bieg(run_id)
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {

@@ -19,8 +19,8 @@ import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
 /**
- * Karta FAB-J: `DerSurfaceShell` czyta katalogi audytu 2 / NC RfG / baterii BESS
- * przez React Query (`useAudit2CatalogSnapshot` i sąsiedzi) — bez providera
+ * Karta FAB-J: `DerSurfaceShell` czyta katalogi stacji / NC RfG / baterii BESS
+ * przez React Query (`useKatalogiStacjiSnapshot` i sąsiedzi) — bez providera
  * `useQueryClient()` rzuca "No QueryClient set". Brak jawnego podstawienia
  * `fetch` jest zamierzony: te zapytania mają ten sam bezpieczny fallback co
  * istniejące `fetchDerConverterTypes` (`.data?.x ?? []`), więc odrzucone
@@ -82,7 +82,7 @@ const NC_RFG_OPERATOR_FIXTURES = [
 /**
  * Karta FAB-J: transformator dedykowany PV S02 (test „pokazuje transformator
  * blokowy...") pochodzi ze snapshotu ENM (sn_mva=1,25 / 15/0,69 kV / Dyn11) —
- * `inferBlockTransformerCatalogRef` dopasowuje go do pozycji snapshotu audytu 2
+ * `inferBlockTransformerCatalogRef` dopasowuje go do pozycji snapshotu katalogów stacji
  * po tych samych parametrach, więc fikstura musi się z nimi zgadzać.
  */
 const BLOCK_TRANSFORMER_FIXTURES = [
@@ -149,7 +149,7 @@ const PTPIREE_CERTIFICATE_FIXTURES = [
 
 /**
  * Podstawia `fetch` katalogów DER (converter-types, ncrfg-tests/catalog,
- * snapshot audytu 2, wykaz PTPiREE) fiksturami powyżej.
+ * snapshot katalogów stacji, wykaz PTPiREE) fiksturami powyżej.
  */
 function stubCatalogFetch(): void {
   vi.stubGlobal(
@@ -162,11 +162,11 @@ function stubCatalogFetch(): void {
       if (href.includes('/api/ncrfg-tests/catalog')) {
         return { ok: true, json: async () => ({ operators: NC_RFG_OPERATOR_FIXTURES }) } as unknown as Response;
       }
-      if (href.includes('/api/v1/catalog/audit2/snapshot')) {
+      if (href.includes('/api/v1/catalog/konfiguracja-stacji/snapshot')) {
         return {
           ok: true,
           json: async () => ({
-            bess_operation_modes: [], tap_changers: [], hv_fuses: [], device_withstand: [],
+            bess_operation_modes: [], tap_changers: [], hv_fuses: [],
             pf_curves: [], block_transformers: BLOCK_TRANSFORMER_FIXTURES,
           }),
         } as unknown as Response;
@@ -514,10 +514,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     render(<PvSourceSurface surface={makeSurface('gen_pv_block')} />);
 
     // Nazwa urządzenia (fetchDerConverterTypes) i transformator blokowy (snapshot
-    // audytu 2) przychodzą asynchronicznie — czekamy na OBA, zanim czytamy
+    // katalogów stacji) przychodzą asynchronicznie — czekamy na OBA, zanim czytamy
     // `textContent` całej karty (dwa niezależne zapytania, dwa niezależne `await`).
     await screen.findByText(/Pakiet katalogowy PV 1000/);
-    // Cztery zapytania katalogowe (converter-types, snapshot audytu 2 ×2, ncrfg-tests,
+    // Cztery zapytania katalogowe (converter-types, snapshot katalogów stacji ×2, ncrfg-tests,
     // bess-battery-types) rozstrzygają się w komponencie równolegle — czas do
     // ustabilizowania WSZYSTKICH bywa dłuższy niż domyślny timeout `findByText`.
     await screen.findAllByText(/TR blokowy 15\/0,69 kV 1250 kVA Dyn11/, {}, { timeout: 3000 });

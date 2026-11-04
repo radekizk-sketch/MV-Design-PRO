@@ -50,7 +50,7 @@ import pytest
 from api.analysis_run_exports import _sc_row_bilans_linie
 from api.generators import _fakty_pola_wytworcy, _sciezka_zwarcia_dla_pola
 from application.field_read_model import droga_doziemna_pola
-from application.proof_engine.packs.audit2_skladanie import uziemienie_sn_stacji
+from application.proof_engine.packs.pakiet_rozszerzen_stacji import uziemienie_sn_stacji
 from domain.fault_scenario import (
     FaultLocation,
     FaultType,

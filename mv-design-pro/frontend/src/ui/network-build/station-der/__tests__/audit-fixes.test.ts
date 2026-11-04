@@ -141,7 +141,7 @@ describe('Karta K-Q → FAB-J — katalogi urządzeń mirrorowane z frontu USUNI
 // =============================================================================
 
 // USUNIĘTE (karta FAB-L, 2026-09-05; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — „Naprawa
-// B.1 — uziemienie neutralne (4 typy)". Katalog wariantów uziemienia SN audytu 2 był
+// B.1 — uziemienie neutralne (4 typy)". Katalog wariantów uziemienia SN katalogów stacji był
 // DRUGĄ prawdą obok modelu i został skasowany na amen razem z wyborem w konfiguratorze
 // stacji: sposób uziemienia punktu neutralnego sieci SN wynika wyłącznie z zespołu
 // uziemiającego sekcji (`backend/src/enm/uziemienie_sekcji.py`, testy
@@ -231,7 +231,7 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
     //
     // Intencja testu zostaje ta sama — pilnowac zrodla danych o przekladnikach —
     // ale odwrocona: front ma ich NIE MIEC. Typy pochodza z `/api/catalog/vt-types`,
-    // werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`.
+    // werdykt z `/api/v1/catalog/konfiguracja-stacji/validate-vt-grounding`.
     const modul = (await import('../protection-catalogs')) as Record<string, unknown>;
     expect(modul.VT_CATALOG).toBeUndefined();
     expect(modul.selectVtForVoltage).toBeUndefined();

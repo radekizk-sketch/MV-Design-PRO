@@ -140,7 +140,6 @@ def run_short_circuit_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
-    uow_factory: Any = None,
 ) -> Any:
     """Bieg zwarciowy wprost (`create_run` + `execute_run`, synchronicznie, bez HTTP) —
     pomocnik TESTÓW silnika i łańcucha nN; do karty DYNAMIKA-W-TLE żył w
@@ -154,7 +153,7 @@ def run_short_circuit_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id, uow_factory=uow_factory)
+    return execute_run(run.id)
 
 
 def run_power_flow_now(
@@ -163,7 +162,6 @@ def run_power_flow_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
-    uow_factory: Any = None,
 ) -> Any:
     """Bieg rozpływu wprost (`create_run` + `execute_run`) — jak `run_short_circuit_now`."""
     from enm.canonical_analysis import create_run, execute_run
@@ -175,7 +173,7 @@ def run_power_flow_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id, uow_factory=uow_factory)
+    return execute_run(run.id)
 
 
 def poczekaj_na_wykonawce(limit_s: float = LIMIT_OCZEKIWANIA_S) -> None:

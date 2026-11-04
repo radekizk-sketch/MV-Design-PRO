@@ -70,8 +70,8 @@ import { findOperationalBus } from '../shared/enmVisibility';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
-import { useAudit2CatalogSnapshot } from './station-der/audit2-hooks';
-import type { PfCurveItem } from './station-der/audit2-api';
+import { useKatalogiStacjiSnapshot } from './station-der/katalogi-stacji-hooks';
+import type { PfCurveItem } from './station-der/katalogi-stacji-api';
 import {
   formatDerDynamicProfileLabelPl,
   getDerDynamicProfile,
@@ -2541,7 +2541,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // WYŁĄCZNIE z backendu — zero drugiej kopii katalogu w tym module (patrz
   // `pvCatalogLabel`/`buildAdvancedConverterSections` niżej).
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
-  const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
+  const pfCurves = useKatalogiStacjiSnapshot().data?.pf_curves ?? [];
   // Karta FAB-L: profil dynamiczny DER WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
   // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
   // katalogu statycznego w tym module.

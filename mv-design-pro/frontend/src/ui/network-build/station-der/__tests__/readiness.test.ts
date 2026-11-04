@@ -278,9 +278,9 @@ describe('READINESS_AXIS_LABELS_PL', () => {
 
 // `sumStationLoadImportKw` usunięte (karta PROOFPACK-KONTRAKT): intencję V12K-226 —
 // import z `p_mw` odbiorów na szynach stacji, stacja spoza modelu / bez szyn = NIEZNANE,
-// stacja bez odbiorów = 0 — przypinają testy backendu `test_audit2_skladanie.py`
+// stacja bez odbiorów = 0 — przypinają testy backendu `test_pakiet_rozszerzen_stacji.py`
 // (`test_moce_odbiorow_*`, `test_stacja_bez_odbiorow_*`) i
-// `test_audit2_station_config_api.py::test_validate_all_bilans_*`.
+// `test_pakiet_rozszerzen_stacji_api.py::test_pakiet_projektu_cztery_rodzaje_nazwy_z_modelu_kazda_stacja`.
 
 
 describe('osie niesymetryczne: SC1F/SC2FG pokrywają się z SC3F/SC2F (karta FAB-L)', () => {

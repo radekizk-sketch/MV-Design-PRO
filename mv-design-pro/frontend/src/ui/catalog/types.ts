@@ -180,7 +180,7 @@ export interface TransformerType extends CatalogType {
 
 /**
  * Tap-changer catalog type (OLTC/DETC).
- * Source: backend TapChangerItem dataclass (audit2 catalog, eng.13).
+ * Source: backend TapChangerItem dataclass (katalog konfiguracji stacji, eng.13).
  */
 export interface TapChangerCatalogType {
   id: string;
@@ -195,7 +195,7 @@ export interface TapChangerCatalogType {
   regulated_side: 'hv' | 'lv';
   // Bez `switching_time_s` i `operations_before_maintenance_thousand`: backend usunął je
   // z pozycji (karta K-Q — dane konkretnego wyrobu bez źródła), typ udawał pola, których
-  // odpowiedź nie niesie (`audit2_catalogs.py::TapChangerItem`).
+  // odpowiedź nie niesie (`katalogi_stacji.py::TapChangerItem`).
   supports_avr: boolean;
   applicable_to: string[];
 }

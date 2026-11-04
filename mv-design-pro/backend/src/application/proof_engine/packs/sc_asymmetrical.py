@@ -232,7 +232,6 @@ class SCAsymmetricalProofPack:
         scenariusz: Scenario,
         nadpisanie_c: NadpisanieC | None,
         tk_s: float,
-        rozszerzenia_audit2: dict[str, Any] | None = None,
         z_f_ohm: complex | None = None,
     ) -> SCAsymmetricalPackInput:
         """Zbuduj wejście pakietu z KANONICZNEGO SNAPSHOTU ENM (ZERO fizyki u klienta).
@@ -276,7 +275,6 @@ class SCAsymmetricalProofPack:
             # wyłączeniowy zwarć niesymetrycznych to I_b = I″k (IEC 60909-0 rozdz. 9), więc
             # t_b nie wpływa na żadną wielkość tego pakietu.
             tb_s=None,
-            rozszerzenia_audit2=rozszerzenia_audit2,
         )
         result = zwarcie.wynik
         if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:

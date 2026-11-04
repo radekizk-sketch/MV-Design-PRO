@@ -346,8 +346,8 @@ def test_szablon_z_rekordu_pola_bez_wskazania_w_ladunku(siec: Any) -> None:
 
 
 def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None:
-    """Rozłącznik bezpiecznikowy z katalogu + wkładki (rodzaj bez katalogu SN) — wyposażenie
-    mieszane: stan PROPOZYCJA, dana przyjęta wyłącznie dla wkładek."""
+    """Rozłącznik bezpiecznikowy z katalogu + bezpieczniki bez wskazanej wkładki — wyposażenie
+    mieszane: stan PROPOZYCJA, dana przyjęta wyłącznie dla bezpieczników."""
     enm, pola, _ = siec
     wynik = _wykonaj(
         enm,
@@ -370,7 +370,7 @@ def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None
     assert [a["stan_danych"] for a in opis["aparaty"]] == ["MODEL", "PROPOZYCJA"]
     (dana,) = opis["dane_przyjete"]
     assert dana["nazwa_pl"] == "bezpieczniki F1"
-    assert "bez katalogu SN" in dana["powod_pl"]
+    assert "bez wskazanej wkładki" in dana["powod_pl"]
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +420,7 @@ def test_pozycja_aparatu_innego_rodzaju(siec: Any, rodzaj: str) -> None:
     )
 
 
-@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_BEZ_KATALOGU_SN))
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_BEZ_KATALOGU_SN - {"FUSE"}))
 def test_rodzaj_bez_katalogu_nie_przyjmuje_pozycji(siec: Any, rodzaj: str) -> None:
     enm, pola, _ = siec
     _odmowa(
@@ -431,6 +431,200 @@ def test_rodzaj_bez_katalogu_nie_przyjmuje_pozycji(siec: Any, rodzaj: str) -> No
             "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}],
         },
         "bay_equipment.catalog_not_applicable",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wkładka bezpiecznikowa SN (dawne „bay_hv_fuses" konfiguracji stacji — karta
+# JEDNA-SCIEZKA-EDYCJI). Iloczyn: tryb (katalog / wkladka) × FUSE w polu (jest / brak) ×
+# wskazanie (poprawne / nieznane / za niskie napięcie / puste / usunięcie).
+# ---------------------------------------------------------------------------
+
+WKLADKA_15 = "fuse_15kv_50a_full"
+WKLADKA_20 = "fuse_20kv_25a_gp"
+_LADUNEK_Z_BEZPIECZNIKAMI: list[dict[str, Any]] = [
+    {
+        "kind": "LOAD_SWITCH",
+        "placement": "MIDSTREAM",
+        "catalog_ref": "@ROZLACZNIK_BEZPIECZNIKOWY",
+    },
+    {"kind": "FUSE", "placement": "MIDSTREAM", "designation": "F1"},
+]
+
+
+def _aparaty_z_bezpiecznikami(wkladka: object = None) -> list[dict[str, Any]]:
+    aparaty = copy.deepcopy(_LADUNEK_Z_BEZPIECZNIKAMI)
+    aparaty[0]["catalog_ref"] = _ref_aparatu_sn("ROZLACZNIK_BEZPIECZNIKOWY")
+    if wkladka is not None:
+        aparaty[1]["catalog_ref"] = wkladka
+    return aparaty
+
+
+def _pole_z_bezpiecznikami(enm: dict[str, Any], pole_ref: str) -> dict[str, Any]:
+    wynik = _wykonaj(
+        enm,
+        {
+            "bay_ref": pole_ref,
+            "mode": "katalog",
+            "devices": _aparaty_z_bezpiecznikami(),
+        },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    return wynik["snapshot"]
+
+
+def _z_napieciem_szyny_pola(enm: dict[str, Any], pole_ref: str, kv: float) -> dict[str, Any]:
+    kopia = copy.deepcopy(enm)
+    szyna = _pole(kopia, pole_ref)["bus_ref"]
+    for bus in kopia["buses"]:
+        if bus["ref_id"] == szyna:
+            bus["voltage_kv"] = kv
+    return kopia
+
+
+def _wkladki(enm: dict[str, Any], pole_ref: str) -> list[object]:
+    return [
+        a.get("catalog_ref")
+        for a in _pole(enm, pole_ref)["primary_devices"]
+        if a.get("kind") == "FUSE"
+    ]
+
+
+@pytest.mark.parametrize("tryb", ["katalog", "wkladka"])
+def test_wkladka_z_katalogu_wkladek_trafia_do_aparatu_fuse(siec: Any, tryb: str) -> None:
+    enm, pola, _ = siec
+    if tryb == "katalog":
+        wynik = _wykonaj(
+            enm,
+            {
+                "bay_ref": pola["TR"],
+                "mode": "katalog",
+                "devices": _aparaty_z_bezpiecznikami(WKLADKA_15),
+            },
+        )
+    else:
+        wynik = _wykonaj(
+            _pole_z_bezpiecznikami(enm, pola["TR"]),
+            {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_15},
+        )
+    assert wynik.get("error") is None, wynik.get("error")
+    assert _wkladki(wynik["snapshot"], pola["TR"]) == [WKLADKA_15]
+    opis = wynik["wyposazenie_pola"]
+    # Wkładka z katalogu jest wskazaniem projektanta — bezpieczniki NIE są już daną
+    # przyjętą, cały aparat pola pochodzi z modelu.
+    assert [a["stan_danych"] for a in opis["aparaty"]] == ["MODEL", "MODEL"]
+    assert opis["stan_danych"] == "MODEL"
+    assert opis["dane_przyjete"] == []
+
+
+def test_bezpieczniki_bez_wkladki_sa_wartoscia_robocza_z_powodem(siec: Any) -> None:
+    enm, pola, _ = siec
+    wynik = _wykonaj(
+        enm,
+        {
+            "bay_ref": pola["TR"],
+            "mode": "katalog",
+            "devices": _aparaty_z_bezpiecznikami(),
+        },
+    )
+    (dana,) = wynik["wyposazenie_pola"]["dane_przyjete"]
+    assert "katalogu wkładek SN" in dana["powod_pl"]
+
+
+def test_tryb_wkladka_usuwa_wskazanie(siec: Any) -> None:
+    enm, pola, _ = siec
+    z_wkladka = _wykonaj(
+        _pole_z_bezpiecznikami(enm, pola["TR"]),
+        {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_15},
+    )["snapshot"]
+    wynik = _wykonaj(z_wkladka, {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": None})
+    assert wynik.get("error") is None, wynik.get("error")
+    assert _wkladki(wynik["snapshot"], pola["TR"]) == [None]
+    assert wynik["wyposazenie_pola"]["stan_danych"] == "PROPOZYCJA"
+    # Pozostałe aparaty pola nietknięte.
+    przed = [a for a in _pole(z_wkladka, pola["TR"])["primary_devices"] if a["kind"] != "FUSE"]
+    po = [a for a in _pole(wynik["snapshot"], pola["TR"])["primary_devices"] if a["kind"] != "FUSE"]
+    assert przed == po
+
+
+@pytest.mark.parametrize("tryb", ["katalog", "wkladka"])
+@pytest.mark.parametrize(
+    ("wskazanie", "kod"),
+    [
+        ("wkladka-ktorej-nie-ma", "bay_equipment.fuse_catalog_unknown"),
+        ("   ", "bay_equipment.fuse_catalog_missing"),
+        (17, "bay_equipment.fuse_catalog_missing"),
+        ("@ZA_NISKIE", "bay_equipment.fuse_voltage_insufficient"),
+    ],
+)
+def test_odmowy_wkladki_sa_atomowe(siec: Any, tryb: str, wskazanie: object, kod: str) -> None:
+    """Jedna reguła (``odmowa_wkladki``) w obu trybach — ten sam kod dla tej samej usterki."""
+    enm, pola, _ = siec
+    za_niskie = wskazanie == "@ZA_NISKIE"
+    if za_niskie:
+        # Szyna pola 20 kV, wkładka 15 kV z katalogu — wkładka niższego poziomu napięcia.
+        # Tryb `katalog`: reguła wkładki działa przed regułą izolacji rozłącznika (17,5 kV).
+        # Tryb `wkladka`: pole z bezpiecznikami powstaje przy 15 kV, potem szyna rośnie.
+        wskazanie = WKLADKA_15
+        if tryb == "katalog":
+            enm = _z_napieciem_szyny_pola(enm, pola["TR"], 20.0)
+    if tryb == "katalog":
+        _odmowa(
+            enm,
+            {
+                "bay_ref": pola["TR"],
+                "mode": "katalog",
+                "devices": _aparaty_z_bezpiecznikami(wskazanie),
+            },
+            kod,
+        )
+    else:
+        z_bezpiecznikami = _pole_z_bezpiecznikami(enm, pola["TR"])
+        if za_niskie:
+            z_bezpiecznikami = _z_napieciem_szyny_pola(z_bezpiecznikami, pola["TR"], 20.0)
+        _odmowa(
+            z_bezpiecznikami,
+            {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": wskazanie},
+            kod,
+        )
+
+
+def test_wkladka_wyzszego_napiecia_jest_przyjeta(siec: Any) -> None:
+    """Granica reguły napięcia: wkładka 20 kV w sieci 15 kV jest dopuszczalna (≥)."""
+    enm, pola, _ = siec
+    wynik = _wykonaj(
+        _pole_z_bezpiecznikami(enm, pola["TR"]),
+        {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_20},
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    assert _wkladki(wynik["snapshot"], pola["TR"]) == [WKLADKA_20]
+
+
+@pytest.mark.parametrize("wskazanie", [WKLADKA_15, None])
+def test_tryb_wkladka_bez_bezpiecznikow_w_polu(siec: Any, wskazanie: object) -> None:
+    enm, pola, _ = siec
+    katalogowe = _wykonaj(
+        enm,
+        {
+            "bay_ref": pola["IN"],
+            "mode": "katalog",
+            "devices": _ladunek_katalogowy("IN"),
+        },
+    )["snapshot"]
+    for migawka in (enm, katalogowe):
+        _odmowa(
+            migawka,
+            {"bay_ref": pola["IN"], "mode": "wkladka", "catalog_ref": wskazanie},
+            "bay_equipment.fuse_missing",
+        )
+
+
+def test_tryb_wkladka_w_polu_nn_jest_odmowa(siec: Any) -> None:
+    enm, _, pole_nn = siec
+    _odmowa(
+        enm,
+        {"bay_ref": pole_nn, "mode": "wkladka", "catalog_ref": WKLADKA_15},
+        "bay_equipment.bay_not_mv",
     )
 
 
@@ -661,7 +855,7 @@ def test_drugi_aparat_bledny_nie_zostawia_pierwszego(siec: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("tryb", ["katalog", "szablon", "wyczysc"])
+@pytest.mark.parametrize("tryb", ["katalog", "szablon", "wyczysc", "wkladka"])
 def test_determinizm(siec: Any, tryb: str) -> None:
     enm, pola, _ = siec
     ladunek: dict[str, Any] = {"bay_ref": pola["OUT"], "mode": tryb}
@@ -669,6 +863,9 @@ def test_determinizm(siec: Any, tryb: str) -> None:
         ladunek["devices"] = _ladunek_katalogowy("OUT")
     if tryb == "szablon":
         ladunek["bay_template_ref"] = "bay_template_line_out"
+    if tryb == "wkladka":
+        enm = _pole_z_bezpiecznikami(enm, pola["OUT"])
+        ladunek["catalog_ref"] = WKLADKA_15
     pierwszy = _wykonaj(copy.deepcopy(enm), ladunek)
     drugi = _wykonaj(copy.deepcopy(enm), ladunek)
     assert pierwszy.get("error") is None, pierwszy.get("error")

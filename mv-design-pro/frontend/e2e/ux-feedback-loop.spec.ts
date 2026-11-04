@@ -201,7 +201,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
     // domyślny `oltc_regulation_type` to 'NONE' (walidacja OLTC pomijana
     // całkowicie w tym stanie, `zrodloModel.ts: walidujOltc`), więc pusta
     // lista nie blokuje zapisu — kreator po prostu nie proponuje regulacji.
-    if (method === 'GET' && pathname === '/api/v1/catalog/audit2/tap-changers') {
+    if (method === 'GET' && pathname === '/api/v1/catalog/konfiguracja-stacji/tap-changers') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
       return;
     }

@@ -1,8 +1,8 @@
 /**
- * Test utilities for React Query (Phase 8 backend integration).
+ * Test utilities for React Query.
  *
  * Wraps tested components with QueryClientProvider so hooks like
- * useStationAudit2Config, useGenerateProjectAudit2ProofPack work in vitest.
+ * useKatalogiStacjiSnapshot, useGeneratePakietRozszerzenProjektu work in vitest.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,55 +10,44 @@ import { render as rtlRender, type RenderOptions } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
 
-/** Pusty pakiet dowodów projektu (`POST …/audit2-station-config/_validate-all`). */
-const EMPTY_AUDIT2_PROJECT_PACK = {
+/** Pusty pakiet dowodów projektu (`POST …/stations/_validate-all`). */
+const PUSTY_PAKIET_ROZSZERZEN_PROJEKTU = {
   project_id: 'stub',
   all_pass: true,
   station_count: 0,
   per_station: [],
 };
 
-const EMPTY_AUDIT2_SNAPSHOT = {
+/** Pusty snapshot katalogów konfiguracji stacji (`GET …/konfiguracja-stacji/snapshot`). */
+const PUSTY_SNAPSHOT_KATALOGOW_STACJI = {
   bess_operation_modes: [],
   tap_changers: [],
   hv_fuses: [],
-  device_withstand: [],
   pf_curves: [],
   block_transformers: [],
 };
 
-/**
- * Stub global.fetch for audit2 endpoints. Returns 404 for station-config GET
- * (so hook returns null) and empty snapshot for catalog snapshot.
- */
-export function stubAudit2Fetch(): void {
-  const stub = vi.fn().mockImplementation((url: string | URL, init?: RequestInit) => {
-    const urlStr = url.toString();
-    if (urlStr.includes('audit2/snapshot')) {
-      return Promise.resolve({
-        ok: true,
-        json: async () => EMPTY_AUDIT2_SNAPSHOT,
-      });
-    }
-    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
-      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
-    }
-    // GET list /audit2-station-config (no station_id) -> empty array.
-    // Pattern: /api/v1/projects/{pid}/audit2-station-config (no trailing /<sid>)
-    const matchListEnd = urlStr.match(/\/audit2-station-config\/?$/);
-    if (matchListEnd && (!init || init.method === undefined || init.method === 'GET')) {
-      return Promise.resolve({ ok: true, json: async () => [] });
-    }
-    // GET specific station -> 404 (hook returns null).
-    if (urlStr.includes('audit2-station-config') && (!init || init.method === undefined || init.method === 'GET')) {
-      return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
-    }
-    // PUT/POST/DELETE -> success no-op.
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    });
+/** Odpowiedź zaślepki dla adresów katalogów stacji i pakietu rozszerzeń; `null` — inny adres. */
+function odpowiedzKatalogowStacji(urlStr: string): Promise<unknown> | null {
+  if (urlStr.includes('konfiguracja-stacji/snapshot')) {
+    return Promise.resolve({ ok: true, json: async () => PUSTY_SNAPSHOT_KATALOGOW_STACJI });
+  }
+  if (urlStr.endsWith('/stations/_validate-all')) {
+    return Promise.resolve({ ok: true, json: async () => PUSTY_PAKIET_ROZSZERZEN_PROJEKTU });
+  }
+  if (urlStr.includes('/catalog/konfiguracja-stacji/')) {
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+  }
+  return null;
+}
+
+/** Zaślepka `global.fetch` dla katalogów stacji i pakietu rozszerzeń (pozostałe: 200 `{}`). */
+export function stubKatalogiStacjiFetch(): void {
+  const stub = vi.fn().mockImplementation((url: string | URL) => {
+    return (
+      odpowiedzKatalogowStacji(url.toString())
+      ?? Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
+    );
   });
   global.fetch = stub as unknown as typeof fetch;
 }
@@ -66,33 +55,16 @@ export function stubAudit2Fetch(): void {
 /**
  * Render z QueryClient. Jesli istnieje juz globalny fetch mock (np. test
  * uzywa vi.stubGlobal), augmentujemy go — przepuszczamy nieznane URL-e do
- * istniejacego mocka, audit2-specific URL-e obslugujemy lokalnie.
+ * istniejacego mocka, adresy katalogow stacji obslugujemy lokalnie.
  */
 export function renderWithQueryClient(
   ui: ReactElement,
   options?: RenderOptions,
 ): ReturnType<typeof rtlRender> {
   const existingFetch = global.fetch;
-  // Augment: dla audit2 URL-i zwroc empty/404, dla reszty deleguj do istniejacego.
   global.fetch = vi.fn().mockImplementation((url: string | URL, init?: RequestInit) => {
-    const urlStr = url.toString();
-    if (urlStr.includes('audit2/snapshot')) {
-      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_SNAPSHOT });
-    }
-    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
-      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
-    }
-    const matchListEnd = urlStr.match(/\/audit2-station-config\/?$/);
-    const isGet = !init || init.method === undefined || init.method === 'GET';
-    if (matchListEnd && isGet) {
-      return Promise.resolve({ ok: true, json: async () => [] });
-    }
-    if (urlStr.includes('audit2-station-config') && isGet) {
-      return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
-    }
-    if (urlStr.includes('audit2/')) {
-      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
-    }
+    const lokalna = odpowiedzKatalogowStacji(url.toString());
+    if (lokalna) return lokalna;
     // Nieznane URL-e: deleguj do istniejacego fetch (jesli test go ustawil).
     if (typeof existingFetch === 'function') {
       return (existingFetch as typeof fetch)(url, init);
@@ -109,7 +81,7 @@ export function renderWithQueryClient(
   // `rerender(<Inny />)` zwrócony przez render trzyma ten sam QueryClient.
   // Ręczne `<Provider>{ui}</Provider>` gubiło dostawcę przy pierwszym
   // `rerender` (etap10-acceptance H: PV → BESS → FW na jednym korzeniu) —
-  // komponent czytający snapshot audytu 2 przez React Query padał z
+  // komponent czytający snapshot katalogów stacji przez React Query padał z
   // „No QueryClient set”. Zewnętrzny `options.wrapper` jest zachowany
   // (składany wewnątrz dostawcy).
   const ZewnetrznyWrapper = options?.wrapper;

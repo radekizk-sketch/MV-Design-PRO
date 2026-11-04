@@ -24,18 +24,18 @@ export const queryClient = new QueryClient({
   },
 });
 
-/** Klucze zapytan dla audytu 2 (deterministyczne, hierarchiczne). */
-export const audit2QueryKeys = {
-  all: ['audit2'] as const,
-  catalogSnapshot: () => [...audit2QueryKeys.all, 'catalog-snapshot'] as const,
-  stationConfig: (projectId: string, stationId: string) =>
-    [...audit2QueryKeys.all, 'station-config', projectId, stationId] as const,
-  stationConfigList: (projectId: string) =>
-    [...audit2QueryKeys.all, 'station-config-list', projectId] as const,
+/**
+ * Klucze zapytań katalogów konfiguracji stacji i odczytów stacji z modelu (deterministyczne,
+ * hierarchiczne). Karta JEDNA-SCIEZKA-EDYCJI: bez kluczy zapisanej konfiguracji stacji —
+ * dane stacji żyją w modelu, a jego zmiany niesie rewizja migawki.
+ */
+export const katalogiStacjiQueryKeys = {
+  all: ['katalogi-stacji'] as const,
+  catalogSnapshot: () => [...katalogiStacjiQueryKeys.all, 'catalog-snapshot'] as const,
   projectProofPack: (projectId: string) =>
-    [...audit2QueryKeys.all, 'project-proof-pack', projectId] as const,
+    [...katalogiStacjiQueryKeys.all, 'project-proof-pack', projectId] as const,
   // Karta UX-04/POLE-ZU: uziemienie sieci SN stacji z modelu — klucz niesie rewizję modelu,
   // więc każda zmiana modelu (np. nowy zespół uziemiający) odczytuje stan na nowo.
   uziemienieSn: (projectId: string, stationId: string, rewizja: number | null) =>
-    [...audit2QueryKeys.all, 'uziemienie-sn', projectId, stationId, rewizja] as const,
+    [...katalogiStacjiQueryKeys.all, 'uziemienie-sn', projectId, stationId, rewizja] as const,
 };

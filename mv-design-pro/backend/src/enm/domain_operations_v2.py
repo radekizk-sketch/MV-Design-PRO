@@ -8294,8 +8294,8 @@ DER_BINDING_KEYS: tuple[str, ...] = (
 #: bo tam ich szuka odczyt (i tam trafiają z kreatora OZE).
 #:
 #: Karta FAB-L: `bess_operation_mode_refs` dopisane — dotąd wybór trybów pracy
-#: magazynu (`AddDerWizard`) trafiał WYŁĄCZNIE do `station_audit2_configs`
-#: (per-stacja, poza wytwórcą), nie do modelu wytwórcy — pole żyło tylko w
+#: magazynu (`AddDerWizard`) trafiał WYŁĄCZNIE do zapisanej konfiguracji stacji obok
+#: modelu (skasowanej kartą JEDNA-SCIEZKA-EDYCJI), nie do modelu wytwórcy — pole żyło tylko w
 #: Zustand frontu i znikało po odświeżeniu/reimporcie. Lista (nie pojedynczy
 #: ref) — walidowana OSOBNO w `_nieznane_referencje_katalogowe` (każdy wpis
 #: wobec `get_bess_operation_mode`), bo `_KATALOGI_WIAZAN_DER` niżej zakłada
@@ -8314,7 +8314,7 @@ DER_PROFILE_KEYS: tuple[str, ...] = (
 #: (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
 #: (`network_model.catalog.der_dynamic`) nie jest metoda `katalog_biezacy()`.
 #: `bess_operation_mode_refs` walidowany OSOBNO z tego samego powodu (lista, nie
-#: skalar; dostawca `network_model.catalog.audit2_catalogs.get_bess_operation_mode`).
+#: skalar; dostawca `network_model.catalog.katalogi_stacji.get_bess_operation_mode`).
 _KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
     ("ct_catalog_ref", "get_ct_type"),
     ("vt_catalog_ref", "get_vt_type"),
@@ -8383,8 +8383,8 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
 
     # Karta FAB-L: `bess_operation_mode_refs` — LISTA referencji (nie skalar),
     # każda zwalidowana wobec `get_bess_operation_mode`
-    # (`network_model.catalog.audit2_catalogs`, ten sam katalog, który wystawia
-    # `GET /api/v1/catalog/audit2/bess-operation-modes`). Wartość spoza listy
+    # (`network_model.catalog.katalogi_stacji`, ten sam katalog, który wystawia
+    # `GET /api/v1/catalog/konfiguracja-stacji/bess-operation-modes`). Wartość spoza listy
     # (np. `None` sprzed tej karty, albo zły typ) nie jest iterowana znakami —
     # `list`/`tuple` sprawdzane jawnie, inaczej pojedynczy string iterowałby się
     # po literach i fałszywie zgłaszał każdą literę jako nieznaną referencję.
@@ -8394,7 +8394,7 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         and "bess_operation_mode_refs" in wiazania
         and isinstance(bess_mode_refs, list | tuple)
     ):
-        from network_model.catalog.audit2_catalogs import get_bess_operation_mode
+        from network_model.catalog.katalogi_stacji import get_bess_operation_mode
 
         for tryb_ref in bess_mode_refs:
             if get_bess_operation_mode(str(tryb_ref)) is None:
@@ -8515,7 +8515,13 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "der_bindings.generator_not_found",
         )
 
-    materialized = generator.setdefault("materialized_params", {})
+    # Pole opcjonalne kontraktu (`Generator.materialized_params: dict | None`) — migawka
+    # wytwórcy z importu albo z budowy modelu niesie jawne `None`; `setdefault` zwróciłby
+    # je bez zmian (ta sama reguła co `set_load_catalog_bindings`).
+    materialized = generator.get("materialized_params")
+    if materialized is None:
+        materialized = {}
+        generator["materialized_params"] = materialized
     if not isinstance(materialized, dict):  # pragma: no cover - obrona kontraktu
         return _error_response(
             "Parametry zmaterializowane wytwórcy mają nieoczekiwaną postać.",
@@ -8575,7 +8581,10 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             generator["modele_widmowe"] = modele.model_dump(mode="json")
 
     if obecne_profile:
-        profile = materialized.setdefault("profiles", {})
+        profile = materialized.get("profiles")
+        if profile is None:
+            profile = {}
+            materialized["profiles"] = profile
         if not isinstance(profile, dict):  # pragma: no cover - obrona kontraktu
             return _error_response(
                 "Profile wytwórcy mają nieoczekiwaną postać.",

@@ -4,8 +4,8 @@
  *  - parytet L-15: generator raportu w powłoce (skład dokumentu).
  * Oba motywy. Zrzut = jedyny dowód wyglądu na stronie oceny.
  *
- * Scena jest REALNA: projekt + przypadek + sieć ze stacją + zapisana aparatura
- * pól + policzony bieg zwarciowy na backendzie (te same operacje, co spec
+ * Scena jest REALNA: projekt + przypadek + sieć ze stacją (aparatura pól z
+ * katalogu w modelu) + policzony bieg zwarciowy na backendzie (te same operacje, co spec
  * bramki 1) — żadnego harnessu i żadnych zaszczepionych wyników.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
@@ -26,8 +26,6 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
-const APARAT_ID = 'wstd_breaker_vacuum_15_25';
-const POLE = 'P-01';
 
 const THEMES = [
   { id: 'light', mode: 'light_technical' },
@@ -147,7 +145,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
   });
   const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
-  const stationRef = stacja!.ref_id;
   const busRefy = stacja!.bus_refs ?? [];
 
   // Kategoria katalogu MUSI pasować do rodzaju gałęzi: KABEL_SN dostają
@@ -182,25 +179,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       },
     });
   }
-
-  const configResponse = await request.put(
-    `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
-    {
-      data: {
-        tap_changer_refs: [],
-        der_specs: [],
-        bay_device_withstand: {
-          [POLE]: {
-            device_id: APARAT_ID,
-            i_peak_calculated_ka: 1.0,
-            i_thermal_calculated_ka: 1.0,
-            t_clearing_s: 0.5,
-          },
-        },
-      },
-    },
-  );
-  expect(configResponse.ok()).toBeTruthy();
 
   const createRun = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${studyCase.id}/runs`,
@@ -292,7 +270,8 @@ test.describe('kd4:zrzuty', () => {
       const sekcja = page.getByTestId('mvd-zwarcia-aparatura');
       await sekcja.scrollIntoViewIfNeeded();
       await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();
-      await expect(page.getByTestId(`mvd-zwarcia-aparatura-pole-${POLE}`)).toBeVisible({
+      // Wiersze werdyktu z aparatów pól MODELU (pozycja katalogu APARAT_SN pola).
+      await expect(page.locator('[data-testid^="mvd-zwarcia-aparatura-pole-"]').first()).toBeVisible({
         timeout: 30000,
       });
 

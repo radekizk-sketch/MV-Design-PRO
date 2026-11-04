@@ -209,7 +209,6 @@ def _wejscie_pakietu(
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
     tb_s: float | None,
-    rozszerzenia_audit2: dict[str, Any] | None,
 ) -> WejscieZwarcia:
     """Wejście zwarciowe pakietu dowodowego — TEN SAM assembler co bieg kanoniczny.
 
@@ -233,7 +232,7 @@ def _wejscie_pakietu(
         opcje[KLUCZ_OPCJI_CZASU_TB] = tb_s
     if nadpisanie_c is not None:
         opcje["nadpisanie_c"] = nadpisanie_c.to_dict()
-    return zloz_wejscie_zwarcia(snapshot, opcje, rozszerzenia_audit2=rozszerzenia_audit2)
+    return zloz_wejscie_zwarcia(snapshot, opcje)
 
 
 def _dobor_c_wezla(wejscie: WejscieZwarcia, fault_node_id: str) -> DoborC:
@@ -265,7 +264,6 @@ def wynik_zwarcia_1f_ze_snapshotu(
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
     tb_s: float | None,
-    rozszerzenia_audit2: dict[str, Any] | None = None,
     z_f_ohm: complex | None = None,
 ) -> Zwarcie1FZeSnapshotu:
     """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
@@ -288,7 +286,6 @@ def wynik_zwarcia_1f_ze_snapshotu(
         nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
         tb_s=tb_s,
-        rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
     # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
@@ -335,7 +332,6 @@ def zwarcie_3f_ze_snapshotu(
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
     tb_s: float | None,
-    rozszerzenia_audit2: dict[str, Any] | None = None,
     z_f_ohm: complex | None = None,
 ) -> ZwarcieZeSnapshotu:
     """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F i wkładów.
@@ -356,7 +352,6 @@ def zwarcie_3f_ze_snapshotu(
         nadpisanie_c=nadpisanie_c,
         tk_s=tk_s,
         tb_s=tb_s,
-        rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
     # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
@@ -420,7 +415,6 @@ def graf_i_dobor_c_punktu(
         nadpisanie_c=nadpisanie_c,
         tk_s=1.0,
         tb_s=tb_s,
-        rozszerzenia_audit2=None,
     )
     fault_node_id = fault_ref if fault_ref in wejscie.graph.nodes else _ref_to_uuid(fault_ref)
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)

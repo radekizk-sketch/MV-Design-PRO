@@ -937,7 +937,7 @@ def _blad_pozycji_api(
     `der_bindings.catalog_ref_unknown`) — inny kontrakt dla tej samej pomyłki.
     """
     if przestrzen == PRZESTRZEN_ZACZEPY:
-        from network_model.catalog.audit2_catalogs import get_tap_changer
+        from network_model.catalog.katalogi_stacji import get_tap_changer
 
         if get_tap_changer(referencja) is not None:
             return None

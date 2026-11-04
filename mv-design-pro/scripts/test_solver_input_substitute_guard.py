@@ -2108,7 +2108,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
     # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
     # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
+    # Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): 4503 -> 4481 — POMIAR `contract_fields()` na
+    # `1f3e1c427` (`git archive`: 4503) i na drzewie karty (4481). Roznica zbiorow +0, -22:
+    # pola skasowanej zapisanej konfiguracji stacji i rozszerzen wejscia solvera (`der_specs`,
+    # `bay_vts`, `bay_hv_fuses`, `bay_device_withstand`, `tap_changer_refs`,
+    # `transformer_tap_changers`, `transformer_to_tap_changer`, `der_payloads`, `pf_curve`,
+    # `block_transformer_z_pu`, `tap_position_changes`, `pf_droop_changes`, `solution`, slad
+    # i opcje rozszerzen — 4 nazwy z dawnym przedrostkiem modulu) oraz katalogu i reguly
+    # wytrzymalosci aparatury zapisanej konfiguracji (`device_withstand`, `i_th_1s_ka`,
+    # `i_peak_calculated_ka`, `i_thermal_calculated_ka`, `t_clearing_s`). Dane rozszerzen
+    # stacji solver czyta wylacznie z modelu sieci. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4481." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2431,7 +2441,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
         # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
         # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): 604 -> 601 (-3 skasowane moduly rozszerzen
+        # wejscia solvera z zapisanej konfiguracji stacji w `solver_input/`: korektor sieci,
+        # translator ladunku zrodel i opakowanie rozplywu). POMIAR guardem na `1f3e1c427` (604)
+        # i na drzewie karty (601).
+        "Przeskanowano 601 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2522,7 +2536,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # network_model −2: wpisy `A:or:item.arrester_residual_10ka_kv` i `A:or:item.predicted_tov_kv`
     # w `v126_academic.py` zdjete (koordynacja izolacji z k trybu punktu neutralnego, dobor
     # wstepny jako dana przyjeta ESTIMATED). POMIAR guardem na `0344668a0` i na drzewie karty.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 218." in wyjscie, wyjscie
+    # Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): 47/218 -> 46/212 — solver_input −6: skasowany
+    # korektor sieci z zapisanej konfiguracji stacji (wpis zapadki z 6 odczytami: pasmo P(f)
+    # i skok/pozycja neutralna zaczepu z domyslnymi wartosciami) — przelacznik zaczepow czyta
+    # solver wylacznie z `Transformer.tap_changer` modelu. POMIAR guardem na `1f3e1c427`
+    # i na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 46 plikow, suma 212." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2662,7 +2681,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug 2/8 i wykluczenia 0/0 BEZ ZMIANY.
         # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): dlug 2/8 -> 2/6 (dwa wpisy
         # czestotliwosci zastepczej w `v126_contracts.py` zdjete — wpis zapadki wyzej).
-        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 6, " "wykluczenia=0 plikow/suma 0",
+        # Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): solver_input 11 -> 8 (-3 moduly rozszerzen
+        # wejscia solvera z zapisanej konfiguracji stacji), dlug 2/6 -> 1/0 (wpis korektora sieci
+        # zdjety razem z plikiem — wpis zapadki wyzej). POMIAR guardem.
+        "  solver_input: pliki_skanowane=8, dlug=1 plikow/suma 0, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);

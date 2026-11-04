@@ -24,12 +24,12 @@ from typing import Any, cast, get_args
 from domain.canonical_operations import klucze_spoza_kontraktu
 from domain.readiness_bridge import opis_kanoniczny
 from enm.assembler import czestotliwosc_studium_hz
-from network_model.catalog.audit2_catalogs import (
+from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+from network_model.catalog.katalogi_stacji import (
     get_tap_changer,
     klasa_transformatora_przelacznika,
     tap_changer_fields_from_catalog,
 )
-from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
 from network_model.core.uziemienie import (
@@ -11257,12 +11257,70 @@ def _opis_zaleznosci_pola(enm: dict[str, Any], zaleznosc: tuple[str, str, list[s
     return "pole należy do rozdzielnicy punktu rozgałęzienia i znika razem z nim"
 
 
+#: Odwołania do przekładnika (CT/VT) z innych elementów modelu — JEDNA lista dla odmowy
+#: usunięcia przekładnika (`_usun_przekladnik`). Przekładnik nie ma innych odbiorców
+#: w kontrakcie ENM: pole nie trzyma listy swoich przekładników (przekładnik wskazuje pole
+#: przez `bay_ref`), a łańcuch pomiarowy pola (`BayMeasurementChain`) jest odczytem
+#: wyprowadzanym z modelu, nie zapisem.
+ODWOLANIA_DO_PRZEKLADNIKA: tuple[tuple[str, str], ...] = (
+    ("protection_assignments", "ct_ref"),
+    ("protection_assignments", "vt_ref"),
+    ("protection_assignments", "ct_refs_secondary"),
+)
+
+
+def _usun_przekladnik(enm: dict[str, Any], measurement_ref: str) -> dict[str, Any]:
+    """Usunięcie przekładnika pola (CT/VT) — gałąź ``delete_element`` dla ``measurements``.
+
+    Zapis pól przekładnika generyczną operacją jest wyłączony (przekładnik edytują operacje
+    dedykowane: ``add_ct``/``add_vt``, ``set_measurement_secondary_circuit``), ale usunięcie
+    idzie jedyną drogą usuwania elementów modelu. Przekładnik wskazywany przez zabezpieczenie
+    nie znika po cichu: odmowa nazywa zabezpieczenia, które trzeba najpierw odłączyć
+    (zabezpieczenia bez przekładnika byłyby odwołaniem do elementu, którego nie ma).
+    """
+    uzywajace: list[str] = []
+    for kolekcja, pole_ref in ODWOLANIA_DO_PRZEKLADNIKA:
+        for element in enm.get(kolekcja, []):
+            wartosc = element.get(pole_ref)
+            wskazania = wartosc if isinstance(wartosc, list) else [wartosc]
+            if measurement_ref in wskazania:
+                uzywajace.append(str(element.get("ref_id")))
+    if uzywajace:
+        return _error_response(
+            f"{opis_elementu(enm, measurement_ref, 'Przekładnik')} jest używany przez "
+            + lista_pl(
+                (opis_elementu(enm, r, "zabezpieczenie") for r in sorted(set(uzywajace))),
+                "i",
+            )
+            + " — najpierw odłącz zabezpieczenie od przekładnika.",
+            "delete.measurement_in_use",
+        )
+    new_enm = kopia_graniczna_enm(enm)
+    new_enm["measurements"] = [
+        m for m in new_enm.get("measurements", []) if m.get("ref_id") != measurement_ref
+    ]
+    return _response(
+        new_enm,
+        deleted=[measurement_ref],
+        selection_id=None,
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "ELEMENT_DELETED",
+                "element_id": measurement_ref,
+            }
+        ],
+    )
+
+
 def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Usuń element z modelu ENM wraz z deterministycznym cleanupem zależności."""
     element_ref = payload.get("element_ref")
     legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "delete.element_missing")
+    if legacy_field_collection == "measurements":
+        return _usun_przekladnik(enm, element_ref)
     if legacy_field_collection is not None:
         return _error_legacy_field_write_disabled(enm, element_ref, legacy_field_collection)
 

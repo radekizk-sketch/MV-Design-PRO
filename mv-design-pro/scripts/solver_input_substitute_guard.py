@@ -407,7 +407,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/study_case.py",
     "enm/domain_ops_models.py",
     "infrastructure/persistence/models.py",
-    "network_model/catalog/audit2_catalogs.py",
+    "network_model/catalog/katalogi_stacji.py",
     "network_model/catalog/bay_templates.py",
     "network_model/catalog/lv_mcb_bands_iec60898.py",
     "network_model/catalog/materialization.py",
@@ -484,7 +484,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "analysis/power_flow/result.py",
     "analysis/reactive_adequacy/models.py",
     "analysis/reporting/arc_flash_report.py",
-    "analysis/reporting/audit2_report.py",
+    "analysis/reporting/raport_rozszerzen_stacji.py",
     # Karta W3-G2 (2026-09-10) — siostra `short_circuit_bounds.py` powyzej: ten
     # sam wzorzec werdyktu wiarygodnosci (dataclass WYNIKU interpretacji, nie
     # dana wejsciowa fizyki), importowana przez `application/analyses/sanity_
@@ -1153,50 +1153,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:data.uk_percent": 1,
         "F:dictget:data.ulv_kv": 1,
         "F:dictget:data.voltage_kv": 1,
-    },
-    # Karta RATCHET-DICT-READ (2026-08-13). Pre-solver hook, ktory adaptuje
-    # siec do audit2 extensions (`Brak danych = brak adjustment" — wlasny
-    # docstring modulu, w. 17). Dwie klasy:
-    #
-    # (a) MERYTORYCZNIE UZASADNIONE (zero dlugu):
-    # `mode.get("reserved_capacity_percent", 0)` — 0% rezerwy = "bez korekty
-    # mocy DER", dokladnie sentinel "brak = brak adjustment" z docstringu.
-    # `curve.get("droop_percent", 0)` — kod NATYCHMIAST sprawdza
-    # `if droop_pct == 0: continue` (w. 330-331) — sentinel, nie fabrykacja.
-    # `tc_dict.get("neutral_position", 0)` — konwencja katalogu zaczepow:
-    # pozycja 0 jest z DEFINICJI pozycja neutralna (bez podbicia/obnizenia)
-    # dla symetrycznie numerowanego zaczepu — to nie zgadywanie pomiaru, tylko
-    # odczyt konwencji numeracji tego samego pola, ktore funkcja WLASNIE
-    # ustawia (komentarz w kodzie: "Pozycja neutralna").
-    #
-    # (b) DLUG NAZWANY (ta sama klasa, co juz zaakceptowana w
-    # `enm/mapping.py` ponizej — `tap_step_percent`/typowe wartosci pasma
-    # czestotliwosci — DRUGI most do tych samych pol, inna wartosc domyslna):
-    # `tc_dict.get("step_percent", 1.25)` — typowy skok zaczepu 1,25%, gdy
-    # katalog nie niesie wlasnej wartosci (`enm/mapping.py` ma TEN SAM dlug z
-    # wartoscia 2,5% — dwie kopie tej samej klasy, rozne liczby, do
-    # rozstrzygniecia razem).
-    # `curve.get("f_min_hz", 47.5)`/`f_max_hz(51.5)`/`deadband_hz(0.2)` —
-    # typowe pasmo czestotliwosci P(f) wg NC RfG, gdy karta krzywej DER nie
-    # niesie wlasnych granic. Wartosci normowe (nie zmyslone), ale nadal
-    # WLASCIWOSC KONKRETNEGO DER, nie stala fizyczna — jak R/X=0,1 w
-    # `enm/mapping.py`, wiec zostaje jako dlug nazwany, nie naprawa w tej
-    # karcie (zmiana zachowania regulacji P(f) bez dedykowanych testow
-    # wykracza poza dyskryminator zapadki).
-    #
-    # (c) KARTA K-Q (2026-08-14): pozycja `mode.reserved_capacity_percent`
-    # (budzet 2) ZNIKA z zapadki, bo znikl caly dlug — pole „rezerwa mocy
-    # magazynu" nie istnieje juz w katalogu trybow (nie mialo zrodla, a byla to
-    # decyzja projektowa konkretnego projektu, nie wlasnosc trybu pracy), wiec
-    # nie ma czego podstawiac. Razem z nim zniknal wzor `reserved_pct * 10`
-    # zakladajacy, ze KAZDY magazyn ma 1 MW. Obnizenie budzetu utrwala poprawe.
-    "solver_input/audit2_solver_adjuster.py": {
-        "F:dictget:curve.deadband_hz": 1,
-        "F:dictget:curve.droop_percent": 1,
-        "F:dictget:curve.f_max_hz": 1,
-        "F:dictget:curve.f_min_hz": 1,
-        "F:dictget:tc_dict.neutral_position": 1,
-        "F:dictget:tc_dict.step_percent": 1,
     },
     # Numeracja rewizji dokumentu (`revision if existing else 0`). Ksiegowosc
     # magazynu, nie wielkosc fizyczna — pierwsza rewizja startuje od zera z

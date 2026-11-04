@@ -6,9 +6,11 @@
  * w tym samym miejscu odpowiedź „czy aparatura pól tej stacji to wytrzyma" —
  * bez przechodzenia do konfiguratora stacji i zestawiania liczb w głowie.
  *
- * Spec idzie REALNĄ ścieżką: sieć ze stacją (operacje domenowe) → zapis
- * aparatury pól w konfiguracji stacji → bieg zwarciowy SC_3F → ekran zwarć →
- * wybór punktu → NATYWNY klik akcji weryfikacji → werdykty.
+ * Spec idzie REALNĄ ścieżką: sieć ze stacją (operacje domenowe; aparat pola z
+ * pozycji katalogu APARAT_SN modelu) → bieg zwarciowy SC_3F → ekran zwarć →
+ * wybór punktu → NATYWNY klik akcji weryfikacji → werdykty. Karta
+ * JEDNA-SCIEZKA-EDYCJI usunęła drugą drogę (aparat i czas wyłączenia z zapisanej
+ * konfiguracji stacji) — aparaty pól biorą się wyłącznie z modelu sieci.
  *
  * ASERCJA NIE JEST LITERAŁEM UI: werdykt pokazany na ekranie porównujemy
  * z odpowiedzią TEJ SAMEJ końcówki backendu wywołanej niezależnie, dla prądów
@@ -24,9 +26,6 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
-/** Aparat z katalogu wytrzymałości backendu (`DEVICE_WITHSTAND_CATALOG`). */
-const APARAT_ID = 'wstd_breaker_vacuum_15_25';
-const CZAS_WYLACZENIA_S = 0.5;
 
 let opCounter = 0;
 
@@ -55,7 +54,7 @@ type WidokWytrzymalosci = {
   pola: Array<{
     pole: string;
     pole_ref: string | null;
-    zrodlo: 'model' | 'konfiguracja';
+    zrodlo: 'model';
     komunikat_pl: string;
     prady_pola: PradyPola;
     czas_wylaczenia: { zrodlo: string | null };
@@ -287,114 +286,6 @@ function sprawdzPradyPolZBiegiem(widok: WidokWytrzymalosci, wiersze: WierszZwarc
   }
 }
 
-test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury pola', async ({
-  page,
-  request,
-}) => {
-  test.setTimeout(240000);
-
-  const kontekst = await zbudujProjektZeStacja(
-    request,
-    'Bramka KD-4: wynik zwarciowy → wytrzymałość aparatury',
-  );
-  const { project, studyCase, stationRef } = kontekst;
-
-  // --- Bieg zwarciowy (prądy pól = ŹRÓDŁO asercji, nie ekran) ----------------
-  const { runId, punkt: punktStacji, wiersze } = await policzZwarcie(request, kontekst);
-
-  // Pole modelu, dla którego inżynier wskaże aparat ręcznie: konfiguracja jest
-  // kluczowana oznaczeniem pola modelu — wpis bez pola modelu nie ma punktu
-  // zabudowy, więc nie ma też prądu (werdykt uczciwie nieustalony).
-  const widokModelu = await widokZBiegu(request, kontekst, runId);
-  expect(widokModelu.pola.length).toBeGreaterThan(0);
-  const POLE = widokModelu.pola[0].pole;
-
-  // --- Aparatura pola w konfiguracji stacji (źródło aparatu i czasu) ---------
-  const configResponse = await request.put(
-    `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
-    {
-      data: {
-        tap_changer_refs: [],
-        der_specs: [],
-        bay_device_withstand: {
-          [POLE]: {
-            device_id: APARAT_ID,
-            // Liczby z DOBORU aparatu — ekran ma ich NIE użyć do sprawdzenia.
-            i_peak_calculated_ka: 1.0,
-            i_thermal_calculated_ka: 1.0,
-            t_clearing_s: CZAS_WYLACZENIA_S,
-          },
-        },
-      },
-    },
-  );
-  expect(configResponse.ok()).toBeTruthy();
-
-  const widok = await widokZBiegu(request, kontekst, runId);
-  sprawdzPradyPolZBiegiem(widok, wiersze);
-  const wierszKonfiguracji = widok.pola.find((p) => p.pole === POLE);
-  expect(wierszKonfiguracji?.zrodlo).toBe('konfiguracja');
-  const pradyPola = wierszKonfiguracji!.prady_pola;
-
-  // Werdykt referencyjny: jądro wytrzymałości z prądami PUNKTU ZABUDOWY POLA
-  // (wiersz biegu) i czasem z konfiguracji.
-  const werdyktResponse = await request.post(
-    `${BACKEND_BASE}/api/v1/catalog/audit2/validate-device-withstand`,
-    {
-      data: {
-        device_id: APARAT_ID,
-        i_peak_calculated_ka: pradyPola.ip_ka,
-        i_thermal_calculated_ka: pradyPola.ith_ka,
-        t_clearing_s: CZAS_WYLACZENIA_S,
-      },
-    },
-  );
-  expect(werdyktResponse.ok()).toBeTruthy();
-  const werdykt = (await werdyktResponse.json()) as { ok: boolean; message_pl: string };
-
-  // --- Aplikacja: ekran zwarć → wybór punktu → weryfikacja aparatury ---------
-  await ustawKontekst(page, {
-    projectId: project.id,
-    projectName: project.name,
-    caseId: studyCase.id,
-    caseName: studyCase.name,
-    runId,
-  });
-
-  await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
-  await otworzZakladkeWynikow(page, 'zwarcia');
-  await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
-
-  // Wybór punktu zwarcia = NATYWNY klik wiersza tabeli punktów.
-  const nazwaPunktu = punktStacji.target_name ?? punktStacji.target_id;
-  await page.getByRole('row', { name: new RegExp(escapeRegExp(nazwaPunktu)) }).first().click();
-
-  // Sekcja ogniwa pokazuje prądy TEGO punktu jako wejścia.
-  const sekcja = page.getByTestId('mvd-zwarcia-aparatura');
-  await expect(sekcja).toBeVisible();
-  // Strefa pierwszoplanowa pokazuje NAZWĘ stacji; ref modelu jest atrybutem
-  // maszynowym — asercja idzie po nim (nazwa może się zmienić, ref nie).
-  await expect(page.getByTestId('mvd-zwarcia-aparatura-stacje')).toHaveAttribute(
-    'data-stacje-ref',
-    stationRef,
-  );
-
-  // AKCJA: jawne przejście do weryfikacji wytrzymałości.
-  await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();
-
-  const wierszWerdyktu = page.getByTestId(`mvd-zwarcia-aparatura-pole-${POLE}`);
-  await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
-  // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
-  await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
-  // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
-  await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
-    'data-punkt-ref',
-    pradyPola.punkt_ref ?? '',
-  );
-});
-
 test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', async ({
   page,
   request,
@@ -409,15 +300,6 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
     'Bramka KD-6: werdykty wytrzymałości z modelu, bez konfiguracji stacji',
   );
   const { project, studyCase, stationRef } = kontekst;
-
-  // Kontrola: konfiguracja stacji NIE ISTNIEJE (404 = brak zapisu).
-  const konfiguracja = await request.get(
-    `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
-  );
-  expect(
-    konfiguracja.status(),
-    'Ten scenariusz sprawdza tor MODELOWY — konfiguracji stacji nie może być.',
-  ).toBe(404);
 
   const { runId, punkt: punktStacji, wiersze } = await policzZwarcie(request, kontekst);
 
@@ -447,6 +329,13 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
 
   const nazwaPunktu = punktStacji.target_name ?? punktStacji.target_id;
   await page.getByRole('row', { name: new RegExp(escapeRegExp(nazwaPunktu)) }).first().click();
+  // Strefa pierwszoplanowa pokazuje NAZWĘ stacji; ref modelu jest atrybutem
+  // maszynowym — asercja idzie po nim (nazwa może się zmienić, ref nie).
+  await expect(page.getByTestId('mvd-zwarcia-aparatura')).toBeVisible();
+  await expect(page.getByTestId('mvd-zwarcia-aparatura-stacje')).toHaveAttribute(
+    'data-stacje-ref',
+    stationRef,
+  );
   await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();
 
   const werdykty = page.getByTestId('mvd-zwarcia-aparatura-werdykty');

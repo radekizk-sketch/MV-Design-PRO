@@ -58,7 +58,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable
 from typing import Any
 
 from application.analyses.energy_validation.service import build_energy_validation_view
@@ -156,7 +155,6 @@ def _evaluate_scenario(
     bus_ref: str,
     p_mw: float,
     q_mvar: float,
-    uow_factory: Callable[[], Any] | None,
 ) -> tuple[bool, dict[str, Any]]:
     """Uruchom rozpływ dla scenariusza (P, Q) i oceń dopuszczalność.
 
@@ -167,7 +165,7 @@ def _evaluate_scenario(
     migawka = apply_scenario(enm_bazowy, _pq_scenario(bus_ref, p_mw, q_mvar))
     run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
-        wykonaj_bieg_w_pamieci(run, uow_factory=uow_factory)
+        wykonaj_bieg_w_pamieci(run)
     except ODMOWY_OBLICZENIA_BIEGU:  # nazwana odmowa obliczenia = twardy koniec pasma
         return False, {"kind": "non_convergence"}
 
@@ -194,7 +192,6 @@ def _scan_q_direction(
     p_mw: float,
     step_q_mvar: float,
     max_steps_q: int,
-    uow_factory: Callable[[], Any] | None,
 ) -> tuple[float, dict[str, Any], int]:
     """Skan mocy biernej od środka (Q = 0, już dopuszczalny) w JEDNYM kierunku.
 
@@ -209,9 +206,7 @@ def _scan_q_direction(
     for k in range(1, max_steps_q + 1):
         q_mvar = _round_power(k * step_q_mvar)
         runs += 1
-        acceptable, edge_binding = _evaluate_scenario(
-            base_run, enm_bazowy, bus_ref, p_mw, q_mvar, uow_factory
-        )
+        acceptable, edge_binding = _evaluate_scenario(base_run, enm_bazowy, bus_ref, p_mw, q_mvar)
         if acceptable:
             last_ok_q = q_mvar
             continue
@@ -227,16 +222,13 @@ def _vertex_for_p(
     p_mw: float,
     step_q_mvar: float,
     max_steps_q: int,
-    uow_factory: Callable[[], Any] | None,
 ) -> tuple[dict[str, Any], bool]:
     """Zbuduj wierzchołek obszaru dla ustalonego P (skan Q w obu kierunkach).
 
     Zwraca ``(vertex, feasible)`` — ``feasible=False`` gdy scenariusz środkowy
     (Q = 0) jest już niedopuszczalny (wiersz P bez pasma pracy).
     """
-    center_acceptable, center_binding = _evaluate_scenario(
-        base_run, enm_bazowy, bus_ref, p_mw, 0.0, uow_factory
-    )
+    center_acceptable, center_binding = _evaluate_scenario(base_run, enm_bazowy, bus_ref, p_mw, 0.0)
     if not center_acceptable:
         vertex = {
             "p_mw": _round_power(p_mw),
@@ -251,10 +243,10 @@ def _vertex_for_p(
         return vertex, False
 
     q_max, binding_high, runs_pos = _scan_q_direction(
-        base_run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q, uow_factory
+        base_run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q
     )
     q_min, binding_low, runs_neg = _scan_q_direction(
-        base_run, enm_bazowy, bus_ref, p_mw, -step_q_mvar, max_steps_q, uow_factory
+        base_run, enm_bazowy, bus_ref, p_mw, -step_q_mvar, max_steps_q
     )
     vertex = {
         "p_mw": _round_power(p_mw),
@@ -337,13 +329,8 @@ def build_pq_area_view(
     step_q_mvar: float = DEFAULT_STEP_Q_MVAR,
     max_steps_p: int = DEFAULT_MAX_STEPS_P,
     max_steps_q: int = DEFAULT_MAX_STEPS_Q,
-    uow_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok obszaru bezpiecznej pracy P–Q dla wskazanego węzła.
-
-    ``uow_factory`` (CV-4.2b): fabryka ``UnitOfWork`` wołającego — warianty
-    dziedziczą opcje biegu bazowego, więc bieg z konfiguracją audytu 2 stacji
-    wymaga jej do odczytu tej konfiguracji (patrz ``wykonaj_bieg_w_pamieci``).
 
     Raises:
         ValueError: gdy przebieg nie jest rozpływem (``PF``) lub nie został
@@ -385,9 +372,7 @@ def build_pq_area_view(
     total_runs = 0
     for step_index in range(max_steps_p + 1):
         p_mw = _round_power(step_index * step_p_mw)
-        vertex, feasible = _vertex_for_p(
-            run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q, uow_factory
-        )
+        vertex, feasible = _vertex_for_p(run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q)
         vertices.append(vertex)
         total_runs += int(vertex["runs"])
         if not feasible:

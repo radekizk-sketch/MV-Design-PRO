@@ -22,7 +22,7 @@ import {
   type DerGeneratorConfigRequest,
   type WerdyktProbyDer,
 } from '../../sld/v2/canvas/derPersistenceApi';
-import type { BlockTransformerItem } from './audit2-api';
+import type { BlockTransformerItem } from './katalogi-stacji-api';
 
 /** Kod odmowy kontroli mocy transformatora (decyzja O-53) — `KOD_MOC_TRANSFORMATORA`. */
 export const KOD_ODMOWY_MOCY_TRANSFORMATORA = 'converter.transformer_capacity_exceeded';

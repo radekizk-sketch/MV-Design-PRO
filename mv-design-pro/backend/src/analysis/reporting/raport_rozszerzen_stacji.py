@@ -1,7 +1,7 @@
 """
-Audit2 Report module — generuje deterministyczny raport (JSON / PDF / DOCX) dla
-walidacji rozszerzen audytu 2 (BESS modes, tap-changers, hosting capacity, withstand,
-VT grounding).
+Raport pakietu dowodow rozszerzen stacji — deterministyczny raport (JSON / PDF / DOCX / tekst
+PL / LaTeX) walidacji danych stacji zapisanych w modelu sieci (tryby pracy magazynu, plan
+zaczepow transformatora, eksport mocy, przekladniki napieciowe wobec uziemienia SN).
 
 Phase 5 backend integration:
 - JSON: structured data (uzywany przez frontend ReportSurface)
@@ -21,19 +21,21 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
-from application.proof_engine.packs.audit2_validation import ETYKIETY_RODZAJOW_DOWODU
+from application.proof_engine.packs.dowody_rozszerzen_stacji import (
+    ETYKIETY_RODZAJOW_DOWODU,
+)
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
 
-#: Naglowek sekcji rodzaju spoza pieciu rodzajow audytu 2 (pakiet dostarcza wolajacy).
-RODZAJ_SPOZA_AUDYTU = "Rodzaj dowodu spoza pakietu walidacji rozszerzeń"
+#: Naglowek sekcji rodzaju spoza rodzajow pakietu rozszerzen stacji (pakiet dostarcza wolajacy).
+RODZAJ_SPOZA_PAKIETU = "Rodzaj dowodu spoza pakietu walidacji rozszerzeń"
 
 
 def _etykieta_rodzaju(proof_type: str) -> str:
     """Polska nazwa rodzaju dowodu — dokument nazywa rodzaj, nigdy jego kod."""
-    return ETYKIETY_RODZAJOW_DOWODU.get(proof_type, RODZAJ_SPOZA_AUDYTU)
+    return ETYKIETY_RODZAJOW_DOWODU.get(proof_type, RODZAJ_SPOZA_PAKIETU)
 
 
-def _braki_danych(ctx: Audit2ReportContext) -> list[dict[str, Any]]:
+def _braki_danych(ctx: KontekstRaportuRozszerzen) -> list[dict[str, Any]]:
     """Rodzaje dowodu bez danych (`braki_danych` pakietu) w kolejnosci pakietu.
 
     Brak danych NIE jest zgodnoscia (karta PROOFPACK-KONTRAKT): dokument wymienia kazdy
@@ -52,8 +54,8 @@ def _wynik_calosciowy(fail_count: int, braki_count: int) -> str:
 
 
 @dataclass(frozen=True)
-class Audit2ReportContext:
-    """Kontekst raportu audytu 2."""
+class KontekstRaportuRozszerzen:
+    """Kontekst raportu pakietu rozszerzen stacji."""
 
     project_name: str
     station_id: str
@@ -65,13 +67,13 @@ class Audit2ReportContext:
     generated_at_iso: str = "1970-01-01T00:00:00Z"
 
 
-def render_audit2_report_json(ctx: Audit2ReportContext) -> dict[str, Any]:
+def render_raport_json(ctx: KontekstRaportuRozszerzen) -> dict[str, Any]:
     """Strukturalny raport JSON (deterministic)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
     pass_count = sum(1 for p in proofs if p.get("pass_status"))
     fail_count = sum(1 for p in proofs if not p.get("pass_status"))
     return {
-        "report_kind": "audit2_validation_report",
+        "report_kind": "walidacja_rozszerzen_stacji",
         "format_version": "1.0",
         "project_name": ctx.project_name,
         "station_id": ctx.station_id,
@@ -99,20 +101,20 @@ def _group_proofs_by_type(proofs: list[dict[str, Any]]) -> dict[str, list[dict[s
     return grouped
 
 
-def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
+def render_raport_tekst(ctx: KontekstRaportuRozszerzen) -> str:
     """Plain text PL (dla audytora / inzyniera)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
     braki = _braki_danych(ctx)
     if not proofs:
         naglowek = (
-            f"Raport walidacji rozszerzeń audytu 2 — brak dowodów do uwzględnienia.\n"
+            f"Raport walidacji rozszerzeń stacji — brak dowodów do uwzględnienia.\n"
             f"Stacja: {ctx.station_name}\n"
             f"Projekt: {ctx.project_name}\n"
         )
         return naglowek + "".join(_linie_brakow(braki))
 
     lines: list[str] = []
-    lines.append("RAPORT WALIDACJI ROZSZERZEŃ AUDYTU 2")
+    lines.append("RAPORT WALIDACJI ROZSZERZEŃ STACJI")
     lines.append("=" * 50)
     lines.append(f"Projekt: {ctx.project_name}")
     lines.append(f"Stacja: {ctx.station_name}")
@@ -152,7 +154,7 @@ def _linie_brakow(braki: list[dict[str, Any]]) -> list[str]:
     return linie
 
 
-def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
+def render_raport_pdf(ctx: KontekstRaportuRozszerzen) -> bytes:
     """
     PDF z reportlab (deterministyczny — identyczny ProofPack -> identyczny PDF).
 
@@ -173,7 +175,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         )
     except ImportError:
         # Placeholder gdy reportlab niedostepny.
-        return render_audit2_report_text(ctx).encode("utf-8")
+        return render_raport_tekst(ctx).encode("utf-8")
 
     buffer = BytesIO()
     zarejestruj_czcionki()
@@ -184,7 +186,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         bottomMargin=2 * cm,
         leftMargin=2 * cm,
         rightMargin=2 * cm,
-        title=f"Raport walidacji audytu 2 — {ctx.station_name}",
+        title=f"Raport walidacji rozszerzeń stacji — {ctx.station_name}",
         author="MV-DESIGN-PRO",
         invariant=1,
         pageCompression=0,
@@ -194,7 +196,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     elements: list = []
 
     # Naglowek.
-    elements.append(Paragraph("Raport walidacji rozszerzeń audytu 2", styles["Title"]))
+    elements.append(Paragraph("Raport walidacji rozszerzeń stacji", styles["Title"]))
     elements.append(Spacer(1, 0.5 * cm))
     elements.append(Paragraph(f"Projekt: {ctx.project_name}", styles["Normal"]))
     elements.append(Paragraph(f"Stacja: {ctx.station_name}", styles["Normal"]))
@@ -268,7 +270,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     return buffer.getvalue()
 
 
-def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
+def render_raport_docx(ctx: KontekstRaportuRozszerzen) -> bytes:
     """
     DOCX z python-docx (deterministyczny).
 
@@ -282,13 +284,13 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
         from docx import Document
         from docx.shared import Pt
     except ImportError:
-        return render_audit2_report_text(ctx).encode("utf-8")
+        return render_raport_tekst(ctx).encode("utf-8")
 
     from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
     doc = Document()
     # Tytul.
-    title = doc.add_heading("Raport walidacji rozszerzeń audytu 2", level=0)
+    title = doc.add_heading("Raport walidacji rozszerzeń stacji", level=0)
     title.alignment = 1  # center
 
     # Metadata.
@@ -352,7 +354,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     return make_docx_bytes_deterministic(buffer.getvalue())
 
 
-def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
+def render_raport_latex(ctx: KontekstRaportuRozszerzen) -> str:
     """LaTeX source (do dolaczenia do dowodow inzynierskich w E-36 ProofSurface)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
     lines: list[str] = []
@@ -360,7 +362,7 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     lines.append(r"\usepackage[utf8]{inputenc}")
     lines.append(r"\usepackage[polish]{babel}")
     lines.append(r"\usepackage{amsmath,amssymb}")
-    lines.append(r"\title{Raport walidacji audytu 2}")
+    lines.append(r"\title{Raport walidacji rozszerzeń stacji}")
     lines.append(rf"\author{{Stacja {ctx.station_name}}}")
     lines.append(rf"\date{{{ctx.generated_at_iso}}}")
     lines.append(r"\begin{document}")
@@ -398,13 +400,13 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     return "\n".join(lines)
 
 
-def render_audit2_report_all_formats(ctx: Audit2ReportContext) -> dict[str, Any]:
+def render_raport_wszystkie_formaty(ctx: KontekstRaportuRozszerzen) -> dict[str, Any]:
     """Wszystkie formaty w jednym dictie (do enkapsulacji w API response)."""
     return {
-        "json": render_audit2_report_json(ctx),
-        "text_pl": render_audit2_report_text(ctx),
-        "latex": render_audit2_report_latex(ctx),
+        "json": render_raport_json(ctx),
+        "text_pl": render_raport_tekst(ctx),
+        "latex": render_raport_latex(ctx),
         # PDF/DOCX bytes -> base64 dla JSON transport.
-        "pdf_size_bytes": len(render_audit2_report_pdf(ctx)),
-        "docx_size_bytes": len(render_audit2_report_docx(ctx)),
+        "pdf_size_bytes": len(render_raport_pdf(ctx)),
+        "docx_size_bytes": len(render_raport_docx(ctx)),
     }

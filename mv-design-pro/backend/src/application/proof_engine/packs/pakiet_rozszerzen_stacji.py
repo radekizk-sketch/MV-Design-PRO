@@ -1,43 +1,56 @@
-"""Skladanie pakietu dowodow audytu 2 z utrwalonych konfiguracji stacji i z modelu sieci.
+"""Skladanie pakietu dowodow rozszerzen stacji z MODELU sieci (ENM).
 
-PO CO (karta PROOFPACK-KONTRAKT). Pakiet dowodow walidacji rozszerzen stacji skladal
-interfejs: sumowal moc eksportu z `nominal_power_kw`, wysylal wylacznie zdolnosc
-przylaczeniowa (obiecujac piec rodzajow uzasadnien), a identyfikatorem pakietu byla
-pierwsza stacja albo zmyslone `'aggregate'`. Wszystko to dzieje sie teraz TUTAJ, w jednym
-miejscu backendu, dla KAZDEJ stacji z zapisana konfiguracja:
+PO CO (karta PROOFPACK-KONTRAKT, karta JEDNA-SCIEZKA-EDYCJI). Pakiet dowodow walidacji
+rozszerzen stacji sklada backend, w jednym miejscu, dla KAZDEJ stacji modelu — wylacznie
+z danych modelu sieci. Dawna zapisana konfiguracja stacji (tabela obok modelu z lustrem
+zrodel, mapa przelacznikow zaczepow, przekladnikow i aparatury pol) byla druga prawda:
+wybory projektanta zyly w niej zamiast w modelu, a solver dostawal je bocznym wejsciem.
+Teraz kazda dana pochodzi z elementu modelu, ktory ja niesie:
 
-* nazwy elementow z modelu wg jednej reguly nazwy (`enm.nazwy_elementow`);
-* arytmetyka bilansu (suma mocy znamionowych zrodel, suma mocy odbiorow stacji);
-* zdolnosci przeksztaltnika z karty katalogowej typu zrodla w modelu;
-* klasa transformatora z napiec modelu (`klasa_transformatora_przelacznika`), wymaganie
-  regulacji automatycznej z trybu sterowania przelacznika w modelu;
-* wspolczynnik napieciowy przekladnika z katalogu typow VT, sposob uziemienia punktu
-  neutralnego sieci SN pola z JEDYNEJ prawdy modelu (`enm.uziemienie_sekcji` — zespoly
-  uziemiajace i punkty neutralne uzwojen transformatorow; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA
-  skasowala dawny wybor wariantu z katalogu uziemien w konfiguracji stacji — druga prawde).
+* tryby pracy magazynu — `Generator.materialized_params.profiles.bess_operation_mode_refs`
+  (operacja `set_der_catalog_bindings`, kreator zrodla OZE);
+* moc zrodla do bilansu eksportu — `Generator.p_mw` (ta sama wielkosc, z ktorej konfigurator
+  stacji pokazuje moc zrodla); zdolnosci przeksztaltnika z karty katalogowej typu zrodla;
+* przelacznik zaczepow transformatora — `Transformer.tap_changer.catalog_ref` (operacja
+  `update_element_parameters`), klasa transformatora z napiec modelu
+  (`klasa_transformatora_przelacznika`), wymaganie regulacji automatycznej z trybu sterowania
+  przelacznika w modelu;
+* przekladnik napieciowy pola — przekladnik `Measurement` rodzaju VT wskazujacy pole
+  (`bay_ref`, operacja `add_vt`), wspolczynnik napieciowy z katalogu typow VT, sposob
+  uziemienia punktu neutralnego sieci SN pola z JEDYNEJ prawdy modelu
+  (`enm.uziemienie_sekcji`).
 
-BRAK DANYCH NIE JEST ZGODNOSCIA. Kazdy z pieciu rodzajow dowodu ma w pakiecie stacji albo
+Zrodlo nalezy do stacji, gdy wskazuje ja (`Generator.station_ref`) albo jest przylaczone do
+szyny stacji (`enm.tor_pola.szyny_stacji`) — jedna regula dla trybow pracy i bilansu.
+
+BRAK DANYCH NIE JEST ZGODNOSCIA. Kazdy z czterech rodzajow dowodu ma w pakiecie stacji albo
 co najmniej jeden dowod, albo co najmniej jeden jawny brak z przyczyna po polsku
-(`BrakDanychDowodu`). Rodzaj nie znika po cichu i nie dostaje zgodnosci na domysl:
-nie ma tu mocy „typowej" (dawna mediana per rodzaj zrodla), klasy transformatora
-„pierwszej z katalogu" ani uziemienia „izolowanego" dla nieznanego wpisu.
+(`BrakDanychDowodu`). Rodzaj nie znika po cichu i nie dostaje zgodnosci na domysl.
 
-WARSTWA: aplikacja — zero fizyki (werdykty licza funkcje katalogu audytu 2), zero mutacji.
+WARSTWA: aplikacja — zero fizyki (werdykty licza funkcje katalogu konfiguracji stacji),
+zero mutacji.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any
 
-from enm.models import Bay, EnergyNetworkModel, Generator, Substation, Transformer
+from enm.models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
+    Bay,
+    EnergyNetworkModel,
+    Generator,
+    Substation,
+    Transformer,
+)
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
 from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
 from network_model.catalog import get_default_mv_catalog
-from network_model.catalog.audit2_catalogs import klasa_transformatora_przelacznika
+from network_model.catalog.katalogi_stacji import klasa_transformatora_przelacznika
 from network_model.catalog.types import ConverterType
 from network_model.core.uziemienie import (
     STANY_AWSC,
@@ -46,124 +59,63 @@ from network_model.core.uziemienie import (
 )
 from network_model.pochodne import mw_na_kw
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 
-from .audit2_validation import (
+from .dowody_rozszerzen_stacji import (
     CHWILA_GENERACJI_DOMYSLNA,
-    Audit2ProofResult,
     BrakDanychDowodu,
-    RodzajDowoduAudytu2,
+    DowodRozszerzenStacji,
+    PakietRozszerzenStacji,
+    RodzajDowoduRozszerzen,
     SpecDowoduEksportuStacji,
     SpecDowoduPlanuZaczepow,
     SpecDowoduTrybowBess,
     SpecDowoduUziemieniaPrzekladnika,
-    SpecDowoduWytrzymalosciAparatu,
-    StationAudit2ProofPack,
     generate_bess_modes_proof,
-    generate_device_withstand_proof,
     generate_hosting_capacity_export_proof,
-    generate_station_audit2_proof_pack,
     generate_tap_changer_plan_proof,
     generate_vt_grounding_validation_proof,
+    zloz_pakiet_dowodow_stacji,
 )
 
-# =============================================================================
-# Kontrakt konfiguracji stacji audytu 2 — JEDNA klasa dla zapisu (PUT) i dla skladania
-# =============================================================================
-
-
-class DerAudit2SpecPayload(BaseModel):
-    der_id: str
-    der_kind: str  # "PV" | "BESS" | "FW"
-    bess_operation_mode_refs: list[str] | None = None
-    block_transformer_catalog_ref: str | None = None
-    pf_curve_ref: str | None = None
-    # Phase 23: real device + power persisted (nie wiecej median fallback).
-    device_catalog_ref: str | None = None
-    nominal_power_kw: float | None = None
-
-
-class BayDeviceWithstandSpec(BaseModel):
-    """Prady zwarciowe w miejscu pola i czas wylaczenia — dane wejscia dowodu wytrzymalosci.
-
-    Ograniczenia sa te same co w specyfikacji dowodu (`SpecDowoduWytrzymalosciAparatu`):
-    zapis przyjmuje wylacznie dane, z ktorych dowod da sie zlozyc (prady nieujemne i
-    skonczone, czas wylaczenia dodatni) — odmowa 422 przy zapisie zamiast bledu przy
-    skladaniu pakietu.
-    """
-
-    model_config = ConfigDict(allow_inf_nan=False)
-
-    device_id: str = Field(min_length=1)
-    i_peak_calculated_ka: float = Field(ge=0)
-    i_thermal_calculated_ka: float = Field(ge=0)
-    t_clearing_s: float = Field(gt=0)
-
-
-class StationAudit2ConfigBody(BaseModel):
-    tap_changer_refs: list[str] = Field(default_factory=list)
-    der_specs: list[DerAudit2SpecPayload] = Field(default_factory=list)
-    # Phase 8: per-transformer/bay mappings.
-    transformer_tap_changers: dict[str, str] = Field(default_factory=dict)
-    bay_hv_fuses: dict[str, str] = Field(default_factory=dict)
-    bay_vts: dict[str, str] = Field(default_factory=dict)
-    bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
-
+BESS: RodzajDowoduRozszerzen = "BESS_OPERATION_MODES"
+ZACZEPY: RodzajDowoduRozszerzen = "TAP_CHANGER_PLAN"
+EKSPORT: RodzajDowoduRozszerzen = "HOSTING_CAPACITY_EXPORT"
+PRZEKLADNIKI: RodzajDowoduRozszerzen = "VT_GROUNDING_VALIDATION"
+#: Cztery rodzaje dowodu w kolejnosci prezentacji.
+RODZAJE_DOWODOW: tuple[RodzajDowoduRozszerzen, ...] = (
+    BESS,
+    ZACZEPY,
+    EKSPORT,
+    PRZEKLADNIKI,
+)
 
 # =============================================================================
 # Przyczyny brakow — teksty dla projektanta (bez identyfikatorow i kodow)
 # =============================================================================
 
-BESS: RodzajDowoduAudytu2 = "AUDIT2_BESS_OPERATION_MODES"
-ZACZEPY: RodzajDowoduAudytu2 = "AUDIT2_TAP_CHANGER_PLAN"
-EKSPORT: RodzajDowoduAudytu2 = "AUDIT2_HOSTING_CAPACITY_EXPORT"
-WYTRZYMALOSC: RodzajDowoduAudytu2 = "AUDIT2_DEVICE_WITHSTAND"
-PRZEKLADNIKI: RodzajDowoduAudytu2 = "AUDIT2_VT_GROUNDING_VALIDATION"
-#: Piec rodzajow dowodu w kolejnosci prezentacji.
-RODZAJE_DOWODOW: tuple[RodzajDowoduAudytu2, ...] = (
-    BESS,
-    ZACZEPY,
-    EKSPORT,
-    WYTRZYMALOSC,
-    PRZEKLADNIKI,
+STACJA_SPOZA_MODELU = (
+    "Stacji nie ma w modelu sieci — danych stacji (źródeł, transformatorów, przekładników) "
+    "nie ma skąd odczytać."
 )
-
-BRAK_KONFIGURACJI = (
-    "Stacja nie ma zapisanej konfiguracji rozszerzeń — otwórz konfigurator stacji, aby "
-    "przypisać przełączniki zaczepów, przekładniki, dane aparatury i źródła."
-)
-KONFIGURACJA_NIEPOPRAWNA = (
-    "Zapisana konfiguracja stacji ma niepoprawny kształt — otwórz konfigurator stacji "
-    "i zapisz ją ponownie."
-)
-BRAK_MAGAZYNU = (
-    "Konfiguracja stacji nie zawiera magazynu energii — trybów pracy nie ma czego sprawdzić."
-)
-MAGAZYN_SPOZA_MODELU = (
-    "Magazyn energii wskazany w konfiguracji stacji nie istnieje w modelu sieci — otwórz "
-    "konfigurator stacji, aby zsynchronizować źródła."
-)
+BRAK_MAGAZYNU = "Stacja nie ma w modelu magazynu energii — trybów pracy nie ma czego sprawdzić."
 BRAK_PRZELACZNIKOW = (
-    "Konfiguracja stacji nie przypisuje przełącznika zaczepów żadnemu transformatorowi."
+    "Żaden transformator stacji nie ma w modelu przełącznika zaczepów z katalogu — wybierz "
+    "przełącznik w karcie transformatora konfiguratora stacji."
 )
-TRANSFORMATOR_SPOZA_MODELU = (
-    "Transformator wskazany w konfiguracji stacji nie istnieje w modelu sieci."
-)
-BRAK_ZRODEL = "Konfiguracja stacji nie zawiera źródeł — bilansu eksportu nie ma czego liczyć."
+BRAK_ZRODEL = "Stacja nie ma w modelu źródeł — bilansu eksportu nie ma czego liczyć."
 STACJA_BEZ_SZYN = (
-    "Stacji nie ma w modelu sieci albo nie ma ona przypisanych szyn — odbiorów stacji nie "
-    "da się zsumować, a zero importu byłoby twierdzeniem o sieci."
-)
-ZRODLO_SPOZA_MODELU = (
-    "Źródło wskazane w konfiguracji stacji nie istnieje w modelu sieci — bilans eksportu "
-    "byłby niepełny; otwórz konfigurator stacji, aby zsynchronizować źródła."
-)
-BRAK_WYTRZYMALOSCI = (
-    "Konfiguracja stacji nie zawiera danych wytrzymałości zwarciowej aparatury pól."
+    "Stacja nie ma przypisanych szyn w modelu sieci — odbiorów stacji nie da się zsumować, "
+    "a zero importu byłoby twierdzeniem o sieci."
 )
 POLE_BEZ_OZNACZENIA = (
-    "Wpis konfiguracji stacji nie ma oznaczenia pola — dowodu nie da się przypisać do pola."
+    "Pole z przekładnikiem napięciowym nie ma oznaczenia — dowodu nie da się przypisać do pola."
 )
+BRAK_PRZEKLADNIKOW = (
+    "Żadne pole stacji nie ma w modelu przekładnika napięciowego — dodaj przekładnik "
+    "w karcie zabezpieczeń konfiguratora stacji."
+)
+BRAK_PRZEKLADNIKOW = "Konfiguracja stacji nie przypisuje przekładników napięciowych polom."
 BRAK_PRZEKLADNIKOW = "Konfiguracja stacji nie przypisuje przekładników napięciowych polom."
 STACJA_SPOZA_MODELU_UZIEMIENIE = (
     "Stacji nie ma w modelu sieci — sposobu uziemienia punktu neutralnego sieci SN nie da "
@@ -203,7 +155,9 @@ def _transformator_bez_klasy(tr: Transformer, nazwa: str) -> str:
 
 
 def _zrodlo_bez_mocy(nazwa: str) -> str:
-    return f"Źródło {nazwa} nie ma mocy znamionowej z katalogu — bilans eksportu byłby zaniżony."
+    return (
+        f"Źródło {nazwa} nie ma w modelu dodatniej mocy czynnej — bilans eksportu byłby zaniżony."
+    )
 
 
 # =============================================================================
@@ -274,38 +228,82 @@ def moce_odbiorow_stacji_kw(model: EnergyNetworkModel | None) -> dict[str, float
     return moce
 
 
-# =============================================================================
-# Skladanie
-# =============================================================================
+def tryby_pracy_magazynu(generator: Generator) -> tuple[str, ...]:
+    """Tryby pracy magazynu z MODELU (`materialized_params.profiles.bess_operation_mode_refs`).
+
+    Ten sam podsłownik zapisuje operacja `set_der_catalog_bindings` (`DER_PROFILE_KEYS`) —
+    lista w kolejności wyboru projektanta (bez powtórzeń); wpis pusty albo nie-łańcuch nie
+    jest trybem.
+    """
+    profile = (generator.materialized_params or {}).get("profiles")
+    wpisy = profile.get("bess_operation_mode_refs") if isinstance(profile, dict) else None
+    if not isinstance(wpisy, list | tuple):
+        return ()
+    return tuple(dict.fromkeys(w for w in wpisy if isinstance(w, str) and w.strip()))
 
 
 class _Kontekst:
     """Indeksy modelu potrzebne przy składaniu (budowane raz na projekt)."""
 
     def __init__(self, model: EnergyNetworkModel | None) -> None:
-        self.generatory: dict[str, Generator] = {
-            g.ref_id: g for g in (model.generators if model else [])
-        }
-        self.transformatory: dict[str, Transformer] = {
-            t.ref_id: t for t in (model.transformers if model else [])
-        }
+        self.model = model
         self.stacje: dict[str, Substation] = {
             s.ref_id: s for s in (model.substations if model else [])
         }
         self.moce_odbiorow_kw = moce_odbiorow_stacji_kw(model)
         self.katalog = get_default_mv_catalog()
-        self.model = model
         # Uziemienie punktu neutralnego każdej sieci SN — JEDNA funkcja modelu, liczona raz.
         self.uziemienie: tuple[UziemienieSekcji, ...] = (
             uziemienie_sieci(model) if model is not None else ()
         )
         self.poziom = poziom_pol(model) if model is not None else None
 
+    def szyny(self, stacja: Substation) -> set[str]:
+        assert self.model is not None  # stacja pochodzi z modelu
+        return set(szyny_stacji(self.model, stacja, self.poziom))
+
+    def zrodla_stacji(self, stacja: Substation) -> list[Generator]:
+        """Źródła przekształtnikowe stacji: wskazujące ją albo przyłączone do jej szyny."""
+        assert self.model is not None
+        szyny = self.szyny(stacja)
+        return sorted(
+            (
+                g
+                for g in self.model.generators
+                if g.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE
+                and (g.station_ref == stacja.ref_id or g.bus_ref in szyny)
+            ),
+            key=lambda g: g.ref_id,
+        )
+
+    def transformatory_stacji(self, stacja: Substation) -> list[Transformer]:
+        """Transformatory, których oba zaciski leżą na szynach stacji."""
+        assert self.model is not None
+        szyny = self.szyny(stacja)
+        return sorted(
+            (t for t in self.model.transformers if t.hv_bus_ref in szyny and t.lv_bus_ref in szyny),
+            key=lambda t: t.ref_id,
+        )
+
+    def przekladniki_vt_pol(self, stacja: Substation) -> list[tuple[Bay, str]]:
+        """(pole stacji, typ katalogowy VT) — przekładniki napięciowe wskazujące pole stacji."""
+        assert self.model is not None
+        pola = {b.ref_id: b for b in self.model.bays if b.substation_ref == stacja.ref_id}
+        wynik = [
+            (pola[m.bay_ref], m.catalog_ref)
+            for m in self.model.measurements
+            if m.measurement_type == "VT"
+            and m.bay_ref in pola
+            and isinstance(m.catalog_ref, str)
+            and m.catalog_ref.strip()
+        ]
+        return sorted(wynik, key=lambda w: (w[0].ref_id, w[1]))
+
 
 def _oznaczenie_pola(pole: Bay) -> str | None:
     """Oznaczenie pola tą samą regułą co konfigurator stacji (numer → skrót odpływu → nazwa)."""
     # Lustro `bayDesignation` konfiguratora stacji (`??` — pierwsza wartość różna od
-    # braku): klucz wpisu `bay_vts` jest tym oznaczeniem, a nie nazwą elementu do zdania.
+    # braku): oznaczenie, którym konfigurator pyta o uziemienie pola, i którym dowód je nazywa.
     for oznaczenie in (pole.bay_number, pole.feeder_short_name, pole.name):
         if oznaczenie is not None:
             return oznaczenie
@@ -374,20 +372,16 @@ def uziemienie_pola_stacji(
 
 
 def _dowody_trybow_bess(
-    cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
-) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
-    dowody: list[Audit2ProofResult] = []
+    stacja: Substation, ctx: _Kontekst, chwila: str
+) -> tuple[list[DowodRozszerzenStacji], list[BrakDanychDowodu]]:
+    dowody: list[DowodRozszerzenStacji] = []
     braki: list[BrakDanychDowodu] = []
-    magazyny = sorted((d for d in cfg.der_specs if d.der_kind == "BESS"), key=lambda d: d.der_id)
+    magazyny = [g for g in ctx.zrodla_stacji(stacja) if g.gen_type == "bess"]
     if not magazyny:
         return dowody, [BrakDanychDowodu(BESS, BRAK_MAGAZYNU)]
-    for der in magazyny:
-        generator = ctx.generatory.get(der.der_id)
-        if generator is None:
-            braki.append(BrakDanychDowodu(BESS, MAGAZYN_SPOZA_MODELU))
-            continue
+    for generator in magazyny:
         nazwa = nazwa_elementu(generator, "generators")
-        tryby = tuple(ref for ref in (der.bess_operation_mode_refs or []) if ref)
+        tryby = tryby_pracy_magazynu(generator)
         if not tryby:
             braki.append(BrakDanychDowodu(BESS, _magazyn_bez_trybow(nazwa)))
             continue
@@ -398,7 +392,7 @@ def _dowody_trybow_bess(
         dowody.append(
             generate_bess_modes_proof(
                 SpecDowoduTrybowBess(
-                    der_id=der.der_id,
+                    der_id=generator.ref_id,
                     der_nazwa=nazwa,
                     pcs_four_quadrant=cztery_cwiartki,
                     pcs_grid_forming=tworzy_napiecie,
@@ -411,19 +405,19 @@ def _dowody_trybow_bess(
 
 
 def _dowody_planu_zaczepow(
-    cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
-) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
-    dowody: list[Audit2ProofResult] = []
+    stacja: Substation, ctx: _Kontekst, chwila: str
+) -> tuple[list[DowodRozszerzenStacji], list[BrakDanychDowodu]]:
+    dowody: list[DowodRozszerzenStacji] = []
     braki: list[BrakDanychDowodu] = []
-    # Pusty wpis to „bez przełącznika" (konfigurator zapisuje wyczyszczony wybór jako "").
-    wpisy = sorted((tr, tc) for tr, tc in cfg.transformer_tap_changers.items() if tc)
-    if not wpisy:
+    z_przelacznikiem = [
+        tr
+        for tr in ctx.transformatory_stacji(stacja)
+        if tr.tap_changer is not None and tr.tap_changer.catalog_ref
+    ]
+    if not z_przelacznikiem:
         return dowody, [BrakDanychDowodu(ZACZEPY, BRAK_PRZELACZNIKOW)]
-    for transformer_id, tap_changer_ref in wpisy:
-        tr = ctx.transformatory.get(transformer_id)
-        if tr is None:
-            braki.append(BrakDanychDowodu(ZACZEPY, TRANSFORMATOR_SPOZA_MODELU))
-            continue
+    for tr in z_przelacznikiem:
+        assert tr.tap_changer is not None and tr.tap_changer.catalog_ref  # filtr wyżej
         nazwa = nazwa_elementu(tr, "transformers")
         klasa = klasa_transformatora_przelacznika(tr.uhv_kv, tr.ulv_kv)
         if klasa is None:
@@ -431,17 +425,15 @@ def _dowody_planu_zaczepow(
             continue
         # Regulacja automatyczna wymagana wtedy, gdy MODEL deklaruje sterowanie
         # automatyczne przełącznika (`TapChanger.control_mode`), a nie „zawsze, gdy
-        # przełącznik ją ma" (dawny warunek tautologiczny: sprawdzenie AVR nie mogło
-        # nigdy zawieść).
-        wymaga_avr = tr.tap_changer is not None and tr.tap_changer.control_mode == "AUTOMATIC"
+        # przełącznik ją ma" (dawny warunek tautologiczny).
         dowody.append(
             generate_tap_changer_plan_proof(
                 SpecDowoduPlanuZaczepow(
-                    transformer_id=transformer_id,
+                    transformer_id=tr.ref_id,
                     transformer_nazwa=nazwa,
                     transformer_type=klasa,
-                    tap_changer_ref=tap_changer_ref,
-                    requires_avr=wymaga_avr,
+                    tap_changer_ref=tr.tap_changer.catalog_ref,
+                    requires_avr=tr.tap_changer.control_mode == "AUTOMATIC",
                 ),
                 generated_at_iso=chwila,
             )
@@ -450,83 +442,60 @@ def _dowody_planu_zaczepow(
 
 
 def _dowod_eksportu(
-    station_id: str, cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
-) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
-    if not cfg.der_specs:
+    stacja: Substation, ctx: _Kontekst, chwila: str
+) -> tuple[list[DowodRozszerzenStacji], list[BrakDanychDowodu]]:
+    zrodla = ctx.zrodla_stacji(stacja)
+    if not zrodla:
         return [], [BrakDanychDowodu(EKSPORT, BRAK_ZRODEL)]
     braki: list[BrakDanychDowodu] = []
-    p_import_kw = ctx.moce_odbiorow_kw.get(station_id)
+    p_import_kw = ctx.moce_odbiorow_kw.get(stacja.ref_id)
     if p_import_kw is None:
         braki.append(BrakDanychDowodu(EKSPORT, STACJA_BEZ_SZYN))
     p_export_kw = 0.0
-    for der in sorted(cfg.der_specs, key=lambda d: d.der_id):
-        generator = ctx.generatory.get(der.der_id)
-        if generator is None:
-            braki.append(BrakDanychDowodu(EKSPORT, ZRODLO_SPOZA_MODELU))
-            continue
-        moc = der.nominal_power_kw
-        if moc is None or not math.isfinite(moc) or moc <= 0:
+    for generator in zrodla:
+        moc = float(generator.p_mw)
+        if not math.isfinite(moc) or moc <= 0:
             braki.append(
                 BrakDanychDowodu(EKSPORT, _zrodlo_bez_mocy(nazwa_elementu(generator, "generators")))
             )
             continue
-        p_export_kw += moc
+        p_export_kw += mw_na_kw(moc)
     if braki or p_import_kw is None:
         # Bilans z częścią źródeł albo bez importu byłby liczbą o sieci, której nie ma.
         return [], braki
     return [
         generate_hosting_capacity_export_proof(
             SpecDowoduEksportuStacji(
-                station_id=station_id, p_export_kw=p_export_kw, p_import_kw=p_import_kw
+                station_id=stacja.ref_id,
+                p_export_kw=p_export_kw,
+                p_import_kw=p_import_kw,
             ),
             generated_at_iso=chwila,
         )
     ], []
 
 
-def _dowody_wytrzymalosci(
-    cfg: StationAudit2ConfigBody, chwila: str
-) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
-    if not cfg.bay_device_withstand:
-        return [], [BrakDanychDowodu(WYTRZYMALOSC, BRAK_WYTRZYMALOSCI)]
-    dowody: list[Audit2ProofResult] = []
-    braki: list[BrakDanychDowodu] = []
-    for pole, dane in sorted(cfg.bay_device_withstand.items()):
-        # Pola jawnie, nie `**` ze slownika (karta PROOFPACK-KONTRAKT): rozjazd ksztaltu
-        # zapisu i specyfikacji ma byc bledem typow, nie cichym bledem walidacji.
-        try:
-            spec = SpecDowoduWytrzymalosciAparatu(
-                bay_designation=pole,
-                device_id=dane.device_id,
-                i_peak_calculated_ka=dane.i_peak_calculated_ka,
-                i_thermal_calculated_ka=dane.i_thermal_calculated_ka,
-                t_clearing_s=dane.t_clearing_s,
-            )
-        except ValidationError:
-            braki.append(BrakDanychDowodu(WYTRZYMALOSC, POLE_BEZ_OZNACZENIA))
-            continue
-        dowody.append(generate_device_withstand_proof(spec, generated_at_iso=chwila))
-    return dowody, braki
-
-
 def _dowody_przekladnikow(
-    station_id: str, cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
-) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
-    # Pusty wpis to „bez przekładnika" (konfigurator zapisuje wyczyszczony wybór jako "").
-    wpisy = sorted((pole, vt) for pole, vt in cfg.bay_vts.items() if vt)
+    stacja: Substation, ctx: _Kontekst, chwila: str
+) -> tuple[list[DowodRozszerzenStacji], list[BrakDanychDowodu]]:
+    wpisy = ctx.przekladniki_vt_pol(stacja)
     if not wpisy:
         return [], [BrakDanychDowodu(PRZEKLADNIKI, BRAK_PRZEKLADNIKOW)]
-    dowody: list[Audit2ProofResult] = []
+    dowody: list[DowodRozszerzenStacji] = []
     braki: list[BrakDanychDowodu] = []
     for pole, vt_ref in wpisy:
-        typ, przyczyna = uziemienie_pola_stacji(ctx, station_id, pole)
+        oznaczenie = _oznaczenie_pola(pole)
+        if oznaczenie is None:
+            braki.append(BrakDanychDowodu(PRZEKLADNIKI, POLE_BEZ_OZNACZENIA))
+            continue
+        typ, przyczyna = uziemienie_pola_stacji(ctx, stacja.ref_id, oznaczenie)
         if typ is None:
             assert przyczyna is not None  # kontrakt funkcji: brak typu ⇔ nazwana przyczyna
             braki.append(BrakDanychDowodu(PRZEKLADNIKI, przyczyna))
             continue
         try:
             spec = SpecDowoduUziemieniaPrzekladnika(
-                bay_designation=pole,
+                bay_designation=oznaczenie,
                 vt_voltage_factor=wspolczynnik_napieciowy_typu_vt(vt_ref),
                 grounding_type=typ,
             )
@@ -539,51 +508,40 @@ def _dowody_przekladnikow(
 
 def zloz_pakiet_stacji(
     station_id: str,
-    konfiguracja: Mapping[str, Any] | None,
     model: EnergyNetworkModel | None,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
     _ctx: _Kontekst | None = None,
-) -> StationAudit2ProofPack:
-    """Pakiet dowodów jednej stacji z zapisanej konfiguracji (słownik pól) i z modelu.
+) -> PakietRozszerzenStacji:
+    """Pakiet dowodów jednej stacji — wyłącznie z modelu sieci.
 
-    `konfiguracja is None` — stacja modelu bez zapisanej konfiguracji: każdy rodzaj jest
-    jawnym brakiem (stacja nie znika z pakietu i nie dostaje zgodności na domysł).
+    Stacja spoza modelu: każdy rodzaj jest jawnym brakiem (pakiet nie znika i nie dostaje
+    zgodności na domysł).
     """
     ctx = _ctx or _Kontekst(model)
     nazwa_stacji = nazwa_po_identyfikatorze(
         station_id, model, spoza_modelu=f"Stacja {SPOZA_MODELU}"
     )
-    if konfiguracja is None:
-        return generate_station_audit2_proof_pack(
+    stacja = ctx.stacje.get(station_id)
+    if stacja is None:
+        return zloz_pakiet_dowodow_stacji(
             station_id=station_id,
             station_nazwa=nazwa_stacji,
             proofs=[],
-            braki_danych=[BrakDanychDowodu(r, BRAK_KONFIGURACJI) for r in RODZAJE_DOWODOW],
+            braki_danych=[BrakDanychDowodu(r, STACJA_SPOZA_MODELU) for r in RODZAJE_DOWODOW],
             generated_at_iso=generated_at_iso,
         )
-    try:
-        cfg = StationAudit2ConfigBody.model_validate(dict(konfiguracja))
-    except ValidationError:
-        return generate_station_audit2_proof_pack(
-            station_id=station_id,
-            station_nazwa=nazwa_stacji,
-            proofs=[],
-            braki_danych=[BrakDanychDowodu(r, KONFIGURACJA_NIEPOPRAWNA) for r in RODZAJE_DOWODOW],
-            generated_at_iso=generated_at_iso,
-        )
-    dowody: list[Audit2ProofResult] = []
+    dowody: list[DowodRozszerzenStacji] = []
     braki: list[BrakDanychDowodu] = []
     for czesc in (
-        _dowody_trybow_bess(cfg, ctx, generated_at_iso),
-        _dowody_planu_zaczepow(cfg, ctx, generated_at_iso),
-        _dowod_eksportu(station_id, cfg, ctx, generated_at_iso),
-        _dowody_wytrzymalosci(cfg, generated_at_iso),
-        _dowody_przekladnikow(station_id, cfg, ctx, generated_at_iso),
+        _dowody_trybow_bess(stacja, ctx, generated_at_iso),
+        _dowody_planu_zaczepow(stacja, ctx, generated_at_iso),
+        _dowod_eksportu(stacja, ctx, generated_at_iso),
+        _dowody_przekladnikow(stacja, ctx, generated_at_iso),
     ):
         dowody.extend(czesc[0])
         braki.extend(czesc[1])
-    return generate_station_audit2_proof_pack(
+    return zloz_pakiet_dowodow_stacji(
         station_id=station_id,
         station_nazwa=nazwa_stacji,
         proofs=dowody,
@@ -593,29 +551,15 @@ def zloz_pakiet_stacji(
 
 
 def zloz_pakiety_projektu(
-    konfiguracje: Sequence[Mapping[str, Any]],
     model: EnergyNetworkModel | None,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> list[StationAudit2ProofPack]:
-    """Pakiety dowodów KAŻDEJ stacji w zakresie projektu (kolejność: `station_id`).
-
-    Zakres = stacje modelu sieci ∪ stacje z zapisaną konfiguracją. Stacja modelu bez
-    konfiguracji dostaje pakiet z samymi brakami (nie znika); konfiguracja stacji, której
-    nie ma w modelu, dostaje nazwę „Stacja spoza modelu" i braki wynikające z modelu.
-    `konfiguracje` — słowniki z kluczem `station_id` i polami `StationAudit2ConfigBody`.
-    """
+) -> list[PakietRozszerzenStacji]:
+    """Pakiety dowodów KAŻDEJ stacji modelu sieci (kolejność: `ref_id` stacji)."""
     ctx = _Kontekst(model)
-    po_stacji: dict[str, Mapping[str, Any] | None] = {s: None for s in ctx.stacje}
-    for wiersz in konfiguracje:
-        po_stacji[str(wiersz["station_id"])] = {
-            k: v for k, v in wiersz.items() if k != "station_id"
-        }
     return [
-        zloz_pakiet_stacji(
-            station_id, po_stacji[station_id], model, generated_at_iso=generated_at_iso, _ctx=ctx
-        )
-        for station_id in sorted(po_stacji)
+        zloz_pakiet_stacji(station_id, model, generated_at_iso=generated_at_iso, _ctx=ctx)
+        for station_id in sorted(ctx.stacje)
     ]
 
 

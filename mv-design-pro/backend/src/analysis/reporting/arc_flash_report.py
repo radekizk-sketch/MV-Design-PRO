@@ -6,7 +6,7 @@ Czyta zserializowany ``ArcFlashView`` (analysis.arc_flash.serializer.view_to_dic
 per szyna — energia incydentu [cal/cm²], granica łuku AFB [mm], kategoria ŚOI (PPE),
 czas łuku, napięcie, odległość robocza, status i proweniencja.
 
-Wzorzec 1:1 z ``audit2_report`` (Phase 5 backend integration):
+Wzorzec 1:1 z ``raport_rozszerzen_stacji`` (Phase 5 backend integration):
 - JSON: strukturalne dane (frontend ReportSurface / eksport).
 - Tekst PL: dla inżyniera bez Acrobata.
 - PDF: reportlab (deterministyczny — identyczny widok → identyczny PDF).

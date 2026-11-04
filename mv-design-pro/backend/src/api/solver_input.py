@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
-from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
@@ -41,7 +40,6 @@ def _graph_for_analysis(
     analysis_type: SolverAnalysisType,
     scenario_lower: str,
     solver_options: dict[str, Any],
-    rozszerzenia_audit2: dict[str, Any] | None,
 ) -> NetworkGraph:
     """Karta CV-4.2: kontrakt P11 wypełniany PRZEZ assembler (`zloz_wejscie_*`),
     nie przez pusty graf-stub (P11 przed kartą zawsze budował payload z
@@ -52,17 +50,10 @@ def _graph_for_analysis(
 
     PROTECTION nie ma własnej analizy assemblera (payload jest jawnym stubem
     w ``build_solver_input``) — wystarcza IR bez montażu PF/SC.
-
-    ``rozszerzenia_audit2`` (CV-4.2b): rozszerzenia z konfiguracji audytu 2 stacji
-    odczytanej RAZ fabryką ``UnitOfWork`` żądania — assembler dostaje dane, nie
-    otwiera bazy (do tej karty czytał ją drugi raz własnym silnikiem z
-    ``DATABASE_URL``, więc kontrakt P11 potrafił nie widzieć zapisanej konfiguracji).
     """
     snapshot = get_enm(klucz).model_dump(mode="json")
     if analysis_type == SolverAnalysisType.LOAD_FLOW:
-        return zloz_wejscie_rozplywu(
-            snapshot, solver_options, rozszerzenia_audit2=rozszerzenia_audit2
-        ).graph
+        return zloz_wejscie_rozplywu(snapshot, solver_options).graph
     if analysis_type in (
         SolverAnalysisType.SHORT_CIRCUIT_3F,
         SolverAnalysisType.SHORT_CIRCUIT_1F,
@@ -72,9 +63,7 @@ def _graph_for_analysis(
             "3F" if analysis_type == SolverAnalysisType.SHORT_CIRCUIT_3F else "1F"
         )
         sc_options["scenario"] = scenario_lower
-        return zloz_wejscie_zwarcia(
-            snapshot, sc_options, rozszerzenia_audit2=rozszerzenia_audit2
-        ).graph
+        return zloz_wejscie_zwarcia(snapshot, sc_options).graph
     return zbuduj_graf(snapshot)
 
 
@@ -94,8 +83,6 @@ class SolverInputResponse(BaseModel):
     provenance_summary: dict[str, Any]
     payload: dict[str, Any]
     trace: list[dict[str, Any]]
-    # Phase 17: audit2 extensions exposed via API for solver consumers.
-    audit2_extensions: dict[str, Any] | None = None
 
 
 class EligibilityMapResponse(BaseModel):
@@ -125,8 +112,6 @@ def get_solver_input(
         ...,
         description="Analysis type: short_circuit_3f, short_circuit_1f, load_flow, protection",
     ),
-    project_id: str | None = None,
-    station_id: str | None = None,
     scenario: str = "MAX",
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> SolverInputResponse:
@@ -136,14 +121,6 @@ def get_solver_input(
     Karta CV-4.2: wejście budowane PRZEZ assembler (`zloz_wejscie_rozplywu`/
     `zloz_wejscie_zwarcia`) z REALNEJ migawki ENM przypadku (`klucz` — CV-1-W),
     nie z pustego grafu-stubu.
-
-    Phase 17 / CV-4.2b: jesli `project_id` + `station_id` przekazane, konfiguracja
-    audytu 2 jest czytana RAZ (fabryka `UnitOfWork` żądania, repozytorium
-    `audit2_station_configs`) i idzie w DWA miejsca: do envelope
-    (`audit2_extensions`) oraz — jako rozszerzenia solvera — do assemblera,
-    więc payload odzwierciedla model PO korektach audit2 (tap/statyzm/impedancja
-    bloku), nie tylko surowy model obok osobno raportowanych rozszerzeń.
-    Niepoprawny UUID projektu = 400 (nie cichy payload bez konfiguracji).
 
     Karta P0.3: `scenario` (MAX default | MIN) selects the IEC 60909-0
     Table 1 voltage factor c per bus (BusPayload.c_factor_iec60909) — see
@@ -166,31 +143,6 @@ def get_solver_input(
             detail=f"Invalid scenario '{scenario}'. Valid: ['MAX', 'MIN']",
         )
 
-    # Phase 17 / CV-4.2b: konfiguracja audytu 2 z bazy RAZ, fabryką UnitOfWork żądania.
-    audit2_payload: dict[str, Any] | None = None
-    rozszerzenia_audit2: dict[str, Any] | None = None
-    if project_id and station_id:
-
-        from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
-
-        try:
-            pid_uuid = UUID(project_id)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=400, detail=f"project_id nie jest poprawnym UUID: {project_id!r}"
-            ) from exc
-        with uow_factory() as uow:
-            cfg = uow.audit2_station_configs.get(pid_uuid, station_id)
-            if cfg is not None:
-                audit2_payload = {
-                    "station_id": cfg.station_id,
-                    "tap_changer_refs": list(cfg.tap_changer_refs or []),
-                    "der_specs": list(cfg.der_specs or []),
-                    # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
-                    "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
-                }
-                rozszerzenia_audit2 = rozszerzenia_audit2_z_konfiguracji(cfg)
-
     # Karta W3-F (§0.6): częstotliwość studium z nagłówka ENM — prawda dla
     # solverów (docstring `enm/validator.py:1552`), przekazana JAWNIE do
     # `build_solver_input` (B=2πfC kabli SN zamiast milczącego zalozenia 50 Hz).
@@ -201,7 +153,6 @@ def get_solver_input(
             analysis_type=at,
             scenario_lower=scenario_normalized.lower(),
             solver_options={},
-            rozszerzenia_audit2=rozszerzenia_audit2,
         )
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=400) from exc
@@ -217,7 +168,6 @@ def get_solver_input(
         enm_revision="current",
         analysis_type=at,
         config=config,
-        audit2_station_payload=audit2_payload,
         scenario=scenario_normalized,  # type: ignore[arg-type]
         czestotliwosc_hz=czestotliwosc_hz,
     )
@@ -231,7 +181,6 @@ def get_solver_input(
         provenance_summary=envelope.provenance_summary.model_dump(mode="json"),
         payload=envelope.payload,
         trace=[t.model_dump(mode="json") for t in envelope.trace],
-        audit2_extensions=envelope.audit2_extensions,
     )
 
 

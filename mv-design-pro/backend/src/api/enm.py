@@ -114,7 +114,7 @@ from enm.topology_ops import (
 )
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Response
 from network_model.catalog.materialization import pozycja_w_katalogu
 from pydantic import BaseModel, Field
 
@@ -126,21 +126,6 @@ router = APIRouter(prefix="/api/cases", tags=["enm"])
 class WizardStepRequestModel(BaseModel):
     step_id: str
     data: dict[str, Any] = Field(default_factory=dict)
-
-
-def _resolve_project_id(case_id: str, request: Request) -> str | None:
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None:
-        return None
-    try:
-        parsed_case_id = UUID(case_id)
-    except ValueError:
-        return None
-    with uow_factory() as uow:
-        study_case = uow.cases.get_study_case(parsed_case_id)
-        if study_case is not None:
-            return str(study_case.project_id)
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -636,13 +621,12 @@ class WytrzymaloscAparaturyRequestModel(BaseModel):
 
 @router.post("/{case_id}/enm/wytrzymalosc-aparatury")
 def post_wytrzymalosc_aparatury(
-    case_id: str, klucz: KluczTwin, body: WytrzymaloscAparaturyRequestModel, request: Request
+    case_id: str, klucz: KluczTwin, body: WytrzymaloscAparaturyRequestModel
 ) -> dict[str, Any]:
     """Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).
 
-    Aparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),
-    a zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —
-    każdy wiersz niesie jawne ``zrodlo``. Prądy pola i czas wyłączenia pola liczone są
+    Aparaty biorą się WYŁĄCZNIE z MODELU (pozycja katalogu APARAT_SN wskazana na aparacie
+    pola) — każdy wiersz niesie ``zrodlo`` = ``model``. Prądy pola i czas wyłączenia pola liczone są
     z wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka
     porównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
     """
@@ -666,39 +650,12 @@ def post_wytrzymalosc_aparatury(
                 "prądzie zwarciowym maksymalnym (scenariusz MAX)."
             ),
         )
-    enm = _get_enm(klucz)
-    project_id = _resolve_project_id(case_id, request)
     return widok_wytrzymalosci_z_biegu(
-        enm=enm,
+        enm=_get_enm(klucz),
         station_ref=body.station_ref,
         wiersze_biegu=build_short_circuit_results(run)["rows"],
         run_id=str(run.id),
-        # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
-        bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),
     )
-
-
-def _bay_device_withstand(
-    project_id: str | None, station_ref: str, request: Request
-) -> dict[str, Any] | None:
-    """Zapisana konfiguracja aparatury pól stacji (albo ``None``, gdy jej nie ma).
-
-    Brak zapisu NIE jest błędem — od karty KD-6 werdykty powstają z modelu,
-    a konfiguracja jest nadpisaniem inżyniera tam, gdzie je zrobił.
-    """
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None or project_id is None:
-        return None
-    try:
-        parsed_project_id = UUID(project_id)
-    except ValueError:
-        return None
-    with uow_factory() as uow:
-        # CV-4.2b: odczyt przez repozytorium (jedno miejsce zapytań o tę tabelę).
-        row = uow.audit2_station_configs.get(parsed_project_id, station_ref)
-        if row is None:
-            return None
-        return dict(row.bay_device_withstand or {})
 
 
 # ---------------------------------------------------------------------------

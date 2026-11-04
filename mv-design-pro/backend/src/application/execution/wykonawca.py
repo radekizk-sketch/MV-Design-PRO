@@ -39,7 +39,6 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from domain.execution import STANY_KONCOWE_BIEGU, KontekstWykonania, PostepBiegu
@@ -91,7 +90,7 @@ class WykonawcaBiegow:
 
     # ------------------------------------------------------------------ biegi
 
-    def zlec_bieg(self, run_id: UUID, uow_factory: Callable[[], Any] | None) -> CanonicalRun:
+    def zlec_bieg(self, run_id: UUID) -> CanonicalRun:
         """Przyjmij bieg do kolejki (CREATED → QUEUED atomowo) i wróć natychmiast.
 
         Przegrany wyścig o ten sam bieg (drugi `POST …/execute`) nie zleca nic i
@@ -107,9 +106,7 @@ class WykonawcaBiegow:
         self._dodaj(
             _Zlecenie(
                 klucz=_klucz_biegu(run_id),
-                wykonaj=lambda kontekst: execute_run(
-                    run_id, uow_factory=uow_factory, kontekst=kontekst
-                ),
+                wykonaj=lambda kontekst: execute_run(run_id, kontekst=kontekst),
             )
         )
         return run

@@ -1,12 +1,16 @@
 """
-Audit2 Validation Proof Pack — pakiet dowodowy dla rozszerzen audytu 2.
+Pakiet dowodow rozszerzen stacji — generatory dowodow z danych stacji w modelu sieci.
 
-5 typow dowodow (Phase 4):
-  - AUDIT2_BESS_OPERATION_MODES (eng.10): zgodnosc trybow ze zdolnosciami PCS
-  - AUDIT2_TAP_CHANGER_PLAN (eng.13): plan przelaczania zaczepow OLTC/DETC
-  - AUDIT2_HOSTING_CAPACITY_EXPORT (eng.15): bilans P_export vs P_import
-  - AUDIT2_DEVICE_WITHSTAND (eng.18): walidacja I_dyn / I_th aparatury
-  - AUDIT2_VT_GROUNDING_VALIDATION (eng.20): VT U_th vs typ uziemienia
+4 rodzaje dowodow:
+  - BESS_OPERATION_MODES (eng.10): zgodnosc trybow ze zdolnosciami PCS
+  - TAP_CHANGER_PLAN (eng.13): plan przelaczania zaczepow OLTC/DETC
+  - HOSTING_CAPACITY_EXPORT (eng.15): bilans P_export vs P_import
+  - VT_GROUNDING_VALIDATION (eng.20): VT U_th vs typ uziemienia
+
+Dawny piaty rodzaj (wytrzymalosc aparatury z „klasy wytrzymalosci" wskazanej w zapisanej
+konfiguracji stacji obok modelu) skasowano karta JEDNA-SCIEZKA-EDYCJI: werdykt I_dyn/I_th
+pola liczy `application/analyses/wytrzymalosc_aparatury_pol.py` z aparatu pola w MODELU
+i z biegu zwarciowego — druga droga z recznie wpisanymi pradami bylaby druga prawda.
 
 KONTRAKT WEJSCIA Z JEDNEGO ZRODLA (karta PROOFPACK-KONTRAKT). Kazdy generator przyjmuje
 TYPOWANA specyfikacje (pydantic, `extra="forbid"`, zamrozona) — ta sama klasa jest
@@ -31,13 +35,12 @@ from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid5
 
-from network_model.catalog.audit2_catalogs import (
+from network_model.catalog.katalogi_stacji import (
     ETYKIETY_KLAS_TRANSFORMATORA,
     KlasaTransformatoraPrzelacznika,
     get_bess_operation_mode,
     get_tap_changer,
     is_vt_voltage_factor_valid_for_grounding,
-    validate_device_withstand,
     validate_hosting_capacity_export,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO, TypPunktuNeutralnego
@@ -47,26 +50,24 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 #: Chwila generacji, gdy wolajacy jej nie poda — przypieta, bo pakiet jest deterministyczny.
 CHWILA_GENERACJI_DOMYSLNA = "1970-01-01T00:00:00Z"
 
-#: Rodzaje dowodow audytu 2 w kolejnosci prezentacji — JEDNA lista dla generatorow,
+#: Rodzaje dowodow pakietu rozszerzen stacji w kolejnosci prezentacji — JEDNA lista dla generatorow,
 #: skladania pakietu stacji i jawnych brakow danych.
-RodzajDowoduAudytu2 = Literal[
-    "AUDIT2_BESS_OPERATION_MODES",
-    "AUDIT2_TAP_CHANGER_PLAN",
-    "AUDIT2_HOSTING_CAPACITY_EXPORT",
-    "AUDIT2_DEVICE_WITHSTAND",
-    "AUDIT2_VT_GROUNDING_VALIDATION",
+RodzajDowoduRozszerzen = Literal[
+    "BESS_OPERATION_MODES",
+    "TAP_CHANGER_PLAN",
+    "HOSTING_CAPACITY_EXPORT",
+    "VT_GROUNDING_VALIDATION",
 ]
 
 #: Polska nazwa rodzaju dowodu — ekran i raport pokazuja ja zamiast kodu rodzaju.
 ETYKIETY_RODZAJOW_DOWODU: dict[str, str] = {
-    "AUDIT2_BESS_OPERATION_MODES": "Tryby pracy magazynu energii",
-    "AUDIT2_TAP_CHANGER_PLAN": "Plan regulacji zaczepów transformatora",
-    "AUDIT2_HOSTING_CAPACITY_EXPORT": "Zdolność przyłączeniowa — eksport wobec importu",
-    "AUDIT2_DEVICE_WITHSTAND": "Wytrzymałość zwarciowa aparatury",
-    "AUDIT2_VT_GROUNDING_VALIDATION": "Przekładniki napięciowe wobec uziemienia sieci",
+    "BESS_OPERATION_MODES": "Tryby pracy magazynu energii",
+    "TAP_CHANGER_PLAN": "Plan regulacji zaczepów transformatora",
+    "HOSTING_CAPACITY_EXPORT": "Zdolność przyłączeniowa — eksport wobec importu",
+    "VT_GROUNDING_VALIDATION": "Przekładniki napięciowe wobec uziemienia sieci",
 }
 
-#: Przestrzen nazw identyfikatorow dowodow audytu 2 (UUID v5).
+#: Przestrzen nazw identyfikatorow dowodow pakietu rozszerzen stacji (UUID v5).
 _PRZESTRZEN_DOWODOW = UUID("6f1d9a52-3c1e-5b7a-9e0f-2a4c8d6b1e37")
 
 
@@ -108,7 +109,7 @@ class SpecDowoduTrybowBess(_SpecyfikacjaDowodu):
 
 
 class SpecDowoduPlanuZaczepow(_SpecyfikacjaDowodu):
-    """Transformator z modelu i przelacznik zaczepow przypisany mu w konfiguracji stacji."""
+    """Transformator z modelu i przelacznik zaczepow przypisany mu w modelu (`Transformer.tap_changer.catalog_ref`)."""
 
     transformer_id: Identyfikator
     transformer_nazwa: NazwaElementu
@@ -123,16 +124,6 @@ class SpecDowoduEksportuStacji(_SpecyfikacjaDowodu):
     station_id: Identyfikator
     p_export_kw: WartoscNieujemna
     p_import_kw: WartoscNieujemna
-
-
-class SpecDowoduWytrzymalosciAparatu(_SpecyfikacjaDowodu):
-    """Aparat pola (pozycja katalogu wytrzymalosci) i prady zwarciowe w miejscu pola."""
-
-    bay_designation: NazwaElementu
-    device_id: Identyfikator
-    i_peak_calculated_ka: WartoscNieujemna
-    i_thermal_calculated_ka: WartoscNieujemna
-    t_clearing_s: Annotated[float, Field(gt=0)]
 
 
 class SpecDowoduUziemieniaPrzekladnika(_SpecyfikacjaDowodu):
@@ -153,8 +144,8 @@ def _identyfikator_dowodu(proof_type: str, spec: _SpecyfikacjaDowodu) -> UUID:
 
 
 @dataclass(frozen=True)
-class Audit2ProofResult:
-    """Wynik dowodu audytu 2 (jednorodny format dla wszystkich 5 typow)."""
+class DowodRozszerzenStacji:
+    """Wynik dowodu pakietu rozszerzen stacji (jednorodny format dla wszystkich rodzajow)."""
 
     proof_id: UUID
     proof_type: str
@@ -190,7 +181,7 @@ def generate_bess_modes_proof(
     spec: SpecDowoduTrybowBess,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> Audit2ProofResult:
+) -> DowodRozszerzenStacji:
     """
     Dowod zgodnosci trybow BESS ze zdolnosciami przeksztaltnika (PCS).
 
@@ -202,7 +193,7 @@ def generate_bess_modes_proof(
     ``der_nazwa`` — nazwa zrodla z modelu do tekstow dowodu; ``der_id`` zostaje
     wylacznie w ``details`` (karta #144: tekst nigdy z identyfikatora).
     """
-    proof_type = "AUDIT2_BESS_OPERATION_MODES"
+    proof_type = "BESS_OPERATION_MODES"
     der_nazwa = spec.der_nazwa
     issues: list[str] = []
     selected_modes: list[dict[str, Any]] = []
@@ -258,7 +249,7 @@ def generate_bess_modes_proof(
         else f"BLOKER: DER {der_nazwa} — {len(issues)} problemów z trybami BESS."
     )
 
-    return Audit2ProofResult(
+    return DowodRozszerzenStacji(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
         pass_status=pass_status,
@@ -290,7 +281,7 @@ def generate_tap_changer_plan_proof(
     spec: SpecDowoduPlanuZaczepow,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> Audit2ProofResult:
+) -> DowodRozszerzenStacji:
     """
     Dowod planu przelaczania zaczepow.
 
@@ -302,7 +293,7 @@ def generate_tap_changer_plan_proof(
     ``transformer_nazwa`` — nazwa transformatora z modelu do tekstow dowodu;
     ``transformer_id`` zostaje wylacznie w ``details`` (karta #144).
     """
-    proof_type = "AUDIT2_TAP_CHANGER_PLAN"
+    proof_type = "TAP_CHANGER_PLAN"
     transformer_nazwa = spec.transformer_nazwa
     tc = get_tap_changer(spec.tap_changer_ref)
     issues: list[str] = []
@@ -336,7 +327,7 @@ def generate_tap_changer_plan_proof(
         else f"BLOKER: {len(issues)} problemów z planem zaczepów dla {transformer_nazwa}."
     )
 
-    return Audit2ProofResult(
+    return DowodRozszerzenStacji(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
         pass_status=pass_status,
@@ -367,14 +358,14 @@ def generate_hosting_capacity_export_proof(
     spec: SpecDowoduEksportuStacji,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> Audit2ProofResult:
+) -> DowodRozszerzenStacji:
     """Dowod bilansu eksportu vs importu (NC RfG Art. 17)."""
-    proof_type = "AUDIT2_HOSTING_CAPACITY_EXPORT"
+    proof_type = "HOSTING_CAPACITY_EXPORT"
     result = validate_hosting_capacity_export(
         station_id=spec.station_id, p_export_kw=spec.p_export_kw, p_import_kw=spec.p_import_kw
     )
     pass_status = result["status"] in ("no_export", "normal_export")
-    return Audit2ProofResult(
+    return DowodRozszerzenStacji(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
         pass_status=pass_status,
@@ -389,44 +380,7 @@ def generate_hosting_capacity_export_proof(
 
 
 # =============================================================================
-# 4. Device Withstand proof (eng.18)
-# =============================================================================
-
-
-def generate_device_withstand_proof(
-    spec: SpecDowoduWytrzymalosciAparatu,
-    *,
-    generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> Audit2ProofResult:
-    """Dowod wytrzymalosci aparatury I_dyn / I_th (IEC 60909) w polu `bay_designation`."""
-    proof_type = "AUDIT2_DEVICE_WITHSTAND"
-    result = validate_device_withstand(
-        device_id=spec.device_id,
-        i_peak_calculated_ka=spec.i_peak_calculated_ka,
-        i_thermal_calculated_ka=spec.i_thermal_calculated_ka,
-        t_clearing_s=spec.t_clearing_s,
-    )
-    return Audit2ProofResult(
-        proof_id=_identyfikator_dowodu(proof_type, spec),
-        proof_type=proof_type,
-        pass_status=bool(result["ok"]),
-        summary_pl=f"Pole {spec.bay_designation}: {result['message_pl']}",
-        details={"bay_designation": spec.bay_designation, "device_id": spec.device_id, **result},
-        formulas_latex=[
-            r"$$I_{\text{dyn}} \geq \kappa \sqrt{2} \cdot I_k''$$",
-            # IEC 60865-1: przeliczenie prądu krótkotrwałego na czas wyłączenia tylko w dół;
-            # porównanie z prądem cieplnym zastępczym I_th biegu (nie z I_k″) — dokładnie
-            # to, co liczy jądro `ocen_wytrzymalosc_aparatu`.
-            r"$$I_{\text{th eff}}(t) = I_{\text{th rated}} \cdot \sqrt{\min\left(1,\ "
-            r"\frac{t_{\text{rated}}}{t_{\text{clearing}}}\right)}$$",
-            r"$$I_{\text{th eff}}(t) \geq I_{\text{th}}$$",
-        ],
-        generated_at=generated_at_iso,
-    )
-
-
-# =============================================================================
-# 5. VT Grounding Validation proof (eng.20)
+# 4. VT Grounding Validation proof (eng.20)
 # =============================================================================
 
 
@@ -434,7 +388,7 @@ def generate_vt_grounding_validation_proof(
     spec: SpecDowoduUziemieniaPrzekladnika,
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> Audit2ProofResult:
+) -> DowodRozszerzenStacji:
     """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3).
 
     `vt_voltage_factor is None` znaczy „nie da sie ustalic" i daje dowod NIEZALICZONY
@@ -443,13 +397,13 @@ def generate_vt_grounding_validation_proof(
     dowodowy oglaszal na tej podstawie zgodnosc. Typ uziemienia spoza slownika nie
     dociera tu wcale — odrzuca go kontrakt specyfikacji (`TypPunktuNeutralnego`).
     """
-    proof_type = "AUDIT2_VT_GROUNDING_VALIDATION"
+    proof_type = "VT_GROUNDING_VALIDATION"
     bay_designation = spec.bay_designation
     vt_voltage_factor = spec.vt_voltage_factor
     grounding_type = spec.grounding_type
     proof_id = _identyfikator_dowodu(proof_type, spec)
     if vt_voltage_factor is None:
-        return Audit2ProofResult(
+        return DowodRozszerzenStacji(
             proof_id=proof_id,
             proof_type=proof_type,
             pass_status=False,
@@ -469,7 +423,7 @@ def generate_vt_grounding_validation_proof(
             generated_at=generated_at_iso,
         )
     ok, message = is_vt_voltage_factor_valid_for_grounding(vt_voltage_factor, grounding_type)
-    return Audit2ProofResult(
+    return DowodRozszerzenStacji(
         proof_id=proof_id,
         proof_type=proof_type,
         pass_status=ok,
@@ -498,7 +452,7 @@ def generate_vt_grounding_validation_proof(
 
 
 # =============================================================================
-# Aggregator: kompletny zestaw dowodow audytu 2 dla stacji
+# Agregat: kompletny zestaw dowodow rozszerzen dla stacji
 # =============================================================================
 
 
@@ -510,7 +464,7 @@ class BrakDanychDowodu:
     wprost, czego w nim nie ma i dlaczego (karta PROOFPACK-KONTRAKT).
     """
 
-    proof_type: RodzajDowoduAudytu2
+    proof_type: RodzajDowoduRozszerzen
     przyczyna_pl: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -522,12 +476,12 @@ class BrakDanychDowodu:
 
 
 @dataclass(frozen=True)
-class StationAudit2ProofPack:
-    """Pakiet dowodowy audytu 2 dla stacji."""
+class PakietRozszerzenStacji:
+    """Pakiet dowodow rozszerzen stacji."""
 
     station_id: str
     station_nazwa: str
-    proofs: list[Audit2ProofResult] = field(default_factory=list)
+    proofs: list[DowodRozszerzenStacji] = field(default_factory=list)
     braki_danych: list[BrakDanychDowodu] = field(default_factory=list)
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA
 
@@ -552,18 +506,18 @@ class StationAudit2ProofPack:
         }
 
 
-def generate_station_audit2_proof_pack(
+def zloz_pakiet_dowodow_stacji(
     *,
     station_id: str,
     station_nazwa: str,
-    proofs: list[Audit2ProofResult],
+    proofs: list[DowodRozszerzenStacji],
     braki_danych: list[BrakDanychDowodu] | None = None,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
-) -> StationAudit2ProofPack:
+) -> PakietRozszerzenStacji:
     """Skomponowane dowody dla stacji (deterministyczne, posortowane po proof_type)."""
     sorted_proofs = sorted(proofs, key=lambda p: (p.proof_type, str(p.proof_id)))
     sorted_braki = sorted(braki_danych or [], key=lambda b: (b.proof_type, b.przyczyna_pl))
-    return StationAudit2ProofPack(
+    return PakietRozszerzenStacji(
         station_id=station_id,
         station_nazwa=station_nazwa,
         proofs=sorted_proofs,

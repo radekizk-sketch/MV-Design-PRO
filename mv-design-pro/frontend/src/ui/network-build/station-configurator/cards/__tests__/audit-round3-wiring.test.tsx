@@ -1,8 +1,12 @@
 /**
- * Testy wiringu katalogów drugiego audytu do UI cards (Pakiet G).
+ * Testy wiringu katalogów stacji do kart konfiguratora (Pakiet G).
  *
- * Sprawdzają, że nowe katalogi (TAP_CHANGER / HV_FUSE / DEVICE_WITHSTAND /
- * BESS_OPERATION_MODE) są rzeczywiście używane w UI, a nie tylko zdefiniowane.
+ * Sprawdzają, że katalogi przełączników zaczepów, wkładek SN i przekładników
+ * napięciowych są rzeczywiście używane w kartach, a nie tylko zdefiniowane, oraz że
+ * wybór w karcie wychodzi do wywołującego z identyfikatorem pola modelu (karta
+ * JEDNA-SCIEZKA-EDYCJI: wybór zapisuje operacja modelu sieci, nie zapisana konfiguracja
+ * stacji). Kryterium wytrzymałości aparatury nie żyje w tej karcie — weryfikację
+ * aparatów pola prowadzi ekran wyników zwarciowych.
  */
 
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
@@ -11,11 +15,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
 import { StationConfigProtectionCard } from '../StationConfigProtectionCard';
-import type { HvFuseItem } from '../../../station-der/audit2-api';
+import type { HvFuseItem } from '../../../station-der/katalogi-stacji-api';
 import type { TapChangerCatalogType } from '../../../../catalog/types';
 
-// Karta FAB-L: katalog z backendu — kształt 1:1 z `audit2_catalogs.py::TapChangerItem.to_dict`
-// (karta JEDNA-SCIEZKA-EDYCJI: karta transformatora czyta `GET …/catalog/audit2/tap-changers`
+// Karta FAB-L: katalog z backendu — kształt 1:1 z `katalogi_stacji.py::TapChangerItem.to_dict`
+// (karta JEDNA-SCIEZKA-EDYCJI: karta transformatora czyta `GET /api/v1/catalog/konfiguracja-stacji/tap-changers`
 // przez `fetchTapChangers`, typ `TapChangerCatalogType`), nie statyk modułowy.
 const TAP_CHANGER_FIXTURES: readonly TapChangerCatalogType[] = [
   {
@@ -32,8 +36,8 @@ const TAP_CHANGER_FIXTURES: readonly TapChangerCatalogType[] = [
   },
 ];
 
-// Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
-// (`audit2_catalogs.py::HvFuseItem.to_dict`), nie statyk modułowy. Pozycje i
+// Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu katalogów stacji — kształt 1:1 z backendu
+// (`katalogi_stacji.py::HvFuseItem.to_dict`), nie statyk modułowy. Pozycje i
 // zdanie proweniencji (`pasmo_brak_powod_pl`) skopiowane z realnego backendu
 // (`POWOD_BRAK_PASMA_WKLADKI_PL`), nie wymyślone na potrzeby testu.
 const POWOD_BRAK_PASMA_PL =
@@ -128,7 +132,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
     });
   });
 
-  describe('BaysCard wire eng.17 (snapshot audytu 2, karta FAB-M)', () => {
+  describe('BaysCard wire eng.17 (snapshot katalogów stacji, karta FAB-M)', () => {
     it('renderuje kolumnę "HV fuse" w tabeli pól', () => {
       render(
         <StationConfigBaysCard
@@ -225,7 +229,53 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
     });
   });
 
-  describe('ProtectionCard wire eng.18 + eng.20', () => {
+  describe('BaysCard — wybór wkładki zapisem modelu (karta JEDNA-SCIEZKA-EDYCJI)', () => {
+    const pole = (maBezpieczniki: boolean) => ({
+      bayId: 'bay/pole-01',
+      designation: 'POLE-01',
+      bayRole: 'TR' as const,
+      hasEquipment: true,
+      hasProtection: false,
+      hasMeasurements: false,
+      statusPl: 'kompletne' as const,
+      hvFuseCatalogRef: null,
+      maBezpieczniki,
+    });
+
+    it('pole z bezpiecznikami: wybór i rezygnacja wychodzą z identyfikatorem pola', () => {
+      const wybory: Array<[string, string | null]> = [];
+      render(
+        <StationConfigBaysCard
+          bays={[pole(true)]}
+          hvFuses={HV_FUSE_FIXTURES}
+          onChangeHvFuse={(bayId, fuseId) => wybory.push([bayId, fuseId])}
+        />,
+      );
+      const select = screen.getByTestId('bay-fuse-select-bay/pole-01');
+      fireEvent.change(select, { target: { value: 'fuse_15kv_50a_full' } });
+      fireEvent.change(select, { target: { value: '' } });
+      expect(wybory).toEqual([
+        ['bay/pole-01', 'fuse_15kv_50a_full'],
+        ['bay/pole-01', null],
+      ]);
+    });
+
+    it('pole bez bezpieczników nie oferuje wyboru wkładki i nazywa powód', () => {
+      render(
+        <StationConfigBaysCard
+          bays={[pole(false)]}
+          hvFuses={HV_FUSE_FIXTURES}
+          onChangeHvFuse={() => undefined}
+        />,
+      );
+      expect(screen.queryByTestId('bay-fuse-select-bay/pole-01')).toBeNull();
+      expect(screen.getByTestId('bay-fuse-brak-bezpiecznikow-bay/pole-01').textContent).toBe(
+        'pole bez bezpieczników',
+      );
+    });
+  });
+
+  describe('ProtectionCard wire eng.20', () => {
     // Od V12K-257 karta NIE MA wlasnego katalogu VT ani wlasnej reguly: typy pobiera
     // z `/api/catalog/vt-types`, werdykt z `/validate-vt-grounding`. Test podstawia
     // obie odpowiedzi, zeby sprawdzic, co karta z nimi robi.
@@ -279,48 +329,6 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             }),
           } as Response;
         }
-        if (url.endsWith('/device-withstand')) {
-          // KATALOG APARATURY Z BACKENDU (K7-B) — front nie ma juz wlasnej kopii.
-          return {
-            ok: true,
-            status: 200,
-            json: async () => [
-              {
-                id: 'wstd_breaker_vacuum_15_25',
-                label_pl: 'Wyłącznik próżniowy 15 kV',
-                device_type: 'breaker_vacuum_15',
-                nominal_voltage_kv: 15,
-                nominal_current_a: 1250,
-                i_dyn_ka: 63,
-                i_th_1s_ka: 25,
-                i_th_duration_s: 1,
-              },
-            ],
-          } as Response;
-        }
-        if (url.includes('/validate-device-withstand')) {
-          // Atrapa RACHUNKU backendu (K7-B): od tej karty kryterium IEC 60909
-          // nie zyje juz we froncie — ekran pyta o werdykt.
-          const body = JSON.parse(String(init?.body ?? '{}')) as {
-            i_peak_calculated_ka?: number;
-          };
-          const iDynOk = Number(body.i_peak_calculated_ka) <= 63;
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              ok: iDynOk,
-              i_dyn_ok: iDynOk,
-              i_th_ok: true,
-              message_pl: iDynOk
-                ? 'OK: aparatura wytrzymała.'
-                : 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
-                  + 'wytrzymałości dynamicznej.',
-              utilization_dyn_percent: 0,
-              utilization_th_percent: 0,
-            }),
-          } as Response;
-        }
         throw new Error(`nieoczekiwane zapytanie: ${url}`);
       }) as unknown as typeof fetch;
     });
@@ -336,6 +344,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
           relays={[
             {
               relayId: 'r1',
+              bayRef: 'bay/pole-01',
               bayDesignation: 'POLE-01',
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['50/51', '67N'],
@@ -357,25 +366,33 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(validation.textContent?.toLowerCase()).toContain('petersena');
     });
 
-    it('renderuje walidację I_dyn / I_th aparatury (eng.18) — werdykt z backendu', async () => {
+    it('wybór typu VT wychodzi z identyfikatorem pola modelu i pełnym typem z katalogu', async () => {
+      const wybory: Array<[string, string | null]> = [];
       render(
         <StationConfigProtectionCard
-          relays={[]}
-          deviceWithstandRows={[
+          relays={[
             {
+              relayId: 'r1',
+              bayRef: 'bay/pole-01',
               bayDesignation: 'POLE-01',
-              deviceCatalogRef: 'wstd_breaker_vacuum_15_25',
-              i_peak_calculated_ka: 70, // przekroczone (limit 63)
-              i_thermal_calculated_ka: 20,
-              t_clearing_s: 1.0,
+              typePl: 'SIEMENS 7SJ85',
+              functionsPl: ['50/51'],
+              settingsCount: 4,
+              enabled: true,
+              vtCatalogRef: null,
             },
           ]}
+          onChangeVt={(bayRef, typ) => wybory.push([bayRef, typ?.id ?? null])}
         />,
       );
-
-      const validation = await screen.findByTestId('withstand-POLE-01');
-      expect(validation.getAttribute('data-withstand-ok')).toBe('false');
-      expect(validation.textContent).toContain('I_dyn');
+      const select = (await screen.findByTestId('relay-vt-select-r1')) as HTMLSelectElement;
+      await waitFor(() => expect(select.options.length).toBe(1 + TYPY_VT.length));
+      fireEvent.change(select, { target: { value: 'vt_20kv_fz_100_3_05_3p_siemens' } });
+      fireEvent.change(select, { target: { value: '' } });
+      expect(wybory).toEqual([
+        ['bay/pole-01', 'vt_20kv_fz_100_3_05_3p_siemens'],
+        ['bay/pole-01', null],
+      ]);
     });
 
     it('walidacja VT OK gdy U_th=1.9 dla sieci skompensowanej', async () => {
@@ -384,6 +401,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
           relays={[
             {
               relayId: 'r1',
+              bayRef: 'bay/pole-01',
               bayDesignation: 'POLE-01',
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['67N'],

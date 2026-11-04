@@ -16,6 +16,7 @@ import {
 import type { ProtectionRow } from './cards/StationConfigProtectionCard';
 
 export interface PoleZabezpieczenia {
+  readonly bayRef: string;
   readonly oznaczenie: string;
   readonly protectionRef: string | null | undefined;
 }
@@ -31,6 +32,7 @@ export function przekaznikiStacji(
     if (!zabezpieczenie) continue;
     wiersze.push({
       relayId: zabezpieczenie.ref_id,
+      bayRef: pole.bayRef,
       bayDesignation: pole.oznaczenie,
       typePl: ETYKIETA_RODZAJU_ZABEZPIECZENIA[zabezpieczenie.device_type],
       functionsPl: [

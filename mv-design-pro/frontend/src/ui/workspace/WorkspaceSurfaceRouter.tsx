@@ -35,12 +35,10 @@ import {
   wzbogacDeryOKlaseCt,
   zlozZBramkaModelu,
   type BramkaModelu,
-  type HostingCapacityExportResponse,
-  useAudit2ProjectProofPack,
-  useGenerateAudit2ProjectReport,
-  useGenerateProjectAudit2ProofPack,
-  useRunExtendedPowerFlow,
-  useStationAudit2ConfigList,
+  type SzczegolyBilansuEksportu,
+  usePakietRozszerzenProjektu,
+  useGenerateRaportRozszerzenProjektu,
+  useGeneratePakietRozszerzenProjektu,
 } from '../network-build/station-der';
 import { PakietDowodowProjektu } from './PakietDowodowRozszerzen';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
@@ -1127,8 +1125,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
   // Raport walidacji rozszerzeń z pakietu złożonego przez backend (karta PROOFPACK-KONTRAKT).
-  const audit2ProofPack = useGenerateProjectAudit2ProofPack();
-  const audit2Report = useGenerateAudit2ProjectReport();
+  const pakietRozszerzenProjektu = useGeneratePakietRozszerzenProjektu();
+  const raportRozszerzen = useGenerateRaportRozszerzenProjektu();
 
   const markDirty = () =>
     patchSurfaceSession(surface.surfaceId, {
@@ -1689,45 +1687,45 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            data-testid="audit2-report-generate-pack"
-            disabled={!activeProjectId || audit2ProofPack.isPending}
+            data-testid="rozszerzenia-report-generate-pack"
+            disabled={!activeProjectId || pakietRozszerzenProjektu.isPending}
             onClick={() => {
               if (!activeProjectId) return;
-              audit2ProofPack.mutate(activeProjectId);
+              pakietRozszerzenProjektu.mutate(activeProjectId);
             }}
             className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
           >
-            {audit2ProofPack.isPending ? 'Generowanie pakietu...' : '1. Generuj pakiet uzasadnienia'}
+            {pakietRozszerzenProjektu.isPending ? 'Generowanie pakietu...' : '1. Generuj pakiet uzasadnienia'}
           </button>
           <button
             type="button"
-            data-testid="audit2-report-render"
+            data-testid="rozszerzenia-report-render"
             disabled={
-              !audit2ProofPack.data
-              || audit2ProofPack.data.per_station.length === 0
-              || audit2Report.isPending
+              !pakietRozszerzenProjektu.data
+              || pakietRozszerzenProjektu.data.per_station.length === 0
+              || raportRozszerzen.isPending
             }
             onClick={() => {
-              if (!audit2ProofPack.data) return;
-              audit2Report.mutate({
+              if (!pakietRozszerzenProjektu.data) return;
+              raportRozszerzen.mutate({
                 projectName: activeProjectName ?? 'Projekt bez nazwy',
-                pakiety: audit2ProofPack.data.per_station,
+                pakiety: pakietRozszerzenProjektu.data.per_station,
               });
             }}
             className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
           >
-            {audit2Report.isPending ? 'Generowanie raportu...' : '2. Renderuj raport'}
+            {raportRozszerzen.isPending ? 'Generowanie raportu...' : '2. Renderuj raport'}
           </button>
         </div>
-        {audit2ProofPack.data && <PakietDowodowProjektu dane={audit2ProofPack.data} />}
-        {audit2ProofPack.isError && (
+        {pakietRozszerzenProjektu.data && <PakietDowodowProjektu dane={pakietRozszerzenProjektu.data} />}
+        {pakietRozszerzenProjektu.isError && (
           <div className="mt-2 text-xs text-rose-700">
-            Błąd generowania pakietu: {audit2ProofPack.error.message}
+            Błąd generowania pakietu: {pakietRozszerzenProjektu.error.message}
           </div>
         )}
-        {audit2Report.data && (
-          <div data-testid="audit2-report-preview" className="mt-3 space-y-2">
-            {audit2Report.data.map((raport) => (
+        {raportRozszerzen.data && (
+          <div data-testid="rozszerzenia-report-preview" className="mt-3 space-y-2">
+            {raportRozszerzen.data.map((raport) => (
               <div key={raport.stationId}>
                 <div className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
                   Tekst PL (podgląd) — {raport.stationNazwa}
@@ -1739,9 +1737,9 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             ))}
           </div>
         )}
-        {audit2Report.isError && (
+        {raportRozszerzen.isError && (
           <div className="mt-2 text-xs text-rose-700">
-            Błąd renderowania raportu: {audit2Report.error.message}
+            Błąd renderowania raportu: {raportRozszerzen.error.message}
           </div>
         )}
       </SectionCard>
@@ -1986,21 +1984,21 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   // i odbiorów stacji oraz wydawał werdykt progami 0,8/1,5/3,0 we własnej kopii reguły
   // (`validateHostingCapacityExport` w `catalogs.ts`, usunięta) i pokazywał identyfikator
   // stacji. Teraz sumy, stosunek i werdykt liczy backend (`validate_hosting_capacity_export`
-  // na mocach z konfiguracji stacji i odbiorach z modelu), a stacja, dla której bilansu
+  // na mocach źródeł i odbiorach z modelu), a stacja, dla której bilansu
   // nie da się policzyć, przychodzi jako jawny brak z przyczyną — brak nie jest zerem.
-  const audit2ProjektPakiet = useAudit2ProjectProofPack(activeProjectId);
+  const pakietRozszerzen = usePakietRozszerzenProjektu(activeProjectId);
   const hostingCapacityRows = useMemo(
-    () => (audit2ProjektPakiet.data?.per_station ?? []).flatMap((pakiet) =>
+    () => (pakietRozszerzen.data?.per_station ?? []).flatMap((pakiet) =>
       pakiet.proofs
-        .filter((dowod) => dowod.proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT')
+        .filter((dowod) => dowod.proof_type === 'HOSTING_CAPACITY_EXPORT')
         .map((dowod) => ({
           stationId: pakiet.station_id,
           stationNazwa: pakiet.station_nazwa,
           summaryPl: dowod.summary_pl,
-          details: dowod.details as unknown as HostingCapacityExportResponse,
+          details: dowod.details as unknown as SzczegolyBilansuEksportu,
         })),
     ),
-    [audit2ProjektPakiet.data],
+    [pakietRozszerzen.data],
   );
 
   // Stacje ze źródłami, dla których bilansu NIE DA SIĘ policzyć — pokazywane wprost, żeby
@@ -2009,18 +2007,18 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   // pokazuje pakiet uzasadnień.
   const hostingCapacityNieznane = useMemo(() => {
     const stacjeZeZrodlami = new Set(allDers.map((der) => der.station_id));
-    return (audit2ProjektPakiet.data?.per_station ?? [])
+    return (pakietRozszerzen.data?.per_station ?? [])
       .filter((pakiet) => stacjeZeZrodlami.has(pakiet.station_id))
       .flatMap((pakiet) =>
         pakiet.braki_danych
-          .filter((brak) => brak.proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT')
+          .filter((brak) => brak.proof_type === 'HOSTING_CAPACITY_EXPORT')
           .map((brak, indeks) => ({
             klucz: `${pakiet.station_id}-${indeks}`,
             stationNazwa: pakiet.station_nazwa,
             przyczynaPl: brak.przyczyna_pl,
           })),
       );
-  }, [allDers, audit2ProjektPakiet.data]);
+  }, [allDers, pakietRozszerzen.data]);
 
   const fixActionByElement = (elementRef: string | null) => {
     if (!elementRef) return null;
@@ -2354,32 +2352,15 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const runIdOgladany = useRunIdOgladany();
-  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const projectId = useAppStateStore((state) => state.activeProjectId);
-  // Wskaźnik "wersja układu wczytana" — niezależny od bramkowania biegu (poniżej),
-  // informuje wyłącznie o stanie lokalnego store'u schematu.
-  const snapshotId = useSnapshotStore((state) => state.snapshot?.header?.hash_sha256 ?? null);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
   // Faza F: kontekst stacja+DER w uzasadnieniu inżynierskim.
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const stationCount = new Set(allDers.map((d) => d.station_id)).size;
   // Pakiet dowodów walidacji rozszerzeń — składa go backend (karta PROOFPACK-KONTRAKT).
-  const generateProofPack = useGenerateProjectAudit2ProofPack();
-  const stationConfigList = useStationAudit2ConfigList(projectId);
-  // Rozpływ rozszerzony stosuje konfigurację JEDNEJ stacji — wskazanej przez projektanta,
-  // nie „pierwszej z listy" (karta PROOFPACK-KONTRAKT). Nazwy stacji z pakietu backendu.
-  const pakietProjektu = useAudit2ProjectProofPack(projectId);
-  const [stacjaRozplywuId, setStacjaRozplywuId] = useState('');
-  const stacjeRozplywu = useMemo(() => {
-    const skonfigurowane = new Set((stationConfigList.data ?? []).map((c) => c.station_id));
-    return (pakietProjektu.data?.per_station ?? [])
-      .filter((pakiet) => skonfigurowane.has(pakiet.station_id))
-      .map((pakiet) => ({ id: pakiet.station_id, nazwa: pakiet.station_nazwa }));
-  }, [stationConfigList.data, pakietProjektu.data]);
-  // Integracja rozszerzonego rozpływu mocy — bieg kanoniczny na przypadku aktywnym.
-  const runPowerFlow = useRunExtendedPowerFlow();
+  const generateProofPack = useGeneratePakietRozszerzenProjektu();
   const proofCandidateRefs = useMemo(
     () => selectedElement ? [selectedElement.id, selectedElement.name ?? ''] : [],
     [selectedElement],
@@ -2452,16 +2433,15 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         eyebrow="Pakiet walidacji rozszerzeń"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Generuje pakiet dla każdej stacji modelu i każdej stacji z zapisaną konfiguracją
-          rozszerzeń. Dla każdej stacji sprawdza pięć rodzajów uzasadnień: tryby pracy
-          magazynu energii, plan regulacji zaczepów transformatora, zdolność przyłączeniową
-          (eksport wobec importu), wytrzymałość zwarciową aparatury oraz przekładniki
-          napięciowe wobec uziemienia sieci. Rodzaj, dla którego konfiguracja stacji albo
-          model sieci nie ma danych, jest wskazany z przyczyną i nie jest liczony jako spełniony.
+          Generuje pakiet dla każdej stacji modelu sieci. Dla każdej stacji sprawdza cztery
+          rodzaje uzasadnień: tryby pracy magazynu energii, plan regulacji zaczepów
+          transformatora, zdolność przyłączeniową (eksport wobec importu) oraz przekładniki
+          napięciowe wobec uziemienia sieci. Rodzaj, dla którego model sieci nie ma danych,
+          jest wskazany z przyczyną i nie jest liczony jako spełniony.
         </p>
         <button
           type="button"
-          data-testid="audit2-proof-generate"
+          data-testid="rozszerzenia-proof-generate"
           disabled={!projectId || generateProofPack.isPending}
           onClick={() => {
             if (!projectId) return;
@@ -2475,101 +2455,6 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         {generateProofPack.isError && (
           <div className="mt-2 text-xs text-rose-700">
             Błąd generowania: {generateProofPack.error.message}
-          </div>
-        )}
-      </SectionCard>
-
-      {/* Rozszerzony rozpływ mocy — pełna pętla danych katalogowych, solvera i śladu obliczeń. */}
-      <SectionCard
-        title="Rozpływ mocy rozszerzony (z regulacją zaczepów)"
-        eyebrow="Obliczenia serwerowe"
-      >
-        <p className="mb-2 text-xs text-slate-700">
-          Uruchamia obliczenie rozpływu mocy na aktywnej wersji układu z uwzględnieniem
-          katalogowej konfiguracji stacji: regulacji zaczepów transformatora, wariantów
-          BESS, charakterystyk P(f), uziemienia i danych aparatury. Wynik pochodzi
-          z backendowego solvera i zachowuje ślad obliczeń.
-        </p>
-        <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
-          {snapshotId ? (
-            <>
-              <span className="text-emerald-700">●</span> Aktywna wersja układu — wczytana
-              do obliczeń.
-            </>
-          ) : (
-            <>
-              <span className="text-amber-700">●</span> Nie wybrano aktywnej wersji układu —
-              wykonaj operację projektową albo odśwież schemat przed obliczeniem.
-            </>
-          )}
-        </div>
-        <label className="mb-2 block text-[11px] text-slate-700">
-          Stacja, której konfigurację zastosować
-          <select
-            data-testid="audit2-power-flow-station"
-            value={stacjaRozplywuId}
-            onChange={(event) => setStacjaRozplywuId(event.target.value)}
-            className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
-          >
-            <option value="">
-              {stacjeRozplywu.length === 0 ? 'Brak stacji z zapisaną konfiguracją' : 'Wybierz stację'}
-            </option>
-            {stacjeRozplywu.map((stacja) => (
-              <option key={stacja.id} value={stacja.id}>
-                {stacja.nazwa}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          data-testid="audit2-power-flow-run"
-          disabled={!activeCaseId || runPowerFlow.isPending || !stacjaRozplywuId}
-          onClick={() => {
-            if (!projectId || !activeCaseId || !stacjaRozplywuId) return;
-            runPowerFlow.mutate({
-              caseId: activeCaseId,
-              audit2ProjectId: projectId,
-              audit2StationId: stacjaRozplywuId,
-              baseMva: 100.0,
-            });
-          }}
-          className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom rozpływ mocy rozszerzony'}
-        </button>
-        {runPowerFlow.data && (
-          <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
-            <div className="font-semibold">
-              Wynik rozszerzonego rozpływu mocy
-            </div>
-            <div>
-              Obliczenie serwerowe: {runPowerFlow.data.status === 'DONE' ? 'uruchomione' : 'nieuruchomione'}
-              {runPowerFlow.data.errorMessage && (
-                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.errorMessage.slice(0, 80)})</span>
-              )}
-            </div>
-            <div>
-              Model obliczeniowy: {runPowerFlow.data.busCount} węzłów,{' '}
-              {runPowerFlow.data.branchCount} gałęzi,{' '}
-              {runPowerFlow.data.sourceCount} źródeł.
-            </div>
-            <div className="text-[11px]">
-              Konfiguracja stacji: {runPowerFlow.data.audit2Applied
-                ? 'zastosowana (zaczepy, statyzm P(f), impedancja bloku)'
-                : 'brak zapisanej konfiguracji dla wybranej stacji'}
-            </div>
-            <details>
-              <summary className="cursor-pointer">Ślad zastosowanych danych katalogowych</summary>
-              <div className="mt-1 rounded bg-white p-2 text-[11px]">
-                Szczegółowy ślad zastosowanych nastaw i danych katalogowych jest zapisany w wyniku backendowym.
-              </div>
-            </details>
-          </div>
-        )}
-        {runPowerFlow.isError && (
-          <div className="mt-2 text-xs text-rose-700">
-            Błąd uruchomienia: {runPowerFlow.error.message}
           </div>
         )}
       </SectionCard>

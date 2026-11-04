@@ -1,14 +1,14 @@
 /**
  * Karta 5 — Transformator SN/nN (multi-voltage nN, PR-8a brief §8 karta 5 + §13).
  *
- * Naprawa eng.13: wybór przełącznika zaczepów z katalogu audytu 2
+ * Naprawa eng.13: wybór przełącznika zaczepów z katalogu konfiguracji stacji
  * (OLTC vs DETC, ±10% / ±5%, AVR support).
  *
  * Karta JEDNA-SCIEZKA-EDYCJI: każde pole czyta model ENM i zapisuje go operacją domenową
  * (rodzic, `StationConfiguratorSurface`, przez definicje rejestru pól). Dawniej Sn, U_DN, u_k,
  * P_k, P_0 i pozycja zaczepu wołały `onChange`, który je GUBIŁ (rodzic obsługiwał tylko typ
  * katalogowy, grupę połączeń i przełącznik zaczepów), a przełącznik zaczepów trafiał do
- * drugiej prawdy (konfiguracja stacji audytu 2) zamiast do podzespołu `tap_changer` modelu.
+ * drugiej prawdy (zapisana konfiguracja stacji) zamiast do podzespołu `tap_changer` modelu.
  * - Dane tabliczkowe (Sn, U_DN, u_k, P_k, P_0) są TYLKO DO ODCZYTU, gdy transformator ma typ
  *   katalogowy (SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW: parametry z typu); bez typu —
  *   edytowalne wprost w modelu.

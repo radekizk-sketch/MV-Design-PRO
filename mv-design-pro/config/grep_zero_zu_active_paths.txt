@@ -1,8 +1,10 @@
 # UX-04/POLE-ZU-SKLADOWA-ZEROWA: aktywne sciezki KODU, schematu bazy, migawki kontraktu
-# i aktywnych kontraktow dokumentacji (grupa `zu_`).
+# i aktywnych kontraktow dokumentacji (grupa `zu_`). Migracje SQL zyja w
+# `backend/src/infrastructure/migrations` (pokryte przez `backend/src`); dawny katalog
+# `backend/migrations` niosl wylacznie schemat skasowanej konfiguracji stacji
+# (karta JEDNA-SCIEZKA-EDYCJI) i zniknal razem z nia.
 backend/src
 backend/tests
-backend/migrations
 backend/schemas
 frontend/src
 frontend/e2e

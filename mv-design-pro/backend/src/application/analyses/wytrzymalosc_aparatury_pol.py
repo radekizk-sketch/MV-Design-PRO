@@ -8,22 +8,22 @@ tymczasem WIE, jaki aparat stoi w każdym polu — operacje domenowe wymagają
 wskazania pozycji katalogu APARAT_SN (B-12) i zapisują ją na gałęzi aparatu.
 
 Ten moduł domyka to ogniwo: dla punktu zwarcia w stacji werdykty powstają dla
-WSZYSTKICH pól tej stacji, z aparatami z MODELU, bez wymogu ręcznej
-konfiguracji. Zapisana konfiguracja pozostaje NADRZĘDNA tam, gdzie istnieje
-(inżynier mógł świadomie wskazać inny aparat) — każdy wiersz niesie jawne
-``zrodlo``: ``model`` albo ``konfiguracja``.
+WSZYSTKICH pól tej stacji, z aparatami z MODELU. Model jest JEDYNYM źródłem aparatu
+(karta JEDNA-SCIEZKA-EDYCJI skasowała zapisaną konfigurację stacji obok modelu z
+osobnym katalogiem wytrzymałości): inny aparat w polu wskazuje się operacją domenową
+na modelu, nie wpisem obok niego. Każdy wiersz niesie ``zrodlo`` = ``model``.
 
 WARSTWA APLIKACJI — ZERO FIZYKI WŁASNEJ:
-  - porównanie I_dyn / I_th robi ``network_model.catalog.audit2_catalogs.
+  - porównanie I_dyn / I_th robi ``network_model.catalog.katalogi_stacji.
     ocen_wytrzymalosc_aparatu`` (jądro werdyktu K7-B),
-  - znamiona pochodzą z katalogu (APARAT_SN albo katalog wytrzymałości),
+  - znamiona pochodzą z katalogu APARAT_SN (pozycja wskazana na aparacie pola w modelu),
   - prądy pochodzą z WYNIKU zapisanego biegu zwarciowego, PER POLE: wiersz zwarcia
     trójfazowego w punkcie zabudowy pola (szyna pola, przez ``enm.tor_pola.
     szyna_raportowa`` — ten sam węzeł, który wynik raportuje) — ``prady_pol_z_biegu``
     (karta WYTRZYMALOSC-PRAD-POLA: dawniej JEDNA liczba z żądania dla wszystkich pól
     stacji, więc pole po stronie nN albo innej sekcji dostawało cudzy prąd i cudzy czas),
   - czas wyłączenia pochodzi z osobnego dostawcy (poz. 3: człon nastawczy przy prądzie
-    TEGO pola + czas własny aparatu z katalogu) albo z konfiguracji.
+    TEGO pola + czas własny aparatu z katalogu).
 
 WERDYKT WYJAŚNIALNY: każdy wiersz niesie trzy rekordy K (``werdykt.OcenaKryterium``) —
 dynamiczny ``i_p ≤ I_dyn``, cieplny ``I_th ≤ I_th,zn·√(min(1, t_zn/t_k))`` i zdolności
@@ -50,8 +50,7 @@ krótkotrwały rozłącznika bezpiecznikowego — wytrzymałość zestawu wyznac
 „NIEUSTALONE" z kodem gotowości — nigdy werdykt negatywny. Brak danej to inny stan niż
 „nie wytrzymuje".
 
-DETERMINIZM: pola sortowane po (oznaczenie, referencja aparatu); wiersze z
-konfiguracji po oznaczeniu. Ten sam model + ta sama konfiguracja + te same
+DETERMINIZM: pola sortowane po (oznaczenie, referencja aparatu). Ten sam model + te same
 prądy ⇒ identyczna odpowiedź.
 """
 
@@ -82,11 +81,10 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji as pola_stacji_modelu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog.audit2_catalogs import (
-    get_device_withstand,
-    ocen_wytrzymalosc_aparatu,
+from network_model.catalog.katalogi_stacji import ocen_wytrzymalosc_aparatu
+from network_model.catalog.rodzaje_aparatury import (
+    wielkosc_zwarciowa_aparatu_sn_dotyczy,
 )
-from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.catalog.wartosci_robocze import (
     DOKUMENT_REJESTRU,
     PARAMETR_I_DYN,
@@ -133,24 +131,8 @@ READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
 #: bez znamionowej zdolności wyłączania w katalogu — kryterium wyłączania bez limitu.
 READINESS_BRAK_ZDOLNOSCI_WYLACZANIA = "aparatura.brak_zdolnosci_wylaczania"
 
-#: Rodzaje pozycji KATALOGU WYTRZYMAŁOŚCI (ręczne wskazanie w konfiguracji stacji) wobec
-#: zdolności wyłączania zwarć. Katalog wytrzymałości niesie znamiona I_dyn/I_th, a nie
-#: zdolność wyłączania — wyłącznik z tego katalogu ma więc kryterium wyłączania BEZ limitu
-#: (brak podstawy), a rozłącznik i tor szynowy kryterium nie podlegają (nie przerywają prądu
-#: zwarciowego z definicji normy). Lista ZAMKNIĘTA: każdą pozycję katalogu przypina test
-#: (``test_kazda_pozycja_katalogu_wytrzymalosci_ma_rodzaj_wylaczania``); rodzaj spoza listy
-#: = brak podstawy z nazwaną przyczyną, nigdy cichy „nie dotyczy".
-RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI: dict[str, bool] = {
-    "breaker_vacuum_15": True,
-    "breaker_sf6_15": True,
-    "switch_load_15": False,
-    "busbar_15_1250": False,
-    "busbar_15_2000": False,
-}
-
 #: Źródło aparatu w wierszu werdyktu.
 ZRODLO_MODEL = "model"
-ZRODLO_KONFIGURACJA = "konfiguracja"
 
 #: Zdolność w rejestrze dowodowym (``solver_input.provenance``).
 ZDOLNOSC_WYTRZYMALOSCI = "aparatura.wytrzymalosc_zwarciowa_pola"
@@ -329,18 +311,6 @@ def _liczba(wartosc: object) -> float | None:
     return float(wartosc)
 
 
-def _oznaczenia_pola(bay: Bay) -> list[str]:
-    """Wszystkie napisy, którymi to pole może być zapisane w konfiguracji stacji.
-
-    Konfigurator stacji zapisuje pole pod oznaczeniem WPISANYM przez inżyniera
-    („P-01"), a model zna pole pod referencją i nazwą. Dopasowanie idzie po
-    wszystkich znanych napisach — bez tego zapisana konfiguracja nigdy nie
-    zostałaby uznana za nadrzędną i ten sam aparat pojawiłby się dwa razy.
-    """
-    kandydaci = [bay.bay_number, bay.name, bay.ref_id]
-    return [str(k) for k in kandydaci if k]
-
-
 def _oznaczenie_glowne(bay: Bay) -> str:
     """Oznaczenie pola w wyniku: numer wpisany przez inżyniera albo nazwa z modelu — nigdy
     referencja pola (karta #144; pole bez nazwy dostaje opis rodzaju)."""
@@ -409,37 +379,6 @@ def _znamiona_z_aparat_sn(aparat: AparatPola) -> tuple[dict[str, Any] | None, st
             ),
         },
         pozycja.name,
-    )
-
-
-def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] | None, str | None]:
-    """Znamiona pozycji z katalogu wytrzymałości (wskazanie ręczne w konfiguracji)."""
-    pozycja = get_device_withstand(device_id)
-    if pozycja is None:
-        return None, None
-    return (
-        {
-            "i_dyn_ka": pozycja.i_dyn_ka,
-            # Katalog wytrzymałości niesie znamiona WPROST z kart producentów
-            # aparatury rozdzielczej — nie ma tu derywacji normowej.
-            "i_dyn_pochodzenie": "producent",
-            "i_th_ka": pozycja.i_th_1s_ka,
-            "i_th_duration_s": pozycja.i_th_duration_s,
-            "i_th_pochodzenie": "producent",
-            "i_th_duration_pochodzenie": "producent",
-            "wartosci": {},
-            # Katalog wytrzymałości nie niesie zdolności wyłączania — tylko rodzaj aparatu
-            # (zamknięta lista ``RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI``).
-            "i_cu_ka": None,
-            "i_cu_pochodzenie": None,
-            "i_cu_nie_dotyczy": (
-                RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI.get(pozycja.device_type) is False
-            ),
-            "bezpiecznik": False,
-            # Katalog wytrzymałości niesie znamiona I_dyn/I_th każdej pozycji.
-            "i_th_nie_dotyczy": False,
-        },
-        pozycja.label_pl,
     )
 
 
@@ -1211,21 +1150,6 @@ def _wiersz(
     }
 
 
-def _czas_z_konfiguracji(spec: dict[str, Any]) -> dict[str, Any]:
-    """Czas wyłączenia zapisany ręcznie w konfiguracji stacji (deklaracja inżyniera)."""
-    wartosc = spec.get("t_clearing_s")
-    return {
-        "t_clearing_s": float(wartosc) if isinstance(wartosc, int | float) else None,
-        "zrodlo": ZRODLO_KONFIGURACJA,
-        "powod_pl": "Czas wyłączenia wpisany w konfiguracji stacji.",
-        "czlon_nastawczy_s": None,
-        "czas_wlasny_wylacznika_s": None,
-        "czas_wlasny": None,
-        "zalozenia_pl": [],
-        "kody_gotowosci": [],
-    }
-
-
 _CZAS_NIEUSTALONY: dict[str, Any] = {
     "t_clearing_s": None,
     "zrodlo": None,
@@ -1239,12 +1163,6 @@ _CZAS_NIEUSTALONY: dict[str, Any] = {
     "kody_gotowosci": [],
 }
 
-_PRADY_WPISU_OSIEROCONEGO = _brak_pradow(
-    None,
-    "Wpis konfiguracji nie odpowiada żadnemu polu modelu — punktu zabudowy nie da się "
-    "ustalić, więc prądu pola nie ma z czego wziąć.",
-)
-
 
 def zbuduj_widok_wytrzymalosci_aparatury(
     *,
@@ -1252,10 +1170,9 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     station_ref: str,
     prady_pol: Mapping[str, PradyPola],
     run_id: str,
-    bay_device_withstand: dict[str, Any] | None = None,
     czasy_pol: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Werdykty wytrzymałości dla wszystkich pól stacji (model + konfiguracja).
+    """Werdykty wytrzymałości dla wszystkich pól stacji — aparaty z modelu.
 
     Args:
         enm: model, z którego czytamy pola stacji i aparaty katalogowe.
@@ -1264,8 +1181,6 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             (``prady_pol_z_biegu``), kluczowane referencją pola. Brak wpisu = brak prądu
             pola (kod ``READINESS_BRAK_PRADU_POLA``), nigdy prąd innego pola.
         run_id: identyfikator biegu zwarciowego — odniesienie dowodu i śladu.
-        bay_device_withstand: zapisana konfiguracja stacji (oznaczenie pola →
-            wskazany aparat + czas wyłączenia). Nadrzędna wobec modelu.
         czasy_pol: czasy wyłączenia wyznaczone z nastaw pól (poz. 3), kluczowane
             referencją pola. Brak wpisu = czas nieustalony (nie zero).
 
@@ -1284,11 +1199,6 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             "kody_gotowosci": [READINESS_STACJA_NIEZNANA],
         }
 
-    konfiguracja = {
-        str(klucz): dict(wartosc)
-        for klucz, wartosc in (bay_device_withstand or {}).items()
-        if isinstance(wartosc, dict)
-    }
     czasy = dict(czasy_pol or {})
     aparaty = aparaty_pol_stacji(enm, stacja)
     # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — te same, które widzi
@@ -1296,41 +1206,12 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     pola_stacji = sorted(pola_stacji_modelu(enm, stacja.ref_id), key=lambda b: b.ref_id)
 
     wiersze: list[dict[str, Any]] = []
-    zuzyte_klucze_konfiguracji: set[str] = set()
 
     for bay in pola_stacji:
         oznaczenie = _oznaczenie_glowne(bay)
         prady = prady_pol.get(bay.ref_id) or _brak_pradow(
             None, "Bieg zwarciowy nie niesie prądów dla punktu zabudowy tego pola."
         )
-        klucz_konfiguracji = next(
-            (nazwa for nazwa in _oznaczenia_pola(bay) if nazwa in konfiguracja), None
-        )
-
-        if klucz_konfiguracji is not None:
-            # KONFIGURACJA NADRZĘDNA: inżynier wskazał aparat ręcznie.
-            zuzyte_klucze_konfiguracji.add(klucz_konfiguracji)
-            spec = konfiguracja[klucz_konfiguracji]
-            device_id = str(spec.get("device_id") or "")
-            znamiona, etykieta = _znamiona_z_katalogu_wytrzymalosci(device_id)
-            wiersze.append(
-                _wiersz(
-                    oznaczenie=klucz_konfiguracji,
-                    pole_ref=bay.ref_id,
-                    rola=bay.bay_role,
-                    zrodlo=ZRODLO_KONFIGURACJA,
-                    aparat_ref=None,
-                    aparat_nazwa=None,
-                    catalog_ref=device_id,
-                    znamiona=znamiona,
-                    etykieta=etykieta,
-                    czas=_czas_z_konfiguracji(spec),
-                    prady=prady,
-                    run_id=run_id,
-                )
-            )
-            continue
-
         for aparat in aparaty.get(bay.ref_id, []):
             znamiona, etykieta = _znamiona_z_aparat_sn(aparat)
             wiersze.append(
@@ -1349,30 +1230,6 @@ def zbuduj_widok_wytrzymalosci_aparatury(
                     run_id=run_id,
                 )
             )
-
-    # Wpisy konfiguracji bez odpowiednika w modelu: to ŚWIADOMY zapis inżyniera,
-    # więc nie znika z ekranu tylko dlatego, że oznaczenie nie pasuje do pola — ale bez
-    # punktu zabudowy nie ma prądu, więc werdykt pozostaje nieustalony.
-    for klucz in sorted(set(konfiguracja) - zuzyte_klucze_konfiguracji):
-        spec = konfiguracja[klucz]
-        device_id = str(spec.get("device_id") or "")
-        znamiona, etykieta = _znamiona_z_katalogu_wytrzymalosci(device_id)
-        wiersze.append(
-            _wiersz(
-                oznaczenie=klucz,
-                pole_ref=None,
-                rola=None,
-                zrodlo=ZRODLO_KONFIGURACJA,
-                aparat_ref=None,
-                aparat_nazwa=None,
-                catalog_ref=device_id,
-                znamiona=znamiona,
-                etykieta=etykieta,
-                czas=_czas_z_konfiguracji(spec),
-                prady=_PRADY_WPISU_OSIEROCONEGO,
-                run_id=run_id,
-            )
-        )
 
     wiersze.sort(key=lambda w: (str(w["pole"]), str(w["aparat_catalog_ref"])))
 
@@ -1396,7 +1253,6 @@ def widok_wytrzymalosci_z_biegu(
     station_ref: str,
     wiersze_biegu: Sequence[Mapping[str, Any]],
     run_id: str,
-    bay_device_withstand: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """JEDYNE złożenie toru: wiersze biegu → prądy pól → czasy pól → werdykty.
 
@@ -1415,6 +1271,5 @@ def widok_wytrzymalosci_z_biegu(
         station_ref=station_ref,
         prady_pol=prady,
         run_id=run_id,
-        bay_device_withstand=bay_device_withstand,
         czasy_pol=czasy,
     )

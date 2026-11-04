@@ -74,7 +74,6 @@ class SC3FPackInput:
     #: powstaje; ``None`` = t_b punktu rozstrzyga warstwa wiązania tą samą funkcją co bieg
     #: (pola lokalne albo wartość robocza — karta TB-WARTOSC-ROBOCZA).
     tb_s: float | None
-    rozszerzenia_audit2: dict[str, Any] | None = None
     #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
     #: zwarcie metaliczne IEC 60909 (dowód bit w bit jak przed kartą).
     z_f_ohm: complex | None = None
@@ -121,7 +120,6 @@ class SC3FProofPack:
             nadpisanie_c=data.nadpisanie_c,
             tk_s=data.tk_s,
             tb_s=data.tb_s,
-            rozszerzenia_audit2=data.rozszerzenia_audit2,
             z_f_ohm=data.z_f_ohm,
         )
         result = zwarcie.wynik

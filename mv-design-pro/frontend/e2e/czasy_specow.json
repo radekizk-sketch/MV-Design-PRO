@@ -1,9 +1,7 @@
 {
-  "zrodlo": "pelny bieg e2e na realnym backendzie, workers 1, 2026-09-30, maszyna 4 vCPU bez obcego obciazenia (load average 1-4), drzewo 646aabf9; 511 przypadkow, 1925 s scienne; e2e/straznik-drzewa.spec.ts z biegu shardow 2026-10-15 (drzewo 2dc8215c)",
+  "zrodlo": "pelny bieg e2e na realnym backendzie, workers 1, 2026-09-30, maszyna 4 vCPU bez obcego obciazenia (load average 1-4), drzewo 646aabf9; 511 przypadkow, 1925 s scienne; e2e/straznik-drzewa.spec.ts z biegu shardow 2026-10-15 (drzewo 2dc8215c); karta JEDNA-SCIEZKA-EDYCJI (2026-11-04): spec zapisanej konfiguracji stacji skasowany, spec katalogów stacji przemianowany (czas poprzednika)",
   "czasy_s": {
     "e2e/archiwum-porownanie-wersji.spec.ts": 4.6,
-    "e2e/audit2-backend-integration.spec.ts": 3.3,
-    "e2e/audit2-station-config-persistence.spec.ts": 0.1,
     "e2e/branch-points-workflow.spec.ts": 9.7,
     "e2e/catalog-enforcement.spec.ts": 10.0,
     "e2e/create-first-case.spec.ts": 3.1,
@@ -32,6 +30,7 @@
     "e2e/happy-path.spec.ts": 13.9,
     "e2e/import-arkusza-do-wynikow.spec.ts": 3.0,
     "e2e/industrial-template-mass-flow.spec.ts": 142.7,
+    "e2e/katalogi-stacji-backend.spec.ts": 3.3,
     "e2e/kd11-tozsamosc-etykiet.spec.ts": 8.1,
     "e2e/kd11-zrzuty-screenshot.spec.ts": 19.2,
     "e2e/kd3-zrzuty-screenshot.spec.ts": 13.8,

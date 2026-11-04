@@ -17,7 +17,7 @@ determinizm binarny wszystkich miejsc, ktore NIE mialy jeszcze pokrycia:
 
 (`network_model/reporting/proof_inspector/exporters.py::InspectorExporter.export_docx`
 ma wlasny test w `tests/proof_engine/test_inspector.py`; miejsca w
-`analysis/reporting/arc_flash_report.py` i `analysis/reporting/audit2_report.py`
+`analysis/reporting/arc_flash_report.py` i `analysis/reporting/raport_rozszerzen_stacji.py`
 maja wlasne testy w `tests/analysis/reporting/`.)
 
 Odstep >2s MIEDZY wywolaniami jest CELOWY, nie kosmetyczny: DOCX jest ZIP-em,
