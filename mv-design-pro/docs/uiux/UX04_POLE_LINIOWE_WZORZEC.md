@@ -1815,20 +1815,25 @@ kierunek migracji) — wymaga rozstrzygnięcia sesji głównej przed wpięciem z
 
 ### 11.16. Blok przekaźnika na LOD2 i klik do zabezpieczeń pola
 
-**Wymaganie (stan po odbiorze B-02 2026-11-04, §11.19 pkt 7 i §11.20).** Blok przekaźnika: kółko
-przy Q0, POD kółkiem wszystkie kody funkcji pola w dwóch kolumnach pionowych, bez licznika „+n”;
-kody wyłącznie na LOD2, na LOD0 i LOD1 samo kółko. Natywny klik otwiera zakładkę inspektora
+**Wymaganie (stan po odbiorze B-02 2026-11-04 z korektą v2, §11.19 pkt 7 i §11.20 „Korekta v2”).**
+Blok zabezpieczeń: prostokątna ramka BEZ okręgu przekaźnika, tuż przy Q0, ze środkiem na
+wysokości Q0; wewnątrz wszystkie kody funkcji pola w dwóch kolumnach pionowych (kolejność danych
+`Bay.protection_codes`, wierszy ⌈n/2⌉), bez licznika „+n”; kody wyłącznie na LOD2, na LOD1 ramka
+tego samego kształtu bez kodów, na LOD0 GPZ zwinięty; pole bez funkcji — bez bloku. (Dawny stan
+„kółko + kody pod kółkiem” zastąpiony korektą v2.) Natywny klik otwiera zakładkę inspektora
 „Zabezpieczenia i automatyka" z wierszami „ANSI + nazwa polska" prowadzącymi do nastaw; zero
 phantomów. (Dawne wymaganie „≤ 4 kody + „+N”, automatyka poza kanwą” zastąpione decyzją właściciela.)
 
 **Wykonanie.** Słownik funkcji EAZ ma lustro frontendu `ui/shared/slownikFunkcjiEaz.json`
 (parytet z `backend/src/network_model/catalog/funkcje_eaz.py` — `backend/tests/ci/test_parytet_slownika_funkcji_eaz.py`).
-Układ kodów pod kółkiem ma jedno źródło `compose/protectionMarking.ts::kolumnyKodowPodOkregiem`
-(lewa kolumna ⌈n/2⌉, prawa reszta, kolejność danych `Bay.protection_codes`) i
-`szerokoscBlokuPodOkregiem` (rezerwacja = rysunek), czytane przez kompozytor GPZ
-(`compose/gpz.ts::etykietyBlokuPowiazan`); dawne funkcje podziału na blok i „+N”
+Układ kodów w ramce ma jedno źródło `compose/protectionMarking.ts::kolumnyKodowBloku`
+(lewa kolumna ⌈n/2⌉, prawa reszta, kolejność danych `Bay.protection_codes`), czytane przez
+`compose/gpz.ts::wierszeBlokuZabezpieczen` (wiersze) i `ramkaBlokuZabezpieczen` (ramka — rezerwacja
+kolumny, wybór położenia i rysunek z tej samej funkcji); dawne `szerokoscBlokuPodOkregiem`,
+`odsuniecieKodowPodOkregiem`, `pionWejsciaPomiarowego` i porty okręgu (`wylacz`, `pomiar-*`)
+skasowane razem z okręgiem bloku; dawne funkcje podziału na blok i „+N”
 (`podzialFunkcjiNaSchemacie`, `kodyBlokuPrzekaznika`, `kodyWOkreguBlokuPrzekaznika`) skasowane. Klik w dowolny obiekt warstwy adnotacji
-zabezpieczeń (okrąg, wiersze kodów, odniesienie 3U₀, linie) rozwiązuje pole
+zabezpieczeń (ramka bloku, wiersze kodów, odniesienie 3U₀, linie) rozwiązuje pole
 (`canvas/poleAdnotacjiZabezpieczen.ts` — jedna reguła dla klasy obiektów), zaznacza je i otwiera
 kartę pola z wyróżnioną sekcją `zabezpieczenia` (`SldCanvasV3Workspace.handleElementClick`,
 `stanPaneluElementu.ts`, `PanelElementuKanwy.tsx`). Sekcja karty
@@ -1844,16 +1849,20 @@ modelu (brak `equipment_refs` w trzech polach → wyjątek w `daneElementuKanwy.
 (stara fikstura: 643 braki).
 
 **Testy.** `ui/shared/__tests__/funkcjeEaz.test.ts` (lustro słownika backendu; iloczyn liczba
-zabezpieczeń × inne funkcje × położenie × kod spoza słownika — wszystkie kody pod okręgiem, bez
-„+N”), `scene/__tests__/poleLinioweGpz.test.tsx` (wyrocznia bloku dwóch kolumn, brak „+n”,
-kody wyłącznie na LOD2), `scene/__tests__/wezelOdczepuPozaKaflem.contract.test.ts` (wiersz kodów ∩
+zabezpieczeń × inne funkcje × położenie × kod spoza słownika — wszystkie kody w dwóch kolumnach,
+bez „+N”), `scene/__tests__/poleLinioweGpz.test.tsx` (wyrocznia bloku: ramka bez okręgu, kody
+z danych w kolejności danych, ⌈n/2⌉ wierszy, kody wyłącznie na LOD2, środek ramki na wysokości Q0;
+kontrakt N ∈ {0, 1, 2, 7, 9} × LOD {0, 1, 2} × motyw × fikstury), `scene/__tests__/wezelOdczepuPozaKaflem.contract.test.ts` (wiersz kodów ∩
 symbol, napis, przewód — każda fikstura × LOD, §11.20); `canvas/__tests__/klikBlokuPrzekaznika.test.tsx` (18; natywny
 `fireEvent.click` na uchwycie warstwy trafień po przybliżeniu kółkiem; fikstura {Z.11 bez urządzeń,
-ścieżka danych z urządzeniami} × obiekt {okrąg, wiersz kodów, wiersz 3U₀, linia wyłączania, inna
-adnotacja} × tryb {edycja modelu, przegląd wyników}; iniekcja — gałąź kliku wyłączona: 9 czerwonych);
+ścieżka danych z urządzeniami} × obiekt {ramka bloku, wiersz kodów, wiersz 3U₀, linia wyłączania,
+inna adnotacja} × tryb {edycja modelu, przegląd wyników}; iniekcja — gałąź kliku wyłączona: 9 czerwonych);
 `canvas/__tests__/poleAdnotacjiZabezpieczen.test.ts`.
 
-**Świadomie poza zmianą.** Stacje SN poza GPZ nie rzutują bloku przekaźnika na kanwę
+**Świadomie poza zmianą.** Przekaźnik modelu stacji (pole GPZ bez powiązań obwodów wtórnych,
+`compose/station.ts` i gałąź „bez powiązań” `compose/gpz.ts`) zostaje okręgiem z listą R-2 pod
+nim — to inna notacja (§17.3), bez ramki bloku i bez linii z cewki Q0; korekta v2 dotyczy bloku
+układu powiązań. Stacje SN poza GPZ nie rzutują bloku przekaźnika na kanwę
 (`enmToSldAdapter.ts::buildExplicitStationMiniBays`); włączenie dodałoby 171 okręgów na rysunkach
 stacji — to zmiana wyglądu wymagająca werdyktu B-02, nie defekt. Inspektor inżynierski E-11
 (`InspectorEngineeringView.buildBaySections`, „Funkcje aktywne" z `protection_config`) jest
@@ -2081,3 +2090,66 @@ Iniekcja produkcyjna `odsuniecieWezlaOdczepu` → 0: 9 czerwonych (36 naruszeń 
 naprawy korytarza: 1 czerwony (b2Droga L2). Kafle członu: `kafelStanu.test.tsx`,
 `znacznikRodzajuLacznika.test.tsx` (iniekcje: kafle członu barwione stanem wyłącznika, brak kafla
 członu). Ferranti bez „3”: `literySymboli.test.tsx`. Werdykt wizualny — właściciel (B-02).
+
+**Korekta v2 (polecenie właściciela 2026-11-04, wizualizacja zaakceptowana) — wykonanie → test.**
+Zmiana wyłącznie wizualna: topologia, ENM, logika aparatów i kontrakty bez zmian.
+
+1. *Blok bez okręgu.* `symbols/glyphs.tsx::ProtectionRelayGlyph` z `ramkaBloku` rysuje wyłącznie
+   prostokąt `data-przekaznik="ramka-bloku"` (i znak „!” braku topologicznego w prawym górnym
+   narożniku); okrąg rysuje tylko przekaźnik modelu stacji. Symbol sceny stoi w lewym górnym rogu
+   ramki, a gabarytem symbolu jest ramka — jedno źródło `symbols/blokZabezpieczen.ts`
+   (`gabarytSymbolu`, `przeszkodySymbolu` = cztery krawędzie ramki, `wejsciaBlokuSymbolu`,
+   `zasiegRamkiBloku`) dla sceny (`buildScene.ts`: declutter, sondy kolizji, porty), obrysu
+   trafienia (`canvas/hitAreas.ts`) i kompozycji (`compose/gpz.ts`). Wejścia linii (wyłączania
+   i pomiarowych) leżą na krawędziach ramki (`meta.wejsciaBlokuPrzekaznika`). Kanwa: ramka wg
+   planu = ramka sceny ∪ narysowane wiersze z marginesem (`canvas/obrysyWgPlanu.ts`), więc na LOD1
+   i przy wierszach ukrytych blok zachowuje kształt.
+2. *Kody z danych.* Jedynym źródłem jest `Bay.protection_codes` (adapter
+   `enmToCanonicalGpzAdapter.ts`); w kodzie bloku nie ma zaszytej liczby, listy ani kolejności.
+   Stałe kodów znalezione w repo (`v2/canvas/canonicalGpzModel.ts` — `KOD_FUNKCJI_PLAKIETKI`,
+   `PLAKIETKI_GPZ`) są filtrem plakietek stanu, nie treścią bloku. Brak funkcji — brak bloku.
+3. *Opisy przekładników po lewej.* P1, P2 i przekładnie toru głównego (T1 „200–400/5”, T2
+   „1/100”) stoją PO LEWEJ symbolu, między kolumną podpisów aparatów a symbolem (tekst polecenia
+   wygrywa nad obrazem): `oznaczenieZaciskuPrzekladnika` próbuje najpierw lewej strony,
+   tabliczka — `szukajPoLewej` (zaczep prawą krawędzią, tekst dosunięty do symbolu). Odstęp
+   kolumny podpisów od toru wyznacza JEDNA funkcja `pasOpisowPrzekladnikowLewy` (rezerwacja
+   kolumny, oś pola, kolumna podpisów, granica wyszukiwania) — szerokość = tabliczka + pół oczka
+   + oznaczenie zacisku, bo P1/P2 zajmują prawie całą wysokość pierścienia (pomiar: przy pasie
+   z większego z opisów pole bez przekładnika Ferrantiego spychało tabliczkę pod symbol, y 800 >
+   792). Przekładnik kolumny odgałęzienia (T3) i aparaty boczne mają podpis po prawej — ich opis
+   zostaje po prawej.
+4. *Położenie bloku.* Środek ramki na wysokości zaczepu cewki wyłączającej Q0 (= środek kafla Q0),
+   najbliższe wolne położenie na prawo od Q0 (od 2·GRID za obrysem Q0), linia wyłączania jednym
+   poziomym odcinkiem; linie T1/T2 wchodzą krawędzią ramki od strony źródła (dół/góra co oczko
+   od prawej krawędzi, źródło dalsze bliżej prawej — bez przecięć), nie przez wnętrze ramki
+   i nie przez tabliczki. Pomiar długości linii wyłączania: Z.10 40 px (było 112), Z.11.1 128 px
+   (było 176), Z.11 184 px (było 232) — w Z.11.1/Z.11 ramka 160/112 px na osi Q0 sięga pasma
+   odgałęzienia (Q5, T3 z tabliczką, podpisy), więc najbliższe wolne położenie jest za nim.
+   Znalezisko po drodze, naprawione u źródła (predykaty parami): wybór położenia w kompozycji
+   uznawał napis stykający się z krawędzią ramki za wolny, a declutter sceny (krawędź jako pas
+   grubości 1) go odrzucał — podpis „Q5” pola Z.11 znikał z rysunku. Oba miejsca czytają teraz
+   `zasiegRamkiBloku` (ramka z pasem krawędzi).
+5. *Cewka/napęd Q0.* Zastany stan: kafel Q0 rysuje napęd silnikowy „M” w okręgu
+   (`qetBreakerZNapedem`, PN-EN 60617 02-13-26) — zatwierdzony w §11.1 wiersz 4, §11.14 pkt 4
+   i §11.19; prostokąt z ukośnikiem (cewka wyzwalająca, PN-EN 60617 07-15-01) zdjęto z kafla
+   decyzją właściciela 2026-10-30 (§11.14 pkt 4); obraz referencyjny właściciela też ma okrąg
+   „M”. Bez zmian.
+
+**Testy korekty v2.** `scene/__tests__/poleLinioweGpz.test.tsx`: położenie (ramka ≥ 2·GRID za Q0,
+środek na wysokości Q0 ±GRID, najbliższe wolne — przesunięcie o oczko w lewo czerwone, linia
+przez wnętrze ramki, koniec linii na krawędzi), LOD1 = LOD2 (ramka, linia wyłączania), linia
+wyłączania jednym odcinkiem z limitami Z.10 5·GRID, Z.11.1 16·GRID, Z.11 23·GRID; wyrocznia
+bloku (kody w kolejności danych, ⌈n/2⌉ wierszy, lewa kolumna oczko od krawędzi ramki); glif bez
+okręgu (i kontrola: glif bez ramki ma okrąg); kontrakt N ∈ {0, 1, 2, 7, 9} (kody pola w odwróconej
+kolejności dopełnione kodami słownika) × LOD {0, 1, 2} × motyw {ciemny, jasny} × fikstury.
+`scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (P1/P2 po lewej, na prawo od podpisu T1;
+tabliczka po lewej w paśmie symbolu; iniekcja stanu „po prawej”), `tabliczkiPrzekladnikow.test.ts`
+(strona tabliczki = strona podpisu aparatu; iniekcje T1 i T2 po prawej), `zaczepKrawedziEtykiet`
+(komórka „dane po lewej”), `obrysyWgPlanu.test.tsx` (ramka wg planu = ramka sceny ∪ wiersze),
+`klikBlokuPrzekaznika.test.tsx` (klik w ramkę), e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts`
+(zero okręgów w bloku, marginesy ramki, P1/P2 i tabliczka T1 między podpisem a pierścieniem).
+Iniekcje produkcyjne (każda czerwona): okrąg w glifie bloku, kody zaszyte, kody posortowane,
+tabliczki po prawej, P1/P2 po prawej, blok poza osią Q0, zasięg ramki bez pasa krawędzi, pas opisów
+z większego opisu zamiast sumy. Zrzuty: `docs/uiux/zrzuty/ux04-pole-liniowe/` (oba motywy,
+LOD0–2, stany aparatów); stan sprzed korekty v2: `przed/*-przed-v2.png` (Z.10 trójpołożeniowy,
+Z.11.1). Werdykt wizualny — właściciel (B-02).

@@ -542,9 +542,9 @@ function SceneSymbolNode(props: {
   /** Poziom szczegółu rysowanej sceny — podłoga ekranu znacznika rodzaju aparatu na LOD1
    *  (`skalaZnacznikaKafla`, rozstrzygnięcie architekta 2026-10-30 pkt 1). */
   readonly lod: SceneLod;
-  /** Ramka bloku przekaźnika wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — zastępuje ramkę
-   *  sceny (`meta.ramkaBlokuPrzekaznika`), liczoną ze slotów w piśmie naturalnym; `undefined`
-   *  = symbol bez ramki albo żaden wiersz bloku nie jest narysowany. */
+  /** Ramka bloku zabezpieczeń wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — ramka sceny
+   *  (`meta.ramkaBlokuPrzekaznika`) poszerzona o NARYSOWANE wiersze bloku; `undefined` = symbol
+   *  bez ramki (okrąg przekaźnika modelu stacji). */
   readonly ramkaBloku: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined;
 }): JSX.Element {
   const { symbol, index, overlay, cameraScale } = props;

@@ -164,10 +164,10 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC (uwaga właściciela 2026-10-29 pkt 5): ramka BLOKU
-   *  przekaźnika (względem lewego górnego rogu okręgu) — WYŁĄCZNIE `ProtectionRelayGlyph`;
-   *  obejmuje okrąg i wiersze bloku (kody poza okręgiem, odniesienie 3U₀) — jedna
-   *  reprezentacja funkcji przy przekaźniku. Brak = sam okrąg. */
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): ramka BLOKU
+   *  ZABEZPIECZEŃ (względem symbolu) — WYŁĄCZNIE `ProtectionRelayGlyph`; z ramką glif rysuje sam
+   *  prostokąt bez okręgu (kody funkcji i odniesienie 3U₀ są wierszami etykiet wewnątrz ramki).
+   *  Brak = okrąg przekaźnika modelu stacji. */
   readonly ramkaBloku?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
    *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
@@ -1233,26 +1233,43 @@ export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
  * funkcja `ukladKodowWOkregu` (`symbols/okragPrzekaznika.ts`), którą woła
  * kompozycja (`compose/station.ts`/`compose/gpz.ts`) i ten glif.
  * Brak wypełnienia (P5: rysunek bazowy mono) — element ADNOTACJI, nie stanu.
+ *
+ * Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): z `ramkaBloku`
+ * glif rysuje BLOK ZABEZPIECZEŃ — wyłącznie prostokątną ramkę, BEZ okręgu; kody funkcji są
+ * wierszami etykiet sceny wewnątrz ramki (LOD2), na LOD1 ramka tego samego kształtu bez kodów.
  */
 export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
+  const ramka = props.ramkaBloku;
+  if (ramka) {
+    return (
+      <g {...glyphGroupProps('protectionRelay', props)}>
+        <rect
+          x={ramka.x}
+          y={ramka.y}
+          width={ramka.width}
+          height={ramka.height}
+          fill="none"
+          stroke={stroke(props)}
+          strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
+          data-przekaznik="ramka-bloku"
+        />
+        {/* F10.5 (spec §20.2): „!" nierozstrzygniętego prerekwizytu topologicznego funkcji —
+         *  w prawym górnym narożniku ramki (wiersze kodów zaczynają się oczko pod górną
+         *  krawędzią, więc narożnik jest wolny). */}
+        {props.hasTopologyWarning && (
+          <g data-topology-warning="true">
+            <ZnakOstrzezenia cx={ramka.x + ramka.width} cy={ramka.y} glif={props} />
+          </g>
+        )}
+      </g>
+    );
+  }
   // Kody i ich linie bazowe z JEDNEGO źródła (`symbols/okragPrzekaznika.ts`): kompozycja
   // podaje prefiks mieszczący się w okręgu pismem 8 px, glif rysuje go w liniach bazowych
   // tej samej funkcji (blok tuszu wyśrodkowany w okręgu).
   const uklad = ukladKodowWOkregu(props.labelLines ?? []);
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
-      {props.ramkaBloku && (
-        <rect
-          x={props.ramkaBloku.x}
-          y={props.ramkaBloku.y}
-          width={props.ramkaBloku.width}
-          height={props.ramkaBloku.height}
-          fill="none"
-          stroke={stroke(props)}
-          strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
-          data-przekaznik="ramka-bloku"
-        />
-      )}
       <circle cx={OKRAG_PRZEKAZNIKA.cx} cy={OKRAG_PRZEKAZNIKA.cy} r={OKRAG_PRZEKAZNIKA.r} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {uklad.kody.map((line, i) => (
         <text

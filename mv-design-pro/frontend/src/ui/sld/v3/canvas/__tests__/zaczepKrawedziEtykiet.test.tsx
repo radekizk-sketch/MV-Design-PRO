@@ -126,11 +126,11 @@ describe('(B) render kanwy LOD 2 — etykiety danych i podpisy aparatów zaczepi
     });
   }
 
-  // Komórka „dane po lewej" nie występuje w danych produktu: etykiety `dane` mają stronę
-  // prawą (wiersze bloku przekaźnika, adnotacje CT/VT), dolną (lista kodów R-2, wiersze nazw
-  // stacji) albo żadną (opisy odcinków, portów, końców toru — środek odcinka); plan
-  // czytelności nie przenosi ich na stronę lewą (sonda 2026-10-30: 58 fikstur × skale 0,5/1/2/4,
-  // zero przypadków). Regułę dla tej komórki przypina tabela prawdy (A).
+  // Komórka „dane po lewej" występuje od korekty v2 (polecenie właściciela 2026-11-04):
+  // tabliczki przekładników toru głównego pola GPZ (T1 „200–400/5", T2 „1/100") stoją po LEWEJ
+  // symbolu, tekst dosunięty do symbolu (prawa krawędź). Pozostałe etykiety `dane` mają stronę
+  // prawą (wiersze bloku zabezpieczeń, tabliczka VT kolumny odgałęzienia), dolną (lista kodów
+  // R-2, wiersze nazw stacji) albo żadną (opisy odcinków, portów, końców toru).
   it('iloczyn {dane, podpis aparatu} × {lewa, prawa} osiągalny w danych produktu pokryty na kolekcji fikstur (test nie jest pusty)', () => {
     const komorki = new Set<string>();
     for (const [, etykiety] of ETYKIETY) {
@@ -140,7 +140,7 @@ describe('(B) render kanwy LOD 2 — etykiety danych i podpisy aparatów zaczepi
         if (e.kind === 'apparatus') komorki.add(`aparat|${e.strona}`);
       }
     }
-    expect([...komorki].sort()).toEqual(['aparat|left', 'aparat|right', 'dane|right']);
+    expect([...komorki].sort()).toEqual(['aparat|left', 'aparat|right', 'dane|left', 'dane|right']);
   });
 
   it('(C) podpisy aparatów po lewej stronie toru jednego pola GPZ mają wspólną prawą krawędź (≤ 1 jednostka świata)', () => {

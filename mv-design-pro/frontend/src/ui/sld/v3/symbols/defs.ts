@@ -352,19 +352,13 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   // wielokrotnością GRID w bboxie 24×24, wybór wizualnie równoważny).
   protectionRelay: def('protectionRelay', 24, 24, [
     { name: 'link', x: 0, y: 8, dir: 'W' },
-  ], 'Przekaźnik zabezpieczeniowy', [
-    // Karta UX-04/POLE-LINIOWE-WZORZEC: zaciski obwodów wtórnych przekaźnika pola GPZ
-    // z powiązaniami (ENEA Zeszyt 1, Z.10/Z.11.1). Odbiór B-02 właściciela 2026-11-04
-    // (korekta): kody funkcji stoją POD okręgiem, więc linie nie wchodzą od dołu przez kolumny
-    // kodów — linia wyłączania wchodzi od góry (`wylacz`), linie pomiarowe od zachodu (górne
-    // i dolne wejście) i trzecia przez pas pod okręgiem do wejścia dolnego (`pomiar`); kolejność
-    // przydziału `WEJSCIA_POMIAROWE_PRZEKAZNIKA`. Port `link` zostaje wejściem linii
-    // wyłączania i pomiaru przekaźnika modelu stacji (kody w okręgu i po prawej).
-    { name: 'wylacz', x: 8, y: 0, dir: 'N' },
-    { name: 'pomiar-gorny', x: 0, y: 8, dir: 'W' },
-    { name: 'pomiar-lewy', x: 0, y: 16, dir: 'W' },
-    { name: 'pomiar', x: 8, y: 24, dir: 'S' },
-  ]),
+  ], 'Przekaźnik zabezpieczeniowy'),
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): pole GPZ
+  // z powiązaniami obwodów wtórnych rysuje BLOK ZABEZPIECZEŃ — prostokątną ramkę bez okręgu
+  // (`ProtectionRelayGlyph` z `ramkaBloku`); jego wejścia (linia wyłączania, linie pomiarowe)
+  // leżą na krawędziach ramki i zależą od danych pola, więc niesie je meta sceny
+  // (`wejsciaBlokuPrzekaznika`), nie stała definicja symbolu. Dawne zaciski wtórne okręgu
+  // (`wylacz`, `pomiar-gorny`, `pomiar-lewy`, `pomiar`) skasowane razem z okręgiem bloku.
   // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), TA SAMA średnica co
   // przekaźnik (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
   // linii do miernika (kotwiczenie WYŁĄCZNIE pozycją, §17.2 „okrąg M przy

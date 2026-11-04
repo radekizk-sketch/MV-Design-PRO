@@ -538,13 +538,13 @@ type PomiarBloku = {
   /** Lewe krawędzie tuszu wierszy bloku [px ekranu] i ich rozrzut. */
   lewe: number[];
   rozrzutLewych: number;
-  /** Ramka bloku [px ekranu] i zapas tuszu wierszy do jej krawędzi: lewy (od okręgu do
-   *  wiersza — mierzony od ramki), prawy (najszerszy wiersz → prawa krawędź ramki). */
+  /** Ramka bloku [px ekranu] i zapas tuszu wierszy do jej krawędzi: prawy (najszerszy wiersz →
+   *  prawa krawędź ramki) i dolny (ostatni wiersz → dolna krawędź). */
   ramka: { x: number; y: number; width: number; height: number };
   zapasPrawy: number;
   zapasDolny: number;
-  /** Margines ramki [px ekranu] — odstęp lewej krawędzi ramki od okręgu przekaźnika (ramka =
-   *  suma okręgu i wierszy poszerzona o jeden margines), i skala kamery [px ekranu / j.św.]. */
+  /** Margines lewy ramki [px ekranu] — odstęp lewej krawędzi ramki od lewej krawędzi tuszu
+   *  wierszy (oczko siatki), i skala kamery [px ekranu / j.św.]. */
   margines: number;
   skala: number;
   wiersze: string[];
@@ -570,13 +570,13 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     const prost = (r: DOMRect) => ({ x: r.x, y: r.y, width: r.width, height: r.height });
     return [...svg.querySelectorAll('[data-przekaznik="ramka-bloku"]')].map((rama) => {
       const wlasciciel = rama.closest('[data-owner-ref]')?.getAttribute('data-owner-ref') ?? '';
-      const okrag = rama.parentElement?.querySelector('circle');
+      // Odbiór właściciela 2026-11-04 (korekta v2): blok zabezpieczeń BEZ okręgu przekaźnika.
+      const okregi = rama.parentElement?.querySelectorAll('circle').length ?? 0;
       return {
         pole: wlasciciel,
         ramka: prost(rama.getBoundingClientRect()),
         ramkaSwiat: Number(rama.getAttribute('width')),
-        okragLewa: okrag ? okrag.getBoundingClientRect().x : null,
-        okragDol: okrag ? okrag.getBoundingClientRect().bottom : null,
+        okregi,
         wiersze: [...svg.querySelectorAll('g[data-owner-ref] > text')]
           .filter((t) => {
             const ref = t.parentElement!.getAttribute('data-owner-ref') ?? '';
@@ -615,11 +615,10 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     const zapasDolny = b.ramka.y + b.ramka.height - Math.max(...b.wiersze.map((w) => w.r.y + w.r.height));
     const opis = `${kadr} · ${motyw} · blok ${b.pole}`;
     expect(rozrzutLewych, `${opis}: co najwyżej dwie kolumny kodów (${lewe.map((x) => x.toFixed(1)).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
-    // Odbiór B-02 właściciela 2026-11-04 (korekta): wszystkie kody pod okręgiem, bez licznika „+n".
+    // Odbiór B-02 właściciela 2026-11-04 (korekta v2): wszystkie kody w ramce, bez licznika „+n"
+    // i bez okręgu przekaźnika w bloku.
     for (const w of b.wiersze) expect(w.tekst, `${opis}: licznik „+n" w bloku`).not.toMatch(/^\+\d/);
-    if (b.okragDol !== null) {
-      for (const w of b.wiersze) expect(w.r.y, `${opis}: „${w.tekst}" pod okręgiem`).toBeGreaterThanOrEqual(b.okragDol - TOLERANCJA_EKRANU_PX);
-    }
+    expect(b.okregi, `${opis}: blok zabezpieczeń bez okręgu przekaźnika`).toBe(0);
     for (const w of b.wiersze) {
       expect(w.r.x, `${opis}: „${w.tekst}" wewnątrz ramki (lewa)`).toBeGreaterThanOrEqual(b.ramka.x);
       expect(w.r.x + w.r.width, `${opis}: „${w.tekst}" wewnątrz ramki (prawa)`).toBeLessThanOrEqual(b.ramka.x + b.ramka.width);
@@ -629,18 +628,17 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     // Decyzja architekta §11.7 pkt 7: szerokość wiersza na ekranie = suma posuwów kroju z tabeli
     // (`metrykiKroju.json`) × rozmiar pisma × skala kamery — w granicy 1 px, na każdym wierszu
     // (cyfry i wielkie litery), więc ramka liczona z tabeli ma zapas do tuszu w STAŁYM
-    // przedziale: [margines, margines + 1 j.św.] (prostokąt wiersza = posuw zaokrąglony w górę do
-    // pełnej jednostki świata, ramka = najszerszy prostokąt + margines). Dawny szacunek 0,62 em:
-    // zapas 80,4–93,5 px w polach Z.10 i 18,4 px w Z.11.1 (pomiar 2026-10-29).
+    // przedziale. Dawny szacunek 0,62 em: zapas 80,4–93,5 px w polach Z.10 i 18,4 px w Z.11.1
+    // (pomiar 2026-10-29).
     const skala = b.ramka.width / b.ramkaSwiat;
-    expect(b.okragLewa, `${opis}: okrąg przekaźnika w bloku`).not.toBeNull();
-    // Margines ramki = odległość lewej krawędzi tuszu wierszy (zaczep wierszy = lewa krawędź
-    // kwadratu okręgu, `ramkaBlokuPrzekaznika`) od lewej krawędzi ramki. Dawniej mierzony od
-    // obrysu NARYSOWANEGO okręgu, który leży 1 j.św. wewnątrz kwadratu (promień pomniejszony
-    // o kreskę) — margines zawyżony o 1 j.św.; przy skali 1,45 mieścił się w tolerancji 1 px,
-    // przy skali 2,76 (kadr Z.10 trójpołożeniowy) dawał fałszywą czerwień 12,24 < 12,80 px.
-    // Intencja bez zmian: zapas po prawej = ten sam margines co po lewej (+ ≤ 1 j.św.).
+    // Korekta v2 (2026-11-04): ramka bloku jest blokiem zabezpieczeń — jej krawędzie leżą na
+    // siatce (końce linii wyłączania i pomiarowych na krawędzi ramki), wiersze zaczynają się
+    // oczko od lewej krawędzi, a prawa krawędź to najszerszy wiersz + margines pół oczka
+    // dociągnięty w górę do siatki (`compose/gpz.ts::ramkaBlokuZabezpieczen`). Intencja bez
+    // zmian: ramka liczona z tabeli posuwów jest ciasna — zapas po prawej w przedziale
+    // [pół oczka, pół oczka + oczko] (j.św. × skala), a lewy margines = oczko.
     const margines = Math.min(...b.wiersze.map((w) => w.r.x)) - b.ramka.x;
+    expect(Math.abs(margines - 8 * skala), `${opis}: wiersze oczko od lewej krawędzi ramki (${margines.toFixed(2)} px)`).toBeLessThanOrEqual(skala + TOLERANCJA_EKRANU_PX);
     for (const w of b.wiersze) {
       const zTabeli = szerokoscZTabeliEm(w.tekst, w.fontWeight) * w.fontSize * skala;
       expect(Math.abs(w.r.width - zTabeli), `${opis}: „${w.tekst}" szerokość ${w.r.width.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
@@ -648,9 +646,9 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     }
     // Diagnostyka porażki: wiersz najdalej w prawo, jego tusz i ramka w px ekranu.
     const najdalej = b.wiersze.reduce((a, w) => (w.r.x + w.r.width > a.r.x + a.r.width ? w : a));
-    const diag = `wiersz „${najdalej.tekst}" x ${najdalej.r.x.toFixed(2)} szer ${najdalej.r.width.toFixed(2)} (tabela ${(szerokoscZTabeliEm(najdalej.tekst, najdalej.fontWeight) * najdalej.fontSize * skala).toFixed(2)}, pismo ${najdalej.fontSize}), ramka x ${b.ramka.x.toFixed(2)} szer ${b.ramka.width.toFixed(2)}, okrąg x ${b.okragLewa!.toFixed(2)}, skala ${skala.toFixed(3)}`;
-    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≥ margines (${margines.toFixed(2)} px) — ${diag}`).toBeGreaterThanOrEqual(margines - TOLERANCJA_EKRANU_PX);
-    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≤ margines + 1 j.św. (${(margines + skala).toFixed(2)} px)`).toBeLessThanOrEqual(margines + skala + TOLERANCJA_EKRANU_PX);
+    const diag = `wiersz „${najdalej.tekst}" x ${najdalej.r.x.toFixed(2)} szer ${najdalej.r.width.toFixed(2)} (tabela ${(szerokoscZTabeliEm(najdalej.tekst, najdalej.fontWeight) * najdalej.fontSize * skala).toFixed(2)}, pismo ${najdalej.fontSize}), ramka x ${b.ramka.x.toFixed(2)} szer ${b.ramka.width.toFixed(2)}, skala ${skala.toFixed(3)}`;
+    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≥ pół oczka (${(4 * skala).toFixed(2)} px) — ${diag}`).toBeGreaterThanOrEqual(4 * skala - TOLERANCJA_EKRANU_PX);
+    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≤ pół oczka + oczko + 1 j.św. (${(13 * skala).toFixed(2)} px) — ${diag}`).toBeLessThanOrEqual(13 * skala + TOLERANCJA_EKRANU_PX);
     pomiary.push({
       kadr,
       motyw,
@@ -674,8 +672,9 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
 
 /** Zaciski strony pierwotnej i tabliczka przekładnika prądowego T1 na kanwie (decyzja architekta
  *  §11.7 pkt 6; PN-EN 61869-2): P1 po stronie szyny (nad środkiem pierścienia), P2 po stronie
- *  odpływu (pod środkiem), oba po stronie PRZECIWNEJ do podpisu aparatu T1 (korekta po oględzinach
- *  zrzutów 2026-10-30, §11.12 — wyrocznia jednostkowa `scene/__tests__/oznaczeniaZaciskow.ts`);
+ *  odpływu (pod środkiem), oba PO LEWEJ symbolu T1, między podpisem „T1" a pierścieniem
+ *  (polecenie właściciela 2026-11-04, korekta v2 — wyrocznia jednostkowa
+ *  `scene/__tests__/oznaczeniaZaciskow.ts`);
  *  tabliczka = przekładnia, wybrany zaczep przekładnika wieloprzekładniowego i klasy rdzeni
  *  z rekordu modelu (`BayPrimaryDevice.rdzenie`, `zaczep_pierwotny_a`) w zapisie rysunku ENEA
  *  („200-400/5 A · zaczep 400 A · 5P20") — wyrocznia z czystego formatowania tabliczki
@@ -686,21 +685,28 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
   const ramkaT1 = (await page.locator(`${KANWA} g[data-device-ref="${t1.device_ref}"]`).first().boundingBox())!;
   const srodekT1 = ramkaT1.y + ramkaT1.height / 2;
   const [odSzyny, odOdplywu] = ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne;
-  // Strona podpisu aparatu T1 (`data-label-strona` grupy podpisu) — oznaczenia zacisków po
-  // stronie przeciwnej.
+  // Strona podpisu aparatu T1 (`data-label-strona` grupy podpisu) — kolumna podpisów po lewej
+  // toru; oznaczenia zacisków między nią a pierścieniem.
   const stronaPodpisu = await page
     .locator(`${KANWA} g[data-owner-ref^="${pole.ref_id}#etykieta-aparatu-"][data-label-strona]`)
     .filter({ has: page.locator('text', { hasText: /^T1$/ }) })
     .first()
     .getAttribute('data-label-strona');
   expect(stronaPodpisu, `${kadr}: podpis T1 z deklarowaną stroną`).toMatch(/^(left|right)$/);
+  const podpisT1 = (await page
+    .locator(`${KANWA} g[data-owner-ref^="${pole.ref_id}#etykieta-aparatu-"][data-label-strona]`)
+    .filter({ has: page.locator('text', { hasText: /^T1$/ }) })
+    .first()
+    .locator('text')
+    .boundingBox())!;
   const zaciski: Record<string, { x: number; y: number; width: number; height: number }> = {};
+  let lewaPierscieniaT1 = Number.POSITIVE_INFINITY;
   for (const oznaczenie of [odSzyny, odOdplywu]) {
     const tekst = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${t1.device_ref}-${oznaczenie}"] > text`);
     await expect(tekst, `${kadr}: zacisk ${oznaczenie} przekładnika T1`).toHaveCount(1);
     await expect(tekst).toHaveText(oznaczenie);
     zaciski[oznaczenie] = (await tekst.boundingBox())!;
-    // Po stronie przeciwnej do podpisu T1 — względem PIERŚCIENIA przekładnika (rdzeń), a tusz
+    // Po lewej symbolu T1 — względem PIERŚCIENIA przekładnika (rdzeń), a tusz
     // oznaczenia nie przecina żadnego prymitywu rysunku T1. Ramka całej grupy T1 nie jest tu
     // miarą: kreski doprowadzenia rdzenia na prawej krawędzi kafla wychodzą o ułamek jednostki
     // poza obrys, ale leżą na wysokości zacisku wtórnego, nie przy P1/P2 (pomiar 2026-11-04:
@@ -718,13 +724,13 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
     const okregi = tusz.filter((t) => t.cad === 'circle' || t.cad === 'arc');
     expect(okregi.length, `${kadr}: pierścień rdzenia T1 w rysunku`).toBeGreaterThan(0);
     const pierscien = okregi.reduce((a, b) => (b.width > a.width ? b : a));
-    const pierscienPrawa = pierscien.x + pierscien.width;
     const pierscienLewa = pierscien.x;
-    if (stronaPodpisu === 'left') {
-      expect(r.x, `${kadr}: ${oznaczenie} na prawo od pierścienia T1`).toBeGreaterThanOrEqual(pierscienPrawa - TOLERANCJA_EKRANU_PX);
-    } else {
-      expect(r.x + r.width, `${kadr}: ${oznaczenie} na lewo od pierścienia T1`).toBeLessThanOrEqual(pierscienLewa + TOLERANCJA_EKRANU_PX);
-    }
+    lewaPierscieniaT1 = Math.min(lewaPierscieniaT1, pierscienLewa);
+    // Polecenie właściciela 2026-11-04 (korekta v2): P1/P2 po LEWEJ stronie symbolu T1 —
+    // w pasie opisów przekładników między kolumną podpisów aparatów a pierścieniem.
+    expect(stronaPodpisu, `${kadr}: podpis T1 w kolumnie podpisów po lewej toru`).toBe('left');
+    expect(r.x + r.width, `${kadr}: ${oznaczenie} na lewo od pierścienia T1`).toBeLessThanOrEqual(pierscienLewa + TOLERANCJA_EKRANU_PX);
+    expect(r.x, `${kadr}: ${oznaczenie} na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpisT1.x + podpisT1.width - TOLERANCJA_EKRANU_PX);
     const przeciete = tusz.filter(
       (t) =>
         r.x < t.x + t.width - TOLERANCJA_EKRANU_PX &&
@@ -743,6 +749,10 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
   // — w inspektorze pola.
   await expect(tabliczka).toHaveText(krotkaPrzekladniaRdzeni(t1.rdzenie)!);
   await expect(tabliczka).toHaveText('200–400/5');
+  // Korekta v2 (2026-11-04): przekładnia po LEWEJ symbolu T1, między podpisem „T1" a pierścieniem.
+  const ramkaTabliczki = (await tabliczka.boundingBox())!;
+  expect(ramkaTabliczki.x + ramkaTabliczki.width, `${kadr}: tabliczka T1 na lewo od pierścienia`).toBeLessThanOrEqual(lewaPierscieniaT1 + TOLERANCJA_EKRANU_PX);
+  expect(ramkaTabliczki.x, `${kadr}: tabliczka T1 na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpisT1.x + podpisT1.width - TOLERANCJA_EKRANU_PX);
   // Decyzja architekta §11.7 pkt 7: tabliczka (przewaga cyfr) — szerokość tuszu w przeglądarce
   // = tabela posuwów kroju × pismo × skala kamery (macierz ekranowa tekstu), w granicy 1 px.
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
@@ -838,8 +848,8 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
  *  prostokąt liczy tabela posuwów kroju (wiersze bloku przekaźnika, tabliczka przekładnika T1),
  *  z przewagą {cyfr, wielkich liter} × motyw {ciemny, jasny} — każda komórka zmierzona
  *  (asercja szerokości ± 1 px w `zmierzBlokPrzekaznika` i `sprawdzPrzekladnikPradowy`), więc
- *  test nie jest pusty. Blok LOD2 niesie wszystkie kody funkcji pola pod okręgiem (odbiór B-02
- *  2026-11-04, bez licznika „+n"); wiersze bloku i tabliczka T1 niosą przewagę cyfr;
+ *  test nie jest pusty. Blok LOD2 niesie wszystkie kody funkcji pola w ramce bez okręgu (odbiór
+ *  B-02 2026-11-04 z korektą v2, bez licznika „+n"); wiersze bloku i tabliczka T1 niosą przewagę cyfr;
  *  komórkę wielkich liter niosą podpisy aparatów pola (Q1, PF0, GK1 — `zmierzPodpisyPola`). */
 function oczekujPokryciaKlasSzerokosci(prefiksKadru: string): void {
   const komorki = new Set(POMIARY_SZEROKOSCI.filter((p) => p.kadr.startsWith(prefiksKadru)).map((p) => `${p.klasa}|${p.motyw}`));
@@ -1475,7 +1485,7 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   const uchwytQ0 = await przyblizDoAparatu(page, q0Staly.device_ref);
   // Zbliżenie = poziom szczegółu pola (LOD2) i kafel wyraźnie większy niż w kadrze pola
   // (pomiar 2026-10-29: próg 40 px kończył zbliżenie na LOD1 — kafel 48 j.św. osiągał go przy
-  // skali ok. 0,85, więc zrzut pokazywał okrąg przekaźnika bez kodów i bez linii powiązań).
+  // skali ok. 0,85, więc zrzut pokazywał przekaźnik bez kodów i bez linii powiązań).
   const svgZblizenia = page.locator(KANWA);
   for (let i = 0; i < 12; i += 1) {
     const box = (await uchwytQ0.boundingBox())!;

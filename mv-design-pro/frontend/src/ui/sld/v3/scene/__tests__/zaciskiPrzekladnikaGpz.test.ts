@@ -14,10 +14,14 @@
  * × przewód przy zacisku po stronie oznaczeń (żaden × odczep uziemnika z węzła zacisku dolnego
  * × z węzła zacisku górnego — wtedy oznaczenie tego zacisku przechodzi na stronę podpisów).
  *
- * Położenie oznaczeń (korekta po oględzinach zrzutów 2026-10-30): P1 przy zacisku górnym, P2 przy
- * dolnym, po stronie przeciwnej do podpisu aparatu, zero przecięć — wyrocznia
- * `oznaczeniaZaciskow.ts` (wspólna z testem kanwy). Iniekcja dawnego zaczepu (wiersze całkiem
- * nad i pod pierścieniem, po lewej) — ostatni test pliku.
+ * Położenie oznaczeń i tabliczki (polecenie właściciela 2026-11-04, korekta v2 — tekst polecenia
+ * wygrywa nad obrazem): P1 przy zacisku górnym, P2 przy dolnym, oba PO LEWEJ symbolu T1, między
+ * kolumną podpisów aparatów a symbolem; tabliczka przekładni („200–400/5") też po lewej symbolu,
+ * między podpisem „T1" a symbolem, zero przecięć — wyrocznia `oznaczeniaZaciskow.ts` (wspólna
+ * z testem kanwy). Wyjątek z danych: przewód przy zacisku po lewej (odczep uziemnika z węzła
+ * zacisku) przenosi oznaczenie tego zacisku na prawą stronę. Iniekcje: dawny zaczep (wiersze
+ * całkiem nad i pod pierścieniem), stan sprzed korekty v2 (oznaczenia po prawej) — ostatnie
+ * testy pliku.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -84,15 +88,16 @@ function kolizjeNowychEtykiet(scena: SceneV3): readonly string[] {
 }
 
 /** Wspólne asercje pola z oznaczeniami: P1 przy zacisku górnym (od szyny), P2 przy dolnym,
- *  po stronie `strony` (domyślnie prawej — przeciwnej do kolumny podpisów aparatów toru), bez
- *  przecięć z bryłami symboli, przewodami i innymi etykietami sceny (`oznaczeniaZaciskow.ts`);
- *  tabliczka z rdzeni nad linią pomiarową. */
+ *  po stronie `strony` (domyślnie lewej — korekta v2 2026-11-04), bez przecięć z bryłami
+ *  symboli, przewodami i innymi etykietami sceny (`oznaczeniaZaciskow.ts`); oznaczenie po lewej
+ *  stoi na prawo od podpisu „T1"; tabliczka z rdzeni po lewej symbolu, na prawo od podpisu
+ *  „T1", w paśmie wysokości symbolu. */
 function sprawdzPole(
   scena: SceneV3,
   bay: Bay,
   oczekiwaneZaciski: boolean,
   oczekiwanaTabliczka: boolean,
-  strony: { readonly odSzyny: StronaOznaczenia; readonly odOdplywu: StronaOznaczenia } = { odSzyny: 'right', odOdplywu: 'right' },
+  strony: { readonly odSzyny: StronaOznaczenia; readonly odOdplywu: StronaOznaczenia } = { odSzyny: 'left', odOdplywu: 'left' },
 ): void {
   const ct = przekladnik(bay);
   const sym = symbolCt(scena, ct.device_ref);
@@ -118,10 +123,17 @@ function sprawdzPole(
       const inne = przeszkody.filter((p) => !('ownerRef' in p) || p.ownerRef !== l.ownerRef);
       expect(naruszeniaOznaczeniaZacisku(tekst, l.rect, { y, kafel, strona }, inne), `${bay.ref_id}: ${tekst}`).toEqual([]);
     }
-    // Strona prawa = przeciwna do podpisu aparatu: podpis T1 stoi w kolumnie po lewej toru.
+    // Podpis T1 stoi w kolumnie po lewej toru; oznaczenie po lewej — między podpisem a symbolem.
     const podpisT1 = scena.labels.find((l) => l.ownerRef.endsWith(`#etykieta-aparatu-${ct.device_ref}`));
     expect(podpisT1, `${bay.ref_id}: podpis przekładnika`).toBeDefined();
     expect(podpisT1!.rect.x + podpisT1!.rect.width, 'podpis przekładnika po lewej kafla').toBeLessThanOrEqual(sym.x);
+    for (const [tekst, strona] of [
+      [ZACISK_OD_SZYNY, strony.odSzyny],
+      [ZACISK_OD_ODPLYWU, strony.odOdplywu],
+    ] as const) {
+      const l = zaciski.find((z) => z.text === tekst)!;
+      if (strona === 'left') expect(l.rect.x, `${bay.ref_id}: ${tekst} na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpisT1!.rect.x + podpisT1!.rect.width);
+    }
   }
   const tab = tabliczka(scena, bay.ref_id, ct.device_ref);
   if (!oczekiwanaTabliczka) {
@@ -131,11 +143,15 @@ function sprawdzPole(
   // Odbiór B-02 (2026-11-04, pkt 6): krótka przekładnia pierwszego rdzenia; zaczep i klasy —
   // w inspektorze pola (wyrocznia z surowego rekordu, niezależna od formatera).
   expect(tab.map((l) => l.text)).toEqual([ct.rdzenie![0].przekladnia.replace(/-/g, '–')]);
-  // Linia pomiarowa z zacisku wtórnego (wschód) — tabliczka w wierszu nad nią.
-  const wtorny = def.secondaryPorts.find((p) => p.name === 'wtorny');
-  if (wtorny?.dir === 'E') {
-    expect(tab[0].rect.y + tab[0].rect.height, 'tabliczka nad linią pomiarową').toBeLessThanOrEqual(sym.y + wtorny.y - GRID / 4);
-  }
+  // Korekta v2 (2026-11-04): tabliczka PO LEWEJ symbolu (po prawej biegnie linia pomiarowa
+  // z zacisku wtórnego), na prawo od podpisu „T1", w paśmie wysokości symbolu.
+  const podpis = scena.labels.find((l) => l.ownerRef.endsWith(`#etykieta-aparatu-${ct.device_ref}`))!;
+  const r = tab[0].rect;
+  expect(r.x + r.width, `${bay.ref_id}: tabliczka po lewej symbolu`).toBeLessThanOrEqual(sym.x);
+  expect(r.x, `${bay.ref_id}: tabliczka na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpis.rect.x + podpis.rect.width);
+  expect(r.y + r.height, `${bay.ref_id}: tabliczka w paśmie symbolu (góra)`).toBeGreaterThan(sym.y);
+  expect(r.y, `${bay.ref_id}: tabliczka w paśmie symbolu (dół)`).toBeLessThan(sym.y + def.height);
+  expect(tab[0].wyrownanieTekstu, `${bay.ref_id}: tekst dosunięty do symbolu`).toBe('koniec');
 }
 
 describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur generatora', () => {
@@ -196,25 +212,24 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         true,
       ],
       [
-        'uziemnik na węźle zacisku dolnego bez wskaźnika napięcia — odczep przy zacisku dolnym, jego oznaczenie po stronie podpisów',
+        // Odczep uziemnika (aparat boczny toru) biegnie po PRAWEJ toru — oznaczenie zacisku dolnego
+        // zostaje po lewej (strona oznaczeń wolna od przewodu).
+        'uziemnik na węźle zacisku dolnego bez wskaźnika napięcia — odczep przy zacisku dolnym po prawej, oznaczenia po lewej',
         (e) => zmienPola(e, (devices) => naWezleZacisku(devices.filter((d) => d.kind !== 'VOLTAGE_INDICATOR'), 'wy')),
         true,
         true,
-        () => ({ odSzyny: 'right', odOdplywu: 'left' }),
+        () => ({ odSzyny: 'left', odOdplywu: 'left' }),
       ],
       [
-        'uziemnik na węźle zacisku górnego — odczep nad zaciskiem górnym, oznaczenia po prawej',
+        // Uwaga właściciela 2026-11-04 (uziemnik Q8 wisi pod węzłem odczepu,
+        // `zwisAparatuBocznego`): przekładnik za kotwicą uziemnika stoi o zwis niżej
+        // (`polozeniaToruGlownego`), odczep z węzła `w2` wychodzi pod wyłącznikiem, nad zaciskiem
+        // górnym i po prawej toru — P1 i P2 po lewej (korekta v2).
+        'uziemnik na węźle zacisku górnego — odczep nad zaciskiem górnym, oznaczenia po lewej',
         (e) => zmienPola(e, (devices) => naWezleZacisku(devices, 'we')),
         true,
         true,
-        // Uwaga właściciela 2026-11-04 (uziemnik Q8 wisi pod węzłem odczepu,
-        // `zwisAparatuBocznego`): przekładnik za kotwicą uziemnika stoi o zwis niżej
-        // (`polozeniaToruGlownego`), więc odczep z węzła `w2` wychodzi pod wyłącznikiem, nad
-        // zaciskiem górnym — P1 zostaje po prawej (strona przeciwna do podpisów) także w Z.10.
-        // Dawniej (Z.10, przewód 8 j.św. między kaflami) odczep biegł przy zacisku górnym i P1
-        // przechodził na stronę podpisów. Z.11/Z.11.1: odgałęzienie przekładnika napięciowego
-        // na węźle `w2` — odczep daleko nad P1.
-        () => ({ odSzyny: 'right', odOdplywu: 'right' }),
+        () => ({ odSzyny: 'left', odOdplywu: 'left' }),
       ],
     ];
     for (const [opis, zmiana, zaciski, tab, strony] of WARIANTY) {
@@ -237,14 +252,32 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         const kafel = { x: sym.x, y: sym.y, width: def.width, height: def.height };
         const wysokosc = labelLineHeight('t4');
         for (const [tekst, port, dawnaGora] of [
-          [ZACISK_OD_SZYNY, sym.y + def.ports.find((p) => p.dir === 'N')!.y, (y: number) => snapDown(y - wysokosc)],
-          [ZACISK_OD_ODPLYWU, sym.y + def.ports.find((p) => p.dir === 'S')!.y, (y: number) => snapUp(y)],
+          [ZACISK_OD_SZYNY, sym.y + def.ports.find((p) => p.dir === 'N')!.y, (y: number) => snapDown(y - wysokosc) - GRID],
+          [ZACISK_OD_ODPLYWU, sym.y + def.ports.find((p) => p.dir === 'S')!.y, (y: number) => snapUp(y) + GRID],
         ] as const) {
           const szerokosc = measureLabelWidth(tekst, 't4');
           const dawny = { x: sym.x - szerokosc, y: dawnaGora(port), width: szerokosc, height: wysokosc };
-          const bledy = naruszeniaOznaczeniaZacisku(tekst, dawny, { y: port, kafel, strona: 'right' }, []);
+          const bledy = naruszeniaOznaczeniaZacisku(tekst, dawny, { y: port, kafel, strona: 'left' }, []);
           expect(bledy.length, `${nazwa} ${bay.ref_id} ${tekst}: dawny zaczep ${JSON.stringify(dawny)} narusza wymaganie`).toBeGreaterThan(0);
           expect(bledy.some((b) => b.includes('od kotwicy zacisku')), `${nazwa} ${tekst}: odległość od kotwicy`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('iniekcja stanu sprzed korekty v2 (oznaczenia zacisków pierwotnych po prawej symbolu) — wyrocznia czerwona', () => {
+    for (const [nazwa, enm] of FIKSTURY) {
+      const scena = buildSceneV3(enm, 2);
+      for (const bay of polaLiniowe(enm)) {
+        const ct = przekladnik(bay);
+        const sym = symbolCt(scena, ct.device_ref);
+        const def = SYMBOL_DEFS[sym.symbolId];
+        const kafel = { x: sym.x, y: sym.y, width: def.width, height: def.height };
+        for (const l of etykietyZaciskow(scena, bay.ref_id)) {
+          const poPrawej = { ...l.rect, x: sym.x + def.width };
+          const port = sym.y + def.ports.find((p) => p.dir === (l.text === ZACISK_OD_SZYNY ? 'N' : 'S'))!.y;
+          const bledy = naruszeniaOznaczeniaZacisku(l.text, poPrawej, { y: port, kafel, strona: 'left' }, []);
+          expect(bledy.some((b) => b.includes('nie w całości po stronie left')), `${nazwa} ${bay.ref_id} ${l.text}`).toBe(true);
         }
       }
     }

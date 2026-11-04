@@ -9,9 +9,10 @@
  * (zapis warstwy trafień), treść wierszy z SUROWEGO `slownikFunkcjiEaz.json` i `Bay` fikstury.
  *
  * Iloczyn cech: pole {bez urządzenia zabezpieczeniowego (akcja: kreator urządzenia), z urządzeniem
- * (akcja: nastawy E-27)} × obiekt bloku {okrąg przekaźnika, wiersz kodów, wiersz „U0", linia
+ * (akcja: nastawy E-27)} × obiekt bloku {ramka bloku (symbol bloku zabezpieczeń — prostokątna ramka bez okręgu,
+ * korekta v2 2026-11-04), wiersz kodów, wiersz „U0", linia
  * wyłączania, pozostałe adnotacje (tabliczka CT, numer urządzenia)}. Każda klasa obecna w DOM jest
- * klikana; obecność okręgu i wiersza kodów jest warunkiem testu (nie cichy brak).
+ * klikana; obecność ramki i wiersza kodów jest warunkiem testu (nie cichy brak).
  *
  * Stacje SN poza GPZ: blok stacji NIE rzutuje dziś adnotacji zabezpieczeń z modelu
  * (`enmToSldAdapter.ts::buildExplicitStationMiniBays` — 171 okręgów na substracie 52 stacji to
@@ -61,12 +62,12 @@ function maUrzadzenie(enm: EnergyNetworkModel, bay: EnergyNetworkModel['bays'][n
   );
 }
 
-type KlasaObiektu = 'okrąg przekaźnika' | 'wiersz kodów' | 'wiersz U0' | 'linia wyłączania' | 'inna adnotacja';
-const KLASY: readonly KlasaObiektu[] = ['okrąg przekaźnika', 'wiersz kodów', 'wiersz U0', 'linia wyłączania', 'inna adnotacja'];
+type KlasaObiektu = 'ramka bloku' | 'wiersz kodów' | 'wiersz U0' | 'linia wyłączania' | 'inna adnotacja';
+const KLASY: readonly KlasaObiektu[] = ['ramka bloku', 'wiersz kodów', 'wiersz U0', 'linia wyłączania', 'inna adnotacja'];
 
 function klasaObiektu(ownerRef: string): KlasaObiektu {
   const przyrostek = ownerRef.includes('#') ? ownerRef.slice(ownerRef.indexOf('#') + 1) : '';
-  if (przyrostek === '') return 'okrąg przekaźnika';
+  if (przyrostek === '') return 'ramka bloku';
   if (/^protection-codes-full(-\d+)?$/.test(przyrostek)) return 'wiersz kodów';
   if (/^zrodlo-u0(-\d+)?$/.test(przyrostek)) return 'wiersz U0';
   if (przyrostek === 'trip-line') return 'linia wyłączania';
@@ -112,7 +113,7 @@ function skalaKanwy(svg: Element): number {
  * Uchwyty obiektów warstwy zabezpieczeń pól, które MAJĄ funkcje w modelu — pierwszy z każdej
  * klasy. Zbiór refów warstwy pochodzi ze SCENY (symbole i odcinki `protectionAnnotation`,
  * etykiety `ownerKind: 'protection'`), nie z obsługi kliku; uchwyt w DOM to węzeł trafienia
- * (`data-hit-for`, rola obrysu) o tym refie — okrąg ma klasę `adnotacja`, wiersze `etykieta`.
+ * (`data-hit-for`, rola obrysu) o tym refie — ramka bloku ma klasę `adnotacja`, wiersze `etykieta`.
  */
 function uchwytyWgKlasy(container: HTMLElement, enm: EnergyNetworkModel): Map<KlasaObiektu, Element> {
   const polaZKodami = new Set(enm.bays.filter((b) => (b.protection_codes ?? []).length > 0).map((b) => b.ref_id));
@@ -126,7 +127,7 @@ function uchwytyWgKlasy(container: HTMLElement, enm: EnergyNetworkModel): Map<Kl
   for (const el of Array.from(container.querySelectorAll('[data-hit-for][data-hit-role="obrys"]'))) {
     const owner = el.getAttribute('data-hit-owner-ref') ?? '';
     if (!refyWarstwy.has(owner) || !polaZKodami.has(owner.split('#')[0])) continue;
-    // Okrąg przekaźnika niesie ref POLA — ten sam co aparaty pola; rozróżnia go klasa trafienia.
+    // Ramka bloku niesie ref POLA — ten sam co aparaty pola; rozróżnia ją klasa trafienia.
     if (!owner.includes('#') && el.getAttribute('data-hit-klasa') !== 'adnotacja') continue;
     const klasa = klasaObiektu(owner);
     if (!wynik.has(klasa)) wynik.set(klasa, el);
@@ -138,10 +139,10 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
   beforeEach(() => useRawResultOverlayStore.getState().clear());
 
   for (const [nazwa, enm] of ROZDZIELNIE) {
-    it(`${nazwa}: w DOM są uchwyty okręgu przekaźnika i wiersza kodów (warunek iloczynu)`, () => {
+    it(`${nazwa}: w DOM są uchwyty ramki bloku i wiersza kodów (warunek iloczynu)`, () => {
       const { container } = przygotuj(enm);
       const klasy = uchwytyWgKlasy(container, enm);
-      expect(klasy.has('okrąg przekaźnika')).toBe(true);
+      expect(klasy.has('ramka bloku')).toBe(true);
       expect(klasy.has('wiersz kodów')).toBe(true);
     });
 
@@ -180,16 +181,16 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
     }
   }
 
-  it('klik w okrąg przekaźnika, a potem w tło — zaznaczenie i karta zdjęte', () => {
+  it('klik w ramkę bloku, a potem w tło — zaznaczenie i karta zdjęte', () => {
     const { container } = przygotuj(enmGpz);
-    fireEvent.click(uchwytyWgKlasy(container, enmGpz).get('okrąg przekaźnika')!);
+    fireEvent.click(uchwytyWgKlasy(container, enmGpz).get('ramka bloku')!);
     expect(screen.getByTestId('inspektor-element-kanwy')).toBeInTheDocument();
     fireEvent.click(container.querySelector('[data-testid="sld-canvas-v3"]')!);
     expect(zaznaczone()).toEqual([]);
     expect(screen.queryByTestId('inspektor-element-kanwy')).toBeNull();
   });
 
-  // Akcja wiersza (przejście do nastaw) — natywny klik w przycisk wiersza po natywnym kliku w okrąg.
+  // Akcja wiersza (przejście do nastaw) — natywny klik w przycisk wiersza po natywnym kliku w ramkę bloku.
   // Iloczyn: pole {bez urządzenia, z urządzeniem} × tryb {edycja modelu, tylko odczyt wyników}.
   // Nastawy urządzenia (ekran E-27) są odczytem — przycisk zawsze; dodanie urządzenia to zmiana
   // modelu — tylko w trybie edycji.
@@ -202,7 +203,7 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
         useAppStateStore.setState({ activeMode: tryb });
         try {
           const { container } = przygotuj(enm);
-          const uchwyt = uchwytyWgKlasy(container, enm).get('okrąg przekaźnika')!;
+          const uchwyt = uchwytyWgKlasy(container, enm).get('ramka bloku')!;
           const pole = uchwyt.getAttribute('data-hit-owner-ref')!;
           const bay = enm.bays.find((b) => b.ref_id === pole)!;
           fireEvent.click(uchwyt);
@@ -230,7 +231,7 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
   it('iloczyn pokrywa obie wartości cechy „urządzenie" (warunek testu)', () => {
     const pierwszePole = (enm: EnergyNetworkModel) => {
       const { container } = przygotuj(enm);
-      const pole = uchwytyWgKlasy(container, enm).get('okrąg przekaźnika')!.getAttribute('data-hit-owner-ref')!;
+      const pole = uchwytyWgKlasy(container, enm).get('ramka bloku')!.getAttribute('data-hit-owner-ref')!;
       cleanup();
       return maUrzadzenie(enm, enm.bays.find((b) => b.ref_id === pole)!);
     };

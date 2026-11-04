@@ -23,7 +23,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
-import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES, PROTECTION_ANNOTATION_DIAMETER } from '../../compose/protectionMarking';
+import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES } from '../../compose/protectionMarking';
 import type { PanelPolaGpz } from '../../compose/gpzAdnotacje';
 import { GRID, type V3Rect } from '../../core/grid';
 import { kolumnyBlokuWPismie } from '../../core/kolumnyBloku';
@@ -104,7 +104,9 @@ function naruszenia(p: Przypadek): string[] {
   const opis = `${p.fikstura} @${p.skala} kadr ${p.kadr.slice(-7)}`;
   const ramki = ramkiBlokowWgPlanu(p.scena.symbols, p.plan.drawn);
   const panele = paneleWgPlanu(p.scena.meta.gpzAdnotacje!.panele, p.scena.symbols, ramki, p.plan.drawn);
-  // Ramka bloku: dokładnie okrąg ∪ NARYSOWANE wiersze bloku + margines; brak wierszy = brak ramki.
+  // Ramka bloku (korekta v2 2026-11-04 — blok to ramka bez okręgu): dokładnie ramka sceny ∪
+  // NARYSOWANE wiersze bloku + margines; brak narysowanych wierszy = ramka sceny (blok zachowuje
+  // kształt bez kodów, jak na LOD1).
   p.scena.symbols.forEach((s, i) => {
     if (!s.meta?.ramkaBlokuPrzekaznika) {
       if (ramki.has(i)) bledy.push(`${opis}: ramka dla symbolu bez ramki sceny ${symbolTestId(s, i)}`);
@@ -112,18 +114,15 @@ function naruszenia(p: Przypadek): string[] {
     }
     const wiersze = p.plan.drawn.filter((d) => d.label.ownerRef.startsWith(`${s.meta!.ownerRef}#`) && WIERSZ_BLOKU.test(d.label.ownerRef));
     const ramka = ramki.get(i);
-    if (wiersze.length === 0) {
-      if (ramka !== undefined) bledy.push(`${opis}: ramka bez narysowanych wierszy`);
-      return;
-    }
     if (!ramka) {
-      bledy.push(`${opis}: brak ramki przy ${wiersze.length} narysowanych wierszach`);
+      bledy.push(`${opis}: brak ramki bloku ${symbolTestId(s, i)}`);
       return;
     }
     const abs = { ...ramka, x: s.x + ramka.x, y: s.y + ramka.y };
-    const okrag = { x: s.x, y: s.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
-    const oczekiwana = poszerz(suma([okrag, ...wiersze.map((w) => w.rect)]), M_RAMKI);
-    if (!rowne(abs, oczekiwana)) bledy.push(`${opis}: ramka ${JSON.stringify(abs)} ≠ okrąg ∪ wiersze + margines ${JSON.stringify(oczekiwana)}`);
+    const r = s.meta.ramkaBlokuPrzekaznika;
+    const ramkaSceny = { ...r, x: s.x + r.x, y: s.y + r.y };
+    const oczekiwana = suma([ramkaSceny, ...wiersze.map((w) => poszerz(w.rect, M_RAMKI))]);
+    if (!rowne(abs, oczekiwana)) bledy.push(`${opis}: ramka ${JSON.stringify(abs)} ≠ ramka sceny ∪ wiersze + margines ${JSON.stringify(oczekiwana)}`);
     for (const w of wiersze) if (!zawiera(abs, w.rect)) bledy.push(`${opis}: „${w.text}" poza ramką`);
   });
   // Tło pola: obrys sceny ∪ narysowane etykiety-członkowie ∪ ramki bloków pola, każde z marginesem.
@@ -262,14 +261,18 @@ describe('obrysy etykiet wg planu — iloczyn fikstura × skala × kadr × obrys
     expect(kolumnyBlokuWPismie(wieksze)).toEqual([0, 28, 0]);
   });
 
-  it('iloczyn nie jest pusty: pismo bloku powiększone, wiersze ukryte, tło poszerzone — każde występuje', () => {
+  it('iloczyn nie jest pusty: pismo bloku powiększone, wiersze ukryte (ramka sceny bez kodów), tło poszerzone — każde występuje', () => {
     let powiekszoneWiersze = 0;
     let ramkiBezWierszy = 0;
     let tlaPoszerzone = 0;
     for (const p of PRZYPADKI) {
       powiekszoneWiersze += p.plan.drawn.filter((d) => WIERSZ_BLOKU.test(d.label.ownerRef) && d.enlarged).length;
       const ramki = ramkiBlokowWgPlanu(p.scena.symbols, p.plan.drawn);
-      ramkiBezWierszy += [...ramki.values()].filter((r) => r === undefined).length;
+      p.scena.symbols.forEach((s, i) => {
+        if (!ramki.has(i)) return;
+        const narysowane = p.plan.drawn.some((d) => (s.meta?.wierszeBlokuPrzekaznika ?? []).includes(d.label.ownerRef));
+        if (!narysowane) ramkiBezWierszy += 1;
+      });
       const panele = paneleWgPlanu(p.scena.meta.gpzAdnotacje!.panele, p.scena.symbols, ramki, p.plan.drawn);
       tlaPoszerzone += panele.filter((t, k) => !rowne(t.rect, p.scena.meta.gpzAdnotacje!.panele[k].rect)).length;
     }
@@ -315,10 +318,11 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
 
   it('wiersze bloku narysowane pismem podłogi celu, w ramce i w tle pola; ramka sceny ich nie obejmuje', () => {
     // Kanwa dobrana tak, by dopasowanie widoku dało skalę, przy której podłoga celu (13 px)
-    // podnosi pismo t4 (8 j.św.), a sufit proporcji klasy jeszcze go dopuszcza. Kanwa 3000 × 1300
-    // (odbiór B-02 pkt 7: kody w dwóch kolumnach — przy 4200 × 1800 powiększone wiersze mieściły się
-    // jeszcze w ramce sceny i iniekcja niżej przestała rozróżniać).
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={3000} height={1300} lodOverride={2} refyKadru={z.zakres.refy} />);
+    // podnosi pismo t4 (8 j.św.), a sufit proporcji klasy jeszcze go dopuszcza. Kanwa 2400 × 1040
+    // (korekta v2 2026-11-04: ramka sceny bloku bez okręgu ma zapas do oczka siatki i szerokość
+    // minimalną z wejść linii — przy 3000 × 1300 powiększone wiersze mieściły się jeszcze w ramce
+    // sceny i iniekcja niżej przestała rozróżniać; przy 1700 × 736 plan ukrywa wiersze).
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={2400} height={1040} lodOverride={2} refyKadru={z.zakres.refy} />);
     const grupa = container.querySelector(`[data-testid="${CSS.escape(symbolTestId(przekaznik, indeks))}"]`)!;
     const rama = grupa.querySelector('[data-przekaznik="ramka-bloku"]');
     expect(rama, 'ramka bloku narysowana').not.toBeNull();
@@ -345,8 +349,11 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
     // Warunek wstępny: pismo powiększone podłogą celu (inaczej test nie dotyka defektu).
     for (const w of wiersze) expect(w.fs, `„${w.tekst}" pismem podłogi celu`).toBeGreaterThan(typo.fontSize);
     for (const w of wiersze) expect(zawiera(ramka, w.rect), `„${w.tekst}" w ramce bloku ${JSON.stringify(ramka)}`).toBe(true);
+    // Ramka ciasna: prawa krawędź = większa z prawej krawędzi ramki sceny i najszerszego
+    // narysowanego wiersza z marginesem.
     const maxPrawa = Math.max(...wiersze.map((w) => w.rect.x + w.rect.width));
-    expect(ramka.x + ramka.width - maxPrawa, 'ramka ciasna: margines od najszerszego wiersza').toBeCloseTo(M_RAMKI, 6);
+    const rs = przekaznik.meta!.ramkaBlokuPrzekaznika!;
+    expect(ramka.x + ramka.width, 'ramka ciasna').toBeCloseTo(Math.max(przekaznik.x + rs.x + rs.width, maxPrawa + M_RAMKI), 6);
     const tlo = container.querySelector(`[data-testid="${CSS.escape(`sld-v3-gpz-panel-${pole}`)}"]`)!;
     const rectTla = {
       x: Number(tlo.getAttribute('x')),

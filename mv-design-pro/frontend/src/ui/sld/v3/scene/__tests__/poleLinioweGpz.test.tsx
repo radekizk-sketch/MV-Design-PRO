@@ -41,7 +41,7 @@ import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gp
 import fxStacjeZamkniete from '../../../../../harness-fixtures/generated/geometria_stacji_zamkniete.json';
 import fxGpz110 from '../../../../../harness-fixtures/generated/geometria_stacji_gpz_110kv.json';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
-import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
+import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps, ODSTEP_BLOKU_OD_WYLACZNIKA } from '../../compose/gpz';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import { czySymbolQet, obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
@@ -759,15 +759,18 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
 });
 
 /**
- * Odbiór B-02 właściciela 2026-11-04 pkt 7: przekaźnik pola z powiązaniami obwodów wtórnych stoi
- * TUŻ PRZY wyłączniku Q0 (krótka linia wyłączania), nie za planem pola. Wyrocznia sceny, niezależna
- * od funkcji wyboru położenia: (a) okrąg na prawo od obrysu Q0 w odstępie ≥ GRID; (b) położenie
- * NAJBLIŻSZE — grupa przekaźnika (okrąg, ramka i wiersze bloku, końce linii wyłączania
- * i pomiarowych) przesunięta o oczko w lewo narusza warunek rysunku: odstęp od Q0, wejście na obcy
- * symbol, podpis albo tor pola, linia przez obcy aparat, linia pomiarowa wracająca przez własny
- * zacisk wtórny, przecięcie linii przekaźnika. Ta sama wyrocznia na scenie bez przesunięcia jest
- * pusta (brak fałszywych alarmów). Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki
- * {trójpołożeniowy, stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID}.
+ * Odbiór właściciela 2026-11-04, korekta v2 (wizualizacja zaakceptowana): BLOK ZABEZPIECZEŃ pola
+ * z powiązaniami obwodów wtórnych — prostokątna ramka BEZ okręgu przekaźnika — stoi TUŻ PRZY
+ * wyłączniku Q0, ze środkiem na wysokości Q0, i łączy się z cewką wyłączającą Q0 krótką poziomą
+ * linią wyłączania. Wyrocznia sceny, niezależna od funkcji wyboru położenia: (a) ramka na prawo
+ * od obrysu Q0 w odstępie ≥ `ODSTEP_BLOKU_OD_WYLACZNIKA`; (b) środek ramki na wysokości środka
+ * kafla stanu Q0 ±GRID (kafel z `prostokatKaflaStanu`, nie z portu cewki); (c) położenie
+ * NAJBLIŻSZE — blok (ramka z wierszami, końce linii wyłączania i pomiarowych) przesunięty o oczko
+ * w lewo narusza warunek rysunku: odstęp od Q0, wejście na obcy symbol, podpis albo tor pola,
+ * linia przez obcy aparat albo przez wnętrze ramki, linia pomiarowa wracająca przez własny zacisk
+ * wtórny, przecięcie linii bloku. Ta sama wyrocznia na scenie bez przesunięcia jest pusta (brak
+ * fałszywych alarmów). Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki {trójpołożeniowy,
+ * stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID} × LOD {1, 2}.
  */
 const WIERSZ_BLOKU_POLA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
 const odcinkiProstokaty = (punkty: readonly { x: number; y: number }[]): Rect[] =>
@@ -787,19 +790,35 @@ const gabarytSwiat = (s: PreviewSymbol): Rect => {
   const y0 = Math.min(o.y, s.y);
   return { x: x0, y: y0, width: Math.max(o.x + o.width, s.x + d.width) - x0, height: Math.max(o.y + o.height, s.y + d.height) - y0 };
 };
+/** Ramka bloku w świecie z meta sceny (symbol w lewym górnym rogu ramki). */
+function prostokatBloku(przekaznik: PreviewSymbol): Rect | null {
+  const r = przekaznik.meta?.ramkaBlokuPrzekaznika;
+  return r ? { x: przekaznik.x + r.x, y: przekaznik.y + r.y, width: r.width, height: r.height } : null;
+}
+const przekaznikPola = (scena: SceneV3, bayRef: string): PreviewSymbol | undefined =>
+  scena.symbols.find((s) => s.meta?.ownerRef === bayRef && s.symbolId === 'protectionRelay');
+const wylacznikPola = (scena: SceneV3, bayRef: string): PreviewSymbol | undefined =>
+  symbolePola(scena, bayRef).find((s) => s.symbolId === 'qetBreaker' || s.symbolId === 'qetBreakerZNapedem');
+/** Wysokość Q0 — środek kafla stanu wyłącznika (wyrocznia niezależna od portu cewki). */
+const wysokoscQ0 = (q0: PreviewSymbol): number => q0.y + prostokatKaflaStanu(q0.symbolId).y + prostokatKaflaStanu(q0.symbolId).height / 2;
 
 function naruszeniaPolozeniaPrzekaznika(scena: SceneV3, bayRef: string): string[] {
   const bledy: string[] = [];
-  const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === bayRef && s.symbolId === 'protectionRelay');
-  const q0 = symbolePola(scena, bayRef).find((s) => s.symbolId === 'qetBreaker' || s.symbolId === 'qetBreakerZNapedem');
-  if (!przekaznik || !q0) return [`${bayRef}: brak przekaźnika albo Q0`];
-  const okrag = obrysSwiat(przekaznik);
-  const odstep = okrag.x - (obrysSwiat(q0).x + obrysSwiat(q0).width);
-  if (odstep < GRID) bledy.push(`odstęp od Q0 ${odstep} < GRID`);
+  const przekaznik = przekaznikPola(scena, bayRef);
+  const q0 = wylacznikPola(scena, bayRef);
+  if (!przekaznik || !q0) return [`${bayRef}: brak bloku zabezpieczeń albo Q0`];
   const rama = prostokatBloku(przekaznik);
+  if (!rama) return [`${bayRef}: blok bez ramki`];
+  const odstep = rama.x - (obrysSwiat(q0).x + obrysSwiat(q0).width);
+  if (odstep < ODSTEP_BLOKU_OD_WYLACZNIKA) bledy.push(`odstęp od Q0 ${odstep} < ${ODSTEP_BLOKU_OD_WYLACZNIKA}`);
+  const srodekRamki = rama.y + rama.height / 2;
+  if (Math.abs(srodekRamki - wysokoscQ0(q0)) > GRID) bledy.push(`środek bloku ${srodekRamki} poza wysokością Q0 ${wysokoscQ0(q0)} ±GRID`);
   const wiersze = scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? ''));
   const wlasneEtykiety = new Set(wiersze.map((l) => l.ownerRef));
-  const grupa = [okrag, ...(rama ? [rama] : []), ...wiersze.map((l) => l.rect)];
+  // Ramka z kreską (pół piksela na zewnątrz osi krawędzi): napis stykający się z krawędzią
+  // ramki dotyka narysowanej kreski — to kolizja (podpis „Q5" pola Z.11 pod ramką).
+  const ramaZKreska: Rect = { x: rama.x - 0.5, y: rama.y - 0.5, width: rama.width + 1, height: rama.height + 1 };
+  const grupa = [ramaZKreska, ...wiersze.map((l) => l.rect)];
   for (const sym of scena.symbols) {
     if (sym === przekaznik) continue;
     if (grupa.some((r) => zachodzi(r, gabarytSwiat(sym)))) bledy.push(`blok × symbol ${sym.meta?.testId ?? sym.symbolId}`);
@@ -814,6 +833,8 @@ function naruszeniaPolozeniaPrzekaznika(scena: SceneV3, bayRef: string): string[
   for (const tor of toryPola) {
     if (odcinkiProstokaty(tor.points).some((r) => grupa.some((b) => zachodzi(r, b)))) bledy.push(`blok × tor ${tor.meta?.ownerRef}`);
   }
+  // Wnętrze ramki (bez pasa krawędzi): linia bloku kończy się NA krawędzi, nie wchodzi do środka.
+  const wnetrze: Rect = { x: rama.x + 1, y: rama.y + 1, width: rama.width - 2, height: rama.height - 2 };
   const symbolePolaWszystkie = symbolePola(scena, bayRef);
   const zrodloLinii = (g: (typeof liniePrzekaznika)[number]): { s: PreviewSymbol; dir: string } | null => {
     for (const s of symbolePolaWszystkie) {
@@ -832,13 +853,20 @@ function naruszeniaPolozeniaPrzekaznika(scena: SceneV3, bayRef: string): string[
     for (const l of scena.labels) {
       if (odcinki.some((r) => zachodzi(r, l.rect))) bledy.push(`linia ${g.meta?.ownerRef} × etykieta ${l.ownerRef}`);
     }
+    if (odcinki.some((r) => zachodzi(r, wnetrze))) bledy.push(`linia ${g.meta?.ownerRef} przez wnętrze bloku`);
+    const koniec = g.points[g.points.length - 1];
+    const naKrawedzi =
+      ((koniec.x === rama.x || koniec.x === rama.x + rama.width) && koniec.y >= rama.y && koniec.y <= rama.y + rama.height) ||
+      ((koniec.y === rama.y || koniec.y === rama.y + rama.height) && koniec.x >= rama.x && koniec.x <= rama.x + rama.width);
+    if (!naKrawedzi) bledy.push(`linia ${g.meta?.ownerRef} nie kończy się na krawędzi ramki`);
+    // Linia pomiarowa odchodzi w kierunku zacisku wtórnego: każdy wierzchołek za zaciskiem leży
+    // co najmniej pół oczka po stronie zacisku (pion przy zacisku albo po stronie przeciwnej
+    // wracałby przez własny symbol).
     if (g.meta?.kind === 'measurementLink' && zrodlo) {
-      const ost = g.points[g.points.length - 1];
-      const przed = g.points[g.points.length - 2];
-      const pionX = ost.y === przed.y ? przed.x : ost.x;
       const zacisk = g.points[0];
-      if (zrodlo.dir === 'E' && pionX < zacisk.x + GRID / 2) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (E)`);
-      if (zrodlo.dir === 'W' && pionX > zacisk.x - GRID / 2) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (W)`);
+      const dalej = g.points.slice(1);
+      if (zrodlo.dir === 'E' && dalej.some((q) => q.x < zacisk.x + GRID / 2)) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (E)`);
+      if (zrodlo.dir === 'W' && dalej.some((q) => q.x > zacisk.x - GRID / 2)) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (W)`);
     }
   }
   odcinkiLinii.forEach((a, i) =>
@@ -849,10 +877,10 @@ function naruszeniaPolozeniaPrzekaznika(scena: SceneV3, bayRef: string): string[
   return bledy;
 }
 
-/** Grupa przekaźnika pola przesunięta o `dx`: okrąg (z ramką bloku w meta), wiersze bloku, koniec
- *  linii wyłączania przy okręgu, część linii pomiarowych za zaciskiem wtórnym (pion i wejście). */
+/** Blok pola przesunięty o `dx`: symbol z ramką (meta względem symbolu), wiersze bloku, koniec
+ *  linii wyłączania na ramce, część linii pomiarowych za zaciskiem wtórnym (pion i wejście). */
 function przesunPrzekaznik(scena: SceneV3, bayRef: string, dx: number): SceneV3 {
-  const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === bayRef && s.symbolId === 'protectionRelay')!;
+  const przekaznik = przekaznikPola(scena, bayRef)!;
   return {
     ...scena,
     symbols: scena.symbols.map((s) => (s === przekaznik ? { ...s, x: s.x + dx } : s)),
@@ -872,9 +900,9 @@ function przesunPrzekaznik(scena: SceneV3, bayRef: string, dx: number): SceneV3 
   };
 }
 
-describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 właściciela pkt 7)', () => {
+describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wysokości Q0 (korekta v2 2026-11-04)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx}: okrąg na prawo od Q0, położenie najbliższe wolne (o oczko w lewo — naruszenie)`, () => {
+    it(`${nazwaFx}: ramka na prawo od Q0, środek na wysokości Q0 ±GRID, położenie najbliższe wolne (o oczko w lewo — naruszenie)`, () => {
       const scena = buildSceneV3(enm, 2);
       const pola = polaLiniowe(enm);
       expect(pola.length).toBeGreaterThan(0);
@@ -885,18 +913,20 @@ describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 wł
     });
   }
 
-  // Oględziny koordynatora 2026-11-04: na LOD1 okrąg (bez kodów) stoi tam, gdzie na LOD2,
-  // i jest połączony z cewką Q0 linią wyłączania; na LOD0 przekaźnika nie ma (GPZ zwinięty).
+  // LOD1: ta sama ramka (kształt i położenie z LOD2) bez kodów, połączona z cewką Q0 tą samą
+  // linią wyłączania; LOD0 — GPZ zwinięty, bloku nie ma (kontrakt N × LOD niżej).
   for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx} · LOD1: okrąg w położeniu LOD2, linia wyłączania do cewki Q0, bez kodów`, () => {
+    it(`${nazwaFx} · LOD1: ramka w położeniu i kształcie LOD2, linia wyłączania do cewki Q0, bez kodów`, () => {
       const l1 = buildSceneV3(enm, 1);
       const l2 = buildSceneV3(enm, 2);
       for (const pole of polaLiniowe(enm)) {
-        const p1 = l1.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
-        const p2 = l2.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay')!;
+        const p1 = przekaznikPola(l1, pole.ref);
+        const p2 = przekaznikPola(l2, pole.ref)!;
         expect(p1, pole.ref).toBeDefined();
         expect({ x: p1!.x, y: p1!.y }, pole.ref).toEqual({ x: p2.x, y: p2.y });
+        expect(p1!.meta?.ramkaBlokuPrzekaznika, `${pole.ref}: ramka LOD1 = LOD2`).toEqual(p2.meta?.ramkaBlokuPrzekaznika);
         expect(p1!.meta?.protectionCodes, `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
+        expect(l1.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '')), `${pole.ref}: bez wierszy na LOD1`).toEqual([]);
         const w1 = l1.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
         const w2 = l2.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`)!;
         expect(w1?.points, `${pole.ref}: linia wyłączania na LOD1 = LOD2`).toEqual(w2.points);
@@ -904,7 +934,7 @@ describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 wł
     });
   }
 
-  it('iniekcja: przekaźnik dalej od Q0 o dwa oczka — położenie nie jest najbliższe (o oczko w lewo wolne)', () => {
+  it('iniekcja: blok dalej od Q0 o dwa oczka — położenie nie jest najbliższe (o oczko w lewo wolne)', () => {
     const [, enm] = FIKSTURY[0];
     const scena = buildSceneV3(enm, 2);
     const pole = polaLiniowe(enm)[0];
@@ -913,50 +943,50 @@ describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 wł
     expect(naruszeniaPolozeniaPrzekaznika(przesunPrzekaznik(dalej, pole.ref, -GRID), pole.ref)).toEqual([]);
   });
 
-  // Pomiar 2026-11-04 po korekcie właściciela (kody pod okręgiem, piony wejść pomiarowych na
-  // zachód od okręgu, wejście wyłączania od góry): Z.10 112 / 88 px, Z.11.1 176 px, Z.11 232 px
-  // (przed odbiorem B-02: 160 i 312 px). Pion źródła najniższego (T2) omija podpis uziemnika Q8,
-  // a kolumny kodów — tabliczkę przekładni T1, więc okrąg stoi o dwa oczka dalej niż w układzie
-  // z kodami po prawej okręgu.
-  it('linia wyłączania krótka: Z.10 ≤ 14·GRID, Z.11.1 i Z.11 ≤ 29·GRID (przed odbiorem: 20·GRID i 39·GRID)', () => {
+  it('iniekcja: blok o dwa oczka niżej (środek poza wysokością Q0) — czerwień', () => {
+    const [, enm] = FIKSTURY[0];
+    const scena = buildSceneV3(enm, 2);
+    const pole = polaLiniowe(enm)[0];
+    const przekaznik = przekaznikPola(scena, pole.ref)!;
+    const nizej: SceneV3 = { ...scena, symbols: scena.symbols.map((s) => (s === przekaznik ? { ...s, y: s.y + 2 * GRID } : s)) };
+    expect(naruszeniaPolozeniaPrzekaznika(nizej, pole.ref).join('\n')).toContain('poza wysokością Q0');
+  });
+
+  // Linia wyłączania: JEDEN poziomy odcinek od cewki wyłączającej Q0 do lewej krawędzi ramki na
+  // wysokości Q0. Pomiar 2026-11-04 (korekta v2): Z.10 — 40 px (5·GRID, ramka dwa oczka za
+  // obrysem Q0); Z.11.1 — ramka 160 px wysokości (16 funkcji) na osi Q0 sięga pasma
+  // odgałęzienia (Q5, T3 z tabliczką przekładni), więc najbliższe wolne położenie jest za
+  // tabliczką T3: 128 px (16·GRID); Z.11 — ramka 112 px sięga pasma podpisów odgałęzienia
+  // (podpis „Q5" pod ramką), położenie za pasem podpisów: 184 px (23·GRID). Przed korektą v2:
+  // Z.10 112 px, Z.11.1 176 px, Z.11 232 px.
+  const DLUGOSC_WYLACZANIA: Readonly<Record<WykonaniePola, number>> = { Z10: 5 * GRID, Z11_1: 16 * GRID, Z11: 23 * GRID };
+  it('linia wyłączania pozioma na wysokości Q0, krótka: Z.10 ≤ 5·GRID, Z.11.1 ≤ 16·GRID, Z.11 ≤ 23·GRID', () => {
     for (const [, enm] of FIKSTURY) {
       const scena = buildSceneV3(enm, 2);
       for (const pole of polaLiniowe(enm)) {
         const g = scena.segments.find((x) => x.meta?.ownerRef === `${pole.ref}#trip-line`)!;
-        const dlugosc = g.points.slice(1).reduce((suma, b, i) => suma + Math.abs(b.x - g.points[i].x) + Math.abs(b.y - g.points[i].y), 0);
-        expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual((pole.pole === 'Z10' ? 14 : 29) * GRID);
+        const q0 = wylacznikPola(scena, pole.ref)!;
+        expect(g.points.length, `${pole.ref}: jeden odcinek`).toBe(2);
+        expect(g.points.every((q) => q.y === wysokoscQ0(q0)), `${pole.ref}: na wysokości Q0`).toBe(true);
+        const dlugosc = Math.abs(g.points[1].x - g.points[0].x);
+        expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual(DLUGOSC_WYLACZANIA[pole.pole]);
       }
     }
   });
 });
 
 /**
- * Uwagi właściciela 2026-10-29 pkt 4 i 5 (oderwane etykiety przekaźnika): blok przekaźnika
- * układu powiązań niesie KAŻDĄ funkcję pola DOKŁADNIE raz (okrąg: dwie pierwsze, wiersze —
- * pozostałe), ramka bloku obejmuje okrąg, wiersze i odniesienie źródła 3U₀ i nie wchodzi na
+ * Uwagi właściciela 2026-10-29 pkt 4 i 5 i korekta v2 2026-11-04: blok zabezpieczeń układu
+ * powiązań niesie KAŻDĄ funkcję pola DOKŁADNIE raz, wyłącznie w wierszach wewnątrz ramki (symbol
+ * bloku bez kodów i bez okręgu), ramka obejmuje wiersze i odniesienie źródła 3U₀ i nie wchodzi na
  * obce elementy, numeru „52" bez związku nie ma, linia wyłączania kończy się na zacisku
- * sterującym cewki wyłączającej Q0 (port `wylacz` symbolu wyłącznika), a przekładnik
- * Ferrantiego T2 ma linię pomiarową do przekaźnika (funkcja ziemnozwarciowa 51N z rdzenia T2,
- * ENEA Z.10 s.89: „Zab. ziemnozwarciowe t1, t2"). Wyrocznia z modelu (`Bay.protection_codes`,
- * rekordy aparatów), nie z kompozycji; iniekcje na gotowej scenie czerwienią każdy warunek.
- * Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki {trójpołożeniowy, stały} × sekcja {1, 2}
- * × pole {zajęte, wolne} (fikstury) × warunek bloku {kody, ramka, „52", cewka, T2}.
+ * sterującym cewki wyłączającej Q0 (port `wylacz` symbolu wyłącznika), a przekładnik Ferrantiego
+ * T2 ma linię pomiarową do bloku (funkcja ziemnozwarciowa 51N z rdzenia T2, ENEA Z.10 s.89).
+ * Wyrocznia z modelu (`Bay.protection_codes`, rekordy aparatów), nie z kompozycji; iniekcje na
+ * gotowej scenie czerwienią każdy warunek. Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki
+ * {trójpołożeniowy, stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × warunek bloku
+ * {kody, ramka, „52", cewka, T2}.
  */
-function prostokatBloku(przekaznik: PreviewSymbol): Rect | null {
-  const r = przekaznik.meta?.ramkaBlokuPrzekaznika;
-  return r ? { x: przekaznik.x + r.x, y: przekaznik.y + r.y, width: r.width, height: r.height } : null;
-}
-
-/**
- * Wyrocznia treści bloku przekaźnika — odbiór B-02 właściciela 2026-11-04 (korekta wiążąca):
- * „WSZYSTKIE kody funkcji (51, 50, 51N, ZS i pozostałe — bez ukrywania żadnej, bez licznika)
- * POD kółkiem, pionowo w dwóch kolumnach”. Wprost z modelu (`Bay.protection_codes`): każdy kod
- * w kolejności danych, żadnego „+n”, okrąg bez kodów.
- */
-function oczekiwanyBlokPrzekaznika(kodyModelu: readonly string[]): string[] {
-  return [...kodyModelu];
-}
-
 function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): string[] {
   const bledy: string[] = [];
   const zawiera = (a: Rect, b: Rect): boolean =>
@@ -964,44 +994,32 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
   for (const pole of polaLiniowe(enm)) {
     const bay = (enm.bays ?? []).find((b) => b.ref_id === pole.ref)!;
     const kodyModelu = [...(bay.protection_codes ?? [])];
-    const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
+    const przekaznik = przekaznikPola(scena, pole.ref);
     if (!przekaznik) {
-      bledy.push(`${pole.ref}: brak przekaźnika`);
+      bledy.push(`${pole.ref}: brak bloku zabezpieczeń`);
       continue;
     }
     const wiersze = scena.labels.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`));
     const odniesienia = scena.labels.filter((l) => /#zrodlo-u0(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`));
-    const wBloku = [...(przekaznik.meta?.protectionCodes ?? []), ...wiersze.flatMap((l) => l.text.split(' · '))];
+    const wBloku = [...(przekaznik.meta?.protectionCodes ?? []), ...wiersze.map((l) => l.text)];
     if (new Set(wBloku).size !== wBloku.length) bledy.push(`${pole.ref}: funkcja powtórzona w bloku (${wBloku.join(', ')})`);
-    const oczekiwany = oczekiwanyBlokPrzekaznika(kodyModelu);
-    if (wBloku.join() !== oczekiwany.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${oczekiwany.join(', ')} (wszystkie kody pola, bez „+n")`);
+    if (wBloku.join() !== kodyModelu.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${kodyModelu.join(', ')} (wszystkie kody pola w kolejności danych, bez „+n")`);
     if (wBloku.some((k) => /^\+\d/.test(k))) bledy.push(`${pole.ref}: licznik „+n" w bloku`);
-    if ((przekaznik.meta?.protectionCodes ?? []).length > 0) bledy.push(`${pole.ref}: okrąg niesie kody (${przekaznik.meta!.protectionCodes!.join(', ')})`);
-    // Kody POD okręgiem: każdy wiersz bloku leży niżej niż dolna krawędź okręgu, a lewa kolumna
-    // zaczyna się w lewej krawędzi okręgu.
-    {
-      const o = obrysSymbolu(przekaznik.symbolId);
-      const dolOkregu = przekaznik.y + o.y + o.height;
-      const lewaOkregu = przekaznik.x + o.x;
-      for (const l of [...wiersze, ...odniesienia]) {
-        if (l.rect.y < dolOkregu) bledy.push(`${pole.ref}: wiersz bloku ${l.text} nie pod okręgiem`);
-      }
-      if (wiersze.length > 0 && Math.min(...wiersze.map((l) => l.rect.x)) !== lewaOkregu) {
-        bledy.push(`${pole.ref}: lewa kolumna kodów nie w lewej krawędzi okręgu`);
-      }
-    }
+    if ((przekaznik.meta?.protectionCodes ?? []).length > 0) bledy.push(`${pole.ref}: symbol bloku niesie kody (${przekaznik.meta!.protectionCodes!.join(', ')})`);
     const rama = prostokatBloku(przekaznik);
     if (!rama) {
       bledy.push(`${pole.ref}: brak ramki bloku`);
     } else {
-      const o = obrysSymbolu(przekaznik.symbolId);
-      const okrag = { x: przekaznik.x + o.x, y: przekaznik.y + o.y, width: o.width, height: o.height };
-      for (const r of [okrag, ...wiersze.map((l) => l.rect), ...odniesienia.map((l) => l.rect)]) {
+      for (const r of [...wiersze.map((l) => l.rect), ...odniesienia.map((l) => l.rect)]) {
         if (!zawiera(rama, r)) bledy.push(`${pole.ref}: element bloku poza ramką`);
       }
+      // Lewa kolumna oczko od lewej krawędzi ramki, pierwszy wiersz oczko od górnej.
+      if (wiersze.length > 0 && Math.min(...wiersze.map((l) => l.rect.x)) !== rama.x + GRID) bledy.push(`${pole.ref}: lewa kolumna kodów nie oczko od lewej krawędzi ramki`);
+      if (wiersze.length > 0 && Math.min(...wiersze.map((l) => l.rect.y)) !== rama.y + GRID) bledy.push(`${pole.ref}: pierwszy wiersz kodów nie oczko od górnej krawędzi ramki`);
       const wlasne = new Set([...wiersze, ...odniesienia].map((l) => l.ownerRef));
+      const ramaZKreska: Rect = { x: rama.x - 0.5, y: rama.y - 0.5, width: rama.width + 1, height: rama.height + 1 };
       for (const l of scena.labels) {
-        if (!wlasne.has(l.ownerRef) && zachodzi(rama, l.rect)) bledy.push(`${pole.ref}: ramka bloku × etykieta ${l.ownerRef}`);
+        if (!wlasne.has(l.ownerRef) && zachodzi(ramaZKreska, l.rect)) bledy.push(`${pole.ref}: ramka bloku × etykieta ${l.ownerRef}`);
       }
       for (const sym of scena.symbols) {
         if (sym === przekaznik) continue;
@@ -1011,11 +1029,11 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
         }
       }
     }
-    // Kody pod okręgiem w DWÓCH kolumnach pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7):
-    // lewa kolumna i odniesienia źródła 3U₀ pod nią mają wspólną lewą krawędź prostokątów (zrzut
-    // pola Z.10 2026-10-29: wiersze wyśrodkowane rozjeżdżały się o 36 px), prawa kolumna stoi na
-    // prawo od lewej, ma ≤ tyle komórek co lewa i jej komórki leżą w wierszach lewej; kolejność
-    // kodów kolumnami (lewa z góry na dół, potem prawa) = kolejność modelu (sprawdzana wyżej).
+    // Kody w DWÓCH kolumnach pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7): lewa kolumna
+    // i odniesienia źródła 3U₀ pod nią mają wspólną lewą krawędź prostokątów, prawa kolumna stoi
+    // na prawo od lewej, ma ⌊n/2⌋ komórek (lewa ⌈n/2⌉ — liczba wierszy) i jej komórki leżą
+    // w wierszach lewej; kolejność kodów kolumnami (lewa z góry na dół, potem prawa) = kolejność
+    // modelu (sprawdzana wyżej).
     const wierszeBloku = [...wiersze, ...odniesienia];
     const xLewej = Math.min(...wierszeBloku.map((l) => l.rect.x));
     const lewa = wiersze.filter((l) => l.rect.x === xLewej);
@@ -1024,7 +1042,7 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
       bledy.push(`${pole.ref}: wiersze bloku bez wspólnej lewej krawędzi (${wierszeBloku.map((l) => l.rect.x).join(', ')})`);
     }
     if (prawa.length > lewa.length) bledy.push(`${pole.ref}: prawa kolumna kodów dłuższa od lewej`);
-    else if (prawa.length !== Math.floor(wiersze.length / 2)) bledy.push(`${pole.ref}: kody nie w dwóch kolumnach (lewa ${lewa.length}, prawa ${prawa.length})`);
+    else if (lewa.length !== Math.ceil(wiersze.length / 2)) bledy.push(`${pole.ref}: kody nie w dwóch kolumnach (lewa ${lewa.length}, prawa ${prawa.length})`);
     if (wiersze.length > 0 && wiersze.slice(0, lewa.length).some((l) => l.rect.x !== xLewej)) {
       bledy.push(`${pole.ref}: kody nie układają się kolumnami (lewa, potem prawa)`);
     }
@@ -1040,7 +1058,7 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
       if (l.wyrownanieTekstu !== 'poczatek') bledy.push(`${pole.ref}: wiersz bloku ${l.ownerRef} nie zaczepiony w lewej krawędzi (${l.wyrownanieTekstu ?? 'środek'})`);
     }
     if (scena.labels.some((l) => l.ownerRef === `${pole.ref}#device-number`)) bledy.push(`${pole.ref}: numer „52" bez związku`);
-    const q0 = symbolePola(scena, pole.ref).find((s) => s.symbolId === 'qetBreaker' || s.symbolId === 'qetBreakerZNapedem');
+    const q0 = wylacznikPola(scena, pole.ref);
     const wylacz = q0 ? SYMBOL_DEFS[q0.symbolId].secondaryPorts.find((p) => p.name === 'wylacz') : undefined;
     const wyzwalanie = scena.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
     if (!q0 || !wylacz || !wyzwalanie) {
@@ -1060,9 +1078,27 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
   return bledy;
 }
 
-describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2 → przekaźnik (uwagi właściciela pkt 4 i 5)', () => {
+/** Okręgi i elipsy glifu poza znakiem „!" nierozstrzygniętego prerekwizytu topologicznego
+ *  (F10.5, osobna adnotacja w narożniku ramki) — okrąg przekaźnika w bloku jest zakazany. */
+const okregiGlifu = (doc: Document): Element[] =>
+  Array.from(doc.querySelectorAll('circle, ellipse')).filter((el) => !el.closest('[data-topology-warning]'));
+
+/** Glif symbolu sceny wyrenderowany do DOM (SVG) — wyrocznia rysunku bloku. */
+function glifSymbolu(p: PreviewSymbol, stroke = '#000'): Document {
+  const Glyph = SYMBOL_GLYPHS[p.symbolId];
+  return new DOMParser().parseFromString(
+    renderToStaticMarkup(
+      <svg>
+        <Glyph x={p.x} y={p.y} stroke={stroke} {...daneGlifuSymbolu(p)} />
+      </svg>,
+    ),
+    'image/svg+xml',
+  );
+}
+
+describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja funkcji, cewka Q0, T2 → blok (uwagi właściciela pkt 4 i 5, korekta v2)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx} · L2: każda funkcja raz w bloku, ramka bez kolizji, bez „52", wyłączanie do cewki, T2 z linią pomiarową`, () => {
+    it(`${nazwaFx} · L2: każda funkcja raz w ramce, ramka bez kolizji, bez „52", wyłączanie do cewki, T2 z linią pomiarową`, () => {
       const scena = buildSceneV3(enm, 2);
       expect(polaLiniowe(enm).length).toBeGreaterThan(0);
       expect(naruszeniaBlokuPrzekaznika(enm, scena)).toEqual([]);
@@ -1072,23 +1108,30 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
   const [, enmZ11] = FIKSTURY[2];
   const scenaBazowa = buildSceneV3(enmZ11, 2);
   const poleZ111 = polaLiniowe(enmZ11).find((p) => p.pole === 'Z11_1')!;
-  const zmien = (f: (s: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => void): SceneV3 => {
-    const kopia = structuredClone(scenaBazowa) as { -readonly [K in keyof SceneV3]: SceneV3[K] };
+  type ScenaZmienna = { -readonly [K in keyof SceneV3]: SceneV3[K] };
+  const zmien = (f: (s: ScenaZmienna) => void): SceneV3 => {
+    const kopia = structuredClone(scenaBazowa) as ScenaZmienna;
     f(kopia);
     return kopia;
   };
-  const przekaznikZ = (s: SceneV3) => s.symbols.find((x) => x.meta?.ownerRef === poleZ111.ref && x.symbolId === 'protectionRelay')!;
+  const przekaznikZ = (s: SceneV3) => przekaznikPola(s, poleZ111.ref)!;
+
+  // Komórki kodów bloku Z.11.1: `#protection-codes-full`, `-2`, `-3` … (kolumnami).
+  const komorkiKodow = (k: SceneV3) =>
+    k.labels.filter((x) => /#protection-codes-full(-\d+)?$/.test(x.ownerRef ?? '') && (x.ownerRef ?? '').startsWith(`${poleZ111.ref}#`)) as { -readonly [K in keyof OwnedLabel]: OwnedLabel[K] }[];
 
   it('warunek wstępny: Z.11.1 — blok z wierszami kodów i odniesieniem źródła 3U₀', () => {
     expect(poleZ111).toBeDefined();
     expect(scenaBazowa.labels.some((l) => l.ownerRef === `${poleZ111.ref}#protection-codes-full`)).toBe(true);
+    expect(scenaBazowa.labels.some((l) => l.ownerRef === `${poleZ111.ref}#zrodlo-u0`)).toBe(true);
     expect(prostokatBloku(przekaznikZ(scenaBazowa))).not.toBeNull();
   });
 
-  it('iniekcja: ramka bloku węższa o kratkę — wiersz bloku poza ramką', () => {
+  it('iniekcja: ramka bloku ucięta o piksel przed prawą krawędzią najszerszego wiersza — wiersz bloku poza ramką', () => {
     const s = zmien((k) => {
-      const p = przekaznikZ(k) as { meta: { ramkaBlokuPrzekaznika: Rect } };
-      p.meta.ramkaBlokuPrzekaznika = { ...p.meta.ramkaBlokuPrzekaznika, width: p.meta.ramkaBlokuPrzekaznika.width - GRID };
+      const p = przekaznikZ(k) as { x: number; meta: { ramkaBlokuPrzekaznika: Rect } };
+      const prawa = Math.max(...komorkiKodow(k).map((c) => c.rect.x + c.rect.width));
+      p.meta.ramkaBlokuPrzekaznika = { ...p.meta.ramkaBlokuPrzekaznika, width: prawa - 1 - (p.x + p.meta.ramkaBlokuPrzekaznika.x) };
     });
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: element bloku poza ramką`);
   });
@@ -1102,14 +1145,9 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('funkcja powtórzona w bloku');
   });
 
-  // Iloczyn cech treści bloku (korekta właściciela 2026-11-04): {kod ukryty (automatyka SPZ 79
-  // zdjęta), licznik „+n" zamiast reszty kodów (stan przed korektą), dwa pierwsze kody
-  // w okręgu zamiast pod nim, wiersz kodów obok okręgu zamiast pod nim (stan przed korektą)} —
-  // każda odmiana czerwieni wyrocznię. Komórki kodów: `#protection-codes-full`, `-2`, `-3` …
-  // (kolumnami).
-  const komorkiKodow = (k: SceneV3) =>
-    k.labels.filter((x) => /#protection-codes-full(-\d+)?$/.test(x.ownerRef ?? '') && (x.ownerRef ?? '').startsWith(`${poleZ111.ref}#`)) as { -readonly [K in keyof OwnedLabel]: OwnedLabel[K] }[];
-  type ScenaZmienna = { -readonly [K in keyof SceneV3]: SceneV3[K] };
+  // Iloczyn cech treści bloku: {kod ukryty (automatyka SPZ 79 zdjęta), licznik „+n" zamiast
+  // reszty kodów, dwa pierwsze kody w symbolu zamiast w wierszach, kody przesunięte poza ramkę,
+  // kolejność kodów zmieniona (dwa pierwsze zamienione)} — każda odmiana czerwieni wyrocznię.
   it.each([
     [
       'automatyka SPZ (79) ukryta',
@@ -1120,7 +1158,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
       'blok ',
     ],
     [
-      'licznik „+12 funkcji" zamiast kodów (stan przed korektą)',
+      'licznik „+12 funkcji" zamiast kodów',
       (k: ScenaZmienna) => {
         const [, , trzecia, ...reszta] = komorkiKodow(k);
         trzecia.text = '+12 funkcji';
@@ -1130,20 +1168,28 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
       'licznik „+n" w bloku',
     ],
     [
-      'dwa pierwsze kody w okręgu (stan przed korektą)',
+      'dwa pierwsze kody w symbolu (stan z okręgiem)',
       (k: ScenaZmienna) => {
         const [pierwsza, druga] = komorkiKodow(k);
         (przekaznikZ(k).meta as { protectionCodes?: readonly string[] }).protectionCodes = [pierwsza.text, druga.text];
         k.labels = k.labels.filter((x) => x.ownerRef !== pierwsza.ownerRef && x.ownerRef !== druga.ownerRef);
       },
-      'okrąg niesie kody',
+      'symbol bloku niesie kody',
     ],
     [
-      'kody obok okręgu (stan przed korektą)',
+      'kody przesunięte poza ramkę',
       (k: ScenaZmienna) => {
         for (const c of komorkiKodow(k)) c.rect = { ...c.rect, x: c.rect.x + 4 * GRID, y: c.rect.y - 4 * GRID };
       },
-      'nie pod okręgiem',
+      'element bloku poza ramką',
+    ],
+    [
+      'kolejność dwóch pierwszych kodów zamieniona (stała kolejność zamiast danych)',
+      (k: ScenaZmienna) => {
+        const [pierwsza, druga] = komorkiKodow(k);
+        [pierwsza.text, druga.text] = [druga.text, pierwsza.text];
+      },
+      'kolejności danych',
     ],
   ] as const)('iniekcja: %s — czerwień', (_opis, zmiana, komunikat) => {
     expect(komorkiKodow(scenaBazowa).length).toBe((enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.length);
@@ -1151,12 +1197,12 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(komunikat);
   });
 
-  // Układ kolumn (pkt 7): {kody jednym wierszem poziomym, jedna kolumna zamiast dwóch, prawa
-  // kolumna przesunięta o pół wiersza, odniesienie 3U₀ pod prawą kolumną} — czerwień.
+  // Układ kolumn (pkt 7): {kody jednym wierszem poziomym, prawa kolumna przesunięta o pół
+  // wiersza, odniesienie 3U₀ pod prawą kolumną} — czerwień.
   it.each([
     [
-      'kody w jednym wierszu poziomym (stan przed odbiorem)',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+      'kody w jednym wierszu poziomym',
+      (k: ScenaZmienna) => {
         const komorki = komorkiKodow(k);
         let x = komorki[0].rect.x;
         for (const c of komorki) {
@@ -1168,7 +1214,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     ],
     [
       'prawa kolumna o pół wiersza niżej',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+      (k: ScenaZmienna) => {
         const komorki = komorkiKodow(k);
         const x0 = Math.min(...komorki.map((c) => c.rect.x));
         for (const c of komorki) if (c.rect.x !== x0) c.rect = { ...c.rect, y: c.rect.y + GRID / 2 };
@@ -1177,7 +1223,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     ],
     [
       'odniesienie 3U₀ pod prawą kolumną',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+      (k: ScenaZmienna) => {
         const komorki = komorkiKodow(k);
         const x0 = Math.min(...komorki.map((c) => c.rect.x));
         const xP = komorki.find((c) => c.rect.x !== x0)!.rect.x;
@@ -1191,7 +1237,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, zmien(zmiana)).join('\n')).toContain(komunikat);
   });
 
-  it('iniekcja: numer „52" w połowie linii wyłączania (stan przed naprawą) — numer bez związku', () => {
+  it('iniekcja: numer „52" w połowie linii wyłączania — numer bez związku', () => {
     const s = zmien((k) => {
       const wzor = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`)!;
       k.labels = [...k.labels, { ...wzor, ownerRef: `${poleZ111.ref}#device-number`, text: '52', rect: { ...wzor.rect, x: -500, y: -500 } }];
@@ -1199,7 +1245,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('numer „52" bez związku');
   });
 
-  it('iniekcja: wiersz bloku wyśrodkowany w prostokącie (stan przed naprawą) — wiersz nie zaczepiony w lewej krawędzi', () => {
+  it('iniekcja: wiersz bloku wyśrodkowany w prostokącie — wiersz nie zaczepiony w lewej krawędzi', () => {
     const s = zmien((k) => {
       const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#zrodlo-u0`) as { wyrownanieTekstu?: string };
       delete l.wyrownanieTekstu;
@@ -1215,6 +1261,15 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: wiersze bloku bez wspólnej lewej krawędzi`);
   });
 
+  it('iniekcja: ramka szersza w lewo o kratkę — lewa kolumna nie oczko od krawędzi', () => {
+    const s = zmien((k) => {
+      const p = przekaznikZ(k) as { meta: { ramkaBlokuPrzekaznika: Rect } };
+      const r = p.meta.ramkaBlokuPrzekaznika;
+      p.meta.ramkaBlokuPrzekaznika = { ...r, x: r.x - GRID, width: r.width + GRID };
+    });
+    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('lewa kolumna kodów nie oczko od lewej krawędzi ramki');
+  });
+
   it('iniekcja: linia wyłączania do środka kafla Q0 — nie kończy się na cewce', () => {
     const s = zmien((k) => {
       const q0 = symbolePola(k, poleZ111.ref).find((x) => x.symbolId === 'qetBreakerZNapedem')!;
@@ -1224,7 +1279,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('linia wyłączania nie kończy się na cewce Q0');
   });
 
-  it('iniekcja: linia pomiarowa T2 zdjęta — przekładnik Ferrantiego bez powiązania z przekaźnikiem', () => {
+  it('iniekcja: linia pomiarowa T2 zdjęta — przekładnik Ferrantiego bez powiązania z blokiem', () => {
     const t2 = symbolePola(scenaBazowa, poleZ111.ref).find((x) => x.symbolId === 'qetCoreBalanceCt')!;
     const port = SYMBOL_DEFS.qetCoreBalanceCt.secondaryPorts.find((p) => p.name === 'wtorny')!;
     const s = zmien((k) => {
@@ -1233,45 +1288,45 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('przekładnik Ferrantiego bez linii pomiarowej');
   });
 
-  it('ramka bloku rysowana przez glif przekaźnika z meta sceny (ten sam prostokąt, kreska cieńsza od okręgu)', () => {
+  // Rysunek bloku (karta pkt 1): glif symbolu z meta sceny rysuje TEN SAM prostokąt co ramka
+  // sceny i ŻADNEGO okręgu ani kodów; ten sam glif bez ramki (przekaźnik modelu stacji, pole bez
+  // powiązań obwodów wtórnych) rysuje okrąg — świadomie zostawiona inna notacja.
+  it('glif bloku: ramka z meta sceny, bez okręgu i bez tekstu kodów; glif bez ramki — okrąg', () => {
     const p = przekaznikZ(scenaBazowa);
-    const Glyph = SYMBOL_GLYPHS.protectionRelay;
-    const doc = new DOMParser().parseFromString(
-      renderToStaticMarkup(
-        <svg>
-          <Glyph x={p.x} y={p.y} {...daneGlifuSymbolu(p)} />
-        </svg>,
-      ),
-      'image/svg+xml',
-    );
+    const doc = glifSymbolu(p);
     const rama = doc.querySelector('[data-przekaznik="ramka-bloku"]')!;
     expect(rama).not.toBeNull();
     const r = p.meta!.ramkaBlokuPrzekaznika!;
+    // Glif rysuje w układzie symbolu (`<g transform>`) — prostokąt względem symbolu = meta sceny.
     expect([rama.getAttribute('x'), rama.getAttribute('y'), rama.getAttribute('width'), rama.getAttribute('height')].map(Number)).toEqual([r.x, r.y, r.width, r.height]);
-    const okrag = doc.querySelector('circle')!;
-    expect(Number(rama.getAttribute('stroke-width'))).toBeLessThan(Number(okrag.getAttribute('stroke-width')));
+    expect(okregiGlifu(doc).length, 'okrąg w bloku').toBe(0);
+    expect(doc.querySelectorAll('text').length, 'kody w symbolu').toBe(0);
+    const bezRamki = glifSymbolu({ ...p, meta: { ...p.meta, ramkaBlokuPrzekaznika: undefined } });
+    expect(bezRamki.querySelectorAll('circle').length, 'przekaźnik modelu stacji — okrąg').toBeGreaterThan(0);
   });
 });
 
 /**
- * Test kontraktowy korekty właściciela 2026-11-04 (odbiór B-02, blok zabezpieczenia): dla N
- * funkcji pola N ∈ {0, 1, 2, 3, 5, 8} na LOD2 WSZYSTKIE kody stoją pod okręgiem w dwóch
- * kolumnach (lewa ⌈N/2⌉), bez żadnego „+n" i bez kodów w okręgu; na LOD0 i LOD1 kodów nie ma
- * (na LOD1 zostaje sam okrąg przy Q0, na LOD0 GPZ jest zwinięty). Kody — prefiks listy funkcji
- * pola z modelu (kolejność danych), dopełniony kodami słownika spoza pola, gdy pole ma ich mniej
- * niż N. Warunek „T2 z linią pomiarową" wyroczni bloku dotyczy pola z funkcją 51N — przy
- * prefiksie bez 51N przekładnik Ferrantiego nie zasila żadnej funkcji pola i linii nie ma. Iloczyn: N × LOD {0, 1, 2} × wykonanie {Z.10, Z.11.1, Z.11}
- * × łączniki {trójpołożeniowy, stały} × sekcja {1, 2} (fikstury). N = 0: pole bez funkcji nie
- * rysuje przekaźnika (§17.2: brak danych = brak oznaczenia).
+ * Test kontraktowy korekty v2 (karta pkt 2): kody bloku WYŁĄCZNIE z konfiguracji pola w modelu
+ * (`Bay.protection_codes`) — bez zaszytej liczby, listy ani kolejności. Dla N funkcji pola
+ * N ∈ {0, 1, 2, 7, 9} na LOD2 WSZYSTKIE kody stoją w ramce w dwóch kolumnach, liczba wierszy
+ * ⌈N/2⌉, kolejność = kolejność danych (lewa kolumna z góry na dół, potem prawa), bez „+n"; na LOD1
+ * ta sama ramka bez kodów, na LOD0 GPZ jest zwinięty (bloku nie ma). Kody — lista funkcji pola
+ * z modelu w ODWRÓCONEJ kolejności, dopełniona kodami słownika spoza pola (kolejność danych inna
+ * niż w fiksturze, więc zaszyta lista fikstury czerwieni test). Glif bloku w obu motywach (barwa
+ * kreski motywu) bez okręgu. Warunek „T2 z linią pomiarową" wyroczni bloku dotyczy pola z funkcją
+ * 51N. Iloczyn: N × LOD {0, 1, 2} × motyw {ciemny, jasny} × wykonanie {Z.10, Z.11.1, Z.11} ×
+ * łączniki {trójpołożeniowy, stały} × sekcja {1, 2} (fikstury). N = 0: pole bez funkcji nie rysuje
+ * bloku (§17.2: brak danych = brak oznaczenia).
  */
-describe('UX-04 — kontrakt bloku zabezpieczenia: N funkcji × LOD (korekta właściciela 2026-11-04)', () => {
+describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × motyw (korekta v2 2026-11-04)', () => {
   const zKodami = (enm: EnergyNetworkModel, n: number): EnergyNetworkModel => {
     const kopia = structuredClone(enm);
     const liniowe = new Set(polaLiniowe(enm).map((p) => p.ref));
     for (const b of kopia.bays ?? []) {
       if (!liniowe.has(b.ref_id)) continue;
-      const wlasne = b.protection_codes ?? [];
-      const dopelnienie = ['67N', '27', '59', '81U', '81O'].filter((k) => !wlasne.includes(k));
+      const wlasne = [...(b.protection_codes ?? [])].reverse();
+      const dopelnienie = ['67N', '27', '59', '81U', '81O', '46', '49', '21', '25'].filter((k) => !wlasne.includes(k));
       (b as { protection_codes?: string[] }).protection_codes = [...wlasne, ...dopelnienie].slice(0, n);
     }
     return kopia;
@@ -1279,15 +1334,15 @@ describe('UX-04 — kontrakt bloku zabezpieczenia: N funkcji × LOD (korekta wł
   const etykietyKodow = (scena: SceneV3, bayRef: string) =>
     scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? ''));
   for (const [nazwaFx, enm] of FIKSTURY) {
-    for (const n of [0, 1, 2, 3, 5, 8]) {
-      it(`${nazwaFx} · N = ${n}: LOD2 — wszystkie kody pod okręgiem w dwóch kolumnach, LOD0/LOD1 — bez kodów`, () => {
+    for (const n of [0, 1, 2, 7, 9]) {
+      it(`${nazwaFx} · N = ${n}: LOD2 — kody z danych w ramce, ⌈N/2⌉ wierszy; LOD1 — ramka bez kodów; LOD0 — brak; oba motywy bez okręgu`, () => {
         const model = zKodami(enm, n);
         const pola = polaLiniowe(model);
         for (const pole of pola) expect((model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!.length, pole.ref).toBe(n);
         const l2 = buildSceneV3(model, 2);
         if (n === 0) {
           for (const pole of pola) {
-            expect(l2.symbols.some((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay'), pole.ref).toBe(false);
+            expect(przekaznikPola(l2, pole.ref), pole.ref).toBeUndefined();
             expect(etykietyKodow(l2, pole.ref)).toEqual([]);
           }
         } else {
@@ -1298,18 +1353,31 @@ describe('UX-04 — kontrakt bloku zabezpieczenia: N funkcji × LOD (korekta wł
             );
           expect(naruszeniaBlokuPrzekaznika(model, l2).filter(bezT2)).toEqual([]);
           for (const pole of pola) {
+            const kody = (model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!;
             const komorki = etykietyKodow(l2, pole.ref);
-            expect(komorki.map((l) => l.text).sort(), pole.ref).toEqual([...(model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!].sort());
+            expect(komorki.map((l) => l.text), `${pole.ref}: kolejność danych`).toEqual([...kody]);
             expect(new Set(komorki.map((l) => l.rect.x)).size, `${pole.ref}: kolumny`).toBe(n === 1 ? 1 : 2);
+            expect(new Set(komorki.map((l) => l.rect.y)).size, `${pole.ref}: wiersze`).toBe(Math.ceil(n / 2));
+            expect(naruszeniaPolozeniaPrzekaznika(l2, pole.ref), `${pole.ref}: położenie przy Q0`).toEqual([]);
+            for (const [motyw, paleta] of MOTYWY) {
+              const doc = glifSymbolu(przekaznikPola(l2, pole.ref)!, paleta.baseStroke);
+              expect(doc.querySelector('[data-przekaznik="ramka-bloku"]')?.getAttribute('stroke'), `${pole.ref} · ${motyw}: ramka w barwie motywu`).toBe(paleta.baseStroke);
+              expect(okregiGlifu(doc).length, `${pole.ref} · ${motyw}: okrąg`).toBe(0);
+            }
           }
         }
         for (const lod of [0, 1] as const) {
           const scena = buildSceneV3(model, lod);
           for (const pole of pola) {
             expect(etykietyKodow(scena, pole.ref), `${pole.ref} · LOD${lod}`).toEqual([]);
-            const p = scena.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
-            expect(p?.meta?.protectionCodes, `${pole.ref} · LOD${lod}: okrąg bez kodów`).toBeUndefined();
-            if (lod === 1 && n > 0) expect(p, `${pole.ref} · LOD1: okrąg przy Q0`).toBeDefined();
+            const p = przekaznikPola(scena, pole.ref);
+            expect(p?.meta?.protectionCodes, `${pole.ref} · LOD${lod}: symbol bez kodów`).toBeUndefined();
+            if (lod === 0) expect(p, `${pole.ref} · LOD0: GPZ zwinięty`).toBeUndefined();
+            if (lod === 1 && n > 0) {
+              expect(p?.meta?.ramkaBlokuPrzekaznika, `${pole.ref} · LOD1: ramka`).toEqual(przekaznikPola(l2, pole.ref)!.meta?.ramkaBlokuPrzekaznika);
+              expect(okregiGlifu(glifSymbolu(p!)).length, `${pole.ref} · LOD1: okrąg`).toBe(0);
+            }
+            if (lod === 1 && n === 0) expect(p, `${pole.ref} · LOD1: brak bloku bez funkcji`).toBeUndefined();
           }
           expect(scena.labels.some((l) => /^\+\d/.test(l.text)), `LOD${lod}: licznik „+n"`).toBe(false);
         }
@@ -1337,8 +1405,9 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
   // Iloczyn: kompozytor (pole GPZ z powiązaniami obwodów — blok przekaźnika; GPZ bez powiązań;
   // stacja SN — lista R-2 pod okręgiem) × rodzaj etykiety (wiersz kodów, odniesienie 3U₀,
   // adnotacja CT/VT, numer 52) × LOD (1, 2). Strona prostokąta względem kotwicy wyznacza
-  // krawędź zaczepu tekstu: z prawej kotwicy — lewa krawędź, wiersze prawo-dosunięte pod
-  // okręgiem — prawa.
+  // krawędź zaczepu tekstu: z prawej kotwicy — lewa krawędź; z lewej kotwicy (tabliczki
+  // przekładników toru głównego po lewej symbolu, korekta v2 2026-11-04) i wiersze
+  // prawo-dosunięte pod okręgiem — prawa (tekst dosunięty do symbolu).
   const ZESTAW: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
     ...FIKSTURY,
     ['stacje SN i GPZ (geometria stacji, łączniki zamknięte)', (fxStacjeZamkniete as unknown as { snapshot: EnergyNetworkModel }).snapshot],
@@ -1352,7 +1421,7 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
         const bledy: string[] = [];
         for (const l of scena.labels.filter((x) => x.ownerKind === 'protection')) {
           const rodzaj = rodzajAdnotacjiZabezpieczen(l);
-          const oczekiwane = l.placement === 'right' ? 'poczatek' : l.placement === 'below' ? 'koniec' : undefined;
+          const oczekiwane = l.placement === 'right' ? 'poczatek' : l.placement === 'below' || l.placement === 'left' ? 'koniec' : undefined;
           pokrycie.add(`${rodzaj} · ${l.placement ?? 'brak'} · ${l.wyrownanieTekstu ?? 'środek'}`);
           if (rodzaj.startsWith('nieznany')) bledy.push(`${l.ownerRef}: ${rodzaj}`);
           if (oczekiwane === undefined) bledy.push(`${l.ownerRef}: strona ${l.placement ?? 'brak'} bez reguły zaczepu`);
@@ -1362,7 +1431,7 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
       });
     }
   }
-  it('pokrycie iloczynu na scenie: blok przekaźnika (prawa strona, lewa krawędź) i lista pola GPZ bez powiązań (pod okręgiem, prawa krawędź)', () => {
+  it('pokrycie iloczynu na scenie: blok przekaźnika (prawa strona, lewa krawędź), tabliczki przekładników po lewej (prawa krawędź) i lista pola GPZ bez powiązań (pod okręgiem, prawa krawędź)', () => {
     // Kolejność `it` w pliku: ten test biegnie po komórkach iloczynu wyżej. Lista stacji SN
     // pod okręgiem i adnotacje CT/„52" stacji — kompozytor stacji,
     // `compose/__tests__/station.test.ts` (opis „R-2 × zaczep tekstu").
@@ -1371,6 +1440,8 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
         'wiersz kodów · right · poczatek',
         'odniesienie 3U₀ · right · poczatek',
         'wiersz kodów · below · koniec',
+        'adnotacja CT · left · koniec',
+        'tabliczka przekładnika Ferrantiego · left · koniec',
       ]),
     );
   });

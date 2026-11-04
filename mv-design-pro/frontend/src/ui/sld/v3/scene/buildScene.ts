@@ -119,6 +119,7 @@ import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
 import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { gabarytSymbolu, przeszkodySymbolu, wejsciaBlokuSymbolu } from '../symbols/blokZabezpieczen';
 import { ukladKodowWOkregu } from '../symbols/okragPrzekaznika';
 import {
   classifyRouteNodes,
@@ -3431,9 +3432,9 @@ function unionRects(rects: readonly V3Rect[]): V3Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+/** Gabaryt symbolu sceny — dla bloku zabezpieczeń jego ramka (`symbols/blokZabezpieczen.ts`). */
 function symbolRect(sym: PreviewSymbol): V3Rect {
-  const def = SYMBOL_DEFS[sym.symbolId];
-  return { x: sym.x, y: sym.y, width: def.width, height: def.height };
+  return gabarytSymbolu(sym);
 }
 
 /** KROPKA-WEZLOWA (V12K-150): kropka węzłowa (`junction`/`branchJunction`) to
@@ -4072,7 +4073,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           // Karta UX-04 (uwaga właściciela 2026-10-29 pkt 5): ramka bloku przekaźnika układu
           // powiązań — przepisana 1:1, rysuje ją `ProtectionRelayGlyph`.
           ...(s.ramkaBloku
-            ? { ramkaBlokuPrzekaznika: s.ramkaBloku, wierszeBlokuPrzekaznika: s.wierszeBloku ?? [] }
+            ? {
+                ramkaBlokuPrzekaznika: s.ramkaBloku,
+                wierszeBlokuPrzekaznika: s.wierszeBloku ?? [],
+                wejsciaBlokuPrzekaznika: s.wejsciaBloku ?? [],
+              }
             : {}),
         },
       })),
@@ -5933,7 +5938,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // Odrzucenia trafiają do `stopNotes` (audytowalne, nie ciche) — po
   // poprawnym S2 zbiór jest pusty na fixturze; niepusty = sygnał gęstości do
   // rozstrzygnięcia rezerwacją w kolejnej iteracji, nie cichy dług.
-  const declutter = declutterLabels(rawLabels, allSymbols.map(symbolRect));
+  // Blok zabezpieczeń: przeszkodą napisów jest obrys ramki, nie wnętrze z jego wierszami kodów.
+  const declutter = declutterLabels(rawLabels, allSymbols.flatMap(przeszkodySymbolu));
   const labels: readonly OwnedLabel[] = declutter.kept;
   if (declutter.dropped.length > 0) {
     stopNotes.push(
@@ -8276,7 +8282,7 @@ export function noLabelWireCollisions(scene: SceneV3): boolean {
  * declutter sceny i wyrocznie odbioru.
  */
 export function sceneObstacleRects(scene: SceneV3): readonly V3Rect[] {
-  const rects: V3Rect[] = scene.symbols.map(symbolRect);
+  const rects: V3Rect[] = scene.symbols.flatMap(przeszkodySymbolu);
   for (const segment of scene.segments) {
     const pts = segment.points;
     for (let i = 1; i < pts.length; i++) {
@@ -8406,10 +8412,10 @@ export function labelCollisions(scene: SceneV3): readonly LabelCollision[] {
       }
     }
   }
-  const symbolRects = scene.symbols.map(symbolRect);
+  const symbolRects = scene.symbols.map(przeszkodySymbolu);
   for (const label of labels) {
     for (let s = 0; s < symbolRects.length; s++) {
-      if (rectsOverlap(label.rect, symbolRects[s])) {
+      if (symbolRects[s].some((r) => rectsOverlap(label.rect, r))) {
         hits.push({ kind: 'etykieta-symbol', aRef: label.ownerRef, bRef: `symbol#${s}` });
       }
     }
@@ -8747,7 +8753,11 @@ function symbolPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
  *  liczy WYŁĄCZNIE `symbolPortsInWorld` — obwód wtórny nie łączy toru pierwotnego. */
 function symbolAllPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
   const def = SYMBOL_DEFS[sym.symbolId];
-  return [...def.ports, ...def.secondaryPorts].map((p) => ({ x: sym.x + p.x, y: sym.y + p.y }));
+  return [
+    ...[...def.ports, ...def.secondaryPorts].map((p) => ({ x: sym.x + p.x, y: sym.y + p.y })),
+    // Blok zabezpieczeń: wejścia linii na krawędziach ramki (`symbols/blokZabezpieczen.ts`).
+    ...wejsciaBlokuSymbolu(sym),
+  ];
 }
 
 /** Rodzaje aparatów będących źródłem linii pomiarowej przekaźnika (przekładniki). */

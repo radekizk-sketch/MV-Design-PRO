@@ -16,7 +16,8 @@
  * prądowym bez portów (aparat poza torem — model zdegenerowany)} × rodzaj przekładnika {prądowy,
  * napięciowy, Ferrantiego} × skala planu {1,0; 1,5; 2,5} (LOD2 — warstwa adnotacji) × przeszkoda
  * {symbol, etykieta, przewód i linie przekaźnika (pomiarowe, wyłączania), ramka bloku
- * przekaźnika}.
+ * zabezpieczeń} × strona {lewa — przekładnik toru głównego (podpis w kolumnie po lewej, korekta
+ * v2 2026-11-04), prawa — przekładnik kolumny odgałęzienia (podpis po prawej)}.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -127,15 +128,25 @@ function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Ro
       n.push(`${ref}: brak symbolu ${w.symbol} aparatu na scenie`);
       continue;
     }
-    // „Bezpośrednio przy symbolu": tabliczka po prawej obrysu symbolu, w pasie jego wysokości
-    // (± oczko), a w korytarzu między symbolem a tabliczką nie stoi żaden INNY aparat ani
-    // napis — dopuszczalne są tylko oznaczenia TEGO aparatu (podpis, zaciski P1/P2).
+    // „Bezpośrednio przy symbolu": tabliczka po stronie PODPISU aparatu (polecenie właściciela
+    // 2026-11-04, korekta v2: przekładnie T1 i T2 toru głównego po LEWEJ symbolu — tam stoi
+    // kolumna podpisów; przekładnik kolumny odgałęzienia, np. T3, ma podpis po prawej), w pasie
+    // jego wysokości (± oczko), a w korytarzu między symbolem a tabliczką nie stoi żaden INNY
+    // aparat ani napis — dopuszczalne są tylko oznaczenia TEGO aparatu (podpis, zaciski P1/P2).
+    // Po lewej tabliczka stoi na prawo od podpisu (między podpisem a symbolem).
     const o = obrysNaScenie(symbol);
     const { dx, dy } = odstep(l.rect, o);
-    const korytarz: V3Rect = { x: o.x + o.width, y: l.rect.y, width: Math.max(0, l.rect.x - (o.x + o.width)), height: l.rect.height };
+    const podpis = scena.labels.find((x) => x.ownerRef === `${bay.ref_id}#etykieta-aparatu-${d.device_ref}`);
+    const strona: 'left' | 'right' = podpis && podpis.rect.x + podpis.rect.width <= o.x ? 'left' : 'right';
+    const korytarz: V3Rect =
+      strona === 'right'
+        ? { x: o.x + o.width, y: l.rect.y, width: Math.max(0, l.rect.x - (o.x + o.width)), height: l.rect.height }
+        : { x: l.rect.x + l.rect.width, y: l.rect.y, width: Math.max(0, o.x - (l.rect.x + l.rect.width)), height: l.rect.height };
     // Model zdegenerowany (`przySymbolu = false`) — tylko kolizje (niżej).
     if (przySymbolu && dy > GRID) n.push(`${ref}: tabliczka ${dy} j.św. nad/pod symbolem`);
-    if (przySymbolu && l.rect.x < o.x + o.width) n.push(`${ref}: tabliczka nie stoi po prawej symbolu`);
+    if (przySymbolu && strona === 'right' && l.rect.x < o.x + o.width) n.push(`${ref}: tabliczka nie stoi po prawej symbolu (strona podpisu)`);
+    if (przySymbolu && strona === 'left' && l.rect.x + l.rect.width > o.x) n.push(`${ref}: tabliczka nie stoi po lewej symbolu (strona podpisu)`);
+    if (przySymbolu && strona === 'left' && podpis && l.rect.x < podpis.rect.x + podpis.rect.width) n.push(`${ref}: tabliczka nie stoi między podpisem a symbolem`);
     if (przySymbolu && dx > 12 * GRID) n.push(`${ref}: tabliczka ${dx} j.św. od symbolu w poziomie`);
     if (przySymbolu && korytarz.width > 0) {
       for (const s of scena.symbols) {
@@ -157,7 +168,7 @@ function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Ro
     for (const k of labelWireCollisions(scena)) {
       if (k.ownerRef === ref) n.push(`${ref}: kolizja z przewodem ${scena.segments[k.segmentIndex].meta?.ownerRef ?? '—'}`);
     }
-    // Ramka bloku przekaźnika (okrąg, wiersze kodów, odniesienie 3U₀).
+    // Ramka bloku zabezpieczeń (wiersze kodów, odniesienie 3U₀ — bez okręgu, korekta v2).
     for (const s of scena.symbols) {
       const r = s.meta?.ramkaBlokuPrzekaznika;
       if (r && zachodzi(l.rect, { x: s.x + r.x, y: s.y + r.y, width: r.width, height: r.height })) {
@@ -284,6 +295,19 @@ describe('wyrocznia tabliczek — iniekcje', () => {
       labels: scena.labels.map((l) => (l === ct ? { ...l, rect: { ...l.rect, x: przekaznik.x + r.x + 1, y: przekaznik.y + r.y + 1 } } : l)),
     };
     expect(naruszeniaTabliczek(enm, zepsuta, 'prądowy').join('\n')).toContain('ramką bloku przekaźnika');
+  });
+
+  // Korekta v2 (2026-11-04): stan sprzed korekty — tabliczki T1 (prądowy) i T2 (Ferrantiego)
+  // toru głównego po PRAWEJ symbolu, po stronie przeciwnej do podpisu — czerwień.
+  it.each([
+    ['prądowy', '#ct-rating-'],
+    ['Ferrantiego', '#cbct-rating-'],
+  ] as const)('tabliczka %s toru głównego po prawej symbolu (stan sprzed korekty v2) — wykryte', (rodzaj, przyrostek) => {
+    const tab = scena.labels.find((l) => l.ownerRef.includes(przyrostek))!;
+    const symbol = scena.symbols.find((s) => tab.ownerRef.endsWith(`-${s.meta?.deviceRef ?? '∅'}`) && rodzajSymbolu(s.symbolId) === WZORCE[rodzaj].symbol)!;
+    const o = obrysNaScenie(symbol);
+    const zepsuta = { ...scena, labels: scena.labels.map((l) => (l === tab ? { ...l, rect: { ...l.rect, x: o.x + o.width + GRID } } : l)) };
+    expect(naruszeniaTabliczek(enm, zepsuta, rodzaj).join('\n')).toContain('nie stoi po lewej symbolu');
   });
 
   it('brak tabliczki VT (stan przed kartą) — wykryty', () => {

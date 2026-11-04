@@ -82,6 +82,11 @@ function kafelNaScenie(s: SymbolSceny): V3Rect {
   return { x: s.x + k.x, y: s.y + k.y, width: k.width, height: k.height };
 }
 
+/** Prostokąt `w` leży w całości wewnątrz `r` (krawędź wspólna dozwolona). */
+function zawiera(r: V3Rect, w: V3Rect): boolean {
+  return w.x >= r.x && w.y >= r.y && w.x + w.width <= r.x + r.width && w.y + w.height <= r.y + r.height;
+}
+
 function obrysNaScenie(s: SymbolSceny): V3Rect {
   const o = obrysSymbolu(s.symbolId);
   return { x: s.x + o.x, y: s.y + o.y, width: o.width, height: o.height };
@@ -139,6 +144,18 @@ function naruszenia(scena: SceneV3): string[] {
   const opisy = scena.labels.filter((l) => OPIS_POLA.test(l.ownerRef));
   for (const l of opisy) {
     for (const s of scena.symbols) {
+      // Blok zabezpieczeń (UX04 §11.16, korekta v2 2026-11-04): symbolem jest prostokątna ramka
+      // z meta sceny. Wiersz WŁASNEGO bloku leży w całości wewnątrz ramki; każdy inny opis jest
+      // z ramką rozłączny.
+      const r = s.meta?.ramkaBlokuPrzekaznika;
+      if (s.symbolId === 'protectionRelay' && r) {
+        const ramka = { x: s.x + r.x, y: s.y + r.y, width: r.width, height: r.height };
+        const wlasny = (s.meta?.wierszeBlokuPrzekaznika ?? []).includes(l.ownerRef);
+        if (wlasny ? !zawiera(ramka, l.rect) : zachodzi(l.rect, ramka)) {
+          n.push(`(d) ${l.ownerRef} ${wlasny ? 'poza ramką' : '∩ ramka'} bloku ${s.meta?.ownerRef ?? '—'}`);
+        }
+        continue;
+      }
       if (zachodzi(l.rect, obrysNaScenie(s))) n.push(`(d) ${l.ownerRef} ∩ symbol ${s.symbolId} ${s.meta?.ownerRef ?? '—'}`);
     }
     for (const inna of scena.labels) {

@@ -418,11 +418,15 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC (uwaga właściciela 2026-10-29 pkt 5): ramka BLOKU
-   *  przekaźnika układu powiązań obwodów wtórnych pola GPZ (okrąg + wiersze kodów poza okręgiem
-   *  i odniesienie źródła 3U₀), względem lewego górnego rogu symbolu — WYŁĄCZNIE dla symboli
-   *  `protectionRelay`; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. */
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): ramka BLOKU
+   *  ZABEZPIECZEŃ układu powiązań obwodów wtórnych pola GPZ (prostokąt bez okręgu; wewnątrz
+   *  wiersze kodów funkcji i odniesienie źródła 3U₀), względem symbolu — WYŁĄCZNIE dla symboli
+   *  `protectionRelay`; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. Ramka jest
+   *  gabarytem symbolu (`symbols/blokZabezpieczen.ts`). */
   readonly ramkaBlokuPrzekaznika?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** Wejścia linii bloku zabezpieczeń (linia wyłączania, linie pomiarowe) na krawędziach ramki,
+   *  względem symbolu — porty bloku dla wyroczni sceny (`symbols/blokZabezpieczen.ts`). */
+  readonly wejsciaBlokuPrzekaznika?: readonly { readonly x: number; readonly y: number }[];
   /** `ownerRef` wierszy bloku objętych `ramkaBlokuPrzekaznika` (`ComposedGpzProtectionSymbol.wierszeBloku`)
    *  — kanwa liczy z nich ramkę wg NARYSOWANYCH prostokątów planu etykiet (`canvas/obrysyWgPlanu.ts`). */
   readonly wierszeBlokuPrzekaznika?: readonly string[];

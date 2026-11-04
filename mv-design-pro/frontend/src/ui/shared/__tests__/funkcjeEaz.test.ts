@@ -1,6 +1,7 @@
 /**
  * Słownik funkcji EAZ i blok przekaźnika układu powiązań pola GPZ (odbiór B-02 właściciela
- * 2026-11-04, korekta wiążąca: „WSZYSTKIE kody funkcji … bez ukrywania żadnej, bez licznika”).
+ * 2026-11-04, korekta wiążąca: „WSZYSTKIE kody funkcji … bez ukrywania żadnej, bez licznika”;
+ * korekta v2 tego dnia: blok to ramka bez okręgu przekaźnika, kody w dwóch kolumnach wewnątrz).
  *
  * Wyrocznia niezależna od kodu produkcyjnego: jawna tabela rodzajów kodów użytych w teście
  * (zapis ze standardu ENEA / IEEE C37.2), sprawdzona z surowym słownikiem backendu
@@ -8,14 +9,14 @@
  *
  * Iloczyn cech: liczba kodów zabezpieczeń {0, 1, 2, 4, 5, 6} × funkcje nie-zabezpieczeniowe
  * {brak, automatyka, blokada, technologiczne, wszystkie trzy} × położenie nie-zabezpieczenia
- * {na początku listy, na końcu} × kod spoza słownika {brak, obecny} — kolumny pod okręgiem
+ * {na początku listy, na końcu} × kod spoza słownika {brak, obecny} — kolumny bloku
  * niosą KAŻDY kod pola w kolejności danych, bez znacznika „+N”.
  */
 import { describe, expect, it } from 'vitest';
 
 import slownik from '../slownikFunkcjiEaz.json';
 import { funkcjaEaz } from '../funkcjeEaz';
-import { kolumnyKodowPodOkregiem } from '../../sld/v3/compose/protectionMarking';
+import { kolumnyKodowBloku } from '../../sld/v3/compose/protectionMarking';
 
 const ZABEZPIECZENIA = ['51', '50', '51N', '67N', 'ZS', '50BF'] as const;
 const INNE: Readonly<Record<string, readonly string[]>> = {
@@ -57,7 +58,7 @@ describe('słownik funkcji EAZ — lustro backendu', () => {
   });
 });
 
-describe('blok przekaźnika: wszystkie kody pola pod okręgiem, bez „+N" (iloczyn cech)', () => {
+describe('blok zabezpieczeń: wszystkie kody pola w dwóch kolumnach ramki, bez „+N" (iloczyn cech)', () => {
   for (const n of [0, 1, 2, 4, 5, 6]) {
     for (const [nazwaInnych, inne] of Object.entries(INNE)) {
       for (const polozenie of ['na początku', 'na końcu'] as const) {
@@ -66,7 +67,7 @@ describe('blok przekaźnika: wszystkie kody pola pod okręgiem, bez „+N" (iloc
           const kody = polozenie === 'na początku' ? [...inne, ...zab] : [...zab, ...inne];
           if (kody.length === 0) continue;
           it(`${n} zabezpieczeń${obcy ? ' + kod spoza słownika' : ''} × ${nazwaInnych} ${polozenie}`, () => {
-            const [lewa, prawa] = kolumnyKodowPodOkregiem(kody);
+            const [lewa, prawa] = kolumnyKodowBloku(kody);
             // Kolumny wypełniane kolumnami: lewa ⌈n/2⌉, prawa reszta, kolejność danych.
             expect([...lewa, ...prawa]).toEqual(kody);
             expect(lewa.length).toBe(Math.ceil(kody.length / 2));

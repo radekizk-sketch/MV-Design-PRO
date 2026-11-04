@@ -54,7 +54,7 @@
 import type { RouteVertex } from '../layout/route';
 import type { V3Rect } from '../core/grid';
 import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { OwnerKind } from '../layout/labels';
 import type { PlannedLabel } from './labelLegibility';
 import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
@@ -194,8 +194,8 @@ function expandRectToMinHit(rect: V3Rect, scale: number): HitRectShape {
 
 /** Gabaryt symbolu = jego OBRYS trafienia (glif IEC mieści się w tym prostokącie). */
 function symbolInkRect(symbol: PreviewSymbol): V3Rect {
-  const def = SYMBOL_DEFS[symbol.symbolId];
-  return { x: symbol.x, y: symbol.y, width: def.width, height: def.height };
+  // Blok zabezpieczeń — obrysem trafienia jest jego ramka (`symbols/blokZabezpieczen.ts`).
+  return gabarytSymbolu(symbol);
 }
 
 /** Połowa grubości WIDOCZNEJ kreski odcinka (obrys trafienia toru). */

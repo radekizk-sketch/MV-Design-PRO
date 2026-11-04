@@ -3,8 +3,8 @@
  * z prostokątów NARYSOWANYCH etykiet (`LabelRenderPlan.drawn`), nie ze slotów sceny.
  *
  * KLASA DEFEKTU. Scena (deterministyczna, bez skali kamery) liczy oba obrysy ze slotów etykiet
- * w piśmie naturalnym: ramka bloku = okrąg ∪ wiersze bloku + margines
- * (`compose/gpz.ts::ramkaBlokuPrzekaznika`), tło pola = symbole ∪ przekaźniki ∪ etykiety pola
+ * w piśmie naturalnym i w piśmie celu kadru: ramka bloku zabezpieczeń = wiersze bloku + margines
+ * (`compose/gpz.ts::ramkaBlokuZabezpieczen`), tło pola = symbole ∪ przekaźniki ∪ etykiety pola
  * + margines (`compose/gpzAdnotacje.ts::panelePolGpz`). Plan etykiet kanwy zmienia jednak
  * pismo zależnie od skali: podłoga opisów celu kadru (K2b §0.2 (b), 13 px ekranu) i podłoga
  * czytelności (S9-7) POWIĘKSZAJĄ pismo, a plan może też przenieść etykietę na stronę
@@ -15,10 +15,10 @@
  * maskował rozjazd; tabela posuwów kroju (decyzja architekta §11.7 pkt 7) go odsłoniła.
  *
  * ROZSTRZYGNIĘCIE. Obrys rysowany na kanwie jest funkcją TEGO SAMEGO planu, który rysuje tekst:
- *  · ramka bloku — `ramkaBlokuPrzekaznika` (ta sama funkcja co scena) z okręgu i NARYSOWANYCH
- *    wierszy z listy członków sceny (`PreviewElementMeta.wierszeBlokuPrzekaznika`); żaden wiersz
- *    nienarysowany ⇒ brak ramki (ramka obejmuje blok, a bloku bez wierszy nie ma — ta sama
- *    reguła, którą scena stosuje dla układu bez wierszy);
+ *  · ramka bloku — `ramkaBlokuPrzekaznika`: ramka sceny ∪ NARYSOWANE wiersze z listy członków
+ *    sceny (`PreviewElementMeta.wierszeBlokuPrzekaznika`) z marginesem; żaden wiersz
+ *    nienarysowany (LOD1, oddalenie) ⇒ ramka sceny — blok zachowuje kształt bez kodów
+ *    (odbiór właściciela 2026-11-04, korekta v2: blok to ramka bez okręgu);
  *  · tło pola — `panelePolGpz` (ta sama funkcja co scena) z tła sceny pomniejszonego o margines
  *    (obrys elementów sceny), NARYSOWANYCH etykiet z listy członków (`PanelPolaGpz.etykiety`)
  *    i ramek bloków przekaźników pola wg planu. Tło nie kurczy się poniżej obrysu sceny:
@@ -48,20 +48,20 @@ function narysowaneWgWlasciciela(drawn: readonly PlannedLabel[]): ReadonlyMap<st
 }
 
 /**
- * Ramki bloków przekaźników wg planu: indeks symbolu sceny → ramka (względem lewego górnego
- * rogu okręgu, jak `ramkaBlokuPrzekaznika`) albo `undefined`, gdy żaden wiersz bloku nie jest
- * narysowany. Mapa obejmuje WYŁĄCZNIE symbole, którym scena dała ramkę.
+ * Ramki bloków zabezpieczeń wg planu: indeks symbolu sceny → ramka (względem symbolu, jak
+ * `ramkaBlokuPrzekaznika`) — co najmniej ramka sceny. Mapa obejmuje WYŁĄCZNIE symbole, którym
+ * scena dała ramkę.
  */
 export function ramkiBlokowWgPlanu(
   symbols: readonly PreviewSymbol[],
   drawn: readonly PlannedLabel[],
-): ReadonlyMap<number, V3Rect | undefined> {
+): ReadonlyMap<number, V3Rect> {
   const narysowane = narysowaneWgWlasciciela(drawn);
-  const wynik = new Map<number, V3Rect | undefined>();
+  const wynik = new Map<number, V3Rect>();
   symbols.forEach((symbol, index) => {
     if (!symbol.meta?.ramkaBlokuPrzekaznika) return;
     const wiersze = (symbol.meta.wierszeBlokuPrzekaznika ?? []).flatMap((ref) => narysowane.get(ref) ?? []);
-    wynik.set(index, wiersze.length > 0 ? ramkaBlokuPrzekaznika(symbol.x, symbol.y, wiersze) : undefined);
+    wynik.set(index, ramkaBlokuPrzekaznika(symbol.meta.ramkaBlokuPrzekaznika, symbol.x, symbol.y, wiersze));
   });
   return wynik;
 }
@@ -73,7 +73,7 @@ export function ramkiBlokowWgPlanu(
 export function paneleWgPlanu(
   panele: readonly PanelPolaGpz[],
   symbols: readonly PreviewSymbol[],
-  ramki: ReadonlyMap<number, V3Rect | undefined>,
+  ramki: ReadonlyMap<number, V3Rect>,
   drawn: readonly PlannedLabel[],
 ): readonly PanelPolaGpz[] {
   const narysowane = narysowaneWgWlasciciela(drawn);
