@@ -1,166 +1,239 @@
-"""Walidacja zapisu nastaw zabezpieczeń do modelu — JEDNA reguła dla każdego pisarza.
+"""Reguła spójności sterownika zabezpieczeń w modelu — JEDNA dla każdego pisarza i odczytu.
 
-Pisarze nastaw (karta BIEG-ZABEZPIECZEN-Z-MODELU, decyzja D-21 — nastawy bazowe żyją w
-modelu przy urządzeniu):
-
-* ``add_relay`` (operacja domenowa V2) — nastawy przy tworzeniu przypisania,
-* ``update_protection_settings`` (operacja domenowa V2) — edycja nastaw w karcie pola,
-* ``attach_protection`` / ``update_protection`` (operacje topologiczne) — ten sam kształt.
+Karta OCHRONA-JEDNO-ZRODLO (dyrektywa właściciela 2026-11-04: „jedna konfiguracja w całym
+systemie"). Sterownik zabezpieczeń pola (`enm.models.ProtectionAssignment`) niesie funkcje
+z rejestru (`network_model.catalog.funkcje_eaz`), grupy nastaw 1–4, macierz wyzwoleń i wiązania
+wejść pomiarowych. Ta reguła rozstrzyga, czy zapis jest SPÓJNY; woła ją walidator modelu
+(każde wczytanie migawki) i każda operacja zapisu (kod odmowy z nazwą przyczyny), więc
+odczyt i zapis nie mogą się rozjechać.
 
 Zapis przyjmuje nastawy NIEKOMPLETNE (projektant wpisuje je stopniowo — brak progu,
 jednostki, charakterystyki czy zwłoki to nazwany brak gotowości oceny,
-``application.analyses.protection.ocena_nadpradowa.rozwiaz_nastawy``), ale odrzuca
-nastawy SPRZECZNE: wartość niedodatnią, próg bez jednostki strony przekładnika (PZ-09),
-zwłokę przy charakterystyce zależnej, mnożnik przy czasie niezależnym, drugi wpis tej
-samej funkcji, pola innej rodziny funkcji. Sprzeczna nastawa nie ma poprawnego odczytu —
-zapisana dawałaby wynik zależny od kolejności czytania pól.
+``application.analyses.protection.ocena_nadpradowa.rozwiaz_nastawy``), ale odrzuca zapis
+SPRZECZNY: kod funkcji spoza rejestru, klucz nastawy spoza schematu funkcji, wartość złego
+typu, wartość niedodatnią wielkości dodatniej, próg prądowy bez strony przekładnika (PZ-09),
+zwłokę przy charakterystyce zależnej, mnożnik przy czasie niezależnym, powtórzoną funkcję,
+grupę spoza 1–4, aktywną grupę, której nie ma, wyzwolenie funkcji, której nie ma, i wiązanie
+wejścia sprzeczne z układem (przekładnik Ferrantiego bez przekładnika, otwarty trójkąt bez
+przekładnika napięciowego). Sprzeczny zapis nie ma poprawnego odczytu — dawałby wynik zależny
+od kolejności czytania pól.
 
-Moduł importuje wyłącznie modele ENM (liść warstwy domeny).
+Moduł jest liściem warstwy domeny: czyta wyłącznie rejestr funkcji (stdlib) i słowniki zapisu.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from enm.models import ProtectionSetting
-from pydantic import ValidationError
+from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz
 
-#: Funkcje prądowe (próg ``threshold_a`` z jednostką strony przekładnika).
-FUNKCJE_PRADOWE: frozenset[str] = frozenset(
-    {
-        "overcurrent_50",
-        "overcurrent_51",
-        "earth_fault_50N",
-        "earth_fault_51N",
-        "directional_67",
-        "directional_67N",
-    }
-)
+#: Numery grup nastaw sterownika (IEC 61850 SGCB: grupy 1…N; typowy sterownik SN — cztery).
+NUMERY_GRUP_NASTAW: tuple[int, ...] = (1, 2, 3, 4)
 
-#: Etykiety jednostki progu prądowego (strona przekładnika, PZ-09) — JEDNO źródło dla słownika
-#: edytora nastaw (``ocena_nadpradowa.slownik_nastaw``) i karty pola (``field_read_model``).
-ETYKIETY_JEDNOSTEK_PROGU_PL: dict[str, str] = {
-    "A_WTORNY": "A (strona wtórna przekładnika)",
-    "A_PIERWOTNY": "A (strona pierwotna przekładnika)",
-}
-#: Opis progu zapisanego bez zadeklarowanej strony przekładnika (model sprzed PZ-09 albo
-#: nastawa w trakcie wpisywania) — jednostka nazwana jako nieustalona, nigdy „A" bez strony.
-JEDNOSTKA_PROGU_NIEUSTALONA_PL = "A (strona przekładnika niezadeklarowana)"
-
-#: Pola nastaw, które mają sens wyłącznie dla funkcji napięciowo-częstotliwościowych (LoM).
-_POLA_LOM = ("threshold_hz_s", "threshold_deg", "threshold_hz")
-
-_ETYKIETY_FUNKCJI_PL: dict[str, str] = {
-    "overcurrent_50": "I>> (50)",
-    "overcurrent_51": "I> (51)",
-    "earth_fault_50N": "I0>> (50N)",
-    "earth_fault_51N": "I0> (51N)",
-    "directional_67": "kierunkowa (67)",
-    "directional_67N": "kierunkowa ziemnozwarciowa (67N)",
-    "rocof_81R": "df/dt (81R)",
-    "vector_shift_78": "przesunięcie wektora (78)",
-    "underfrequency_81U": "f< (81U)",
-    "overfrequency_81O": "f> (81O)",
-}
+#: Klucze nastaw stopnia prądowego, których sprzeczności pilnuje reguła (PZ-09, rodzina czasu).
+_KLUCZ_PROGU = "prog"
+_KLUCZ_JEDNOSTKI = "jednostka_progu"
+_KLUCZ_KRZYWEJ = "krzywa"
+_KLUCZ_TMS = "tms"
+_KLUCZ_ZWLOKI = "zwloka_s"
 
 
-def etykieta_funkcji(funkcja: object) -> str:
-    """Etykieta funkcji dla projektanta (kod ANSI w nawiasie, nazwa po polsku)."""
-    return _ETYKIETY_FUNKCJI_PL.get(str(funkcja), "funkcja spoza słownika")
+def etykieta_funkcji(kod: object) -> str:
+    """Etykieta funkcji dla projektanta: zapis z rysunku i kod w nawiasie (rejestr funkcji)."""
+    wpis = FUNKCJE_EAZ.get(str(kod))
+    if wpis is None:
+        return f"funkcja spoza rejestru ({kod})"
+    if wpis.oznaczenie_pl == wpis.kod:
+        return wpis.kod
+    return f"{wpis.oznaczenie_pl} ({wpis.kod})"
 
 
-def bledy_nastaw(settings: object) -> list[str]:
-    """Sprzeczności nastaw do zapisu (puste = zapis dozwolony). Zdania po polsku.
+def _liczba(wartosc: object) -> bool:
+    return isinstance(wartosc, int | float) and not isinstance(wartosc, bool)
 
-    Kontrakt: ``settings`` to lista słowników w kształcie ``ProtectionSetting``.
-    """
-    if not isinstance(settings, list):
-        return ["Nastawy zabezpieczenia muszą być listą stopni (funkcji)."]
+
+def bledy_wartosci(funkcja: FunkcjaEaz, klucz: str, wartosc: object) -> list[str]:
+    """Sprzeczności JEDNEJ nastawy wobec schematu funkcji (puste = wartość dopuszczalna)."""
+    etykieta = etykieta_funkcji(funkcja.kod)
+    schemat = funkcja.schemat_nastawy(klucz)
+    if schemat is None:
+        return [f"Funkcja {etykieta} nie ma nastawy „{klucz}” w rejestrze funkcji."]
+    if schemat.typ == "LICZBA":
+        if not _liczba(wartosc):
+            return [f"Funkcja {etykieta}: {schemat.nazwa_pl} musi być liczbą."]
+        assert isinstance(wartosc, int | float)
+        if schemat.dodatnia and float(wartosc) <= 0:
+            return [f"Funkcja {etykieta}: {schemat.nazwa_pl} musi być dodatni."]
+        return []
+    if schemat.typ == "WYBOR":
+        if not isinstance(wartosc, str) or wartosc not in schemat.wartosci:
+            return [
+                f"Funkcja {etykieta}: {schemat.nazwa_pl} spoza listy wyboru "
+                f"({', '.join(schemat.wartosci)})."
+            ]
+        return []
+    if not isinstance(wartosc, bool):
+        return [f"Funkcja {etykieta}: {schemat.nazwa_pl} musi być wartością logiczną."]
+    return []
+
+
+def bledy_nastaw_funkcji(funkcja: FunkcjaEaz, nastawy: Mapping[str, object]) -> list[str]:
+    """Sprzeczności kompletu nastaw funkcji w jednej grupie (typy + reguły rodziny czasu)."""
     bledy: list[str] = []
-    widziane: set[str] = set()
-    for indeks, wpis in enumerate(settings, start=1):
-        if not isinstance(wpis, dict):
-            bledy.append(f"Stopień {indeks}: nastawa musi być słownikiem pól.")
-            continue
-        try:
-            nastawa = ProtectionSetting.model_validate(wpis)
-        except ValidationError as blad:
-            pola = ", ".join(sorted({str(e["loc"][0]) for e in blad.errors() if e.get("loc")}))
-            bledy.append(f"Stopień {indeks}: niepoprawne pola nastawy ({pola}).")
-            continue
-        etykieta = etykieta_funkcji(nastawa.function_type)
-        if nastawa.function_type in widziane:
-            bledy.append(f"Funkcja {etykieta} występuje w nastawach więcej niż raz.")
-        widziane.add(nastawa.function_type)
-        for pole, wartosc in (
-            ("threshold_a", nastawa.threshold_a),
-            ("time_multiplier", nastawa.time_multiplier),
-        ):
-            if wartosc is not None and wartosc <= 0:
-                bledy.append(f"Funkcja {etykieta}: {_POLA_PL[pole]} musi być dodatni.")
-        if nastawa.time_delay_s is not None and nastawa.time_delay_s < 0:
-            bledy.append(f"Funkcja {etykieta}: zwłoka nie może być ujemna.")
-        if nastawa.function_type in FUNKCJE_PRADOWE:
-            if nastawa.time_delay_s is not None and nastawa.time_delay_s == 0:
-                bledy.append(
-                    f"Funkcja {etykieta}: zwłoka musi być dodatnia — wpisz czas nastawiony "
-                    "przekaźnika (co najmniej jego czas własny)."
-                )
-            if nastawa.threshold_a is not None and nastawa.threshold_unit is None:
-                bledy.append(
-                    f"Funkcja {etykieta}: próg prądowy wymaga jednostki — strona wtórna albo "
-                    "pierwotna przekładnika."
-                )
-            if nastawa.curve_type == "DT" and nastawa.time_multiplier is not None:
-                bledy.append(
-                    f"Funkcja {etykieta}: czas niezależny (DT) nie ma mnożnika czasowego — "
-                    "czas nastawia zwłoka."
-                )
-            if (
-                nastawa.curve_type is not None
-                and nastawa.curve_type != "DT"
-                and nastawa.time_delay_s is not None
-            ):
-                bledy.append(
-                    f"Funkcja {etykieta}: charakterystyka zależna nie ma zwłoki niezależnej — "
-                    "czas nastawia mnożnik czasowy."
-                )
-            for pole in _POLA_LOM:
-                if getattr(nastawa, pole) is not None:
-                    bledy.append(
-                        f"Funkcja {etykieta}: pole {_POLA_PL[pole]} należy do funkcji "
-                        "częstotliwościowych i napięciowych."
-                    )
-        else:
-            for pole in ("threshold_a", "threshold_unit", "curve_type", "time_multiplier"):
-                if getattr(nastawa, pole) is not None:
-                    bledy.append(
-                        f"Funkcja {etykieta}: pole {_POLA_PL[pole]} należy do funkcji prądowych."
-                    )
+    for klucz in sorted(nastawy):
+        bledy.extend(bledy_wartosci(funkcja, klucz, nastawy[klucz]))
+    etykieta = etykieta_funkcji(funkcja.kod)
+    if funkcja.schemat_nastawy(_KLUCZ_JEDNOSTKI) is not None:
+        if _KLUCZ_PROGU in nastawy and _KLUCZ_JEDNOSTKI not in nastawy:
+            bledy.append(
+                f"Funkcja {etykieta}: próg prądowy wymaga jednostki — strona wtórna albo "
+                "pierwotna przekładnika."
+            )
+    if funkcja.schemat_nastawy(_KLUCZ_KRZYWEJ) is not None:
+        krzywa = nastawy.get(_KLUCZ_KRZYWEJ)
+        if krzywa == "DT" and _KLUCZ_TMS in nastawy:
+            bledy.append(
+                f"Funkcja {etykieta}: czas niezależny (DT) nie ma mnożnika czasowego — czas "
+                "nastawia zwłoka."
+            )
+        if isinstance(krzywa, str) and krzywa != "DT" and _KLUCZ_ZWLOKI in nastawy:
+            bledy.append(
+                f"Funkcja {etykieta}: charakterystyka zależna nie ma zwłoki niezależnej — czas "
+                "nastawia mnożnik czasowy."
+            )
     return bledy
 
 
-_POLA_PL: dict[str, str] = {
-    "threshold_a": "próg prądowy",
-    "threshold_unit": "jednostka progu",
-    "curve_type": "charakterystyka",
-    "time_multiplier": "mnożnik czasowy",
-    "threshold_hz_s": "próg df/dt",
-    "threshold_deg": "próg przesunięcia wektora",
-    "threshold_hz": "próg częstotliwości",
-}
+def _napis(wartosc: object) -> str | None:
+    return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
 
 
-def normalizuj_nastawy(settings: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Nastawy po walidacji w kształcie modelu (``exclude_none``), posortowane po funkcji —
-    ten sam zapis dla tej samej treści niezależnie od kolejności w żądaniu (determinizm)."""
-    return sorted(
-        (
-            ProtectionSetting.model_validate(wpis).model_dump(mode="json", exclude_none=True)
-            for wpis in settings
-        ),
-        key=lambda n: str(n["function_type"]),
-    )
+def bledy_wejsc(wejscia: Mapping[str, Any]) -> list[str]:
+    """Sprzeczności wiązań wejść pomiarowych sterownika (układ filtru 3I0 i źródło 3U0)."""
+    bledy: list[str] = []
+    i0 = wejscia.get("i0_uklad")
+    if i0 == "FERRANTI" and _napis(wejscia.get("i0_ct_ref")) is None:
+        bledy.append(
+            "Filtr prądu zerowego w układzie przekładnika Ferrantiego wymaga wskazania tego "
+            "przekładnika."
+        )
+    if i0 != "FERRANTI" and _napis(wejscia.get("i0_ct_ref")) is not None:
+        bledy.append(
+            "Przekładnik prądu zerowego wskazuje się wyłącznie w układzie przekładnika "
+            "Ferrantiego (układ Holmgreena sumuje prądy przekładników fazowych)."
+        )
+    u0 = wejscia.get("u0_uklad")
+    if u0 == "OTWARTY_TROJKAT" and _napis(wejscia.get("u0_vt_ref")) is None:
+        bledy.append(
+            "Napięcie zerowe z otwartego trójkąta wymaga wskazania przekładnika napięciowego "
+            "z uzwojeniem otwartego trójkąta."
+        )
+    if u0 != "OTWARTY_TROJKAT" and _napis(wejscia.get("u0_vt_ref")) is not None:
+        bledy.append(
+            "Przekładnik napięcia zerowego wskazuje się wyłącznie w układzie otwartego trójkąta."
+        )
+    return bledy
 
 
-__all__ = ["FUNKCJE_PRADOWE", "bledy_nastaw", "etykieta_funkcji", "normalizuj_nastawy"]
+def bledy_sterownika(dane: Mapping[str, Any]) -> list[str]:
+    """Sprzeczności zapisu sterownika (słownik w kształcie `ProtectionAssignment`).
+
+    Puste = zapis spójny. Zdania po polsku, kolejność deterministyczna.
+    """
+    bledy: list[str] = []
+    funkcje_wpisy = dane.get("funkcje") or []
+    if not isinstance(funkcje_wpisy, Sequence) or isinstance(funkcje_wpisy, str):
+        return ["Funkcje sterownika muszą być listą."]
+    funkcje: dict[str, FunkcjaEaz] = {}
+    for wpis in funkcje_wpisy:
+        if not isinstance(wpis, Mapping):
+            bledy.append("Funkcja sterownika musi być słownikiem pól.")
+            continue
+        ref = _napis(wpis.get("ref"))
+        kod = str(wpis.get("kod") or "")
+        if ref is None:
+            bledy.append("Funkcja sterownika nie ma identyfikatora.")
+            continue
+        if ref in funkcje:
+            bledy.append(f"Funkcja „{ref}” występuje w sterowniku więcej niż raz.")
+            continue
+        rejestr = FUNKCJE_EAZ.get(kod)
+        if rejestr is None:
+            bledy.append(f"Funkcja „{ref}”: kod {kod!r} spoza rejestru funkcji.")
+            continue
+        funkcje[ref] = rejestr
+
+    grupy = dane.get("grupy_nastaw") or []
+    numery: set[int] = set()
+    for grupa in grupy:
+        if not isinstance(grupa, Mapping):
+            bledy.append("Grupa nastaw musi być słownikiem pól.")
+            continue
+        numer = grupa.get("numer")
+        if numer not in NUMERY_GRUP_NASTAW or isinstance(numer, bool):
+            bledy.append(f"Grupa nastaw {numer!r} spoza grup 1–4.")
+            continue
+        if numer in numery:
+            bledy.append(f"Grupa nastaw {numer} występuje więcej niż raz.")
+            continue
+        numery.add(int(numer))
+        widziane: set[str] = set()
+        for nastawy_funkcji in grupa.get("funkcje") or []:
+            funkcja_ref = str(nastawy_funkcji.get("funkcja_ref") or "")
+            if funkcja_ref in widziane:
+                bledy.append(f"Grupa {numer}: nastawy funkcji „{funkcja_ref}” podano dwa razy.")
+                continue
+            widziane.add(funkcja_ref)
+            funkcja = funkcje.get(funkcja_ref)
+            if funkcja is None:
+                bledy.append(f"Grupa {numer}: nastawy funkcji „{funkcja_ref}”, której nie ma.")
+                continue
+            wartosci: dict[str, object] = {}
+            for nastawa in nastawy_funkcji.get("nastawy") or []:
+                klucz = str(nastawa.get("klucz") or "")
+                if klucz in wartosci:
+                    bledy.append(
+                        f"Grupa {numer}, funkcja {etykieta_funkcji(funkcja.kod)}: nastawa "
+                        f"„{klucz}” podana dwa razy."
+                    )
+                    continue
+                wartosci[klucz] = nastawa.get("wartosc")
+            bledy.extend(
+                f"Grupa {numer}: {blad}" for blad in bledy_nastaw_funkcji(funkcja, wartosci)
+            )
+    aktywna = dane.get("aktywna_grupa", 1)
+    if aktywna not in NUMERY_GRUP_NASTAW or isinstance(aktywna, bool):
+        bledy.append(f"Aktywna grupa nastaw {aktywna!r} spoza grup 1–4.")
+    elif numery and aktywna not in numery:
+        bledy.append(f"Aktywna grupa nastaw {aktywna} nie istnieje w sterowniku.")
+
+    wyzwalane: set[str] = set()
+    for wiersz in dane.get("macierz_wyzwolen") or []:
+        funkcja_ref = str(wiersz.get("funkcja_ref") or "")
+        if funkcja_ref not in funkcje:
+            bledy.append(f"Macierz wyzwoleń: funkcja „{funkcja_ref}”, której nie ma.")
+            continue
+        if funkcja_ref in wyzwalane:
+            bledy.append(f"Macierz wyzwoleń: funkcja „{funkcja_ref}” ma dwa wiersze.")
+            continue
+        wyzwalane.add(funkcja_ref)
+        aparaty = [a for a in (wiersz.get("aparat_refs") or []) if _napis(a)]
+        if not aparaty:
+            bledy.append(f"Macierz wyzwoleń: funkcja „{funkcja_ref}” nie wskazuje aparatu.")
+        elif len(set(aparaty)) != len(aparaty):
+            bledy.append(f"Macierz wyzwoleń: funkcja „{funkcja_ref}” wskazuje aparat dwa razy.")
+    wejscia = dane.get("wejscia")
+    if isinstance(wejscia, Mapping):
+        bledy.extend(bledy_wejsc(wejscia))
+    return bledy
+
+
+__all__ = [
+    "NUMERY_GRUP_NASTAW",
+    "bledy_nastaw_funkcji",
+    "bledy_sterownika",
+    "bledy_wartosci",
+    "bledy_wejsc",
+    "etykieta_funkcji",
+]

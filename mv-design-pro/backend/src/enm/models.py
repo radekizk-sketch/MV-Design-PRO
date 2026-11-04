@@ -16,7 +16,6 @@ from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
 from network_model.catalog.gazy_fluorowane import StanObiektu
 from network_model.catalog.obwody_wtorne_pola import (
     NAPEDY_RODZAJU_APARATU,
-    RODZAJ_APARATU_WEJSCIA,
     RodzajNapedu,
 )
 from network_model.catalog.przekladniki import (
@@ -42,11 +41,12 @@ from network_model.core.uziemienie import (
     UziemienieEkranuKabla,
 )
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
-from pydantic import BaseModel, Field, StrictBool, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
+from .nastawy_zabezpieczen import bledy_sterownika
 from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
 from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
@@ -126,72 +126,6 @@ class MeasurementRating(BaseModel):
     ratio_secondary: float
     accuracy_class: str | None = None
     burden_va: float | None = None
-
-
-#: Strona przekładnika, po której podana jest nastawa prądowa (``threshold_a``) — decyzja
-#: właściciela PZ-09 (D-34): nastawa przechowywana w jednostce JAWNIE zadeklarowanej w polu.
-#: ``A_WTORNY`` — ampery strony wtórnej przekładnika pola (tak nastawia się przekaźnik);
-#: ``A_PIERWOTNY`` — ampery strony pierwotnej. Prąd rozruchowy po stronie pierwotnej jest
-#: wielkością wyprowadzoną z przekładni przekładnika pola
-#: (``application/analyses/protection/ocena_nadpradowa.py``), nigdy domyślną.
-JednostkaProguPradowego = Literal["A_WTORNY", "A_PIERWOTNY"]
-
-#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LTI) i czas niezależny
-#: (DT) liczy rdzeń ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI)
-#: — ``protection_iec60255.compute_ieee_c37112_generic`` ze stałymi normy
-#: (``protection.curves.ieee_curves.IEEECurveParams``).
-KrzywaNastawy = Literal[
-    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
-]
-
-
-class ProtectionSetting(BaseModel):
-    """Nastawa jednego stopnia (funkcji) zabezpieczenia zapisana w modelu (decyzja D-21).
-
-    Nastawy bazowe żyją przy urządzeniu zabezpieczeniowym w modelu; przypadek obliczeniowy
-    ich nie przechowuje. Ocena nadprądowa (``ocena_nadpradowa``) czyta je wprost stąd i
-    każdy brak (progu, jednostki progu, charakterystyki, zwłoki, mnożnika) nazywa kodem
-    gotowości — nie ma wartości domyślnych.
-    """
-
-    function_type: Literal[
-        "overcurrent_50",
-        "overcurrent_51",
-        "earth_fault_50N",
-        "earth_fault_51N",
-        "directional_67",
-        "directional_67N",
-        # D10 (addytywnie): funkcje ochrony od pracy wyspowej (Loss of Mains).
-        # Rozszerzenie WYŁĄCZNIE dodaje literały — istniejące dokumenty ENM bez
-        # tych typów walidują się bez zmian.
-        "rocof_81R",
-        "vector_shift_78",
-        "underfrequency_81U",
-        "overfrequency_81O",
-    ]
-    threshold_a: float | None = None
-    threshold_unit: JednostkaProguPradowego | None = None
-    """Strona przekładnika, po której podano ``threshold_a`` (PZ-09). Addytywne; ``None`` =
-    jednostka niezadeklarowana — ocena urządzenia jest wstrzymana nazwanym kodem gotowości."""
-    time_delay_s: float | None = None
-    curve_type: KrzywaNastawy | None = None
-    time_multiplier: float | None = None
-    """Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255 (SI/VI/EI/LTI).
-
-    Addytywne, opcjonalne (default None). Dokumenty ENM bez tego pola walidują się
-    bez zmian, a serializacja z ``exclude_none`` pomija je dla istniejących nastaw —
-    determinizm dotychczasowych payloadów pozostaje nienaruszony. Wymagany do
-    wyznaczenia krzywej I-t dla charakterystyk odwrotnych (nie dotyczy DT).
-    """
-    is_directional: bool = False
-    # D10 (addytywnie, opcjonalne — default None): nastawy funkcji LoM.
-    # Zachowanie istniejących typów funkcji NIE zmienia się (pola pozostają None).
-    threshold_hz_s: float | None = None
-    """Nastawa df/dt [Hz/s] dla ROCOF (81R)."""
-    threshold_deg: float | None = None
-    """Nastawa przesunięcia wektora [°] dla funkcji 78."""
-    threshold_hz: float | None = None
-    """Próg częstotliwościowy [Hz] dla 81U/81O."""
 
 
 # ---------------------------------------------------------------------------
@@ -1093,35 +1027,138 @@ class Measurement(ENMElement):
 # ---------------------------------------------------------------------------
 
 
-class ProtectionAssignment(ENMElement):
-    """Powiązanie zabezpieczenia z wyłącznikiem — modelowanie, nie solver."""
+class WejsciaZabezpieczenia(BaseModel):
+    """Przekładniki przypięte do wejść sterownika — JEDYNE wiązanie wejść pomiarowych.
 
-    breaker_ref: str
+    Referencje wskazują przekładnik pola (aparat `Bay.primary_devices` rodzaju CT, VT albo
+    CORE_BALANCE_CT — tu żyje wybrany zaczep, karta UX-04) albo przekładnik `measurements`
+    (wyłącznik liniowy bez pola). Przekładnię dla nastaw rozstrzyga jedna funkcja
+    `enm.zabezpieczenie.przekladnik_pradowy`, dostępność wejść funkcji —
+    `enm.zabezpieczenie.wejscia_dostepne`.
+
+    * ``ct_ref`` — przekładnik prądowy faz (wejście ``I``);
+    * ``vt_ref`` — przekładnik napięciowy (wejście ``U``);
+    * ``i0_uklad`` — filtr prądu zerowego ``3I0``: ``HOLMGREEN`` (suma prądów przekładników
+      fazowych ``ct_ref``) albo ``FERRANTI`` (przekładnik ``i0_ct_ref``);
+    * ``u0_uklad`` — źródło napięcia zerowego ``3U0``: ``OTWARTY_TROJKAT`` (uzwojenie otwartego
+      trójkąta przekładnika ``u0_vt_ref`` — w tym polu albo w polu pomiaru napięcia szyn tej
+      samej sekcji, ENEA Zeszyt 1, Z.17) albo ``Z_NAPIEC_FAZOWYCH`` (obliczone z ``vt_ref``);
+    * ``ct_strony_2_refs`` — przekładniki drugiej strony strefy różnicowej (87T, 87L).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     ct_ref: str | None = None
     vt_ref: str | None = None
-    # F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
-    # różnicowej (87T wymaga CT po OBU stronach transformatora — `ct_ref`
-    # niesie JEDEN CT, ta lista niesie pozostałe CT granicy strefy). Pusta
-    # lista = strefa różnicowa 2×CT NIE jest modelowana (dana niedostarczona,
-    # nie błąd — `protectionFunctionTopologyGaps` degraduje do dotychczasowego
-    # uproszczenia „obecność transformatora" gdy lista pusta).
-    ct_refs_secondary: list[str] = []
-    device_type: Literal[
-        "overcurrent",
-        "earth_fault",
-        "directional_overcurrent",
-        "distance",
-        "differential",
-        "custom",
-    ]
+    i0_uklad: Literal["HOLMGREEN", "FERRANTI"] | None = None
+    i0_ct_ref: str | None = None
+    u0_uklad: Literal["OTWARTY_TROJKAT", "Z_NAPIEC_FAZOWYCH"] | None = None
+    u0_vt_ref: str | None = None
+    ct_strony_2_refs: list[str] = []
+
+
+class FunkcjaZabezpieczenia(BaseModel):
+    """Funkcja sterownika: identyfikator w sterowniku i kod z rejestru funkcji.
+
+    ``kod`` — klucz rejestru `network_model.catalog.funkcje_eaz` (schemat nastaw, wymagane
+    wejścia, ewaluator); ``ref`` — identyfikator w obrębie sterownika (dwa stopnie tej samej
+    funkcji, np. ``51`` i ``51-2``, mają różne ``ref`` i ten sam ``kod``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str = Field(min_length=1)
+    kod: str = Field(min_length=1)
+    wlaczona: bool = True
+
+
+class NastawaFunkcji(BaseModel):
+    """Jedna nastawa: klucz schematu funkcji, wartość i jej pochodzenie.
+
+    ``pochodzenie``: ``PROJEKTANT`` (wpis w karcie pola), ``DOBOR`` (dobór nastaw z analizy)
+    albo ``WARTOSC_ROBOCZA`` (propozycja z jawnym źródłem, zasada nr 4 — jakość ``ESTIMATED``,
+    nigdy dana dokumentu).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    klucz: str = Field(min_length=1)
+    wartosc: StrictBool | StrictInt | float | str
+    pochodzenie: Literal["PROJEKTANT", "DOBOR", "WARTOSC_ROBOCZA"] = "PROJEKTANT"
+
+
+class NastawyFunkcjiGrupy(BaseModel):
+    """Nastawy jednej funkcji w jednej grupie nastaw."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    funkcja_ref: str = Field(min_length=1)
+    nastawy: list[NastawaFunkcji] = []
+
+
+class GrupaNastaw(BaseModel):
+    """Grupa nastaw sterownika (1–4). Aktywną grupę bazową wybiera `aktywna_grupa`;
+    przypadek obliczeniowy może wybrać inną albo nałożyć zmianę jako deltę scenariusza
+    (`enm.scenariusze`, ADR-022)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    numer: StrictInt
+    funkcje: list[NastawyFunkcjiGrupy] = []
+
+
+class WyzwolenieFunkcji(BaseModel):
+    """Wiersz macierzy wyzwoleń: funkcja → aparaty, na które działa, i pobudzenie SPZ."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    funkcja_ref: str = Field(min_length=1)
+    aparat_refs: list[str]
+    pobudza_spz: bool = False
+
+
+class ProtectionAssignment(ENMElement):
+    """Sterownik zabezpieczeń (instancja urządzenia) — JEDYNA struktura zabezpieczenia modelu.
+
+    Karta OCHRONA-JEDNO-ZRODLO (dyrektywa właściciela 2026-11-04, ADR-022). Sterownik stoi
+    w polu (``bay_ref``) albo przy wyłączniku liniowym bez pola (pole ``None``, wyłącznik
+    w macierzy wyzwoleń); wskazuje pozycję katalogu urządzeń (``catalog_ref``, przestrzeń
+    ``ZABEZPIECZENIE``) i wariant wejścia prądowego (``prad_znamionowy_wejscia_a`` — 1 A albo
+    5 A). Funkcje są GENERYCZNE: kod z rejestru `network_model.catalog.funkcje_eaz` (schemat
+    nastaw i wymagane wejścia), nastawy w grupach 1–4, aktywna grupa bazowa, macierz wyzwoleń
+    (funkcja → wyłącznik; SPZ to funkcja 79 z nastawami w grupie i pobudzeniem w macierzy).
+    Kody funkcji pola na schemacie, karta pola, oceny i raporty czytają TĘ strukturę
+    (`enm.zabezpieczenie`) — nie ma drugiej kopii w polu ani w odczycie.
+
+    Spójność zapisu: `enm.nastawy_zabezpieczen.bledy_sterownika` (ta sama reguła w operacjach).
+    Pole spoza struktury (np. skasowane ``breaker_ref``, ``settings``, ``device_type``) jest
+    błędem wczytania, nie cichym pominięciem — zapis sprzed karty nie traci zabezpieczenia
+    po cichu.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    bay_ref: str | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
-    settings: list[ProtectionSetting] = []
+    prad_znamionowy_wejscia_a: float | None = Field(default=None, gt=0)
+    wejscia: WejsciaZabezpieczenia = Field(default_factory=WejsciaZabezpieczenia)
+    funkcje: list[FunkcjaZabezpieczenia] = []
+    grupy_nastaw: list[GrupaNastaw] = []
+    aktywna_grupa: StrictInt = 1
+    macierz_wyzwolen: list[WyzwolenieFunkcji] = []
     is_enabled: bool = True
     parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+
+    @model_validator(mode="after")
+    def _spojnosc_sterownika(self) -> ProtectionAssignment:
+        bledy = bledy_sterownika(self.model_dump(mode="json"))
+        if bledy:
+            raise ValueError(f"sterownik {self.ref_id!r}: " + " ".join(bledy))
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -1440,12 +1477,10 @@ class Bay(ENMElement):
     surge_arresters: list[OgranicznikPrzepiecPola] = []
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
-    protection_ref: str | None = None
-    # Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
-    # ['87T','51','50','51N'] — to są stringi, NIE enum; lustro mechanizmu
-    # OzeField.protection_codes (jedno źródło prawdy, wspólny wzorzec SLD).
-    # Enum ProtectionSetting pozostaje wyłącznie dla konfiguracji/koordynacji.
-    protection_codes: list[str] = Field(default_factory=list)
+    # Karta OCHRONA-JEDNO-ZRODLO: zabezpieczenie pola (funkcje, nastawy, wejścia, wyzwolenia)
+    # NIE jest polem rekordu pola — żyje wyłącznie w sterowniku `protection_assignments`
+    # z `bay_ref` tego pola (`enm.zabezpieczenie`). Dawne `protection_ref`/`protection_codes`
+    # (dwie prawdy obok nastaw sterownika) skasowane.
     # PR-3 rebuild SLD: porty pola — wnioskowane z bay_role + bus + reservation slots
     ports: list[Port] = []
     bay_template_ref: str | None = None  # referencja do BayTemplate w katalogu
@@ -1492,14 +1527,8 @@ class Bay(ENMElement):
     # `enm.pole_liniowe_gpz`. `None` = klasa nieustalona (pole sprzed atrybutu albo bez
     # deklaracji) — poza odciskiem.
     klasa_pola: Literal["ODBIORCZE", "MIESZANE", "DEDYKOWANE_WYTWORCY"] | None = None
-    # Decyzja właściciela 2026-10-29 (karta UX-04/POLE-LINIOWE-WZORZEC): ŹRÓDŁO NAPIĘCIA ZEROWEGO
-    # 3U₀ zabezpieczenia ziemnozwarciowego pola — `device_ref` przekładnika napięciowego (aparat
-    # pola rodzaju VT) z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn TEJ SAMEJ
-    # sekcji (ENEA Zeszyt 1, Z.17 s.97 — obwód okrężny „Z, Zz") albo w tym polu. Deklaracja
-    # (potwierdzenie) projektanta przez `set_bay_equipment`; jedyny nośnik warunku przypisania
-    # funkcji 67N (`enm.zrodlo_napiecia_zerowego`). `None` = źródło niepowiązane — 67N nie jest
-    # przypisywana; poza odciskiem.
-    zrodlo_u0_ref: str | None = None
+    # Źródło napięcia zerowego 3U₀ pola (decyzja właściciela 2026-10-29) jest wejściem
+    # sterownika pola (`ProtectionAssignment.wejscia.u0_vt_ref`, karta OCHRONA-JEDNO-ZRODLO).
 
     @model_validator(mode="after")
     def _wlasciciel_pola(self) -> Bay:
@@ -1661,14 +1690,11 @@ class BayPrimaryDevice(BaseModel):
     # aparatu (`obwody_wtorne_pola.powiazania_aparatow_pola`, ta sama reguła co odczyt pola
     # `pole_liniowe_gpz._obwody_funkcji`). `naped` — napęd łącznika, przy którym rysunek stawia
     # znak napędu (rodzaje dopuszczalne wg `NAPEDY_RODZAJU_APARATU`: wyłącznik — silnikowy „M",
-    # łącznik trójpołożeniowy — zasobnikowy z obsługą ręczną; ENEA Z.10/Z.11/Z.11.1);
-    # `funkcje_eaz_zasilane` — kody funkcji
-    # EAZ mierzących z przekładnika (WYŁĄCZNIE CT, VT, przekładnik Ferrantiego);
-    # `funkcje_eaz_wylaczajace` — kody funkcji działających na wyłącznik (WYŁĄCZNIE `CB`).
-    # Brak / pusta lista = pole bez obwodów wzorca albo aparat, którego wzorzec nie wiąże.
+    # łącznik trójpołożeniowy — zasobnikowy z obsługą ręczną; ENEA Z.10/Z.11/Z.11.1). Funkcje
+    # mierzące z przekładnika i działające na wyłącznik NIE są polami aparatu — wynikają ze
+    # sterownika pola (wejścia i macierz wyzwoleń, `enm.zabezpieczenie`, karta
+    # OCHRONA-JEDNO-ZRODLO).
     naped: RodzajNapedu | None = None
-    funkcje_eaz_zasilane: list[str] = []
-    funkcje_eaz_wylaczajace: list[str] = []
     # Rozstrzygnięcie architekta 2026-10-30 pkt 3 (karta UX-04/POLE-LINIOWE-WZORZEC): WYKONANIE
     # wyłącznika — stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1 §13), WYŁĄCZNIE
     # `kind == "CB"`. Domyślnie z szablonu pola (`BayDeviceTemplate.wykonanie`), edytowalne
@@ -1717,10 +1743,8 @@ class BayPrimaryDevice(BaseModel):
 
     @model_validator(mode="after")
     def _powiazania_obwodow_wtornych(self) -> BayPrimaryDevice:
-        """Powiązania obwodów wtórnych tylko na aparatach, których dotyczą: napęd na łączniku
-        rodzaju, dla którego słownik go dopuszcza (`NAPEDY_RODZAJU_APARATU`), funkcje wyłączające
-        na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
-        zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
+        """Napęd tylko na łączniku rodzaju, dla którego słownik go dopuszcza
+        (`NAPEDY_RODZAJU_APARATU`); wykonanie tylko na wyłączniku."""
         if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(self.kind, ()):
             raise ValueError(
                 f"aparat {self.device_ref!r} ({self.kind}): napęd {self.naped} nie dotyczy "
@@ -1731,22 +1755,6 @@ class BayPrimaryDevice(BaseModel):
                 f"aparat {self.device_ref!r} ({self.kind}): wykonanie (stałe / wysuwne) ma "
                 "wyłącznie wyłącznik"
             )
-        if self.funkcje_eaz_wylaczajace and self.kind != "CB":
-            raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ działające na "
-                "wyłącznik ma wyłącznie wyłącznik"
-            )
-        if self.funkcje_eaz_zasilane and self.kind not in zasilajace:
-            raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ mierzące z aparatu ma "
-                "wyłącznie przekładnik prądowy, napięciowy albo Ferrantiego"
-            )
-        for nazwa, kody in (
-            ("funkcje_eaz_zasilane", self.funkcje_eaz_zasilane),
-            ("funkcje_eaz_wylaczajace", self.funkcje_eaz_wylaczajace),
-        ):
-            if len(set(kody)) != len(kody):
-                raise ValueError(f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}")
         return self
 
     @model_validator(mode="after")
@@ -1852,51 +1860,6 @@ class BaySecondaryArchitecture(BaseModel):
     ] = "brak"
 
 
-class ProtectionSettingValue(BaseModel):
-    key: str
-    value: float | str | bool | None = None
-    unit: str | None = None
-    quality: Literal["obliczone", "reczne", "domyslne"] = "domyslne"
-
-
-class ProtectionFunctionState(BaseModel):
-    code: str
-    available: bool = False
-    enabled: bool = False
-    picked_up: bool = False
-    tripped: bool = False
-    blocked: bool = False
-    required_inputs: list[Literal["ct", "vt", "3i0", "3u0"]] = []
-    optional_inputs: list[Literal["ct", "vt", "3i0", "3u0"]] = []
-    missing_input_policy: Literal[
-        "blokada_zapisu",
-        "blokada_obliczen",
-        "ostrzezenie",
-        "degradacja_funkcji",
-        "wynik_czesciowy",
-    ] = "ostrzezenie"
-    settings_ref: str | None = None
-    settings: list[ProtectionSettingValue] = []
-    execution_mode: Literal["tylko_alarm", "pobudzenie", "wyzwolenie"] = "tylko_alarm"
-    execution_device_ref: str | None = None
-    starts_spz: bool = False
-    blocks_reclose: bool = False
-    operator_ack_required_after_trip: bool = False
-
-
-class SpzState(BaseModel):
-    bound_breaker_ref: str
-    enabled: bool = False
-    fast_attempts_max: int = 0
-    slow_attempts_max: int = 0
-    attempts_done: int = 0
-    fast_time_s: float | None = None
-    slow_time_s: float | None = None
-    blocked: bool = False
-    blocked_reason: str | None = None
-    state: Literal["gotowe", "w_trakcie", "zakonczone", "odstawione"] = "odstawione"
-
-
 class AlarmEntry(BaseModel):
     code: str
     active: bool = False
@@ -1904,40 +1867,6 @@ class AlarmEntry(BaseModel):
     severity: Literal["informacja", "ostrzezenie", "alarm", "awaria"] = "informacja"
     timestamp: datetime
     message_pl: str
-
-
-class EventEntry(BaseModel):
-    code: str
-    timestamp: datetime
-    source: Literal["sterowanie", "ochrona", "pomiar", "komunikacja", "system"]
-    message_pl: str
-
-
-class DisturbanceRecorderState(BaseModel):
-    available: bool = False
-    last_record_at: datetime | None = None
-    records_count: int = 0
-
-
-class TrendState(BaseModel):
-    available: bool = False
-    channels: list[str] = []
-
-
-class BayProtectionControlUnit(BaseModel):
-    unit_ref: str
-    manufacturer: str | None = None
-    model: str | None = None
-    functions: list[ProtectionFunctionState] = []
-    measurement_inputs: dict[str, bool] = Field(default_factory=dict)
-    automation_features: dict[str, bool] = Field(default_factory=dict)
-    spz: SpzState | None = None
-    alarms: list[AlarmEntry] = []
-    events: list[EventEntry] = []
-    disturbance_recorder: DisturbanceRecorderState = Field(default_factory=DisturbanceRecorderState)
-    trends: TrendState = Field(default_factory=TrendState)
-    settings_mode: Literal["automatyczne", "reczne"] = "reczne"
-    settings_ref: str | None = None
 
 
 class InterlockEntry(BaseModel):
@@ -2024,7 +1953,9 @@ class BayBaseModel(BaseModel):
     measurement_chain: BayMeasurementChain | None = None
     secondary_units: list[BaySecondaryUnitRef] = []
     secondary_architecture: BaySecondaryArchitecture
-    protection_config: BayProtectionControlUnit | None = None
+    # Karta OCHRONA-JEDNO-ZRODLO: sterownik pola w odczycie to TEN SAM rekord modelu
+    # (`ProtectionAssignment`), bez przekładu na drugą strukturę.
+    zabezpieczenie: ProtectionAssignment | None = None
     control_surface: BayControlSurface = Field(default_factory=BayControlSurface)
     interlocks: BayInterlockSet = Field(default_factory=BayInterlockSet)
     source_endpoint: BaySourceEndpoint | None = None
