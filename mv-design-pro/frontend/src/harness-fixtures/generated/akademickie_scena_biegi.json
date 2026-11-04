@@ -5810,10 +5810,10 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "297979777e51fb65059bee4d97f3d75d64cf185931233ada8663b1aa798b6bda",
-        "proof_id": "proof:v126:motor_starting:cb1cc62dfa8c2df9",
+        "proof_hash": "155f9bd77ad9b694f80d4353b59fd7838162dc1377b0776a24e69c735eef3801",
+        "proof_id": "proof:v126:motor_starting:ec6304c893293134",
         "run_id": "run-v126-scena-akademickie-motor_starting",
-        "source_result_hash": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd",
+        "source_result_hash": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a",
         "steps": [
           {
             "data": {
@@ -5845,7 +5845,7 @@
       "koperta": {
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
-        "deterministic_hash": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd",
+        "deterministic_hash": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting",
@@ -5858,19 +5858,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "540376101d63f8e05c4ca2ee7d352fef9ed6e56d5cee24a25d83e552588ad4da",
-        "report_id": "report:v126:motor_starting:cb1cc62dfa8c2df9",
+        "report_hash": "7398029858f7c4e64677774dab4d29a703d967dcc90ed401042ac3e772c4f3c4",
+        "report_id": "report:v126:motor_starting:ec6304c893293134",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:motor_starting:cb1cc62dfa8c2df9"
+                "value": "proof:v126:motor_starting:ec6304c893293134"
               },
               {
                 "label": "proof_hash",
-                "value": "297979777e51fb65059bee4d97f3d75d64cf185931233ada8663b1aa798b6bda"
+                "value": "155f9bd77ad9b694f80d4353b59fd7838162dc1377b0776a24e69c735eef3801"
               },
               {
                 "label": "trace_step_count",
@@ -5884,7 +5884,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd"
+                "value": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a"
               },
               {
                 "label": "solver_version",
@@ -5892,19 +5892,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "20b0cb11376b5e899d5abf31d65f461f6ed3a7c4232537f1b59fdf98386b24d9"
+                "value": "9531e48344831f6c30e7c195d4a62d6927c8ee9147794043fe86321c0e7412ab"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "297979777e51fb65059bee4d97f3d75d64cf185931233ada8663b1aa798b6bda",
-        "source_result_hash": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd"
+        "source_proof_hash": "155f9bd77ad9b694f80d4353b59fd7838162dc1377b0776a24e69c735eef3801",
+        "source_result_hash": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a"
       },
       "slad": {
         "analysis_type": "motor_starting",
-        "deterministic_hash": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd",
+        "deterministic_hash": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "steps": [
           {
@@ -5940,13 +5940,13 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:motor_starting:cb1cc62dfa8c2df9",
-        "report_ref": "report:v126:motor_starting:cb1cc62dfa8c2df9",
+        "proof_ref": "proof:v126:motor_starting:ec6304c893293134",
+        "report_ref": "report:v126:motor_starting:ec6304c893293134",
         "result": {
           "analysis_type": "motor_starting",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "cb1cc62dfa8c2df94cf05ae7103e1affd4523945a55d1aa78433147daa00eafd",
-          "input_hash": "20b0cb11376b5e899d5abf31d65f461f6ed3a7c4232537f1b59fdf98386b24d9",
+          "deterministic_hash": "ec6304c8932931349d98f2a5aa6307c5411a17ce9725122614fa5cea4847b93a",
+          "input_hash": "9531e48344831f6c30e7c195d4a62d6927c8ee9147794043fe86321c0e7412ab",
           "result": {
             "kompletnosc_dowodu": "NIEPELNY",
             "motors": [
@@ -5993,7 +5993,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk cb1cc62dfa8c2df9)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk ec6304c893293134)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -6056,7 +6056,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk cb1cc62dfa8c2df9)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk ec6304c893293134)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -6228,7 +6228,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk cb1cc62dfa8c2df9)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk ec6304c893293134)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -6375,7 +6375,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk cb1cc62dfa8c2df9)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk ec6304c893293134)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {

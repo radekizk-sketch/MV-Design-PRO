@@ -24,6 +24,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import numpy as np
 import pytest
 from enm.models import EnergyNetworkModel, ENMHeader
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -315,3 +316,69 @@ def test_determinizm_wejscia_mostu() -> None:
         for _ in range(3)
     }
     assert len(zapisy) == 1
+
+
+# ---------------------------------------------------------------------------
+# Przenośność wejścia między maszynami (karta KATALOG-PRZEJECIE-PR, decyzja architekta)
+# ---------------------------------------------------------------------------
+#
+# Z_th to przekątna odwróconej macierzy (`build_zbus`, LAPACK/OpenBLAS z `DYNAMIC_ARCH`):
+# ostatni bit mantysy zależy od jądra BLAS dobranego do procesora. Bez kwantyzacji
+# `input_hash` biegu rozruchu silnika różnił się między maszyną generującą atrapę harnessu
+# `akademickie_scena_biegi` a tą, na której ją sprawdzano, przy identycznym modelu.
+# ILOCZYN CECH: sieć {wyrocznia z wyspą, gn01–gn06} × zaburzenie {+1 ULP, −1 ULP każdej
+# komórki Z_bus} × analiza {przepustowość, rozruch silnika} → identyczne wejście i odcisk.
+
+
+def _zaburzony_build_zbus(kierunek: float) -> Any:
+    from solver_input import v126_contracts as most
+
+    oryginal = most.build_zbus
+
+    def zaburzony(graf: Any) -> Any:
+        budowniczy, z_bus = oryginal(graf)
+        z = z_bus.copy()
+        for indeks in np.ndindex(z.shape):
+            wartosc = complex(z[indeks])
+            z[indeks] = complex(
+                math.nextafter(wartosc.real, kierunek), math.nextafter(wartosc.imag, kierunek)
+            )
+        return budowniczy, z
+
+    return zaburzony
+
+
+def _sieci_przenosnosci() -> list[EnergyNetworkModel]:
+    return [_enm(wyspa=True)] + [
+        EnergyNetworkModel.model_validate(getattr(wzorcowe, b)()["enm"]) for b in _WZORCOWE
+    ]
+
+
+@pytest.mark.parametrize("kierunek", [math.inf, -math.inf], ids=["plus_ulp", "minus_ulp"])
+@pytest.mark.parametrize("rodzaj", sorted(ANALIZY_IMPEDANCJI_ZASTEPCZEJ), ids=str)
+def test_wejscie_i_odcisk_odporne_na_ostatni_bit_z_bus(
+    monkeypatch: pytest.MonkeyPatch, kierunek: float, rodzaj: V126AnalysisType
+) -> None:
+    from network_model.solvers.v126_academic import _hash
+    from solver_input import v126_contracts as most
+
+    sieci = _sieci_przenosnosci()
+    przed = [build_v126_input_from_enm(enm, analysis_type=rodzaj) for enm in sieci]
+    monkeypatch.setattr(most, "build_zbus", _zaburzony_build_zbus(kierunek))
+    po = [build_v126_input_from_enm(enm, analysis_type=rodzaj) for enm in sieci]
+    for a, b in zip(przed, po, strict=True):
+        assert any(s.thevenin_x_ohm is not None for s in a.buses)
+        assert a.model_dump(mode="json") == b.model_dump(mode="json")
+        assert _hash(a.model_dump(mode="json")) == _hash(b.model_dump(mode="json"))
+
+
+def test_zaburzenie_bez_kwantyzacji_zmienia_surowa_z_th(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kontrola przyrządu: zaburzenie +1 ULP REALNIE zmienia surową przekątną Z_bus, więc
+    zgodność wejść w teście wyżej jest zasługą kwantyzacji, nie martwego zaburzenia."""
+    from enm.mapping import map_enm_to_network_graph
+    from solver_input import v126_contracts as most
+
+    graf = map_enm_to_network_graph(_enm())
+    _, z_ok = most.build_zbus(graf)
+    _, z_zab = _zaburzony_build_zbus(math.inf)(graf)
+    assert complex(z_ok[0, 0]) != complex(z_zab[0, 0])

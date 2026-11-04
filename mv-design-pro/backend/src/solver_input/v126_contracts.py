@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Literal
 
+from application.analyses.kontrakt_liczb import kanoniczna_liczba
 from enm.bateria_kondensatorow import parametry_baterii
 from enm.mapping import (
     impedancja_zrodla_sieciowego,
@@ -638,9 +639,16 @@ def impedancje_zastepcze_szyn(enm: EnergyNetworkModel) -> dict[str, dict[str, fl
         if k is None:
             continue
         z_th = complex(z_bus[k, k]) * budowniczy.get_zbase_ohm(wezel)
+        # Z_th pochodzi z odwrócenia macierzy (`build_zbus`, LAPACK/OpenBLAS): ostatni bit
+        # mantysy zależy od jądra BLAS dobranego do procesora, a ta liczba wchodzi do
+        # wejścia solvera i do jego `input_hash`. Kwantyzacja do `CYFRY_ZNACZACE` cyfr
+        # znaczących (polityka ADR-018, `application.analyses.kontrakt_liczb`) czyni wejście
+        # — i jego odcisk — przenośnym między maszynami (dowód z atrapy harnessu
+        # `akademickie_scena_biegi`, karta KATALOG-PRZEJECIE-PR); 9 cyfr to rzędy wielkości
+        # ponad dokładność danych modelu.
         wynik[bus.ref_id] = {
-            "thevenin_r_ohm": max(z_th.real, 0.0),
-            "thevenin_x_ohm": z_th.imag,
+            "thevenin_r_ohm": kanoniczna_liczba(max(z_th.real, 0.0)),
+            "thevenin_x_ohm": kanoniczna_liczba(z_th.imag),
         }
     return wynik
 
