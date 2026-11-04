@@ -1630,3 +1630,16 @@ application 254 → 255 (+1 `ncrfg_compliance/wzory_sladu.py`), pomiar na `01c5d
 604) i na drzewie karty. Odcisk implementacji pakietu `dynamika` w fiksturach harnessu był nieaktualny
 po przywróceniu formatu 100 kolumn (`silnik.py`; odcisk to skrót źródeł) — przegenerowany.
 `guardy_z_ci.py`: KOMPLET ZIELONY, samotesty strażników 4772 passed.
+
+**Punkt 4, bieg końcowy (2026-11-04).** Pełny backend `-m "not pandapower and not andes"` na
+`2deb4c83a`: 42 705 passed, 1 failed — klucz spisu literałów c
+(`test_wspolczynnik_c_inwentarz.py`) wskazywał postać łamaną przy 88 kolumnach, a po przywróceniu
+formatu 100 kolumn pasmo B′0/B′1 jest znów jednym wierszem; klucz poprawiony (`22755b4a2`, plik
+6 passed; to jedyna różnica tych dwóch SHA). vitest related wszystkich plików frontendu zmienionych od
+`01c5def16`: 6928 passed, 3 failed — testy legend wykresów P–Q i obszaru P–Q szukały surowego
+napisu `Producent $Q_{\max}$`, który legenda składa przez KaTeX od wcześniejszego kroku karty;
+negatywne asercje „nakładka wyłączona" przechodziły pusto. Przepisane na `poTekscieZWzorami`
+(`85865f69e`), iniekcja (legenda bez formattera) → 3 czerwone, po naprawie 75 passed. e2e zrzutowe
+na własnych portach (18551/15551) na `85865f69e`: doziemienie, czas wyłączenia, domena nN, dowody,
+zwarcia F2, kreatory w trybie eksperckim, pasma rozpływu i jakość — 67 passed, kod 0; 113 zrzutów
+w `frontend/test-results/zrzuty-dokumentacji/` (bez werdyktu wizualnego, B-02).
