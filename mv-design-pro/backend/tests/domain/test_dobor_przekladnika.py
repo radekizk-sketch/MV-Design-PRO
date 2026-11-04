@@ -124,8 +124,11 @@ class TestKryteriaZwarciowe:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=6.0))
         k = kryterium(wynik, "ct.alf")
         assert k.werdykt == "niespelnione"
-        assert "ALF_eff ≥ 30.0" in (k.wymagane or "")
-        assert "ALF_eff" in (k.dostepne or "")
+        # Proza słowami, wzór w polu LaTeX (decyzja architekta 2026-11-04).
+        assert "nie mniejszy niż 30.0" in (k.wymagane or "")
+        assert k.wymagane_latex == r"ALF_{eff} \geq 30.0"
+        assert "efektywny współczynnik graniczny dokładności" in (k.dostepne or "")
+        assert (k.dostepne_latex or "").startswith("ALF_{eff} = ")
         assert "UPROSZCZONY_BEZ_RCT" in (k.dostepne or "")
         assert k.slad, "ct.alf powinno niesc slad WHITE BOX z jadra"
 
@@ -319,7 +322,9 @@ class TestNasycenieRdzeniaIloczynCech:
         assert "ct.required_alf_missing" in k.kody_gotowosci
         # Bilans wtorny nadal jest POLICZONY (i2n/sn/dlugosc/przekroj obecne) —
         # brakuje WYLACZNIE odniesienia (Ik''), wiec status_obciazenia istnieje.
-        assert "S2obl" in (k.dostepne or "") or k.dostepne is None
+        assert "obciążenie obwodu wtórnego" in (k.dostepne or "") or k.dostepne is None
+        assert (k.dostepne_latex is None) is (k.dostepne is None)
+        assert k.dostepne_latex is None or "S_{2,obl}" in k.dostepne_latex
 
     def test_moc_stykow_wchodzi_do_bilansu_gdy_podana(self) -> None:
         # obwod: zapisany + moc stykow jawna. Rct: brak. ALF: z pola. Ik'': znane.

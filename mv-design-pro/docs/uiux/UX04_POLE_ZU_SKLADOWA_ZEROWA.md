@@ -1686,3 +1686,12 @@ Zostaje zmierzone (sąsiednie klasy bez decyzji): algebra jednostek bez symbolu 
 (`kV / Ω = kA`, sprawdzenia jednostek `equation_registry`/`unit_verifier`, ok. 200 tekstów) oraz
 zapis krotności `{x}×In` w starszej warstwie `ui/**` (ok. 138 linii: `TypeLibraryBrowser`,
 `TypePicker`, `settings-model`, `formatProtection`), którego `ui_math_guard` nie liczy.
+Bieg końcowy na `b2b6fb8bf` (pełny backend `-m "not pandapower and not andes"`, xdist 4,
+prywatny `--basetemp`): 42 698 passed, 26 failed w trzech plikach — wszystkie skutek nowej prozy
+i pól LaTeX, naprawione w następnym commicie z zachowaniem intencji: tożsamość pętli TN
+(`test_petla_tn_tozsamosc_w5e_ttit.py`, fikstura „przed” bez zmian, para dawny zapis / nowa
+proza / wzór metody jako jedyna różnica śladu), tożsamość nastaw W3-C2 (pole `*_latex` to tekst,
+nie liczba metodyki) i dobór przekładnika (asercje prozy słowami i pól `*_latex`); trzy pliki
+49 passed. `guardy_z_ci.py`: 108/108 strażników, lint i type-check zielone; samotesty 4801
+passed, 1 failed — pin pól kontraktów `solver_input_substitute_guard` 4503 → 4507 z pomiarem
+(`git archive cd4ea97cb`: 4503; +4 pola LaTeX, −0).

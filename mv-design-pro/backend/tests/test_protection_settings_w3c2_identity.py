@@ -204,7 +204,11 @@ def _bez_tekstow(wartosc: Any) -> Any:
     if isinstance(wartosc, str):
         return "<tekst>"
     if isinstance(wartosc, dict):
-        return {klucz: _bez_tekstow(w) for klucz, w in wartosc.items()}
+        # Pole `*_latex` to zapis wzoru obok prozy (addytywne, decyzja architekta 2026-11-04:
+        # `requirement_latex` kroku śladu) — tekst, nie liczba metodyki.
+        return {
+            klucz: _bez_tekstow(w) for klucz, w in wartosc.items() if not klucz.endswith("_latex")
+        }
     if isinstance(wartosc, list | tuple):
         return [_bez_tekstow(w) for w in wartosc]
     return wartosc

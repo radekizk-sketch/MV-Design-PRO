@@ -2108,7 +2108,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
     # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
     # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
+    # Ta sama karta, punkt 4 — wzor w polu LaTeX obok prozy (decyzja architekta 2026-11-04):
+    # 4503 -> 4507 — POMIAR `contract_fields()` na `cd4ea97cb` (`git archive`: 4503, pin
+    # zgodny) i na drzewie karty (4507). Roznica zbiorow +4, -0: `computed_from_latex`
+    # (`ProtectionComputedValue`), `wymagane_latex` i `dostepne_latex` (`Kryterium` doboru
+    # przekladnika), `result_latex` (`WhiteBoxStep` SSCI; `substitution_latex` byl juz w zbiorze,
+    # `formula_latex` tez). Pola LaTeX to zapis wzoru obok prozy, nie dana wejsciowa solvera.
+    # PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4507." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
