@@ -38,6 +38,7 @@
  * nigdy nie był tym dostawcą). Dług nazwany w meldunku karty.
  */
 
+import { nazwaZRodzajemPl } from '../../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -225,7 +226,7 @@ export function OtworzProjektKontener({
         if (useAppStateStore.getState().activeProjectId === id) {
           setActiveProject(null, null);
         }
-        notify(OTWORZ_STRINGS.usunieto(wiersz?.nazwa ?? id), 'info');
+        notify(OTWORZ_STRINGS.usunieto(nazwaZRodzajemPl(wiersz?.nazwa, 'Projekt')), 'info');
         await pobierzListe();
       } catch (err: unknown) {
         notify(err instanceof Error ? err.message : OTWORZ_STRINGS.bladUsuwania, 'error');

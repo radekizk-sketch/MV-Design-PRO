@@ -23,6 +23,7 @@
  * podrobiony. Luka nazwana w meldunku karty P0.9.
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { OPCJE_UZIEMIENIA_EKRANU, type UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -234,7 +235,7 @@ export function KreatorOdcinkaNn() {
   );
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBus?.name ?? fromBusRef ?? '—' },
+    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBusRef ? nazwaObiektuPl(fromBus?.name, 'szyna', fromBus ? null : { spozaModelu: true }) : '—' },
     { etykieta: T.wierszKabel, stan: catalogRef ? 'kompletne' : 'brak', wartosc: wybranyKabel?.name ?? 'Do wyboru' },
     { etykieta: T.wierszDlugosc, stan: dlugoscM && dlugoscM > 0 ? 'kompletne' : 'brak', wartosc: dlugoscM ? `${dlugoscM} m` : 'Do wprowadzenia' },
   ];

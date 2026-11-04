@@ -6,6 +6,7 @@
  * P14b: GOVERNANCE endpoints (export/import with manifest+fingerprint)
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import type {
   ProtectionCategory,
   ProtectionDeviceType,
@@ -29,7 +30,7 @@ function normalizeProtectionDeviceType(item: Record<string, unknown>): Protectio
   const params = getParams(item);
   return {
     id: String(item.id ?? ''),
-    name_pl: String(item.name_pl ?? params.name_pl ?? item.name ?? params.name ?? item.id ?? ''),
+    name_pl: nazwaObiektuPl(pierwszaNazwa(item.name_pl, params.name_pl, item.name, params.name), 'pozycja_katalogu'),
     vendor:
       typeof params.vendor === 'string'
         ? params.vendor
@@ -117,7 +118,7 @@ function normalizeProtectionCurve(item: Record<string, unknown>): ProtectionCurv
   const params = getParams(item);
   return {
     id: String(item.id ?? ''),
-    name_pl: String(item.name_pl ?? params.name_pl ?? item.name ?? params.name ?? item.id ?? ''),
+    name_pl: nazwaObiektuPl(pierwszaNazwa(item.name_pl, params.name_pl, item.name, params.name), 'pozycja_katalogu'),
     standard:
       typeof params.standard === 'string'
         ? params.standard
@@ -141,7 +142,7 @@ function normalizeProtectionTemplate(item: Record<string, unknown>): ProtectionS
   const params = getParams(item);
   return {
     id: String(item.id ?? ''),
-    name_pl: String(item.name_pl ?? params.name_pl ?? item.name ?? params.name ?? item.id ?? ''),
+    name_pl: nazwaObiektuPl(pierwszaNazwa(item.name_pl, params.name_pl, item.name, params.name), 'pozycja_katalogu'),
     device_type_ref:
       typeof params.device_type_ref === 'string'
         ? params.device_type_ref

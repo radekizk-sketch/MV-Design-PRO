@@ -1,3 +1,4 @@
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { fetchTypesByCategory } from '../catalog';
@@ -139,7 +140,7 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
 function normalizeCatalogTypeEntry(raw: CatalogListItem): CatalogTypeEntry {
   const source = raw as unknown as Record<string, unknown>;
   const id = String(source.id ?? '');
-  const name = String(source.name ?? source.name_pl ?? id);
+  const name = nazwaObiektuPl(pierwszaNazwa(source.name, source.name_pl), 'pozycja_katalogu');
   const manufacturer =
     typeof source.manufacturer === 'string'
       ? source.manufacturer

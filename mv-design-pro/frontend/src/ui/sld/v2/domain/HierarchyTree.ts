@@ -8,6 +8,7 @@
  * Zastępuje generyczny `topologyAdapterV2.ts` (V1 graph approach).
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import type { BayModelRole } from '../../../../types/enm';
 import type { PortKind } from '../core/ports';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
@@ -311,7 +312,7 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
 
       return {
         id: s.substation_ref,
-        name: sub?.name ?? s.substation_ref,
+        name: nazwaObiektuPl(sub?.name, 'stacja', sub ? miejsceWKolekcji(enm.substations, sub) : { spozaModelu: true }),
         templateName: null,
         topologicalType,
         nnVoltageLevels: sub?.nn_voltage_levels ?? [],

@@ -17,6 +17,7 @@
  * Wszystkie etykiety w języku polskim (100% PL).
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import {
@@ -327,7 +328,7 @@ export function ProtectionLibraryBrowser({
                     )}
                   >
                     <div className="font-medium text-sm">
-                      {(type as any).name_pl || type.id}
+                      {nazwaObiektuPl(pierwszaNazwa((type as { readonly name_pl?: unknown }).name_pl), 'pozycja_katalogu')}
                     </div>
                     {(type as any).vendor && (
                       <div className="text-xs text-gray-500 mt-1">
@@ -396,7 +397,7 @@ function TypeDetailsPanel({
       {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800">
-          {(type as any).name_pl || type.id}
+          {nazwaObiektuPl(pierwszaNazwa((type as { readonly name_pl?: unknown }).name_pl), 'pozycja_katalogu')}
         </h3>
         <p className="text-xs text-gray-500 mt-1">ID: {type.id}</p>
       </div>

@@ -1,3 +1,4 @@
+import { nazwaObiektuPl } from '../shared/nazwaObiektu';
 import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 
@@ -814,7 +815,7 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
         <div className={clsx('space-y-1 text-[11px]', primaryTextClass)}>
           <div className="flex items-center gap-2">
             <StatusDot level={hasRelay ? 'done' : measurements.ct > 0 ? 'partial' : 'empty'} />
-            <span className="font-medium truncate">{candidate?.bay_name ?? fieldRef}</span>
+            <span className="font-medium truncate">{nazwaObiektuPl(candidate?.bay_name, 'pole')}</span>
           </div>
           <div className={clsx('grid grid-cols-3 gap-1 text-[10px]', mutedTextClass)}>
             <span>CT: {measurements.ct}</span>

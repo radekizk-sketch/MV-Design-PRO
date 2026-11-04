@@ -220,9 +220,9 @@ describe('stronaNnStacji', () => {
     ]);
   });
 
-  it('odbiory po ref_id; punkt przyłączenia to nazwa szyny, a szyna spoza listy — jej ref (jawnie)', () => {
+  it('odbiory po ref_id; punkt przyłączenia to nazwa szyny, a szyna spoza listy — „spoza modelu” (jawnie, bez refu)', () => {
     expect(odbioryNnZGrafu(graf())).toEqual([
-      { loadId: 'odb-1', name: 'Hala', attachmentPointPl: 'nn-a-k', pMw: 0.2, qMvar: 0.05 },
+      { loadId: 'odb-1', name: 'Hala', attachmentPointPl: 'Szyna spoza modelu', pMw: 0.2, qMvar: 0.05 },
       { loadId: 'odb-2', name: 'Biuro', attachmentPointPl: 'Podrozdzielnica R1', pMw: 0.01, qMvar: 0.002 },
     ]);
   });

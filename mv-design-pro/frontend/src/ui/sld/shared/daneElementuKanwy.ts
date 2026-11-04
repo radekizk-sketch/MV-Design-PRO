@@ -16,6 +16,7 @@
  * Moduł nie czyta geometrii rysunku (kamera, układ, trafienia) i nie liczy fizyki: wartości
  * wynikowe pochodzą z backendu, tu wyłącznie ich zapis polski.
  */
+import { miejsceWKolekcji, nazwaObiektuPl, nazwaZRodzajemPl } from '../../shared/nazwaObiektu';
 import type {
   Bay,
   BayControlMode,
@@ -58,6 +59,21 @@ export type RodzajElementuKanwy =
   | 'grid_source'
   | 'bus'
   | null;
+
+/** Rodzaj elementu kanwy po polsku — opis elementu bez nazwy („Pole bez nazwy”), nigdy
+ *  ostatni człon referencji modelu. */
+const RODZAJ_ELEMENTU_KANWY_PL: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> = {
+  station: 'Stacja',
+  bay: 'Pole',
+  apparatus: 'Aparat',
+  transformer: 'Transformator',
+  der: 'Źródło wytwórcze',
+  cable_run: 'Ciąg',
+  node: 'Węzeł',
+  generator: 'Źródło wytwórcze',
+  grid_source: 'Sieć zasilająca',
+  bus: 'Szyna',
+};
 
 export interface DaneElementuKanwy {
   /** Element kind — determines which tab set to show. */
@@ -197,8 +213,7 @@ export function buildDaneStacji(
     label: stationLabelOverride
       ?? stacjaSld?.name
       ?? stacjaSld?.stationCode
-      ?? stationId.split('/').pop()
-      ?? stationId,
+      ?? nazwaObiektuPl(null, 'stacja', miejsceWKolekcji(snapshot?.substations, stationId)),
     stationCode: stacjaSld?.stationCode ?? null,
     liveMetrics: buildLiveMetrics(overlayPayload, 'station', stationId),
   };
@@ -365,8 +380,7 @@ export function buildDaneSzkicuDer(
     elementId: stationId,
     label: stationForDrop?.stationCode
       ?? stationForDrop?.name
-      ?? stationId.split('/').pop()
-      ?? stationId,
+      ?? nazwaObiektuPl(null, 'stacja', miejsceWKolekcji(snapshot?.substations, stationId)),
     stationCode: stationForDrop?.stationCode ?? null,
     nnSpec: { busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null },
   };
@@ -558,8 +572,7 @@ export function buildDaneElementuStacji(
             ? stacjaSld?.name ?? stacjaSld?.stationCode
             : stacjaSld?.stationCode ?? stacjaSld?.name)
           ?? nazwaElementuZModelu(snapshot, id)
-          ?? id.split('/').pop()
-          ?? id,
+          ?? nazwaZRodzajemPl(null, rodzaj ? RODZAJ_ELEMENTU_KANWY_PL[rodzaj] : ''),
         stationCode: stationContext?.stationCode ?? null,
         liveMetrics: buildLiveMetrics(overlayPayload, rodzaj, id),
         apparatusState,

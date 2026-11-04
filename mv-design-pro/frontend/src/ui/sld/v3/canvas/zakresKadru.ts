@@ -30,6 +30,7 @@
  * Moduł jest CZYSTY (zero DOM, zero Reacta, zero fizyki) i deterministyczny:
  * listy refów są unikalne i posortowane.
  */
+import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
 import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
@@ -193,7 +194,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
       const wpis = { stacja: st, sekcja };
       sekcjeGpz.set(sekcja.section_id, wpis);
       sekcjaSzynyGpz.set(sekcja.bus_ref, wpis);
-      nazwy.set(sekcja.section_id, sekcja.name ?? sekcja.section_id);
+      nazwy.set(sekcja.section_id, nazwaObiektuPl(sekcja.name, 'sekcja', { rodzic: st.name ?? '' }));
     }
   }
   const stacjaTransformatora = new Map<string, string>();
@@ -759,7 +760,7 @@ export function zakresToru(snapshot: EnergyNetworkModel, tor: TorElementuOdpowie
   }
   return zakres('tor', refy, 0, [
     POZIOM_SIECI,
-    { cel: 'tor', kontekst: [tor.element.ref_id], etykieta: `Tor zasilania: ${tor.element.nazwa || tor.element.ref_id}` },
+    { cel: 'tor', kontekst: [tor.element.ref_id], etykieta: `Tor zasilania: ${nazwaObiektuPl(tor.element.nazwa, 'element')}` },
   ]);
 }
 

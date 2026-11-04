@@ -14,6 +14,7 @@
  * Czysta funkcja (zero DOM/store) — v2 i v3 wołają ją identycznie wewnątrz
  * własnego `useMemo(() => buildNetworkHierarchyFromSnapshot(snapshot), [snapshot])`.
  */
+import { nazwaObiektuPl, pierwszaNazwa } from '../../shared/nazwaObiektu';
 import { buildHierarchy, type EnmInputForHierarchy, type Hierarchy } from '../v2/domain/HierarchyTree';
 import type { EnergyNetworkModel } from '../../../types/enm';
 
@@ -35,11 +36,11 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
   // Używamy strukturalnego match'u z fallbackami dla brakujących pól.
   const enmInput = {
     substations: ((snapshot.substations ?? []) as readonly unknown[]).map(
-      (raw): EnmInputForHierarchy['substations'][number] => {
+      (raw, indeks, wszystkie): EnmInputForHierarchy['substations'][number] => {
         const s = raw as Record<string, unknown>;
         return {
           ref_id: String(s.ref_id ?? ''),
-          name: String(s.name ?? s.ref_id ?? ''),
+          name: nazwaObiektuPl(pierwszaNazwa(s.name), 'stacja', { numer: indeks + 1, liczba: wszystkie.length }),
           station_type: String(s.station_type ?? 'mv_lv'),
           bus_refs: Array.isArray(s.bus_refs) ? (s.bus_refs as string[]) : [],
           meta: s.meta,
@@ -50,11 +51,11 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
       },
     ),
     bays: ((snapshot.bays ?? []) as readonly unknown[]).map(
-      (raw): EnmInputForHierarchy['bays'][number] => {
+      (raw, indeks, wszystkie): EnmInputForHierarchy['bays'][number] => {
         const b = raw as Record<string, unknown>;
         return {
           ref_id: String(b.ref_id ?? ''),
-          name: String(b.name ?? b.ref_id ?? ''),
+          name: nazwaObiektuPl(pierwszaNazwa(b.name), 'pole', { numer: indeks + 1, liczba: wszystkie.length }),
           bay_role: (b.bay_role as EnmInputForHierarchy['bays'][number]['bay_role']) ?? 'OUT',
           substation_ref: typeof b.substation_ref === 'string' ? b.substation_ref : null,
           branch_point_ref: typeof b.branch_point_ref === 'string' ? b.branch_point_ref : null,
@@ -67,12 +68,12 @@ export function buildNetworkHierarchyFromSnapshot(snapshot: EnergyNetworkModel |
       },
     ),
     buses: ((snapshot.buses ?? []) as readonly unknown[]).map(
-      (raw): EnmInputForHierarchy['buses'][number] => {
+      (raw, indeks, wszystkie): EnmInputForHierarchy['buses'][number] => {
         const b = raw as Record<string, unknown>;
         return {
           ref_id: String(b.ref_id ?? ''),
           voltage_kv: Number(b.voltage_kv ?? 15),
-          name: String(b.name ?? b.ref_id ?? ''),
+          name: nazwaObiektuPl(pierwszaNazwa(b.name), 'szyna', { numer: indeks + 1, liczba: wszystkie.length }),
         };
       },
     ),

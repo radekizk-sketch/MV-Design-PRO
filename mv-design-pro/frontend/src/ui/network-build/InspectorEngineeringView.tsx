@@ -14,6 +14,7 @@
  * BINDING: 100% PL etykiety.
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
@@ -209,7 +210,7 @@ function buildBayCatalogSection(
     const powod = powodBlokadyRodzinyPl(rodzina);
     fields.push(
       { key: 'family_name', label: 'Rodzina rozdzielnicy', value: rodzina.family_name, source: 'catalog' },
-      { key: 'manufacturer', label: 'Producent', value: producent?.name ?? rodzina.manufacturer_ref, source: 'catalog' },
+      { key: 'manufacturer', label: 'Producent', value: nazwaObiektuPl(producent?.name, 'producent', producent ? null : { spozaKatalogu: true }), source: 'catalog' },
       {
         key: 'construction',
         label: 'Konstrukcja',
@@ -1490,10 +1491,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     selectedBayField?.canonical_model.base_model.switchgear_family_ref,
   );
   const selectedBayPorts = selectedBaySnapshot?.ports ?? null;
-  const selectedBayName = selectedBayField?.bay_name
-    ?? selectedElement?.name
-    ?? elementId
-    ?? 'Pole';
+  const selectedBayName = nazwaObiektuPl(pierwszaNazwa(selectedBayField?.bay_name, selectedElement?.name), 'pole');
   const selectedSegment = useMemo(
     () => elementId
       ? snapshot?.branches?.find((branch) => branch.ref_id === elementId || branch.id === elementId) ?? null

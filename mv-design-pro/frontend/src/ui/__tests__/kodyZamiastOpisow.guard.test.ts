@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
  * STRAŻNIK — kod maszynowy nie trafia na ekran jako tekst dla projektanta.
  *
  * Lustro reguł backendu (`backend/tests/enm/test_klucze_pol_w_komunikatach_src.py`) po
- * stronie frontu. Dwie reguły klasy:
+ * stronie frontu. Cztery reguły klasy:
  *
  *  R1 „surowe sklejenie listy braków” — `missing_data.join(', ')`, `(x.missing ?? []).join(…)`,
  *     `brakujace.join(…)`: lista kodów braków (pól, elementów, predykatów) sklejona wprost w
@@ -22,6 +22,14 @@ import { describe, expect, it } from 'vitest';
  *     `etykietaZapasowaRefu` (`ui2/wyniki/wzorzec/useNazwaObiektu.ts`) albo jawne zdanie.
  *  R3 „przełącznik zwraca kod” — `switch (kod) { case …: return 'opis'; default: return kod; }`:
  *     ta sama klasa co R2 zapisana instrukcją `switch` (pomiar 2026-11: 16 miejsc w `src`).
+ *  R4 „nazwa albo identyfikator” — `obiekt.name || obiekt.ref_id`, `x?.name ?? ref`,
+ *     `String(item.name_pl ?? … ?? item.id)`, `bay_name ?? bayRef`, także rozbite na linie
+ *     (`?.name\n ?? elementId`) i ostatni człon referencji jako etykieta
+ *     (`stationId.split('/').pop()`): obiekt bez nazwy pokazywał projektantowi referencję modelu
+ *     z odciskiem, identyfikator katalogu albo UUID (pomiar 2026-11: 77 miejsc w `src`). Jedno
+ *     miejsce reguły: `nazwaObiektuPl` / `nazwaPoReferencjiPl` (`ui/shared/nazwaObiektu.ts`) —
+ *     opis rodzaju z numerem w kolekcji albo nazwą rodzica; identyfikator wyłącznie
+ *     w informacjach audytowych.
  *
  * Wyjątki są jawne (`DOZWOLONE`), każdy z uzasadnieniem merytorycznym i testem żywotności —
  * martwy wpis byłby furtką.
@@ -29,8 +37,10 @@ import { describe, expect, it } from 'vitest';
 
 const FRONTEND_SRC = join(__dirname, '..', '..');
 
+type Regula = 'R1' | 'R2' | 'R3' | 'R4';
+
 interface Naruszenie {
-  readonly regula: 'R1' | 'R2' | 'R3';
+  readonly regula: Regula;
   readonly plik: string;
   readonly linia: number;
   readonly fragment: string;
@@ -52,6 +62,16 @@ const R3 = new RegExp(
   String.raw`switch\s*\(\s*(${KLUCZ})\s*\)\s*\{(?:(?!switch\s*\()[\s\S])*?default:\s*return\s+\1\s*;`,
   'g',
 );
+/** Pole nazwy obiektu po lewej, identyfikator (lub jego składowa) po prawej `??` / `||`. */
+const POLE_NAZWY = String.raw`(?:name|nazwa|name_pl|bay_name|station_name)`;
+const IDENTYFIKATOR = String.raw`(?:ref_id|id|ref|element_ref|element_id|section_id|catalog_ref|[a-z][\w$]*_ref|[a-z][\w$]*Ref|[a-z][\w$]*Id)`;
+const R4 = new RegExp(
+  String.raw`(?<![\w$])(?:[\w$]+(?:\?\.|\.))?${POLE_NAZWY}\s*(?:\|\||\?\?)\s*(?:String\(\s*)?`
+    + String.raw`(?:[A-Za-z_$][\w$]*(?:\??\.[\w$]+)*?\??\.)?${IDENTYFIKATOR}\b(?!\s*\()`,
+  'g',
+);
+/** Ostatni człon referencji modelu jako etykieta: `stationId.split('/').pop()`. */
+const R4_CZLON = /\b(?:[a-z][\w$]*(?:Id|Ref|_id|_ref)|id|ref)\.split\(\s*['"]\/['"]\s*\)\.pop\(\)/g;
 const PRZYROSTEK_ZDAN = /(?:_pl|Pl)\b\s*(?:\?\?\s*\[\]\s*\))?\s*\.join\($/;
 
 /** Komentarze zastąpione spacjami (z zachowaniem końców linii), żeby opis wzorca w
@@ -67,7 +87,7 @@ function naruszeniaKodowNaEkranie(plik: string, tekst: string): Naruszenie[] {
   const zrodlo = bezKomentarzy(tekst);
   const linie = tekst.split('\n');
   const wynik: Naruszenie[] = [];
-  for (const [regula, wzor] of [['R1', R1], ['R2', R2], ['R2', R2_MAPA], ['R3', R3]] as const) {
+  for (const [regula, wzor] of [['R1', R1], ['R2', R2], ['R2', R2_MAPA], ['R3', R3], ['R4', R4], ['R4', R4_CZLON]] as const) {
     for (const m of zrodlo.matchAll(wzor)) {
       if (regula === 'R1' && PRZYROSTEK_ZDAN.test(m[0])) continue;
       // R3 wskazuje linię `default: return kod;` (koniec dopasowania), nie początek `switch`.
@@ -121,6 +141,12 @@ const DOZWOLONE: Readonly<Record<string, string>> = {
     'Diagnoza niezgodności wersji API (wynik koordynacji bez kolekcji): nazwy kolekcji '
     + 'kontraktu są tu przedmiotem komunikatu (token formatu danych API), a zdanie mówi, co '
     + 'sprawdzić.',
+  'ui/sld/shared/sldActionExecutor.ts|generator?.name ?? elementId':
+    'Klucz dopasowania preselekcji modułu macierzy NC RfG (`MacierzNcRfg`: `derRef === klucz || '
+    + 'nazwa === klucz`), nie tekst ekranu — wartość nie jest nigdzie wyświetlana.',
+  'ui/network-build/operationContextResolvers.ts|(left.name ?? left.ref_id).localeCompare(':
+    'Klucz sortowania szyn o tym samym napięciu (deterministyczny porządek wyboru szyny GN/DN '
+    + 'transformatora), nie tekst ekranu — etykiety tych szyn idą przez `nazwaObiektuPl`.',
   'ui2/adapters/topologiaZasilenia.ts|${brakujace.join(':
     'Diagnoza niezgodności wersji API (odpowiedź bez pól kontraktu): nazwy pól kontraktu są tu '
     + 'przedmiotem komunikatu (token formatu danych API).',
@@ -157,7 +183,7 @@ function dozwolone(n: Naruszenie): string | null {
   return null;
 }
 
-describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2 powrót do kodu, R3 przełącznik zwraca kod)', () => {
+describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2 powrót do kodu, R3 przełącznik zwraca kod, R4 nazwa albo identyfikator)', () => {
   const naruszenia = wszystkieNaruszenia();
 
   it('produkt frontu: RAZEM 0 poza jawnymi wyjątkami', () => {
@@ -176,7 +202,7 @@ describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2
   });
 
   it('iniekcje: każda reguła czerwienieje na swoim wzorcu, poprawna postać — nie', () => {
-    const iniekcje: Array<[string, Array<'R1' | 'R2' | 'R3'>]> = [
+    const iniekcje: Array<[string, Regula[]]> = [
       ['const t = `Brak: ${(view.missing_data ?? []).join(", ")}`;', ['R1']],
       ['const t = wynik.missing_fields.join("; ");', ['R1']],
       ['const t = brakujace.join(", ");', ['R1']],
@@ -200,6 +226,24 @@ describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2
       ['return etykietaZeSlownika(MAPA, kod);', []],
       ['// dawniej: MAPA[kod] ?? kod oraz missing.join(", ")', []],
       ['return MAPA[kod] ?? "brak opisu";', []],
+      ['const t = bus.name || bus.ref_id;', ['R4']],
+      ['const t = stacja?.name ?? stationRef;', ['R4']],
+      ['const t = String(item.name_pl ?? params.name ?? item.id ?? "");', ['R4']],
+      ['const t = item?.bay_name ?? bayRef ?? "Pole";', ['R4']],
+      ['const t = selected?.name\n    ?? elementId\n    ?? "Pole";', ['R4']],
+      ['const t = tor.element.nazwa || tor.element.ref_id;', ['R4']],
+      ['const t = gniazdo.nazwa ?? gniazdo.catalog_ref;', ['R4']],
+      ['const t = run.name ?? run.id;', ['R4']],
+      ['const t = view.station_name ?? view.station_ref;', ['R4']],
+      ["const t = label ?? stationId.split('/').pop();", ['R4']],
+      ["const t = id.split('/').pop();", ['R4']],
+      ["const t = nazwaPliku.split('/').pop();", []],
+      ['const t = nazwaObiektuPl(bus.name, "szyna", miejsceWKolekcji(model.buses, bus));', []],
+      ['const t = nazwaPoReferencjiPl(model.buses, ref, "szyna");', []],
+      ['const t = bus.name ?? "Szyna bez nazwy";', []],
+      ['const t = { name: x.name, ref: x.ref_id };', []],
+      ['const t = bus.name ?? zbudujOpis(bus.ref_id);', []],
+      ['// dawniej: bus.name || bus.ref_id', []],
     ];
     for (const [zrodlo, oczekiwane] of iniekcje) {
       const reguly = naruszeniaKodowNaEkranie('iniekcja.ts', zrodlo).map((n) => n.regula);

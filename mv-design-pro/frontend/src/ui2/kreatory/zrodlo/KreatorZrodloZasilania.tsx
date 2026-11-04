@@ -12,6 +12,7 @@
  * Kontrakt operacji domenowej bez zmian (payload w `zrodloModel`).
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -721,7 +722,7 @@ export function KreatorZrodloZasilania() {
                 blad={bladDlaPola('catalog_ref')}
                 testid="mvd-kreator-zrodlo-katalog-select"
               />
-              <RzadWartosci etykieta={T.zrodloParametrow} wartosc={wybranaPozycja?.name ?? dane.catalog_ref ?? '—'} />
+              <RzadWartosci etykieta={T.zrodloParametrow} wartosc={dane.catalog_ref ? nazwaObiektuPl(wybranaPozycja?.name, 'pozycja_katalogu', wybranaPozycja ? null : { spozaKatalogu: true }) : '—'} />
               <RzadWartosci
                 etykieta={T.powiazanieKatalogowe}
                 wartosc={wybranaPozycja ? etykietaZrodlaKatalogu(wybranaPozycja) : T.powiazanieBrak}

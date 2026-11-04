@@ -1370,6 +1370,39 @@ edytor sekcji GPZ (`add/update/delete_gpz_section` bez ścieżki UI). Czerwone e
 `kanon-menu-sld`, `menu-schematu-nn` (commit `d320685fe`) i `zwarcie-przez-impedancje-przejscia`
 (commit `88de3b242`) są naprawione na gałęzi `fix-e2e-a`, nie duplikowane. Punkt 4 („—”
 kontra „brak danych”) nadal wstrzymany.
+
+**Commit 13 (2026-11-04) — decyzje architekta do punktów „nie zrobiłem” commitu 12: klasa
+`name || ref_id`, kasacja martwych kart, sekcje szyn GPZ w karcie K6.**
+(1) Klasa „pole nazwy z zapasem identyfikatora” zmierzona w całym `frontend/src` (wzorce `??`/`||`
+z `ref_id`/`id`/`ref`/`*_ref` po polu nazwy, także wielowierszowe, oraz `xId.split('/').pop()`):
+jeden pomocnik ekranowy `ui/shared/nazwaObiektu.ts` (`nazwaObiektuPl`, `nazwaZRodzajemPl`,
+`nazwaPoReferencjiPl`, `miejsceWKolekcji`, `pierwszaNazwa`, `jestNazwa`) — nazwa, a gdy jej brak,
+jawny opis z rodzajem obiektu i miejscem („Szyna bez nazwy (2 z 3)”, „Stacja spoza modelu”);
+identyfikator nigdy nie jest nazwą (`isRawTechnicalIdentifier`). Przepięto ~100 wywołań w 49
+plikach; martwe `nazwaLubRef` (wyszukiwarka) i `stationNameFromData` skasowane. Strażnik
+`kodyZamiastOpisow.guard.test.ts` dostał reguły R4 (pole nazwy z zapasem identyfikatora) i
+R4_CZLON (ostatni człon identyfikatora jako nazwa); wyjątki uzasadnione: klucz dopasowania
+preselekcji macierzy NC RfG (`sldActionExecutor.ts`) i dwa klucze sortowania
+(`operationContextResolvers.ts`). Most po samej referencji `nazwaObiektuZMigawki` (ekrany wyników)
+zostaje — inny kontrakt wejścia, odsyłacz w dokumentacji pomocnika. Testy: rodzaj (19) × nazwa (9
+wariantów) × miejsce (8) oraz konsumenci × nazwa jest/pusta/brak. (2) Skasowano 8 kart
+`ui/network-build/cards/` bez konsumenta produkcyjnego (Station, Trunk, Transformer, Switch,
+NnSwitchgear, RenewableSource, BranchPole, Zksn) z `index.ts` i 6 plikami testów; komentarz
+`operationFormRegistry.tsx` wskazuje realną ścieżkę otwórz/zamknij łącznik (menu SLD i pasek
+działań inspektora). `cards/GpzSectionsEditor.tsx` zostaje — reużywa go konfigurator GPZ (karta
+katalogu, drzewo `wt-katalog`), jedyny edytor sekcji GPZ. (3) Karta techniczna K6 stacji GPZ:
+sekcja „Sekcje szyn” zaraz po identyfikacji — zwarte tabele SN i 110 kV (jedna sekcja = jeden
+wiersz w kolejności modelu: nazwa, szyna, Uₙ; odczyt z modelu, tylko do odczytu; tabela mieści się
+w szerokości inspektora bez przewijania — pierwsza wersja z kolumną surowego `order` liczonego od
+zera ucinała Uₙ, wykryte na zrzucie i usunięte) i w trybie edycji przycisk
+„Konfiguruj GPZ” otwierający konfigurator GPZ (E-10) wprost na karcie „Sekcje SN”
+(`payload.defaultCard: 'sections'`, mechanizm `gpzDefaultCard`). Pomiar (§10 standardu
+warsztatu): przed — sekcji w karcie brak (0 px), do karty sekcji konfiguratora 3 kliknięcia
+(prawy klik, „Otwórz źródło”, zakładka); po — wysokość sekcji 222 px, 1 kliknięcie.
+Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (materiał B-02, bez
+werdyktu). Czerwone e2e `sld-gpz-zwiniety` (wyłącznik niewidoczny) jest sprzed zmiany i należy do
+listy 22 czerwonych prowadzonej osobno — nie duplikowane. Punkt 4 („—” kontra „brak danych”)
+nadal wstrzymany.
 ---
 
 ## LICZBY-PL

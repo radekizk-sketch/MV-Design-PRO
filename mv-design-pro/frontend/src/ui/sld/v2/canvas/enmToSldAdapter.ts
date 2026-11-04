@@ -16,6 +16,7 @@
  *    których po kasacji rendererów v2 nikt nie czytał).
  */
 
+import { nazwaPoReferencjiPl } from '../../../shared/nazwaObiektu';
 import type {
   BayPrimaryDevice,
   BayPrimaryDeviceKind,
@@ -1895,15 +1896,14 @@ function buildExplicitStationMiniBays(
 }
 
 /** GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola — `Bay.outgoing_destination_ref`
- *  wskazuje stację docelową (`backend/src/enm/models.py`); nazwa stacji z modelu, a gdy
- *  model jej nie zna — sam ref (bez domysłu). Jedna funkcja dla stacji i GPZ. */
+ *  wskazuje stację docelową (`backend/src/enm/models.py`); nazwa stacji z modelu, stacja bez
+ *  nazwy — „Stacja bez nazwy (n z N)”, a gdy model jej nie zna — „Stacja spoza modelu” (bez
+ *  domysłu i bez surowej referencji na schemacie). Jedna funkcja dla stacji i GPZ. */
 export function nazwaCeluOdejscia(
   snapshot: Pick<EnergyNetworkModel, 'substations'>,
   ref: string,
 ): string {
-  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === ref || s.id === ref);
-  const nazwa = typeof stacja?.name === 'string' ? stacja.name.trim() : '';
-  return nazwa || ref;
+  return nazwaPoReferencjiPl(snapshot.substations, ref, 'stacja');
 }
 
 function buildDedicatedDerStationMiniBays(

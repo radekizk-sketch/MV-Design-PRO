@@ -39,6 +39,7 @@
  * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY LOD: ten moduł NIE ZNA pojęcia LOD.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
  */
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import type { CadOrientation, CadSymbolId } from '../cad/cadSymbolRegistry';
 import { SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, SYMBOL_ZACISKU, symbolPomiaru, symbolPunktuToru, symbolZrodlaDer, wpisAparatu } from './symbolRegistry';
 import type {
@@ -526,7 +527,7 @@ export function composeLvDomainScene(
         ref: device.ref_id,
         x,
         y: yDevice,
-        label: branch?.name ?? device.ref_id,
+        label: nazwaObiektuPl(branch?.name, 'lacznik'),
         symbolId: wpis.symbolId,
         meta: {
           deviceType: device.device_type,
@@ -857,7 +858,7 @@ export function composeLvDomainScene(
           ref: trafo.lv_bus_ref,
           x,
           y: terminalY,
-          label: terminalBus?.name ?? trafo.lv_bus_ref,
+          label: nazwaObiektuPl(terminalBus?.name, 'szyna', miejsceWKolekcji(view.buses, trafo.lv_bus_ref)),
           symbolId: symbolPunktuToru(degreeOf(trafo.lv_bus_ref)),
           meta: { ...terminalMeta(terminalState), voltageKv: terminalBus?.voltage_kv, hopsFromRoot: terminalBus?.hops_from_root, degree: degreeOf(trafo.lv_bus_ref), transformerTerminal: transformerRef },
         });
@@ -992,7 +993,7 @@ export function composeLvDomainScene(
       ref: device.ref_id,
       x: mid,
       y,
-      label: branch?.name ?? device.ref_id,
+      label: nazwaObiektuPl(branch?.name, 'lacznik'),
       symbolId: wpis.symbolId ?? 'cad.lacznik',
       orientation: 'pozioma',
       meta: {

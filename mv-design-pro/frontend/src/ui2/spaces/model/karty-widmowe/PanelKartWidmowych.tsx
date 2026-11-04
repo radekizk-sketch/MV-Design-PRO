@@ -12,6 +12,7 @@
  * Odmowy (kontrakt rekordu, status, typ urządzenia, kolizja identyfikatora, karta innego
  * urządzenia) wracają zdaniem z backendu. Model panelu: `kartyWidmoweModel.ts`.
  */
+import { nazwaObiektuPl } from '../../../../ui/shared/nazwaObiektu';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { DomainOpResponseV1, KartaWidmowa } from '../../../../types/enm';
@@ -63,7 +64,7 @@ function PrzypisanieGeneratora({
   const ref = generator.ref_id;
   return (
     <li data-testid={`karty-widmowe-generator-${ref}`} className="rounded border border-scada-border/60 p-2">
-      <div className="font-medium text-scada-text">{generator.name || ref}</div>
+      <div className="font-medium text-scada-text">{nazwaObiektuPl(generator.name, 'generator')}</div>
       <div className="text-scada-muted">Typ urządzenia: {nazwaTypu}</div>
       <div data-testid={`karty-widmowe-generator-${ref}-stan`} className="mt-0.5">
         {przypisane.length > 0
@@ -282,7 +283,7 @@ export function PanelKartWidmowych() {
                         'set_der_catalog_bindings',
                         payloadPrzypisaniaKart(wiersz.generator.ref_id, wybrane),
                       ),
-                    `Zapisano przypisanie kart widmowych: ${wiersz.generator.name || wiersz.generator.ref_id}.`,
+                    `Zapisano przypisanie kart widmowych: ${nazwaObiektuPl(wiersz.generator.name, 'generator')}.`,
                   )
                 }
               />

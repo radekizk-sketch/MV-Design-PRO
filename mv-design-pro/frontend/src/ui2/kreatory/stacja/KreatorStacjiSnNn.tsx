@@ -16,6 +16,7 @@
  * atomowa i kreator uczciwie raportuje krok, który zawiódł.
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../../../ui/shared/nazwaObiektu';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -2249,7 +2250,7 @@ export function KreatorStacjiSnNn() {
                       onZmiana={(v) => zmienWyposazenie(pole.id, { relay_catalog_ref: v })}
                       opcje={przekazniki.map((t) => {
                         // Katalog MV podaje `name_pl`; biblioteka analityczna `name`.
-                        const nazwa = t.name_pl ?? t.name ?? t.id;
+                        const nazwa = nazwaObiektuPl(pierwszaNazwa(t.name_pl, t.name), 'pozycja_katalogu');
                         return {
                           id: t.id,
                           etykieta: t.vendor ? `${t.vendor} · ${nazwa}` : nazwa,

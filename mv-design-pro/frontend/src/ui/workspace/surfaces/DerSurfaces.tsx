@@ -7,6 +7,7 @@
  * jako podstawowej treści UI.
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl, nazwaPoReferencjiPl } from '../../shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchCtTypes, fetchDerConverterTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
@@ -328,7 +329,7 @@ function buildDerFromGenerator(
     project_id: 'snapshot',
     station_id: stationRef,
     der_kind: fallbackKind,
-    name: generator.name || generator.ref_id,
+    name: nazwaObiektuPl(generator.name, 'generator', miejsceWKolekcji(snapshot?.generators, generator)),
     connection_side: connectionSide,
     bus_przylaczenia_ref: busPrzylaczeniaRef,
     bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
@@ -1220,7 +1221,7 @@ function DerSurfaceShell({
   const torWytworcy = useMemo(() => {
     if (!der) return [];
     const nazwaSzyny = (ref: string | null): string | null =>
-      ref ? snapshot?.buses?.find((bus) => bus.ref_id === ref)?.name ?? ref : null;
+      ref ? nazwaPoReferencjiPl(snapshot?.buses, ref, 'szyna') : null;
     const stacja = snapshot?.substations?.find(
       (item) => item.ref_id === der.station_id || item.id === der.station_id,
     );
@@ -1228,12 +1229,9 @@ function DerSurfaceShell({
       stacja: der.station_id ? publicStationName(snapshot ?? null, stacja ?? null, der.station_id) : null,
       szynaNn: nazwaSzyny(der.lv_busbar_ref),
       transformator: der.transformer_ref
-        ? snapshot?.transformers?.find((tr) => tr.ref_id === der.transformer_ref)?.name
-          ?? der.transformer_ref
+        ? nazwaPoReferencjiPl(snapshot?.transformers, der.transformer_ref, 'transformator')
         : null,
-      poleSn: der.bay_ref
-        ? snapshot?.bays?.find((bay) => bay.ref_id === der.bay_ref)?.name ?? der.bay_ref
-        : null,
+      poleSn: der.bay_ref ? nazwaPoReferencjiPl(snapshot?.bays, der.bay_ref, 'pole') : null,
       pcc: nazwaSzyny(der.bus_przylaczenia_ref),
     });
   }, [der, snapshot]);

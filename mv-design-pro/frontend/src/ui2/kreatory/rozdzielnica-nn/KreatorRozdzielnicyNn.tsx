@@ -11,6 +11,7 @@
  *   sekcja + sprzęgło sekcyjne w tej rozdzielnicy.
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -304,7 +305,7 @@ export function KreatorRozdzielnicyNn() {
             <KreatorInfo>{T.brakSzynyZasilajacej}</KreatorInfo>
           ) : (
             <>
-              <RzadWartosci etykieta="Szyna źródłowa" wartosc={supplyFromBus?.name ?? supplyFromBusRef} />
+              <RzadWartosci etykieta="Szyna źródłowa" wartosc={nazwaObiektuPl(supplyFromBus?.name, 'szyna', supplyFromBus ? null : { spozaModelu: true })} />
               <KreatorSiatka kolumny={2}>
                 <PoleKatalogu
                   etykieta={T.kabel}

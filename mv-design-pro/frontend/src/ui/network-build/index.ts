@@ -39,9 +39,6 @@ export { ProjectMetadataModal } from './ProjectMetadataModal';
 export type { ProjectMetadataModalProps, ProjectMetadata } from './ProjectMetadataModal';
 // SnapshotHistoryModal removed (Phase 0 #3) - historia migawek dostępna przez E-09 audit screen
 
-// Cards
-export * from './cards';
-
 // Mass review
 export { MassReviewPanel, MissingCatalogReview, TransformerReview, SwitchReview, OzeReview } from './mass-review';
 export type { MassReviewPanelProps, ReviewTab } from './mass-review';

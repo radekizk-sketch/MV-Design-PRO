@@ -345,3 +345,12 @@
   background: var(--mvd-panel-2);
   font-weight: 600;
 }
+
+/* Nagłówek sekcji karty z jednym działaniem po prawej (np. „Konfiguruj GPZ” przy sekcjach szyn)
+   — przycisk w linii tytułu zamiast osobnego wiersza (§10 kontraktu prezentacji: minimum miejsca). */
+.mvd-kt-naglowek-sekcji {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}

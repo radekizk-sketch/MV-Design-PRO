@@ -23,6 +23,7 @@
  * WYBÓR (§37/§38): klik w element podświetla PEŁNY tor zasilania z
  * `graph.supply_paths` backendu — zero BFS po stronie klienta.
  */
+import { nazwaObiektuPl, pierwszaNazwa } from '../../../shared/nazwaObiektu';
 import { useMemo, useState, type CSSProperties } from 'react';
 
 import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
@@ -596,7 +597,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       <style>{'@media print { [data-testid="lv-domain-toolbar"], [data-testid="lv-domain-feeder-panel"], [data-testid="lv-domain-warnings-panel"] { display: none !important; } }'}</style>
       <header data-testid="lv-domain-toolbar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>{view.station_name ?? view.station_ref} · nN</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{nazwaObiektuPl(view.station_name, 'stacja')} · nN</div>
           <div data-testid="lv-domain-descriptor" style={{ fontSize: 11, color: paleta.kreskaWygaszona }}>{domainDescriptor}</div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
@@ -1106,7 +1107,7 @@ function ElementNode({ node, ctx, activeOverlay, resultOverlayPayload, swzEntry,
       {node.kind === 'apparatus' ? (
         <title>{`${node.label} · ${String(node.meta?.nazwaPl ?? '')} · ${stanSlowny((node.meta?.deviceState as LvDeviceState | undefined) ?? 'UNKNOWN')}`}</title>
       ) : node.kind === 'load' || node.kind === 'generator' || node.kind === 'transformer' ? (
-        <title>{node.kind === 'transformer' ? `${String(node.meta?.name ?? node.ref)} · ${node.label}` : node.label}</title>
+        <title>{node.kind === 'transformer' ? `${nazwaObiektuPl(pierwszaNazwa(node.meta?.name), 'transformator')} · ${node.label}` : node.label}</title>
       ) : null}
       <ScaledGlyph node={node} ctx={ctx} />
       <NodeLabel node={node} ctx={ctx} />

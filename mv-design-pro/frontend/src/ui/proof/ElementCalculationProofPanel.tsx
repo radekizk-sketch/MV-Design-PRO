@@ -1,3 +1,4 @@
+import { nazwaObiektuPl } from '../shared/nazwaObiektu';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -550,7 +551,7 @@ export function ElementCalculationProofPanel({
             Wywód obliczeń
           </div>
           <h4 className="text-sm font-semibold text-[color:var(--mvd-ink)]">
-            {selectedElement ? selectedElement.name || selectedElement.id : 'Wybierz obiekt na SLD'}
+            {selectedElement ? nazwaObiektuPl(selectedElement.name, 'element') : 'Wybierz obiekt na SLD'}
           </h4>
         </div>
         {runId && eksportLatex.dostepny && (

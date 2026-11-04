@@ -627,8 +627,9 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
     expect(b.bayNumber).toBe('10');
     expect(b.feederName).toBe('STAROŁĘCKA');
     // GEOMETRIA-STACJI (§0 pkt 5): podpis celu bez strzałki — strzałkę dokłada kompozycja
-    // (dawniej dokładały ją obie warstwy, podpis z podwójną strzałką); cel bez rekordu = ref.
-    expect(b.destinationLabel).toBe('ST-001');
+    // (dawniej dokładały ją obie warstwy, podpis z podwójną strzałką); cel bez rekordu stacji
+    // w modelu = „Stacja spoza modelu” (nigdy surowa referencja na schemacie).
+    expect(b.destinationLabel).toBe('Stacja spoza modelu');
   });
 });
 

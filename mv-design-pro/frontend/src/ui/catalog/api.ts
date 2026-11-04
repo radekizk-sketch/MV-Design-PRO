@@ -1,3 +1,4 @@
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
@@ -518,7 +519,7 @@ export async function fetchProtectionDeviceTypes(): Promise<ProtectionDeviceType
           : undefined;
     return {
       id: String(item.id ?? ''),
-      name: String(item.name_pl ?? item.name ?? params.name_pl ?? params.name ?? item.id ?? ''),
+      name: nazwaObiektuPl(pierwszaNazwa(item.name_pl, item.name, params.name_pl, params.name), 'pozycja_katalogu'),
       manufacturer: vendor,
       vendor,
       model:

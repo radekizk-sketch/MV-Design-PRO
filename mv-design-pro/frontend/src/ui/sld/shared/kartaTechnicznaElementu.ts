@@ -30,6 +30,7 @@ import type {
   Measurement,
   ProtectionAssignment,
   Source,
+  GPZSection,
   Substation,
   Transformer,
 } from '../../../types/enm';
@@ -44,6 +45,7 @@ import {
   type DerDynamicProfileItem,
   type NcRfgOperatorItem,
 } from '../../network-build/station-der/derRemoteCatalogs';
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../shared/nazwaObiektu';
 import { wariantPrzylaczeniaPl } from '../../network-build/der-configurator/wariantPrzylaczeniaPl';
 import { wiazaniaDerZGeneratora } from '../../network-build/station-der/zModelu';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
@@ -150,6 +152,11 @@ export interface SekcjaKarty {
   readonly zrodloPl?: string | null;
   /** Sekcja bez obiektu (np. stacja bez transformatora) — jawny opis zamiast wierszy. */
   readonly pustaPl?: string;
+  /** Sekcja „Sekcje szyn” GPZ: referencja źródła zasilania GPZ (`Source.substation_ref` = stacja),
+   *  którą konfigurator GPZ (E-10, `GpzConfiguratorSurface`) rozpoznaje GPZ. Przycisk
+   *  „Konfiguruj GPZ” (tylko w trybie edycji modelu) otwiera konfigurator na karcie „Sekcje SN”;
+   *  karta techniczna sama sekcji nie edytuje — jedynym edytorem GPZ jest konfigurator. */
+  readonly konfiguratorGpzRef?: string;
 }
 
 export interface KartaTechniczna {
@@ -782,6 +789,64 @@ function wierszeTabliczki(tr: Transformer, katalogi: KatalogiKarty, edytowalne: 
 // Karty per rodzaj
 // ---------------------------------------------------------------------------
 
+/** Wiersze tabeli sekcji szyn jednej strony GPZ w kolejności modelu (`order`, przy remisie
+ *  identyfikator — deterministycznie): nazwa (bez nazwy: numer sekcji na tej stronie), szyna
+ *  i napięcie. Kolejność niesie porządek wierszy, nie osobna kolumna surowej liczby `order`
+ *  (liczonej od zera) — tabela mieści się w szerokości inspektora bez przewijania.
+ *  Identyfikator sekcji nie trafia na ekran. */
+function wierszeSekcjiGpz(ix: IndeksModelu, sekcje: readonly GPZSection[]): WierszTabeli[] {
+  const posortowane = [...sekcje].sort((a, b) => a.order - b.order || a.section_id.localeCompare(b.section_id));
+  return posortowane.map((sekcja, i) => {
+    const szyna = ix.szyny.get(sekcja.bus_ref);
+    return {
+      klucz: sekcja.section_id,
+      komorki: {
+        nazwa: nazwaObiektuPl(sekcja.name, 'sekcja', { numer: i + 1, liczba: posortowane.length }),
+        szyna: szyna ? nazwaObiektuPl(szyna.name, 'szyna', miejsceWKolekcji(ix.model.buses, szyna)) : nazwaObiektuPl(null, 'szyna', { spozaModelu: true }),
+        un: szyna ? zapisLiczby(szyna.voltage_kv, 'kV') : null,
+      },
+    };
+  });
+}
+
+const KOLUMNY_SEKCJI_GPZ: readonly KolumnaTabeli[] = [
+  { klucz: 'nazwa', etykieta: 'Sekcja' },
+  { klucz: 'szyna', etykieta: 'Szyna' },
+  { klucz: 'un', etykieta: 'Uₙ' },
+];
+
+/** „Sekcje szyn” GPZ: strona SN (`gpz_sections`) i strona 110 kV (`gpz_hv_sections`) z modelu —
+ *  zwarta tabela do odczytu (jedna sekcja = jeden wiersz). Edycja sekcji należy do konfiguratora
+ *  GPZ (karta „Sekcje SN”), do którego prowadzi przycisk sekcji w trybie edycji modelu. */
+function sekcjaSekcjiSzynGpz(ix: IndeksModelu, stacja: Substation): SekcjaKarty {
+  // Konfigurator GPZ rozpoznaje GPZ po źródle zasilania (`Source.substation_ref`); GPZ bez źródła
+  // w modelu nie ma czego otworzyć — przycisk się wtedy nie pojawia (bez atrapy).
+  const zrodloGpz = (ix.model.sources ?? []).find((zrodlo) => zrodlo.substation_ref === stacja.ref_id);
+  return {
+    id: 'sekcje_szyn',
+    tytul: 'Sekcje szyn',
+    wiersze: [],
+    tabele: [
+      {
+        klucz: 'sekcje_sn',
+        podpis: 'Sekcje szyn SN',
+        kolumny: KOLUMNY_SEKCJI_GPZ,
+        wiersze: wierszeSekcjiGpz(ix, stacja.gpz_sections ?? []),
+        pustaPl: 'GPZ nie ma sekcji szyn SN w modelu.',
+      },
+      {
+        klucz: 'sekcje_wn',
+        podpis: 'Sekcje szyn 110 kV',
+        kolumny: KOLUMNY_SEKCJI_GPZ,
+        wiersze: wierszeSekcjiGpz(ix, stacja.gpz_hv_sections ?? []),
+        pustaPl: 'GPZ nie ma sekcji szyn 110 kV w modelu.',
+      },
+    ],
+    zrodloPl: 'model sieci (sekcje szyn stacji GPZ)',
+    ...(zrodloGpz ? { konfiguratorGpzRef: zrodloGpz.ref_id } : {}),
+  };
+}
+
 function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKarty): KartaTechniczna {
   const model = ix.model;
   const tozsamosc = stationPublicIdentity(model, stacja);
@@ -946,7 +1011,14 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     // K6 (Z-11): nazwa nagłówka z tej samej reguły co wiersz drzewa projektu.
     nazwa: nazwaStacjiJakWDrzewie(model, stacja),
     elementRef: stacja.ref_id,
-    sekcje: [identyfikacja, rozdzielnica, ...sekcjeTr, stronaNn, przylaczenia],
+    sekcje: [
+      identyfikacja,
+      ...(stacja.station_type === 'gpz' ? [sekcjaSekcjiSzynGpz(ix, stacja)] : []),
+      rozdzielnica,
+      ...sekcjeTr,
+      stronaNn,
+      przylaczenia,
+    ],
   };
 }
 

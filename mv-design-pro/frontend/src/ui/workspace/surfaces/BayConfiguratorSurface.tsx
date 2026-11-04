@@ -20,6 +20,7 @@
  * domyślna „OUT", sekcje sprzęgła `SEC-1/SEC-2`, „pole rezerwowe" przy braku pola) — werdykt
  * „pole zgodne z regułami" bez podstawy w modelu. Skasowana razem z tamtym kontekstem.
  */
+import { miejsceWKolekcji, nazwaObiektuPl, pierwszaNazwa } from '../../shared/nazwaObiektu';
 import { useMemo } from 'react';
 
 import { BayWindowSchematic } from '../../field/BayWindowSchematic';
@@ -66,7 +67,11 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
     item?.canonical_model.base_model.bay_template_ref,
     item?.canonical_model.base_model.switchgear_family_ref,
   );
-  const bayName = item?.bay_name ?? bayInModel?.name ?? bayRef ?? 'Pole SN';
+  const bayName = nazwaObiektuPl(
+    pierwszaNazwa(item?.bay_name, bayInModel?.name),
+    'pole',
+    bayInModel ? miejsceWKolekcji(snapshot?.bays, bayInModel) : null,
+  );
   const { sections } = useMemo(
     () => buildBaySections(
       item,

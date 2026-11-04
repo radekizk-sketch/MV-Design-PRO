@@ -250,12 +250,6 @@ export function switchgearStatusLabel(manufacturer: Manufacturer | null): string
   return 'niedostępny w konfiguratorze';
 }
 
-export function stationNameFromData(data: { name: string; ref_id: string }): string | undefined {
-  const name = data.name.trim();
-  const refId = data.ref_id.trim();
-  return name || refId || undefined;
-}
-
 // SN field role → bay kind mapping (Sprint Etap 4 - czwarta fala)
 export const SN_FIELD_ROLE_TO_BAY_KIND: Record<SnFieldRole, BayKind> = {
   LINIA_IN: 'liniowe_doplywowe',

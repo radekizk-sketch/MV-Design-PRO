@@ -784,15 +784,15 @@ describe('model ogniwa — czyste selektory', () => {
     expect(stacjeDlaPunktu(tylkoPole, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([]);
   });
 
-  it('stacja przedstawia się NAZWĄ; brak nazwy w modelu → uczciwie ref', () => {
+  it('stacja przedstawia się NAZWĄ; brak nazwy → opis z numerem, brak stacji w modelu → „spoza modelu” (nigdy ref)', () => {
     const snap = snapshotZeStacja('EL-GPZ');
     expect(nazwaStacji(snap, STACJA)).toBe('Stacja 1');
     const bezNazwy = {
       ...snap,
       substations: [{ ...snap.substations[0], name: '' }],
     } as unknown as EnergyNetworkModel;
-    expect(nazwaStacji(bezNazwy, STACJA)).toBe(STACJA);
-    expect(nazwaStacji(null, STACJA)).toBe(STACJA);
+    expect(nazwaStacji(bezNazwy, STACJA)).toBe('Stacja bez nazwy (1 z 1)');
+    expect(nazwaStacji(null, STACJA)).toBe('Stacja spoza modelu');
   });
 
   it('powód braku podstawy rozróżnia trzy sytuacje', () => {

@@ -8,6 +8,7 @@
  * pary do jednej stacji, tylko do zgodności napięcia).
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -132,7 +133,7 @@ export function KreatorAparatuNn() {
   }, [activeCaseId, catalogRef, closeForm, deviceClass, executeDomainOperation, fromBusRef, nazwa, selekcja, toBusRef]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszOd, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBus?.name ?? fromBusRef ?? '—' },
+    { etykieta: T.wierszOd, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBusRef ? nazwaObiektuPl(fromBus?.name, 'szyna', fromBus ? null : { spozaModelu: true }) : '—' },
     { etykieta: T.wierszDo, stan: toBusRef ? 'kompletne' : 'brak', wartosc: opcjeDo.find((b) => b.ref_id === toBusRef)?.name ?? 'Do wyboru' },
     { etykieta: T.wierszTyp, stan: catalogRef ? 'kompletne' : 'brak', wartosc: wybranyAparat?.name ?? 'Do wyboru' },
   ];
@@ -179,7 +180,7 @@ export function KreatorAparatuNn() {
 
       <KreatorSekcja tytul={T.torTytul} nota={fromBus?.name ?? undefined} testid="mvd-kreator-aparat-nn-tor">
         <KreatorSiatka kolumny={2}>
-          <RzadWartosci etykieta={T.szynaOd} wartosc={fromBus?.name ?? fromBusRef ?? '—'} />
+          <RzadWartosci etykieta={T.szynaOd} wartosc={fromBusRef ? nazwaObiektuPl(fromBus?.name, 'szyna', fromBus ? null : { spozaModelu: true }) : '—'} />
           <PoleWyboru
             etykieta={T.szynaDo}
             wartosc={toBusRef}

@@ -19,6 +19,7 @@
  * komunikaty należą do backendu (reguła NOT-A-SOLVER).
  */
 
+import { nazwaPoReferencjiPl } from '../../../../ui/shared/nazwaObiektu';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { szynyStacji } from '../../../../ui/shared/szynyStacji';
@@ -55,7 +56,8 @@ export function stacjeDlaPunktu(
 
 /**
  * Nazwa stacji z modelu (strefa pierwszoplanowa mówi po polsku, nie
- * identyfikatorami). Brak nazwy w modelu → ref jako uczciwy zapasowy opis.
+ * identyfikatorami). Stacja bez nazwy → „Stacja bez nazwy (n z N)”; referencja bez stacji
+ * w modelu → „Stacja spoza modelu” — nigdy referencja (reguła `ui/shared/nazwaObiektu`).
  */
 export function nazwaStacji(
   snapshot: EnergyNetworkModel | null,
@@ -64,7 +66,7 @@ export function nazwaStacji(
   const stacja = (snapshot?.substations ?? []).find(
     (s) => (s.ref_id ?? s.id) === stationRef,
   );
-  return stacja?.name || stationRef;
+  return nazwaPoReferencjiPl(snapshot?.substations, stacja ? (stacja.ref_id ?? stacja.id) : stationRef, 'stacja');
 }
 
 /** Powód, dla którego weryfikacji NIE DA SIĘ przeprowadzić (uczciwy stan zerowy). */

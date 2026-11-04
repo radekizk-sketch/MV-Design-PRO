@@ -18,6 +18,7 @@
  * - docs/sld/SLD_INDUSTRIAL_SPEC_v1.md § 4.2 (GPZ→Sekcja→Pole hierarchia)
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import { useState } from 'react';
 
 import type { Bay, Gpz, Hierarchy, Section } from './HierarchyTree';
@@ -96,7 +97,7 @@ export function NetworkHierarchyTree({
           <ul className="ml-3 mt-1 flex flex-col gap-px">
             {hierarchy.cableRuns.map((run) => (
               <li key={run.id} className="text-scada-muted">
-                • {run.name ?? run.id} ({run.runKind}, {run.stations.length} st.)
+                • {nazwaObiektuPl(run.name, 'ciag', miejsceWKolekcji(hierarchy.cableRuns, run))} ({run.runKind}, {run.stations.length} st.)
               </li>
             ))}
           </ul>

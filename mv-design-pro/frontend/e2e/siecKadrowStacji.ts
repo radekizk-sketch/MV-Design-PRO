@@ -15,13 +15,13 @@ import { przelaczMotyw } from './powloka';
 
 export const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const WERSJA_KATALOGU = '2024.1';
-const APARAT = 'sw-cb-abb-vd4-17kv-630a';
+export const APARAT = 'sw-cb-abb-vd4-17kv-630a';
 const KABEL = 'cable-tfk-yakxs-3x120';
 const TRAFO = 'tr-sn-nn-15-04-630kva-dyn11';
-const ZRODLO = 'src-gpz-15kv-250mva-rx010';
+export const ZRODLO = 'src-gpz-15kv-250mva-rx010';
 
 /** Wiązanie katalogowe (kanał katalog-first: przestrzeń + pozycja + wersja). */
-function katalog(namespace: string, itemId: string) {
+export function katalog(namespace: string, itemId: string) {
   return { catalog_namespace: namespace, catalog_item_id: itemId, catalog_item_version: WERSJA_KATALOGU };
 }
 export type Enm = {
@@ -36,7 +36,7 @@ export const polaStacjiEnm = (enm: Enm, stacjaRef: string | undefined) =>
 
 let licznik = 0;
 
-async function operacja(
+export async function operacja(
   request: APIRequestContext,
   caseId: string,
   name: string,

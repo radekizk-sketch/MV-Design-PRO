@@ -23,6 +23,7 @@
  *    (`zdejmijDoWejscia`) — kamera, poziom szczegółu i zaznaczenie jak przed
  *    dwuklikiem. Escape bez zmian (zdejmuje zaznaczenie, nie widok).
  */
+import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
@@ -83,7 +84,7 @@ const NIE_NARYSOWANY = 'Zakres nie jest narysowany na schemacie na żadnym pozio
  * tego samego wyniku (kontrakt werdyktu wyjaśnialnego).
  */
 export function opisToru(tor: TorElementuOdpowiedz): KomunikatKadru {
-  const nazwaElementu = tor.element.nazwa || tor.element.ref_id;
+  const nazwaElementu = nazwaObiektuPl(tor.element.nazwa, 'element');
   const szczegoly: string[] = [];
   const warunkowe = tor.drogi.filter((droga) => !droga.pewna);
   for (const droga of warunkowe) {

@@ -10,6 +10,8 @@
  * CANONICAL: Polski nazwy i komunikaty.
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../shared/nazwaObiektu';
+import type { RodzajObiektuNazwy } from '../shared/nazwaObiektu';
 import { useMemo } from 'react';
 import { useEnmInspectorStore } from './store';
 import type { DiagnosticIssue } from './types';
@@ -41,6 +43,8 @@ interface CategoryNode {
   icon: string;
   elements: EnmElement[];
   elementType: string;
+  /** Rodzaj obiektu dla nazwy elementu bez nazwy („Szyna bez nazwy (2 z 5)”). */
+  rodzajNazwy: RodzajObiektuNazwy;
 }
 
 export function EnmTree({
@@ -76,13 +80,13 @@ export function EnmTree({
   // Build category tree
   const categories: CategoryNode[] = useMemo(
     () => [
-      { id: 'cat-buses', label: `Szyny (${buses.length})`, icon: 'B', elements: buses, elementType: 'Bus' },
-      { id: 'cat-lines', label: `Linie (${lines.length})`, icon: 'L', elements: lines, elementType: 'LineBranch' },
-      { id: 'cat-cables', label: `Kable (${cables.length})`, icon: 'K', elements: cables, elementType: 'LineBranch' },
-      { id: 'cat-transformers', label: `Transformatory (${transformers.length})`, icon: 'T', elements: transformers, elementType: 'TransformerBranch' },
-      { id: 'cat-switches', label: `Łączniki (${switches.length})`, icon: 'S', elements: switches, elementType: 'Switch' },
-      { id: 'cat-sources', label: `Zasilanie GPZ (${sources.length})`, icon: 'Z', elements: sources, elementType: 'Source' },
-      { id: 'cat-loads', label: `Obciążenia (${loads.length})`, icon: 'O', elements: loads, elementType: 'Load' },
+      { id: 'cat-buses', label: `Szyny (${buses.length})`, icon: 'B', elements: buses, elementType: 'Bus', rodzajNazwy: 'szyna' },
+      { id: 'cat-lines', label: `Linie (${lines.length})`, icon: 'L', elements: lines, elementType: 'LineBranch', rodzajNazwy: 'odcinek' },
+      { id: 'cat-cables', label: `Kable (${cables.length})`, icon: 'K', elements: cables, elementType: 'LineBranch', rodzajNazwy: 'odcinek' },
+      { id: 'cat-transformers', label: `Transformatory (${transformers.length})`, icon: 'T', elements: transformers, elementType: 'TransformerBranch', rodzajNazwy: 'transformator' },
+      { id: 'cat-switches', label: `Łączniki (${switches.length})`, icon: 'S', elements: switches, elementType: 'Switch', rodzajNazwy: 'lacznik' },
+      { id: 'cat-sources', label: `Zasilanie GPZ (${sources.length})`, icon: 'Z', elements: sources, elementType: 'Source', rodzajNazwy: 'zrodlo' },
+      { id: 'cat-loads', label: `Obciążenia (${loads.length})`, icon: 'O', elements: loads, elementType: 'Load', rodzajNazwy: 'odbior' },
     ],
     [buses, lines, cables, transformers, switches, sources, loads],
   );
@@ -166,6 +170,7 @@ export function EnmTree({
                 {cat.elements.map((el) => {
                   const isSelected = selectedElementId === el.id;
                   const issueCount = issueMap.get(el.id) || 0;
+                  const nazwa = nazwaObiektuPl(el.name, cat.rodzajNazwy, miejsceWKolekcji(cat.elements, el));
                   return (
                     <button
                       key={el.id}
@@ -175,11 +180,11 @@ export function EnmTree({
                           : 'text-slate-700 hover:bg-slate-50'
                       }`}
                       onClick={() => handleElementClick(el.id, cat.elementType)}
-                      title={`${el.name} (${el.id.slice(0, 8)}...)`}
+                      title={nazwa}
                       data-testid={`enm-tree-element-${el.id}`}
                     >
                       <span className="truncate">
-                        {el.name || el.id.slice(0, 12)}
+                        {nazwa}
                       </span>
                       <span className="flex items-center gap-1">
                         {el.voltage_level != null && el.voltage_level > 0 && (

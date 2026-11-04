@@ -96,7 +96,7 @@ export const CANONICAL_OPERATION_NAMES = [
   // generatora) idzie przez domain-ops z panelu „Karty widmowe" — końcówka wiązań wytwórcy
   // (`/generators/{ref}/bindings`) tego klucza nie niesie.
   'set_der_catalog_bindings',
-  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+  // CRUD sekcji szyn GPZ — edytor `ui/network-build/cards/GpzSectionsEditor.tsx`
   'add_gpz_section',
   'update_gpz_section',
   'delete_gpz_section',
@@ -511,7 +511,7 @@ export interface AddConverterSourcePayload {
 export type NNConnectionType = 'JEDNOFAZOWY' | 'TROJFAZOWY';
 
 // =============================================================================
-// Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+// CRUD sekcji szyn GPZ — edytor `ui/network-build/cards/GpzSectionsEditor.tsx`
 // =============================================================================
 
 export type GpzSectionSide = 'lv' | 'hv';

@@ -815,13 +815,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/network-build/cards/NnSwitchgearCard.tsx:NnSwitchgearCard.sections.bilansSection.fields.severity",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/network-build/liveReadiness.ts:useElementStatusDot",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",

@@ -13,6 +13,7 @@
  * Katalog aparatów i szablonów pobierany dopiero po otwarciu edycji („Zmień wyposażenie") —
  * sama karta pola nie odpytuje katalogu, gdy pole nie ma z nim powiązania.
  */
+import { miejsceWKolekcji, nazwaObiektuPl } from '../shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type {
@@ -350,7 +351,7 @@ export function EdytorWyposazeniaPola({
                         <option value="">— łącznik modelu (brak) —</option>
                         {lacznikiPola.map((l) => (
                           <option key={l.ref_id} value={l.ref_id}>
-                            {l.name || l.ref_id}
+                            {nazwaObiektuPl(l.name, 'lacznik', miejsceWKolekcji(lacznikiPola, l))}
                           </option>
                         ))}
                       </select>

@@ -19,6 +19,7 @@ import {
   type TabelaKarty,
   type WierszKarty,
 } from '../../sld/shared/kartaTechnicznaElementu';
+import { useNetworkBuildStore } from '../networkBuildStore';
 
 function WierszDanych({
   wiersz,
@@ -113,6 +114,31 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
   );
 }
 
+/**
+ * „Konfiguruj GPZ” — przejście do JEDYNEGO edytora GPZ: konfiguratora GPZ (E-10) na karcie
+ * „Sekcje SN” (deep-link `payload.defaultCard`, czytany przez `gpzDefaultCard`
+ * w `GpzConfiguratorSurface.tsx`; ten sam mechanizm co akcje menu schematu w `sldActionExecutor`).
+ */
+function PrzyciskKonfiguratoraGpz({ zrodloGpzRef }: { readonly zrodloGpzRef: string }): JSX.Element {
+  const openRouteSurface = useNetworkBuildStore((stan) => stan.openRouteSurface);
+  return (
+    <button
+      type="button"
+      className="mvd-btn mvd-kt-zmien"
+      data-testid="inspektor-karta-konfiguruj-gpz"
+      onClick={() =>
+        openRouteSurface('E-10', {
+          entityRef: zrodloGpzRef,
+          subjectKind: 'helper_context',
+          payload: { defaultCard: 'sections' },
+        })
+      }
+    >
+      Konfiguruj GPZ
+    </button>
+  );
+}
+
 function Sekcja({
   sekcja,
   onEdytuj,
@@ -123,9 +149,18 @@ function Sekcja({
   const idNaglowka = `inspektor-karta-${sekcja.id}-tytul`;
   return (
     <section className="mvd-kt-sekcja" data-testid={`inspektor-karta-${sekcja.id}`} aria-labelledby={idNaglowka}>
-      <h4 id={idNaglowka} className="mvd-kt-tytul">
-        {sekcja.tytul}
-      </h4>
+      {sekcja.konfiguratorGpzRef && onEdytuj ? (
+        <div className="mvd-kt-naglowek-sekcji">
+          <h4 id={idNaglowka} className="mvd-kt-tytul">
+            {sekcja.tytul}
+          </h4>
+          <PrzyciskKonfiguratoraGpz zrodloGpzRef={sekcja.konfiguratorGpzRef} />
+        </div>
+      ) : (
+        <h4 id={idNaglowka} className="mvd-kt-tytul">
+          {sekcja.tytul}
+        </h4>
+      )}
       {sekcja.pustaPl ? (
         <p className="mvd-kt-brak" data-testid={`inspektor-karta-${sekcja.id}-pusta`}>
           {sekcja.pustaPl}

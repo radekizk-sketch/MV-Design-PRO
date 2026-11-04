@@ -25,6 +25,7 @@
  * własną prezentację (SLD, panel stanu pola) — dublowanie jej tutaj byłoby drugim
  * źródłem prawdy dla tego samego stanu.
  */
+import { nazwaZRodzajemPl } from '../../ui/shared/nazwaObiektu';
 import { useMemo } from 'react';
 
 import type {
@@ -591,13 +592,13 @@ export function mapowanieObiektuInspektora(
     id: element.id,
     typ,
     typEtykieta,
-    nazwa: element.name || element.ref_id,
+    nazwa: nazwaZRodzajemPl(element.name, typEtykieta),
     wlasciwosci: [
       {
         id: 'podstawowe',
         tytul: 'Podstawowe',
         wiersze: [
-          { etykieta: 'Nazwa', wartosc: { wartosc: element.name || element.ref_id } },
+          { etykieta: 'Nazwa', wartosc: { wartosc: nazwaZRodzajemPl(element.name, typEtykieta) } },
           { etykieta: 'Typ elementu', wartosc: { wartosc: typEtykieta } },
         ],
       },
