@@ -141,6 +141,14 @@ export interface TabelaKarty {
   readonly wiersze: readonly WierszTabeli[];
   readonly pustaPl: string;
   readonly zrodloPl?: string | null;
+  /**
+   * Tabela ZWARTA: kilka krótkich kolumn tekstowych, komórki zawijają się na granicy słów
+   * w szerokości inspektora — bez przewijania w poziomie (tabele karty stacji: sekcje szyn,
+   * zasilanie, pola, przyłączenia). Bez tej cechy tabela trzyma wiersz w jednej linii i przewija
+   * się w poziomie z nazwą obiektu przy krawędzi — dla tabel liczb znamionowych (karta pola),
+   * w których zawinięcie rozdzielałoby liczbę od jednostki.
+   */
+  readonly zwarta?: true;
 }
 
 export interface SekcjaKarty {
@@ -702,18 +710,6 @@ function przekladnikiPola(ix: IndeksModelu, bay: Bay): string[] {
   return pomiaryPola(ix, bay).map(opisPrzekladnika);
 }
 
-function komorkaZabezpieczeniaCt(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
-  const czesci: string[] = [];
-  const zab = zabezpieczeniaPola(ix, bay, aparaty);
-  if (zab) czesci.push(zab);
-  const funkcje = (bay.protection_codes ?? []).filter((k) => napis(k));
-  if (funkcje.length > 0) czesci.push(`funkcje ${funkcje.join(', ')}`);
-  // Rodzaj z pola modelu (`measurement_type`), nie z napisu opisu — jedno źródło predykatu.
-  const ct = pomiaryPola(ix, bay).filter((m) => m.measurement_type === 'CT').map(opisPrzekladnika);
-  if (ct.length > 0) czesci.push(ct.join(', '));
-  return czesci.length > 0 ? czesci.join(' · ') : null;
-}
-
 // ---------------------------------------------------------------------------
 // Odcinki przyłączone do zbioru szyn (jeden krok sąsiedztwa rekordu — bez przeszukiwania grafu)
 // ---------------------------------------------------------------------------
@@ -830,6 +826,7 @@ function sekcjaSekcjiSzynGpz(ix: IndeksModelu, stacja: Substation): SekcjaKarty 
       {
         klucz: 'sekcje_sn',
         podpis: 'Sekcje szyn SN',
+        zwarta: true,
         kolumny: KOLUMNY_SEKCJI_GPZ,
         wiersze: wierszeSekcjiGpz(ix, stacja.gpz_sections ?? []),
         pustaPl: 'GPZ nie ma sekcji szyn SN w modelu.',
@@ -837,13 +834,73 @@ function sekcjaSekcjiSzynGpz(ix: IndeksModelu, stacja: Substation): SekcjaKarty 
       {
         klucz: 'sekcje_wn',
         podpis: 'Sekcje szyn 110 kV',
+        zwarta: true,
         kolumny: KOLUMNY_SEKCJI_GPZ,
         wiersze: wierszeSekcjiGpz(ix, stacja.gpz_hv_sections ?? []),
         pustaPl: 'GPZ nie ma sekcji szyn 110 kV w modelu.',
       },
     ],
-    zrodloPl: 'model sieci (sekcje szyn stacji GPZ)',
     ...(zrodloGpz ? { konfiguratorGpzRef: zrodloGpz.ref_id } : {}),
+  };
+}
+
+/**
+ * Które sekcje karty stacji WYNIKAJĄ Z DEFINICJI rodzaju stacji (`station_type`). Sekcja z
+ * definicji jest na karcie zawsze — pusta mówi o luce modelu („Stacja nie ma transformatora w
+ * modelu.” dla stacji SN/nN). Sekcja spoza definicji pojawia się WYŁĄCZNIE, gdy model niesie jej
+ * treść — bez pustych sekcji, które nic inżynierowi nie mówią (GPZ nie ma strony nN ani
+ * transformatora rozdzielczego; rozdzielnia sieciowa SN — transformatora i strony nN;
+ * rozdzielnica nN — rozdzielnicy SN i transformatora). Jedno źródło prawdy dla budowy karty
+ * i testu iloczynu „rodzaj stacji × sekcja”.
+ */
+export const SEKCJE_Z_DEFINICJI_STACJI: Readonly<
+  Record<Substation['station_type'], { readonly rozdzielnicaSn: boolean; readonly transformator: boolean; readonly stronaNn: boolean }>
+> = {
+  gpz: { rozdzielnicaSn: true, transformator: false, stronaNn: false },
+  mv_lv: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  customer: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  inline: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  branch: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  terminal: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  sectional: { rozdzielnicaSn: true, transformator: true, stronaNn: true },
+  switching: { rozdzielnicaSn: true, transformator: false, stronaNn: false },
+  rozdzielnica_nn: { rozdzielnicaSn: false, transformator: false, stronaNn: true },
+};
+
+/** Rodzaj spoza słownika (dane z importu) — wszystkie sekcje jak dla stacji SN/nN (nic nie znika). */
+const SEKCJE_STACJI_SN_NN = SEKCJE_Z_DEFINICJI_STACJI.mv_lv;
+
+/** „Zasilanie” GPZ: sieć zasilająca przypisana do GPZ (`Source.substation_ref`) albo przyłączona
+ *  do jego szyny — jedna sieć = jeden wiersz (nazwa, Sₖ″ maks., R/X) wprost z modelu. GPZ bez
+ *  zasilania w modelu to luka modelu i karta mówi o niej wprost. */
+function sekcjaZasilaniaGpz(ix: IndeksModelu, stacja: Substation, szynyWlasne: ReadonlySet<string>): SekcjaKarty {
+  const zrodla = ix.model.sources ?? [];
+  const sieci = zrodla.filter((z) => z.substation_ref === stacja.ref_id || szynyWlasne.has(z.bus_ref));
+  return {
+    id: 'zasilanie',
+    tytul: 'Zasilanie',
+    wiersze: [],
+    tabele: [
+      {
+        klucz: 'zasilanie',
+        podpis: 'Sieć zasilająca',
+        zwarta: true,
+        kolumny: [
+          { klucz: 'siec', etykieta: 'Sieć' },
+          { klucz: 'sk', etykieta: 'Sₖ″ maks.' },
+          { klucz: 'rx', etykieta: 'R/X' },
+        ],
+        wiersze: sieci.map((z) => ({
+          klucz: z.ref_id,
+          komorki: {
+            siec: nazwaObiektuPl(z.name, 'zrodlo', miejsceWKolekcji(zrodla, z)),
+            sk: zapisLiczby(z.sk3_mva, 'MVA'),
+            rx: zapisLiczby(z.rx_ratio, ''),
+          },
+        })),
+        pustaPl: 'GPZ nie ma w modelu sieci zasilającej.',
+      },
+    ],
   };
 }
 
@@ -853,11 +910,12 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
   const rodzajPl = podpisStacjiPl(model, stacja);
   const bezRodzaju = TYPY_STACJI_BEZ_RODZAJU.has(stacja.station_type);
   const rodzaj = bezRodzaju ? null : rodzajStacji(model, stacja.ref_id);
-  const podstawa = bezRodzaju
-    ? 'nie dotyczy — rodzaj topologiczny określa się dla stacji SN/nN'
-    : rodzaj
-      ? `${rodzaj.przyczynaPl}${rodzaj.zgodnyZDeklaracja ? '' : ' — deklaracja w modelu jest inna (walidator W043)'}`
-      : null;
+  const podstawa = rodzaj
+    ? `${rodzaj.przyczynaPl}${rodzaj.zgodnyZDeklaracja ? '' : ' — deklaracja w modelu jest inna (walidator W043)'}`
+    : null;
+
+  const definicja = SEKCJE_Z_DEFINICJI_STACJI[stacja.station_type] ?? SEKCJE_STACJI_SN_NN;
+  const jestGpz = stacja.station_type === 'gpz';
 
   const identyfikacja: SekcjaKarty = {
     id: 'identyfikacja',
@@ -866,46 +924,47 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       wiersz('oznaczenie', 'Oznaczenie', napis(stacja.designation)),
       wiersz('nazwa', 'Nazwa', napis(stacja.name), { edycja: edycja(stacja.ref_id, 'name', stacja.name) }),
       wiersz('rodzaj', 'Rodzaj', rodzajPl),
-      wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa),
+      // Rodzaj topologiczny nie dotyczy GPZ ani rozdzielnicy nN — wiersz bez treści dla
+      // inżyniera nie trafia na kartę (zamiast „nie dotyczy — …”).
+      ...(bezRodzaju ? [] : [wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa)]),
       wiersz('wykonanie', 'Wykonanie', stacja.construction_type ? WYKONANIE_STACJI_PL[stacja.construction_type] ?? null : null),
       wiersz('kod', 'Kod na schemacie', tozsamosc.code),
     ],
   };
 
-  // Rozdzielnica SN: sekcje (GPZ — sekcje rozdzielni; stacja — szyny pól SN), tabela pól.
+  // Rozdzielnica SN: szyny pól SN (GPZ — sekcje ma tabela „Sekcje szyn”, tu ich nie powtarzamy)
+  // i zwarta tabela pól: jedno pole = jeden wiersz mieszczący się w szerokości inspektora
+  // (340–420 px, bez przewijania w poziomie): pole, numer, rodzaj aparatu głównego i stan. Rola
+  // pola, typ katalogowy i znamiona aparatów, zabezpieczenie i przekładniki mówi karta pola —
+  // jedna informacja w jednym miejscu (§10 kontraktu prezentacji; rola jest zwykle w nazwie pola).
   const polaSn = polaSnStacji(model, stacja.ref_id);
-  const szynySn = stacja.station_type === 'gpz' && (stacja.gpz_sections ?? []).length > 0
-    ? (stacja.gpz_sections ?? []).map((s) => s.bus_ref)
-    : [...new Set(polaSn.map((b) => b.bus_ref))];
-  const sekcje = szynySn.map((ref) => opisSzyny(ix, ref)).filter((s): s is string => s !== null);
+  const sekcje = [...new Set(polaSn.map((b) => b.bus_ref))]
+    .map((ref) => opisSzyny(ix, ref))
+    .filter((s): s is string => s !== null);
   const wierszePol: WierszTabeli[] = polaSn.map((bay) => {
-    const aparaty = aparatyPola(ix, bay);
-    const glowny = aparatGlowny(aparaty);
-    const znamiona = glowny ? znamionaAparatu(glowny, katalogi) : null;
+    const glowny = aparatGlowny(aparatyPola(ix, bay));
     return {
       klucz: bay.ref_id,
       komorki: {
         nr: napis(bay.bay_number),
         pole: nazwaPola(bay),
-        rola: fieldRoleLabelPl(bay.field_role || bay.bay_role),
-        aparat: glowny ? `${glowny.rodzajPl}${znamiona?.typ ? ` · ${znamiona.typ}` : ''}` : null,
-        ur: znamiona?.ur ?? null,
-        ir: znamiona?.ir ?? null,
-        ik: znamiona?.ik ?? null,
+        aparat: glowny ? glowny.rodzajPl : null,
         stan: glowny ? stanAparatu(ix, glowny, bay) : null,
-        zabezpieczenie: komorkaZabezpieczeniaCt(ix, bay, aparaty),
       },
     };
   });
+  // Kolumna „Nr” tylko, gdy którekolwiek pole ma numer w modelu — kolumna pusta we wszystkich
+  // wierszach nie zajmuje szerokości inspektora.
+  const zNumerami = wierszePol.some((w) => w.komorki.nr !== null);
   const rodziny = [...new Set(polaSn.map((b) => napis(b.switchgear_family_ref)).filter((r): r is string => r !== null))];
   const generatorySn = (model.generators ?? []).filter(
     (g) => g.station_ref === stacja.ref_id && g.connection_variant === 'block_transformer',
   );
   const rozdzielnica: SekcjaKarty = {
     id: 'rozdzielnica_sn',
-    tytul: stacja.station_type === 'gpz' ? 'Rozdzielnia SN' : 'Rozdzielnica SN',
+    tytul: jestGpz ? 'Rozdzielnia SN' : 'Rozdzielnica SN',
     wiersze: [
-      lista('sekcje_sn', 'Sekcje szyn SN', sekcje),
+      ...(jestGpz ? [] : [lista('sekcje_sn', 'Sekcje szyn SN', sekcje)]),
       ...(rodziny.length > 0 ? [wiersz('rodzina', 'Rodzina rozdzielnicy', rodziny.join(', '))] : []),
       ...(generatorySn.length > 0
         ? [lista('zrodla_sn', 'Źródła przyłączone po stronie SN', generatorySn.map((g) => opisGeneratora(g)))]
@@ -915,29 +974,28 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       {
         klucz: 'pola_sn',
         podpis: 'Pola rozdzielnicy SN',
+        zwarta: true,
         kolumny: [
-          // Nazwa pola jako pierwsza kolumna: zostaje przy krawędzi przy przewijaniu tabeli.
           { klucz: 'pole', etykieta: 'Pole' },
-          { klucz: 'nr', etykieta: 'Nr' },
-          { klucz: 'rola', etykieta: 'Rola' },
+          ...(zNumerami ? [{ klucz: 'nr', etykieta: 'Nr' }] : []),
           { klucz: 'aparat', etykieta: 'Aparat główny' },
-          { klucz: 'ur', etykieta: 'Uᵣ' },
-          { klucz: 'ir', etykieta: 'Iᵣ' },
-          { klucz: 'ik', etykieta: 'Zdolność wyłączalna' },
           { klucz: 'stan', etykieta: 'Stan' },
-          { klucz: 'zabezpieczenie', etykieta: 'Zabezpieczenie / przekładniki' },
         ],
         wiersze: wierszePol,
         pustaPl: 'Rozdzielnica SN nie ma pól w modelu.',
-        zrodloPl: 'Dane znamionowe aparatów: pozycja katalogu aparatu przypisana w modelu.',
       },
     ],
   };
 
-  // Transformator(y) rozdzielczy stacji.
+  // Transformator(y) stacji. GPZ: transformator 110 kV/SN, gdy model go zawiera (ta sama reguła
+  // przynależności — szyny stacji albo deklaracja `transformer_refs`); bez niego sekcji nie ma,
+  // a zasilanie mówi sekcja „Zasilanie”. Komunikat o braku — tylko gdy transformator wynika
+  // z definicji rodzaju stacji (luka modelu).
   const transformatory = selectStationDistributionTransformers(model, stacja);
   const sekcjeTr: SekcjaKarty[] = transformatory.length === 0
-    ? [{ id: 'transformator', tytul: 'Transformator', wiersze: [], pustaPl: 'Stacja nie ma transformatora w modelu.' }]
+    ? definicja.transformator
+      ? [{ id: 'transformator', tytul: 'Transformator', wiersze: [], pustaPl: 'Stacja nie ma transformatora w modelu.' }]
+      : []
     : transformatory.map((tr, i) => ({
         id: i === 0 ? 'transformator' : `transformator_${i + 1}`,
         tytul: transformatory.length > 1 ? `Transformator ${publicTechnicalLabel(tr.name, `T${i + 1}`)}` : 'Transformator',
@@ -954,12 +1012,18 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     ? (stacja.nn_sections ?? []).map((s) => s.bus_ref)
     : stacja.bus_refs.filter((ref) => wPasmieNn(ix.szyny.get(ref)?.voltage_kv));
   const odplywy = polaNnStacji(model, stacja.ref_id).map((b) => nazwaPola(b) ?? fieldRoleLabelPl(b.bay_role));
+  // Odbiory strony nN: na szynie w paśmie nN (odbiór SN na szynie stacji nie jest „stroną nN”).
   const odbiory = (model.loads ?? [])
-    .filter((l) => szynyWlasne.has(l.bus_ref) || rekord(l.meta)?.station_ref === stacja.ref_id)
+    .filter(
+      (l) =>
+        wPasmieNn(ix.szyny.get(l.bus_ref)?.voltage_kv)
+        && (szynyWlasne.has(l.bus_ref) || rekord(l.meta)?.station_ref === stacja.ref_id),
+    )
     .map((l) => `${publicTechnicalLabel(l.name, 'Odbiór')} · ${zapisLiczby(l.p_mw, 'MW') ?? BRAK_DANYCH_PL}`);
   const zrodlaNn = (model.generators ?? [])
     .filter((g) => g.station_ref === stacja.ref_id && g.connection_variant !== 'block_transformer')
     .map((g) => opisGeneratora(g));
+  const stronaNnMaTresc = szynyNn.length + odplywy.length + odbiory.length + zrodlaNn.length > 0;
   const stronaNn: SekcjaKarty = {
     id: 'strona_nn',
     tytul: 'Strona nN',
@@ -985,6 +1049,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       {
         klucz: 'przylaczenia',
         podpis: 'Odcinki przyłączone do stacji',
+        zwarta: true,
         kolumny: [
           { klucz: 'odcinek', etykieta: 'Odcinek' },
           { klucz: 'typ', etykieta: 'Typ' },
@@ -1011,12 +1076,16 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     // K6 (Z-11): nazwa nagłówka z tej samej reguły co wiersz drzewa projektu.
     nazwa: nazwaStacjiJakWDrzewie(model, stacja),
     elementRef: stacja.ref_id,
+    // Kolejność toru energii: GPZ — zasilanie, transformator, sekcje szyn, rozdzielnia SN;
+    // stacja SN/nN — rozdzielnica SN, transformator, strona nN.
     sekcje: [
       identyfikacja,
-      ...(stacja.station_type === 'gpz' ? [sekcjaSekcjiSzynGpz(ix, stacja)] : []),
-      rozdzielnica,
-      ...sekcjeTr,
-      stronaNn,
+      ...(jestGpz ? [sekcjaZasilaniaGpz(ix, stacja, szynyWlasne)] : []),
+      ...(jestGpz ? sekcjeTr : []),
+      ...(jestGpz ? [sekcjaSekcjiSzynGpz(ix, stacja)] : []),
+      ...(definicja.rozdzielnicaSn || polaSn.length > 0 ? [rozdzielnica] : []),
+      ...(jestGpz ? [] : sekcjeTr),
+      ...(definicja.stronaNn || stronaNnMaTresc ? [stronaNn] : []),
       przylaczenia,
     ],
   };
@@ -1118,11 +1187,17 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
       ],
     },
-    {
-      id: 'przylaczenie',
-      tytul: 'Przyłączenie',
-      wiersze: [lista('przylaczenie', 'Odcinki na zacisku pola', odcinki)],
-    },
+    // Przyłączenie dotyczy pola z zaciskiem (odpływ, zasilanie, źródło); pole bez zacisku w modelu
+    // (sprzęgło, pomiar napięcia) nie ma tej sekcji — zamiast pustej listy odcinków.
+    ...(zacisk
+      ? [
+          {
+            id: 'przylaczenie',
+            tytul: 'Przyłączenie',
+            wiersze: [lista('przylaczenie', 'Odcinki na zacisku pola', odcinki)],
+          },
+        ]
+      : []),
   ];
   return {
     rodzaj: 'pole',
@@ -1175,7 +1250,9 @@ function kartaAparatu(
         wiersz('pole', 'Pole', nazwaPola(bay)),
         wiersz('stacja', 'Stacja', bay ? nazwaStacji(ix, stacjaPola(ix.model, bay.ref_id)) : null),
         ...(globalId ? [wiersz('identyfikator', 'Identyfikator na schemacie', globalId)] : []),
-        wiersz('stan', 'Położenie (model)', aparat.lacznik ? stanAparatu(ix, aparat, bay) : 'nie dotyczy'),
+        // Położenie i zdolność wyłączalna dotyczą tylko łącznika; aparat niełączeniowy
+        // (przekładnik, ogranicznik, głowica) nie ma tych wierszy — zamiast „nie dotyczy”.
+        ...(aparat.lacznik ? [wiersz('stan', 'Położenie (model)', stanAparatu(ix, aparat, bay))] : []),
       ];
   return {
     rodzaj: lacznikToru ? 'lacznik' : 'aparat',
@@ -1191,7 +1268,7 @@ function kartaAparatu(
           wiersz('typ', 'Typ katalogowy', zn.typ),
           wiersz('ur', 'Napięcie znamionowe Uᵣ', zn.ur),
           wiersz('ir', 'Prąd znamionowy Iᵣ', zn.ir),
-          wiersz('ik_wyl', 'Zdolność wyłączalna', aparat.lacznik ? zn.ik : 'nie dotyczy'),
+          ...(aparat.lacznik ? [wiersz('ik_wyl', 'Zdolność wyłączalna', zn.ik)] : []),
           // Wiersz zawsze dla łącznika: „brak danych” (null) odróżniony od „nie dotyczy”.
           ...(aparat.lacznik || zn.ith ? [wiersz('ith', 'Prąd cieplny Iₜₕ / czas', zn.ith)] : []),
           ...(zn.idyn ? [wiersz('idyn', 'Prąd szczytowy I_dyn', zn.idyn)] : []),
@@ -1256,10 +1333,9 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
     if (!szyna) return null;
     return stacja ? `${stacja} · ${szyna}` : szyna;
   };
-  const izolacja =
-    galaz.type === 'cable'
-      ? nazwaKodowaLubBrak('insulation_type', napis(galaz.insulation) ?? napis(mp?.insulation_type))
-      : 'nie dotyczy (linia napowietrzna)';
+  // Izolacja dotyczy kabla; linia napowietrzna nie ma tego wiersza (rodzaj mówi nagłówek karty).
+  const kabel = galaz.type === 'cable';
+  const izolacja = kabel ? nazwaKodowaLubBrak('insulation_type', napis(galaz.insulation) ?? napis(mp?.insulation_type)) : null;
   return {
     rodzaj: 'odcinek',
     rodzajPl: galaz.type === 'line_overhead' ? 'Linia napowietrzna' : 'Odcinek kablowy',
@@ -1285,7 +1361,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('dlugosc', 'Długość', dlugoscOdcinka(galaz), odcinek ? { edycja: edycja(galaz.ref_id, 'length_km', odcinek.length_km) } : {}),
           wiersz('przekroj', 'Przekrój', zapisLiczby(odcinek?.cross_section_mm2 ?? mp?.cross_section_mm2, 'mm²')),
           wiersz('material', 'Materiał żyły', nazwaKodowaLubBrak('conductor_material', napis(odcinek?.conductor_material) ?? napis(mp?.conductor_material))),
-          wiersz('izolacja', 'Izolacja', izolacja),
+          ...(kabel ? [wiersz('izolacja', 'Izolacja', izolacja)] : []),
           wiersz('i_dop', 'Obciążalność długotrwała', zapisLiczby(odcinek?.rating?.in_a ?? mp?.rated_current_a, 'A', 0)),
           wiersz('r1', 'Rezystancja R′', zapisLiczby(odcinek?.r_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'r_ohm_per_km') }),
           wiersz('x1', 'Reaktancja X′', zapisLiczby(odcinek?.x_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'x_ohm_per_km') }),
@@ -1352,7 +1428,6 @@ function sekcjaZgodnosciNcRfg(g: Generator, katalogi: KatalogiKarty): SekcjaKart
         dynamika ? formatDerDynamicProfileLabelPl(dynamika) : dynRef ? 'profil spoza katalogu modeli dynamicznych' : null,
       ),
     ],
-    zrodloPl: 'Wiązania profili z modelu źródła; treść z katalogów profili operatorów NC RfG, charakterystyk P(f) i modeli dynamicznych.',
   };
 }
 
@@ -1432,24 +1507,24 @@ function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): K
           wiersz('wariant', 'Przyłączenie', wariantPrzylaczeniaPl(g.connection_variant)),
           wiersz('szyna_przylaczenia', 'Szyna falownika', opisSzyny(ix, g.bus_ref)),
           wiersz('pole_zrodlowe', blokowy ? FIELD_SOURCE_LABEL_PL : 'Pole źródłowe nN', nazwaPola(pole)),
-          wiersz(
-            'tr_blokowy',
-            'Transformator blokowy',
-            blokowy
-              ? tr
-                ? `${publicTechnicalLabel(tr.name, 'Transformator blokowy')} · ${zapisLiczby(tr.sn_mva, 'MVA') ?? BRAK_DANYCH_PL} · ${zapisLiczby(tr.uhv_kv, 'kV') ?? BRAK_DANYCH_PL}/${zapisLiczby(tr.ulv_kv, 'kV') ?? BRAK_DANYCH_PL}`
-                : null
-              : 'nie dotyczy (przyłączenie po stronie nN stacji)',
-          ),
-          wiersz(
-            'kabel_sn',
-            'Kabel SN przyłączeniowy',
-            blokowy
-              ? kabel
-                ? `${typOdcinka(kabel) ?? RODZAJ_GALEZI_PL[kabel.type]} · ${dlugoscOdcinka(kabel) ?? BRAK_DANYCH_PL}`
-                : null
-              : 'nie dotyczy (przyłączenie po stronie nN stacji)',
-          ),
+          // Transformator blokowy i kabel SN należą do toru źródła przyłączonego blokowo; przy
+          // przyłączeniu po stronie nN stacji tych wierszy nie ma (wariant mówi wiersz wyżej).
+          ...(blokowy
+            ? [
+                wiersz(
+                  'tr_blokowy',
+                  'Transformator blokowy',
+                  tr
+                    ? `${publicTechnicalLabel(tr.name, 'Transformator blokowy')} · ${zapisLiczby(tr.sn_mva, 'MVA') ?? BRAK_DANYCH_PL} · ${zapisLiczby(tr.uhv_kv, 'kV') ?? BRAK_DANYCH_PL}/${zapisLiczby(tr.ulv_kv, 'kV') ?? BRAK_DANYCH_PL}`
+                    : null,
+                ),
+                wiersz(
+                  'kabel_sn',
+                  'Kabel SN przyłączeniowy',
+                  kabel ? `${typOdcinka(kabel) ?? RODZAJ_GALEZI_PL[kabel.type]} · ${dlugoscOdcinka(kabel) ?? BRAK_DANYCH_PL}` : null,
+                ),
+              ]
+            : []),
         ],
       },
       sekcjaZgodnosciNcRfg(g, katalogi),

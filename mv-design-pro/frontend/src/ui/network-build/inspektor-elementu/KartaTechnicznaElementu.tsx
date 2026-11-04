@@ -75,7 +75,8 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
       <p id={idPodpisu} className="mvd-kt-podpis-tabeli">
         {tabela.podpis}
       </p>
-      {/* Obszar przewijany w poziomie: fokus klawiatury (strzałki przewijają), nazwany podpisem. */}
+      {/* Obszar przewijany w poziomie: fokus klawiatury (strzałki przewijają), nazwany podpisem.
+          Tabela zwarta zawija komórki w szerokości inspektora — przewijanie zostaje zabezpieczeniem. */}
       <div
         className="mvd-kt-tabela-przewijanie"
         role="region"
@@ -83,7 +84,12 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
         tabIndex={0}
         data-testid={`inspektor-karta-tabela-${tabela.klucz}-przewijanie`}
       >
-        <table className="mvd-kt-tabela" data-testid={`inspektor-karta-tabela-${tabela.klucz}`} aria-labelledby={idPodpisu}>
+        <table
+          className={tabela.zwarta ? 'mvd-kt-tabela mvd-kt-tabela-zwarta' : 'mvd-kt-tabela'}
+          data-testid={`inspektor-karta-tabela-${tabela.klucz}`}
+          data-zwarta={tabela.zwarta ? 'true' : 'false'}
+          aria-labelledby={idPodpisu}
+        >
           <thead>
             <tr>
               {tabela.kolumny.map((k) => (

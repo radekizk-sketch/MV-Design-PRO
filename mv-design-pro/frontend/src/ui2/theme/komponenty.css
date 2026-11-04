@@ -333,6 +333,21 @@
   white-space: nowrap;
   border-top: 1px solid var(--mvd-line);
 }
+/* Tabela ZWARTA (model: `TabelaKarty.zwarta`): kilka krótkich kolumn tekstowych w szerokości
+   inspektora — komórki zawijają się na granicy słów zamiast przewijania w poziomie (§10 kontraktu
+   prezentacji, decyzja architekta 2026-11-04). */
+.mvd-kt-tabela-zwarta {
+  width: 100%;
+}
+.mvd-kt-tabela-zwarta th,
+.mvd-kt-tabela-zwarta td {
+  padding-right: 8px;
+  white-space: normal;
+}
+.mvd-kt-tabela-zwarta th:last-child,
+.mvd-kt-tabela-zwarta td:last-child {
+  padding-right: 0;
+}
 .mvd-kt-tabela th {
   color: var(--mvd-muted);
   font-weight: 600;

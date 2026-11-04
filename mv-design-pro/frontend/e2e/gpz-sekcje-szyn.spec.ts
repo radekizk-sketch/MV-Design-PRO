@@ -5,7 +5,12 @@
  *
  * Spec na REALNYM backendzie, ścieżką NATYWNĄ (klik myszy w obiekt GPZ na kanwie i w przycisk
  * inspektora — bez zdarzeń syntetycznych):
- *  1. karta stacji GPZ ma sekcję „Sekcje szyn” zaraz po identyfikacji: tabela SN z jednym
+ *  0. karta GPZ mówi każdą informację raz, bez sekcji i wierszy bez treści (decyzja architekta
+ *     2026-11-04): kolejność toru energii — identyfikacja (bez „Podstawy rodzaju”), „Zasilanie”
+ *     (sieć zasilająca z modelu: Sₖ″, R/X), „Sekcje szyn”, „Rozdzielnia SN” (bez listy sekcji,
+ *     tabela pól bez przewijania w poziomie, bez pustej kolumny „Nr”), „Przyłączenia”; bez
+ *     „Transformator: brak” i bez „Strona nN”; bez ogólnikowego „Źródło danych”;
+ *  1. karta stacji GPZ ma sekcję „Sekcje szyn”: tabela SN z jednym
  *     wierszem na sekcję modelu w kolejności `order` (nazwa, szyna, Uₙ — zgodne z ENM z API),
  *     mieszcząca się w szerokości inspektora bez przewijania; strona 110 kV jawnie pusta;
  *     identyfikatory sekcji nie trafiają na ekran;
@@ -34,7 +39,14 @@ interface SekcjaEnm {
   readonly name?: string | null;
   readonly bus_ref: string;
 }
+interface ZrodloEnm {
+  readonly ref_id: string;
+  readonly name?: string | null;
+  readonly substation_ref?: string | null;
+  readonly sk3_mva?: number | null;
+}
 interface EnmGpz {
+  readonly sources?: readonly ZrodloEnm[];
   readonly substations?: ReadonlyArray<{
     readonly ref_id: string;
     readonly name?: string;
@@ -43,7 +55,12 @@ interface EnmGpz {
     readonly gpz_sections?: readonly SekcjaEnm[] | null;
   }>;
   readonly buses?: ReadonlyArray<{ readonly ref_id: string; readonly name?: string; readonly voltage_kv: number }>;
-  readonly bays?: ReadonlyArray<{ readonly ref_id: string; readonly substation_ref?: string | null; readonly gpz_section_id?: string | null }>;
+  readonly bays?: ReadonlyArray<{
+    readonly ref_id: string;
+    readonly substation_ref?: string | null;
+    readonly gpz_section_id?: string | null;
+    readonly bay_number?: string | null;
+  }>;
 }
 
 async function enmPrzypadku(request: APIRequestContext, caseId: string): Promise<EnmGpz> {
@@ -123,6 +140,33 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   const sekcjaKarty = karta.getByTestId('inspektor-karta-sekcje_szyn');
   await expect(sekcjaKarty.getByRole('heading', { name: 'Sekcje szyn' })).toBeVisible();
 
+  // 0. Każda informacja raz: kolejność sekcji toru energii, bez sekcji i wierszy bez treści.
+  const idSekcji = await karta.locator('section.mvd-kt-sekcja').evaluateAll((sekcje) =>
+    sekcje.map((s) => (s.getAttribute('data-testid') ?? '').replace('inspektor-karta-', '')),
+  );
+  expect(idSekcji).toEqual(['identyfikacja', 'zasilanie', 'sekcje_szyn', 'rozdzielnica_sn', 'przylaczenia']);
+  await expect(karta.getByTestId('inspektor-karta-wartosc-podstawa_rodzaju')).toHaveCount(0);
+  await expect(karta).not.toContainText('nie dotyczy');
+  await expect(karta).not.toContainText('Źródło danych');
+  await expect(karta).not.toContainText('nie ma transformatora');
+  const zrodlaGpz = (enm.sources ?? []).filter((z) => z.substation_ref === gpz.ref_id);
+  expect(zrodlaGpz, 'ziarno: sieć zasilająca GPZ').toHaveLength(1);
+  const wierszZasilania = karta.getByTestId('inspektor-karta-wiersz-zasilanie');
+  await expect(wierszZasilania).toHaveCount(1);
+  await expect(wierszZasilania.locator('td[data-kolumna="sk"]')).toHaveText(`${zrodlaGpz[0].sk3_mva} MVA`);
+  const rozdzielnia = karta.getByTestId('inspektor-karta-rozdzielnica_sn');
+  await expect(rozdzielnia.getByRole('heading', { name: 'Rozdzielnia SN' })).toBeVisible();
+  await expect(rozdzielnia.getByTestId('inspektor-karta-wartosc-sekcje_sn')).toHaveCount(0);
+  const tabelaPol = rozdzielnia.getByTestId('inspektor-karta-tabela-pola_sn');
+  const polaGpz = (enm.bays ?? []).filter((b) => b.substation_ref === gpz.ref_id);
+  await expect(tabelaPol.getByTestId('inspektor-karta-wiersz-pola_sn')).toHaveCount(polaGpz.length);
+  const naglowkiPol = await tabelaPol.locator('thead th').allTextContents();
+  expect(naglowkiPol.includes('Nr'), 'kolumna „Nr” tylko, gdy pole ma numer w modelu').toBe(polaGpz.some((b) => (b.bay_number ?? '').trim() !== ''));
+  const szerokoscPol = await rozdzielnia
+    .getByTestId('inspektor-karta-tabela-pola_sn-przewijanie')
+    .evaluate((el) => ({ widoczna: el.clientWidth, tresc: el.scrollWidth }));
+  expect(szerokoscPol.tresc, 'tabela pól bez przewijania w poziomie').toBeLessThanOrEqual(szerokoscPol.widoczna);
+
   // 1. Tabela SN: jeden wiersz na sekcję modelu w kolejności `order`, nazwy szyn i Uₙ z ENM.
   const wiersze = sekcjaKarty.getByTestId('inspektor-karta-wiersz-sekcje_sn');
   await expect(wiersze).toHaveCount(sekcje.length);
@@ -143,6 +187,9 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
 
   const pomiar: Record<string, number> = {};
   pomiar.wysokosc_sekcji_px = Math.round((await sekcjaKarty.boundingBox())?.height ?? -1);
+  pomiar.wysokosc_karty_px = Math.round((await karta.boundingBox())?.height ?? -1);
+  pomiar.liczba_sekcji_karty = idSekcji.length;
+  pomiar.kolumny_tabeli_pol = naglowkiPol.length;
 
   // Zrzuty inspektora z kartą GPZ — oba motywy (przełącznik powłoki).
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });

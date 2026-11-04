@@ -497,34 +497,40 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     });
   });
 
-  it('stacja, dane pełne: tabela pól — nr, rola, aparat główny z katalogu, Uᵣ, Iᵣ, zdolność wyłączalna, stan, zabezpieczenie i CT', () => {
+  // Tabela pól stacji jest ZWARTA (§10 kontraktu prezentacji, decyzja architekta 2026-11-04):
+  // jedno pole = jeden wiersz mieszczący się w szerokości inspektora — pole, nr, rodzaj aparatu
+  // głównego i stan. Rola, typ katalogowy i znamiona aparatów, zabezpieczenie i przekładniki mówi
+  // karta pola (jedna informacja w jednym miejscu) — przypięte niżej na karcie pola.
+  it('stacja, dane pełne: zwarta tabela pól — pole, nr, aparat główny, stan; reszta na karcie pola', () => {
     const k = karta('stacja', 'pelne');
     const pola = tabele(k).get('tabela:pola_sn')!;
+    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Pole', 'Nr', 'Aparat główny', 'Stan']);
+    expect(pola.zrodloPl ?? null).toBeNull();
     const pole01 = pola.wiersze.find((r) => r.klucz === 'bay-in')!;
     expect(pole01.komorki).toEqual({
       nr: '01',
       pole: 'Pole liniowe 01',
-      rola: expect.any(String),
-      aparat: 'Wyłącznik · VD4 24 kV 630 A 20 kA',
-      ur: '24 kV',
-      ir: '630 A',
-      ik: '20 kA',
+      aparat: 'Wyłącznik',
       stan: 'zamknięty',
-      zabezpieczenie: 'Zabezpieczenie pola 01 (nadprądowe) · funkcje 50, 51 · przekładnik prądowy 200/5 A · kl. 5P20',
     });
-    // Pole bez aparatu w modelu: komórki aparatu „brak danych", nie aparat z konwencji.
+    // Pole bez aparatu w modelu: komórka aparatu „brak danych", nie aparat z konwencji.
     const poleTr = pola.wiersze.find((r) => r.klucz === 'bay-tr')!;
     expect(poleTr.komorki.aparat).toBeNull();
-    expect(poleTr.komorki.ik).toBeNull();
+    // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
+    const pole = wiersze(karta('pole', 'pelne'));
+    expect(pole.get('rola')!.wartosc).toBeTruthy();
+    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01 (nadprądowe)');
+    expect(pole.get('funkcje_zabezpieczen')!.wartosc).toBe('50, 51');
+    const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
+    expect(aparaty.wiersze.find((r) => r.komorki.typ === 'VD4 24 kV 630 A 20 kA')!.komorki).toMatchObject({ ur: '24 kV', ir: '630 A', ik: '20 kA' });
     const tr = wiersze(k);
     expect(tr.get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
     expect(k.sekcje.find((s) => s.id === 'transformator')!.zrodloPl).toBe('katalog: TNOSCT 630 kVA 15/0,4 kV');
   });
 
   // Iloczyn rodzaju przekładnika {prądowy · napięciowy}: lista pola pokazuje oba z polską
-  // nazwą (bez kodu CT/VT), komórka „Zabezpieczenie / przekładniki" tabeli pól — tylko prądowy
-  // (predykat z pola modelu `measurement_type`, nie z napisu).
-  it('przekładniki pola: oba rodzaje z polską nazwą; do komórki zabezpieczenia trafia tylko prądowy', () => {
+  // nazwą (bez kodu CT/VT).
+  it('przekładniki pola: oba rodzaje z polską nazwą', () => {
     const lista = wiersze(karta('pole', 'pelne')).get('przekladniki')!.lista;
     expect(lista).toEqual(['przekładnik prądowy 200/5 A · kl. 5P20', 'przekładnik napięciowy 15 000/100 V · kl. 0.5']);
     expect(lista!.join(' ')).not.toMatch(/\b(CT|VT)\b/);

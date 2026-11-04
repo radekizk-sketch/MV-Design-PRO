@@ -79,12 +79,12 @@ afterEach(() => {
 });
 
 describe('Model karty GPZ — sekcja „Sekcje szyn”', () => {
-  it('zaraz po identyfikacji; tabela SN posortowana po kolejności, jeden wiersz na sekcję, nazwy zamiast identyfikatorów', () => {
+  it('w torze energii po zasilaniu, przed rozdzielnią SN; tabela SN posortowana po kolejności, jeden wiersz na sekcję, nazwy zamiast identyfikatorów', () => {
     const k = karta(model({ zrodlo: true, sekcjaWn: false }));
-    const indeks = k.sekcje.findIndex((s) => s.id === 'sekcje_szyn');
-    expect(indeks).toBe(k.sekcje.findIndex((s) => s.id === 'identyfikacja') + 1);
-    const sekcja = k.sekcje[indeks];
+    expect(k.sekcje.map((s) => s.id)).toEqual(['identyfikacja', 'zasilanie', 'sekcje_szyn', 'rozdzielnica_sn', 'przylaczenia']);
+    const sekcja = k.sekcje.find((s) => s.id === 'sekcje_szyn')!;
     expect(sekcja.tytul).toBe('Sekcje szyn');
+    expect(sekcja.zrodloPl ?? null).toBeNull();
     expect(sekcja.tabele?.map((t) => t.klucz)).toEqual(['sekcje_sn', 'sekcje_wn']);
     expect(sekcja.tabele?.[0].kolumny.map((k) => k.etykieta)).toEqual(['Sekcja', 'Szyna', 'Uₙ']);
     expect(sekcja.tabele?.[0].wiersze.map((w) => w.komorki)).toEqual([
@@ -140,6 +140,10 @@ describe('Render karty GPZ — tryb × źródło GPZ', () => {
       const sekcja = screen.getByTestId('inspektor-karta-sekcje_szyn');
       expect(within(sekcja).queryByTestId('inspektor-karta-konfiguruj-gpz')).toBeNull();
       expect(within(sekcja).getAllByTestId('inspektor-karta-wiersz-sekcje_sn')).toHaveLength(2);
+      // Tabela zwarta: klasa zawijania komórek w szerokości inspektora (bez przewijania w poziomie).
+      const tabela = within(sekcja).getByTestId('inspektor-karta-tabela-sekcje_sn');
+      expect(tabela.getAttribute('data-zwarta')).toBe('true');
+      expect(tabela.classList.contains('mvd-kt-tabela-zwarta')).toBe(true);
     });
   }
 

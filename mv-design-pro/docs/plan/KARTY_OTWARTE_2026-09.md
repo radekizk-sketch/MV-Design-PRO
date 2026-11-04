@@ -1403,6 +1403,35 @@ Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (mater
 werdyktu). Czerwone e2e `sld-gpz-zwiniety` (wyłącznik niewidoczny) jest sprzed zmiany i należy do
 listy 22 czerwonych prowadzonej osobno — nie duplikowane. Punkt 4 („—” kontra „brak danych”)
 nadal wstrzymany.
+
+**Commit 14 (2026-11-04) — oględziny karty GPZ: każda informacja raz, bez sekcji i wierszy bez
+treści (standard KD6, §10 kontraktu prezentacji).** Karta stacji GPZ w kolejności toru energii:
+identyfikacja (bez „Podstawy rodzaju: nie dotyczy…”), „Zasilanie” (sieć zasilająca z modelu —
+przypisana do GPZ albo na jego szynie: nazwa, Sₖ″ maks., R/X; GPZ bez sieci — jawna luka modelu),
+transformator 110 kV/SN tylko, gdy model go zawiera, „Sekcje szyn”, „Rozdzielnia SN” (bez listy
+sekcji powtarzającej tabelę), „Przyłączenia”; bez „Transformator: brak” i „Strona nN”. Klasa w całej
+karcie K6: sekcje stacji wg jednego słownika `SEKCJE_Z_DEFINICJI_STACJI` (rodzaj stacji → sekcje z
+definicji; sekcja spoza definicji tylko z treścią modelu — rozdzielnia sieciowa SN i rozdzielnica
+nN też bez pustych sekcji); wiersze „nie dotyczy” bez treści zdjęte (aparat niełączeniowy —
+położenie i zdolność wyłączalna; linia napowietrzna — izolacja; źródło po stronie nN — transformator
+blokowy i kabel SN; pole bez zacisku — sekcja „Przyłączenie”); ogólnikowe „Źródło danych” zdjęte
+(sekcje szyn, tabela pól stacji, zgodność NC RfG), źródło danych tabliczki i znamion konkretnego
+elementu zostaje. Komórki tabel „nie dotyczy” zostają (odróżnienie od „brak danych” — punkt 4
+wstrzymany). Tabela pól stacji zwarta: pole, nr (tylko gdy którekolwiek pole ma numer), rodzaj
+aparatu głównego, stan — rola, typ katalogowy, znamiona, zabezpieczenie i przekładniki mówi karta
+pola. Tabele karty stacji mają cechę modelu `TabelaKarty.zwarta` (komórki zawijają się w szerokości
+inspektora, bez przewijania w poziomie; e2e: tabela pól GPZ i stacji SN/nN przy 420 i 560 px);
+tabela aparatów karty pola (liczby znamionowe z jednostką) świadomie zostaje w jednej linii
+z przewijaniem — pierwsza próba zawijania wszystkich tabel rozdzielała „17,5 / kV” i nadal ucinała
+„Stan”, a wersja z kolumnami roli i typu wypychała transformator z pierwszego ekranu (974 px przy
+granicy 871 px, e2e K6). Przy okazji: odbiór SN na szynie stacji nie trafia
+już do „Strona nN · Odbiory” (filtr pasma nN). Pomiar (e2e GPZ, 1600×1000, realny backend): przed
+(`6e72f2502`) — 6 sekcji (w tym „Transformator: brak” i pusta „Strona nN”), tabela pól 9 kolumn
+z przewijaniem, „Sekcje szyn” 222 px, karta niemieszcząca się w oknie inspektora (ucięta na zrzucie
+przy „Strona nN”; wysokości całej karty wtedy nie mierzono); po — 5 sekcji, karta 714 px, „Sekcje
+szyn” 179 px, tabela pól 3 kolumny bez przewijania, 1 kliknięcie do karty „Sekcje SN”
+konfiguratora. Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed:
+te same ścieżki w `6e72f2502`); materiał B-02, bez werdyktu.
 ---
 
 ## LICZBY-PL
