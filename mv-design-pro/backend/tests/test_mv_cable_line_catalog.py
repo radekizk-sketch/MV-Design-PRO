@@ -258,31 +258,42 @@ class TestManufacturerTypeMapping:
             assert tfk.trade_name is not None, f"Typ TFK {tfk.id} bez trade_name"
 
     def test_enea_operator_standard_cables_are_first_and_marked_partial(self) -> None:
-        """Priorytetowa lista kabli dla projektanta zaczyna sie od standardow ENEA."""
+        """Priorytetowa lista kabli dla projektanta zaczyna sie od typoszeregu ENEA.
+
+        Intencja zachowana po karcie KATALOG-PRZEJECIE-PR (poz. 4): na poczatku listy stoja
+        kable z tab. 3 standardu ENEA 03.2026 (NKT XRUHAKXS1/XUHAKXS1 70/150/240/25) z danymi
+        z kart producenta; cztery dawne pozycje „ENEA Operator standard”, ktorych oznaczen
+        tab. 3 nie zna, ida zaraz za nimi jako profil REFERENCYJNY bez producenta.
+        """
         records = get_all_cable_types()
-
-        assert [record["id"] for record in records[:4]] == [
+        typoszereg_enea = [
+            f"cable-enea-2026-nkt-{rodzina}-{przekroj}-25"
+            for rodzina in ("xruhakxs1", "xuhakxs1")
+            for przekroj in (70, 150, 240)
+        ]
+        dawne = [
             "cable-enea-operator-xruhakxs-1x120",
             "cable-enea-operator-xruhakxs-1x240",
             "cable-enea-operator-na2xs2y-1x150",
             "cable-enea-operator-na2xs2y-1x240",
         ]
-        assert all(record["params"]["manufacturer"] == "ENEA Operator" for record in records[:4])
-        assert all(
-            record["params"]["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
-            for record in records[:4]
-        )
-        assert all(
-            "ENEA Operator" in record["params"]["source_reference"] for record in records[:4]
-        )
+        assert [record["id"] for record in records[:10]] == typoszereg_enea + dawne
+        for record in records[:6]:
+            assert record["params"]["manufacturer"] == "NKT"
+            assert record["params"]["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
+            assert "ENEA Operator" in record["params"]["source_reference"]
+            assert "tab. 3" in record["params"]["source_reference"]
+        for record in records[6:10]:
+            assert "manufacturer" not in record["params"]
+            assert record["params"]["verification_status"] == "REFERENCYJNY"
+            assert "ENEA Operator standard" not in record["name"]
 
+        # Repozytorium sortuje po nazwie (`_sorted`): dawny „pierwszy na liście” wynikał
+        # z nazwy „ENEA Operator standard - …”, której pozycje już nie noszą. Wiąże więc
+        # obecność wszystkich dziesięciu pozycji w kanonicznym katalogu.
         catalog = get_default_mv_catalog()
-        assert [str(item.id) for item in catalog.list_cable_types()[:4]] == [
-            "cable-enea-operator-na2xs2y-1x150",
-            "cable-enea-operator-na2xs2y-1x240",
-            "cable-enea-operator-xruhakxs-1x120",
-            "cable-enea-operator-xruhakxs-1x240",
-        ]
+        identyfikatory = {str(item.id) for item in catalog.list_cable_types()}
+        assert set(typoszereg_enea + dawne) <= identyfikatory
 
 
 class TestCatalogDeterminism:

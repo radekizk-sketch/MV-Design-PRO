@@ -9,10 +9,12 @@
  *
  * Scena dowodowa (2 falowniki PV 1 MW ⇒ ΣP 2,0 MW ⇒ TR 2,5 MVA ⇒ I_TR 96,2 A,
  * rezerwa kabla 0,3 ⇒ próg 125,1 A):
- *   A. warunki KATALOGOWE      ⇒ propozycja 50 mm²
- *   B. ziemia, 3 kable, 200 mm ⇒ 50 mm² odpada (Iz 160 A × 0,74538 = 119,3 A < 125,1 A)
- *                                ⇒ propozycja 70 mm², obciążalność po korekcie obok
+ *   A. warunki KATALOGOWE      ⇒ propozycja Tele-Fonika XRUHKXS Cu 1×35/16 mm² (Iz 231 A)
+ *   B. ziemia, 3 kable, 200 mm ⇒ obciążalność po korekcie 231 A × 0,74538 = 172,2 A ≥ 125,1 A
+ *                                ⇒ ten sam przekrój, obciążalność po korekcie obok
  *                                  katalogowej + jawne założenie w śladzie
+ *   (do karty KATALOG-PRZEJECIE-PR, 2026-11-04, węższy katalog dawał 50 → 70 mm²;
+ *   pin liczbowy: backend tests/e2e/test_creator_harness_katalogi_parytet.py)
  *
  * Karta FAB-L (§0 L6, 2026-09-05): falownik `conv-pv-nn-1mw-0p4kv` (realny
  * katalog backendu) zastąpił dawny zmyślony `pv-1` (900 kW) — cały dalszy tor

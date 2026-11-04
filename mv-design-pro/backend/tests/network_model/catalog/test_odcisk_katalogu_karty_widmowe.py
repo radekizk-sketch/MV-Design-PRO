@@ -212,6 +212,26 @@ POZYCJE_ETANGO_250_450 = ("EM_E2TANGO_250", "EM_E2TANGO_450")
 #: ``i0_percent`` (null → wartość), ``source_reference`` i ``verification_note`` (dopisane
 #: źródło i0); przywrócenie dawnych liści daje ``ODCISK_PO_ETANGO_250_450``.
 ODCISK_PO_I0_OLEJOWYCH = "4776a67e7f55b02a7c8b58d2566f6394ec8e6eb4809444102d18861b337172f9"
+#: Karta KATALOG-PRZEJECIE-PR, poz. 4 (2026-11-04): kable z kart producentów — SN 97 (6 NKT
+#: typoszeregu ENEA 03.2026 tab. 3, 13 NKT XRUHAKXS1 CTL00109, 78 Tele-Fonika 2025), nN 79 NKT
+#: (YKXS, YAKXS, YKY, YAKY) — oraz 4 dawne pozycje „ENEA Operator standard”, których oznaczeń
+#: nie ma w tab. 3, zdjęte do profilu REFERENCYJNEGO (7 liści tekstowo-statusowych każda, bez
+#: zmiany liczby). Dowód w teście niżej: wycięcie nowych identyfikatorów (po przedrostkach,
+#: których przed kartą nie nosiła żadna pozycja) i przywrócenie 28 dawnych liści daje
+#: ``ODCISK_PO_I0_OLEJOWYCH``.
+ODCISK_PO_KABLACH_PRODUCENTOW = "784290e45d067f62b724f15bfdf7ca9c738ddf2006274d05e6d2072fc7e3d44e"
+PRZEDROSTKI_KABLI_SN_PRODUCENTOW = (
+    "cable-enea-2026-nkt-",
+    "cable-nkt-xruhakxs1-",
+    "cable-tfk-2025-",
+)
+PRZEDROSTEK_KABLI_NN_NKT = "kab-nn-nkt-"
+_DAWNE_POZYCJE_ENEA: dict[str, str] = {
+    "cable-enea-operator-na2xs2y-1x150": "NA2XS2Y 1x150/25",
+    "cable-enea-operator-na2xs2y-1x240": "NA2XS2Y 1x240/25",
+    "cable-enea-operator-xruhakxs-1x120": "XRUHAKXS 1x120/25",
+    "cable-enea-operator-xruhakxs-1x240": "XRUHAKXS 1x240/25",
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -259,6 +279,40 @@ def _cofnij_i0_olejowych(zrzut: dict[str, object]) -> int:
         )
         cofniete += 1
     return cofniete
+
+
+def _cofnij_kable_producentow(zrzut: dict[str, object]) -> tuple[int, int]:
+    """Cofa poz. 4 karty KATALOG-PRZEJECIE-PR; zwraca liczbę wyciętych pozycji SN i nN."""
+    kable_sn = zrzut["cable_types"]  # type: ignore[index]
+    kable_nn = zrzut["lv_cable_types"]  # type: ignore[index]
+    nowe_sn = [k for k in kable_sn if k.startswith(PRZEDROSTKI_KABLI_SN_PRODUCENTOW)]
+    nowe_nn = [k for k in kable_nn if k.startswith(PRZEDROSTEK_KABLI_NN_NKT)]
+    for identyfikator in nowe_sn:
+        kable_sn.pop(identyfikator)
+    for identyfikator in nowe_nn:
+        kable_nn.pop(identyfikator)
+    for identyfikator, oznaczenie in _DAWNE_POZYCJE_ENEA.items():
+        postac = kable_sn[identyfikator]
+        assert postac["catalog_status"] == "REFERENCYJNY_V1", identyfikator
+        postac.update(
+            {
+                "catalog_status": "PRODUKCYJNY_V1",
+                "manufacturer": "ENEA Operator",
+                "name": f"ENEA Operator standard - {oznaczenie} mm2 12/20 kV",
+                "standard": "ENEA Operator / PN-HD 620 / IEC 60502-2",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "source_reference": (
+                    "ENEA Operator - standard projektowy kabli SN; parametry elektryczne z "
+                    "bazowej matrycy MV-DESIGN-PRO i kart producentów, do pełnej weryfikacji "
+                    "wymagane jest podpięcie aktualnego dokumentu standardu ENEA Operator"
+                ),
+                "verification_note": (
+                    "Pozycja priorytetowa OSD dla projektanta. Nie oznacza pełnej "
+                    "oficjalnej weryfikacji ENEA bez dołączonego source_ref dokumentu operatora."
+                ),
+            }
+        )
+    return len(nowe_sn), len(nowe_nn)
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -323,6 +377,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KABLACH_PRODUCENTOW
+    assert _cofnij_kable_producentow(zrzut) == (97, 79)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_I0_OLEJOWYCH
     assert _cofnij_i0_olejowych(zrzut) == 24
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ETANGO_250_450

@@ -297,7 +297,7 @@ def test_kazdy_transformator_ma_pelny_minimalny_zestaw_liczbowy() -> None:
         p = rekord["params"]
         for pole in wymagane:
             v = p.get(pole)
-            assert isinstance(v, (int, float)) and math.isfinite(v) and v > 0, (
+            assert isinstance(v, int | float) and math.isfinite(v) and v > 0, (
                 rekord["id"],
                 pole,
                 v,
@@ -514,9 +514,12 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     Vestas V112 (karta KATALOG-TURBINY-TOR-V112). Pomiar 2026-10-22: 7853 = 7851 + 2 typy
     minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik). Pomiar
     2026-11-04: 7855 = 7853 + 2 rodziny e²TANGO-250/-450 z kart producenta K-42.1.8 i K-43.1.7
-    (karta KATALOG-PRZEJECIE-PR, poz. 2)."""
+    (karta KATALOG-PRZEJECIE-PR, poz. 2). Pomiar 2026-11-04: 8031 = 7855 + 176 kabli z kart
+    producentów (poz. 4): SN — 6 NKT XRUHAKXS1/XUHAKXS1 typoszeregu ENEA 03.2026 tab. 3,
+    13 pozostałych NKT XRUHAKXS1 CTL00109, 78 Tele-Fonika (24 × 8,7/15, 27 × 12/20,
+    27 × 18/30 kV); nN — 79 NKT (YKXS 19, YAKXS 18, YKY 23, YAKY 19)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7855
+    assert len(rekordy) == 8031
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

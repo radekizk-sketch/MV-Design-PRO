@@ -538,7 +538,8 @@ class TestE2eSpecyPickeryKatalogu:
     def test_fk7_dobor_spec_falownik_realny_i_dobor_pokrywa_sie_z_solverem(self) -> None:
         """Powtorka empirycznej weryfikacji karty FAB-L: ten sam wejscie -> ten sam
         werdykt solvera (`preview_der_selection`), jaki spec zaklada w komentarzach
-        (TR 2,5 MVA, I_TR 96,2 A, 50 mm² -> 70 mm² po korekcie warunkow ulozenia).
+        (TR 2,5 MVA, I_TR 96,2 A; od karty KATALOG-PRZEJECIE-PR kabel Cu 35 mm² z karty TFK,
+        bez zmiany przekroju po korekcie warunków ułożenia — zob. komentarz niżej).
         """
         from api.catalog import list_pv_inverter_types
         from api.grid_source_preview import (
@@ -578,7 +579,12 @@ class TestE2eSpecyPickeryKatalogu:
         assert katalogowe.transformer.proposal is not None
         assert katalogowe.transformer.proposal.sn_mva == pytest.approx(2.5)
         assert katalogowe.cable.proposal is not None
-        assert katalogowe.cable.proposal.cross_section_mm2 == pytest.approx(50.0)
+        # Karta KATALOG-PRZEJECIE-PR (poz. 4, 2026-11-04): katalog SN zyskal kable z kart
+        # producentow (Tele-Fonika 2025, NKT CTL00109), wsrod nich XRUHKXS Cu 1×35/16 mm²
+        # 12/20 kV o Iz = 231 A (trojkat, grunt) — najmniejszy przekroj spelniajacy
+        # I_TR·(1 + rezerwa) = 125,1 A. Dawne „50 mm² → 70 mm²” wynikalo z wezszego katalogu.
+        assert katalogowe.cable.proposal.catalog_ref == "cable-tfk-2025-xruhkxs-35-16-12-20"
+        assert katalogowe.cable.proposal.cross_section_mm2 == pytest.approx(35.0)
 
         skorygowane = preview_der_selection(
             DerSelectionPreviewRequest(
@@ -589,10 +595,11 @@ class TestE2eSpecyPickeryKatalogu:
             )
         )
         assert skorygowane.cable.proposal is not None
-        assert skorygowane.cable.proposal.cross_section_mm2 == pytest.approx(70.0), (
-            "Korekta obciazalnosci (ziemia/3 kable/200 mm) MUSI podniesc przekroj "
-            "wzgledem warunkow katalogowych — to jedyny powod istnienia sceny F-K7."
-        )
+        # Korekta warunkow ulozenia WCHODZI do doboru (obciazalnosc skuteczna 231 A × 0,74538
+        # = 172,2 A), ale przy tym katalogu nie podnosi przekroju (172,2 A ≥ 125,1 A).
+        assert skorygowane.cable.proposal.derating_total == pytest.approx(0.74538)
+        assert skorygowane.cable.proposal.effective_ampacity_a == pytest.approx(231.0 * 0.74538)
+        assert skorygowane.cable.proposal.cross_section_mm2 == pytest.approx(35.0)
 
     def test_kreator_oze_max_spec_nie_odwoluje_sie_juz_do_usunietego_pola(self) -> None:
         """`fault_current_data_ref` USUNIETE karta FAB-L (§0 L2) — regres wracalby
