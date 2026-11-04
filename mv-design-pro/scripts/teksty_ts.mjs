@@ -399,9 +399,22 @@ function miejsceWyswietlenia(wyrazenie, zrodlo, wykres = null) {
   return null;
 }
 
+// Dekoder ścisły: `readFileSync(plik, 'utf-8')` po cichu zamienia niepoprawne bajty na U+FFFD,
+// więc plik spoza UTF-8 zostałby oceniony jako czysty. Strażnik nie zgaduje — plik nieczytelny
+// kończy bieg błędem z nazwą pliku (po stronie Pythona `BladZrodla`).
+const dekoderUtf8 = new TextDecoder('utf-8', { fatal: true });
+function czytajUtf8(plik) {
+  try {
+    return dekoderUtf8.decode(readFileSync(plik));
+  } catch (blad) {
+    process.stderr.write(`${plik}: plik nie jest poprawnym UTF-8 (${blad.message})\n`);
+    process.exit(1);
+  }
+}
+
 const wynik = [];
 for (const plik of pliki) {
-  const tekstPliku = readFileSync(plik, 'utf-8');
+  const tekstPliku = czytajUtf8(plik);
   const wiersze = tekstPliku.split('\n');
   const zrodlo = ts.createSourceFile(
     plik,

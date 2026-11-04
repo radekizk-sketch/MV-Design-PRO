@@ -58,9 +58,11 @@ const AF_FIXTURE: ArcFlashResponse = {
         {
           symbol: 'E',
           formula_latex: 'E = 1.2 \\cdot ...',
-          // Postać backendu (`analysis/arc_flash/builder.py`): symbole jako segmenty `$…$`.
-          substitution_pl: '$I_{bf}$ = 12,5 kA, $t$ = 100 ms',
-          result_pl: '$E$ = 8,42 cal/cm²',
+          // Postać backendu (`analysis/arc_flash/builder.py`): proza kroku śladu słowami, bez
+          // znaczników LaTeX (kontrakt kroku śladu, `slad_proza_bez_latex_guard`); wzór
+          // wyłącznie w `formula_latex`.
+          substitution_pl: 'prąd zwarcia bolted 12,5 kA, czas łuku 100 ms',
+          result_pl: 'energia incydentu 8,42 cal/cm²',
           unit_check_pl: '[cal/cm²]',
           table_ref: 'IEEE_1584_VCB',
         },
@@ -208,12 +210,12 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const wzory = within(slad).getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThan(0);
     expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
-    // Podstawienie i wynik: segmenty `$…$` prozy backendu składa KaTeX (bez surowego `$`).
-    const latexy = wzory.map((w) => w.getAttribute('data-latex'));
-    expect(latexy).toContain('$I_{bf}$');
-    expect(latexy).toContain('$E$');
+    // Podstawienie i wynik: proza słowami z backendu, pokazana wprost (jedyny wzór kroku to
+    // `formula_latex`, złożony przez KaTeX).
+    expect(wzory).toHaveLength(1);
     expect(slad.textContent).not.toContain('$');
-    expect(slad.textContent).toContain('= 12,5 kA');
+    expect(slad.textContent).toContain('prąd zwarcia bolted 12,5 kA, czas łuku 100 ms');
+    expect(slad.textContent).toContain('energia incydentu 8,42 cal/cm²');
     // Etykieta kroku to „Wzór” — identyfikator `symbol` backendu nie jest dopisywany prozą.
     expect(slad.textContent).not.toContain('(E)');
   });

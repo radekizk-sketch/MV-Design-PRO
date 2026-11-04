@@ -749,8 +749,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; $\\mathrm{VarCf}$ = 0.0217",
-          "result_pl": "$I_{arc}$ = 8.5157 kA, $I_{arc,min}$ = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, napięcie 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; współczynnik zmienności VarCf 0.0217",
+          "result_pl": "prąd łuku 8.5157 kA, prąd łuku minimalny 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
           "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
@@ -765,7 +765,7 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $t$ = 200.0 ms, $D$ = 455.0 mm, $CF$ = 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
+          "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
           "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
@@ -773,7 +773,7 @@
         {
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-          "substitution_pl": "$E_{próg}$ = 1.2 cal/cm² = 5.0208 J/cm²; $U$ = 15.0 kV, $D$ = 455.0 mm",
+          "substitution_pl": "energia progowa 1.2 cal/cm² = 5.0208 J/cm²; napięcie 15.0 kV, odległość robocza 455.0 mm",
           "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Granica łuku w mm: odległość, na której energia incydentu spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
@@ -851,7 +851,7 @@
         {
           "symbol": "E_Lee",
           "formula_latex": "E = 2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ D^{2}",
-          "substitution_pl": "$V$ = 110.0 kV, $I_{bf}$ = 13.9866 kA, $t$ = 0.2 s, $D$ = 455.0 mm [poza zakresem IEEE 1584-2018]",
+          "substitution_pl": "napięcie 110.0 kV, prąd zwarcia bolted 13.9866 kA, czas łuku 0.2 s, odległość robocza 455.0 mm [poza zakresem IEEE 1584-2018]",
           "result_pl": "E = 3183.7026 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "Napięcie w kV, prąd zwarcia bolted w kA, czas łuku w s, odległość w mm; energia incydentu w cal/cm² (postać Lee).",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
@@ -859,7 +859,7 @@
         {
           "symbol": "AFB_Lee",
           "formula_latex": "D_{AFB} = \\sqrt{2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ 1{,}2}",
-          "substitution_pl": "$V$ = 110.0 kV, $I_{bf}$ = 13.9866 kA, $t$ = 0.2 s; $E_{próg}$ = 1.2 cal/cm²",
+          "substitution_pl": "napięcie 110.0 kV, prąd zwarcia bolted 13.9866 kA, czas łuku 0.2 s; energia progowa 1.2 cal/cm²",
           "result_pl": "AFB = 23436.1904 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "Granica łuku w mm: odległość, na której energia incydentu wynosi 1,2 cal/cm².",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
@@ -949,8 +949,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,600} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\quad(\\text{Eq.1, kotwa }600\\text{ V});\\quad I_{arc} = \\left[\\left(\\tfrac{0{,}6}{U}\\right)^{2}\\!\\left(\\tfrac{1}{I_{arc,600}^{2}}-\\tfrac{0{,}6^{2}-U^{2}}{0{,}6^{2}\\,I_{bf}^{2}}\\right)\\right]^{-1/2}\\quad(\\text{Eq.25});\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "$I_{bf}$ = 21.0926 kA, $G$ = 104.0 mm, $U$ = 0.4 kV [VCB, ścieżka nN — napięcie do 600 V, BEZ interpolacji kotew]; $I_{arc,600}$ (Eq.1) = 15.5285 kA; $\\mathrm{VarCf}$ = 0.2551",
-          "result_pl": "$I_{arc}$ = 12.3832 kA (Eq.25, skorygowany do napięcia 0.4 kV), $I_{arc,min}$ = 10.8035 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "prąd zwarcia bolted 21.0926 kA, odstęp elektrod 104.0 mm, napięcie 0.4 kV [VCB, ścieżka nN — napięcie do 600 V, BEZ interpolacji kotew]; prąd łuku kotwy 600 V (Eq.1) 15.5285 kA; współczynnik zmienności VarCf 0.2551",
+          "result_pl": "prąd łuku 12.3832 kA (Eq.25, skorygowany do napięcia 0.4 kV), prąd łuku minimalny 10.8035 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prądy łuku w kA; odstęp elektrod w mm; napięcie w kV; Eq.25 koryguje prąd łuku kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V).",
           "table_ref": "prąd łuku kotwy 600 V [VCB,V600] (Tab.1) = open_source_IEEE_1584; Eq.25 publiczna postać zamknięta (bez tablicy)"
         },
@@ -965,7 +965,7 @@
         {
           "symbol": "E",
           "formula_latex": "E = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_3 = k_3\\,I_{arc,600}/\\mathrm{denom}(I_{bf})\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "$I_{bf}$ = 21.0926 kA, $I_{arc,600}$ = 15.5285 kA (nieskorygowany, człon $x_3$), $I_{arc}$ = 12.3832 kA (Eq.25, człon $x_4$), $G$ = 104.0 mm, $t$ = 200.0 ms, $D$ = 455.0 mm, $CF$ = 0.9999 [wiersz kotwy 600 V, napięcie rzeczywiste 0.4 kV]",
+          "substitution_pl": "prąd zwarcia bolted 21.0926 kA, prąd łuku kotwy 600 V 15.5285 kA (nieskorygowany, trzeci człon wykładnika), prąd łuku 12.3832 kA (Eq.25, czwarty człon), odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999 [wiersz kotwy 600 V, napięcie rzeczywiste 0.4 kV]",
           "result_pl": "E = 39.4221 J/cm² = 9.4221 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego).",
           "table_ref": "E[VCB,V600] (Tab.3) = open_source_IEEE_1584"
@@ -973,7 +973,7 @@
         {
           "symbol": "AFB",
           "formula_latex": "D_{AFB} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\text{wiersz 600 V});\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-          "substitution_pl": "$E_{próg}$ = 1.2 cal/cm² = 5.0208 J/cm²; $U$ = 0.4 kV, $D$ = 455.0 mm",
+          "substitution_pl": "energia progowa 1.2 cal/cm² = 5.0208 J/cm²; napięcie 0.4 kV, odległość robocza 455.0 mm",
           "result_pl": "AFB = 1652.2113 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Granica łuku w mm: odległość, na której energia incydentu spada do 1,2 cal/cm².",
           "table_ref": "E[VCB,V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
@@ -1065,8 +1065,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; $\\mathrm{VarCf}$ = 0.0217",
-          "result_pl": "$I_{arc}$ = 8.5157 kA, $I_{arc,min}$ = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, napięcie 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; współczynnik zmienności VarCf 0.0217",
+          "result_pl": "prąd łuku 8.5157 kA, prąd łuku minimalny 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
           "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
@@ -1081,7 +1081,7 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $t$ = 200.0 ms, $D$ = 455.0 mm, $CF$ = 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
+          "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
           "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
@@ -1089,7 +1089,7 @@
         {
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-          "substitution_pl": "$E_{próg}$ = 1.2 cal/cm² = 5.0208 J/cm²; $U$ = 15.0 kV, $D$ = 455.0 mm",
+          "substitution_pl": "energia progowa 1.2 cal/cm² = 5.0208 J/cm²; napięcie 15.0 kV, odległość robocza 455.0 mm",
           "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Granica łuku w mm: odległość, na której energia incydentu spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
@@ -1181,8 +1181,8 @@
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "$I_{bf}$ = 4.6116 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 4.3593 kA, V2700 = 4.0235 kA, V600 = 3.303 kA; $\\mathrm{VarCf}$ = 0.0217",
-          "result_pl": "$I_{arc}$ = 4.3796 kA, $I_{arc,min}$ = 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "prąd zwarcia bolted 4.6116 kA, odstęp elektrod 104.0 mm, napięcie 15.0 kV [VCB]; kotwy: V14300 = 4.3593 kA, V2700 = 4.0235 kA, V600 = 3.303 kA; współczynnik zmienności VarCf 0.0217",
+          "result_pl": "prąd łuku 4.3796 kA, prąd łuku minimalny 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
           "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
@@ -1197,7 +1197,7 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "$I_{bf}$ = 4.6116 kA, $G$ = 104.0 mm, $t$ = 200.0 ms, $D$ = 455.0 mm, $CF$ = 0.9999; kotwy: V14300 = 16.9365 J/cm², V2700 = 15.0216 J/cm², V600 = 9.6432 J/cm²",
+          "substitution_pl": "prąd zwarcia bolted 4.6116 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 16.9365 J/cm², V2700 = 15.0216 J/cm², V600 = 9.6432 J/cm²",
           "result_pl": "E = 17.0521 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
@@ -1205,7 +1205,7 @@
         {
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-          "substitution_pl": "$E_{próg}$ = 1.2 cal/cm² = 5.0208 J/cm²; $U$ = 15.0 kV, $D$ = 455.0 mm",
+          "substitution_pl": "energia progowa 1.2 cal/cm² = 5.0208 J/cm²; napięcie 15.0 kV, odległość robocza 455.0 mm",
           "result_pl": "AFB = 992.4671 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Granica łuku w mm: odległość, na której energia incydentu spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"

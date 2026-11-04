@@ -2431,7 +2431,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
         # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
         # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta ZU, punkt 4 (proza slowami, wzory KaTeX, 2026-11-04): 604 -> 605 (+1
+        # `application/ncrfg_compliance/wzory_sladu.py` — wzory LaTeX krokow sladu zgodnosci
+        # NC RfG). POMIAR guardem na `01c5def16` (`git archive`: 604) i na drzewie karty (605);
+        # dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2856,7 +2860,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
+        # Karta ZU, punkt 4 (2026-11-04): application 254 -> 255 (+1
+        # `ncrfg_compliance/wzory_sladu.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

@@ -1611,3 +1611,22 @@ bez żadnego słowa (`Z_k = {} + {} = {}`, `U0 = {} V; U_b = {} V`, etykiety eks
 (`substitution_latex`, `_napiecia_latex`), reszta to podstawienia kroków śladu bez pola LaTeX
 i komórki eksportu tekstowego; domknięcie wymaga decyzji kontraktu (pole `*_latex` podstawienia
 w rekordach kroków śladu analiz), lista z pomiaru w meldunku karty.
+
+**Punkt 4, domknięcie strażników CI (2026-11-04).** `guardy_z_ci.py` na drzewie po partii 3
+był czerwony w czterech miejscach, wszystkie naprawione u źródła. (1) `slad_proza_bez_latex_guard`:
+18 znaczników `$…$` w `substitution_pl`/`result_pl` kroków śladu Arc Flash
+(`analysis/arc_flash/builder.py`, z wcześniejszej partii WIP) — proza napisana słowami („prąd
+zwarcia bolted …, odstęp elektrod …, czas łuku …, odległość robocza …, współczynnik obudowy …"),
+wzór zostaje w `formula_latex`; ekran śladu Arc Flash i migotania pokazuje prozę wprost (składanie
+`$…$` w tych polach zdjęte — kontrakt kroku śladu go zabrania). (2) `ui_progi_napiecia_guard`:
+klucze listy dozwolonej kompensatora zaktualizowane do tekstu z `$Q_{n}$`, nowy wpis z
+uzasadnieniem dla nastawy zabezpieczenia nadnapięciowego falownika (1,1 napięcia znamionowego
+/ 5 s) w generowanym towarzyszu archetypów OZE — parametr zabezpieczenia DER, nie kryterium
+oceny wyniku. (3) `teksty_ts.mjs` czytał pliki dekoderem pobłażliwym (niepoprawne bajty → U+FFFD,
+plik spoza UTF-8 oceniany jako czysty; błąd zastany sprzed bazy, samotest
+`test_ui_math_nieczytelny_plik[skanuj_ts]` czerwony) — dekoder ścisły, plik nieczytelny kończy
+bieg błędem z nazwą pliku. (4) Pin skanu `solver_input_substitute_guard`: 604 → 605 plików,
+application 254 → 255 (+1 `ncrfg_compliance/wzory_sladu.py`), pomiar na `01c5def16` (`git archive`:
+604) i na drzewie karty. Odcisk implementacji pakietu `dynamika` w fiksturach harnessu był nieaktualny
+po przywróceniu formatu 100 kolumn (`silnik.py`; odcisk to skrót źródeł) — przegenerowany.
+`guardy_z_ci.py`: KOMPLET ZIELONY, samotesty strażników 4772 passed.

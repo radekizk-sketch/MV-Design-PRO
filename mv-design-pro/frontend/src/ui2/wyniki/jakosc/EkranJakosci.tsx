@@ -603,11 +603,11 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <span className="mvd-num"><TekstZWzorami tekst={krok.substitution_pl} /></span>
+              <code className="mvd-num">{krok.substitution_pl}</code>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <span className="mvd-num"><TekstZWzorami tekst={krok.result_pl} /></span>
+          <code className="mvd-num">{krok.result_pl}</code>
         </li>
       ))}
     </ol>
@@ -842,11 +842,11 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <span className="mvd-num"><TekstZWzorami tekst={krok.substitution_pl} /></span>
+              <code className="mvd-num">{krok.substitution_pl}</code>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <span className="mvd-num"><TekstZWzorami tekst={krok.result_pl} /></span>
+          <code className="mvd-num">{krok.result_pl}</code>
         </li>
       ))}
     </ol>
