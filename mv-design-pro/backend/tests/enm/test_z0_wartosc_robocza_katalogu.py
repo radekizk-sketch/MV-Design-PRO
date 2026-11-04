@@ -152,7 +152,9 @@ def _pola_robocze(wariant: str) -> list[str]:
 
 def test_kazda_pozycja_sn_ze_skladowa_zerowa_niesie_zalozenie() -> None:
     """Inwentarz klasy (pomiar 2026-10-22): 25 linii i 62 kable SN z R′0/X′0, 0 z karty
-    producenta — każda pozycja ma oba pola w ``wartosci_robocze`` z założeniem z rejestru."""
+    producenta — każda pozycja ma oba pola w ``wartosci_robocze`` z założeniem z rejestru.
+    Pomiar 2026-11-04 (karta KATALOG-PRZEJECIE-PR, przejęte typoszeregi kabli producentów):
+    25 linii i 159 kabli SN — wszystkie nowe pozycje niosą założenie z rejestru."""
     katalog = get_default_mv_catalog()
     zalozenia_r0 = {ZALOZENIE_R0_TRZY_R1, ZALOZENIE_R0_ZYLA_POWROTNA}
     liczba = 0
@@ -167,7 +169,7 @@ def test_kazda_pozycja_sn_ze_skladowa_zerowa_niesie_zalozenie() -> None:
             if robocze["r0_ohm_per_km"] == ZALOZENIE_R0_TRZY_R1:
                 assert typ.r0_ohm_per_km == pytest.approx(3.0 * typ.r_ohm_per_km, abs=1e-6)
             assert typ.x0_ohm_per_km == pytest.approx(3.0 * typ.x_ohm_per_km, abs=1e-6)
-    assert liczba == 87
+    assert liczba == 184
 
 
 # ---------------------------------------------------------------------------

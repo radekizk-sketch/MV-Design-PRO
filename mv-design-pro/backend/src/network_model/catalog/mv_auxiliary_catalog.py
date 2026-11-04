@@ -2290,57 +2290,6 @@ def get_all_protection_device_types() -> list[dict]:
                 ),
             },
         },
-        {
-            "id": "EM_ETANGO_1250_V0",
-            "name_pl": "Przekaźnik Elektrometal e2TANGO-1250",
-            "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": "v0",
-                "analytical_library_ref": "EM_ETANGO_1250_V0",
-                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
-                **_device_meta(
-                    verification_status="NIEWERYFIKOWANY",
-                    source_reference=etango_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=etango_note,
-                ),
-            },
-        },
-        {
-            "id": "EM_ETANGO_1600_V0",
-            "name_pl": "Przekaźnik Elektrometal e2TANGO-1600",
-            "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": "v0",
-                "analytical_library_ref": "EM_ETANGO_1600_V0",
-                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
-                **_device_meta(
-                    verification_status="NIEWERYFIKOWANY",
-                    source_reference=etango_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=etango_note,
-                ),
-            },
-        },
-        {
-            "id": "EM_ETANGO_2000_V0",
-            "name_pl": "Przekaźnik Elektrometal e2TANGO-2000",
-            "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": "v0",
-                "analytical_library_ref": "EM_ETANGO_2000_V0",
-                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
-                **_device_meta(
-                    verification_status="NIEWERYFIKOWANY",
-                    source_reference=etango_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=etango_note,
-                ),
-            },
-        },
     ]
 
 
@@ -2533,48 +2482,6 @@ def get_all_protection_setting_templates() -> list[dict]:
                     _prad_bez_jednostki("I0>>", 1.0, 50.0),
                 ],
                 **_template_meta(name="e2TANGO-800 - ziemnozwarciowy"),
-            },
-        },
-        {
-            "id": "template_etango_1250_oc",
-            "name_pl": "Szablon e2TANGO-1250 - nadprądowy",
-            "params": {
-                "device_type_ref": "EM_ETANGO_1250_V0",
-                "curve_ref": "curve_iec_extremely_inverse",
-                "setting_fields": [
-                    _prad_bez_jednostki("I>", 0.1, 20.0),
-                    {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
-                    _prad_bez_jednostki("I>>", 1.0, 120.0),
-                ],
-                **_template_meta(name="e2TANGO-1250 - nadprądowy"),
-            },
-        },
-        {
-            "id": "template_etango_1600_ef",
-            "name_pl": "Szablon e2TANGO-1600 - ziemnozwarciowy",
-            "params": {
-                "device_type_ref": "EM_ETANGO_1600_V0",
-                "curve_ref": "curve_iec_long_time_inverse",
-                "setting_fields": [
-                    _prad_bez_jednostki("I0>", 0.1, 20.0),
-                    {"name": "t0>", "unit": "s", "min": 0.0, "max": 8.0},
-                    _prad_bez_jednostki("I0>>", 1.0, 150.0),
-                ],
-                **_template_meta(name="e2TANGO-1600 - ziemnozwarciowy"),
-            },
-        },
-        {
-            "id": "template_etango_2000_oc",
-            "name_pl": "Szablon e2TANGO-2000 - nadprądowy",
-            "params": {
-                "device_type_ref": "EM_ETANGO_2000_V0",
-                "curve_ref": "curve_ansi_inverse",
-                "setting_fields": [
-                    _prad_bez_jednostki("I>", 0.1, 30.0),
-                    {"name": "t>", "unit": "s", "min": 0.0, "max": 8.0},
-                    _prad_bez_jednostki("I>>", 1.0, 200.0),
-                ],
-                **_template_meta(name="e2TANGO-2000 - nadprądowy"),
             },
         },
     ]

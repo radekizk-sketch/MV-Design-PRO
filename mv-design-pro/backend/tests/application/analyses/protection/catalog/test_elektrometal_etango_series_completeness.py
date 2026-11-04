@@ -2,25 +2,36 @@ from __future__ import annotations
 
 from application.analyses.protection.catalog.catalog_store import list_devices
 
-# Legacy V0 series (NIEWERYFIKOWANY/ANALITYCZNY_V1, IEC_SI only, basic functions)
-LEGACY_V0_RATED = [400, 600, 800, 1000, 1250, 1600, 2000]
+# Rekordy analityczne V0 (NIEWERYFIKOWANY/ANALITYCZNY_V1, IEC_SI only, basic functions)
+# modeli istniejących w ofercie producenta. Numer w nazwie to MODEL sterownika, nie prąd
+# znamionowy (karta KATALOG-PRZEJECIE-PR, poz. 1 — pole `rated` skasowane z `meta`); fikcyjne
+# e2TANGO-1250/-1600/-2000 skasowane (producent nie ma takich sterowników pola SN).
+LEGACY_V0_MODELE = [400, 600, 800, 1000]
 
 # K30-16 expansion: comprehensive E2Tango z extended functions, multiple curves,
 # CZESCIOWO_ZWERYFIKOWANY (production-grade reference). User-requested per
 # explicit feedback: "rodzina E2Tango conajmniej modele 450, 600, 800, 1000, 1200".
-COMPREHENSIVE_E2_RATED = [450, 600, 800, 1000, 1200]
+COMPREHENSIVE_E2_MODELE = [450, 600, 800, 1000, 1200]
+
+
+def _numer_modelu(model: str) -> int:
+    """`e2TANGO-1200` -> 1200 (numer modelu z nazwy, nie prąd)."""
+    prefiks = "e2TANGO-"
+    assert model.startswith(prefiks), model
+    return int(model[len(prefiks) :])
 
 
 def test_elektrometal_etango_legacy_v0_series_remains_intact() -> None:
     """Legacy V0 catalog (analityczny) preserved for backward compatibility."""
     devices = list_devices(vendor="ELEKTROMETAL")
     v0_devices = [d for d in devices if d.device_id.endswith("_V0")]
-    rated_values = sorted(d.meta.get("rated") for d in v0_devices)
-    assert rated_values == LEGACY_V0_RATED, "Legacy V0 series must stay complete"
+    modele = sorted(_numer_modelu(d.model) for d in v0_devices)
+    assert modele == LEGACY_V0_MODELE, "Rekordy V0 tylko dla modeli istniejących u producenta"
     for device in v0_devices:
         assert device.meta.get("series") == "e2TANGO"
         assert device.meta.get("catalog_status") == "ANALITYCZNY_V1"
         assert device.meta.get("unverified") is True
+        assert "rated" not in device.meta, "numer modelu nie jest prądem znamionowym"
 
 
 def test_elektrometal_e2tango_comprehensive_expansion_present() -> None:
@@ -31,10 +42,10 @@ def test_elektrometal_e2tango_comprehensive_expansion_present() -> None:
     """
     devices = list_devices(vendor="ELEKTROMETAL")
     e2_devices = [d for d in devices if d.device_id.startswith("EM_E2TANGO_")]
-    rated_values = sorted(d.meta.get("rated") for d in e2_devices)
-    assert rated_values == COMPREHENSIVE_E2_RATED, (
-        f"K30-16 E2Tango comprehensive family incomplete: got {rated_values}, "
-        f"expected {COMPREHENSIVE_E2_RATED}"
+    modele = sorted(_numer_modelu(d.model) for d in e2_devices)
+    assert modele == COMPREHENSIVE_E2_MODELE, (
+        f"K30-16 E2Tango comprehensive family incomplete: got {modele}, "
+        f"expected {COMPREHENSIVE_E2_MODELE}"
     )
     for device in e2_devices:
         assert device.meta.get("series") == "e2TANGO"
@@ -45,7 +56,7 @@ def test_elektrometal_e2tango_comprehensive_expansion_present() -> None:
         assert "51" in device.functions_supported
         assert "79" in device.functions_supported  # autoreclose
     # Top-tier 1200 must support full IEC + IEEE curves
-    e2_1200 = next(d for d in e2_devices if d.meta.get("rated") == 1200)
+    e2_1200 = next(d for d in e2_devices if _numer_modelu(d.model) == 1200)
     assert "IEC_SI" in e2_1200.curves_supported
     assert "IEC_VI" in e2_1200.curves_supported
     assert "IEEE_MI" in e2_1200.curves_supported

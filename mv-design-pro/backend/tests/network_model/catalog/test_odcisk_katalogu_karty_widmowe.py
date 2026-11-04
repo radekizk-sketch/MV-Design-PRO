@@ -254,6 +254,112 @@ _ETANGO_250_450_PRZED_RODZINA: dict[str, dict[str, str]] = {
         "verification_note": "Potwierdzono model i wejście 1/5 A na podstawie karty producenta. Katalog analityczny nie stanowi dowodu aktywnych funkcji urządzenia.",
     },
 }
+#: Karta KATALOG-PRZEJECIE-PR, decyzja architekta po etapie 1 (2026-11-04): fikcyjne modele
+#: e²TANGO-1250/-1600/-2000 (producent nie ma takich sterowników pola SN; e²TANGO-2000 to
+#: zespół WN) skasowane razem z trzema szablonami nastaw, które na nie wskazywały. Dowód
+#: w teście niżej: odtworzenie trzech rekordów (kopia ``EM_ETANGO_1000_V0`` różniąca się
+#: wyłącznie ``id``, ``name_pl`` i ``analytical_library_ref`` — tak wyglądały przed kasacją)
+#: i trzech szablonów daje ``ODCISK_PO_RODZINIE_ETANGO``. Pełny odcisk katalogu domyślnego po
+#: kasacji (pomiar 2026-11-04): 2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f.
+ODCISK_PO_KASACJI_FIKCYJNYCH_ETANGO = (
+    "cb7100f915955a71b63fc49be9e374b8416c6ef781f03d91611d18aeb453a63d"
+)
+FIKCYJNE_MODELE_ETANGO = ("1250", "1600", "2000")
+_SZABLONY_FIKCYJNYCH_ETANGO: dict[str, dict[str, object]] = {
+    "template_etango_1250_oc": {
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "curve_ref": "curve_iec_extremely_inverse",
+        "device_type_ref": "EM_ETANGO_1250_V0",
+        "id": "template_etango_1250_oc",
+        "name_pl": "Szablon e2TANGO-1250 - nadprądowy",
+        "setting_fields": [
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 20.0,
+                "min": 0.1,
+                "name": "I>",
+                "unit": None,
+            },
+            {"max": 6.0, "min": 0.0, "name": "t>", "unit": "s"},
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 120.0,
+                "min": 1.0,
+                "name": "I>>",
+                "unit": None,
+            },
+        ],
+        "source_reference": "Szablony nastaw MV-DESIGN-PRO / IEC 60255 / dane referencyjne",
+        "verification_note": (
+            "Szablon referencyjny e2TANGO-1250 - nadprądowy; przed użyciem należy potwierdzić dobór na "
+            "podstawie modelu sieci i karty producenta."
+        ),
+        "verification_status": "REFERENCYJNY",
+    },
+    "template_etango_1600_ef": {
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "curve_ref": "curve_iec_long_time_inverse",
+        "device_type_ref": "EM_ETANGO_1600_V0",
+        "id": "template_etango_1600_ef",
+        "name_pl": "Szablon e2TANGO-1600 - ziemnozwarciowy",
+        "setting_fields": [
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 20.0,
+                "min": 0.1,
+                "name": "I0>",
+                "unit": None,
+            },
+            {"max": 8.0, "min": 0.0, "name": "t0>", "unit": "s"},
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 150.0,
+                "min": 1.0,
+                "name": "I0>>",
+                "unit": None,
+            },
+        ],
+        "source_reference": "Szablony nastaw MV-DESIGN-PRO / IEC 60255 / dane referencyjne",
+        "verification_note": (
+            "Szablon referencyjny e2TANGO-1600 - ziemnozwarciowy; przed użyciem należy potwierdzić dobór na "
+            "podstawie modelu sieci i karty producenta."
+        ),
+        "verification_status": "REFERENCYJNY",
+    },
+    "template_etango_2000_oc": {
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "curve_ref": "curve_ansi_inverse",
+        "device_type_ref": "EM_ETANGO_2000_V0",
+        "id": "template_etango_2000_oc",
+        "name_pl": "Szablon e2TANGO-2000 - nadprądowy",
+        "setting_fields": [
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 30.0,
+                "min": 0.1,
+                "name": "I>",
+                "unit": None,
+            },
+            {"max": 8.0, "min": 0.0, "name": "t>", "unit": "s"},
+            {
+                "jednostka_status": "NIEUSTALONA",
+                "max": 200.0,
+                "min": 1.0,
+                "name": "I>>",
+                "unit": None,
+            },
+        ],
+        "source_reference": "Szablony nastaw MV-DESIGN-PRO / IEC 60255 / dane referencyjne",
+        "verification_note": (
+            "Szablon referencyjny e2TANGO-2000 - nadprądowy; przed użyciem należy potwierdzić dobór na "
+            "podstawie modelu sieci i karty producenta."
+        ),
+        "verification_status": "REFERENCYJNY",
+    },
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -346,6 +452,25 @@ def _cofnij_rodzine_etango(zrzut: dict[str, object]) -> None:
         urzadzenia[identyfikator].update(liscie)
 
 
+def _przywroc_fikcyjne_etango(zrzut: dict[str, object]) -> None:
+    """Cofa kasację fikcyjnych e²TANGO-1250/-1600/-2000 i ich szablonów nastaw."""
+    urzadzenia = zrzut["protection_device_types"]  # type: ignore[index]
+    wzor = urzadzenia["EM_ETANGO_1000_V0"]
+    for model in FIKCYJNE_MODELE_ETANGO:
+        identyfikator = f"EM_ETANGO_{model}_V0"
+        assert identyfikator not in urzadzenia, identyfikator
+        urzadzenia[identyfikator] = {
+            **copy.deepcopy(wzor),
+            "id": identyfikator,
+            "name_pl": f"Przekaźnik Elektrometal e2TANGO-{model}",
+            "analytical_library_ref": identyfikator,
+        }
+    szablony = zrzut["protection_setting_templates"]  # type: ignore[index]
+    for identyfikator, postac in _SZABLONY_FIKCYJNYCH_ETANGO.items():
+        assert identyfikator not in szablony, identyfikator
+        szablony[identyfikator] = copy.deepcopy(postac)
+
+
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
     tekst = json.dumps(
         zrzut, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=_kanon
@@ -408,6 +533,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KASACJI_FIKCYJNYCH_ETANGO
+    _przywroc_fikcyjne_etango(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_RODZINIE_ETANGO
     _cofnij_rodzine_etango(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KABLACH_PRODUCENTOW

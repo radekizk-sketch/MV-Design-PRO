@@ -15,14 +15,13 @@ class ElektrometalEtangoVendorAdapter(VendorAdapter):
 
     def supported_devices(self) -> tuple[str, ...]:
         return (
-            # Legacy V0 entries (rated 400-2000, IEC_SI only) — kept dla wstecznej zgodności
+            # Rekordy analityczne V0 (tylko IEC_SI) modeli istniejących w ofercie producenta.
+            # Dawne e2TANGO-1250/-1600/-2000 skasowane (karta KATALOG-PRZEJECIE-PR): producent
+            # nie ma takich sterowników pola SN, a e²TANGO-2000 jest zespołem WN.
             "EM_ETANGO_400_V0",
             "EM_ETANGO_600_V0",
             "EM_ETANGO_800_V0",
             "EM_ETANGO_1000_V0",
-            "EM_ETANGO_1250_V0",
-            "EM_ETANGO_1600_V0",
-            "EM_ETANGO_2000_V0",
             # K30-16 user-requested expansion: comprehensive E2Tango family
             # (450/600/800/1000/1200) z extended functions + curves per
             # actual karta techniczna producenta. Series 1200 to flagship z

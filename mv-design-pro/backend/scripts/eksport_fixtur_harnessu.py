@@ -3888,8 +3888,12 @@ def magistrala_ocena_scena_katalog_bazowy() -> dict[str, Any]:
 #: źródła o mocy większej niż transformator stacji (zmierzone).
 _KATALOG_TRAFO_SCENY_LOM = "tr-sn-nn-15-04-2000kva-dyn11"
 
-#: Przekaźnik pola wytwórcy sceny LoM — REALNA pozycja katalogu zabezpieczeń.
-_KATALOG_PRZEKAZNIKA_SCENY_LOM = "EM_ETANGO_1250_V0"
+#: Przekaźnik pola wytwórcy sceny LoM — REALNA pozycja katalogu zabezpieczeń z karty
+#: producenta: e²TANGO-1200 (Elektrometal Energetyka, karta K-3.2.25). Dawny
+#: `EM_ETANGO_1250_V0` był modelem fikcyjnym (producent nie ma e²TANGO-1250) i został
+#: skasowany. Z rodziny pola SN wybrany 1200, bo karta K-3.2.25 wymienia funkcje
+#: częstotliwościowe 81U, 81O i 81R, które niosą nastawy tej sceny.
+_KATALOG_PRZEKAZNIKA_SCENY_LOM = "EM_E2TANGO_1200"
 
 #: NASTAWY funkcji ochrony od pracy wyspowej (LoM) pola wytwórcy — DANE
 #: PROJEKTOWE sceny (to inżynier je wpisuje), nie wynik. Dobrane tak, żeby ekran

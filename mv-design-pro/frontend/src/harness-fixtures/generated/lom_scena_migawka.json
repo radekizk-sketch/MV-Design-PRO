@@ -299,7 +299,7 @@
       "ports": [],
       "primary_devices": [],
       "protection_codes": [],
-      "protection_ref": "relay/c8d2511360c84146c6a505f1fae5fea3/assignment",
+      "protection_ref": "relay/5eac8c12d1d3f8bbfa6a2836150c2230/assignment",
       "ref_id": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -946,7 +946,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "e30ebc5ed7d28cfb3867775e541ca221c86951bc7a06713be9ea573b91947730",
+    "hash_sha256": "ece7ee838e97005554a59653fec9132b0965cb14faca3850540dce93fd2a0373",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1026,23 +1026,23 @@
     {
       "breaker_ref": "sn/3821c319753930c3ae26e6814b072bb7/source_field_device",
       "catalog_namespace": "ZABEZPIECZENIE",
-      "catalog_ref": "EM_ETANGO_1250_V0",
+      "catalog_ref": "EM_E2TANGO_1200",
       "ct_ref": null,
       "ct_refs_secondary": [],
       "device_type": "custom",
-      "id": "b485a42e-8b56-522e-851e-38913bf2d655",
+      "id": "64170978-a23e-5793-b237-6a635e2c5c59",
       "is_enabled": true,
       "materialized_params": {
-        "catalog_item_id": "EM_ETANGO_1250_V0",
+        "catalog_item_id": "EM_E2TANGO_1200",
         "device_type": "custom",
-        "name_pl": "Przekaźnik Elektrometal e2TANGO-1250",
+        "name_pl": "Sterownik polowy Elektrometal e²TANGO-1200",
         "relay_type": "CZESTOTLIWOSCIOWY",
         "series": "e2TANGO",
         "vendor": "ELEKTROMETAL"
       },
       "meta": {
         "catalog_binding": {
-          "catalog_item_id": "EM_ETANGO_1250_V0",
+          "catalog_item_id": "EM_E2TANGO_1200",
           "catalog_item_version": "2024.1",
           "catalog_namespace": "ZABEZPIECZENIE",
           "materialize": true,
@@ -1054,7 +1054,7 @@
       "name": "Zabezpieczenie od pracy wyspowej pola wytwórcy",
       "overrides": [],
       "parameter_source": "CATALOG",
-      "ref_id": "relay/c8d2511360c84146c6a505f1fae5fea3/assignment",
+      "ref_id": "relay/5eac8c12d1d3f8bbfa6a2836150c2230/assignment",
       "settings": [
         {
           "curve_type": null,

@@ -41,7 +41,9 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
 
     assert len(devices) >= 14
     assert len(curves) >= 8
-    assert len(templates) >= 8
+    # 5 szablonów: 3 referencyjne OC/EF i 2 e2TANGO-400/-800 istniejących modeli; szablony
+    # fikcyjnych e2TANGO-1250/-1600/-2000 skasowane razem z modelami.
+    assert len(templates) >= 5
 
     device_dicts = [item.to_dict() for item in devices]
     curve_dicts = [item.to_dict() for item in curves]
@@ -108,9 +110,6 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "EM_ETANGO_600_V0",
         "EM_ETANGO_800_V0",
         "EM_ETANGO_1000_V0",
-        "EM_ETANGO_1250_V0",
-        "EM_ETANGO_1600_V0",
-        "EM_ETANGO_2000_V0",
         *(f"EM_E2TANGO_{model}" for model in MODELE_ETANGO_POLA_SN),
     }
 

@@ -519,9 +519,10 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     13 pozostałych NKT XRUHAKXS1 CTL00109, 78 Tele-Fonika (24 × 8,7/15, 27 × 12/20,
     27 × 18/30 kV); nN — 79 NKT (YKXS 19, YAKXS 18, YKY 23, YAKY 19). Pomiar 2026-11-04:
     8039 = 8031 + 8 modeli e²TANGO z kart producenta (poz. 5: 100, 150, 200, 400, 600, 800,
-    1000, 1200)."""
+    1000, 1200). Pomiar 2026-11-04: 8033 = 8039 − 3 fikcyjne modele e²TANGO-1250/-1600/-2000
+    − 3 szablony nastaw, które na nie wskazywały (decyzja architekta po etapie 1)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 8039
+    assert len(rekordy) == 8033
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

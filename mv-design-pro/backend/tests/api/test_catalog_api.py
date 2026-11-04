@@ -321,7 +321,14 @@ def test_etango_model_identifier_is_not_relay_rated_current(
         for entry in canonical_response.json()
         if entry["id"].startswith("EM_ETANGO_") and entry["id"].endswith("_V0")
     ]
-    assert len(legacy_relays) == 7
+    # Rekordy V0 modeli istniejących u producenta (400/600/800/1000); fikcyjne
+    # e2TANGO-1250/-1600/-2000 skasowane (karta KATALOG-PRZEJECIE-PR).
+    assert sorted(entry["id"] for entry in legacy_relays) == [
+        "EM_ETANGO_1000_V0",
+        "EM_ETANGO_400_V0",
+        "EM_ETANGO_600_V0",
+        "EM_ETANGO_800_V0",
+    ]
     for entry in legacy_relays:
         assert entry["rated_current_a"] is None
         assert entry["analytical_library_ref"] == entry["id"]
