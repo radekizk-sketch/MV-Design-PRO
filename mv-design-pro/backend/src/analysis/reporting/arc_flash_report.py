@@ -67,6 +67,59 @@ def _fmt(value: Any, digits: int = 2) -> str:
     return "—"
 
 
+#: Pochodzenie parametru geometrii łuku po polsku (stałe ``ZRODLO_LUKU_*`` widoku arc flash,
+#: karta GPZ-DANE-ANALIZ) — raport mówi, skąd wziął się każdy parametr węzła szyn sekcji GPZ.
+_ZRODLO_LUKU_PL = {
+    "dokument_rozdzielnicy": "z dokumentu rozdzielnicy",
+    "projektant": "nadane przez projektanta",
+    "parametr_biegu": "z parametrów analizy",
+    "wartosc_robocza": "wartość robocza IEEE 1584-2018",
+}
+
+_NAZWA_PARAMETRU_LUKU_PL = {
+    "odstep_elektrod_mm": "odstęp szyn G",
+    "odleglosc_robocza_mm": "odległość robocza D",
+    "szerokosc_obudowy_mm": "szerokość obudowy",
+    "wysokosc_obudowy_mm": "wysokość obudowy",
+    "glebokosc_obudowy_mm": "głębokość obudowy",
+}
+
+
+def _zalozenia_szyn(results: list[dict[str, Any]]) -> list[str]:
+    """Geometria łuku i dane przyjęte KAŻDEJ szyny — jedno zdanie na szynę (wszystkie formaty).
+
+    Zasada nr 4: wynik na wartościach roboczych mówi o tym w raporcie; węzeł szyn sekcji GPZ
+    podaje pochodzenie każdego parametru geometrii (rozdzielnica, żądanie, wartość robocza)."""
+    zdania: list[str] = []
+    for r in results:
+        czesci = [
+            f"konfiguracja elektrod {r.get('electrode_config') or '—'}",
+            f"G = {_fmt(r.get('conductor_gap_mm'), 1)} mm",
+            f"D = {_fmt(r.get('working_distance_mm'), 1)} mm",
+        ]
+        rozdzielnica = r.get("parametry_rozdzielnicy")
+        if isinstance(rozdzielnica, dict):
+            parametry = rozdzielnica.get("parametry") or {}
+            pochodzenie = "; ".join(
+                f"{_NAZWA_PARAMETRU_LUKU_PL.get(klucz, klucz)} "
+                f"{_fmt((parametry[klucz] or {}).get('wartosc'), 1)} mm "
+                f"({_ZRODLO_LUKU_PL.get(str((parametry[klucz] or {}).get('zrodlo')), 'brak danej')})"
+                for klucz in sorted(parametry)
+            )
+            czesci.append(
+                f"geometria z danych rozdzielnicy sekcji {rozdzielnica.get('sekcja')}: "
+                f"{pochodzenie}"
+            )
+        dane = [d for d in (r.get("dane_przyjete") or []) if isinstance(d, dict)]
+        if dane:
+            czesci.append(
+                "dane przyjęte: "
+                + "; ".join(f"{d.get('nazwa_pl')} — {d.get('powod_pl')}" for d in dane)
+            )
+        zdania.append(f"{_nazwa_szyny(r)}: " + ", ".join(czesci) + ".")
+    return zdania
+
+
 def _summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Podsumowanie: najgorszy przypadek + rozkład kategorii ŚOI + braki danych."""
     energies = [
@@ -165,6 +218,9 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
     lines.append("")
     lines.append("--- Wyniki per szyna ---")
     lines.extend(_text_rows(results))
+    lines.append("")
+    lines.append("--- Geometria łuku i dane przyjęte ---")
+    lines.extend(f"  {zdanie}" for zdanie in _zalozenia_szyn(results))
     lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -277,6 +333,10 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
             )
         )
         elements.append(tbl)
+        elements.append(Spacer(1, 0.4 * cm))
+        elements.append(Paragraph("Geometria łuku i dane przyjęte", styles["Heading2"]))
+        for zdanie in _zalozenia_szyn(results):
+            elements.append(Paragraph(zdanie, styles["Normal"]))
 
     doc.build(elements)
     return buffer.getvalue()
@@ -345,6 +405,9 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
             cells[4].text = str(r.get("ppe_category") or "—")
             cells[5].text = _fmt(r.get("arc_time_s"), 3)
             cells[6].text = str(r.get("status_label_pl") or r.get("status") or "")
+        doc.add_heading("Geometria łuku i dane przyjęte", level=2)
+        for zdanie in _zalozenia_szyn(results):
+            doc.add_paragraph(zdanie)
 
     for para in doc.paragraphs:
         for run in para.runs:
@@ -405,6 +468,10 @@ def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
                 rf"{_fmt(r.get('arc_time_s'), 3)} \\"
             )
         lines.append(r"\end{longtable}")
+        lines.append(r"\section{Geometria łuku i dane przyjęte}")
+        lines.append(r"\begin{itemize}")
+        lines.extend(rf"\item {esc(zdanie)}" for zdanie in _zalozenia_szyn(results))
+        lines.append(r"\end{itemize}")
     lines.append(r"\end{document}")
     return "\n".join(lines)
 

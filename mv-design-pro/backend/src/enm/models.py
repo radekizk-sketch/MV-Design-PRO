@@ -33,6 +33,12 @@ from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
 from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
+from .rozdzielnica_gpz import (
+    OPIS_POLA_ROZDZIELNICY,
+    DostepnoscIac,
+    KonfiguracjaElektrod,
+    blad_spojnosci_rozdzielnicy,
+)
 from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
 
@@ -1399,6 +1405,53 @@ class Substation(ENMElement):
     nn_sections: list[NnSection] = []
 
 
+def _pole_rozdzielnicy(klucz: str) -> Any:
+    """Granice pola liczbowego rozdzielnicy z JEDNEGO opisu (`enm.rozdzielnica_gpz`)."""
+    opis = OPIS_POLA_ROZDZIELNICY[klucz]
+    return Field(default=None, ge=opis.od, le=opis.do, description=opis.nazwa_pl)
+
+
+class RozdzielnicaSekcjiGpz(BaseModel):
+    """Dane znamionowe rozdzielnicy (szyn zbiorczych) sekcji GPZ — karta GPZ-DANE-ANALIZ.
+
+    Nośnik danych, których potrzebują analizy szyn sekcji: wytrzymałość zwarciowa szyn
+    (``i_k_ka``/``t_k_s``/``i_p_ka`` — IEC 62271-1 p. 5.6–5.8, IEC 60865-1), dobór napięcia
+    (``u_r_kv`` wobec U_s sieci, IEC 62271-1 p. 5.2 i IEC 60038), prąd znamionowy ciągły szyn
+    (``i_r_a`` wobec prądów znamionowych transformatorów zasilających sekcję, IEC 62271-1
+    p. 5.5), klasyfikacja łukowa IAC (``iac_*`` — IEC 62271-200 p. 6.106) i geometria łuku
+    (``konfiguracja_elektrod``, ``odstep_elektrod_mm``, ``odleglosc_robocza_mm``, wymiary
+    obudowy — IEEE 1584-2018). Czytają: ``application.analyses.wytrzymalosc_aparatury_pol``
+    (szyny sekcji) i ``application.analyses.arc_flash_view``. ``dokument_zrodlowy`` — karta
+    producenta/DTR, z której pochodzą liczby; bez niego liczby są wartościami projektanta
+    (dana przyjęta, kompletność dowodu NIEPELNY). Granice pól i walidator:
+    ``enm.rozdzielnica_gpz`` (jeden opis). Każde pole ``None`` = dana nienadana, nigdy zero.
+    """
+
+    u_r_kv: float | None = _pole_rozdzielnicy("u_r_kv")
+    i_r_a: float | None = _pole_rozdzielnicy("i_r_a")
+    i_k_ka: float | None = _pole_rozdzielnicy("i_k_ka")
+    t_k_s: float | None = _pole_rozdzielnicy("t_k_s")
+    i_p_ka: float | None = _pole_rozdzielnicy("i_p_ka")
+    iac_dostepnosc: DostepnoscIac | None = None
+    iac_strony: str | None = Field(default=None, pattern=r"^F?L?R?$", min_length=1)
+    iac_i_a_ka: float | None = _pole_rozdzielnicy("iac_i_a_ka")
+    iac_t_a_s: float | None = _pole_rozdzielnicy("iac_t_a_s")
+    konfiguracja_elektrod: KonfiguracjaElektrod | None = None
+    odstep_elektrod_mm: float | None = _pole_rozdzielnicy("odstep_elektrod_mm")
+    odleglosc_robocza_mm: float | None = _pole_rozdzielnicy("odleglosc_robocza_mm")
+    szerokosc_obudowy_mm: float | None = _pole_rozdzielnicy("szerokosc_obudowy_mm")
+    wysokosc_obudowy_mm: float | None = _pole_rozdzielnicy("wysokosc_obudowy_mm")
+    glebokosc_obudowy_mm: float | None = _pole_rozdzielnicy("glebokosc_obudowy_mm")
+    dokument_zrodlowy: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def _spojnosc_danych(self) -> RozdzielnicaSekcjiGpz:
+        blad = blad_spojnosci_rozdzielnicy(self.model_dump())
+        if blad is not None:
+            raise ValueError(blad)
+        return self
+
+
 class GPZSection(BaseModel):
     """Jawna sekcja szyny GPZ.
 
@@ -1414,6 +1467,10 @@ class GPZSection(BaseModel):
     incoming_source_ref: str | None = None
     left_coupler_ref: str | None = None
     right_coupler_ref: str | None = None
+    # Karta GPZ-DANE-ANALIZ: dane znamionowe rozdzielnicy sekcji (szyny zbiorcze, IAC, geometria
+    # łuku). Pole addytywne: `None` poza odciskiem (`enm/hash.py`), więc sekcje sprzed karty
+    # haszują jak przed nią; pisarz — `update_gpz_section` przez `enm.rozdzielnica_gpz`.
+    rozdzielnica: RozdzielnicaSekcjiGpz | None = None
 
 
 class NnSection(BaseModel):

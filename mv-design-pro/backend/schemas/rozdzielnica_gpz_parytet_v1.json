@@ -1,0 +1,217 @@
+{
+  "$id": "rozdzielnica_gpz_parytet_v1",
+  "karta": "GPZ-DANE-ANALIZ",
+  "opis_pl": "Opis pól danych znamionowych rozdzielnicy sekcji GPZ (GPZSection.rozdzielnica) — jedno źródło: backend/src/enm/rozdzielnica_gpz.py; lustro: frontend/src/ui/workspace/gpz/poleGpzDefinicje.ts. Plik generuje backend/scripts/eksport_parytetu_rozdzielnicy_gpz.py.",
+  "operacja": "update_gpz_section",
+  "sciezka": "updates.rozdzielnica",
+  "kod_bledu": "gpz_section.update.rozdzielnica_invalid",
+  "pola": [
+    {
+      "klucz": "u_r_kv",
+      "rodzaj": "liczba",
+      "nazwa_pl": "napięcie znamionowe rozdzielnicy",
+      "symbol": "U_r",
+      "jednostka": "kV",
+      "od": 1.0,
+      "do": 245.0,
+      "podstawa_zakresu_pl": "IEC 62271-1:2017 p. 5.2, tabl. 1 (zakres I: U_r od 3,6 kV do 245 kV); dolna granica 1 kV — rozdzielnica sekcji GPZ jest aparaturą wysokonapięciową",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "i_r_a",
+      "rodzaj": "liczba",
+      "nazwa_pl": "prąd znamionowy ciągły szyn zbiorczych",
+      "symbol": "I_r",
+      "jednostka": "A",
+      "od": 100.0,
+      "do": 6300.0,
+      "podstawa_zakresu_pl": "IEC 62271-1:2017 p. 5.5 (szereg R10 prądów znamionowych ciągłych; rozdzielnice SN i 110 kV od 400 A do 4000 A, granica 6300 A — największa wartość szeregu w kartach)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "i_k_ka",
+      "rodzaj": "liczba",
+      "nazwa_pl": "prąd znamionowy krótkotrwały wytrzymywany szyn",
+      "symbol": "I_k",
+      "jednostka": "kA",
+      "od": 0.1,
+      "do": 100.0,
+      "podstawa_zakresu_pl": "IEC 62271-1:2017 p. 5.6 (szereg R10: 6,3 kA … 80 kA)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "t_k_s",
+      "rodzaj": "liczba",
+      "nazwa_pl": "znamionowy czas trwania zwarcia szyn",
+      "symbol": "t_k",
+      "jednostka": "s",
+      "od": 0.1,
+      "do": 5.0,
+      "podstawa_zakresu_pl": "IEC 62271-1:2017 p. 5.8 (wartość zalecana 1 s; wartości alternatywne 0,5 s, 2 s, 3 s)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "i_p_ka",
+      "rodzaj": "liczba",
+      "nazwa_pl": "prąd znamionowy szczytowy wytrzymywany szyn",
+      "symbol": "I_p",
+      "jednostka": "kA",
+      "od": 0.1,
+      "do": 250.0,
+      "podstawa_zakresu_pl": "IEC 62271-1:2017 p. 5.7 (I_p = 2,5·I_k przy 50 Hz; do 250 kA)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "iac_i_a_ka",
+      "rodzaj": "liczba",
+      "nazwa_pl": "prąd próby łukowej klasyfikacji IAC",
+      "symbol": "I_A",
+      "jednostka": "kA",
+      "od": 0.1,
+      "do": 100.0,
+      "podstawa_zakresu_pl": "IEC 62271-200:2021 p. 6.106 (prąd próby łuku wewnętrznego)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "iac_t_a_s",
+      "rodzaj": "liczba",
+      "nazwa_pl": "czas próby łukowej klasyfikacji IAC",
+      "symbol": "t_A",
+      "jednostka": "s",
+      "od": 0.1,
+      "do": 3.0,
+      "podstawa_zakresu_pl": "IEC 62271-200:2021 p. 6.106 (czasy zalecane 0,1 s, 0,5 s, 1 s; do 3 s w kartach)",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "odstep_elektrod_mm",
+      "rodzaj": "liczba",
+      "nazwa_pl": "odstęp szyn (elektrod) w przedziale szynowym",
+      "symbol": "G",
+      "jednostka": "mm",
+      "od": 6.35,
+      "do": 254.0,
+      "podstawa_zakresu_pl": "IEEE 1584-2018 p. 4.2 (zakres ważności modelu: 6,35–76,2 mm do 600 V, 19,05–254 mm od 601 V do 15 kV)",
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "odleglosc_robocza_mm",
+      "rodzaj": "liczba",
+      "nazwa_pl": "odległość robocza od miejsca łuku",
+      "symbol": "D",
+      "jednostka": "mm",
+      "od": 305.0,
+      "do": 3000.0,
+      "podstawa_zakresu_pl": "IEEE 1584-2018 p. 4.2 (odległość robocza ≥ 305 mm); górna granica 3000 mm — obsługa rozdzielnicy wnętrzowej z korytarza",
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "szerokosc_obudowy_mm",
+      "rodzaj": "liczba",
+      "nazwa_pl": "szerokość obudowy przedziału",
+      "symbol": "W",
+      "jednostka": "mm",
+      "od": 100.0,
+      "do": 5000.0,
+      "podstawa_zakresu_pl": "IEEE 1584-2018 p. 4.8 (korekcja rozmiaru obudowy; wymiar ponad 1244,6 mm model ogranicza sam) — zakres fizyczny przedziału rozdzielnicy",
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "wysokosc_obudowy_mm",
+      "rodzaj": "liczba",
+      "nazwa_pl": "wysokość obudowy przedziału",
+      "symbol": "H",
+      "jednostka": "mm",
+      "od": 100.0,
+      "do": 5000.0,
+      "podstawa_zakresu_pl": "IEEE 1584-2018 p. 4.8 (korekcja rozmiaru obudowy; wymiar ponad 1244,6 mm model ogranicza sam) — zakres fizyczny przedziału rozdzielnicy",
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "glebokosc_obudowy_mm",
+      "rodzaj": "liczba",
+      "nazwa_pl": "głębokość obudowy przedziału",
+      "symbol": "D_o",
+      "jednostka": "mm",
+      "od": 100.0,
+      "do": 5000.0,
+      "podstawa_zakresu_pl": "IEEE 1584-2018 p. 4.8 (głębokość decyduje o obudowie płytkiej) — zakres fizyczny przedziału rozdzielnicy",
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "iac_dostepnosc",
+      "rodzaj": "slownik",
+      "nazwa_pl": "rodzaj dostępności klasyfikacji IAC",
+      "dozwolone": [
+        "A",
+        "B",
+        "C"
+      ],
+      "wzor": null,
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "iac_strony",
+      "rodzaj": "tekst",
+      "nazwa_pl": "strony obudowy objęte klasyfikacją IAC",
+      "dozwolone": null,
+      "wzor": "^F?L?R?$",
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji"
+      ]
+    },
+    {
+      "klucz": "konfiguracja_elektrod",
+      "rodzaj": "slownik",
+      "nazwa_pl": "konfiguracja elektrod (IEEE 1584)",
+      "dozwolone": [
+        "VCB",
+        "VCBB",
+        "HCB",
+        "VOA",
+        "HOA"
+      ],
+      "wzor": null,
+      "konsumenci": [
+        "luk_elektryczny"
+      ]
+    },
+    {
+      "klucz": "dokument_zrodlowy",
+      "rodzaj": "tekst",
+      "nazwa_pl": "dokument źródłowy danych rozdzielnicy",
+      "dozwolone": null,
+      "wzor": null,
+      "konsumenci": [
+        "wytrzymalosc_szyn_sekcji",
+        "luk_elektryczny"
+      ]
+    }
+  ]
+}

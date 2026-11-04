@@ -61,7 +61,9 @@ import {
   type WiarygodnoscItem,
   type WiarygodnoscResponse,
   type WynikArcFlash,
+  type ZrodloParametruLuku,
 } from './api';
+import { POLA_ROZDZIELNICY_GPZ } from '../../../ui/workspace/gpz/poleGpzDefinicje';
 import {
   KLUCZ_WIARYGODNOSCI_WEZEL,
   KLUCZ_WIERSZA_ARC_FLASH,
@@ -852,6 +854,89 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
   );
 }
 
+/** Pochodzenie parametru geometrii łuku po polsku (stałe `ZRODLO_LUKU_*` backendu). */
+function opisZrodlaLuku(zrodlo: ZrodloParametruLuku | null): string {
+  if (zrodlo === 'dokument_rozdzielnicy') return JAKOSC_STRINGS.zrodloLukuDokument;
+  if (zrodlo === 'projektant') return JAKOSC_STRINGS.zrodloLukuProjektant;
+  if (zrodlo === 'parametr_biegu') return JAKOSC_STRINGS.zrodloLukuParametrBiegu;
+  if (zrodlo === 'wartosc_robocza') return JAKOSC_STRINGS.zrodloLukuWartoscRobocza;
+  return JAKOSC_STRINGS.zrodloLukuBrak;
+}
+
+/**
+ * Geometria łuku użyta w obliczeniu węzła (karta GPZ-DANE-ANALIZ): konfiguracja elektrod,
+ * odstęp i odległość robocza z wiersza wyniku, a dla węzła szyn sekcji GPZ z danymi rozdzielnicy
+ * — każdy parametr z pochodzeniem (etykiety z rejestru pól rozdzielnicy) oraz dane przyjęte.
+ * Liczby wprost z backendu — prezentacja nic nie dolicza.
+ */
+function GeometriaLuku({ wynik }: { wynik: WynikArcFlash }) {
+  const roz = wynik.parametry_rozdzielnicy;
+  const dane = wynik.dane_przyjete ?? [];
+  const mm = (v: number | null): string =>
+    v !== null ? `${fmtMm(v)} ${JAKOSC_STRINGS.jednMm}` : JAKOSC_STRINGS.kreska;
+  return (
+    <div className="mvd-jakosc-szczegol-geometria" data-testid="mvd-jakosc-af-geometria">
+      <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.szczegolGeometria}</span>
+      <dl className="mvd-jakosc-szczegol-dane">
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.szczegolKonfiguracja}</dt>
+          <dd className="mvd-num">{wynik.electrode_config}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.szczegolOdstep}</dt>
+          <dd className="mvd-num">{mm(wynik.conductor_gap_mm)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.szczegolOdleglosc}</dt>
+          <dd className="mvd-num">{mm(wynik.working_distance_mm)}</dd>
+        </div>
+      </dl>
+      {roz && (
+        <div data-testid="mvd-jakosc-af-rozdzielnica" data-sekcja={roz.section_id}>
+          <span className="mvd-jakosc-slad-tytul">
+            {JAKOSC_STRINGS.szczegolRozdzielnica}: {roz.sekcja}
+          </span>
+          <ul className="mvd-jakosc-szczegol-lista">
+            <li data-zrodlo={roz.konfiguracja_elektrod.zrodlo}>
+              {JAKOSC_STRINGS.szczegolKonfiguracja}: {roz.konfiguracja_elektrod.wartosc} —{' '}
+              {opisZrodlaLuku(roz.konfiguracja_elektrod.zrodlo)}
+            </li>
+            {POLA_ROZDZIELNICY_GPZ.filter((pole) => pole.klucz in roz.parametry).map((pole) => {
+              const parametr = roz.parametry[pole.klucz];
+              return (
+                <li
+                  key={pole.klucz}
+                  data-testid={`mvd-jakosc-af-rozdzielnica-${pole.klucz}`}
+                  data-zrodlo={parametr.zrodlo ?? 'brak'}
+                >
+                  {pole.etykietaPl}: {mm(parametr.wartosc)} — {opisZrodlaLuku(parametr.zrodlo)}
+                </li>
+              );
+            })}
+          </ul>
+          {roz.powod_braku_pl && (
+            <p className="mvd-jakosc-szczegol-brak">{roz.powod_braku_pl}</p>
+          )}
+        </div>
+      )}
+      {dane.length > 0 && (
+        <div data-testid="mvd-jakosc-af-dane-przyjete">
+          <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.szczegolDanePrzyjete}</span>
+          <ul className="mvd-jakosc-szczegol-lista">
+            {dane.map((d) => (
+              <li key={d.nazwa_pl}>
+                {d.nazwa_pl}
+                {d.wartosc ? ` = ${fmtWartosc(d.wartosc.wartosc)} ${d.wartosc.jednostka}` : ''} —{' '}
+                {d.powod_pl}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SzczegolArcFlash({
   wynik,
   szczegolyAudytowe,
@@ -909,6 +994,7 @@ function SzczegolArcFlash({
         </div>
       </dl>
       <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
+      <GeometriaLuku wynik={wynik} />
       {wynik.missing_data.length > 0 && (
         <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
           {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}

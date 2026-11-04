@@ -125,6 +125,7 @@ from .pole_katalogowe import (
 )
 from .rodzaj_stacji import TYPY_STACJI_SN_NN
 from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
+from .rozdzielnica_gpz import KOD_BLEDU_ROZDZIELNICY, waliduj_rozdzielnice
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
     NAZWY_KOLEKCJI_PL,
@@ -11543,14 +11544,34 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     )
 
 
+#: Pola sekcji GPZ zmieniane operacją `update_gpz_section` (``section_id`` NIE — identyfikator
+#: niezmienny). Lista ZAMKNIĘTA: klucz spoza niej to odmowa `gpz_section.update.disallowed_keys`
+#: (przypięte `tests/enm/test_gpz_section_crud.py` i `tests/enm/test_rozdzielnica_gpz.py`).
+POLA_EDYCJI_SEKCJI_GPZ: frozenset[str] = frozenset(
+    {
+        "name",
+        "order",
+        "bus_ref",
+        "left_coupler_ref",
+        "right_coupler_ref",
+        "line_field_name",
+        # Karta GPZ-DANE-ANALIZ: dane znamionowe rozdzielnicy sekcji (`GPZSection.rozdzielnica`).
+        "rozdzielnica",
+    }
+)
+
+
 def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref).
+    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref, rozdzielnica).
 
     Payload:
       substation_ref: str
       side: 'lv' | 'hv' (default 'lv')
       section_id: str            — ID sekcji do aktualizacji
-      updates: dict              — pola do zmiany (name/order/bus_ref/left_coupler_ref/right_coupler_ref/line_field_name)
+      updates: dict              — pola do zmiany (``POLA_EDYCJI_SEKCJI_GPZ``); ``rozdzielnica``
+                                   — dane znamionowe rozdzielnicy sekcji, scalane z blokiem
+                                   zastanym (pole ``None`` usuwa daną) i walidowane jedną bramą
+                                   ``enm.rozdzielnica_gpz.waliduj_rozdzielnice``
 
     Pola NIE w `updates` pozostają niezmienione. `section_id` NIE może być
     zmieniony (immutable identyfikator).
@@ -11581,23 +11602,42 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "gpz_section.update.section_missing",
         )
 
-    updates = payload.get("updates") or {}
-    # Whitelist pól do aktualizacji (section_id NIE jest tu — immutable).
-    allowed_keys = {
-        "name",
-        "order",
-        "bus_ref",
-        "left_coupler_ref",
-        "right_coupler_ref",
-        "line_field_name",
-    }
-    rejected = [k for k in updates.keys() if k not in allowed_keys]
+    updates = dict(payload.get("updates") or {})
+    rejected = [k for k in updates.keys() if k not in POLA_EDYCJI_SEKCJI_GPZ]
     if rejected:
-        dozwolone = lista_pl(pole(f"gpz_section.{klucz}") for klucz in sorted(allowed_keys))
+        dozwolone = lista_pl(
+            pole(f"gpz_section.{klucz}") for klucz in sorted(POLA_EDYCJI_SEKCJI_GPZ)
+        )
         return _error_response(
             f"W sekcji GPZ można zmienić wyłącznie: {dozwolone}.",
             "gpz_section.update.disallowed_keys",
         )
+    if "rozdzielnica" in updates:
+        # Karta GPZ-DANE-ANALIZ: dane znamionowe rozdzielnicy sekcji — scalenie z blokiem
+        # zastanym (pole `None` usuwa daną, `rozdzielnica: None` usuwa blok), potem JEDNA brama
+        # `enm.rozdzielnica_gpz.waliduj_rozdzielnice` na bloku wynikowym (spójność I_p/I_k
+        # dotyczy danych po scaleniu, nie samej zmiany).
+        zmiana = updates["rozdzielnica"]
+        if zmiana is not None and not isinstance(zmiana, Mapping):
+            return _error_response(
+                "Dane znamionowe rozdzielnicy sekcji podaje się jako zestaw pól.",
+                KOD_BLEDU_ROZDZIELNICY,
+            )
+        zastana = next((s for s in existing_sections if s.get("section_id") == section_id), {}).get(
+            "rozdzielnica"
+        )
+        scalona: dict[str, Any] | None = None
+        if zmiana is not None:
+            scalona = {k: v for k, v in dict(zastana or {}).items() if v is not None}
+            for klucz, wartosc in zmiana.items():
+                if wartosc is None:
+                    scalona.pop(str(klucz), None)
+                else:
+                    scalona[str(klucz)] = wartosc
+        blok, blad = waliduj_rozdzielnice(scalona)
+        if blad is not None:
+            return _error_response(blad, KOD_BLEDU_ROZDZIELNICY)
+        updates["rozdzielnica"] = blok
     if "bus_ref" in updates:
         if not any(b.get("ref_id") == updates["bus_ref"] for b in enm.get("buses", [])):
             return _error_response(

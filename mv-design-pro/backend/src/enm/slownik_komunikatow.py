@@ -136,6 +136,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "gpz_section.name": "Nazwa",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.order": "Porządek",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.right_coupler_ref": "Sprzęgło z prawej",  # sekcja GPZ (bez pola w edytorze)
+    "gpz_section.rozdzielnica": "Dane znamionowe rozdzielnicy",  # workspace/gpz/poleGpzDefinicje.ts
     "gpz_section.section_id": "ID sekcji",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "grounding.r_ohm": "R uziemienia",  # zrodlo/strings.ts uziemienieR
     "add_grid_source_sn:grounding.type": "Punkt neutralny sieci 110 kV",  # zrodlo/strings.ts uziemienie

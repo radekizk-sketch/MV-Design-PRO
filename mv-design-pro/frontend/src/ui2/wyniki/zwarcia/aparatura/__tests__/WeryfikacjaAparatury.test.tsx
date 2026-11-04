@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
-import type { EnergyNetworkModel } from '../../../../../types/enm';
+import type { EnergyNetworkModel, RozdzielnicaSekcjiGpz } from '../../../../../types/enm';
 import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
 import { znacznikWerdyktu, type PoleWytrzymalosci, type WartoscParametruAparatu } from '../api';
@@ -249,8 +249,37 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
   };
 }
 
+/**
+ * Wiersz szyn zbiorczych sekcji GPZ (karta GPZ-DANE-ANALIZ) — kształt wiersza `szyny_sekcji`
+ * backendu: wiersz pola z `pole_ref = null`, nośnikiem znamion są dane rozdzielnicy sekcji.
+ */
+function szynyOdpowiedzi(rozdzielnica: RozdzielnicaSekcjiGpz | null): PoleWytrzymalosci {
+  const baza = poleOdpowiedzi({});
+  return {
+    ...baza,
+    pole: 'Sekcja 1 (SN)',
+    pole_ref: null,
+    rola: null,
+    rola_pl: null,
+    aparat_ref: 'S1',
+    aparat_nazwa: 'szyny zbiorcze sekcji Sekcja 1 (SN)',
+    aparat_catalog_ref: 'S1',
+    aparat_etykieta: 'rozdzielnica sekcji Sekcja 1 (SN)',
+    sekcja: {
+      section_id: 'S1',
+      strona: 'SN',
+      bus_ref: 'EL-GPZ',
+      rozdzielnica,
+      transformatory: [{ ref_id: 'T1', nazwa: 'T1 25 MVA', strona: 'SN', i_r_a: 916.429 }],
+    },
+  };
+}
+
 /** Atrapa backendu: JEDNA końcówka werdyktów wytrzymałości pól stacji. */
-function zamontujBackend(pola: readonly PoleWytrzymalosci[]): ZadanieWytrzymalosci[] {
+function zamontujBackend(
+  pola: readonly PoleWytrzymalosci[],
+  szyny?: readonly PoleWytrzymalosci[],
+): ZadanieWytrzymalosci[] {
   const zadania: ZadanieWytrzymalosci[] = [];
   vi.stubGlobal(
     'fetch',
@@ -266,6 +295,7 @@ function zamontujBackend(pola: readonly PoleWytrzymalosci[]): ZadanieWytrzymalos
             bieg_zwarciowy_ref: BIEG,
             pola,
             kody_gotowosci: pola.length > 0 ? [] : ['aparatura.brak_pol_z_aparatem'],
+            ...(szyny !== undefined ? { szyny_sekcji: szyny } : {}),
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
@@ -591,6 +621,67 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     expect(brak.getAttribute('data-powod')).toBe('brak-aparatury');
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-konfiguruj'));
     expect(otwarte).toEqual([STACJA]);
+  });
+
+  it('SZYNY SEKCJI GPZ: stacja bez aparatów pól, ale z szynami — wiersze szyn, nie „brak aparatury”', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([], [szynyOdpowiedzi({ u_r_kv: 17.5, i_k_ka: 25, dokument_zrodlowy: 'DTR RX' })]);
+    const zmiany: string[] = [];
+
+    render(
+      <WeryfikacjaAparatury
+        wiersz={shortCircuitRowFixture()}
+        runId={BIEG}
+        punktNazwa="Szyna GPZ"
+        onZmienWartosc={(ref) => zmiany.push(ref)}
+      />,
+    );
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const szyny = await screen.findByTestId('mvd-zwarcia-aparatura-szyny');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-brak')).toBeNull();
+    // Lista pól pusta — nie renderuje pustego bloku; szyny mają własną sekcję.
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-werdykty')).toBeNull();
+    const wiersz = screen.getByTestId('mvd-zwarcia-aparatura-szyny-S1');
+    expect(szyny.contains(wiersz)).toBe(true);
+    expect(wiersz.getAttribute('data-withstand-ok')).toBe('true');
+    expect(
+      screen.getByTestId('mvd-zwarcia-aparatura-rozdzielnica-S1').getAttribute('data-zrodlo-rozdzielnicy'),
+    ).toBe('dokument');
+    expect(wiersz.textContent).toContain('DTR RX');
+    expect(wiersz.textContent).toContain('916,4 A');
+    // Rekordy K szyn pokazane jedyną kartą werdyktu.
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-oceny-Sekcja 1 (SN)').children.length).toBe(3);
+    // Znamiona szyn z danych rozdzielnicy — kreator parametrów APARATU ich nie dotyczy.
+    expect(wiersz.querySelector('[data-testid^="mvd-zwarcia-aparatura-zmien-"]')).toBeNull();
+    expect(zmiany).toEqual([]);
+  });
+
+  it.each([
+    [null, 'brak'],
+    [{ u_r_kv: 17.5 }, 'projektant'],
+  ] as const)('SZYNY SEKCJI: dane rozdzielnicy %j → źródło „%s” nazwane wprost', async (roz, zrodlo) => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({})], [szynyOdpowiedzi(roz)]);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    // Pola stacji i szyny sekcji — obie listy, każda z własnymi wierszami.
+    await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
+    const dane = screen.getByTestId('mvd-zwarcia-aparatura-rozdzielnica-S1');
+    expect(dane.getAttribute('data-zrodlo-rozdzielnicy')).toBe(zrodlo);
+    expect(dane.textContent).toContain(
+      zrodlo === 'brak' ? 'nienadane' : 'nadane przez projektanta',
+    );
+  });
+
+  it('STACJA BEZ SEKCJI GPZ (odpowiedź bez klucza szyn) → brak sekcji szyn', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({})]);
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} runId={BIEG} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+    await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-szyny')).toBeNull();
   });
 
   it('BRAK BIEGU → brak podstawy bez pytania backendu (zero bezpiecznego zera)', async () => {

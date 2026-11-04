@@ -2605,3 +2605,78 @@ def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
     if rodzaj_galezi == "cable":
         return "kabel_sn"
     return "aparat_sn"
+
+
+# ---------------------------------------------------------------------------
+# Rozdzielnica sekcji GPZ — geometria łuku IEEE 1584-2018 (karta GPZ-DANE-ANALIZ)
+# ---------------------------------------------------------------------------
+
+#: Klucze geometrii łuku rozdzielnicy sekcji GPZ (`GPZSection.rozdzielnica`), dla których
+#: rejestr ma propozycję typową klasy urządzenia — kolejność stała.
+PARAMETRY_GEOMETRII_LUKU: tuple[str, ...] = (
+    "odstep_elektrod_mm",
+    "odleglosc_robocza_mm",
+    "szerokosc_obudowy_mm",
+    "wysokosc_obudowy_mm",
+    "glebokosc_obudowy_mm",
+)
+
+_ODNIESIENIE_ODSTEPU_I_OBUDOWY = (
+    "IEEE 1584-2018 tabl. 8 (typowe odstępy szyn i wymiary obudów klas urządzeń)"
+)
+_ODNIESIENIE_ODLEGLOSCI_ROBOCZEJ = "IEEE 1584-2018 tabl. 10 (typowe odległości robocze)"
+
+
+@dataclass(frozen=True)
+class PropozycjaGeometriiLuku:
+    """Typowa geometria łuku klasy rozdzielnicy (IEEE 1584-2018) — propozycja wartości roboczej.
+
+    ``klasa_pl`` — klasa urządzenia normy (rozdzielnica nN, 5 kV, 15 kV); ``wartosci`` — klucz
+    geometrii → liczba [mm]; ``odniesienia`` — klucz → tablica normy, z której liczba pochodzi."""
+
+    klasa_pl: str
+    wartosci: Mapping[str, float]
+    odniesienia: Mapping[str, str]
+
+    def opis_zrodla_pl(self, klucz: str) -> str:
+        return (
+            f"wartość robocza (norma): {self.odniesienia[klucz]} — typowa dla klasy "
+            f"„{self.klasa_pl}”; nie wymiar konkretnej rozdzielnicy. Wpływ: energia incydentu i granica łuku "
+            "zależą od odstępu, odległości roboczej i obudowy — wynik do potwierdzenia danymi "
+            "producenta."
+        )
+
+
+def _geometria_klasy(
+    klasa_pl: str, odstep: float, odleglosc: float, obudowa: tuple[float, float, float]
+) -> PropozycjaGeometriiLuku:
+    wartosci = dict(zip(PARAMETRY_GEOMETRII_LUKU, (odstep, odleglosc, *obudowa), strict=True))
+    odniesienia = {klucz: _ODNIESIENIE_ODSTEPU_I_OBUDOWY for klucz in PARAMETRY_GEOMETRII_LUKU}
+    odniesienia["odleglosc_robocza_mm"] = _ODNIESIENIE_ODLEGLOSCI_ROBOCZEJ
+    return PropozycjaGeometriiLuku(klasa_pl=klasa_pl, wartosci=wartosci, odniesienia=odniesienia)
+
+
+#: Klasy rozdzielnic IEEE 1584-2018: górna granica napięcia klasy [kV] → geometria typowa
+#: (odstęp szyn, odległość robocza, szerokość × wysokość × głębokość obudowy [mm]).
+_GEOMETRIA_LUKU_KLAS: tuple[tuple[float, PropozycjaGeometriiLuku], ...] = (
+    (1.0, _geometria_klasy("rozdzielnica nN", 32.0, 609.6, (508.0, 508.0, 508.0))),
+    (5.0, _geometria_klasy("rozdzielnica 5 kV", 104.0, 914.4, (914.4, 914.4, 914.4))),
+    (15.0, _geometria_klasy("rozdzielnica 15 kV", 152.0, 914.4, (1143.0, 762.0, 762.0))),
+)
+
+#: Powód braku propozycji powyżej 15 kV — tablice IEEE 1584-2018 kończą się na klasie 15 kV.
+POWOD_BRAKU_GEOMETRII_LUKU_PL = (
+    "IEEE 1584-2018 nie podaje typowej geometrii rozdzielnic powyżej 15 kV — odstęp szyn "
+    "i odległość roboczą nadaje projektant z dokumentacji rozdzielnicy"
+)
+
+
+def propozycja_geometrii_luku(napiecie_kv: float | None) -> PropozycjaGeometriiLuku | None:
+    """Typowa geometria łuku rozdzielnicy o napięciu znamionowym sieci ``napiecie_kv`` [kV]
+    (klasa IEEE 1584-2018: nN ≤ 1 kV, 5 kV, 15 kV); ``None`` powyżej 15 kV albo bez napięcia."""
+    if napiecie_kv is None or not math.isfinite(napiecie_kv) or napiecie_kv <= 0.0:
+        return None
+    for granica, propozycja in _GEOMETRIA_LUKU_KLAS:
+        if napiecie_kv <= granica:
+            return propozycja
+    return None

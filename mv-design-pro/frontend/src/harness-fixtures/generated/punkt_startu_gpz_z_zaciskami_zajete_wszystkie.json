@@ -1209,6 +1209,7 @@
             "name": "Sekcja 1",
             "order": 0,
             "right_coupler_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
+            "rozdzielnica": null,
             "section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001"
           },
           {
@@ -1219,6 +1220,7 @@
             "name": "Sekcja 2",
             "order": 1,
             "right_coupler_ref": null,
+            "rozdzielnica": null,
             "section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002"
           }
         ],

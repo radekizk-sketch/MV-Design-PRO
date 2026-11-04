@@ -29,6 +29,11 @@
  * źródła i wpływu oraz akcję „Zmień wartość”, która otwiera kreator edycji parametrów aparatu
  * (zapis na elemencie modelu, przeliczenie). Bez banerów — status i kompletność dowodu niesie
  * karta werdyktu (dane przyjęte w szczegółach kryterium).
+ *
+ * SZYNY ZBIORCZE SEKCJI GPZ (karta GPZ-DANE-ANALIZ): stacja z sekcjami GPZ dostaje z tej samej
+ * końcówki wiersze szyn każdej sekcji (`szyny_sekcji`) — ten sam kształt wiersza i ta sama karta
+ * werdyktu; znamiona szyn pochodzą z danych rozdzielnicy sekcji, więc „Zmień wartość” (kreator
+ * parametrów APARATU) ich nie dotyczy — źródło danych rozdzielnicy wiersz nazywa wprost.
  */
 
 import { useEffect, useState } from 'react';
@@ -57,7 +62,11 @@ import { APARATURA_STRINGS as T } from './strings';
 type Stan =
   | { readonly rodzaj: 'nieuruchomiona' }
   | { readonly rodzaj: 'pracuje' }
-  | { readonly rodzaj: 'gotowe'; readonly wiersze: readonly PoleWytrzymalosci[] }
+  | {
+      readonly rodzaj: 'gotowe';
+      readonly wiersze: readonly PoleWytrzymalosci[];
+      readonly szyny: readonly PoleWytrzymalosci[];
+    }
   | { readonly rodzaj: 'blad'; readonly komunikat: string };
 
 export interface WeryfikacjaAparaturyProps {
@@ -261,6 +270,76 @@ function ParametryAparatu({
   );
 }
 
+/** Źródło danych rozdzielnicy sekcji GPZ wiersza szyn (dokument / projektant / brak). */
+function DaneRozdzielnicy({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const sekcja = pole.sekcja;
+  if (!sekcja) return null;
+  const roz = sekcja.rozdzielnica;
+  const zrodlo = roz === null
+    ? T.szynyZrodloBrak
+    : roz.dokument_zrodlowy
+      ? `${T.szynyZrodloDokument}: ${roz.dokument_zrodlowy}`
+      : T.szynyZrodloProjektant;
+  return (
+    <div
+      className="mvd-apar-czas"
+      data-testid={`mvd-zwarcia-aparatura-rozdzielnica-${sekcja.section_id}`}
+      data-zrodlo-rozdzielnicy={roz === null ? 'brak' : roz.dokument_zrodlowy ? 'dokument' : 'projektant'}
+    >
+      <p className="mvd-apar-czas-powod">{zrodlo}</p>
+      {sekcja.transformatory.length > 0 && (
+        <dl className="mvd-apar-czas-pola">
+          {sekcja.transformatory.map((t) => (
+            <div key={t.ref_id}>
+              <dt>{t.nazwa ?? T.szynyTransformatory}</dt>
+              <dd className="mvd-num">{`${fmtLiczba(t.i_r_a, 1)} A`}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+/** Jeden wiersz werdyktu (pole stacji albo szyny sekcji GPZ) — ten sam układ i karta werdyktu. */
+function WierszWerdyktu({
+  w,
+  testid,
+  onZmienWartosc,
+}: {
+  readonly w: PoleWytrzymalosci;
+  readonly testid: string;
+  readonly onZmienWartosc?: WeryfikacjaAparaturyProps['onZmienWartosc'];
+}) {
+  return (
+    <li
+      className="mvd-apar-werdykt"
+      data-testid={testid}
+      // Znacznik maszynowy werdyktu: 'true' / 'false' / 'nieustalone'.
+      data-withstand-ok={znacznikWerdyktu(w)}
+      data-zrodlo={w.zrodlo}
+    >
+      <span className="mvd-apar-pole mvd-num">{w.pole}</span>
+      <span className="mvd-apar-komunikat">{w.komunikat_pl}</span>
+      <span className="mvd-apar-zrodlo" data-testid={`mvd-zwarcia-aparatura-zrodlo-${w.pole}`}>
+        {w.sekcja ? T.szynyTytul : opisZrodla(w)}
+        {w.aparat_etykieta ? ` · ${w.aparat_etykieta}` : ''}
+      </span>
+      <DaneRozdzielnicy pole={w} />
+      <PradyPola pole={w} />
+      <RozbicieCzasu pole={w} />
+      <ParametryAparatu pole={w} onZmienWartosc={onZmienWartosc} />
+      {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
+          wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). */}
+      <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>
+        {w.oceny.map((ocena) => (
+          <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
+        ))}
+      </div>
+    </li>
+  );
+}
+
 export function WeryfikacjaAparatury({
   wiersz,
   runId,
@@ -286,6 +365,7 @@ export function WeryfikacjaAparatury({
     setStan({ rodzaj: 'pracuje' });
     try {
       const zebrane: PoleWytrzymalosci[] = [];
+      const szyny: PoleWytrzymalosci[] = [];
       if (caseId && runId) {
         for (const stationRef of stacje) {
           // ZAPISANY BIEG, nie liczby: prąd każdego pola backend bierze z wiersza tego
@@ -295,12 +375,23 @@ export function WeryfikacjaAparatury({
             short_circuit_run_id: runId,
           });
           zebrane.push(...widok.pola);
+          szyny.push(...(widok.szyny_sekcji ?? []));
         }
       }
 
-      const brak = powodBrakuPodstawy({ runId, stacje, liczbaPol: zebrane.length });
+      // Szyny sekcji GPZ też są przedmiotem oceny — stacja GPZ bez aparatów pól z katalogu
+      // nie jest „bez aparatury”, gdy ma szyny zbiorcze do sprawdzenia.
+      const brak = powodBrakuPodstawy({
+        runId,
+        stacje,
+        liczbaPol: zebrane.length + szyny.length,
+      });
       setPowod(brak);
-      setStan({ rodzaj: 'gotowe', wiersze: brak === null ? zebrane : [] });
+      setStan({
+        rodzaj: 'gotowe',
+        wiersze: brak === null ? zebrane : [],
+        szyny: brak === null ? szyny : [],
+      });
     } catch (error) {
       setStan({
         rodzaj: 'blad',
@@ -397,39 +488,35 @@ export function WeryfikacjaAparatury({
         </div>
       )}
 
-      {stan.rodzaj === 'gotowe' && powod === null && (
+      {stan.rodzaj === 'gotowe' && powod === null && stan.wiersze.length > 0 && (
         <ul className="mvd-apar-werdykty" data-testid="mvd-zwarcia-aparatura-werdykty">
           {stan.wiersze.map((w) => (
-            <li
+            <WierszWerdyktu
               key={`${w.pole_ref ?? w.pole}::${w.aparat_ref ?? w.aparat_catalog_ref}`}
-              className="mvd-apar-werdykt"
-              data-testid={`mvd-zwarcia-aparatura-pole-${w.pole}`}
-              // Znacznik maszynowy werdyktu: 'true' / 'false' / 'nieustalone'.
-              data-withstand-ok={znacznikWerdyktu(w)}
-              data-zrodlo={w.zrodlo}
-            >
-              <span className="mvd-apar-pole mvd-num">{w.pole}</span>
-              <span className="mvd-apar-komunikat">{w.komunikat_pl}</span>
-              <span
-                className="mvd-apar-zrodlo"
-                data-testid={`mvd-zwarcia-aparatura-zrodlo-${w.pole}`}
-              >
-                {opisZrodla(w)}
-                {w.aparat_etykieta ? ` · ${w.aparat_etykieta}` : ''}
-              </span>
-              <PradyPola pole={w} />
-              <RozbicieCzasu pole={w} />
-              <ParametryAparatu pole={w} onZmienWartosc={onZmienWartosc} />
-              {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
-                  wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). */}
-              <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>
-                {w.oceny.map((ocena) => (
-                  <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
-                ))}
-              </div>
-            </li>
+              w={w}
+              testid={`mvd-zwarcia-aparatura-pole-${w.pole}`}
+              onZmienWartosc={onZmienWartosc}
+            />
           ))}
         </ul>
+      )}
+
+      {stan.rodzaj === 'gotowe' && powod === null && stan.szyny.length > 0 && (
+        <section className="mvd-apar-szyny" data-testid="mvd-zwarcia-aparatura-szyny">
+          <h4 className="mvd-apar-tytul">{T.szynyTytul}</h4>
+          <p className="mvd-apar-cel">{T.szynyCel}</p>
+          <ul className="mvd-apar-werdykty">
+            {stan.szyny.map((w) => (
+              // Bez „Zmień wartość”: nośnikiem znamion szyn są dane rozdzielnicy sekcji
+              // (konfiguracja GPZ), nie aparat modelu z kreatorem parametrów aparatu.
+              <WierszWerdyktu
+                key={`${w.sekcja?.strona ?? ''}::${w.sekcja?.section_id ?? w.pole}`}
+                w={w}
+                testid={`mvd-zwarcia-aparatura-szyny-${w.sekcja?.section_id ?? w.pole}`}
+              />
+            ))}
+          </ul>
+        </section>
       )}
 
       <p className="mvd-apar-norma">{T.norma}</p>

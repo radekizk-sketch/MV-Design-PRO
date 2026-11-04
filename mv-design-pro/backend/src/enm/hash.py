@@ -227,6 +227,29 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
     if pelna:
         for pole in _POLA_SKASOWANE_W_ODCISKU_PELNYM.get(key, ()):
             item.setdefault(pole, None)
+    for lista, pola in _POLA_ADDYTYWNE_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE.get(key, {}).items():
+        if not isinstance(item.get(lista), list):
+            continue
+        # Nowa lista nowych wpisów: element jest kopią PŁYTKĄ (`_kopia_pod_hash`), więc wpisy
+        # listy zagnieżdżonej należą do wołającego — nie wolno ich mutować.
+        item[lista] = [
+            (
+                {k: v for k, v in wpis.items() if not (k in pola and v is None)}
+                if isinstance(wpis, dict)
+                else wpis
+            )
+            for wpis in item[lista]
+        ]
+
+
+#: Pola addytywne WPISÓW list zagnieżdżonych w elemencie (ta sama reguła `None` poza odciskiem
+#: co `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). Karta GPZ-DANE-ANALIZ: dane znamionowe
+#: rozdzielnicy sekcji GPZ (`GPZSection.rozdzielnica`) — `None` = dana nienadana, więc sekcje
+#: sprzed karty haszują jak przed nią; podany blok zmienia ocenę szyn i łuku, więc zmienia
+#: odcisk. Przypięte testem `tests/enm/test_rozdzielnica_gpz.py`.
+_POLA_ADDYTYWNE_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
+    "substations": {"gpz_sections": ("rozdzielnica",), "gpz_hv_sections": ("rozdzielnica",)},
+}
 
 
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:

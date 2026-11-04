@@ -19,6 +19,7 @@
  * niesie dwa rekordy werdyktu wyjaśnialnego (dynamiczny i cieplny).
  */
 
+import type { RozdzielnicaSekcjiGpz } from '../../../../types/enm';
 import type { PropozycjaWartosciRoboczej } from '../../../../ui/catalog/types';
 import type { OcenaKryterium } from '../../wzorzec/werdykt';
 
@@ -133,6 +134,29 @@ export interface PoleWytrzymalosci {
   readonly oceny: readonly OcenaKryterium[];
   readonly komunikat_pl: string;
   readonly kody_gotowosci: readonly string[];
+  /**
+   * Wiersz SZYN ZBIORCZYCH sekcji GPZ (karta GPZ-DANE-ANALIZ) — obecny wyłącznie w
+   * `szyny_sekcji`. Znamiona szyn z danych rozdzielnicy sekcji, a nie z pozycji katalogu aparatu.
+   */
+  readonly sekcja?: SekcjaSzynWytrzymalosci;
+}
+
+/** Transformator przyłączony do sekcji: prąd znamionowy strony przy sekcji (z backendu). */
+export interface TransformatorSekcjiSzyn {
+  readonly ref_id: string;
+  readonly nazwa: string | null;
+  readonly strona: 'SN' | 'WN';
+  readonly i_r_a: number;
+}
+
+/** Sekcja szyn GPZ wiersza szyn zbiorczych i dane jej rozdzielnicy (`GPZSection.rozdzielnica`). */
+export interface SekcjaSzynWytrzymalosci {
+  readonly section_id: string;
+  readonly strona: 'SN' | 'WN';
+  readonly bus_ref: string;
+  /** `null` = dane rozdzielnicy sekcji nienadane (rekordy nazywają brak, nigdy zero). */
+  readonly rozdzielnica: RozdzielnicaSekcjiGpz | null;
+  readonly transformatory: readonly TransformatorSekcjiSzyn[];
 }
 
 export interface WidokWytrzymalosciAparatury {
@@ -142,6 +166,12 @@ export interface WidokWytrzymalosciAparatury {
   readonly bieg_zwarciowy_ref: string;
   readonly pola: readonly PoleWytrzymalosci[];
   readonly kody_gotowosci: readonly string[];
+  /**
+   * Szyny zbiorcze KAŻDEJ sekcji GPZ stacji (karta GPZ-DANE-ANALIZ): kryteria dynamiczne,
+   * cieplne, napięciowe (U_s ≤ U_r), prądu ciągłego (Σ I_r,T ≤ I_r) i łukowe IAC. Klucz obecny
+   * wyłącznie dla stacji z sekcjami GPZ.
+   */
+  readonly szyny_sekcji?: readonly PoleWytrzymalosci[];
 }
 
 export interface ZapytanieWytrzymalosci {

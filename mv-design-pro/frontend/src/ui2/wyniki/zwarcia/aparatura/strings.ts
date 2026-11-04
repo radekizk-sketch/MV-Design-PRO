@@ -69,6 +69,16 @@ export const APARATURA_STRINGS = {
   etykietaRobocza: 'wartość robocza',
   zmienWartosc: 'Zmień wartość',
 
+  // Szyny zbiorcze sekcji GPZ (karta GPZ-DANE-ANALIZ) — znamiona z danych rozdzielnicy sekcji.
+  szynyTytul: 'Szyny zbiorcze sekcji GPZ',
+  szynyCel:
+    'Prąd zwarcia na szynach każdej sekcji porównany z danymi rozdzielnicy sekcji: wytrzymałość '
+    + 'dynamiczna i cieplna, napięcie znamionowe, prąd znamionowy ciągły szyn i klasyfikacja łukowa IAC.',
+  szynyZrodloDokument: 'dane rozdzielnicy z dokumentu',
+  szynyZrodloProjektant: 'dane rozdzielnicy nadane przez projektanta (bez dokumentu źródłowego)',
+  szynyZrodloBrak: 'dane rozdzielnicy sekcji nienadane — uzupełnij je w konfiguracji GPZ',
+  szynyTransformatory: 'Transformatory sekcji (prąd znamionowy strony przy sekcji)',
+
   kreska: '—',
   jednKA: 'kA',
   jednS: 's',

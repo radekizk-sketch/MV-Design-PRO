@@ -69,6 +69,14 @@ from application.analyses.aparaty_pol import (
     znajdz_stacje,
 )
 from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczenia_pol_stacji
+from application.analyses.szyny_sekcji_gpz import (
+    SekcjaGpz,
+    TransformatorSekcji,
+    czas_wylaczenia_szyn,
+    rozstrzygnij_znamiona_szyn,
+    sekcje_gpz_stacji,
+    transformatory_sekcji,
+)
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.wielkosc_wylaczania import (
     WIELKOSC_IB,
@@ -77,10 +85,11 @@ from application.equipment_proof.wielkosc_wylaczania import (
 )
 from enm.dane_przyjete_galezi import KLUCZ_WIERSZA_DANE_GALEZI, dane_przyjete_galezi_wiersza
 from enm.mapping import ref_to_graph_id
-from enm.models import Bay, EnergyNetworkModel
+from enm.models import Bay, EnergyNetworkModel, RozdzielnicaSekcjiGpz, Substation
 from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji as pola_stacji_modelu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
+from enm.rozdzielnica_gpz import OPIS_POLA_ROZDZIELNICY
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
@@ -98,6 +107,7 @@ from network_model.catalog.wartosci_robocze import (
     dane_przyjete_maszyn,
 )
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.pochodne.pasma_napieciowe import napiecie_wymagane_izolacji_kv
 from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
@@ -267,59 +277,107 @@ def prady_pol_z_biegu(
         return {}
     migawka = enm.model_dump(mode="json")
     wiersze_3f = [w for w in wiersze_biegu if w.get("fault_type") == _ZWARCIE_TROJFAZOWE]
-    wynik: dict[str, PradyPola] = {}
-    for bay in pola_stacji_modelu(enm, stacja.ref_id):
-        punkt = szyna_raportowa(migawka, bay.bus_ref)
-        identyfikatory = {punkt, ref_to_graph_id(punkt)}
-        wiersz = next(
-            (
-                w
-                for w in wiersze_3f
-                if w.get("element_id") in identyfikatory or w.get("target_id") in identyfikatory
-            ),
-            None,
-        )
-        if wiersz is None:
-            wynik[bay.ref_id] = _brak_pradow(
-                punkt,
+    return {
+        bay.ref_id: _prady_punktu(
+            migawka,
+            wiersze_3f,
+            bay.bus_ref,
+            brak_wiersza_pl=(
                 "Bieg zwarciowy nie niesie wiersza zwarcia trójfazowego dla punktu zabudowy "
                 "tego pola — prądu pola nie ma z czego wziąć (prąd innego pola nie jest "
-                "podstawiany).",
-            )
-            continue
-        ik, ip, ith = wiersz.get("ikss_ka"), wiersz.get("ip_ka"), wiersz.get("ith_ka")
-        if ik is None or ip is None or ith is None:
-            wynik[bay.ref_id] = _brak_pradow(
-                punkt,
+                "podstawiany)."
+            ),
+            brak_pradow_pl=(
                 "Wiersz biegu dla punktu zabudowy pola nie niesie kompletu prądów "
-                "(Ik″, ip, Ith) — punkt bez odniesienia impedancyjnego w biegu.",
-            )
-            continue
-        wynik[bay.ref_id] = PradyPola(
-            punkt_ref=punkt,
-            punkt_nazwa=nazwa_nadana(wiersz.get("target_name")),
-            ik_ka=float(ik),
-            ip_ka=float(ip),
-            ith_ka=float(ith),
-            ib_ka=_liczba(wiersz.get("ib_ka")),
-            i_dc_ka=_liczba(wiersz.get("i_dc_ka")),
-            tb_s=_liczba(wiersz.get("tb_s")),
-            un_kv=_liczba(wiersz.get("un_kv")),
-            tb_zrodlo=(
-                dict(wiersz["tb_zrodlo"]) if isinstance(wiersz.get("tb_zrodlo"), Mapping) else None
-            ),
-            tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
-            dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
-            zalozenia_zaniku=tuple(
-                dict(w) for w in (wiersz.get("zalozenia_zaniku") or ()) if isinstance(w, Mapping)
-            ),
-            parametry_robocze_maszyn=tuple(
-                dict(w)
-                for w in (wiersz.get("parametry_robocze_maszyn") or ())
-                if isinstance(w, Mapping)
+                "(Ik″, ip, Ith) — punkt bez odniesienia impedancyjnego w biegu."
             ),
         )
-    return wynik
+        for bay in pola_stacji_modelu(enm, stacja.ref_id)
+    }
+
+
+def prady_szyn_z_biegu(
+    *,
+    enm: EnergyNetworkModel,
+    station_ref: str,
+    wiersze_biegu: Sequence[Mapping[str, Any]],
+) -> dict[str, PradyPola]:
+    """Prądy zwarcia na szynach KAŻDEJ sekcji GPZ stacji (karta GPZ-DANE-ANALIZ), kluczowane
+    ``section_id`` — ta sama reguła wiersza (szyna raportowa, zwarcie trójfazowe) co dla pól."""
+    stacja = znajdz_stacje(enm, station_ref)
+    if stacja is None:
+        return {}
+    migawka = enm.model_dump(mode="json")
+    wiersze_3f = [w for w in wiersze_biegu if w.get("fault_type") == _ZWARCIE_TROJFAZOWE]
+    return {
+        sekcja.section_id: _prady_punktu(
+            migawka,
+            wiersze_3f,
+            sekcja.bus_ref,
+            brak_wiersza_pl=(
+                f"Bieg zwarciowy nie niesie wiersza zwarcia trójfazowego dla szyn sekcji "
+                f"{sekcja.nazwa_pl} — prądu szyn nie ma z czego wziąć (prąd innego punktu nie "
+                "jest podstawiany)."
+            ),
+            brak_pradow_pl=(
+                f"Wiersz biegu dla szyn sekcji {sekcja.nazwa_pl} nie niesie kompletu prądów "
+                "(Ik″, ip, Ith) — punkt bez odniesienia impedancyjnego w biegu."
+            ),
+        )
+        for sekcja in sekcje_gpz_stacji(enm, stacja)
+    }
+
+
+def _prady_punktu(
+    migawka: Mapping[str, Any],
+    wiersze_3f: Sequence[Mapping[str, Any]],
+    szyna_ref: str,
+    *,
+    brak_wiersza_pl: str,
+    brak_pradow_pl: str,
+) -> PradyPola:
+    """Prądy zwarcia trójfazowego w węźle szyny ``szyna_ref`` z wiersza biegu — JEDNA reguła dla
+    punktu zabudowy pola i szyn sekcji GPZ. Brak wiersza albo kompletu prądów = nazwany brak,
+    nigdy prąd innego punktu."""
+    punkt = szyna_raportowa(migawka, szyna_ref)
+    identyfikatory = {punkt, ref_to_graph_id(punkt)}
+    wiersz = next(
+        (
+            w
+            for w in wiersze_3f
+            if w.get("element_id") in identyfikatory or w.get("target_id") in identyfikatory
+        ),
+        None,
+    )
+    if wiersz is None:
+        return _brak_pradow(punkt, brak_wiersza_pl)
+    ik, ip, ith = wiersz.get("ikss_ka"), wiersz.get("ip_ka"), wiersz.get("ith_ka")
+    if ik is None or ip is None or ith is None:
+        return _brak_pradow(punkt, brak_pradow_pl)
+    return PradyPola(
+        punkt_ref=punkt,
+        punkt_nazwa=nazwa_nadana(wiersz.get("target_name")),
+        ik_ka=float(ik),
+        ip_ka=float(ip),
+        ith_ka=float(ith),
+        ib_ka=_liczba(wiersz.get("ib_ka")),
+        i_dc_ka=_liczba(wiersz.get("i_dc_ka")),
+        tb_s=_liczba(wiersz.get("tb_s")),
+        un_kv=_liczba(wiersz.get("un_kv")),
+        tb_zrodlo=(
+            dict(wiersz["tb_zrodlo"]) if isinstance(wiersz.get("tb_zrodlo"), Mapping) else None
+        ),
+        tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
+        dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+        zalozenia_zaniku=tuple(
+            dict(w) for w in (wiersz.get("zalozenia_zaniku") or ()) if isinstance(w, Mapping)
+        ),
+        parametry_robocze_maszyn=tuple(
+            dict(w)
+            for w in (wiersz.get("parametry_robocze_maszyn") or ())
+            if isinstance(w, Mapping)
+        ),
+    )
 
 
 def _liczba(wartosc: object) -> float | None:
@@ -641,20 +699,38 @@ def _opis_punktu(prady: PradyPola) -> str:
     return opis_rodzaju_i_nazwy("szyna", prady.punkt_nazwa)
 
 
-def _zakres(prady: PradyPola, *, z_zanikiem: bool = False) -> ZakresWaznosci:
+#: Miejsce zwarcia i nośnik prądu w zdaniach rekordów dynamicznego i cieplnego — aparat pola
+#: (domyślnie) albo szyny zbiorcze sekcji GPZ (``znamiona["miejsce"]``, karta GPZ-DANE-ANALIZ).
+_MIEJSCE_POLA: dict[str, str] = {
+    "miejsce_pl": "w punkcie zabudowy pola",
+    "przedmiot_pl": "aparatu",
+    "przewodzi_pl": "aparat pola przewodzi prąd zwarcia w punkcie zabudowy pola",
+    "nagrzewa_pl": "aparat pola nagrzewa się prądem zwarcia do chwili jego wyłączenia",
+    "zakres_pl": "każdy aparat pola przewodzi co najwyżej prąd zwarcia w tym punkcie",
+}
+
+
+def _miejsce(znamiona: Mapping[str, Any] | None) -> dict[str, str]:
+    nadpisanie = (znamiona or {}).get("miejsce")
+    return {**_MIEJSCE_POLA, **(nadpisanie if isinstance(nadpisanie, Mapping) else {})}
+
+
+def _zakres(
+    prady: PradyPola, *, z_zanikiem: bool = False, znamiona: Mapping[str, Any] | None = None
+) -> ZakresWaznosci:
     """Zakres ważności rekordu pola. ``z_zanikiem`` — rekord porównuje I_b (prąd wyłączeniowy
     z zanikiem prądów maszyn): zakres nazywa wtedy krzywe zaniku μ/q wyznaczone na założeniu
     inżynierskim (karta PODSTAWA-Q, kontrakt werdyktu §4.1 — „rodzaj analizy i założenia").
     Rekordy porównujące I″k, i_p i I_th od μ/q nie zależą — ich zakres założeń nie niesie."""
     punkt = _opis_punktu(prady)
+    miejsce = _miejsce(znamiona)
     zdanie = zdanie_zalozen_zaniku_ib_pl(prady.zalozenia_zaniku) if z_zanikiem else None
     dopisek = "" if zdanie is None else f" {zdanie}"
     return ZakresWaznosci(
         rodzaj_analizy="SHORT_CIRCUIT",
         opis_pl=(
-            f"Zwarcie trójfazowe w punkcie zabudowy pola ({punkt}) wg zapisanego biegu "
-            "IEC 60909; każdy aparat pola przewodzi co najwyżej prąd zwarcia w tym punkcie."
-            + dopisek
+            f"Zwarcie trójfazowe {miejsce['miejsce_pl']} ({punkt}) wg zapisanego biegu "
+            f"IEC 60909; {miejsce['zakres_pl']}." + dopisek
         ),
         wykluczenia=(
             "zwarcia niesymetryczne (osobny tor biegu)",
@@ -681,6 +757,15 @@ _POWOD_WYTRZYMALOSC_NIE_DOTYCZY_PL = (
     "zestawowi przypisywane (IEC 62271-105 § 4.5 i § 4.6); zestaw ocenia kryterium "
     "wyłączania wkładki"
 )
+
+
+def _opis_nosnika_znamion(znamiona: dict[str, Any], etykieta: str) -> str:
+    """Nośnik znamion w zdaniu braku: pozycja katalogu aparatu albo dane znamionowe rozdzielnicy
+    sekcji GPZ (karta GPZ-DANE-ANALIZ) — JEDNA reguła dla kryterium dynamicznego i cieplnego."""
+    nosnik = znamiona.get("nosnik_znamion_pl")
+    if isinstance(nosnik, str):
+        return nosnik
+    return f"pozycja katalogu „{etykieta}”"
 
 
 def _stosowalnosc_wytrzymalosci(znamiona: dict[str, Any], powod_pl: str) -> Stosowalnosc:
@@ -725,16 +810,18 @@ def _ocena_dynamiczna(
         )
     elif not nie_dotyczy:
         braki.append(
-            f"pozycja katalogu „{etykieta}” nie niesie prądu szczytowego I_p (I_dyn), a "
+            f"{_opis_nosnika_znamion(znamiona, etykieta)} nie niesie prądu szczytowego "
+            "I_p (I_dyn), a "
             "propozycji wartości roboczej nie ma: "
             + str((zapis_i_dyn or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
+    miejsce = _miejsce(znamiona)
     wynik = (
         WynikKryterium(
-            wielkosc_pl="prąd udarowy zwarcia trójfazowego w punkcie zabudowy pola",
+            wielkosc_pl=f"prąd udarowy zwarcia trójfazowego {miejsce['miejsce_pl']}",
             symbol_latex=r"i_p",
             wartosc=Wielkosc(wartosc=prady.ip_ka, jednostka="kA"),
-            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
+            punkt_krytyczny_pl=f"zwarcie {miejsce['miejsce_pl']}: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
         if prady.ip_ka is not None
@@ -745,22 +832,20 @@ def _ocena_dynamiczna(
         przedmiot=przedmiot,
         kryterium=Kryterium(
             opis_pl=(
-                "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego "
-                "prądu szczytowego wytrzymywanego aparatu"
+                f"Prąd udarowy zwarcia {miejsce['miejsce_pl']} nie przekracza znamionowego "
+                f"prądu szczytowego wytrzymywanego {miejsce['przedmiot_pl']}"
             ),
             warunek_latex=r"i_p \le I_{dyn}",
             relacja="NIE_WIECEJ",
         ),
         podstawa=_PODSTAWA_DYNAMICZNA,
-        stosowalnosc=_stosowalnosc_wytrzymalosci(
-            znamiona, "aparat pola przewodzi prąd zwarcia w punkcie zabudowy pola"
-        ),
+        stosowalnosc=_stosowalnosc_wytrzymalosci(znamiona, miejsce["przewodzi_pl"]),
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
         # Rekord NIE_DOTYCZY niczego nie porównuje — nie stoi na żadnej danej przyjętej.
         dowod=_dowod(run_id, () if nie_dotyczy else dane),
-        zakres_waznosci=_zakres(prady),
+        zakres_waznosci=_zakres(prady, znamiona=znamiona),
         slad=(
             OdnosnikSladu(
                 run_id=run_id,
@@ -807,7 +892,8 @@ def _ocena_cieplna(
         braki.append(prady.powod_pl)
     if not nie_dotyczy and (znamiona["i_th_ka"] is None or znamiona["i_th_duration_s"] is None):
         braki.append(
-            f"pozycja katalogu „{etykieta}” nie niesie prądu krótkotrwałego I_th z czasem t_th, "
+            f"{_opis_nosnika_znamion(znamiona, etykieta)} nie niesie prądu krótkotrwałego "
+            "I_th z czasem t_th, "
             "a propozycji wartości roboczej nie ma: "
             + str((zapis_i_th or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
@@ -823,12 +909,13 @@ def _ocena_cieplna(
                 f"przeliczony na czas wyłączenia T_k = {t_k} s"
             ),
         )
+    miejsce = _miejsce(znamiona)
     wynik = (
         WynikKryterium(
-            wielkosc_pl="prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola",
+            wielkosc_pl=f"prąd cieplny zastępczy zwarcia trójfazowego {miejsce['miejsce_pl']}",
             symbol_latex=r"I_{th}",
             wartosc=Wielkosc(wartosc=prady.ith_ka, jednostka="kA"),
-            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
+            punkt_krytyczny_pl=f"zwarcie {miejsce['miejsce_pl']}: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
         if prady.ith_ka is not None
@@ -839,21 +926,20 @@ def _ocena_cieplna(
         przedmiot=przedmiot,
         kryterium=Kryterium(
             opis_pl=(
-                "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu "
-                "krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia"
+                f"Prąd cieplny zastępczy zwarcia {miejsce['miejsce_pl']} nie przekracza prądu "
+                f"krótkotrwałego {miejsce['przedmiot_pl']} przeliczonego na czas wyłączenia "
+                "zwarcia"
             ),
             warunek_latex=(r"I_{th} \le I_{thr}\sqrt{\min\left(1,\ \frac{T_{kr}}{T_k}\right)}"),
             relacja="NIE_WIECEJ",
         ),
         podstawa=_PODSTAWA_CIEPLNA,
-        stosowalnosc=_stosowalnosc_wytrzymalosci(
-            znamiona, "aparat pola nagrzewa się prądem zwarcia do chwili jego wyłączenia"
-        ),
+        stosowalnosc=_stosowalnosc_wytrzymalosci(znamiona, miejsce["nagrzewa_pl"]),
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
         dowod=_dowod(run_id, () if nie_dotyczy else dane),
-        zakres_waznosci=_zakres(prady),
+        zakres_waznosci=_zakres(prady, znamiona=znamiona),
         slad=(
             OdnosnikSladu(
                 run_id=run_id,
@@ -1111,7 +1197,11 @@ def _wiersz(
     czas: dict[str, Any],
     prady: PradyPola,
     run_id: str,
+    kryterium_id: str | None = None,
+    przedmiot: Przedmiot | None = None,
 ) -> dict[str, Any]:
+    """Wiersz widoku z rekordami K. ``kryterium_id``/``przedmiot`` — nadpisanie dla wiersza szyn
+    sekcji GPZ (karta GPZ-DANE-ANALIZ); domyślnie aparat pola."""
     kody: list[str] = list(prady.kody_gotowosci)
     werdykt: dict[str, Any] | None = None
     oceny: list[dict[str, Any]] = []
@@ -1153,13 +1243,15 @@ def _wiersz(
             komunikat = str(werdykt["message_pl"]) + _dopisek_wartosci_roboczych(znamiona, czas)
         else:
             komunikat = f"NIEUSTALONE: aparatura „{nazwa}” — {prady.powod_pl or 'brak prądu pola'}"
-        kryterium_id = f"aparatura.{pole_ref or oznaczenie}.{aparat_ref or catalog_ref}"
-        przedmiot = _przedmiot(
-            oznaczenie=oznaczenie,
-            pole_ref=pole_ref,
-            aparat_ref=aparat_ref,
-            nazwa=aparat_nazwa or nazwa,
-        )
+        if kryterium_id is None:
+            kryterium_id = f"aparatura.{pole_ref or oznaczenie}.{aparat_ref or catalog_ref}"
+        if przedmiot is None:
+            przedmiot = _przedmiot(
+                oznaczenie=oznaczenie,
+                pole_ref=pole_ref,
+                aparat_ref=aparat_ref,
+                nazwa=aparat_nazwa or nazwa,
+            )
         oceny = [
             _ocena_dynamiczna(
                 kryterium_id=kryterium_id,
@@ -1246,6 +1338,615 @@ _PRADY_WPISU_OSIEROCONEGO = _brak_pradow(
 )
 
 
+# ---------------------------------------------------------------------------
+# Szyny zbiorcze sekcji GPZ (karta GPZ-DANE-ANALIZ)
+# ---------------------------------------------------------------------------
+
+_IEC_62271_200 = (
+    "IEC 62271-200 (PN-EN 62271-200) Rozdzielnice prądu przemiennego w osłonach metalowych"
+)
+_IEC_62271_200_WYDANIE = "2021"
+#: Górna granica napięcia znamionowego rozdzielnic w osłonach metalowych objętych IEC 62271-200
+#: (p. 1 „Zakres”) [kV] — rozdzielnica 110 kV (napowietrzna albo GIS, IEC 62271-203) nie ma
+#: klasyfikacji IAC w rozumieniu tej normy.
+_U_R_MAKS_IEC_62271_200_KV = 52.0
+
+#: Kody gotowości wiersza szyn sekcji: dana rozdzielnicy nienadana (brak jest nazwany, nie
+#: zastępowany — propozycję daje norma wyłącznie dla t_k i I_p, rozstrzygnięcie rejestru).
+READINESS_SZYNY_BEZ_NAPIECIA_ZNAMIONOWEGO = "aparatura.szyny_brak_napiecia_znamionowego"
+READINESS_SZYNY_BEZ_PRADU_ZNAMIONOWEGO = "aparatura.szyny_brak_pradu_znamionowego"
+READINESS_SZYNY_BEZ_KLASYFIKACJI_IAC = "aparatura.szyny_brak_klasyfikacji_iac"
+
+_POWOD_WARTOSCI_PROJEKTANTA_ROZDZIELNICY = (
+    "wartość nadana przez projektanta w danych rozdzielnicy sekcji bez dokumentu źródłowego — "
+    "ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności"
+)
+
+
+def _znamiona_szyn(sekcja: SekcjaGpz) -> tuple[dict[str, Any], str]:
+    """Znamiona wytrzymałości szyn sekcji z JEDNEGO rozstrzygnięcia (``rozstrzygnij_znamiona_
+    szyn``) w postaci wiersza aparatu: szyny przewodzą zwarcie (kryterium dynamiczne i cieplne
+    dotyczą), ale go nie przerywają (kryterium wyłączania — nie dotyczy)."""
+    rozstrzygniecie = rozstrzygnij_znamiona_szyn(sekcja.rozdzielnica)
+    i_th = rozstrzygniecie[PARAMETR_I_TH]
+    t_th = rozstrzygniecie[PARAMETR_T_TH]
+    i_dyn = rozstrzygniecie[PARAMETR_I_DYN]
+    dokument = sekcja.rozdzielnica.dokument_zrodlowy if sekcja.rozdzielnica else None
+    etykieta = f"rozdzielnica sekcji {sekcja.nazwa_pl}" + (f" ({dokument})" if dokument else "")
+    return (
+        {
+            "i_dyn_ka": i_dyn.wartosc,
+            "i_dyn_pochodzenie": _pochodzenie_znamienia(i_dyn),
+            "i_th_ka": i_th.wartosc,
+            "i_th_duration_s": t_th.wartosc,
+            "i_th_pochodzenie": _pochodzenie_znamienia(i_th),
+            "i_th_duration_pochodzenie": _pochodzenie_znamienia(t_th),
+            "wartosci": {w.parametr: w.to_dict() for w in (i_th, t_th, i_dyn)},
+            "i_cu_ka": None,
+            "i_cu_pochodzenie": None,
+            "i_cu_nie_dotyczy": True,
+            "bezpiecznik": False,
+            "i_th_nie_dotyczy": False,
+            "nosnik_znamion_pl": f"dane znamionowe rozdzielnicy sekcji {sekcja.nazwa_pl}",
+            "miejsce": {
+                "miejsce_pl": f"na szynach sekcji {sekcja.nazwa_pl}",
+                "przedmiot_pl": "szyn zbiorczych sekcji",
+                "przewodzi_pl": "szyny zbiorcze sekcji przewodzą pełny prąd zwarcia na szynach",
+                "nagrzewa_pl": (
+                    "szyny zbiorcze sekcji nagrzewają się prądem zwarcia do wyłączenia "
+                    "ostatniego pola zasilającego"
+                ),
+                "zakres_pl": "szyny sekcji przewodzą pełny prąd zwarcia w węźle szyn",
+            },
+        },
+        etykieta,
+    )
+
+
+def _podstawa_danej_rozdzielnicy(
+    sekcja: SekcjaGpz, nazwa_pl: str, jednostka_redakcyjna: str
+) -> PodstawaWymagania:
+    """Podstawa LIMITU z danych rozdzielnicy: dokument źródłowy (karta producenta) albo
+    wartość projektanta (nigdy ``KATALOG_PRODUCENTA`` bez dokumentu — kontrakt werdyktu §3c)."""
+    dokument = sekcja.rozdzielnica.dokument_zrodlowy if sekcja.rozdzielnica else None
+    if dokument:
+        return PodstawaWymagania(
+            rodzaj="KATALOG_PRODUCENTA",
+            dokument=dokument,
+            wydanie="dokument źródłowy wskazany w danych rozdzielnicy sekcji",
+            jednostka_redakcyjna=f"{nazwa_pl} — {jednostka_redakcyjna}",
+            status="WSKAZANE",
+        )
+    return PodstawaWymagania(
+        rodzaj="ZALOZENIE_PROJEKTOWE",
+        dokument=f"dane rozdzielnicy sekcji {sekcja.nazwa_pl} nadane przez projektanta",
+        wydanie="bieżący stan modelu sieci",
+        jednostka_redakcyjna=f"{nazwa_pl} — {jednostka_redakcyjna}",
+        status="WSKAZANE",
+        uwagi_pl=_POWOD_WARTOSCI_PROJEKTANTA_ROZDZIELNICY,
+    )
+
+
+def _dana_przyjeta_rozdzielnicy(
+    sekcja: SekcjaGpz, klucz: str, wartosc: float, jednostka: str
+) -> tuple[DanaPrzyjeta, ...]:
+    """Liczba rozdzielnicy bez dokumentu źródłowego jako dana przyjęta (``ESTIMATED``)."""
+    if sekcja.rozdzielnica is not None and sekcja.rozdzielnica.dokument_zrodlowy:
+        return ()
+    return (
+        DanaPrzyjeta(
+            nazwa_pl=f"{OPIS_POLA_ROZDZIELNICY[klucz].nazwa_pl} (sekcja {sekcja.nazwa_pl})",
+            wartosc=Wielkosc(wartosc=wartosc, jednostka=jednostka),
+            powod_pl=_POWOD_WARTOSCI_PROJEKTANTA_ROZDZIELNICY,
+            jakosc=FieldQuality.ESTIMATED,
+        ),
+    )
+
+
+def _rekord_szyn(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    kryterium: Kryterium,
+    podstawa: PodstawaWymagania,
+    stosowalnosc: Stosowalnosc,
+    wynik: WynikKryterium | None,
+    limit: LimitKryterium | None,
+    dane: tuple[DanaPrzyjeta, ...],
+    zakres_pl: str,
+    rodzaj_analizy: Any,
+    slad_pl: str,
+    braki: list[str],
+    run_id: str,
+) -> dict[str, Any]:
+    return ocen_kryterium(
+        kryterium_id=kryterium_id,
+        przedmiot=przedmiot,
+        kryterium=kryterium,
+        podstawa=podstawa,
+        stosowalnosc=stosowalnosc,
+        wynik=wynik,
+        limit=limit,
+        niepewnosc=_NIEPEWNOSC_POROWNANIA,
+        dowod=_dowod(run_id, () if not stosowalnosc.dotyczy else dane),
+        zakres_waznosci=ZakresWaznosci(rodzaj_analizy=rodzaj_analizy, opis_pl=zakres_pl),
+        slad=(OdnosnikSladu(run_id=run_id, krok=kryterium_id, opis_pl=slad_pl),),
+        braki_dodatkowe=braki,
+    ).model_dump(mode="json")
+
+
+def _ocena_napieciowa_szyn(
+    *, kryterium_id: str, przedmiot: Przedmiot, sekcja: SekcjaGpz, u_n_kv: float | None, run_id: str
+) -> dict[str, Any]:
+    """U_s sieci sekcji (IEC 60038) ≤ U_r rozdzielnicy (IEC 62271-1:2017 p. 5.2)."""
+    u_s = napiecie_wymagane_izolacji_kv(u_n_kv)
+    u_r = sekcja.rozdzielnica.u_r_kv if sekcja.rozdzielnica else None
+    braki: list[str] = []
+    if u_s is None:
+        braki.append(
+            "napięcie najwyższe sieci sekcji nie wynika z tablic IEC 60038 (napięcie znamionowe "
+            "szyny nieznane albo poza tablicami)"
+        )
+    limit: LimitKryterium | None = None
+    dane: tuple[DanaPrzyjeta, ...] = ()
+    if u_r is None:
+        braki.append(
+            f"rozdzielnica sekcji {sekcja.nazwa_pl} nie ma napięcia znamionowego U_r (dana "
+            "nienadana; napięcie znamionowe rozdzielnicy podaje jej tabliczka — propozycji "
+            "wartości roboczej nie ma)"
+        )
+    else:
+        limit = LimitKryterium(
+            wartosc=Wielkosc(wartosc=u_r, jednostka="kV"),
+            podstawa=_podstawa_danej_rozdzielnicy(
+                sekcja, "napięcie znamionowe rozdzielnicy", "IEC 62271-1:2017 p. 5.2"
+            ),
+        )
+        dane = _dana_przyjeta_rozdzielnicy(sekcja, "u_r_kv", u_r, "kV")
+    return _rekord_szyn(
+        kryterium_id=f"{kryterium_id}.napieciowa",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Napięcie znamionowe rozdzielnicy sekcji nie jest mniejsze od napięcia "
+                "najwyższego sieci"
+            ),
+            warunek_latex=r"U_s \le U_r",
+            relacja="NIE_WIECEJ",
+        ),
+        podstawa=PodstawaWymagania(
+            rodzaj="NORMA",
+            dokument=_IEC_62271_1,
+            wydanie="2017",
+            jednostka_redakcyjna=(
+                "p. 5.2 napięcie znamionowe U_r — równe co najmniej napięciu najwyższemu sieci "
+                "U_s (IEC 60038 tabl. 3–5)"
+            ),
+            status="WSKAZANE",
+        ),
+        stosowalnosc=Stosowalnosc(
+            dotyczy=True, powod_pl="rozdzielnica sekcji pracuje w sieci o napięciu szyny sekcji"
+        ),
+        wynik=(
+            WynikKryterium(
+                wielkosc_pl="napięcie najwyższe sieci sekcji (IEC 60038)",
+                symbol_latex=r"U_s",
+                wartosc=Wielkosc(wartosc=u_s, jednostka="kV"),
+                punkt_krytyczny_pl=f"szyny sekcji {sekcja.nazwa_pl}",
+                metoda="OBLICZENIE",
+            )
+            if u_s is not None
+            else None
+        ),
+        limit=limit,
+        dane=dane,
+        zakres_pl=(
+            f"Dobór napięcia znamionowego rozdzielnicy sekcji {sekcja.nazwa_pl} wobec napięcia "
+            "najwyższego sieci w ustalonym stanie pracy (dziedzina stanu ustalonego, dobór na "
+            "danych znamionowych bez biegu rozpływu); koordynacja izolacji (napięcia "
+            "probiercze) poza zakresem."
+        ),
+        rodzaj_analizy="POWER_FLOW",
+        slad_pl=f"U_n szyny = {u_n_kv} kV → U_s = {u_s} kV (IEC 60038); U_r = {u_r} kV",
+        braki=braki,
+        run_id=run_id,
+    )
+
+
+def _ocena_pradu_ciaglego_szyn(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    sekcja: SekcjaGpz,
+    transformatory: list[TransformatorSekcji],
+    run_id: str,
+) -> dict[str, Any]:
+    """Σ I_r,T transformatorów przyłączonych do sekcji ≤ I_r szyn (IEC 62271-1:2017 p. 5.5)."""
+    i_r = sekcja.rozdzielnica.i_r_a if sekcja.rozdzielnica else None
+    suma = sum(t.i_r_a for t in transformatory) if transformatory else None
+    braki: list[str] = []
+    if suma is None:
+        braki.append(
+            f"do sekcji {sekcja.nazwa_pl} nie jest przyłączony w modelu żaden transformator — "
+            "prąd roboczy sekcji nie wynika z mocy znamionowej transformatora"
+        )
+    limit: LimitKryterium | None = None
+    dane: tuple[DanaPrzyjeta, ...] = ()
+    if i_r is None:
+        braki.append(
+            f"rozdzielnica sekcji {sekcja.nazwa_pl} nie ma prądu znamionowego ciągłego szyn I_r "
+            "(dana nienadana; prąd znamionowy szyn podaje producent — propozycji wartości "
+            "roboczej nie ma)"
+        )
+    else:
+        limit = LimitKryterium(
+            wartosc=Wielkosc(wartosc=i_r, jednostka="A"),
+            podstawa=_podstawa_danej_rozdzielnicy(
+                sekcja, "prąd znamionowy ciągły szyn", "IEC 62271-1:2017 p. 5.5"
+            ),
+        )
+        dane = _dana_przyjeta_rozdzielnicy(sekcja, "i_r_a", i_r, "A")
+    skladniki = "; ".join(
+        f"{t.opis_pl}: {t.liczba_jednostek}×{t.sn_mva} MVA przy {t.u_kv} kV → "
+        f"{round(t.i_r_a, 3)} A"
+        for t in transformatory
+    )
+    return _rekord_szyn(
+        kryterium_id=f"{kryterium_id}.ciagla",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Suma prądów znamionowych transformatorów przyłączonych do sekcji nie przekracza "
+                "prądu znamionowego ciągłego szyn"
+            ),
+            warunek_latex=r"\sum I_{r,T} \le I_r",
+            relacja="NIE_WIECEJ",
+        ),
+        podstawa=PodstawaWymagania(
+            rodzaj="NORMA",
+            dokument=_IEC_62271_1,
+            wydanie="2017",
+            jednostka_redakcyjna=(
+                "p. 5.5 prąd znamionowy ciągły I_r — szyny przewodzą trwale prąd roboczy sekcji; "
+                "prąd znamionowy strony transformatora wg IEC 60076-1 (I_r = S_r/(√3·U_r))"
+            ),
+            status="WSKAZANE",
+            uwagi_pl=(
+                "prąd roboczy sekcji oszacowany od góry sumą prądów znamionowych transformatorów "
+                "przyłączonych do sekcji (pełne obciążenie transformatorów)"
+            ),
+        ),
+        stosowalnosc=Stosowalnosc(
+            dotyczy=True, powod_pl="szyny sekcji przewodzą trwale prąd transformatorów sekcji"
+        ),
+        wynik=(
+            WynikKryterium(
+                wielkosc_pl="suma prądów znamionowych transformatorów sekcji",
+                symbol_latex=r"\sum I_{r,T}",
+                wartosc=Wielkosc(wartosc=round(suma, 6), jednostka="A"),
+                punkt_krytyczny_pl=f"szyny sekcji {sekcja.nazwa_pl}",
+                metoda="OBLICZENIE",
+            )
+            if suma is not None
+            else None
+        ),
+        limit=limit,
+        dane=dane,
+        zakres_pl=(
+            f"Obciążalność ciągła szyn sekcji {sekcja.nazwa_pl} przy pełnym obciążeniu "
+            "transformatorów przyłączonych do sekcji; przepływy przez sprzęgło z sekcji "
+            "sąsiedniej poza zakresem (dziedzina stanu ustalonego, dobór na danych znamionowych "
+            "bez biegu rozpływu)."
+        ),
+        rodzaj_analizy="POWER_FLOW",
+        slad_pl=f"Σ I_r,T = {suma} A ({skladniki or 'brak transformatorów'}); I_r = {i_r} A",
+        braki=braki,
+        run_id=run_id,
+    )
+
+
+def _stosowalnosc_iac(sekcja: SekcjaGpz, u_n_kv: float | None) -> Stosowalnosc:
+    if sekcja.strona == "WN" or (u_n_kv is not None and u_n_kv > _U_R_MAKS_IEC_62271_200_KV):
+        return Stosowalnosc(
+            dotyczy=False,
+            powod_pl=(
+                "IEC 62271-200 obejmuje rozdzielnice w osłonach metalowych do 52 kV — "
+                "rozdzielnica 110 kV nie ma klasyfikacji łukowej IAC tej normy"
+            ),
+        )
+    return Stosowalnosc(
+        dotyczy=True,
+        powod_pl="rozdzielnica SN w osłonie metalowej — klasyfikacja łukowa IAC (IEC 62271-200)",
+    )
+
+
+def _klasa_iac_pl(rozdzielnica: RozdzielnicaSekcjiGpz | None) -> str:
+    if rozdzielnica is None or rozdzielnica.iac_i_a_ka is None:
+        return "klasyfikacja IAC nienadana"
+    dostep = rozdzielnica.iac_dostepnosc or "?"
+    strony = rozdzielnica.iac_strony or "?"
+    czas = "?" if rozdzielnica.iac_t_a_s is None else f"{rozdzielnica.iac_t_a_s} s"
+    return f"IAC {dostep}{strony} {rozdzielnica.iac_i_a_ka} kA {czas}"
+
+
+def _podstawa_iac() -> PodstawaWymagania:
+    return PodstawaWymagania(
+        rodzaj="NORMA",
+        dokument=_IEC_62271_200,
+        wydanie=_IEC_62271_200_WYDANIE,
+        jednostka_redakcyjna=(
+            "p. 6.106 i zał. AA klasyfikacja łukowa IAC — prąd i czas próby łuku wewnętrznego"
+        ),
+        status="WSKAZANE",
+        uwagi_pl=(
+            "klasyfikacja IAC chroni obsługę, gdy prąd łuku i czas jego trwania nie przekraczają "
+            "wartości próby"
+        ),
+    )
+
+
+def _ocena_iac_pradu(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    sekcja: SekcjaGpz,
+    prady: PradyPola,
+    u_n_kv: float | None,
+    run_id: str,
+) -> dict[str, Any]:
+    """I″k na szynach sekcji ≤ prąd próby łukowej I_A (IEC 62271-200 p. 6.106)."""
+    stosowalnosc = _stosowalnosc_iac(sekcja, u_n_kv)
+    roz = sekcja.rozdzielnica
+    i_a = roz.iac_i_a_ka if roz else None
+    braki: list[str] = []
+    if prady.ik_ka is None and prady.powod_pl:
+        braki.append(prady.powod_pl)
+    limit: LimitKryterium | None = None
+    dane: tuple[DanaPrzyjeta, ...] = _dane_pradow(prady, wielkosc="ikss")
+    if i_a is None:
+        if stosowalnosc.dotyczy:
+            braki.append(
+                f"rozdzielnica sekcji {sekcja.nazwa_pl} nie ma klasyfikacji łukowej IAC (dana "
+                "nienadana; klasyfikację deklaruje producent po próbie typu — propozycji "
+                "wartości roboczej nie ma)"
+            )
+    else:
+        limit = LimitKryterium(
+            wartosc=Wielkosc(wartosc=i_a, jednostka="kA"),
+            podstawa=_podstawa_danej_rozdzielnicy(
+                sekcja, "prąd próby łukowej IAC", "IEC 62271-200:2021 p. 6.106"
+            ),
+            zakres_stosowalnosci_pl=_klasa_iac_pl(roz),
+        )
+        dane = dane + _dana_przyjeta_rozdzielnicy(sekcja, "iac_i_a_ka", i_a, "kA")
+    return _rekord_szyn(
+        kryterium_id=f"{kryterium_id}.iac_prad",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Prąd zwarcia trójfazowego na szynach sekcji nie przekracza prądu próby łukowej "
+                "klasyfikacji IAC rozdzielnicy"
+            ),
+            warunek_latex=r"I''_k \le I_A",
+            relacja="NIE_WIECEJ",
+        ),
+        podstawa=_podstawa_iac(),
+        stosowalnosc=stosowalnosc,
+        wynik=(
+            WynikKryterium(
+                wielkosc_pl="początkowy prąd zwarcia trójfazowego na szynach sekcji",
+                symbol_latex=r"I''_k",
+                wartosc=Wielkosc(wartosc=prady.ik_ka, jednostka="kA"),
+                punkt_krytyczny_pl=f"zwarcie na szynach sekcji {sekcja.nazwa_pl}",
+                metoda="OBLICZENIE",
+            )
+            if prady.ik_ka is not None
+            else None
+        ),
+        limit=limit,
+        dane=dane,
+        zakres_pl=(
+            f"Łuk wewnętrzny w rozdzielnicy sekcji {sekcja.nazwa_pl}: prąd łuku oszacowany od "
+            "góry prądem zwarcia metalicznego I″k wg zapisanego biegu IEC 60909."
+        ),
+        rodzaj_analizy="SHORT_CIRCUIT",
+        slad_pl=f"I″k = {prady.ik_ka} kA (wiersz biegu); {_klasa_iac_pl(roz)}",
+        braki=braki,
+        run_id=run_id,
+    )
+
+
+def _ocena_iac_czasu(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    sekcja: SekcjaGpz,
+    czas: dict[str, Any],
+    u_n_kv: float | None,
+    run_id: str,
+) -> dict[str, Any]:
+    """Czas wyłączenia zwarcia na szynach ≤ czas próby łukowej t_A (IEC 62271-200 p. 6.106)."""
+    stosowalnosc = _stosowalnosc_iac(sekcja, u_n_kv)
+    roz = sekcja.rozdzielnica
+    t_a = roz.iac_t_a_s if roz else None
+    t_k = czas.get("t_clearing_s")
+    braki: list[str] = []
+    if t_k is None:
+        braki.append(str(czas.get("powod_pl") or "czas wyłączenia zwarcia nie jest ustalony"))
+    zapis_czasu_wlasnego = czas.get("czas_wlasny") if t_k is not None else None
+    dane = _dane_przyjete(
+        [zapis_czasu_wlasnego if isinstance(zapis_czasu_wlasnego, dict) else None],
+        aparat_pl=przedmiot.nazwa_pl,
+    )
+    limit: LimitKryterium | None = None
+    if t_a is None:
+        if stosowalnosc.dotyczy:
+            braki.append(
+                f"rozdzielnica sekcji {sekcja.nazwa_pl} nie ma czasu próby łukowej IAC (dana "
+                "nienadana; klasyfikację deklaruje producent po próbie typu — propozycji "
+                "wartości roboczej nie ma)"
+            )
+    else:
+        limit = LimitKryterium(
+            wartosc=Wielkosc(wartosc=t_a, jednostka="s"),
+            podstawa=_podstawa_danej_rozdzielnicy(
+                sekcja, "czas próby łukowej IAC", "IEC 62271-200:2021 p. 6.106"
+            ),
+            zakres_stosowalnosci_pl=_klasa_iac_pl(roz),
+        )
+        dane = dane + _dana_przyjeta_rozdzielnicy(sekcja, "iac_t_a_s", t_a, "s")
+    return _rekord_szyn(
+        kryterium_id=f"{kryterium_id}.iac_czas",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Czas wyłączenia zwarcia na szynach sekcji nie przekracza czasu próby łukowej "
+                "klasyfikacji IAC rozdzielnicy"
+            ),
+            warunek_latex=r"T_k \le t_A",
+            relacja="NIE_WIECEJ",
+        ),
+        podstawa=_podstawa_iac(),
+        stosowalnosc=stosowalnosc,
+        wynik=(
+            WynikKryterium(
+                wielkosc_pl="czas wyłączenia zwarcia na szynach sekcji",
+                symbol_latex=r"T_k",
+                wartosc=Wielkosc(wartosc=float(t_k), jednostka="s"),
+                punkt_krytyczny_pl=f"zwarcie na szynach sekcji {sekcja.nazwa_pl}",
+                metoda="OBLICZENIE",
+            )
+            if t_k is not None
+            else None
+        ),
+        limit=limit,
+        dane=dane,
+        zakres_pl=(
+            f"Łuk wewnętrzny w rozdzielnicy sekcji {sekcja.nazwa_pl} trwa do wyłączenia "
+            "ostatniego pola zasilającego sekcję (nastawy zabezpieczeń pól z modelu)."
+        ),
+        rodzaj_analizy="SHORT_CIRCUIT",
+        slad_pl=f"T_k = {t_k} s ({czas.get('powod_pl')}); {_klasa_iac_pl(roz)}",
+        braki=braki,
+        run_id=run_id,
+    )
+
+
+def _napiecie_szyny_kv(enm: EnergyNetworkModel, bus_ref: str) -> float | None:
+    szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+    return szyna.voltage_kv if szyna is not None else None
+
+
+def _wiersze_szyn_sekcji(
+    *,
+    enm: EnergyNetworkModel,
+    stacja: Substation,
+    prady_szyn: Mapping[str, PradyPola],
+    czasy_pol: Mapping[str, Mapping[str, Any]],
+    run_id: str,
+) -> list[dict[str, Any]]:
+    """Wiersze szyn zbiorczych KAŻDEJ sekcji GPZ stacji: kryteria wytrzymałości dynamicznej
+    i cieplnej (ten sam rdzeń co aparat pola), napięciowe, prądu ciągłego i łukowe IAC.
+
+    Sekcja bez danych rozdzielnicy nie znika z widoku — jej rekordy nazywają brakujące dane
+    (ten sam stan „nieustalone”, co aparat bez znamion), a t_k i I_p proponuje norma, gdy
+    rozstrzygnięcie ma z czego je wyznaczyć."""
+    wiersze: list[dict[str, Any]] = []
+    for sekcja in sekcje_gpz_stacji(enm, stacja):
+        prady = prady_szyn.get(sekcja.section_id) or _brak_pradow(
+            None, f"Bieg zwarciowy nie niesie prądów dla szyn sekcji {sekcja.nazwa_pl}."
+        )
+        czas = czas_wylaczenia_szyn(enm, sekcja, czasy_pol)
+        znamiona, etykieta = _znamiona_szyn(sekcja)
+        kryterium_id = f"szyny.{stacja.ref_id}.{sekcja.strona}.{sekcja.section_id}"
+        przedmiot = Przedmiot(
+            element_ref=sekcja.bus_ref,
+            nazwa_pl=f"szyny zbiorcze sekcji {sekcja.nazwa_pl}",
+            opis_pl=f"szyny zbiorcze i rozdzielnica sekcji {sekcja.nazwa_pl} stacji GPZ",
+        )
+        wiersz = _wiersz(
+            oznaczenie=sekcja.nazwa_pl,
+            pole_ref=None,
+            rola=None,
+            zrodlo=ZRODLO_MODEL,
+            aparat_ref=sekcja.section_id,
+            aparat_nazwa=przedmiot.nazwa_pl,
+            catalog_ref=sekcja.section_id,
+            znamiona=znamiona,
+            etykieta=etykieta,
+            czas=czas,
+            prady=prady,
+            run_id=run_id,
+            kryterium_id=kryterium_id,
+            przedmiot=przedmiot,
+        )
+        u_n_kv = _napiecie_szyny_kv(enm, sekcja.bus_ref)
+        transformatory = transformatory_sekcji(enm, sekcja)
+        roz = sekcja.rozdzielnica
+        kody = list(wiersz["kody_gotowosci"])
+        for warunek, kod in (
+            (roz is None or roz.u_r_kv is None, READINESS_SZYNY_BEZ_NAPIECIA_ZNAMIONOWEGO),
+            (roz is None or roz.i_r_a is None, READINESS_SZYNY_BEZ_PRADU_ZNAMIONOWEGO),
+            (
+                _stosowalnosc_iac(sekcja, u_n_kv).dotyczy
+                and (roz is None or roz.iac_i_a_ka is None or roz.iac_t_a_s is None),
+                READINESS_SZYNY_BEZ_KLASYFIKACJI_IAC,
+            ),
+        ):
+            if warunek and kod not in kody:
+                kody.append(kod)
+        wiersz["oceny"] = list(wiersz["oceny"]) + [
+            _ocena_napieciowa_szyn(
+                kryterium_id=kryterium_id,
+                przedmiot=przedmiot,
+                sekcja=sekcja,
+                u_n_kv=u_n_kv,
+                run_id=run_id,
+            ),
+            _ocena_pradu_ciaglego_szyn(
+                kryterium_id=kryterium_id,
+                przedmiot=przedmiot,
+                sekcja=sekcja,
+                transformatory=transformatory,
+                run_id=run_id,
+            ),
+            _ocena_iac_pradu(
+                kryterium_id=kryterium_id,
+                przedmiot=przedmiot,
+                sekcja=sekcja,
+                prady=prady,
+                u_n_kv=u_n_kv,
+                run_id=run_id,
+            ),
+            _ocena_iac_czasu(
+                kryterium_id=kryterium_id,
+                przedmiot=przedmiot,
+                sekcja=sekcja,
+                czas=czas,
+                u_n_kv=u_n_kv,
+                run_id=run_id,
+            ),
+        ]
+        wiersz["kody_gotowosci"] = kody
+        wiersz["sekcja"] = {
+            "section_id": sekcja.section_id,
+            "strona": sekcja.strona,
+            "bus_ref": sekcja.bus_ref,
+            "rozdzielnica": roz.model_dump(mode="json", exclude_none=True) if roz else None,
+            "transformatory": [
+                {
+                    "ref_id": t.ref_id,
+                    "nazwa": t.nazwa_pl,
+                    "strona": t.strona,
+                    "i_r_a": round(t.i_r_a, 6),
+                }
+                for t in transformatory
+            ],
+        }
+        wiersze.append(wiersz)
+    return wiersze
+
+
 def zbuduj_widok_wytrzymalosci_aparatury(
     *,
     enm: EnergyNetworkModel,
@@ -1254,6 +1955,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     run_id: str,
     bay_device_withstand: dict[str, Any] | None = None,
     czasy_pol: dict[str, dict[str, Any]] | None = None,
+    prady_szyn: Mapping[str, PradyPola] | None = None,
 ) -> dict[str, Any]:
     """Werdykty wytrzymałości dla wszystkich pól stacji (model + konfiguracja).
 
@@ -1268,6 +1970,10 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             wskazany aparat + czas wyłączenia). Nadrzędna wobec modelu.
         czasy_pol: czasy wyłączenia wyznaczone z nastaw pól (poz. 3), kluczowane
             referencją pola. Brak wpisu = czas nieustalony (nie zero).
+        prady_szyn: prądy zwarcia na szynach KAŻDEJ sekcji GPZ (``prady_szyn_z_biegu``),
+            kluczowane ``section_id`` (karta GPZ-DANE-ANALIZ). Stacja z sekcjami GPZ dostaje
+            klucz ``szyny_sekcji`` — wiersze szyn zbiorczych z rekordami K; stacja bez sekcji
+            GPZ — odpowiedź bez tego klucza (jak przed kartą).
 
     Returns:
         Widok: stacja, lista pól z werdyktami i rekordami K, kody gotowości. Nigdy nie
@@ -1380,7 +2086,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     if not wiersze:
         kody.append(READINESS_BRAK_POL_Z_APARATEM)
 
-    return {
+    widok: dict[str, Any] = {
         "stacja_ref": stacja.ref_id,
         "stacja_nazwa": stacja.name,
         "status": "OK" if wiersze else "brak danych",
@@ -1388,6 +2094,15 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         "pola": wiersze,
         "kody_gotowosci": kody,
     }
+    if stacja.gpz_sections or stacja.gpz_hv_sections:
+        widok["szyny_sekcji"] = _wiersze_szyn_sekcji(
+            enm=enm,
+            stacja=stacja,
+            prady_szyn=prady_szyn or {},
+            czasy_pol=czasy,
+            run_id=run_id,
+        )
+    return widok
 
 
 def widok_wytrzymalosci_z_biegu(
@@ -1417,4 +2132,7 @@ def widok_wytrzymalosci_z_biegu(
         run_id=run_id,
         bay_device_withstand=bay_device_withstand,
         czasy_pol=czasy,
+        prady_szyn=prady_szyn_z_biegu(
+            enm=enm, station_ref=station_ref, wiersze_biegu=wiersze_biegu
+        ),
     )

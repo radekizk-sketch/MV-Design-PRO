@@ -1099,6 +1099,32 @@ export interface DerTopologyMeta {
 // Substation (stacja SN/nn — kontener logiczny z rozdzielnicami)
 // ---------------------------------------------------------------------------
 
+/**
+ * Dane znamionowe rozdzielnicy (szyn zbiorczych) sekcji GPZ — mirror backendowego
+ * `enm/models.py::RozdzielnicaSekcjiGpz` (karta GPZ-DANE-ANALIZ). Opis pól (nazwa, jednostka,
+ * zakres z podstawą, konsumenci) niesie `ui/workspace/gpz/poleGpzDefinicje.ts` — lustro
+ * tablicy parytetu backendu. Pole nienadane = `null`/brak (nigdy zero). Pisarz:
+ * `update_gpz_section` (`updates.rozdzielnica`).
+ */
+export interface RozdzielnicaSekcjiGpz {
+  u_r_kv?: number | null;
+  i_r_a?: number | null;
+  i_k_ka?: number | null;
+  t_k_s?: number | null;
+  i_p_ka?: number | null;
+  iac_dostepnosc?: 'A' | 'B' | 'C' | null;
+  iac_strony?: string | null;
+  iac_i_a_ka?: number | null;
+  iac_t_a_s?: number | null;
+  konfiguracja_elektrod?: 'VCB' | 'VCBB' | 'HCB' | 'VOA' | 'HOA' | null;
+  odstep_elektrod_mm?: number | null;
+  odleglosc_robocza_mm?: number | null;
+  szerokosc_obudowy_mm?: number | null;
+  wysokosc_obudowy_mm?: number | null;
+  glebokosc_obudowy_mm?: number | null;
+  dokument_zrodlowy?: string | null;
+}
+
 export interface GPZSection {
   section_id: string;
   order: number;
@@ -1108,6 +1134,8 @@ export interface GPZSection {
   incoming_source_ref?: string | null;
   left_coupler_ref?: string | null;
   right_coupler_ref?: string | null;
+  /** Dane znamionowe rozdzielnicy sekcji (karta GPZ-DANE-ANALIZ); brak = dane nienadane. */
+  rozdzielnica?: RozdzielnicaSekcjiGpz | null;
 }
 
 /**

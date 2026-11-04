@@ -253,6 +253,18 @@ export const JAKOSC_STRINGS = {
   // Szczegół
   szczegolProweniencja: 'Proweniencja tablic współczynników',
   szczegolBrakDanych: 'Brakujące dane wejściowe',
+  // Geometria łuku węzła (karta GPZ-DANE-ANALIZ): wartości użyte w obliczeniu + pochodzenie.
+  szczegolGeometria: 'Geometria łuku użyta w obliczeniu',
+  szczegolKonfiguracja: 'Konfiguracja elektrod',
+  szczegolOdstep: 'Odstęp szyn G',
+  szczegolOdleglosc: 'Odległość robocza D',
+  szczegolRozdzielnica: 'Dane rozdzielnicy sekcji',
+  zrodloLukuDokument: 'z dokumentu rozdzielnicy',
+  zrodloLukuProjektant: 'nadane przez projektanta',
+  zrodloLukuParametrBiegu: 'z parametrów analizy',
+  zrodloLukuWartoscRobocza: 'wartość robocza (IEEE 1584-2018)',
+  zrodloLukuBrak: 'brak danej',
+  szczegolDanePrzyjete: 'Dane przyjęte w obliczeniu',
   // Jednostki
   jednKA: 'kA',
   jednKV: 'kV',

@@ -34,6 +34,7 @@
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
+import type { DanaPrzyjeta } from '../wzorzec/werdykt';
 
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
@@ -389,6 +390,28 @@ export interface KrokArcFlash {
   readonly table_ref: string | null;
 }
 
+/**
+ * Pochodzenie parametru geometrii łuku węzła szyn sekcji GPZ (karta GPZ-DANE-ANALIZ; stałe
+ * `ZRODLO_LUKU_*` backendu `arc_flash_view`): dokument rozdzielnicy > projektant > parametr
+ * żądania > wartość robocza IEEE 1584-2018.
+ */
+export type ZrodloParametruLuku =
+  | 'dokument_rozdzielnicy'
+  | 'projektant'
+  | 'parametr_biegu'
+  | 'wartosc_robocza';
+
+/** Geometria łuku węzła z danych rozdzielnicy sekcji GPZ (`ParametryLukuSekcji.to_dict()`). */
+export interface ParametryRozdzielnicyArcFlash {
+  readonly section_id: string;
+  readonly sekcja: string;
+  readonly konfiguracja_elektrod: { readonly wartosc: string; readonly zrodlo: ZrodloParametruLuku };
+  readonly parametry: Readonly<
+    Record<string, { readonly wartosc: number | null; readonly zrodlo: ZrodloParametruLuku | null }>
+  >;
+  readonly powod_braku_pl: string | null;
+}
+
 /** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
 export interface WynikArcFlash {
   readonly bus_ref: string;
@@ -416,6 +439,10 @@ export interface WynikArcFlash {
   readonly why_pl: string;
   readonly missing_data: readonly string[];
   readonly white_box: readonly KrokArcFlash[];
+  /** Węzeł szyn sekcji GPZ z danymi rozdzielnicy — geometria łuku z pochodzeniem parametrów. */
+  readonly parametry_rozdzielnicy?: ParametryRozdzielnicyArcFlash;
+  /** Dane przyjęte, na których stoi wynik (wartości robocze, ESTIMATED) — brak = żadnych. */
+  readonly dane_przyjete?: readonly DanaPrzyjeta[];
 }
 
 /** Pełna odpowiedź `POST /api/quality/arc-flash`. */

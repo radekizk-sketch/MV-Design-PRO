@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { SekcjaArcFlash } from '../EkranJakosci';
 import type { ArcFlashResponse } from '../api';
@@ -209,5 +210,77 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
     // Etykieta kroku to „Wzór” — identyfikator `symbol` backendu nie jest dopisywany prozą.
     expect(slad.textContent).not.toContain('(E)');
+  });
+
+  it('węzeł szyn sekcji GPZ → geometria łuku z pochodzeniem parametrów i dane przyjęte', async () => {
+    // Kształt 1:1 z `build_arc_flash_view` dla węzła sekcji z blokiem rozdzielnicy bez
+    // dokumentu (karta GPZ-DANE-ANALIZ). Kliki natywne (userEvent).
+    const user = userEvent.setup();
+    const wynik = AF_FIXTURE.results[0];
+    mockedArcFlash.mockResolvedValue({
+      ...AF_FIXTURE,
+      results: [
+        {
+          ...wynik,
+          electrode_config: 'HCB',
+          conductor_gap_mm: 120,
+          working_distance_mm: 914.4,
+          parametry_rozdzielnicy: {
+            section_id: 'S1',
+            sekcja: 'Sekcja 1 (SN)',
+            konfiguracja_elektrod: { wartosc: 'HCB', zrodlo: 'projektant' },
+            parametry: {
+              odstep_elektrod_mm: { wartosc: 120, zrodlo: 'projektant' },
+              odleglosc_robocza_mm: { wartosc: 914.4, zrodlo: 'wartosc_robocza' },
+              szerokosc_obudowy_mm: { wartosc: 1143, zrodlo: 'wartosc_robocza' },
+              wysokosc_obudowy_mm: { wartosc: 762, zrodlo: 'wartosc_robocza' },
+              glebokosc_obudowy_mm: { wartosc: 762, zrodlo: 'wartosc_robocza' },
+            },
+            powod_braku_pl: null,
+          },
+          dane_przyjete: [
+            {
+              nazwa_pl: 'odległość robocza od miejsca łuku (sekcja Sekcja 1 (SN))',
+              wartosc: { wartosc: 914.4, jednostka: 'mm' },
+              powod_pl: 'wartość robocza (norma): IEEE 1584-2018 tabl. 10',
+              jakosc: 'ESTIMATED',
+            },
+          ],
+        },
+      ],
+    });
+    render(<SekcjaArcFlash {...props()} />);
+    await user.click(screen.getByTestId('mvd-jakosc-af-licz'));
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
+    await user.click(screen.getByText('Szyna SN stacji S01').closest('tr')!);
+
+    const geometria = screen.getByTestId('mvd-jakosc-af-geometria');
+    expect(geometria.textContent).toContain('HCB');
+    expect(geometria.textContent).toContain('120');
+    const roz = within(geometria).getByTestId('mvd-jakosc-af-rozdzielnica');
+    expect(roz.getAttribute('data-sekcja')).toBe('S1');
+    expect(
+      within(roz).getByTestId('mvd-jakosc-af-rozdzielnica-odstep_elektrod_mm').getAttribute('data-zrodlo'),
+    ).toBe('projektant');
+    const odleglosc = within(roz).getByTestId('mvd-jakosc-af-rozdzielnica-odleglosc_robocza_mm');
+    expect(odleglosc.getAttribute('data-zrodlo')).toBe('wartosc_robocza');
+    // Etykieta parametru z rejestru pól rozdzielnicy (lustro opisu backendu), nie klucz.
+    expect(odleglosc.textContent).toContain('odległość robocza od miejsca łuku');
+    expect(odleglosc.textContent).toContain('IEEE 1584-2018');
+    const dane = within(geometria).getByTestId('mvd-jakosc-af-dane-przyjete');
+    expect(dane.textContent).toContain('IEEE 1584-2018 tabl. 10');
+  });
+
+  it('węzeł poza sekcją GPZ → geometria z wiersza, bez bloku rozdzielnicy i danych przyjętych', async () => {
+    const user = userEvent.setup();
+    mockedArcFlash.mockResolvedValue(AF_FIXTURE);
+    render(<SekcjaArcFlash {...props()} />);
+    await user.click(screen.getByTestId('mvd-jakosc-af-licz'));
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
+    await user.click(screen.getByText('Szyna SN stacji S01').closest('tr')!);
+    const geometria = screen.getByTestId('mvd-jakosc-af-geometria');
+    expect(geometria.textContent).toContain('VCB');
+    expect(within(geometria).queryByTestId('mvd-jakosc-af-rozdzielnica')).toBeNull();
+    expect(within(geometria).queryByTestId('mvd-jakosc-af-dane-przyjete')).toBeNull();
   });
 });

@@ -185,6 +185,20 @@
   color: var(--mvd-ink);
 }
 
+/* ---- arc flash: geometria łuku węzła i dane rozdzielnicy sekcji GPZ ---- */
+.mvd-jakosc-szczegol-geometria {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-jakosc-szczegol-lista {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+}
+
 /* ---- sekcja migotania: nagłówki podsekcji, moduły, ślad WHITE BOX ---- */
 .mvd-jakosc-szczegol-sekcja-tytul {
   margin: 8px 0 0;

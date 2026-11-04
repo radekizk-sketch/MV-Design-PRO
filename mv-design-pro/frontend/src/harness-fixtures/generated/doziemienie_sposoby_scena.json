@@ -1116,6 +1116,7 @@
                 "name": "Sekcja 1",
                 "order": 0,
                 "right_coupler_ref": null,
+                "rozdzielnica": null,
                 "section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001"
               }
             ],
@@ -2572,6 +2573,7 @@
                 "name": "Sekcja 1",
                 "order": 0,
                 "right_coupler_ref": null,
+                "rozdzielnica": null,
                 "section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001"
               }
             ],
@@ -4702,6 +4704,7 @@
                 "name": "Sekcja 1",
                 "order": 0,
                 "right_coupler_ref": null,
+                "rozdzielnica": null,
                 "section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001"
               }
             ],
@@ -6752,6 +6755,7 @@
                 "name": "Sekcja 1",
                 "order": 0,
                 "right_coupler_ref": null,
+                "rozdzielnica": null,
                 "section_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001"
               }
             ],
