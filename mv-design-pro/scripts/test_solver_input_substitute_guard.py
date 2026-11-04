@@ -2431,7 +2431,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
         # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
         # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KATALOG-PRZEJECIE-PR (2026-11-04): 604 -> 608 (+4 moduly kart producentow
+        # kabli `network_model/catalog/{lv_cable_nkt,lv_cable_nkt_pvc,lv_cable_nkt_yaky,
+        # mv_cable_tfk_full}.py`). POMIAR guardem na `e29e59e2c` (604) i na drzewie karty (608);
+        # dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 608 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2650,7 +2654,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
         # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
         # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
-        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
+        # Karta KATALOG-PRZEJECIE-PR (2026-11-04): 196 -> 200 (+4 moduly kabli, jak wyzej).
+        "  network_model: pliki_skanowane=200, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

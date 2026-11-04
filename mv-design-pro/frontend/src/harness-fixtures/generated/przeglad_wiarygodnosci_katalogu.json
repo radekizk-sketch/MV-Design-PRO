@@ -43,7 +43,7 @@
     {
       "rodzina": "kable-nn",
       "etykieta_pl": "Kable nN",
-      "liczba_pozycji": 17,
+      "liczba_pozycji": 96,
       "sprawdzone_reguly": [
         "KAT-W-001"
       ],
@@ -51,7 +51,7 @@
         {
           "kod": "KAT-W-001",
           "policzone": 0,
-          "pominiete": 17,
+          "pominiete": 96,
           "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej (R0)"
         }
       ],
@@ -62,14 +62,14 @@
     {
       "rodzina": "kable-sn",
       "etykieta_pl": "Kable SN",
-      "liczba_pozycji": 63,
+      "liczba_pozycji": 160,
       "sprawdzone_reguly": [
         "KAT-W-001"
       ],
       "pokrycie": [
         {
           "kod": "KAT-W-001",
-          "policzone": 62,
+          "policzone": 159,
           "pominiete": 1,
           "powod_pominiecia": "pozycja nie niesie rezystancji składowej zerowej (R0)"
         }
@@ -114,8 +114,8 @@
         },
         {
           "kod": "KAT-W-006",
-          "policzone": 218,
-          "pominiete": 25,
+          "policzone": 242,
+          "pominiete": 1,
           "powod_pominiecia": "transformator nie niesie prądu biegu jałowego (i0 %)"
         }
       ],

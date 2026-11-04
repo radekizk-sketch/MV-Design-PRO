@@ -236,7 +236,9 @@ _DAWNE_POZYCJE_ENEA: dict[str, str] = {
 #: (przejęcie #518/#519) — 8 nowych modeli (100, 150, 200, 400, 600, 800, 1000, 1200) i treść
 #: kart (wykonania, karty rozszerzeń, karty pomiarowe, funkcje, rozbieżności karty) w notach
 #: pozycji 250/450. Dowód w teście niżej: wycięcie 8 identyfikatorów i przywrócenie 7 dawnych
-#: liści tekstowych 250/450 daje ``ODCISK_PO_KABLACH_PRODUCENTOW``.
+#: liści tekstowych 250/450 daje ``ODCISK_PO_KABLACH_PRODUCENTOW``. Pełny odcisk katalogu
+#: domyślnego po pięciu pozycjach karty (pomiar 2026-11-04, ``catalog_fingerprint`` atrap
+#: harnessu): 6b21e757549257619e383c076ffaeff907196443468b5ad70c4db4182c6caf53.
 ODCISK_PO_RODZINIE_ETANGO = "fda8417e7fea08a67f26af697ff2cec005718e9b8e9b8d0edde2bd288522b7c2"
 NOWE_MODELE_ETANGO = ("100", "150", "200", "400", "600", "800", "1000", "1200")
 _ETANGO_250_450_PRZED_RODZINA: dict[str, dict[str, str]] = {
