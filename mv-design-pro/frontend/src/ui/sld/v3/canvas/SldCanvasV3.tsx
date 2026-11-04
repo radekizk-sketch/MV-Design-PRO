@@ -101,7 +101,7 @@ import {
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { resultRefForSegment } from './resultLabels';
 import { resultLabelLinesForLod, RESULT_LABEL_TREND_GLYPH, type ResultLabelLod } from './resultLabelTemplates';
-import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
+import type { FaultFlowShareToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
@@ -158,15 +158,15 @@ const FLOW_LABEL_OFFSET_RIGHT = 12;
  *  energizacji (zielony) i przepływu (cyjan): trzeci wymiar nakładki
  *  (stan regulacji zaczepów po obliczeniu), operator nie myli warstw. */
 /** Karta S-B (ZWARCIA-PRO pkt 7): kolory strzałek rozpływu prądu zwarciowego
- *  per token tercylowy adaptera W-C (`faultFlowColorTokenForWeight` — jedna
- *  prawda klasyfikacji; tu wyłącznie mapowanie token→barwa dla ciemnego tła
+ *  per klasę udziału adaptera W-C (`faultFlowShareTokenForWeight` — jedna
+ *  prawda klasyfikacji; miara wielkości wkładu, nie ocena; tu wyłącznie mapowanie token→barwa dla ciemnego tła
  *  SCADA). Rodzina czerwieni — semantyka zwarcia, ODRĘBNA od energizacji
  *  (zielony) i przepływu mocy (cyjan); kolizja z nakładkami LF niemożliwa
  *  (allowlisty LOAD_FLOW wyłączają flow/OLTC dla przebiegu SC). */
-function faultFlowColor(token: FaultFlowColorToken, palette: SldPalette): string {
-  if (token === 'critical') return palette.highlight.fault;
-  if (token === 'warning') return palette.highlight.faultWarning;
-  return palette.highlight.faultOk;
+function faultFlowColor(token: FaultFlowShareToken, palette: SldPalette): string {
+  if (token === 'duzy') return palette.highlight.fault;
+  if (token === 'sredni') return palette.highlight.faultFlowSredni;
+  return palette.highlight.faultFlowMaly;
 }
 /** Minimalna długość biegu dla strzałki zwarciowej [px świata] — grot
  *  prymitywu (`8 + strokeWidth`, max ~13) nie może dominować nad biegiem. */
@@ -1123,7 +1123,7 @@ export interface FaultFlowPlacement {
   readonly toXy: readonly [number, number];
   readonly iKa: number;
   readonly payloadMaxKa: number;
-  readonly colorToken: FaultFlowColorToken;
+  readonly shareToken: FaultFlowShareToken;
 }
 
 /**
@@ -1170,7 +1170,7 @@ export function computeFaultFlowPlacements(
       toXy: [to.x, to.y],
       iKa: entry.iKa,
       payloadMaxKa: entry.payloadMaxKa,
-      colorToken: entry.colorToken,
+      shareToken: entry.shareToken,
     });
   });
   return placements;
@@ -1184,8 +1184,8 @@ function SceneFaultFlowNode(props: { readonly placement: FaultFlowPlacement }): 
       data-testid={`sld-v3-fault-flow-${placement.segmentIndex}`}
       data-fault-owner-ref={placement.ownerRef}
       data-fault-forward={placement.forward ? 'true' : 'false'}
-      data-fault-color-token={placement.colorToken}
-      style={{ color: faultFlowColor(placement.colorToken, palette) }}
+      data-fault-flow-share={placement.shareToken}
+      style={{ color: faultFlowColor(placement.shareToken, palette) }}
     >
       <FaultContributionArrow
         fromXy={placement.fromXy}

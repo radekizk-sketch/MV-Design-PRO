@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Any, Literal, cast
 
 from application.analyses.dobor_toru_der_sn import OpisUlozeniaKabla, dobierz_tor_der_sn
+from application.analyses.korekta_obciazalnosci_sn_oceny import ocena_korekty_obciazalnosci
 from application.analyses.ocena_doboru_magistrali import (
     OdcinekMagistrali,
     ocen_dobor_magistrali,
@@ -543,7 +544,7 @@ class CableAmpacityDeratingRequest(BaseModel):
 
 
 class CableAmpacityDeratingResponse(BaseModel):
-    """I′z = Iz · f_grunt · f_wiazka · f_grupa oraz werdykt I_obl ≤ I′z."""
+    """I′z = Iz · f_grunt · f_wiazka · f_grupa oraz rekord K kryterium I_obl ≤ I′z."""
 
     rated_ampacity_a: float
     effective_ampacity_a: float
@@ -551,7 +552,13 @@ class CableAmpacityDeratingResponse(BaseModel):
     derating_total: float
     derating_set: str
     utilization_pct: float
-    ok: bool
+    ocena: OcenaKryterium = Field(
+        description=(
+            "Rekord K kryterium I_obl ≤ I′z (kontrakt werdyktu wyjaśnialnego): wynik, limit "
+            "z podstawą, margines, kompletność dowodu — warunki katalogowe bez korekty są "
+            "daną przyjętą (kompletność NIEPELNY)"
+        )
+    )
     formula_ref: str
     assumption_pl: str
 
@@ -563,7 +570,7 @@ class CableAmpacityDeratingResponse(BaseModel):
 def preview_cable_ampacity_derating(
     request: CableAmpacityDeratingRequest,
 ) -> CableAmpacityDeratingResponse:
-    """Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego."""
+    """Obciążalność skorygowana warunkami ułożenia + rekord K kryterium prądowego."""
     laying = request.laying_conditions
     derating = wspolczynniki_z_opisu(
         laying.set_name if laying is not None else None,
@@ -581,7 +588,12 @@ def preview_cable_ampacity_derating(
         derating_total=derating.iloczyn,
         derating_set=derating.nazwa,
         utilization_pct=request.design_current_a / effective * 100.0,
-        ok=request.design_current_a <= effective,
+        ocena=ocena_korekty_obciazalnosci(
+            prad_obliczeniowy_a=request.design_current_a,
+            obciazalnosc_katalogowa_a=request.rated_ampacity_a,
+            obciazalnosc_skorygowana_a=effective,
+            wspolczynniki=derating,
+        ),
         formula_ref="I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
         assumption_pl=derating.zalozenie_pl(),
     )

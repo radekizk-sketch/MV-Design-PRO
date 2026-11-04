@@ -493,7 +493,10 @@ def validate_wizard_state(enm: dict[str, Any]) -> WizardStateResponse:
     if has_blockers:
         overall = "blocked"
     elif required_complete and optional_ok:
-        overall = "ready"
+        # „complete", nie „ready": stan wypełnienia kroków nie twierdzi gotowości obliczeń —
+        # tę niesie wyłącznie `readiness_matrix` (jedno źródło prawdy, karta
+        # WERDYKT-MIGRACJA-190, C54).
+        overall = "complete"
     elif any_data:
         overall = "incomplete"
     else:

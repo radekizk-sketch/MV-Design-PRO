@@ -36,12 +36,12 @@ export type { OverlayKind } from './overlayStore';
 // Adapters
 export {
   adaptShortCircuitFlowToOverlay,
-  faultFlowColorTokenForWeight,
+  faultFlowShareTokenForWeight,
   faultTypeToOverlayAnalysisType,
   relativeFlowWeight,
 } from './ShortCircuitFlowOverlayAdapter';
 export type {
-  FaultFlowColorToken,
+  FaultFlowShareToken,
   ShortCircuitBranchFlowV1,
   ShortCircuitFlowOverlayInput,
 } from './ShortCircuitFlowOverlayAdapter';

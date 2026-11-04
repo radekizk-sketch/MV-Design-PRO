@@ -252,8 +252,8 @@ export type HighlightKey =
   | 'flow'
   | 'oltc'
   | 'fault'
-  | 'faultWarning'
-  | 'faultOk'
+  | 'faultFlowSredni'
+  | 'faultFlowMaly'
   | 'resultLabel'
   | 'resultStale'
   | 'selection'
@@ -281,14 +281,14 @@ export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   flow: '#4FC3F7',
   /** V12K-092 — badge wynikowy OLTC, dawne `OLTC_OVERLAY_COLOR`. */
   oltc: '#FFB300',
-  /** Awaria/zwarcie — dawne `sourceKind.fault` I `FAULT_FLOW_TOKEN_COLOR.critical`
+  /** Awaria/zwarcie — dawne `sourceKind.fault` I `FAULT_FLOW_TOKEN_COLOR` klasy udziału „duży”
    *  I fallback nieskonwergowanego przepływu w `SldCanvasV3.tsx` — TRZY
    *  literały `#E74C3C` w dwóch plikach, teraz JEDEN. */
   fault: '#E74C3C',
-  /** Strzałki rozpływu zwarciowego — token tercylowy „warning" (W-C). */
-  faultWarning: '#F5A623',
-  /** Strzałki rozpływu zwarciowego — token tercylowy „ok". */
-  faultOk: '#F9E79F',
+  /** Strzałki rozpływu zwarciowego — klasa udziału „średni" (33–66% największego wkładu, W-C). */
+  faultFlowSredni: '#F5A623',
+  /** Strzałki rozpływu zwarciowego — klasa udziału „mały" (< 33% największego wkładu). */
+  faultFlowMaly: '#F9E79F',
   /** W4 (§8) — LICZBOWE etykiety wynikowe (U/obc./S/P/Q/Ik″/Ith). Lawenda:
    *  odrębna od flow (błękit)/oltc (bursztyn)/fault (czerwień)/energized
    *  (zieleń), by warstwa liczb była wizualnie rozróżnialna od strzałek. */

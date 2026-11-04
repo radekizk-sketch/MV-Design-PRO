@@ -1539,3 +1539,30 @@ def test_biezace_drzewo_zielone_z_biezaca_lista() -> None:
     (zapadka w dół) — w obu przypadkach listę poprawia się w TYM SAMYM commicie.
     """
     assert guard.main([]) == 0
+
+
+def test_migracja_tylko_zatrzymania_bramek() -> None:
+    """PIN karty WERDYKT-MIGRACJA-190: po migracji lista nie ma wpisów MIGRACJA poza dwoma
+    nazwanymi zatrzymaniami — FRT/HVRT A13 (rdzeń zamrożony, bramka B-01:
+    `network_model/solvers/frt_hvrt/contracts.py`) oraz wgląd zabezpieczeń B7 (klasa bez
+    producenta w produkcji, decyzja architekta o kasacji albo budowie producenta). Każdy nowy
+    wpis MIGRACJA albo cofnięcie migracji czerwieni ten test; zdjęcie zatrzymania wymaga
+    zmiany tego zbioru w tym samym commicie (zapadka w dół)."""
+    lista = json.loads(
+        (Path(__file__).resolve().parent / "werdykt_wyjasnialny_allowlist.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    migracja = {w["tozsamosc"] for w in lista["wpisy"] if w["klasa"] == "MIGRACJA"}
+    assert migracja == {
+        "analysis.protection_insight.models:ProtectionInsightItem.selectivity_status",
+        "network_model.solvers.frt_hvrt.contracts:FrtHvrtResult.status",
+        "network_model.solvers.frt_hvrt.contracts:FrtScenarioResult.status",
+        "network_model.solvers.frt_hvrt.contracts:FrtScenarioResult.stayed_connected",
+    }
+    # Każdy wpis ENUM_WEWNETRZNY ma uzasadnienie merytoryczne (nie pusty napis).
+    assert all(
+        len(w["uzasadnienie_pl"].strip()) >= 40
+        for w in lista["wpisy"]
+        if w["klasa"] == "ENUM_WEWNETRZNY"
+    )

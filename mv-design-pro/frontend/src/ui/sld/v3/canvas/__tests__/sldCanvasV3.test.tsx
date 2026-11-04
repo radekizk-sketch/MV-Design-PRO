@@ -880,7 +880,7 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
     forward,
     iKa: 0.245,
     payloadMaxKa: 0.245,
-    colorToken: 'critical',
+    shareToken: 'duzy',
   });
 
   it('(a) odcinek z wpisem w faultFlowByOwnerRef → prymityw FaultContributionArrow (trzon+grot+etykieta kA) w warstwie', () => {
@@ -898,7 +898,7 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
     expect(group).toBeTruthy();
     expect(group!.getAttribute('data-fault-owner-ref')).toBe(ownerRef);
     expect(group!.getAttribute('data-fault-forward')).toBe('true');
-    expect(group!.getAttribute('data-fault-color-token')).toBe('critical');
+    expect(group!.getAttribute('data-fault-flow-share')).toBe('duzy');
     // Części prymitywu (kontrakt `FaultContributionArrow` — testId wewnętrzne).
     expect(container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-line"]`)).toBeTruthy();
     expect(container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-head"]`)).toBeTruthy();

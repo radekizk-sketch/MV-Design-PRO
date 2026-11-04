@@ -47,6 +47,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Final
 
+from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
@@ -179,14 +180,14 @@ class ProtectionSettingsInput:
         """Kontrakt wejścia: przekrój dodatni, czasy nieujemne. Dawniej czas zwarcia ≤ 0
         był po cichu podmieniany na 0,1 s, a przekrój 0 dawał „wytrzymałość” z zerem."""
         if not self.cross_section_mm2 > 0.0:
-            raise ValueError(f"Przekrój żyły musi być dodatni: {self.cross_section_mm2} mm²")
+            raise OdmowaDanychError(f"Przekrój żyły musi być dodatni: {self.cross_section_mm2} mm²")
         for nazwa, czas in (
             ("t_upstream_s", self.t_upstream_s),
             ("delta_t_s", self.delta_t_s),
             ("spz_pause_s", self.spz_pause_s),
         ):
             if czas < 0.0:
-                raise ValueError(f"Czas {nazwa} nie może być ujemny: {czas} s")
+                raise OdmowaDanychError(f"Czas {nazwa} nie może być ujemny: {czas} s")
 
 
 @dataclass(frozen=True)

@@ -86,7 +86,14 @@ class WizardStateResponse(BaseModel):
     """Pełny stan kreatora sieci — odpowiedź API."""
 
     steps: list[StepState]
-    overall_status: str = Field(..., description="empty | incomplete | ready | blocked")
+    overall_status: str = Field(
+        ...,
+        description=(
+            "empty | incomplete | complete | blocked — postęp kroków kreatora K1–K7 (stan "
+            "wypełnienia, nie gotowość obliczeń ani ocena zgodności; dostępność analiz niesie "
+            "`readiness_matrix`)"
+        ),
+    )
     readiness_matrix: ReadinessMatrix
     element_counts: ElementCounts
 

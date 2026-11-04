@@ -143,8 +143,6 @@ const TECHNICAL_TOKEN_LABELS: Record<string, string> = {
   fresh: 'aktualne',
   outdated: 'nieaktualne',
   none: 'brak wyniku',
-  ok: 'poprawne',
-  passed: 'spełnione',
   sc_3f: 'zwarcie trójfazowe',
   sc3f: 'zwarcie trójfazowe',
   sc: 'zwarcie SN',

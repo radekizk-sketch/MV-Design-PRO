@@ -127,9 +127,9 @@ import type { Etykieta, StatusWerdyktu, WynikWymagania } from '../../../../ui2/w
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import {
-  faultFlowColorTokenForWeight,
+  faultFlowShareTokenForWeight,
   relativeFlowWeight,
-  type FaultFlowColorToken,
+  type FaultFlowShareToken,
   type ShortCircuitFlowOverlayInput,
 } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import type { EnergyNetworkModel } from '../../../../types/enm';
@@ -788,7 +788,7 @@ export function buildFlowOverlayFromScene(
 // prądu zwarciowego: scena + wejście kanału kierunku (lub `null`) →
 // `faultFlowByOwnerRef`. TEN SAM wzorzec co `buildFlowOverlayFromScene`
 // (bramka F-1 `trustedSingleHopRefs`, zero DOM/Date, determinizm) i TA SAMA
-// klasyfikacja tercylowa co adapter W-C (`faultFlowColorTokenForWeight` —
+// klasyfikacja tercylowa co adapter W-C (`faultFlowShareTokenForWeight` —
 // jedna prawda skali/koloru). Zero fizyki: kierunek i wartości WYŁĄCZNIE z
 // danych solvera (wiersz kanoniczny `branch_contributions`).
 // ---------------------------------------------------------------------------
@@ -816,7 +816,7 @@ export interface SegmentFaultFlowOverlay {
   readonly forward: boolean;
   readonly iKa: number;
   readonly payloadMaxKa: number;
-  readonly colorToken: FaultFlowColorToken;
+  readonly shareToken: FaultFlowShareToken;
 }
 
 /** Wpis rozpływu po bramce mierzalności: znany token kierunku + skończone
@@ -889,7 +889,7 @@ export function buildFaultFlowOverlayFromScene(
       forward: (direction === FAULT_DIRECTION_FROM_TO) === orientedForward,
       iKa,
       payloadMaxKa,
-      colorToken: faultFlowColorTokenForWeight(relativeFlowWeight(iKa, payloadMaxKa)),
+      shareToken: faultFlowShareTokenForWeight(relativeFlowWeight(iKa, payloadMaxKa)),
     };
   }
   return out;

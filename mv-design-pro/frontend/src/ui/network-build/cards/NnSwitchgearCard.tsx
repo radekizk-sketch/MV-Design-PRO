@@ -319,7 +319,10 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           value: balanceMw * 1000,
           unit: 'kW',
           source: 'calculated',
-          severity: balanceMw > 0 ? 'warning' : 'ok',
+          // Bilans to miara bez kryterium (kontrakt werdyktu wyjaśnialnego, karta
+          // WERDYKT-MIGRACJA-190): nadwyżka generacji nad obciążeniem rozdzielnicy nN nie
+          // jest naruszeniem żadnego limitu — oddanie mocy do sieci SN ocenia rozpływ mocy
+          // i zgodność przyłączenia, nie znak różnicy. Pole nie niesie tonu oceny.
         },
       ],
     };

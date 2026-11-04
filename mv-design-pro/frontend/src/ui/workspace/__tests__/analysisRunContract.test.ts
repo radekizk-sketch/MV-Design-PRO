@@ -85,6 +85,23 @@ describe('formatContractValue', () => {
   });
 });
 
+describe('formatContractValue — tokeny stanu bez słów werdyktu (karta WERDYKT-MIGRACJA-190, E36)', () => {
+  // Kontrakt werdyktu wyjaśnialnego: pola „Status uruchomienia", „Stan wyników" i „Brama
+  // jakości" niosą stan wykonania i świeżości, nie ocenę wobec kryterium. Token `ok`/`passed`
+  // nie może zamienić się w „poprawne"/„spełnione" bez rekordu wyjaśnienia — iloczyn
+  // {pisownia tokenu} × {pole kontraktu, w którym może się pojawić}.
+  it.each(['ok', 'OK', 'Ok', 'passed', 'PASSED', ' passed '])('token %s nie staje się werdyktem', (token) => {
+    const tekst = formatContractValue(token);
+    expect(['poprawne', 'spełnione', 'spełnia', 'zgodne']).not.toContain(tekst.toLowerCase());
+  });
+
+  it('stany wykonania i świeżości dalej mają swoje opisy (bez oceny)', () => {
+    expect(formatContractValue('FAILED')).toBe('nieudane');
+    expect(formatContractValue('OUTDATED')).toBe('nieaktualne');
+    expect(formatContractValue('NONE')).toBe('brak wyniku');
+  });
+});
+
 describe('buildTraceSummaryRows', () => {
   it('nie pokazuje placeholdera konfiguracji dla zakonczonego sladu bez czasu i ostrzezen', () => {
     const rows = buildTraceSummaryRows({

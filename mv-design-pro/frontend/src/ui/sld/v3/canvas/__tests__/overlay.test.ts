@@ -488,7 +488,7 @@ describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki ro
       forward: true,
       iKa: 0.245,
       payloadMaxKa: 0.245,
-      colorToken: 'critical',
+      shareToken: 'duzy',
     });
     expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
   });
@@ -539,9 +539,9 @@ describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki ro
       faultEntry({ branch_id: refC, i_ka: 0.3 }),
     ]);
     const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
-    expect(overlay[refA]?.colorToken).toBe('critical');
-    expect(overlay[refB]?.colorToken).toBe('warning');
-    expect(overlay[refC]?.colorToken).toBe('ok');
+    expect(overlay[refA]?.shareToken).toBe('duzy');
+    expect(overlay[refB]?.shareToken).toBe('sredni');
+    expect(overlay[refC]?.shareToken).toBe('maly');
     // Baza skali wspólna dla całego payloadu (największy wkład wejścia).
     expect(overlay[refB]?.payloadMaxKa).toBe(3.0);
   });
@@ -661,7 +661,7 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     const trusted = orientationForFaultFlow(chainScene, chainEnm);
     const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 })]);
     const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
-    expect(overlay[F2]).toEqual({ ownerRef: F2, forward: true, iKa: 1.2, payloadMaxKa: 1.2, colorToken: 'critical' });
+    expect(overlay[F2]).toEqual({ ownerRef: F2, forward: true, iKa: 1.2, payloadMaxKa: 1.2, shareToken: 'duzy' });
     expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
   });
 
@@ -799,6 +799,6 @@ describe('overlay.ts — GAP V12K-121 nie zmienia bramkę F-1 jednoprzeskokową 
     const ref = uniqueOrientedRefs[0];
     const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.5 })]);
     const overlay = buildFaultFlowOverlayFromScene(scene, input, oriented);
-    expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, iKa: 0.5, payloadMaxKa: 0.5, colorToken: 'critical' });
+    expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, iKa: 0.5, payloadMaxKa: 0.5, shareToken: 'duzy' });
   });
 });

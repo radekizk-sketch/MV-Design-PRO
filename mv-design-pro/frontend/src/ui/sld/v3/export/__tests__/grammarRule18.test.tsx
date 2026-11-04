@@ -18,7 +18,7 @@
  * na sieci referencyjnej (53 stacje) i przepuszczamy JEJ markup przez
  * produkcyjny tor eksportu `toLightTechnicalExportSvg` — dokładnie jak
  * `SldCanvasV3Workspace.handleExportSvg` (klon → paleta → kadr). Zero overlay
- * (bez `data-fault-color-token`), więc jedyne różnice to podmiana hex + tło.
+ * (bez `data-fault-flow-share`), więc jedyne różnice to podmiana hex + tło.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

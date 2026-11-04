@@ -66,7 +66,9 @@ class EquipmentProofGenerator:
             device=device,
             required=required,
             wielkosc=wielkosc,
-            punkt_pl=f"węzeł przyłączenia {proof_input.connection_node_id}",
+            # Identyfikator węzła zostaje w śladzie audytu, nie w zdaniu rekordu
+            # (`nazwa_bez_identyfikatora_guard`); wejście dowodu nie niesie nazwy węzła.
+            punkt_pl="węzeł przyłączenia aparatu",
             run_id=proof_input.run_id,
             dane_ip=_dane_wielkosci(proof_input, "ip"),
             dane_ith=_dane_wielkosci(proof_input, "ith"),

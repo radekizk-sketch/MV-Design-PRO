@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adaptShortCircuitFlowToOverlay,
   faultTypeToOverlayAnalysisType,
+  faultFlowShareTokenForWeight,
   relativeFlowWeight,
   type ShortCircuitBranchFlowV1,
   type ShortCircuitFlowOverlayInput,
@@ -87,7 +88,7 @@ describe('adaptShortCircuitFlowToOverlay', () => {
     expect(branch.numeric_badges).toEqual({ 'GEN-BESS': 0.1, 'GEN-PV': 0.245 });
   });
 
-  it('skala względna prezentacji: największy wkład → critical/bold, mały → ok/normal', () => {
+  it('skala względna prezentacji: największy wkład → udział duży/bold, mały → udział mały/normal', () => {
     const payload = adaptShortCircuitFlowToOverlay(
       input({
         flows: [
@@ -97,10 +98,47 @@ describe('adaptShortCircuitFlowToOverlay', () => {
       }),
     );
     const byRef = new Map(payload.elements.map((el) => [el.element_ref, el]));
-    expect(byRef.get('BR-MAX')?.color_token).toBe('critical');
+    expect(byRef.get('BR-MAX')?.color_token).toBe('fault-flow-duzy');
     expect(byRef.get('BR-MAX')?.stroke_token).toBe('bold');
-    expect(byRef.get('BR-MIN')?.color_token).toBe('ok');
+    expect(byRef.get('BR-MIN')?.color_token).toBe('fault-flow-maly');
     expect(byRef.get('BR-MIN')?.stroke_token).toBe('normal');
+  });
+
+  // Kontrakt werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190, E20): wkład gałęzi
+  // to miara bez kryterium — iloczyn {waga na każdym progu i obok niego} × {stan
+  // elementu, token koloru, legenda}: żadna gałąź nie dostaje stanu oceny
+  // OK/WARNING/CRITICAL ani tokenu `ok`/`warning`/`critical`.
+  it.each([
+    [1.0, 'duzy'],
+    [2 / 3, 'duzy'],
+    [0.66, 'sredni'],
+    [1 / 3, 'sredni'],
+    [0.33, 'maly'],
+    [0.01, 'maly'],
+  ] as const)('udział %s → klasa %s, gałąź w stanie NEUTRAL (miara, nie ocena)', (udzial, klasa) => {
+    expect(faultFlowShareTokenForWeight(udzial)).toBe(klasa);
+    const payload = adaptShortCircuitFlowToOverlay(
+      input({
+        flows: [
+          flow({ branch_id: 'BR-REF', i_ka: 1.0 }),
+          flow({ branch_id: 'BR-X', i_ka: udzial }),
+        ],
+      }),
+    );
+    const galezie = payload.elements.slice(1);
+    for (const galaz of galezie) {
+      expect(galaz.visual_state).toBe('NEUTRAL');
+      expect(['ok', 'warning', 'critical']).not.toContain(galaz.color_token);
+    }
+    expect(galezie.find((el) => el.element_ref === 'BR-X')?.color_token).toBe(
+      `fault-flow-${klasa}`,
+    );
+    const legendaUdzialu = payload.legend.filter((wpis) => wpis.label.startsWith('Prąd zwarciowy'));
+    expect(legendaUdzialu.map((wpis) => wpis.color_token)).toEqual([
+      'fault-flow-duzy',
+      'fault-flow-sredni',
+      'fault-flow-maly',
+    ]);
   });
 
   it('gałęzie posortowane ASC po element_ref (deterministyczny render)', () => {

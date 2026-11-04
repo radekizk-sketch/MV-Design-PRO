@@ -2129,7 +2129,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Ta sama karta, C40: 4513 -> 4515 — POMIAR `contract_fields()` na `01b76169c` (4513)
     # i na drzewie karty (4515). +2: `dana_przyjeta` (`GestoscCieplna` — wartosc robocza j_thn
     # dla materialu spoza tablicy) i `podstawa_wytrzymalosci` (`ConductorThermalInput`).
-    assert "Pol kontraktow wejsciowych: 4515." in wyjscie, wyjscie
+    # Ta sama karta, C36: 4515 -> 4514 — POMIAR `contract_fields()` na `905a9a61b` (4515)
+    # i na drzewie karty (4514). -1: `ok` (`CableAmpacityDeratingResponse` niesie rekord K
+    # `ocena`, ktory juz byl w zbiorze nazw; zadna inna klasa w zakresie nie ma pola `ok`).
+    assert "Pol kontraktow wejsciowych: 4514." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2464,7 +2467,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # kontyngencje_n1_oceny.py` — rekordy kategorii dotkliwosci). POMIAR guardem (609).
         # Ta sama karta, dobor kompensacji D18: 609 -> 610 (+1 `application/analyses/
         # dobor_kompensacji_oceny.py` — rekordy W kandydatow). POMIAR guardem (610).
-        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
+        # Ta sama karta, C36: 610 -> 611 (+1 `application/analyses/
+        # korekta_obciazalnosci_sn_oceny.py` — rekord K kryterium I_obl <= I'z). POMIAR (611).
+        "Przeskanowano 611 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2912,7 +2917,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `analyses/kontyngencje_n1_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Ta sama karta, dobor kompensacji D18: application 257 -> 258 (+1
         # `analyses/dobor_kompensacji_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=258, dlug=24 plikow/suma 67, "
+        # Ta sama karta, C36: application 258 -> 259 (+1
+        # `analyses/korekta_obciazalnosci_sn_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  application: pliki_skanowane=259, dlug=24 plikow/suma 67, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

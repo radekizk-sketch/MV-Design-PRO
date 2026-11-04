@@ -580,3 +580,24 @@ class TestPostconditions:
         issues = postconditions("K2", _enm_with_source())
         blockers = [i for i in issues if i.severity == IssueSeverity.BLOCKER]
         assert len(blockers) == 0
+
+
+# ---------------------------------------------------------------------------
+# Karta WERDYKT-MIGRACJA-190 (C54): `overall_status` to postęp kroków, nie gotowość
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "budowa", [_empty_enm, _enm_with_name, _enm_with_source, _enm_with_buses, _enm_full]
+)
+def test_overall_status_to_postep_krokow_nie_gotowosc(budowa) -> None:
+    """Iloczyn {stan modelu od pustego do pełnego} × {stan zbiorczy}: zbiorczy stan kreatora
+    należy do słownika postępu i nigdy nie twierdzi gotowości obliczeń („ready") — dostępność
+    analiz niesie wyłącznie `readiness_matrix` (jedno źródło prawdy)."""
+    from application.network_wizard.validator import validate_wizard_state
+
+    stan = validate_wizard_state(budowa())
+    assert stan.overall_status in {"empty", "incomplete", "complete", "blocked"}
+    assert stan.overall_status != "ready"
+    if stan.overall_status == "empty":
+        assert stan.element_counts.buses == 0 and stan.element_counts.sources == 0

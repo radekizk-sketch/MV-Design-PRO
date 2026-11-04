@@ -86,8 +86,9 @@ def _liczba(wartosc: Any) -> float | None:
 
 
 def _etykieta_aparatu(device: DeviceRating) -> str:
-    """Pozycja danych znamionowych w podstawie limitu: nazwa aparatu i typ katalogowy."""
-    return device.name_pl if not device.type_ref else f"{device.name_pl} (typ {device.type_ref})"
+    """Pozycja danych znamionowych w podstawie limitu: nazwa aparatu (odnośnik typu
+    katalogowego to identyfikator — zostaje w danych dowodu, nie w zdaniu)."""
+    return device.name_pl
 
 
 def _zakres(punkt_pl: str) -> ZakresWaznosci:

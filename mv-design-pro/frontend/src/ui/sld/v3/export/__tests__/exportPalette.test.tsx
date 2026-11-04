@@ -53,8 +53,8 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
       HIGHLIGHT_COLOR.flow,
       HIGHLIGHT_COLOR.oltc,
       HIGHLIGHT_COLOR.fault,
-      HIGHLIGHT_COLOR.faultWarning,
-      HIGHLIGHT_COLOR.faultOk,
+      HIGHLIGHT_COLOR.faultFlowSredni,
+      HIGHLIGHT_COLOR.faultFlowMaly,
       HIGHLIGHT_COLOR.selection,
     ];
     const markup = darkValues.map((v) => `<path fill="${v}" stroke="${v}"/>`).join('');
@@ -133,25 +133,25 @@ describe('exportPalette — injectExportBackground (jednostka)', () => {
 });
 
 describe('exportPalette — rewriteFaultFlowStyleColors (jednostka)', () => {
-  it.each(['critical', 'warning', 'ok'] as const)(
+  it.each(['duzy', 'sredni', 'maly'] as const)(
     'nadpisuje style="color:..." dla tokenu %s, NIEZALEŻNIE od formy poprzedniej wartości (hex/rgb)',
     (token) => {
-      const asHex = `<g data-fault-color-token="${token}" style="color: #E74C3C;">`;
-      const asRgb = `<g data-fault-color-token="${token}" style="color: rgb(231, 76, 60);">`;
+      const asHex = `<g data-fault-flow-share="${token}" style="color: #E74C3C;">`;
+      const asRgb = `<g data-fault-flow-share="${token}" style="color: rgb(231, 76, 60);">`;
       const outHex = rewriteFaultFlowStyleColors(asHex);
       const outRgb = rewriteFaultFlowStyleColors(asRgb);
       expect(outHex).toBe(outRgb);
-      expect(outHex).toContain(`data-fault-color-token="${token}"`);
+      expect(outHex).toContain(`data-fault-flow-share="${token}"`);
       expect(outHex).toMatch(/style="color: #[0-9A-Fa-f]{6}"/);
     },
   );
 
   it('brak style="..." istniejącego ⇒ dopisuje go (defensywnie, markup nie musi mieć style dziś)', () => {
-    const out = rewriteFaultFlowStyleColors('<g data-fault-color-token="critical">');
+    const out = rewriteFaultFlowStyleColors('<g data-fault-flow-share="duzy">');
     expect(out).toMatch(/style="color: #[0-9A-Fa-f]{6}"/);
   });
 
-  it('nie dotyka <g> bez data-fault-color-token', () => {
+  it('nie dotyka <g> bez data-fault-flow-share', () => {
     const markup = '<g data-testid="x" style="color: #ABCDEF;">';
     expect(rewriteFaultFlowStyleColors(markup)).toBe(markup);
   });

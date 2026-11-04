@@ -30,6 +30,7 @@ const VISUAL_STATE_TO_COLOR_TOKEN: Readonly<Record<OverlayVisualState, string>> 
   WARNING: 'warning',
   CRITICAL: 'critical',
   INACTIVE: 'inactive',
+  NEUTRAL: 'neutral',
 });
 
 function rawSeverityToVisualState(severity: string): OverlayVisualState {

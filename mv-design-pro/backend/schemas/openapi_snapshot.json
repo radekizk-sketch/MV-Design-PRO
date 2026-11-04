@@ -1584,7 +1584,7 @@
     "type": "object"
    },
    "CableAmpacityDeratingResponse": {
-    "description": "I′z = Iz · f_grunt · f_wiazka · f_grupa oraz werdykt I_obl ≤ I′z.",
+    "description": "I′z = Iz · f_grunt · f_wiazka · f_grupa oraz rekord K kryterium I_obl ≤ I′z.",
     "properties": {
      "assumption_pl": {
       "title": "Assumption Pl",
@@ -1610,9 +1610,9 @@
       "title": "Formula Ref",
       "type": "string"
      },
-     "ok": {
-      "title": "Ok",
-      "type": "boolean"
+     "ocena": {
+      "$ref": "#/components/schemas/OcenaKryterium",
+      "description": "Rekord K kryterium I_obl ≤ I′z (kontrakt werdyktu wyjaśnialnego): wynik, limit z podstawą, margines, kompletność dowodu — warunki katalogowe bez korekty są daną przyjętą (kompletność NIEPELNY)"
      },
      "rated_ampacity_a": {
       "title": "Rated Ampacity A",
@@ -1630,7 +1630,7 @@
      "derating_total",
      "derating_set",
      "utilization_pct",
-     "ok",
+     "ocena",
      "formula_ref",
      "assumption_pl"
     ],
@@ -31190,7 +31190,7 @@
   },
   "/api/solver/cable-ampacity-derating-preview": {
    "post": {
-    "description": "Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego.",
+    "description": "Obciążalność skorygowana warunkami ułożenia + rekord K kryterium prądowego.",
     "operationId": "preview_cable_ampacity_derating_api_solver_cable_ampacity_derating_preview_post",
     "requestBody": {
      "content": {

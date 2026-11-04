@@ -268,6 +268,19 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="kabel_sn.obciazalnosc_skorygowana",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Kryterium prądowe kabla SN po korekcie warunkami ułożenia (I_obl ≤ I′z): prąd "
+                "obliczeniowy podany przez projektanta porównany z obciążalnością z karty "
+                "katalogowej pomnożoną przez współczynniki tabelaryczne wybranego zestawu "
+                "ułożenia (network_model/solvers/cable_ampacity_derating.py) — deklaracja "
+                "i fakt katalogowy, bez obliczenia cieplnego trasy."
+            ),
+            audit_ref="karta F-K7 (V12K-207), karta WERDYKT-MIGRACJA-190 (C36)",
+        ),
+        CapabilityEvidence(
             capability_id="nn.dobor_aparatu.dane_znamionowe",
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,

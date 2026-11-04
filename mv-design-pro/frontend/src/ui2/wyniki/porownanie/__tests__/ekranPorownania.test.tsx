@@ -339,7 +339,7 @@ describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
     ['galezie', 'LINIA-GPZ-ST1', 'LineBranch'],
   ] as const;
   const PRZYPADKI = ZAKLADKI.flatMap(([zakladka, ref, typ]) =>
-    [1, 3, 4, 5].map((waga) => [zakladka, ref, typ, waga] as const),
+    ([1, 3, 4, 5] as const).map((waga) => [zakladka, ref, typ, waga] as const),
   );
 
   it.each(PRZYPADKI)(

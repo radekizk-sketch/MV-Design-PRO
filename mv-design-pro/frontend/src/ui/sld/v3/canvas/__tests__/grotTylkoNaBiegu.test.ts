@@ -52,7 +52,7 @@ function przeplyw(ownerRef: string): SegmentFlowOverlay {
 }
 
 function zwarcie(ownerRef: string): SegmentFaultFlowOverlay {
-  return { ownerRef, forward: true, iKa: 1.2, payloadMaxKa: 1.2, colorToken: 'critical' };
+  return { ownerRef, forward: true, iKa: 1.2, payloadMaxKa: 1.2, shareToken: 'duzy' };
 }
 
 function odcinek(kind: PreviewSegmentKind, y: number): PreviewSegment {

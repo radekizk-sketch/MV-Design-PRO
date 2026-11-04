@@ -72,6 +72,7 @@ from application.protection_settings.engine import (
     SPZAnalysisResult,
 )
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import a_na_ka
 from werdykt import OcenaKryterium, WynikWymagania
 from werdykt.porownanie import DOTYCZY_OBIEKTU, Porownanie
@@ -461,7 +462,7 @@ class LineIDoublePrimeReferencePattern:
         wymaganie = wymaganie_wzorca(
             wzorzec="A",
             wymaganie_id=f"wzorzec_a.{analysis_result.line_id}",
-            nazwa_pl=f"{PATTERN_NAME_PL} — {analysis_result.line_name or opis_bez_nazwy('branches')}",
+            nazwa_pl=f"{PATTERN_NAME_PL} — {nazwa_nadana(analysis_result.line_name) or opis_bez_nazwy('branches')}",
             oceny=oceny,
         )
         verdict = werdykt_wzorca(oceny, ograniczenia=ograniczenia)

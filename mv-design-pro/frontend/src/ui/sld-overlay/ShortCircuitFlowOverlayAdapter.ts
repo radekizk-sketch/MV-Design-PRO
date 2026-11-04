@@ -29,10 +29,10 @@
  *   kanwy v3 — `v3/canvas/overlay.ts::buildFaultFlowOverlayFromScene` buduje
  *   wpisy per gałąź, `SldCanvasV3` rysuje strzałki prymitywem
  *   `FaultContributionArrow` (skala/kolor tercylowe TEJ SAMEJ klasy co niżej,
- *   jedna prawda: `faultFlowColorTokenForWeight`).
+ *   jedna prawda: `faultFlowShareTokenForWeight`).
  */
 
-import type { OverlayElement, OverlayPayloadV1, OverlayVisualState } from './overlayTypes';
+import type { OverlayElement, OverlayPayloadV1 } from './overlayTypes';
 
 // =============================================================================
 // Kontrakt wejścia — kształt 1:1 z wiersza kanonicznego
@@ -92,28 +92,27 @@ export function relativeFlowWeight(branchMaxKa: number, payloadMaxKa: number): n
 const WEIGHT_HIGH = 2 / 3;
 const WEIGHT_MID = 1 / 3;
 
-/** Token koloru rozpływu zwarciowego wg tercyli skali względnej — JEDNA
- *  prawda klasyfikacji dla payloadu overlay (niżej) ORAZ strzałek kanwy v3
- *  (karta S-B: `buildFaultFlowOverlayFromScene`). Czysta funkcja progowa —
- *  dobór tokenu prezentacji, zero fizyki. */
-export type FaultFlowColorToken = 'ok' | 'warning' | 'critical';
+/** Klasa UDZIAŁU wkładu gałęzi w największym wkładzie payloadu (tercyle skali
+ *  względnej) — JEDNA prawda klasyfikacji dla payloadu overlay (niżej) ORAZ
+ *  strzałek kanwy v3 (karta S-B: `buildFaultFlowOverlayFromScene`). To MIARA
+ *  wielkości prądu względem innych gałęzi tego samego zwarcia, nie ocena:
+ *  „duży" wkład nie znaczy „przekroczony", „mały" nie znaczy „w porządku"
+ *  (kontrakt werdyktu wyjaśnialnego — miara bez kryterium nie niesie tonu
+ *  oceny). Czysta funkcja progowa — dobór tokenu prezentacji, zero fizyki. */
+export type FaultFlowShareToken = 'duzy' | 'sredni' | 'maly';
 
-export function faultFlowColorTokenForWeight(weight: number): FaultFlowColorToken {
-  if (weight >= WEIGHT_HIGH) return 'critical';
-  if (weight >= WEIGHT_MID) return 'warning';
-  return 'ok';
+export function faultFlowShareTokenForWeight(weight: number): FaultFlowShareToken {
+  if (weight >= WEIGHT_HIGH) return 'duzy';
+  if (weight >= WEIGHT_MID) return 'sredni';
+  return 'maly';
 }
 
-function weightToVisualState(weight: number): OverlayVisualState {
-  const token = faultFlowColorTokenForWeight(weight);
-  return token === 'critical' ? 'CRITICAL' : token === 'warning' ? 'WARNING' : 'OK';
-}
-
-const VISUAL_STATE_TO_COLOR_TOKEN: Readonly<Record<OverlayVisualState, string>> = Object.freeze({
-  OK: 'ok',
-  WARNING: 'warning',
-  CRITICAL: 'critical',
-  INACTIVE: 'inactive',
+/** Token koloru payloadu overlay dla klasy udziału (prefiks rodziny rozpływu
+ *  zwarciowego — nie token stanu oceny `ok`/`warning`/`critical`). */
+const SHARE_TO_COLOR_TOKEN: Readonly<Record<FaultFlowShareToken, string>> = Object.freeze({
+  duzy: 'fault-flow-duzy',
+  sredni: 'fault-flow-sredni',
+  maly: 'fault-flow-maly',
 });
 
 // =============================================================================
@@ -178,13 +177,13 @@ export function adaptShortCircuitFlowToOverlay(
 
   const branchElements = groups.map((group): OverlayElement => {
     const weight = relativeFlowWeight(group.maxKa, payloadMaxKa);
-    const visual_state = weightToVisualState(weight);
     return {
       element_ref: group.branchId,
       element_type: 'LineBranch',
-      visual_state,
+      // Wkład gałęzi to miara bez kryterium — stan NEUTRAL, nie OK/WARNING/CRITICAL.
+      visual_state: 'NEUTRAL',
       numeric_badges: group.badges,
-      color_token: VISUAL_STATE_TO_COLOR_TOKEN[visual_state],
+      color_token: SHARE_TO_COLOR_TOKEN[faultFlowShareTokenForWeight(weight)],
       stroke_token: weight >= WEIGHT_MID ? 'bold' : 'normal',
       animation_token: null,
     };
@@ -198,18 +197,18 @@ export function adaptShortCircuitFlowToOverlay(
       { label: 'Miejsce zwarcia (wybrany punkt)', color_token: 'critical', description: null },
       {
         label: 'Prąd zwarciowy duży (≥ 66% największego wkładu)',
-        color_token: 'critical',
+        color_token: SHARE_TO_COLOR_TOKEN.duzy,
         description:
           'Skala względna prezentacji — wartości [kA] z solvera IEC 60909 (sieć nadrzędna / Thevenin oraz źródła falownikowe).',
       },
       {
         label: 'Prąd zwarciowy średni (33–66%)',
-        color_token: 'warning',
+        color_token: SHARE_TO_COLOR_TOKEN.sredni,
         description: null,
       },
       {
         label: 'Prąd zwarciowy mały (< 33%)',
-        color_token: 'ok',
+        color_token: SHARE_TO_COLOR_TOKEN.maly,
         description: null,
       },
     ],

@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 23, ENUM_WEWNETRZNY 65** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 4, ENUM_WEWNETRZNY 71** (strażnik RC=0); pozostałe 4 to nazwane zatrzymania (B7 — decyzja architekta, FRT A13 ×3 — B-01), przypięte testem `scripts/test_werdykt_wyjasnialny_guard.py::test_migracja_tylko_zatrzymania_bramek`.
 
 ## Domeny
 
@@ -17,8 +17,8 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 23, ENUM_WEWNETRZNY 65** (strażnik R
 | 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
 | 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 0 | zmigrowane: SWZ TN z rekordu W (`swz.tn`), dobór aparatu nN z rekordów K, arkusz obwodów z rekordami w komórkach; pakiet dowodowy obwodu nN (C30) — kroki 4–5 z rekordów doboru (jedna reguła), krok 6 jako dwa rekordy K zdolności wyłączania (kombinacja / goły aparat, `NIE_DOTYCZY` z powodem) ze wspólnej reguły `ocena_zdolnosci_wylaczania`, krok 7 z rekordu `th.ocena`, krok 10 z rekordu W SWZ (`swz_wymaganie`), agregat obwodu projekcją rekordów; nakładka SWZ i karta obwodu nN z etykiety rekordu (`tonRysunkuEtykiety`/`znakEtykiety` w `KartaWerdyktu.tsx`, jedna tabela warunków TN i TT/IT). ENUM_WEWNETRZNY: 4 koperty arkusza obwodów, koperta sekcji raportu nN, `communicationStatusLabel`, `BayRuntimeState.secondary_communication_status`, `BaySwitchState.communication_ok` (stan telemetrii / dostępność danych, nie ocena) |
 | 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 0 | zamknięte (C39 i C40 liczone w domenach 10 i 1): plakietka „Weryfikacja jednostek: PASS/FAIL” zdjęta z podsumowania LaTeX (C44 „stop printing”, jak DOCX; złote `tests/golden/sc_asymmetrical/*/proof.tex` −2 linie); flagi spójności jednostek opakowań SC3F/SC1 i widoki inspektora → ENUM_WEWNETRZNY. **Audyt 2 (A36/A37/B17) zmigrowany**: nowy moduł `network_model/catalog/audit2_oceny.py` (rekordy K/W trybów BESS, planu zaczepów, bilansu eksportu, wytrzymałości aparatu, współczynnika VT; jedna reguła limitu cieplnego `limit_cieplny_aparatu_ka` dla walidatora katalogu, dowodu i widoku pól), dowody pakietu niosą rekord W (`wymaganie`), pakiet `liczby_statusow` zamiast `all_pass`/`fail_count`, raport (tekst/LaTeX/PDF/DOCX/JSON) cytuje etykietę rekordu; walidatory `/catalog/audit2/validate-*` zwracają rekordy (VT: `voltage_factor` może być `null` → `NIE_OCENIONO`; nieznany typ uziemienia 422; aparat spoza katalogu 404); widok wytrzymałości pól: `wymaganie` zamiast `werdykt`; progi eksportu 0,8/1,5/3,0 bez podstawy usunięte (rekord `BRAK_PODSTAWY`); front: etykiety rekordów w pakiecie, przeglądzie technicznym E-04, walidacji VT, wytrzymałości aparatury i ekranie aparatury zwarć; `zbuduj_widok_wytrzymalosci_aparatury.status` → ENUM (koperta C26). **C48 `api.proof_pack` zmigrowany**: panel metody IEC 60909 wkładów maszyn bez statusu PASS/FAIL (pozycje to fakty biegu; dawne „Maszyny asynchroniczne: PASS” i „Powtarzalność: PASS” nie były ocenami), reguła małych silników p. 6.6 jako zdanie z wartością obliczoną, graniczną i skutkiem — JEDNO zdanie dla kroku wywodu i pozycji panelu; usunięte fałszywe „silniki pomijalne w Ib” (program liczy wkłady wszystkich maszyn); bez silników asynchronicznych reguła „nie dotyczy” zamiast „spełniona”. Front: `SladSekcyjny` bez ikon ✓/✗ i `data-status` (D22 ×3 zdjęte razem). Fikstury harnessu `zwarcia_wklady_scena_*` zregenerowane. **C33 `equipment_proof` zmigrowany**: nowy moduł `application/equipment_proof/oceny.py` — cztery rekordy K (izolacja U_s(U_n) ≤ U_m, wyłączanie I_b/I″k ≤ I_cu, dynamiczna, cieplna) i rekord W doboru; dynamiczna i cieplna z TEGO SAMEGO budowniczego co walidator katalogu i widok pól (`oceny_wytrzymalosci_aparatu`, limit `limit_cieplny_aparatu_ka`), podstawa wyłączania z `podstawa_kryterium_wylaczania` (wspólna z widokiem pól); `EquipmentProofCheckResult.ocena` zamiast `status`, `EquipmentProofResult.wymaganie` zamiast `overall_status`/`key_results`; brak danej aparatu → `BRAK_PODSTAWY`, brak wielkości biegu → `NIE_OCENIONO` (dawniej `FAIL`); kroki dowodu z polskimi tytułami, wynik kroku = etykieta rekordu, podstawienie z relacją `relacja_latex`; t_b roboczy pod I_b z maszynami = dana przyjęta rekordu; usunięte: kod „P11” w nazwie równania, wynik kroku „OK/PASS”, równanie energetyczne EQ_P12_006b (jeden limit cieplny). Inspektor dowodów: wymagane klucze podsumowania = klucze rekordów. |
-| 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 10 | **SLD v2 G1–G9 i stacja T1–T4 zmigrowane** (odczyty szyn z rekordów K backendu, sekcja niżej); **kontyngencje N-1 zmigrowane** (rekordy K/W kategorii dotkliwości, sekcja niżej); **porównanie A/B D26 zmigrowane** (zdjęty próg okna „waga ≥ 4 → Poza zakresem”, sekcja niżej); **kompensacja D18 i LoM D19 zmigrowane** (sekcje niżej); **diagnostyka inspektora ENM E62 zmigrowana** (sekcja niżej); reszta (panel referencyjny E61, karta rozdzielnicy nN, nakładka przepływu zwarciowego, zgodność referencyjna) nietknięta |
-| 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 9 | w części przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; **C39 `protection_read_model` zmigrowany** (sekcja niżej); **B20 pre-flight: `ready` usunięte, `PreflightCheckEntry.status` → ENUM_WEWNETRZNY** (sekcja E62); reszta nietknięta |
+| 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 0 | **SLD v2 G1–G9 i stacja T1–T4 zmigrowane** (odczyty szyn z rekordów K backendu, sekcja niżej); **kontyngencje N-1 zmigrowane** (rekordy K/W kategorii dotkliwości, sekcja niżej); **porównanie A/B D26 zmigrowane** (zdjęty próg okna „waga ≥ 4 → Poza zakresem”, sekcja niżej); **kompensacja D18 i LoM D19 zmigrowane** (sekcje niżej); **diagnostyka inspektora ENM E62 zmigrowana** (sekcja niżej); **zgodność referencyjna E61/D71/D72 zmigrowana** (sekcja niżej); **nakładka przepływu zwarciowego E20, etykiety tokenów E36 i bilans karty rozdzielnicy nN zmigrowane** (sekcja niżej) |
+| 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 0 | przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; **C39 `protection_read_model` zmigrowany** (sekcja niżej); **B20 pre-flight: `ready` usunięte, `PreflightCheckEntry.status` → ENUM_WEWNETRZNY** (sekcja E62); **`reference_engine` `ComplianceCheck.status` → rekord K** (sekcja zgodności referencyjnej); **C36 korekta obciążalności → rekord K `ocena`, C54 `ready` → `complete`, archiwum ×3, importy ×2, A17 → ENUM_WEWNETRZNY** (sekcja niżej) |
 | FRT/HVRT A13 (`network_model/solvers/frt_hvrt/contracts.py`, `FrtHvrtResult.status`, `FrtScenarioResult.status`, `FrtScenarioResult.stayed_connected`) | 3 | 3 | ZATRZYMANE — rdzeń FROZEN z `scripts/rdzenie_b01.py` (wiersz „FRT/HVRT”), wymaga decyzji B-01 |
 
 ## Wspólni budowniczowie utworzeni w karcie
@@ -226,6 +226,38 @@ regeneracji złotego pliku przez kartę ZU (zmiana zamierzona po jej stronie).
   `type_ref` ma Z0 („Catalog types may have Z0 — assume available”), bo `LineBranch` grafu nie
   niesie składowej zerowej — dostępność zwarcia 1F z domysłu, nie z danych.
 
+## Zgodność referencyjna — rekord K każdego sprawdzenia (E61, D71, D72, `reference_engine`)
+
+- `ComplianceCheck.status` (`pass`/`fail`) zastąpiony rekordem K `ocena` (relacja logiczna,
+  metoda DEKLARACJA, nowa zdolność `referencje.zgodnosc_konfiguracji` — DECLARATION /
+  DECLARED_CONFIGURATION). Moduł `backend/src/reference_engine/oceny.py`: zamknięta tabela
+  opisów kryteriów 17 rodzin reguł (kryterium, wielkość, jednostka redakcyjna podstawy;
+  reguła bez opisu podnosi wyjątek), podstawa z rodzaju pakietu (norma → NORMA, producent →
+  KATALOG_PRODUCENTA, operator → OSD; wydanie = wersja pakietu), przedmiot z nazwą z modelu
+  (nigdy identyfikator). Identyfikator kryterium zawiera element i numer wystąpienia (dwa
+  aparaty tego samego rodzaju w polu).
+- Jedno źródło predykatu: silnik zwraca wewnętrzne `Sprawdzenie(spelniony, …)`; raport
+  opakowuje je rekordem, walidacja na żywo (`validation.py`) czyta ten sam obiekt bez budowy
+  rekordów. Liczniki `passed`/`failed` liczone ze statusów rekordów.
+- Pakiet nie niesie rekordu W: powielałby wszystkie rekordy K w ładunku. Wynik pakietu
+  (Reference Score) jest miarą — ekran nie koloruje go progiem okna (zdjęte: 100 % zieleń,
+  ≥ 80 % bursztyn, reszta czerwień w `ReferencePanel` i `SekcjaZgodnosciReferencyjnej`;
+  ta sama klasa w `SekcjaPokryciaAnaliz`: ≥ 80 / ≥ 40). Brak sprawdzeń → `score_percent = None`.
+- Front: wspólny wiersz `ui2/referencje/SprawdzenieReferencyjne.tsx` (etykieta rekordu,
+  nazwa elementu, stan stwierdzony, rozwijane wyjaśnienie `KartaWerdyktu`) w trzech miejscach
+  oceny; usunięte własne ✓/✗ i ich kolory. **Zmiana wizualna do oceny właściciela (B-02).**
+- Rozmiar ładunku: model z 50 sprawdzeniami — 220 KB (ok. 4,4 KB na sprawdzenie; dawniej
+  ok. 0,25 KB). Czas budowy rekordów: ok. 0,2 ms na sprawdzenie.
+- Fikstury: `ui2/referencje/__tests__/rekordyReferencyjne.json` z generatora
+  `tests/uczciwosc/generuj_fixtury_ocen_fe.py` (parytet `test_fixtury_ocen_fe.py`).
+- Testy: rodzaj pakietu × stan sprawdzenia; liczniki z rekordów i unikalność kryteriów;
+  predykat parami „znalezisko na żywo ⇔ rekord naruszony”; zamknięta lista reguł; pakiet bez
+  sprawdzeń; determinizm; front: wynik {100, 85, 80, 60, 0} i punktacja pokrycia
+  {0, 39, 40, 79, 80, 100} bez koloru werdyktu, wiersze z etykietą i kartą rekordu.
+  Iniekcje: każde sprawdzenie „spełnione” → 28 czerwonych; opis reguły zastępczy zamiast
+  wyjątku → 1 czerwony; własny ✓/✗ zamiast etykiety → 4 czerwone; próg koloru wyniku →
+  5 czerwonych; próg koloru punktacji pokrycia → 6 czerwonych.
+
 ## Naprawa przy okazji commitu łącznego
 
 - `backend/tests/ci/test_mypy_ratchet_guard.py` przypinał 161/19, choć commit C33 (`01b76169c`)
@@ -233,9 +265,52 @@ regeneracji złotego pliku przez kartę ZU (zmiana zamierzona po jej stronie).
   Pin poprawiony do 156/18 z komentarzem pomiaru; `mypy_ratchet_guard.py` na drzewie karty:
   156 błędów w 18 plikach, RC=0.
 
+## Domena 9 (reszta) i domena 10 (reszta)
+
+- **E20 nakładka przepływu zwarciowego** (`frontend/src/ui/sld-overlay/ShortCircuitFlowOverlayAdapter.ts`):
+  tercyle udziału wkładu gałęzi w największym wkładzie to MIARA, nie ocena — tokeny
+  `ok`/`warning`/`critical` zastąpione klasą udziału `duzy`/`sredni`/`maly`
+  (`faultFlowShareTokenForWeight`, typ `FaultFlowShareToken`); gałęzie payloadu overlay w stanie
+  `NEUTRAL` (nowy człon `OverlayVisualState`) z tokenem `fault-flow-*`; kanwa v3 (`shareToken`,
+  atrybut `data-fault-flow-share`), paleta (`faultFlowSredni`/`faultFlowMaly`), eksport
+  (`rewriteFaultFlowStyleColors`) i testy. Barwy bez zmian (skala natężenia rodziny czerwieni).
+  Znacznik miejsca zwarcia zostaje `CRITICAL`+pulse — to znacznik zdarzenia, nie ocena.
+- **E36 `TECHNICAL_TOKEN_LABELS`** (`frontend/src/ui/workspace/analysisRunContract.ts`): usunięte
+  `ok → „poprawne”` i `passed → „spełnione”` (żaden producent ich nie wysyła; pola „Status
+  uruchomienia”, „Stan wyników”, „Brama jakości” niosą stan wykonania i świeżości).
+- **Karta rozdzielnicy nN** (`frontend/src/ui/network-build/cards/NnSwitchgearCard.tsx`): bilans
+  mocy bez tonu `warning` przy nadwyżce generacji (próg 0 bez kryterium).
+- **C36** (`backend/src/api/grid_source_preview.py`): `CableAmpacityDeratingResponse.ok` →
+  `ocena: OcenaKryterium` z nowego `backend/src/application/analyses/korekta_obciazalnosci_sn_oceny.py`
+  (podstawa kryterium N SEP-E-004 `NIEUSTALONE` jak w ocenie magistrali → dowód NIEPELNY;
+  warunki katalogowe bez korekty = dana przyjęta `ESTIMATED`); zdolność
+  `kabel_sn.obciazalnosc_skorygowana` w `solver_input/provenance.py`; snapshot OpenAPI
+  zregenerowany; typ frontu w `cableVoltageDropApi.ts`. Uwaga dla architekta: endpoint nie ma
+  konsumenta w UI (`fetchCableAmpacityDerating` bez wywołań).
+- **C54** (`application/network_wizard`): `overall_status` „ready” → „complete” (stan wypełnienia
+  kroków nie twierdzi gotowości obliczeń; tę niesie `readiness_matrix`) i ENUM_WEWNETRZNY.
+  Uwaga: endpointy `/wizard/state|apply-step|can-proceed` nie mają konsumenta w UI.
+- **ENUM_WEWNETRZNY z uzasadnieniem**: `ArchiveDiffResponse.overall_status`,
+  `ElementDiffResponse.status`, `SectionDiffResponse.status` (rodzaj różnicy zapisów),
+  `ImportResponse.status`, `IncrementalImportResponse.status` (stan operacji importu),
+  `CanonicalRun.status` (cykl życia biegu).
+- Naprawy przy okazji: predykat nazwy w `analysis/grid_strength/builder.py`,
+  `application/analyses/raport_zgodnosci.py` (×2) i
+  `application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py` przez
+  `nazwa_nadana` (test `tests/enm/test_nazwy_jedno_zrodlo.py` był czerwony od commitów karty);
+  fikstura `ocenyKontyngencji.json` zregenerowana (różnica 1e-11 w zapisie z wcześniejszego
+  stanu kodu; generator stabilny w dwóch biegach).
+- Strażniki czerwone od wcześniejszych commitów karty, naprawione u źródła:
+  `polykanie_wyjatkow_guard` (82 > 80 × `raise ValueError` w `application`: kontrakt wejścia
+  `ProtectionSettingsInput.__post_init__` z C40 → `OdmowaDanychError`);
+  `nazwa_bez_identyfikatora_guard` (dowód doboru aparatury z C33 wstawiał `connection_node_id`
+  i `type_ref` do zdań rekordu — identyfikatory zostają w danych dowodu);
+  `tsconfig_gate_guard` (test porównania D26: waga `number` zamiast `IssueSeverity`);
+  black `tests/test_wizard_step_controller.py`. Piny `test_solver_input_substitute_guard.py`
+  z pomiarem: pola kontraktów 4515 → 4514 (−`ok`), pliki 610 → 611 i application 258 → 259
+  (+`korekta_obciazalnosci_sn_oceny.py`).
+
 ## Pierwszy krok następcy
 
-Domeny 1, 6, 7 i 8 zamknięte; C40, C39, SLD v2, kontyngencje N-1 i porównanie D26 w commicie łącznym.
-Kompensacja D18 i LoM D19 w osobnym commicie. E62/B20 w osobnym commicie. Dalej: reszta domeny 9 (panel referencyjny E61, E36, NnSwitchgearCard,
-E20, zgodność referencyjna D71/D72) i domeny 10 (archiwum, importy, C36, C54, B20, A17,
-reference_engine); B7 i FRT A13 czekają na decyzje.
+Wszystkie domeny poza zatrzymaniami zamknięte. Zostają: B7 (decyzja architekta: kasacja klasy
+bez producenta albo budowa producenta selektywności) i FRT A13 ×3 (B-01).

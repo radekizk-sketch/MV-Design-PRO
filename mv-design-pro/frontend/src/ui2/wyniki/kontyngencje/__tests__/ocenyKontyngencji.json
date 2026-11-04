@@ -81,9 +81,9 @@
             "skala_rodzaj": "LIMIT",
             "wartosc": {
               "jednostka": "pp",
-              "wartosc": 9.19756002788
+              "wartosc": 9.1975600279
             },
-            "wzgledny": 0.919756002788
+            "wzgledny": 0.91975600279
           },
           "niepewnosc": {
             "metoda_pl": null,
@@ -142,7 +142,7 @@
             "symbol_latex": "\\delta U",
             "wartosc": {
               "jednostka": "%",
-              "wartosc": 0.80243997212
+              "wartosc": 0.8024399721
             },
             "wielkosc_pl": "odchylenie napięcia od znamionowego"
           },
@@ -451,9 +451,9 @@
             "skala_rodzaj": "LIMIT",
             "wartosc": {
               "jednostka": "pp",
-              "wartosc": 87.1223046527
+              "wartosc": 87.122304655
             },
-            "wzgledny": 0.871223046527
+            "wzgledny": 0.87122304655
           },
           "niepewnosc": {
             "metoda_pl": null,
@@ -512,7 +512,7 @@
             "symbol_latex": "\\varepsilon",
             "wartosc": {
               "jednostka": "%",
-              "wartosc": 12.8776953473
+              "wartosc": 12.877695345
             },
             "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)"
           },
@@ -1488,9 +1488,9 @@
             "skala_rodzaj": "LIMIT",
             "wartosc": {
               "jednostka": "pp",
-              "wartosc": 9.85402273853
+              "wartosc": 9.85402273854
             },
-            "wzgledny": 0.985402273853
+            "wzgledny": 0.985402273854
           },
           "niepewnosc": {
             "metoda_pl": null,
@@ -1549,7 +1549,7 @@
             "symbol_latex": "\\delta U",
             "wartosc": {
               "jednostka": "%",
-              "wartosc": 0.145977261473
+              "wartosc": 0.145977261459
             },
             "wielkosc_pl": "odchylenie napięcia od znamionowego"
           },

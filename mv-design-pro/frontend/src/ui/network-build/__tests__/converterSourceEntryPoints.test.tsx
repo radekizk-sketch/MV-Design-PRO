@@ -182,4 +182,30 @@ describe('converter source card entry points', () => {
       ]),
     );
   });
+
+  // Kontrakt werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190): bilans mocy rozdzielnicy
+  // nN jest miarą bez kryterium — iloczyn {nadwyżka, zero, deficyt} × {pole bilansu}: żaden
+  // znak różnicy nie nadaje polu tonu oceny („warning"/„ok").
+  it.each([
+    ['nadwyżka generacji', 0.3, 0.1],
+    ['bilans zerowy', 0.1, 0.1],
+    ['deficyt generacji', 0.05, 0.2],
+  ])('NnSwitchgearCard: %s — pole bilansu bez tonu oceny', (_opis, genMw, loadMw) => {
+    currentSnapshot = {
+      ...currentSnapshot,
+      loads: [{ ref_id: 'ld-1', name: 'Odbiór', bus_ref: 'bus/nn', p_mw: loadMw, q_mvar: 0 }],
+      generators: [
+        { ref_id: 'pv-1', name: 'PV', bus_ref: 'bus/nn', gen_type: 'pv_inverter', p_mw: genMw },
+      ],
+    };
+    render(<NnSwitchgearCard elementId="st-1" />);
+
+    const sections =
+      (lastProps as {
+        sections?: Array<{ id: string; fields: Array<{ key: string; value: unknown; severity?: string }> }>;
+      } | null)?.sections ?? [];
+    const pole = sections.find((section) => section.id === 'bilans')?.fields.find((f) => f.key === 'balance');
+    expect(pole?.value).toBeCloseTo((genMw - loadMw) * 1000, 6);
+    expect(pole?.severity).toBeUndefined();
+  });
 });

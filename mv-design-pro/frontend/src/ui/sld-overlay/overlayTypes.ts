@@ -16,8 +16,11 @@
 /**
  * Visual state of an overlay element.
  * Determined by backend analysis layer, NOT by UI.
+ * `NEUTRAL` — element niesie miarę bez kryterium oceny (np. wkład gałęzi w prąd
+ * zwarciowy); stan nie udaje oceny OK/WARNING/CRITICAL (kontrakt werdyktu
+ * wyjaśnialnego).
  */
-export type OverlayVisualState = 'OK' | 'WARNING' | 'CRITICAL' | 'INACTIVE';
+export type OverlayVisualState = 'OK' | 'WARNING' | 'CRITICAL' | 'INACTIVE' | 'NEUTRAL';
 
 /**
  * Single overlay element — visual state for one SLD symbol.

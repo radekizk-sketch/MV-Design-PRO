@@ -394,6 +394,27 @@ def test_wspolczynniki_przy_nazwanym_zestawie_sa_odrzucane(app_client) -> None:
 # ===========================================================================
 
 
+def _assert_ocena_korekty(data: dict, *, status: str, warunki_przyjete: bool) -> None:
+    """Rekord K kryterium I_obl ≤ I′z (karta WERDYKT-MIGRACJA-190, C36): status związany
+    z wynikiem, limitem I′z solvera i marginesem; podstawa kryterium N SEP-E-004 ma stan
+    NIEUSTALONE, więc dowód jest NIEPELNY w każdym wariancie (brak podstawy ≠ pełny dowód);
+    warunki katalogowe bez korekty dokładają daną przyjętą ESTIMATED (zasada nr 4)."""
+    assert "ok" not in data
+    ocena = data["ocena"]
+    assert ocena["kryterium_id"] == "kabel_sn.obciazalnosc_skorygowana"
+    assert ocena["status_maszynowy"] == status
+    assert ocena["kompletnosc_dowodu"] == "NIEPELNY"
+    assert ocena["wynik"]["wartosc"]["wartosc"] == pytest.approx(data["design_current_a"])
+    assert ocena["limit"]["wartosc"]["wartosc"] == pytest.approx(data["effective_ampacity_a"])
+    margines = data["effective_ampacity_a"] - data["design_current_a"]
+    assert ocena["margines"]["wartosc"]["wartosc"] == pytest.approx(margines, abs=1e-6)
+    dane = ocena["dowod"]["status_danych"]["dane_przyjete"]
+    assert bool(dane) is warunki_przyjete
+    if warunki_przyjete:
+        assert dane[0]["jakosc"] == "ESTIMATED"
+    assert ocena["wyjasnienie"]["zdanie_pl"]
+
+
 def test_korekta_obciazalnosci_liczy_backend_z_werdyktem(app_client) -> None:
     """Excel MT880: 285 A × 0,74538 = 212,43 A; I_obl = 162,06 A ⇒ kryterium spełnione."""
     response = app_client.post(
@@ -408,7 +429,7 @@ def test_korekta_obciazalnosci_liczy_backend_z_werdyktem(app_client) -> None:
     data = response.json()
     assert data["effective_ampacity_a"] == pytest.approx(212.4333, abs=1e-3)
     assert data["derating_total"] == pytest.approx(0.74538, abs=1e-9)
-    assert data["ok"] is True
+    _assert_ocena_korekty(data, status="SPELNIA", warunki_przyjete=False)
     assert data["utilization_pct"] == pytest.approx(162.06 / 212.4333 * 100.0, abs=1e-3)
     assert "ziemia" in data["assumption_pl"].lower()
 
@@ -422,7 +443,9 @@ def test_korekta_obciazalnosci_bez_warunkow_daje_wartosc_katalogowa(app_client) 
     assert data["effective_ampacity_a"] == pytest.approx(285.0)
     assert data["derating_total"] == pytest.approx(1.0)
     assert data["derating_set"] == "warunki_katalogowe"
-    assert data["ok"] is True
+    # Warunki katalogowe bez korekty = założenie robocze (zasada nr 4): ocena biegnie, ale
+    # nie udaje danej trasy — wartość przyjęta jest w rekordzie i w jego zastrzeżeniach.
+    _assert_ocena_korekty(data, status="SPELNIA", warunki_przyjete=True)
     assert "WARUNKÓW KATALOGOWYCH" in data["assumption_pl"]
 
 
@@ -436,7 +459,7 @@ def test_korekta_obciazalnosci_zglasza_przekroczenie(app_client) -> None:
             "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"},
         },
     ).json()
-    assert data["ok"] is False
+    _assert_ocena_korekty(data, status="NIE_SPELNIA", warunki_przyjete=False)
     assert data["utilization_pct"] > 100.0
 
 

@@ -44,6 +44,7 @@ from enm.der_sn_validation import (
     validate_sn_voltage,
 )
 from enm.domain_operations_v2 import moc_transformatorow_mva
+from network_model.nazwy import nazwa_nadana
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import OcenaKryterium, PodstawaWymagania, Przedmiot, WynikWymagania, ZakresWaznosci
 from werdykt.porownanie import (
@@ -148,7 +149,7 @@ def _kv(wartosc: float | None) -> str:
 def _przedmiot(track: DerSnTrack) -> Przedmiot:
     return Przedmiot(
         element_ref=track.source_ref,
-        nazwa_pl=track.source_name or "źródło wytwórcze",
+        nazwa_pl=nazwa_nadana(track.source_name) or "źródło wytwórcze",
         opis_pl="Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)",
     )
 
@@ -559,7 +560,9 @@ def ocena_doborow(track: DerSnTrack, oceny: Sequence[OcenaKryterium]) -> WynikWy
     """Rekord W doborów toru nad rekordami pozycji (agregacja §2.3 kontraktu werdyktu)."""
     return wymaganie_z_ocen(
         wymaganie_id=WYMAGANIE_DOBOROW,
-        nazwa_pl=(f"Dobory toru przyłączenia źródła {track.source_name or 'bez nazwy'} (DER-SN)"),
+        nazwa_pl=(
+            f"Dobory toru przyłączenia źródła {nazwa_nadana(track.source_name) or 'bez nazwy'} (DER-SN)"
+        ),
         podstawa=_PODSTAWA_WYMAGANIA,
         oceny=oceny,
         zdolnosc=classify_dynamic_capability(ZDOLNOSC_DOBOROW),

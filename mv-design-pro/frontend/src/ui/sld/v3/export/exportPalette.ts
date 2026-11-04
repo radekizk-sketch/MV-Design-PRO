@@ -50,7 +50,7 @@
  *
  * `FaultContributionArrow` niesie kolor przez `currentColor` +
  * `<g style={{color: TOKEN}}>` (ten sam problem normalizacji CSS) —
- * rozwiązane PRZEZ atrybut `data-fault-color-token` (zwykły atrybut XML,
+ * rozwiązane PRZEZ atrybut `data-fault-flow-share` (zwykły atrybut XML,
  * NIGDY normalizowany), który każdy taki `<g>` niesie od karty S-B:
  * nadpisujemy CAŁY `style="..."` tego tagu wartością jasną wybraną PO TYM
  * atrybucie — niezależnie od tego, czy poprzedni `style` był zserializowany
@@ -63,7 +63,7 @@ import {
   type SldPalette,
   type VoltageClass,
 } from '../theme/colorTokens';
-import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
+import type { FaultFlowShareToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import type { RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
 
 // ---------------------------------------------------------------------------
@@ -107,8 +107,8 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   // konwencja) — spójne z ciemnym motywem, gdzie oba tercyle najwyższego
   // priorytetu (NOP/critical) dzielą rodzinę czerwieni.
   fault: EXPORT_NOP_RED,
-  faultWarning: '#C77700',
-  faultOk: '#7A6B00',
+  faultFlowSredni: '#C77700',
+  faultFlowMaly: '#7A6B00',
   // W4 (§8) — liczbowe etykiety wynikowe; fiolet przyciemniony pod jasny druk
   // techniczny (kontrast z tłem białym, odrębny od flow/oltc/fault/selekcji).
   resultLabel: '#6A3FB5',
@@ -177,8 +177,8 @@ function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string
     [source.highlight.flow, EXPORT_HIGHLIGHT_COLOR.flow],
     [source.highlight.oltc, EXPORT_HIGHLIGHT_COLOR.oltc],
     [source.highlight.fault, EXPORT_HIGHLIGHT_COLOR.fault],
-    [source.highlight.faultWarning, EXPORT_HIGHLIGHT_COLOR.faultWarning],
-    [source.highlight.faultOk, EXPORT_HIGHLIGHT_COLOR.faultOk],
+    [source.highlight.faultFlowSredni, EXPORT_HIGHLIGHT_COLOR.faultFlowSredni],
+    [source.highlight.faultFlowMaly, EXPORT_HIGHLIGHT_COLOR.faultFlowMaly],
     [source.highlight.resultLabel, EXPORT_HIGHLIGHT_COLOR.resultLabel],
     [source.highlight.resultStale, EXPORT_HIGHLIGHT_COLOR.resultStale],
     [source.highlight.selection, EXPORT_HIGHLIGHT_COLOR.selection],
@@ -244,22 +244,22 @@ export function injectExportBackground(svgMarkup: string): string {
   );
 }
 
-const FAULT_FLOW_LIGHT_BY_TOKEN: Readonly<Record<FaultFlowColorToken, string>> = {
-  critical: EXPORT_HIGHLIGHT_COLOR.fault,
-  warning: EXPORT_HIGHLIGHT_COLOR.faultWarning,
-  ok: EXPORT_HIGHLIGHT_COLOR.faultOk,
+const FAULT_FLOW_LIGHT_BY_TOKEN: Readonly<Record<FaultFlowShareToken, string>> = {
+  duzy: EXPORT_HIGHLIGHT_COLOR.fault,
+  sredni: EXPORT_HIGHLIGHT_COLOR.faultFlowSredni,
+  maly: EXPORT_HIGHLIGHT_COLOR.faultFlowMaly,
 };
 
-/** Nadpisuje `style="color:...` na `<g data-fault-color-token="...">`
+/** Nadpisuje `style="color:...` na `<g data-fault-flow-share="...">`
  *  (strzałki rozpływu zwarciowego, `currentColor` — patrz nagłówek pliku) —
- *  `data-fault-color-token` jest zwykłym atrybutem XML (NIGDY normalizowany
+ *  `data-fault-flow-share` jest zwykłym atrybutem XML (NIGDY normalizowany
  *  przez CSSOM), więc czytamy STĄD cel zamiast próbować sparsować dawną
  *  wartość `style` (hex albo `rgb()` zależnie od silnika renderującego). */
 export function rewriteFaultFlowStyleColors(svgMarkup: string): string {
   return svgMarkup.replace(
-    /<g([^>]*\bdata-fault-color-token="(critical|warning|ok)"[^>]*)>/g,
+    /<g([^>]*\bdata-fault-flow-share="(duzy|sredni|maly)"[^>]*)>/g,
     (_fullMatch: string, attrs: string, token: string) => {
-      const light = FAULT_FLOW_LIGHT_BY_TOKEN[token as FaultFlowColorToken];
+      const light = FAULT_FLOW_LIGHT_BY_TOKEN[token as FaultFlowShareToken];
       const nextAttrs = attrs.includes('style="')
         ? attrs.replace(/style="[^"]*"/, `style="color: ${light}"`)
         : `${attrs} style="color: ${light}"`;

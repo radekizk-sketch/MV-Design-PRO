@@ -24,6 +24,7 @@ from analysis.grid_strength.models import (
 )
 from analysis.grid_strength.oceny import klasa_sily, ocena_sily
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import nazwa_nadana
 from werdykt import OcenaKryterium
 
 
@@ -95,7 +96,7 @@ class GridStrengthBuilder:
             missing.append("s_sc_mva")
         if item.s_installed_mva is None or item.s_installed_mva <= 0.0:
             missing.append("s_installed_mva")
-        nazwa_pl = item.nazwa_pl or opis_bez_nazwy("buses")
+        nazwa_pl = nazwa_nadana(item.nazwa_pl) or opis_bez_nazwy("buses")
 
         if item.s_sc_mva is None or item.s_installed_mva is None or missing:
             ocena = ocena_sily(

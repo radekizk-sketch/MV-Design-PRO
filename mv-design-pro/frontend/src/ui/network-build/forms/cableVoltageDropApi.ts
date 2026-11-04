@@ -6,6 +6,8 @@
  * z `gridSourcePreviewApi.ts`.
  */
 
+import type { OcenaKryterium } from '../../../ui2/wyniki/wzorzec/werdykt';
+
 /** Kierunek przepływu mocy czynnej: odbiór (spadek) albo generacja (wzrost). */
 export type FlowDirection = 'load' | 'generation';
 /** Charakter mocy biernej: indukcyjny (pobór Q) albo pojemnościowy (oddawanie Q). */
@@ -92,13 +94,14 @@ export interface CableAmpacityDeratingResponse {
   derating_total: number;
   derating_set: string;
   utilization_pct: number;
-  ok: boolean;
+  /** Rekord K kryterium I_obl ≤ I′z (kontrakt werdyktu wyjaśnialnego) — status tylko z wyjaśnieniem. */
+  ocena: OcenaKryterium;
   formula_ref: string;
   assumption_pl: string;
 }
 
 /**
- * Obciążalność SKORYGOWANA warunkami ułożenia + werdykt I_obl ≤ I′z (V12K-207).
+ * Obciążalność SKORYGOWANA warunkami ułożenia + rekord K kryterium I_obl ≤ I′z (V12K-207).
  *
  * Rachunek `Iz · f_grunt · f_wiazka · f_grupa` jest KRYTERIUM DOBOROWYM, więc należy do
  * backendu — dotąd mnożenie działo się w warstwie prezentacji (`checkCableAmpacity`),
