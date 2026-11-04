@@ -38,8 +38,9 @@ PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH: str = (
     "i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): "
     "pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy "
     "współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — "
-    "pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej "
-    "(`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie "
+    "pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok "
+    "śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie "
+    "cytat) — ustalenie "
     "właściciela 2026-10-22."
 )
 

@@ -24,6 +24,11 @@ Aktualizacja czasów po pełnym biegu z raportem JUnit (`--junitxml=raport.xml`)
 `backend/`:
 
     python -m tests.kolejnosc_plikow --aktualizuj raport.xml --zrodlo "<opis pomiaru>"
+
+Usunięcie pliku testów między pełnymi biegami (wpis pomiaru bez pliku) — bez nowego pomiaru,
+pozostałe czasy bez zmian, opis źródła dostaje adnotację, które wpisy zdjęto:
+
+    python -m tests.kolejnosc_plikow --usun-osierocone --powod "<dlaczego plik zniknął>"
 """
 
 from __future__ import annotations
@@ -78,21 +83,50 @@ def czasy_z_junit(raport: Path) -> dict[str, float]:
     return dict(sumy)
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--aktualizuj", type=Path, required=True, help="raport JUnit pełnego biegu")
-    parser.add_argument("--zrodlo", required=True, help="opis pomiaru: drzewo, maszyna, obciążenie")
-    args = parser.parse_args(argv)
-    czasy = czasy_z_junit(args.aktualizuj)
-    PLIK_CZASOW.write_text(
+def zapisz_czasy(zrodlo: str, czasy: dict[str, float], plik: Path = PLIK_CZASOW) -> None:
+    plik.write_text(
         json.dumps(
-            {"zrodlo": args.zrodlo, "czasy_s": {k: round(v, 1) for k, v in sorted(czasy.items())}},
+            {"zrodlo": zrodlo, "czasy_s": {k: round(v, 1) for k, v in sorted(czasy.items())}},
             ensure_ascii=False,
             indent=2,
         )
         + "\n",
         encoding="utf-8",
     )
+
+
+def usun_osierocone(powod: str, plik: Path = PLIK_CZASOW) -> list[str]:
+    """Zdejmuje wpisy czasów bez pliku testów (plik usunięty albo przemianowany) — bez nowego
+    pomiaru: pozostałe czasy bez zmian, opis źródła z adnotacją zdjętych wpisów i powodu."""
+    dane = json.loads(plik.read_text(encoding="utf-8"))
+    czasy = {sciezka: float(czas) for sciezka, czas in dane["czasy_s"].items()}
+    osierocone = sorted(s for s in czasy if not (BACKEND / s).is_file())
+    if osierocone:
+        zrodlo = f"{dane['zrodlo']}; zdjęto wpisy bez pliku ({', '.join(osierocone)}): {powod}"
+        zapisz_czasy(zrodlo, {s: c for s, c in czasy.items() if s not in osierocone}, plik)
+    return osierocone
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    tryb = parser.add_mutually_exclusive_group(required=True)
+    tryb.add_argument("--aktualizuj", type=Path, help="raport JUnit pełnego biegu")
+    tryb.add_argument(
+        "--usun-osierocone", action="store_true", help="zdejmij wpisy czasów bez pliku testów"
+    )
+    parser.add_argument("--zrodlo", help="opis pomiaru: drzewo, maszyna, obciążenie")
+    parser.add_argument("--powod", help="dlaczego plik testów zniknął (z --usun-osierocone)")
+    args = parser.parse_args(argv)
+    if args.usun_osierocone:
+        if not args.powod:
+            parser.error("--usun-osierocone wymaga --powod")
+        zdjete = usun_osierocone(args.powod)
+        print(f"Zdjęto {len(zdjete)} wpisów bez pliku: {zdjete} → {PLIK_CZASOW}")
+        return 0
+    if not args.zrodlo:
+        parser.error("--aktualizuj wymaga --zrodlo")
+    czasy = czasy_z_junit(args.aktualizuj)
+    zapisz_czasy(args.zrodlo, czasy)
     print(f"Zapisano {len(czasy)} plików, razem {sum(czasy.values()):.0f} s → {PLIK_CZASOW}")
     return 0
 

@@ -16,6 +16,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Linie i kable — impedancje składowej zgodnej —
   r_ohm_per_km: {
     symbol: 'R',
+    symbolLatex: 'R',
     etykieta: 'Rezystancja jednostkowa',
     jednostka: 'Ω/km',
     typ: 'liczba',
@@ -25,6 +26,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   x_ohm_per_km: {
     symbol: 'X',
+    symbolLatex: 'X',
     etykieta: 'Reaktancja jednostkowa',
     jednostka: 'Ω/km',
     typ: 'liczba',
@@ -34,6 +36,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   b_us_per_km: {
     symbol: 'B',
+    symbolLatex: 'B',
     etykieta: 'Susceptancja jednostkowa',
     jednostka: 'μS/km',
     typ: 'liczba',
@@ -43,6 +46,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   c_nf_per_km: {
     symbol: 'C',
+    symbolLatex: 'C',
     etykieta: 'Pojemność jednostkowa',
     jednostka: 'nF/km',
     typ: 'liczba',
@@ -52,6 +56,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   r0_ohm_per_km: {
     symbol: 'R₀',
+    symbolLatex: 'R_0',
     etykieta: 'Rezystancja składowej zerowej',
     jednostka: 'Ω/km',
     typ: 'liczba',
@@ -61,6 +66,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   x0_ohm_per_km: {
     symbol: 'X₀',
+    symbolLatex: 'X_0',
     etykieta: 'Reaktancja składowej zerowej',
     jednostka: 'Ω/km',
     typ: 'liczba',
@@ -70,6 +76,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   rated_current_a: {
     symbol: 'Iz',
+    symbolLatex: 'I_z',
     etykieta: 'Obciążalność prądowa długotrwała',
     jednostka: 'A',
     typ: 'liczba',
@@ -79,6 +86,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   cross_section_mm2: {
     symbol: 'S',
+    symbolLatex: 'S',
     etykieta: 'Przekrój żyły roboczej',
     jednostka: 'mm²',
     typ: 'liczba',
@@ -88,6 +96,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   voltage_rating_kv: {
     symbol: 'Un',
+    symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
     typ: 'liczba',
@@ -97,6 +106,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   max_temperature_c: {
     symbol: 'θmax',
+    symbolLatex: '\\vartheta_{\\max}',
     etykieta: 'Dopuszczalna temperatura robocza żyły',
     jednostka: '°C',
     typ: 'liczba',
@@ -106,6 +116,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   ith_1s_a: {
     symbol: 'Ith(1s)',
+    symbolLatex: 'I_{th(1\\,\\mathrm{s})}',
     etykieta: 'Prąd cieplny krótkotrwały (1 s)',
     jednostka: 'A',
     typ: 'liczba',
@@ -115,6 +126,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   jth_1s_a_per_mm2: {
     symbol: 'Jth(1s)',
+    symbolLatex: 'J_{th(1\\,\\mathrm{s})}',
     etykieta: 'Gęstość prądu cieplnego (1 s)',
     jednostka: 'A/mm²',
     typ: 'liczba',
@@ -126,6 +138,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Transformatory —
   rated_power_mva: {
     symbol: 'Sn',
+    symbolLatex: 'S_n',
     etykieta: 'Moc znamionowa',
     jednostka: 'MVA',
     typ: 'liczba',
@@ -135,6 +148,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   voltage_hv_kv: {
     symbol: 'UnGN',
+    symbolLatex: 'U_{n\\,\\mathrm{GN}}',
     etykieta: 'Napięcie znamionowe strony górnej',
     jednostka: 'kV',
     typ: 'liczba',
@@ -144,6 +158,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   voltage_lv_kv: {
     symbol: 'UnDN',
+    symbolLatex: 'U_{n\\,\\mathrm{DN}}',
     etykieta: 'Napięcie znamionowe strony dolnej',
     jednostka: 'kV',
     typ: 'liczba',
@@ -153,6 +168,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   uk_percent: {
     symbol: 'uk',
+    symbolLatex: 'u_k',
     etykieta: 'Napięcie zwarcia',
     jednostka: '%',
     typ: 'liczba',
@@ -162,6 +178,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   pk_kw: {
     symbol: 'Pk',
+    symbolLatex: 'P_k',
     etykieta: 'Straty obciążeniowe (zwarcia)',
     jednostka: 'kW',
     typ: 'liczba',
@@ -171,6 +188,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   i0_percent: {
     symbol: 'i0',
+    symbolLatex: 'i_0',
     etykieta: 'Prąd biegu jałowego',
     jednostka: '%',
     typ: 'liczba',
@@ -180,6 +198,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   p0_kw: {
     symbol: 'P0',
+    symbolLatex: 'P_0',
     etykieta: 'Straty jałowe',
     jednostka: 'kW',
     typ: 'liczba',
@@ -189,6 +208,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   vector_group: {
     symbol: 'grupa połączeń',
+    symbolLatex: '\\text{grupa połączeń}',
     etykieta: 'Grupa połączeń',
     jednostka: '',
     typ: 'tekst',
@@ -197,6 +217,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   tap_step_percent: {
     symbol: 'Δu',
+    symbolLatex: '\\Delta u',
     etykieta: 'Skok zaczepu przełącznika',
     jednostka: '%',
     typ: 'liczba',
@@ -208,6 +229,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Aparaty łączeniowe —
   un_kv: {
     symbol: 'Un',
+    symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
     typ: 'liczba',
@@ -217,6 +239,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   in_a: {
     symbol: 'In',
+    symbolLatex: 'I_n',
     etykieta: 'Prąd znamionowy ciągły',
     jednostka: 'A',
     typ: 'liczba',
@@ -226,6 +249,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   ik_ka: {
     symbol: 'Isc',
+    symbolLatex: 'I_{sc}',
     etykieta: 'Znamionowy prąd wyłączalny zwarciowy',
     jednostka: 'kA',
     typ: 'liczba',
@@ -235,6 +259,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   icw_ka: {
     symbol: 'Icw',
+    symbolLatex: 'I_{cw}',
     etykieta: 'Prąd krótkotrwały wytrzymywany',
     jednostka: 'kA',
     typ: 'liczba',
@@ -246,6 +271,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Falowniki / źródła OZE —
   sn_mva: {
     symbol: 'Sn',
+    symbolLatex: 'S_n',
     etykieta: 'Moc pozorna znamionowa',
     jednostka: 'MVA',
     typ: 'liczba',
@@ -255,6 +281,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   pmax_mw: {
     symbol: 'Pmax',
+    symbolLatex: 'P_{\\max}',
     etykieta: 'Moc czynna maksymalna',
     jednostka: 'MW',
     typ: 'liczba',
@@ -264,6 +291,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   cosphi_min: {
     symbol: 'cosφmin',
+    symbolLatex: '\\cos\\varphi_{\\min}',
     etykieta: 'Współczynnik mocy — minimalny',
     jednostka: '',
     typ: 'liczba',
@@ -273,6 +301,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   cosphi_max: {
     symbol: 'cosφmax',
+    symbolLatex: '\\cos\\varphi_{\\max}',
     etykieta: 'Współczynnik mocy — maksymalny',
     jednostka: '',
     typ: 'liczba',
@@ -282,6 +311,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   e_kwh: {
     symbol: 'E',
+    symbolLatex: 'E',
     etykieta: 'Pojemność energetyczna magazynu',
     jednostka: 'kWh',
     typ: 'liczba',
@@ -293,6 +323,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Przekładniki prądowe (L-16) —
   ratio_primary_a: {
     symbol: 'I1n',
+    symbolLatex: 'I_{1n}',
     etykieta: 'Prąd znamionowy pierwotny',
     jednostka: 'A',
     typ: 'liczba',
@@ -302,6 +333,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   ratio_secondary_a: {
     symbol: 'I2n',
+    symbolLatex: 'I_{2n}',
     etykieta: 'Prąd znamionowy wtórny',
     jednostka: 'A',
     typ: 'liczba',
@@ -311,6 +343,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   accuracy_class: {
     symbol: 'kl.',
+    symbolLatex: '\\text{kl.}',
     etykieta: 'Klasa dokładności',
     jednostka: '',
     typ: 'tekst',
@@ -321,6 +354,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   accuracy_class_metering: {
     symbol: 'kl. pom.',
+    symbolLatex: '\\text{kl. pom.}',
     etykieta: 'Klasa dokładności uzwojenia pomiarowego',
     jednostka: '',
     typ: 'tekst',
@@ -329,6 +363,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   burden_va: {
     symbol: 'Sn',
+    symbolLatex: 'S_n',
     etykieta: 'Moc znamionowa',
     jednostka: 'VA',
     typ: 'liczba',
@@ -340,6 +375,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   ith_ka_1s: {
     symbol: 'Ith',
+    symbolLatex: 'I_{th}',
     etykieta: 'Prąd cieplny krótkotrwały (1 s)',
     jednostka: 'kA',
     typ: 'liczba',
@@ -349,6 +385,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   idyn_ka_peak: {
     symbol: 'Idyn',
+    symbolLatex: 'I_{dyn}',
     etykieta: 'Prąd dynamiczny (szczytowy)',
     jednostka: 'kA',
     typ: 'liczba',
@@ -358,6 +395,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   fs_safety_factor: {
     symbol: 'Fs',
+    symbolLatex: 'F_s',
     etykieta: 'Współczynnik bezpieczeństwa przyrządowego',
     jednostka: '',
     typ: 'liczba',
@@ -369,6 +407,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   rct_ohm: {
     symbol: 'Rct',
+    symbolLatex: 'R_{ct}',
     etykieta: 'Rezystancja uzwojenia wtórnego',
     jednostka: 'Ω',
     typ: 'liczba',
@@ -382,6 +421,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Przekładniki napięciowe (L-16) —
   ratio_primary_v: {
     symbol: 'U1n',
+    symbolLatex: 'U_{1n}',
     etykieta: 'Napięcie znamionowe pierwotne',
     jednostka: 'V',
     typ: 'liczba',
@@ -391,6 +431,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   ratio_secondary_v: {
     symbol: 'U2n',
+    symbolLatex: 'U_{2n}',
     etykieta: 'Napięcie znamionowe wtórne',
     jednostka: 'V',
     typ: 'liczba',
@@ -400,6 +441,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   rated_voltage_factor: {
     symbol: 'Fv',
+    symbolLatex: 'F_v',
     etykieta: 'Współczynnik napięciowy',
     jednostka: '',
     typ: 'liczba',
@@ -411,6 +453,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   voltage_factor_duration_s: {
     symbol: 't(Fv)',
+    symbolLatex: 't(F_v)',
     etykieta: 'Czas obowiązywania współczynnika napięciowego',
     jednostka: 's',
     typ: 'liczba',
@@ -422,6 +465,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Kable i aparaty nN (L-16) —
   u_n_kv: {
     symbol: 'Un',
+    symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
     typ: 'liczba',
@@ -431,6 +475,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   i_max_a: {
     symbol: 'Iz',
+    symbolLatex: 'I_z',
     etykieta: 'Obciążalność prądowa długotrwała',
     jednostka: 'A',
     typ: 'liczba',
@@ -440,6 +485,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   number_of_cores: {
     symbol: 'n',
+    symbolLatex: 'n',
     etykieta: 'Liczba żył',
     jednostka: '',
     typ: 'liczba',
@@ -449,6 +495,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   i_n_a: {
     symbol: 'In',
+    symbolLatex: 'I_n',
     etykieta: 'Prąd znamionowy',
     jednostka: 'A',
     typ: 'liczba',
@@ -458,6 +505,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   breaking_capacity_ka: {
     symbol: 'Icu',
+    symbolLatex: 'I_{cu}',
     etykieta: 'Zdolność wyłączania zwarciowa',
     jednostka: 'kA',
     typ: 'liczba',
@@ -469,16 +517,18 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   // — Wyłączniki różnicowoprądowe nN (karta W5-E-TTIT; rekord `LVRcdType.to_dict()`) —
   i_delta_n_a: {
     symbol: 'IΔn',
+    symbolLatex: 'I_{\\Delta n}',
     etykieta: 'Prąd różnicowy znamionowy zadziałania',
     jednostka: 'A',
     typ: 'liczba',
     miejscaDziesietne: 3,
     definicja: 'Prąd różnicowy, przy którym wyłącznik różnicowoprądowy musi zadziałać; '
-      + 'w układzie TT wyznacza napięcie dotykowe R_A·IΔn.',
+      + 'w układzie TT wyznacza napięcie dotykowe $R_A \\cdot I_{\\Delta n}$.',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 — RCCB, prąd różnicowy znamionowy
   },
   rcd_type: {
     symbol: 'Typ',
+    symbolLatex: '\\text{typ}',
     etykieta: 'Rodzaj prądu różnicowego',
     jednostka: '',
     typ: 'tekst',
@@ -488,6 +538,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   t_a_s: {
     symbol: 'ta(IΔn)',
+    symbolLatex: 't_a(I_{\\Delta n})',
     etykieta: 'Maksymalny czas wyłączenia przy IΔn',
     jednostka: 's',
     typ: 'liczba',
@@ -497,6 +548,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   t_a_2idn_s: {
     symbol: 'ta(2·IΔn)',
+    symbolLatex: 't_a(2 \\cdot I_{\\Delta n})',
     etykieta: 'Maksymalny czas wyłączenia przy 2·IΔn',
     jednostka: 's',
     typ: 'liczba',
@@ -506,6 +558,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   t_a_5idn_s: {
     symbol: 'ta(5·IΔn)',
+    symbolLatex: 't_a(5 \\cdot I_{\\Delta n})',
     etykieta: 'Maksymalny czas wyłączenia przy 5·IΔn',
     jednostka: 's',
     typ: 'liczba',
@@ -516,6 +569,7 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   },
   t_nieczuly_min_s: {
     symbol: 'tnz',
+    symbolLatex: 't_{nz}',
     etykieta: 'Minimalny czas niezadziałania',
     jednostka: 's',
     typ: 'liczba',

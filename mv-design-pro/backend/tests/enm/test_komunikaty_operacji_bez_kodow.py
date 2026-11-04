@@ -886,8 +886,15 @@ def test_mapa_pol_bez_kodow_w_nazwach() -> None:
 
 
 _WPIS_ZRODLA = re.compile(
-    r'^\s*"(?P<klucz>[^"]+)": "(?P<nazwa>[^"]+)",\s*#\s*(?P<plik>[\w/.-]+\.tsx?)\s+(?P<tsklucz>\w+)'
+    r'^\s*"(?P<klucz>[^"]+)": "(?P<nazwa>[^"]+)",\s*#\s*(?P<plik>[\w/.-]+\.tsx?)\s+'
+    r"(?:(?P<stala>\w+)\.)?(?P<tsklucz>\w+)"
 )
+
+#: Etykieta niejednoznaczna: plik frontu ma dla tego klucza KILKA różnych etykiet (ten sam
+#: klucz pola w kilku formularzach, np. ``bus_ref`` w ``POLA_UZIOMU`` i ``POLA_SILNIKA``),
+#: a wpis słownika nie wskazał stałej (``plik.ts STALA.klucz``). Pierwsze trafienie byłoby
+#: przypadkiem, nie dowodem.
+NIEJEDNOZNACZNA = "<etykieta niejednoznaczna — wskaż stałą: plik.ts STALA.klucz>"
 
 
 def _front_plik(sciezka: str) -> Path | None:
@@ -897,25 +904,49 @@ def _front_plik(sciezka: str) -> Path | None:
     return None
 
 
-def _wartosc_frontu(tresc: str, tsklucz: str, klucz_kontraktu: str) -> str | tuple[str, ...] | None:
+def _blok_stalej(tresc: str, stala: str) -> str | None:
+    """Treść stałej ``stala`` (tablica ``[…]`` albo obiekt ``{…}`` zamykany w kolumnie 0)."""
+    blok = re.search(rf"\b{re.escape(stala)}\b[^=]*=\s*[\[{{](.*?)\n[\]}}]", tresc, re.S)
+    return blok.group(1) if blok else None
+
+
+def _jedyna(wartosci: list[str]) -> str | None:
+    rozne = sorted(set(wartosci))
+    if not rozne:
+        return None
+    return rozne[0] if len(rozne) == 1 else NIEJEDNOZNACZNA
+
+
+def _wartosc_frontu(
+    tresc: str, tsklucz: str, klucz_kontraktu: str, stala: str | None = None
+) -> str | tuple[str, ...] | None:
     """Etykieta frontu: ``tsklucz: '…'``, ``tsklucz: warunek ? '…' : '…'`` (etykieta zależna
     od rodzaju — obie warianty), definicja pola ``{ key: 'tsklucz', label: '…' }`` (także
     ``{ klucz: 'tsklucz', etykieta: '…' }``) albo wpis
-    ``klucz_kontraktu: '…'`` w stałej ``tsklucz`` (etykiety kluczowane polem kontraktu)."""
-    prosty = re.search(rf"\b{re.escape(tsklucz)}: '([^']*)'", tresc)
+    ``klucz_kontraktu: '…'`` w stałej ``tsklucz`` (etykiety kluczowane polem kontraktu).
+    Wskazana ``stala`` zawęża szukanie do jej treści; kilka różnych etykiet tego samego klucza
+    w przeszukiwanej treści daje ``NIEJEDNOZNACZNA``."""
+    if stala is not None:
+        blok_stalej = _blok_stalej(tresc, stala)
+        if blok_stalej is None:
+            return None
+        tresc = blok_stalej
+    prosty = _jedyna(re.findall(rf"\b{re.escape(tsklucz)}: '([^']*)'", tresc))
     if prosty:
-        return prosty.group(1)
+        return prosty
     warunkowy = re.search(rf"\b{re.escape(tsklucz)}: [^?\n]+\? '([^']*)' : '([^']*)'", tresc)
     if warunkowy:
         return (warunkowy.group(1), warunkowy.group(2))
-    definicja = re.search(rf"key: '{re.escape(tsklucz)}', label: '([^']*)'", tresc)
+    definicja = _jedyna(re.findall(rf"key: '{re.escape(tsklucz)}', label: '([^']*)'", tresc))
     if definicja:
-        return definicja.group(1)
+        return definicja
     # Definicja pola formularza parametrów analizy (``{ klucz: 'x', etykieta: '…' }``,
     # ``ui2/wyniki/akademickie/parametry.ts``) — także rozpisana na kilka wierszy.
-    definicja_pl = re.search(rf"klucz: '{re.escape(tsklucz)}',\s*etykieta: '([^']*)'", tresc)
+    definicja_pl = _jedyna(
+        re.findall(rf"klucz: '{re.escape(tsklucz)}',\s*etykieta: '([^']*)'", tresc)
+    )
     if definicja_pl:
-        return definicja_pl.group(1)
+        return definicja_pl
     blok = re.search(rf"\b{re.escape(tsklucz)}\b[^=]*=\s*\{{(.*?)\n\}}", tresc, re.S)
     if blok:
         wpis = re.search(rf"\b{re.escape(klucz_kontraktu)}: '([^']*)'", blok.group(1))
@@ -924,9 +955,55 @@ def _wartosc_frontu(tresc: str, tsklucz: str, klucz_kontraktu: str) -> str | tup
     return None
 
 
+def test_wartosc_frontu_niejednoznaczny_klucz_wymaga_stalej() -> None:
+    """Iniekcja klasy „pierwsze trafienie”: ten sam klucz pola w dwóch formularzach jednego
+    pliku bez wskazania stałej jest niejednoznaczny; wskazana stała rozstrzyga."""
+    tresc = (
+        "export const POLA_A = [\n  { klucz: 'bus_ref', etykieta: 'Szyna stacji' },\n];\n"
+        "export const POLA_B = [\n  { klucz: 'bus_ref', etykieta: 'Szyna przyłączenia' },\n];\n"
+    )
+    assert _wartosc_frontu(tresc, "bus_ref", "bus_ref") == NIEJEDNOZNACZNA
+    assert _wartosc_frontu(tresc, "bus_ref", "bus_ref", "POLA_A") == "Szyna stacji"
+    assert _wartosc_frontu(tresc, "bus_ref", "bus_ref", "POLA_B") == "Szyna przyłączenia"
+    assert _wartosc_frontu(tresc, "bus_ref", "bus_ref", "POLA_C") is None
+
+
+_SEGMENT_WZORU = re.compile(r"\$([^$]+)\$")
+
+
+def _odczyt_bez_wzorow(etykieta: str) -> str:
+    """Postać tekstowa etykiety frontu z wzorami ``$…$``, w jakiej słowa tej etykiety niesie
+    komunikat operacji: ograniczniki ``$`` i klamry grupujące znikają, indeks zostaje po
+    podkreślniku (``$k_{pf}$`` → ``k_pf``).
+
+    Etykieta pola formularza niesie symbole jako wzory KaTeX (``$a_P$``, ``ui_math_guard``);
+    komunikat operacji jest zwykłym tekstem w odpowiedzi API (proza backendu), więc niesie te
+    same słowa i symbol w postaci tekstowej. Segment z poleceniem LaTeX (``\\cos``) nie ma
+    jednoznacznej postaci tekstowej — zostaje nietknięty, a porównanie z nazwą backendu
+    jawnie się rozjeżdża (wymaga świadomej decyzji, nie cichej zgody)."""
+
+    def odczyt(segment: re.Match[str]) -> str:
+        wzor = segment.group(1)
+        if "\\" in wzor:
+            return segment.group(0)
+        return wzor.replace("{", "").replace("}", "")
+
+    return _SEGMENT_WZORU.sub(odczyt, etykieta)
+
+
+def test_odczyt_bez_wzorow_zdejmuje_proste_wzory_a_zostawia_polecenia_latex() -> None:
+    assert _odczyt_bez_wzorow("Udział stałoimpedancyjny $P$ ($a_P$)") == (
+        "Udział stałoimpedancyjny P (a_P)"
+    )
+    assert _odczyt_bez_wzorow("Wrażliwość $P$ ($k_{pf}$)") == "Wrażliwość P (k_pf)"
+    assert _odczyt_bez_wzorow("Współczynnik $\\cos\\varphi$") == "Współczynnik $\\cos\\varphi$"
+    assert _odczyt_bez_wzorow("Moc znamionowa") == "Moc znamionowa"
+
+
 def test_nazwy_pol_sa_slowami_frontu() -> None:
     """Każdy wpis mapy ze wskazanym źródłem etykiety frontu (``plik.ts klucz``) ma DOKŁADNIE
-    słowa tej etykiety — projektant widzi w komunikacie to, co w formularzu."""
+    słowa tej etykiety — projektant widzi w komunikacie to, co w formularzu. Etykieta z wzorami
+    ``$…$`` jest porównywana w odczycie tekstowym (``_odczyt_bez_wzorow``)."""
     zrodlo = (SRC / "enm" / "slownik_komunikatow.py").read_text(encoding="utf-8")
     sprawdzone = 0
     rozjazdy = []
@@ -940,8 +1017,15 @@ def test_nazwy_pol_sa_slowami_frontu() -> None:
             continue
         klucz_kontraktu = dopasowanie["klucz"].rsplit(":", 1)[-1].rsplit(".", 1)[-1]
         front = _wartosc_frontu(
-            plik.read_text(encoding="utf-8"), dopasowanie["tsklucz"], klucz_kontraktu
+            plik.read_text(encoding="utf-8"),
+            dopasowanie["tsklucz"],
+            klucz_kontraktu,
+            dopasowanie["stala"],
         )
+        if isinstance(front, tuple):
+            front = tuple(_odczyt_bez_wzorow(wariant) for wariant in front)
+        elif front is not None:
+            front = _odczyt_bez_wzorow(front)
         sprawdzone += 1
         zgodna = (
             dopasowanie["nazwa"] in front

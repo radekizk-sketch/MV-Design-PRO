@@ -10,8 +10,27 @@ export const ARKUSZ_STRINGS = {
   powrot: 'Powrót',
 
   formatEyebrow: 'Czego potrzebuje arkusz',
-  formatOpis:
-    'Wymagane arkusze: „Szyny" (id, nazwa, napięcie_kV) oraz „Linie" (id, szyna_pocz, szyna_kon, typ, długość_km). Opcjonalnie: „Trafo", „Źródła", „Odbiory". Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna „typ_katalogowy" (typ z katalogu) albo pełna tabliczka w wierszu (odcinek: rodzaj LINIA/KABEL, R_ohm_km, X_ohm_km, B_uS_km lub C_nF_km, Un_kV, I_dop_A; transformator: Sn_MVA, uk_pct, Pk_kW, grupa, zaczepy). Z tabliczki powstaje typ w katalogu projektu — bez wartości domyślnych.',
+  // Nazwy kolumn arkusza to IDENTYFIKATORY, które projektant wpisuje w nagłówku — ekran pokazuje
+  // je jako kod (`<code>`), nie w prozie (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: dawny
+  // jeden akapit niósł `szyna_pocz, szyna_kon, …` jak zapis matematyczny bez składu). Kolumny
+  // zgodne z `backend/src/application/xlsx_import/importer.py` (BUS_COLUMNS, LINE_COLUMNS).
+  formatWstep: 'Arkusz wymagany ma kolumny w pierwszym wierszu, dokładnie pod tymi nazwami:',
+  formatArkusze: [
+    { nazwa: 'Szyny', kolumny: ['id', 'nazwa', 'napięcie_kV'] },
+    { nazwa: 'Linie', kolumny: ['id', 'szyna_pocz', 'szyna_kon', 'typ', 'długość_km'] },
+  ],
+  formatOpcjonalne: 'Arkusze opcjonalne: „Trafo”, „Źródła”, „Odbiory”.',
+  formatTyp:
+    'Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna '
+    + '„typ_katalogowy” (typ z katalogu) albo pełna tabliczka w wierszu. Z tabliczki powstaje typ '
+    + 'w katalogu projektu — bez wartości domyślnych.',
+  formatTabliczki: [
+    {
+      nazwa: 'Tabliczka odcinka',
+      kolumny: ['rodzaj (LINIA/KABEL)', 'R_ohm_km', 'X_ohm_km', 'B_uS_km lub C_nF_km', 'Un_kV', 'I_dop_A'],
+    },
+    { nazwa: 'Tabliczka transformatora', kolumny: ['Sn_MVA', 'uk_pct', 'Pk_kW', 'grupa', 'zaczepy'] },
+  ],
 
   wyborEyebrow: 'Plik z danymi',
   wybierz: 'Wybierz plik arkusza',

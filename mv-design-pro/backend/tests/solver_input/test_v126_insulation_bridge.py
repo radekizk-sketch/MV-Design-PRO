@@ -107,30 +107,37 @@ def test_arrester_with_catalog_ref_maps_all_card_params() -> None:
     assert len(rows) == 1
     row = rows[0]
     assert row.location_bus_ref == "BUS_SN"
-    assert row.u_m_kv == params["u_m_kv"]
+    # U_m wiersza — napięcie najwyższe SIECI szyny (20 kV → 24 kV, IEC 60038), nie U_m karty.
+    assert row.u_m_kv == 24.0
+    # Karta niesie ZDOLNOŚĆ ogranicznika — wytrzymałość TOV 10 s nie udaje przepięcia sieci.
     assert row.arrester_mcov_kv == params["mcov_kv"]
+    assert row.arrester_rated_kv == params["u_rated_kv"]
     assert row.arrester_residual_10ka_kv == params["u_residual_at_10ka_kv"]
-    assert row.predicted_tov_kv == params["tov_10s_kv"]
-    assert row.predicted_energy_kj_per_kv == params["energy_absorption_kj_per_kv"]
+    assert row.arrester_tov_10s_kv == params["tov_10s_kv"]
+    assert "predicted_tov_kv" not in type(row).model_fields
 
 
-def test_network_neutral_from_zespol_dlawik_is_isolated() -> None:
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie="dlawik")
-    rows = build_v126_insulation_from_enm(model)
-    assert rows[0].network_neutral == "isolated"
+@pytest.mark.parametrize(
+    ("uziemienie", "tryb"),
+    [("dlawik", "kompensowany"), ("rezystor", "rezystor"), (None, "izolowany")],
+)
+def test_tryb_doziemienia_i_k_z_solvera_doziemienia_sieci(
+    uziemienie: str | None, tryb: str
+) -> None:
+    """Tryb doziemienia szyny SN i współczynnik k — z jedynej prawdy o uziemieniu sieci
+    (`enm.uziemienie_sekcji` → solver `doziemienie_sn`), nie z kategorii „isolated/earthed”,
+    która zrównywała sieć z rezystorem z siecią uziemioną bezpośrednio. Sieć bez zespołu
+    i bez uziemionego uzwojenia — izolowana z modelu (ta sama prawda co składowa zerowa)."""
+    from enm.uziemienie_sekcji import uziemienie_szyny
 
-
-def test_network_neutral_from_zespol_rezystor_is_earthed() -> None:
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie="rezystor")
-    rows = build_v126_insulation_from_enm(model)
-    assert rows[0].network_neutral == "earthed"
-
-
-def test_siec_bez_punktu_uziemienia_jest_izolowana_z_modelu() -> None:
-    """Sieć SN bez zespołu i bez uziemionego uzwojenia nie ma drogi prądu zerowego — kategoria
-    „isolated" wyprowadzona z modelu (ta sama prawda co składowa zerowa), nie domysł."""
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie=None)
-    assert [r.network_neutral for r in build_v126_insulation_from_enm(model)] == ["isolated"]
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], uziemienie=uziemienie)
+    (row,) = build_v126_insulation_from_enm(model)
+    assert row.network_neutral == tryb
+    sekcja = uziemienie_szyny(model, "BUS_SN")
+    assert sekcja is not None
+    assert row.earth_fault_factor == sekcja.doziemienie("spoczynek").wspolczynnik_k
+    if row.earth_fault_factor is not None:
+        assert "solver doziemienia sieci SN" in (row.earth_fault_factor_zrodlo_pl or "")
     assert ograniczniki_bez_uziemienia_sieci(model) == ()
 
 
@@ -176,8 +183,9 @@ def test_arrester_without_catalog_ref_derives_um_from_bus_no_card_params() -> No
     row = rows[0]
     assert row.u_m_kv == 24.0  # napięcie najwyższe sieci 20 kV (IEC 60038 tab. 3)
     assert row.arrester_mcov_kv is None
+    assert row.arrester_rated_kv is None
     assert row.arrester_residual_10ka_kv is None
-    assert row.predicted_energy_kj_per_kv == 2.0
+    assert row.arrester_tov_10s_kv is None
 
 
 @pytest.mark.parametrize(

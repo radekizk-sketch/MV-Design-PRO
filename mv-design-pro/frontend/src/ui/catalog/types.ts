@@ -419,7 +419,11 @@ export interface ParametrMaszynyRejestru {
   readonly parametr: string;
   readonly nazwa_pl: string;
   readonly symbol: string;
+  /** Symbol jako LaTeX — postać ekranowa (`$…$` przez `TekstZWzorami`); `symbol` to identyfikator. */
+  readonly symbol_latex: string;
   readonly jednostka: string;
+  /** Jednostka jako LaTeX, gdy niesie symbole (baza p.u.); pusta — ekran pokazuje `jednostka`. */
+  readonly jednostka_latex: string;
   readonly dopuszczalne_od: number;
   readonly dopuszczalne_do: number;
   readonly calkowita: boolean;

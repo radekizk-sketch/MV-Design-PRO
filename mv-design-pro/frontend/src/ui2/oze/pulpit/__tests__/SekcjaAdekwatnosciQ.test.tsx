@@ -4,6 +4,7 @@
  * per źródło + nasycenie + naruszenia + werdykt + proweniencja. API i store mockowane.
  */
 
+import { oczekujTekstuZWzorami } from '../../../../test/tekstZWzorami';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
@@ -82,8 +83,9 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
     render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     const zrodlo = await screen.findByTestId('mvd-oze-adekw-zrodlo-src-2');
     expect(zrodlo).toHaveTextContent('Falownik farmy 2');
-    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_min_mvar);
-    expect(zrodlo).toHaveTextContent(BRAKI_DANYCH_Q.q_max_mvar);
+    // Braki po polsku z symbolami granic przez KaTeX (`$Q_{\\min}$`, nie ASCII `Q_min`).
+    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_min_mvar);
+    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_max_mvar);
     expect(zrodlo).not.toHaveTextContent('src-2');
     expect(zrodlo).not.toHaveTextContent('q_min_mvar');
     expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toHaveTextContent('Szyna PCC farmy 2');

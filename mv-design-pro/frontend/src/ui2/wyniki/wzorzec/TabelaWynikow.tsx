@@ -33,6 +33,7 @@ import type {
   WartoscKomorki,
   WierszTabeli,
 } from './wzorzecModel';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { WZORZEC_STRINGS } from './strings';
 import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
 
@@ -385,7 +386,7 @@ export function TabelaWynikow({
               const wskaznik = aktywne ? (sort.kierunek === 'rosnaco' ? '▲' : '▼') : '';
               const naglowekTresc = (
                 <>
-                  <span>{kol.etykieta}</span>
+                  <span><TekstZWzorami tekst={kol.etykieta} /></span>
                   {kol.jednostka && <span className="mvd-wyn-th-unit">[{kol.jednostka}]</span>}
                   {wskaznik && (
                     <span className="mvd-wyn-sort-ind" aria-hidden="true">

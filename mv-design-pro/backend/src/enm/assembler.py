@@ -76,6 +76,7 @@ from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
+from enm.tor_pola import ZNACZNIK_SZYNY_POMOCNICZEJ
 from enm.zero_sequence_transformer import (
     NAZWY_POLACZEN_ZEROWYCH_PL,
     ZeroSeqConnection,
@@ -199,7 +200,7 @@ def _build_snapshot_graph_element_context(
         #     czy liczymy zwarcie, decyduje rola elektryczna wezla, nie jego
         #     widocznosc na schemacie). Szyny, ktore te flagi mialy wylaczyc, i
         #     tak nosza `helper_bus`.
-        skip_short_circuit_target = "helper_bus" in tags
+        skip_short_circuit_target = ZNACZNIK_SZYNY_POMOCNICZEJ in tags
         node_context[_graph_id_from_ref(ref_id)] = {
             "element_id": ref_id,
             "element_type": "BUS",
@@ -666,6 +667,11 @@ class WejscieZwarcia:
     #: ``z0_bus``, graf solvera, scenariusz i stan AWSC biegu; zespoły uziemiające z OBOMA
     #: stanami AWSC). Pusta krotka = bieg bez Z0.
     siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): węzeł ``solve_graph``
+    #: → sieć SN (``UziemienieSekcji``) z TEGO SAMEGO złożenia Y0 co ``z0_bus`` — wiersz zwarcia
+    #: jednofazowego niesie doziemienie wg sposobu pracy punktu neutralnego sieci
+    #: (``doziemienie_sieci``). Puste poza zwarciem jednofazowym.
+    sekcje_sn_wezlow: Mapping[str, Any] = field(default_factory=dict)
 
 
 def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
@@ -690,41 +696,6 @@ def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
     # `kod_odmowy_impedancji` zwraca `None` wyłącznie dla pary skończonych liczb; Z_f = 0
     # to zwarcie metaliczne (ta sama funkcja co w rdzeniu — artefakt biegu bez flagi).
     return impedancja_przejscia_obliczeniowa(float(cast(float, r_f)), float(cast(float, x_f)))
-
-
-def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
-    """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
-
-    Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
-    (``NetworkGraph.find_islands``); element z impedancją do odniesienia = źródło
-    sieciowe (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w
-    ruchu. Metoda równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga
-    skończonej impedancji Z_kk widzianej z węzła zwarcia do odniesienia; falownik
-    jest źródłem prądowym bez impedancji (§6.8), więc wyspa zasilana wyłącznie
-    falownikami ma Y-bus osobliwą — ``np.linalg.inv`` w solverze (FROZEN, B-01)
-    oddaje wtedy liczby zależne od biblioteki algebry liniowej, nie od sieci,
-    albo (macierz dokładnie osobliwa) wywraca cały bieg. Pomiar 2026-09-05 (CI run
-    4877 vs lokalnie, sieć G04/06 rejestru): lokalnie R/X = −32 dokładnie,
-    κ ≈ 5·10⁴¹, na CI inne śmieci mieszczące się w paśmie — kwalifikacja po
-    LICZBACH była funkcją maszyny. Wyspa jest funkcją WEJŚCIA, więc kwalifikacja
-    po niej jest deterministyczna i przenośna (CI-PARYTET-5); od CV-4.3 K3b te
-    węzły są ponadto USUWANE z grafu solvera (``WejscieZwarcia.solve_graph``).
-    """
-    # Źródło sieciowe bez Z_Q (odmowa odroczona, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) nadal jest
-    # odniesieniem topologii — jego brak danej odmawia konsument impedancji, nie ta kwalifikacja.
-    wezly_odniesienia: set[str] = set(graph.wezly_zrodel_sieciowych())
-    for zrodla in (
-        graph.synchronous_machine_sources,
-        graph.asynchronous_machine_sources,
-    ):
-        wezly_odniesienia.update(
-            s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
-        )
-    bez_odniesienia: set[str] = set()
-    for wyspa in graph.find_islands():
-        if not any(wezel in wezly_odniesienia for wezel in wyspa):
-            bez_odniesienia.update(wyspa)
-    return frozenset(bez_odniesienia)
 
 
 def _nastawy_u_zrodel(snapshot: dict[str, Any]) -> dict[str, float]:
@@ -1204,7 +1175,7 @@ def zloz_wejscie_zwarcia(
     # albo oddawało szum. Wiersz takiego węzła buduje wykonawca bez solvera
     # (``_oznacz_wiersz_bez_odniesienia``). Podgraf dzieli obiekty elementów z
     # ``solve_graph`` (bez kopii); ``graph`` (topologia raportowalna) nietknięty.
-    wezly_bez_odniesienia = wezly_bez_impedancji_do_odniesienia(solve_graph)
+    wezly_bez_odniesienia = solve_graph.wezly_bez_impedancji_do_odniesienia()
     if wezly_bez_odniesienia:
         solve_graph = solve_graph.podgraf(
             wezel for wezel in solve_graph.nodes if wezel not in wezly_bez_odniesienia
@@ -1221,11 +1192,16 @@ def zloz_wejscie_zwarcia(
     z0_bus = None
     brak_wyniku_zerowego: dict[str, BrakWynikuZerowego] = {}
     siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
+    sekcje_sn_wezlow: dict[str, Any] = {}
+    b0_robocze_y0: dict[str, tuple[tuple[str, str, str, float], ...]] = {}
     if _short_circuit_requires_z0(short_circuit_type):
         siec_zerowa = zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc)
         z0_bus = siec_zerowa.z0_bus
+        b0_robocze_y0 = siec_zerowa.b0_robocze
         brak_wyniku_zerowego = siec_zerowa.przyczyny
         siec_zerowa_trace = siec_zerowa.slad
+        if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
+            sekcje_sn_wezlow = siec_zerowa.sekcje_wezlow
 
     reportable_fault_node_ids = [
         node_id
@@ -1282,9 +1258,11 @@ def zloz_wejscie_zwarcia(
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: bocznik zespołu uziemiającego z wartości
     # roboczej (stan AWSC przypadku) — ten sam mechanizm i ten sam predykat składowej sieci
-    # zerowej co R′0/X′0 gałęzi z założenia katalogu.
+    # zerowej co R′0/X′0 gałęzi z założenia katalogu. Karta ZEROWA-POJEMNOSCI: B′0 z wartości
+    # roboczej gałęzi, której pojemność weszła do Y0 (warunek pkt 5.2 f) jej sieci zerowej), jest
+    # daną przyjętą tego samego rekordu gałęzi — z TEGO SAMEGO złożenia co ``z0_bus``.
     zalozenia_z0 = (
-        zalozenia_z0_galezi(enm, scenario_c)
+        zalozenia_z0_galezi(enm, scenario_c, b0_galezi=b0_robocze_y0)
         + zalozenia_zespolow_uziemiajacych(enm, scenario_c, stan_awsc)
         if _short_circuit_requires_z0(short_circuit_type)
         else ()
@@ -1374,6 +1352,7 @@ def zloz_wejscie_zwarcia(
         stan_awsc=stan_awsc,
         brak_wyniku_zerowego=brak_wyniku_zerowego,
         siec_zerowa_trace=siec_zerowa_trace,
+        sekcje_sn_wezlow=sekcje_sn_wezlow,
     )
 
 
@@ -1406,10 +1385,6 @@ KOD_NIESYMETRIA_BRAK_GRUPY_TR = "transformer.vector_group_missing"
 KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA = "power_flow.unbalanced_shunt_admittance_omitted"
 KOD_ZALOZENIE_GALAZ_MAGNESUJACA = "power_flow.unbalanced_magnetising_branch_omitted"
 KOD_ZALOZENIE_TR_SZEREGOWY = "power_flow.unbalanced_transformer_series_model"
-#: Solver FROZEN liczy straty gałęzi z impedancji WŁASNEJ (|I|²·Z_s), bez wyrazu
-#: wzajemnego — przy Z_m ≠ 0 (Z0 ≠ Z1) straty są przybliżone (pomiar: R_s/R_1 = 5/3
-#: dla katalogowego Z0 = 3·Z1 na gałęzi z realnym I0); napięcia i prądy bez zmian.
-KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ = "power_flow.unbalanced_losses_self_impedance"
 #: Droga I0 odbioru faza–N zamyka się w uziemionym uzwojeniu transformatora (Dyn, YNd…);
 #: solver szeregowy przepuszcza I0 dalej w górę (artefakt) — krawędzie powyżej punktu
 #: zamknięcia dostają Z_m := 0 (bez sprzężenia faz), założenie NAZWANE per krawędź.
@@ -1976,7 +1951,6 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     admitancja_pominieta: list[str] = []
     magnesujaca_pominieta: list[str] = []
     transformatory_szeregowe: list[str] = []
-    galezie_ze_sprzezeniem: list[str] = []
     for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
         if ld.ref_id in zamkniecia_tr or ld.ref_id in zamkniecia_zr:
             punkt = zamkniecia_tr.get(ld.ref_id)
@@ -2013,6 +1987,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         base_kv_ll = napiecia_kv[slack_node_id]
 
         branch_specs: list[UnbalancedBranchSpec] = []
+        uziemione_n: set[str] = set()
         for branch_id in sorted(graph.branches):
             branch = graph.branches[branch_id]
             if branch.from_node_id not in wezly_zbior or branch.to_node_id not in wezly_zbior:
@@ -2098,6 +2073,21 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 model_z0 = build_transformer_zero_seq_model(trafo)
                 for krok in model_z0.trace:
                     tracer.add_step(WhiteBoxStep(**krok))
+                # Punkt gwiazdowy uziemiony po stronie z bocznikiem do ziemi (YN/ZN) — punkt
+                # odniesienia potencjału przewodu N poniżej (prąd powrotny odbiorów faza–N
+                # wraca przewodem N/PEN do gwiazdy, nie przez uziemienie punktu gwiazdowego,
+                # więc potencjał gwiazdy względem ziemi jest zerowy przy każdej impedancji
+                # uziemienia). Ten sam model połączeń co droga I0 (`_droga_zerowa`).
+                if model_z0.connection in (
+                    ZeroSeqConnection.LV_SHUNT_GROUND,
+                    ZeroSeqConnection.SERIES_THROUGH,
+                ):
+                    uziemione_n.add(_graph_id_from_ref(trafo.lv_bus_ref))
+                if model_z0.connection in (
+                    ZeroSeqConnection.HV_SHUNT_GROUND,
+                    ZeroSeqConnection.SERIES_THROUGH,
+                ):
+                    uziemione_n.add(_graph_id_from_ref(trafo.hv_bus_ref))
                 z0_ohm_tr: complex | None
                 if trafo.ref_id not in droga_zerowa.z_realnym_i0:
                     z0_ohm_tr = None
@@ -2158,11 +2148,6 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     f"Gałąź IR '{branch_id}' typu {type(branch).__name__} nie ma "
                     "reprezentacji w rozpływie niesymetrycznym"
                 )
-        galezie_ze_sprzezeniem.extend(
-            wejscie_galezi.branch_id
-            for wejscie_galezi in branch_specs
-            if wejscie_galezi.r_mutual_ohm != 0.0 or wejscie_galezi.x_mutual_ohm != 0.0
-        )
         for switch_id in sorted(graph.switches):
             switch = graph.switches[switch_id]
             if switch.from_node_id not in wezly_zbior or switch.to_node_id not in wezly_zbior:
@@ -2290,6 +2275,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     branches=tuple(branch_specs),
                     loads=tuple(load_specs),
                     slack_voltage_pu=nastawa_u_zrodla.get(zrodlo_ref, 1.0),
+                    neutral_earthed_bus_ids=tuple(sorted(uziemione_n & wezly_zbior)),
                 ),
             )
         )
@@ -2325,16 +2311,6 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     ]
     if galezie_z0_robocze:
         zalozenia.append(_zalozenie(KOD_Z0_ROBOCZE, galezie_z0_robocze))
-    if galezie_ze_sprzezeniem:
-        zalozenia.append(
-            _zalozenie(
-                KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
-                [
-                    str(graph_branches.get(branch_id, {}).get("element_id") or branch_id)
-                    for branch_id in galezie_ze_sprzezeniem
-                ],
-            )
-        )
     return WejscieRozplywuNiesymetrycznego(
         graph=graph,
         enm=enm,

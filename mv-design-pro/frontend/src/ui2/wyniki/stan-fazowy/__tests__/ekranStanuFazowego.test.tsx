@@ -120,6 +120,8 @@ function wynikiRnFixture(
         faza_b: { u_pu: 0.998, u_kv: 0.230478, angle_deg: -120.1 },
         faza_c: { u_pu: 0.997, u_kv: 0.230247, angle_deg: 119.9 },
         voltage_unbalance_factor_pct: 1.6234,
+        // Pole addytywne wyłącznie szyn nN (potencjał przewodu N względem punktu gwiazdowego).
+        u_n_pe_v: 4.237,
       },
       {
         bus_id: 'b_wyspa',
@@ -591,8 +593,67 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
     expect(within(wiersze[0]).getByText('275')).toBeInTheDocument(); // I_n z katalogu
     expect(within(wiersze[0]).getByText('0,019')).toBeInTheDocument(); // straty 0,000019 MW → kW
     expect(within(wiersze[1]).getByText('229,6')).toBeInTheDocument();
-    expect(within(wiersze[1]).getAllByText(T.kreska).length).toBe(1); // I_n = null → kreska, nie „0"
+    // I_r = null i I_N poza nN (transformator) → dwie kreski, nigdy „0".
+    expect(within(wiersze[1]).getAllByText(T.kreska).length).toBe(2);
+    expect(within(wiersze[1]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(T.kreska);
+    expect(within(wiersze[0]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(T.kreska);
     expect(within(wiersze[1]).getByText('0,544')).toBeInTheDocument();
+  });
+
+  it('przewód N sieci nN: U_N–PE szyny nN, I_N gałęzi nN i ich maksima z podsumowania solvera; poza nN kreska', async () => {
+    ustawKontekstRn();
+    const baza = wynikiRnFixture();
+    mockFetchRozplywuNiesymetrycznego(
+      wynikiRnFixture({
+        branches: [
+          ...baza.branches,
+          {
+            branch_id: 'kab_nn',
+            element_id: 'kab_nn',
+            name: 'Obwód nN 1',
+            element_type: 'BRANCH',
+            from_bus_id: 'b_nn',
+            to_bus_id: 'b_odb',
+            faza_a: { p_mw: 0.04, q_mvar: 0.01, i_a: 187.4 },
+            faza_b: { p_mw: 0.0, q_mvar: 0.0, i_a: 0.0 },
+            faza_c: { p_mw: 0.0, q_mvar: 0.0, i_a: 0.0 },
+            losses_p_mw: 0.0021,
+            losses_q_mvar: 0.0004,
+            rated_current_a: 240.0,
+            prad_n_a: 187.4,
+          },
+        ],
+        summary: {
+          ...baza.summary!,
+          max_u_n_pe_v: 4.237,
+          max_u_n_pe_bus_id: 'b_nn',
+          max_prad_n_a: 187.4,
+          max_prad_n_branch_id: 'kab_nn',
+        },
+      }),
+    );
+    render(<EkranStanuFazowego />);
+
+    const szyny = await screen.findByTestId('mvd-fazowy-rn-szyny');
+    const wierszeSzyn = within(szyny).getAllByTestId('mvd-fazowy-rn-szyna');
+    expect(within(wierszeSzyn[1]).getByTestId('mvd-fazowy-rn-u-n-pe')).toHaveTextContent('4,2');
+    // Szyna SN: solver nie liczy U_N–PE → kreska, nie „0 V".
+    expect(within(wierszeSzyn[0]).getByTestId('mvd-fazowy-rn-u-n-pe')).toHaveTextContent(T.kreska);
+    // Szyna nierozwiązana: jeden opis braku na całą szerokość kolumn faz, VUF i U_N–PE.
+    expect(within(wierszeSzyn[2]).getByText(T.rnNierozwiazana)).toHaveAttribute('colspan', '5');
+
+    const galezie = screen.getByTestId('mvd-fazowy-rn-galezie');
+    const wierszeGalezi = within(galezie).getAllByTestId('mvd-fazowy-rn-galaz');
+    expect(within(wierszeGalezi[2]).getByTestId('mvd-fazowy-rn-i-przewodu-n')).toHaveTextContent(
+      '187,4',
+    );
+
+    const podsumowanie = screen.getByTestId('mvd-fazowy-rn-podsumowanie');
+    expect(within(podsumowanie).getByText(T.rnMaxUNPe)).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('4,2')).toBeInTheDocument();
+    expect(within(podsumowanie).getByText(T.rnMaxPradN)).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('187,4')).toBeInTheDocument();
+    expect(within(podsumowanie).getByText('Obwód nN 1')).toBeInTheDocument();
   });
 
   it('podsumowanie i założenia biegu nazwane kodami kanonu z elementami', async () => {
@@ -709,6 +770,15 @@ describe('stanFazowyModel — czyste projekcje kontraktu', () => {
     );
     expect(bezMax.find((p) => p.etykieta === T.rnMaxVuf)?.wartosc).toBe(T.kreska);
     expect(bezMax.find((p) => p.etykieta === T.rnMaxVufSzyna)?.wartosc).toBe(T.kreska);
+    // Wynik bez szyn i gałęzi nN (brak pól addytywnych przewodu N) → żadnej pozycji przewodu N:
+    // sieć bez nN nie dostaje „0 V" ani „0 A".
+    const etykiety = naPodsumowanieNiesymetrii(wynikiRnFixture()).map((p) => p.etykieta);
+    expect(etykiety).not.toContain(T.rnMaxUNPe);
+    expect(etykiety).not.toContain(T.rnMaxPradN);
+    // Pole szyny nN obecne → wartość; pole nieobecne (SN) → kreska.
+    expect(szyny[1].fazy?.uNPe).toBe('4,2');
+    expect(szyny[0].fazy?.uNPe).toBe(T.kreska);
+    expect(galezie[0].iPrzewoduN).toBe(T.kreska);
   });
 
   it('naPozycjeAsymetrii: wartość bez flagi → „brak"; flaga true → „przekroczenie"', () => {

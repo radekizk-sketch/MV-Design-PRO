@@ -69,22 +69,20 @@ def enm_sceny_akademickiej() -> Any:
 
 def model_sceny_akademickiej(rodzaj: Any) -> Any:
     """Model wejścia V12.6 sieci demonstracyjnej sceny „akademickie" (ta sama, na której audyt
-    harmonicznych zmierzył THD_U 3049 %) — złożony DOKŁADNIE tą ścieżką, co bieg z API."""
-    from api.v126_academic import _with_parameter_payloads
+    harmonicznych zmierzył THD_U 3049 %) — złożony DOKŁADNIE tą ścieżką, co bieg z API.
+    """
+    from api.v126_academic import wejscie_solvera_v126
     from application.analyses.v126_gotowosc import (
         ocen_gotowosc_v126,
         uzupelnij_parametry_z_modelu,
     )
     from enm.store import set_enm
-    from solver_input.v126_contracts import build_v126_input_from_enm
 
     enm = enm_sceny_akademickiej()
     set_enm("c-akademicka", enm)
     parametry = uzupelnij_parametry_z_modelu(enm, rodzaj, parametry_sceny(rodzaj.value))
     assert ocen_gotowosc_v126(enm, rodzaj, parametry).potwierdzona
-    return _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=rodzaj), parametry, enm
-    )
+    return wejscie_solvera_v126(enm, rodzaj, parametry)
 
 
 def bieg_sceny_akademickiej(rodzaj: Any) -> tuple[Any, Any]:

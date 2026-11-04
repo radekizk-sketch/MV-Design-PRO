@@ -5,6 +5,7 @@
  * — PODŁĄCZONE, nie zduplikowane). Interakcje przez render pełnego ekranu
  * (EkranZwarc), zgodnie z wzorcem `rozplywZwarciowy.test.tsx`.
  */
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 
@@ -49,7 +50,9 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
     await renderEkranZwarc(<EkranZwarc {...props()} />);
 
     const sekcja = screen.getByTestId('mvd-zwarcia-zrodla');
-    expect(within(sekcja).getByText(ZWARCIA_STRINGS.zrodlaTytul)).toBeInTheDocument();
+    expect(tekstZrodlowy(within(sekcja).getByRole('heading', { level: 3 }))).toBe(
+      ZWARCIA_STRINGS.zrodlaTytul,
+    );
     const tabela = within(within(sekcja).getByTestId('mvd-wyn-tabela'));
     expect(tabela.getAllByText('s1')).toHaveLength(2); // MAX + MIN, sam ref_id
     // Karta #145: scenariusz po polsku, nie kod `MAX`/`MIN`.

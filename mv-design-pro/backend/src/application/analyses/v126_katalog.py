@@ -15,13 +15,14 @@ wyłącznie prezentuje. Ten moduł opisuje każdy rodzaj kontraktu
   * PYTANIE INŻYNIERSKIE — co analiza rozstrzyga (jedno zdanie);
   * BADANY ZAKRES — jakie elementy modelu i w jakich warunkach;
   * GŁÓWNE WIELKOŚCI — symbol, nazwa, jednostka;
-  * PODSTAWA OCENY — WYŁĄCZNIE tam, gdzie solver FROZEN
-    (`network_model/solvers/v126_academic.py`) realnie stosuje próg:
-    wielkość, warunek, wartość graniczna, źródło. Liczby graniczne są
-    LITERAŁAMI solvera (8 %/5 %/5 % THD/TDD, margines BIL 20 %, zapad 15 %,
-    margines TRV 10 %, I_res ≤ 10 % I_C…) — parytet z solverem pilnuje
-    `tests/test_v126_katalog_analiz.py`, bo solver ich nie eksportuje (B-01,
-    nie edytujemy go). Rodzaj bez progu w solverze mówi to WPROST
+  * PODSTAWA OCENY — WYŁĄCZNIE kryteria, które rekordy oceny wyniku
+    (`application/analyses/v126_oceny.py`) naprawdę rozstrzygają: wielkość,
+    warunek, wartość graniczna, źródło. Progi i reguły są ZAŁOŻENIAMI
+    INŻYNIERSKIMI z rejestru `v126_oceny.REJESTR_ZALOZEN` (paragrafy Z-n;
+    margines BIL 20 %, I_res ≤ 10 % I_C, zapad 15 %…) — katalog importuje je
+    z rejestru (jedno źródło, nie kopia literałów), a źródło nazywa paragraf
+    rejestru i praktykę, z której założenie pochodzi, bez udawania normy.
+    Rodzaj bez kryterium rozstrzyganego w wyniku mówi to WPROST
     (`bez_podstawy_pl`) i NIGDY nie dostaje progu w interfejsie;
   * DANE WEJŚCIOWE z rozdziałem źródeł: z modelu / od użytkownika (z flagą
     „wymagane”) / domyślne solvera (tylko parametry METODY, które solver
@@ -36,7 +37,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from application.analyses.v126_oceny import (
+    Z_CZAS_ROZRUCHU,
+    Z_ENERGIA_REZYSTORA,
+    Z_MARGINES_IZOLACJI,
+    Z_METODA_DETEKCJI,
+    Z_MOMENT_ROZRUCHOWY,
+    Z_NAPIECIE_DOTYKOWE,
+    Z_NAPIECIE_KROKOWE,
+    Z_NAPIECIE_PRACY,
+    Z_PRAD_RESZTKOWY,
+    Z_PRZEPIECIE_DORYWCZE,
+    Z_ZAPAD_ROZRUCHU,
+    ZalozenieKryterium,
+)
 from application.v126_artifacts import POWODY_NIEZWALIDOWANIA_HARMONICZNYCH_PL
+from network_model.catalog.wartosci_robocze import (
+    ODNIESIENIE_MAIFI,
+    PROPOZYCJE_NIEZAWODNOSCI,
+    UDZIAL_MAIFI_DO_SAIFI,
+)
+from network_model.solvers.v126_academic import (
+    POZIOMY_IZOLACJI_IEC60071 as POZIOMY_IZOLACJI_IEC60071,  # re-eksport dla katalogu API
+)
 from solver_input.v126_contracts import V126AnalysisType
 
 # --- Grupy inżynierskie -----------------------------------------------------
@@ -240,21 +263,42 @@ class KartaAnalizy:
         }
 
 
-# --- Literały progów solvera FROZEN (parytet pilnowany testem) ---------------
+def zrodlo_zalozenia(zalozenie: ZalozenieKryterium) -> str:
+    """Źródło kryterium w katalogu: paragraf rejestru założeń i praktyka (nie norma)."""
+    return f"założenie inżynierskie {zalozenie.paragraf} programu — {zalozenie.praktyka_pl}"
 
-THD_U_PNEN50160_PROCENT = 8.0
-THD_U_IEEE519_PROCENT = 5.0
-TDD_IEEE519_PROCENT = 5.0
-MARGINES_BIL_MIN_PROCENT = 20.0
-ZAPAD_ROZRUCHU_MAX_PROCENT = 15.0
-WSKAZNIK_CIEPLNY_ROZRUCHU_MAX = 1.0
-MARGINES_TRV_MIN_PROCENT = 10.0
-UDZIAL_2H_BLOKADA_87T_PROCENT = 10.0
-PRAD_RESZTKOWY_MAX_UDZIAL_IC = 0.10
-KROTNOSC_OCHRONY_DODATKOWEJ = 1.25
+
+def _prog(zalozenie: ZalozenieKryterium) -> float:
+    """Próg założenia — ta sama definicja co ocena (`ZalozenieKryterium.granica`)."""
+    return zalozenie.granica().wartosc
+
+
+def _lp(wartosc: float) -> str:
+    return format(wartosc, "g").replace(".", ",")
+
+
+def _opis_niezawodnosci(intensywnosc: bool) -> str:
+    """Wartości robocze rejestru niezawodności w zdaniu (jedno źródło: rejestr)."""
+    czesci = []
+    for p in PROPOZYCJE_NIEZAWODNOSCI.values():
+        wartosc = (
+            f"{_lp(p.intensywnosc_uszkodzen)} {p.jednostka_intensywnosci}"
+            if intensywnosc
+            else f"{_lp(p.czas_odnowy_h)} h"
+        )
+        czesci.append(f"{wartosc} ({p.nazwa_pl})")
+    return "; ".join(czesci)
+
 
 _PARAMETRY_UZIOMU: tuple[ParametrUzytkownika, ...] = (
-    ParametrUzytkownika("earthing.gpz_ref", "Oznaczenie stacji", "-", False),
+    ParametrUzytkownika(
+        "earthing.bus_ref",
+        "Szyna stacji",
+        "-",
+        True,
+        "Szyna stacji w modelu — z niej solver bierze sieci SN i WN stacji, których zwarcie "
+        "doziemne odprowadza uziom.",
+    ),
     ParametrUzytkownika("earthing.rho1_ohm_m", "Rezystywność warstwy górnej gruntu", "Ω·m", True),
     ParametrUzytkownika(
         "earthing.rho2_ohm_m",
@@ -275,15 +319,29 @@ _PARAMETRY_UZIOMU: tuple[ParametrUzytkownika, ...] = (
     ParametrUzytkownika("earthing.mesh_spacing_m", "Rozstaw oczek siatki", "m", True),
     ParametrUzytkownika("earthing.buried_depth_m", "Głębokość ułożenia siatki", "m", True),
     ParametrUzytkownika(
-        "earthing.rods_total_length_m", "Sumaryczna długość uziomów pionowych", "m", True
+        "earthing.rods_total_length_m",
+        "Sumaryczna długość uziomów pionowych",
+        "m",
+        True,
     ),
     ParametrUzytkownika(
         "earthing.split_factor", "Współczynnik podziału prądu zwarciowego", "-", True
     ),
-    ParametrUzytkownika("earthing.fault_current_ka", "Prąd zwarcia doziemnego", "kA", True),
+    ParametrUzytkownika(
+        "earthing.fault_current_ka",
+        "Prąd zwarcia doziemnego (nadpisanie)",
+        "kA",
+        False,
+        "Domyślnie z modelu wg sposobu pracy punktu neutralnego (EN 50522 tab. 1: $I_C$, "
+        "$I_{\\mathrm{res}}$, $\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ albo $I''_{k1}$, przypadek najniekorzystniejszy stron SN i WN stacji); "
+        "wartość wpisana zastępuje prąd z modelu jako dana przyjęta.",
+    ),
     ParametrUzytkownika("earthing.fault_clearing_time_s", "Czas wyłączenia zwarcia", "s", True),
     ParametrUzytkownika(
-        "earthing.surface_layer_rho_ohm_m", "Rezystywność warstwy powierzchniowej", "Ω·m", True
+        "earthing.surface_layer_rho_ohm_m",
+        "Rezystywność warstwy powierzchniowej",
+        "Ω·m",
+        True,
     ),
     ParametrUzytkownika(
         "earthing.surface_layer_derating",
@@ -312,6 +370,22 @@ _PARAMETRY_SILNIKA: tuple[ParametrUzytkownika, ...] = (
     ParametrUzytkownika("motors[].critical_slip", "Poślizg krytyczny", "-", True),
     ParametrUzytkownika(
         "motors[].load_start_torque_pu", "Moment obciążenia przy rozruchu", "j.w.", True
+    ),
+    ParametrUzytkownika(
+        "motors[].rated_power_factor",
+        "Znamionowy współczynnik mocy (cos φ)",
+        "-",
+        False,
+        "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana "
+        "przyjęta wyniku).",
+    ),
+    ParametrUzytkownika(
+        "motors[].rated_efficiency",
+        "Sprawność znamionowa",
+        "-",
+        False,
+        "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana "
+        "przyjęta wyniku).",
     ),
 )
 
@@ -363,42 +437,15 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             WielkoscGlowna("K", "Współczynnik K obciążenia transformatora", "-", "K"),
             WielkoscGlowna("Z(f)", "Impedancja węzła w funkcji częstotliwości", "Ω", r"Z(f)"),
         ),
-        podstawa_oceny=(
-            PodstawaOceny(
-                "Odkształcenie napięcia",
-                "THD_U",
-                "%",
-                "w każdym węźle modelu, dla sieci SN i nN",
-                THD_U_PNEN50160_PROCENT,
-                "PN-EN 50160",
-                symbol_latex=r"\mathrm{THD}_U",
-                warunek_latex=r"\mathrm{THD}_U \leq 8\%",
-            ),
-            PodstawaOceny(
-                "Odkształcenie napięcia",
-                "THD_U",
-                "%",
-                "w każdym węźle modelu (granica ostrzejsza)",
-                THD_U_IEEE519_PROCENT,
-                "IEEE 519",
-                symbol_latex=r"\mathrm{THD}_U",
-                warunek_latex=r"\mathrm{THD}_U \leq 5\%",
-            ),
-            PodstawaOceny(
-                "Odkształcenie prądu odbiorcy",
-                "TDD",
-                "%",
-                "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
-                TDD_IEEE519_PROCENT,
-                "IEEE 519",
-                symbol_latex=r"\mathrm{TDD}",
-                warunek_latex=r"\mathrm{TDD} \leq 5\%",
-            ),
+        bez_podstawy_pl=(
+            "Ocena kompatybilności nie jest wykonywana — solver harmoniczny jest niezwalidowany "
+            "(powody w uwagach metody), więc granice odkształcenia PN-EN 50160 i IEEE 519 "
+            "(katalog odniesienia „harmonic-limits”) nie są stosowane do jego liczb."
         ),
         dane_z_modelu=(
             DanaZModelu("Napięcie znamionowe i obciążenie szyn", "szyny, odbiory"),
             DanaZModelu("Impedancje i susceptancje gałęzi", "linie, kable, aparaty łączeniowe"),
-            DanaZModelu("Parametry transformatorów", "transformatory (S_n, u_k)"),
+            DanaZModelu("Parametry transformatorów", "transformatory ($S_n$, $u_k$)"),
             DanaZModelu(
                 "Widmo harmoniczne i moc znamionowa przekształtników",
                 "karty katalogowe przekształtników PV/BESS/wiatrowych",
@@ -409,7 +456,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ParametrUzytkownika(
                 "harmonic_spectra",
                 "Widmo harmoniczne przekształtnika (wejście ręczne)",
-                "% I_n per rząd",
+                "% $I_n$ na rząd",
                 False,
                 "Nadpisuje widmo karty katalogowej wskazanego przekształtnika.",
             ),
@@ -445,12 +492,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
             WielkoscGlowna(
                 "L(f)",
-                "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
+                "Wzmocnienie pętli mniejszej $Z_{\\mathrm{grid}}/Z_{\\mathrm{conv}}$",
                 "-",
                 r"L(f) = Z_{\mathrm{grid}}(f)/Z_{\mathrm{conv}}(f)",
             ),
             WielkoscGlowna(
-                "Re Z_conv,min",
+                "Re Z_conv_min",
                 "Najmniejsza rezystancja wyjściowa przekształtnika",
                 "Ω",
                 r"\min\ \mathrm{Re}\,Z_{\mathrm{conv}}",
@@ -459,7 +506,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         bez_podstawy_pl=(
             "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium "
             "impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja "
-            "sieci Z_grid(f) liczona jest bez przekładni transformatora; okno „Stabilność "
+            "sieci $Z_{\\mathrm{grid}}(f)$ liczona jest bez przekładni transformatora; okno „Stabilność "
             "SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy."
         ),
         dane_z_modelu=(
@@ -522,7 +569,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             DanaZModelu("Rodzaj i długość gałęzi", "linie, kable, aparaty łączeniowe"),
             DanaZModelu("Obciążenie i generacja szyn (moc czynna i bierna)", "odbiory, wytwórcy"),
             DanaZModelu(
-                "Obciążalność długotrwała gałęzi", "linie, kable, aparaty (model lub karta)"
+                "Obciążalność długotrwała gałęzi",
+                "linie, kable, aparaty (model lub karta)",
             ),
         ),
         od_uzytkownika=(
@@ -537,22 +585,46 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                     "SAIDI/SAIFI/CAIDI są tą liczbą ważone."
                 ),
             ),
+            ParametrUzytkownika(
+                klucz="reliability_data",
+                nazwa_pl="Dane niezawodności elementu (intensywność uszkodzeń, czas odnowy)",
+                jednostka="1/rok, h",
+                wymagane=False,
+                opis_pl=(
+                    "Identyfikator gałęzi → całkowita intensywność uszkodzeń elementu [1/rok] "
+                    "i czas odnowy [h]; zastępuje wartość roboczą rejestru niezawodności dla "
+                    "tego elementu."
+                ),
+            ),
         ),
         domyslne_solvera=(
             DomyslnaSolvera(
                 "failure_rate_per_year",
                 "Intensywność uszkodzeń elementu",
-                "0,08 (linia napowietrzna) / 0,015 (kabel) na km i rok; 0,015 na rok (aparat)",
+                _opis_niezawodnosci(intensywnosc=True),
                 "1/rok",
-                "Wartości typowe z katalogu danych odniesienia „reliability-defaults”; model nie niesie "
-                "danych niezawodnościowych elementów.",
+                "Wartość robocza rejestru niezawodności programu — "
+                + next(iter(PROPOZYCJE_NIEZAWODNOSCI.values())).odniesienie
+                + ". Model nie niesie danych niezawodnościowych elementów; każda wartość "
+                "robocza jest daną przyjętą wyniku (kompletność dowodu NIEPEŁNY), a projektant "
+                "zastępuje ją w danych niezawodności analizy.",
             ),
             DomyslnaSolvera(
                 "mttr_h",
                 "Czas odtworzenia zasilania po awarii elementu",
-                "3,5 (linia napowietrzna) / 12 (kabel) / 4 (aparat)",
+                _opis_niezawodnosci(intensywnosc=False),
                 "h",
-                "Wartości typowe z katalogu danych odniesienia „reliability-defaults”.",
+                "Wartość robocza rejestru niezawodności programu (założenie inżynierskie, bez "
+                "wartości normowej) — dana przyjęta wyniku; projektant zastępuje ją w danych "
+                "niezawodności analizy.",
+            ),
+            DomyslnaSolvera(
+                "maifi_udzial",
+                "Udział przerw krótkich w liczbie przerw długich",
+                UDZIAL_MAIFI_DO_SAIFI,
+                "1",
+                f"MAIFI = {_lp(UDZIAL_MAIFI_DO_SAIFI)}·SAIFI — {ODNIESIENIE_MAIFI}; dana przyjęta "
+                "wyniku.",
             ),
         ),
         katalog_odniesienia="reliability-defaults",
@@ -570,9 +642,14 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             "człowiekowi?"
         ),
         zakres_pl=(
-            "Uziom kratowy jednej stacji: geometria siatki i uziomów pionowych, grunt "
-            "dwuwarstwowy, warstwa powierzchniowa; rażenie dotykowe i krokowe przy prądzie "
-            "zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia."
+            "Uziom kratowy jednej stacji wskazanej szyną modelu: geometria siatki i uziomów "
+            "pionowych, grunt dwuwarstwowy, warstwa powierzchniowa; rażenie dotykowe i krokowe "
+            "przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia. "
+            "Prąd z modelu wg sposobu pracy punktu neutralnego (EN 50522 tab. 1: sieć "
+            "izolowana $I_C$, skompensowana $I_{\\mathrm{res}}$ albo "
+            "$\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ z dławikiem w stacji, uziemiona przez małą "
+            "impedancję $I''_{k1}$), przypadek najniekorzystniejszy stron SN i WN "
+            "stacji; wartość projektanta zastępuje go jako dana przyjęta."
         ),
         wielkosci_glowne=(
             WielkoscGlowna("R_g", "Rezystancja uziomu stacji", "Ω", r"R_g"),
@@ -588,8 +665,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "V",
                 "wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej "
                 "współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg) — wzór obok",
-                "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
-                "IEEE 80 (metoda Sverak) · PN-EN 50522",
+                "$U_{\\mathrm{dot,dop}}$ z danych uziomu — wzór obok",
+                zrodlo_zalozenia(Z_NAPIECIE_DOTYKOWE),
                 symbol_latex=r"U_{\mathrm{dot}}",
                 warunek_latex=r"U_{\mathrm{dot}} \leq U_{\mathrm{dot,dop}}",
                 wzor_latex=(
@@ -597,9 +674,9 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                     r"\cdot \dfrac{0{,}157}{\sqrt{t_f}}"
                 ),
                 wzor_opis_pl=(
-                    "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik "
-                    "redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; "
-                    "ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
+                    "$\\rho_s$ — rezystywność warstwy powierzchniowej [Ω·m]; $C_s$ — współczynnik "
+                    "redukcji warstwy powierzchniowej; $t_f$ — czas wyłączenia zwarcia [s]; "
+                    "ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
                 ),
             ),
             PodstawaOceny(
@@ -608,8 +685,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "V",
                 "wartość dopuszczalna liczona jak dla napięcia dotykowego, ze współczynnikiem 6 "
                 "zamiast 1,5 — wzór obok",
-                "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
-                "IEEE 80 (metoda Sverak) · PN-EN 50522",
+                "$U_{\\mathrm{kr,dop}}$ z danych uziomu — wzór obok",
+                zrodlo_zalozenia(Z_NAPIECIE_KROKOWE),
                 symbol_latex=r"U_{\mathrm{kr}}",
                 warunek_latex=r"U_{\mathrm{kr}} \leq U_{\mathrm{kr,dop}}",
                 wzor_latex=(
@@ -617,20 +694,10 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                     r"\cdot \dfrac{0{,}157}{\sqrt{t_f}}"
                 ),
                 wzor_opis_pl=(
-                    "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik "
-                    "redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; "
-                    "ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
+                    "$\\rho_s$ — rezystywność warstwy powierzchniowej [Ω·m]; $C_s$ — współczynnik "
+                    "redukcji warstwy powierzchniowej; $t_f$ — czas wyłączenia zwarcia [s]; "
+                    "ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
                 ),
-            ),
-            PodstawaOceny(
-                "Przekroczenie tolerowane ze środkami dodatkowymi",
-                "U/U_dop",
-                "-",
-                'przekroczenie do 25 % daje stan „wymaga ochrony", powyżej — „niezgodny"',
-                KROTNOSC_OCHRONY_DODATKOWEJ,
-                "reguła solvera (klasyfikacja stanu)",
-                symbol_latex=r"U/U_{\mathrm{dop}}",
-                warunek_latex=r"U/U_{\mathrm{dop}} \leq 1{,}25",
             ),
         ),
         od_uzytkownika=_PARAMETRY_UZIOMU,
@@ -670,50 +737,76 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Margines ochrony izolacji",
                 "M_BIL",
                 "%",
-                "M_BIL = (BIL − U_res)/U_res·100 ≥ granica, w każdym miejscu zainstalowania",
-                MARGINES_BIL_MIN_PROCENT,
-                "IEC 60071 (koordynacja izolacji)",
+                "$M_{\\mathrm{BIL}} = (\\mathrm{BIL} - U_{\\mathrm{res}})/U_{\\mathrm{res}} \\cdot 100\\,\\%$ "
+                "nie mniejszy od granicy, w każdym miejscu zainstalowania",
+                _prog(Z_MARGINES_IZOLACJI),
+                zrodlo_zalozenia(Z_MARGINES_IZOLACJI),
                 symbol_latex=r"M_{\mathrm{BIL}}",
                 warunek_latex=(
                     r"M_{\mathrm{BIL}} = \dfrac{\mathrm{BIL} - U_{\mathrm{res}}}"
-                    r"{U_{\mathrm{res}}}\cdot 100\% \geq 20\%"
+                    r"{U_{\mathrm{res}}}\cdot 100\% \geq " + Z_MARGINES_IZOLACJI.prog_latex
                 ),
             ),
             PodstawaOceny(
-                "Przepięcie dorywcze",
-                "TOV",
+                "Przepięcie dorywcze przy doziemieniu",
+                "U_c",
                 "kV",
-                "TOV ≤ U_r ogranicznika (1,25·MCOV)",
-                "U_r = 1,25·MCOV",
-                "IEC 60071 / IEC 60099-4",
-                symbol_latex=r"\mathrm{TOV}",
-                warunek_latex=r"\mathrm{TOV} \leq U_r",
-                wzor_latex=r"U_r = 1{,}25\cdot \mathrm{MCOV}",
+                "$U_{\\mathrm{TOV}} = k\\,U_m/\\sqrt{3}$; sieć izolowana i kompensowana (doziemienie "
+                "długotrwałe): $U_c \\geq U_{\\mathrm{TOV}}$; sieć z rezystorem i uziemiona "
+                "bezpośrednio (doziemienie wyłączane): $U_c \\geq U_m/\\sqrt{3}$ oraz wytrzymałość "
+                "$\\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}$",
+                "k z solvera doziemienia sieci (sposób pracy punktu neutralnego)",
+                f"{zrodlo_zalozenia(Z_NAPIECIE_PRACY)}; {zrodlo_zalozenia(Z_PRZEPIECIE_DORYWCZE)}",
+                symbol_latex=r"U_c",
+                warunek_latex=(
+                    r"U_c \geq U_{\mathrm{TOV}} \ \text{albo}\ "
+                    r"\left(U_c \geq \dfrac{U_m}{\sqrt{3}} \wedge "
+                    r"\mathrm{TOV}_{10\,\mathrm{s}} \geq U_{\mathrm{TOV}}\right)"
+                ),
+                wzor_latex=r"U_{\mathrm{TOV}} = k\,\dfrac{U_m}{\sqrt{3}}",
                 wzor_opis_pl=(
-                    "MCOV — trwałe dopuszczalne napięcie pracy ogranicznika [kV]; "
-                    "U_r — napięcie znamionowe ogranicznika [kV]. IEC 60071 / IEC 60099-4."
+                    "$k$ — współczynnik zwarcia doziemnego sieci (napięcie fazy zdrowej odniesione do "
+                    "$U_f$) z solvera doziemienia wg sposobu pracy punktu neutralnego; $U_m$ — "
+                    "napięcie najwyższe sieci [kV]; $U_c$ — napięcie trwałej pracy ogranicznika "
+                    "[kV]; $\\mathrm{TOV}_{10\\,\\mathrm{s}}$ — wytrzymałość ogranicznika na przepięcie dorywcze 10 s [kV]."
                 ),
             ),
         ),
         dane_z_modelu=(
             DanaZModelu(
-                "Ograniczniki przepięć i ich karty katalogowe (MCOV, U_res, TOV, energia)",
+                "Ograniczniki przepięć i ich karty katalogowe ($U_c$, $U_r$, $U_{\\mathrm{res}}$, wytrzymałość "
+                "TOV 10 s)",
                 "aparaty pierwotne pól i stacji",
             ),
             DanaZModelu(
-                "Najwyższe napięcie urządzenia U_m", "karta ogranicznika albo poziom napięcia szyny"
+                "Napięcie najwyższe sieci $U_m$",
+                "poziom napięcia szyny albo karta ogranicznika",
             ),
-            DanaZModelu("Sposób uziemienia punktu neutralnego", "szyny, transformatory"),
+            DanaZModelu(
+                "Sposób pracy punktu neutralnego i współczynnik zwarcia doziemnego k",
+                "zespoły uziemiające sieci SN (solver doziemienia), źródła, transformatory",
+            ),
         ),
         domyslne_solvera=(
             DomyslnaSolvera(
                 "arrester_mcov_kv",
                 "Dobór wstępny ogranicznika bez karty katalogowej",
-                "MCOV = 1,05·U_m (sieć izolowana) albo 1,05·U_m/√3 (uziemiona); U_res = 2,8·MCOV; "
-                "TOV = 1,4·U_m (izolowana) albo 1,15·U_m",
+                "$U_c$ wymagane wg czasu doziemienia (przy doziemieniu wyłączanym $U_c$ dobrane tak, "
+                "by $\\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}$); $U_r = 1{,}2\\,U_c$; "
+                "$U_{\\mathrm{res}} = 4{,}0\\,U_c$; $\\mathrm{TOV}_{10\\,\\mathrm{s}} = 1{,}4\\,U_c$ "
+                "(skrajne stosunki ograniczników ZnO SN katalogu programu, zachowawczo)",
                 "kV",
-                "Reguły doboru wstępnego solvera stosowane WYŁĄCZNIE przy braku karty ogranicznika — "
-                "miejsce bez karty jest oznaczone w gotowości.",
+                "Wartości robocze WYŁĄCZNIE przy braku karty ogranicznika — każda jest daną "
+                "przyjętą wiersza o jakości szacowanej, a ocena ma kompletność dowodu NIEPEŁNY.",
+            ),
+            DomyslnaSolvera(
+                "earth_fault_factor",
+                "Współczynnik zwarcia doziemnego bez wyniku doziemienia sieci",
+                "k = √3 (sieć izolowana, kompensowana, z rezystorem); k = 1,4 (uziemiona "
+                "bezpośrednio)",
+                "1",
+                "Wartość robocza trybu dla szyny poza siecią SN modelu — dana przyjęta "
+                "wiersza (IEC 60071-1).",
             ),
         ),
         katalog_odniesienia="insulation-levels",
@@ -744,10 +837,25 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 r"\text{obsługa}",
             ),
         ),
-        bez_podstawy_pl=(
-            "Tabela decyzyjna (praktyka sieci SN kompensowanych i uziemionych przez rezystor) — "
-            "bez wartości granicznej; nastawy rozruchowe U0/P0/I5 nie są prezentowane, bo solver "
-            "nie ma dla nich udokumentowanej podstawy."
+        podstawa_oceny=(
+            PodstawaOceny(
+                "Funkcje metody zalecanej w przekaźniku",
+                "F_wym",
+                "-",
+                "każda funkcja metody zalecanej dla sposobu pracy punktu neutralnego jest w "
+                "wyposażeniu przekaźnika wskazanym przez projektanta",
+                "$F_{\\mathrm{wym}} \\subseteq F_{\\text{przekaźnika}}$",
+                zrodlo_zalozenia(Z_METODA_DETEKCJI),
+                symbol_latex=r"F_{\mathrm{wym}}",
+                warunek_latex=r"F_{\mathrm{wym}} \subseteq F_{\text{przekaźnika}}",
+                wzor_latex=r"F_{\mathrm{wym}} \subseteq F_{\text{przekaźnika}}",
+                wzor_opis_pl=(
+                    "$F_{\\mathrm{wym}}$ — funkcje metody zalecanej (metoda złożona 51N+67N wymaga obu "
+                    "funkcji, "
+                    "51N/50N — obu funkcji); $F_{\\text{przekaźnika}}$ — funkcje wskazane przez projektanta. "
+                    "Granica nie jest liczbą — jest porównaniem zbiorów."
+                ),
+            ),
         ),
         dane_z_modelu=(
             DanaZModelu(
@@ -758,11 +866,16 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         od_uzytkownika=(
             ParametrUzytkownika(
                 "relay_methods",
-                "Metody detekcji dostępne w przekaźniku",
+                "Funkcje detekcji doziemień dostępne w przekaźniku",
                 "-",
-                True,
-                "Wyposażenie przekaźnika pola — model go nie niesie.",
+                False,
+                "Wyposażenie przekaźnika pola — model go nie niesie. Bez niego dobór metody "
+                "biegnie, a kryterium dostępności funkcji jest nieocenione (brak nazwany).",
             ),
+        ),
+        uwagi_metody_pl=(
+            "Nastawy rozruchowe U0/P0/I5 nie są prezentowane — solver nie ma dla nich "
+            "udokumentowanej podstawy.",
         ),
     ),
     KartaAnalizy(
@@ -774,13 +887,16 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             "wytrzymałości wyłącznika?"
         ),
         zakres_pl=(
-            "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec "
+            "Wyłącznik o napięciu znamionowym $U_r$; przebieg napięcia powrotnego 2–100 µs wobec "
             "obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady "
             "różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej."
         ),
         wielkosci_glowne=(
             WielkoscGlowna(
-                "M_TRV", "Najmniejszy margines napięcia powrotnego", "%", r"M_{\mathrm{TRV}}"
+                "u_TRV_max",
+                "Największa wartość napięcia powrotnego",
+                "kV",
+                r"\max u_{\mathrm{TRV}}",
             ),
             WielkoscGlowna(
                 "I_2h/I_szczyt",
@@ -790,33 +906,18 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
             WielkoscGlowna("ferro", "Ryzyko ferrorezonansu", "-", r"\text{ferro}"),
         ),
-        podstawa_oceny=(
-            PodstawaOceny(
-                "Margines napięcia powrotnego",
-                "M_TRV",
-                "%",
-                "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
-                MARGINES_TRV_MIN_PROCENT,
-                "IEC 62271-100 (obwiednia napięcia powrotnego)",
-                symbol_latex=r"M_{\mathrm{TRV}}",
-                warunek_latex=(
-                    r"M_{\mathrm{TRV}} = \dfrac{\text{obwiednia} - u_{\mathrm{TRV}}}"
-                    r"{\text{obwiednia}}\cdot 100\% \geq 10\%"
-                ),
-            ),
-            PodstawaOceny(
-                "Blokada różnicowej od 2. harmonicznej",
-                "I_2h/I_szczyt",
-                "%",
-                "udział ≥ granica ⇒ blokada 87T zalecana",
-                UDZIAL_2H_BLOKADA_87T_PROCENT,
-                "reguła solvera (praktyka zabezpieczeń różnicowych)",
-                symbol_latex=r"I_{2h}/I_{\mathrm{szczyt}}",
-                warunek_latex=r"I_{2h}/I_{\mathrm{szczyt}} \geq 10\%",
-            ),
+        bez_podstawy_pl=(
+            "Obwiednia wytrzymałości wyłącznika na napięcie powrotne wynika z parametrów $u_c$, "
+            "$t_3$ tablic IEC 62271-100 dla napięcia znamionowego wyłącznika — tablice nie są "
+            "danymi programu, więc kryterium nie ma podstawy (rekord oceny „brak podstawy”); "
+            "przebieg napięcia powrotnego jest wynikiem bez oceny."
         ),
         dane_z_modelu=(
-            DanaZModelu("Najwyższe napięcie znamionowe szyn (proponowane U_r)", "szyny"),
+            DanaZModelu(
+                "Napięcie najwyższe urządzenia $U_m$ sieci SN (proponowane $U_r$ wyłącznika, "
+                "IEC 60038 / IEC 62271-1)",
+                "sieci SN, szyny",
+            ),
             DanaZModelu("Susceptancje doziemne gałęzi (ferrorezonans)", "linie, kable"),
             DanaZModelu(
                 "Sposób uziemienia punktu neutralnego sieci SN (wariant zespołu uziemiającego)",
@@ -829,7 +930,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Napięcie znamionowe wyłącznika",
                 "kV",
                 False,
-                "Puste = najwyższe napięcie znamionowe szyny modelu.",
+                "Puste = napięcie najwyższe urządzenia $U_m$ sieci SN modelu (IEC 60038 tab. 3–5; "
+                "$U_r$ aparatu równe $U_m$, IEC 62271-1).",
             ),
             ParametrUzytkownika(
                 "trv_natural_frequency_hz",
@@ -844,10 +946,15 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ParametrUzytkownika(
                 "inrush_multiple_in",
                 "Krotność prądu załączania transformatora",
-                "× I_n",
+                "× $I_n$",
                 True,
                 "Właściwość transformatora — model jej nie niesie.",
             ),
+        ),
+        uwagi_metody_pl=(
+            "Zalecenie blokady zabezpieczenia różnicowego od 2. harmonicznej (udział ≥ 10 % "
+            "szczytu prądu załączania, udział szacowany zależnością 63 %/krotność) jest regułą "
+            "solvera bez podstawy normowej — informacja, nie ocena kryterium.",
         ),
     ),
     KartaAnalizy(
@@ -860,56 +967,73 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         ),
         zakres_pl=(
             "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na "
-            "wskazanej szynie; impedancja źródła z mocy zwarciowej szyny albo z pierwszej "
-            "gałęzi zasilającej."
+            "wskazanej szynie, rozruch bezpośredni; zapad z impedancji zastępczej sieci w węźle "
+            "silnika — przekątna macierzy impedancyjnej sieci zwarciowej IEC 60909 (impedancja "
+            "zasilania systemowego, przekładnia i współczynnik $K_T$ transformatorów, maszyny "
+            "wirujące), więc szyna SN za transformatorem i szyna nN mają zapad; szyna w wyspie "
+            "bez źródła — nazwany brak w wyniku."
         ),
         wielkosci_glowne=(
             WielkoscGlowna("I_r", "Prąd rozruchowy", "A", r"I_r"),
             WielkoscGlowna("ΔU", "Zapad napięcia na szynie", "%", r"\Delta U"),
             WielkoscGlowna("M_r", "Moment rozruchowy", "j.w.", r"M_r"),
-            WielkoscGlowna("I²t", "Wykorzystanie dopuszczalnego czasu utyku", "-", r"I^{2} t"),
+            WielkoscGlowna(
+                "t_r/t_utyku",
+                "Czas rozruchu odniesiony do dopuszczalnego czasu utyku",
+                "-",
+                r"t_r / t_{\mathrm{utyku}}",
+            ),
         ),
         podstawa_oceny=(
             PodstawaOceny(
                 "Zapad napięcia na szynie",
                 "ΔU",
                 "%",
-                "ΔU ≤ granica przy prądzie rozruchowym k_LR·I_n",
-                ZAPAD_ROZRUCHU_MAX_PROCENT,
-                "kryteria rozruchowe silników SN (reguła solvera)",
+                "$\\Delta U$ ≤ granica przy prądzie rozruchowym $k_{\\mathrm{LR}}\\,I_n$",
+                _prog(Z_ZAPAD_ROZRUCHU),
+                zrodlo_zalozenia(Z_ZAPAD_ROZRUCHU),
                 symbol_latex=r"\Delta U",
-                warunek_latex=r"\Delta U \leq 15\%",
+                warunek_latex=r"\Delta U \leq " + Z_ZAPAD_ROZRUCHU.prog_latex,
             ),
             PodstawaOceny(
-                "Wskaźnik cieplny rozruchu",
-                "I²t",
-                "-",
-                "k_LR²·t_rozruchu/t_utyku ≤ granica",
-                WSKAZNIK_CIEPLNY_ROZRUCHU_MAX,
-                "kryteria rozruchowe silników SN (reguła solvera)",
-                symbol_latex=r"I^{2} t",
-                warunek_latex=r"k_{LR}^2 \cdot \dfrac{t_{\mathrm{rozruchu}}}{t_{\mathrm{utyku}}} \leq 1",
+                "Czas rozruchu",
+                "t_r",
+                "s",
+                "$t_r \\leq t_{\\mathrm{utyku}}$ (dopuszczalny czas utyku podany przy prądzie "
+                "zablokowanego wirnika)",
+                "$t_r \\leq t_{\\mathrm{utyku}}$",
+                zrodlo_zalozenia(Z_CZAS_ROZRUCHU),
+                symbol_latex=r"t_r",
+                warunek_latex=r"t_r \leq t_{\mathrm{utyku}}",
+                wzor_latex=r"t_r \leq t_{\mathrm{utyku}}",
+                wzor_opis_pl=(
+                    "$t_r$ — czas rozruchu napędu [s]; $t_{\\mathrm{utyku}}$ — dopuszczalny czas utyku silnika "
+                    "z karty silnika [s]. Granica jest daną silnika, nie stałą liczbą."
+                ),
             ),
             PodstawaOceny(
                 "Moment rozruchowy",
                 "M_r",
                 "j.w.",
-                "M_r > M_obciążenia przy rozruchu",
-                "M_r > M_obc",
-                "kryteria rozruchowe silników SN (reguła solvera)",
+                "$M_r \\geq M_{\\mathrm{obc}}$ — moment obciążenia przy rozruchu",
+                "$M_r \\geq M_{\\mathrm{obc}}$",
+                zrodlo_zalozenia(Z_MOMENT_ROZRUCHOWY),
                 symbol_latex=r"M_r",
-                warunek_latex=r"M_r > M_{\mathrm{obc}}",
-                wzor_latex=r"M_r > M_{\mathrm{obc}}",
+                warunek_latex=r"M_r \geq M_{\mathrm{obc}}",
+                wzor_latex=r"M_r \geq M_{\mathrm{obc}}",
                 wzor_opis_pl=(
-                    "M_r — moment rozruchowy silnika w jednostkach względnych; "
-                    "M_obc — moment obciążenia napędzanego mechanizmu przy rozruchu, "
+                    "$M_r$ — moment rozruchowy silnika w jednostkach względnych; "
+                    "$M_{\\mathrm{obc}}$ — moment obciążenia napędzanego mechanizmu przy rozruchu, "
                     "w tych samych jednostkach. Granica nie jest stałą liczbą — jest "
                     "porównaniem dwóch wielkości z tego samego biegu."
                 ),
             ),
         ),
         dane_z_modelu=(
-            DanaZModelu("Moc zwarciowa szyny albo impedancja gałęzi zasilającej", "szyny, gałęzie"),
+            DanaZModelu(
+                "Impedancje gałęzi i impedancja zasilania systemowego $Z_Q$ (sieć zasilająca)",
+                "linie, kable, aparaty łączeniowe, źródło sieci nadrzędnej",
+            ),
         ),
         od_uzytkownika=_PARAMETRY_SILNIKA,
     ),
@@ -959,7 +1083,10 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         wielkosci_glowne=(
             WielkoscGlowna("U_95", "Niepewność rozszerzona wyniku (k = 2)", "%", r"U_{95}"),
             WielkoscGlowna(
-                "udział", "Udział parametru w całkowitej niepewności", "%", r"\text{udział}"
+                "udział",
+                "Udział parametru w całkowitej niepewności",
+                "%",
+                r"\text{udział}",
             ),
         ),
         bez_podstawy_pl=(
@@ -1008,7 +1135,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             WielkoscGlowna("I_C", "Prąd pojemnościowy doziemienia sieci", "A", r"I_C"),
             WielkoscGlowna("C_0", "Pojemność doziemna sieci", "F", r"C_0"),
             WielkoscGlowna("L, X_L", "Indukcyjność i reaktancja dławika", "H, Ω", r"L,\ X_L"),
-            WielkoscGlowna("I_res", "Prąd resztkowy przy rozstrojeniu", "A", r"I_{\mathrm{res}}"),
+            WielkoscGlowna("I_res", "Prąd resztkowy dławika modelu", "A", r"I_{\mathrm{res}}"),
             WielkoscGlowna("R_N", "Rezystancja uziemiająca punktu neutralnego", "Ω", r"R_N"),
             WielkoscGlowna("E", "Energia wydzielona w rezystorze w czasie wyłączenia", "J", r"E"),
         ),
@@ -1016,31 +1143,39 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             PodstawaOceny(
                 "Prąd resztkowy (sieć kompensowana)",
                 "I_res/I_C",
-                "-",
-                "I_res przy przyjętym rozstrojeniu ≤ udział granicznego prądu pojemnościowego",
-                PRAD_RESZTKOWY_MAX_UDZIAL_IC,
-                "kompensacja rezonansowa Petersena · IEC 62271-203",
+                "%",
+                "$I_{\\mathrm{res}} = \\sqrt{I_w^2 + (I_C - I_L)^2}$ dławika modelu ($I_L$, $I_w$ z "
+                "impedancji punktów "
+                "neutralnych w ruchu) ≤ udział prądu pojemnościowego",
+                _prog(Z_PRAD_RESZTKOWY),
+                zrodlo_zalozenia(Z_PRAD_RESZTKOWY),
                 symbol_latex=r"I_{\mathrm{res}}/I_C",
-                warunek_latex=r"I_{\mathrm{res}}/I_C \leq 10\%",
+                warunek_latex=r"I_{\mathrm{res}}/I_C \leq " + Z_PRAD_RESZTKOWY.prog_latex,
             ),
             PodstawaOceny(
                 "Energia w rezystorze (sieć uziemiona przez rezystor)",
                 "E",
                 "J",
-                "E = I_R²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora",
-                "E ≤ E_n",
-                "praktyka sieci uziemionych przez rezystor (ENEA Zeszyt 1 §16 — Z.14, Z.15)",
+                "$E_k = I_{\\mathrm{th}}^2 R\\, t_{\\text{wył}} \\leq E_n = I_n^2 R\\, t_n$ rezystora "
+                "($I_{\\mathrm{th}} = I_{R,k}\\sqrt{m+n}$, "
+                "$I_{R,k} = c_{\\max} U_f/\\left|R + Z_{0,\\mathrm{TU}}/3\\right|$)",
+                "$E \\leq E_n$",
+                zrodlo_zalozenia(Z_ENERGIA_REZYSTORA),
                 symbol_latex=r"E",
                 warunek_latex=r"E \leq E_n",
                 wzor_latex=(
-                    r"E = I_R^2 \cdot R \cdot t_{\text{wył}} \leq E_n = I_n^2 \cdot R \cdot t_n"
+                    r"E_k = I_{\mathrm{th}}^2 \cdot R \cdot t_{\text{wył}} \leq "
+                    r"E_n = I_n^2 \cdot R \cdot t_n\text{,}\quad "
+                    r"I_{R,k} = \dfrac{c_{\max} U_f}{\left|R + Z_{0,\mathrm{TU}}/3\right|}"
                 ),
                 wzor_opis_pl=(
-                    "I_R = U_f/R — prąd rezystora przy doziemieniu metalicznym [A] (składowa "
-                    "pojemnościowa zamyka się przez pojemności doziemne faz zdrowych, nie przez "
-                    "rezystor); R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — "
-                    "czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy "
-                    "rezystora i dopuszczalny czas jego przepływu [A, s]."
+                    "$I_{R,k}$ — największy prąd rezystora przy doziemieniu metalicznym wg IEC 60909-0 "
+                    "($c_{\\max}$ z tab. 1, droga zerowa gałęzi uziemiającej $Z_{0,\\mathrm{TU}}/3 + R$) [A]; "
+                    "$I_{\\mathrm{th}} = I_{R,k}\\sqrt{m+n}$ — prąd cieplny zastępczy (IEC 60909-0 §12) "
+                    "[A]; $R$ — "
+                    "rezystancja rezystora zespołu uziemiającego [Ω]; $t_{\\text{wył}}$ — czas wyłączenia "
+                    "zwarcia doziemnego [s]; $I_n$, $t_n$ — prąd znamionowy rezystora i dopuszczalny "
+                    "czas jego przepływu [A, s] (IEEE Std C57.32)."
                 ),
             ),
         ),
@@ -1052,8 +1187,9 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "zespoły uziemiające sekcji SN, transformatory",
             ),
             DanaZModelu(
-                "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu) "
-                "i prąd dławika w układzie dławik ‖ rezystor",
+                "Rezystor punktu neutralnego (R, prąd znamionowy, dopuszczalny czas przepływu), "
+                "impedancje punktów neutralnych w ruchu (dławik gaszący, rezystor wymuszający "
+                "AWSC, dławik ‖ rezystor) i impedancja zerowa transformatora uziemiającego",
                 "zespoły uziemiające sekcji SN, transformatory",
             ),
         ),
@@ -1071,44 +1207,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 "Dla sieci z rezystorem w punkcie neutralnym; bez wpisu sprawdzenie cieplne "
                 "rezystora nie jest wykonywane.",
             ),
-            # Karta B-02 (parytet katalog ↔ kontrolki): oba parametry dławika solver
-            # CZYTA z `parameters` (nadpisanie wartości domyślnej), więc karta musi je
-            # obiecywać jako dane od użytkownika — opcjonalne, z wartością domyślną
-            # udokumentowaną niżej w `domyslne_solvera` (jedna para: pole + domyślna).
-            ParametrUzytkownika(
-                "petersen_detuning",
-                "Stopień rozstrojenia dławika",
-                "-",
-                False,
-                "Opcjonalnie; bez wpisu solver przyjmuje wartość domyślną 0,05 (±5 %).",
-            ),
-            ParametrUzytkownika(
-                "petersen_residual_damping",
-                "Tłumienie prądu resztkowego",
-                "-",
-                False,
-                "Opcjonalnie (d = I_R/I_C z karty dławika); bez wpisu 0 — bez strat dławika.",
-            ),
-        ),
-        domyslne_solvera=(
-            DomyslnaSolvera(
-                "petersen_detuning",
-                "Stopień rozstrojenia dławika",
-                0.05,
-                "-",
-                "Parametr metody: ±5 % rozstrojenia przyjęte przy braku wartości projektanta.",
-            ),
-            DomyslnaSolvera(
-                "petersen_residual_damping",
-                "Składowa tłumienia prądu resztkowego",
-                0.0,
-                "-",
-                "Parametr metody: brak strat dławika w karcie ⇒ 0 (prąd resztkowy w rezonansie = 0).",
-            ),
         ),
         uwagi_metody_pl=(
-            "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — "
-            "w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN.",
+            "Dławik dobierany do rezonansu z pojemnością doziemną sieci; prąd resztkowy, "
+            "rozstrojenie i składowa czynna liczone dla dławika MODELU tym samym solverem co "
+            "wiersz zwarcia jednofazowego (straty czynne dławika i upływność izolacji sieci "
+            "nie są opisane w modelu — rzeczywisty prąd resztkowy jest nie mniejszy).",
         ),
     ),
 )

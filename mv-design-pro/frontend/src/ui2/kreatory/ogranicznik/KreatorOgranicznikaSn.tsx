@@ -30,6 +30,7 @@ import {
   PanelTeorii,
   PoleKatalogu,
   RzadWartosci,
+  TekstZWzorami,
   komunikatProby,
   useProbaOperacji,
   useSelekcjaPoOperacji,
@@ -140,7 +141,7 @@ export function KreatorOgranicznikaSn() {
     () =>
       typy.map((t) => ({
         id: t.id,
-        etykieta: `${t.name} · U_m ${t.u_m_kv} kV · BIL ${t.bil_protected_kv} kV`,
+        etykieta: `${t.name} · $U_m$ ${t.u_m_kv} kV · BIL ${t.bil_protected_kv} kV`,
       })),
     [typy],
   );
@@ -248,7 +249,7 @@ export function KreatorOgranicznikaSn() {
             <RzadWartosci etykieta={T.paramBil} wartosc={fmtKv(params.bil_protected_kv)} />
           </>
         ) : (
-          <p className="mvd-podsum-komunikat">{T.typPomoc}</p>
+          <p className="mvd-podsum-komunikat"><TekstZWzorami tekst={T.typPomoc} /></p>
         )}
       </KreatorPodsumowanie>
       <KreatorGotowosc

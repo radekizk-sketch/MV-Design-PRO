@@ -9,10 +9,10 @@
  * przez KaTeX (TekstZWzorami → MathInline) — surowe wzory tekstowe są zakazane.
  */
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 import type { OpcjaWyboru, StatusPobrania } from './model';
-import { TekstZWzorami } from './tekstZWzorami';
+import { TekstZWzorami, tekstBezWzorow } from './tekstZWzorami';
 
 /** Limit prób fokusu (klatki animacji, ~1 s przy 60 Hz). */
 const LIMIT_KLATEK_FOKUSU = 60;
@@ -69,13 +69,13 @@ function Polakoszulka({
   return (
     <div className="mvd-pole">
       <label className="mvd-pole-etykieta" htmlFor={htmlFor}>
-        {etykieta}
+        <TekstZWzorami tekst={etykieta} />
         {jednostka ? <span className="mvd-pole-jednostka">[{jednostka}]</span> : null}
         {wymagane ? <span className="mvd-pole-gwiazdka" aria-hidden="true">*</span> : null}
       </label>
       {children}
       {pomoc ? <p className="mvd-pole-pomoc"><TekstZWzorami tekst={pomoc} /></p> : null}
-      {blad ? <p className="mvd-pole-blad" role="alert">{blad}</p> : null}
+      {blad ? <p className="mvd-pole-blad" role="alert"><TekstZWzorami tekst={blad} /></p> : null}
     </div>
   );
 }
@@ -108,10 +108,13 @@ export function PoleTekstowe({
   fokus,
   testid,
 }: PoleTekstoweProps) {
+  // Etykieta powiązana z kontrolką (`htmlFor`/`id`) — czytnik ekranu i `getByLabelText`.
+  const id = useId();
   const ref = useFokusPoZamontowaniu<HTMLInputElement>(fokus);
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} htmlFor={id}>
       <input
+        id={id}
         type="text"
         className="mvd-pole-input"
         value={wartosc}
@@ -160,9 +163,12 @@ export function PoleLiczbowe({
   wylaczone,
   testid,
 }: PoleLiczboweProps) {
+  // Etykieta powiązana z kontrolką (`htmlFor`/`id`) — czytnik ekranu i `getByLabelText`.
+  const id = useId();
   return (
-    <Polakoszulka etykieta={etykieta} jednostka={jednostka} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} jednostka={jednostka} wymagane={wymagane} blad={blad} pomoc={pomoc} htmlFor={id}>
       <input
+        id={id}
         type="number"
         className="mvd-pole-input"
         value={wartosc === null ? '' : wartosc}
@@ -214,10 +220,13 @@ export function PoleWyboru({
   fokus,
   testid,
 }: PoleWyboruProps) {
+  // Etykieta powiązana z kontrolką (`htmlFor`/`id`) — czytnik ekranu i `getByLabelText`.
+  const id = useId();
   const ref = useFokusPoZamontowaniu<HTMLSelectElement>(fokus);
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} htmlFor={id}>
       <select
+        id={id}
         className="mvd-pole-select"
         value={wartosc}
         disabled={wylaczone}
@@ -227,7 +236,7 @@ export function PoleWyboru({
         onChange={(e) => onZmiana(e.target.value)}
       >
         {opcje.map((o) => (
-          <option key={o.id} value={o.id} disabled={o.wylaczona}>{o.etykieta}</option>
+          <option key={o.id} value={o.id} disabled={o.wylaczona}>{tekstBezWzorow(o.etykieta)}</option>
         ))}
       </select>
     </Polakoszulka>
@@ -254,7 +263,12 @@ export function PolePrzelacznik({
   testid,
 }: PolePrzelacznikProps) {
   const grupa = (
-    <div className="mvd-przelacznik" role="group" aria-label={ariaLabel ?? etykieta} data-testid={testid}>
+    <div
+      className="mvd-przelacznik"
+      role="group"
+      aria-label={tekstBezWzorow(ariaLabel ?? etykieta ?? '') || undefined}
+      data-testid={testid}
+    >
       {opcje.map((o) => {
         const aktywna = o.id === wartosc;
         return (
@@ -266,7 +280,7 @@ export function PolePrzelacznik({
             data-testid={testid ? `${testid}-${o.id}` : undefined}
             onClick={() => onZmiana(o.id)}
           >
-            {o.etykieta}
+            <TekstZWzorami tekst={o.etykieta} />
           </button>
         );
       })}
@@ -275,7 +289,7 @@ export function PolePrzelacznik({
   if (!etykieta) return grupa;
   return (
     <div className="mvd-pole">
-      <span className="mvd-pole-etykieta">{etykieta}</span>
+      <span className="mvd-pole-etykieta"><TekstZWzorami tekst={etykieta} /></span>
       {grupa}
     </div>
   );
@@ -307,8 +321,8 @@ export function PolePrzelacznikBinarny({
         onChange={(e) => onZmiana(e.target.checked)}
       />
       <span className="mvd-przelacznik-bin-tekst">
-        <span className="mvd-przelacznik-bin-etykieta">{etykieta}</span>
-        {opis ? <span className="mvd-przelacznik-bin-opis">{opis}</span> : null}
+        <span className="mvd-przelacznik-bin-etykieta"><TekstZWzorami tekst={etykieta} /></span>
+        {opis ? <span className="mvd-przelacznik-bin-opis"><TekstZWzorami tekst={opis} /></span> : null}
       </span>
     </label>
   );
@@ -349,9 +363,12 @@ export function PoleKatalogu({
   pomoc,
   testid,
 }: PoleKataloguProps) {
+  // Etykieta powiązana z kontrolką (`htmlFor`/`id`) — czytnik ekranu i `getByLabelText`.
+  const id = useId();
   return (
-    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc}>
+    <Polakoszulka etykieta={etykieta} wymagane={wymagane} blad={blad} pomoc={pomoc} htmlFor={id}>
       <select
+        id={id}
         className="mvd-pole-select"
         value={wartosc ?? ''}
         disabled={status === 'loading'}
@@ -363,7 +380,7 @@ export function PoleKatalogu({
           {status === 'loading' ? (placeholderLadowanie ?? 'Ładowanie katalogu…') : placeholder}
         </option>
         {opcje.map((o) => (
-          <option key={o.id} value={o.id}>{o.etykieta}</option>
+          <option key={o.id} value={o.id}>{tekstBezWzorow(o.etykieta)}</option>
         ))}
       </select>
       {status === 'error' ? (

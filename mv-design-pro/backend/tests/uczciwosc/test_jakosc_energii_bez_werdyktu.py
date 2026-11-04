@@ -12,6 +12,7 @@ Do czasu nowego solvera z wyroczniami: status `NIE_OCENIONO` z wyjaśnieniem, Ż
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -98,9 +99,11 @@ def test_wynik_e40_niesie_ocene_niewykonana_i_zero_liczb_poza_audytem() -> None:
 def test_zaden_wezel_nie_dostaje_statusu_zgodny_takze_bez_danych() -> None:
     bieg, model = bieg_sceny_akademickiej(_PQ)
     ladunek = get_v126_result(bieg.id, _PQ)["result"]["result"]
-    statusy = _statusy_kompatybilnosci(ladunek)
-    assert len(statusy) == len(model.buses)
-    assert set(statusy) == {"NIE_OCENIONO"}, statusy
+    # Solver nie wystawia statusu kompatybilności węzła (od wersji 1.4) — żaden węzeł nie niesie
+    # statusu, a jedyną oceną wyniku jest rekord „ocena niewykonana” z przyczyną.
+    assert _statusy_kompatybilnosci(ladunek) == []
+    assert len(ladunek[_KLUCZ_AUDYTU]["nodes"]) == len(model.buses)
+    sprawdz_ocene_niewykonana(ladunek["ocena"])
     # Szyna bez źródła harmonicznego (brak danych) też NIE jest „zgodna".
     szyny_ze_zrodlem = {zrodlo.bus_ref for zrodlo in model.harmonic_sources}
     assert any(szyna.ref not in szyny_ze_zrodlem for szyna in model.buses)
@@ -179,10 +182,17 @@ def test_karta_e40_mowi_prawde_o_metodzie() -> None:
 # ILOCZYN CECH: rodzaj analizy (E-40 vs rodzaj, który czyta moc zwarciową) × powierzchnia
 # twierdzenia o danych (karta katalogu vs gotowość „dane z modelu"). Tor harmoniczny nie czyta
 # mocy zwarciowej, więc ŻADNA powierzchnia E-40 nie może jej wymieniać jako danej analizy;
-# rodzaj, który ją czyta, nadal ją wymienia (kontrola dodatnia — mechanizm nie zniknął).
+# rodzaj, który ją czyta, nadal ją wymienia (kontrola dodatnia — mechanizm nie zniknął):
+# impedancja sieci SSCI bierze Z_Q szyny albo jej moc zwarciową. Rozruch silnika czyta od karty
+# UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5) impedancję zastępczą sieci w szynie (przekątna
+# macierzy Z-bus IEC 60909), nie moc zwarciową — więc też jej nie wymienia.
 @pytest.mark.parametrize(
     ("rodzaj", "wymienia_moc_zwarciowa"),
-    [(_PQ, False), (V126AnalysisType.MOTOR_STARTING, True)],
+    [
+        (_PQ, False),
+        (V126AnalysisType.SSCI_IMPEDANCE, True),
+        (V126AnalysisType.MOTOR_STARTING, False),
+    ],
 )
 def test_gotowosc_nie_twierdzi_ze_e40_czyta_moc_zwarciowa(
     rodzaj: V126AnalysisType, wymienia_moc_zwarciowa: bool
@@ -235,7 +245,9 @@ def test_scena_harnessu_nie_przypina_liczb_e40() -> None:
     eksport = eksport_fixtur()
     sciezka = eksport.FIXTURES_DIR / "akademickie_scena_biegi.json"
     tresc = sciezka.read_text(encoding="utf-8")
-    assert "3049" not in tresc
+    # Liczba 3049 (THD_U w %) jako wartość — nie jako ciąg cyfr wewnątrz innej liczby (np. część
+    # ułamkowa 21,030498 modułu impedancji w biegu rozruchu silnika tej samej sceny).
+    assert re.search(r"(?<![\d.])3049(?!\d)", tresc) is None
     assert _PQ.value not in eksport.akademickie_scena_biegi()["biegi"]
     for plik in sorted(eksport.FIXTURES_DIR.glob("*.json")):
         assert "thd_u_percent" not in plik.read_text(encoding="utf-8"), plik.name

@@ -9,7 +9,9 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   obliczeniowej węzła (składowa spójna grafu po gałęziach, transformatorach i łącznikach);
 * ``branch.z0_wartosc_robocza`` (ten moduł) — linia albo kabel SN z R′0/X′0 z założenia
   katalogu (``wartosci_robocze`` pozycji) albo z wartości roboczej odcinka bez składowej
-  zerowej w modelu (``enm.skladowa_zerowa_galezi``, zasada nr 4); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
+  zerowej w modelu (``enm.skladowa_zerowa_galezi``, zasada nr 4), a także B′0 z wartości roboczej
+  odcinka, którego pojemność weszła do Y0 (warunek IEC 60909-0 pkt 5.2 f), karta
+  ZEROWA-POJEMNOSCI); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
   w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``);
 * ``zespol_uziemiajacy.wartosc_robocza`` (ten moduł) — zespół uziemiający sieci SN, którego
   bocznik składowej zerowej Z_0,TU + 3·Z_N stoi na wartości roboczej (pozycja typowa katalogu,
@@ -38,7 +40,11 @@ from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
 
 from .bateria_kondensatorow import KOD_BATERIA_PARAMETRY_ROBOCZE
-from .mapping import map_enm_to_network_graph, ref_to_graph_id, skladowe_sieci_zerowej
+from .mapping import (
+    map_enm_to_network_graph,
+    ref_to_graph_id,
+    skladowe_i_b0_sieci_zerowej,
+)
 from .models import Cable, EnergyNetworkModel, OverheadLine
 from .nazwy_elementow import nazwa_elementu
 from .parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
@@ -64,8 +70,18 @@ _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
 def galezie_z0_robocze(
     enm: EnergyNetworkModel,
+    *,
+    b0_galezi: Mapping[str, tuple[tuple[str, str, str, float], ...]] | None = None,
 ) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
-    """Załączone linie i kable, których R′0/X′0 są wartością roboczą (kolejność ref_id).
+    """Załączone linie i kable, których R′0/X′0 albo B′0 w sieci zerowej biegu są wartością
+    roboczą (kolejność ref_id).
+
+    B′0 z wartości roboczej wchodzi do zbioru WYŁĄCZNIE z ``b0_galezi`` — gałęzie, których
+    pojemność weszła do macierzy Y0 zwarć (warunek IEC 60909-0 pkt 5.2 f) spełniony w ich sieci
+    zerowej: ``enm.mapping.WynikSieciZerowej.b0_robocze`` — predykat wejścia i danej przyjętej
+    z jednego złożenia). ``None`` — bieg bez pojemności w składowej zerowej (rozpływ
+    niesymetryczny pomija pojemności odcinków). Dane przyjęte B′0 prądu pojemnościowego sieci
+    niesie konsument pojemności doziemnej (``enm.uziemienie_sekcji``).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
     wierszy wyniku. Predykat pola: ``enm.skladowa_zerowa_galezi`` — ten sam, z którego sieć
@@ -79,31 +95,42 @@ def galezie_z0_robocze(
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
-        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze
+        pola = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref)).robocze + (
+            (b0_galezi or {}).get(galaz.ref_id, ())
+        )
         if pola:
             wynik.append((galaz, pola))
     return wynik
 
 
 def zalozenia_z0_galezi(
-    enm: EnergyNetworkModel, scenario: str | None, *, galezie: Iterable[str] | None = None
+    enm: EnergyNetworkModel,
+    scenario: str | None,
+    *,
+    galezie: Iterable[str] | None = None,
+    b0_galezi: Mapping[str, tuple[tuple[str, str, str, float], ...]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
-    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 z wartości roboczej.
+    """Założenia biegu: jedno na KAŻDĄ załączoną gałąź z R′0/X′0 (albo B′0 w macierzy Y0 —
+    ``b0_galezi``, ``galezie_z0_robocze``) z wartości roboczej.
 
     ``galezie`` zawęża zbiór (rozpływ niesymetryczny: wyłącznie gałęzie z realnym prądem I0);
     ``None`` = wszystkie (zwarcie doziemne — sieć zerowa całego modelu).
     """
     dozwolone = None if galezie is None else set(galezie)
     zalozenia: list[dict[str, Any]] = []
-    for galaz, pola in galezie_z0_robocze(enm):
+    for galaz, pola in galezie_z0_robocze(enm, b0_galezi=b0_galezi):
         if dozwolone is not None and galaz.ref_id not in dozwolone:
             continue
         nazwa = nazwa_elementu(galaz, "branches")
         przyjete = [
             dana_przyjeta_z0(
-                etykieta=etykieta, zalozenie=zalozenie, wartosc=wartosc, miejsce_pl=nazwa
+                pole=pole,
+                etykieta=etykieta,
+                zalozenie=zalozenie,
+                wartosc=wartosc,
+                miejsce_pl=nazwa,
             )
-            for _, etykieta, zalozenie, wartosc in pola
+            for pole, etykieta, zalozenie, wartosc in pola
         ]
         etykiety = " i ".join(etykieta for _, etykieta, _, _ in pola)
         z_odcinka = {zalozenie in ZALOZENIA_Z0_ODCINKA for _, _, zalozenie, _ in pola}
@@ -209,12 +236,13 @@ def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, 
             grupy.setdefault(klucz, []).append(str(skladnik["nazwa"]))
     return [
         dana_przyjeta_z0(
+            pole=pole,
             etykieta=etykieta,
             zalozenie=zalozenie,
             wartosc=wartosc,
             miejsce_pl=", ".join(sorted(nazwy)),
         ).model_dump(mode="json")
-        for (_, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
+        for (pole, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
     ]
 
 
@@ -319,20 +347,35 @@ def dane_przyjete_wezla(
     """
     # Zespół uziemiający: Z0 sieci liczone wprost z modelu (``build_zero_sequence_zbus``) stoi
     # na stanie normalnym AWSC (spoczynek) — ten sam stan dla danych przyjętych bocznika.
+    napiecia = napiecia_szyn_kv(enm)
+    b0_mozliwe = ze_skladowa_zerowa and any(
+        skladowa_zerowa_galezi(g, napiecia.get(g.from_bus_ref)).robocze_b0
+        for g in enm.branches
+        if isinstance(g, Cable | OverheadLine) and g.status == "closed"
+    )
     zalozenia = zalozenia_linii_wn(enm, None) + (
         zalozenia_z0_galezi(enm, None) + zalozenia_zespolow_uziemiajacych(enm, None, "spoczynek")
         if ze_skladowa_zerowa
         else ()
     )
-    if not zalozenia:
+    if not zalozenia and not b0_mozliwe:
         return ()
     try:
         graph = map_enm_to_network_graph(enm)
-        skladowe = (
-            skladowe_sieci_zerowej(enm, graph)
-            if any(z.get("code") in (KOD_Z0_ROBOCZE, KOD_ZU_ROBOCZE) for z in zalozenia)
-            else None
-        )
+        skladowe = None
+        if b0_mozliwe or any(z.get("code") in (KOD_Z0_ROBOCZE, KOD_ZU_ROBOCZE) for z in zalozenia):
+            # B′0 roboczy wchodzi do Z0 liczonego wprost z modelu (``build_zero_sequence_zbus``:
+            # scenariusz MAX, AWSC w spoczynku) tylko pod warunkiem pkt 5.2 f) — gałęzie
+            # i składowe z TEGO SAMEGO złożenia Y0.
+            skladowe, b0_galezi = skladowe_i_b0_sieci_zerowej(enm, graph)
+            if b0_galezi:
+                zalozenia = (
+                    zalozenia_linii_wn(enm, None)
+                    + zalozenia_z0_galezi(enm, None, b0_galezi=b0_galezi)
+                    + zalozenia_zespolow_uziemiajacych(enm, None, "spoczynek")
+                )
+            if not zalozenia:
+                return ()
     except OdmowaDanychError:
         # Model, którego nie da się odwzorować, nie ma impedancji sieci zasilającej — wołający
         # zgłasza ten brak sam (`compute_upstream_hv_thevenin`); gałęzie nie wchodzą do wyniku.

@@ -131,7 +131,7 @@ describe('krokiSladuOsd — ślad WHITE BOX (adapter SladAnalizy)', () => {
 
   it('kroki biegów niosą zbieżność, iteracje i straty z backendu', () => {
     const kroki = krokiSladuOsd(widokOsdFixture());
-    expect(kroki[1].result_pl).toContain('zbiezny');
+    expect(kroki[1].result_pl).toContain('zbieżny');
     expect(kroki[1].result_pl).toContain('iteracje = 4');
     expect(kroki[2].result_pl).toContain('iteracje = 5');
     expect(kroki[2].result_pl).toContain('straty P = 0,090 MW');

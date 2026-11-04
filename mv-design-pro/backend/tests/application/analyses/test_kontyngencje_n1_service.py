@@ -22,7 +22,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -1210,3 +1212,65 @@ def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
     assert liczba_kontyngencji >= 3
     assert len(budowy) == liczba_kontyngencji + 1, "graf budowany raz na kontyngencję + raz na bazę"
     assert all(graf is not None for graf in grafy_rozplywu), "rozpływ dostaje gotowy graf"
+
+
+_FIKSTURA_EKRANU = (
+    Path(__file__).resolve().parents[4]
+    / "frontend"
+    / "src"
+    / "ui2"
+    / "wyniki"
+    / "kontyngencje"
+    / "__tests__"
+    / "fixtures.ts"
+)
+
+
+def _literaly_fikstury_ekranu() -> str:
+    """Treść fikstury ekranu ze sklejonymi literałami (`'a ' + 'b'` → `'a b'`) i bez
+    podwojenia ukośnika TypeScriptu — tekst porównywalny z odpowiedzią backendu."""
+    tekst = _FIKSTURA_EKRANU.read_text(encoding="utf-8")
+    tekst = re.sub(r"'\s*\n\s*\+\s*'", "", tekst)
+    return tekst.replace("\\\\", "\\")
+
+
+def test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu() -> None:
+    """Nagłówek fikstury okna „Kontyngencje N-1” deklaruje teksty PRZEPISANE z odpowiedzi
+    backendu. Deklaracja bez testu dryfowała: fikstura niosła „Obciazenie 134.74 % przekracza
+    limit 100.0 %.” i „Brak pradu galezi w wynikach PF.”, choć builder od dawna pisał liczby
+    po polsku z diakrytykami — test ekranu sprawdzał zdanie, którego projektant nie zobaczy.
+    Każdy tekst kryteriów, zdanie przekroczenia i ślad WHITE BOX pozycji `PRZECIAZENIE`
+    (pierścień, wyłączenie `ln_src_a`) oraz powód pominięcia kryterium prądowego mają stać
+    w fikstur ze znakiem w znak."""
+    fikstura = _literaly_fikstury_ekranu()
+    widok = build_kontyngencje_n1_view(_bieg(_pierscien()))
+    kryteria = widok["parameters"]["kryteria"]
+    teksty = [
+        kryteria["obciazenie"]["zrodlo_progu_pl"],
+        kryteria["obciazenie"]["zrodlo_obciazalnosci_pl"],
+        kryteria["napiecie"]["zrodlo_progu_pl"],
+        kryteria["napiecie"]["zrodlo_napiecia_pl"],
+        kryteria["zasilanie"]["zrodlo_pl"],
+        kryteria["poza_zakresem_pl"],
+        kryteria["ranking"]["definicja_pl"],
+        widok["przypadek_bazowy"]["powod_pl"],
+    ]
+    pozycja = next(
+        p for p in _po_ref(widok, "ln_src_a")["przeciazenia"] if p["element_ref"] == "ln_src_b"
+    )
+    teksty.append(pozycja["powod_pl"])
+    for krok in pozycja["slad_kryterium"]:
+        teksty.append(krok["tekst"])
+        if krok["latex"] is not None:
+            teksty.append(krok["latex"])
+    promien = build_kontyngencje_n1_view(_bieg(_promien_z_transformatorem()))
+    teksty += sorted(
+        {
+            p["powod_pl"]
+            for p in promien["przypadek_bazowy"]["kryteria_pominiete"]
+            if p["check_type"] == "BRANCH_LOADING"
+        }
+    )
+    teksty += [k["powod_pl"] for k in promien["kontyngencje"] if k["status"] == "wykluczony"]
+    brakujace = [t for t in teksty if f"'{t}'" not in fikstura]
+    assert brakujace == []

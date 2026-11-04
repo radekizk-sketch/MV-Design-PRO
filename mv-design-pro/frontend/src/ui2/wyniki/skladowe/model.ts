@@ -29,6 +29,7 @@
 
 import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
 import type {
+  DoziemienieSieci,
   ExtendedTrace,
   ShortCircuitRow,
 } from '../../../ui/results-inspector/types';
@@ -38,10 +39,12 @@ import {
   fmtKA,
   fmtKappa,
   fmtOhm,
+  fmtLiczba,
   fmtWspolczynnik,
   rodzajZwarciaPL,
 } from '../zwarcia/strings';
 import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
+import { wielkoscPl } from '../wzorzec/KartaWerdyktu';
 import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -375,4 +378,96 @@ export function fmtImpedancjaUziemienia(wpis: UziemienieWpis): string | null {
   if (wpis.rOhm != null) czesci.push(`${T.uziemienieRezystancja} = ${fmtOhm(wpis.rOhm)} ${T.jednOhm}`);
   if (wpis.xOhm != null) czesci.push(`${T.uziemienieReaktancja} = ${fmtOhm(wpis.xOhm)} ${T.jednOhm}`);
   return czesci.length > 0 ? czesci.join(' · ') : null;
+}
+
+// ---------------------------------------------------------------------------
+// Doziemienie sieci SN wg sposobu pracy punktu neutralnego (karta UX-04, warunek
+// odbioru 2026-10-29) — WYŁĄCZNIE formatowanie liczb backendu (solver
+// `doziemienie_sn`); żadnej wielkości UI nie wylicza.
+// ---------------------------------------------------------------------------
+
+export interface WartoscDoziemienia {
+  readonly klucz: string;
+  readonly etykieta: string;
+  readonly wartosc: string;
+}
+
+export interface WidokDoziemienia {
+  readonly naglowek: string;
+  readonly wartosci: readonly WartoscDoziemienia[];
+  readonly wzorLatex: string;
+  readonly opisUziemienia: string | null;
+  readonly podstawa: string;
+  readonly zastrzezenia: readonly string[];
+  readonly brak: string | null;
+  readonly podwojne: string | null;
+  readonly danePrzyjete: readonly { nazwa: string; wartosc: string | null; powod: string }[];
+  readonly niepelny: boolean;
+  /** Ślad WHITE BOX solvera doziemienia — kroki nazywają zastosowany model sposobu pracy. */
+  readonly kroki: readonly KrokDoziemienia[];
+}
+
+export interface KrokDoziemienia {
+  readonly klucz: string;
+  readonly tytul: string;
+  readonly wzorLatex: string;
+  /** Podstawienie WYŁĄCZNIE z `substitution_latex` backendu (proza nie idzie do KaTeX-a). */
+  readonly podstawienieLatex: string | null;
+}
+
+function fmtA(n: number | null): string | null {
+  return n == null ? null : `${fmtLiczba(n, 2)} ${T.jednA}`;
+}
+
+function fmtV(n: number | null): string | null {
+  return n == null ? null : `${fmtLiczba(n, 0)} ${T.jednV}`;
+}
+
+/** Wiersz zwarcia jednofazowego (token backendu „1F"; dopuszczalny prefiks „SC_"). */
+export function jestZwarciemJednofazowym(row: ShortCircuitRow | null): boolean {
+  return (row?.fault_type ?? '').trim().toUpperCase().replace(/^SC_/, '') === '1F';
+}
+
+/** Widok doziemienia sieci SN wiersza; `null`, gdy wiersz go nie niesie (nie 1F / nie SN). */
+export function doziemienieWiersza(row: ShortCircuitRow | null): WidokDoziemienia | null {
+  const d: DoziemienieSieci | null | undefined = row?.doziemienie_sieci;
+  if (!d) return null;
+  const kandydaci: [string, string, string | null][] = [
+    ['prad', `${T.doziemieniePrad} (${d.charakter_pl})`, fmtA(d.prad_a)],
+    ['i_c', T.doziemienieIC, fmtA(d.i_c_a)],
+    ['i_l', T.doziemienieIL, fmtA(d.i_l_a)],
+    ['i_w', T.doziemienieIW, fmtA(d.i_w_a)],
+    ['v', T.doziemienieV, d.rozstrojenie == null ? null : fmtLiczba(d.rozstrojenie, 4)],
+    ['u_f', T.doziemienieUF, fmtV(d.u_f_v)],
+    ['u0', T.doziemienieU0, fmtV(d.u0_v)],
+    ['u_b', T.doziemienieUB, fmtV(d.u_faza_b_v)],
+    ['u_c', T.doziemienieUC, fmtV(d.u_faza_c_v)],
+    ['k', T.doziemienieK, d.wspolczynnik_k == null ? null : fmtKappa(d.wspolczynnik_k)],
+    ['z_f', T.doziemienieZF, d.z_f_ohm ? `${fmtZespolona(d.z_f_ohm)} ${T.jednOhm}` : null],
+  ];
+  return {
+    naglowek: `${d.tryb_pl} — ${d.charakter_pl}`,
+    wartosci: kandydaci
+      .filter((k): k is [string, string, string] => k[2] !== null)
+      .map(([klucz, etykieta, wartosc]) => ({ klucz, etykieta, wartosc })),
+    wzorLatex: d.wzor_latex,
+    opisUziemienia: d.opis_uziemienia_pl ?? null,
+    podstawa: d.podstawa_pl,
+    zastrzezenia: d.zastrzezenia_pl,
+    brak: d.brak_pl,
+    podwojne: d.podwojne_doziemienie_pl,
+    danePrzyjete: (d.dane_przyjete ?? []).map((dana) => ({
+      nazwa: dana.nazwa_pl,
+      // Ten sam zapis liczb co karta werdyktu (pl-PL, 4 cyfry znaczące) — nie surowy zapis JS.
+      wartosc: dana.wartosc ? wielkoscPl(dana.wartosc) : null,
+      powod: dana.powod_pl,
+    })),
+    niepelny: d.kompletnosc_dowodu === 'NIEPELNY',
+    kroki: (d.slad ?? []).map((krok) => ({
+      klucz: krok.key,
+      tytul: krok.title,
+      wzorLatex: krok.formula_latex,
+      podstawienieLatex: krok.substitution_latex ?? null,
+    })),
+  };
 }

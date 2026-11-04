@@ -363,10 +363,13 @@ class TestHandCalc1F:
 # ---------------------------------------------------------------------------
 
 
-def _build_isolated_cable_network(b0_siemens_per_km: float):
-    """Sieć SN CAŁKOWICIE izolowana: TR Dyn11 z lv_neutral='isolated' (blokuje
-    HV deltą i LV izolacją), jeden kabel blv→b2 z B0 jawnym. Jedyna droga
-    zerowa: pojemność doziemna kabla."""
+def _build_isolated_cable_network(
+    b0_siemens_per_km: float | None,
+    lv_neutral: GroundingConfig | None = None,
+):
+    """Sieć SN za TR Dyn11 (trójkąt HV blokuje Z0 źródła), jeden kabel blv→b2 z B0 jawnym.
+    ``lv_neutral`` — punkt neutralny uzwojenia SN (domyślnie izolowany: jedyna droga zerowa to
+    pojemność doziemna kabla)."""
     ulv_kv = 15.0
     r0_per_km, x0_per_km, length_km = 0.6, 0.3, 10.0
     enm = EnergyNetworkModel(
@@ -400,7 +403,7 @@ def _build_isolated_cable_network(b0_siemens_per_km: float):
                 uk_percent=_UK_PCT,
                 pk_kw=_PK_KW,
                 vector_group="Dyn11",
-                lv_neutral=GroundingConfig(type="isolated"),
+                lv_neutral=lv_neutral or GroundingConfig(type="isolated"),
             )
         ],
         branches=[
@@ -446,77 +449,196 @@ class TestPustaSiecZ0:
             assert len(wejscie.graph.nodes) == 0
 
 
+def _k_reczny(z1: complex, z0: complex) -> float:
+    """Wyrocznia współczynnika zwarcia doziemnego (IEC 60071-1) niezależna od kodu programu:
+    napięcia faz zdrowych przy zwarciu 1F metalicznym fazy a, Z_2 = Z_1 —
+    U_b/U_f = |a² − (Z0 − Z1)/(2·Z1 + Z0)|, U_c/U_f = |a − (Z0 − Z1)/(2·Z1 + Z0)|."""
+    a = complex(-0.5, math.sqrt(3.0) / 2.0)
+    m = (z0 - z1) / (2.0 * z1 + z0)
+    return max(abs(a * a - m), abs(a - m))
+
+
+#: Punkt neutralny uzwojenia SN transformatora Dyn11 × oczekiwane wejście B0 do Y0 zwarć:
+#: rezystor 40 Ω (Z0 ≫ Z1, k ≈ √3 > 1,4) — B0 wchodzi; uziemienie bezpośrednie (Z0 rzędu Z1,
+#: k ≈ 1,26 ≤ 1,4) — B0 nie wchodzi; izolowany — poza zakresem IEC 60909 (rozdz. 1), B0 nie
+#: wchodzi (prąd pojemnościowy liczy doziemienie sieci).
+_PUNKTY_NEUTRALNE = {
+    "rezystor": GroundingConfig(type="resistor_grounded", r_ohm=40.0),
+    "bezposrednie": GroundingConfig(type="directly_grounded"),
+    "izolowany": GroundingConfig(type="isolated"),
+}
+
+
 class TestLineShuntCapacitanceZ0:
-    def test_isolated_network_without_b0_is_singular(self):
-        """Kontrolne: bez B0 (jak przed naprawą) sieć CAŁKOWICIE izolowana ma
-        Y0 osobliwą — brak jakiejkolwiek drogi do ziemi. To potwierdza, że
-        obserwowana naprawa (test niżej) faktycznie WYMAGA bocznika B0."""
-        enm, graph, _, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=0.0)
-        with pytest.raises(OdmowaDanychError, match="nie ma drogi powrotu prądu zerowego"):
-            build_zero_sequence_zbus(enm, graph)
+    """Pojemność doziemna B0 w sieci zerowej zwarć IEC 60909 — warunek pkt 5.2 f) (karta
+    ZEROWA-POJEMNOSCI): B0 wchodzi WYŁĄCZNIE w sieci uziemionej przez małą impedancję
+    o współczynniku zwarcia doziemnego k > 1,4 (k z Z1 i Z0 BEZ pojemności). Dawniej (fala F)
+    B0 wchodziło bezwarunkowo, a sieć izolowana liczyła „zwarcie 1F” z samej pojemności — prąd
+    pojemnościowy nie jest prądem zwarciowym IEC 60909 (rozdz. 1); liczy go doziemienie sieci.
 
-    def test_isolated_network_z0_matches_hand_calc_series_shunt_circuit(self):
-        """Hand-calc niezależny (obwód 2-węzłowy szereg+bocznik, algebra
-        zespolona) porównany BIT-DOKŁADNIE z wynikiem solvera.
+    ILOCZYN: punkt neutralny {rezystor, bezpośrednio, izolowany} × B0 {jest, zero, brak} —
+    wynik Z0 z wyroczni ręcznej obwodu (szereg kabla, bocznik uzwojenia, bocznik B0 tylko przy
+    k > 1,4), krok śladu warunku z k z wyroczni niezależnej, przyczyna braku wyniku."""
 
-        Y0 (pu, węzły {blv,b2}) = [[y_s+y_sh, -y_s], [-y_s, y_s+y_sh]]
-        (symetryczne, bo jedna gałąź, ten sam y_sh na obu końcach — model π).
-        det = y_sh·(2y_s + y_sh);  Z0[b2,b2] = (y_s+y_sh)/det.
-        """
-        b0_per_km = 3.0e-6  # S/km (pole już w S/km — NIE μS/km, patrz nazwa pola)
+    @staticmethod
+    def _z0_reczne_pu(
+        z_base_ohm: float, z0_kabla_ohm: complex, z0_uzwojenia_ohm: complex, b0_s: float
+    ) -> tuple[complex, complex]:
+        """Z0 węzłów (blv, b2) [pu] obwodu: bocznik uzwojenia w blv, szereg kabla blv–b2,
+        bocznik jB0·l/2 na każdym końcu (``b0_s`` = 0 — bez pojemności)."""
+        y_t = 1.0 / (z0_uzwojenia_ohm / z_base_ohm)
+        y_s = 1.0 / (z0_kabla_ohm / z_base_ohm)
+        y_sh = complex(0.0, b0_s * z_base_ohm) / 2.0
+        a, d = y_t + y_s + y_sh, y_s + y_sh
+        det = a * d - y_s * y_s
+        return d / det, a / det
+
+    @pytest.mark.parametrize("b0", [3.0e-6, 0.0, None], ids=["b0", "b0_zero", "b0_brak"])
+    @pytest.mark.parametrize("neutralny", sorted(_PUNKTY_NEUTRALNE))
+    def test_b0_w_y0_wylacznie_przy_k_powyzej_progu(self, neutralny, b0):
+        from enm.mapping import zbuduj_siec_zerowa
+        from network_model.solvers.short_circuit_core import build_zbus
+
+        konfiguracja = _PUNKTY_NEUTRALNE[neutralny]
         enm, graph, b2, ulv_kv, r0_per_km, x0_per_km, length_km = _build_isolated_cable_network(
-            b0_siemens_per_km=b0_per_km
+            b0_siemens_per_km=b0, lv_neutral=konfiguracja
         )
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        siec = zbuduj_siec_zerowa(enm, graph)
+        slad = {k["key"]: k for k in siec.slad}
+        z_base_ohm = (ulv_kv**2) / S_BASE_MVA
+        z0_kabla = complex(r0_per_km, x0_per_km) * length_km
+        if neutralny == "izolowany":
+            assert {p.przyczyna for p in siec.przyczyny.values()} == {"poza_zakresem_iec60909"}
+            assert "z0_line_shunt[c1]" not in slad
+            if b0:
+                (krok,) = (k for key, k in slad.items() if key.startswith("z0_warunek"))
+                assert krok["result"] == {"k_max": None, "pojemnosci_w_y0": False}
+            return
+        assert siec.przyczyny == {}
+        z0_uzwojenia = _hand_zt0_ohm_lv() + 3.0 * (konfiguracja.r_ohm or 0.0)
+        # k z wyroczni niezależnej: Z1 sieci zwarciowej, Z0 obwodu bez pojemności.
+        builder, z1_bus = build_zbus(graph)
+        z0_bez_c = self._z0_reczne_pu(z_base_ohm, z0_kabla, z0_uzwojenia, 0.0)
+        k_max = max(
+            _k_reczny(complex(z1_bus[builder.node_id_to_index[w], builder.node_id_to_index[w]]), z0)
+            for w, z0 in zip(
+                (next(n.id for n in graph.nodes.values() if n.name == "LV"), b2),
+                z0_bez_c,
+                strict=True,
+            )
+        )
+        wchodzi = bool(b0) and k_max > 1.4
+        assert wchodzi is (neutralny == "rezystor" and bool(b0))
+        assert ("z0_line_shunt[c1]" in slad) is wchodzi
+        if b0:
+            (krok,) = (k for key, k in slad.items() if key.startswith("z0_warunek"))
+            assert krok["result"]["k_max"] == pytest.approx(k_max, abs=1e-6)
+            assert krok["result"]["pojemnosci_w_y0"] is wchodzi
+            assert "5.2 f)" in krok["notes"] and "1,4" in krok["notes"]
+        else:
+            assert not any(key.startswith("z0_warunek") for key in slad)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=graph,
             fault_node_id=b2,
             c_factor=1.1,
             tk_s=1.0,
-            z0_bus=z0_bus,
+            z0_bus=siec.z0_bus,
             czas_tb=czas_tb_roboczy(),
         )
+        z0_b2_pu = self._z0_reczne_pu(
+            z_base_ohm, z0_kabla, z0_uzwojenia, (b0 or 0.0) * length_km if wchodzi else 0.0
+        )[1]
+        assert result.z0_ohm == pytest.approx(z0_b2_pu * z_base_ohm, rel=1e-9)
 
-        z_base_ohm = (ulv_kv**2) / S_BASE_MVA
-        z0_cable_ohm = complex(r0_per_km, x0_per_km) * length_km
-        y_s_pu = 1.0 / (z0_cable_ohm / z_base_ohm)
-        b0_total_s = b0_per_km * length_km
-        y_sh_pu = complex(0.0, b0_total_s * z_base_ohm) / 2.0
-        det = y_sh_pu * (2.0 * y_s_pu + y_sh_pu)
-        z0_b2_pu_hand = (y_s_pu + y_sh_pu) / det
-        z0_b2_ohm_hand = z0_b2_pu_hand * z_base_ohm
+    def test_b0_ujemne_to_odmowa_nazwana(self):
+        from enm.mapping import zbuduj_siec_zerowa
 
-        assert result.z0_ohm == pytest.approx(z0_b2_ohm_hand, rel=1e-9)
-        # Fizyka: sieć izolowana → Z0 zdominowane REAKTANCJĄ POJEMNOŚCIOWĄ
-        # (część urojona ujemna, rząd wielkości 1/B0_total), NIE impedancją
-        # szeregową kabla (Z0_cable = 6+j3 Ω, o 4 rzędy wielkości mniejsza).
-        assert result.z0_ohm.imag < 0.0
-        assert abs(result.z0_ohm.imag) == pytest.approx(1.0 / b0_total_s, rel=0.05)
-        # I''k1 fizycznie MAŁY (prąd pojemnościowy, nie zwarciowy) — rząd A, nie kA.
-        assert result.ikss_a < 10.0
-
-    def test_missing_b0_leaves_z0_unchanged_zero_fabrication(self):
-        """Zero fabrykacji: gdy B0 NIE jest podane na gałęzi, bocznik jest
-        pomijany (Y0 niezmieniona) — kod NIE podstawia domyślnej pojemności."""
-        b0_per_km = 3.0e-6
-        enm_with, graph_with, b2_with, *_ = _build_isolated_cable_network(
-            b0_siemens_per_km=b0_per_km
+        enm, graph, *_ = _build_isolated_cable_network(
+            b0_siemens_per_km=-1.0e-6, lv_neutral=_PUNKTY_NEUTRALNE["rezystor"]
         )
-        z0_with = build_zero_sequence_zbus(enm_with, graph_with)
-        result_with = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph_with,
-            fault_node_id=b2_with,
-            c_factor=1.1,
-            tk_s=1.0,
-            z0_bus=z0_with,
-            czas_tb=czas_tb_roboczy(),
+        with pytest.raises(OdmowaDanychError, match="B′0 .* jest ujemna"):
+            zbuduj_siec_zerowa(enm, graph)
+
+    @pytest.mark.parametrize("b0", [1.0e-4, 0.0, None], ids=["b0", "b0_zero", "b0_brak"])
+    def test_siec_nn_izolowana_pojemnosc_klasyfikuje_droge_zerowa(self, b0):
+        """Poza siecią SN (tu sieć nN IT za TR Dyn11 z punktem neutralnym izolowanym) przyczynę
+        braku wyniku zerowego wyznacza klasyfikacja boczników Y0, nie sposób pracy punktu
+        neutralnego sekcji SN: pojemność doziemna odcinka jest fizyczną drogą prądu zerowego
+        (doziemienie pojemnościowe — poza zakresem IEC 60909), jej brak (B′0 = 0 albo
+        nieznane, bez wartości roboczej w nN) — brak drogi. W obu przypadkach B0 nie wchodzi
+        do macierzy Y0 (sieć bez bocznika rezystancyjnego), a blok domyka kotwica."""
+        from enm.mapping import zbuduj_siec_zerowa
+
+        enm = EnergyNetworkModel(
+            header=ENMHeader(name="nN-IT"),
+            buses=[
+                Bus(ref_id="bsn", name="SN", voltage_kv=15.0),
+                Bus(ref_id="bnn", name="nN", voltage_kv=0.4),
+                Bus(ref_id="bnn2", name="nN odbiór", voltage_kv=0.4),
+            ],
+            sources=[
+                Source(
+                    ref_id="src",
+                    name="Sieć SN",
+                    bus_ref="bsn",
+                    model="thevenin",
+                    r_ohm=0.2,
+                    x_ohm=2.0,
+                    r0_ohm=0.4,
+                    x0_ohm=4.0,
+                )
+            ],
+            transformers=[
+                Transformer(
+                    ref_id="tr_nn",
+                    name="TR SN/nN",
+                    hv_bus_ref="bsn",
+                    lv_bus_ref="bnn",
+                    sn_mva=0.63,
+                    uhv_kv=15.0,
+                    ulv_kv=0.4,
+                    uk_percent=6.0,
+                    pk_kw=6.5,
+                    vector_group="Dyn11",
+                    lv_neutral=GroundingConfig(type="isolated"),
+                )
+            ],
+            branches=[
+                Cable(
+                    ref_id="c_nn",
+                    name="Kabel nN",
+                    from_bus_ref="bnn",
+                    to_bus_ref="bnn2",
+                    length_km=0.3,
+                    r_ohm_per_km=0.206,
+                    x_ohm_per_km=0.08,
+                    r0_ohm_per_km=0.824,
+                    x0_ohm_per_km=0.32,
+                    b0_siemens_per_km=b0,
+                )
+            ],
         )
-        # Referencja z Dyn11+izolowany, ale ZE ŹRÓDŁEM Z0 osiągalnym gdzie indziej
-        # nie istnieje w tej sieci — więc bez B0 macierz jest osobliwa (patrz test
-        # wyżej). Tu potwierdzamy tylko, że wynik Z B0 różni się od Z0_cable samego
-        # (czyli bocznik REALNIE wpływa na wynik, nie jest martwym kodem).
-        z0_cable_only_ohm = complex(0.6, 0.3) * 10.0
-        assert result_with.z0_ohm != pytest.approx(z0_cable_only_ohm)
+        graph = map_enm_to_network_graph(enm)
+        siec = zbuduj_siec_zerowa(enm, graph)
+        wezly_nn = [n.id for n in graph.nodes.values() if n.name in ("nN", "nN odbiór")]
+        oczekiwana = "poza_zakresem_iec60909" if b0 else "brak_drogi"
+        assert {siec.przyczyny[w].przyczyna for w in wezly_nn} == {oczekiwana}
+        assert "z0_line_shunt[c_nn]" not in {k["key"] for k in siec.slad}
+        (kotwica,) = (k for k in siec.slad if k["key"] == "z0_numerical_reference")
+        assert {"nN", "nN odbiór"} <= set(kotwica["inputs"]["wezly"])
+
+    def test_siec_izolowana_bez_b0_nie_jest_odmowa_lecz_przyczyna(self):
+        """Sieć SN izolowana bez pojemności w modelu: macierz domyka kotwica numeryczna, węzły
+        niosą przyczynę „poza zakresem IEC 60909” (sposób pracy punktu neutralnego sieci SN) —
+        nie wyjątek osobliwej macierzy."""
+        from enm.mapping import zbuduj_siec_zerowa
+
+        enm, graph, b2, *_ = _build_isolated_cable_network(b0_siemens_per_km=None)
+        siec = zbuduj_siec_zerowa(enm, graph)
+        assert siec.przyczyny[b2].przyczyna == "poza_zakresem_iec60909"
+        (kotwica,) = (k for k in siec.slad if k["key"] == "z0_numerical_reference")
+        assert "B2" in kotwica["inputs"]["wezly"]
+        assert not any(k["key"].startswith("z0_warunek") for k in siec.slad)
 
 
 # ---------------------------------------------------------------------------

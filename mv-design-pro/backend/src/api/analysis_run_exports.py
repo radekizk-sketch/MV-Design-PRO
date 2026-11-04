@@ -33,7 +33,7 @@ from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
 from network_model.catalog.wartosci_robocze import zdanie_parametru_maszyny_pl
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -802,7 +802,58 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     ograniczenia = row_data.get("reporting_limitations_pl")
     if isinstance(ograniczenia, list):
         linie = (*linie, *(f"Ograniczenie wyniku: {zdanie}" for zdanie in ograniczenia if zdanie))
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): doziemienie sieci SN wg
+    # sposobu pracy punktu neutralnego — prąd i jego charakter, składowe, napięcia faz zdrowych,
+    # podstawa, zastrzeżenia, brak i dane przyjęte (werdykt wyjaśnialny); wiersz bez doziemienia
+    # sieci (punkt poza SN, zwarcie wielofazowe) — raport bez zmian.
+    doziemienie = row_data.get("doziemienie_sieci")
+    if isinstance(doziemienie, dict):
+        linie = (*linie, *_linie_doziemienia(doziemienie))
     return linie
+
+
+def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
+    """Linie raportu doziemienia sieci SN (``enm.doziemienie_sieci``) — deterministyczne."""
+    linie = [
+        f"Doziemienie sieci ({doziemienie.get('tryb_pl')}): "
+        f"{doziemienie.get('charakter_pl')} = {_fmt_liczba(doziemienie.get('prad_a'))} A"
+        f" | I_C={_fmt_liczba(doziemienie.get('i_c_a'))} A"
+        f" | I_L={_fmt_liczba(doziemienie.get('i_l_a'))} A"
+        f" | I_w={_fmt_liczba(doziemienie.get('i_w_a'))} A"
+        + (
+            f" | v={_fmt_liczba(doziemienie.get('rozstrojenie'))}"
+            if doziemienie.get("rozstrojenie") is not None
+            else ""
+        ),
+        f"Napięcia przy doziemieniu: U0={_fmt_liczba(doziemienie.get('u0_v'))} V"
+        f" | U_b={_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
+        f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
+        f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
+        f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
+        # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
+        *(
+            f"Ślad doziemienia — {krok.get('title')}: {krok.get('substitution')}"
+            for krok in doziemienie.get("slad") or ()
+            if isinstance(krok, dict) and krok.get("substitution")
+        ),
+    ]
+    if doziemienie.get("brak_pl"):
+        linie.append(f"Brak wyniku doziemienia: {doziemienie['brak_pl']}")
+    linie.extend(
+        f"Zastrzeżenie doziemienia: {zdanie}"
+        for zdanie in doziemienie.get("zastrzezenia_pl") or ()
+        if zdanie
+    )
+    if doziemienie.get("podwojne_doziemienie_pl"):
+        linie.append(f"Zastrzeżenie doziemienia: {doziemienie['podwojne_doziemienie_pl']}")
+    dane = [
+        d["nazwa_pl"].strip()
+        for d in doziemienie.get("dane_przyjete") or ()
+        if isinstance(d, dict) and jest_nazwa(d.get("nazwa_pl"))
+    ]
+    if dane:
+        linie.append("Dane przyjęte doziemienia (wartości robocze): " + "; ".join(dane))
+    return tuple(linie)
 
 
 def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | None:

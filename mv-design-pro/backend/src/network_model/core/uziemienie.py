@@ -101,9 +101,11 @@ ETYKIETA_PL_WARIANTU_UZIEMIENIA: dict[str, str] = {
 
 #: Wariant sekcji → typ punktu neutralnego słownika ``TypPunktuNeutralnego`` — JEDNO
 #: odwzorowanie dla konsumentów czterowartościowego słownika (koordynacja izolacji,
-#: współczynnik F_v przekładników, droga doziemna pola, zabezpieczenia DER). Z.14 niesie
-#: stały prąd czynny rezystora, więc jest siecią uziemioną przez rezystor; dławik z AWSC
-#: w spoczynku jest siecią skompensowaną.
+#: współczynnik F_v przekładników, droga doziemna pola, zabezpieczenia DER, tryb doziemienia
+#: ``tryb_doziemienia_wariantu``). Z.14 niesie stały prąd czynny rezystora, więc jest siecią
+#: uziemioną przez rezystor; dławik z AWSC jest siecią skompensowaną w OBU stanach automatyki
+#: (rezystor wymuszający to składowa czynna I_w prądu resztkowego, nie uziemienie przez małą
+#: impedancję — wariant punktu nie zależy od stanu łącznika AWSC).
 TYP_PUNKTU_NEUTRALNEGO_WARIANTU: dict[str, TypPunktuNeutralnego] = {
     "izolowany": "isolated",
     "dlawik": "petersen_coil",
@@ -112,6 +114,44 @@ TYP_PUNKTU_NEUTRALNEGO_WARIANTU: dict[str, TypPunktuNeutralnego] = {
     "dlawik_rezystor": "resistor_grounded",
     "bezposrednie": "directly_grounded",
 }
+
+#: Sposób pracy punktu neutralnego przy doziemieniu jednofazowym — fizyka prądu doziemnego
+#: (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru 2026-10-29; solver
+#: ``network_model.solvers.doziemienie_sn``): ``izolowany`` — prąd pojemnościowy I_C;
+#: ``kompensowany`` — prąd resztkowy √(I_w² + (I_C − I_L)²); ``rezystor`` — |I_N + j·I_C|
+#: (Z.15 i Z.14); ``bezposrednie`` — prąd zwarciowy IEC 60909-0 przez Z0.
+TrybDoziemienia = Literal["izolowany", "kompensowany", "rezystor", "bezposrednie"]
+
+TRYBY_DOZIEMIENIA: tuple[str, ...] = get_args(TrybDoziemienia)
+
+#: Typ punktu neutralnego → tryb doziemienia: JEDNO odwzorowanie dla zespołu uziemiającego
+#: (przez ``TYP_PUNKTU_NEUTRALNEGO_WARIANTU``) i punktu neutralnego uzwojenia transformatora
+#: (``GroundingConfig.type``).
+TRYB_DOZIEMIENIA_TYPU: dict[str, TrybDoziemienia] = {
+    "isolated": "izolowany",
+    "petersen_coil": "kompensowany",
+    "resistor_grounded": "rezystor",
+    "directly_grounded": "bezposrednie",
+}
+
+#: Tryby, w których prąd doziemny jest prądem zwarciowym w zakresie IEC 60909-0 (sieć
+#: uziemiona przez małą impedancję; IEC 60909-0:2016 rozdz. 1 wyłącza doziemienia w sieciach
+#: izolowanych i skompensowanych). JEDYNY predykat „bocznik rezystancyjny" sieci składowej
+#: zerowej (``enm.mapping``) i punktu uziemienia (``PunktUziemienia.bocznik_rezystancyjny``).
+TRYBY_IEC60909: frozenset[str] = frozenset({"rezystor", "bezposrednie"})
+
+
+def tryb_doziemienia_typu(typ: str | None) -> TrybDoziemienia:
+    """Tryb doziemienia typu punktu neutralnego; ``None`` = uzwojenie z literą N/n bez
+    konfiguracji — uziemione bezpośrednio (ta sama reguła co model składowej zerowej
+    transformatora, ``enm.zero_sequence_transformer``)."""
+    return TRYB_DOZIEMIENIA_TYPU[typ or "directly_grounded"]
+
+
+def tryb_doziemienia_wariantu(wariant: str) -> TrybDoziemienia:
+    """Tryb doziemienia wariantu uziemienia sekcji (przez typ punktu neutralnego)."""
+    return TRYB_DOZIEMIENIA_TYPU[TYP_PUNKTU_NEUTRALNEGO_WARIANTU[wariant]]
+
 
 #: Stan automatyki wymuszania składowej czynnej (AWSC, Z.13) w przypadku obliczeniowym:
 #: ``spoczynek`` — łącznik rezystora wymuszającego otwarty (stan normalny), ``zalaczony``

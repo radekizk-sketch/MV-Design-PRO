@@ -11,7 +11,8 @@ from application.analyses.v126_gotowosc import (
     odpowiedz_gotowosci,
     uzupelnij_parametry_z_modelu,
 )
-from application.analyses.v126_katalog import katalog_do_dict
+from application.analyses.v126_katalog import POZIOMY_IZOLACJI_IEC60071, katalog_do_dict
+from application.analyses.v126_prad_uziomowy import doloz_prad_uziomowy
 from application.analyses.v126_wzory import wzbogac_kroki_latex
 from application.execution import wykonawca_biegow
 from domain.execution import StanBiegu, stan_biegu
@@ -24,6 +25,7 @@ from enm.slownik_komunikatow import opis_bledu_walidacji
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from network_model.catalog.wartosci_robocze import PROPOZYCJE_NIEZAWODNOSCI
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ValidationError
 from solver_input.v126_contracts import (
@@ -221,6 +223,27 @@ def _waliduj_sekcje(
         ) from exc
 
 
+def wejscie_solvera_v126(
+    enm: EnergyNetworkModel, analysis_type: V126AnalysisType, parametry: dict[str, Any]
+) -> V126AcademicInput:
+    """JEDNA składanka wejścia solvera V12.6 z modelu i parametrów projektanta — bieg z API
+    i biegi scen (skrypt fixtur harnessu, testy uczciwości) idą tą samą drogą: most modelu
+    (`build_v126_input_from_enm`), dane projektanta (`_with_parameter_payloads`) i prąd
+    zwarcia doziemnego stacji z modelu (EN 50522 tab. 1, `doloz_prad_uziomowy` — ta sama
+    funkcja co gotowość). Druga, ręczna składanka gubiła prąd z modelu (bieg uziomu sceny
+    meldował „nie wskazano szyny stacji”, choć szyna była wskazana)."""
+    return doloz_prad_uziomowy(
+        _with_parameter_payloads(
+            build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
+            parametry,
+            enm,
+        ),
+        enm,
+        analysis_type,
+        parametry,
+    )
+
+
 def _with_parameter_payloads(
     model: V126AcademicInput, parameters: dict[str, Any], enm: EnergyNetworkModel
 ) -> V126AcademicInput:
@@ -317,11 +340,7 @@ def run_v126_analysis(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=gotowosc.komunikat_odmowy(),
         )
-    model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
-        parametry,
-        enm,
-    )
+    model = wejscie_solvera_v126(enm, analysis_type, parametry)
     # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
     # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,
     # wyliczone TĄ SAMĄ oceną karty co budowa wejścia (`pominiete_zrodla_v126`,
@@ -528,26 +547,24 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             "tdd_ieee519_default_percent": 5.0,
             "individual_percent": {"5": 6.0, "7": 5.0, "11": 3.5, "13": 3.0},
         },
-        # Tabela IEC 60071-1 zduplikowana z solverem FROZEN (`_insulation`,
-        # `network_model/solvers/v126_academic.py:1653-1658` — B-01, solver
-        # nie eksportuje jej, więc nie ma jak wskazać tu jednego źródła).
-        # STRAŻNIK PARYTETU: `tests/test_v126_bil_parytet.py` uruchamia
-        # `_insulation` przez publiczne wejście solvera (`V126AcademicSolver
-        # .run(INSULATION_COORDINATION, …)`) i porównuje `bil_kv`/
-        # `short_duration_50hz_kv` każdego wiersza z tabelą poniżej — zmiana w
-        # JEDNYM miejscu bez drugiego daje czerwień (karta W3-E, KLASA §4:
-        # deklaracja bez testu = fałszywa pewność).
+        # Tabela IEC 60071-1 — JEDNO źródło: stała solvera `POZIOMY_IZOLACJI_IEC60071`
+        # (re-eksport karty analiz); dawna kopia literałów z testem parytetu skasowana.
         "insulation-levels": [
-            {"u_m_kv": 12.0, "bil_kv": 75.0, "short_duration_50hz_kv": 28.0},
-            {"u_m_kv": 17.5, "bil_kv": 95.0, "short_duration_50hz_kv": 38.0},
-            {"u_m_kv": 24.0, "bil_kv": 125.0, "short_duration_50hz_kv": 50.0},
-            {"u_m_kv": 36.0, "bil_kv": 170.0, "short_duration_50hz_kv": 70.0},
+            {"u_m_kv": u_m, "bil_kv": bil, "short_duration_50hz_kv": w}
+            for u_m, bil, w in POZIOMY_IZOLACJI_IEC60071
         ],
+        # Wartości robocze niezawodności — JEDNO źródło: rejestr `PROPOZYCJE_NIEZAWODNOSCI`
+        # (most ENM → V12.6 czyta ten sam rejestr); dawna kopia literałów z wierszem
+        # transformatora, którego most nie czytał, skasowana.
         "reliability-defaults": [
-            {"element": "linia_napowietrzna_sn", "lambda_per_km_year": 0.08, "mttr_h": 3.5},
-            {"element": "kabel_sn", "lambda_per_km_year": 0.015, "mttr_h": 12.0},
-            {"element": "transformator_sn_nn", "lambda_per_year": 0.008, "mttr_h": 48.0},
-            {"element": "pole_sn", "lambda_per_year": 0.015, "mttr_h": 4.0},
+            {
+                "element": p.element,
+                ("lambda_per_km_year" if p.na_km else "lambda_per_year"): (
+                    p.intensywnosc_uszkodzen
+                ),
+                "mttr_h": p.czas_odnowy_h,
+            }
+            for p in PROPOZYCJE_NIEZAWODNOSCI.values()
         ],
         "converter-modes": ["GFL", "GFM_droop", "VSM", "Grid_Supporting"],
     }

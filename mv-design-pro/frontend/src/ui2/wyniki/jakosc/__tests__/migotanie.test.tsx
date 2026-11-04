@@ -123,6 +123,9 @@ describe('SekcjaMigotania — stany', () => {
     const wzory = within(slad).getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThan(0);
     expect(wzory[0].getAttribute('data-latex')).toContain('P_{st');
+    // Identyfikator kroku backendu (`P_st`) nie wraca na ekran jako goły indeks ASCII —
+    // symbol wielkości niesie wzór KaTeX (`ui_math_guard`, karta UX-04/ZU).
+    expect(slad.textContent).not.toContain('(P_st)');
   });
 
   it('przekroczenie migotania → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat" (F-E6.2)', async () => {

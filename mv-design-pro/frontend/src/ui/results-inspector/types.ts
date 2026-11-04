@@ -20,6 +20,7 @@ import type {
 } from '../shared/analysisCaseContext';
 import type { ResultStatus as _ResultStatus } from '../types';
 import { ETYKIETA_PL_PUNKTU_NEUTRALNEGO } from '../../types/uziemienie';
+import type { DanaPrzyjeta } from '../../ui2/wyniki/wzorzec/werdykt';
 
 // =============================================================================
 // Run Header
@@ -321,6 +322,62 @@ export interface ShortCircuitRow {
   reporting_limitations?: string[];
   /** Ograniczenia raportowe po polsku (karta #145, `etykiety_raportowe_pl` backendu). */
   reporting_limitations_pl?: string[];
+  /**
+   * Doziemienie sieci SN wg sposobu pracy punktu neutralnego (karta
+   * UX-04/POLE-ZU-SKLADOWA-ZEROWA, warunek odbioru 2026-10-29; addytywnie, tylko wiersz
+   * zwarcia jednofazowego węzła sieci SN): wynik solvera `doziemienie_sn` — tekst i liczby
+   * backendu, UI ich nie liczy.
+   */
+  doziemienie_sieci?: DoziemienieSieci | null;
+}
+
+/** Krok śladu WHITE BOX solvera doziemienia (wzór, dane, podstawienie, wynik). */
+export interface KrokSladuDoziemienia {
+  key: string;
+  title: string;
+  formula_latex: string;
+  inputs: Record<string, unknown>;
+  /** Proza podstawienia (raport) — nie trafia do KaTeX-a. */
+  substitution: string;
+  /** To samo podstawienie w LaTeX-u (ekran, KaTeX); `null` — wielkość nieoznaczalna. */
+  substitution_latex: string | null;
+  result: Record<string, unknown>;
+}
+
+/**
+ * Doziemienie jednofazowe sieci SN (`network_model.solvers.doziemienie_sn.WynikDoziemienia
+ * .to_dict` + kontekst wiersza z `enm.doziemienie_sieci`). Tryb izolowany — prąd
+ * pojemnościowy I_C; kompensowany — prąd resztkowy; rezystor — prąd rezystancyjno-
+ * pojemnościowy; bezpośredni — prąd zwarciowy IEC 60909 (ten sam co Ik" wiersza).
+ */
+export interface DoziemienieSieci {
+  tryb: 'izolowany' | 'kompensowany' | 'rezystor' | 'bezposrednie';
+  tryb_pl: string;
+  charakter: string;
+  charakter_pl: string;
+  prad_a: number | null;
+  i_c_a: number | null;
+  i_l_a: number | null;
+  i_w_a: number | null;
+  /** v = (I_C − I_L)/I_C; dodatnie — niedokompensowanie. */
+  rozstrojenie: number | null;
+  u_f_v: number;
+  u0_v: number | null;
+  u_faza_b_v: number | null;
+  u_faza_c_v: number | null;
+  /** Współczynnik zwarcia doziemnego k = max(U_b, U_c)/U_f (IEC 60071-1). */
+  wspolczynnik_k: number | null;
+  z_f_ohm: ZQOhm | null;
+  wzor_latex: string;
+  podstawa_pl: string;
+  zastrzezenia_pl: string[];
+  brak_pl: string | null;
+  podwojne_doziemienie_pl: string | null;
+  slad: KrokSladuDoziemienia[];
+  stan_awsc?: 'spoczynek' | 'zalaczony';
+  opis_uziemienia_pl?: string;
+  dane_przyjete?: readonly DanaPrzyjeta[];
+  kompletnosc_dowodu?: 'PELNY' | 'NIEPELNY';
 }
 
 /**

@@ -88,7 +88,7 @@ export const ZWARCIA_STRINGS = {
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
   // Karta OD-14: zwarcie przez impedancję przejścia Z_f zapisane na biegu.
-  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia Z_f',
+  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia $Z_f$',
   zalImpedancjaPrzejsciaUwaga:
     'Zwarcie przez impedancję przejścia — wynik poza zakresem normy IEC 60909, która definiuje prąd zwarcia metalicznego. Nie jest podstawą doboru aparatury, wytrzymałości, nastaw nadprądowych ani dowodu w punkcie przyłączenia.',
 
@@ -184,7 +184,7 @@ export const ZWARCIA_STRINGS = {
 
   // Sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7) — ślad WHITE BOX wyprowadzenia
   // impedancji zastępczej źródeł sieciowych biegu (IEC 60909-0:2016 §6.2.1 eq. 6).
-  zrodlaTytul: 'Źródła sieciowe (Z_Q)',
+  zrodlaTytul: 'Źródła sieciowe ($Z_Q$)',
   zrodlaOpis:
     'Wyprowadzenie impedancji zastępczej źródeł sieciowych zasilających ten bieg '
     + '(IEC 60909-0:2016 §6.2.1 eq. 6) — jeden wiersz na scenariusz źródła. Wartości '
@@ -199,14 +199,14 @@ export const ZWARCIA_STRINGS = {
   zrodlaKolMocPrad: 'S″kQ / I″kQ',
   zrodlaKolC: 'c',
   zrodlaKolRx: 'R/X',
-  zrodlaKolZq: '|Z_Q|',
+  zrodlaKolZq: '$|Z_Q|$',
   zrodlaKolWzor: 'Wzór',
 
   // Sekcja „Pasmo MIN/MAX" (karta W3-G3, aneks D7) — oba scenariusze c_max/c_min
   // JEDNEGO przypadku obok siebie, z proweniencją każdej strony.
   pasmoTytul: 'Pasmo MIN/MAX (IEC 60909)',
   pasmoOpis:
-    'Wielkości zwarciowe przy c_max i c_min tego samego przypadku obok siebie — '
+    'Wielkości zwarciowe przy $c_{\\max}$ i $c_{\\min}$ tego samego przypadku obok siebie — '
     + 'dwa biegi kanoniczne z jednej migawki modelu, zero obliczeń w interfejsie.',
   pasmoKolIkssMax: 'Ik" (max)',
   pasmoKolIkssMin: 'Ik" (min)',

@@ -69,8 +69,8 @@ export const ZRODLO_STRINGS = {
     + 'z danych maksymalnych (założenie niekonserwatywne dla czułości zabezpieczeń).',
   sk3Min: 'Sk″min',
   sk3MinPomoc:
-    'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, c_min). Podaj Sk″min '
-    + 'albo Ik″min — jedno wystarczy.',
+    'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, $c_{\\min}$). Podaj '
+    + '$S_{k,\\min}^{\\prime\\prime}$ albo $I_{k,\\min}^{\\prime\\prime}$ — jedno wystarczy.',
   ik3Min: 'Ik″min',
   ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla Sk″min, gdy OSD podaje prąd, nie moc.',
   rxMin: 'Stosunek R/X (MIN)',

@@ -44,6 +44,7 @@ import {
   type ZaciskZabezpieczenia,
 } from './nastawyApi';
 import { biegiRodziny } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
 type FazaKotwicy = 'szukanie' | 'brak' | 'gotowa' | 'blad';
@@ -449,7 +450,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 />
               </label>
               <label>
-                {T.nastawyParametrKb} <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrKbZrodlo})</span>
+                <TekstZWzorami tekst={T.nastawyParametrKb} /> <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrKbZrodlo})</span>
                 <input
                   type="number"
                   step="0.01"
@@ -459,7 +460,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 />
               </label>
               <label>
-                {T.nastawyParametrKbth} <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrKbthZrodlo})</span>
+                <TekstZWzorami tekst={T.nastawyParametrKbth} /> <span className="mvd-koordynacja-param-zrodlo">({T.nastawyParametrKbthZrodlo})</span>
                 <input
                   type="number"
                   step="0.01"
@@ -535,7 +536,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                     <td>{odpowiedz.wynik.delayed.t_setting_s.toFixed(2)} s</td>
                   </tr>
                   <tr>
-                    <th scope="row">{T.nastawyCzulosc}</th>
+                    <th scope="row"><TekstZWzorami tekst={T.nastawyCzulosc} /></th>
                     <td>{odpowiedz.wynik.delayed.sensitivity_ratio.toFixed(2)}</td>
                   </tr>
                 </tbody>

@@ -593,7 +593,7 @@ def _ocena_spadku_ciagu(
     if ciag.spadek is not None:
         wynik = WynikKryterium(
             wielkosc_pl="spadek napięcia skumulowany wzdłuż ciągu względem napięcia ciągu",
-            symbol_latex=r"\Delta U_{\%,\mathrm{ciąg}}",
+            symbol_latex=r"\Delta U_{\%,\text{ciąg}}",
             wartosc=Wielkosc(wartosc=_r(ciag.spadek.delta_u_pct), jednostka=_J_PROC),
             punkt_krytyczny_pl=f"koniec odcinka {len(odcinki)} (koniec budowanego ciągu)",
             metoda="OBLICZENIE",

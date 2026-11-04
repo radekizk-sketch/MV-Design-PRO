@@ -32,7 +32,6 @@ from enm.assembler import (
     KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA,
     KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO,
     KOD_ZALOZENIE_GALAZ_MAGNESUJACA,
-    KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
     KOD_ZALOZENIE_TR_SZEREGOWY,
     OdmowaWejsciaRozplywu,
     diagnoza_niesymetrii,
@@ -279,13 +278,14 @@ def test_slad_white_box_niesie_wzor_dane_podstawienie_wynik_dla_kazdej_galezi() 
         k for k in run.white_box_trace if k["key"] == "pf_unbalanced_zero_sequence_path[ld1]"
     )
     assert droga["result"] == {"zamkniecie": "src", "rodzaj": "zrodlo"}
+    # Straty gałęzi ze sprzężeniem liczone z pełnej macierzy impedancji fazowych (I^H·Z·I,
+    # z prądem przewodu powrotnego) — dawne założenie „straty z impedancji własnej" zniknęło
+    # razem z uproszczeniem (karta UX-04, odcinek faza N).
     assert [z["kod"] for z in run.raw_result["zalozenia"]] == [
         KOD_ZALOZENIE_TR_SZEREGOWY,
         KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO,
-        KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
     ]
     assert run.raw_result["zalozenia"][1]["elementy"] == ["src"]
-    assert run.raw_result["zalozenia"][2]["elementy"] == ["cab1"]
     kabel = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
     assert "Z_s = \\frac{Z_0 + 2 Z_1}{3}" in kabel["formula_latex"]
     assert kabel["inputs"]["r0_ohm_per_km"] == 0.759 and kabel["inputs"]["length_km"] == 2.0

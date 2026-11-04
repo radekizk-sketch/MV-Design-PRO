@@ -32,7 +32,7 @@ export const MAGISTRALA_STRINGS = {
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',
   dlugosc: 'Długość odcinka',
   napiecie: 'Napięcie ciągu',
-  prad: 'Prąd roboczy odcinka I_B',
+  prad: 'Prąd roboczy odcinka $I_B$',
   pradPomoc:
     'Prąd płynący przez odcinek (z odbiorami dalej w ciągu). Bez niego obciążalność nie zostanie '
     + 'oceniona, a spadek napięcia backend policzy przy prądzie równym obciążalności typu.',

@@ -724,41 +724,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.earth_fault_detection.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.earthing_safety.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.transient_trv.werdykt.mapa",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:SPELNIONY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:ZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui2/wyniki/jakosc/strings.ts:STATUS_WALIDACJI_PL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D38 (MIGRACJA): migracja (plan §8).",
@@ -931,13 +896,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz D75: 75. `spaces/gotowosc/adapters/gotowoscAdapter.ts:275-316` `statusGotowosci` OK/WARN/FAIL (documented \"null→OK\" debt). **ENUM_WEWNETRZNY.**",
    "wiersz_inwentarza": "D75"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/akademickie/EkranAnalizAkademickich.tsx:PanelWerdyktu.wszystkieSpelnione",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D31"
   },
   {
    "sprawdzenie": "3b_frontend_prog",
@@ -1281,55 +1239,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A5 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A5"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._benchmark_validation.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A25"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._earth_fault_detection.relay_support_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A27 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A27"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._earthing.safety_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A23 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A23"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._insulation.verification_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A20 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A20"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._ner_design.thermal.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A25 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A25"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._power_quality.bus_results.compatibility_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A21 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A21"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "network_model.solvers.v126_academic:V126AcademicSolver._transient.trv_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A28 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A28"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",

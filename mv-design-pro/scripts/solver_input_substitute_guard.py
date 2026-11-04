@@ -894,16 +894,14 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # regulacji, punkt pracy P/Q, moc i napiecie znamionowe) maja udokumentowane
     # zalozenie w docstringu `_z_conv_components`. DLUG NAZWANY: zalozenie
     # udokumentowane to nadal zalozenie — do zamiany na meldunek braku.
-    # Dwa wpisy `A:or:item.*` to koordynacja izolacji: napiecie obnizone i TOV
-    # podstawiane z krotnosci MCOV, gdy karta katalogowa ogranicznika nie istnieje
-    # (`mcov * 2.8`). To pozycja z inwentarza stalych — jedyna z dziewieciu dlugow
-    # karty, ktora ta bramka w ogole WIDZI, bo ma forme zapasowa; osiem pozostalych
-    # to nagie stale w dzialaniu (granica nr 1).
+    # Dwa wpisy `A:or:item.*` koordynacji izolacji (napiecie obnizone i TOV podstawiane
+    # z krotnosci MCOV bez karty ogranicznika, `mcov * 2.8`) ZDJETE karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-29): U_TOV liczy sie z k trybu punktu
+    # neutralnego, a dobor wstepny bez karty jest dana przyjeta ESTIMATED ze skrajnych
+    # stosunkow katalogu ogranicznikow (`_wiersz_izolacji`, wpis w `dane_przyjete`).
     "network_model/solvers/v126_academic.py": {
         "A:or:converter.p_mw": 1,
         "A:or:converter.q_mvar": 1,
-        "A:or:item.arrester_residual_10ka_kv": 1,
-        "A:or:item.predicted_tov_kv": 1,
         "B:ifexp:converter.control_delay_ms": 2,
         "B:ifexp:converter.filter_r_pu": 2,
         "B:ifexp:converter.rated_mva": 3,

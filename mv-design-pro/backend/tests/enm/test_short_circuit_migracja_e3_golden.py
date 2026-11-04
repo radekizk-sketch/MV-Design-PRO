@@ -416,16 +416,25 @@ def test_golden_sc1f_bez_skladowej_zerowej_jest_jawna_odmowa() -> None:
 
     Kanon zasady nr 4: brak R′0/X′0 kabla SN nie blokuje biegu — kabel dostaje wartość roboczą
     (R′0 = 3·R′1, X′0 = 3·X′1, ``enm.skladowa_zerowa_galezi``), więc ``create_run`` przyjmuje
-    bieg (dawniej odrzucał go W001). Sieć SN bez zespołu uziemiającego nie ma jednak drogi prądu
-    zerowego (równoważnik SN nie opisuje Z0 — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3):
-    wiersz bez prądu, z nazwaną przyczyną ``brak_drogi`` — zero fabrykacji liczby."""
+    bieg (dawniej odrzucał go W001). Sieć SN bez zespołu uziemiającego ma punkt neutralny
+    izolowany (równoważnik SN nie opisuje Z0 — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3):
+    prąd doziemienia jest prądem pojemnościowym sieci, poza zakresem IEC 60909-0 (warunek odbioru
+    właściciela 2026-10-29, §3.17 — dawniej przyczyna ``brak_drogi`` z modelu Z1+Z2+Z0). Wiersz
+    bez prądu zwarciowego, z nazwaną przyczyną ``poza_zakresem_iec60909`` i doziemieniem trybu
+    izolowanego; kabel bez B′1 nie daje podstawy B′0, więc I_C jest brakiem nazwanym z elementem
+    — zero fabrykacji liczby."""
     run = _bieg("golden-1f-bez-z0", _build_golden_enm_bez_z0("Golden 1F bez Z0"), fault_type="1F")
     assert run.status == "FINISHED", run.error_message
     wiersz = _wiersz(run)
     assert wiersz["ikss_a"] is None
     brak = wiersz["brak_wyniku_zerowego"]
-    assert brak["przyczyna"] == "brak_drogi"
-    assert "zwarcie doziemne nie płynie" in brak["wyjasnienie"]["zdanie_pl"]
+    assert brak["przyczyna"] == "poza_zakresem_iec60909"
+    assert brak["status"] == "NIE_DOTYCZY"
+    assert "punktem neutralnym izolowanym" in brak["wyjasnienie"]["zdanie_pl"]
+    doziemienie = wiersz["doziemienie_sieci"]
+    assert doziemienie["tryb"] == "izolowany"
+    assert doziemienie["prad_a"] is None and doziemienie["i_c_a"] is None
+    assert "C_SN" in doziemienie["brak_pl"]
 
 
 def test_golden_3f_wieksze_niz_2f() -> None:

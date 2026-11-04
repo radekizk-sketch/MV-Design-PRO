@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
 import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
 import { REJESTR_MASZYN } from './rejestrMaszynFixture';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -469,13 +470,14 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       expect(sekcja).toHaveTextContent('Puste pole: dana tabliczki elementu 6.');
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 0,85 (założenie inżynierskie).');
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 1 (założenie inżynierskie).');
-      expect(sekcja).toHaveTextContent('Liczba par biegunów p');
+      // Symbol z `symbol_latex` rejestru składa KaTeX (`ui_math_guard`) — napis źródłowy etykiety.
+      expect(tekstZrodlowy(sekcja)).toContain('Liczba par biegunów $p$');
       // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
       expect(sekcja).toHaveTextContent(
         'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
           + 'znamionowej P_rM',
       );
-      expect(sekcja).toHaveTextContent('Moc znamionowa (mechaniczna) jednej maszyny P_rM [MW]');
+      expect(tekstZrodlowy(sekcja)).toContain('Moc znamionowa (mechaniczna) jednej maszyny $P_{rM}$ [MW]');
       // Bez zmiany wartości maszyny nic do zapisu.
       expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
     });
@@ -488,6 +490,23 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
         'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
           + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
       );
+    });
+
+    it.each([
+      // Iloczyn: {symbol z indeksem, symbol grecki z indeksem} × {jednostka tekstowa, jednostka
+      // LaTeX z symbolami bazy p.u.} — etykieta z pól `*_latex` rejestru, kontrolka powiązana.
+      ['synchronous', 'xd_subtransient_pu',
+        "Reaktancja podprzejściowa nasycona $x''_{d}$ [$\\mathrm{p.u.}\\ (S_{rG},\\ U_{rG})$]"],
+      ['synchronous', 'sn_mva', 'Moc pozorna znamionowa jednej maszyny $S_{rG}$ [MVA]'],
+      ['fw_dfig', 'efficiency', 'Sprawność znamionowa $\\eta_r$'],
+    ] as const)('%s / %s → etykieta KaTeX z rejestru, bez gołego indeksu ASCII', async (rodzaj, parametr, oczekiwana) => {
+      snapshotState.snapshot = { generators: [generator(rodzaj)] };
+      render(<KreatorEdycjiParametrow />);
+      const pole = (await screen.findByTestId(`${M}-${parametr}`)) as HTMLInputElement;
+      const etykieta = pole.labels?.[0];
+      expect(etykieta).toBeDefined();
+      expect(tekstZrodlowy(etykieta!)).toBe(oczekiwana);
+      expect(etykieta!.textContent).not.toMatch(/[A-Za-zη]_[A-Za-z]/);
     });
 
     it('nowa wartość → lista overrides w kolejności rejestru; niezmieniona zachowuje uzasadnienie', async () => {

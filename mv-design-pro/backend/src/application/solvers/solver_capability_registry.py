@@ -350,7 +350,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_bil_parytet.py::test_bil_solvera_rowny_bil_katalogu",
+        reference_test=(
+            "test_v126_izolacja_tryby_punktu_neutralnego.py::test_wiersz_izolacji_z_wyroczni"
+        ),
         applicability="IEC 60071/60099: BIL, MCOV, TOV i margines ogranicznika.",
     ),
     "EARTH_FAULT_DETECTION": SolverCapability(

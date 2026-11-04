@@ -410,7 +410,7 @@ export function DoborToruSn({
           {pole ? (
             <KreatorSiatka kolumny={2}>
               <RzadWartosci etykieta={T.doborPropPole} wartosc={`${pole.name}`} />
-              <RzadWartosci etykieta="Prąd znamionowy In" wartosc={`${pole.in_a} A`} />
+              <RzadWartosci etykieta="Prąd znamionowy $I_n$" wartosc={`${pole.in_a} A`} />
               <RzadWartosci
                 etykieta={T.doborProgPole}
                 wartosc={

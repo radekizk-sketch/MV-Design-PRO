@@ -477,26 +477,56 @@ def test_prad_pojemnosciowy_tylko_gwiazdy_uziemionej(
     assert "shunt_capacitors_contributing" not in odniesienie
 
 
-def test_prad_pojemnosciowy_bateria_jedynym_zrodlem_c0_gotowosc_i_solver_zgodne() -> None:
-    """Kable bez B0, bateria w gwieździe uziemionej: gotowość przepuszcza bieg (ten sam
-    predykat co suma C0 solvera), solver liczy I_C baterii i nazywa kable pominięte."""
+@pytest.mark.parametrize("b1_kabla", [None, 1e-4], ids=["kabel_bez_b0_i_b1", "b0_robocze_z_b1"])
+@pytest.mark.parametrize("uklad", ["GWIAZDA_UZIEMIONA", "PODWOJNA_GWIAZDA_IZOLOWANA"])
+def test_prad_pojemnosciowy_bateria_i_kabel_bez_b0_gotowosc_i_solver_zgodne(
+    uklad: str, b1_kabla: float | None
+) -> None:
+    """Gotowość i solver dzielą JEDEN predykat C0 (``galezie.b0`` ↔ suma solvera). Kabel SN bez
+    B′0 i bez podstawy wartości roboczej (B′1 nieznane): pojemność doziemna sieci jest
+    nieoznaczalna także z baterią w gwieździe uziemionej — suma bez kabla zaniżałaby I_C
+    (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, B′0), więc gotowość blokuje, a solver odmawia
+    nazywając kabel. Kabel z B′1: B′0 = B′1 z wartości roboczej (dana przyjęta) — bieg
+    przechodzi, bateria w gwieździe uziemionej dokłada B0, a gwiazda izolowana nie."""
     from application.analyses.v126_gotowosc import ocen_gotowosc_v126
 
-    for uklad, oczekiwana in (("GWIAZDA_UZIEMIONA", True), ("PODWOJNA_GWIAZDA_IZOLOWANA", False)):
-        enm = _siec_kompensowana(_bateria(uklad, "jeden_stopien", None, bus_ref=N1))
-        gotowosc = ocen_gotowosc_v126(enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
-        [warunek] = [w for w in gotowosc.warunki if w.kod == "galezie.b0"]
-        assert warunek.spelniony is oczekiwana, uklad
-        wynik = V126AcademicSolver().run(
-            V126AnalysisType.NEUTRAL_EARTHING_DESIGN, _wejscie_projektu_uziemienia(enm)
-        )["result"]
-        assert ("capacitive_earth_fault_current_a" in wynik) is oczekiwana
-        if oczekiwana:
-            # Wyłącznie gałęzie sieci SN galwanicznie połączonej z punktem neutralnym — kabel nN
-            # (za transformatorem SN/nN, inna sieć galwaniczna) nie wnosi C0 do I_C sieci SN.
-            assert wynik["branches_missing_b0"] == ["C_SN"]
-            [pominiete] = [w for w in gotowosc.warunki if w.kod == "galezie.bez_b0"]
-            assert pominiete.spelniony is False and pominiete.blokujacy is False
+    enm = _siec_kompensowana(_bateria(uklad, "jeden_stopien", None, bus_ref=N1))
+    if b1_kabla is not None:
+        enm = enm.model_copy(
+            update={
+                "branches": [
+                    g.model_copy(update={"b_siemens_per_km": b1_kabla}) if g.ref_id == "C_SN" else g
+                    for g in enm.branches
+                ]
+            }
+        )
+    gotowosc = ocen_gotowosc_v126(enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {})
+    [warunek] = [w for w in gotowosc.warunki if w.kod == "galezie.b0"]
+    oczekiwana = b1_kabla is not None
+    assert warunek.spelniony is oczekiwana, uklad
+    wynik = V126AcademicSolver().run(
+        V126AnalysisType.NEUTRAL_EARTHING_DESIGN, _wejscie_projektu_uziemienia(enm)
+    )["result"]
+    assert ("capacitive_earth_fault_current_a" in wynik) is oczekiwana
+    if not oczekiwana:
+        assert wynik["status"] == "dane niekompletne"
+        assert wynik["branches_missing_b0"] == ["C_SN"]
+        return
+    # Wyłącznie gałęzie sieci SN galwanicznie połączonej z punktem neutralnym — kabel nN
+    # (za transformatorem SN/nN, inna sieć galwaniczna) nie wnosi C0 do I_C sieci SN.
+    assert wynik["branches_missing_b0"] == []
+    assert [g["branch_ref"] for g in wynik["branches_contributing"]] == ["C_SN"]
+    assert [b["shunt_capacitor_ref"] for b in wynik["shunt_capacitors_contributing"]] == (
+        ["BAT"] if uklad == "GWIAZDA_UZIEMIONA" else []
+    )
+    # Kompletność dowodu wyniku — z granicy wyniku API (rekordy oceny, dane przyjęte).
+    from application.v126_artifacts import wynik_v126_dla_powierzchni
+
+    powierzchnia = wynik_v126_dla_powierzchni(
+        "neutral_earthing_design", {"result": wynik}, nazwy={}
+    )["result"]
+    assert powierzchnia["kompletnosc_dowodu"] == "NIEPELNY"
+    assert any(d["nazwa_pl"].startswith("B′0") for d in wynik["dane_przyjete"])
 
 
 # ---------------------------------------------------------------------------

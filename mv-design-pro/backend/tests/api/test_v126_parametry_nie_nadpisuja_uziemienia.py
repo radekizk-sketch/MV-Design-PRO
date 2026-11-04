@@ -55,8 +55,12 @@ def _z_parametrami(enm: EnergyNetworkModel, parametry: dict[str, Any]):
             {"insulation": [{**_WIERSZ_IZOLACJI, "network_neutral": "earthed"}]},
             "„network_neutral” nie jest przyjmowany",
         ),
+        (
+            {"insulation": [{**_WIERSZ_IZOLACJI, "earth_fault_factor": 1.0}]},
+            "„earth_fault_factor” nie jest przyjmowany",
+        ),
     ],
-    ids=["neutral_grounding", "neutral_earthing_type", "network_neutral"],
+    ids=["neutral_grounding", "neutral_earthing_type", "network_neutral", "earth_fault_factor"],
 )
 def test_nadpisanie_uziemienia_to_odmowa_nazwana(
     z_zespolem: bool, parametry: dict[str, Any], fraza: str
@@ -68,14 +72,14 @@ def test_nadpisanie_uziemienia_to_odmowa_nazwana(
 
 @pytest.mark.parametrize(
     ("z_zespolem", "element", "kategoria"),
-    [(True, "rezystor", "earthed"), (True, "dlawik", "isolated"), (False, "-", "isolated")],
+    [(True, "rezystor", "rezystor"), (True, "dlawik", "kompensowany"), (False, "-", "izolowany")],
     ids=["rezystor", "dlawik", "bez-zespolu"],
 )
 def test_wiersz_izolacji_dostaje_kategorie_z_modelu(
     z_zespolem: bool, element: str, kategoria: str
 ) -> None:
-    """IEC 60071: sieć skompensowana i izolowana — kategoria „isolated”, sieć uziemiona przez
-    rezystor — „earthed”; kategoria pochodzi z modelu, nie z parametru biegu."""
+    """Tryb doziemienia sieci (sposób pracy punktu neutralnego) i współczynnik k — z modelu,
+    nie z parametru biegu; każdy tryb osobno (warunek odbioru 2026-10-29)."""
     wejscie = _z_parametrami(_siec(z_zespolem, element), {"insulation": [_WIERSZ_IZOLACJI]})
     assert [w.network_neutral for w in wejscie.insulation] == [kategoria]
 

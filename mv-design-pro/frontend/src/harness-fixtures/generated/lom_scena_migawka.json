@@ -123,7 +123,7 @@
         "51N",
         "67N"
       ],
-      "protection_ref": "relay/25336230b9b6c2221a1154310b0305e6/assignment",
+      "protection_ref": null,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -299,7 +299,7 @@
       "ports": [],
       "primary_devices": [],
       "protection_codes": [],
-      "protection_ref": null,
+      "protection_ref": "relay/c8d2511360c84146c6a505f1fae5fea3/assignment",
       "ref_id": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -946,7 +946,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "18e742c260ddea48c869dc1dff38a479f39ab839218a847a2fd8771d0741cde2",
+    "hash_sha256": "e30ebc5ed7d28cfb3867775e541ca221c86951bc7a06713be9ea573b91947730",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1024,13 +1024,13 @@
   "measurements": [],
   "protection_assignments": [
     {
-      "breaker_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001",
+      "breaker_ref": "sn/3821c319753930c3ae26e6814b072bb7/source_field_device",
       "catalog_namespace": "ZABEZPIECZENIE",
       "catalog_ref": "EM_ETANGO_1250_V0",
       "ct_ref": null,
       "ct_refs_secondary": [],
       "device_type": "custom",
-      "id": "1d204af4-d35a-575e-956d-025e93f7b440",
+      "id": "b485a42e-8b56-522e-851e-38913bf2d655",
       "is_enabled": true,
       "materialized_params": {
         "catalog_item_id": "EM_ETANGO_1250_V0",
@@ -1048,13 +1048,13 @@
           "materialize": true,
           "snapshot_mapping_version": "1.0"
         },
-        "field_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+        "field_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
         "relay_type": "CZESTOTLIWOSCIOWY"
       },
       "name": "Zabezpieczenie od pracy wyspowej pola wytwórcy",
       "overrides": [],
       "parameter_source": "CATALOG",
-      "ref_id": "relay/25336230b9b6c2221a1154310b0305e6/assignment",
+      "ref_id": "relay/c8d2511360c84146c6a505f1fae5fea3/assignment",
       "settings": [
         {
           "curve_type": null,

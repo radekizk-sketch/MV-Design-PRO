@@ -114,7 +114,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Scalenie gałęzi programu (partie 9–13) z gałęzią UI/UX: 169/22 → 167/21 — pomiar `mypy src`
     # na obu rodzicach i na drzewie scalonym; zdjęte dokładnie 2 błędy W5-B
     # (`enm/catalog_completion.py`), zero nowych względem żadnego z rodziców.
-    assert modul.BASELINE_ERRORS == 167
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: 167/21 → 163/21 — pomiar `mypy src` na HEAD
+    # karty i na drzewie commitu; zniknęły dokładnie 4 błędy `arg-type` skasowanego pakietu
+    # dowodowego P19 (opis przy `BASELINE_*` w guardzie), zero nowych.
+    assert modul.BASELINE_ERRORS == 163
     assert modul.BASELINE_FILES == 21
 
 

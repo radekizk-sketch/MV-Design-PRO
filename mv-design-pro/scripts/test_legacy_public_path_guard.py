@@ -2317,6 +2317,8 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
     # Karta UI-02b JEDEN-INSPEKTOR (2026-10-21): +2 sciezki E70 (skasowana szuflada
     # `SldDetailDrawer.tsx` i `detailDrawerData.ts` nie wracaja) do "L"; wzorzec D2
     # `ncRfgModule: 'A'` pilnowany w dwoch nastepcach szuflady zamiast jednego (+1 do "D2").
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA commit 5 (2026-10-30): +28 wpisow "ZU5" — pakiet
+    # dowodu P19 (1 sciezka, 22 definicje backendu, 3 wzorce klienta), pomiar `len` grupy.
     assert liczby == {
         "L": 250,
         "BC": 50,
@@ -2325,8 +2327,9 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
         "H0": 1,
         "135": 4,
         "P0": 49,
+        "ZU5": 28,
     }
-    assert len(guard.PAKIET_L_WPISY) == 250 + 50 + 86 + 9 + 1 + 4 + 49
+    assert len(guard.PAKIET_L_WPISY) == 250 + 50 + 86 + 9 + 1 + 4 + 49 + 28
 
 
 def test_pakiet_l_entries_are_well_formed() -> None:

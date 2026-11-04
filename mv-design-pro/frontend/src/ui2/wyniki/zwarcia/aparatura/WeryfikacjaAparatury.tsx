@@ -37,6 +37,7 @@ import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { TekstZWzorami } from '../../../kreatory/rama';
 import { KartaWerdyktu } from '../../wzorzec';
 import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
 import {
@@ -154,7 +155,7 @@ function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
     >
       <dl className="mvd-apar-czas-pola">
         <div>
-          <dt>{T.czasSuma}</dt>
+          <dt><TekstZWzorami tekst={T.czasSuma} /></dt>
           <dd className="mvd-num">{sekundy(czas.t_clearing_s)}</dd>
         </div>
         <div>
@@ -324,7 +325,9 @@ export function WeryfikacjaAparatury({
           <h3 className="mvd-apar-tytul">
             {T.tytul} — <span className="mvd-apar-punkt">{punktNazwa}</span>
           </h3>
-          <p className="mvd-apar-cel">{T.cel}</p>
+          <p className="mvd-apar-cel">
+            <TekstZWzorami tekst={T.cel} />
+          </p>
         </div>
         <button
           type="button"
