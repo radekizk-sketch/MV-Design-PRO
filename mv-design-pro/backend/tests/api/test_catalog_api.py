@@ -301,3 +301,51 @@ def normalizuj(wartosc: str) -> str:
     from network_model.catalog.types import normalize_ptpiree_key
 
     return normalize_ptpiree_key(wartosc)
+
+
+def test_etango_model_identifier_is_not_relay_rated_current(
+    client: TestClient,
+) -> None:
+    """Numer e2TANGO 400/450/600 nie stanowi pradu znamionowego wejscia IED."""
+    for device_id in ("EM_ETANGO_400_V0", "EM_E2TANGO_450", "EM_E2TANGO_600"):
+        analytical_response = client.get(
+            f"/api/catalog/protection/device-types/{device_id}"
+        )
+        assert analytical_response.status_code == 200
+        analytical = analytical_response.json()
+        assert analytical["params"]["rated_current_a"] is None
+        assert analytical["params"]["model"].startswith("e2TANGO-")
+
+    canonical_response = client.get("/api/catalog/mv-protection-device-types")
+    assert canonical_response.status_code == 200
+    legacy_relays = [
+        entry for entry in canonical_response.json()
+        if entry["id"].startswith("EM_ETANGO_") and entry["id"].endswith("_V0")
+    ]
+    assert len(legacy_relays) == 7
+    for entry in legacy_relays:
+        assert entry["rated_current_a"] is None
+        assert entry["analytical_library_ref"] == entry["id"]
+        assert entry["verification_status"] == "NIEWERYFIKOWANY"
+
+
+def test_protection_export_never_serializes_model_number_as_rated_current(
+    client: TestClient,
+) -> None:
+    """Klasa defektu: kod modelu IED (e2TANGO-400, SIPROTEC 7SJ82 „400”) nie jest prądem.
+
+    Druga ścieżka serializacji tego samego katalogu analitycznego — eksport biblioteki
+    zabezpieczeń (``catalog_governance``) — oraz źródło danych ``devices_v0.json`` nie
+    mogą nieść prądu znamionowego wyprowadzonego z numeru modelu.
+    """
+    response = client.get("/api/catalog/protection/export")
+    assert response.status_code == 200
+    device_types = response.json()["device_types"]
+    assert device_types
+    for entry in device_types:
+        assert entry["params"].get("rated_current_a") is None, entry["id"]
+
+    from application.analyses.protection.catalog.catalog_store import list_devices
+
+    for device in list_devices():
+        assert "rated" not in (device.meta or {}), device.device_id

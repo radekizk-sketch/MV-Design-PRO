@@ -1998,7 +1998,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_400_V0",
-                "rated_current_a": 400.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2016,7 +2015,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_600_V0",
-                "rated_current_a": 600.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2034,7 +2032,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_800_V0",
-                "rated_current_a": 800.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2052,7 +2049,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1000_V0",
-                "rated_current_a": 1000.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2070,7 +2066,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1250_V0",
-                "rated_current_a": 1250.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2088,7 +2083,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1600_V0",
-                "rated_current_a": 1600.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
@@ -2106,7 +2100,6 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_2000_V0",
-                "rated_current_a": 2000.0,
                 "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",

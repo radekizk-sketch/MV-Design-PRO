@@ -27,7 +27,6 @@
       "i_inst_50n_a_min": 0.1,
       "i_inst_50n_a_max": 40.0,
       "meta": {
-        "rated": 100,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "verification_status": "REFERENCYJNY",
@@ -66,7 +65,6 @@
       "i_inst_50n_a_min": 0.1,
       "i_inst_50n_a_max": 40.0,
       "meta": {
-        "rated": 200,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "verification_status": "REFERENCYJNY",
@@ -107,7 +105,6 @@
       "i_inst_50n_a_min": 0.1,
       "i_inst_50n_a_max": 40.0,
       "meta": {
-        "rated": 300,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "verification_status": "REFERENCYJNY",
@@ -147,7 +144,6 @@
       "i_inst_50n_a_min": 0.1,
       "i_inst_50n_a_max": 40.0,
       "meta": {
-        "rated": 500,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "verification_status": "REFERENCYJNY",
@@ -188,7 +184,6 @@
       "i_inst_50n_a_min": 0.1,
       "i_inst_50n_a_max": 40.0,
       "meta": {
-        "rated": 700,
         "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
         "verification_status": "REFERENCYJNY",
@@ -228,7 +223,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 400,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -266,7 +260,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 600,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -304,7 +297,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 800,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -342,7 +334,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 1000,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -380,7 +371,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 1250,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -418,7 +408,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 1600,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -456,7 +445,6 @@
       "i_inst_50n_a_max": 5000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 2000,
         "source_ref": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "source_reference": "Elektrometal e2TANGO series listing (public materials unavailable)",
         "verification_status": "NIEWERYFIKOWANY",
@@ -498,7 +486,6 @@
       "i_inst_50n_a_max": 1800.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 450,
         "source_ref": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "source_reference": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -552,7 +539,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 600,
         "source_ref": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "source_reference": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -617,7 +603,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 800,
         "source_ref": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "source_reference": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -691,7 +676,6 @@
       "i_inst_50n_a_max": 4000.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 1000,
         "source_ref": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "source_reference": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -769,7 +753,6 @@
       "i_inst_50n_a_max": 4800.0,
       "meta": {
         "series": "e2TANGO",
-        "rated": 1200,
         "source_ref": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "source_reference": "Elektrometal e2TANGO series (model 450/600/800/1000/1200) — karta techniczna producenta",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -818,7 +801,6 @@
       "i_inst_50n_a_max": 800.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 200,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -873,7 +855,6 @@
       "i_inst_50n_a_max": 1600.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 400,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -939,7 +920,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 600,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1010,7 +990,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 600,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1067,7 +1046,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 800,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1119,7 +1097,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 800,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1161,7 +1138,6 @@
       "i_inst_50n_a_max": 4800.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 1200,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1227,7 +1203,6 @@
       "i_inst_50n_a_max": 6000.0,
       "meta": {
         "series": "SIPROTEC",
-        "rated": 1500,
         "source_ref": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "source_reference": "Siemens SIPROTEC 5 — instrukcja obslugi (V8.80)",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1270,7 +1245,6 @@
       "i_inst_50n_a_max": 800.0,
       "meta": {
         "series": "Relion 615",
-        "rated": 200,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1325,7 +1299,6 @@
       "i_inst_50n_a_max": 1600.0,
       "meta": {
         "series": "Relion 615",
-        "rated": 400,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1382,7 +1355,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "Relion 620",
-        "rated": 600,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1449,7 +1421,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "Relion 630",
-        "rated": 800,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1520,7 +1491,6 @@
       "i_inst_50n_a_max": 4800.0,
       "meta": {
         "series": "Relion 650",
-        "rated": 1200,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1572,7 +1542,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "Relion 615",
-        "rated": 800,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1614,7 +1583,6 @@
       "i_inst_50n_a_max": 6000.0,
       "meta": {
         "series": "Relion 670",
-        "rated": 1500,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1680,7 +1648,6 @@
       "i_inst_50n_a_max": 6000.0,
       "meta": {
         "series": "Relion 670",
-        "rated": 1500,
         "source_ref": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "source_reference": "ABB Relion 615/620/630/650/670 series — technical manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1723,7 +1690,6 @@
       "i_inst_50n_a_max": 1200.0,
       "meta": {
         "series": "Easergy P3",
-        "rated": 300,
         "source_ref": "Schneider Easergy P3 / P5 series — user manuals",
         "source_reference": "Schneider Easergy P3 / P5 series — user manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1778,7 +1744,6 @@
       "i_inst_50n_a_max": 2000.0,
       "meta": {
         "series": "Easergy P3",
-        "rated": 500,
         "source_ref": "Schneider Easergy P3 / P5 series — user manuals",
         "source_reference": "Schneider Easergy P3 / P5 series — user manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1844,7 +1809,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "Easergy P5",
-        "rated": 800,
         "source_ref": "Schneider Easergy P3 / P5 series — user manuals",
         "source_reference": "Schneider Easergy P3 / P5 series — user manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1915,7 +1879,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "Easergy P5",
-        "rated": 800,
         "source_ref": "Schneider Easergy P3 / P5 series — user manuals",
         "source_reference": "Schneider Easergy P3 / P5 series — user manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -1967,7 +1930,6 @@
       "i_inst_50n_a_max": 4000.0,
       "meta": {
         "series": "Easergy P5",
-        "rated": 1000,
         "source_ref": "Schneider Easergy P3 / P5 series — user manuals",
         "source_reference": "Schneider Easergy P3 / P5 series — user manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2023,7 +1985,6 @@
       "i_inst_50n_a_max": 1600.0,
       "meta": {
         "series": "SEL 351",
-        "rated": 400,
         "source_ref": "SEL 351/451/487/411L/700G — instruction manuals",
         "source_reference": "SEL 351/451/487/411L/700G — instruction manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2094,7 +2055,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "SEL 451",
-        "rated": 800,
         "source_ref": "SEL 351/451/487/411L/700G — instruction manuals",
         "source_reference": "SEL 351/451/487/411L/700G — instruction manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2146,7 +2106,6 @@
       "i_inst_50n_a_max": 4000.0,
       "meta": {
         "series": "SEL 487",
-        "rated": 1000,
         "source_ref": "SEL 351/451/487/411L/700G — instruction manuals",
         "source_reference": "SEL 351/451/487/411L/700G — instruction manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2217,7 +2176,6 @@
       "i_inst_50n_a_max": 4000.0,
       "meta": {
         "series": "SEL 411",
-        "rated": 1000,
         "source_ref": "SEL 351/451/487/411L/700G — instruction manuals",
         "source_reference": "SEL 351/451/487/411L/700G — instruction manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2283,7 +2241,6 @@
       "i_inst_50n_a_max": 6000.0,
       "meta": {
         "series": "SEL 700G",
-        "rated": 1500,
         "source_ref": "SEL 351/451/487/411L/700G — instruction manuals",
         "source_reference": "SEL 351/451/487/411L/700G — instruction manuals",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2336,7 +2293,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "Multilin SR",
-        "rated": 600,
         "source_ref": "GE Multilin SR series + UR series — technical brochures",
         "source_reference": "GE Multilin SR series + UR series — technical brochures",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2388,7 +2344,6 @@
       "i_inst_50n_a_max": 4000.0,
       "meta": {
         "series": "Multilin SR",
-        "rated": 1000,
         "source_ref": "GE Multilin SR series + UR series — technical brochures",
         "source_reference": "GE Multilin SR series + UR series — technical brochures",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2454,7 +2409,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "Multilin UR",
-        "rated": 800,
         "source_ref": "GE Multilin SR series + UR series — technical brochures",
         "source_reference": "GE Multilin SR series + UR series — technical brochures",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2506,7 +2460,6 @@
       "i_inst_50n_a_max": 4800.0,
       "meta": {
         "series": "Multilin UR",
-        "rated": 1200,
         "source_ref": "GE Multilin SR series + UR series — technical brochures",
         "source_reference": "GE Multilin SR series + UR series — technical brochures",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2572,7 +2525,6 @@
       "i_inst_50n_a_max": 4800.0,
       "meta": {
         "series": "ZPAS RMG",
-        "rated": 1200,
         "source_ref": "ZPAS Białogard — generator protection card",
         "source_reference": "ZPAS Białogard — generator protection card",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2627,7 +2579,6 @@
       "i_inst_50n_a_max": 2400.0,
       "meta": {
         "series": "Elester ECG",
-        "rated": 600,
         "source_ref": "Elester Łódź — feeder protection card",
         "source_reference": "Elester Łódź — feeder protection card",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2694,7 +2645,6 @@
       "i_inst_50n_a_max": 6000.0,
       "meta": {
         "series": "Energotest GMG",
-        "rated": 1500,
         "source_ref": "Energotest Gliwice — large generator protection",
         "source_reference": "Energotest Gliwice — large generator protection",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
@@ -2751,7 +2701,6 @@
       "i_inst_50n_a_max": 3200.0,
       "meta": {
         "series": "ZIAD Z-Pro",
-        "rated": 800,
         "source_ref": "ZIAD Tomaszów Mazowiecki — feeder protection card",
         "source_reference": "ZIAD Tomaszów Mazowiecki — feeder protection card",
         "verification_status": "CZESCIOWO_ZWERYFIKOWANY",

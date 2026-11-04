@@ -56,7 +56,9 @@ def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str,
             "model": device.model,
             "series": str(meta.get("series") or device.model),
             "revision": "v0",
-            "rated_current_a": float(meta["rated"]) if meta.get("rated") is not None else None,
+            # Numer wariantu/modelu IED nie jest prądem znamionowym; prąd wejścia 1/5 A
+            # należy do toru przekładnika i karty produktu, nie do kodu modelu.
+            "rated_current_a": None,
             "notes_pl": " ".join(notes) if notes else None,
             "source_catalog": "backend/src/application/analyses/protection/catalog/data/devices_v0.json",
             "unverified": bool(meta.get("unverified", False)),
