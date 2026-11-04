@@ -612,7 +612,7 @@ NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL: dict[str, str] = {
 
 
 #: Status weryfikacji rekordu katalogu → nazwa (przeglądarka katalogu frontu,
-#: ``ui2/spaces/model/katalog/strings.ts::ETYKIETY_WERYFIKACJI``).
+#: ``ui/catalog/wartosciKodoweKarty.ts::STAN_WERYFIKACJI_PL``, pisane małą literą).
 NAZWY_STATUSOW_WERYFIKACJI_PL: dict[str, str] = {
     "ZWERYFIKOWANY": "Zweryfikowany",
     "CZESCIOWO_ZWERYFIKOWANY": "Częściowo zweryfikowany",
@@ -620,8 +620,8 @@ NAZWY_STATUSOW_WERYFIKACJI_PL: dict[str, str] = {
     "REFERENCYJNY": "Referencyjny",
 }
 
-#: Status katalogu rekordu → nazwa (``ui2/spaces/model/katalog/strings.ts::
-#: ETYKIETY_STATUSU_KATALOGU``).
+#: Status katalogu rekordu → nazwa (``ui/catalog/wartosciKodoweKarty.ts::
+#: STATUS_KATALOGU_PL``, pisane małą literą).
 NAZWY_STATUSOW_KATALOGU_PL: dict[str, str] = {
     "PRODUKCYJNY_V1": "Produkcyjny",
     "REFERENCYJNY_V1": "Referencyjny",

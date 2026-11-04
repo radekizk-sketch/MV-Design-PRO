@@ -38,16 +38,19 @@ Wszyscy czterej mają status `requires_catalog` i wymagają oficjalnych źróde�
 
 ## 5. UI flow (§11A.4)
 
-Krok 1 → Krok 6 zaimplementowany w komponentach React:
+Wybór producenta → rodziny → szablonu pola żyje w kreatorach `ui2/kreatory/**` (stan zmierzony
+2026-11-04, karta KOMUNIKATY-BEZ-ID). Dawne komponenty `ManufacturerPicker`,
+`SwitchgearFamilyPicker` (komponent), `BayTemplatePicker` (komponent) i `SwitchgearTemplateStepper`
+nie miały żadnego miejsca montażu i zostały skasowane; pliki `SwitchgearFamilyPicker.tsx`
+i `BayTemplatePicker.tsx` niosą już wyłącznie typy kontraktu i funkcje nazw.
 
-| Krok | Komponent |
+| Krok | Miejsce w aplikacji |
 |---|---|
-| 1. Producent | `frontend/src/ui/catalog/ManufacturerPicker.tsx` |
-| 2. Rodzina | `frontend/src/ui/catalog/SwitchgearFamilyPicker.tsx` |
-| 3+4. Typ pola + wariant | `frontend/src/ui/catalog/BayTemplatePicker.tsx` |
-| 1-4 Stepper | `frontend/src/ui/catalog/SwitchgearTemplateStepper.tsx` |
-| 5. Preview | `BayTemplatePicker` (badge per source_status) |
-| 6. Zastosuj | `SwitchgearTemplateStepper.onApply` callback |
+| 1. Producent | `frontend/src/ui2/kreatory/stacja/KreatorStacjiSnNn.tsx` — nazwa i status producenta z `ui/catalog/manufacturer.ts` (`nazwaProducentaPl`, `describeManufacturerStatusPl`) |
+| 2. Rodzina | kreatory stacji, pola SN (`ui2/kreatory/pole`) i źródła (`ui2/kreatory/zrodlo`); predykat budowy `czyRodzinaDoBudowania` z `ui/catalog/SwitchgearFamilyPicker.tsx` |
+| 3+4. Typ pola + wariant | kreatory oraz edytor wyposażenia pola (`ui/field/EdytorWyposazeniaPola.tsx`); nazwa pakietu `nazwaSzablonuPolaPl` z `ui/catalog/BayTemplatePicker.tsx` |
+| 5. Podgląd | `ui2/kreatory/stacja/PodgladRozdzielnicySn.tsx` (pakiet pola nazwą, status źródła `grupaZrodlaSzablonuPl`) |
+| 6. Zastosuj | operacja domenowa kreatora (`insert_station_on_segment_sn`, `add_sn_bay`, `add_grid_source_sn`, `set_bay_equipment`) |
 
 ## 6. Polityka źródeł
 

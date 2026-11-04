@@ -22,6 +22,7 @@ const katalogApi = vi.hoisted(() => ({
   fetchVtTypes: vi.fn(),
   fetchSurgeArresterTypes: vi.fn(),
   fetchCompleteBayTemplates: vi.fn(),
+  fetchSwitchgearFamilies: vi.fn(),
 }));
 
 vi.mock('../../catalog/api', () => ({
@@ -30,6 +31,9 @@ vi.mock('../../catalog/api', () => ({
 }));
 
 import { EdytorWyposazeniaPola } from '../EdytorWyposazeniaPola';
+import { bayKindLabelPl, SZABLON_SPOZA_KATALOGU_PL } from '../../catalog/BayTemplatePicker';
+import { NAZWA_JAKOSCI_DANEJ_PL, type FieldQuality } from '../../../ui2/wyniki/wzorzec/werdykt';
+import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 
 const ROLE = ['IN', 'OUT', 'TR', 'FEEDER', 'COUPLER', 'MEASUREMENT', 'OZE'] as const;
 type Rola = (typeof ROLE)[number];
@@ -42,6 +46,13 @@ const MIGAWKA = {
     { ref_id: 'q-obce', id: 'q-obce', name: 'Q obce', type: 'switch', status: 'closed' },
   ],
 } as unknown as EnergyNetworkModel;
+
+/** Rodziny w kształcie katalogu: modułowa oferowana, blokowa (RMU), bez karty katalogowej. */
+const RODZINY = [
+  { switchgear_family_ref: 'ABB__UNIGEAR_ZS1', manufacturer_ref: 'ABB', family_name: 'UniGear ZS1', status: 'repo_verified', tor_konfiguracji: 'MODULARNY' },
+  { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', status: 'repo_verified', tor_konfiguracji: 'BLOK_RMU' },
+  { switchgear_family_ref: 'ABB__UNISEC', manufacturer_ref: 'ABB', family_name: 'UniSec', status: 'requires_catalog', tor_konfiguracji: 'MODULARNY' },
+];
 
 function polePola(rola: Rola, aparaty: Bay['primary_devices'] = []): Bay {
   return pole({
@@ -80,8 +91,14 @@ beforeEach(() => {
   katalogApi.fetchVtTypes.mockResolvedValue([{ id: 'vt-1', name: 'Przekładnik 15/0,1' }]);
   katalogApi.fetchSurgeArresterTypes.mockResolvedValue([{ id: 'og-1', name: 'Ogranicznik 18 kV' }]);
   katalogApi.fetchCompleteBayTemplates.mockResolvedValue(
-    ROLE.map((rola) => ({ template_ref: `szablon-${rola}`, template_name_pl: `Szablon ${rola}`, bay_role: rola })),
+    ROLE.map((rola) => ({
+      template_ref: `szablon-${rola}`,
+      template_name_pl: `Szablon ${rola}`,
+      bay_role: rola,
+      switchgear_family_ref: 'ABB__UNIGEAR_ZS1',
+    })),
   );
+  katalogApi.fetchSwitchgearFamilies.mockResolvedValue(RODZINY);
 });
 
 afterEach(() => {
@@ -183,6 +200,97 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
     await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'wyczysc');
     await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
     expect(await screen.findByTestId('wyposazenie-pola-blad')).toHaveTextContent('Serwer niedostępny');
+  });
+});
+
+// Iloczyn: pakiet pola {z nazwą katalogową, bez nazwy z rodziną znaną, bez nazwy z rodziną
+// spoza katalogu rodzin, bez rodziny (szablon kanoniczny)} × lista wyboru szablonu. Pozycja
+// listy to NAZWA (rodzaj pola z kanonu ról · rodzina rozdzielnicy), nigdy referencja szablonu —
+// serwer wysyła pakiety rodzin bez `template_name_pl`, więc lista pokazywała
+// `ABB__UNIGEAR_ZS1__LINE_OUT`.
+/**
+ * Lista szablonów: iloczyn {nazwa katalogowa, bez nazwy} × rodzina {modułowa oferowana,
+ * blokowa RMU, bez karty katalogowej, spoza katalogu rodzin, brak rodziny}. Pozycją listy są
+ * WYŁĄCZNIE szablony, z których backend złoży pojedyncze pole (`czySzablonPojedynczegoPola`
+ * — reszta kończy operację twardym błędem); każda pozycja jest nazwą, nie referencją.
+ */
+describe('EdytorWyposazeniaPola — lista szablonów pola', () => {
+  it('pozycje: tylko szablony pojedynczego pola, nazwane z katalogu', async () => {
+    katalogApi.fetchCompleteBayTemplates.mockResolvedValue([
+      { template_ref: 'Z_NAZWA__LINE_OUT', template_name_pl: 'Pole odpływowe 630 A', bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'ABB__UNIGEAR_ZS1' },
+      { template_ref: 'ABB__UNIGEAR_ZS1__LINE_OUT', template_name_pl: null, bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'ABB__UNIGEAR_ZS1' },
+      { template_ref: 'ABB__SAFEPLUS__LINE_OUT', template_name_pl: null, bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'ABB__SAFEPLUS' },
+      { template_ref: 'ABB__UNISEC__LINE_OUT', template_name_pl: null, bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'ABB__UNISEC' },
+      { template_ref: 'NIEZNANA__LINE_OUT', template_name_pl: null, bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'NIEZNANA' },
+      { template_ref: 'CANONICAL_FALLBACK__LINE_OUT', template_name_pl: null, bay_role: 'OUT', bay_kind: 'liniowe_odplywowe', switchgear_family_ref: null },
+    ]);
+    const user = userEvent.setup();
+    renderuj(polePola('OUT'), vi.fn());
+    await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
+    await waitFor(() => expect(katalogApi.fetchSwitchgearFamilies).toHaveBeenCalled());
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'szablon');
+    const select = (await screen.findByTestId('wyposazenie-pola-szablon')) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(3));
+    const opcje = Array.from(select.options).slice(1);
+    expect(opcje.map((o) => o.value)).toEqual(['Z_NAZWA__LINE_OUT', 'ABB__UNIGEAR_ZS1__LINE_OUT']);
+    expect(opcje.map((o) => o.textContent)).toEqual([
+      'Pole odpływowe 630 A',
+      `${bayKindLabelPl('liniowe_odplywowe')} · UniGear ZS1`,
+    ]);
+    for (const o of opcje) expect(o.textContent).not.toMatch(/__/);
+  });
+});
+
+/**
+ * Iloczyn: szablon zapisany w polu {z katalogu, spoza katalogu, brak} — pozycja zerowa listy
+ * nazywa szablon modelu nazwą katalogu albo opisem jawnym, nigdy referencją.
+ */
+describe('EdytorWyposazeniaPola — szablon zapisany w polu', () => {
+  it.each([
+    ['z katalogu', 'szablon-OUT', '— szablon zapisany w polu: Szablon OUT —'],
+    ['spoza katalogu', 'ZPUE__NIEZNANY__LINE_OUT', `— szablon zapisany w polu: ${SZABLON_SPOZA_KATALOGU_PL} —`],
+    ['brak', null, '— pole nie ma szablonu: wskaż szablon —'],
+  ] as const)('%s', async (_opis, ref, oczekiwana) => {
+    const user = userEvent.setup();
+    renderuj({ ...polePola('OUT'), bay_template_ref: ref } as Bay, vi.fn());
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'szablon');
+    const select = (await screen.findByTestId('wyposazenie-pola-szablon')) as HTMLSelectElement;
+    await waitFor(() => expect(select.options[0].textContent).toBe(oczekiwana));
+    expect(select.options[0].textContent).not.toMatch(/__/);
+  });
+});
+
+/**
+ * Jakość danej przyjętej: każda wartość `FieldQuality` (rejestr zamknięty — kompilator
+ * pilnuje kompletności) ma nazwę ze słownika kontraktu werdyktu, wartość spoza słownika ma
+ * opis jawny, `null` nie dokleja jakości. Kod jakości nigdy nie trafia na ekran.
+ */
+describe('EdytorWyposazeniaPola — jakość danych przyjętych', () => {
+  const JAKOSCI = { DATASHEET: true, ESTIMATED: true, SYSTEM_DEFAULT: true } satisfies Record<FieldQuality, true>;
+  const przypadki: Array<[string, string | null, string | null]> = [
+    ...(Object.keys(JAKOSCI) as FieldQuality[]).map(
+      (q): [string, string | null, string | null] => [q, q, `(jakość danej: ${NAZWA_JAKOSCI_DANEJ_PL[q]})`],
+    ),
+    ['spoza słownika', 'NOWY_KOD', `(jakość danej: ${WZORZEC_STRINGS.wartoscSpozaSlownika})`],
+    ['brak jakości', null, null],
+  ];
+  it.each(przypadki)('%s', (_opis, jakosc, oczekiwany) => {
+    render(
+      <EdytorWyposazeniaPola
+        bay={polePola('OUT')}
+        snapshot={MIGAWKA}
+        stanDanych="PROPOZYCJA"
+        danePrzyjete={[{ nazwa_pl: 'Wyłącznik Q1', wartosc: null, powod_pl: 'wartość robocza', jakosc } as never]}
+        activeCaseId="case-1"
+        executeDomainOperation={vi.fn() as never}
+        bladStore={() => null}
+      />,
+    );
+    const lista = screen.getByTestId('wyposazenie-pola-dane-przyjete');
+    if (oczekiwany === null) expect(lista.textContent).not.toMatch(/jakość/);
+    else expect(lista.textContent).toContain(oczekiwany);
+    if (jakosc !== null) expect(lista.textContent).not.toContain(jakosc);
   });
 });
 

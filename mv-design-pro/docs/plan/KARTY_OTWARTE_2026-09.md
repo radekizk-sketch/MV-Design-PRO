@@ -1291,6 +1291,52 @@ druga projekcja frontu skasowana razem ze strażnikiem `katalog_parytet_pol_guar
 (zastąpionym testem parytetu). Fikstury kreatorów = rekordy serwera
 (`katalog_punktow_rozgalezienia.json`).
 
+**Commit 10 (WIP, 2026-11-04) — karta aparatu pola w inspektorze, punkt 1 zablokowany kanonem.**
+Przyczyna 40 czerwonych testów karty aparatu: pięć plików testów inspektora atrapowało
+`../../selection`, ale nie `../../selection/store`, więc karta K6 nie powstawała, a testy
+sprawdzały sekcje dawnych budowniczych, których projektant pod kartą nie widzi. Testy
+przepisane na kanon karty (podwójna atrapa wyboru, świeża migawka na przypadek — pamięć
+indeksu karty jest kluczowana tożsamością migawki). Luki produktu naprawione u źródła:
+karta aparatu podaje rolę techniczną z jednego słownika symboli (`ROLA_SYMBOLU_PL`), karta
+sieci zasilającej — napięcie zadane szyny bilansującej (`u_set_pu`), tryb karty pokazuje
+sekcję „Kontrola” (jedna funkcja `sekcjaKontroli` dla obu trybów), gałąź łącznikowa
+(wyłącznik, rozłącznik, bezpiecznik) wybrana jako odcinek dostaje kartę łącznika, nie kartę
+odcinka (predykat parami z `menuKindGalezi`, test iloczynu po wszystkich `RODZAJE_GALEZI`).
+Dawne budowniczowie sekcji aparatu skasowani (zostaje akcja „Skonfiguruj pole SN”).
+Otwarte, wymaga decyzji architekta: „Wyprowadź ciąg główny z głowicy” jest nieosiągalne —
+głowica kablowa jest rysowana tylko na polu zajętym (tam akcja jest bramkowana), a pole
+wolne z rekordem głowicy rysuje `bayReserve` zgodnie z rozstrzygnięciem
+GEOMETRIA-STACJI-BRAK-WYPOSAZENIA (`compose/apparatusSequence.ts::zakonczenieRezerwy`).
+Dwa testy `punktStartuCiagu.test.tsx` (głowica wolnego pola) są czerwone z tego powodu.
+Warianty: (A) głowica z rekordu rysowana także na polu wolnym (zmiana rysunku, bramka B-02),
+(B) akcja na zakończeniu `bayReserve` pola wolnego, (C) kasacja pozycji menu głowicy.
+
+**Commit 11 (2026-11-04) — nazwy z jednego słownika zamiast kodów katalogu (punkt 3).**
+Inwentarz zmierzony na wyroczni serwera: 85/85 szablonów rodzin bez `template_name_pl`
+i bez `template_code`; 5 producentów z kodami referencji (`ZPUE_WLOSZCZOWA`,
+`SCHNEIDER_ELECTRIC`). Na ekran trafiały: referencja szablonu (lista szablonów kreatora
+źródła, rysunek podglądu rozdzielnicy kreatora stacji, pozycja „szablon zapisany w polu”
+edytora wyposażenia), kod producenta (listy rodzin kreatorów pola i źródła, nagłówek rodziny,
+podsumowanie i podgląd kreatora stacji przy braku dopasowania), `notes_pl` jako nazwa
+szablonu (kreator pola), surowy kod jakości danej przyjętej (edytor wyposażenia), `undefined`
+dla statusu źródła spoza unii (`templateOptionLabel`, podgląd), wyjątek dla rodzaju pola spoza
+słownika (`bayKindLabelPl`). Jedno źródło nazw: `nazwaSzablonuPolaPl` /
+`nazwaSzablonuPoReferencjiPl` (`ui/catalog/BayTemplatePicker.tsx`), `nazwaProducentaPl`
+i `describeManufacturerStatusPl` (`ui/catalog/manufacturer.ts`), `grupaZrodlaSzablonuPl`,
+`etykietaZeSlownika` × `NAZWA_JAKOSCI_DANEJ_PL`; wartość spoza słownika ma opis jawny.
+Status producenta widoczny przy nazwie w kreatorze stacji (decyzja PLAN_DOKONCZENIA_100 pkt 2).
+Skasowane martwe wyspy bez miejsca montażu: komponenty `BayTemplatePicker`,
+`SwitchgearFamilyPicker` (pliki zostają z typami i predykatami), `ManufacturerPicker` z testem;
+nieczytane pola `manufacturerName`/`familyName` wyboru rozdzielnicy. Edytor wyposażenia pola i kreator źródła nie
+oferują już szablonów/rodzin, których backend nie złoży jako pojedynczego pola (blok RMU,
+rodzina bez karty, szablon bez rodziny) — predykat `czySzablonPojedynczegoPola`. Kreator pola SN
+(`ui2/kreatory/pole/KreatorPolaSn.tsx`) zostawia rodzinę blokową wybieralną z informacją
+`mvd-kreator-pole-rodzina-blokowa`, ale nie oferuje jej szablonu pojedynczego pola
+(`pole_katalogowe.aparaty_pola_z_referencji`: rodzina blokowa bez wyboru bloku kończy się
+twardym błędem). Parytet backendu
+słowników statusów katalogu przepięty na `ui/catalog/wartosciKodoweKarty.ts`. Punkt 4
+(„—” kontra „brak danych”) wstrzymany decyzją właściciela, nietknięty.
+
 ---
 
 ## LICZBY-PL

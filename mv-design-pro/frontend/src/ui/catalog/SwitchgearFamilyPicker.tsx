@@ -1,18 +1,14 @@
 /**
- * SwitchgearFamilyPicker — krok 2 wyboru rodziny rozdzielnicy SN (goal §11A.4).
+ * Rodzina rozdzielnicy SN (goal §11A.4) — typ kontraktu `GET /api/catalog/switchgear-families`,
+ * jedyny predykat „czy na rodzinie wolno budować", powód blokady i nazwy konstrukcji.
  *
- * Komponent prezentacyjny — wyświetla listę rodzin rozdzielnic
- * (`SwitchgearFamily`) wybranego producenta. Gdy producent ma
- * `status="requires_catalog"`, lista rodzin jest pusta (backend nie udostępnia
- * fabrykowanych rodzin) — UI pokazuje informację o fallbacku do canonical
- * BayTemplate.
- *
- * Pickerem rozdzielnic NIE wybieramy konkretnego modelu aparatu —
- * tylko rodzinę (np. "Rotoblok", "UniGear ZS1"). Krok 3 (`BayTemplatePicker`)
- * wybiera typ pola w wybranej rodzinie.
+ * Komponent listy rodzin (`SwitchgearFamilyPicker`) skasowany 2026-11-04 (karta
+ * KOMUNIKATY-BEZ-ID): zero miejsc montażu w aplikacji — rodzinę wybiera się w kreatorach
+ * (`ui2/kreatory/stacja`, `pole`, `zrodlo`) z tych samych predykatów, a martwy komponent
+ * pokazywał kod producenta (`manufacturer_ref`) zamiast nazwy. Nazwa pliku zostaje, bo
+ * przypinają ją testy parytetu backendu (`test_parytet_statusow_rodzin_rozdzielnic.py`,
+ * `test_komunikaty_operacji_bez_kodow.py`).
  */
-
-import { clsx } from 'clsx';
 
 import type { BayDeviceInstanceWire, BayKind } from './BayTemplatePicker';
 
@@ -143,7 +139,7 @@ export const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new
 ]);
 
 /**
- * JEDYNY predykat frontu „czy na tej rodzinie wolno budować" — picker, kreator stacji i karta
+ * JEDYNY predykat frontu „czy na tej rodzinie wolno budować" — kreator stacji i karta
  * pola czytają go stąd. Zbiór jest lustrem `POTWIERDZONE_STATUSY_RODZINY`; parytet przypina
  * `backend/tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`. Korekta 2026-10-15: trzy kopie
  * tego zbioru we froncie dopuszczały też `user_defined`, którego backend NIE dopuszcza
@@ -152,6 +148,32 @@ export const STATUSY_DO_BUDOWANIA: ReadonlySet<SwitchgearFamily['status']> = new
  */
 export function czyRodzinaDoBudowania(family: SwitchgearFamily): boolean {
   return STATUSY_DO_BUDOWANIA.has(family.status);
+}
+
+/**
+ * Czy z POJEDYNCZEGO szablonu pola tej rodziny (bez wyboru bloku fabrycznego) backend złoży
+ * pole — lustro planu pola katalogowego (`enm/pole_katalogowe.py`: rodzina oferowana
+ * `wymagaj_rodziny_oferowanej` i tor różny od `BLOK_RMU`; rodzina blokowa wymaga bloku
+ * i jednostki). Kontrolka oferująca szablon rodziny spoza tego predykatu kończy się zawsze
+ * twardym błędem operacji — jest fantomem, więc listy szablonów pojedynczego pola (edytor
+ * wyposażenia pola, kreator źródła) jej nie pokazują.
+ */
+export function czyRodzinaPrzyjmujePojedynczePole(family: SwitchgearFamily): boolean {
+  return czyRodzinaDoBudowania(family) && family.tor_konfiguracji !== 'BLOK_RMU';
+}
+
+/**
+ * Szablon pola do zastosowania bez wyboru bloku: deklaruje rodzinę znaną katalogowi rodzin
+ * i ta rodzina przyjmuje pojedyncze pole. Szablon bez rodziny backend odrzuca („nie deklaruje
+ * rodziny rozdzielnicy”), rodziny spoza katalogu — tak samo.
+ */
+export function czySzablonPojedynczegoPola(
+  switchgearFamilyRef: string | null | undefined,
+  rodziny: readonly SwitchgearFamily[],
+): boolean {
+  if (!switchgearFamilyRef) return false;
+  const rodzina = rodziny.find((r) => r.switchgear_family_ref === switchgearFamilyRef);
+  return rodzina !== undefined && czyRodzinaPrzyjmujePojedynczePole(rodzina);
 }
 
 const POWOD_BLOKADY_PL: Partial<Record<SwitchgearFamily['status'], string>> = {
@@ -168,17 +190,8 @@ export function powodBlokadyRodzinyPl(family: SwitchgearFamily): string | null {
   return POWOD_BLOKADY_PL[family.status] ?? 'Status rodziny nie dopuszcza budowania konfiguracji.';
 }
 
-export interface SwitchgearFamilyPickerProps {
-  readonly families: readonly SwitchgearFamily[];
-  readonly manufacturerRef: string | null;
-  readonly manufacturerRequiresCatalog: boolean;
-  readonly selectedRef?: string | null;
-  readonly onSelect: (familyRef: string | null) => void;
-  readonly className?: string;
-}
-
 /**
- * Nazwy PL konstrukcji rodziny — JEDNO źródło dla pickera i dla nagłówka
+ * Nazwy PL konstrukcji rodziny — JEDNO źródło dla inspektora i dla nagłówka
  * rozdzielnicy w podglądzie kreatora (`ui2/kreatory/stacja`). Druga tablica tych
  * samych nazw rozjechałaby się przy pierwszej nowej konstrukcji w kontrakcie.
  */
@@ -193,108 +206,3 @@ export const CONSTRUCTION_LABELS_PL: Record<SwitchgearFamily['construction_type'
   prefabrykowana: 'Prefabrykowana',
   unknown: 'Nieznana konstrukcja',
 };
-
-export function SwitchgearFamilyPicker({
-  families,
-  manufacturerRef,
-  manufacturerRequiresCatalog,
-  selectedRef,
-  onSelect,
-  className,
-}: SwitchgearFamilyPickerProps): JSX.Element {
-  if (manufacturerRef === null) {
-    return (
-      <div
-        className={clsx('rounded border border-gray-300 p-3 text-sm text-gray-600', className)}
-        data-testid="switchgear-family-picker-no-manufacturer"
-      >
-        Najpierw wybierz producenta rozdzielnicy.
-      </div>
-    );
-  }
-
-  const doBudowania = families.filter(czyRodzinaDoBudowania);
-
-  if (manufacturerRequiresCatalog || doBudowania.length === 0) {
-    return (
-      <div
-        className={clsx(
-          'rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900',
-          className,
-        )}
-        data-testid="switchgear-family-picker-fallback"
-        data-manufacturer-ref={manufacturerRef}
-      >
-        <span className="font-semibold">Brak zweryfikowanych rodzin rozdzielnic.</span>{' '}
-        Producent <span className="font-mono">{manufacturerRef}</span> wymaga uzupełnienia
-        katalogu. Pole zostanie zbudowane z szablonu kanonicznego ogólnego (rozwiązanie zapasowe)
-        z badge ostrzegawczym.
-      </div>
-    );
-  }
-
-  return (
-    <ul
-      className={clsx('flex flex-col gap-2', className)}
-      data-testid="switchgear-family-picker"
-    >
-      {families.map((family) => {
-        const isSelected = family.switchgear_family_ref === selectedRef;
-        const doWyboru = czyRodzinaDoBudowania(family);
-        const powodBlokady = powodBlokadyRodzinyPl(family);
-        return (
-          <li key={family.switchgear_family_ref}>
-            <button
-              type="button"
-              disabled={!doWyboru}
-              title={powodBlokady ?? undefined}
-              onClick={() => onSelect(family.switchgear_family_ref)}
-              data-testid={`switchgear-family-picker-option-${family.switchgear_family_ref}`}
-              data-selected={isSelected ? 'true' : 'false'}
-              data-buildable={doWyboru ? 'true' : 'false'}
-              className={clsx(
-                'flex w-full flex-col items-start rounded border p-2 text-left transition-colors',
-                !doWyboru
-                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-70'
-                  : isSelected
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:bg-gray-50',
-              )}
-            >
-              <div className="flex w-full items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-gray-900">{family.family_name}</span>
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
-                  {CONSTRUCTION_LABELS_PL[family.construction_type]}
-                </span>
-              </div>
-              {family.series_name && (
-                <span className="text-[11px] text-gray-500">Seria: {family.series_name}</span>
-              )}
-              {family.network_voltages_kv.length > 0 && (
-                <span className="text-[11px] text-gray-500">
-                  Napięcia sieci: {family.network_voltages_kv.map((v) => `${v} kV`).join(', ')}
-                </span>
-              )}
-              {family.um_classes_kv.length > 0 && (
-                <span className="text-[11px] text-gray-500">
-                  Klasy urządzenia: {family.um_classes_kv.map((v) => `${v} kV`).join(', ')}
-                </span>
-              )}
-              {powodBlokady && (
-                <span
-                  className="mt-1 text-[11px] font-medium text-amber-800"
-                  data-testid={`switchgear-family-picker-blocked-${family.switchgear_family_ref}`}
-                >
-                  {powodBlokady}
-                </span>
-              )}
-              {family.notes_pl && (
-                <span className="mt-1 text-[11px] text-gray-600">{family.notes_pl}</span>
-              )}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}

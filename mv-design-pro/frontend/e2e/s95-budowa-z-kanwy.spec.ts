@@ -419,7 +419,12 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 30000 });
     await page.getByTestId('wyposazenie-pola-edytuj').click();
     await page.getByTestId('wyposazenie-pola-tryb').selectOption('szablon');
-    await page.getByTestId('wyposazenie-pola-szablon').selectOption('bay_template_line_out');
+    // Lista szablonów to pakiety pól rodzin rozdzielnic tej samej roli (`/api/catalog/
+    // complete-bay-templates`); kanoniczny `bay_template_line_out` nie jest jej pozycją.
+    // Lista podaje wyłącznie pakiety rodzin przyjmujących pojedyncze pole (bez bloków RMU,
+    // które backend odrzuca); pierwsza pozycja po opcji pustej — każdy pakiet pola
+    // odpływowego niesie głowicę kablową.
+    await page.getByTestId('wyposazenie-pola-szablon').selectOption({ index: 1 });
     await expect(page.getByTestId('wyposazenie-pola-zapisz')).toBeEnabled({ timeout: 30000 });
     await page.getByTestId('wyposazenie-pola-zapisz').click();
     await expect

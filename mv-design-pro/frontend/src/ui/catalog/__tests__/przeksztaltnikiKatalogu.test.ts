@@ -36,7 +36,7 @@ const REKORDY: ConverterType[] = [
   },
 ];
 
-function mockFetch(): ReturnType<typeof vi.fn> {
+function mockFetch() {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input), 'http://localhost');
     const rodzaj = url.searchParams.get('kind');

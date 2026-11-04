@@ -28,10 +28,16 @@ import {
   fetchCtTypes,
   fetchMvApparatusTypes,
   fetchSurgeArresterTypes,
+  fetchSwitchgearFamilies,
   fetchVtTypes,
   getCatalogErrorMessage,
 } from '../catalog/api';
-import type { CompleteMvBayTemplateSummary } from '../catalog/BayTemplatePicker';
+import {
+  nazwaSzablonuPoReferencjiPl,
+  nazwaSzablonuPolaPl,
+  type CompleteMvBayTemplateSummary,
+} from '../catalog/BayTemplatePicker';
+import { czySzablonPojedynczegoPola, type SwitchgearFamily } from '../catalog/SwitchgearFamilyPicker';
 import type { CatalogType, MVApparatusType } from '../catalog/types';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
@@ -55,6 +61,8 @@ import {
   type WierszAparatu,
 } from './wyposazeniePola';
 import type { DomainOpResponseV1 } from '../../types/enm';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
+import { NAZWA_JAKOSCI_DANEJ_PL } from '../../ui2/wyniki/wzorzec/werdykt';
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
@@ -104,8 +112,10 @@ function ListaDanychPrzyjetych({ dane, testid }: { dane: readonly DanaPrzyjetaWy
     <ul data-testid={testid} className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
       {dane.map((d, i) => (
         <li key={`${d.nazwa_pl}:${i}`}>
-          <span className="font-medium text-scada-text">{d.nazwa_pl}</span> — {d.powod_pl} (jakość:{' '}
-          {d.jakosc === 'ESTIMATED' ? 'szacowana' : d.jakosc})
+          <span className="font-medium text-scada-text">{d.nazwa_pl}</span> — {d.powod_pl}
+          {d.jakosc !== null && (
+            <> (jakość danej: {etykietaZeSlownika(NAZWA_JAKOSCI_DANEJ_PL, d.jakosc)})</>
+          )}
         </li>
       ))}
     </ul>
@@ -126,6 +136,7 @@ export function EdytorWyposazeniaPola({
   const [szablonRef, setSzablonRef] = useState('');
   const [katalog, setKatalog] = useState<PozycjeKatalogu>(KATALOG_PUSTY);
   const [szablony, setSzablony] = useState<readonly CompleteMvBayTemplateSummary[]>([]);
+  const [rodziny, setRodziny] = useState<readonly SwitchgearFamily[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [wynik, setWynik] = useState<WyposazeniePolaOdpowiedz | null>(null);
@@ -141,11 +152,13 @@ export function EdytorWyposazeniaPola({
       fetchVtTypes(),
       fetchSurgeArresterTypes(),
       fetchCompleteBayTemplates(),
+      fetchSwitchgearFamilies(),
     ])
-      .then(([aparaty, ct, vt, ograniczniki, pola]) => {
+      .then(([aparaty, ct, vt, ograniczniki, pola, rodziny]) => {
         if (anulowane) return;
         setKatalog({ APARAT_SN: aparaty, CT: ct, VT: vt, OGRANICZNIK_SN: ograniczniki });
         setSzablony(pola);
+        setRodziny(rodziny);
       })
       .catch((e: unknown) => {
         if (!anulowane) setBladKatalogu(getCatalogErrorMessage(e));
@@ -164,10 +177,20 @@ export function EdytorWyposazeniaPola({
       .sort((a, b) => (a.ref_id < b.ref_id ? -1 : 1));
   }, [bay.equipment_refs, snapshot]);
 
-  // Szablony pola tej samej funkcji (rola pola w modelu) — inne backend odrzuca.
+  const nazwyRodzin = useMemo(
+    () => new Map(rodziny.map((r) => [r.switchgear_family_ref, r.family_name])),
+    [rodziny],
+  );
+
+  // Szablony pola tej samej funkcji (rola pola w modelu), z rodziny, która przyjmuje
+  // pojedyncze pole (`czySzablonPojedynczegoPola` — lustro planu pola katalogowego):
+  // inne backend odrzuca twardym błędem, więc ich pozycja na liście byłaby fantomem.
   const szablonyPola = useMemo(
-    () => szablony.filter((s) => s.bay_role === bay.bay_role),
-    [bay.bay_role, szablony],
+    () =>
+      szablony.filter(
+        (s) => s.bay_role === bay.bay_role && czySzablonPojedynczegoPola(s.switchgear_family_ref, rodziny),
+      ),
+    [bay.bay_role, rodziny, szablony],
   );
 
   const zmienWiersz = useCallback((indeks: number, zmiana: (w: WierszAparatu) => WierszAparatu) => {
@@ -389,12 +412,12 @@ export function EdytorWyposazeniaPola({
               >
                 <option value="">
                   {bay.bay_template_ref
-                    ? `— szablon zapisany w polu (${bay.bay_template_ref}) —`
+                    ? `— szablon zapisany w polu: ${nazwaSzablonuPoReferencjiPl(bay.bay_template_ref, szablony, nazwyRodzin)} —`
                     : '— pole nie ma szablonu: wskaż szablon —'}
                 </option>
                 {szablonyPola.map((s) => (
                   <option key={s.template_ref} value={s.template_ref}>
-                    {s.template_name_pl ?? s.template_ref}
+                    {nazwaSzablonuPolaPl(s, nazwyRodzin)}
                   </option>
                 ))}
               </select>

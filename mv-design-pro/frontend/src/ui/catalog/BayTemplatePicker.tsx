@@ -1,25 +1,14 @@
 /**
- * BayTemplatePicker — krok 3 wyboru kompletnego szablonu pola SN (goal §11A.5).
+ * Kontrakt szablonów pól SN z backendu (`GET /api/catalog/complete-bay-templates`) i nazwy
+ * prezentacyjne szablonu: status źródła, rodzaj pola z kanonu ról, nazwa pakietu pola.
  *
- * Wybiera spośród listy `CompleteMvBayTemplate` z backendu
- * (`GET /api/catalog/complete-bay-templates?manufacturer_ref=...&bay_kind=...`).
- *
- * Wyświetla każdy szablon z badge `source_status`:
- * - `canonical_fallback` — szablon kanoniczny ogólny (fallback, nie producent),
- * - `official_catalog` / `repo_verified` — pełne dane producenta,
- * - `user_defined` — pozycja użytkownika,
- * - `requires_catalog` — niedopuszczone do użycia (placeholder).
- *
- * Operator widzi co dokładnie pochodzi z kanonu, a co z katalogu producenta.
+ * Dawny komponent wyboru `BayTemplatePicker` (lista przycisków z plakietką statusu) nie miał
+ * żadnego miejsca wpięcia w aplikacji — skasowany; szablon pola wybiera projektant w kreatorze
+ * stacji, kreatorze pola i edytorze wyposażenia pola, które czytają stąd kontrakt i nazwy.
  */
 
-import { clsx } from 'clsx';
 import type { BayCanonicalRole, BayModelRole } from '../../types/enm';
-import {
-  FIELD_ROLE_LABEL_PL,
-  fieldLabelInSentencePl,
-  fieldRoleLabelPl,
-} from '../sld/v2/station-rozdzielnia/contract';
+import { FIELD_ROLE_LABEL_PL } from '../sld/v2/station-rozdzielnia/contract';
 
 export type BayKind =
   | 'liniowe_doplywowe'
@@ -179,44 +168,20 @@ export interface CompleteMvBayTemplateSummary {
   readonly device_instances?: readonly BayDeviceInstanceWire[];
 }
 
-export interface BayTemplatePickerProps {
-  readonly templates: readonly CompleteMvBayTemplateSummary[];
-  readonly bayKindFilter?: BayKind | null;
-  readonly selectedRef?: string | null;
-  readonly onSelect: (templateRef: string) => void;
-  readonly className?: string;
-}
-
-const SOURCE_STATUS_BADGE: Record<BayTemplateSourceStatus, { class: string; label: string }> = {
-  official_catalog: {
-    class: 'bg-green-100 text-green-800 border-green-300',
-    label: 'Oficjalny katalog producenta',
-  },
-  repo_verified: {
-    class: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    label: 'Zweryfikowany w repozytorium',
-  },
-  user_defined: {
-    class: 'bg-blue-100 text-blue-800 border-blue-300',
-    label: 'Definicja użytkownika',
-  },
-  canonical_fallback: {
-    class: 'bg-amber-100 text-amber-800 border-amber-300',
-    label: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
-  },
-  requires_catalog: {
-    class: 'bg-red-100 text-red-800 border-red-300',
-    label: 'Wymaga uzupełnienia katalogu',
-  },
-  incomplete_requires_review: {
-    class: 'bg-red-100 text-red-800 border-red-300',
-    label: 'Niekompletny — wymaga przeglądu',
-  },
+const ETYKIETA_STATUSU_ZRODLA: Record<BayTemplateSourceStatus, string> = {
+  official_catalog: 'Oficjalny katalog producenta',
+  repo_verified: 'Zweryfikowany w repozytorium',
+  user_defined: 'Definicja użytkownika',
+  canonical_fallback: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
+  requires_catalog: 'Wymaga uzupełnienia katalogu',
+  incomplete_requires_review: 'Niekompletny — wymaga przeglądu',
 };
 
-/** Nazwa statusu źródła szablonu pola — ta sama, którą pokazuje plakietka pickera. */
+/** Nazwa statusu źródła szablonu pola. */
 export function etykietaStatusuZrodlaSzablonuPl(status: BayTemplateSourceStatus): string {
-  return SOURCE_STATUS_BADGE[status]?.label ?? 'Nieznany status źródła';
+  return Object.prototype.hasOwnProperty.call(ETYKIETA_STATUSU_ZRODLA, status)
+    ? ETYKIETA_STATUSU_ZRODLA[status]
+    : 'Nieznany status źródła';
 }
 
 /**
@@ -253,88 +218,55 @@ const OPIS_RODZAJU_POLA: Readonly<Record<BayKind, OpisRodzajuPola>> = {
   bateria_kondensatorow: { rola: 'BATERIA_KONDENSATOROW' },
 };
 
-/** Nazwa rodzaju pola katalogu — z kanonu ról pól, a dla rodzaju bez roli — jego własna. */
+/** Opis jawny rodzaju pola spoza słownika aplikacji (nowy kod backendu przed aktualizacją). */
+export const RODZAJ_POLA_SPOZA_SLOWNIKA_PL = 'rodzaj pola spoza słownika aplikacji';
+
+/**
+ * Nazwa rodzaju pola katalogu — z kanonu ról pól, a dla rodzaju bez roli — jego własna.
+ * Kod spoza słownika (`BayKind` to lustro backendu, ale wartość przychodzi z sieci) daje opis
+ * jawny, nigdy kod ani wyjątek.
+ */
 export function bayKindLabelPl(kind: BayKind): string {
+  if (!Object.prototype.hasOwnProperty.call(OPIS_RODZAJU_POLA, kind)) {
+    return RODZAJ_POLA_SPOZA_SLOWNIKA_PL;
+  }
   const opis = OPIS_RODZAJU_POLA[kind];
   if ('nazwaBezRoli' in opis) return opis.nazwaBezRoli;
   const nazwaRoli = FIELD_ROLE_LABEL_PL[opis.rola];
   return opis.okreslenie ? `${nazwaRoli} ${opis.okreslenie}` : nazwaRoli;
 }
 
-export function BayTemplatePicker({
-  templates,
-  bayKindFilter,
-  selectedRef,
-  onSelect,
-  className,
-}: BayTemplatePickerProps): JSX.Element {
-  const filtered = bayKindFilter
-    ? templates.filter((t) => t.bay_kind === bayKindFilter)
-    : templates;
+/**
+ * Nazwa pakietu pola do listy wyboru — nigdy referencja szablonu (`ABB__SAFERING__LINE_OUT`).
+ * Nazwa katalogowa, gdy szablon ją niesie; inaczej rodzaj pola z kanonu ról i nazwa rodziny
+ * rozdzielnicy z katalogu rodzin. Szablon rodziny, której katalog nie zna, mówi to wprost;
+ * szablon bez rodziny to kanoniczny szablon ogólny.
+ */
+export function nazwaSzablonuPolaPl(
+  szablon: Pick<CompleteMvBayTemplateSummary, 'template_name_pl' | 'bay_kind' | 'switchgear_family_ref'>,
+  nazwyRodzin: ReadonlyMap<string, string>,
+): string {
+  const nazwa = szablon.template_name_pl?.trim();
+  if (nazwa) return nazwa;
+  const rodzaj = bayKindLabelPl(szablon.bay_kind);
+  if (!szablon.switchgear_family_ref) return `${rodzaj} · szablon kanoniczny ogólny`;
+  const rodzina = nazwyRodzin.get(szablon.switchgear_family_ref);
+  return `${rodzaj} · ${rodzina ?? 'rodzina rozdzielnicy spoza katalogu rodzin'}`;
+}
 
-  if (filtered.length === 0) {
-    return (
-      <div
-        className={clsx('rounded border border-gray-300 p-3 text-sm text-gray-600', className)}
-        data-testid="bay-template-picker-empty"
-      >
-        Brak szablonów dla wybranego typu pola.
-      </div>
-    );
-  }
+/** Opis jawny szablonu, którego referencji nie ma w katalogu szablonów pól. */
+export const SZABLON_SPOZA_KATALOGU_PL = 'szablon spoza katalogu szablonów pól';
 
-  return (
-    <ul
-      className={clsx('flex flex-col gap-2', className)}
-      data-testid="bay-template-picker"
-    >
-      {filtered.map((t) => {
-        const isSelected = t.template_ref === selectedRef;
-        const badge = SOURCE_STATUS_BADGE[t.source_status];
-        const kindLabel = bayKindLabelPl(t.bay_kind);
-        return (
-          <li key={t.template_ref}>
-            <button
-              type="button"
-              onClick={() => onSelect(t.template_ref)}
-              data-testid={`bay-template-picker-option-${t.template_ref}`}
-              data-source-status={t.source_status}
-              data-bay-kind={t.bay_kind}
-              data-selected={isSelected ? 'true' : 'false'}
-              className={clsx(
-                'flex w-full flex-col items-start rounded border p-2 text-left transition-colors',
-                isSelected
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:bg-gray-50',
-              )}
-            >
-              <div className="flex w-full items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-gray-900">{kindLabel}</span>
-                <span
-                  className={clsx(
-                    'rounded border px-1.5 py-0.5 text-[10px] font-medium',
-                    badge.class,
-                  )}
-                  data-testid={`bay-template-picker-badge-${t.template_ref}`}
-                >
-                  {badge.label}
-                </span>
-              </div>
-              {t.manufacturer_ref && (
-                <span className="text-[11px] text-gray-500">
-                  Producent: <span className="font-mono">{t.manufacturer_ref}</span>
-                </span>
-              )}
-              <span className="text-[11px] text-gray-500">
-                Rola pola: {fieldLabelInSentencePl(fieldRoleLabelPl(t.bay_role))} · Wersja: {t.version}
-              </span>
-              {t.notes_pl && (
-                <span className="mt-1 text-[11px] text-gray-600">{t.notes_pl}</span>
-              )}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
+/**
+ * Nazwa szablonu wskazanego referencją (np. `Bay.bay_template_ref` zapisane w modelu) —
+ * nazwa z katalogu albo opis jawny, gdy katalogu tej referencji nie zna; referencja nigdy
+ * nie trafia na ekran.
+ */
+export function nazwaSzablonuPoReferencjiPl(
+  templateRef: string,
+  szablony: readonly CompleteMvBayTemplateSummary[],
+  nazwyRodzin: ReadonlyMap<string, string>,
+): string {
+  const szablon = szablony.find((s) => s.template_ref === templateRef);
+  return szablon ? nazwaSzablonuPolaPl(szablon, nazwyRodzin) : SZABLON_SPOZA_KATALOGU_PL;
 }

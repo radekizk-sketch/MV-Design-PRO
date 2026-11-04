@@ -620,6 +620,15 @@ describe('nagłówek rodziny', () => {
     expect(wgEtykiety['Tor konfiguracji']).toContain('blokowy');
   });
 
+  it('bez nazwy producenta wiersz producenta jest brakiem — nigdy kodem `manufacturer_ref` rodziny', () => {
+    for (const producent of [null, undefined]) {
+      const wiersze = naglowekRodziny(RODZINA_RMU, producent);
+      const wgEtykiety = Object.fromEntries(wiersze.map((w) => [w.etykieta, w.wartosc]));
+      expect(wgEtykiety.Producent).toBeNull();
+      expect(wiersze.map((w) => w.wartosc)).not.toContain(RODZINA_RMU.manufacturer_ref);
+    }
+  });
+
   it('dana, której katalog nie niesie, zostaje JAWNYM BRAKIEM', () => {
     const wiersze = naglowekRodziny(RODZINA_BEZ_KONSTRUKCJI, 'ZPUE Włoszczowa');
     const wgEtykiety = Object.fromEntries(wiersze.map((w) => [w.etykieta, w.wartosc]));

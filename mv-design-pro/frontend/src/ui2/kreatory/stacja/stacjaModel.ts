@@ -1038,12 +1038,13 @@ export function producenciUzywalni(
 // ukrywać rodziny bez potwierdzonej karty katalogowej. Dwie ścieżki tej samej
 // decyzji („które rodziny widać") nie mogą współistnieć, więc stara odchodzi.
 
-/** Wybór rozdzielnicy przekazywany do payloadu (referencje + nazwy + pola). */
+/**
+ * Wybór rozdzielnicy przekazywany do payloadu (referencje + pola). Nazwy producenta i rodziny
+ * nie należą do payloadu — ekran bierze je z katalogu (`nazwaProducentaPl`, `family_name`).
+ */
 export interface WyborRozdzielnicy {
   manufacturerRef: string;
-  manufacturerName: string | null;
   familyRef: string | null;
-  familyName: string | null;
   snFields: readonly StationSnFieldTemplate[];
 }
 

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorZrodloZasilania } from '../KreatorZrodloZasilania';
 import { ZRODLO_STRINGS as T } from '../strings';
+import { bayKindLabelPl } from '../../../../ui/catalog/BayTemplatePicker';
 import type { GridSourcePreviewResponse } from '../../../../ui/network-build/forms/gridSourcePreviewApi';
 
 const T_BRAK_ZAKRESU = T.brakZakresu;
@@ -87,10 +88,19 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchSwitchgearFamilies: () =>
     Promise.resolve([
       { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
+      // Rodzina blokowa (RMU) — pola z pojedynczego szablonu backend nie złoży; nie jest opcją.
+      { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', series_name: 'SafePlus', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', source_refs: [] },
     ]),
+  // Katalog producentów (`GET /api/catalog/manufacturers`) — źródło NAZW producentów.
+  fetchManufacturers: () =>
+    Promise.resolve([
+      { manufacturer_ref: 'ABB', name: 'ABB Ltd.', normalized_code: 'ABB', country: null, status: 'verified', source_refs: ['kat'], notes_pl: null },
+    ]),
+  // Status źródła z unii kontraktu (`repo_verified`); dawne `catalog_solution` było spoza
+  // kontraktu `BayTemplateSourceStatus`.
   fetchCompleteBayTemplates: () =>
     Promise.resolve([
-      { template_ref: 'ABB__SAFERING__LINE_OUT', manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'catalog_solution', source_refs: [], version: '1', hash: 'x', notes_pl: null },
+      { template_ref: 'ABB__SAFERING__LINE_OUT', template_name_pl: null, manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'repo_verified', source_refs: [], version: '1', hash: 'x', notes_pl: null },
     ]),
   fetchTransformerTypes: () => fetchTransformerTypesMock(),
   fetchTapChangers: () =>
@@ -317,6 +327,27 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-0')).toBeTruthy();
     expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-1')).toBeTruthy();
     expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-rodzaj')).toBeTruthy();
+  });
+
+  it('listy rodziny i szablonu pola mówią nazwami katalogu, nie kodami (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-sekcje"]') as HTMLElement);
+    const rodzina = screen.getByTestId('mvd-kreator-zrodlo-rodzina-select') as HTMLSelectElement;
+    await waitFor(() =>
+      expect(rodzina.querySelector('option[value="ABB__SAFERING"]')?.textContent).toBe('SafeRing · ABB Ltd.'),
+    );
+    expect(rodzina.querySelector('option[value="ABB__SAFEPLUS"]')).toBeNull();
+    await user.selectOptions(rodzina, 'ABB__SAFERING');
+    const szablon = (await screen.findByTestId('mvd-kreator-zrodlo-sekcja-szablon-0')) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(szablon.querySelector('option[value="ABB__SAFERING__LINE_OUT"]')?.textContent).toBe(
+        `${bayKindLabelPl('liniowe_odplywowe')} · SafeRing`,
+      ),
+    );
+    for (const o of [...Array.from(rodzina.options), ...Array.from(szablon.options)]) {
+      expect(o.textContent).not.toMatch(/__|\bABB\b(?! Ltd)/);
+    }
   });
 
   it('krok Parametry normowe: c opisany podstawą IEC 60909-0 tab. 1 per węzeł, bez zaszytej liczby (klik natywny)', async () => {

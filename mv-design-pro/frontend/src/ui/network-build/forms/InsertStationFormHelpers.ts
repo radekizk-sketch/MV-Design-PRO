@@ -39,6 +39,16 @@ export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummar
   incomplete_requires_review: 'poza konfiguracją projektową',
 };
 
+/**
+ * Grupa statusu źródła szablonu pola (`SOURCE_STATUS_LABEL_PL`) — status spoza słownika
+ * (wartość z sieci spoza unii kontraktu) dostaje opis jawny, nigdy `undefined` ani kod.
+ */
+export function grupaZrodlaSzablonuPl(status: string): string {
+  return Object.prototype.hasOwnProperty.call(SOURCE_STATUS_LABEL_PL, status)
+    ? SOURCE_STATUS_LABEL_PL[status as CompleteMvBayTemplateSummary['source_status']]
+    : 'status źródła spoza słownika aplikacji';
+}
+
 // Pure helpers - station
 export function stationRef(station: Substation): string {
   return station.ref_id || station.id;
@@ -93,7 +103,7 @@ export function compareBayTemplateOptions(
  */
 export function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
   const roleLabel = role ? FIELD_ROLE_LABEL_PL[role] : bayKindLabelPl(template.bay_kind);
-  return `${roleLabel} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+  return `${roleLabel} · ${grupaZrodlaSzablonuPl(template.source_status)}`;
 }
 
 // Pure helpers - manufacturers

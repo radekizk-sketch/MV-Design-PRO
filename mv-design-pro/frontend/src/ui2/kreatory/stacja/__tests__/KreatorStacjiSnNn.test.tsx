@@ -610,6 +610,20 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
 
   afterEach(() => cleanup());
 
+  it('producent: lista podaje nazwę i status z katalogu; nagłówek i podsumowanie nazwę, nigdy kod', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
+    expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')?.textContent).toBe(
+      'ZPUE Włoszczowa · katalog zweryfikowany',
+    );
+    const tekst = document.body.textContent ?? '';
+    expect(tekst).toContain('ZPUE Włoszczowa');
+    expect(tekst).not.toContain('ZPUE_WLOSZCZOWA');
+  });
+
   it('świadomy podział: wybór typu → zapis woła insert_station_on_segment_sn i wiąże ze schematem', async () => {
     executeDomainOperationMock.mockResolvedValue({
       error: null,

@@ -142,8 +142,11 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-slup-param-porty').textContent).not.toMatch(/undefined/);
     // Rodzaj łącznika: nazwa z jednego słownika wartości kodowych, nie kod serwera.
     const lacznik = screen.getByTestId('mvd-kreator-slup-param-lacznik').textContent ?? '';
-    expect(lacznik).toContain(nazwaWartosciKodowej('switch_device_kind', wariant.params.switch_device_kind));
-    expect(lacznik).not.toContain(wariant.params.switch_device_kind);
+    const kodLacznika = wariant.params.switch_device_kind;
+    // Rekord serwera niesie rodzaj łącznika — wariant bez niego nie sprawdza tej reguły.
+    if (!kodLacznika) throw new Error('wariant katalogu bez switch_device_kind');
+    expect(lacznik).toContain(nazwaWartosciKodowej('switch_device_kind', kodLacznika));
+    expect(lacznik).not.toContain(kodLacznika);
     expect(lacznik).not.toContain(WZORZEC_STRINGS.wartoscSpozaSlownika);
   });
 

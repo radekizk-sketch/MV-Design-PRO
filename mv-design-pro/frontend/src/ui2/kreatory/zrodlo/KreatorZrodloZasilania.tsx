@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import {
   fetchCompleteBayTemplates,
+  fetchManufacturers,
   fetchMvApparatusTypes,
   fetchSourceSystemTypes,
   fetchSwitchgearFamilies,
@@ -24,8 +25,15 @@ import {
   fetchTransformerTypes,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
-import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
+import {
+  nazwaSzablonuPolaPl,
+  type CompleteMvBayTemplateSummary,
+} from '../../../ui/catalog/BayTemplatePicker';
+import { nazwaProducentaPl, type Manufacturer } from '../../../ui/catalog/manufacturer';
+import {
+  czyRodzinaPrzyjmujePojedynczePole,
+  type SwitchgearFamily,
+} from '../../../ui/catalog/SwitchgearFamilyPicker';
 import { rodzinaObslugujeNapiecie } from '../stacja/konfiguratorRozdzielnicy';
 import type {
   MVApparatusType,
@@ -151,6 +159,8 @@ export function KreatorZrodloZasilania() {
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  // Producenci — wyłącznie do NAZW (referencja `manufacturer_ref` jest kodem katalogu).
+  const [producenci, setProducenci] = useState<Manufacturer[]>([]);
   const [bladRodzin, setBladRodzin] = useState<string | null>(null);
   const [szablonyPol, setSzablonyPol] = useState<CompleteMvBayTemplateSummary[]>([]);
 
@@ -221,14 +231,16 @@ export function KreatorZrodloZasilania() {
   useEffect(() => {
     let cancelled = false;
     setBladRodzin(null);
-    fetchSwitchgearFamilies()
-      .then((items) => {
+    Promise.all([fetchSwitchgearFamilies(), fetchManufacturers()])
+      .then(([items, prod]) => {
         if (cancelled) return;
         setRodziny(Array.isArray(items) ? items : []);
+        setProducenci(Array.isArray(prod) ? prod : []);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         setRodziny([]);
+        setProducenci([]);
         setBladRodzin(getCatalogErrorMessage(error));
       });
     return () => { cancelled = true; };
@@ -351,13 +363,21 @@ export function KreatorZrodloZasilania() {
   // katalogowej ani normowej.
   const opcjeRodzin = useMemo(
     () => rodziny
-      .filter((r) => rodzinaObslugujeNapiecie(r, napiecieSn))
-      .map((r) => ({ id: r.switchgear_family_ref, etykieta: `${r.family_name} · ${r.manufacturer_ref}` })),
-    [rodziny, napiecieSn],
+      // Pola liniowe GPZ powstają z POJEDYNCZEGO szablonu pola — rodzina blokowa (RMU)
+      // i rodzina nieoferowana kończą operację twardym błędem, więc nie są opcją.
+      .filter((r) => rodzinaObslugujeNapiecie(r, napiecieSn) && czyRodzinaPrzyjmujePojedynczePole(r))
+      .map((r) => ({
+        id: r.switchgear_family_ref,
+        etykieta: `${r.family_name} · ${nazwaProducentaPl(r.manufacturer_ref, producenci)}`,
+      })),
+    [producenci, rodziny, napiecieSn],
   );
   const opcjeSzablonow = useMemo(
-    () => szablonyPol.map((t) => ({ id: t.template_ref, etykieta: t.template_ref })),
-    [szablonyPol],
+    () => {
+      const nazwyRodzin = new Map(rodziny.map((r) => [r.switchgear_family_ref, r.family_name]));
+      return szablonyPol.map((t) => ({ id: t.template_ref, etykieta: nazwaSzablonuPolaPl(t, nazwyRodzin) }));
+    },
+    [rodziny, szablonyPol],
   );
 
   const wybierzRodzine = useCallback((familyRef: string | null) => {

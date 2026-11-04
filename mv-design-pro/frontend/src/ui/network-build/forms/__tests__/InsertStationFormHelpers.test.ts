@@ -7,6 +7,8 @@ import {
   isCompleteSourceStatus,
   compareBayTemplateOptions,
   templateOptionLabel,
+  grupaZrodlaSzablonuPl,
+  SOURCE_STATUS_LABEL_PL,
   orderManufacturers,
   isUsableManufacturer,
   isStationNnSourceConverter,
@@ -95,6 +97,30 @@ describe('templateOptionLabel', () => {
     expect(opcja('pv')).toBe('Pole źródłowe PV · pakiet katalogowy');
     expect(opcja('pomiarowe')).toBe('Pole pomiarowe · pakiet katalogowy');
     expect(opcja('potrzeb_wlasnych')).toBe('Pole potrzeb własnych · pakiet katalogowy');
+  });
+});
+
+/**
+ * Grupa statusu źródła: każdy status unii kontraktu (rejestr zamknięty — kompilator pilnuje
+ * kompletności) × wartość spoza unii (w tym klucz prototypu) — nigdy `undefined` ani kod.
+ */
+describe('grupaZrodlaSzablonuPl', () => {
+  const STATUSY = {
+    official_catalog: true,
+    repo_verified: true,
+    user_defined: true,
+    canonical_fallback: true,
+    requires_catalog: true,
+    incomplete_requires_review: true,
+  } as const satisfies Record<keyof typeof SOURCE_STATUS_LABEL_PL, true>;
+  it.each(Object.keys(STATUSY) as Array<keyof typeof STATUSY>)('%s', (status) => {
+    expect(grupaZrodlaSzablonuPl(status)).toBe(SOURCE_STATUS_LABEL_PL[status]);
+  });
+  it.each(['catalog_solution', 'toString'])('%s spoza słownika — opis jawny', (status) => {
+    expect(grupaZrodlaSzablonuPl(status)).toBe('status źródła spoza słownika aplikacji');
+    expect(
+      templateOptionLabel({ template_ref: 't', bay_kind: 'pomiarowe', source_status: status } as never),
+    ).toBe('Pole pomiarowe · status źródła spoza słownika aplikacji');
   });
 });
 

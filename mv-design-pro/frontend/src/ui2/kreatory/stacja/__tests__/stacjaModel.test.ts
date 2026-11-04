@@ -86,9 +86,7 @@ function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): W
   const byRole = szablonyPerRola(SZABLONY_KOMPLET, stationType, {});
   return {
     manufacturerRef: 'ZPUE_WLOSZCZOWA',
-    manufacturerName: 'ZPUE Włoszczowa',
     familyRef: 'ZPUE_ROTOBLOK',
-    familyName: 'Rotoblok',
     snFields: zbudujPolaSn(
       stationType,
       byRole,

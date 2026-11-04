@@ -397,7 +397,7 @@ export function naglowekRodziny(
 ): WierszNaglowka[] {
   const tor = torRodziny(rodzina);
   return [
-    { etykieta: T.naglowekProducent, wartosc: producent ?? rodzina?.manufacturer_ref ?? null },
+    { etykieta: T.naglowekProducent, wartosc: producent ?? null },
     {
       etykieta: T.naglowekNapiecie,
       wartosc: opisNapiecRodziny(rodzina),

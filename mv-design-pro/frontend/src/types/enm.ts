@@ -2439,7 +2439,8 @@ export interface DanaPrzyjetaWyposazenia {
   nazwa_pl: string;
   wartosc: unknown;
   powod_pl: string;
-  jakosc: string;
+  /** `werdykt.kontrakt.DanaPrzyjeta.jakosc` — `FieldQuality | None`. */
+  jakosc: FieldQuality | null;
 }
 
 /** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */

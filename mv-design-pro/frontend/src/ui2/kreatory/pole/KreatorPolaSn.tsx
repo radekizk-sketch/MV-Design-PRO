@@ -9,10 +9,15 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
+import {
+  nazwaSzablonuPolaPl,
+  type CompleteMvBayTemplateSummary,
+} from '../../../ui/catalog/BayTemplatePicker';
+import { nazwaProducentaPl, type Manufacturer } from '../../../ui/catalog/manufacturer';
+import { czySzablonPojedynczegoPola, type SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import {
   fetchCompleteBayTemplates,
+  fetchManufacturers,
   fetchMvApparatusTypes,
   fetchSwitchgearFamilies,
   getCatalogErrorMessage,
@@ -112,6 +117,8 @@ export function KreatorPolaSn() {
   const [typy, setTypy] = useState<MVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  // Producenci — wyłącznie do NAZW (referencja `manufacturer_ref` jest kodem katalogu).
+  const [producenci, setProducenci] = useState<Manufacturer[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
   // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
   // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
@@ -122,16 +129,18 @@ export function KreatorPolaSn() {
     let cancelled = false;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
-    Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies()])
-      .then(([apar, fam]) => {
+    Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies(), fetchManufacturers()])
+      .then(([apar, fam, prod]) => {
         if (cancelled) return;
         setTypy(Array.isArray(apar) ? apar : []);
         setRodziny(Array.isArray(fam) ? fam : []);
+        setProducenci(Array.isArray(prod) ? prod : []);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setTypy([]);
         setRodziny([]);
+        setProducenci([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       })
       .finally(() => {
@@ -176,17 +185,29 @@ export function KreatorPolaSn() {
     () =>
       rodziny.map((r) => ({
         id: r.switchgear_family_ref,
-        etykieta: `${r.family_name} · ${r.manufacturer_ref}`,
+        etykieta: `${r.family_name} · ${nazwaProducentaPl(r.manufacturer_ref, producenci)}`,
       })),
+    [producenci, rodziny],
+  );
+
+  const nazwyRodzin = useMemo(
+    () => new Map(rodziny.map((r) => [r.switchgear_family_ref, r.family_name])),
     [rodziny],
   );
 
   const opcjeSzablonow = useMemo(
     () =>
       szablony
-        .filter((t) => t.switchgear_family_ref === dane.switchgear_family_ref)
-        .map((t) => ({ id: t.template_ref, etykieta: t.notes_pl ?? `Szablon · ${t.manufacturer_ref}` })),
-    [szablony, dane.switchgear_family_ref],
+        // Szablon rodziny blokowej (RMU) backend odrzuca twardym błędem (pole bloku
+        // powstaje z bloku i jednostki) — nie jest opcją; rodzina zostaje wybieralna
+        // z informacją `mvd-kreator-pole-rodzina-blokowa`.
+        .filter(
+          (t) =>
+            t.switchgear_family_ref === dane.switchgear_family_ref
+            && czySzablonPojedynczegoPola(t.switchgear_family_ref, rodziny),
+        )
+        .map((t) => ({ id: t.template_ref, etykieta: nazwaSzablonuPolaPl(t, nazwyRodzin) })),
+    [szablony, dane.switchgear_family_ref, nazwyRodzin, rodziny],
   );
 
   /** Wybrana rodzina i wskazana karta katalogowa pola — źródło nagłówka i składu. */
@@ -467,7 +488,7 @@ export function KreatorPolaSn() {
             {wybranaRodzina ? (
               <KreatorSekcja tytul={ST.naglowekRodzinyTytul} testid="mvd-kreator-pole-naglowek-rodziny">
                 <dl className="mvd-kreator-naglowek-rodziny">
-                  {naglowekRodziny(wybranaRodzina, wybranaRodzina.manufacturer_ref).map((wiersz) => (
+                  {naglowekRodziny(wybranaRodzina, nazwaProducentaPl(wybranaRodzina.manufacturer_ref, producenci)).map((wiersz) => (
                     <Fragment key={wiersz.etykieta}>
                       <dt>{wiersz.etykieta}</dt>
                       <dd data-brak={wiersz.wartosc === null ? 'tak' : 'nie'}>

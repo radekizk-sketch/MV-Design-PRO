@@ -1293,6 +1293,10 @@ def _male_pierwsze(tekst: str) -> str:
     return tekst[:1].lower() + tekst[1:]
 
 
+def _wielkie_pierwsze(tekst: str) -> str:
+    return tekst[:1].upper() + tekst[1:]
+
+
 @pytest.mark.parametrize(
     ("mapa", "plik", "stala", "przeksztalcenie"),
     [
@@ -1311,17 +1315,20 @@ def _male_pierwsze(tekst: str) -> str:
         # OzContextPanel.tsx`, `ui/sld/shared/detailDrawerData.ts`, `ui2/wyniki/wzorzec/
         # useNazwaObiektu.ts`), żadna nie jest równa słownikowi backendu — rozbieżność
         # terminologii zgłoszona w meldunku karty do rozstrzygnięcia słownika kanonicznego.
+        # Słowniki statusów karty katalogu żyją w jednym słowniku wartości kodowych karty
+        # (`ui/catalog/wartosciKodoweKarty.ts`, karta KOMUNIKATY-BEZ-ID); tam wartość stoi
+        # w zdaniu („Stan weryfikacji: zweryfikowany"), więc pisana małą literą.
         (
             slownik.NAZWY_STATUSOW_WERYFIKACJI_PL,
-            "ui2/spaces/model/katalog/strings.ts",
-            "ETYKIETY_WERYFIKACJI",
-            None,
+            "ui/catalog/wartosciKodoweKarty.ts",
+            "STAN_WERYFIKACJI_PL",
+            _wielkie_pierwsze,
         ),
         (
             slownik.NAZWY_STATUSOW_KATALOGU_PL,
-            "ui2/spaces/model/katalog/strings.ts",
-            "ETYKIETY_STATUSU_KATALOGU",
-            None,
+            "ui/catalog/wartosciKodoweKarty.ts",
+            "STATUS_KATALOGU_PL",
+            _wielkie_pierwsze,
         ),
         (
             slownik.NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
