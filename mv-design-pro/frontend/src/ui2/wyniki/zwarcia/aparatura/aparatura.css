@@ -34,14 +34,6 @@
   color: var(--mvd-accent);
 }
 
-.mvd-apar-cel {
-  margin: 0;
-  max-width: 78ch;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--mvd-muted);
-}
-
 .mvd-apar-akcja {
   flex: none;
   padding: 6px 14px;
@@ -210,21 +202,29 @@
 }
 
 /* Wyróżnienie konkretnej wartości — jedyne miejsce koloru w tabeli. */
-.mvd-apar-komorka[data-uwaga='ujemny'] {
+.mvd-apar-komorka[data-uwaga='ujemny'],
+.mvd-apar-szczegoly [data-uwaga='ujemny'] {
   color: var(--mvd-err);
   background: var(--mvd-err-bg);
   font-weight: 600;
 }
 
 .mvd-apar-komorka[data-uwaga='brak'],
-.mvd-apar-czasy-odniesienia [data-uwaga='brak'] {
+.mvd-apar-czas-linia [data-uwaga='brak'],
+.mvd-apar-szczegoly [data-uwaga='brak'] {
   color: var(--mvd-warn);
   background: var(--mvd-warn-bg);
 }
 
 .mvd-apar-rozwiniecie > td {
-  padding: 8px 12px 12px 28px;
+  padding: 6px 10px 8px 24px;
   cursor: default;
+}
+
+.mvd-apar-warunek {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
 }
 
 .mvd-apar-porownanie {
@@ -239,46 +239,21 @@
   font-weight: 600;
 }
 
-.mvd-apar-warunek,
-.mvd-apar-czasy-odniesienia {
-  font-weight: 400;
-  font-size: 11.5px;
-  color: var(--mvd-muted);
-}
-
 .mvd-apar-akcje-pola {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .mvd-apar-szczegoly {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 10px 12px;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 10px;
   border: 1px dashed var(--mvd-line);
   border-radius: 8px;
-}
-
-.mvd-apar-szczegoly section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.mvd-apar-szczegoly-tytul {
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--mvd-ink);
-}
-
-.mvd-apar-komunikat {
-  margin: 0;
-  font-size: 12.5px;
 }
 
 .mvd-apar-brak {
@@ -314,50 +289,78 @@
   color: var(--mvd-muted);
 }
 
-.mvd-apar-czas-pola {
+/* Czas wyłączenia pod tabelą kryteriów: t_zab + t_wył = T_k. */
+.mvd-apar-czas-linia {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-apar-czas-etykieta,
+.mvd-apar-czas-zrodlo {
+  color: var(--mvd-muted);
+}
+
+/* Szczegóły obliczeń: kroki wyprowadzenia, zwarte. */
+.mvd-apar-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-apar-krok-tytul {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
+.mvd-apar-dane {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 6px 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 2px 12px;
   margin: 0;
 }
 
-.mvd-apar-czas-pola dt {
+.mvd-apar-dane dt {
   font-size: 10.5px;
   color: var(--mvd-muted);
 }
 
-.mvd-apar-czas-pola dd {
+.mvd-apar-dane dd {
   margin: 0;
   font-size: 12px;
   color: var(--mvd-ink);
 }
 
-.mvd-apar-czas-powod,
-.mvd-apar-czas-zalozenie {
+.mvd-apar-opis,
+.mvd-apar-opis-inline {
   margin: 0;
-  max-width: 78ch;
+  max-width: 90ch;
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--mvd-muted);
 }
 
-.mvd-apar-czas-zalozenie {
-  font-style: italic;
+.mvd-apar-wzor {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
 }
 
-/* Pełne karty werdyktu kryteriów pola — wyłącznie w „Szczegółach obliczeń”. */
-.mvd-apar-oceny {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
+.mvd-apar-wzor-nazwa {
+  color: var(--mvd-muted);
+}
+
+.mvd-apar-symbol {
+  white-space: nowrap;
 }
 
 /* Parametry aparatu użyte w ocenie (V12K-351): wartość, pochodzenie, etykieta wartości roboczej. */
 .mvd-apar-parametry {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -389,6 +392,3 @@
   color: var(--mvd-muted);
 }
 
-.mvd-apar-parametr p {
-  flex: 1 1 100%;
-}

@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import bramka_scalenia as bramka
 import pytest
@@ -437,6 +438,10 @@ def _bramka_bez_biegow(drzewo: Path, monkeypatch: pytest.MonkeyPatch) -> list[li
     """Bramka na drzewie syntetycznym: zero zmian, polecenia zapisywane zamiast uruchamiane;
     „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg."""
     monkeypatch.setattr(bramka, "zmienione_pliki", lambda baza, glowa: [])
+    # Wolne miejsce hosta nie jest cechą tych testów: bez podstawienia wynik zależał od dysku
+    # maszyny (przy < 5 GB bramka odmawiała startu i testy kasowania czerwieniały). Test progu
+    # (`test_bramka_odmawia_startu_przy_braku_miejsca`) nadpisuje to podstawienie własnym.
+    monkeypatch.setattr(bramka.shutil, "disk_usage", lambda _k: SimpleNamespace(free=int(100e9)))
     polecenia: list[list[str]] = []
 
     def uruchom(nazwa: str, polecenie: list[str], cwd: Path) -> tuple[int, float]:

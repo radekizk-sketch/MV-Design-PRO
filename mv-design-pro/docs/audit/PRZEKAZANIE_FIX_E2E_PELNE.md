@@ -103,4 +103,21 @@ Weryfikacja (pod blokadą): backend 22 pliki testów powiązanych — 7 697 pass
 `scripts/guardy_z_ci.py` RC=0 (115 strażników, 4 603 testy własne); e2e kd6 ×2, kd4 ×4, ogniwo ×2 — 8 passed,
 po poprawkach układu kd6+kd4 — 6 passed. Iniekcje: 9, każda czerwona. Pin `solver_input_substitute_guard`
 4503 → 4506 (pomiar: +3 pola znamienia). Zrzuty obu motywów: `docs/audit/visual/flow-ekspert/kd6-{ogniwo-model,
-tclearing,szczegoly}-{light,dark}.png`, `ogniwo-aparatura-{light,dark}.png`. Werdyktu wizualnego (B-02) nie wystawiam.
+tclearing}-{light,dark}.png`, `ogniwo-aparatura-{light,dark}.png`. Werdyktu wizualnego (B-02) nie wystawiam.
+
+## Karta KD6-SZCZEGOLY (2026-11-04, końcowa korekta UI „Szczegółów obliczeń”)
+
+Zakres wyłącznie UI (`frontend/src/ui2/wyniki/zwarcia/aparatura/`); backend, ENM, wartości wynikowe i kontrakty
+bez zmian. Rozwinięcie pola: tabela Kryterium | Prąd obliczony [kA] | Wartość znamionowa [kA] | Zapas [kA]
+(dynamiczne, cieplne, wyłączalne; warunek wzorem z `warunek_latex`), pod nią czas wyłączenia
+t_zab + t_wył = T_k z członów backendu (brak członu = „nieustalony”), przyciski „Parametry aparatu”
+i „Szczegóły obliczeń”. Szczegóły (domyślnie zwinięte): dane wejściowe → wzory → podstawienia → wyniki pośrednie
+→ wynik końcowy, z istniejących danych rekordu. Usunięte z widoku: niepewność, kompletność i jakość dowodu,
+etykiety statusu, karta werdyktu (konflikt z kontraktem werdyktu wpisany jako V12K-353 w
+`docs/v12xx/REJESTR_KONFLIKTOW.md`; dane i API bez zmian). Każda informacja raz: podstawa normowa wyłącznie
+z rekordu limitu, uzasadnienie czasu własnego raz (w założeniach czasu), ip/Ith/Ib nad tabelą albo w wierszu;
+opis pochodzenia t_b (backend `tb_zrodlo.opis_pl`, powtarza rozkład czasu) jest podpowiedzią komórki t_b, a słowny
+komunikat pola (`komunikat_pl`, powtarza liczby tabeli i niesie zdanie o dowodzie zgodności) nie jest wyświetlany.
+Symbole prądów nad tabelą i w nagłówkach jako wzory; zdanie o wybranym punkcie usunięte (nagłówek nazywa stację).
+Zrzuty: `docs/audit/visual/flow-ekspert/kd6-szczegoly-pole{1,2,3}-{light,dark}.png`; pomiar przed/po
+i zgodność liczb DOM — w meldunku karty.

@@ -3,8 +3,9 @@
  *  - ogniwo z werdyktami wytrzymałości aparatury pochodzącymi z MODELU
  *    (żadnej ręcznej konfiguracji stacji — aparat z pozycji katalogu APARAT_SN),
  *    jako tabela pól z rozwiniętym porównaniem pierwszego pola (karta APARATURA-TABELA),
- *  - rozbicie czasu wyłączenia wyprowadzonego z NASTAW zabezpieczeń pola i pełne
- *    „Szczegóły obliczeń” pierwszego pola.
+ *  - czas wyłączenia wyprowadzony z NASTAW zabezpieczeń pola i widok każdego pola
+ *    rozwiniętego ze „Szczegółami obliczeń” (karta KD6-SZCZEGOLY), z pomiarem wysokości
+ *    i liczb DOM do pliku wyników biegu.
  * Oba motywy. Zrzut = jedyny dowód wyglądu na stronie oceny.
  *
  * Scena jest REALNA: projekt + przypadek + sieć ze stacją, której pole liniowe
@@ -307,6 +308,43 @@ async function otworz(page: Page, scena: Scena, motyw: string, hash: string): Pr
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
 }
 
+/** Rozwija każde pole i jego szczegóły natywnym klikiem; zwraca liczby z DOM i wysokości. */
+async function zmierzSzczegolyPol(
+  page: Page,
+  pola: readonly string[],
+): Promise<{ wysokoscSekcjiPx: number; pola: Record<string, { wysokoscPx: number; teksty: Record<string, string> }> }> {
+  const wynik: Record<string, { wysokoscPx: number; teksty: Record<string, string> }> = {};
+  for (const pole of pola) {
+    const przelacz = page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole}`);
+    if ((await przelacz.getAttribute('aria-expanded')) !== 'true') await przelacz.click();
+    const szczegolyPrzelacz = page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole}`);
+    if ((await szczegolyPrzelacz.getAttribute('aria-expanded')) !== 'true') {
+      await szczegolyPrzelacz.click();
+    }
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole}`)).toBeVisible();
+    const wiersz = page.getByTestId(`mvd-zwarcia-aparatura-pole-${pole}`);
+    const wysokoscPx = await wiersz.evaluate((tr) => {
+      const rozwiniecie = tr.nextElementSibling as HTMLElement | null;
+      return tr.getBoundingClientRect().height + (rozwiniecie?.getBoundingClientRect().height ?? 0);
+    });
+    const teksty = await page.evaluate((p) => {
+      const zebrane: Record<string, string> = {};
+      for (const el of document.querySelectorAll<HTMLElement>('[data-testid^="mvd-zwarcia-aparatura-"]')) {
+        const id = el.dataset.testid ?? '';
+        if (id.endsWith(`-${p}`) || id.includes(`-${p}-`)) zebrane[id] = (el.innerText ?? '').trim();
+      }
+      return zebrane;
+    }, pole);
+    wynik[pole] = { wysokoscPx, teksty };
+  }
+  const wspolne = page.getByTestId('mvd-zwarcia-aparatura-prady-wspolne');
+  if ((await wspolne.count()) > 0) {
+    wynik['(wspólne)'] = { wysokoscPx: 0, teksty: { 'prady-wspolne': (await wspolne.innerText()).trim() } };
+  }
+  const ramka = await page.getByTestId('mvd-zwarcia-aparatura').boundingBox();
+  return { wysokoscSekcjiPx: Math.round(ramka?.height ?? 0), pola: wynik };
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -367,8 +405,8 @@ test.describe('kd6:zrzuty', () => {
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
-      // Szczegóły obliczeń pierwszego pola: rozbicie czasu wyłączenia T_k (człon nastawczy,
-      // czas własny, źródło, założenia), t_b punktu z pochodzeniem i karty werdyktu kryteriów.
+      // Czas wyłączenia pierwszego pola pod tabelą kryteriów (t_zab + t_wył = T_k) i jego
+      // szczegóły obliczeń (dane wejściowe → wzory → podstawienia → wyniki pośrednie → wynik).
       await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pierwszePole}`).click();
       const szczegoly = page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pierwszePole}`);
       await expect(szczegoly).toBeVisible();
@@ -382,8 +420,25 @@ test.describe('kd6:zrzuty', () => {
       await czas.scrollIntoViewIfNeeded();
       await bramkaTresciMatematycznej(page);
       await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
-      await szczegoly.scrollIntoViewIfNeeded();
-      await szczegoly.screenshot({ path: path.join(OUTPUT_DIR, `kd6-szczegoly-${id}.png`) });
+
+      // POMIAR (standard §10 kontraktu prezentacji: meldunek podaje pomiar przed/po): każde pole
+      // rozwinięte natywnie, ze szczegółami obliczeń; liczby z DOM (prądy, Tk, zapasy, wartości
+      // porównania) i wysokości do pliku wyników biegu — porównanie liczb przed/po zmianie UI.
+      const pomiar = await zmierzSzczegolyPol(page, scena.polaZWerdyktem);
+      fs.writeFileSync(test.info().outputPath(`kd6-pomiar-${id}.json`), JSON.stringify(pomiar, null, 2));
+
+      // Zrzut widoku każdego pola rozwiniętego ze szczegółami obliczeń (karta KD6-SZCZEGOLY):
+      // tabela kryteriów, czas wyłączenia, wyprowadzenie. Okno na całą sekcję (przewijany
+      // kontener ekranu wyników maluje tylko część w oknie).
+      await page.setViewportSize({ width: 1360, height: pomiar.wysokoscSekcjiPx + 600 });
+      for (const [i, pole] of scena.polaZWerdyktem.entries()) {
+        const widokPola = page.getByTestId(`mvd-zwarcia-aparatura-rozwiniecie-${pole}`);
+        await widokPola.scrollIntoViewIfNeeded();
+        await bramkaTresciMatematycznej(page);
+        await widokPola.screenshot({
+          path: path.join(OUTPUT_DIR, `kd6-szczegoly-pole${i + 1}-${id}.png`),
+        });
+      }
     });
   }
 });

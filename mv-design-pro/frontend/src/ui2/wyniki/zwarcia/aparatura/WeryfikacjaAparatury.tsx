@@ -1,27 +1,32 @@
 /**
  * WeryfikacjaAparatury — OGNIWO ŁAŃCUCHA „wynik zwarciowy → wytrzymałość aparatury pól
- * stacji" (karty KD-4, KD-6; prezentacja tabelaryczna — karta APARATURA-TABELA).
+ * stacji" (karty KD-4, KD-6; prezentacja tabelaryczna — APARATURA-TABELA; szczegóły pola —
+ * KD6-SZCZEGOLY, standard §10 kontraktu prezentacji inżynierskiej).
  *
- * DLACZEGO TABELA. Właściciel ocenił poprzedni ekran (trzy duże karty pól, dziewięć rekordów
- * z etykietami, akapity założeń w pierwszym planie) jako przegadany. Inżynier potrzebuje
- * jednego spojrzenia: pole → liczby → zapasy wytrzymałości. Dlatego:
- *  - jedno pole = jeden wiersz; natywny przycisk z `aria-expanded` (klik w wiersz, Enter,
- *    spacja) rozwija porównanie Parametr | Obliczony | Aparat | Zapas trzech kryteriów;
- *  - prądy ip, Ith, Ib stoją nad tabelą RAZ, wyłącznie gdy backend podał je jednakowe dla
- *    wszystkich pól; inaczej idą do wierszy (ekran porównuje liczby backendu, nie liczy);
- *  - założenia, wartości robocze, podstawy limitów, przedmiot, kompletność dowodu i pełne
- *    wyjaśnienia kryteriów (`KartaWerdyktu`, wzory z `*_latex`) są w „Szczegółach obliczeń”;
- *  - wiersze neutralne; kolor wyłącznie przy wartości wymagającej uwagi (zapas ujemny, brak
- *    zapasu albo limitu, czas wyłączenia nieustalony).
+ * UKŁAD. Jedno pole = jeden wiersz tabeli; natywny przełącznik z `aria-expanded` (klik
+ * w wiersz, Enter, spacja) rozwija widok pola:
+ *  - tabela kryteriów Kryterium | Prąd obliczony | Wartość znamionowa | Zapas (dynamiczne,
+ *    cieplne, wyłączalne; warunek wzorem przy nazwie),
+ *  - pod nią czas wyłączenia t_zab + t_wył = T_k z członów backendu (brak członu =
+ *    „nieustalony”, bez liczby zastępczej i bez t_b innego pola),
+ *  - „Szczegóły obliczeń” — domyślnie zwinięte wyprowadzenie w kolejności dane wejściowe →
+ *    wzory → podstawienia → wyniki pośrednie → wynik końcowy, z istniejących danych rekordu.
+ * Każda informacja raz: podstawa normowa — wyłącznie z rekordu limitu; uzasadnienie czasu
+ * własnego — raz, w danych czasu; ip, Ith, Ib — nad tabelą albo w wierszu, nie w szczegółach.
  *
- * SKĄD LICZBY. Każda komórka porównania czyta rekord K TEGO pola (`ocenaRodzaju`): wynik,
+ * Prądy ip, Ith, Ib stoją nad tabelą RAZ, wyłącznie gdy backend podał je jednakowe dla
+ * wszystkich pól; inaczej idą do wierszy (ekran porównuje liczby backendu, nie liczy).
+ *
+ * SKĄD LICZBY. Każda liczba kryterium pochodzi z rekordu K TEGO pola (`ocenaRodzaju`): wynik,
  * limit i margines z backendu (`wytrzymalosc_aparatury_pol.py`) — nigdy kopia innego pola
- * i nigdy liczba policzona tutaj. Czas wyłączenia pola T_k i czas znamionowy T_kr aparatu
- * pochodzą z `czas_wylaczenia.t_clearing_s` i `znamiona.i_th_duration_s`.
+ * i nigdy liczba policzona tutaj. Liczby, których backend nie obliczył, pokazujemy jako
+ * nazwany brak, nigdy jako zero.
  *
- * GRANICA KONTRAKTU WERDYKTU. Ten plik nie czyta statusu maszynowego rekordu i nie pokazuje
- * etykiet statusu (przypięte testem źródła). Status, etykieta i kompletność dowodu żyją
- * w rekordzie i w karcie werdyktu w szczegółach — tabela pokazuje liczby i ich braki.
+ * GRANICA KONTRAKTU WERDYKTU (V12K-353). Dyrektywa właściciela 2026-11-04: widok nie pokazuje
+ * niepewności, kompletności ani jakości dowodu, etykiet statusu ani karty werdyktu — dane
+ * zostają w rekordzie i w API. Ten plik nie czyta statusu maszynowego, etykiety, niepewności
+ * ani kompletności rekordu (przypięte testem źródła). Wartość robocza parametru aparatu
+ * pozostaje oznaczona przy danej wejściowej (zasada nr 4).
  */
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
@@ -31,9 +36,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { MathInline } from '../../../../ui/proof/MathRenderer';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import { TekstZWzorami } from '../../../kreatory/rama';
-import { KartaWerdyktu } from '../../wzorzec';
-import type { OcenaKryterium } from '../../wzorzec/werdykt';
+import type { OcenaKryterium, PodstawaWymagania } from '../../wzorzec/werdykt';
 import {
   ocenaRodzaju,
   pobierzWytrzymaloscAparatury,
@@ -50,7 +53,7 @@ import {
   stacjeDlaPunktu,
   type PowodBrakuPodstawy,
 } from './model';
-import { APARATURA_STRINGS as T } from './strings';
+import { APARATURA_STRINGS as T, LATEX } from './strings';
 
 type Stan =
   | { readonly rodzaj: 'nieuruchomiona' }
@@ -63,8 +66,6 @@ export interface WeryfikacjaAparaturyProps {
   readonly wiersz: ShortCircuitRow;
   /** Zapisany bieg zwarciowy ekranu — źródło prądów KAŻDEGO pola po stronie backendu. */
   readonly runId: string | null;
-  /** Nazwa wybranego punktu w języku ekranu (wskazuje stację). */
-  readonly punktNazwa: string;
   /** Przejście do konfiguracji stacji (akcja naprawcza stanu zerowego). */
   readonly onOtworzKonfiguracjeStacji?: (stationRef: string) => void;
   /** „Parametry aparatu” aparatu z modelu → kreator edycji parametrów aparatu. */
@@ -75,19 +76,40 @@ export interface WeryfikacjaAparaturyProps {
 type Uwaga = 'ujemny' | 'brak' | null;
 
 const NAZWA_KRYTERIUM: Readonly<Record<RodzajKryteriumAparatu, string>> = {
-  dynamiczna: T.kryteriumSzczytowy,
-  cieplna: T.kryteriumCieplny,
-  wylaczanie: T.kryteriumWylaczalny,
+  dynamiczna: T.kryteriumDynamiczne,
+  cieplna: T.kryteriumCieplne,
+  wylaczanie: T.kryteriumWylaczalne,
 };
 
 const KOLUMNA_ZAPASU: Readonly<Record<RodzajKryteriumAparatu, string>> = {
-  dynamiczna: T.kolZapasSzczytowy,
+  dynamiczna: T.kolZapasDynamiczny,
   cieplna: T.kolZapasCieplny,
   wylaczanie: T.kolZapasWylaczalny,
 };
 
+/** Relacja limitu jako operator LaTeX (podstawienie liczb backendu do warunku). */
+const OPERATOR_RELACJI: Readonly<Record<string, string>> = {
+  NIE_WIECEJ: '\\le',
+  NIE_MNIEJ: '\\ge',
+};
+
 function liczba(wartosc: number | null | undefined, rodzaj: RodzajWielkosci): string {
   return wartosc === null || wartosc === undefined ? T.kreska : formatujWielkosc(wartosc, rodzaj);
+}
+
+/** Liczba backendu w LaTeX (przecinek dziesiętny jako `{,}`, minus typograficzny jako `-`). */
+function liczbaLatex(wartosc: number, rodzaj: RodzajWielkosci): string {
+  return formatujWielkosc(wartosc, rodzaj).replace(',', '{,}').replace('−', '-');
+}
+
+/** Symbol wielkości z jednostką w nagłówku kolumny: wzór + „[kA]”. */
+function Symbol({ latex, jednostka }: { readonly latex: string; readonly jednostka?: string }) {
+  return (
+    <span className="mvd-apar-symbol">
+      <MathInline latex={latex} />
+      {jednostka !== undefined && <> {jednostka}</>}
+    </span>
+  );
 }
 
 /** Komórka z liczbą albo z nazwanym brakiem; `uwaga` steruje wyłącznie kolorem. */
@@ -123,6 +145,11 @@ interface Zapas {
   readonly tytul?: string;
 }
 
+/** Powód braku zapasu z rekordu (margines nieokreślony albo czego brakuje). */
+function powodBrakuZapasu(rekord: OcenaKryterium): string {
+  return rekord.margines?.powod_pl ?? rekord.wyjasnienie.czego_brakuje.join('; ');
+}
+
 /**
  * Zapas kryterium z rekordu backendu: liczba ze znakiem (ujemna — wyróżniona), „nie dotyczy”
  * (stosowalność z rekordu), „brak” z powodem w podpowiedzi albo „brak oceny”, gdy backend
@@ -134,13 +161,7 @@ function zapas(rekord: OcenaKryterium | null): Zapas {
     return { tekst: T.nieDotyczy, uwaga: null, tytul: rekord.stosowalnosc.powod_pl };
   }
   const m = rekord.margines?.wartosc ?? null;
-  if (m === null) {
-    return {
-      tekst: T.brakZapasu,
-      uwaga: 'brak',
-      tytul: rekord.margines?.powod_pl ?? rekord.wyjasnienie.czego_brakuje.join('; '),
-    };
-  }
+  if (m === null) return { tekst: T.brakZapasu, uwaga: 'brak', tytul: powodBrakuZapasu(rekord) };
   return { tekst: formatujWielkosc(m.wartosc, 'zapas'), uwaga: m.wartosc < 0 ? 'ujemny' : null };
 }
 
@@ -150,6 +171,13 @@ function opisZrodla(pole: PoleWytrzymalosci): string {
 
 function nazwaAparatu(pole: PoleWytrzymalosci): string {
   return pole.aparat_etykieta ?? pole.aparat_nazwa ?? pole.aparat_catalog_ref;
+}
+
+/** Podstawa limitu jednym zdaniem: dokument, wydanie, jednostka redakcyjna (z rekordu limitu). */
+function opisPodstawy(p: PodstawaWymagania): string {
+  return [p.dokument, p.wydanie, p.jednostka_redakcyjna]
+    .filter((x): x is string => x !== null && x !== '')
+    .join(', ');
 }
 
 /** Czy backend podał dla wszystkich pól te same prądy (porównanie liczb, nie obliczenie). */
@@ -180,10 +208,8 @@ function KomorkaCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
   );
 }
 
-/** Porównanie trzech kryteriów pola — każda liczba z rekordu K TEGO pola. */
-function Porownanie({ pole }: { readonly pole: PoleWytrzymalosci }) {
-  const tk = pole.czas_wylaczenia.t_clearing_s;
-  const tkr = pole.znamiona?.i_th_duration_s ?? null;
+/** Tabela kryteriów pola — każda liczba z rekordu K TEGO pola. */
+function TabelaKryteriow({ pole }: { readonly pole: PoleWytrzymalosci }) {
   return (
     <table
       className="mvd-apar-porownanie"
@@ -191,10 +217,10 @@ function Porownanie({ pole }: { readonly pole: PoleWytrzymalosci }) {
     >
       <thead>
         <tr>
-          <th scope="col">{T.porownanieParametr}</th>
-          <th scope="col">{T.porownanieObliczony}</th>
-          <th scope="col">{T.porownanieAparat}</th>
-          <th scope="col">{T.porownanieZapas}</th>
+          <th scope="col">{T.kolKryterium}</th>
+          <th scope="col">{T.kolObliczony}</th>
+          <th scope="col">{T.kolZnamionowa}</th>
+          <th scope="col">{T.kolZapas}</th>
         </tr>
       </thead>
       <tbody>
@@ -211,22 +237,6 @@ function Porownanie({ pole }: { readonly pole: PoleWytrzymalosci }) {
                 {rekord !== null && rekord.kryterium.warunek_latex.trim() !== '' && (
                   <span className="mvd-apar-warunek">
                     <MathInline latex={rekord.kryterium.warunek_latex} />
-                  </span>
-                )}
-                {rodzaj === 'cieplna' && (
-                  <span className="mvd-apar-czasy-odniesienia">
-                    <span
-                      data-testid={`mvd-zwarcia-aparatura-tk-${pole.pole}`}
-                      data-uwaga={tk === null ? 'brak' : undefined}
-                    >
-                      {T.czasTk} ={' '}
-                      {tk === null ? T.nieustalony : `${formatujWielkosc(tk, 'czas')} ${T.jednS}`}
-                    </span>
-                    {' · '}
-                    <span data-testid={`mvd-zwarcia-aparatura-tkr-${pole.pole}`}>
-                      {T.czasTkr} ={' '}
-                      {tkr === null ? T.kreska : `${formatujWielkosc(tkr, 'czas')} ${T.jednS}`}
-                    </span>
                   </span>
                 )}
               </th>
@@ -250,6 +260,50 @@ function Porownanie({ pole }: { readonly pole: PoleWytrzymalosci }) {
   );
 }
 
+/** Składnik sumy czasu: liczba backendu albo „nieustalony” (wyróżniony). */
+function SkladnikCzasu({ wartosc, testId }: { readonly wartosc: number | null; readonly testId: string }) {
+  return (
+    <span className="mvd-num" data-testid={testId} data-uwaga={wartosc === null ? 'brak' : undefined}>
+      {wartosc === null ? T.nieustalony : formatujWielkosc(wartosc, 'czas')}
+    </span>
+  );
+}
+
+/**
+ * Czas wyłączenia pola pod tabelą: t_zab + t_wył = T_k [s]. Każda wartość z backendu
+ * (`czlon_nastawczy_s`, `czas_wlasny_wylacznika_s`, `t_clearing_s`); brak = „nieustalony”.
+ */
+function CzasWylaczenia({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const czas = pole.czas_wylaczenia;
+  const zrodlo =
+    czas.zrodlo === 'nastawy_pola'
+      ? T.czasZNastaw
+      : czas.zrodlo === 'konfiguracja'
+        ? T.czasZKonfiguracji
+        : null;
+  return (
+    <p
+      className="mvd-apar-czas-linia"
+      data-testid={`mvd-zwarcia-aparatura-czas-szczegoly-${pole.pole}`}
+      data-zrodlo-czasu={czas.zrodlo ?? 'nieustalony'}
+    >
+      <span className="mvd-apar-czas-etykieta">
+        {T.czasWylaczenia} <MathInline latex={`${LATEX.tzab_latex} + ${LATEX.twyl_latex} = ${LATEX.tk_latex}`} />{' '}
+        {T.jednS}:
+      </span>{' '}
+      <SkladnikCzasu wartosc={czas.czlon_nastawczy_s} testId={`mvd-zwarcia-aparatura-tzab-${pole.pole}`} />
+      {' + '}
+      <SkladnikCzasu
+        wartosc={czas.czas_wlasny_wylacznika_s}
+        testId={`mvd-zwarcia-aparatura-twyl-${pole.pole}`}
+      />
+      {' = '}
+      <SkladnikCzasu wartosc={czas.t_clearing_s} testId={`mvd-zwarcia-aparatura-tk-${pole.pole}`} />
+      {zrodlo !== null && <span className="mvd-apar-czas-zrodlo"> · {zrodlo}</span>}
+    </p>
+  );
+}
+
 function opisPochodzenia(w: WartoscParametruAparatu): string {
   if (w.pochodzenie === 'KATALOG') return T.pochodzenieKatalog;
   if (w.pochodzenie === 'PROPOZYCJA') return T.pochodzeniePropozycja;
@@ -257,7 +311,7 @@ function opisPochodzenia(w: WartoscParametruAparatu): string {
   return T.pochodzenieBrak;
 }
 
-/** Parametry aparatu z backendu w stałej kolejności: czas własny, I_k, t_k, I_p. */
+/** Parametry aparatu z backendu w stałej kolejności: czas własny, I_th, t_th (T_kr), I_dyn. */
 function parametryPola(pole: PoleWytrzymalosci): WartoscParametruAparatu[] {
   const wartosci = pole.znamiona?.wartosci ?? {};
   return [
@@ -268,21 +322,84 @@ function parametryPola(pole: PoleWytrzymalosci): WartoscParametruAparatu[] {
   ].filter((w): w is WartoscParametruAparatu => w !== null && w !== undefined);
 }
 
+/** Parametr aparatu: wartość, pochodzenie, znacznik wartości roboczej; opis źródła raz. */
+function Parametr({
+  pole,
+  w,
+  opisWZalozeniach,
+}: {
+  readonly pole: PoleWytrzymalosci;
+  readonly w: WartoscParametruAparatu;
+  readonly opisWZalozeniach: boolean;
+}) {
+  return (
+    <li
+      className="mvd-apar-parametr"
+      data-testid={`mvd-zwarcia-aparatura-parametr-${pole.pole}-${w.parametr}`}
+      data-pochodzenie={w.pochodzenie ?? 'brak'}
+      data-wartosc-robocza={String(w.wartosc_robocza)}
+    >
+      <span className="mvd-apar-parametr-nazwa">{w.nazwa_pl}</span>
+      <span className="mvd-num">
+        {w.wartosc === null
+          ? T.kreska
+          : `${formatujWielkosc(w.wartosc, w.jednostka === 's' ? 'czas' : 'prad')} ${w.jednostka}`}
+      </span>
+      <span className="mvd-apar-parametr-pochodzenie">{opisPochodzenia(w)}</span>
+      {w.wartosc_robocza && (
+        <span
+          className="mvd-apar-parametr-robocza"
+          data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
+        >
+          {T.etykietaRobocza}
+        </span>
+      )}
+      {w.wartosc_robocza && !opisWZalozeniach && <p className="mvd-apar-opis">{w.opis_zrodla_pl}</p>}
+      {w.wartosc === null && w.powod_braku_pl !== null && (
+        <p className="mvd-apar-opis">{w.powod_braku_pl}</p>
+      )}
+    </li>
+  );
+}
+
+function Krok({
+  tytul,
+  testId,
+  children,
+}: {
+  readonly tytul: string;
+  readonly testId: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <section className="mvd-apar-krok" data-testid={testId}>
+      <h5 className="mvd-apar-krok-tytul">{tytul}</h5>
+      {children}
+    </section>
+  );
+}
+
 /**
- * Szczegóły obliczeń pola: ocena backendu, aparat i źródło, prądy punktu zabudowy (z t_b
- * i jego pochodzeniem), rozbicie czasu wyłączenia z założeniami, parametry aparatu z
- * pochodzeniem i wartościami roboczymi oraz pełna karta werdyktu KAŻDEGO kryterium.
+ * Szczegóły obliczeń pola (domyślnie zwinięte): dane wejściowe → wzory → podstawienia →
+ * wyniki pośrednie → wynik końcowy. Wyłącznie istniejące dane rekordu i widoku pola. Bez
+ * komunikatu słownego backendu (`komunikat_pl`): powtarza liczby tabeli i niesie zdanie
+ * o kompletności dowodu, którego widok nie pokazuje (V12K-353).
  */
 function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; readonly id: string }) {
   const prady = pole.prady_pola;
   const czas = pole.czas_wylaczenia;
   const parametry = parametryPola(pole);
-  const zrodloCzasu =
-    czas.zrodlo === 'nastawy_pola'
-      ? T.czasZNastaw
-      : czas.zrodlo === 'konfiguracja'
-        ? T.czasZKonfiguracji
-        : T.nieustalony;
+  const rekordy = RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => ({
+    rodzaj,
+    rekord: ocenaRodzaju(pole, rodzaj),
+  }));
+  const definicjeZapasu = [
+    ...new Set(
+      rekordy
+        .map(({ rekord }) => rekord?.margines?.definicja_latex ?? null)
+        .filter((d): d is string => d !== null && d.trim() !== ''),
+    ),
+  ];
   const opisTb = prady.tb_zrodlo?.opis_pl ?? null;
   return (
     <div
@@ -290,149 +407,144 @@ function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; rea
       id={id}
       data-testid={`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`}
     >
-      <section>
-        <h5 className="mvd-apar-szczegoly-tytul">{T.szczegolyOcena}</h5>
-        <p className="mvd-apar-komunikat" data-testid={`mvd-zwarcia-aparatura-komunikat-${pole.pole}`}>
-          {pole.komunikat_pl}
-        </p>
+      <Krok tytul={T.krokDane} testId={`mvd-zwarcia-aparatura-dane-${pole.pole}`}>
         <p className="mvd-apar-zrodlo" data-testid={`mvd-zwarcia-aparatura-zrodlo-${pole.pole}`}>
-          {T.szczegolyAparat}: {nazwaAparatu(pole)} · {opisZrodla(pole)}
+          {T.aparat}: {nazwaAparatu(pole)} · {opisZrodla(pole)}
         </p>
-      </section>
-
-      <section
-        data-testid={`mvd-zwarcia-aparatura-prady-${pole.pole}`}
-        data-punkt-ref={prady.punkt_ref ?? ''}
-      >
-        <h5 className="mvd-apar-szczegoly-tytul">{T.pradyPola}</h5>
-        <dl className="mvd-apar-czas-pola">
+        <dl
+          className="mvd-apar-dane"
+          data-testid={`mvd-zwarcia-aparatura-prady-${pole.pole}`}
+          data-punkt-ref={prady.punkt_ref ?? ''}
+        >
           <div>
-            <dt>{T.pradyPunkt}</dt>
+            <dt>{T.punktZabudowy}</dt>
             <dd>{prady.punkt_nazwa ?? T.kreska}</dd>
           </div>
           <div>
-            <dt>{T.pradyUn}</dt>
+            <dt>
+              <Symbol latex={LATEX.un_latex} jednostka="[kV]" />
+            </dt>
             <dd className="mvd-num">{liczba(prady.un_kv, 'prad')}</dd>
           </div>
           <div>
-            <dt>{T.pradyIk}</dt>
-            <dd className="mvd-num">{liczba(prady.ik_ka, 'prad')}</dd>
-          </div>
-          <div>
-            <dt>{T.kolIp}</dt>
-            <dd className="mvd-num">{liczba(prady.ip_ka, 'prad')}</dd>
-          </div>
-          <div>
-            <dt>{T.kolIth}</dt>
-            <dd className="mvd-num">{liczba(prady.ith_ka, 'prad')}</dd>
-          </div>
-          <div>
-            <dt>{T.kolIb}</dt>
-            <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ib-${pole.pole}`}>
-              {liczba(prady.ib_ka, 'prad')}
+            <dt>
+              <Symbol latex={LATEX.ik_latex} jednostka={T.jednKa} />
+            </dt>
+            <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ik-${pole.pole}`}>
+              {liczba(prady.ik_ka, 'prad')}
             </dd>
           </div>
           <div>
-            <dt>{T.pradyIdc}</dt>
+            <dt>
+              <Symbol latex={LATEX.idc_latex} jednostka={T.jednKa} />
+            </dt>
             <dd className="mvd-num">{liczba(prady.i_dc_ka, 'prad')}</dd>
           </div>
           <div>
-            <dt>{T.pradyTb}</dt>
-            <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}>
-              {prady.tb_s === null ? T.pradyTbBrak : formatujWielkosc(prady.tb_s, 'czas')}
-            </dd>
-          </div>
-        </dl>
-        {opisTb !== null && <p className="mvd-apar-czas-zalozenie">{opisTb}</p>}
-        {prady.powod_pl !== null && <p className="mvd-apar-czas-powod">{prady.powod_pl}</p>}
-      </section>
-
-      <section
-        data-testid={`mvd-zwarcia-aparatura-czas-szczegoly-${pole.pole}`}
-        data-zrodlo-czasu={czas.zrodlo ?? 'nieustalony'}
-      >
-        <h5 className="mvd-apar-szczegoly-tytul">{T.czasTytul}</h5>
-        <dl className="mvd-apar-czas-pola">
-          <div>
             <dt>
-              <TekstZWzorami tekst={T.czasSuma} />
+              <Symbol latex={LATEX.tb_latex} jednostka={T.jednS} />
             </dt>
-            <dd className="mvd-num">
-              {czas.t_clearing_s === null
-                ? T.nieustalony
-                : formatujWielkosc(czas.t_clearing_s, 'czas')}
+            {/* Pochodzenie t_b (backend) jako podpowiedź: jego treść powtarza uzasadnienie czasu
+                wyłączenia pola, które stoi niżej raz (dyrektywa 2026-11-04 pkt 4). */}
+            <dd
+              className="mvd-num"
+              data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}
+              title={opisTb ?? undefined}
+            >
+              {prady.tb_s === null ? T.tbNiePodano : formatujWielkosc(prady.tb_s, 'czas')}
             </dd>
           </div>
-          <div>
-            <dt>{T.czasCzlonNastawczy}</dt>
-            <dd className="mvd-num">{liczba(czas.czlon_nastawczy_s, 'czas')}</dd>
-          </div>
-          <div>
-            <dt>{T.czasWlasny}</dt>
-            <dd className="mvd-num">{liczba(czas.czas_wlasny_wylacznika_s, 'czas')}</dd>
-          </div>
-          <div>
-            <dt>{T.czasZrodlo}</dt>
-            <dd>{zrodloCzasu}</dd>
-          </div>
         </dl>
-        <p className="mvd-apar-czas-powod">{czas.powod_pl}</p>
+        {prady.powod_pl !== null && <p className="mvd-apar-opis">{prady.powod_pl}</p>}
+        <p className="mvd-apar-opis" data-testid={`mvd-zwarcia-aparatura-czas-opis-${pole.pole}`}>
+          {T.zrodloCzasu}: {czas.powod_pl}
+        </p>
         {czas.zalozenia_pl.map((zalozenie) => (
-          <p className="mvd-apar-czas-zalozenie" key={zalozenie}>
-            {T.czasZalozenie} {zalozenie}
+          <p className="mvd-apar-opis" key={zalozenie}>
+            {zalozenie}
           </p>
         ))}
-      </section>
-
-      {parametry.length > 0 && (
-        <section data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
-          <h5 className="mvd-apar-szczegoly-tytul">{T.parametryTytul}</h5>
-          <ul className="mvd-apar-parametry">
+        {parametry.length > 0 && (
+          <ul className="mvd-apar-parametry" data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
             {parametry.map((w) => (
-              <li
+              <Parametr
                 key={w.parametr}
-                className="mvd-apar-parametr"
-                data-testid={`mvd-zwarcia-aparatura-parametr-${pole.pole}-${w.parametr}`}
-                data-pochodzenie={w.pochodzenie ?? 'brak'}
-                data-wartosc-robocza={String(w.wartosc_robocza)}
-              >
-                <span className="mvd-apar-parametr-nazwa">{w.nazwa_pl}</span>
-                <span className="mvd-num">
-                  {w.wartosc === null
-                    ? T.kreska
-                    : `${formatujWielkosc(w.wartosc, w.jednostka === 's' ? 'czas' : 'prad')} ${w.jednostka}`}
-                </span>
-                {w.wartosc_robocza && (
-                  <span
-                    className="mvd-apar-parametr-robocza"
-                    data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
-                  >
-                    {T.etykietaRobocza}
-                  </span>
-                )}
-                <span className="mvd-apar-parametr-pochodzenie">{opisPochodzenia(w)}</span>
-                {w.wartosc_robocza && <p className="mvd-apar-czas-zalozenie">{w.opis_zrodla_pl}</p>}
-                {w.wartosc === null && w.powod_braku_pl !== null && (
-                  <p className="mvd-apar-czas-powod">{w.powod_braku_pl}</p>
-                )}
-              </li>
+                pole={pole}
+                w={w}
+                // Uzasadnienie wartości roboczej raz: jeśli niesie je już założenie czasu
+                // wyłączenia (czas własny), parametr go nie powtarza.
+                opisWZalozeniach={czas.zalozenia_pl.some((z) => z.includes(w.opis_zrodla_pl))}
+              />
             ))}
           </ul>
-        </section>
-      )}
+        )}
+      </Krok>
 
-      {pole.oceny.length > 0 && (
-        <section data-testid={`mvd-zwarcia-aparatura-oceny-${pole.pole}`}>
-          <h5 className="mvd-apar-szczegoly-tytul">{T.kryteriaTytul}</h5>
-          <div className="mvd-apar-oceny">
-            {pole.oceny.map((ocena) => (
-              <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
-            ))}
-          </div>
-        </section>
-      )}
+      <Krok tytul={T.krokWzory} testId={`mvd-zwarcia-aparatura-wzory-${pole.pole}`}>
+        {definicjeZapasu.map((definicja) => (
+          <p className="mvd-apar-wzor" key={definicja}>
+            {T.zapasDefinicja}: <MathInline latex={definicja} />
+          </p>
+        ))}
+      </Krok>
+
+      <Krok tytul={T.krokPodstawienia} testId={`mvd-zwarcia-aparatura-podstawienia-${pole.pole}`}>
+        {rekordy.map(({ rodzaj, rekord }) => (
+          <p className="mvd-apar-wzor" key={rodzaj} data-testid={`mvd-zwarcia-aparatura-podstawienie-${pole.pole}-${rodzaj}`}>
+            <span className="mvd-apar-wzor-nazwa">{NAZWA_KRYTERIUM[rodzaj]}:</span>{' '}
+            <Podstawienie rekord={rekord} />
+          </p>
+        ))}
+      </Krok>
+
+      <Krok tytul={T.krokPosrednie} testId={`mvd-zwarcia-aparatura-posrednie-${pole.pole}`}>
+        {rekordy.map(({ rodzaj, rekord }) =>
+          rekord?.limit ? (
+            <p className="mvd-apar-opis" key={rodzaj} data-testid={`mvd-zwarcia-aparatura-limit-${pole.pole}-${rodzaj}`}>
+              <span className="mvd-apar-wzor-nazwa">{NAZWA_KRYTERIUM[rodzaj]}:</span>{' '}
+              {rekord.limit.zakres_stosowalnosci_pl ? `${rekord.limit.zakres_stosowalnosci_pl}; ` : ''}
+              {T.podstawa} {opisPodstawy(rekord.limit.podstawa)}
+            </p>
+          ) : null,
+        )}
+      </Krok>
+
+      <Krok tytul={T.krokWynik} testId={`mvd-zwarcia-aparatura-wynik-${pole.pole}`}>
+        {rekordy.map(({ rodzaj, rekord }) => {
+          const z = zapas(rekord);
+          const liczbowy = rekord?.stosowalnosc.dotyczy === true && rekord.margines?.wartosc != null;
+          return (
+            <p className="mvd-apar-wzor" key={rodzaj} data-testid={`mvd-zwarcia-aparatura-wynik-${pole.pole}-${rodzaj}`}>
+              <span className="mvd-apar-wzor-nazwa">{NAZWA_KRYTERIUM[rodzaj]}:</span>{' '}
+              <span className="mvd-num" data-uwaga={z.uwaga ?? undefined}>
+                {z.tekst}
+                {liczbowy ? ' kA' : ''}
+              </span>
+              {z.tytul ? <span className="mvd-apar-opis-inline"> — {z.tytul}</span> : null}
+            </p>
+          );
+        })}
+      </Krok>
     </div>
   );
+}
+
+/**
+ * Podstawienie liczb backendu do warunku: x = wynik ≤ x_lim = limit [kA]. Bez liczby, gdy
+ * którejś strony backend nie obliczył (pkt 7 dyrektywy: nie pokazuj wyniku nieobliczonego).
+ */
+function Podstawienie({ rekord }: { readonly rekord: OcenaKryterium | null }) {
+  if (rekord === null) return <span data-uwaga="brak">{T.brakOceny}</span>;
+  if (!rekord.stosowalnosc.dotyczy) return <span>{T.nieDotyczy}</span>;
+  const wynik = rekord.wynik;
+  const limit = rekord.limit?.wartosc ?? null;
+  // Powód braku stoi raz — w wyniku końcowym.
+  if (wynik === null || limit === null) return <span data-uwaga="brak">{T.kreska}</span>;
+  const operator = OPERATOR_RELACJI[rekord.kryterium.relacja] ?? '\\le';
+  const latex =
+    `${wynik.symbol_latex} = ${liczbaLatex(wynik.wartosc.wartosc, 'prad')}\\ \\mathrm{kA}` +
+    ` \\; ${operator} \\; ${liczbaLatex(limit.wartosc, 'prad')}\\ \\mathrm{kA}`;
+  return <MathInline latex={latex} />;
 }
 
 /** Wiersz pola: natywny przełącznik rozwinięcia (klik w wiersz, Enter, spacja) + rozwinięcie. */
@@ -515,8 +627,9 @@ function WierszPola({
       </tr>
       {rozwiniety && (
         <tr className="mvd-apar-rozwiniecie" id={idRozwiniecia}>
-          <td colSpan={liczbaKolumn}>
-            <Porownanie pole={pole} />
+          <td colSpan={liczbaKolumn} data-testid={`mvd-zwarcia-aparatura-rozwiniecie-${pole.pole}`}>
+            <TabelaKryteriow pole={pole} />
+            <CzasWylaczenia pole={pole} />
             <div className="mvd-apar-akcje-pola">
               {aparatRef !== null && onParametryAparatu && (
                 <button
@@ -565,15 +678,21 @@ function TabelaPol({
           <span className="mvd-apar-prady-wspolne-tytul">{T.pradyWspolne}</span>
           <dl>
             <div>
-              <dt>{T.kolIp}</dt>
+              <dt>
+                <Symbol latex={LATEX.ip_latex} jednostka={T.jednKa} />
+              </dt>
               <dd className="mvd-num">{liczba(pierwsze.ip_ka, 'prad')}</dd>
             </div>
             <div>
-              <dt>{T.kolIth}</dt>
+              <dt>
+                <Symbol latex={LATEX.ith_latex} jednostka={T.jednKa} />
+              </dt>
               <dd className="mvd-num">{liczba(pierwsze.ith_ka, 'prad')}</dd>
             </div>
             <div>
-              <dt>{T.kolIb}</dt>
+              <dt>
+                <Symbol latex={LATEX.ib_latex} jednostka={T.jednKa} />
+              </dt>
               <dd className="mvd-num">{liczba(pierwsze.ib_ka, 'prad')}</dd>
             </div>
           </dl>
@@ -586,12 +705,20 @@ function TabelaPol({
             <th scope="col">{T.kolAparat}</th>
             {!wspolne && (
               <>
-                <th scope="col">{T.kolIp}</th>
-                <th scope="col">{T.kolIth}</th>
-                <th scope="col">{T.kolIb}</th>
+                <th scope="col" data-testid="mvd-zwarcia-aparatura-kol-ip">
+                  <Symbol latex={LATEX.ip_latex} jednostka={T.jednKa} />
+                </th>
+                <th scope="col">
+                  <Symbol latex={LATEX.ith_latex} jednostka={T.jednKa} />
+                </th>
+                <th scope="col">
+                  <Symbol latex={LATEX.ib_latex} jednostka={T.jednKa} />
+                </th>
               </>
             )}
-            <th scope="col">{T.kolTk}</th>
+            <th scope="col">
+              <Symbol latex={LATEX.tk_latex} jednostka={T.jednS} />
+            </th>
             {RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => (
               <th scope="col" key={rodzaj}>
                 {KOLUMNA_ZAPASU[rodzaj]}
@@ -618,7 +745,6 @@ function TabelaPol({
 export function WeryfikacjaAparatury({
   wiersz,
   runId,
-  punktNazwa,
   onOtworzKonfiguracjeStacji,
   onParametryAparatu,
 }: WeryfikacjaAparaturyProps) {
@@ -676,20 +802,15 @@ export function WeryfikacjaAparatury({
   return (
     <section className="mvd-apar" data-testid="mvd-zwarcia-aparatura">
       <header className="mvd-apar-glowa">
-        <div>
-          <h3 className="mvd-apar-tytul" data-testid="mvd-zwarcia-aparatura-tytul">
-            {T.tytul}
-            {stacje.length > 0 && (
-              <>
-                {' — '}
-                <span className="mvd-apar-punkt">{nazwyStacji}</span>
-              </>
-            )}
-          </h3>
-          <p className="mvd-apar-cel" data-testid="mvd-zwarcia-aparatura-punkt">
-            {T.punktWskazuje} „{punktNazwa}” {T.punktWskazujeOpis}
-          </p>
-        </div>
+        <h3 className="mvd-apar-tytul" data-testid="mvd-zwarcia-aparatura-tytul">
+          {T.tytul}
+          {stacje.length > 0 && (
+            <>
+              {' — '}
+              <span className="mvd-apar-punkt">{nazwyStacji}</span>
+            </>
+          )}
+        </h3>
         <button
           type="button"
           className="mvd-apar-akcja"

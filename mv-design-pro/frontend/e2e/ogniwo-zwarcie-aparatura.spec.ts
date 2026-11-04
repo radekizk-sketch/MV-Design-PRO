@@ -393,11 +393,14 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  // Komunikat backendu i prądy pola są w „Szczegółach obliczeń” (karta APARATURA-TABELA):
-  // natywny klik przełącznika wiersza, potem przełącznika szczegółów.
+  // Prądy pola są w „Szczegółach obliczeń” (karta APARATURA-TABELA): natywny klik przełącznika
+  // wiersza, potem przełącznika szczegółów. Intencja przepisana (KD6-SZCZEGOLY pkt 4): słowny
+  // komunikat backendu powtarzał liczby tabeli, więc szczegóły go nie cytują — werdykt na
+  // ekranie wiąże z backendem atrybut wiersza (wyżej) i liczby tabeli kryteriów.
   await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${POLE}`).click();
   await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${POLE}`).click();
-  await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${POLE}`)).toContainText(
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${POLE}`)).toBeVisible();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${POLE}`)).not.toContainText(
     werdykt.message_pl,
   );
   // Prądy pola z punktem zabudowy jako daną maszynową.
@@ -493,12 +496,14 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
         ? 'nieustalony'
         : formatujWielkosc(pole.czas_wylaczenia.t_clearing_s, 'czas'),
     );
-    // Werdykt na ekranie = werdykt backendu (cytat w szczegółach, nie własne słowa ekranu).
+    // Werdykt na ekranie = werdykt backendu przez zapasy rekordów K (wyżej). Intencja przepisana
+    // (KD6-SZCZEGOLY pkt 4): słowny komunikat pola nie jest cytowany w szczegółach.
     await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole.pole}`).click();
     await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole.pole}`).click();
-    await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`)).toContainText(
-      pole.komunikat_pl,
-    );
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${pole.pole}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`),
+    ).not.toContainText(pole.komunikat_pl);
     // Prąd TEGO pola (punkt zabudowy pola z biegu), nie jedna liczba stacji.
     await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${pole.pole}`)).toHaveAttribute(
       'data-punkt-ref',

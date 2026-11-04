@@ -1,16 +1,14 @@
 /**
  * Teksty PL ogniwa „wynik zwarciowy → wytrzymałość aparatury pól" (karty KD-4, KD-6,
- * APARATURA-TABELA). Język inżynierski; werdykt, założenia i wyjaśnienia zawsze cytowane
- * z backendu (nie układane tutaj).
+ * APARATURA-TABELA, KD6-SZCZEGOLY). Język inżynierski; werdykt, założenia i wyjaśnienia
+ * zawsze cytowane z backendu (nie układane tutaj). Symbole wielkości idą jako wzory LaTeX
+ * (`MathInline`), nie jako tekst ASCII.
  */
 
 export const APARATURA_STRINGS = {
-  // Nagłówek: ocenia się aparaturę PÓL STACJI w ich punktach zabudowy — wybrany punkt zwarcia
-  // (np. szyna nN stacji) wskazuje tylko stację (karta WYTRZYMALOSC-PRAD-POLA).
+  // Nagłówek: ocenia się aparaturę PÓL STACJI w ich punktach zabudowy; nagłówek nazywa stację
+  // (wybrany punkt zwarcia tylko ją wskazuje — karta WYTRZYMALOSC-PRAD-POLA).
   tytul: 'Wytrzymałość aparatury pól stacji',
-  punktWskazuje: 'Wybrany punkt zwarcia',
-  punktWskazujeOpis:
-    'wskazuje stację; prądy każdego pola pochodzą z wiersza biegu dla jego punktu zabudowy.',
   akcja: 'Sprawdź aparaturę pól stacji',
   akcjaPonow: 'Sprawdź ponownie',
   pracuje: 'Sprawdzanie wytrzymałości…',
@@ -22,28 +20,28 @@ export const APARATURA_STRINGS = {
   // Prądy wspólne nad tabelą — tylko gdy backend podał dla wszystkich pól te same wartości.
   pradyWspolne: 'Prądy zwarciowe — jednakowe dla wszystkich pól',
 
-  // Kolumny tabeli; jednostka w nagłówku, nie w komórce (wymaganie 9).
+  // Kolumny tabeli; jednostka w nagłówku, nie w komórce. Symbole wielkości: `LATEX`.
   kolPole: 'Pole',
   kolAparat: 'Aparat',
-  kolIp: 'ip [kA]',
-  kolIth: 'Ith [kA]',
-  kolIb: 'Ib [kA]',
-  kolTk: 'Tk [s]',
-  kolZapasSzczytowy: 'Zapas szczytowy [kA]',
+  jednKa: '[kA]',
+  jednS: '[s]',
+  kolZapasDynamiczny: 'Zapas dynamiczny [kA]',
   kolZapasCieplny: 'Zapas cieplny [kA]',
   kolZapasWylaczalny: 'Zapas wyłączalny [kA]',
 
-  // Porównanie w rozwinięciu wiersza.
-  porownanieParametr: 'Parametr',
-  porownanieObliczony: 'Obliczony [kA]',
-  porownanieAparat: 'Aparat [kA]',
-  porownanieZapas: 'Zapas [kA]',
-  kryteriumSzczytowy: 'Szczytowy',
-  kryteriumCieplny: 'Cieplny',
-  kryteriumWylaczalny: 'Wyłączalny',
-  czasTk: 'Tk',
-  czasTkr: 'Tkr',
-  jednS: 's',
+  // Tabela kryteriów pola.
+  kolKryterium: 'Kryterium',
+  kolObliczony: 'Prąd obliczony [kA]',
+  kolZnamionowa: 'Wartość znamionowa [kA]',
+  kolZapas: 'Zapas [kA]',
+  kryteriumDynamiczne: 'Dynamiczne',
+  kryteriumCieplne: 'Cieplne',
+  kryteriumWylaczalne: 'Wyłączalne',
+
+  // Czas wyłączenia pod tabelą: człon zabezpieczenia + czas własny wyłącznika = czas wyłączenia.
+  czasWylaczenia: 'Czas wyłączenia',
+  czasZNastaw: 'z nastaw zabezpieczeń pola',
+  czasZKonfiguracji: 'z konfiguracji stacji',
 
   // Stany komórek bez liczby — zawsze słowo, nigdy puste pole.
   nieustalony: 'nieustalony',
@@ -57,33 +55,25 @@ export const APARATURA_STRINGS = {
   szczegolyPokaz: 'Szczegóły obliczeń',
   szczegolyUkryj: 'Ukryj szczegóły obliczeń',
 
-  // Szczegóły obliczeń (wszystko, co nie jest liczbą porównania).
-  szczegolyOcena: 'Ocena obliczenia wytrzymałości',
-  szczegolyAparat: 'Aparat',
+  // Szczegóły obliczeń: dane wejściowe → wzory → podstawienia → wyniki pośrednie → wynik końcowy.
+  krokDane: 'Dane wejściowe',
+  krokWzory: 'Wzory',
+  krokPodstawienia: 'Podstawienia',
+  krokPosrednie: 'Wyniki pośrednie',
+  krokWynik: 'Wynik końcowy',
+  aparat: 'Aparat',
   zrodloModel: 'aparat z modelu (katalog pola)',
   zrodloKonfiguracja: 'aparat z konfiguracji stacji',
-  pradyPola: 'Prądy w punkcie zabudowy pola',
-  pradyPunkt: 'Punkt zabudowy',
-  pradyUn: 'Un [kV]',
-  pradyIk: 'Ik″ [kA]',
-  pradyIdc: 'iDC(tb) [kA]',
-  pradyTb: 'tb [s] — chwila prądu wyłączeniowego Ib',
-  pradyTbBrak: 'nie podano',
-  czasTytul: 'Czas wyłączenia pola Tk',
-  czasSuma: 'Czas wyłączenia $T_{k}$ [s]',
-  czasCzlonNastawczy: 'Człon nastawczy zabezpieczenia [s]',
-  czasWlasny: 'Czas własny wyłącznika [s]',
-  czasZrodlo: 'Źródło czasu',
-  czasZNastaw: 'z nastaw zabezpieczeń pola',
-  czasZKonfiguracji: 'z konfiguracji stacji',
-  czasZalozenie: 'Założenie:',
-  parametryTytul: 'Parametry aparatu użyte w ocenie',
+  punktZabudowy: 'Punkt zabudowy',
+  tbNiePodano: 'nie podano',
+  zrodloCzasu: 'Czas wyłączenia',
+  zapasDefinicja: 'Zapas',
+  podstawa: 'podstawa',
   pochodzenieKatalog: 'karta katalogowa',
   pochodzeniePropozycja: 'propozycja obliczenia',
   pochodzenieProjektant: 'nadana przez projektanta',
   pochodzenieBrak: 'brak danej',
   etykietaRobocza: 'wartość robocza',
-  kryteriaTytul: 'Wyjaśnienie kryteriów',
 
   // Uczciwe stany zerowe — każdy nazywa BRAK PODSTAWY, nie werdykt negatywny.
   brakBiegu:
@@ -96,4 +86,18 @@ export const APARATURA_STRINGS = {
   brakPrzypadku: 'Bez aktywnego przypadku obliczeniowego nie ma z czego wczytać pól stacji.',
   blad: 'Nie udało się sprawdzić wytrzymałości aparatury.',
   bladUwaga: 'Ocenę wystawia obliczenie wytrzymałości — bez jego odpowiedzi nie ma podstawy do oceny.',
+} as const;
+
+/** Symbole wielkości jako wzory (MathRenderer), nie tekst ASCII. */
+export const LATEX = {
+  ip_latex: 'i_p',
+  ith_latex: 'I_{th}',
+  ib_latex: 'I_b',
+  ik_latex: "I_k''",
+  un_latex: 'U_n',
+  idc_latex: 'i_{DC}(t_b)',
+  tb_latex: 't_b',
+  tzab_latex: 't_{\\mathrm{zab}}',
+  twyl_latex: 't_{\\text{wył}}',
+  tk_latex: 'T_k',
 } as const;

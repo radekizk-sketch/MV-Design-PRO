@@ -214,7 +214,6 @@ export function EkranZwarc({
       <WeryfikacjaAparatury
         wiersz={wierszAktywny}
         runId={runId}
-        punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
         onParametryAparatu={parametryAparatu}
       />
