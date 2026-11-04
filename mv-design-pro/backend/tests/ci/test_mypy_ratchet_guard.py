@@ -117,8 +117,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: 167/21 → 163/21 — pomiar `mypy src` na HEAD
     # karty i na drzewie commitu; zniknęły dokładnie 4 błędy `arg-type` skasowanego pakietu
     # dowodowego P19 (opis przy `BASELINE_*` w guardzie), zero nowych.
-    assert modul.BASELINE_ERRORS == 163
-    assert modul.BASELINE_FILES == 21
+    # Karta JEDNA-SCIEZKA-EDYCJI cz. 2: 163/21 → 156/19 — pomiar guardem na drzewie karty
+    # (bledy zeszly ze skasowanymi modulami zapisanej konfiguracji stacji), zero nowych.
+    assert modul.BASELINE_ERRORS == 156
+    assert modul.BASELINE_FILES == 19
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
