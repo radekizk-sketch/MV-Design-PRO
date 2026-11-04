@@ -256,8 +256,11 @@ BACKEND = ROOT / "backend"
 # `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
 # — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
 # pliki zostaja (inne bledy). Zero nowych.
-BASELINE_ERRORS = 163
-BASELINE_FILES = 21
+# Karta JEDNA-SCIEZKA-EDYCJI cz. 2 (2026-11-04): 163/21 -> 156/19 — POMIAR guardem na drzewie
+# karty: bledy typow zeszly razem ze skasowanymi modulami zapisanej konfiguracji stacji
+# (repozytorium, rozszerzenia wejscia solvera) i kaskada fabryki jednostki pracy w biegach.
+BASELINE_ERRORS = 156
+BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików
