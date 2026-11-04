@@ -99,8 +99,8 @@ def test_brak_parametru_to_brak_nazwany_bez_liczby(klucz: str, stan: str) -> Non
 def test_bez_zadnego_parametru_wszystkie_braki_w_kolejnosci_kontraktu() -> None:
     wynik = _bieg({})["result"]
     assert wynik["missing_fields"] == [*PARAMETRY_TRV, "inrush_multiple_in"]
-    assert "napięcie znamionowe wyłącznika U_r" in wynik["message_pl"]
-    assert "częstotliwość własna f_n" in wynik["message_pl"]
+    assert "napięcie znamionowe wyłącznika" in wynik["message_pl"]
+    assert "częstotliwość własna obwodu napięcia powrotnego" in wynik["message_pl"]
     assert "stała czasowa τ" in wynik["message_pl"]
     assert "prądu załączania" in wynik["message_pl"]
 

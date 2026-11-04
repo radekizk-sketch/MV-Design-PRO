@@ -1021,7 +1021,7 @@
             "field_name": "flicker_c",
             "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności",
             "quality": "ESTIMATED",
-            "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+            "source_ref": "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
           },
           "manufacturer": {
             "field_name": "manufacturer",
@@ -1224,7 +1224,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "ad466cb884c1275936255a91c8691be829a718b8e7a1563c52e15918b65eceb6",
+    "hash_sha256": "cca483f8b9a7bb263ea4e915342efb0a487844f0477fccbcf4df3909920f7a6d",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

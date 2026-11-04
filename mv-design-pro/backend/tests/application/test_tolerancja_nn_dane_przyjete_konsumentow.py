@@ -384,7 +384,7 @@ def test_swz_tn_i_dobor_aparatu(deklaracja: str) -> None:
         swz_kandydata = kryteria["SWZ przy Ik_min"]
         assert ("dane_przyjete" in swz_kandydata) is robocza
         assert (swz_kandydata.get("status_danych") == "UNVALIDATED_INPUT") is robocza
-        assert "dane_przyjete" not in kryteria["Zdolność wyłączania >= Ik″max"]
+        assert "dane_przyjete" not in kryteria["Zdolność wyłączania ≥ maksymalny prąd zwarciowy"]
         assert "dane_przyjete" not in kryteria["Ib<=In<=Iz′"]
 
 

@@ -352,21 +352,21 @@ _POWOD_POLA_ODBIORU: dict[str, tuple[str, str]] = {
         "i prądowej — pole bez znaczenia (fantom)",
     ),
     "f0_hz": (
-        "częstotliwość odniesienia f0 jest wymagana, bo odbiór ma czułość częstotliwościową "
-        "k_pf/k_qf",
-        "częstotliwość odniesienia f0 podana przy odbiorze bez czułości częstotliwościowej — "
+        "częstotliwość odniesienia jest wymagana, bo odbiór ma czułość częstotliwościową "
+        "mocy czynnej albo biernej",
+        "częstotliwość odniesienia podana przy odbiorze bez czułości częstotliwościowej — "
         "pole bez znaczenia (fantom)",
     ),
     "u_min_pu": (
-        "napięcie przejścia U_min jest wymagane, bo odbiór ma składową prądową albo mocową, "
+        "napięcie przejścia jest wymagane, bo odbiór ma składową prądową albo mocową, "
         "której prąd nie istnieje przy zerowym napięciu",
-        "napięcie przejścia U_min podane przy odbiorze czysto impedancyjnym — przejście do "
+        "napięcie przejścia podane przy odbiorze czysto impedancyjnym — przejście do "
         "stałej impedancji nie ma treści (fantom)",
     ),
     "t_pomiaru_czestotliwosci_s": (
-        "stała czasowa pomiaru częstotliwości T_f jest wymagana, bo odbiór ma czułość "
-        "częstotliwościową k_pf/k_qf",
-        "stała czasowa pomiaru częstotliwości T_f podana przy odbiorze bez czułości "
+        "stała czasowa pomiaru częstotliwości jest wymagana, bo odbiór ma czułość "
+        "częstotliwościową mocy czynnej albo biernej",
+        "stała czasowa pomiaru częstotliwości podana przy odbiorze bez czułości "
         "częstotliwościowej — pole bez znaczenia (fantom)",
     ),
 }
@@ -491,14 +491,14 @@ class CharakterystykaOdbioru:
             )
         if self.u_min_pu is not None and not 0.0 < self.u_min_pu < 1.0:
             raise _odmowa_charakterystyki(
-                f"Napięcie przejścia U_min = {self.u_min_pu} pu musi leżeć w przedziale "
+                f"Napięcie przejścia {self.u_min_pu} pu musi leżeć w przedziale "
                 "otwartym (0, 1).",
                 pole="u_min_pu",
             )
         if self.t_pomiaru_czestotliwosci_s is not None and self.t_pomiaru_czestotliwosci_s <= 0.0:
             raise _odmowa_charakterystyki(
-                f"Stała czasowa pomiaru częstotliwości T_f = {self.t_pomiaru_czestotliwosci_s} s "
-                "musi być dodatnia — pomiar natychmiastowy (T_f = 0) wprowadziłby pochodną "
+                f"Stała czasowa pomiaru częstotliwości {self.t_pomiaru_czestotliwosci_s} s "
+                "musi być dodatnia — pomiar natychmiastowy (stała zerowa) wprowadziłby pochodną "
                 "napięcia do równania algebraicznego.",
                 pole="t_pomiaru_czestotliwosci_s",
             )
@@ -542,7 +542,7 @@ class OdbiorDynamiki:
                 )
         if self.p_pu < 0.0:
             raise _odmowa_charakterystyki(
-                f"Odbiór {self.ident!r} ma ujemną moc czynną bazową P0 = {self.p_pu} pu — "
+                f"Odbiór {self.ident!r} ma ujemną moc czynną bazową {self.p_pu} pu — "
                 "odbiór jest pasywny; ujemny pobór mocy czynnej to wytwórca, nie odbiór.",
                 odbior=self.ident,
                 p_pu=self.p_pu,

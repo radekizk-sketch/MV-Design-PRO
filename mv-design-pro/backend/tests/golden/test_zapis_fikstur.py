@@ -154,3 +154,18 @@ def test_kotwica_per_lisc_lancuch_z_cudzyslowem_i_liczba_w_kluczu(tmp_path: Path
     assert tresc_z_kotwica(plik, json_fikstury(swieze)) == json_fikstury(
         {**swieze, 'a "1.5" b': 0.1234561}
     )
+
+
+@pytest.mark.parametrize("klucz", ["value", "tekst"])
+def test_kotwica_per_lisc_tekst_ze_skrotem_zawsze_ze_swiezym_skrotem(
+    tmp_path: Path, klucz: str
+) -> None:
+    """Iloczyn {pole skrótu nieprzenośnego z liczbami (`value`), pole tekstu z liczbami
+    (`tekst`)} × zmiana szkieletu pliku. Metryka raportu niesie skrót biegu (`value` =
+    `proof_hash`); zostawiona z dysku przy świeżym `proof_hash` łamałaby relację równości
+    skrótów grupy (pomiar: `akademickie_scena_biegi`). Nowy skrót w tekście jest zawsze
+    świeży, niezależnie od tego, czy predykat tolerancji uznaje skróty za równe."""
+    stary, nowy = "a" * 64, "b" * 64
+    plik = _plik(tmp_path, {**_PER_LISC, klucz: f"{stary} 1.0"})
+    swieze = _per_lisc(**{klucz: f"{nowy} 1.0"})
+    assert json.loads(tresc_z_kotwica(plik, json_fikstury(swieze)))[klucz] == f"{nowy} 1.0"

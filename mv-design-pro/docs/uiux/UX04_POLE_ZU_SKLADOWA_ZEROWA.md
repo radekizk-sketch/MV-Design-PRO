@@ -1316,13 +1316,13 @@ pilnuje `tests/test_v126_katalog_analiz.py::test_rejestr_zalozen_dokumentu_rowny
 
 | Paragraf | Kryterium | Treść | Próg | Praktyka |
 |---|---|---|---|---|
-| Z-1 | napięcia trwałej pracy ogranicznika | U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. | — | Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-2 | wytrzymałości ogranicznika na przepięcie dorywcze | Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia w czasie nie dłuższym niż 10 s (dłuższy czas wymaga krzywej TOV(t) producenta). | 10 s | Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-3 | marginesu ochrony izolacji | Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-1 | napięcia trwałej pracy ogranicznika | Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) wymagane jest przepięcie dorywcze sieci, przy doziemieniu wyłączanym — napięcie najwyższe urządzenia podzielone przez √3. | — | Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-2 | wytrzymałości ogranicznika na przepięcie dorywcze | Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od przepięcia dorywczego sieci; zakłada się wyłączenie doziemienia w czasie nie dłuższym niż 10 s (dłuższy czas wymaga krzywej przepięć dorywczych producenta w funkcji czasu). | 10 s | Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-3 | marginesu ochrony izolacji | Margines ochrony — nadwyżka poziomu izolacji (BIL) nad napięciem obniżonym ogranicznika, odniesiona do napięcia obniżonego — nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 6 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje. |
-| Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia (kwadrat prądu doziemienia × rezystancja × czas wyłączenia) nie większa od energii znamionowej (kwadrat prądu znamionowego × rezystancja × czas znamionowy; kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-8 | dostępności metody detekcji doziemień | Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. | — | Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej. |
 | Z-9 | zapadu napięcia przy rozruchu | Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. | 15 % | Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora. |
 | Z-10 | czasu rozruchu | Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). | — | Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika. |
@@ -1555,3 +1555,29 @@ Zostaje (pomiar `backend_proza_symboli_guard.py --lista`, 663 w 164 plikach, naj
 `equipment_proof/generator.py` 14, `wytrzymalosc_aparatury_pol.py` 14, `nn_device_selection.py` 14,
 `api/proof_pack.py` 14, `v126_oceny.py` 13) — zapadka pilnuje, że nie rośnie, i wymusza
 obniżanie pinu przy każdej naprawie.
+
+**Punkt 4, partia 2 (2026-11-04).** Proza słowami w `enm/assembler.py`, `dynamika_modele.py`,
+`equipment_proof/generator.py` i `wielkosc_wylaczania.py`, `wytrzymalosc_aparatury_pol.py`,
+`api/proof_pack.py`, `nn_device_selection.py`, `v126_oceny.py`, `dobor_przekladnika.py`,
+`protection/base_values/resolver.py`, `der_selection_preview.py` (odsyłacze wzorów jako LaTeX),
+`dynamika/kontrakty.py` oraz katalogach `audit2`, `mv_auxiliary`, `mv_converter`, `mv_transformer`.
+Pin: **454 w 146 plikach** (z 644/162); `oczysc` wycina adresy URL (reguła 4). Klasa kotwicy
+w szumie domknięta we wszystkich generatorach: `zapis_fikstur.zakotwicz_liscie` (jedno źródło
+prawdy) używają `tresc_z_kotwica`, grupowe rozstrzygnięcie harnessu scen (`rozstrzygnij_grupe`,
+świeża grupa także per liść) i projekcja nN (`eksport_fixtur_projekcji_nn.zakotwicz_liscie`,
+tolerancja 1e-9 tej projekcji); tekst niosący skrót (`HEX_SKROTU`) nigdy nie jest kotwiczony,
+gdy skróty się różnią (inaczej stary skrót zostawał w treści metryki). Testy iloczynu: kotwica
+per liść × tekst ze skrótem (2), świeża grupa harnessu × skrót/brak pliku/rozjazd skrótów (3),
+projekcja nN 2 × 2 z szumem 1e-10 (szum 1e-12 maskowało zaokrąglenie do 12 cyfr) — iniekcje
+czerwienią 1/1, 3/3, 3/4. Fikstury harnessu przegenerowane: 0 różnic liczbowych. Piny z pomiarem
+liść po liściu: N-1 gn01/gn03 (różnią się tylko `snapshot_hash`/`input_hash` od tekstów
+`wartosci_robocze` kabli SN), 15 odcisków `czas_tb` (baza odtwarza stare piny; różnią się tylko
+uwagi śladu ×60 i tytuły ×30), odcisk katalogu kart widmowych łańcuchem: odcisk po karcie ZU,
+cofnięcie 809 tekstów parą z `teksty_katalogu_przed_karta_zu.json` daje dokładnie odcisk po
+zespole uziemiającym. Parytet assemblera: odmowy, ścieżki i liczby bazy `01c5def16` i drzewa
+identyczne bit w bit w 366 przypadkach; szkielet różni się wyłącznie 30 631 liśćmi tekstowymi
+i addytywnym kluczem `formula_latex` w `zrodla_sieciowe` (325 przypadków) — złoty plik
+przegenerowany. Wykryta luka detektora: `POLSKI_RE` nie widzi prozy polskiej bez znaków
+diakrytycznych i bez słów funkcyjnych z listy (pomiar szerszą listą: 108 nowych trafień), a
+symbol składany parametrem `{}` umyka skanowi — rozszerzenie strażnika osobnym commitem
+z pinem z pomiaru.

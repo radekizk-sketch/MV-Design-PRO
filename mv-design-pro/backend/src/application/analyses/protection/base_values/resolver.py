@@ -89,7 +89,7 @@ def _resolve_un(
         return (
             ctx.vt_primary_kv,
             BaseValueSourceUn.VT_PRIMARY,
-            f"Un = {ctx.vt_primary_kv} kV (VT primary)",
+            f"napięcie znamionowe {ctx.vt_primary_kv} kV (strona pierwotna przekładnika napięciowego)",
         )
 
     # Priorytet 2: Bus voltage
@@ -97,7 +97,7 @@ def _resolve_un(
         return (
             ctx.bus_voltage_kv,
             BaseValueSourceUn.BUS,
-            f"Un = {ctx.bus_voltage_kv} kV (szyna)",
+            f"napięcie znamionowe {ctx.bus_voltage_kv} kV (szyna)",
         )
 
     # Priorytet 3: BoundaryNode voltage (jeśli element to BoundaryNode lub mamy dane BoundaryNode)
@@ -106,7 +106,7 @@ def _resolve_un(
             return (
                 ctx.connection_voltage_kv,
                 BaseValueSourceUn.BoundaryNode,
-                f"Un = {ctx.connection_voltage_kv} kV (BoundaryNode – punkt wspólnego przyłączenia)",
+                f"napięcie znamionowe {ctx.connection_voltage_kv} kV (punkt przyłączenia)",
             )
 
     # Fallback na BoundaryNode voltage jeśli dostępne
@@ -114,11 +114,15 @@ def _resolve_un(
         return (
             ctx.connection_voltage_kv,
             BaseValueSourceUn.BoundaryNode,
-            f"Un = {ctx.connection_voltage_kv} kV (BoundaryNode)",
+            f"napięcie znamionowe {ctx.connection_voltage_kv} kV (punkt przyłączenia)",
         )
 
     # Brak danych
-    return (None, BaseValueSourceUn.UNKNOWN, "Un nieznane – brak danych napięciowych")
+    return (
+        None,
+        BaseValueSourceUn.UNKNOWN,
+        "napięcie znamionowe nieznane – brak danych napięciowych",
+    )
 
 
 def _resolve_in(
@@ -142,9 +146,13 @@ def _resolve_in(
             return (
                 ctx.line_rated_current_a,
                 BaseValueSourceIn.LINE,
-                f"In = {ctx.line_rated_current_a:.1f} A (linia/kabel)",
+                f"prąd znamionowy {ctx.line_rated_current_a:.1f} A (linia/kabel)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a linii")
+        return (
+            None,
+            BaseValueSourceIn.UNKNOWN,
+            "prąd znamionowy nieznany – brak prądu znamionowego linii",
+        )
 
     # BREAKER
     if element_type == ProtectedElementType.BREAKER:
@@ -152,9 +160,13 @@ def _resolve_in(
             return (
                 ctx.breaker_rated_current_a,
                 BaseValueSourceIn.BREAKER,
-                f"In = {ctx.breaker_rated_current_a:.1f} A (wyłącznik)",
+                f"prąd znamionowy {ctx.breaker_rated_current_a:.1f} A (wyłącznik)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a wyłącznika")
+        return (
+            None,
+            BaseValueSourceIn.UNKNOWN,
+            "prąd znamionowy nieznany – brak prądu znamionowego wyłącznika",
+        )
 
     # TRANSFORMER
     if element_type == ProtectedElementType.TRANSFORMER:
@@ -166,9 +178,13 @@ def _resolve_in(
             return (
                 ctx.connection_rated_current_a,
                 BaseValueSourceIn.BoundaryNode,
-                f"In = {ctx.connection_rated_current_a:.1f} A (BoundaryNode – punkt wspólnego przyłączenia)",
+                f"prąd znamionowy {ctx.connection_rated_current_a:.1f} A (punkt przyłączenia)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak rated_current_a BoundaryNode")
+        return (
+            None,
+            BaseValueSourceIn.UNKNOWN,
+            "prąd znamionowy nieznany – brak prądu znamionowego punktu przyłączenia",
+        )
 
     # BUS — może mieć przypisane zabezpieczenie (np. pole rozdzielcze)
     if element_type == ProtectedElementType.BUS:
@@ -177,26 +193,34 @@ def _resolve_in(
             return (
                 ctx.breaker_rated_current_a,
                 BaseValueSourceIn.BREAKER,
-                f"In = {ctx.breaker_rated_current_a:.1f} A (wyłącznik pola)",
+                f"prąd znamionowy {ctx.breaker_rated_current_a:.1f} A (wyłącznik pola)",
             )
         # Fallback: line (jeśli szyna ma przypisaną linię)
         if ctx.line_rated_current_a is not None and ctx.line_rated_current_a > 0:
             return (
                 ctx.line_rated_current_a,
                 BaseValueSourceIn.LINE,
-                f"In = {ctx.line_rated_current_a:.1f} A (linia)",
+                f"prąd znamionowy {ctx.line_rated_current_a:.1f} A (linia)",
             )
         # BoundaryNode jeśli to szyna BoundaryNode
         if ctx.connection_rated_current_a is not None and ctx.connection_rated_current_a > 0:
             return (
                 ctx.connection_rated_current_a,
                 BaseValueSourceIn.BoundaryNode,
-                f"In = {ctx.connection_rated_current_a:.1f} A (BoundaryNode)",
+                f"prąd znamionowy {ctx.connection_rated_current_a:.1f} A (punkt przyłączenia)",
             )
-        return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – brak danych prądowych szyny")
+        return (
+            None,
+            BaseValueSourceIn.UNKNOWN,
+            "prąd znamionowy nieznany – brak danych prądowych szyny",
+        )
 
     # UNKNOWN element type
-    return (None, BaseValueSourceIn.UNKNOWN, "In nieznane – nieobsługiwany typ elementu")
+    return (
+        None,
+        BaseValueSourceIn.UNKNOWN,
+        "prąd znamionowy nieznany – nieobsługiwany typ elementu",
+    )
 
 
 def _resolve_in_transformer(
@@ -220,7 +244,7 @@ def _resolve_in_transformer(
         return (
             None,
             BaseValueSourceIn.UNKNOWN,
-            "In nieznane – brak mocy znamionowej transformatora (Sn)",
+            "prąd znamionowy nieznany – brak mocy znamionowej transformatora",
         )
 
     # Określ napięcie strony
@@ -243,7 +267,7 @@ def _resolve_in_transformer(
         return (
             None,
             BaseValueSourceIn.UNKNOWN,
-            "In nieznane – brak napięcia strony transformatora",
+            "prąd znamionowy nieznany – brak napięcia strony transformatora",
         )
 
     # Oblicz In = Sn / (√3 × Un)
@@ -253,6 +277,7 @@ def _resolve_in_transformer(
     return (
         in_a,
         BaseValueSourceIn.TRANSFORMER_SIDE,
-        # Zapis typograficzny (√3), nie surowe ASCII — nota prozy w polu tekstowym.
-        f"In = Sn / (√3 × Un_{side_label}) = {sn} MVA / (√3 × {un_side} kV) = {in_a:.1f} A",
+        # Proza słowami (kontrakt prezentacji inżynierskiej): wartości wejścia i wynik.
+        f"prąd znamionowy strony {side_label}: moc znamionowa {sn} MVA / (√3 × napięcie "
+        f"strony {un_side} kV) = {in_a:.1f} A",
     )

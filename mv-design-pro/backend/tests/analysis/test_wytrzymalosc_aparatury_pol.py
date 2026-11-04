@@ -232,7 +232,8 @@ def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny(
 
     Wielkość jest WŁAŚCIWA rodzajowi (wyłącznik ma prąd krótkotrwały wytrzymywany), więc brak
     liczby to „brak danych” — z kodem gotowości i nazwanym brakiem (realna pozycja katalogu
-    wyłącznika 110 kV bez znamion zwarciowych, KAT-T-050: brak danej to None, nigdy 0)."""
+    wyłącznika 110 kV bez znamion zwarciowych, KAT-T-050: brak danej to None, nigdy 0).
+    """
     widok = _widok(enm=_enm(aparaty={"pole/in": WYLACZNIK_BEZ_ZNAMION}))
     pole = widok["pola"][0]
 
@@ -253,7 +254,8 @@ def test_bezpiecznik_wytrzymalosc_nie_dotyczy_a_nie_brak_danych_ani_negatywny() 
     Dawniej (przed decyzją architekta 2026-10-23) ten sam przypadek był „brakiem podstawy”
     z kodem gotowości „pozycja bez znamion” — inżynier był wzywany do uzupełnienia danej,
     której norma nie definiuje (IEC 62271-105 § 4.5–4.6, PN-EN 60282-1). Intencja zostaje:
-    nigdy „nie wytrzymuje”; teraz status NIE_DOTYCZY z przyczyną z rodzaju, bez kodu braku."""
+    nigdy „nie wytrzymuje”; teraz status NIE_DOTYCZY z przyczyną z rodzaju, bez kodu braku.
+    """
     widok = _widok(enm=_enm(aparaty={"pole/in": BEZPIECZNIK}))
     pole = widok["pola"][0]
 
@@ -564,8 +566,13 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
     else:
         assert ocena["wynik"]["symbol_latex"] == symbol
         assert ocena["wynik"]["wartosc"] == {"wartosc": wartosc, "jednostka": "kA"}
-        # Rekord nazywa porównaną wielkość i normę — ekran pokazuje, CO porównano.
-        assert symbol.replace("''", "″") in ocena["wynik"]["wielkosc_pl"].replace("I″k", "I_k″")
+        # Rekord nazywa porównaną wielkość SŁOWAMI (symbol niesie `symbol_latex`, karta ZU) —
+        # ekran pokazuje, CO porównano.
+        nazwa = {
+            "I_b": "prąd wyłączeniowy symetryczny",
+            "I_k''": "spodziewany prąd zwarciowy początkowy",
+        }[symbol]
+        assert ocena["wynik"]["wielkosc_pl"].startswith(nazwa)
         assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le I_{{cu}}"
         assert ocena["limit"]["wartosc"]["jednostka"] == "kA"
     if status in {"SPELNIA", "NIE_SPELNIA"}:
@@ -574,7 +581,8 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
 
 def test_wylacznik_sn_wiersz_bez_ib_ma_nazwany_brak_a_nie_ik() -> None:
     """Wiersz bez I_b (zapis sprzed kart I_b / t_b) to nazwany brak z akcją „przelicz bieg”,
-    nigdy cicha podmiana na I″k; kod brakowy t_b nie istnieje (karta TB-WARTOSC-ROBOCZA)."""
+    nigdy cicha podmiana na I″k; kod brakowy t_b nie istnieje (karta TB-WARTOSC-ROBOCZA).
+    """
     pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=22.0, ib=None, tb=None, un=15.0))
     ocena = _ocena(pole, "wylaczanie")
 
@@ -724,8 +732,8 @@ def test_slad_wylaczania_niesie_tb_i_skladowa_nieokresowa_informacyjnie() -> Non
     pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=18.0, ib=17.0, tb=0.1, un=15.0, i_dc=3.25))
     opis = _ocena(pole, "wylaczanie")["slad"][0]["opis_pl"]
 
-    assert "t_b = 0.1 s" in opis
-    assert "i_DC(t_b) = 3.25 kA" in opis
+    assert "czas wyłączenia 0.1 s" in opis
+    assert "składowa nieokresowa w chwili wyłączenia 3.25 kA" in opis
     assert "informacyjnie" in opis
 
 

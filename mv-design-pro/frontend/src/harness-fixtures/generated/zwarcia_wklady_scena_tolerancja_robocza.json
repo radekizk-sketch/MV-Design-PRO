@@ -113,11 +113,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 8,953 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
         "latex": null
       },
       {
-        "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -161,11 +161,11 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+        "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,644 kA, prąd wyłączeniowy 0,454 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,448 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
         "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
@@ -178,11 +178,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 8,953 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
             "latex": null
           },
           {
-            "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -234,11 +234,11 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+            "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,644 kA, prąd wyłączeniowy 0,454 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,448 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
             "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
@@ -268,7 +268,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym (suma początkowych prądów zwarciowych silników 0,000 kA, próg 0,448 kA)",
         "status": "PASS"
       },
       {
@@ -485,11 +485,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 13,984 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 13,984 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
         "latex": null
       },
       {
-        "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -533,11 +533,11 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.718 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.059\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,059 kA.",
+        "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,082 kA, prąd wyłączeniowy 0,059 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,699 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,699 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
         "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
@@ -550,11 +550,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 13,984 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 13,984 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
             "latex": null
           },
           {
-            "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -606,11 +606,11 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,059 kA.",
+            "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,082 kA, prąd wyłączeniowy 0,059 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,699 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,699 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,699) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
             "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
@@ -640,7 +640,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,699 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym (suma początkowych prądów zwarciowych silników 0,000 kA, próg 0,699 kA)",
         "status": "PASS"
       },
       {
@@ -839,11 +839,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,516 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 20,516 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
         "latex": null
       },
       {
-        "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -887,11 +887,11 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.475\\;\\mathrm{kA} = 1.475\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 1,475 kA, Ib,M = 1,475 kA.",
+        "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 1,475 kA, prąd wyłączeniowy 1,475 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,026 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 1,026 kA; wartość obliczona 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
         "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.516\\;\\mathrm{kA} = 1.026\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
@@ -904,11 +904,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,516 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 20,516 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
             "latex": null
           },
           {
-            "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -960,11 +960,11 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 1,475 kA, Ib,M = 1,475 kA.",
+            "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 1,475 kA, prąd wyłączeniowy 1,475 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,026 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 1,026 kA; wartość obliczona 0,000 kA (0,000 ≤ 1,026) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
             "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.516\\;\\mathrm{kA} = 1.026\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
@@ -994,7 +994,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,026 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym (suma początkowych prądów zwarciowych silników 0,000 kA, próg 1,026 kA)",
         "status": "PASS"
       },
       {
@@ -1220,11 +1220,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 8,953 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
         "latex": null
       },
       {
-        "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -1268,11 +1268,11 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+        "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,644 kA, prąd wyłączeniowy 0,454 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,448 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
         "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
@@ -1285,11 +1285,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 8,953 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
             "latex": null
           },
           {
-            "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -1341,11 +1341,11 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+            "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,644 kA, prąd wyłączeniowy 0,454 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,448 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
             "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
@@ -1375,7 +1375,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym (suma początkowych prądów zwarciowych silników 0,000 kA, próg 0,448 kA)",
         "status": "PASS"
       },
       {
@@ -1592,11 +1592,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 4,604 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
         "latex": null
       },
       {
-        "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -1640,11 +1640,11 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.691 \\cdot 1.000 \\cdot 0.698\\;\\mathrm{kA} = 0.482\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,698 kA, Ib,M = 0,482 kA.",
+        "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,698 kA, prąd wyłączeniowy 0,482 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,230 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
         "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
@@ -1657,11 +1657,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji węzłowych) 4,604 kA, współczynnik napięciowy 1,10, minimalny czas zwłoki 0,10 s.",
             "latex": null
           },
           {
-            "tekst": "Czas t_min (= t_b punktu zwarcia): Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -1713,11 +1713,11 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,698 kA, Ib,M = 0,482 kA.",
+            "tekst": "Suma wkładów maszyn: początkowy prąd zwarciowy 0,698 kA, prąd wyłączeniowy 0,482 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; wartość graniczna 0,230 kA; wartość obliczona 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym).",
             "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
@@ -1747,7 +1747,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,230 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym (suma początkowych prądów zwarciowych silników 0,000 kA, próg 0,230 kA)",
         "status": "PASS"
       },
       {

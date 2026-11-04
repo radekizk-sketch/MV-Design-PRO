@@ -116,7 +116,8 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
     zamontujFetch(
       {
         ok: false,
-        message_pl: 'Siec skompensowana (Petersena) wymaga VT (faza-ziemia) z U_th >= 1.9.',
+        message_pl: 'Sieć skompensowana (Petersena) wymaga przekładnika napięciowego (faza-ziemia) '
+          + 'o współczynniku napięciowym co najmniej 1.9 wg IEC 61869-3.',
       },
       { J02: { typ: 'petersen_coil' } },
     );
@@ -129,7 +130,7 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
 
     const wiersz = await screen.findByTestId('vt-validation-J02');
     expect(wiersz.getAttribute('data-vt-ok')).toBe('false');
-    expect(wiersz.textContent).toContain('wymaga VT (faza-ziemia) z U_th >= 1.9');
+    expect(wiersz.textContent).toContain('o współczynniku napięciowym co najmniej 1.9');
   });
 
   it('pole bez ustalonego uziemienia w modelu: PRZYCZYNA backendu, reguła niewołana', async () => {

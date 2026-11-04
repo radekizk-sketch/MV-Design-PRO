@@ -71,7 +71,8 @@ NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN = (
 NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN = (
     f"{ZNACZNIK_PRZEKROCZENIA_TIER2} (UE 548/2014 w brzmieniu 2019/1783, tab. I.7 — "
     "minimalny PEI): jednostka istniejąca — straty sprzed ekoprojektu. Katalog nie ma "
-    "pozycji WN/SN zgodnej z Tier 2: brak karty producenta z kompletem P0/Pk/u_k."
+    "pozycji WN/SN zgodnej z Tier 2: brak karty producenta z kompletem strat jałowych, strat "
+    "obciążeniowych i napięcia zwarcia."
 )
 
 # =============================================================================
@@ -1039,16 +1040,18 @@ TRANSFORMER_SN_NN_20_04_YD11: list[dict[str, Any]] = [
 ZRODLO_TIER2 = (
     "Rozporządzenie Komisji (UE) nr 548/2014, załącznik I, w brzmieniu rozporządzenia "
     "(UE) 2019/1783 — Tier 2 (od 1.07.2021): tab. I.1 (olejowe) i I.2 (suche), "
-    "pułapy strat P0 i Pk; tekst: https://www.legislation.gov.uk/eur/2014/548/annex/I "
+    "pułapy strat jałowych i obciążeniowych; tekst: "
+    "https://www.legislation.gov.uk/eur/2014/548/annex/I "
     "(dostęp 2026-10-15)"
 )
 
 #: Cytat serii Siemens GEAFOL — zrodlo u_k, i0 i zakresu zaczepow pozycji normatywnych.
 ZRODLO_GEAFOL_UK = (
     "Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of "
-    "ordering data for Standard 20kV/22kV/24kV” (str. 7): u_k 6 % dla 200–2500 kVA, "
-    "8 % dla 3150 kVA (przypisanie u_k z kolumny scalonej do wierszy jest interpretacją "
-    "układu tabeli), prąd jałowy i0 z kolumny „No-load Current”, zaczepy ±2×2,5 %; "
+    "ordering data for Standard 20kV/22kV/24kV” (str. 7): napięcie zwarcia 6 % dla "
+    "200–2500 kVA, 8 % dla 3150 kVA (przypisanie napięcia zwarcia z kolumny scalonej do "
+    "wierszy jest interpretacją układu tabeli), prąd jałowy z kolumny „No-load Current”, "
+    "zaczepy ±2×2,5 %; "
     "https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-"
     "8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)"
 )
@@ -1253,21 +1256,22 @@ def _pozycja_normatywna(
             "contract_version": "2.0",
             "verification_note": (
                 f"Pozycja NORMATYWNA/TYPOWA — nie egzemplarz producenta. Transformator "
-                f"{rodzaj} {moc_kva} kVA: Pk = {pk_w:.1f} W i P0 = {p0_w:.1f} W to pułap "
+                f"{rodzaj} {moc_kva} kVA: straty obciążeniowe {pk_w:.1f} W i jałowe "
+                f"{p0_w:.1f} W to pułap "
                 f"Tier 2 z tab. {tabela}"
                 + (
                     " (interpolacja liniowa wg przypisu a tabeli)"
                     if moc_kva not in (_TABELA_TIER2_WG_RODZAJU[rodzaj])
                     else ""
                 )
-                + f"; u_k = {uk_proc:g} % z serii Siemens GEAFOL 20/22/24 kV"
+                + f"; napięcie zwarcia {uk_proc:g} % z serii Siemens GEAFOL 20/22/24 kV"
                 + (
-                    f", i0 = {i0_proc:g} % z tej samej serii (suchej)"
+                    f", prąd jałowy {i0_proc:g} % z tej samej serii (suchej)"
                     if rodzaj == RODZAJ_SUCHY
-                    else ", i0 — brak źródła dla transformatora olejowego (pole puste)"
+                    else ", prąd jałowy — brak źródła dla transformatora olejowego (pole puste)"
                 )
-                + ". Dla HV 15 kV przyjęto serię Um 24 kV (tab. I.1/I.2 obejmuje Um ≤ 24 kV "
-                "łącznie). Pozycję producenta dopisuje się osobnym rekordem z karty PDF."
+                + ". Dla górnego napięcia 15 kV przyjęto serię o napięciu najwyższym 24 kV "
+                "(tab. I.1/I.2 obejmuje napięcie najwyższe do 24 kV łącznie). Pozycję producenta dopisuje się osobnym rekordem z karty PDF."
             ),
         },
     }
@@ -1400,7 +1404,7 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
             "catalog_status": "PRODUKCYJNY_V1",
             "source_reference": (
                 "Siemens Energy, „Product information requirements according to Commission "
-                "Regulation (EU) No 548/2014”, typ 4GY6364-1EC (Sr. B382978), GEAFOL Neo, "
+                "Regulation (EU) No 548/2014”, typ 4GY6364-1EC (nr seryjny B382978), GEAFOL Neo, "
                 "Budapeszt, grudzień 2025; https://assets.siemens-energy.com/dam/"
                 "21d60220-d7c1-473c-8eef-b3db0095a922/GEAFOL-Distribution-Transformer-"
                 "Information-acc--to-EU-Regulation-548-2014-pdf_Original%20file.pdf "
@@ -1408,9 +1412,10 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
             ),
             "contract_version": "2.0",
             "verification_note": (
-                "Karta producenta: Sr = 2000 kVA, Dyn11, U1 = 20 000 V, U2 = 480 V, chłodzenie "
-                "AN; P0 = 2340 W gwarantowane (1974 W zmierzone); Pk120 = 16 000 W "
-                "gwarantowane (15 174 W zmierzone; Pk75 = 14 000 W); u_k = 6 % ±10 %; "
+                "Karta producenta: moc znamionowa 2000 kVA, Dyn11, napięcie górne 20 000 V, dolne "
+                "480 V, chłodzenie AN; straty jałowe 2340 W gwarantowane (1974 W zmierzone); "
+                "straty obciążeniowe w 120 °C 16 000 W gwarantowane (15 174 W zmierzone; w 75 °C "
+                "14 000 W); napięcie zwarcia 6 % ±10 %; "
                 "zaczepy ±2,5; ±5 %. Prąd jałowy — karta nie podaje (pole puste). "
                 "Wartości gwarantowane równe pułapowi Tier 2 tab. I.2 dla 2000 kVA."
             ),

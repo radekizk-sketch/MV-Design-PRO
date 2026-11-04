@@ -47,7 +47,9 @@ const ODPOWIEDZ = {
         {
           kod: 'ct.wytrzymalosc_cieplna',
           nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
-          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
+          podstawa_pl:
+            'Prąd cieplny krótkotrwały (1 s) nie mniejszy od prądu zwarciowego pomnożonego przez '
+            + 'pierwiastek z czasu zwarcia — równoważność cieplna prądu zwarcia (IEC 61869-2).',
           werdykt: 'brak_danych',
           wymagane: null,
           dostepne: '20.0 kA / 1 s',

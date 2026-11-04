@@ -101,7 +101,7 @@ class TestFaktyScenariuszy:
         assert _kody(p) == set()
 
     def test_02_vs_03_sprzeglo_zmienia_stan_sekcji(self, projekcje) -> None:
-        otwarte, zamkniete = projekcje["02_two_tr_qbc_open"], projekcje["03_two_tr_qbc_closed"]
+        otwarte, zamkniete = (projekcje["02_two_tr_qbc_open"], projekcje["03_two_tr_qbc_closed"])
         assert _szyna(otwarte, "RGnN-A")["supply_refs"] == ["TA"]
         assert _szyna(otwarte, "RGnN-B")["supply_refs"] == ["TB"]
         assert _szyna(otwarte, "RGnN-A")["energization_state"] == "ENERGIZED"
@@ -251,3 +251,29 @@ class TestFaktyScenariuszy:
         }
         assert set(werdykty) == {"QF-01", "QF-02", "FU-03"}
         assert len(set(werdykty.values())) >= 2, werdykty
+
+
+@pytest.mark.parametrize("lisc", ["szum", "ponad_tolerancja"])
+@pytest.mark.parametrize("zmiana_tekstu", [False, True])
+def test_zapis_kotwica_per_lisc(tmp_path: Path, lisc: str, zmiana_tekstu: bool) -> None:
+    """Karta ZU (2026-11-04): iloczyn {zmiana tekstu w pliku: tak/nie} × {liczba w szumie,
+    liczba ponad tolerancją}. Liczba w tolerancji międzymaszynowej zostaje zapisem z dysku
+    także wtedy, gdy plik idzie ze świeżej treści z powodu zmiany tekstu; liczba ponad
+    tolerancją i tekst są świeże."""
+    sciezka = tmp_path / "f.json"
+    zapisana = {"opis": "stary", "wartosc": 1.0, "inna": 2.0, "projection_hash": "a"}
+    sciezka.write_text(eksport.json_fikstury(zapisana), encoding="utf-8")
+    # Szum 1e-10: ponad zaokrągleniem reguły zapisu (12 cyfr), w tolerancji 1e-9.
+    wartosc = 1.0 + (1e-10 if lisc == "szum" else 1e-3)
+    swieza = {
+        "opis": "nowy" if zmiana_tekstu else "stary",
+        "wartosc": wartosc,
+        "inna": 2.0 * (1.0 + 1e-10),
+        "projection_hash": "b",
+    }
+    zapis = json.loads(eksport.tresc_do_zapisu(sciezka, swieza))
+    calosc_z_dysku = not zmiana_tekstu and lisc == "szum"
+    assert zapis["opis"] == swieza["opis"]
+    assert zapis["inna"] == 2.0
+    assert zapis["wartosc"] == (1.0 if lisc == "szum" else wartosc)
+    assert zapis["projection_hash"] == ("a" if calosc_z_dysku else "b")

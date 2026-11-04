@@ -210,7 +210,8 @@ def test_listy_rozplywu_porownywane_scisle(
     gałęzi, ślad podziału} × {nadmiarowy wpis po stronie fikstury, po stronie backendu} ×
     {wpis o prądzie w paśmie zera (1,4e-17), wpis realny (0,002)}: KAŻDY nadmiarowy wpis jest
     różnicą. Rdzeń nie publikuje już wpisu 1,4e-17 na żadnej maszynie, więc taki rozjazd
-    znaczyłby regresję progu, nie szum — maskowanie go byłoby testem maskującym defekt."""
+    znaczyłby regresję progu, nie szum — maskowanie go byłoby testem maskującym defekt.
+    """
     stale = [wpis(81.9)]  # type: ignore[operator]
     for nadmiar in (wpis(1.4e-17), wpis(0.002)):  # type: ignore[operator]
         dluzsza = [*stale, nadmiar]
@@ -272,7 +273,8 @@ def test_fixtury_nie_niosa_kata_wkladu_pominietego() -> None:
     """Każdy wpis zestawienia `wklady_pominiete` w fixturach z generatora ma ``kat_deg``
     = ``None`` i każdy wpis `wklady_zrodel` klasy ``POMINIETY`` też — fixtura z liczbą
     w tym polu znaczyłaby publikację kąta szumu (karta KAT-WKLADU-POMINIETEGO). Pin
-    niepustości: co najmniej jedna fixtura niesie wpis pominięty (inaczej test byłby pusty)."""
+    niepustości: co najmniej jedna fixtura niesie wpis pominięty (inaczej test byłby pusty).
+    """
     wpisy: list[dict[str, Any]] = []
 
     def _zbierz(w: Any) -> None:
@@ -1090,7 +1092,8 @@ def test_arcflash_scena_ma_energie_incydentu_realnie_policzona() -> None:
 def test_dynamika_scena_wynik_niesie_przebieg_kanoniczny_bez_werdyktu() -> None:
     """Scena „wyniki-dynamika" to REALNY bieg `dynamika_rms`: stabilny `run_id`, zdarzenia
     wykonane scenariusza nazwanego (zwarcie w odcinku x·L usunięte izolacją), nazwy elementów
-    i zacisków z migawki biegu, dwa rekordy `NIE_OCENIONO` i stopień dowodowy z rejestru."""
+    i zacisków z migawki biegu, dwa rekordy `NIE_OCENIONO` i stopień dowodowy z rejestru.
+    """
     wynik = eksport.dynamika_scena_wyniki()
     assert wynik["run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA
     assert wynik["pf_run_id"] == eksport.RUN_ID_SCENY_DYNAMIKA_PF
@@ -1500,7 +1503,8 @@ def test_wniosek_scen_widok_i_braki_z_modelu() -> None:
 def test_studium_dokument_sceny_macierz_niesie_dowod_urzadzen_typu_z_modelu() -> None:
     """Sekcja dowodu dokumentu studium (żądanie z `case_id`): urządzenia modelu o TYPIE
     katalogowym dokumentu, każde z rekordem wykazu PTPiREE albo jawnym brakiem — oczekiwania
-    z tabliczek modelu (status powiązania z wykazem nadaje materializacja katalogowa)."""
+    z tabliczek modelu (status powiązania z wykazem nadaje materializacja katalogowa).
+    """
     model = eksport.enm_sceny_macierz()
     dokument = eksport.studium_dokument_scena_macierz()
     typ = dokument["zalozenia"]["typ_katalogowy"]["id"]
@@ -1541,7 +1545,8 @@ def test_studium_dokument_sceny_macierz_niesie_dowod_urzadzen_typu_z_modelu() ->
 def test_krzywe_pq_sceny_niosa_rekord_ocena_bez_statusu_widoku(nazwa: str, status: str) -> None:
     """Widok pokrycia P–Q na kontrakcie werdyktu: rekord `ocena` (`OcenaKryterium`) i liczby
     per punkt — bez dawnego `werdykt`/`pokryty`/`uwaga` (status i tekst liczy wyłącznie
-    kontrakt werdyktu). Iloczyn cech scen: porównanie wykonane × brak krzywej × magazyn."""
+    kontrakt werdyktu). Iloczyn cech scen: porównanie wykonane × brak krzywej × magazyn.
+    """
     widok = eksport.FIXTURY[nazwa]()
     assert set(widok) == {
         "typ_katalogowy",
@@ -1764,9 +1769,46 @@ def test_kotwica_brak_pliku_czlonka_odswieza_cala_grupe(tmp_path: Path) -> None:
     assert eksport.tresci_do_zapisu(swieze, tmp_path) == swieze
 
 
+@pytest.mark.parametrize("przyczyna", ["skrot_i_liczba", "brak_pliku", "rozjazd_skrotow"])
+def test_kotwica_per_lisc_w_swiezej_grupie(tmp_path: Path, przyczyna: str) -> None:
+    """Karta ZU (2026-11-04): grupa idzie ze świeżej treści (przyczyna: zmiana ponad
+    tolerancję w jednym pliku, brak pliku członka, zastany rozjazd skrótów), ale liść
+    liczbowy, który różni się od zapisu na dysku WYŁĄCZNIE szumem międzymaszynowym, zostaje
+    zapisem z dysku; liść ponad tolerancję i skrót są świeże. Iloczyn: przyczyna świeżej
+    grupy × {liść w szumie, liść ponad tolerancję}. Bez kotwicy per liść zmiana samego
+    tekstu wnosiła szum ostatniej cyfry tej maszyny (`dynamika_scena_przebiegi`)."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    szum = 10.0 * (1.0 + 1e-9)
+    na_dysku = {
+        "wynik": {**_fikstura_biegu(bieg, _SKROT_STARY, 10.0), "szum": 10.0},
+        "slad": {
+            **_fikstura_biegu(
+                bieg, _SKROT_NOWY if przyczyna == "rozjazd_skrotow" else _SKROT_STARY, 10.0
+            ),
+            "szum": 10.0,
+        },
+    }
+    if przyczyna == "brak_pliku":
+        del na_dysku["slad"]
+    teksty_dysku = _zapisz_na_dysk(tmp_path, na_dysku)
+    ik_slad = 15.0 if przyczyna == "skrot_i_liczba" else 10.0
+    swieze = {
+        "wynik": eksport._json({**_fikstura_biegu(bieg, _SKROT_NOWY, 10.0), "szum": szum}),
+        "slad": eksport._json({**_fikstura_biegu(bieg, _SKROT_NOWY, ik_slad), "szum": szum}),
+    }
+    zapis = eksport.tresci_do_zapisu(swieze, tmp_path)
+    assert {_skrot_wyniku(t) for t in zapis.values()} == {_SKROT_NOWY}
+    assert json.loads(zapis["wynik"])["szum"] == 10.0
+    assert json.loads(zapis["slad"])["szum"] == (szum if przyczyna == "brak_pliku" else 10.0)
+    assert json.loads(zapis["slad"])["ikss_ka"] == ik_slad
+    if przyczyna != "brak_pliku":
+        assert zapis["wynik"] != teksty_dysku["wynik"]
+
+
 def test_grupy_biegow_rozrozniaja_token_bedacy_prefiksem_innego(tmp_path: Path) -> None:
     """`run-sc-scena-zwarcia` jest prefiksem `run-sc-scena-zwarcia-robocza` — dwa biegi,
-    dwie grupy; skrót zmieniony ponad tolerancję w biegu roboczym nie odświeża kotwicy."""
+    dwie grupy; skrót zmieniony ponad tolerancję w biegu roboczym nie odświeża kotwicy.
+    """
     kotwica = eksport.RUN_ID_SCENY_ZWARCIA
     robocza = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
     assert robocza.startswith(kotwica)

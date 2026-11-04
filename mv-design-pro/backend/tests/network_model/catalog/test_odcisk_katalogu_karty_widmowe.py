@@ -19,6 +19,8 @@ import copy
 import dataclasses
 import hashlib
 import json
+from pathlib import Path
+from typing import Any
 
 from network_model.catalog.mv_shunt_capacitor_catalog import (
     _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
@@ -187,6 +189,46 @@ _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości 
 #: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
 #: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
 ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
+#: Karta ZU, punkt 4 (2026-11-04): proza katalogu dla projektanta słowami zamiast symboli
+#: spłaszczonych (`I_th`, `P0/Pk/u_k`, `R′0 = R′1 + …`, `cos φ`). Dowód liść po liściu (zrzut
+#: kanoniczny bazy karty `01c5def16` vs drzewo karty): identyczny zbiór kluczy i długości list,
+#: zero zmian liczb i identyfikatorów; różni się 839 liści tekstowych pełnego zrzutu, z czego
+#: ``LICZBA_TEKSTOW_KARTY_ZU`` poza polami karty projekcji (verification_note,
+#: source_reference, note, source_ref i opisy założeń map ``wartosci_robocze``), a każdy z nich jest jednoznacznie odwracalny parą (tekst po karcie →
+#: tekst przed kartą) z ``teksty_katalogu_przed_karta_zu.json``. Zrzut z cofniętymi tekstami
+#: daje DOKŁADNIE ``ODCISK_PO_ZESPOLE_UZIEMIAJACYM``.
+ODCISK_PO_KARCIE_ZU = "161dee98606b23918f532e776ef164f03012f1ae0ac22acc2bf078e47ae8ca6a"
+LICZBA_TEKSTOW_KARTY_ZU = 809
+_TEKSTY_PRZED_KARTA_ZU: dict[str, str] = dict(
+    json.loads(
+        (Path(__file__).parent / "teksty_katalogu_przed_karta_zu.json").read_text(encoding="utf-8")
+    )
+)
+
+
+def _cofnij_teksty_karty_zu(zrzut: dict[str, object]) -> int:
+    """Podmienia w miejscu teksty karty ZU na teksty sprzed karty; zwraca liczbę liści.
+
+    Mapy ``wartosci_robocze`` niosą w zrzucie krotki (pole, opis założenia) — krotka jest
+    odbudowywana, nie modyfikowana w miejscu."""
+    liczba = 0
+
+    def cofnij(wezel: Any) -> Any:
+        nonlocal liczba
+        if isinstance(wezel, str) and wezel in _TEKSTY_PRZED_KARTA_ZU:
+            liczba += 1
+            return _TEKSTY_PRZED_KARTA_ZU[wezel]
+        if isinstance(wezel, dict):
+            return {klucz: cofnij(wartosc) for klucz, wartosc in wezel.items()}
+        if isinstance(wezel, list | tuple):
+            return type(wezel)(cofnij(wartosc) for wartosc in wezel)
+        return wezel
+
+    for przestrzen in list(zrzut):
+        zrzut[przestrzen] = cofnij(zrzut[przestrzen])
+    return liczba
+
+
 PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
     "earthing_transformer_types": 2,
     "arc_suppression_coil_types": 3,
@@ -269,6 +311,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_ZU
+    assert _cofnij_teksty_karty_zu(zrzut) == LICZBA_TEKSTOW_KARTY_ZU
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]

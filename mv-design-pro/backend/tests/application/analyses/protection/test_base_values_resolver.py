@@ -113,7 +113,7 @@ class TestTransformerInCalculated:
         assert base.in_a is not None
         assert base.in_a == pytest.approx(expected_in, rel=0.01)
         assert base.source_in == BaseValueSourceIn.TRANSFORMER_SIDE
-        assert "Sn" in base.notes_pl or "sqrt" in base.notes_pl
+        assert "moc znamionowa 0.63 MVA" in base.notes_pl and "√3" in base.notes_pl
 
     def test_resolve_in_from_transformer_hv_side(self) -> None:
         """IN = Sn / (√3 × Un_HV) dla strony WN."""
@@ -472,7 +472,7 @@ class TestPccProtection:
 
         assert base.un_kv == 110.0
         assert base.source_un == BaseValueSourceUn.BoundaryNode
-        assert "BoundaryNode" in base.notes_pl
+        assert "punkt przyłączenia" in base.notes_pl
 
     def test_resolve_connection_node_current(self) -> None:
         """In z BoundaryNode rated current."""

@@ -96,7 +96,8 @@ _spec.loader.exec_module(straznik_prozy)
 def _slad_bez_latex_w_prozie(koperta: dict[str, Any]) -> None:
     """Kontrakt pól kroku śladu (predykat ``slad_proza_bez_latex_guard`` — jedno źródło reguły):
     podstawienie kroku prądu uziomowego to proza bez ``$…$`` w KAŻDEJ gałęzi rozstrzygnięcia
-    (z modelu, nadpisanie, nazwany brak), choć uzasadnienie wyniku niesie wzory dla KaTeX-a."""
+    (z modelu, nadpisanie, nazwany brak), choć uzasadnienie wyniku niesie wzory dla KaTeX-a.
+    """
     assert straznik_prozy.naruszenia_danych(koperta["white_box_trace"], "earthing_safety") == []
 
 
@@ -331,7 +332,7 @@ def test_prad_stacji_z_modelu_iloczyn_sposob_wn_zrodlo(
         assert wn["brak_pl"] is None
     else:
         assert wn["prad_a"] is None
-        assert "Z0 sieci zasilającej nieznane" in wn["brak_pl"]
+        assert "impedancja zerowa sieci zasilającej nieznana" in wn["brak_pl"]
 
     # Rozstrzygnięcie: nadpisanie projektanta albo największy przypadek z modelu.
     z_modelu = max(p for p in (sn["prad_a"], wn["prad_a"]) if p is not None)

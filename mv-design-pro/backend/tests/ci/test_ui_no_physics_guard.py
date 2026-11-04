@@ -98,6 +98,11 @@ def test_ui_allowlist_matches_measured_baseline():
     `ui/sld/v2/canvas/SldShortCircuitOverlay.tsx` (zero production importers) was
     deleted together with its one class-b hit (empty-state literal '(brak ip/Ith)')
     and its allowlist entry -- a decrease by deletion, measured on the merged tip.
+    Karta ZU, punkt 4 (2026-11-04) re-measured 5: the screen-catalog description in
+    `ui/workspace/WorkspaceSurfaceRouter.tsx` now carries the symbols as `$...$` segments
+    rendered by KaTeX (`'IEC 60909, $I_{k}''$/$i_{p}$/$I_{th}$ z śladem …'`), so its class-b
+    hit (flattened `Ik″/ip/Ith` in a label) and its allowlist entry are gone -- a decrease
+    at the source, measured on this tree.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -107,7 +112,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 6
+    assert raw == 5
 
 
 def test_ui_allowlist_entries_are_not_stale():

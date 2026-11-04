@@ -289,7 +289,10 @@ def test_slad_white_box_niesie_wzor_dane_podstawienie_wynik_dla_kazdej_galezi() 
     kabel = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
     assert "Z_s = \\frac{Z_0 + 2 Z_1}{3}" in kabel["formula_latex"]
     assert kabel["inputs"]["r0_ohm_per_km"] == 0.759 and kabel["inputs"]["length_km"] == 2.0
-    assert "Z_s = (" in kabel["substitution"] and "Z_m = (" in kabel["substitution"]
+    # Proza podstawienia słowami (karta UX-04 / ZU), wzór podstawienia w polu LaTeX.
+    assert "impedancja własna" in kabel["substitution"] and "wzajemna" in kabel["substitution"]
+    assert "Z_s = \\frac{(" in kabel["substitution_latex"]
+    assert "Z_m = \\frac{(" in kabel["substitution_latex"]
     z_s, z_m = kabel["result"]["z_self_ohm"], kabel["result"]["z_mutual_ohm"]
     z1, z0 = complex(0.253, 0.1) * 2.0, complex(0.759, 0.3) * 2.0
     # Liczby zespolone w kolumnie JSON biegu jako {re, im} (jak z1/z2/z0_ohm zwarcia).
@@ -580,7 +583,7 @@ def test_brak_z0_kabla_poza_droga_i0_nie_blokuje_i_jest_nazwany_w_sladzie() -> N
     _wykonaj_analize_biegu(run)
     kabel = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
     assert kabel["inputs"]["z0_ohm"] is None
-    assert kabel["inputs"]["zrodlo_z0"].startswith("Z0 nieużywane")
+    assert kabel["inputs"]["zrodlo_z0"].startswith("impedancja zerowa nieużywana")
     assert run.raw_result["result_v1"]["converged"] is True
 
 
@@ -596,7 +599,7 @@ def test_transformator_yy_z_odbiorem_symetrycznym_jest_dozwolony_bez_podstawiani
     krok = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[tr1]")
     assert krok["inputs"]["z0_ohm"] is None
     assert krok["result"]["z_mutual_ohm"] == {"re": 0.0, "im": 0.0}
-    assert "brak drogi I0" in krok["substitution"]
+    assert "brak drogi prądu składowej zerowej" in krok["substitution"]
 
 
 def test_zamkniety_lacznik_szeregowy_jest_galezia_zerowej_impedancji() -> None:

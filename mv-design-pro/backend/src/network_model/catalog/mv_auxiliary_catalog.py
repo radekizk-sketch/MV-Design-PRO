@@ -598,10 +598,14 @@ _MCCB_TRIP_SETTINGS_SOURCE_PL = (
     "osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwójnie, "
     "niezależnie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide "
     "+ stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings "
-    "(Ir 0,4-1,0×In; Ii 1,5-15×In; tsd 0,05-0,8s; tr 3-144s@6×Ir — JEDNO źródło numeryczne "
-    "dla tr, NIE podwójnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-"
-    "explained (Ir 0,4-1,0×In; Isd 1,5-10×Ir — rozstrzyga jednostkę Isd jako ×Ir; tsd "
-    "0,05-0,5s)."
+    "(nastawa długozwłoczna 0,4-1,0 × prąd znamionowy; nastawa bezzwłoczna 1,5-15 × prąd "
+    "znamionowy; czas krótkozwłoczny 0,05-0,8 s; czas długozwłoczny 3-144 s przy "
+    "sześciokrotności nastawy długozwłocznej — JEDNO źródło numeryczne "
+    "dla czasu długozwłocznego, NIE podwójnie potwierdzone); (2) VIOX "
+    "viox.com/mccb-trip-unit-settings-ir-isd-ii-explained (nastawa długozwłoczna "
+    "0,4-1,0 × prąd znamionowy; nastawa krótkozwłoczna 1,5-10 × nastawa długozwłoczna — "
+    "rozstrzyga jednostkę nastawy krótkozwłocznej jako krotność nastawy długozwłocznej; "
+    "czas krótkozwłoczny 0,05-0,5 s)."
 )
 
 
@@ -620,7 +624,8 @@ _MCCB_TRIP_SETTINGS_SOURCE_PL = (
 #: Dlatego status weryfikacji tych czterech pozycji to CZESCIOWO_ZWERYFIKOWANY, a
 #: nie ZWERYFIKOWANY.
 _EMAX2_WYCIAG_ZASTRZEZENIE_PL = (
-    "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamówieniowe) z wyciągu katalogu "
+    "Dane znamionowe (prąd znamionowy ciągły, zdolność wyłączania graniczna przy 440 V, "
+    "prąd krótkotrwały 1 s, kody zamówieniowe) z wyciągu katalogu "
     "technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciąg "
     "przypięty odciskiem SHA-256 dokumentu "
     "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola "
@@ -841,8 +846,9 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071031R1 / 1SDA072381R1"
+                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, prąd znamionowy ciągły 2000 A, "
+                    "zdolność wyłączania graniczna przy 440 V 66 kA, prąd krótkotrwały 1 s 66 kA, "
+                    "kody zamówieniowe 1SDA071031R1 / 1SDA072381R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -869,8 +875,9 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, Iu=2500 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071061R1 / 1SDA072411R1"
+                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, prąd znamionowy ciągły 2500 A, "
+                    "zdolność wyłączania graniczna przy 440 V 66 kA, prąd krótkotrwały 1 s 66 kA, "
+                    "kody zamówieniowe 1SDA071061R1 / 1SDA072411R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -897,8 +904,9 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, Iu=3200 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071141R1 / 1SDA072491R1"
+                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, prąd znamionowy ciągły 3200 A, "
+                    "zdolność wyłączania graniczna przy 440 V 66 kA, prąd krótkotrwały 1 s 66 kA, "
+                    "kody zamówieniowe 1SDA071141R1 / 1SDA072491R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -925,8 +933,9 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071191R1 / 1SDA072541R1"
+                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, prąd znamionowy ciągły 4000 A, "
+                    "zdolność wyłączania graniczna przy 440 V 66 kA, prąd krótkotrwały 1 s 66 kA, "
+                    "kody zamówieniowe 1SDA071191R1 / 1SDA072541R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -1139,14 +1148,15 @@ _MCB_ICN_KA: float = 6.0
 # Icu>=Ik''max na obwodach o wyzszym poziomie zwarcia (ZNALEZISKO BRAMKI #4).
 _MCB_ICN_KA_10KA: float = 10.0
 _MCB_ICN_KA_10KA_SOURCE: str = (
-    "IEC 60898-1 §4.4 (Icn=10 kA jest znormalizowana wartością szeregu, obok "
-    "6/15/20/25 kA) — Icn=10 kA POTWIERDZONA PODWÓJNIE, niezależnie, w kartach "
-    "katalogowych realnych wyrobów przemysłowych: Hager (seria NCN2../NBN1../"
-    "NDN1.., karta techniczna np. NCN210 — Icn=10000 A, Un=230/400V) i "
-    "Schneider Electric (Acti9 iC60H, katalog Acti9 System — Icn=10 kA dla "
-    "całej serii iC60H B/C/D, In 0,5-63 A). Rodzina pozostaje REFERENCYJNA "
+    "IEC 60898-1 §4.4 (znamionowa zdolność zwarciowa 10 kA jest znormalizowaną wartością "
+    "szeregu, obok 6/15/20/25 kA) — wartość 10 kA POTWIERDZONA PODWÓJNIE, niezależnie, "
+    "w kartach katalogowych realnych wyrobów przemysłowych: Hager (seria NCN2../NBN1../"
+    "NDN1.., karta techniczna np. NCN210 — zdolność zwarciowa 10000 A, napięcie "
+    "znamionowe 230/400 V) i Schneider Electric (Acti9 iC60H, katalog Acti9 System — "
+    "zdolność zwarciowa 10 kA dla całej serii iC60H B/C/D, prąd znamionowy 0,5-63 A). "
+    "Rodzina pozostaje REFERENCYJNA "
     "(brak wiązania z JEDNYM konkretnym numerem katalogowym producenta — "
-    "Icn=10 kA jest wspólna dla wielu wyrobów obu producentów), analogicznie "
+    "zdolność zwarciowa 10 kA jest wspólna dla wielu wyrobów obu producentów), tak samo jak "
     "do rodziny 6 kA."
 )
 
@@ -1237,7 +1247,8 @@ _FUSE_IN_A: tuple[float, ...] = (
 
 _FUSE_GG_BREAKING_CAPACITY_KA: float = 120.0
 _FUSE_GG_BREAKING_CAPACITY_SOURCE: str = (
-    "IEC 60269-1 (wartości znamionowe normatywne) — I_1=120 kA AC @ 500 V dla wkładek NH gG, "
+    "IEC 60269-1 (wartości znamionowe normatywne) — znamionowa zdolność wyłączania 120 kA AC "
+    "przy 500 V dla wkładek NH gG, "
     "potwierdzone podwójnie w katalogach producenckich niezależnych od siebie: "
     "Socomec (emea.socomec.com/en/p/knife-edge-fuses-nh-gg-type), "
     "EFEN (katalog.efen.sk/en/c/nh-fuse-links/nh-fuse-links-ac-500-v-gg), "
@@ -1335,14 +1346,17 @@ def get_all_ct_types() -> list[dict]:
         }
 
     source_reference = (
-        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) "
+        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, prąd dynamiczny równy 2,5-krotności "
+        "prądu cieplnego, współczynnik bezpieczeństwa przyrządu) "
         "/ IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)"
     )
     verification_note = (
-        "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość "
+        "Rekord referencyjny do doboru CT. Prąd cieplny krótkotrwały podano jako WYMAGANĄ "
+        "wytrzymałość "
         "cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu "
         "IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, "
-        "25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg "
+        "25 kA/1 s dla >= 1200 A); prąd dynamiczny wyprowadzany normowo (2,5-krotność prądu "
+        "cieplnego), współczynnik bezpieczeństwa przyrządu wg "
         "znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla "
         "konkretnego wyrobu potwierdza karta producenta."
     )
@@ -1596,10 +1610,11 @@ def get_all_vt_types() -> list[dict]:
     )
     verification_note_fz = (
         "Rekord referencyjny rodziny FAZA-ZIEMIA z uzwojeniem RESZTKOWYM (trzecim), "
-        "która w sieci SN realizuje pomiar napięcia zerowego 3U0 dla kryteriów "
+        "która w sieci SN realizuje pomiar potrojonego napięcia składowej zerowej dla kryteriów "
         "ziemnozwarciowych kierunkowych (67N) i nadnapięciowych zerowych (59N). "
         "Uzwojenie pierwotne pracuje między fazą a ziemią, dlatego przekładnia jest "
-        "U_n/√3, a współczynnik napięciowy musi wynosić 1,9 (IEC 61869-3 tab. 2): "
+        "napięcie znamionowe przez √3, a współczynnik napięciowy musi wynosić 1,9 "
+        "(IEC 61869-3 tab. 2): "
         "przy zwarciu doziemnym napięcie faz zdrowych rośnie do napięcia międzyfazowego. "
         "Klasy, moc i obecność uzwojenia resztkowego potwierdzić kartą producenta."
     )
@@ -2389,11 +2404,13 @@ _RCD_SOURCE_REFERENCE = (
     "status REFERENCYJNY"
 )
 _RCD_VERIFICATION_NOTE = (
-    "Szeregi I_Δn (0,03 / 0,1 / 0,3 / 0,5 A) i I_n (25 / 40 / 63 / 100 A) rodziny generycznej "
+    "Szeregi znamionowego prądu różnicowego (0,03 / 0,1 / 0,3 / 0,5 A) i prądu znamionowego "
+    "(25 / 40 / 63 / 100 A) rodziny generycznej "
     "potwierdzono jako wartości wyrobów w katalogach producentów (Eaton FRBmM, Iskra RCCB "
     "Ver3.1, Terasaki DinSafe); tabela wartości znormalizowanych kl. 5.3.2/5.3.3 IEC 61008-1 "
     "odczytana w jednym źródle wtórnym (asutpp.com) — bez drugiego źródła, więc rodzina nie "
-    "twierdzi, że jest kompletnym szeregiem normy. Typ S: I_Δn > 0,03 A i I_n ≥ 25 A (TRF, "
+    "twierdzi, że jest kompletnym szeregiem normy. Typ S: znamionowy prąd różnicowy powyżej "
+    "0,03 A i prąd znamionowy co najmniej 25 A (TRF, "
     "BEAMA). Rodzaje F i B (IEC 62423) nie wchodzą do rodziny: Tabela 1 dotyczy AC i A."
 )
 

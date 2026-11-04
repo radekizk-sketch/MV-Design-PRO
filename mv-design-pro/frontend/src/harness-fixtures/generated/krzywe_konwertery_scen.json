@@ -148,7 +148,7 @@
       "flicker_c": {
         "field_name": "flicker_c",
         "quality": "ESTIMATED",
-        "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
+        "source_ref": "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
         "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności"
       }
     },
@@ -407,7 +407,7 @@
       "flicker_c": {
         "field_name": "flicker_c",
         "quality": "ESTIMATED",
-        "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
+        "source_ref": "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
         "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności"
       }
     },

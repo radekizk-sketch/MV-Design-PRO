@@ -19,7 +19,7 @@ import { WalidacjaWytrzymalosciAparaturySekcja } from '../WalidacjaWytrzymalosci
 const KATALOG = [
   {
     id: 'wstd_breaker_vacuum_15_25',
-    label_pl: 'Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
+    label_pl: 'Wyłącznik próżniowy 15 kV · 25 kA/1 s · szczytowy 62,5 kA',
     device_type: 'breaker_vacuum_15',
     nominal_voltage_kv: 15,
     nominal_current_a: 1250,
@@ -72,7 +72,7 @@ const WERDYKT_OK = {
   i_dyn_ok: true,
   i_th_ok: true,
   message_pl: 'OK: aparatura „Wyłącznik próżniowy 15 kV” wytrzymała '
-    + '(wykorzystanie I_dyn 79%, I_th 80%).',
+    + '(wykorzystanie wytrzymałości dynamicznej 79%, cieplnej 80%).',
   utilization_dyn_percent: 79.36507936507937,
   utilization_th_percent: 80,
 };
@@ -110,7 +110,7 @@ describe('WalidacjaWytrzymalosciAparaturySekcja — katalog i werdykt z backendu
       ok: false,
       i_dyn_ok: false,
       i_th_ok: true,
-      message_pl: 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
+      message_pl: 'BLOKER: prąd udarowy 70,0 kA > 63,0 kA (limit) — przekroczenie '
         + 'wytrzymałości dynamicznej.',
       utilization_dyn_percent: 111.11111111111111,
       utilization_th_percent: 80,

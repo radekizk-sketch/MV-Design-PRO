@@ -1058,7 +1058,7 @@
             "field_name": "flicker_c",
             "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności",
             "quality": "ESTIMATED",
-            "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+            "source_ref": "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
           },
           "manufacturer": {
             "field_name": "manufacturer",
@@ -1230,7 +1230,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "289b6d4c8200a1bc28d46b470918ca263793ad92821eb752a704beca99fe263d",
+    "hash_sha256": "dcab25f3797c60c7e3d493ea07726a187f9b7edeae4ce966f91f34cfc79de64a",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

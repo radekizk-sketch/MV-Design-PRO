@@ -13261,7 +13261,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13324,7 +13324,7 @@
         "type": "null"
        }
       ],
-      "description": "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza 0,1 s",
+      "description": "Czas wyłączenia [s] scenariusza (najkrótszy czas zabezpieczenia + wyłącznika); brak = czas wyłączenia punktu z pól lokalnych albo wartość robocza 0,1 s",
       "title": "Tb S"
      },
      "tk_s": {
@@ -13378,7 +13378,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13518,7 +13518,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",

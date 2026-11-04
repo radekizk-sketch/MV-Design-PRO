@@ -1326,7 +1326,8 @@ class TestNnFullChain:
             and 40.0 <= k["kandydat"]["in_a"] <= iz_prime_a_rgnn
             and not k["kwalifikuje_sie"]
             and any(
-                kr["nazwa"] == "Zdolność wyłączania >= Ik″max" and kr["status"] == "nie spełnia"
+                kr["nazwa"] == "Zdolność wyłączania ≥ maksymalny prąd zwarciowy"
+                and kr["status"] == "nie spełnia"
                 for kr in k["kryteria"]
             )
         ]

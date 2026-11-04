@@ -322,13 +322,13 @@ def _admitancje_baterii_z_migawki(
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
             raise OdmowaNazwana(
-                f"{bateria} nie ma dodatniej mocy znamionowej Q_n.",
+                f"{bateria} nie ma dodatniej mocy znamionowej.",
                 kod=KOD_BATERIA_DANE_ZNAMIONOWE,
                 dane={"element_ref": ref_id},
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
             raise OdmowaNazwana(
-                f"{bateria} nie ma dodatniego napięcia znamionowego U_n.",
+                f"{bateria} nie ma dodatniego napięcia znamionowego.",
                 kod=KOD_BATERIA_DANE_ZNAMIONOWE,
                 dane={"element_ref": ref_id},
             )
@@ -970,8 +970,9 @@ def zloz_wejscie_rozplywu(
             wezel_pv = graph.nodes.get(pv_spec.node_id)
             raise OdmowaNazwana(
                 f"{opis_rodzaju_i_nazwy('Szyna', getattr(wezel_pv, 'name', None))} węzła PV "
-                "ma dodatkowo generator z aktywną regulacją falownika (cosφ/Q(U)/statyzm "
-                "P(f)) — węzeł PV niesie WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu "
+                "ma dodatkowo generator z aktywną regulacją falownika (współczynnik mocy, "
+                "charakterystyka mocy biernej od napięcia albo statyzm mocy czynnej od "
+                "częstotliwości) — węzeł PV niesie WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu "
                 "nie ma miejsca na drugą, niezależną charakterystykę regulacji na tym samym "
                 "węźle.",
                 kod=KOD_WEZEL_PV_Z_REGULACJA_FALOWNIKA,
@@ -1145,7 +1146,7 @@ def zloz_wejscie_zwarcia(
     if tryb_wkladow not in ("on_demand", "in_run"):
         raise OdmowaDanychError(
             f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
-            "(oczekiwano 'on_demand'/'in_run')"
+            "(oczekiwano `on_demand` albo `in_run`)"
         )
     wklady_w_biegu = tryb_wkladow == "in_run"
 
@@ -1419,14 +1420,15 @@ OPCJE_ROZPLYWU_NIESYMETRYCZNEGO: dict[str, float | int] = {
 
 def _opcje_rozplywu_niesymetrycznego(options: dict[str, Any]) -> tuple[float, float, int]:
     """Nastawy biegu: opcje przebiegu nadpisują ``OPCJE_ROZPLYWU_NIESYMETRYCZNEGO``
-    (alias ``max_iter`` jak w rozpływie NR). Zwraca (base_mva, tolerance, max_iterations)."""
+    (alias ``max_iter`` jak w rozpływie NR). Zwraca (base_mva, tolerance, max_iterations).
+    """
     opcje: dict[str, Any] = dict(OPCJE_ROZPLYWU_NIESYMETRYCZNEGO)
     for klucz in ("base_mva", "tolerance", "max_iterations"):
         if klucz in options:
             opcje[klucz] = options[klucz]
     if "max_iterations" not in options and "max_iter" in options:
         opcje["max_iterations"] = options["max_iter"]
-    return float(opcje["base_mva"]), float(opcje["tolerance"]), int(opcje["max_iterations"])
+    return (float(opcje["base_mva"]), float(opcje["tolerance"]), int(opcje["max_iterations"]))
 
 
 @dataclass(frozen=True)
@@ -1482,7 +1484,8 @@ def _droga_zerowa(enm: EnergyNetworkModel, wyspy: tuple[Wyspa, ...]) -> DrogaZer
     """Wędrówka od każdego odbioru faza–N ku szynie bilansującej wyspy (drzewo BFS od
     slacka po krawędziach ``_krawedzie_wyspy`` — TEN SAM zbiór krawędzi, z którego
     ``enm/topology.derive`` buduje wyspę). Transformator bez grupy połączeń kończy
-    wędrówkę bez rozstrzygnięcia (osobna odmowa ``transformer.vector_group_missing``)."""
+    wędrówkę bez rozstrzygnięcia (osobna odmowa ``transformer.vector_group_missing``).
+    """
     szyna_zrodla = {s.ref_id: s.bus_ref for s in enm.sources}
     galezie = {g.ref_id: g for g in enm.branches}
     trafa = {t.ref_id: t for t in enm.transformers}
@@ -1715,8 +1718,9 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
             OdmowaNiesymetrii(
                 KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                 tuple(bez_z0),
-                "gałęzie bez składowej zerowej R0/X0 i bez podstawy wartości roboczej (R′1 "
-                "albo X′1 nieznane albo niedodatnie; bez podstawiania Z0 = Z1)",
+                "gałęzie bez rezystancji i reaktancji składowej zerowej i bez podstawy wartości "
+                "roboczej (rezystancja albo reaktancja jednostkowa składowej zgodnej nieznana "
+                "albo niedodatnia; bez podstawiania impedancji zerowej impedancją zgodną)",
             )
         )
     if bez_grupy:
@@ -1819,22 +1823,34 @@ def _spec_galezi_z_sekwencji(
     """Impedancja własna/wzajemna gałęzi ze składowych (pochodne) odniesiona do bazy
     wyspy; ``z0_ohm=None`` = krawędź bez realnego I0 (``powod_bez_z0`` nazywa dlaczego:
     I0 ≡ 0 z topologii albo artefakt modelu szeregowego powyżej punktu zamknięcia),
-    wtedy Z_m := 0 i Z_s := Z1 — tożsamość, nie podstawienie (spadek = (Z_s − Z_m)·I)."""
+    wtedy Z_m := 0 i Z_s := Z1 — tożsamość, nie podstawienie (spadek = (Z_s − Z_m)·I).
+    """
     z1_odn = impedancja_odniesiona_do_napiecia_ohm(z1_ohm, napiecie_wlasne_kv, base_kv_ll)
     if z0_ohm is None:
         z_s, z_m = z1_odn, 0j
         podstawienie = (
-            f"brak drogi I0 ({powod_bez_z0}) ⇒ "
-            f"Z_m := 0, Z_s := Z1 = {_fmt_z(z1_odn)} Ω @ {base_kv_ll:g} kV"
+            f"brak drogi prądu składowej zerowej ({powod_bez_z0}) ⇒ impedancja wzajemna 0, "
+            f"impedancja własna równa impedancji zgodnej {_fmt_z(z1_odn)} Ω "
+            f"przy {base_kv_ll:g} kV"
+        )
+        podstawienie_latex = (
+            rf"Z_m := 0,\quad Z_s := Z_1 = {_fmt_z(z1_odn)}\,\Omega"
+            rf"\quad(U_{{odn}} = {base_kv_ll:g}\,\mathrm{{kV}})"
         )
     else:
         z0_odn = impedancja_odniesiona_do_napiecia_ohm(z0_ohm, napiecie_wlasne_kv, base_kv_ll)
         z_s = impedancja_wlasna_ohm(z0_odn, z1_odn)
         z_m = impedancja_wzajemna_ohm(z0_odn, z1_odn)
         podstawienie = (
-            f"Z1 = {_fmt_z(z1_odn)} Ω, Z0 = {_fmt_z(z0_odn)} Ω (@ {base_kv_ll:g} kV, "
-            f"z {napiecie_wlasne_kv:g} kV) ⇒ Z_s = ({_fmt_z(z0_odn)} + 2·({_fmt_z(z1_odn)}))/3 = "
-            f"{_fmt_z(z_s)} Ω; Z_m = ({_fmt_z(z0_odn)} − ({_fmt_z(z1_odn)}))/3 = {_fmt_z(z_m)} Ω"
+            f"impedancja zgodna {_fmt_z(z1_odn)} Ω i zerowa {_fmt_z(z0_odn)} Ω (odniesione do "
+            f"{base_kv_ll:g} kV z {napiecie_wlasne_kv:g} kV) ⇒ impedancja własna "
+            f"{_fmt_z(z_s)} Ω, wzajemna {_fmt_z(z_m)} Ω"
+        )
+        podstawienie_latex = (
+            rf"Z_s = \frac{{({_fmt_z(z0_odn)}) + 2\,({_fmt_z(z1_odn)})}}{{3}} = "
+            rf"{_fmt_z(z_s)}\,\Omega,\quad "
+            rf"Z_m = \frac{{({_fmt_z(z0_odn)}) - ({_fmt_z(z1_odn)})}}{{3}} = "
+            rf"{_fmt_z(z_m)}\,\Omega\quad(U_{{odn}} = {base_kv_ll:g}\,\mathrm{{kV}})"
         )
     tracer.add(
         key=f"pf_unbalanced_branch[{ref_id}]",
@@ -1852,6 +1868,7 @@ def _spec_galezi_z_sekwencji(
             "base_kv_ll": base_kv_ll,
         },
         substitution=podstawienie,
+        substitution_latex=podstawienie_latex,
         result={"z_self_ohm": z_s, "z_mutual_ohm": z_m},
     )
     return UnbalancedBranchSpec(
@@ -1932,11 +1949,14 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         if ref_id in droga_zerowa.artefakt:
             zamykajace = sorted({tr for ld, tr in droga_zerowa.zamkniecia_w_transformatorach})
             return (
-                "I0 tej krawędzi jest artefaktem modelu szeregowego: droga I0 odbiorów "
-                "faza–N zamknięta poniżej, w transformatorze "
+                "prąd składowej zerowej tej krawędzi jest artefaktem modelu szeregowego: droga "
+                "prądu składowej zerowej odbiorów faza–N zamknięta poniżej, w transformatorze "
                 + ", ".join(nazwa_po_identyfikatorze(tr, indeks=nazwy) for tr in zamykajace)
             )
-        return "I_a+I_b+I_c ≡ 0 z topologii: tą krawędzią nie płynie I0 żadnego odbioru faza–N"
+        return (
+            "suma prądów trzech faz równa zeru z topologii: tą krawędzią nie płynie prąd "
+            "składowej zerowej żadnego odbioru faza–N"
+        )
 
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
@@ -1959,16 +1979,18 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 key=f"pf_unbalanced_zero_sequence_path[{ld.ref_id}]",
                 title=(
                     f"Odbiór {nazwa_elementu(ld, 'loads')} (faza {ld.phases}): "
-                    "droga prądu powrotnego I0"
+                    "droga prądu powrotnego składowej zerowej"
                 ),
                 formula_latex=r"I_0 = \tfrac{1}{3}(I_a + I_b + I_c)",
                 inputs={"phases": ld.phases, "bus_ref": ld.bus_ref},
                 substitution=(
-                    "droga I0 zamknięta w uziemionym uzwojeniu transformatora "
+                    "droga prądu składowej zerowej zamknięta w uziemionym uzwojeniu "
+                    "transformatora "
                     + nazwa_po_identyfikatorze(punkt, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
                     if punkt is not None
                     else (
-                        "droga I0 zamknięta w punkcie neutralnym źródła sieciowego "
+                        "droga prądu składowej zerowej zamknięta w punkcie neutralnym "
+                        "źródła sieciowego "
                         + nazwa_po_identyfikatorze(
                             zamkniecia_zr[ld.ref_id], indeks=nazwy, spoza_modelu=SPOZA_MODELU
                         )
@@ -1976,7 +1998,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     )
                 ),
                 result={
-                    "zamkniecie": punkt if punkt is not None else zamkniecia_zr[ld.ref_id],
+                    "zamkniecie": (punkt if punkt is not None else zamkniecia_zr[ld.ref_id]),
                     "rodzaj": "transformator" if punkt is not None else "zrodlo",
                 },
             )
@@ -2018,15 +2040,21 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         / tory
                     )
                     zrodlo_z0_galezi = (
-                        "R0, X0 gałęzi (wartość robocza: "
+                        "rezystancja i reaktancja składowej zerowej gałęzi (wartość robocza: "
                         + "; ".join(zalozenie for _, _, zalozenie, _ in skladowa_z0.robocze)
                         + ") × długość ÷ liczba torów"
                         if skladowa_z0.robocze
-                        else "R0, X0 gałęzi z modelu × długość ÷ liczba torów"
+                        else (
+                            "rezystancja i reaktancja składowej zerowej gałęzi z modelu × "
+                            "długość ÷ liczba torów"
+                        )
                     )
                 else:
                     z0_ohm = None
-                    zrodlo_z0_galezi = "Z0 nieużywane (krawędź bez realnego I0)"
+                    zrodlo_z0_galezi = (
+                        "impedancja zerowa nieużywana (krawędź bez realnego prądu składowej "
+                        "zerowej)"
+                    )
                 branch_specs.append(
                     _spec_galezi_z_sekwencji(
                         tracer=tracer,
@@ -2093,8 +2121,9 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 if trafo.ref_id not in droga_zerowa.z_realnym_i0:
                     z0_ohm_tr = None
                     zrodlo_z0 = (
-                        f"Z0 nieużywane ({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}; "
-                        "transformator poza drogą realnego I0)"
+                        "impedancja zerowa nieużywana "
+                        f"({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}; transformator "
+                        "poza drogą realnego prądu składowej zerowej)"
                     )
                 elif model_z0.z0_pu is None:
                     # Wędrówka ``_droga_zerowa`` nie wpuszcza połączenia OPEN na drogę
@@ -2111,7 +2140,8 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     zrodlo_z0 = (
                         f"model składowej zerowej transformatora "
                         f"({NAZWY_POLACZEN_ZEROWYCH_PL[model_z0.connection]}, "
-                        f"Z0 = {_fmt_z(model_z0.z0_pu)} pu @ {S_BASE_MVA:g} MVA)"
+                        f"impedancja zerowa {_fmt_z(model_z0.z0_pu)} j.w. przy mocy "
+                        f"odniesienia {S_BASE_MVA:g} MVA)"
                     )
                 branch_specs.append(
                     _spec_galezi_z_sekwencji(

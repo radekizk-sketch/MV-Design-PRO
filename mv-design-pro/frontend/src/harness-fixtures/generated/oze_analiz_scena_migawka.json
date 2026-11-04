@@ -698,7 +698,7 @@
             "field_name": "flicker_c",
             "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności",
             "quality": "ESTIMATED",
-            "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+            "source_ref": "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
           },
           "manufacturer": {
             "field_name": "manufacturer",
@@ -869,7 +869,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "8b9bc5df2bf697b8802c24b01bfa2d8775aa9b7315baade5861920a874e97492",
+    "hash_sha256": "4989466ec9f8830f8bff27a0f021c357d8491eec5006b6ba07a2f0c09be33571",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

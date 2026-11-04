@@ -325,7 +325,7 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     wywod = dane["wywod"]
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
-    assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity początkowy prąd zwarciowy")
     # Karta PODSTAWA-Q (rozstrz. 3): tabliczka „Agregat" nie podaje x″d ani cos φ_rG —
     # nagłówek niesie zdanie na każdą wartość roboczą (kolejność rejestru), odpowiedź —
     # wpisy i dane przyjęte (ten sam dobór).
@@ -441,9 +441,12 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     # zadanie bez t_min (siec bez pol) -> t_min = wartosc robocza punktu, wiec naglowek
     # niesie zdanie zrodla t_min miedzy punktem zwarcia a pierwsza maszyna.
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
-    assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    assert dane["wywod"][1]["tekst"].startswith(
+        "Punkt zwarcia: całkowity początkowy prąd zwarciowy"
+    )
     assert dane["wywod"][2]["tekst"].startswith(
-        "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
+        "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s "
+        "— wartość robocza"
     )
     assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
     # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).
@@ -467,12 +470,15 @@ def test_sc3f_contributions_regula_5_procent_pelna(tmp_path):
     assert limit_ka == pytest.approx(0.05 * ikss_ka)
     # Tekst: wymaganie + wartosc graniczna + wartosc obliczona + werdykt + wplyw.
     # Karta #145: zdanie po polsku (znaki diakrytyczne, przecinek dziesiętny, bez kodów).
-    assert "wymaganie suma I″k,M ≤ 0,05·I″k" in krok["tekst"]
+    assert (
+        "wymaganie — suma początkowych prądów zwarciowych silników nie większa od 5 %"
+        in krok["tekst"]
+    )
     limit_pl = f"{limit_ka:.3f}".replace(".", ",")
     async_pl = f"{async_ka:.3f}".replace(".", ",")
-    assert f"wartość graniczna 0,05·I″k = {limit_pl} kA" in krok["tekst"]
-    assert f"wartość obliczona suma I″k,M = {async_pl} kA" in krok["tekst"]
-    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in krok["tekst"]
+    assert f"wartość graniczna {limit_pl} kA" in krok["tekst"]
+    assert f"wartość obliczona {async_pl} kA" in krok["tekst"]
+    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym)" in krok["tekst"]
     # LaTeX podstawienia obowiazkowy (zasada KaTeX 2026-07-22).
     assert krok["latex"] is not None
     assert rf"\sum_m I''_{{k,M}} = {async_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
@@ -508,9 +514,9 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
     }
     assert walidacja[4]["status"] == "PASS"
     assert walidacja[4]["wartosc_pl"].startswith(
-        "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
+        "spełniona — silniki pomijalne w prądzie wyłączeniowym"
     )
-    assert "próg =" in walidacja[4]["wartosc_pl"]
+    assert "próg " in walidacja[4]["wartosc_pl"]
     # Determinizm kontraktu: input_hash obecny (SHA-256) i stabilny miedzy biegami.
     assert walidacja[5]["status"] == "PASS"
     assert len(dane["input_hash"]) == 64
@@ -546,10 +552,10 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     assert tytuly == ["Dane wejściowe i model", "Suma wkładów i reguły"]
     regula = dane["wywod_sekcje"][-1]["kroki"][-1]
     assert regula["latex"] is None  # brak liczb w white_box -> bez podstawien
-    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib)" in regula["tekst"]
+    assert "reguła spełniona (silniki pomijalne w prądzie wyłączeniowym)" in regula["tekst"]
     walidacja = dane["walidacja_iec"]
     assert walidacja[3]["wartosc_pl"] == "nieobecne w modelu"
-    assert walidacja[4]["wartosc_pl"] == "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
+    assert walidacja[4]["wartosc_pl"] == "spełniona — silniki pomijalne w prądzie wyłączeniowym"
 
 
 def _payload_sc3f_pack(data, snapshot: dict) -> dict:
@@ -942,7 +948,8 @@ def test_sc3f_contributions_c_z_tabeli_dla_scenariusza_ogladanego_biegu(
     tmp_path, scenariusz: str, c: float
 ) -> None:
     """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: wkłady liczone c z tabeli 1 IEC 60909-0 dla pasma
-    węzła i scenariusza oglądanego biegu (dawniej zawsze 1,10) — odpowiedź niesie c i podstawę."""
+    węzła i scenariusza oglądanego biegu (dawniej zawsze 1,10) — odpowiedź niesie c i podstawę.
+    """
     client, _ = _prepare_api_client(tmp_path)
     enm = _enm_z_maszyna()
     odpowiedz = client.post(
@@ -982,7 +989,8 @@ def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
     """Karta SC-IB-ITH-ZRODLA — realna ścieżka HTTP: rodzaj aparatu z pozycji katalogu
     (``type_ref``) wybiera wielkość kryterium wyłączania tym samym predykatem co ocena pól
     stacji: wyłącznik i reklozer SN → I_b (IEC 62271-100), bezpiecznik → I″k spodziewany
-    (IEC 60282-1). Bieg bez t_b: sieć bez maszyn wirujących, więc I_b = I″k jest wyznaczalne."""
+    (IEC 60282-1). Bieg bez t_b: sieć bez maszyn wirujących, więc I_b = I″k jest wyznaczalne.
+    """
     import json as _json
 
     with TestClient(app) as client:

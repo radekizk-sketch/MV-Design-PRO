@@ -146,7 +146,8 @@ _ZETON_JSON = re.compile(r'"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?')
 
 def _liscie(dane: Any, sciezka: tuple[Any, ...], klucz: str | None) -> Iterator[tuple[Any, ...]]:
     """Liście drzewa JSON w kolejności tekstu: ``(ścieżka, klucz wielkości, wartość)``;
-    klucz słownika jest liściem bez ścieżki (``None``), bo w tekście też jest żetonem."""
+    klucz słownika jest liściem bez ścieżki (``None``), bo w tekście też jest żetonem.
+    """
     from tests.ci.tolerancja_fikstur import _klucz_wielkosci
 
     if isinstance(dane, dict):
@@ -194,10 +195,26 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     except ValueError:
         return tresc
     # Import leniwy: moduł tolerancji żyje w ``tests/ci`` (współdzielony z harnessem).
-    from tests.ci.tolerancja_fikstur import POLA_TEKSTU_Z_LICZBAMI, roznice_z_tolerancja
+    from tests.ci.tolerancja_fikstur import roznice_z_tolerancja
 
     if szkielet_rowny and not roznice_z_tolerancja(zapisane, swieze):
         return na_dysku
+    return zakotwicz_liscie(na_dysku, tresc)
+
+
+def zakotwicz_liscie(na_dysku: str, tresc: str) -> str:
+    """Świeża treść fikstury z KOTWICĄ PER LIŚĆ względem zapisu ``na_dysku``.
+
+    Wspólna dla wszystkich generatorów fikstur JSON (``tresc_z_kotwica`` tego modułu
+    i grupowe rozstrzygnięcie harnessu scen ``scripts/eksport_fixtur_harnessu``), żeby
+    kotwica w szumie miała jedno źródło prawdy. Nie-JSON = świeża treść."""
+    try:
+        zapisane = json.loads(na_dysku)
+        swieze = json.loads(tresc)
+    except ValueError:
+        return tresc
+    from tests.ci.tolerancja_fikstur import HEX_SKROTU, POLA_TEKSTU_Z_LICZBAMI, roznice_z_tolerancja
+
     # KOTWICA PER LIŚĆ (karta ZU, 2026-11-04): szkielet się zmienił (np. tekst uwagi albo
     # skrót modelu), więc plik idzie ze świeżej treści — ale liczba (i liczba w tekście pola
     # z liczbami), która pod tą samą ścieżką różni się od zapisanej wyłącznie szumem
@@ -222,7 +239,17 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
             stary is not None
             and stary[1] != wartosc
             and type(stary[1]) is type(wartosc)
-            and (not isinstance(wartosc, str) or klucz in POLA_TEKSTU_Z_LICZBAMI)
+            and (
+                not isinstance(wartosc, str)
+                # Tekst z liczbami — kotwica wyłącznie, gdy skróty w tekście są te same:
+                # skrót (`proof_hash` w metryce raportu) jest równy skrótom biegu, więc
+                # zostawiony z dysku łamałby relację równości skrótów grupy (pomiar:
+                # `akademickie_scena_biegi`, metryki raportu wobec świeżego `proof_hash`).
+                or (
+                    klucz in POLA_TEKSTU_Z_LICZBAMI
+                    and HEX_SKROTU.findall(str(stary[1])) == HEX_SKROTU.findall(wartosc)
+                )
+            )
             and not roznice_z_tolerancja(stary[1], wartosc, "$", klucz)
         )
         czesci.append(stary[0] if zakotwicz and stary is not None else zeton.group(0))

@@ -67,8 +67,9 @@ def _nadpisanie(zadanie: NadpisanieCZadanie | None) -> NadpisanieC | None:
 
 #: Opis pola Z_f żądań pakietów i wkładów (karta OD-14) — jedno zdanie dla trzech żądań.
 _OPIS_IMPEDANCJI_PRZEJSCIA = (
-    "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). "
-    "Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+    "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). "
+    "Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem "
+    "IEC 60909."
 )
 
 
@@ -217,8 +218,8 @@ class SC3FPackRequest(BaseModel):
     tb_s: float | None = Field(
         default=None,
         description=(
-            "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + "
-            "wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza "
+            "Czas wyłączenia [s] scenariusza (najkrótszy czas zabezpieczenia + "
+            "wyłącznika); brak = czas wyłączenia punktu z pól lokalnych albo wartość robocza "
             f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s"
         ),
     )
@@ -278,9 +279,9 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     """
     werdykt = "spełniona" if result.motors_negligible else "niespełniona"
     wplyw = (
-        "silniki pomijalne w prądzie wyłączeniowym Ib"
+        "silniki pomijalne w prądzie wyłączeniowym"
         if result.motors_negligible
-        else "silniki niepomijalne w prądzie wyłączeniowym Ib"
+        else "silniki niepomijalne w prądzie wyłączeniowym"
     )
     ikss_total_a = result.white_box.get("ikss_total_a")
     async_a = result.white_box.get("ikss_async_machines_a")
@@ -289,8 +290,9 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
         # Wynik bez maszyn (white_box bez liczb) — uczciwy krok bez podstawien.
         return {
             "tekst": (
-                "Reguła małych silników (p. 6.6): silniki są pomijalne, gdy suma I″k,M ≤ "
-                f"0,05·I″k — reguła {werdykt} ({wplyw})."
+                "Reguła małych silników (p. 6.6): silniki są pomijalne, gdy suma ich "
+                "początkowych prądów zwarciowych nie przekracza 5 % początkowego prądu "
+                f"zwarciowego punktu — reguła {werdykt} ({wplyw})."
             ),
             "latex": None,
         }
@@ -298,9 +300,10 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     rel_latex = r"\le" if result.motors_negligible else ">"
     return {
         "tekst": (
-            "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; "
-            f"wartość graniczna 0,05·I″k = {_ka_pl(limit_a)} kA; "
-            f"wartość obliczona suma I″k,M = {_ka_pl(async_a)} kA "
+            "Reguła małych silników (p. 6.6): wymaganie — suma początkowych prądów "
+            "zwarciowych silników nie większa od 5 % początkowego prądu zwarciowego punktu; "
+            f"wartość graniczna {_ka_pl(limit_a)} kA; "
+            f"wartość obliczona {_ka_pl(async_a)} kA "
             f"({_ka_pl(async_a)} {rel_tekst} {_ka_pl(limit_a)}) — reguła {werdykt} ({wplyw})."
         ),
         "latex": (
@@ -347,16 +350,23 @@ def _wywod_sekcje_wkladow(
         naglowek.append(
             {
                 "tekst": (
-                    f"Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = "
-                    f"{_ka_pl(ikss_total_a)} kA, c = {_liczba_pl(result.c_factor, 2)}, "
-                    f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
+                    "Punkt zwarcia: całkowity początkowy prąd zwarciowy (z macierzy impedancji "
+                    f"węzłowych) {_ka_pl(ikss_total_a)} kA, współczynnik napięciowy "
+                    f"{_liczba_pl(result.c_factor, 2)}, minimalny czas zwłoki "
+                    f"{_liczba_pl(result.t_min_s, 2)} s."
                 ),
                 "latex": None,
             }
         )
     if zrodlo_tb is not None:
         naglowek.append(
-            {"tekst": f"Czas t_min (= t_b punktu zwarcia): {zrodlo_tb.opis_pl}", "latex": None}
+            {
+                "tekst": (
+                    "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. "
+                    f"{zrodlo_tb.opis_pl}"
+                ),
+                "latex": None,
+            }
         )
     for wpis in parametry_robocze_maszyn:
         naglowek.append(
@@ -367,9 +377,10 @@ def _wywod_sekcje_wkladow(
         naglowek.append(
             {
                 "tekst": (
-                    "Zwarcie przez impedancję przejścia Z_f = "
+                    "Zwarcie przez impedancję przejścia "
                     f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω: w mianowniku "
-                    "prądów częściowych stoi pętla Z_kk + Z_f. Wynik poza zakresem IEC 60909-0 "
+                    "prądów częściowych stoi suma impedancji własnej węzła zwarcia i impedancji "
+                    "przejścia. Wynik poza zakresem IEC 60909-0 "
                     "(norma definiuje zwarcie metaliczne)."
                 ),
                 "latex": r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk} + Z_f|\,|Z_m|}\,I_{\mathrm{base}}",
@@ -394,11 +405,12 @@ def _wywod_sekcje_wkladow(
             "kroki": [
                 {
                     "tekst": (
-                        f"Suma wkładów maszyn: I″k,M = {_ka_pl(result.ikss_machines_a)} kA, "
+                        "Suma wkładów maszyn: początkowy prąd zwarciowy "
+                        f"{_ka_pl(result.ikss_machines_a)} kA, "
                         + (
-                            f"Ib,M = {_ka_pl(result.ib_machines_a)} kA."
+                            f"prąd wyłączeniowy {_ka_pl(result.ib_machines_a)} kA."
                             if result.ib_machines_a is not None
-                            else "Ib,M nieobliczone — brak czasu wyłączenia t_b."
+                            else "prąd wyłączeniowy nieobliczony — brak czasu wyłączenia."
                         )
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
@@ -441,15 +453,18 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
     limit_a = wb.get("small_motor_limit_a")
     if result.motors_negligible:
         regula_status = "PASS"
-        regula_wartosc = "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib"
+        regula_wartosc = "spełniona — silniki pomijalne w prądzie wyłączeniowym"
     else:
         regula_status = "FAIL"
         regula_wartosc = (
             "niespełniona — silniki niepomijalne, ich wkłady uwzględnione w prądzie "
-            "wyłączeniowym Ib"
+            "wyłączeniowym"
         )
     if async_a is not None and limit_a is not None:
-        regula_wartosc += f" (suma I″k,M = {_ka_pl(async_a)} kA, próg = {_ka_pl(limit_a)} kA)"
+        regula_wartosc += (
+            f" (suma początkowych prądów zwarciowych silników {_ka_pl(async_a)} kA, "
+            f"próg {_ka_pl(limit_a)} kA)"
+        )
     z_f = wb.get("z_f_ohm")
     zakres: list[dict[str, str]] = (
         []
@@ -460,7 +475,7 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
                 # to wprost, z wartością Z_f; nie jest oceną zgodności, tylko zakresem metody.
                 "pozycja_pl": "Zakres ważności normy",
                 "wartosc_pl": (
-                    "zwarcie przez impedancję przejścia Z_f = "
+                    "zwarcie przez impedancję przejścia "
                     f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω — poza "
                     "zakresem IEC 60909-0 (norma definiuje zwarcie metaliczne); wynik nie jest "
                     "podstawą doboru aparatury ani wytrzymałości zwarciowej"

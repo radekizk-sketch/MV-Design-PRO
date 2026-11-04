@@ -952,8 +952,17 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
     # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
     # wynik UI/UX (GPZ-MODEL).
-    "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
-    "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
+    # 2026-11-04 (karta ZU, punkt 4 — proza słowami zamiast symboli spłaszczonych): gn01
+    # 63af4b10… → 93a818d9…, gn03 d05d5914… → de5afc06…. Pełne widoki z kodu bazy karty
+    # `01c5def16` (odtwarzają dokładnie poprzednie piny) i z drzewa karty porównane liść po
+    # liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica
+    # modelu wejściowego: teksty `materialized_params.wartosci_robocze.<pole>` kabli SN
+    # (r0_ohm_per_km, x0_ohm_per_km, return_conductor_r_ohm_per_km_20c,
+    # return_conductor_ith_1s_a; 4 gałęzie gn01, 3 gałęzie gn03) — opis założenia słowami
+    # („Rezystancja jednostkowa składowej zerowej równa sumie…" zamiast „R′0 = R′1 + R′…").
+    # Żadna liczba ani identyfikator; enumeracja, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "93a818d95e2f279ebabbf1ff2bb4879aedea26956a0b72fa04b5f0f81af73a05",
+    "gn03_pierscien": "de5afc06f1d99af4c94aafedd247d3e12ba8550ac88413dcfebd6ac3edcff618",
 }
 
 

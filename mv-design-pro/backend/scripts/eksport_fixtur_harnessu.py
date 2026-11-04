@@ -255,6 +255,7 @@ from tests.golden.enm_builders.zabezpieczenia_magistrali import (  # noqa: E402
 from tests.golden.zapis_fikstur import (  # noqa: E402
     json_fikstury,
     przypnij_identyfikatory_modelu,
+    zakotwicz_liscie,
 )
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
@@ -596,7 +597,8 @@ def _model_serwowany(enm: EnergyNetworkModel) -> EnergyNetworkModel:
     Karta #145: bieg liczy się na odczycie magazynu, więc wynik nazywa elementy, których
     zrzut modelu SPRZED zapisu nie zna (szyna „Pole PV nN” powstaje przy odczycie). Migawka
     sceny zbudowana ze zrzutu sprzed zapisu nie nazywała więc szyn wyniku i ekran pokazywał
-    ich referencje. Identyfikatory `id` i zegar nagłówka przypięte jak w biegach scen."""
+    ich referencje. Identyfikatory `id` i zegar nagłówka przypięte jak w biegach scen.
+    """
     reset_canonical_runs()
     reset_enm_store()
     try:
@@ -789,7 +791,8 @@ def ncrfg_katalog() -> dict[str, Any]:
 
 def _wejscia_sceny(enm: EnergyNetworkModel) -> NcRfgWejsciaPrzypadkuResponse:
     """Wejścia modułów sceny z modelu — TA SAMA funkcja co trasa
-    `api/ncrfg_ptpiree_tests.py::get_ncrfg_module_inputs_from_model` (most `model_bridge`)."""
+    `api/ncrfg_ptpiree_tests.py::get_ncrfg_module_inputs_from_model` (most `model_bridge`).
+    """
     return wejscia_ncrfg_przypadku(
         enm, operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
     )
@@ -838,7 +841,8 @@ def _zadanie_certyfikatu_sceny() -> dict[str, Any]:
 
 def _certyfikat_albo_braki(enm: EnergyNetworkModel) -> tuple[int, dict[str, Any]]:
     """(status HTTP, treść) certyfikatu dla modelu przypadku — ta sama ścieżka co
-    `api/oze_analysis_runs.py::_certyfikat_view` (200 z widokiem albo 422 z `detail()`)."""
+    `api/oze_analysis_runs.py::_certyfikat_view` (200 z widokiem albo 422 z `detail()`).
+    """
     zadanie = CertyfikatZgodnosciRequest.model_validate(_zadanie_certyfikatu_sceny())
     zgodnosc = zgodnosc_ncrfg_przypadku(
         enm, operator_id=zadanie.operator_id, case_id=CASE_ID_HARNESSU
@@ -946,7 +950,8 @@ def _biegi_sceny_wniosku(enm: EnergyNetworkModel) -> Iterator[tuple[Any, Any]]:
 
 def _zadanie_wniosku_sceny(enm: EnergyNetworkModel) -> dict[str, Any]:
     """Ciało `POST /api/oze-analysis/osd-application` ekranu wniosku sceny: identyfikacja
-    z zasiewu, pola opcjonalne puste (`null`), węzeł = szyna SN GPZ, operator z modelu."""
+    z zasiewu, pola opcjonalne puste (`null`), węzeł = szyna SN GPZ, operator z modelu.
+    """
     return WniosekOsdRequest(
         nazwa_projektu=NAZWA_PROJEKTU_SCEN_OZE,
         nazwa_przypadku=NAZWA_PRZYPADKU_SCEN_OZE,
@@ -999,7 +1004,8 @@ def wniosek_scena_magazyn() -> dict[str, Any]:
 
 def wniosek_scena_magazyn_przebiegi() -> list[dict[str, Any]]:
     """Wpisy rejestru przebiegów sceny `wniosek` (`to_execution_dict`) — ekran wniosku
-    wybiera z nich przebieg rozpływu i zwarciowy (te same identyfikatory co w żądaniu)."""
+    wybiera z nich przebieg rozpływu i zwarciowy (te same identyfikatory co w żądaniu).
+    """
     with _biegi_sceny_wniosku(enm_sceny_magazyn()) as (bieg_pf, bieg_sc):
         return [bieg_pf.to_execution_dict(), bieg_sc.to_execution_dict()]
 
@@ -1032,7 +1038,8 @@ def studium_dokument_scena_macierz() -> dict[str, Any]:
     modelu (tożsamość urządzenia w studium to typ przekształtnika), operator z modelu,
     wariant = szyna SN GPZ, dowody = `weryfikacje_certyfikatow_typu` (tabliczki urządzeń
     tego typu × wykaz PTPiREE). Testy frontu czytają z tej fixtury sekcję dowodu
-    certyfikatu dokumentu — rekordy wykazu policzone backendem, nie przepisane ręcznie."""
+    certyfikatu dokumentu — rekordy wykazu policzone backendem, nie przepisane ręcznie.
+    """
     enm = enm_sceny_macierz()
     pv = next(g for g in enm.generators if g.gen_type == "pv_inverter")
     catalog_item_id = str(dict(pv.materialized_params or {})["catalog_item_id"])
@@ -2020,7 +2027,7 @@ def _biegi_rozplywu_sceny(bieg_pf: Any) -> list[dict[str, Any]]:
         {
             "run_id": str(bieg_pf.id),
             "created_at": bieg_pf.created_at.isoformat(),
-            "finished_at": bieg_pf.finished_at.isoformat() if bieg_pf.finished_at else None,
+            "finished_at": (bieg_pf.finished_at.isoformat() if bieg_pf.finished_at else None),
         }
     ]
 
@@ -2126,7 +2133,8 @@ def dynamika_scena_migawka() -> dict[str, Any]:
 
 def dynamika_scena_gotowosc_brak() -> dict[str, Any]:
     """Odpowiedź `GET …/gotowosc` dla sieci sceny PRZED wiązaniami (bez rozpływu): PV bez
-    bloku dynamiki (akcja `der.dynamika_missing`) i odbiór bez modelu (`load.dynamika_missing`)."""
+    bloku dynamiki (akcja `der.dynamika_missing`) i odbiór bez modelu (`load.dynamika_missing`).
+    """
     return gotowosc_dynamiki(_enm_sceny_dynamika(z_modelem_pv=False, z_modelem_odbioru=False), [])
 
 
@@ -2650,7 +2658,8 @@ def doziemienie_sposoby_scena() -> dict[str, Any]:
     response``), ``slad`` — ``…/results/trace`` (``build_extended_trace_response``),
     ``migawka`` — ``…/snapshot`` (``_catalog_completed_snapshot`` + ``canonicalize_json``);
     te same funkcje co końcówki API i scena E-29. Ekran pokazuje z nich sekcję doziemienia
-    z modelem sposobu, wartościami i „Śladem obliczenia” (kroki WHITE BOX z ``*_latex``)."""
+    z modelem sposobu, wartościami i „Śladem obliczenia” (kroki WHITE BOX z ``*_latex``).
+    """
     from tests.enm.test_doziemienie_tryby_punktu_neutralnego import SPOSOBY  # noqa: PLC0415
 
     komplet: dict[str, Any] = {}
@@ -3112,7 +3121,8 @@ def koordynacja_scena_widok_zabezpieczen() -> dict[str, Any]:
     """Odpowiedź `GET /api/cases/{id}/enm/protection-view` (`build_protection_read_model` — TA
     SAMA funkcja co końcówka) dla modelu sceny E-28 (sieć złota G08): przypisania zabezpieczeń
     z nastawami rozwiązanymi jedną ścieżką oceny (przekładnia, próg pierwotny, zakresy katalogu
-    z podstawą, braki), słownik edytora nastaw i wyłączniki liniowe — wejście edytora nastaw."""
+    z podstawą, braki), słownik edytora nastaw i wyłączniki liniowe — wejście edytora nastaw.
+    """
     model, _linia = _enm_sceny_koordynacja()
     widok = build_protection_read_model(CASE_ID_HARNESSU, _model_serwowany(model))
     return canonicalize_json(widok)
@@ -3285,7 +3295,7 @@ def porownanie_scena_biegi_pf() -> dict[str, Any]:
                 "status": bieg.status,
                 "result_status": bieg.result_status,
                 "created_at": bieg.created_at.isoformat(),
-                "finished_at": bieg.finished_at.isoformat() if bieg.finished_at else None,
+                "finished_at": (bieg.finished_at.isoformat() if bieg.finished_at else None),
                 "input_hash": bieg.input_hash,
                 "snapshot_hash": bieg.snapshot_hash,
                 "model_revision": (bieg.envelope or {}).get("model_revision"),
@@ -4226,7 +4236,8 @@ def identyfikatory_grafu() -> dict[str, Any]:
     `enm.mapping.ref_to_graph_id` dla każdego obiektu sieci złotej, scen „akademickie",
     „lom", „frt" i analiz OZE (referencje proste i z ziarnem, modele serwowane). Wyrocznia parytetu reguły lustrzanej
     frontu (`ui/topology/identyfikatorGrafu.ts`): wyniki rozpływu, zwarć i ocen niosą
-    identyfikator grafu, a most nazw wyników rozpoznaje go tą samą regułą (karta #145)."""
+    identyfikator grafu, a most nazw wyników rozpoznaje go tą samą regułą (karta #145).
+    """
     refy: set[str] = set()
     modele = (
         build_golden_enm(),
@@ -5093,7 +5104,8 @@ def _widoki_logiczne_fikstury_frontu(nazwa: str) -> dict[str, Any]:
 def _scena_punktu_startu(rodzaj: str, stan: str) -> dict[str, Any]:
     """Scena `tests/reference_networks/sceny_zajetosci_pol.py` (ten sam budowniczy co testy
     backendu) jako odpowiedź operacji: migawka + widoki logiczne. Pola `id` i zegar nagłówka
-    przypięte (`_fiksuj_niedeterminizm_sceny_zwarcia`), widoki liczone z przypiętej migawki."""
+    przypięte (`_fiksuj_niedeterminizm_sceny_zwarcia`), widoki liczone z przypiętej migawki.
+    """
     from enm.domain_operations import execute_domain_operation
 
     from tests.reference_networks.sceny_zajetosci_pol import zbuduj_scene
@@ -5145,7 +5157,8 @@ def ciag_w_budowie_etapy() -> dict[str, Any]:
 def _scena_geometrii_stacji(wariant: str) -> dict[str, Any]:
     """Karta K3 GEOMETRIA-STACJI: scena `tests/reference_networks/scena_geometrii_stacji.py`
     (stacje czterech rodzajów z topologii, stacja sekcyjna typu D) jako odpowiedź operacji —
-    migawka + widoki logiczne, niedeterminizm konstrukcji przypięty jak w scenach wyżej."""
+    migawka + widoki logiczne, niedeterminizm konstrukcji przypięty jak w scenach wyżej.
+    """
     from enm.domain_operations import execute_domain_operation
 
     from tests.reference_networks.scena_geometrii_stacji import zbuduj_wariant
@@ -5268,7 +5281,8 @@ def kontrakt_ladunkow_operacji() -> dict[str, Any]:
     (``src/test/kontraktLadunkuOperacji.ts``). ``wektory`` to przypadki z wynikiem
     policzonym przez ``klucze_spoza_kontraktu`` — predykat TS i predykat backendu są
     przypięte parami (ten sam ładunek → ta sama lista kluczy obcych): poziom {0, 1, 2, 3}
-    × {klucz w kontrakcie, obcy} × {obiekt, element listy} oraz napis w miejscu obiektu."""
+    × {klucz w kontrakcie, obcy} × {obiekt, element listy} oraz napis w miejscu obiektu.
+    """
     operacje = {
         nazwa: _ksztalt_json(klucze_kontraktu(nazwa), KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}))
         for nazwa in sorted(CANONICAL_OPERATIONS)
@@ -5540,25 +5554,41 @@ def rozstrzygnij_grupe(swieze: Mapping[Path, str]) -> dict[Path, str]:
     fixtura istnieje i różni się od świeżej odpowiedzi co najwyżej w tolerancji, A RELACJA
     RÓWNOŚCI skrótów nieprzenośnych w grupie (``klasy_rownosci_skrotow`` — przenośna między
     maszynami, w odróżnieniu od samej treści skrótu) jest na dysku taka sama jak w świeżej
-    odpowiedzi; inaczej świeża treść CAŁEJ grupy. Drugi warunek domyka też stan zastany:
+    odpowiedzi; inaczej świeża treść CAŁEJ grupy — z kotwicą per liść
+    (``zakotwicz_liscie``: liczba w tolerancji pod tą samą ścieżką zostaje zapisem z dysku). Drugi warunek domyka też stan zastany:
     grupa zapisana kiedyś niespójnie nie jest konserwowana jako „szum". Jeden predykat
     wyboru dla wszystkich członków grupy (predykaty parami)."""
     z_dysku: dict[Path, str] = {}
     dane_dysku: dict[str, Any] = {}
     dane_swieze: dict[str, Any] = {}
+
+    def swieza_grupa() -> dict[Path, str]:
+        # Grupa idzie ze świeżej treści, ale liczba, która pod tą samą ścieżką różni się od
+        # zapisu na dysku wyłącznie szumem międzymaszynowym, zostaje zapisem z dysku (kotwica
+        # per liść, karta ZU 2026-11-04 — jedno źródło z ``tresc_z_kotwica``). Bez tego zmiana
+        # samego tekstu albo odcisku katalogu wnosiła do repozytorium szum ostatniej cyfry tej
+        # maszyny (pomiar: 638 próbek `kat_deg` w `dynamika_scena_przebiegi` przy zmianie
+        # wyłącznie tekstów katalogu). Skróty nieprzenośne są łańcuchami — idą świeże, więc
+        # relacja równości skrótów w grupie jest relacją świeżego biegu.
+        wynik: dict[Path, str] = {}
+        for sciezka_g, tresc_g in swieze.items():
+            zapis = _tresc_na_dysku(sciezka_g)
+            wynik[sciezka_g] = tresc_g if zapis is None else zakotwicz_liscie(zapis, tresc_g)
+        return wynik
+
     for sciezka, tresc in swieze.items():
         na_dysku = _tresc_na_dysku(sciezka)
         if na_dysku is None:
-            return dict(swieze)
+            return swieza_grupa()
         zapisane = json.loads(na_dysku)
         swieza = json.loads(tresc)
         if na_dysku != tresc and roznice_z_tolerancja(zapisane, swieza):
-            return dict(swieze)
+            return swieza_grupa()
         z_dysku[sciezka] = tresc if na_dysku == tresc else _json(zapisane)
         dane_dysku[str(sciezka)] = zapisane
         dane_swieze[str(sciezka)] = swieza
     if klasy_rownosci_skrotow(dane_dysku) != klasy_rownosci_skrotow(dane_swieze):
-        return dict(swieze)
+        return swieza_grupa()
     return z_dysku
 
 
@@ -5597,7 +5627,8 @@ def domknij_do_grup(
     i z dysku) wskazują fixtury, których plik na dysku niesie któryś z nich; te są
     przeliczane i dokładają swoje tokeny — do punktu stałego. Fixtura, która niesie token
     wyłącznie w treści świeżej (nie na dysku), różni się od dysku ponad tolerancję i już
-    jest czerwona w teście harnessu; pełny bieg generatora (bez ``--tylko``) liczy wszystko."""
+    jest czerwona w teście harnessu; pełny bieg generatora (bez ``--tylko``) liczy wszystko.
+    """
     wzorzec = wzorzec_tokenow(tokeny_biegow_generatora())
     kolejnosc = list(wszystkie)
     swieze: dict[str, str] = {}

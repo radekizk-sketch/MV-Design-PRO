@@ -170,14 +170,36 @@ class MaszynaSynchroniczna(BaseModel):
     d_pu: float = Field(ge=0.0, le=20.0, description="Współczynnik tłumienia D (pu).")
     xd_pu: float = Field(gt=0.0, le=2.5, description="Reaktancja synchroniczna wzdluzna Xd (pu).")
     xq_pu: float = Field(gt=0.0, le=2.5, description="Reaktancja synchroniczna poprzeczna Xq (pu).")
-    xd_prim_pu: float = Field(gt=0.0, le=0.6, description="Reaktancja przejściowa X'd (pu).")
-    xq_prim_pu: float = Field(gt=0.0, le=0.8, description="Reaktancja przejściowa X'q (pu).")
-    xd_bis_pu: float = Field(gt=0.0, le=0.35, description="Reaktancja podprzejściowa X''d (pu).")
-    xq_bis_pu: float = Field(gt=0.0, le=0.4, description="Reaktancja podprzejściowa X''q (pu).")
-    td0_prim_s: float = Field(gt=0.0, le=15.0, description="Stała czasowa T'd0 (s).")
-    tq0_prim_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa T'q0 (s).")
-    td0_bis_s: float = Field(gt=0.0, le=0.2, description="Stała czasowa T''d0 (s).")
-    tq0_bis_s: float = Field(gt=0.0, le=0.3, description="Stała czasowa T''q0 (s).")
+    xd_prim_pu: float = Field(
+        gt=0.0, le=0.6, description="Reaktancja przejściowa osi podłużnej (pu)."
+    )
+    xq_prim_pu: float = Field(
+        gt=0.0, le=0.8, description="Reaktancja przejściowa osi poprzecznej (pu)."
+    )
+    xd_bis_pu: float = Field(
+        gt=0.0, le=0.35, description="Reaktancja podprzejściowa osi podłużnej (pu)."
+    )
+    xq_bis_pu: float = Field(
+        gt=0.0, le=0.4, description="Reaktancja podprzejściowa osi poprzecznej (pu)."
+    )
+    td0_prim_s: float = Field(
+        gt=0.0, le=15.0, description="Stała czasowa przejściowa osi podłużnej w stanie jałowym (s)."
+    )
+    tq0_prim_s: float = Field(
+        gt=0.0,
+        le=2.0,
+        description="Stała czasowa przejściowa osi poprzecznej w stanie jałowym (s).",
+    )
+    td0_bis_s: float = Field(
+        gt=0.0,
+        le=0.2,
+        description="Stała czasowa podprzejściowa osi podłużnej w stanie jałowym (s).",
+    )
+    tq0_bis_s: float = Field(
+        gt=0.0,
+        le=0.3,
+        description="Stała czasowa podprzejściowa osi poprzecznej w stanie jałowym (s).",
+    )
     xl_pu: float = Field(gt=0.0, le=0.35, description="Reaktancja rozproszenia stojana Xl (pu).")
     nasycenie_s10: float = Field(ge=0.0, le=1.5, description="Funkcja nasycenia Se(1.0).")
     nasycenie_s12: float = Field(ge=0.0, le=2.5, description="Funkcja nasycenia Se(1.2).")
@@ -191,22 +213,26 @@ class MaszynaSynchroniczna(BaseModel):
     def _porzadek_reaktancji_i_stalych(self) -> MaszynaSynchroniczna:
         if not (self.xd_bis_pu <= self.xd_prim_pu <= self.xd_pu):
             raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xd_bis_pu <= xd_prim_pu <= xd_pu "
+                "Maszyna synchroniczna: wymagany porządek reaktancji osi podłużnej — "
+                "podprzejściowa ≤ przejściowa ≤ synchroniczna "
                 f"(otrzymano {self.xd_bis_pu} / {self.xd_prim_pu} / {self.xd_pu})."
             )
         if not (self.xq_bis_pu <= self.xq_prim_pu <= self.xq_pu):
             raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xq_bis_pu <= xq_prim_pu <= xq_pu "
+                "Maszyna synchroniczna: wymagany porządek reaktancji osi poprzecznej — "
+                "podprzejściowa ≤ przejściowa ≤ synchroniczna "
                 f"(otrzymano {self.xq_bis_pu} / {self.xq_prim_pu} / {self.xq_pu})."
             )
         if self.td0_bis_s > self.td0_prim_s:
             raise ValueError(
-                "MaszynaSynchroniczna: td0_bis_s musi być <= td0_prim_s "
+                "Maszyna synchroniczna: stała czasowa podprzejściowa osi podłużnej musi być nie "
+                "większa od przejściowej "
                 f"(otrzymano {self.td0_bis_s} > {self.td0_prim_s})."
             )
         if self.tq0_bis_s > self.tq0_prim_s:
             raise ValueError(
-                "MaszynaSynchroniczna: tq0_bis_s musi być <= tq0_prim_s "
+                "Maszyna synchroniczna: stała czasowa podprzejściowa osi poprzecznej musi być nie "
+                "większa od przejściowej "
                 f"(otrzymano {self.tq0_bis_s} > {self.tq0_prim_s})."
             )
         return self
@@ -247,12 +273,12 @@ class PrzeksztaltnikGFL(BaseModel):
     )
     prog_frt_pu: float = Field(ge=0.0, le=1.0, description="Próg napięciowy zadziałania FRT (pu).")
     tp_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa filtru mocy czynnej (s).")
-    tiq_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa regulatora Iq (s).")
+    tiq_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa regulatora prądu biernego (s).")
     p_odbudowa_pu_na_s: float = Field(
         gt=0.0, le=20.0, description="Tempo odbudowy mocy czynnej (pu/s)."
     )
     p_odbudowa_opoznienie_s: float = Field(
-        ge=0.0, le=5.0, description="Opóźnienie startu odbudowy P (s)."
+        ge=0.0, le=5.0, description="Opóźnienie startu odbudowy mocy czynnej (s)."
     )
     droop_p_f_pu: float = Field(ge=0.0, le=0.2, description="Droop P/f (pu).")
     martwa_strefa_f_hz: float = Field(
@@ -299,7 +325,7 @@ class PrzeksztaltnikGFM(BaseModel):
     i_max_pu: float = Field(ge=1.0, le=3.0, description="Maksymalny prąd przekształtnika (pu).")
     strategia_ograniczenia: StrategiaOgraniczeniaGfm
     tp_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa filtru mocy czynnej (s).")
-    tiq_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa regulatora Iq (s).")
+    tiq_s: float = Field(gt=0.0, le=2.0, description="Stała czasowa regulatora prądu biernego (s).")
 
 
 # ---------------------------------------------------------------------------
@@ -344,12 +370,13 @@ class Magazyn(BaseModel):
     def _soc_i_moc_spojne(self) -> Magazyn:
         if self.soc_min >= self.soc_max:
             raise ValueError(
-                f"Magazyn: soc_min ({self.soc_min}) musi być mniejsze niż soc_max ({self.soc_max})."
+                f"Magazyn: minimalny stan naładowania ({self.soc_min}) musi być mniejszy niż "
+                f"maksymalny ({self.soc_max})."
             )
         if not (self.soc_min <= self.soc_poczatkowy <= self.soc_max):
             raise ValueError(
-                f"Magazyn: soc_poczatkowy ({self.soc_poczatkowy}) musi leżeć w przedziale "
-                f"[soc_min={self.soc_min}, soc_max={self.soc_max}]."
+                f"Magazyn: początkowy stan naładowania ({self.soc_poczatkowy}) musi leżeć "
+                f"między minimalnym ({self.soc_min}) a maksymalnym ({self.soc_max})."
             )
         # Skalowanie jednostki (MVA->kVA, x*1000) jest CV-4.3 K4 wielkoscia
         # pochodna, nie formula fizyczna — liczy ja `mva_na_kva` (kontrakt
@@ -420,7 +447,8 @@ class TurbinaWiatrowa(BaseModel):
             pass  # crowbar opcjonalny (nie kazda instalacja DFIG go ma)
         elif self.crowbar is not None:
             raise ValueError(
-                f"TurbinaWiatrowa: crowbar dotyczy wyłącznie typ_3 (otrzymano {self.rodzina})."
+                "Turbina wiatrowa: układ crowbar dotyczy wyłącznie turbiny typu 3 "
+                f"(otrzymano `{self.rodzina}`)."
             )
         if self.rodzina in ("wiatr_typ_3", "wiatr_typ_4"):
             if self.przeksztaltnik is None:
@@ -430,8 +458,8 @@ class TurbinaWiatrowa(BaseModel):
                 )
         elif self.przeksztaltnik is not None:
             raise ValueError(
-                f"TurbinaWiatrowa: przekształtnik dotyczy wyłącznie typ_3/typ_4 "
-                f"(otrzymano {self.rodzina})."
+                "Turbina wiatrowa: przekształtnik dotyczy wyłącznie turbin typu 3 i 4 "
+                f"(otrzymano `{self.rodzina}`)."
             )
         return self
 

@@ -60,27 +60,29 @@ class WielkoscKryteriumWylaczania:
     @property
     def wielkosc_zwarciowa(self) -> str:
         """Klucz wielkości zwarciowej punktu (``ib`` / ``ikss``) — dobór danych przyjętych
-        maszyn wirujących (`wartosci_robocze.dane_przyjete_maszyn`) z TEGO SAMEGO pola wyniku."""
+        maszyn wirujących (`wartosci_robocze.dane_przyjete_maszyn`) z TEGO SAMEGO pola wyniku.
+        """
         return self.klucz.removesuffix("_ka")
 
 
 WIELKOSC_IB = WielkoscKryteriumWylaczania(
     klucz="ib_ka",
     symbol="I_b",
-    nazwa_pl="prąd wyłączeniowy symetryczny I_b",
-    opis_pl="prądu wyłączeniowego symetrycznego I_b",
+    nazwa_pl="prąd wyłączeniowy symetryczny",
+    opis_pl="prądu wyłączeniowego symetrycznego",
     norma="IEC 62271-100; IEC 60909-0:2016 rozdz. 9",
     dokument="IEC 62271-100 (PN-EN 62271-100) Wyłączniki prądu przemiennego wysokiego napięcia",
     wydanie="2008",
     jednostka_redakcyjna=(
-        "§ 4.101 znamionowy prąd wyłączalny zwarciowy I_sc; I_b wg IEC 60909-0:2016 rozdz. 9"
+        "§ 4.101 znamionowy prąd wyłączalny zwarciowy; prąd wyłączeniowy wg IEC 60909-0:2016 "
+        "rozdz. 9"
     ),
 )
 WIELKOSC_IKSS_NN = WielkoscKryteriumWylaczania(
     klucz="ikss_ka",
     symbol="I_k''",
-    nazwa_pl="spodziewany prąd zwarciowy początkowy I″k",
-    opis_pl="spodziewanego prądu zwarciowego początkowego I″k",
+    nazwa_pl="spodziewany prąd zwarciowy początkowy",
+    opis_pl="spodziewanego prądu zwarciowego początkowego",
     norma="IEC 60947-2; IEC 60364-4-43 p. 434.5.1",
     dokument="IEC 60364-4-43 (PN-HD 60364-4-43) Ochrona przed prądem przetężeniowym",
     wydanie="2008",
@@ -92,14 +94,14 @@ WIELKOSC_IKSS_NN = WielkoscKryteriumWylaczania(
 WIELKOSC_IKSS_BEZPIECZNIK = WielkoscKryteriumWylaczania(
     klucz="ikss_ka",
     symbol="I_k''",
-    nazwa_pl="spodziewany prąd zwarciowy początkowy I″k",
-    opis_pl="spodziewanego prądu zwarciowego początkowego I″k",
+    nazwa_pl="spodziewany prąd zwarciowy początkowy",
+    opis_pl="spodziewanego prądu zwarciowego początkowego",
     norma="IEC 60282-1 (bezpiecznik SN); IEC 60269-1 (bezpiecznik nN)",
     dokument="IEC 60282-1 (PN-EN 60282-1) Bezpieczniki wysokonapięciowe — bezpieczniki "
     "ograniczające prąd",
     wydanie="2020",
     jednostka_redakcyjna=(
-        "znamionowy maksymalny prąd wyłączalny I_1 odniesiony do prądu spodziewanego "
+        "znamionowy maksymalny prąd wyłączalny odniesiony do prądu spodziewanego "
         "(bezpiecznik ograniczający przerywa prąd przed pierwszym szczytem)"
     ),
 )

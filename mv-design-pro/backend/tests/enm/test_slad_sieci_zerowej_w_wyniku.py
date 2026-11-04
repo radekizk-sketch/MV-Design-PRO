@@ -355,7 +355,8 @@ def test_kody_sladu_sieci_zerowej_maja_lustro_w_interfejsie() -> None:
 def test_tokeny_rodzaju_zwarcia_interfejsu_to_kody_wyniku() -> None:
     """Wiersz wyniku niesie `fault_type` = wartość `ShortCircuitType`; słownik rodzajów
     interfejsu (jedno źródło `TRACE_VALUE_CODES.short_circuit_type`) ma DOKŁADNIE te klucze.
-    Do tej karty interfejs znał „2F+Z" zamiast „2F+G" i bieg 2F+G był „rodzajem nieznanym"."""
+    Do tej karty interfejs znał „2F+Z" zamiast „2F+G" i bieg 2F+G był „rodzajem nieznanym".
+    """
     assert set(_mapa_frontu("short_circuit_type")) == {typ.value for typ in ShortCircuitType}
 
 
@@ -383,4 +384,4 @@ def test_zerowa_impedancja_zerowa_to_odmowa_nazwana(rodzaj: str, element: str, s
     z nazwą elementu (dawniej goły `ZeroDivisionError` po angielsku, 500 w API)."""
     with pytest.raises(OdmowaDanychError) as info:
         zloz_wejscie_zwarcia(siec().model_dump(mode="json"), _opcje(rodzaj, "max"))
-    assert str(info.value).startswith(f"{element}: impedancja składowej zerowej Z0 jest równa zeru")
+    assert str(info.value).startswith(f"{element}: impedancja składowej zerowej jest równa zeru")
