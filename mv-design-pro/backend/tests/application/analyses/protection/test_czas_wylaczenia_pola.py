@@ -47,12 +47,12 @@ from enm.models import (
     ENMHeader,
     Measurement,
     ParameterOverride,
-    ProtectionAssignment,
-    ProtectionSetting,
     Substation,
     SwitchBranch,
 )
 from network_model.catalog import get_default_mv_catalog
+
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 APARAT_KATALOG = "sw-cb-abb-vd4-12kv-630a"
 #: Druga pozycja APARAT_SN w polu (aparat, którego zabezpieczenie NIE otwiera).
@@ -66,7 +66,7 @@ PRZEKAZNIK_KATALOG = "REF-OC-200"
 
 def _enm(
     *,
-    nastawy: list[ProtectionSetting] | None = None,
+    nastawy: list[Stopien] | None = None,
     is_enabled: bool = True,
     z_zabezpieczeniem: bool = True,
     ct_ref: str | None = PRZEKLADNIK,
@@ -79,24 +79,20 @@ def _enm(
     przypisania = []
     if z_zabezpieczeniem:
         przypisania.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot/01",
                 name="Zabezpieczenie pola IN",
-                breaker_ref=breaker_ref,
+                bay_ref=POLE,
+                wylacznik=breaker_ref,
                 ct_ref=ct_ref,
                 catalog_ref=catalog_ref,
-                device_type="overcurrent",
                 is_enabled=is_enabled,
-                settings=(
+                stopnie=(
                     nastawy
                     if nastawy is not None
                     else [
-                        ProtectionSetting(
-                            function_type="overcurrent_51",
-                            threshold_a=5.0,  # A wtórne · 400/5 = 400 A pierwotne (1 ×In)
-                            threshold_unit="A_WTORNY",
-                            curve_type="DT",
-                            time_delay_s=0.3,
+                        stopien(
+                            "51", prog=5.0, jednostka_progu="A_WTORNY", krzywa="DT", zwloka_s=0.3
                         )
                     ]
                 ),
@@ -202,7 +198,7 @@ def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box(czas_wlasny: N
     assert czas["czas_wlasny_pozycja_ref"] == APARAT_KATALOG
     assert czas["t_clearing_s"] == 0.35
     assert czas["kody_gotowosci"] == []
-    assert czas["funkcja"] == "overcurrent_51"
+    assert czas["funkcja"] == "51"
     assert czas["krzywa"] == "DT"
     assert czas["prad_rozruchowy_a"] == 400.0
     assert czas["prad_zwarciowy_a"] == 8000.0
@@ -216,13 +212,7 @@ def test_czas_z_charakterystyki_odwrotnej_liczy_solver_i_pokazuje_stale(
     czas = _czas(
         enm=_enm(
             nastawy=[
-                ProtectionSetting(
-                    function_type="overcurrent_51",
-                    threshold_a=400.0,
-                    threshold_unit="A_PIERWOTNY",
-                    curve_type="IEC_SI",
-                    time_multiplier=0.1,
-                )
+                stopien("51", prog=400.0, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", tms=0.1)
             ]
         )
     )
@@ -312,10 +302,12 @@ def test_zabezpieczenie_otwierajace_rozlacznik_to_brak_modelu() -> None:
 def test_wylacznik_spoza_pola_to_brak_modelu() -> None:
     czas = _czas(enm=_enm(breaker_ref="aparat/obcy"))
 
-    # Przypisanie po wyłączniku spoza pola nie trafia do pola ⇒ brak czynnego zabezpieczenia
-    # (brak modelu) — wartość robocza czasu własnego tego nie maskuje.
+    # Sterownik pola wyzwala (macierz wyzwoleń) aparat spoza pola ⇒ czasu własnego nie ma skąd
+    # odczytać (brak MODELU) — wartość robocza czasu własnego tego nie maskuje, a czas innego
+    # aparatu nie jest podstawiany.
     assert czas["t_clearing_s"] is None
-    assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
+    assert czas["kody_gotowosci"] == [READINESS_BRAK_CZASU_WLASNEGO]
+    assert "nie leży" in czas["powod_pl"]
 
 
 def test_aparat_spoza_katalogu_to_brak_modelu() -> None:
@@ -339,7 +331,8 @@ def test_brak_nastaw_pola_daje_kod_gotowosci_zamiast_wartosci_zastepczej() -> No
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
-    assert "czynnego zabezpieczenia" in czas["powod_pl"]
+    assert "czynnego sterownika zabezpieczeń" in czas["powod_pl"]
+    assert "czasu z innego pola ani stałej nie podstawiono" in czas["powod_pl"]
 
 
 def test_zabezpieczenie_odstawione_nie_wyznacza_czasu() -> None:
@@ -351,16 +344,7 @@ def test_zabezpieczenie_odstawione_nie_wyznacza_czasu() -> None:
 
 def test_nastawa_bez_progu_rozruchowego_nie_daje_czasu() -> None:
     czas = _czas(
-        enm=_enm(
-            nastawy=[
-                ProtectionSetting(
-                    function_type="overcurrent_51",
-                    threshold_unit="A_WTORNY",
-                    curve_type="DT",
-                    time_delay_s=0.3,
-                )
-            ]
-        )
+        enm=_enm(nastawy=[stopien("51", jednostka_progu="A_WTORNY", krzywa="DT", zwloka_s=0.3)])
     )
 
     assert czas["t_clearing_s"] is None
@@ -394,24 +378,11 @@ def test_wynik_jest_deterministyczny() -> None:
     [
         (lambda: _enm(ct_ref=None), "zabezpieczenia.brak_przekladnika"),
         (lambda: _enm(catalog_ref=None), "zabezpieczenia.brak_pozycji_katalogu"),
-        (
-            lambda: _enm(
-                nastawy=[
-                    ProtectionSetting(
-                        function_type="overcurrent_51",
-                        threshold_a=5.0,
-                        curve_type="DT",
-                        time_delay_s=0.3,
-                    )
-                ]
-            ),
-            "zabezpieczenia.jednostka_progu_nieustalona",
-        ),
     ],
-    ids=["bez_przekladnika", "bez_pozycji_katalogu", "prog_bez_strony_przekladnika"],
+    ids=["bez_przekladnika", "bez_pozycji_katalogu"],
 )
 def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: str) -> None:
-    """Iloczyn braków urządzenia (przekładnik, katalog, strona progu) — każdy daje brak
+    """Iloczyn braków urządzenia (przekładnik, katalog) — każdy daje brak
     nastaw pola z kodem jednej ścieżki oceny, nigdy czas z domyślnej przekładni albo
     progu czytanego jako pierwotny. Czerwony na bazie: próg 400 „A" bez przekładnika
     i bez strony był czytany jako prąd pierwotny i dawał czas 0,3 s."""
@@ -420,3 +391,11 @@ def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
     assert kod_braku in {b["kod"] for b in czas["braki_nastaw"]}
+
+
+def test_prog_bez_strony_przekladnika_odrzuca_model() -> None:
+    """Próg prądowy bez strony przekładnika (PZ-09) nie wchodzi do modelu — nie ma stanu, w
+    którym ocena musiałaby zgadywać stronę. Dawniej próg 400 „A" bez strony był czytany jako
+    prąd pierwotny i dawał czas 0,3 s."""
+    with pytest.raises(ValueError, match="wymaga jednostki"):
+        _enm(nastawy=[stopien("51", prog=5.0, krzywa="DT", zwloka_s=0.3)])

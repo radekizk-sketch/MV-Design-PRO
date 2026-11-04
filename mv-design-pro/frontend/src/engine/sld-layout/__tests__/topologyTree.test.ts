@@ -83,7 +83,6 @@ describe('buildTopologyTree on substrate', () => {
       generators: [],
       sources: [{ id: 'src-gpz', name: 'Zrodlo', nodeId: 'bus-gpz', inService: true }],
       loads: [],
-      protectionBindings: [],
       fixActions: [],
     };
     const minimalTree = buildTopologyTree(minimal);

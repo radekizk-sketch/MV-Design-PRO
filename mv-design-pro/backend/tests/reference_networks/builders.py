@@ -531,7 +531,7 @@ def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
     "error") is None``), a GN_04 nie ma elementów ``bays`` — więc żadna z trzech operacji nie
     wykonywała się, a sieć „z ochroną" była identyczna z GN_04 poza znacznikami w ``meta`` i
     nagłówku (zmierzone: zero przypisań zabezpieczeń). Teraz: wyłącznik liniowy na początku
-    magistrali, przekładnik 600/5 A 5P20 i przekaźnik ``REF-OC-200`` z nastawami — te same
+    magistrali, przekładnik 600/5 A 5P20, sterownik ``REF-OC-200`` i jego nastawy — te same
     operacje domenowe co sieć złota G08 (``dodaj_zabezpieczenie_nadpradowe``); odmowa
     operacji kończy budowę wyjątkiem.
     """
@@ -559,7 +559,8 @@ def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
         "description": "SN+nN+OZE+ochrona (pełna sieć referencyjna)",
         "enm": enm,
         "snapshot_hash": _snapshot_hash(enm),
-        "operations_count": gn04["operations_count"] + 3,
+        # wyłącznik liniowy, przekładnik, sterownik, nastawy sterownika
+        "operations_count": gn04["operations_count"] + 4,
     }
 
 

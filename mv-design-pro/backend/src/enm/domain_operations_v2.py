@@ -203,6 +203,7 @@ from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
 from .zabezpieczenie import (
+    kody_funkcji_sterownika,
     ref_aparatu_wyzwalanego,
     referencja_sterownika_pola,
     sterownik_pola,
@@ -1238,14 +1239,21 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         vt = _przekladnik_pola(enm, field_ref, "VT")
         if vt:
             wejscia["vt_ref"] = vt
-    if any(
-        "3I0" in FUNKCJE_EAZ[k].wejscia_wymagane for k in kody if k in FUNKCJE_EAZ
-    ) and wejscia.get("ct_ref") and not wejscia.get("i0_uklad"):
-        wejscia["i0_uklad"] = "HOLMGREEN"
     if (
-        any("I" in FUNKCJE_EAZ[k].wejscia_wymagane for k in kody if k in FUNKCJE_EAZ)
-        and not wejscia.get("ct_ref")
+        any("3I0" in FUNKCJE_EAZ[k].wejscia_wymagane for k in kody if k in FUNKCJE_EAZ)
+        and wejscia.get("ct_ref")
+        and not wejscia.get("i0_uklad")
     ):
+        wejscia["i0_uklad"] = "HOLMGREEN"
+    # Bramka przekładnika prądowego dotyczy funkcji, które operacja DOKŁADA: funkcja, którą
+    # sterownik pola już ma (szablon pola), nosi brak wejścia jako nazwany brak oceny
+    # (`enm.zabezpieczenie.brakujace_wejscia`) — ta sama reguła co pisarz z szablonu.
+    dotychczasowe = set(kody_funkcji_sterownika(istniejacy or {}, tylko_wlaczone=False))
+    if any(
+        "I" in FUNKCJE_EAZ[k].wejscia_wymagane
+        for k in kody
+        if k in FUNKCJE_EAZ and k not in dotychczasowe
+    ) and not wejscia.get("ct_ref"):
         return _error_response(
             "Dobór zabezpieczenia wymaga przekładnika prądowego CT w tym samym polu (albo "
             "przy tym samym wyłączniku liniowym).",
@@ -1265,17 +1273,21 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             else f"Zabezpieczenie {opis_elementu(enm, breaker_ref, 'wyłącznika')}"
         )
     )
-    sterownik: dict[str, Any] = copy.deepcopy(istniejacy) if istniejacy is not None else {
-        "ref_id": protection_ref,
-        "bay_ref": field_ref or None,
-        "funkcje": [],
-        "grupy_nastaw": [],
-        "aktywna_grupa": 1,
-        "macierz_wyzwolen": [],
-        "is_enabled": True,
-        "tags": ["field_protection", "catalog_bound"],
-        "meta": {"field_ref": field_ref} if field_ref else {"breaker_ref": breaker_ref},
-    }
+    sterownik: dict[str, Any] = (
+        copy.deepcopy(istniejacy)
+        if istniejacy is not None
+        else {
+            "ref_id": protection_ref,
+            "bay_ref": field_ref or None,
+            "funkcje": [],
+            "grupy_nastaw": [],
+            "aktywna_grupa": 1,
+            "macierz_wyzwolen": [],
+            "is_enabled": True,
+            "tags": ["field_protection", "catalog_bound"],
+            "meta": {"field_ref": field_ref} if field_ref else {"breaker_ref": breaker_ref},
+        }
+    )
     ustaw_zestaw_funkcji(
         sterownik,
         kody,

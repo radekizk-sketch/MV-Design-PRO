@@ -46,11 +46,12 @@ from enm.models import (
     Measurement,
     ParameterOverride,
     ProtectionAssignment,
-    ProtectionSetting,
     Substation,
     SwitchBranch,
 )
 from network_model.catalog import get_default_mv_catalog
+
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 WYLACZNIK = "sw-cb-abb-vd4-12kv-630a"  # I_th 20 kA / 1 s, I_dyn 50 kA (2,5·I_th)
 PRZEKAZNIK = "REF-OC-200"
@@ -78,22 +79,12 @@ STALE_IEC = {"IEC_SI": (0.14, 0.02), "IEC_VI": (13.5, 1.0), "IEC_EI": (80.0, 2.0
 KRZYWE = ("IEC_SI", "IEC_VI", "IEC_EI", "DT")
 
 
-def _nastawa(krzywa: str) -> ProtectionSetting:
+def _nastawa(krzywa: str) -> Stopien:
     if krzywa == "DT":
-        return ProtectionSetting(
-            function_type="overcurrent_51",
-            threshold_a=PROG_A,
-            threshold_unit="A_PIERWOTNY",
-            curve_type="DT",
-            time_delay_s=ZWLOKA_DT_S,
+        return stopien(
+            "51", prog=PROG_A, jednostka_progu="A_PIERWOTNY", krzywa="DT", zwloka_s=ZWLOKA_DT_S
         )
-    return ProtectionSetting(
-        function_type="overcurrent_51",
-        threshold_a=PROG_A,
-        threshold_unit="A_PIERWOTNY",
-        curve_type=krzywa,
-        time_multiplier=TMS,
-    )
+    return stopien("51", prog=PROG_A, jednostka_progu="A_PIERWOTNY", krzywa=krzywa, tms=TMS)
 
 
 def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
@@ -131,14 +122,14 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
             )
         )
         przypisania.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id=f"prot/{nr}",
                 name=f"Zabezpieczenie pola {nr}",
-                breaker_ref=f"aparat/{nr}",
+                bay_ref=pole,
+                wylacznik=f"aparat/{nr}",
                 ct_ref=f"ct/{nr}",
                 catalog_ref=PRZEKAZNIK,
-                device_type="overcurrent",
-                settings=[_nastawa(krzywa)],
+                stopnie=[_nastawa(krzywa)],
             )
         )
         pola.append(

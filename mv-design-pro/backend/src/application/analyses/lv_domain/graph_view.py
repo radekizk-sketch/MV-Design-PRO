@@ -62,6 +62,7 @@ from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
 from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
 from enm.uklad_sieci_nn import uklad_nn_stacji
+from enm.zabezpieczenie import aparaty_sterownika, kody_funkcji_sterownika
 from network_model.core.topologia import poziomy, przeglad_wszerz_od
 from network_model.pochodne.pasma_napieciowe import OPIS_PASMA_NN, w_pasmie_nn
 
@@ -281,15 +282,17 @@ def _measurement_dict(m: Any) -> dict[str, Any]:
 
 
 def _protection_dict(p: Any) -> dict[str, Any]:
+    """Sterownik zabezpieczeń domeny nN — z jedynego nośnika (``protection_assignments``)."""
     return {
         "ref_id": p.ref_id,
         "name": p.name,
-        "breaker_ref": p.breaker_ref,
-        "device_type": p.device_type,
-        "ct_ref": p.ct_ref,
-        "vt_ref": p.vt_ref,
+        "bay_ref": p.bay_ref,
+        "wylaczniki_refs": list(aparaty_sterownika(p)),
+        "ct_ref": p.wejscia.ct_ref,
+        "vt_ref": p.wejscia.vt_ref,
         "is_enabled": p.is_enabled,
-        "function_codes": sorted({str(s.function_type) for s in p.settings}),
+        # Kody funkcji rejestru (`funkcje_eaz`) w kolejności zapisu sterownika.
+        "function_codes": kody_funkcji_sterownika(p),
     }
 
 
@@ -603,7 +606,11 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
         key=lambda m: m.ref_id,
     )
     domain_protection = sorted(
-        (p for p in enm.protection_assignments if p.breaker_ref in domain_branches),
+        (
+            p
+            for p in enm.protection_assignments
+            if set(aparaty_sterownika(p)) & set(domain_branches)
+        ),
         key=lambda p: p.ref_id,
     )
 

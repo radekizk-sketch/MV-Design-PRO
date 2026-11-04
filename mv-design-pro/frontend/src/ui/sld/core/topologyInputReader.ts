@@ -145,7 +145,6 @@ export interface TopologyPoleV1 {
   readonly bayRole: string;
   readonly busRef: string;
   readonly equipmentRefs: readonly string[];
-  readonly protectionRef: string | null;
   readonly gpzSectionId: string | null;
   readonly tags: readonly string[];
   readonly meta: Readonly<Record<string, unknown>>;
@@ -213,20 +212,6 @@ export interface TopologyLoadV1 {
 /**
  * Przyporzadkowanie zabezpieczenia do wylacznika.
  */
-export interface TopologyProtectionV1 {
-  readonly id: string;
-  readonly breakerRef: string;
-  readonly ctRef: string | null;
-  readonly vtRef: string | null;
-  readonly functions: readonly TopologyProtectionFunctionV1[];
-  readonly isEnabled: boolean;
-}
-
-export interface TopologyProtectionFunctionV1 {
-  readonly functionType: string;
-  readonly settings: Readonly<Record<string, unknown>>;
-}
-
 // =============================================================================
 // FIX ACTION
 // =============================================================================
@@ -306,7 +291,6 @@ export interface TopologyInputV1 {
   readonly generators: readonly TopologyGeneratorV1[];
   readonly sources: readonly TopologySourceV1[];
   readonly loads: readonly TopologyLoadV1[];
-  readonly protectionBindings: readonly TopologyProtectionV1[];
   readonly logicalViews?: TopologyLogicalViewsV1;
   /**
    * Deklarowana oś magistrali głównej (R2, przebudowa 2026-07): stacje w
@@ -363,7 +347,6 @@ function poleTopologii(bay: Bay): TopologyPoleV1 {
     bayRole: bay.bay_role,
     busRef: bay.bus_ref,
     equipmentRefs: [...(bay.equipment_refs ?? [])],
-    protectionRef: firstString(bay.protection_ref),
     gpzSectionId: firstString(bay.gpz_section_id),
     tags: [...(bay.tags ?? [])],
     meta: bay.meta ?? {},
@@ -721,23 +704,6 @@ export function readTopologyFromENM(
     };
   });
 
-  // --- Protection Bindings ---
-  const protectionBindings: TopologyProtectionV1[] = enm.protection_assignments.map((pa) => ({
-    id: pa.ref_id,
-    breakerRef: pa.breaker_ref,
-    ctRef: pa.ct_ref ?? null,
-    vtRef: pa.vt_ref ?? null,
-    functions: pa.settings.map((s) => ({
-      functionType: s.function_type,
-      settings: {
-        threshold_a: s.threshold_a,
-        time_delay_s: s.time_delay_s,
-        curve_type: s.curve_type,
-      },
-    })),
-    isEnabled: pa.is_enabled,
-  }));
-
   // --- Deklarowana oś magistrali (R2): line_runs main_trunk → kolejność stacji.
   const stationOfBusRef = (busRef: string | null | undefined): string | null => {
     if (!busRef) return null;
@@ -850,7 +816,6 @@ export function readTopologyFromENM(
     generators: sortById(generators),
     sources: sortById(sources),
     loads: sortById(loads),
-    protectionBindings: sortById(protectionBindings),
     logicalViews,
     declaredTrunkStationIds,
     fixActions: [...fixActions].sort((a, b) => a.code.localeCompare(b.code) || (a.elementRef ?? '').localeCompare(b.elementRef ?? '')),
@@ -1049,7 +1014,6 @@ export function readTopologyFromSymbols(
     generators: sortById(generators),
     sources: sortById(sources),
     loads: sortById(loads),
-    protectionBindings: [],
     logicalViews: { trunks: [], branches: [], rings: [] },
     fixActions: [...fixActions].sort((a, b) => a.code.localeCompare(b.code) || (a.elementRef ?? '').localeCompare(b.elementRef ?? '')),
   };

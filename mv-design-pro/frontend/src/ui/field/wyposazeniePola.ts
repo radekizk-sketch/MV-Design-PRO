@@ -258,7 +258,7 @@ export interface ZmianaKlasyPola {
 
 export const BEZ_ZMIANY_KLASY: ZmianaKlasyPola = { zmien: false, wartosc: null };
 
-/** Zmiana powiązania źródła napięcia zerowego 3U₀ (`Bay.zrodlo_u0_ref`, decyzja właściciela
+/** Zmiana powiązania źródła napięcia zerowego 3U₀ (wejście 3U₀ sterownika pola — `ProtectionAssignment.wejscia.u0_vt_ref`, decyzja właściciela
  *  2026-10-29): `zmien=false` — klucz pominięty (powiązanie bez zmian), `wartosc=null` —
  *  powiązanie zdjęte. Poprawność źródła ocenia backend (ta sama reguła co przypisanie 67N). */
 export interface ZmianaZrodlaU0 {
@@ -287,7 +287,7 @@ export function zbudujPayloadWyposazenia(
   klasa: ZmianaKlasyPola = BEZ_ZMIANY_KLASY,
   zrodloU0: ZmianaZrodlaU0 = BEZ_ZMIANY_ZRODLA_U0,
 ): Record<string, unknown> {
-  // Klasa pola liniowego (`Bay.klasa_pola`) i źródło 3U₀ (`Bay.zrodlo_u0_ref`): klucz obecny =
+  // Klasa pola liniowego (`Bay.klasa_pola`) i źródło 3U₀ (wejście sterownika pola): klucz obecny =
   // ustaw (null = wyczyść), brak = bez zmiany — ten sam kontrakt co operacja `set_bay_equipment`.
   const zKlasa = {
     ...(klasa.zmien ? { klasa_pola: klasa.wartosc } : {}),

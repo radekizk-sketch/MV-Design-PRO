@@ -922,6 +922,17 @@ class OperatingScenario(BaseModel):
     """W5-C: stan łącznika w scenariuszu (``ref_id`` łącznika → położenie). Łącznik zostaje
     w migawce efektywnej ze zmienionym ``status`` — inne pojęcie niż ``out_of_service``
     (element nieobecny); patrz nagłówek modułu."""
+    protection_groups: dict[str, Annotated[int, Field(ge=1, le=4)]] = Field(default_factory=dict)
+    """ADR-022 (karta OCHRONA-JEDNO-ZRODLO): wybór grupy nastaw sterownika w przypadku
+    (``ref_id`` sterownika → numer grupy 1–4). Model nie jest zmieniany — w migawce
+    efektywnej zmienia się ``aktywna_grupa`` sterownika, którą czyta każda ocena."""
+    protection_overrides: dict[str, dict[str, dict[str, float | str | bool | None]]] = Field(
+        default_factory=dict
+    )
+    """ADR-022: delta nastaw przypadku — ``ref_id`` sterownika → ``ref`` funkcji → klucz
+    schematu nastaw (rejestr funkcji) → wartość (``None`` zdejmuje nastawę). Nakładana na
+    grupę EFEKTYWNĄ (po ``protection_groups``) w migawce efektywnej; sprzeczna nastawa
+    (reguła `enm.nastawy_zabezpieczen.bledy_sterownika`) = scenariusz nie przystaje."""
     dynamika: ScenariuszDynamiczny | None = None
     """
     Harmonogram zdarzeń czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
@@ -938,6 +949,8 @@ class OperatingScenario(BaseModel):
             raise ValueError("out_of_service zawiera powtórzony ref_id")
         if any(not ref for ref in self.switch_states):
             raise ValueError("switch_states: pusty ref_id")
+        if any(not ref for ref in [*self.protection_groups, *self.protection_overrides]):
+            raise ValueError("protection_groups/protection_overrides: pusty ref_id sterownika")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
             raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
@@ -962,6 +975,8 @@ class OperatingScenario(BaseModel):
             or self.gen_scaling
             or self.injections
             or self.probe_shunts
+            or self.protection_groups
+            or self.protection_overrides
         )
 
     def tresc(self) -> dict[str, Any]:
@@ -992,6 +1007,26 @@ class OperatingScenario(BaseModel):
                 else {}
             ),
             **({"dynamika": self.dynamika.tresc()} if self.dynamika is not None else {}),
+            # ADR-022: klucze wyłącznie dla niepustej delty zabezpieczeń — scenariusz bez niej
+            # ma bajtowo tę samą treść i hash co przed kartą OCHRONA-JEDNO-ZRODLO.
+            **(
+                {"protection_groups": dict(sorted(self.protection_groups.items()))}
+                if self.protection_groups
+                else {}
+            ),
+            **(
+                {
+                    "protection_overrides": {
+                        ref: {
+                            funkcja: dict(sorted(nastawy.items()))
+                            for funkcja, nastawy in sorted(funkcje.items())
+                        }
+                        for ref, funkcje in sorted(self.protection_overrides.items())
+                    }
+                }
+                if self.protection_overrides
+                else {}
+            ),
         }
 
     @property
@@ -1191,6 +1226,106 @@ def _przeskaluj(p_mw: float, mnoznik: float) -> float:
     return 0.0 if mnoznik == 0.0 else p_mw * mnoznik
 
 
+def _naloz_delte_zabezpieczen(
+    snapshot: dict[str, Any], scenariusz: OperatingScenario, nadpisania: list[Nadpisanie]
+) -> None:
+    """Delta zabezpieczeń przypadku (ADR-022) na migawce efektywnej: wybór grupy nastaw
+    (``protection_groups``), potem nastawy w grupie EFEKTYWNEJ (``protection_overrides``).
+
+    Sterownik spoza modelu, grupa nieobecna w sterowniku, funkcja spoza sterownika albo
+    nastawa sprzeczna (ta sama reguła co zapis modelu, `bledy_sterownika`) =
+    `ScenariuszNieprzystajeError` — nigdy cichy skip."""
+    if not scenariusz.protection_groups and not scenariusz.protection_overrides:
+        return
+    # Import leniwy: reguła nastaw czyta rejestr funkcji (cykl przez pakiet `enm`).
+    from .nastawy_zabezpieczen import bledy_sterownika
+    from .zabezpieczenie import zapisz_nastawy_funkcji
+
+    sterowniki = _indeks_elementow(snapshot, "protection_assignments")
+    zmienione: set[str] = set()
+    for ref_id, numer in sorted(scenariusz.protection_groups.items()):
+        sterownik = sterowniki.get(ref_id)
+        if sterownik is None:
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak sterownika zabezpieczeń")
+        numery = {int(g.get("numer")) for g in sterownik.get("grupy_nastaw") or []}
+        if numer not in numery:
+            raise ScenariuszNieprzystajeError(
+                scenariusz.scenario_id,
+                ref_id,
+                f"sterownik nie ma grupy nastaw {numer} (grupy w modelu: "
+                f"{', '.join(str(n) for n in sorted(numery)) or 'brak'})",
+            )
+        przed = sterownik.get("aktywna_grupa")
+        if przed == numer:
+            continue
+        sterownik["aktywna_grupa"] = numer
+        zmienione.add(ref_id)
+        nadpisania.append(
+            Nadpisanie("protection_groups", "protection_assignments", ref_id, przed, numer)
+        )
+    for ref_id, funkcje in sorted(scenariusz.protection_overrides.items()):
+        sterownik = sterowniki.get(ref_id)
+        if sterownik is None:
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak sterownika zabezpieczeń")
+        refy_funkcji = {str(f.get("ref")) for f in sterownik.get("funkcje") or []}
+        numer = int(sterownik.get("aktywna_grupa") or 1)
+        for funkcja_ref, delta in sorted(funkcje.items()):
+            if funkcja_ref not in refy_funkcji:
+                raise ScenariuszNieprzystajeError(
+                    scenariusz.scenario_id, ref_id, f"sterownik nie ma funkcji {funkcja_ref!r}"
+                )
+            grupa = next(
+                (g for g in sterownik.get("grupy_nastaw") or [] if g.get("numer") == numer),
+                None,
+            )
+            obecne = {
+                str(n.get("klucz")): n.get("wartosc")
+                for f in (grupa or {}).get("funkcje") or []
+                if f.get("funkcja_ref") == funkcja_ref
+                for n in f.get("nastawy") or []
+            }
+            wpis = next(
+                (
+                    f
+                    for f in (grupa or {}).get("funkcje") or []
+                    if f.get("funkcja_ref") == funkcja_ref
+                ),
+                None,
+            )
+            if wpis is None:
+                # Grupa albo wpis funkcji nieobecny — powstaje z samej delty.
+                zapisz_nastawy_funkcji(
+                    sterownik, numer_grupy=numer, funkcja_ref=funkcja_ref, nastawy=delta
+                )
+            else:
+                # Nastawy spoza delty zachowują wartość i pochodzenie z modelu.
+                lista = [n for n in wpis.get("nastawy") or [] if n.get("klucz") not in delta]
+                lista += [
+                    {"klucz": k, "wartosc": v, "pochodzenie": "PROJEKTANT"}
+                    for k, v in delta.items()
+                    if v is not None
+                ]
+                wpis["nastawy"] = sorted(lista, key=lambda n: str(n.get("klucz")))
+            zmienione.add(ref_id)
+
+            for klucz, wartosc in sorted(delta.items()):
+                if obecne.get(klucz) == wartosc:
+                    continue
+                nadpisania.append(
+                    Nadpisanie(
+                        f"protection_overrides.{funkcja_ref}.{klucz}",
+                        "protection_assignments",
+                        ref_id,
+                        obecne.get(klucz),
+                        wartosc,
+                    )
+                )
+    for ref_id in sorted(zmienione):
+        bledy = bledy_sterownika(sterowniki[ref_id])
+        if bledy:
+            raise ScenariuszNieprzystajeError(scenariusz.scenario_id, ref_id, "; ".join(bledy))
+
+
 def apply_scenario(
     enm: EnergyNetworkModel, scenariusz: OperatingScenario
 ) -> EffectiveNetworkSnapshot:
@@ -1315,6 +1450,8 @@ def apply_scenario(
                 )
             )
         snapshot["shunt_capacitors"] = lista
+
+    _naloz_delte_zabezpieczen(snapshot, scenariusz, nadpisania)
 
     if scenariusz.dynamika is not None:
         _waliduj_zdarzenia_dynamiczne(snapshot, scenariusz)

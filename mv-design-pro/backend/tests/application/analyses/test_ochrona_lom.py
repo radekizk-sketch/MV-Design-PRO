@@ -26,9 +26,11 @@ from enm.models import (
     ENMHeader,
     Generator,
     ProtectionAssignment,
-    ProtectionSetting,
     Substation,
 )
+from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ
+
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 
 def _enm(
@@ -51,30 +53,17 @@ def _generator(ref: str = "gen_pv", bus: str = "bus_oze") -> Generator:
     return Generator(ref_id=ref, name="PV", bus_ref=bus, p_mw=2.0, gen_type="pv_inverter")
 
 
-def _bay(
-    ref: str = "bay_oze",
-    bus: str = "bus_oze",
-    protection_ref: str | None = "prot_lom",
-    protection_codes: list[str] | None = None,
-) -> Bay:
-    return Bay(
-        ref_id=ref,
-        name="Pole OZE",
-        bay_role="OZE",
-        substation_ref="stac_1",
-        bus_ref=bus,
-        protection_ref=protection_ref,
-        protection_codes=protection_codes or [],
-    )
+def _bay(ref: str = "bay_oze", bus: str = "bus_oze") -> Bay:
+    return Bay(ref_id=ref, name="Pole OZE", bay_role="OZE", substation_ref="stac_1", bus_ref=bus)
 
 
-def _assignment(settings: list[ProtectionSetting], ref: str = "prot_lom") -> ProtectionAssignment:
-    return ProtectionAssignment(
-        ref_id=ref,
-        name="Zabezpieczenie LoM",
-        breaker_ref="cb_1",
-        device_type="custom",
-        settings=settings,
+def _assignment(
+    stopnie: list[Stopien], ref: str = "prot_lom", bay_ref: str = "bay_oze"
+) -> ProtectionAssignment:
+    """Sterownik pola OZE (karta OCHRONA-JEDNO-ZRODLO: funkcje LoM to funkcje sterownika pola —
+    funkcja bez nastaw to funkcja zadeklarowana, której nastaw nie wpisano)."""
+    return sterownik(
+        ref_id=ref, name="Zabezpieczenie LoM", bay_ref=bay_ref, wylacznik="cb_1", stopnie=stopnie
     )
 
 
@@ -117,16 +106,15 @@ def test_module_without_lom_is_error() -> None:
 
 
 def test_declared_code_without_settings_is_info() -> None:
-    bay = _bay(protection_ref="prot_lom", protection_codes=["81R"])
     enm = _enm(
-        bays=[bay],
+        bays=[_bay()],
         generators=[_generator()],
-        protection_assignments=[_assignment([])],
+        protection_assignments=[_assignment([stopien("81R")])],
     )
     view = build_ochrona_lom_view(enm)
     info = [c for c in _checks(view) if c["function_ansi"] == "81R" and c["kind"] == "obecnosc"]
     assert info and info[0]["severity"] == "INFO"
-    assert "bez nastaw" in info[0]["message_pl"]
+    assert "nie ma nastaw w grupie efektywnej" in info[0]["message_pl"]
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +123,7 @@ def test_declared_code_without_settings_is_info() -> None:
 
 
 def test_rocof_within_window_is_ok() -> None:
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.1)
+    setting = stopien("81R", prog_hz_s=2.5, zwloka_s=0.1)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -148,7 +136,7 @@ def test_rocof_within_window_is_ok() -> None:
 
 
 def test_rocof_below_window_is_warn_false_island() -> None:
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)
+    setting = stopien("81R", prog_hz_s=1.0)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -161,7 +149,7 @@ def test_rocof_below_window_is_warn_false_island() -> None:
 
 
 def test_underfrequency_above_window_is_warn() -> None:
-    setting = ProtectionSetting(function_type="underfrequency_81U", threshold_hz=48.0)
+    setting = stopien("81U", prog_hz=48.0)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -173,7 +161,7 @@ def test_underfrequency_above_window_is_warn() -> None:
 
 
 def test_underfrequency_within_window_is_ok() -> None:
-    setting = ProtectionSetting(function_type="underfrequency_81U", threshold_hz=47.5)
+    setting = stopien("81U", prog_hz=47.5)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -185,7 +173,7 @@ def test_underfrequency_within_window_is_ok() -> None:
 
 
 def test_overfrequency_below_window_is_warn() -> None:
-    setting = ProtectionSetting(function_type="overfrequency_81O", threshold_hz=51.0)
+    setting = stopien("81O", prog_hz=51.0)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -197,7 +185,7 @@ def test_overfrequency_below_window_is_warn() -> None:
 
 
 def test_vector_shift_has_no_window_and_is_info() -> None:
-    setting = ProtectionSetting(function_type="vector_shift_78", threshold_deg=8.0)
+    setting = stopien("78", prog_deg=8.0)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -239,7 +227,7 @@ def test_spz_verdict_no_lom_time_is_info() -> None:
 
 
 def test_spz_coordination_in_full_view_is_info() -> None:
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.2)
+    setting = stopien("81R", prog_hz_s=2.5, zwloka_s=0.2)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -257,13 +245,16 @@ def test_spz_coordination_in_full_view_is_info() -> None:
 
 
 def test_deterministic_hash_and_field_order() -> None:
-    settings = [ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5)]
+    settings = [stopien("81R", prog_hz_s=2.5)]
 
     def build() -> dict:
         enm = _enm(
             bays=[_bay("bay_b", "bus_oze"), _bay("bay_a", "bus_oze")],
             generators=[_generator()],
-            protection_assignments=[_assignment(settings)],
+            protection_assignments=[
+                _assignment(settings, ref="prot_b", bay_ref="bay_b"),
+                _assignment(settings, ref="prot_a", bay_ref="bay_a"),
+            ],
         )
         return build_ochrona_lom_view(enm)
 
@@ -295,30 +286,19 @@ def test_module_without_field_is_reported() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_legacy_protection_setting_still_validates() -> None:
-    # Stary dokument ENM bez nowych pól — parsuje się bez zmian.
-    legacy = ProtectionSetting.model_validate(
-        {"function_type": "overcurrent_51", "threshold_a": 500.0, "time_delay_s": 0.4}
-    )
-    assert legacy.threshold_hz_s is None
-    assert legacy.threshold_deg is None
-    assert legacy.threshold_hz is None
+def test_funkcje_lom_sa_w_rejestrze_z_ewaluatorem_lom() -> None:
+    """Funkcje LoM to wpisy rejestru funkcji z ewaluatorem LOM i schematem nastaw (jeden
+    rejestr — karta OCHRONA-JEDNO-ZRODLO); ocena czyta klucze schematu, nie pól modelu."""
+    klucze = {"81R": "prog_hz_s", "78": "prog_deg", "81U": "prog_hz", "81O": "prog_hz"}
+    for kod, klucz in klucze.items():
+        wpis = FUNKCJE_EAZ[kod]
+        assert wpis.ocena == "LOM"
+        assert {n.klucz for n in wpis.nastawy} >= {klucz, "zwloka_s"}
 
 
-def test_new_lom_function_literals_validate() -> None:
-    for function_type in (
-        "rocof_81R",
-        "vector_shift_78",
-        "underfrequency_81U",
-        "overfrequency_81O",
-    ):
-        setting = ProtectionSetting.model_validate({"function_type": function_type})
-        assert setting.function_type == function_type
-
-
-def test_invalid_function_type_rejected() -> None:
-    with pytest.raises(Exception):
-        ProtectionSetting.model_validate({"function_type": "not_a_function"})
+def test_kod_spoza_rejestru_odrzuca_model() -> None:
+    with pytest.raises(ValueError, match="spoza rejestru"):
+        _assignment([stopien("not_a_function")])
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +346,7 @@ def test_sanity_rocof_rule_unchanged() -> None:
 
 
 def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.1)
+    setting = stopien("81R", prog_hz_s=2.5, zwloka_s=0.1)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -392,7 +372,7 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
 
 
 def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)
+    setting = stopien("81R", prog_hz_s=1.0)
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -409,11 +389,11 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
 def test_wywod_empty_when_no_real_comparison() -> None:
     # Pole bez funkcji (obecnosc), funkcja zadeklarowana bez nastaw, 78 bez okna,
     # SPZ bez danych — wszystkie bez wywodu (uczciwy brak, ZERO fabrykacji).
-    setting = ProtectionSetting(function_type="vector_shift_78", threshold_deg=10.0)
+    setting = stopien("78", prog_deg=10.0)
     enm = _enm(
-        bays=[_bay(protection_codes=["81U"])],
+        bays=[_bay()],
         generators=[_generator()],
-        protection_assignments=[_assignment([setting])],
+        protection_assignments=[_assignment([setting, stopien("81U")])],
     )
     view = build_ochrona_lom_view(enm)
     for check in _checks(view):
@@ -425,9 +405,7 @@ def test_wywod_empty_when_no_real_comparison() -> None:
 
 def test_wywod_deterministic_two_builds_identical() -> None:
     def _view() -> dict:
-        setting = ProtectionSetting(
-            function_type="underfrequency_81U", threshold_hz=47.0, time_delay_s=0.2
-        )
+        setting = stopien("81U", prog_hz=47.0, zwloka_s=0.2)
         enm = _enm(
             bays=[_bay()],
             generators=[_generator()],
@@ -449,7 +427,6 @@ def _wpis_pola_archiwum(
     field_ref: str = "stn/1/sn_field/001",
     bus_ref: str = "bus_oze",
     bay_role: str = "OUT",
-    protection_ref: str | None = "prot_lom",
 ) -> dict:
     """Dawny wpis pola z archiwum (sprzed karty W5-B) — tak zapisywały go operacje
     domenowe w `Substation.meta` stacji."""
@@ -459,7 +436,6 @@ def _wpis_pola_archiwum(
         "bay_role": bay_role,
         "bus_ref": bus_ref,
         "equipment_refs": ["cb_1"],
-        "protection_ref": protection_ref,
         "tags": [],
         "meta": {"field_role": "LINIA_OUT"},
     }
@@ -498,11 +474,11 @@ def test_pole_z_archiwum_po_migracji_jest_oceniane(klucz: str) -> None:
     Intencja zachowana (defekt 2026-09-17: ocena czytała wyłącznie `bays`, a operacje
     pisały wpisy `meta` — zero ocenionych pól). Po W5-B operacje i migracja piszą rekord
     `bays`, a ocena czyta wyłącznie go; iloczyn obu dawnych kluczy wpisu."""
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.2)
+    setting = stopien("81R", prog_hz_s=1.0, zwloka_s=0.2)
     archiwum = _enm_z_archiwum(
         [_wpis_pola_archiwum()],
         klucz_archiwum=klucz,
-        protection_assignments=[_assignment([setting])],
+        protection_assignments=[_assignment([setting], bay_ref="stn/1/sn_field/001")],
     )
     enm, zmieniono = migruj_pola(archiwum)
     assert zmieniono
@@ -518,7 +494,7 @@ def test_pole_liczy_sie_raz_bo_rekord_pola_jest_jedynym_nosnikiem() -> None:
     mogłoby przyjść drugi raz (dawniej: `bays` + wpis `meta` o tej samej referencji).
     Migracja wpisu o referencji istniejącego rekordu bez `bay_ref` odmawia nazwanym błędem
     zamiast zgadywać, który z dwóch jest prawdą."""
-    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=3.0)
+    setting = stopien("81R", prog_hz_s=3.0)
     enm = _enm(
         bays=[_bay(ref="bay_oze")],
         generators=[_generator()],

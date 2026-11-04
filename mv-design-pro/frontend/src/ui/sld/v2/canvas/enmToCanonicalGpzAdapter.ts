@@ -26,6 +26,7 @@ import type {
   Substation,
   Transformer,
 } from '../../../../types/enm';
+import { kodyFunkcjiPola } from '../../../shared/sterownikZabezpieczen';
 import type {
   BayFieldRole,
   CanonicalGpzBay,
@@ -550,8 +551,8 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     dsState: stany.dsState,
     esState: stany.esState,
     qDesignations: deriveQDesignations(fieldRole),
-    statusFlags: flagiStatusuPola(bay),
-    protectionCodes: bay.protection_codes ?? [],
+    statusFlags: flagiStatusuPola(protectionCtx, bay),
+    protectionCodes: kodyFunkcjiPola(protectionCtx, bay.ref_id),
     // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ —
     // parytet ze stacjami): TA SAMA projekcja co `buildExplicitStationMiniBays`
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
@@ -564,7 +565,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // VT co `buildExplicitStationMiniBays` — reużyta wprost (zero duplikacji).
     vtMountingAnnotations: resolveBayVtMountings(bay, protectionCtx),
     // UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): źródło 3U₀ funkcji 67N
-    // z powiązania modelu (`Bay.zrodlo_u0_ref`), ta sama funkcja co pola stacji.
+    // z wejścia 3U₀ sterownika pola, ta sama funkcja co pola stacji.
     ...zrodloU0Deskryptora(protectionCtx, bay),
   };
 }
@@ -650,12 +651,16 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
 
 /**
  * Plakietki funkcji automatyki pola (karta GPZ-PARYTET, rozszerzenie 5 karty UX-04) —
- * WYŁĄCZNIE z kodów funkcji pola w modelu (`Bay.protection_codes`), jeden kod słownika EAZ
+ * WYŁĄCZNIE z kodów funkcji sterownika pola w modelu (`ProtectionAssignment.funkcje`, włączone),
+ * jeden kod słownika EAZ
  * na plakietkę (`KOD_FUNKCJI_PLAKIETKI`). Brak kodu = brak plakietki — nigdy domysł z roli
  * pola ani z innej funkcji. Kolejność stała (`PLAKIETKI_GPZ`), deterministyczna.
  */
-export function flagiStatusuPola(bay: Pick<Bay, 'protection_codes'>): GpzStatusFlag[] {
-  const kody = new Set((bay.protection_codes ?? []).map((kod) => kod.trim().toUpperCase()));
+export function flagiStatusuPola(
+  model: Partial<Pick<EnergyNetworkModel, 'protection_assignments'>>,
+  bay: Pick<Bay, 'ref_id'>,
+): GpzStatusFlag[] {
+  const kody = new Set(kodyFunkcjiPola(model, bay.ref_id).map((kod) => kod.trim().toUpperCase()));
   return PLAKIETKI_GPZ.filter((flaga) => kody.has(KOD_FUNKCJI_PLAKIETKI[flaga]));
 }
 

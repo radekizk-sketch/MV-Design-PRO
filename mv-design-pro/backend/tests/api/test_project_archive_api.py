@@ -58,7 +58,7 @@ def test_export_produces_pure_300_zip_without_deleted_sections(app_client) -> No
         assert "manifest.json" in zf.namelist()
         data = json.loads(zf.read("project.json"))
 
-    assert data["schema_version"] == "3.0.0"
+    assert data["schema_version"] == "4.0.0"
     assert "network_model" not in data
     assert "sld_diagrams" not in data
     assert "proofs" not in data
@@ -112,7 +112,7 @@ def test_preview_summary_has_no_deleted_fields(app_client) -> None:
     payload = preview_resp.json()
 
     assert payload["valid"] is True
-    assert payload["schema_version"] == "3.0.0"
+    assert payload["schema_version"] == "4.0.0"
     summary = payload["summary"]
     assert summary["study_cases_count"] == 1
     assert set(summary.keys()) == {

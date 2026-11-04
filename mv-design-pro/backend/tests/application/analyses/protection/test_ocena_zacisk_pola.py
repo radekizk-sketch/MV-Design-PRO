@@ -75,8 +75,13 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
             "relay_type": "NADPRADOWY",
             "catalog_ref": KATALOG_PRZEKAZNIKA,
             "name": NAZWA_ZABEZPIECZENIA_POLA,
-            "settings": NASTAWY_Q2,
         },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    wynik = execute_domain_operation(
+        wynik["snapshot"],
+        "update_protection_settings",
+        {"protection_ref": wynik["selection_hint"]["element_id"], "nastawy": NASTAWY_Q2},
     )
     assert wynik.get("error") is None, wynik.get("error")
     migawka = wynik["snapshot"]
@@ -111,16 +116,16 @@ def _biegi(model: EnergyNetworkModel, scenariusz: str | None) -> tuple[Any, Any]
     return sc, zab
 
 
-def _czas_normy(nastawy: list[dict[str, Any]], prad_a: float) -> float | None:
+def _czas_normy(nastawy: dict[str, dict[str, Any]], prad_a: float) -> float | None:
     czasy: list[float] = []
-    for n in nastawy:
-        m = prad_a / (n["threshold_a"] * _PRZEKLADNIA)
+    for n in nastawy.values():
+        m = prad_a / (n["prog"] * _PRZEKLADNIA)
         if m <= 1.0:
             continue
-        if n["curve_type"] == "DT":
-            czasy.append(n["time_delay_s"])
+        if n["krzywa"] == "DT":
+            czasy.append(n["zwloka_s"])
         else:
-            czasy.append(n["time_multiplier"] * 0.14 / (math.pow(m, 0.02) - 1.0))
+            czasy.append(n["tms"] * 0.14 / (math.pow(m, 0.02) - 1.0))
     return min(czasy) if czasy else None
 
 

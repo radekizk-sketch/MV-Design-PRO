@@ -1211,20 +1211,22 @@ def _wiersz(
     }
 
 
-def _czas_z_konfiguracji(spec: dict[str, Any]) -> dict[str, Any]:
-    """Czas wyłączenia zapisany ręcznie w konfiguracji stacji (deklaracja inżyniera)."""
-    wartosc = spec.get("t_clearing_s")
-    return {
-        "t_clearing_s": float(wartosc) if isinstance(wartosc, int | float) else None,
-        "zrodlo": ZRODLO_KONFIGURACJA,
-        "powod_pl": "Czas wyłączenia wpisany w konfiguracji stacji.",
-        "czlon_nastawczy_s": None,
-        "czas_wlasny_wylacznika_s": None,
-        "czas_wlasny": None,
-        "zalozenia_pl": [],
-        "kody_gotowosci": [],
-    }
-
+#: Wpis konfiguracji bez pola w modelu nie ma sterownika, więc nie ma czasu wyłączenia —
+#: czas pola pochodzi WYŁĄCZNIE z nastaw jego sterownika (karta OCHRONA-JEDNO-ZRODLO pkt 4;
+#: ręcznie wpisany czas w konfiguracji stacji był drugą prawdą i został usunięty).
+_CZAS_WPISU_OSIEROCONEGO: dict[str, Any] = {
+    "t_clearing_s": None,
+    "zrodlo": None,
+    "powod_pl": (
+        "Wpis konfiguracji nie odpowiada żadnemu polu modelu, więc nie ma sterownika "
+        "zabezpieczeń, z którego nastaw wynikałby czas wyłączenia."
+    ),
+    "czlon_nastawczy_s": None,
+    "czas_wlasny_wylacznika_s": None,
+    "czas_wlasny": None,
+    "zalozenia_pl": [],
+    "kody_gotowosci": [],
+}
 
 _CZAS_NIEUSTALONY: dict[str, Any] = {
     "t_clearing_s": None,
@@ -1264,8 +1266,10 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             (``prady_pol_z_biegu``), kluczowane referencją pola. Brak wpisu = brak prądu
             pola (kod ``READINESS_BRAK_PRADU_POLA``), nigdy prąd innego pola.
         run_id: identyfikator biegu zwarciowego — odniesienie dowodu i śladu.
-        bay_device_withstand: zapisana konfiguracja stacji (oznaczenie pola →
-            wskazany aparat + czas wyłączenia). Nadrzędna wobec modelu.
+        bay_device_withstand: zapisana konfiguracja stacji (oznaczenie pola → wskazany
+            aparat). Nadrzędna wobec modelu co do APARATU; czas wyłączenia zawsze z nastaw
+            sterownika pola (``czasy_pol``).
+
         czasy_pol: czasy wyłączenia wyznaczone z nastaw pól (poz. 3), kluczowane
             referencją pola. Brak wpisu = czas nieustalony (nie zero).
 
@@ -1324,7 +1328,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
                     catalog_ref=device_id,
                     znamiona=znamiona,
                     etykieta=etykieta,
-                    czas=_czas_z_konfiguracji(spec),
+                    czas=czasy.get(bay.ref_id, _CZAS_NIEUSTALONY),
                     prady=prady,
                     run_id=run_id,
                 )
@@ -1368,7 +1372,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
                 catalog_ref=device_id,
                 znamiona=znamiona,
                 etykieta=etykieta,
-                czas=_czas_z_konfiguracji(spec),
+                czas=_CZAS_WPISU_OSIEROCONEGO,
                 prady=_PRADY_WPISU_OSIEROCONEGO,
                 run_id=run_id,
             )

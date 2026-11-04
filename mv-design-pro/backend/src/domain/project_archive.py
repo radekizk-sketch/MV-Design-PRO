@@ -51,7 +51,14 @@ from typing import Any
 # current_major) — `dict_to_archive` po prostu ich nie czyta („usuń, nie
 # migruj"); import archiwum 2.x z `network_model.nodes`, ale bez `enm.models`,
 # kompiluje model z danych legacy (patrz `application/project_archive/service.py`).
-ARCHIVE_SCHEMA_VERSION = "3.0.0"
+# OCHRONA-JEDNO-ZRODLO (ADR-022): bump MAJOR — zabezpieczenia modelu mają JEDEN nośnik,
+# sterownik pola (`ProtectionAssignment`: wejścia, funkcje z rejestru, grupy nastaw 1–4,
+# macierz wyzwoleń); dawne pola zabezpieczeń rekordu pola (`Bay.protection_codes`,
+# `Bay.protection_ref`, `Bay.zrodlo_u0_ref`) i dawny kształt przypisania (`breaker_ref`,
+# `ct_ref`, `settings`) skasowane bez migracji. Archiwum 3.x z zabezpieczeniami w dawnym
+# kształcie jest odrzucane głośno przez kontrakt sterownika (`extra="forbid"`).
+ARCHIVE_SCHEMA_VERSION = "4.0.0"
+
 ARCHIVE_FORMAT_ID = "MV-DESIGN-PRO-ARCHIVE"
 
 

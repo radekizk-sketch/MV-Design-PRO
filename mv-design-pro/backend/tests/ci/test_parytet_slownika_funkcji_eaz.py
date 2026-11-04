@@ -24,7 +24,6 @@ from typing import get_args
 from network_model.catalog.funkcje_eaz import (
     ETYKIETY_WARTOSCI_WYBORU,
     FUNKCJE_EAZ,
-
     WEJSCIA_FUNKCJI,
     ZESTAWY_FUNKCJI_RODZAJU,
     RodzajFunkcjiEaz,

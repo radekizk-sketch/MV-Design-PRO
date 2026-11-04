@@ -56,14 +56,27 @@ from enm.models import (
     MeasurementRating,
     NnSection,
     ProtectionAssignment,
-    ProtectionSetting,
     Source,
     Substation,
     SwitchBranch,
     Transformer,
 )
 
+from tests.utils.sterownik import sterownik, stopien
+
 Przebieg = Literal["PF", "short_circuit_sn"]
+
+
+#: Nastawy funkcji zabezpieczeń nn (klucze schematu rejestru ``funkcje_eaz``). Próg 400 A
+#: przy przekładniku 1000/5 A to prąd PIERWOTNY — strona przekładnika zadeklarowana w nastawie
+#: (PZ-09), nie domyślna.
+_NASTAWY_NN: dict[str, dict[str, object]] = {
+    "50": {"prog": 400.0, "jednostka_progu": "A_PIERWOTNY", "krzywa": "DT", "zwloka_s": 0.2},
+    "51": {"prog": 400.0, "jednostka_progu": "A_PIERWOTNY", "krzywa": "DT", "zwloka_s": 0.2},
+    "81R": {"prog_hz_s": 1.0, "zwloka_s": 0.2},
+    "78": {"prog_deg": 12.0, "zwloka_s": 0.2},
+    "81U": {"prog_hz": 47.5, "zwloka_s": 0.2},
+}
 
 
 class BudowniczyStacji:
@@ -463,26 +476,15 @@ class BudowniczyStacji:
         breaker_ref: str,
         *,
         ct_ref: str | None = None,
-        funkcje: tuple[str, ...] = ("overcurrent_50", "overcurrent_51"),
+        funkcje: tuple[str, ...] = ("50", "51"),
     ) -> str:
         self.protection.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id=ref,
                 name=name,
-                breaker_ref=breaker_ref,
+                wylacznik=breaker_ref,
                 ct_ref=ct_ref,
-                device_type="overcurrent",
-                settings=[
-                    # Próg 400 A przy przekładniku 1000/5 A to prąd PIERWOTNY — strona
-                    # przekładnika zadeklarowana w nastawie (PZ-09), nie domyślna.
-                    ProtectionSetting(
-                        function_type=f,  # type: ignore[arg-type]
-                        threshold_a=400.0,
-                        threshold_unit="A_PIERWOTNY",
-                        time_delay_s=0.2,
-                    )
-                    for f in funkcje
-                ],
+                stopnie=[stopien(f, **_NASTAWY_NN[f]) for f in funkcje],
                 catalog_ref="przekaznik-nn-50-51",
             )
         )
@@ -627,7 +629,7 @@ def odplyw_do_der(
             f"Zabezpieczenie od pracy wyspowej {nazwa_zrodla}",
             tag,
             ct_ref=f"CT-{tag}" if ct else None,
-            funkcje=("rocof_81R", "vector_shift_78", "underfrequency_81U"),
+            funkcje=("81R", "78", "81U"),
         )
     return tag
 

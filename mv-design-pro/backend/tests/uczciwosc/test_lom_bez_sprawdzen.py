@@ -26,12 +26,11 @@ from enm.models import (
     EnergyNetworkModel,
     ENMHeader,
     Generator,
-    ProtectionAssignment,
-    ProtectionSetting,
 )
 from werdykt import OcenaKryterium, WynikWymagania
 
 from tests.uczciwosc.pomocnicze import braki_tekstem, eksport_fixtur, sprawdz_ocene_niewykonana
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 #: Pole OZE bez przypisanego zabezpieczenia — przedmiot rekordu oceny niewykonanej.
 _POLE = Bay(
@@ -71,7 +70,8 @@ def test_kazda_funkcja_lom_ma_kryterium_okna() -> None:
     assert set(_KRYTERIA_OKIEN) == set(_FUNCTION_ORDER) == set(ochrona_lom.LOM_FUNCTION_TYPES)
 
 
-def _enm(bays: list[Bay], generators: list[Generator], settings: list[ProtectionSetting]) -> Any:
+def _enm(bays: list[Bay], generators: list[Generator], stopnie: list[Stopien] | None) -> Any:
+    """Model z polem OZE; ``stopnie=None`` — pole bez sterownika zabezpieczeń."""
     return EnergyNetworkModel(
         header=ENMHeader(name="LoM uczciwość", hash_sha256="hash-lom-uczciwosc"),
         buses=[
@@ -80,27 +80,29 @@ def _enm(bays: list[Bay], generators: list[Generator], settings: list[Protection
         ],
         generators=generators,
         bays=bays,
-        protection_assignments=[
-            ProtectionAssignment(
-                ref_id="prot_lom",
-                name="Zabezpieczenie LoM",
-                breaker_ref="cb_1",
-                device_type="custom",
-                settings=settings,
-            )
-        ],
+        protection_assignments=(
+            []
+            if stopnie is None
+            else [
+                sterownik(
+                    ref_id="prot_lom",
+                    name="Zabezpieczenie LoM",
+                    bay_ref="bay_oze",
+                    wylacznik="cb_1",
+                    stopnie=stopnie,
+                )
+            ]
+        ),
     )
 
 
-def _pole(kody: list[str] | None = None, zabezpieczenie: str | None = "prot_lom") -> Bay:
+def _pole() -> Bay:
     return Bay(
         ref_id="bay_oze",
         name="Pole OZE",
         bay_role="OZE",
         substation_ref="stac_1",
         bus_ref="bus_oze",
-        protection_ref=zabezpieczenie,
-        protection_codes=kody or [],
     )
 
 
@@ -109,12 +111,12 @@ _GEN = Generator(ref_id="gen_pv", name="PV", bus_ref="bus_oze", p_mw=2.0, gen_ty
 #: Iloczyn cech porównania LoM: rodzaj porównania × dane (brak funkcji, nastawa w oknie, poza
 #: oknem, brak nastawy, brak okna, brak przerwy SPZ). Oczekiwany status rekordu porównania: bez
 #: ustalonej podstawy okna/wymagania żadne porównanie nie wydaje „spełnia" ani „nie spełnia".
-_PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None, str]] = [
-    ("brak funkcji LoM", [_pole(zabezpieczenie=None)], [], "obecnosc", None, "BRAK_PODSTAWY"),
+_PRZYPADKI: list[tuple[str, list[Bay], list[Stopien] | None, str, str | None, str]] = [
+    ("brak funkcji LoM", [_pole()], None, "obecnosc", None, "BRAK_PODSTAWY"),
     (
         "81R w oknie",
         [_pole()],
-        [ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5)],
+        [stopien("81R", prog_hz_s=2.5)],
         "okno_normatywne",
         "81R",
         "BRAK_PODSTAWY",
@@ -122,7 +124,7 @@ _PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None,
     (
         "81R poniżej okna",
         [_pole()],
-        [ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)],
+        [stopien("81R", prog_hz_s=1.0)],
         "okno_normatywne",
         "81R",
         "BRAK_PODSTAWY",
@@ -130,7 +132,7 @@ _PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None,
     (
         "81U poza oknem",
         [_pole()],
-        [ProtectionSetting(function_type="underfrequency_81U", threshold_hz=48.0)],
+        [stopien("81U", prog_hz=48.0)],
         "okno_normatywne",
         "81U",
         "BRAK_PODSTAWY",
@@ -138,7 +140,7 @@ _PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None,
     (
         "81O w oknie",
         [_pole()],
-        [ProtectionSetting(function_type="overfrequency_81O", threshold_hz=51.5)],
+        [stopien("81O", prog_hz=51.5)],
         "okno_normatywne",
         "81O",
         "BRAK_PODSTAWY",
@@ -146,16 +148,16 @@ _PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None,
     (
         "78 bez okna",
         [_pole()],
-        [ProtectionSetting(function_type="vector_shift_78", threshold_deg=10.0)],
+        [stopien("78", prog_deg=10.0)],
         "okno_normatywne",
         "78",
         "BRAK_PODSTAWY",
     ),
-    ("81U z kodu bez nastaw", [_pole(kody=["81U"])], [], "obecnosc", "81U", "NIE_OCENIONO"),
+    ("81U bez nastaw", [_pole()], [stopien("81U")], "obecnosc", "81U", "NIE_OCENIONO"),
     (
         "koordynacja SPZ bez przerwy SPZ",
         [_pole()],
-        [ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.2)],
+        [stopien("81R", prog_hz_s=2.5, zwloka_s=0.2)],
         "koordynacja_spz",
         None,
         "NIE_OCENIONO",
@@ -171,7 +173,7 @@ _PRZYPADKI: list[tuple[str, list[Bay], list[ProtectionSetting], str, str | None,
 def test_kazde_porownanie_niesie_rekord_z_regula(
     nazwa: str,
     pola: list[Bay],
-    nastawy: list[ProtectionSetting],
+    nastawy: list[Stopien] | None,
     rodzaj: str,
     ansi: str | None,
     oczekiwany: str,
@@ -242,9 +244,7 @@ def test_modul_bez_pola_to_ocena_niewykonana_w_wymaganiu_sieci() -> None:
 
 
 def test_ocena_pola_ze_sprawdzeniami_to_rekord_wymagania() -> None:
-    widok = build_ochrona_lom_view(
-        _enm([_pole()], [_GEN], [ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5)])
-    )
+    widok = build_ochrona_lom_view(_enm([_pole()], [_GEN], [stopien("81R", prog_hz_s=2.5)]))
     (pole,) = widok["fields"]
     oceny = [OcenaKryterium.model_validate(c["ocena"]) for c in pole["checks"]]
     rekord = _ocena_pola(_POLE, oceny)

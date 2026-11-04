@@ -15,13 +15,14 @@ from enm.models import (
     ENMHeader,
     Generator,
     Load,
-    ProtectionAssignment,
     Source,
     Substation,
     SwitchBranch,
     Transformer,
 )
 from enm.validator import ENMValidator
+
+from tests.utils.sterownik import sterownik
 
 REF_KABEL_NN = "kab_nn_4x120_al"
 
@@ -413,11 +414,7 @@ def test_e064_nie_strzela_gdy_galaz_istnieje() -> None:
                 status="closed",
             )
         ],
-        protection_assignments=[
-            ProtectionAssignment(
-                ref_id="pa1", name="pa1", breaker_ref="cb1", device_type="overcurrent"
-            )
-        ],
+        protection_assignments=[sterownik(ref_id="pa1", name="pa1", wylacznik="cb1")],
     )
     assert "E064" not in _codes(model)
 
@@ -425,11 +422,7 @@ def test_e064_nie_strzela_gdy_galaz_istnieje() -> None:
 def test_e064_strzela_gdy_galaz_nie_istnieje() -> None:
     model = _model(
         buses=[Bus(ref_id="b0", name="b0", voltage_kv=0.4)],
-        protection_assignments=[
-            ProtectionAssignment(
-                ref_id="pa1", name="pa1", breaker_ref="cb-widmo", device_type="overcurrent"
-            )
-        ],
+        protection_assignments=[sterownik(ref_id="pa1", name="pa1", wylacznik="cb-widmo")],
     )
     issues = ENMValidator().validate(model).issues
     e064 = [i for i in issues if i.code == "E064"]

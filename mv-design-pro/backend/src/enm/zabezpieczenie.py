@@ -67,6 +67,15 @@ __all__ = [
     "ZACHOWAJ_ZRODLO_U0",
     "wejscia_dostepne",
     "wejscia_funkcji_w_aparacie",
+    "naruszenia_referencji_sterownika",
+    "IndeksReferencjiSterownikow",
+    "RODZAJE_APARATU_WYZWALANEGO",
+    "RODZAJE_WEJSCIA_STEROWNIKA",
+    "indeks_referencji_sterownikow",
+    "NARUSZENIE_APARAT",
+    "NARUSZENIE_DRUGI_STEROWNIK",
+    "NARUSZENIE_POLE",
+    "NARUSZENIE_PRZEKLADNIK",
 ]
 
 #: Sufiks identyfikatora sterownika pola zakładanego z szablonu (`<bay_ref>/sterownik`) —
@@ -99,7 +108,11 @@ def sterownik_pola(enm: Any, bay_ref: str | None) -> Any | None:
     """Sterownik pola (najwyżej jeden — walidator modelu odrzuca drugi) albo ``None``."""
     if not bay_ref:
         return None
-    return next((s for s in sterowniki(enm) if _pole(s, "bay_ref") == bay_ref), None)
+    # Wybór bez sortowania całej kolekcji (pisarze pól pytają o sterownik każdego pola przy
+    # każdej operacji): przy niedozwolonym drugim sterowniku wygrywa najmniejszy identyfikator —
+    # ten sam, który dałaby kolejność `sterowniki`.
+    pola = [s for s in _pole(enm, "protection_assignments") or [] if _pole(s, "bay_ref") == bay_ref]
+    return min(pola, key=lambda s: str(_pole(s, "ref_id") or ""), default=None)
 
 
 def _funkcje(sterownik: Any) -> list[Any]:
@@ -247,15 +260,17 @@ def funkcje_wylaczajace_aparat(sterownik: Any, device_ref: str | None) -> list[s
     wynik `ref_aparatu_wyzwalanego` aparatu pola albo identyfikator gałęzi wyłącznika)."""
     if not device_ref:
         return []
-    wlaczone = {
-        str(_pole(f, "ref")): str(_pole(f, "kod"))
-        for f in _funkcje(sterownik)
-        if _pole(f, "wlaczona", True)
+    # Kolejność = kolejność funkcji sterownika (jak `funkcje_zasilane_z_aparatu`), nie kolejność
+    # wierszy macierzy — dwa odczyty tego samego sterownika mówią tym samym porządkiem.
+    dzialajace = {
+        str(_pole(w, "funkcja_ref"))
+        for w in _pole(sterownik, "macierz_wyzwolen") or []
+        if device_ref in (_pole(w, "aparat_refs") or [])
     }
     kody: list[str] = []
-    for wiersz in _pole(sterownik, "macierz_wyzwolen") or []:
-        kod = wlaczone.get(str(_pole(wiersz, "funkcja_ref")))
-        if kod and device_ref in (_pole(wiersz, "aparat_refs") or []) and kod not in kody:
+    for f in _funkcje(sterownik):
+        kod = str(_pole(f, "kod"))
+        if _pole(f, "wlaczona", True) and str(_pole(f, "ref")) in dzialajace and kod not in kody:
             kody.append(kod)
     return kody
 
@@ -378,7 +393,9 @@ def _aparaty_rodzaju(aparaty: Sequence[Mapping[str, Any]], rodzaj: str) -> list[
             for a in aparaty
             if a.get("kind") == "CB" and ref_aparatu_wyzwalanego(a)
         ]
-    return [str(a["device_ref"]) for a in aparaty if a.get("kind") == rodzaj and a.get("device_ref")]
+    return [
+        str(a["device_ref"]) for a in aparaty if a.get("kind") == rodzaj and a.get("device_ref")
+    ]
 
 
 def _wiazania_z_obwodow(
@@ -519,18 +536,70 @@ def zapisz_nastawy_funkcji(
     sterownik["grupy_nastaw"] = sorted(grupy, key=lambda g: int(g.get("numer") or 0))
 
 
-def _istniejace_aparaty(enm: Mapping[str, Any], aparaty: Sequence[Mapping[str, Any]]) -> set[str]:
-    """Identyfikatory aparatów, na które mogą wskazywać wejścia i macierz sterownika: aparaty
-    pól (i ich gałęzie), gałęzie modelu i przekładniki pomiarowe."""
-    wynik: set[str] = set()
-    for aparat in list(aparaty) + [
-        a for pole in enm.get("bays") or [] for a in pole.get("primary_devices") or []
-    ]:
-        for klucz in ("device_ref", "linked_ref"):
-            if aparat.get(klucz):
-                wynik.add(str(aparat[klucz]))
-    wynik.update(str(g.get("ref_id")) for g in enm.get("branches") or [] if g.get("ref_id"))
-    wynik.update(str(m.get("ref_id")) for m in enm.get("measurements") or [] if m.get("ref_id"))
+#: Rodzaje aparatu pola, które przerywają prąd zwarciowy — cel macierzy wyzwoleń (wyłącznik).
+RODZAJE_APARATU_WYZWALANEGO: frozenset[str] = frozenset({"CB"})
+
+#: Wejście sterownika → rodzaje przekładnika, którym można je zrealizować (aparat pola
+#: `BayPrimaryDevice.kind` albo pomiar `Measurement`: CT → ``CT``, CT w układzie Ferrantiego →
+#: ``CORE_BALANCE_CT``, VT → ``VT``). JEDNA reguła dla walidatora modelu
+#: (`naruszenia_referencji_sterownika`) i pisarza z szablonu (`ustaw_funkcje_pola`): wejście
+#: wskazujące aparat innego rodzaju jest naruszeniem, a pisarz go nie zachowuje.
+RODZAJE_WEJSCIA_STEROWNIKA: Mapping[str, frozenset[str]] = {
+    "ct_ref": frozenset({"CT"}),
+    "i0_ct_ref": frozenset({"CORE_BALANCE_CT"}),
+    "vt_ref": frozenset({"VT", "PHASE_TO_PHASE_VT"}),
+    "u0_vt_ref": frozenset({"VT"}),
+    "ct_strony_2_refs": frozenset({"CT"}),
+}
+
+
+def _rodzaj_pomiaru(pomiar: Any) -> str | None:
+    rodzaj = _pole(pomiar, "measurement_type")
+    if rodzaj == "CT":
+        return "CORE_BALANCE_CT" if _pole(pomiar, "ct_arrangement") == "ferranti" else "CT"
+    return "VT" if rodzaj == "VT" else None
+
+
+def _referencje_aparatow(enm: Any, aparaty: Iterable[Any] = ()) -> tuple[set[str], dict[str, str]]:
+    """Wyłączniki (gałąź ``breaker`` albo aparat pola rodzaju wyłącznika, regułą
+    `ref_aparatu_wyzwalanego`) oraz rodzaj każdego aparatu pola i pomiaru (referencja →
+    rodzaj; wejście sprawdza rodzaj regułą `RODZAJE_WEJSCIA_STEROWNIKA`) modelu i ``aparaty``."""
+    wylaczniki = {
+        str(_pole(g, "ref_id"))
+        for g in _pole(enm, "branches") or []
+        if _pole(g, "type") == "breaker" and _pole(g, "ref_id")
+    }
+    przekladniki: dict[str, str] = {}
+    for m in _pole(enm, "measurements") or []:
+        rodzaj = _rodzaj_pomiaru(m)
+        if rodzaj is not None and _pole(m, "ref_id"):
+            przekladniki[str(_pole(m, "ref_id"))] = rodzaj
+    wszystkie = [
+        a for pole in _pole(enm, "bays") or [] for a in _pole(pole, "primary_devices") or []
+    ]
+    for aparat in [*wszystkie, *aparaty]:
+        rodzaj = _pole(aparat, "kind")
+        if rodzaj in RODZAJE_APARATU_WYZWALANEGO and (cel := ref_aparatu_wyzwalanego(aparat)):
+            wylaczniki.add(cel)
+        if rodzaj:
+            for klucz in ("device_ref", "linked_ref"):
+                if _pole(aparat, klucz):
+                    przekladniki[str(_pole(aparat, klucz))] = str(rodzaj)
+    return wylaczniki, przekladniki
+
+
+def _niezgodne_wejscia(
+    wejscia: Mapping[str, Any], przekladniki: Mapping[str, str]
+) -> list[tuple[str, str]]:
+    """Wejścia ``(klucz, ref)`` wskazujące aparat, którego nie ma albo który nie jest
+    przekładnikiem rodzaju dopuszczonego dla wejścia (`RODZAJE_WEJSCIA_STEROWNIKA`)."""
+    wynik: list[tuple[str, str]] = []
+    for klucz, dopuszczone in RODZAJE_WEJSCIA_STEROWNIKA.items():
+        wartosc = _pole(wejscia, klucz)
+        refy = wartosc if isinstance(wartosc, list | tuple) else [wartosc]
+        for ref in refy:
+            if _napis(ref) and przekladniki.get(str(ref)) not in dopuszczone:
+                wynik.append((klucz, str(ref)))
     return wynik
 
 
@@ -549,6 +618,7 @@ def ustaw_funkcje_pola(
     zrodlo_u0_ref: Any = ZACHOWAJ_ZRODLO_U0,
     katalog_ref: str | None = None,
     nazwa_pola: str | None = None,
+    aparaty_wymienione: Iterable[str] = (),
 ) -> dict[str, Any] | None:
     """Załóż albo zaktualizuj sterownik pola z zestawu funkcji szablonu — JEDYNY pisarz.
 
@@ -557,7 +627,9 @@ def ustaw_funkcje_pola(
     razem z nastawami i wierszem macierzy wyzwoleń. Wiązania wejść i wiersze macierzy
     wyzwoleń funkcji z szablonu pochodzą z obwodów wtórnych wzorca (`_wiazania_z_obwodow`);
     wiązanie nadane wcześniej (katalog sterownika, `add_relay`) ma pierwszeństwo przed
-    wiązaniem z szablonu. ``zrodlo_u0_ref`` — przekładnik napięciowy z otwartym trójkątem
+    wiązaniem z szablonu, dopóki wskazuje ten sam aparat: wiązanie do aparatu wymienionego
+    (``aparaty_wymienione`` — `enm.pola._aparaty_wymienione`) albo do aparatu, którego rodzaj
+    nie pasuje do wejścia (`RODZAJE_WEJSCIA_STEROWNIKA`), wraca z wzorca. ``zrodlo_u0_ref`` — przekładnik napięciowy z otwartym trójkątem
     (źródło 3U₀ potwierdzone przez projektanta, `enm.zrodlo_napiecia_zerowego`).
 
     ``kody=None`` — zestaw bez zmian (zmiana aparatów albo szablonu przelicza wyłącznie
@@ -603,21 +675,33 @@ def ustaw_funkcje_pola(
     if katalog_ref:
         sterownik["catalog_ref"] = katalog_ref
         sterownik["catalog_namespace"] = "ZABEZPIECZENIE"
-    istniejace = _istniejace_aparaty(enm, aparaty)
-    # Wiersz macierzy wskazujący aparat, którego już nie ma (wymiana wyposażenia pola), traci
-    # ten aparat; pusty wiersz znika i — gdy wzorzec wiąże funkcję — wraca z aparatem wzorca.
+    wylaczniki, przekladniki = _referencje_aparatow(enm, aparaty)
+    wymienione = set(aparaty_wymienione)
+    wylaczniki -= wymienione
+    for ref in wymienione:
+        przekladniki.pop(ref, None)
+    # Wiersz macierzy wskazujący aparat, którego już nie ma albo który nie jest wyłącznikiem
+    # (wymiana wyposażenia pola — identyfikator aparatu z numeru kolejnego może wskazać teraz
+    # inny aparat), traci ten aparat; pusty wiersz znika i — gdy wzorzec wiąże funkcję — wraca
+    # z aparatem wzorca.
     macierz: list[dict[str, Any]] = []
     for wiersz in sterownik.get("macierz_wyzwolen") or []:
-        refy = [r for r in wiersz.get("aparat_refs") or [] if r in istniejace]
+        refy = [r for r in wiersz.get("aparat_refs") or [] if r in wylaczniki]
         if refy:
             macierz.append({**wiersz, "aparat_refs": refy})
     sterownik["macierz_wyzwolen"] = macierz
     ustaw_zestaw_funkcji(sterownik, lista_kodow, wyzwolenia=wyzwolenia)
-    wejscia = {
-        k: v
-        for k, v in dict(sterownik.get("wejscia") or {}).items()
-        if not (k.endswith("_ref") and isinstance(v, str) and v not in istniejace)
-    }
+    # Wejście wskazujące aparat, którego nie ma albo który nie jest przekładnikiem rodzaju
+    # wejścia (ta sama reguła co walidator modelu), nie zostaje — wraca wiązanie wzorca.
+    wejscia = dict(sterownik.get("wejscia") or {})
+    for klucz, ref in _niezgodne_wejscia(wejscia, przekladniki):
+        wartosc = wejscia.get(klucz)
+        if isinstance(wartosc, list):
+            wejscia[klucz] = [r for r in wartosc if r != ref]
+        else:
+            wejscia.pop(klucz, None)
+    if not wejscia.get("ct_strony_2_refs"):
+        wejscia.pop("ct_strony_2_refs", None)
     if wejscia.get("i0_uklad") == "FERRANTI" and not wejscia.get("i0_ct_ref"):
         wejscia.pop("i0_uklad")
     if wejscia.get("u0_uklad") == "OTWARTY_TROJKAT" and not wejscia.get("u0_vt_ref"):
@@ -652,3 +736,119 @@ def ref_zrodla_u0_pola(enm: Any, bay_ref: str | None) -> str | None:
 def funkcja_rejestru(kod: str) -> FunkcjaEaz | None:
     """Wpis rejestru funkcji (``None`` — kod spoza rejestru)."""
     return FUNKCJE_EAZ.get(kod)
+
+
+#: Rodzaje naruszeń referencji sterownika wobec modelu (`naruszenia_referencji_sterownika`).
+NARUSZENIE_POLE = "POLE_NIEISTNIEJACE"
+NARUSZENIE_DRUGI_STEROWNIK = "DRUGI_STEROWNIK_POLA"
+NARUSZENIE_APARAT = "APARAT_NIEISTNIEJACY"
+NARUSZENIE_PRZEKLADNIK = "PRZEKLADNIK_NIEISTNIEJACY"
+
+
+_OPIS_WEJSCIA_PL: Mapping[str, str] = {
+    "ct_ref": "prądowe",
+    "i0_ct_ref": "prądu zerowego (układ Ferrantiego)",
+    "vt_ref": "napięciowe",
+    "u0_vt_ref": "napięcia zerowego (otwarty trójkąt)",
+    "ct_strony_2_refs": "prądowe drugiej strony",
+}
+_OPIS_RODZAJU_WEJSCIA_PL: Mapping[str, str] = {
+    "ct_ref": "przekładnik prądowy",
+    "i0_ct_ref": "przekładnik Ferrantiego",
+    "vt_ref": "przekładnik napięciowy",
+    "u0_vt_ref": "przekładnik napięciowy",
+    "ct_strony_2_refs": "przekładnik prądowy",
+}
+
+
+@dataclass(frozen=True)
+class IndeksReferencjiSterownikow:
+    """Zbiory referencji modelu, wobec których sprawdza się sterownik — liczone RAZ na migawkę
+    (walidator sprawdza wszystkie sterowniki, operacja jeden; obie drogi czytają ten indeks)."""
+
+    pola: frozenset[str]
+    sterowniki_pol: Mapping[str, tuple[str, ...]]
+    wylaczniki: frozenset[str]
+    przekladniki: Mapping[str, str]  # referencja aparatu pola albo pomiaru → rodzaj
+
+
+def indeks_referencji_sterownikow(enm: Any) -> IndeksReferencjiSterownikow:
+    """Indeks referencji: pola, sterowniki per pole, wyłączniki (gałąź ``breaker`` albo aparat
+    pola rodzaju wyłącznika, wskazany regułą `ref_aparatu_wyzwalanego`), przekładniki (pomiar
+    albo aparat pola rodzaju przekładnika)."""
+    pola = list(_pole(enm, "bays") or [])
+    sterowniki_pol: dict[str, list[str]] = {}
+    for s in sterowniki(enm):
+        bay = _napis(_pole(s, "bay_ref"))
+        if bay is not None:
+            sterowniki_pol.setdefault(bay, []).append(str(_pole(s, "ref_id") or ""))
+    wylaczniki, przekladniki = _referencje_aparatow(enm)
+    return IndeksReferencjiSterownikow(
+        pola=frozenset(str(_pole(b, "ref_id")) for b in pola),
+        sterowniki_pol={k: tuple(v) for k, v in sterowniki_pol.items()},
+        wylaczniki=frozenset(wylaczniki),
+        przekladniki=dict(przekladniki),
+    )
+
+
+def naruszenia_referencji_sterownika(
+    enm: Any, sterownik: Any, *, indeks: IndeksReferencjiSterownikow | None = None
+) -> list[tuple[str, str, str]]:
+    """Sterownik wobec MODELU — JEDNA reguła operacji (`attach_protection`, `update_protection`)
+    i walidatora (E064): pole istnieje i nie ma drugiego sterownika, macierz wyzwoleń wskazuje
+    wyłączniki (gałąź ``breaker`` albo aparat pola rodzaju wyłącznika), wejścia — istniejące
+    przekładniki (pomiar albo aparat pola rodzaju przekładnika). Zwraca ``(rodzaj, komunikat_pl,
+    ref)``; pusta lista — spójny. ``indeks`` — zbiory referencji migawki liczone raz
+    (`indeks_referencji_sterownikow`); bez niego liczony dla tego wywołania."""
+    from .slownik_komunikatow import opis_elementu
+
+    ind = indeks if indeks is not None else indeks_referencji_sterownikow(enm)
+    wynik: list[tuple[str, str, str]] = []
+    ref_id = str(_pole(sterownik, "ref_id") or "")
+    bay_ref = _napis(_pole(sterownik, "bay_ref"))
+    if bay_ref is not None:
+        if bay_ref not in ind.pola:
+            wynik.append(
+                (
+                    NARUSZENIE_POLE,
+                    "Sterownik zabezpieczeń wskazuje pole rozdzielnicy, którego nie ma w modelu "
+                    "sieci.",
+                    bay_ref,
+                )
+            )
+        drugi = next((r for r in ind.sterowniki_pol.get(bay_ref, ()) if r != ref_id), None)
+        if drugi is not None:
+            wynik.append(
+                (
+                    NARUSZENIE_DRUGI_STEROWNIK,
+                    f"{opis_elementu(enm, bay_ref, 'Pole')} ma już "
+                    f"{opis_elementu(enm, drugi, 'sterownik zabezpieczeń')} — "
+                    "pole ma jeden sterownik; funkcje dodaje się w nim.",
+                    bay_ref,
+                )
+            )
+    for aparat in aparaty_sterownika(sterownik):
+        if aparat not in ind.wylaczniki:
+            wynik.append(
+                (
+                    NARUSZENIE_APARAT,
+                    "Macierz wyzwoleń wskazuje aparat, którego nie ma w modelu sieci albo który "
+                    "nie jest wyłącznikiem.",
+                    aparat,
+                )
+            )
+    for klucz, ref in _niezgodne_wejscia(_pole(sterownik, "wejscia") or {}, ind.przekladniki):
+        przyczyna = (
+            "aparat, którego nie ma w modelu sieci"
+            if ref not in ind.przekladniki
+            else "aparat innego rodzaju"
+        )
+        wynik.append(
+            (
+                NARUSZENIE_PRZEKLADNIK,
+                f"Wejście {_OPIS_WEJSCIA_PL[klucz]} sterownika wymaga, by wskazany aparat był "
+                f"{_OPIS_RODZAJU_WEJSCIA_PL[klucz]} — wskazuje {przyczyna}.",
+                ref,
+            )
+        )
+    return wynik

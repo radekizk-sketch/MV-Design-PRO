@@ -26,10 +26,11 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (
 )
 from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
-from enm.models import Cable, Measurement, ProtectionAssignment, ProtectionSetting
+from enm.models import Cable, Measurement
 from enm.store import reset_enm_store, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.sterownik import sterownik, stopien
 
 
 @pytest.fixture(autouse=True)
@@ -85,20 +86,15 @@ def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = 
             )
         )
         model.protection_assignments.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot_coupler",
                 name="Zabezpieczenie sprzegla",
-                breaker_ref="sw_coupler",
+                wylacznik="sw_coupler",
                 ct_ref="ct_coupler",
                 catalog_ref="REF-OC-200",
-                device_type="overcurrent",
-                settings=[
-                    ProtectionSetting(
-                        function_type="overcurrent_51",
-                        threshold_a=prog_a,
-                        threshold_unit="A_PIERWOTNY",
-                        curve_type="IEC_SI",
-                        time_multiplier=0.2,
+                stopnie=[
+                    stopien(
+                        "51", prog=prog_a, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", tms=0.2
                     )
                 ],
             )
@@ -129,7 +125,7 @@ def test_bez_mapy_zabezpieczen_czas_jest_jawnym_zalozeniem_przypadku() -> None:
 def test_z_mapa_zabezpieczen_czas_pochodzi_z_nastawy_i_rozni_sie_od_zalozenia() -> None:
     """DOWOD ROZNICY: ten sam model z nastawa daje INNY czas niz zalozenie przypadku.
 
-    Gdyby przelozenie ``breaker_ref`` -> lacznik grafu nie dzialalo, oba przebiegi
+    Gdyby przelozenie wyłącznika macierzy wyzwoleń -> lacznik grafu nie dzialalo, oba przebiegi
     dalyby identyczny czas (zalozenie) i test by tego nie odroznil.
     """
     widok = build_wytrzymalosc_cieplna_view(_przebieg(z_zabezpieczeniem=True))
@@ -150,7 +146,7 @@ def test_z_mapa_zabezpieczen_czas_pochodzi_z_nastawy_i_rozni_sie_od_zalozenia() 
         ), "czas z charakterystyki nie moze przypadkiem rownac sie zalozeniu przypadku"
         assert czas["urzadzenie_ref"], "slad musi wskazywac aparat"
         assert czas["krzywa"] == "IEC_SI"
-        assert czas["funkcja"] == "overcurrent_51"
+        assert czas["funkcja"] == "51"
 
 
 def test_dowod_zaczyna_sie_od_zrodla_czasu_i_niesie_kroki_kryterium() -> None:

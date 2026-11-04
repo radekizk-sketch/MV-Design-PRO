@@ -519,6 +519,27 @@ def _tozsamosc_instancji_aparatu(aparat: Mapping[str, Any]) -> tuple[str, str, s
     )
 
 
+def _aparaty_wymienione(stare: Iterable[Any], nowe: Iterable[Any]) -> frozenset[str]:
+    """Identyfikatory aparatów pola (i ich gałęzi), które po zmianie wyposażenia nie wskazują
+    już TEGO SAMEGO aparatu: aparat zniknął albo pod tym samym identyfikatorem stoi inna
+    instancja (`_tozsamosc_instancji_aparatu`) lub aparat innego oznaczenia na rysunku pola.
+    Identyfikator aparatu wynika z numeru kolejnego (``…::dev::N``), więc zmiana szablonu albo
+    listy aparatów przesuwa go na inny aparat — wiązanie sterownika do takiego identyfikatora
+    nie może przetrwać (`enm.zabezpieczenie.ustaw_funkcje_pola`)."""
+
+    def _klucz(a: Mapping[str, Any]) -> tuple[tuple[str, str, str], str]:
+        return _tozsamosc_instancji_aparatu(a), str(a.get("designation") or "")
+
+    po = {str(a.get("device_ref")): _klucz(a) for a in nowe if isinstance(a, Mapping)}
+    wynik: set[str] = set()
+    for a in stare:
+        if not isinstance(a, Mapping):
+            continue
+        if po.get(str(a.get("device_ref"))) != _klucz(a):
+            wynik.update(str(a[k]) for k in ("device_ref", "linked_ref") if a.get(k))
+    return frozenset(wynik)
+
+
 def _sprawdz_stany_nowego_pola(rekord: Mapping[str, Any]) -> None:
     """Nowe pole i każdy jego aparat MUSZĄ mieć nadany stan obiektu — obiekt bez stanu to
     defekt drogi budowy (żadna operacja nie zgaduje stanu), więc błąd programu, nie odmowa."""
@@ -648,13 +669,14 @@ def _aparaty_z_napedami(rekord: Mapping[str, Any]) -> list[dict[str, Any]]:
 KLUCZ_STEROWNIKA_POLA = "_sterownik_pola"
 
 
-def _zapisz_sterownik_pola(
+def zapisz_sterownik_pola(
     enm: dict[str, Any],
     rekord: Mapping[str, Any],
     *,
     kody: Iterable[str] | None,
     katalog_ref: str | None = None,
     zrodlo_u0_ref: Any = ZACHOWAJ_ZRODLO_U0,
+    aparaty_wymienione: Iterable[str] = (),
 ) -> None:
     """Sterownik pola z zestawu funkcji szablonu — JEDYNA droga z pisarzy rekordu pola."""
     szablon = _szablon_pola(rekord)
@@ -666,6 +688,7 @@ def _zapisz_sterownik_pola(
         obwody=szablon.obwody_wtorne if szablon is not None else None,
         zrodlo_u0_ref=zrodlo_u0_ref,
         katalog_ref=katalog_ref,
+        aparaty_wymienione=aparaty_wymienione,
         nazwa_pola=str(rekord.get("bay_number") or rekord.get("name") or rekord["ref_id"]),
     )
     if sterownik is None:
@@ -692,7 +715,7 @@ def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]
         enm["bays"] = lista
     lista.append(zwalidowany)
     if isinstance(sterownik, Mapping):
-        _zapisz_sterownik_pola(
+        zapisz_sterownik_pola(
             enm,
             zwalidowany,
             kody=sterownik.get("kody") or [],
@@ -736,12 +759,15 @@ def zmien_pole(enm: dict[str, Any], ref_id: str, **zmiany: Any) -> dict[str, Any
         zwalidowany = waliduj_rekord_pola(kandydat)
         enm["bays"][i] = zwalidowany
         if sterownik_zmiany or {"primary_devices", "bay_template_ref"} & zmiany.keys():
-            _zapisz_sterownik_pola(
+            zapisz_sterownik_pola(
                 enm,
                 zwalidowany,
                 kody=sterownik_zmiany.get("funkcje_eaz"),
                 katalog_ref=sterownik_zmiany.get("katalog_sterownika_ref"),
                 zrodlo_u0_ref=sterownik_zmiany.get("zrodlo_u0_ref", ZACHOWAJ_ZRODLO_U0),
+                aparaty_wymienione=_aparaty_wymienione(
+                    rekord.get("primary_devices") or [], zwalidowany.get("primary_devices") or []
+                ),
             )
         return zwalidowany
     raise BladPola(f"pole {ref_id!r}: nie istnieje w modelu")

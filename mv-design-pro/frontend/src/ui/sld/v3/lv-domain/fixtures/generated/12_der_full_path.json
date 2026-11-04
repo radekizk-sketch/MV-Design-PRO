@@ -556,45 +556,51 @@
     "missing_data": [],
     "protection_assignments": [
       {
-        "breaker_ref": "QF-G1",
+        "bay_ref": null,
         "ct_ref": "CT-QF-G1",
-        "device_type": "overcurrent",
         "function_codes": [
-          "rocof_81R",
-          "underfrequency_81U",
-          "vector_shift_78"
+          "81R",
+          "78",
+          "81U"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie od pracy wyspowej Agregat G1",
         "ref_id": "REL-QF-G1",
-        "vt_ref": null
+        "vt_ref": null,
+        "wylaczniki_refs": [
+          "QF-G1"
+        ]
       },
       {
-        "breaker_ref": "QF-PV1",
+        "bay_ref": null,
         "ct_ref": "CT-QF-PV1",
-        "device_type": "overcurrent",
         "function_codes": [
-          "rocof_81R",
-          "underfrequency_81U",
-          "vector_shift_78"
+          "81R",
+          "78",
+          "81U"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie od pracy wyspowej PV1",
         "ref_id": "REL-QF-PV1",
-        "vt_ref": null
+        "vt_ref": null,
+        "wylaczniki_refs": [
+          "QF-PV1"
+        ]
       },
       {
-        "breaker_ref": "QF-T1",
+        "bay_ref": null,
         "ct_ref": "CT-T1",
-        "device_type": "overcurrent",
         "function_codes": [
-          "overcurrent_50",
-          "overcurrent_51"
+          "50",
+          "51"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie T1",
         "ref_id": "REL-T1",
-        "vt_ref": null
+        "vt_ref": null,
+        "wylaczniki_refs": [
+          "QF-T1"
+        ]
       }
     ],
     "root_bus_refs": [
@@ -1004,14 +1010,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-12_der_full_path",
-    "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
+    "model_hash": "63d07cb7d4135ced8684420e4f78609aa09a5eb1887cf16b956bf482a14b2638",
     "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "4d99b8fe3a82de4adda8bb3508881cdad2b93ea39e09ef4b4acb18616ffbc6dc",
+  "projection_hash": "b6b2de657717b482e391a79d5ca4e5e35a5e619618e3db3d609734020bc7456a",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3159,7 +3165,7 @@
     {
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
-      "calculation_run_id": "7b820578-32f5-5a00-9a35-1a74d5efc2e4",
+      "calculation_run_id": "71b2afb6-9677-53f8-addf-f3dd912989ec",
       "case_id": "fixture-12_der_full_path",
       "dane_przyjete": [
         {
@@ -3190,10 +3196,10 @@
           }
         }
       ],
-      "equivalent_id": "a40fbd1a-82ae-5df7-8306-9878f3502bc8",
+      "equivalent_id": "a6c4a5fb-5dbc-5521-bea2-c789fe68d185",
       "ikss_ka": 18.7094198,
       "missing_data": [],
-      "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
+      "model_hash": "63d07cb7d4135ced8684420e4f78609aa09a5eb1887cf16b956bf482a14b2638",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",

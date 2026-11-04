@@ -46,13 +46,14 @@ from enm.models import (
     Load,
     Measurement,
     MeasurementRating,
-    ProtectionAssignment,
     Source,
     Substation,
     SwitchBranch,
     Transformer,
 )
 from enm.topology import derive
+
+from tests.utils.sterownik import sterownik
 
 ZRODLA = (1, 2)
 STANY_Q = ("zamkniety", "otwarty", "bez_stanu")
@@ -210,12 +211,8 @@ def siec(zrodla: int, struktura: str, stan_q: str) -> EnergyNetworkModel:
             g.model_copy(update={"normal_state": "open"}) if g.ref_id == NOP else g for g in galezie
         ]
     zabezpieczenia = [
-        ProtectionAssignment(
-            ref_id="PA_B_IN",
-            name="Zabezpieczenie pola IN B",
-            breaker_ref="Q_B_IN",
-            ct_ref="CT_B_IN",
-            device_type="overcurrent",
+        sterownik(
+            ref_id="PA_B_IN", name="Zabezpieczenie pola IN B", wylacznik="Q_B_IN", ct_ref="CT_B_IN"
         )
     ]
     return EnergyNetworkModel(

@@ -86,7 +86,7 @@ OPIS_NAPEDU_PL: dict[RodzajNapedu, str] = {
 #: Rodzaj aparatu pola (`BayPrimaryDevice.kind`), z którego mierzy wejście funkcji EAZ — jedno
 #: źródło dla walidatora szablonu (`bay_templates._sprawdz_obwody_wtorne`), odczytu pola
 #: (`enm.pole_liniowe_gpz._opis_wejscia`) i materializacji powiązań na aparatach
-#: (`powiazania_aparatow_pola`).
+#: (sterownik pola: `enm.zabezpieczenie.ustaw_funkcje_pola`).
 RODZAJ_APARATU_WEJSCIA: dict[str, str] = {
     "RDZEN_CT": "CT",
     "UZWOJENIE_VT": "VT",
@@ -171,7 +171,7 @@ class PrzypisanieObwoduPrzekladnika(BaseModel):
 class NapedAparatuPola(BaseModel):
     """Napęd łącznika wzorca pola: oznaczenie i rodzaj aparatu, przy którym rysunek stawia znak
     napędu, oraz rodzaj napędu. Aparat pola dostaje napęd po OZNACZENIU i RODZAJU
-    (`powiazania_aparatow_pola`) — łącznik innego rodzaju o tym samym oznaczeniu (wariant
+    (`napedy_aparatow_pola`) — łącznik innego rodzaju o tym samym oznaczeniu (wariant
     wykonania łączników, którego rysunek nie przedstawia) napędu nie dostaje."""
 
     aparat: str  # oznaczenie aparatu na rysunku (np. „Q0", „Q1")

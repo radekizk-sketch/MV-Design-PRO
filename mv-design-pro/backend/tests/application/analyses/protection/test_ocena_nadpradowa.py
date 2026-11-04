@@ -73,6 +73,8 @@ from network_model.solvers.protection_iec60255 import (
     IEC60255CurveType,
 )
 
+from tests.utils.sterownik import Stopien, sterownik, stopien
+
 #: Pozycja katalogu ZABEZPIECZENIE z zakresami w ×In i podstawą (profil referencyjny D-33):
 #: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_SI/IEC_VI/DT.
 REL_REF = "REF-OC-200"
@@ -184,47 +186,45 @@ def _ct(
     )
 
 
-def _stopien_51(**nad: Any) -> dict[str, Any]:
-    wpis = {
-        "function_type": "overcurrent_51",
-        "threshold_a": 2.0,  # A wtórne → 2,0·600/5 = 240 A pierwotne; 0,4 ×In w zakresie
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "IEC_SI",
-        "time_multiplier": 0.2,
+def _stopien_51(**nad: Any) -> Stopien:
+    # A wtórne → 2,0·600/5 = 240 A pierwotne; 0,4 ×In w zakresie
+    nastawy: dict[str, Any] = {
+        "prog": 2.0,
+        "jednostka_progu": "A_WTORNY",
+        "krzywa": "IEC_SI",
+        "tms": 0.2,
     }
-    wpis.update(nad)
-    return wpis
+    nastawy.update(nad)
+    return stopien("51", **nastawy)
 
 
-def _stopien_50(**nad: Any) -> dict[str, Any]:
-    wpis = {
-        "function_type": "overcurrent_50",
-        "threshold_a": 20.0,  # A wtórne → 2400 A pierwotne; 4 ×In
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "DT",
-        "time_delay_s": 0.3,
+def _stopien_50(**nad: Any) -> Stopien:
+    # A wtórne → 2400 A pierwotne; 4 ×In
+    nastawy: dict[str, Any] = {
+        "prog": 20.0,
+        "jednostka_progu": "A_WTORNY",
+        "krzywa": "DT",
+        "zwloka_s": 0.3,
     }
-    wpis.update(nad)
-    return wpis
+    nastawy.update(nad)
+    return stopien("50", **nastawy)
 
 
 def _przypisanie(
     breaker: str,
-    settings: list[dict[str, Any]],
+    settings: list[Stopien],
     *,
     ct_ref: str | None = "ct",
     catalog_ref: str | None = REL_REF,
-    device_type: str = "overcurrent",
     is_enabled: bool = True,
 ) -> ProtectionAssignment:
-    return ProtectionAssignment(
+    return sterownik(
         ref_id=f"zab-{breaker}",
         name=f"Zabezpieczenie {breaker}",
-        breaker_ref=breaker,
+        wylacznik=breaker,
         ct_ref=ct_ref,
-        device_type=device_type,
         catalog_ref=catalog_ref,
-        settings=settings,
+        stopnie=settings,
         is_enabled=is_enabled,
     )
 
@@ -285,15 +285,15 @@ def test_komplet_nastaw_daje_progi_pierwotne_z_przekladni() -> None:
     assert nastawy.gotowe, nastawy.braki
     progi = {s.funkcja: s.prog_pierwotny_a for s in nastawy.stopnie}
     assert progi == {
-        "overcurrent_51": pytest.approx(240.0),
-        "overcurrent_50": pytest.approx(2400.0),
+        "51": pytest.approx(240.0),
+        "50": pytest.approx(2400.0),
     }
     assert nastawy.alf == 20.0
 
 
 def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
     """Próg podany po stronie pierwotnej 240 A = 2,0 A wtórne = 0,4 ×In — w zakresie."""
-    stopien = _stopien_51(threshold_a=240.0, threshold_unit="A_PIERWOTNY")
+    stopien = _stopien_51(prog=240.0, jednostka_progu="A_PIERWOTNY")
     nastawy = rozwiaz_nastawy(_model(), _przypisanie(Q1, [stopien]))
     assert nastawy.gotowe
     assert nastawy.stopnie[0].prog_wtorny_a == pytest.approx(2.0)
@@ -305,36 +305,37 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
         # model bez nastaw stopni nadprądowych
         (_przypisanie(Q1, []), None, KOD_BRAK_STOPNI),
         # stopień bez progu (dawniej: I> = 100 A z wartości domyślnej)
-        (_przypisanie(Q1, [_stopien_51(threshold_a=None)]), None, KOD_BRAK_PROGU),
-        # jednostka progu nieustalona (dawniej: próg czytany jako pierwotny)
+        (_przypisanie(Q1, [_stopien_51(prog=None)]), None, KOD_BRAK_PROGU),
+        # stopień bez progu i bez strony przekładnika — oba braki nazwane (próg ze stroną
+        # niezadeklarowaną nie wchodzi do modelu: `bledy_sterownika`, PZ-09)
         (
-            _przypisanie(Q1, [_stopien_51(threshold_unit=None)]),
+            _przypisanie(Q1, [_stopien_51(prog=None, jednostka_progu=None)]),
             None,
             KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
         ),
         # charakterystyka zależna bez TMS (dawniej: TMS = 0,3 z wartości domyślnej)
         (
-            _przypisanie(Q1, [_stopien_51(time_multiplier=None)]),
+            _przypisanie(Q1, [_stopien_51(tms=None)]),
             None,
             KOD_BRAK_MNOZNIKA,
         ),
         # DT bez zwłoki (dawniej: 0 s)
-        (_przypisanie(Q1, [_stopien_50(time_delay_s=None)]), None, KOD_BRAK_ZWLOKI),
+        (_przypisanie(Q1, [_stopien_50(zwloka_s=None)]), None, KOD_BRAK_ZWLOKI),
         # próg poza zakresem katalogu: 0,1 A wtórne = 0,02 ×In < 0,05 ×In
         (
-            _przypisanie(Q1, [_stopien_51(threshold_a=0.1)]),
+            _przypisanie(Q1, [_stopien_51(prog=0.1)]),
             None,
             KOD_PROG_POZA_ZAKRESEM,
         ),
         # TMS poza zakresem 0,05–1,0
         (
-            _przypisanie(Q1, [_stopien_51(time_multiplier=1.5)]),
+            _przypisanie(Q1, [_stopien_51(tms=1.5)]),
             None,
             KOD_MNOZNIK_POZA_ZAKRESEM,
         ),
         # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_SI, IEC_VI, DT)
         (
-            _przypisanie(Q1, [_stopien_51(curve_type="IEC_EI")]),
+            _przypisanie(Q1, [_stopien_51(krzywa="IEC_EI")]),
             None,
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
         ),
@@ -373,7 +374,7 @@ def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:
     wynik = _ocen(
         _model(
             _przypisanie(Q1, [_stopien_51()]),
-            _przypisanie(Q2, [_stopien_51(threshold_a=None)]),
+            _przypisanie(Q2, [_stopien_51(prog=None)]),
         )
     )
     assert {o.urzadzenie_ref for o in wynik.odmowy} == {"zab-q2"}
@@ -383,8 +384,7 @@ def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:
 def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyna() -> None:
     lom = _przypisanie(
         Q2,
-        [{"function_type": "rocof_81R", "threshold_hz_s": 2.0, "time_delay_s": 0.5}],
-        device_type="custom",
+        [stopien("81R", prog_hz_s=2.0, zwloka_s=0.5)],
     )
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()], is_enabled=False), lom))
     assert {(p.urzadzenie_ref, p.kod) for p in wynik.pominiete} == {
@@ -415,9 +415,9 @@ _IEEE = {
 
 def _stopien_z_krzywa(krzywa: str):
     if krzywa == "DT":
-        wpis = _stopien_51(curve_type="DT", time_multiplier=None, time_delay_s=0.35)
+        wpis = _stopien_51(krzywa="DT", tms=None, zwloka_s=0.35)
     else:
-        wpis = _stopien_51(curve_type=krzywa, time_multiplier=0.2)
+        wpis = _stopien_51(krzywa=krzywa, tms=0.2)
     przypisanie = _przypisanie(Q1, [wpis])
     return rozwiaz_nastawy(_model(), przypisanie)
 
@@ -615,7 +615,7 @@ def test_rekord_werdyktu_niesie_kryterium_wynik_limit_i_dowod() -> None:
 
 
 def test_odmowa_ma_rekord_nie_ocenionej_oceny_z_brakami() -> None:
-    wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(threshold_a=None)])))
+    wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(prog=None)])))
     (odmowa,) = wynik.odmowy
     assert odmowa.ocena.status_maszynowy == "NIE_OCENIONO"
     assert odmowa.ocena.wyjasnienie.czego_brakuje
@@ -627,12 +627,12 @@ def test_decyduje_najszybszy_stopien_ktory_ruszyl() -> None:
     """
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(), _stopien_50()])))
     punkt_b2 = next(o for o in wynik.oceny if o.punkt_ref == B2)
-    assert punkt_b2.stopien_decydujacy == "overcurrent_50"
+    assert punkt_b2.stopien_decydujacy == "50"
     assert punkt_b2.t_zadzialania_s == pytest.approx(0.3)
     punkt_b4 = next(o for o in wynik.oceny if o.punkt_ref == B4)
     # 4000 A < 2400 A? nie — 4000 > 2400, M50 = 1,667 → DT 0,3 s; 51: M = 16,67 →
     # t = 0,028/(16,67^0,02 − 1) = 0,028/0,057887 = 0,4837 s → decyduje 50.
-    assert punkt_b4.stopien_decydujacy == "overcurrent_50"
+    assert punkt_b4.stopien_decydujacy == "50"
 
 
 def test_wynik_deterministyczny() -> None:

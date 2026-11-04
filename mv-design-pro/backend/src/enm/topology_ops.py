@@ -47,7 +47,16 @@ from .slownik_komunikatow import (
     opis_obiektu,
 )
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu
-from .zabezpieczenie import aparaty_sterownika, sterowniki, wejscia_funkcji_w_aparacie
+from .zabezpieczenie import (
+    NARUSZENIE_APARAT,
+    NARUSZENIE_DRUGI_STEROWNIK,
+    NARUSZENIE_POLE,
+    NARUSZENIE_PRZEKLADNIK,
+    aparaty_sterownika,
+    naruszenia_referencji_sterownika,
+    sterowniki,
+    wejscia_funkcji_w_aparacie,
+)
 
 # ---------------------------------------------------------------------------
 # Operation Result
@@ -1005,7 +1014,9 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
     # Sprawdź, czy przekładnik zasila wejście sterownika zabezpieczeń
     for pa in sterowniki(enm):
-        uzyte = {r for refy in wejscia_funkcji_w_aparacie(pa.get("wejscia") or {}).values() for r in refy}
+        uzyte = {
+            r for refy in wejscia_funkcji_w_aparacie(pa.get("wejscia") or {}).values() for r in refy
+        }
         if ref_id in uzyte:
             issues.append(
                 OpIssue(
@@ -1043,68 +1054,17 @@ def _bledy_sterownika_w_modelu(
         ProtectionAssignment.model_validate(rekord)
     except ValueError as blad:
         return [OpIssue("OP_SETTINGS_INVALID", "BLOCKER", str(blad), ref_id)]
-    bay_ref = rekord.get("bay_ref")
-    if bay_ref:
-        if not any(b.get("ref_id") == bay_ref for b in enm.get("bays", [])):
-            issues.append(
-                OpIssue(
-                    "OP_BAY_NOT_FOUND",
-                    "BLOCKER",
-                    "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.",
-                    ref_id,
-                )
-            )
-        drugi = next(
-            (
-                pa
-                for pa in sterowniki(enm)
-                if pa.get("bay_ref") == bay_ref and pa.get("ref_id") != ref_id
-            ),
-            None,
-        )
-        if drugi is not None:
-            issues.append(
-                OpIssue(
-                    "OP_BAY_HAS_PROTECTION",
-                    "BLOCKER",
-                    f"{opis_elementu(enm, bay_ref, 'Pole')} ma już "
-                    f"{opis_elementu(enm, drugi.get('ref_id'), 'sterownik zabezpieczeń')} — "
-                    "pole ma jeden sterownik; funkcje dodaje się w nim.",
-                    ref_id,
-                )
-            )
-    aparaty = {
-        str(a.get(k))
-        for pole in enm.get("bays", [])
-        for a in pole.get("primary_devices") or []
-        for k in ("device_ref", "linked_ref")
-        if a.get(k)
+    kody = {
+        NARUSZENIE_POLE: "OP_BAY_NOT_FOUND",
+        NARUSZENIE_DRUGI_STEROWNIK: "OP_BAY_HAS_PROTECTION",
+        NARUSZENIE_APARAT: "OP_BREAKER_NOT_FOUND",
+        NARUSZENIE_PRZEKLADNIK: "OP_CT_NOT_FOUND",
     }
-    wylaczniki = _find_breaker_refs(enm) | aparaty
-    for wiersz in rekord.get("macierz_wyzwolen") or []:
-        for aparat in wiersz.get("aparat_refs") or []:
-            if aparat not in wylaczniki:
-                issues.append(
-                    OpIssue(
-                        "OP_BREAKER_NOT_FOUND",
-                        "BLOCKER",
-                        "Macierz wyzwoleń wskazuje aparat, którego nie ma w modelu sieci "
-                        "albo który nie jest wyłącznikiem.",
-                        ref_id,
-                    )
-                )
-    przekladniki = aparaty | {str(m.get("ref_id")) for m in enm.get("measurements", [])}
-    for refy in wejscia_funkcji_w_aparacie(rekord.get("wejscia") or {}).values():
-        for ref in refy:
-            if ref not in przekladniki:
-                issues.append(
-                    OpIssue(
-                        "OP_CT_NOT_FOUND",
-                        "BLOCKER",
-                        "Wejście sterownika wskazuje przekładnik, którego nie ma w modelu sieci.",
-                        ref_id,
-                    )
-                )
+    # JEDNA reguła z walidatorem modelu (E064): `naruszenia_referencji_sterownika`.
+    for rodzaj, komunikat, _ref in naruszenia_referencji_sterownika(
+        enm, {**rekord, "ref_id": ref_id}
+    ):
+        issues.append(OpIssue(kody[rodzaj], "BLOCKER", komunikat, ref_id))
     return issues
 
 

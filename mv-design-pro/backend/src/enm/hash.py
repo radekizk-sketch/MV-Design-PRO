@@ -127,10 +127,6 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         # Ta sama karta (rozszerzenie 2): klasa pola liniowego (IRiESD II.4.5.4.2). `None` =
         # klasa nieustalona — poza odciskiem; zadeklarowana jest treścią modelu.
         "klasa_pola",
-        # Ta sama karta (decyzja właściciela 2026-10-29): powiązanie źródła napięcia zerowego
-        # 3U₀ pola. `None` = źródło niepowiązane — poza odciskiem; powiązanie jest treścią
-        # modelu (rozstrzyga przypisanie funkcji 67N).
-        "zrodlo_u0_ref",
     ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
@@ -201,6 +197,16 @@ _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
     "measurements": ("ct_cores",),
 }
 
+#: Karta OCHRONA-JEDNO-ZRODLO (ADR-022): `Bay.protection_codes` (lista, wartość domyślna
+#: pusta) skasowane — kody funkcji niesie sterownik pola. Postać PEŁNA odcisku (projekcja
+#: semantyczna pola nigdy ich nie miała) zachowuje skasowany klucz jako PUSTĄ LISTĘ, tak jak
+#: go wypisywał `model_dump` w polu bez funkcji; pole z kodami zmienia odcisk (kody
+#: przeniesione do sterownika). `Bay.protection_ref` — w `_POLA_SKASOWANE_W_ODCISKU_PELNYM`
+#: jako `null`. Przypięte testem `tests/enm/test_sterownik_zabezpieczen.py`.
+_POLA_SKASOWANE_W_ODCISKU_PELNYM_JAKO_PUSTA_LISTA: dict[str, tuple[str, ...]] = {
+    "bays": ("protection_codes",),
+}
+
 #: W5-C: pola SKASOWANE z kolekcji `line_runs` — kolekcja stoi poza `_ELEMENT_KEYS`
 #: (jej `id` wchodzi do odcisku, pin `tests/enm/test_polityka_hash_kolekcji.py`), więc
 #: osobny wpis tej samej reguły „skasowane jako `null`": `LineRun.nop_station_ref` była
@@ -235,8 +241,6 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] 
             "ports",
             "rdzenie",
             "uzwojenia",
-            "funkcje_eaz_zasilane",
-            "funkcje_eaz_wylaczajace",
         )
     },
 }
@@ -271,7 +275,12 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
 #: migawka ze zrodlem niosla `"c_max": null, "c_min": null`. Zrodlo, ktore MIALO wartosc,
 #: zmienia odcisk (wartosc nie wchodzila do zadnego obliczenia). Przypiete testem
 #: `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`.
-_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_max", "c_min")}
+_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {
+    "sources": ("c_max", "c_min"),
+    # Karta OCHRONA-JEDNO-ZRODLO: `Bay.protection_ref` (wskazanie sterownika z pola) skasowane
+    # — sterownik wskazuje pole (`ProtectionAssignment.bay_ref`).
+    "bays": ("protection_ref",),
+}
 
 
 def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
@@ -312,6 +321,8 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
     if pelna:
         for pole in _POLA_SKASOWANE_W_ODCISKU_PELNYM.get(key, ()):
             item.setdefault(pole, None)
+        for pole in _POLA_SKASOWANE_W_ODCISKU_PELNYM_JAKO_PUSTA_LISTA.get(key, ()):
+            item.setdefault(pole, [])
 
 
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:

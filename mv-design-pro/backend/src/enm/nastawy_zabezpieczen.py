@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz
+from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz, etykieta_funkcji_eaz
 
 #: Numery grup nastaw sterownika (IEC 61850 SGCB: grupy 1…N; typowy sterownik SN — cztery).
 NUMERY_GRUP_NASTAW: tuple[int, ...] = (1, 2, 3, 4)
@@ -39,23 +39,13 @@ _KLUCZ_TMS = "tms"
 _KLUCZ_ZWLOKI = "zwloka_s"
 
 
-def etykieta_funkcji(kod: object) -> str:
-    """Etykieta funkcji dla projektanta: zapis z rysunku i kod w nawiasie (rejestr funkcji)."""
-    wpis = FUNKCJE_EAZ.get(str(kod))
-    if wpis is None:
-        return f"funkcja spoza rejestru ({kod})"
-    if wpis.oznaczenie_pl == wpis.kod:
-        return wpis.kod
-    return f"{wpis.oznaczenie_pl} ({wpis.kod})"
-
-
 def _liczba(wartosc: object) -> bool:
     return isinstance(wartosc, int | float) and not isinstance(wartosc, bool)
 
 
 def bledy_wartosci(funkcja: FunkcjaEaz, klucz: str, wartosc: object) -> list[str]:
     """Sprzeczności JEDNEJ nastawy wobec schematu funkcji (puste = wartość dopuszczalna)."""
-    etykieta = etykieta_funkcji(funkcja.kod)
+    etykieta = etykieta_funkcji_eaz(funkcja.kod)
     schemat = funkcja.schemat_nastawy(klucz)
     if schemat is None:
         return [f"Funkcja {etykieta} nie ma nastawy „{klucz}” w rejestrze funkcji."]
@@ -83,7 +73,7 @@ def bledy_nastaw_funkcji(funkcja: FunkcjaEaz, nastawy: Mapping[str, object]) -> 
     bledy: list[str] = []
     for klucz in sorted(nastawy):
         bledy.extend(bledy_wartosci(funkcja, klucz, nastawy[klucz]))
-    etykieta = etykieta_funkcji(funkcja.kod)
+    etykieta = etykieta_funkcji_eaz(funkcja.kod)
     if funkcja.schemat_nastawy(_KLUCZ_JEDNOSTKI) is not None:
         if _KLUCZ_PROGU in nastawy and _KLUCZ_JEDNOSTKI not in nastawy:
             bledy.append(
@@ -194,7 +184,7 @@ def bledy_sterownika(dane: Mapping[str, Any]) -> list[str]:
                 klucz = str(nastawa.get("klucz") or "")
                 if klucz in wartosci:
                     bledy.append(
-                        f"Grupa {numer}, funkcja {etykieta_funkcji(funkcja.kod)}: nastawa "
+                        f"Grupa {numer}, funkcja {etykieta_funkcji_eaz(funkcja.kod)}: nastawa "
                         f"„{klucz}” podana dwa razy."
                     )
                     continue
@@ -235,5 +225,4 @@ __all__ = [
     "bledy_sterownika",
     "bledy_wartosci",
     "bledy_wejsc",
-    "etykieta_funkcji",
 ]

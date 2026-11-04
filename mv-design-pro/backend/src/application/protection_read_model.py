@@ -124,7 +124,9 @@ _KOD_KONTROLI: dict[str, str] = {
 _FUNKCJE_KIERUNKOWE = frozenset({"67", "67N"})
 
 
-def _stopien_funkcji(assignment: ProtectionAssignment, funkcja_ref: str, kod: str) -> NastawaStopnia:
+def _stopien_funkcji(
+    assignment: ProtectionAssignment, funkcja_ref: str, kod: str
+) -> NastawaStopnia:
     """Odczyt stopnia prądowego dowolnej funkcji z nastawą ``prog`` (schemat rejestru)."""
     nastawy = nastawy_funkcji(assignment, funkcja_ref)
 

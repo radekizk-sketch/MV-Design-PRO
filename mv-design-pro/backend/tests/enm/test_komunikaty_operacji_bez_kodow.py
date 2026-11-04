@@ -409,7 +409,7 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
         "nazwy pól tabliczki agregatu z `pole()`"
     ),
     "enm/domain_operations_v2.py:bledy": (
-        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
+        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji_eaz`, "
         "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
     ),
     "enm/wyposazenie_pola.py:zrodlo_po.braki_zrodla": (

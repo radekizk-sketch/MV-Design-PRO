@@ -44,6 +44,7 @@ from application.analyses.protection.ocena_nadpradowa import (
     NastawyUrzadzenia,
     czas_urzadzenia,
     rozwiaz_nastawy,
+    wylacznik_urzadzenia,
 )
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
@@ -232,7 +233,10 @@ def znajdz_aparat_chroniacy(graph: NetworkGraph, branch_id: str) -> str | None:
 def nastawy_aparatow_modelu(model: EnergyNetworkModel) -> dict[str, NastawyUrzadzenia]:
     """Identyfikator wylacznika W GRAFIE -> rozwiazane nastawy czynnego zabezpieczenia.
 
-    Wpisy ``protection_assignments`` odwoluja sie do wylacznika przez ``ref_id`` modelu, a
+    Wylacznik wykonawczy sterownika pochodzi z macierzy wyzwolen (``wylacznik_urzadzenia``
+    — ta sama regula co czas pola); sterownik bez wiersza macierzy dla stopnia
+    nadpradowego nie wyznacza czasu zadnej galezi. Model zna wylacznik przez ``ref_id``, a
+
     graf zna go pod ``ref_to_graph_id`` — bez tego przelozenia zaden aparat nie zostalby
     dopasowany i kazda galaz raportowalaby brak nastaw. Zabezpieczenie wylaczone z ruchu
     nie wyznacza czasu. Przy kilku czynnych zabezpieczeniach jednego wylacznika wygrywa
@@ -242,7 +246,10 @@ def nastawy_aparatow_modelu(model: EnergyNetworkModel) -> dict[str, NastawyUrzad
     for wpis in sorted(model.protection_assignments, key=lambda w: w.ref_id):
         if not wpis.is_enabled:
             continue
-        wynik.setdefault(ref_to_graph_id(wpis.breaker_ref), rozwiaz_nastawy(model, wpis))
+        wylacznik = wylacznik_urzadzenia(wpis)
+        if wylacznik is None:
+            continue
+        wynik.setdefault(ref_to_graph_id(wylacznik), rozwiaz_nastawy(model, wpis))
     return wynik
 
 

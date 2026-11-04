@@ -33,6 +33,7 @@ from network_model.catalog.bay_templates import (
     funkcje_eaz_szablonu,
     szablon_domyslny_pola_liniowego_gpz,
 )
+from network_model.catalog.funkcje_eaz import ZESTAWY_FUNKCJI_RODZAJU
 from network_model.catalog.gazy_fluorowane import (
     AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL,
     KOD_ODMOWY_GAZU_FLUOROWANEGO,
@@ -135,8 +136,6 @@ from .pola import (
     zmien_pole,
 )
 from .pola import pole as pole_modelu
-from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola, sterownik_pola
-from network_model.catalog.funkcje_eaz import ZESTAWY_FUNKCJI_RODZAJU
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -196,6 +195,7 @@ from .uziemienie import blad_konfiguracji_uziemienia
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
+from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola, sterownik_pola
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -11580,7 +11580,12 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 zabezpieczenia.add(str(pa.get("ref_id")))
                 continue
             pa["macierz_wyzwolen"] = [
-                {**w, "aparat_refs": [a for a in w.get("aparat_refs") or [] if a not in usuniete_aparaty]}
+                {
+                    **w,
+                    "aparat_refs": [
+                        a for a in w.get("aparat_refs") or [] if a not in usuniete_aparaty
+                    ],
+                }
                 for w in pa.get("macierz_wyzwolen") or []
                 if [a for a in w.get("aparat_refs") or [] if a not in usuniete_aparaty]
             ]

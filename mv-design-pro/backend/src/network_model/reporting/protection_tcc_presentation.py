@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from network_model.catalog.funkcje_eaz import etykieta_funkcji_eaz
 from network_model.nazwy import nazwa_nadana
 
 #: Kod podstawy oznaczajacy krzywa policzona ze wzoru przekaznikowego.
@@ -116,8 +117,6 @@ NAGLOWKI_NASTAW_PL: tuple[str, ...] = (
     "Charakterystyka",
 )
 
-_STOPNIE_PL: dict[str, str] = {"overcurrent_51": "I> (51)", "overcurrent_50": "I>> (50)"}
-
 
 def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
     """Wiersze tabeli nastaw urządzenia wyniku koordynacji — po jednym na stopień.
@@ -143,7 +142,7 @@ def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str
         wiersze.append(
             (
                 nazwa,
-                _STOPNIE_PL.get(str(stopien.get("funkcja")), str(stopien.get("funkcja"))),
+                etykieta_funkcji_eaz(stopien.get("funkcja")),
                 f"{prog:.1f}" if isinstance(prog, int | float) else NIE_DOTYCZY,
                 czas,
                 str(stopien.get("krzywa") or NIE_DOTYCZY),

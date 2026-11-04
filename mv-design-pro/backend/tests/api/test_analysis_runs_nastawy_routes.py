@@ -31,11 +31,12 @@ from enm.models import (
     ENMHeader,
     Load,
     OverheadLine,
-    ProtectionAssignment,
     Source,
     SwitchBranch,
 )
 from fastapi.testclient import TestClient
+
+from tests.utils.sterownik import sterownik
 
 
 def _reset_backend_state() -> None:
@@ -300,12 +301,7 @@ def test_model_rozstrzyga_wskazanie_sprzeczne_to_422_z_kodem(
         )
     )
     siec.protection_assignments.append(
-        ProtectionAssignment(
-            ref_id="PA1",
-            name="Zabezpieczenie pola",
-            breaker_ref="CB1",
-            device_type="overcurrent",
-        )
+        sterownik(ref_id="PA1", name="Zabezpieczenie pola", wylacznik="CB1")
     )
     run = _zapisana_kotwica(uuid4(), siec)
     bez_wskazania = client.get(

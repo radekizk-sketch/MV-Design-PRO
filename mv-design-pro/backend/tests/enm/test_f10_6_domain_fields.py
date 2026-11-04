@@ -31,9 +31,10 @@ from enm.models import (
     ENMHeader,
     Measurement,
     MeasurementRating,
-    ProtectionAssignment,
 )
 from enm.store import reset_enm_store, set_enm
+
+from tests.utils.sterownik import sterownik
 
 
 @pytest.fixture(autouse=True)
@@ -139,20 +140,17 @@ class TestBayPrimaryDeviceDesignation:
 
 class TestProtectionAssignmentCtRefsSecondary:
     def test_ct_refs_secondary_round_trips(self):
-        pa = ProtectionAssignment(
+        pa = sterownik(
             ref_id="prot1",
             name="87T",
-            breaker_ref="cb1",
+            wylacznik="cb1",
             ct_ref="ct1",
-            ct_refs_secondary=["ct2"],
-            device_type="differential",
+            wejscia={"ct_strony_2_refs": ["ct2"]},
         )
         assert pa.ct_refs_secondary == ["ct2"]
 
     def test_ct_refs_secondary_defaults_empty(self):
-        pa = ProtectionAssignment(
-            ref_id="prot1", name="OC", breaker_ref="cb1", ct_ref="ct1", device_type="overcurrent"
-        )
+        pa = sterownik(ref_id="prot1", name="OC", wylacznik="cb1", ct_ref="ct1")
         assert pa.ct_refs_secondary == []
 
 

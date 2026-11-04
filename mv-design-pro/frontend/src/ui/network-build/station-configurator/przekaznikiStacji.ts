@@ -1,43 +1,42 @@
 /**
  * Przekaźniki pól SN stacji — wiersze listy „Przekaźniki” karty zabezpieczeń konfiguratora
- * stacji, wprost z modelu. Tor jest TEN SAM co znakowanie zabezpieczeń na SLD
- * (`ui/sld/v3/compose/protectionMarking.ts`): `Bay.protection_ref` → `ProtectionAssignment`.
- * Dawniej karta dostawała wyłącznie pustą listę bazową i mówiła „Zabezpieczenia dodaje się…”
- * także wtedy, gdy pola stacji miały przypięte zabezpieczenia.
+ * stacji, wprost z modelu. Tor jest TEN SAM co blok przekaźnika na schemacie i karta pola:
+ * sterownik pola (`ProtectionAssignment` z `bay_ref` pola, karta OCHRONA-JEDNO-ZRODLO) czytany
+ * akcesorami `ui/shared/sterownikZabezpieczen`.
  *
- * Kolejność deterministyczna: kolejność pól stacji. Funkcje to kody ANSI/IEC nastaw
- * (`settings[].function_type`) bez powtórzeń, w kolejności nastaw.
+ * Kolejność deterministyczna: kolejność pól stacji. Funkcje to kody rejestru funkcji
+ * sterownika (włączone), bez powtórzeń, w kolejności sterownika; nastawy — liczba nastaw
+ * grupy efektywnej.
  */
-import type { ProtectionAssignment } from '../../../types/enm';
+import type { EnergyNetworkModel } from '../../../types/enm';
 import {
-  ETYKIETA_RODZAJU_ZABEZPIECZENIA,
-  kodFunkcjiZabezpieczenia,
-} from '../../shared/etykietyZabezpieczen';
+  kodyFunkcjiSterownika,
+  liczbaNastawGrupyEfektywnej,
+  nazwaUrzadzeniaSterownika,
+  sterownikPola,
+} from '../../shared/sterownikZabezpieczen';
 import type { ProtectionRow } from './cards/StationConfigProtectionCard';
 
 export interface PoleZabezpieczenia {
   readonly oznaczenie: string;
-  readonly protectionRef: string | null | undefined;
+  readonly bayRef: string;
 }
 
 export function przekaznikiStacji(
-  zabezpieczenia: readonly ProtectionAssignment[],
+  model: Partial<Pick<EnergyNetworkModel, 'protection_assignments'>> | null | undefined,
   pola: readonly PoleZabezpieczenia[],
 ): readonly ProtectionRow[] {
-  const poRef = new Map(zabezpieczenia.map((z) => [z.ref_id, z] as const));
   const wiersze: ProtectionRow[] = [];
   for (const pole of pola) {
-    const zabezpieczenie = pole.protectionRef ? poRef.get(pole.protectionRef) : undefined;
-    if (!zabezpieczenie) continue;
+    const sterownik = sterownikPola(model, pole.bayRef);
+    if (!sterownik) continue;
     wiersze.push({
-      relayId: zabezpieczenie.ref_id,
+      relayId: sterownik.ref_id,
       bayDesignation: pole.oznaczenie,
-      typePl: ETYKIETA_RODZAJU_ZABEZPIECZENIA[zabezpieczenie.device_type],
-      functionsPl: [
-        ...new Set(zabezpieczenie.settings.map((n) => kodFunkcjiZabezpieczenia(n.function_type))),
-      ],
-      settingsCount: zabezpieczenie.settings.length,
-      enabled: zabezpieczenie.is_enabled,
+      typePl: nazwaUrzadzeniaSterownika(sterownik),
+      functionsPl: kodyFunkcjiSterownika(sterownik),
+      settingsCount: liczbaNastawGrupyEfektywnej(sterownik),
+      enabled: sterownik.is_enabled,
     });
   }
   return wiersze;

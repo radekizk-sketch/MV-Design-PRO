@@ -1860,6 +1860,7 @@ class BaySecondaryArchitecture(BaseModel):
     ] = "brak"
 
 
+
 class AlarmEntry(BaseModel):
     code: str
     active: bool = False
@@ -1870,6 +1871,7 @@ class AlarmEntry(BaseModel):
 
 
 class InterlockEntry(BaseModel):
+
     code: str
     active: bool = False
     reason: str

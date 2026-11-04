@@ -727,7 +727,6 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         from .domain_operations_v2 import _resolve_bay_template_protection_codes
 
         zmiany["funkcje_eaz"] = _resolve_bay_template_protection_codes(
-
             rekord.get("manufacturer_ref"),
             szablon_po,
             str(rekord.get("bay_role")),

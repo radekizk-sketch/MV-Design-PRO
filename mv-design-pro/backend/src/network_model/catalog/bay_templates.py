@@ -396,7 +396,7 @@ def odmowa_wykonania_lacznikow_w_izolacji(
 # ---------------------------------------------------------------------------
 # Funkcje EAZ WARUNKOWE (decyzja właściciela 2026-10-29, karta UX-04/POLE-LINIOWE-WZORZEC).
 # Funkcja, której wielkości wejściowej pole nie dostarcza samo, trafia do zestawu funkcji pola
-# (`Bay.protection_codes`) WYŁĄCZNIE przy spełnionym warunku rozstrzygniętym na MODELU
+# (`ProtectionAssignment.funkcje` sterownika pola) WYŁĄCZNIE przy spełnionym warunku rozstrzygniętym na MODELU
 # (`enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`). Rysunek standardu ją niesie
 # (`BayTemplate.funkcje_eaz`, `PozycjaProfiluEaz.na_rysunku`), ale przypisanie bez potwierdzonego
 # źródła byłoby funkcją bez wejścia — fikcją, a nie zabezpieczeniem.
@@ -1094,7 +1094,7 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
 #: Zabezpieczenia interfejsu pola źródłowego SN: kierunkowe 67/67N, napięciowe 27/59,
 #: częstotliwościowe 81U/81O i ROCOF 81R — każda funkcja raz. Ochronę od pracy wyspowej (LoM)
 #: realizują TE kryteria (LoM `application/analyses/ochrona_lom.py` rozpoznaje 81R i 78
-#: w `Bay.protection_codes`); dawny kod-agregat „anti-islanding" obok nich był duplikatem
+#: w funkcjach sterownika pola); dawny kod-agregat „anti-islanding" obok nich był duplikatem
 #: semantycznym (decyzja architekta 2026-10-30, `funkcje_eaz`).
 _FUNKCJE_EAZ_INTERFEJSU_OZE: tuple[str, ...] = (
     "67",
@@ -1701,7 +1701,7 @@ def template_primary_devices(
 # earthingSwitch / surgeArrester / cableHead) mapuje 1:1 na obecność aparatu
 # pierwotnego — zero fabrykacji (phantom rule): odznaczenie CT realnie usuwa CT.
 # Kanoniczna KOLEJNOŚĆ i oznaczenia Q są lustrem `BAY_TEMPLATE_DER_PV` (jedno
-# źródło porządku pola źródłowego); protection_relay mapuje na Bay.protection_codes
+# źródło porządku pola źródłowego); protection_relay mapuje na funkcje sterownika pola
 # (NIE na aparat pierwotny) przez `funkcje_eaz_roli("OZE")`.
 # ---------------------------------------------------------------------------
 
@@ -1921,7 +1921,7 @@ def _canonical_config_entry(template: BayTemplate) -> dict[str, Any]:
         "primary_devices": primary_devices,
         # Zestaw, który operacja zapisze w polu bez wskazanej klasy i bez spełnionych warunków
         # funkcji warunkowych — TA SAMA reguła co resolver operacji (`funkcje_eaz_szablonu`).
-        "protection_codes": funkcje_eaz_szablonu(template.template_id) or [],
+        "funkcje_eaz": funkcje_eaz_szablonu(template.template_id) or [],
         "wykonanie_pola": template.wykonanie_pola,
         "wykonanie_lacznikow": template.wykonanie_lacznikow,
         "tylko_gpz": template.tylko_gpz,
@@ -1954,7 +1954,7 @@ def _mv_source_config_entry(
         "template_id": None,
         "name": name,
         "primary_devices": primary_devices,
-        "protection_codes": funkcje_eaz_roli("OZE"),
+        "funkcje_eaz": funkcje_eaz_roli("OZE"),
         "wykonanie_pola": None,
         "wykonanie_lacznikow": None,
         "tylko_gpz": False,

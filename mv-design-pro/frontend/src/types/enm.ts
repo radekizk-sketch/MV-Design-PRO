@@ -80,46 +80,6 @@ export interface ObwodWtorny {
   moc_stykow_va?: number | null;
 }
 
-export interface ProtectionSetting {
-  /**
-   * FAB-F (2026-09-05): lustro pomijało 4 literały D10 (funkcje ochrony od
-   * pracy wyspowej / Loss of Mains — dodane addytywnie w backendzie, patrz
-   * `enm/models.py::ProtectionSetting.function_type`), niewidoczne dla
-   * guarda parytetu, bo sprawdzał obecność POLA, nie zbiór wartości unii.
-   */
-  function_type: 'overcurrent_50' | 'overcurrent_51' | 'earth_fault_50N'
-    | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
-    | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
-  threshold_a?: number | null;
-  /**
-   * Karta BIEG-ZABEZPIECZEN-Z-MODELU (PZ-09): strona przekładnika, po której podano próg —
-   * `A_WTORNY` (nastawa przekaźnika) albo `A_PIERWOTNY`. Próg bez jednostki jest odrzucany
-   * przy zapisie (`enm/nastawy_zabezpieczen.py::bledy_nastaw`).
-   */
-  threshold_unit?: 'A_WTORNY' | 'A_PIERWOTNY' | null;
-  time_delay_s?: number | null;
-  curve_type?:
-    | 'DT'
-    | 'IEC_SI'
-    | 'IEC_VI'
-    | 'IEC_EI'
-    | 'IEC_LTI'
-    | 'IEEE_MI'
-    | 'IEEE_VI'
-    | 'IEEE_EI'
-    | null;
-  /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
-  time_multiplier?: number | null;
-  is_directional?: boolean;
-  /**
-   * V12K-230: progi zabezpieczen, ktorych lustro nie mialo — kierunkowego (67,
-   * kat w stopniach) oraz czestotliwosciowych (81U/81O w Hz, 81R w Hz/s).
-   */
-  threshold_deg?: number | null;
-  threshold_hz?: number | null;
-  threshold_hz_s?: number | null;
-}
-
 // ---------------------------------------------------------------------------
 // Catalog-first: parameter source & overrides
 // ---------------------------------------------------------------------------
@@ -1227,11 +1187,6 @@ export interface Bay extends ENMElement {
    *  odbiorcze, mieszane, dedykowane wytwórcy. `null` = nieustalona. Jedno źródło trybu
    *  „linia/generacja" pola: generacja ⇔ klasa mieszana albo dedykowana wytwórcy. */
   klasa_pola?: KlasaPolaLiniowego | null;
-  /** Źródło napięcia zerowego 3U₀ funkcji 67N (lustro `enm.models.Bay.zrodlo_u0_ref`, decyzja
-   *  właściciela 2026-10-29): `device_ref` przekładnika napięciowego z uzwojeniem otwartego
-   *  trójkąta w polu pomiaru napięcia szyn tej sekcji (ENEA Z.17) albo w tym polu — powiązanie
-   *  potwierdzone przez projektanta. `null`/brak — funkcja 67N nieprzypisana. */
-  zrodlo_u0_ref?: string | null;
   bay_role: BayModelRole;
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
@@ -1262,12 +1217,6 @@ export interface Bay extends ENMElement {
   surge_arresters?: OgranicznikPrzepiecPola[];
   gpz_section_id?: string | null;
   equipment_refs: string[];
-  protection_ref?: string | null;
-  /** Kody funkcji zabezpieczeniowych ANSI/IEC do wyświetlenia na SLD, np.
-   *  ['87T','51','50','51N'] — stringi (NIE enum); lustro mechanizmu
-   *  OzeField.protection_codes. Mirror backendowego `Bay.protection_codes`.
-   *  Additive, default []. */
-  protection_codes?: string[];
   /** Phase 0A audit fix 8/8: kanoniczny ID pola dla dyspozytora ("10", "23/1"). */
   bay_number?: string | null;
   /** Krótka nazwa odpływu/feedera (UI label osobny od bay.name). */
@@ -1480,13 +1429,6 @@ export interface BayPrimaryDevice {
   /** Pochodzenie zaczepu: wybór projektanta w inspektorze pola albo wartość robocza rejestru
    *  (zaczep najwyższy, zasada nr 4 — dana przyjęta `ESTIMATED`). */
   zrodlo_zaczepu?: ZrodloZaczepu | null;
-  /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
-   *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
-   *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */
-  funkcje_eaz_zasilane?: string[];
-  /** Kody funkcji EAZ wyłączających ten wyłącznik — lustro
-   *  `BayPrimaryDevice.funkcje_eaz_wylaczajace`. */
-  funkcje_eaz_wylaczajace?: string[];
 }
 
 export interface BayMeasurements {
@@ -1544,50 +1486,6 @@ export interface BaySecondaryArchitecture {
     | 'brak';
 }
 
-export interface ProtectionSettingValue {
-  key: string;
-  value?: number | string | boolean | null;
-  unit?: string | null;
-  quality: 'obliczone' | 'reczne' | 'domyslne';
-}
-
-export interface ProtectionFunctionState {
-  code: string;
-  available: boolean;
-  enabled: boolean;
-  picked_up: boolean;
-  tripped: boolean;
-  blocked: boolean;
-  required_inputs: ('ct' | 'vt' | '3i0' | '3u0')[];
-  optional_inputs: ('ct' | 'vt' | '3i0' | '3u0')[];
-  missing_input_policy:
-    | 'blokada_zapisu'
-    | 'blokada_obliczen'
-    | 'ostrzezenie'
-    | 'degradacja_funkcji'
-    | 'wynik_czesciowy';
-  settings_ref?: string | null;
-  settings: ProtectionSettingValue[];
-  execution_mode: 'tylko_alarm' | 'pobudzenie' | 'wyzwolenie';
-  execution_device_ref?: string | null;
-  starts_spz: boolean;
-  blocks_reclose: boolean;
-  operator_ack_required_after_trip: boolean;
-}
-
-export interface SpzState {
-  bound_breaker_ref: string;
-  enabled: boolean;
-  fast_attempts_max: number;
-  slow_attempts_max: number;
-  attempts_done: number;
-  fast_time_s?: number | null;
-  slow_time_s?: number | null;
-  blocked: boolean;
-  blocked_reason?: string | null;
-  state: 'gotowe' | 'w_trakcie' | 'zakonczone' | 'odstawione';
-}
-
 export interface AlarmEntry {
   code: string;
   active: boolean;
@@ -1595,40 +1493,6 @@ export interface AlarmEntry {
   severity: 'informacja' | 'ostrzezenie' | 'alarm' | 'awaria';
   timestamp: string;
   message_pl: string;
-}
-
-export interface EventEntry {
-  code: string;
-  timestamp: string;
-  source: 'sterowanie' | 'ochrona' | 'pomiar' | 'komunikacja' | 'system';
-  message_pl: string;
-}
-
-export interface DisturbanceRecorderState {
-  available: boolean;
-  last_record_at?: string | null;
-  records_count: number;
-}
-
-export interface TrendState {
-  available: boolean;
-  channels: string[];
-}
-
-export interface BayProtectionControlUnit {
-  unit_ref: string;
-  manufacturer?: string | null;
-  model?: string | null;
-  functions: ProtectionFunctionState[];
-  measurement_inputs: Record<string, boolean>;
-  automation_features: Record<string, boolean>;
-  spz?: SpzState | null;
-  alarms: AlarmEntry[];
-  events: EventEntry[];
-  disturbance_recorder: DisturbanceRecorderState;
-  trends: TrendState;
-  settings_mode: 'automatyczne' | 'reczne';
-  settings_ref?: string | null;
 }
 
 export interface InterlockEntry {
@@ -1726,7 +1590,9 @@ export interface BayBaseModel {
   measurement_chain?: BayMeasurementChain | null;
   secondary_units: BaySecondaryUnitRef[];
   secondary_architecture: BaySecondaryArchitecture;
-  protection_config?: BayProtectionControlUnit | null;
+  /** Sterownik zabezpieczeń pola (ADR-022) — TEN SAM rekord co `protection_assignments`
+   *  modelu (`enm.zabezpieczenie.sterownik_pola`); `null` — pole bez sterownika. */
+  zabezpieczenie?: ProtectionAssignment | null;
   control_surface: BayControlSurface;
   interlocks: BayInterlockSet;
   source_endpoint?: BaySourceEndpoint | null;
@@ -1905,24 +1771,69 @@ export interface Measurement extends ENMElement {
 }
 
 // ---------------------------------------------------------------------------
-// ProtectionAssignment (przypięcie zabezpieczenia do wyłącznika)
+// ProtectionAssignment — sterownik zabezpieczeń (IED), JEDYNA struktura zabezpieczeń modelu
+// (karta OCHRONA-JEDNO-ZRODLO, ADR-022; lustro `enm/models.py`). Funkcje: kod z rejestru
+// `network_model/catalog/funkcje_eaz.py` (front: `ui/shared/slownikFunkcjiEaz.json`).
 // ---------------------------------------------------------------------------
 
-export interface ProtectionAssignment extends ENMElement {
-  breaker_ref: string;
+/** Przekładniki przypięte do wejść sterownika (aparat pola albo pomiar `measurements`). */
+export interface WejsciaZabezpieczenia {
   ct_ref?: string | null;
   vt_ref?: string | null;
-  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
-   *  różnicowej (87T wymaga CT po OBU stronach transformatora — `ct_ref`
-   *  niesie JEDEN CT, ta lista niesie pozostałe CT granicy strefy). Puste/
-   *  brak = strefa 2×CT NIE jest modelowana (degradacja do dotychczasowego
-   *  uproszczenia „obecność transformatora"). */
-  ct_refs_secondary?: string[];
-  device_type: 'overcurrent' | 'earth_fault' | 'directional_overcurrent'
-    | 'distance' | 'differential' | 'custom';
+  /** Filtr prądu zerowego 3I0: suma prądów fazowych (Holmgreen) albo przekładnik Ferrantiego. */
+  i0_uklad?: 'HOLMGREEN' | 'FERRANTI' | null;
+  i0_ct_ref?: string | null;
+  /** Źródło napięcia zerowego 3U0: otwarty trójkąt przekładnika albo z napięć fazowych. */
+  u0_uklad?: 'OTWARTY_TROJKAT' | 'Z_NAPIEC_FAZOWYCH' | null;
+  u0_vt_ref?: string | null;
+  /** Przekładniki drugiej strony strefy różnicowej (87T, 87L). */
+  ct_strony_2_refs?: string[];
+}
+
+/** Funkcja sterownika: `ref` w obrębie sterownika, `kod` z rejestru funkcji. */
+export interface FunkcjaZabezpieczenia {
+  ref: string;
+  kod: string;
+  wlaczona?: boolean;
+}
+
+export type PochodzenieNastawy = 'PROJEKTANT' | 'DOBOR' | 'WARTOSC_ROBOCZA';
+
+export interface NastawaFunkcji {
+  klucz: string;
+  wartosc: number | string | boolean;
+  pochodzenie?: PochodzenieNastawy;
+}
+
+export interface NastawyFunkcjiGrupy {
+  funkcja_ref: string;
+  nastawy?: NastawaFunkcji[];
+}
+
+/** Grupa nastaw 1–4 (aktywną bazową wybiera `aktywna_grupa`). */
+export interface GrupaNastaw {
+  numer: number;
+  funkcje?: NastawyFunkcjiGrupy[];
+}
+
+/** Wiersz macierzy wyzwoleń: funkcja → wyłączniki i pobudzenie SPZ. */
+export interface WyzwolenieFunkcji {
+  funkcja_ref: string;
+  aparat_refs: string[];
+  pobudza_spz?: boolean;
+}
+
+
+export interface ProtectionAssignment extends ENMElement {
+  bay_ref?: string | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  settings: ProtectionSetting[];
+  prad_znamionowy_wejscia_a?: number | null;
+  wejscia: WejsciaZabezpieczenia;
+  funkcje: FunkcjaZabezpieczenia[];
+  grupy_nastaw: GrupaNastaw[];
+  aktywna_grupa: number;
+  macierz_wyzwolen: WyzwolenieFunkcji[];
   is_enabled: boolean;
   parameter_source?: ParameterSource | null;
   source_mode?: CatalogSourceMode | null;

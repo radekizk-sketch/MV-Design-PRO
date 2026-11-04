@@ -39,6 +39,7 @@ import {
   powodBlokadyRodzinyPl,
 } from '../catalog/SwitchgearFamilyPicker';
 import { nazwaStanuObiektuPl } from '../shared/stanObiektu';
+import { kodyFunkcjiSterownika, nazwaUrzadzeniaSterownika } from '../shared/sterownikZabezpieczen';
 import { PORT_KIND_LABELS_PL } from '../sld/v2/core/ports';
 import { fieldRoleLabelOrNullPl, fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -312,7 +313,7 @@ export function buildBaySections(
   const baseModel = canonicalModel.base_model;
   const runtimeState = canonicalModel.runtime_state;
   const measurementChain = baseModel.measurement_chain;
-  const protection = baseModel.protection_config;
+  const protection = baseModel.zabezpieczenie ?? null;
   const sourceEndpoint = baseModel.source_endpoint;
   const projectResults = item.project_results;
   const activeInterlocks = baseModel.interlocks.entries.filter((entry) => entry.active);
@@ -464,14 +465,18 @@ export function buildBaySections(
         id: 'protection',
         label: 'Zabezpieczenie pola',
         fields: [
-          { key: 'unit_ref', label: 'Jednostka wtórna', value: protection?.unit_ref ?? null },
-          { key: 'model', label: 'Model', value: protection?.model ?? null },
+          { key: 'unit_ref', label: 'Sterownik', value: protection?.name ?? null },
+          { key: 'model', label: 'Model', value: protection ? nazwaUrzadzeniaSterownika(protection) : null },
           {
             key: 'functions',
             label: 'Funkcje aktywne',
-            value: joinValues(protection?.functions.map((entry) => entry.code)) ?? 'Nie skonfigurowano',
+            value: joinValues(kodyFunkcjiSterownika(protection)) ?? 'Nie skonfigurowano',
           },
-          { key: 'spz', label: 'SPZ', value: protection?.spz?.state ?? 'SPZ nie skonfigurowany' },
+          {
+            key: 'spz',
+            label: 'SPZ',
+            value: kodyFunkcjiSterownika(protection).includes('79') ? 'funkcja 79 włączona' : 'SPZ nie skonfigurowany',
+          },
         ],
       },
       {

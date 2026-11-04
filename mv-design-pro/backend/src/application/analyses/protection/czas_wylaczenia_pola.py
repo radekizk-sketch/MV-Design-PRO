@@ -44,7 +44,7 @@ ZERO HEURYSTYK I ZERO FABRYKACJI:
     otwierany przez zabezpieczenie nie leży w polu, jego pozycji nie ma w katalogu albo
     zabezpieczenie otwiera aparat, który nie przerywa zwarcia (czas własny nie dotyczy).
   - czas własny pochodzi wyłącznie z pozycji katalogu WYŁĄCZNIKA, który to zabezpieczenie
-    otwiera (``ProtectionAssignment.breaker_ref``) — nie z pierwszego aparatu pola, który
+    otwiera (macierz wyzwoleń sterownika pola) — nie z pierwszego aparatu pola, który
     akurat niesie liczbę (odłącznik nie wyłącza zwarcia).
 
 WHITE BOX: odpowiedź niesie oba człony osobno, nastawę (funkcja, próg, krzywa,
@@ -56,7 +56,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from application.analyses.aparaty_pol import (
     AparatPola,
@@ -64,12 +64,17 @@ from application.analyses.aparaty_pol import (
     parametry_aparatu,
     znajdz_stacje,
 )
-from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
+from application.analyses.protection.ocena_nadpradowa import (
+    czas_urzadzenia,
+    rozwiaz_nastawy,
+    wylacznik_urzadzenia,
+)
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
 from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
+from enm.zabezpieczenie import sterownik_pola
 from network_model.catalog.wartosci_robocze import (
     PARAMETR_CZAS_WLASNY,
     WartoscRozstrzygnieta,
@@ -115,23 +120,16 @@ def _bez_czasu(kod: str, powod_pl: str, **slad: Any) -> dict[str, Any]:
     }
 
 
-def _przypisanie_pola(
-    enm: EnergyNetworkModel, aparat_refy: set[str], protection_ref: str | None
-) -> ProtectionAssignment | None:
-    """Czynne zabezpieczenie pola: po wyłączniku pola albo po ``protection_ref``.
+def _przypisanie_pola(enm: EnergyNetworkModel, bay: Bay) -> ProtectionAssignment | None:
+    """Czynny sterownik TEGO pola (najwyżej jeden w polu — walidator modelu odrzuca drugi).
 
-    Kolejność deterministyczna (po ``ref_id``), żeby pole z dwoma przypisaniami
-    zawsze dawało ten sam czas.
+    Czas pola pochodzi wyłącznie z jego własnego sterownika: nigdy z sąsiedniego pola ani
+    ze stałej (karta OCHRONA-JEDNO-ZRODLO pkt 4).
     """
-    kandydaci = [
-        wpis
-        for wpis in sorted(enm.protection_assignments, key=lambda w: str(w.ref_id))
-        if wpis.is_enabled
-        and (wpis.breaker_ref in aparat_refy or (protection_ref and wpis.ref_id == protection_ref))
-    ]
-    if not kandydaci:
+    wpis = sterownik_pola(enm, bay.ref_id)
+    if wpis is None or not wpis.is_enabled:
         return None
-    return kandydaci[0]
+    return cast(ProtectionAssignment, wpis)
 
 
 def _czas_wlasny_aparatu(wylacznik: AparatPola) -> WartoscRozstrzygnieta | None:
@@ -210,12 +208,12 @@ def _czas_wylaczenia_pola(
             "Pole nie ma w modelu aparatu z katalogu, więc nie ma czym wyłączyć zwarcia.",
         )
 
-    wpis = _przypisanie_pola(enm, {a.aparat_ref for a in aparaty_pola}, bay.protection_ref)
+    wpis = _przypisanie_pola(enm, bay)
     if wpis is None:
         return _bez_czasu(
             READINESS_BRAK_NASTAW,
-            "Aparat tego pola nie ma przypisanego czynnego zabezpieczenia, "
-            "więc czas zadziałania jest niewyznaczalny.",
+            "Pole nie ma czynnego sterownika zabezpieczeń, więc czas zadziałania jest "
+            "niewyznaczalny — czasu z innego pola ani stałej nie podstawiono.",
         )
 
     nazwa_zabezpieczenia = nazwa_elementu(wpis, "protection_assignments")
@@ -266,7 +264,8 @@ def _czas_wylaczenia_pola(
     czas_nastawy = float(decydujacy["t_s"])
     krzywa_txt = str(decydujacy["krzywa"])
 
-    wylacznik = next((a for a in aparaty_pola if a.aparat_ref == wpis.breaker_ref), None)
+    ref_wylacznika = wylacznik_urzadzenia(wpis)
+    wylacznik = next((a for a in aparaty_pola if a.aparat_ref == ref_wylacznika), None)
     pozycja_ref = wylacznik.catalog_ref if wylacznik is not None else None
     czas_wlasny = _czas_wlasny_aparatu(wylacznik) if wylacznik is not None else None
     opis_czlonu = (

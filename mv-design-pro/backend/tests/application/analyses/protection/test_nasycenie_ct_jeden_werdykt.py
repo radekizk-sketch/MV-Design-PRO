@@ -49,6 +49,8 @@ from network_model.solvers.equipment_checks.ct_burden_saturation import (
     check_ct_burden_saturation,
 )
 
+from tests.utils.sterownik import sterownik
+
 KATALOG_CT = "ct_200_5_5p10_10va_abb"  # 200/5 A 5P10 10 VA — pozycja referencyjna
 RCT_PRODUCENTA = 0.15
 #: Obwód wtórny o łącznym obciążeniu S_2obl = 20 VA: przewody 2·0,017241·5/2,5 Ω przy
@@ -90,14 +92,13 @@ def _model(*, obwod: bool, klasa: str | None) -> tuple[EnergyNetworkModel, Prote
         },
         obwod_wtorny=_obwod() if obwod else None,
     )
-    przypisanie = ProtectionAssignment(
+    przypisanie = sterownik(
         ref_id="zab-pola",
         name="Zabezpieczenie pola",
-        breaker_ref="q-pola",
+        wylacznik="q-pola",
         ct_ref="ct-pola",
-        device_type="overcurrent",
         catalog_ref="REF-OC-200",
-        settings=[
+        stopnie=[
             {
                 "function_type": "overcurrent_51",
                 "threshold_a": 2.0,

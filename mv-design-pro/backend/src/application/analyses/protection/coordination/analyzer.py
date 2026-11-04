@@ -105,7 +105,7 @@ def _najczulszy_stopien(nastawy: NastawyUrzadzenia) -> Any:
 def _stopien_przeciazeniowy(nastawy: NastawyUrzadzenia) -> Any:
     """Stopień, który ma NIE działać przy prądzie roboczym: zwłoczny I> (51), a gdy go nie
     ma — najczulszy (każdy stopień pobudzony prądem roboczym to fałszywe zadziałanie)."""
-    zwloczne = [s for s in nastawy.stopnie if s.funkcja == "overcurrent_51"]
+    zwloczne = [s for s in nastawy.stopnie if s.funkcja == "51"]
     return zwloczne[0] if zwloczne else _najczulszy_stopien(nastawy)
 
 
@@ -515,7 +515,7 @@ class OvercurrentCoordinationAnalyzer:
                         time_s=decydujacy["t_s"],
                     )
                 )
-            zwloczny = next((s for s in n.stopnie if s.funkcja == "overcurrent_51"), None)
+            zwloczny = next((s for s in n.stopnie if s.funkcja == "51"), None)
             odniesienie = zwloczny if zwloczny is not None else najczulszy
             krzywe.append(
                 TCCCurve(

@@ -57,6 +57,7 @@ import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { czyFunkcjaNaSchemacie, funkcjaEaz, podzialFunkcjiNaSchemacie, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
+import { kodyFunkcjiSterownika, nazwaUrzadzeniaSterownika, sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
@@ -353,15 +354,6 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   CORE_BALANCE_CT: 'Przekładnik Ferrantiego',
   UNBALANCE_CT: 'Przekładnik niezrównoważenia baterii',
   PHASE_TO_PHASE_VT: 'Przekładnik napięciowy międzyfazowy',
-};
-
-const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {
-  overcurrent: 'nadprądowe',
-  earth_fault: 'ziemnozwarciowe',
-  directional_overcurrent: 'nadprądowe kierunkowe',
-  distance: 'odległościowe',
-  differential: 'różnicowe',
-  custom: 'inne (definicja użytkownika)',
 };
 
 /** Tryb regulacji z karty katalogowej przekształtnika (`ConverterType.control_mode`) — słownik
@@ -670,25 +662,19 @@ function stanObiektuAparatu(ix: IndeksModelu, aparat: AparatPola): string | null
   return null;
 }
 
-/** Urządzenia zabezpieczeniowe pola — przypisania z wyłącznikiem pola albo wskazane
- *  `Bay.protection_ref`. JEDNO źródło dla wiersza „Zabezpieczenie" i celu akcji wierszy
- *  funkcji (nastawy istniejącego urządzenia albo dodanie urządzenia). */
-function przypisaniaZabezpieczenPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): ProtectionAssignment[] {
-  const refy = new Set(aparaty.map((a) => a.ref));
-  for (const a of aparaty) if (a.galaz) refy.add(a.galaz.ref_id);
-  return (ix.model.protection_assignments ?? []).filter(
-    (pa) => refy.has(pa.breaker_ref) || (bay.protection_ref && pa.ref_id === bay.protection_ref),
-  );
+/** Sterownik zabezpieczeń pola (JEDYNA struktura zabezpieczeń modelu — `ProtectionAssignment`
+ *  z `bay_ref` pola). JEDNO źródło dla wiersza „Zabezpieczenie", tabeli funkcji i celu akcji
+ *  wierszy funkcji (nastawy istniejącego sterownika albo dodanie urządzenia). */
+function sterownikPolaKarty(ix: IndeksModelu, bay: Bay): ProtectionAssignment | null {
+  return sterownikPola(ix.model, bay.ref_id);
 }
 
-function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
-  const przypisane = przypisaniaZabezpieczenPola(ix, bay, aparaty);
-  if (przypisane.length > 0) {
-    return przypisane
-      .map((pa) => `${publicTechnicalLabel(pa.name, 'Zabezpieczenie')} (${RODZAJ_ZABEZPIECZENIA_PL[pa.device_type] ?? pa.device_type})`)
-      .join(', ');
-  }
-  return null;
+function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay): string | null {
+  const sterownik = sterownikPolaKarty(ix, bay);
+  if (!sterownik) return null;
+  const nazwa = publicTechnicalLabel(sterownik.name, 'Sterownik zabezpieczeń');
+  const urzadzenie = nazwaUrzadzeniaSterownika(sterownik);
+  return urzadzenie !== sterownik.name ? `${nazwa} (${urzadzenie})` : nazwa;
 }
 
 /** Polska nazwa rodzaju przekładnika (słownik ENM `measurement_type`) — bez kodu CT/VT w UI. */
@@ -711,11 +697,11 @@ function przekladnikiPola(ix: IndeksModelu, bay: Bay): string[] {
   return pomiaryPola(ix, bay).map(opisPrzekladnika);
 }
 
-function komorkaZabezpieczeniaCt(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
+function komorkaZabezpieczeniaCt(ix: IndeksModelu, bay: Bay): string | null {
   const czesci: string[] = [];
-  const zab = zabezpieczeniaPola(ix, bay, aparaty);
+  const zab = zabezpieczeniaPola(ix, bay);
   if (zab) czesci.push(zab);
-  const funkcje = (bay.protection_codes ?? []).filter((k) => napis(k));
+  const funkcje = kodyFunkcjiSterownika(sterownikPolaKarty(ix, bay));
   if (funkcje.length > 0) czesci.push(`funkcje ${funkcje.join(', ')}`);
   // Rodzaj z pola modelu (`measurement_type`), nie z napisu opisu — jedno źródło predykatu.
   const ct = pomiaryPola(ix, bay).filter((m) => m.measurement_type === 'CT').map(opisPrzekladnika);
@@ -844,7 +830,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
         ir: znamiona?.ir ?? null,
         ik: znamiona?.ik ?? null,
         stan: glowny ? stanAparatu(ix, glowny, bay) : null,
-        zabezpieczenie: komorkaZabezpieczeniaCt(ix, bay, aparaty),
+        zabezpieczenie: komorkaZabezpieczeniaCt(ix, bay),
       },
     };
   });
@@ -974,7 +960,7 @@ function opisGeneratora(g: Generator): string {
 
 /**
  * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
- * KAŻDĄ funkcję `Bay.protection_codes` — kod (numer IEEE C37.2 albo skrót krajowy), zapis
+ * KAŻDĄ funkcję sterownika pola (`ProtectionAssignment.funkcje`, włączoną) — kod (numer IEEE C37.2 albo skrót krajowy), zapis
  * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`),
  * miejsce na schemacie (blok przekaźnika niesie ≤ 4 kody zabezpieczeń, reszta to „+N" — ten sam
  * podział `podzialFunkcjiNaSchemacie`) i przejście do nastaw: pole z urządzeniem
@@ -982,11 +968,12 @@ function opisGeneratora(g: Generator): string {
  * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
  * „brak w słowniku funkcji", nie zmyśloną nazwę.
  */
-function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): SekcjaKarty {
-  const kody = bay.protection_codes ?? [];
+function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty {
+  const sterownik = sterownikPolaKarty(ix, bay);
+  const kody = kodyFunkcjiSterownika(sterownik);
   const { naSchemacie } = podzialFunkcjiNaSchemacie(kody);
   const rysowane = new Set(naSchemacie);
-  const maUrzadzenie = przypisaniaZabezpieczenPola(ix, bay, aparaty).length > 0;
+  const maUrzadzenie = sterownik !== null;
   const akcja: AkcjaWierszaKarty = maUrzadzenie
     ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
     : {
@@ -997,7 +984,7 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: read
     id: 'zabezpieczenia',
     tytul: 'Zabezpieczenia i automatyka',
     wiersze: [
-      wiersz('zabezpieczenie', 'Zabezpieczenie', zabezpieczeniaPola(ix, bay, aparaty)),
+      wiersz('zabezpieczenie', 'Zabezpieczenie', zabezpieczeniaPola(ix, bay)),
       lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
     ],
     tabele: [
@@ -1106,7 +1093,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         },
       ],
     },
-    sekcjaZabezpieczenIAutomatyki(ix, bay, aparaty),
+    sekcjaZabezpieczenIAutomatyki(ix, bay),
     {
       id: 'przylaczenie',
       tytul: 'Przyłączenie',

@@ -55,6 +55,7 @@ import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../shared/rodzajStacji';
+import { sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
@@ -516,7 +517,7 @@ function deriveStationBayRows(
       bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
       hasEquipment,
-      hasProtection: Boolean(bay.protection_ref),
+      hasProtection: sterownikPola(snapshot, bay.ref_id) !== null,
       // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.
       hasMeasurements: pomiaryPol.has(bay.ref_id),
       // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
@@ -783,14 +784,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ),
     [snapshot?.measurements, polaSnStacji],
   );
-  // Przekaźniki pól SN wprost z modelu (`Bay.protection_ref` → `ProtectionAssignment`).
+  // Przekaźniki pól SN wprost z modelu (sterownik pola — `ProtectionAssignment.bay_ref`).
   const stationRelays = useMemo(
     () =>
       przekaznikiStacji(
-        snapshot?.protection_assignments ?? [],
-        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, protectionRef: bay.protection_ref })),
+        snapshot,
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, bayRef: bay.ref_id })),
       ),
-    [snapshot?.protection_assignments, polaSnStacji],
+    [snapshot, polaSnStacji],
   );
   // Pola pomiarowe SN z deklaracją pomiaru (krok „Pola pomiarowe”).
   const stationMeteringBays = useMemo(

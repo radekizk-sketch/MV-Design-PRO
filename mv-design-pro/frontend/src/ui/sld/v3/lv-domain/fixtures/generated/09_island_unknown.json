@@ -816,17 +816,19 @@
     "missing_data": [],
     "protection_assignments": [
       {
-        "breaker_ref": "QF-T1",
+        "bay_ref": null,
         "ct_ref": "CT-T1",
-        "device_type": "overcurrent",
         "function_codes": [
-          "overcurrent_50",
-          "overcurrent_51"
+          "50",
+          "51"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie T1",
         "ref_id": "REL-T1",
-        "vt_ref": null
+        "vt_ref": null,
+        "wylaczniki_refs": [
+          "QF-T1"
+        ]
       }
     ],
     "root_bus_refs": [
@@ -1423,14 +1425,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-09_island_unknown",
-    "model_hash": "e18232035b11c0506a285cb86500ba4075a4a8a7615a9ef29f959f566902aa5d",
+    "model_hash": "01a209ffc6811816c896a89525286cf9cc7ac59660f2a89a57f32cd9201d8b11",
     "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "1b52bd1dc6a5e3a067eae2da1d6c80653b20920040fcf2ffb98a742cb8fa31e1",
+  "projection_hash": "04a2dca40f157052331a5cd2cced796bd35079a03b287d3096ce4523fc0cd38c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2664,12 +2666,12 @@
     {
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
-      "calculation_run_id": "fb2babd1-371c-5b9f-a24a-ebc2367bfa27",
+      "calculation_run_id": "33d20d83-3b7b-551f-b8b2-504bdddbc81d",
       "case_id": "fixture-09_island_unknown",
-      "equivalent_id": "021c6654-b155-5f96-b5f9-f6bc5a14df4f",
+      "equivalent_id": "09051a70-d30d-5900-a0ed-191018796ee6",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "e18232035b11c0506a285cb86500ba4075a4a8a7615a9ef29f959f566902aa5d",
+      "model_hash": "01a209ffc6811816c896a89525286cf9cc7ac59660f2a89a57f32cd9201d8b11",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",

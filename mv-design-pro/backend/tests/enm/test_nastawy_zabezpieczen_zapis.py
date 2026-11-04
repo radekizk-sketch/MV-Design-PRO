@@ -1,19 +1,23 @@
-"""Jedna reguła zapisu nastaw zabezpieczeń dla każdego pisarza (karta BIEG-ZABEZPIECZEN-Z-MODELU).
+"""Jedna reguła zapisu sterownika zabezpieczeń dla każdego pisarza (karta OCHRONA-JEDNO-ZRODLO).
 
-Deklaracja modułu ``enm.nastawy_zabezpieczen``: „JEDNA reguła dla każdego pisarza” — zapis
+Deklaracja modułu ``enm.nastawy_zabezpieczen``: „JEDNA dla każdego pisarza i odczytu" — zapis
 przyjmuje nastawy NIEKOMPLETNE (brak nazywa ocena), odrzuca SPRZECZNE i zapisuje postać
-znormalizowaną (walidacja ``ProtectionSetting``, ``exclude_none``, sortowanie po funkcji).
-Ten test przypina deklarację: gdyby któryś pisarz przepuszczał sprzeczność albo zapisywał
-nastawy bez normalizacji, ten sam model dawałby różne migawki zależnie od drogi zapisu.
+deterministyczną (nastawy funkcji posortowane po kluczu, funkcje grupy w kolejności funkcji
+sterownika, grupy po numerze). Ten test przypina deklarację: gdyby któryś pisarz przepuszczał
+sprzeczność albo zapisywał w innej postaci, ten sam model dawałby różne migawki zależnie od drogi
+zapisu, a wczytanie migawki (kontrakt ``ProtectionAssignment`` woła tę samą regułę) odrzuciłoby
+zapis, który operacja przyjęła.
 
 Iloczyn cech:
-  pisarz {``add_relay``, ``update_protection_settings`` (operacje domenowe V2),
-          ``attach_protection``, ``update_protection`` (operacje topologiczne)} ×
-  nastawy {komplet, niekompletne ×2 (tylko funkcja; próg bez charakterystyki) — przyjęte;
-          sprzeczne ×12 — odrzucone} ×
-  skutek {odmowa: model wejściowy nietknięty i brak nowego przypisania, kod odmowy wspólny dla
-          operacji V2; przyjęcie: zapis równy ``normalizuj_nastawy`` i ta sama postać dla
+  pisarz {``update_protection_settings`` (operacja domenowa V2), ``attach_protection``,
+          ``update_protection`` (operacje topologiczne)} ×
+  grupa {1, 2, 3, 4} × nastawy {komplet, niekompletne ×2 (bez nastaw; próg ze stroną bez
+          charakterystyki) — przyjęte; sprzeczne ×13 — odrzucone} ×
+  skutek {odmowa: model wejściowy nietknięty i brak nowego sterownika, kod odmowy operacji V2
+          ``relay.settings_invalid``; przyjęcie: ta sama postać zapisu z każdego pisarza i dla
           wejścia w odwróconej kolejności}.
+``add_relay`` NIE pisze nastaw (dodaje sterownik z funkcjami i wiązaniami wejść; nastawy pisze
+wyłącznie ``update_protection_settings``) — przypięte osobnym testem.
 Sieć: G08 bez przekaźników (magistrala z wyłącznikiem liniowym i przekładnikiem z katalogu),
 budowana operacjami domenowymi.
 """
@@ -26,8 +30,10 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation
-from enm.nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
+from enm.models import ProtectionAssignment
+from enm.nastawy_zabezpieczen import NUMERY_GRUP_NASTAW, bledy_sterownika
 from enm.topology_ops import attach_protection, update_protection
+from enm.zabezpieczenie import zapisz_nastawy_funkcji
 
 from tests.golden.enm_builders.zabezpieczenia_magistrali import (
     KATALOG_APARATU,
@@ -39,42 +45,35 @@ from tests.golden.enm_builders.zabezpieczenia_magistrali import (
     siec_magistrali,
 )
 
-KOMPLET: list[dict[str, Any]] = copy.deepcopy(NASTAWY_Q1)
+Nastawy = dict[str, dict[str, Any]]
 
-NIEKOMPLETNE: dict[str, list[dict[str, Any]]] = {
-    "tylko_funkcja": [{"function_type": "overcurrent_51"}],
-    "prog_bez_charakterystyki": [
-        {"function_type": "overcurrent_51", "threshold_a": 2.0, "threshold_unit": "A_WTORNY"}
-    ],
+KOMPLET: Nastawy = copy.deepcopy(NASTAWY_Q1)
+
+NIEKOMPLETNE: dict[str, Nastawy] = {
+    "bez_nastaw": {"51": {}},
+    "prog_bez_charakterystyki": {"51": {"prog": 2.0, "jednostka_progu": "A_WTORNY"}},
 }
 
-_I51 = {"function_type": "overcurrent_51", "threshold_a": 2.0, "threshold_unit": "A_WTORNY"}
+_I51 = {"prog": 2.0, "jednostka_progu": "A_WTORNY"}
 
-SPRZECZNE: dict[str, Any] = {
-    "nie_lista": {"function_type": "overcurrent_51"},
-    "wpis_nie_slownik": ["overcurrent_51"],
-    "funkcja_spoza_slownika": [{"function_type": "overcurrent_99"}],
-    "prog_niedodatni": [{**_I51, "threshold_a": 0.0, "curve_type": "DT", "time_delay_s": 0.3}],
-    "prog_bez_jednostki": [
-        {"function_type": "overcurrent_51", "threshold_a": 2.0, "curve_type": "DT"}
-    ],
-    "mnoznik_niedodatni": [{**_I51, "curve_type": "IEC_SI", "time_multiplier": -0.1}],
-    "zwloka_ujemna": [{**_I51, "curve_type": "DT", "time_delay_s": -0.1}],
-    "zwloka_zero_funkcji_pradowej": [{**_I51, "curve_type": "DT", "time_delay_s": 0.0}],
-    "zwloka_przy_charakterystyce_zaleznej": [
-        {**_I51, "curve_type": "IEC_SI", "time_multiplier": 0.2, "time_delay_s": 0.3}
-    ],
-    "mnoznik_przy_czasie_niezaleznym": [
-        {**_I51, "curve_type": "DT", "time_delay_s": 0.3, "time_multiplier": 0.2}
-    ],
-    "funkcja_dwukrotnie": [
-        {**_I51, "curve_type": "DT", "time_delay_s": 0.3},
-        {**_I51, "curve_type": "DT", "time_delay_s": 0.5},
-    ],
-    "pole_czestotliwosciowe_w_funkcji_pradowej": [{**_I51, "threshold_hz": 50.0}],
-    "pole_pradowe_w_funkcji_czestotliwosciowej": [
-        {"function_type": "rocof_81R", "threshold_hz_s": 2.0, "threshold_a": 1.0}
-    ],
+SPRZECZNE: dict[str, Nastawy] = {
+    "prog_niedodatni": {"51": {**_I51, "prog": 0.0, "krzywa": "DT", "zwloka_s": 0.3}},
+    "prog_bez_jednostki": {"51": {"prog": 2.0, "krzywa": "DT", "zwloka_s": 0.3}},
+    "prog_nie_liczba": {"51": {**_I51, "prog": "2,0"}},
+    "jednostka_spoza_listy": {"51": {"prog": 2.0, "jednostka_progu": "kA"}},
+    "krzywa_spoza_listy": {"51": {**_I51, "krzywa": "IEC_XX", "tms": 0.2}},
+    "mnoznik_niedodatni": {"51": {**_I51, "krzywa": "IEC_SI", "tms": -0.1}},
+    "zwloka_ujemna": {"51": {**_I51, "krzywa": "DT", "zwloka_s": -0.1}},
+    "zwloka_zero_funkcji_pradowej": {"51": {**_I51, "krzywa": "DT", "zwloka_s": 0.0}},
+    "zwloka_przy_charakterystyce_zaleznej": {
+        "51": {**_I51, "krzywa": "IEC_SI", "tms": 0.2, "zwloka_s": 0.3}
+    },
+    "mnoznik_przy_czasie_niezaleznym": {
+        "51": {**_I51, "krzywa": "DT", "zwloka_s": 0.3, "tms": 0.2}
+    },
+    "nastawa_spoza_schematu_funkcji": {"51": {**_I51, "prog_hz": 50.0}},
+    "nastawa_pradowa_w_funkcji_czestotliwosciowej": {"50": {"prog_hz_s": 2.0}},
+    "funkcja_spoza_sterownika": {"81R": {"prog_hz_s": 2.0}},
 }
 
 
@@ -119,120 +118,188 @@ def _siec() -> tuple[dict[str, Any], str, str]:
     return copy.deepcopy(enm), wylacznik, przekladnik
 
 
-def _siec_z_przekaznikiem() -> tuple[dict[str, Any], str]:
-    enm, wylacznik, przekladnik = _siec()
-    wynik = _add_relay(enm, wylacznik, przekladnik, KOMPLET)
-    assert wynik.get("error") is None, wynik.get("error")
-    return wynik["snapshot"], wynik["selection_hint"]["element_id"]
-
-
-def _add_relay(
-    enm: dict[str, Any], wylacznik: str, przekladnik: str, nastawy: Any
-) -> dict[str, Any]:
+def _add_relay(enm: dict[str, Any], wylacznik: str, przekladnik: str) -> dict[str, Any]:
     return execute_domain_operation(
         enm,
         "add_relay",
         {
             "breaker_ref": wylacznik,
-            "ct_ref": przekladnik,
+            "wejscia": {"ct_ref": przekladnik},
             "relay_type": "NADPRADOWY",
             "catalog_ref": KATALOG_PRZEKAZNIKA,
             "name": "Zabezpieczenie testu",
-            "settings": nastawy,
         },
     )
 
 
-def _zapis(pisarz: str, nastawy: Any) -> tuple[bool, dict[str, Any], dict[str, Any], str | None]:
+def _siec_z_przekaznikiem() -> tuple[dict[str, Any], str]:
+    enm, wylacznik, przekladnik = _siec()
+    wynik = _add_relay(enm, wylacznik, przekladnik)
+    assert wynik.get("error") is None, wynik.get("error")
+    return wynik["snapshot"], wynik["selection_hint"]["element_id"]
+
+
+def _rekord_z_nastawami(
+    enm: dict[str, Any], ref: str, nastawy: Nastawy, grupa: int
+) -> dict[str, Any]:
+    """Rekord sterownika ``ref`` z nastawami zapisanymi wspólnym akcesorem domeny."""
+    (rekord,) = (copy.deepcopy(p) for p in enm["protection_assignments"] if p["ref_id"] == ref)
+    for funkcja_ref, wartosci in nastawy.items():
+        zapisz_nastawy_funkcji(rekord, numer_grupy=grupa, funkcja_ref=funkcja_ref, nastawy=wartosci)
+    if not any(g["numer"] == rekord["aktywna_grupa"] for g in rekord["grupy_nastaw"]):
+        rekord["grupy_nastaw"] = sorted(
+            [*rekord["grupy_nastaw"], {"numer": rekord["aktywna_grupa"], "funkcje": []}],
+            key=lambda g: g["numer"],
+        )
+    return rekord
+
+
+def _zapis(
+    pisarz: str, nastawy: Nastawy, grupa: int
+) -> tuple[bool, dict[str, Any], dict[str, Any], str | None]:
     """Wykonaj zapis wskazanym pisarzem. Zwraca (przyjęty, model przed, model po, kod odmowy);
     przy przyjęciu „model po” to migawka z zapisem, przy odmowie — model wejściowy po wywołaniu."""
-    if pisarz in ("add_relay", "attach_protection"):
-        enm, wylacznik, przekladnik = _siec()
-        przed = copy.deepcopy(enm)
-        if pisarz == "add_relay":
-            wynik = _add_relay(enm, wylacznik, przekladnik, nastawy)
-            if wynik.get("error") is not None:
-                return False, przed, enm, wynik.get("error_code")
-            return True, przed, wynik["snapshot"], None
-        wynik_topo = attach_protection(
-            enm,
-            {
-                "ref_id": "zab-testu",
-                "name": "Zabezpieczenie testu",
-                "breaker_ref": wylacznik,
-                "ct_ref": przekladnik,
-                "device_type": "overcurrent",
-                "settings": nastawy,
-            },
-        )
-        return wynik_topo.success, przed, (wynik_topo.enm if wynik_topo.success else enm), None
     enm, zabezpieczenie = _siec_z_przekaznikiem()
+    if pisarz == "attach_protection":
+        rekord = _rekord_z_nastawami(enm, zabezpieczenie, nastawy, grupa)
+        enm["protection_assignments"] = [
+            p for p in enm["protection_assignments"] if p["ref_id"] != zabezpieczenie
+        ]
+        przed = copy.deepcopy(enm)
+        wynik_topo = attach_protection(enm, rekord)
+        return wynik_topo.success, przed, (wynik_topo.enm if wynik_topo.success else enm), None
     przed = copy.deepcopy(enm)
     if pisarz == "update_protection_settings":
         wynik = execute_domain_operation(
             enm,
             "update_protection_settings",
-            {"protection_ref": zabezpieczenie, "settings": nastawy},
+            {"protection_ref": zabezpieczenie, "grupa": grupa, "nastawy": nastawy},
         )
         if wynik.get("error") is not None:
             return False, przed, enm, wynik.get("error_code")
         return True, przed, wynik["snapshot"], None
-    wynik_topo = update_protection(enm, {"ref_id": zabezpieczenie, "settings": nastawy})
+    rekord = _rekord_z_nastawami(enm, zabezpieczenie, nastawy, grupa)
+    wynik_topo = update_protection(
+        enm, {"ref_id": zabezpieczenie, "grupy_nastaw": rekord["grupy_nastaw"]}
+    )
     return wynik_topo.success, przed, (wynik_topo.enm if wynik_topo.success else enm), None
 
 
-PISARZE = ("add_relay", "update_protection_settings", "attach_protection", "update_protection")
+PISARZE = ("update_protection_settings", "attach_protection", "update_protection")
 
 
-def _zapisane(enm: dict[str, Any]) -> list[dict[str, Any]]:
-    (przypisanie,) = enm["protection_assignments"]
-    return przypisanie["settings"]
+# Identyfikator sterownika testu (deterministyczny: `referencja_sterownika_pola` wyłącznika).
+def _ref_testu() -> str:
+    return _siec_z_przekaznikiem()[1]
 
 
+def _sterownik(enm: dict[str, Any]) -> dict[str, Any]:
+    ref = _ref_testu()
+    (sterownik,) = (p for p in enm["protection_assignments"] if p["ref_id"] == ref)
+    return sterownik
+
+
+def _grupy(enm: dict[str, Any]) -> list[dict[str, Any]]:
+    return _sterownik(enm)["grupy_nastaw"]
+
+
+def _wartosci(enm: dict[str, Any], grupa: int) -> dict[str, dict[str, Any]]:
+    (wpis,) = (g for g in _grupy(enm) if g["numer"] == grupa)
+    return {f["funkcja_ref"]: {n["klucz"]: n["wartosc"] for n in f["nastawy"]} for f in wpis["funkcje"]}
+
+
+@pytest.mark.parametrize("grupa", NUMERY_GRUP_NASTAW)
 @pytest.mark.parametrize("pisarz", PISARZE)
-@pytest.mark.parametrize(
-    "nazwa,nastawy",
-    [("komplet", KOMPLET), *NIEKOMPLETNE.items()],
-)
-def test_nastawy_kompletne_i_niekompletne_zapisane_w_postaci_znormalizowanej(
-    pisarz: str, nazwa: str, nastawy: list[dict[str, Any]]
+@pytest.mark.parametrize("nazwa,nastawy", [("komplet", KOMPLET), *NIEKOMPLETNE.items()])
+def test_nastawy_kompletne_i_niekompletne_zapisane_w_jednej_postaci(
+    pisarz: str, grupa: int, nazwa: str, nastawy: Nastawy
 ) -> None:
-    przyjety, _przed, po, kod = _zapis(pisarz, copy.deepcopy(nastawy))
+    przyjety, _przed, po, kod = _zapis(pisarz, copy.deepcopy(nastawy), grupa)
     assert przyjety, f"{pisarz} odrzucił nastawy {nazwa} (kod {kod})"
-    assert _zapisane(po) == normalizuj_nastawy(nastawy)
-    # Ta sama treść w odwróconej kolejności wpisów daje ten sam zapis (determinizm migawki).
-    przyjety_odwr, _p, po_odwr, _k = _zapis(pisarz, list(reversed(copy.deepcopy(nastawy))))
+    oczekiwane = {f: dict(sorted(w.items())) for f, w in nastawy.items() if w}
+    assert _wartosci(po, grupa) == oczekiwane
+    # Migawka po zapisie wczytuje się kontraktem modelu (ta sama reguła co zapis).
+    ProtectionAssignment.model_validate(_sterownik(po))
+    # Ta sama treść w odwróconej kolejności daje ten sam zapis (determinizm migawki).
+    odwrocone = {f: dict(reversed(list(w.items()))) for f, w in reversed(list(nastawy.items()))}
+    przyjety_odwr, _p, po_odwr, _k = _zapis(pisarz, odwrocone, grupa)
     assert przyjety_odwr
-    assert _zapisane(po_odwr) == _zapisane(po)
+    assert _grupy(po_odwr) == _grupy(po)
 
 
 @pytest.mark.parametrize("pisarz", PISARZE)
 @pytest.mark.parametrize("nazwa", sorted(SPRZECZNE))
 def test_nastawy_sprzeczne_odrzucone_bez_skutku(pisarz: str, nazwa: str) -> None:
     nastawy = copy.deepcopy(SPRZECZNE[nazwa])
-    assert bledy_nastaw(nastawy), f"reguła zapisu nie nazywa sprzeczności {nazwa}"
-    przyjety, przed, po, kod = _zapis(pisarz, nastawy)
+    przyjety, przed, po, kod = _zapis(pisarz, nastawy, 1)
     assert not przyjety, f"{pisarz} zapisał sprzeczne nastawy {nazwa}"
     assert po == przed, f"{pisarz} zmienił model wejściowy mimo odmowy ({nazwa})"
-    if pisarz in ("add_relay", "update_protection_settings"):
+    if pisarz == "update_protection_settings":
         assert kod == "relay.settings_invalid"
 
 
-def test_odmowa_operacji_v2_nazywa_kazda_sprzecznosc_zdaniem_po_polsku() -> None:
-    """Obie operacje V2 zwracają w treści odmowy WSZYSTKIE zdania reguły (nie tylko pierwsze)."""
-    nastawy = [
-        {"function_type": "overcurrent_51", "threshold_a": 2.0, "curve_type": "DT"},
-        {"function_type": "overcurrent_50", "threshold_a": -1.0, "threshold_unit": "A_WTORNY"},
-    ]
-    zdania = bledy_nastaw(nastawy)
+def test_odmowa_operacji_nazywa_kazda_sprzecznosc_zdaniem_po_polsku() -> None:
+    """Operacja zwraca w treści odmowy WSZYSTKIE zdania reguły (nie tylko pierwsze) — te same,
+    które nazywa reguła wczytania modelu (`bledy_sterownika`)."""
+    nastawy: Nastawy = {
+        "51": {"prog": 2.0, "krzywa": "DT"},
+        "50": {"prog": -1.0, "jednostka_progu": "A_WTORNY"},
+    }
+    enm, zabezpieczenie = _siec_z_przekaznikiem()
+    rekord = _rekord_z_nastawami(enm, zabezpieczenie, nastawy, 1)
+    zdania = bledy_sterownika(rekord)
     assert len(zdania) == 2
-    enm, wylacznik, przekladnik = _siec()
-    odmowa_add = _add_relay(enm, wylacznik, przekladnik, nastawy)
-    enm2, zabezpieczenie = _siec_z_przekaznikiem()
-    odmowa_upd = execute_domain_operation(
-        enm2, "update_protection_settings", {"protection_ref": zabezpieczenie, "settings": nastawy}
+    odmowa = execute_domain_operation(
+        enm,
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "nastawy": nastawy},
     )
-    for odmowa in (odmowa_add, odmowa_upd):
-        assert odmowa["error_code"] == "relay.settings_invalid"
-        for zdanie in zdania:
-            assert zdanie in odmowa["error"]
+    assert odmowa["error_code"] == "relay.settings_invalid"
+    for zdanie in zdania:
+        assert zdanie in odmowa["error"]
+
+
+def test_add_relay_nie_pisze_nastaw_a_niesie_funkcje_wejscia_i_macierz() -> None:
+    """``add_relay`` dodaje sterownik z funkcjami rodzaju, wejściem prądowym i macierzą wyzwoleń
+    na wyłącznik kotwicy — bez nastaw (nazwany brak gotowości oceny, nie wartość domyślna; dawne
+    domyślne 0,3 s DT dawało stałe 0,36 s czasu wyłączenia)."""
+    enm, wylacznik, przekladnik = _siec()
+    wynik = _add_relay(enm, wylacznik, przekladnik)
+    assert wynik.get("error") is None, wynik.get("error")
+    (sterownik,) = (
+        p
+        for p in wynik["snapshot"]["protection_assignments"]
+        if p["ref_id"] == wynik["selection_hint"]["element_id"]
+    )
+    assert [f["kod"] for f in sterownik["funkcje"]] == ["50", "51"]
+    assert sterownik["grupy_nastaw"] == []
+    assert sterownik["wejscia"]["ct_ref"] == przekladnik
+    assert {w["funkcja_ref"]: w["aparat_refs"] for w in sterownik["macierz_wyzwolen"]} == {
+        "50": [wylacznik],
+        "51": [wylacznik],
+    }
+
+
+def test_nastawy_w_grupie_nieaktywnej_nie_zmieniaja_grupy_aktywnej() -> None:
+    """Zapis do grupy 2 zostawia grupę 1 (aktywną) nietkniętą, a zmiana aktywnej grupy to
+    jedna wartość sterownika — nie kopia nastaw (predykat parami grupa zapisu × grupa czytana)."""
+    enm, zabezpieczenie = _siec_z_przekaznikiem()
+    enm = operacja(
+        enm,
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "grupa": 1, "nastawy": KOMPLET},
+    )
+    druga = {"51": {**KOMPLET["51"], "tms": 0.5}}
+    enm = operacja(
+        enm,
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "grupa": 2, "nastawy": druga},
+    )
+    assert _wartosci(enm, 1) == {f: dict(sorted(w.items())) for f, w in KOMPLET.items()}
+    assert _wartosci(enm, 2) == {"51": dict(sorted(druga["51"].items()))}
+    assert _sterownik(enm)["aktywna_grupa"] == 1
+    enm = operacja(
+        enm, "update_protection_settings", {"protection_ref": zabezpieczenie, "aktywna_grupa": 2}
+    )
+    assert _sterownik(enm)["aktywna_grupa"] == 2
+    assert _wartosci(enm, 1) == {f: dict(sorted(w.items())) for f, w in KOMPLET.items()}

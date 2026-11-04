@@ -44,8 +44,6 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
     Measurement,
-    ProtectionAssignment,
-    ProtectionSetting,
     Substation,
     SwitchBranch,
 )
@@ -58,6 +56,8 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_I_TH,
     rozstrzygnij_parametry_aparatu_sn,
 )
+
+from tests.utils.sterownik import sterownik, stopien
 
 #: Pozycja → (rodzaj, I_k karty [kA] albo None, I_cw karty [kA] albo None). Wartości
 #: pozycji z danymi przepisane z kart w katalogu (ABB VD4 / OJS / NAL 12 kV, ETI VV,
@@ -228,20 +228,15 @@ def _model(ref: str) -> EnergyNetworkModel:
             )
         ],
         protection_assignments=[
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot/1",
                 name="Zabezpieczenie pola 1",
-                breaker_ref="aparat/1",
+                wylacznik="aparat/1",
                 ct_ref="ct/1",
                 catalog_ref="REF-OC-200",
-                device_type="overcurrent",
-                settings=[
-                    ProtectionSetting(
-                        function_type="overcurrent_51",
-                        threshold_a=500.0,
-                        threshold_unit="A_PIERWOTNY",
-                        curve_type="DT",
-                        time_delay_s=0.4,
+                stopnie=[
+                    stopien(
+                        "51", prog=500.0, jednostka_progu="A_PIERWOTNY", krzywa="DT", zwloka_s=0.4
                     )
                 ],
             )

@@ -350,9 +350,8 @@ def get_enm_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
 
-    has_protection_data = bool(enm.protection_assignments) or (
-        bool(enm.bays) and any(b.protection_ref is not None for b in enm.bays)
-    )
+    # Jedyny nośnik zabezpieczeń: sterowniki w `protection_assignments` (ADR-022).
+    has_protection_data = bool(enm.protection_assignments)
 
     return {
         "case_id": case_id,

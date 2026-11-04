@@ -63,7 +63,6 @@ from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel, ProtectionAssignment
-from enm.nastawy_zabezpieczen import etykieta_funkcji
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyna_raportowa
 from enm.zabezpieczenie import (
@@ -76,6 +75,7 @@ from network_model.catalog.funkcje_eaz import (
     ETYKIETY_WARTOSCI_WYBORU,
     FUNKCJE_EAZ,
     KRZYWE_CZASOWE,
+    etykieta_funkcji_eaz,
 )
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
@@ -204,7 +204,7 @@ def powod_nieoceniania(kod: str) -> str:
     if kod in _POWODY_NIEOCENIANIA:
         return _POWODY_NIEOCENIANIA[kod]
     wpis = FUNKCJE_EAZ.get(kod)
-    etykieta = etykieta_funkcji(kod)
+    etykieta = etykieta_funkcji_eaz(kod)
     if wpis is not None and wpis.ocena == "LOM":
         return (
             f"Funkcję {etykieta} ocenia analiza ochrony od pracy wyspowej (LoM), nie ocena "
@@ -216,10 +216,9 @@ def powod_nieoceniania(kod: str) -> str:
     )
 
 
-ETYKIETY_FUNKCJI_PL: dict[str, str] = {
-    "51": "I> (51)",
-    "50": "I>> (50)",
-}
+#: Etykieta ocenianego stopnia z rejestru funkcji (jedna etykieta w produkcie).
+ETYKIETY_FUNKCJI_PL: dict[str, str] = {kod: etykieta_funkcji_eaz(kod) for kod in FUNKCJE_OCENIANE}
+
 
 #: Krzywa modelu → typ rdzenia IEC 60255. Literał modelu (``KrzywaNastawy``) JEST kodem krzywej
 #: w katalogu IED (``curves_supported``) — jedna nazwa krzywej w produkcie, bez mapy nazw
@@ -922,9 +921,7 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
         breaker_ref=wylacznik_urzadzenia(assignment),
         ct_ref=assignment.wejscia.ct_ref,
         przekladnia_a=(
-            (ct.ratio_primary, ct.ratio_secondary)
-            if ct is not None and not braki_ct
-            else None
+            (ct.ratio_primary, ct.ratio_secondary) if ct is not None and not braki_ct else None
         ),
         klasa_ct=klasa,
         alf=float(alf_ct) if alf_ct is not None else None,
@@ -1083,9 +1080,7 @@ def urzadzenia_nadpradowe(
     pominiete: list[PominieteUrzadzenie] = []
     for assignment in sorted(enm.protection_assignments, key=lambda a: a.ref_id):
         nazwa = nazwa_elementu(assignment, "protection_assignments")
-        ma_funkcje_oc = any(
-            f.kod in FUNKCJE_OCENIANE and f.wlaczona for f in assignment.funkcje
-        )
+        ma_funkcje_oc = any(f.kod in FUNKCJE_OCENIANE and f.wlaczona for f in assignment.funkcje)
         if not ma_funkcje_oc:
             pominiete.append(
                 PominieteUrzadzenie(

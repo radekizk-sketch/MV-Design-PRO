@@ -3,9 +3,9 @@
  * rozdzielnice i odbiory nN (dawniej stałe puste listy bazowe i stałe bez źródła).
  *
  * Iloczyny cech:
- * - przekaźniki: pole z `protection_ref` rozwiązywalnym × nierozwiązywalnym × bez ref;
- *   zabezpieczenie włączone × wyłączone; nastawy z powtórzoną funkcją; każdy rodzaj
- *   `device_type` ma etykietę ze wspólnej mapy (żadnego surowego kodu);
+ * - przekaźniki: pole ze sterownikiem (`bay_ref`) × bez sterownika × sterownik innego pola;
+ *   sterownik włączony × wyłączony; dwa stopnie tej samej funkcji (jeden kod); nazwa wyrobu
+ *   z katalogu × nazwa sterownika w modelu (żadnego rodzaju zgadniętego z funkcji);
  * - pola pomiarowe: rola pomiarowa × inna rola; deklaracja (napięcie szyn, każdy rodzaj układu
  *   energii, układ energii bez rodzaju, brak) × przekładniki w polu i w innym polu;
  * - strona nN: status grafu OK × brak danych; sekcja główna × podrozdzielnica; odpływ każdego
@@ -14,48 +14,62 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Bay, ProtectionAssignment } from '../../../../types/enm';
-import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../../shared/etykietyZabezpieczen';
 import type { LvDomainGraphView } from '../../../sld/v3/lv-domain/types';
 import { przekaznikiStacji } from '../przekaznikiStacji';
 import { BRAK_DEKLARACJI_POMIARU_PL, polaPomiaroweStacji } from '../polaPomiaroweStacji';
 import { odbioryNnZGrafu, rozdzielniceNnZGrafu } from '../stronaNnStacji';
 
-function zabezpieczenie(
+function sterownik(
   ref: string,
-  device_type: ProtectionAssignment['device_type'],
-  funkcje: ProtectionAssignment['settings'][number]['function_type'][],
-  is_enabled = true,
+  bayRef: string,
+  kody: string[],
+  opcje: { is_enabled?: boolean; nazwaKatalogu?: string; liczbaNastaw?: number } = {},
 ): ProtectionAssignment {
+  const funkcje = kody.map((kod, i) => ({ ref: kody.indexOf(kod) === i ? kod : `${kod}-${i}`, kod }));
   return {
+    id: ref,
     ref_id: ref,
-    name: ref,
-    breaker_ref: `cb-${ref}`,
-    device_type,
-    settings: funkcje.map((function_type) => ({ function_type })),
-    is_enabled,
-  } as ProtectionAssignment;
+    name: `Sterownik ${ref}`,
+    tags: [],
+    meta: {},
+    bay_ref: bayRef,
+    wejscia: {},
+    funkcje,
+    grupy_nastaw: [
+      {
+        numer: 1,
+        funkcje: funkcje.slice(0, 1).map((f) => ({
+          funkcja_ref: f.ref,
+          nastawy: Array.from({ length: opcje.liczbaNastaw ?? 0 }, (_, i) => ({ klucz: `k${i}`, wartosc: i })),
+        })),
+      },
+    ],
+    aktywna_grupa: 1,
+    macierz_wyzwolen: [],
+    is_enabled: opcje.is_enabled ?? true,
+    materialized_params: opcje.nazwaKatalogu ? { name_pl: opcje.nazwaKatalogu } : null,
+  };
 }
 
 describe('przekaznikiStacji', () => {
-  it('pole → zabezpieczenie po protection_ref; kolejność pól; ref nierozwiązywalny i brak ref pominięte', () => {
-    const wiersze = przekaznikiStacji(
-      [
-        zabezpieczenie('pz-2', 'earth_fault', ['earth_fault_51N'], false),
-        zabezpieczenie('pz-1', 'overcurrent', ['overcurrent_50', 'overcurrent_51', 'overcurrent_51']),
-        zabezpieczenie('pz-obce', 'distance', []),
+  it('pole → sterownik pola po bay_ref; kolejność pól; pole bez sterownika pominięte', () => {
+    const model = {
+      protection_assignments: [
+        sterownik('pz-2', 'b4', ['51N'], { is_enabled: false }),
+        sterownik('pz-1', 'b1', ['50', '51', '51'], { nazwaKatalogu: 'Sterownik polowy X-1', liczbaNastaw: 3 }),
+        sterownik('pz-obce', 'b-inne', ['21']),
       ],
-      [
-        { oznaczenie: 'Pole 1', protectionRef: 'pz-1' },
-        { oznaczenie: 'Pole 2', protectionRef: null },
-        { oznaczenie: 'Pole 3', protectionRef: 'pz-nie-ma' },
-        { oznaczenie: 'Pole 4', protectionRef: 'pz-2' },
-      ],
-    );
+    };
+    const wiersze = przekaznikiStacji(model, [
+      { oznaczenie: 'Pole 1', bayRef: 'b1' },
+      { oznaczenie: 'Pole 2', bayRef: 'b2' },
+      { oznaczenie: 'Pole 4', bayRef: 'b4' },
+    ]);
     expect(wiersze).toEqual([
       {
         relayId: 'pz-1',
         bayDesignation: 'Pole 1',
-        typePl: 'Nadprądowe',
+        typePl: 'Sterownik polowy X-1',
         functionsPl: ['50', '51'],
         settingsCount: 3,
         enabled: true,
@@ -63,31 +77,19 @@ describe('przekaznikiStacji', () => {
       {
         relayId: 'pz-2',
         bayDesignation: 'Pole 4',
-        typePl: 'Ziemnozwarciowe',
+        typePl: 'Sterownik pz-2',
         functionsPl: ['51N'],
-        settingsCount: 1,
+        settingsCount: 0,
         enabled: false,
       },
     ]);
   });
 
-  it.each(Object.keys(ETYKIETA_RODZAJU_ZABEZPIECZENIA) as ProtectionAssignment['device_type'][])(
-    'rodzaj %s ma polską etykietę ze wspólnej mapy',
-    (rodzaj) => {
-      const [wiersz] = przekaznikiStacji([zabezpieczenie('pz', rodzaj, [])], [
-        { oznaczenie: 'P', protectionRef: 'pz' },
-      ]);
-      expect(wiersz.typePl).toBe(ETYKIETA_RODZAJU_ZABEZPIECZENIA[rodzaj]);
-      expect(wiersz.typePl).not.toBe(rodzaj);
-    },
-  );
-
-  it('kody kierunkowe i częstotliwościowe zachowują sufiks normy', () => {
-    const [wiersz] = przekaznikiStacji(
-      [zabezpieczenie('pz', 'directional_overcurrent', ['directional_67N', 'rocof_81R', 'underfrequency_81U'])],
-      [{ oznaczenie: 'P', protectionRef: 'pz' }],
-    );
-    expect(wiersz.functionsPl).toEqual(['67N', '81R', '81U']);
+  it('kody rejestru ziemnozwarciowe, kierunkowe i częstotliwościowe przechodzą bez przekładu', () => {
+    const [wiersz] = przekaznikiStacji({ protection_assignments: [sterownik('pz', 'b', ['67N', '59N', '81R', '81U'])] }, [
+      { oznaczenie: 'P', bayRef: 'b' },
+    ]);
+    expect(wiersz.functionsPl).toEqual(['67N', '59N', '81R', '81U']);
   });
 });
 

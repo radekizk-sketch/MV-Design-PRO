@@ -44,6 +44,8 @@ from network_model.solvers.short_circuit_contributions import (
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
+from tests.utils.sterownik import sterownik
+
 # ---------------------------------------------------------------------------
 # Fixtures: GPZ -[wylacznik CB1]- BUS2 -[kabel A]- BUS3 -[kabel B]- BUS4
 # ---------------------------------------------------------------------------
@@ -216,15 +218,14 @@ def _zabezpieczenie(
 ) -> ProtectionAssignment:
     """Zabezpieczenie z modelu: próg po stronie PIERWOTNEJ (jednostka jawna, PZ-09),
     przekładnik 600/5 5P20, przekaźnik z katalogu z zakresami w ×In (REF-OC-200)."""
-    return ProtectionAssignment(
+    return sterownik(
         ref_id=f"prot-{breaker_ref}",
         name=f"Zabezpieczenie {breaker_ref}",
-        breaker_ref=breaker_ref,
+        wylacznik=breaker_ref,
         ct_ref="ct",
-        device_type="overcurrent",
         catalog_ref="REF-OC-200",
         is_enabled=is_enabled,
-        settings=[
+        stopnie=[
             {
                 "function_type": function_type,
                 "threshold_a": threshold_a,

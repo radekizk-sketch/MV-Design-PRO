@@ -71,6 +71,7 @@ BRANCH_KIND_MAP: dict[str, tuple[str, str, bool]] = {
     "cable": ("CABLE_HEAD", "DOWNSTREAM", False),
 }
 
+
 def _slownik_json(pary: list[tuple[str, Any]]) -> dict[str, Any]:
     """`dict_factory` dla `dataclasses.asdict` — rekord kontraktu werdyktu (pydantic: etykieta,
     wyjaśnienie) zagnieżdżony w dataclass oceny trafia do odpowiedzi jako słownik JSON."""
@@ -218,7 +219,6 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             ),
             sterownik_ref=protection_config.ref_id if protection_config is not None else None,
         )
-
 
         canonical_model = BayCanonicalModel(
             created_from="migracja",

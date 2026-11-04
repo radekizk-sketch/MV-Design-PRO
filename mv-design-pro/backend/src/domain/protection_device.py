@@ -1,7 +1,7 @@
 """Sprawdzenia koordynacji zabezpieczeń (E-28) — typy wyniku, bez fizyki.
 
 Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): urządzenia i nastawy żyją w modelu
-(``ProtectionAssignment`` + ``ProtectionSetting``), więc równoległy model urządzenia
+(sterownik ``ProtectionAssignment`` z nastawami w grupach, ADR-022), więc równoległy model urządzenia
 koordynacji (``ProtectionDevice`` z nastawami ``stage_51``/``stage_50`` przysyłanymi przez
 klienta) został skasowany na amen, bez warstwy zgodności. Zostają typy SPRAWDZEŃ, które niesie
 wynik koordynacji, raporty PDF/DOCX i ekran.

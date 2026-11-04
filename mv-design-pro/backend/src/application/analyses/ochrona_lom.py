@@ -26,13 +26,15 @@ ZASADY WIĄŻĄCE (CLAUDE.md):
 - Determinizm: stała kolejność pól (sort po ``ref_id``) i porównań, hash wejścia
   SHA-256 (``input_hash``).
 
-ŹRÓDŁO SPZ (uczciwość danych): czasy przerwy SPZ (``SpzState.fast_time_s`` /
-``slow_time_s``) są atrybutem ``BayProtectionControlUnit`` budowanego w
-read-modelu — NIE są materializowane w dokumencie ENM (``_build_protection_config``
-ustawia ``spz=None``). Dlatego w obecnym modelu SpzState jest nieosiągalny z ENM
-i koordynacja z SPZ kończy się uczciwym INFO (rekord: ocena niewykonana z brakiem
-przerwy SPZ). Deterministyczna logika porównania (``_spz_verdict``) jest wydzielona
-i w pełni audytowalna.
+ŹRÓDŁO NASTAW (jedno, ADR-022): funkcje LoM (81R / 78 / 81U / 81O) i ich nastawy pochodzą ze
+sterownika zabezpieczeń POLA (``enm.zabezpieczenie.sterownik_pola``) — kody i klucze nastaw
+z rejestru funkcji (``network_model.catalog.funkcje_eaz``), grupa nastaw efektywna.
+
+ŹRÓDŁO SPZ: czasy przerwy SPZ to nastawy funkcji 79 (``t_przerwy_1_s`` — szybka,
+``t_przerwy_2_s`` — wolna) sterowników pól leżących na DRODZE ZASILANIA pola wytwórczego
+(``application.topologia_zasilenia.zbuduj_tor_elementu``) — jednostek nadrzędnych. Droga
+nieustalona albo brak SPZ na drodze → ocena niewykonana z nazwanym brakiem, nigdy domysł.
+Deterministyczna logika porównania (``_spz_verdict``) jest wydzielona i w pełni audytowalna.
 """
 
 from __future__ import annotations
@@ -43,8 +45,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
-from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment, ProtectionSetting
+from application.topologia_zasilenia import ElementNieistniejeError, zbuduj_tor_elementu
+from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
 from enm.pola import punkt_przylaczenia_pola
+from enm.zabezpieczenie import nastawy_funkcji, sterownik_pola
 from werdykt import (
     ClaimKind,
     EvidenceTier,
@@ -92,7 +96,7 @@ LOM_FUNCTION_TYPES: dict[str, dict[str, str]] = {
     "overfrequency_81O": {"ansi": "81O", "label_pl": "Nadczęstotliwościowa (f>)"},
 }
 
-# Kody ANSI rozpoznawane w ``Bay.protection_codes`` jako deklaracja funkcji LoM.
+# Kody funkcji rejestru (``funkcje_eaz``, ocena ``LOM``) rozpoznawane w sterowniku pola.
 LOM_ANSI_CODES: dict[str, str] = {
     "81R": "rocof_81R",
     "78": "vector_shift_78",
@@ -421,13 +425,19 @@ def _spz_verdict(
     )
 
 
-# Odwzorowanie function_type -> (nazwa pola nastawy, jednostka, funkcja werdyktu).
+# Odwzorowanie function_type -> (klucz nastawy w schemacie rejestru, jednostka, werdykt).
 _WINDOW_EVALUATORS: dict[str, Any] = {
-    "rocof_81R": ("threshold_hz_s", "Hz/s", _rocof_verdict),
-    "vector_shift_78": ("threshold_deg", "deg", _vector_shift_verdict),
-    "underfrequency_81U": ("threshold_hz", "Hz", _underfrequency_verdict),
-    "overfrequency_81O": ("threshold_hz", "Hz", _overfrequency_verdict),
+    "rocof_81R": ("prog_hz_s", "Hz/s", _rocof_verdict),
+    "vector_shift_78": ("prog_deg", "deg", _vector_shift_verdict),
+    "underfrequency_81U": ("prog_hz", "Hz", _underfrequency_verdict),
+    "overfrequency_81O": ("prog_hz", "Hz", _overfrequency_verdict),
 }
+
+#: Klucz zwłoki funkcji LoM w schemacie rejestru (jednakowy dla 81R / 78 / 81U / 81O).
+_KLUCZ_ZWLOKI_LOM = "zwloka_s"
+#: Klucze przerw SPZ w schemacie funkcji 79 rejestru: pierwsza (szybka) i druga (wolna).
+_KLUCZ_PRZERWY_SZYBKIEJ = "t_przerwy_1_s"
+_KLUCZ_PRZERWY_WOLNEJ = "t_przerwy_2_s"
 
 
 # ---------------------------------------------------------------------------
@@ -578,33 +588,37 @@ def _is_generating_field(bay: Bay, gen_buses: dict[str, list[str]]) -> bool:
 
 def _lom_settings_by_type(
     assignment: ProtectionAssignment | None,
-) -> dict[str, ProtectionSetting]:
-    """Nastawy LoM z ``ProtectionAssignment.settings`` — po function_type.
+) -> dict[str, dict[str, Any]]:
+    """Nastawy włączonych funkcji LoM sterownika pola (grupa efektywna) — po function_type.
 
-    Przy wielu nastawach tego samego typu bierzemy pierwszą deterministycznie
-    (kolejność listy settings).
+    Funkcja bez żadnej nastawy w grupie nie wchodzi (jest tylko zadeklarowana). Przy dwóch
+    funkcjach tego samego kodu wygrywa pierwsza w kolejności zapisu (deterministycznie).
     """
-    result: dict[str, ProtectionSetting] = {}
+    result: dict[str, dict[str, Any]] = {}
     if assignment is None:
         return result
-    for setting in assignment.settings:
-        if setting.function_type in LOM_FUNCTION_TYPES and setting.function_type not in result:
-            result[setting.function_type] = setting
+    for funkcja in assignment.funkcje:
+        function_type = LOM_ANSI_CODES.get(funkcja.kod)
+        if function_type is None or not funkcja.wlaczona or function_type in result:
+            continue
+        nastawy = nastawy_funkcji(assignment, funkcja.ref)
+        if nastawy:
+            result[function_type] = nastawy
     return result
 
 
-def _declared_lom_codes(bay: Bay) -> set[str]:
-    """function_type funkcji LoM zadeklarowanych w ``Bay.protection_codes`` (po ANSI)."""
-    declared: set[str] = set()
-    for code in bay.protection_codes:
-        function_type = LOM_ANSI_CODES.get(str(code).strip().upper())
-        if function_type is not None:
-            declared.add(function_type)
-    return declared
+def _declared_lom_codes(assignment: ProtectionAssignment | None) -> set[str]:
+    """function_type włączonych funkcji LoM sterownika pola (rejestr funkcji)."""
+    if assignment is None:
+        return set()
+    return {
+        LOM_ANSI_CODES[f.kod] for f in assignment.funkcje if f.wlaczona and f.kod in LOM_ANSI_CODES
+    }
 
 
-def _setting_value(setting: ProtectionSetting, field: str) -> float | None:
-    return _round6(getattr(setting, field, None))
+def _setting_value(setting: dict[str, Any], field: str) -> float | None:
+    wartosc = setting.get(field)
+    return _round6(float(wartosc)) if isinstance(wartosc, int | float) else None
 
 
 # ---------------------------------------------------------------------------
@@ -616,12 +630,16 @@ def _evaluate_field(
     bay: Bay,
     assignment: ProtectionAssignment | None,
     gen_refs: list[str],
+    spz_przerwy: tuple[float | None, float | None] = (None, None),
 ) -> tuple[dict[str, Any], list[OcenaKryterium]]:
-    """Pole z porównaniami i rekordami; drugi element — rekordy K składowych oceny sieci."""
+    """Pole z porównaniami i rekordami; drugi element — rekordy K składowych oceny sieci.
+
+    ``spz_przerwy`` — przerwy SPZ (szybka, wolna) jednostek nadrzędnych na drodze zasilania
+    pola (``_spz_intervals``)."""
     checks: list[dict[str, Any]] = []
     oceny: list[OcenaKryterium] = []
     settings = _lom_settings_by_type(assignment)
-    declared = _declared_lom_codes(bay)
+    declared = _declared_lom_codes(assignment)
     present_types = set(settings) | declared
     odniesienie = _odniesienie_nastaw(bay, assignment)
 
@@ -656,7 +674,7 @@ def _evaluate_field(
             window_pl = source.get("window_pl")
 
             if setting is None:
-                # Zadeklarowana w protection_codes, ale bez nastaw.
+                # Funkcja włączona w sterowniku pola, ale bez nastaw w grupie efektywnej.
                 oceny.append(_ocena_okna(bay, function_type, None, odniesienie))
                 checks.append(
                     {
@@ -665,8 +683,8 @@ def _evaluate_field(
                         "function_label_pl": label,
                         "severity": "INFO",
                         "message_pl": (
-                            f"Funkcja {ansi} zadeklarowana w kodach pola bez nastaw "
-                            "— uzupełnij nastawy."
+                            f"Funkcja {ansi} jest w sterowniku pola, ale nie ma nastaw "
+                            "w grupie efektywnej — uzupełnij nastawy."
                         ),
                         "value": None,
                         "unit": None,
@@ -700,7 +718,7 @@ def _evaluate_field(
 
         # Koordynacja z SPZ — miarodajny czas LoM = najkrótsza zwłoka funkcji LoM.
         lom_time = _lom_time(settings)
-        spz_fast, spz_slow = _spz_intervals()
+        spz_fast, spz_slow = spz_przerwy
         spz = _spz_verdict(lom_time, spz_fast, spz_slow)
         oceny.append(_ocena_koordynacji_spz(bay, lom_time, spz_fast, spz_slow, odniesienie))
         checks.append(
@@ -758,23 +776,53 @@ def _pole_widoku(
     return pole, oceny
 
 
-def _lom_time(settings: dict[str, ProtectionSetting]) -> float | None:
+def _lom_time(settings: dict[str, dict[str, Any]]) -> float | None:
     times: list[float] = [
-        float(setting.time_delay_s)
+        float(wartosc)
         for setting in settings.values()
-        if setting.time_delay_s is not None
+        if isinstance(wartosc := setting.get(_KLUCZ_ZWLOKI_LOM), int | float)
     ]
     return _round6(min(times)) if times else None
 
 
-def _spz_intervals() -> tuple[float | None, float | None]:
-    """Czasy przerwy SPZ jednostek nadrzędnych.
+def _spz_intervals(enm: EnergyNetworkModel, bay: Bay) -> tuple[float | None, float | None]:
+    """Przerwy SPZ (szybka, wolna) jednostek nadrzędnych pola — najkrótsza z każdej.
 
-    SpzState nie jest materializowany w dokumencie ENM (``_build_protection_config``
-    ustawia ``spz=None``), więc uczciwie zwracamy brak danych — werdykt SPZ kończy
-    się INFO. Wydzielone, aby po materializacji SpzState wystarczyło wpiąć źródło.
+    Jednostki nadrzędne = sterowniki pól leżących na drogach zasilania pola (topologia
+    łączeniowa), z włączoną funkcją 79 i nastawą przerwy w grupie efektywnej. Pole bez drogi
+    zasilania albo bez SPZ na drodze → ``(None, None)``: koordynacja kończy się oceną
+    niewykonaną z nazwanym brakiem, nigdy domysłem.
     """
-    return None, None
+    try:
+        tor = zbuduj_tor_elementu("", enm, bay.ref_id)
+    except ElementNieistniejeError:
+        return None, None
+    pola_drogi = sorted(
+        {
+            element.pole_ref
+            for droga in tor.drogi
+            for element in droga.elementy
+            if element.pole_ref and element.pole_ref != bay.ref_id
+        }
+    )
+    szybkie: list[float] = []
+    wolne: list[float] = []
+    for pole_ref in pola_drogi:
+        sterownik = sterownik_pola(enm, pole_ref)
+        if sterownik is None or not sterownik.is_enabled:
+            continue
+        for funkcja in sterownik.funkcje:
+            if funkcja.kod != "79" or not funkcja.wlaczona:
+                continue
+            nastawy = nastawy_funkcji(sterownik, funkcja.ref)
+            if isinstance(t1 := nastawy.get(_KLUCZ_PRZERWY_SZYBKIEJ), int | float):
+                szybkie.append(float(t1))
+            if isinstance(t2 := nastawy.get(_KLUCZ_PRZERWY_WOLNEJ), int | float):
+                wolne.append(float(t2))
+    return (
+        _round6(min(szybkie)) if szybkie else None,
+        _round6(min(wolne)) if wolne else None,
+    )
 
 
 def _odniesienie_nastaw(bay: Bay, assignment: ProtectionAssignment | None) -> str:
@@ -904,12 +952,14 @@ def _ocena_koordynacji_spz(
     spz_interval = min(przerwy) if przerwy else None
     braki: list[str] = []
     if lom_time_s is None:
-        braki.append("Czas zadziałania funkcji LoM (zwłoka nastaw) w przypisaniu zabezpieczeń.")
+        braki.append("Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola.")
     if spz_interval is None:
         braki.append(
-            "Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie "
-            "sieci, więc porównanie z czasem LoM się nie odbyło."
+            "Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze "
+            "zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest "
+            "nieustalona), więc porównanie z czasem LoM się nie odbyło."
         )
+
     porownanie = lom_time_s is not None and spz_interval is not None
     wynik = (
         WynikKryterium(
@@ -1127,7 +1177,6 @@ def _input_hash(enm: EnergyNetworkModel, fields: list[dict[str, Any]]) -> str:
 def build_ochrona_lom_view(enm: EnergyNetworkModel) -> dict[str, Any]:
     """Zbuduj deterministyczny widok weryfikacji ochrony LoM dla dokumentu ENM."""
     gen_buses = _generating_module_buses(enm)
-    protection_by_ref = {a.ref_id: a for a in enm.protection_assignments}
 
     generating_bays = sorted(
         # Pola przyłączeniowe z rekordów `bays` — JEDYNY nośnik pól (karta W5-B; dawna druga
@@ -1140,10 +1189,12 @@ def build_ochrona_lom_view(enm: EnergyNetworkModel) -> dict[str, Any]:
     skladowe_sieci: list[OcenaKryterium] = []
     covered_buses: set[str] = set()
     for bay in generating_bays:
-        assignment = protection_by_ref.get(bay.protection_ref) if bay.protection_ref else None
+        sterownik = sterownik_pola(enm, bay.ref_id)
+        assignment = sterownik if sterownik is not None and sterownik.is_enabled else None
         punkt = punkt_przylaczenia_pola(bay)
         gen_refs = gen_buses.get(punkt, []) if punkt else []
-        pole, skladowe_pola = _evaluate_field(bay, assignment, gen_refs)
+        pole, skladowe_pola = _evaluate_field(bay, assignment, gen_refs, _spz_intervals(enm, bay))
+
         fields.append(pole)
         skladowe_sieci.extend(skladowe_pola)
         if punkt:

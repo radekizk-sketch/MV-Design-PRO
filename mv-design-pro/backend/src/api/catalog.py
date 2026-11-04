@@ -822,7 +822,7 @@ def list_bay_templates_endpoint(
                 ),
                 "tylko_gpz": szablon.tylko_gpz,
                 # Zestaw EAZ szablonu W KLASIE pola (`funkcje_eaz_szablonu`): ten sam, który
-                # operacja zapisze w `Bay.protection_codes` po wyborze szablonu.
+                # operacja zapisze w sterowniku pola (`ProtectionAssignment.funkcje`).
                 "funkcje_eaz": funkcje,
                 # Nazwa każdej funkcji ze słownika EAZ (zapis rysunku, IEEE C37.2, nazwa PL) —
                 # picker pokazuje, czym jest funkcja, bez kopii słownika we froncie.
