@@ -208,6 +208,27 @@ describe('Determinism', () => {
     expect(result1.success).toBe(result2.success);
   });
 
+  // Pamięć renderu współdzielona przez instancje: iloczyn {ten sam wzór, inny wzór} × {tryb
+  // inline, tryb block} × {sukces, błąd składni}. Klucz zawiera tryb — wzór inline nie może
+  // zwrócić zapamiętanego wyniku block (inny HTML, inny `isBlock`).
+  it('pamięć renderu: ten sam (wzór, tryb) → ten sam wynik; inny tryb albo wzór → osobny wpis', () => {
+    const wzor = '$U_{0} = \\frac{U_n}{\\sqrt{3}}$';
+    const inline1 = renderLatexToHtml(wzor, false);
+    const inline2 = renderLatexToHtml(wzor, false);
+    const block = renderLatexToHtml(wzor, true);
+    expect(inline2).toBe(inline1);
+    expect(inline1.isBlock).toBe(false);
+    expect(block.isBlock).toBe(true);
+    expect(block.html).not.toBe(inline1.html);
+    expect(block.html).toContain('katex-display');
+    expect(renderLatexToHtml('$I_{1}$', false).html).not.toBe(inline1.html);
+    const blad1 = renderLatexToHtml('$\\frac{$', false);
+    const blad2 = renderLatexToHtml('$\\frac{$', false);
+    expect(blad1.success).toBe(false);
+    expect(blad2).toBe(blad1);
+    expect(renderLatexToHtml('$\\frac{$', true).isBlock).toBe(true);
+  });
+
   it('should never modify the original LaTeX string', () => {
     const testCases = [
       '$x^2$',

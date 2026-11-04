@@ -105,6 +105,31 @@ export function extractLatexContent(latex: string): { content: string; isBlock: 
  * @returns MathRenderResult
  */
 export function renderLatexToHtml(latex: string, displayMode: boolean): MathRenderResult {
+  const klucz = `${displayMode ? 'B' : 'I'}${latex}`;
+  const zapamietany = PAMIEC_RENDERU.get(klucz);
+  if (zapamietany !== undefined) return zapamietany;
+  const wynik = renderujBezPamieci(latex, displayMode);
+  if (PAMIEC_RENDERU.size >= LIMIT_PAMIECI_RENDERU) {
+    // Wypiera najstarszy wpis (Map zachowuje kolejność wstawiania).
+    const najstarszy = PAMIEC_RENDERU.keys().next().value;
+    if (najstarszy !== undefined) PAMIEC_RENDERU.delete(najstarszy);
+  }
+  PAMIEC_RENDERU.set(klucz, wynik);
+  return wynik;
+}
+
+/**
+ * Pamięć renderu KaTeX współdzielona przez wszystkie instancje `MathRenderer`.
+ *
+ * Ten sam wzór (np. krok śladu powtarzany w wielu testach i modułach, symbol w nagłówku każdej
+ * tabeli) parsuje się raz; `useMemo` chroniło tylko w obrębie jednej zamontowanej instancji.
+ * Wynik `katex.renderToString` zależy wyłącznie od (latex, tryb), więc pamięć nie zmienia
+ * wyjścia (determinizm); limit wpisów ogranicza rozrost przy wzorach wpisywanych przez projektanta.
+ */
+const PAMIEC_RENDERU = new Map<string, MathRenderResult>();
+const LIMIT_PAMIECI_RENDERU = 2000;
+
+function renderujBezPamieci(latex: string, displayMode: boolean): MathRenderResult {
   // Zachowaj oryginalny string — NIEMODYFIKOWANY
   const originalLatex = latex;
 

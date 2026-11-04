@@ -138,7 +138,11 @@ describe('SzczegolWerdyktu', () => {
       );
       unmount();
     }
-  });
+    // Limit z pomiaru (2026-10-30, izolowany bieg pliku): 20 testów sceny z krokami × pełny montaż
+    // karty werdyktu i natywny klik przełącznika śladu — 2,2 s bez KaTeX, 2,8 s z KaTeX po
+    // współdzielonej pamięci renderu (`renderLatexToHtml`; przed nią 3,6 s). Koszt rośnie z liczbą
+    // testów sceny, nie z KaTeX; w puli równoległej plików czas ściany rośnie 2–3×, stąd 15 s.
+  }, 15_000);
 
   it('ślad: wzór bez wpisu w katalogu zostaje zapisem rdzenia (stan awaryjny, bez KaTeX)', async () => {
     const pv = BIEG.modules[1];
