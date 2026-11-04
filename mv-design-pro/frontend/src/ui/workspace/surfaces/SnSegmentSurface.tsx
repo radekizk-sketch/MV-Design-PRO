@@ -15,7 +15,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveCaseId } from '../../app-state/store';
 import { buildCatalogBinding } from '../../catalog/catalogBinding';
-import type { CatalogNamespace } from '../../catalog/types';
+import { fetchCableTypes, fetchLineTypes, getCatalogErrorMessage } from '../../catalog/api';
+import type { CableType, CatalogNamespace, LineType } from '../../catalog/types';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
@@ -71,23 +72,26 @@ interface SegmentEndpointStatus {
   station: Substation | null;
 }
 
-const CABLE_SN_CATALOG = [
-  { id: 'cable-tfk-yakxs-3x70', label: 'YAKXS 3×70 mm² · 12/20 kV' },
-  { id: 'cable-tfk-yakxs-3x120', label: 'YAKXS 3×120 mm² · 12/20 kV' },
-  { id: 'cable-nkt-na2xs2y-3x150', label: 'NA2XS2Y 3×150 mm² · 12/20 kV' },
-  { id: 'cable-tfk-yakxs-3x240', label: 'YAKXS 3×240 mm² · 12/20 kV' },
-  { id: 'cable-tfk-xrukpz-3x95', label: 'XRUKPZ 3×95 mm² · 12/20 kV' },
-];
+/** Pozycja listy typów katalogowych odcinka — z KATALOGU backendu (`/api/catalog/cable-types`,
+ * `/api/catalog/line-types`), nie z listy w kodzie. Do karty KATALOG-PRZEJECIE-PR ekran niósł
+ * zaszytą listę dziewięciu identyfikatorów, z których siedem nie istniało w katalogu
+ * (`cable-tfk-yakxs-3x70`, `cable-tfk-yakxs-3x240`, `cable-tfk-xrukpz-3x95`, `line-afl-50/70/95/120`),
+ * a domyślny wybór kabla był jednym z nich — operacja `assign_catalog_to_element` dostawała
+ * identyfikator, którego backend nie zna. */
+export interface OpcjaTypuOdcinka {
+  readonly id: string;
+  readonly label: string;
+}
 
-const LINE_SN_CATALOG = [
-  { id: 'line-afl-50', label: 'AFL-6 50 mm² · żłobiona' },
-  { id: 'line-afl-70', label: 'AFL-6 70 mm² · żłobiona' },
-  { id: 'line-afl-95', label: 'AFL-6 95 mm² · żłobiona' },
-  { id: 'line-afl-120', label: 'AFL-6 120 mm² · żłobiona' },
-];
-
-const DEFAULT_CABLE_SN_CATALOG_ID = CABLE_SN_CATALOG[0].id;
-const DEFAULT_LINE_SN_CATALOG_ID = LINE_SN_CATALOG[0].id;
+/** Opcje listy z pozycji katalogu (kable SN: `/api/catalog/cable-types` — kable nN mają osobny
+ * punkt `/lv-cable-types`; linie SN: `/api/catalog/line-types`), porządek nazw. */
+export function opcjeTypowOdcinka(
+  typy: readonly Pick<CableType | LineType, 'id' | 'name'>[],
+): OpcjaTypuOdcinka[] {
+  return typy
+    .map((typ) => ({ id: typ.id, label: typ.name }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id));
+}
 
 const SEGMENT_NUMBER_FORMAT_PL = new Intl.NumberFormat('pl-PL', {
   maximumFractionDigits: 2,
@@ -210,9 +214,8 @@ function segmentFamilyLabel(branch: Branch | null, draftFamily: SegmentData['fam
   return draftFamily === 'linia_napowietrzna_sn' ? 'Linia napowietrzna SN' : 'Kabel SN';
 }
 
-function selectedCatalogLabel(catalogId: string, family: SegmentData['family']): string {
-  const catalog = family === 'kabel_sn' ? CABLE_SN_CATALOG : LINE_SN_CATALOG;
-  return catalog.find((item) => item.id === catalogId)?.label ?? MISSING_DASH;
+function selectedCatalogLabel(catalogId: string, opcje: readonly OpcjaTypuOdcinka[]): string {
+  return opcje.find((item) => item.id === catalogId)?.label ?? MISSING_DASH;
 }
 
 function readMaterializedString(branch: Branch | null, keys: readonly string[]): string | null {
@@ -310,7 +313,11 @@ function normalizeCatalogLabel(value: string): string | null {
     .replace(/\s+/gu, ' ');
 }
 
-function conductorLabel(branch: Branch | null, draft: SegmentData): string {
+function conductorLabel(
+  branch: Branch | null,
+  draft: SegmentData,
+  opcje: readonly OpcjaTypuOdcinka[],
+): string {
   if (branch?.type === 'line_overhead') {
     const materializedMaterial = readMaterializedString(branch, [
       'conductor_material',
@@ -328,7 +335,7 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
       return [material, section].filter(Boolean).join(' ');
     }
     const normalized = normalizeCatalogLabel(catalogRef);
-    return normalized ?? selectedCatalogLabel(draft.catalogItemId, 'linia_napowietrzna_sn');
+    return normalized ?? selectedCatalogLabel(draft.catalogItemId, opcje);
   }
   if (branch?.type === 'cable') {
     const workingSection = typeof branch.cross_section_mm2 === 'number'
@@ -341,12 +348,16 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
       ? `${workingSection}${returnSection ? `/${returnSection}` : ''} mm²`
       : null;
     const material = branch.conductor_material?.trim().replace(/^AL$/i, 'Al') || null;
-    return [material, section].filter(Boolean).join(' ') || selectedCatalogLabel(draft.catalogItemId, draft.family);
+    return [material, section].filter(Boolean).join(' ') || selectedCatalogLabel(draft.catalogItemId, opcje);
   }
-  return selectedCatalogLabel(draft.catalogItemId, draft.family);
+  return selectedCatalogLabel(draft.catalogItemId, opcje);
 }
 
-function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
+function catalogRefLabel(
+  branch: Branch | null,
+  draft: SegmentData,
+  opcje: readonly OpcjaTypuOdcinka[],
+): string {
   const materializedLabel = readMaterializedString(branch, [
     'type_designation',
     'type_label',
@@ -367,9 +378,9 @@ function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
       }
       return normalized;
     }
-    const conductor = conductorLabel(branch, draft);
+    const conductor = conductorLabel(branch, draft, opcje);
     if (conductor && conductor !== MISSING_DASH) return `Linia napowietrzna ${conductor}`;
-    return selectedCatalogLabel(draft.catalogItemId, 'linia_napowietrzna_sn');
+    return selectedCatalogLabel(draft.catalogItemId, opcje);
   }
   const cableLabel = formatMvCableCatalogLabel(branch, candidate);
   if (cableLabel) return cableLabel;
@@ -377,7 +388,7 @@ function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
     const normalized = normalizeCatalogLabel(candidate);
     if (normalized) return normalized;
   }
-  return selectedCatalogLabel(draft.catalogItemId, draft.family);
+  return selectedCatalogLabel(draft.catalogItemId, opcje);
 }
 
 interface SnSegmentSurfaceProps {
@@ -408,7 +419,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   const [data, setData] = useState<SegmentData>(() => ({
     designation: '',
     family: 'kabel_sn',
-    catalogItemId: DEFAULT_CABLE_SN_CATALOG_ID,
+    catalogItemId: '',
     conductorMm2: null,
     lengthM: null,
     layingType: 'ziemia',
@@ -425,7 +436,30 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     return branch ? segmentPublicIdentity(snapshot, branch as Branch).displayName : 'Odcinek SN';
   }, [segmentRef, snapshot]);
 
-  const catalogOptions = data.family === 'kabel_sn' ? CABLE_SN_CATALOG : LINE_SN_CATALOG;
+  const [katalogOdcinka, setKatalogOdcinka] = useState<{
+    kable: OpcjaTypuOdcinka[];
+    linie: OpcjaTypuOdcinka[];
+  }>({ kable: [], linie: [] });
+  const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  useEffect(() => {
+    let anulowane = false;
+    Promise.all([fetchCableTypes(), fetchLineTypes()])
+      .then(([kable, linie]) => {
+        if (anulowane) return;
+        setKatalogOdcinka({ kable: opcjeTypowOdcinka(kable), linie: opcjeTypowOdcinka(linie) });
+        setBladKatalogu(null);
+      })
+      .catch((blad: unknown) => {
+        if (anulowane) return;
+        setKatalogOdcinka({ kable: [], linie: [] });
+        setBladKatalogu(getCatalogErrorMessage(blad));
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, []);
+  const catalogOptions =
+    data.family === 'kabel_sn' ? katalogOdcinka.kable : katalogOdcinka.linie;
   const segmentBranch = useMemo(() => {
     if (!segmentRef || !snapshot) return null;
     return (snapshot.branches ?? []).find((branch) => branch.ref_id === segmentRef || branch.id === segmentRef) ?? null;
@@ -444,12 +478,12 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   }, [segmentRef, snapshot]);
   const segmentSummary = useMemo(() => ({
     family: segmentFamilyLabel(segmentBranch as Branch | null, data.family),
-    catalog: catalogRefLabel(segmentBranch as Branch | null, data),
-    conductor: conductorLabel(segmentBranch as Branch | null, data),
+    catalog: catalogRefLabel(segmentBranch as Branch | null, data, catalogOptions),
+    conductor: conductorLabel(segmentBranch as Branch | null, data, catalogOptions),
     length: formatLengthM(segmentBranch as Branch | null, data.lengthM),
     ampacity: formatAmpacity(segmentBranch as Branch | null, data.ampacityA),
     endpoint: endpointStatus.isFree ? 'wolny zacisk końcowy' : 'zacisk zajęty',
-  }), [data, endpointStatus.isFree, segmentBranch]);
+  }), [catalogOptions, data, endpointStatus.isFree, segmentBranch]);
   const isOverheadSegment = segmentBranch
     ? segmentBranch.type === 'line_overhead'
     : data.family === 'linia_napowietrzna_sn';
@@ -725,10 +759,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                 setData((d) => ({
                   ...d,
                   family: v as SegmentData['family'],
-                  catalogItemId:
-                    v === 'linia_napowietrzna_sn'
-                      ? DEFAULT_LINE_SN_CATALOG_ID
-                      : DEFAULT_CABLE_SN_CATALOG_ID,
+                  catalogItemId: '',
                 }))
               }
               options={[
@@ -744,11 +775,27 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
             <SelectField
               label="Typ katalogowy"
               required
-              value={data.catalogItemId}
+              value={selectedCatalogRef}
               onChange={handleCatalogItemChange}
-              options={catalogOptions}
+              options={
+                selectedCatalogRef && !catalogOptions.some((o) => o.id === selectedCatalogRef)
+                  ? [
+                      ...catalogOptions,
+                      { id: selectedCatalogRef, label: `${selectedCatalogRef} (spoza listy typów SN)` },
+                    ]
+                  : catalogOptions
+              }
+              placeholder="— wybierz typ z katalogu —"
               testId="segment-catalog-item-select"
             />
+            {bladKatalogu && (
+              <p
+                data-testid="segment-catalog-error"
+                className="text-[length:var(--mvd-font-size-data)] text-red-400"
+              >
+                Nie udało się pobrać typów z katalogu: {bladKatalogu}
+              </p>
+            )}
             <NumberField
               label="Przekrój żył roboczych"
               unit="mm²"
@@ -896,12 +943,21 @@ interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: { id: string; label: string }[];
+  options: readonly { id: string; label: string }[];
   required?: boolean;
   testId?: string;
+  placeholder?: string;
 }
 
-function SelectField({ label, value, onChange, options, required, testId }: SelectFieldProps) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+  testId,
+  placeholder,
+}: SelectFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
@@ -914,6 +970,11 @@ function SelectField({ label, value, onChange, options, required, testId }: Sele
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text focus:border-scada-sn focus:outline-none"
       >
+        {placeholder !== undefined && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}

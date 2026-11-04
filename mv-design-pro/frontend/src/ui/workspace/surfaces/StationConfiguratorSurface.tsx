@@ -143,19 +143,25 @@ function readAddDerKindRequest(value: unknown): AddDerKindRequest | null {
 // nie niesie. Backend takiego domyslu nie robi (`load_nc_rfg_profile` odrzuca nieznanego
 // operatora wyjatkiem). V12K-236 usunelo ten domysl z powierzchni E-2x, ale TU zostal —
 // inwentarz miejsc byl niepelny. Brak zostaje BRAKIEM i nazywa go regula gotowosci.
+// Domyślny kabel odgałęzienia — pozycja z kartą producenta (NKT XRUHAKXS1 1×150/25 Al
+// 12/20 kV, karta CTL00109 i typoszereg ENEA 03.2026 tab. 3), ten sam przekrój żyły
+// roboczej i powrotnej oraz materiał co dawny profil historyczny `cable-enea-operator-
+// na2xs2y-1x150` (REFERENCYJNY, poza typoszeregiem ENEA 03.2026), który system podstawiał
+// projektantowi bez jego wyboru. Istnienie i status pozycji pilnuje
+// `backend/tests/network_model/catalog/test_domyslne_identyfikatory_katalogu.py`.
 const DEFAULT_BRANCH_CABLE_SEGMENT = {
   rodzaj: 'KABEL',
   dlugosc_m: 1000,
   catalog_binding: {
     catalog_namespace: 'KABEL_SN',
-    catalog_item_id: 'cable-enea-operator-na2xs2y-1x150',
+    catalog_item_id: 'cable-enea-2026-nkt-xruhakxs1-150-25',
     catalog_item_version: CANONICAL_CATALOG_VERSION,
     materialize: true,
     snapshot_mapping_version: '1.0',
   },
-  catalog_label: '3 × NA2XS2Y 1×150/25 mm²',
-  type_designation: 'NA2XS2Y 1×150/25 mm²',
-  trade_name: 'NA2XS2Y 1x150/25',
+  catalog_label: '3 × XRUHAKXS1 1×150/25 mm²',
+  type_designation: 'XRUHAKXS1 1×150/25 mm²',
+  trade_name: 'XRUHAKXS1 1x150/25',
   cross_section_mm2: 150,
   return_conductor_cross_section_mm2: 25,
 } as const;

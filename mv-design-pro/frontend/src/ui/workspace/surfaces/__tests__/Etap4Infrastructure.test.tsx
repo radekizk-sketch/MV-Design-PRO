@@ -3,7 +3,7 @@
  */
 
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { SnSegmentSurface } from '../SnSegmentSurface';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -17,6 +17,24 @@ import {
   NopSurface,
 } from '../InfrastructureSurfaces';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
+
+// Karta KATALOG-PRZEJECIE-PR: lista typów odcinka pochodzi z KATALOGU backendu, nie z kodu.
+// Odpowiedzi API mają identyfikatory i nazwy realnych pozycji katalogu domyślnego
+// (`get_default_mv_catalog`) — test nie wymyśla bytów, których backend nie zna.
+const katalogApi = vi.hoisted(() => ({
+  fetchCableTypes: vi.fn(async () => [
+    { id: 'cable-tfk-yakxs-3x120', name: 'TFK YAKXS 3×120/16 mm² 12/20 kV' },
+    { id: 'cable-nkt-na2xs2y-3x150', name: 'NKT NA2XS2Y 3×150/25 mm² 12/20 kV' },
+  ]),
+  fetchLineTypes: vi.fn(async () => [
+    { id: 'line-base-al-st-70', name: 'Linia AFL 6 70/11,0 mm²' },
+  ]),
+}));
+vi.mock('../../../catalog/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../catalog/api')>()),
+  fetchCableTypes: katalogApi.fetchCableTypes,
+  fetchLineTypes: katalogApi.fetchLineTypes,
+}));
 
 // Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
 // bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
@@ -137,7 +155,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     useSelectionStore.getState().centerSldOnElement(null);
   });
 
-  it('SnSegmentSurface (E-12) renderuje 4 karty i przełączanie rodziny zmienia katalog', () => {
+  it('SnSegmentSurface (E-12) renderuje 4 karty i przełączanie rodziny zmienia katalog', async () => {
     render(<SnSegmentSurface surface={minimalSurface} />);
     expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
     expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
@@ -149,12 +167,34 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     const familySelect = screen.getByDisplayValue('Kabel SN') as HTMLSelectElement;
     expect(familySelect).toBeInTheDocument();
 
-    // Przełączanie na linię napowietrzną
-    fireEvent.change(familySelect, { target: { value: 'linia_napowietrzna_sn' } });
-
-    // Karta "Typ katalogowy i przewód"
+    // Lista kabli = pozycje katalogu backendu; bez wiązania odcinka nic nie jest „domyślnie
+    // wybrane" (dawniej: fikcyjny `cable-tfk-yakxs-3x70`, którego katalog nie zna).
     fireEvent.click(screen.getByTestId('segment-tab-catalog'));
-    expect(screen.getAllByText(/AFL-6 50 mm²/).length).toBeGreaterThan(0);
+    const wybor = (await screen.findByTestId('segment-catalog-item-select')) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(within(wybor).getByRole('option', { name: /NKT NA2XS2Y 3×150/ })).toBeInTheDocument(),
+    );
+    expect(wybor.value).toBe('');
+    expect(
+      Array.from(wybor.options)
+        .filter((o) => !o.disabled)
+        .map((o) => o.value),
+    ).toEqual(['cable-nkt-na2xs2y-3x150', 'cable-tfk-yakxs-3x120']);
+
+    // Przełączanie na linię napowietrzną — lista linii z katalogu
+    fireEvent.click(screen.getByTestId('segment-tab-identification'));
+    fireEvent.change(screen.getByDisplayValue('Kabel SN'), {
+      target: { value: 'linia_napowietrzna_sn' },
+    });
+    fireEvent.click(screen.getByTestId('segment-tab-catalog'));
+    const wyborLinii = screen.getByTestId('segment-catalog-item-select') as HTMLSelectElement;
+    expect(
+      Array.from(wyborLinii.options)
+        .filter((o) => !o.disabled)
+        .map((o) => o.value),
+    ).toEqual(['line-base-al-st-70']);
+    expect(katalogApi.fetchCableTypes).toHaveBeenCalled();
+    expect(katalogApi.fetchLineTypes).toHaveBeenCalled();
   });
 
   // V12K-352: pozycje menu odcinka obiecują KONKRETNĄ kartę (deep-link `payload.defaultCard`,

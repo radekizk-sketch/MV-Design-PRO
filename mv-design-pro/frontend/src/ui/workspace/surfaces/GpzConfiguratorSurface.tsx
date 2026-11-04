@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import type { TransformerType } from '../../catalog/types';
 
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -37,15 +39,25 @@ interface GpzData {
   baysPerSectionCount: number[];
 }
 
-const TRAFO_110_CATALOG_OPTIONS = [
-  { id: 'tr-wn-sn-110-15-25mva', label: '110/15 kV · 25 MVA · Yyn0' },
-  { id: 'tr-wn-sn-110-15-40mva', label: '110/15 kV · 40 MVA · YNyn0' },
-  { id: 'tr-wn-sn-110-15-63mva', label: '110/15 kV · 63 MVA · YNyn0' },
-  { id: 'tr-wn-sn-110-20-25mva', label: '110/20 kV · 25 MVA · Yyn0' },
-  { id: 'tr-wn-sn-110-20-40mva', label: '110/20 kV · 40 MVA · YNyn0' },
-];
+/** Opcja listy transformatorów 110/SN — z KATALOGU backendu (`/api/catalog/transformer-types`),
+ * nie z kodu. Do karty KATALOG-PRZEJECIE-PR ekran niósł pięć zaszytych identyfikatorów
+ * (`tr-wn-sn-110-15-25mva` i pokrewne), z których żaden nie istniał w katalogu (realne pozycje
+ * mają przyrostek grupy połączeń `-yd11`), a etykiety podawały grupy Yyn0/YNyn0, których
+ * katalog nie zna. */
+export interface OpcjaTransformatora110 {
+  readonly id: string;
+  readonly label: string;
+}
 
-const DEFAULT_TRAFO_110_CATALOG_ID = TRAFO_110_CATALOG_OPTIONS[0].id;
+/** Transformatory sieciowe WN/SN z katalogu (górne napięcie 110 kV), porządek nazw. */
+export function opcjeTransformatorow110(
+  typy: readonly Pick<TransformerType, 'id' | 'name' | 'voltage_hv_kv'>[],
+): OpcjaTransformatora110[] {
+  return typy
+    .filter((typ) => typ.voltage_hv_kv === 110)
+    .map((typ) => ({ id: typ.id, label: typ.name }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id));
+}
 
 function emptyGpzData(): GpzData {
   return {
@@ -58,7 +70,7 @@ function emptyGpzData(): GpzData {
     hvVoltageKv: 110,
     hvShortCircuitMva: null,
     hvRX: null,
-    transformerCatalogId: DEFAULT_TRAFO_110_CATALOG_ID,
+    transformerCatalogId: '',
     transformerNominalMva: null,
     sectionsCount: 2,
     hasCoupler: true,
@@ -98,6 +110,25 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const gpzRef = surface.entityRef ?? null;
   const [data, setData] = useState<GpzData>(() => emptyGpzData());
+  const [opcjeTransformatora, setOpcjeTransformatora] = useState<OpcjaTransformatora110[]>([]);
+  const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  useEffect(() => {
+    let anulowane = false;
+    fetchTransformerTypes()
+      .then((typy) => {
+        if (anulowane) return;
+        setOpcjeTransformatora(opcjeTransformatorow110(typy));
+        setBladKatalogu(null);
+      })
+      .catch((blad: unknown) => {
+        if (anulowane) return;
+        setOpcjeTransformatora([]);
+        setBladKatalogu(getCatalogErrorMessage(blad));
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, []);
 
   const gpzNameFromSnapshot = useMemo(() => {
     if (!gpzRef || !snapshot) return null;
@@ -115,12 +146,12 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     const checks = [
       data.name.trim().length > 0,
       hasShortCircuitInput,
-      TRAFO_110_CATALOG_OPTIONS.some((option) => option.id === data.transformerCatalogId),
+      opcjeTransformatora.some((option) => option.id === data.transformerCatalogId),
       data.sectionsCount > 0,
     ];
     const done = checks.filter(Boolean).length;
     return { done, total: checks.length };
-  }, [data]);
+  }, [data, opcjeTransformatora]);
 
   return (
     <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-4">
@@ -270,8 +301,17 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               required
               value={data.transformerCatalogId}
               onChange={(v) => setData((d) => ({ ...d, transformerCatalogId: v }))}
-              options={TRAFO_110_CATALOG_OPTIONS}
+              options={opcjeTransformatora}
+              placeholder="— wybierz transformator z katalogu —"
             />
+            {bladKatalogu && (
+              <p
+                data-testid="gpz-transformer-catalog-error"
+                className="text-[length:var(--mvd-font-size-data)] text-red-400"
+              >
+                Nie udało się pobrać transformatorów z katalogu: {bladKatalogu}
+              </p>
+            )}
             <NumberField
               label="Moc znamionowa Sn"
               unit="MVA"
@@ -426,11 +466,12 @@ interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: SelectOption[];
+  options: readonly SelectOption[];
   required?: boolean;
+  placeholder?: string;
 }
 
-function SelectField({ label, value, onChange, options, required }: SelectFieldProps) {
+function SelectField({ label, value, onChange, options, required, placeholder }: SelectFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
@@ -442,6 +483,11 @@ function SelectField({ label, value, onChange, options, required }: SelectFieldP
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text focus:border-scada-sn focus:outline-none"
       >
+        {placeholder !== undefined && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
         {options.map((opt) => (
           <option key={opt.id} value={opt.id}>{opt.label}</option>
         ))}

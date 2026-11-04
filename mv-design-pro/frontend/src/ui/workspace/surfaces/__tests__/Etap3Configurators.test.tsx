@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { KLASA_AKCJI_NIEAKTYWNEJ } from '../../../shared/akcjeStanow';
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -11,6 +11,22 @@ import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
 import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
+
+// Karta KATALOG-PRZEJECIE-PR: lista transformatorów 110/SN konfiguratora GPZ pochodzi
+// z KATALOGU backendu. Odpowiedź API niesie realne pozycje katalogu domyślnego
+// (`get_default_mv_catalog`) i — dla filtra — jeden transformator SN/nN, który na tej liście
+// nie ma prawa się pojawić.
+const katalogTransformatorow = vi.hoisted(() => ({
+  fetchTransformerTypes: vi.fn(async () => [
+    { id: 'tr-wn-sn-110-20-25mva-yd11', name: 'TR 110/20 kV 25 MVA Yd11', voltage_hv_kv: 110 },
+    { id: 'tr-wn-sn-110-15-25mva-yd11', name: 'TR 110/15 kV 25 MVA Yd11', voltage_hv_kv: 110 },
+    { id: 'tr-sn-nn-15-0p4-630kva', name: 'TR 15/0,4 kV 630 kVA', voltage_hv_kv: 15 },
+  ]),
+}));
+vi.mock('../../../catalog/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../catalog/api')>()),
+  fetchTransformerTypes: katalogTransformatorow.fetchTransformerTypes,
+}));
 
 // Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
 // bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
@@ -108,6 +124,26 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
       expect(screen.getByTestId('gpz-card-content-transformer')).toBeInTheDocument();
       expect(screen.getByText('Katalog transformatora 110/SN')).toBeInTheDocument();
+    });
+
+    it('lista transformatorów 110/SN to pozycje katalogu backendu — bez domyślnego wyboru', async () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      const karta = screen.getByTestId('gpz-card-content-transformer');
+      const wybor = within(karta).getAllByRole('combobox')[0] as HTMLSelectElement;
+      await waitFor(() =>
+        expect(within(wybor).getByRole('option', { name: 'TR 110/15 kV 25 MVA Yd11' })).toBeInTheDocument(),
+      );
+      expect(wybor.value).toBe('');
+      expect(
+        Array.from(wybor.options)
+          .filter((o) => !o.disabled)
+          .map((o) => o.value),
+      ).toEqual(['tr-wn-sn-110-15-25mva-yd11', 'tr-wn-sn-110-20-25mva-yd11']);
+      // Wybór pozycji katalogu zalicza kartę transformatora w kompletności.
+      expect(screen.getByText(/Zakres konfiguracji: 1\/4/)).toBeInTheDocument();
+      fireEvent.change(wybor, { target: { value: 'tr-wn-sn-110-15-25mva-yd11' } });
+      expect(screen.getByText(/Zakres konfiguracji: 2\/4/)).toBeInTheDocument();
     });
 
     it('karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
@@ -674,10 +710,10 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           segment_type: 'cable',
           segment: expect.objectContaining({
             rodzaj: 'KABEL',
-            catalog_label: '3 × NA2XS2Y 1×150/25 mm²',
+            catalog_label: '3 × XRUHAKXS1 1×150/25 mm²',
             catalog_binding: expect.objectContaining({
               catalog_namespace: 'KABEL_SN',
-              catalog_item_id: 'cable-enea-operator-na2xs2y-1x150',
+              catalog_item_id: 'cable-enea-2026-nkt-xruhakxs1-150-25',
             }),
           }),
         }),
