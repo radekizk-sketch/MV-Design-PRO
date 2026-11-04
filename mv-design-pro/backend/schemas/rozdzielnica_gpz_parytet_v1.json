@@ -181,7 +181,7 @@
       "rodzaj": "tekst",
       "nazwa_pl": "strony obudowy objęte klasyfikacją IAC",
       "dozwolone": null,
-      "wzor": "^F?L?R?$",
+      "wzor": "^[F]?[L]?[R]?$",
       "konsumenci": [
         "wytrzymalosc_szyn_sekcji"
       ]

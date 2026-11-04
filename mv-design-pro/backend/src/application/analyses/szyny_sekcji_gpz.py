@@ -258,8 +258,8 @@ def czas_wylaczenia_szyn(
         return {
             **bez_czasu,
             "powod_pl": (
-                f"Sekcja {sekcja.nazwa_pl} nie ma w modelu pola zasilającego (transformatorowego, "
-                "liniowego wejściowego ani sprzęgła) — nie wiadomo, które zabezpieczenie wyłącza "
+                f"Sekcja {sekcja.nazwa_pl} nie ma w modelu pola, przez które jest zasilana "
+                "(transformatorowego, liniowego wejściowego ani sprzęgła) — nie wiadomo, które zabezpieczenie wyłącza "
                 "zwarcie na jej szynach."
             ),
         }
@@ -268,7 +268,7 @@ def czas_wylaczenia_szyn(
     ]
     if nieustalone:
         powody = "; ".join(
-            f"pole {nazwa_nadana(pola[ref].name) or ref}: "
+            f"{nazwa_elementu(pola[ref], 'bays')}: "
             + str((czasy_pol.get(ref) or {}).get("powod_pl") or "czas wyłączenia nieustalony")
             for ref in nieustalone
         )
@@ -276,14 +276,14 @@ def czas_wylaczenia_szyn(
             **bez_czasu,
             "powod_pl": (
                 f"Czas wyłączenia zwarcia na szynach sekcji {sekcja.nazwa_pl} wymaga czasów "
-                f"wszystkich pól zasilających; nieustalone: {powody}"
+                f"wszystkich pól, przez które sekcja jest zasilana; nieustalone: {powody}"
             ),
         }
     decydujace = max(zasilajace, key=lambda ref: (float(czasy_pol[ref]["t_clearing_s"]), ref))
     czas = dict(czasy_pol[decydujace])
     czas["powod_pl"] = (
-        f"Zwarcie na szynach sekcji {sekcja.nazwa_pl} trwa do wyłączenia ostatniego pola "
-        f"zasilającego — decyduje pole {nazwa_nadana(pola[decydujace].name) or decydujace}: "
+        f"Zwarcie na szynach sekcji {sekcja.nazwa_pl} trwa do wyłączenia ostatniego z pól, przez "
+        f"które sekcja jest zasilana — decyduje {nazwa_elementu(pola[decydujace], 'bays')}: "
         f"{czas.get('powod_pl')}"
     )
     czas["pole_decydujace_ref"] = decydujace

@@ -43,7 +43,10 @@ DostepnoscIac = Literal["A", "B", "C"]
 DOSTEPNOSCI_IAC: tuple[str, ...] = get_args(DostepnoscIac)
 
 #: Strony obudowy objęte klasyfikacją IAC (F — przód, L — bok, R — tył), kolejność normy.
-_WZOR_STRON_IAC = re.compile(r"^F?L?R?$")
+#: Strony obudowy objęte klasyfikacją IAC (IEC 62271-200 p. 6.106): F, L, R w tej kolejności,
+#: każda co najwyżej raz. Jeden wzór dla modelu pydantic, bramy operacji i tablicy parytetu.
+WZOR_STRON_IAC = r"^[F]?[L]?[R]?$"
+_WZOR_STRON_IAC = re.compile(WZOR_STRON_IAC)
 
 KOD_BLEDU_ROZDZIELNICY = "gpz_section.update.rozdzielnica_invalid"
 

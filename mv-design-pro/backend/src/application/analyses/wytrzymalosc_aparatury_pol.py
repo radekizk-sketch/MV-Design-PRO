@@ -1394,7 +1394,7 @@ def _znamiona_szyn(sekcja: SekcjaGpz) -> tuple[dict[str, Any], str]:
                 "przewodzi_pl": "szyny zbiorcze sekcji przewodzą pełny prąd zwarcia na szynach",
                 "nagrzewa_pl": (
                     "szyny zbiorcze sekcji nagrzewają się prądem zwarcia do wyłączenia "
-                    "ostatniego pola zasilającego"
+                    "ostatniego z pól, przez które sekcja jest zasilana"
                 ),
                 "zakres_pl": "szyny sekcji przewodzą pełny prąd zwarcia w węźle szyn",
             },
@@ -1823,7 +1823,7 @@ def _ocena_iac_czasu(
         dane=dane,
         zakres_pl=(
             f"Łuk wewnętrzny w rozdzielnicy sekcji {sekcja.nazwa_pl} trwa do wyłączenia "
-            "ostatniego pola zasilającego sekcję (nastawy zabezpieczeń pól z modelu)."
+            "ostatniego z pól, przez które sekcja jest zasilana (nastawy zabezpieczeń pól z modelu)."
         ),
         rodzaj_analizy="SHORT_CIRCUIT",
         slad_pl=f"T_k = {t_k} s ({czas.get('powod_pl')}); {_klasa_iac_pl(roz)}",
@@ -2086,23 +2086,25 @@ def zbuduj_widok_wytrzymalosci_aparatury(
     if not wiersze:
         kody.append(READINESS_BRAK_POL_Z_APARATEM)
 
-    widok: dict[str, Any] = {
-        "stacja_ref": stacja.ref_id,
-        "stacja_nazwa": stacja.name,
-        "status": "OK" if wiersze else "brak danych",
-        "bieg_zwarciowy_ref": run_id,
-        "pola": wiersze,
-        "kody_gotowosci": kody,
-    }
+    # Szyny zbiorcze sekcji GPZ (karta GPZ-DANE-ANALIZ) — klucz tylko dla stacji z sekcjami.
+    szyny: dict[str, Any] = {}
     if stacja.gpz_sections or stacja.gpz_hv_sections:
-        widok["szyny_sekcji"] = _wiersze_szyn_sekcji(
+        szyny["szyny_sekcji"] = _wiersze_szyn_sekcji(
             enm=enm,
             stacja=stacja,
             prady_szyn=prady_szyn or {},
             czasy_pol=czasy,
             run_id=run_id,
         )
-    return widok
+    return {
+        "stacja_ref": stacja.ref_id,
+        "stacja_nazwa": stacja.name,
+        "status": "OK" if wiersze else "brak danych",
+        "bieg_zwarciowy_ref": run_id,
+        "pola": wiersze,
+        "kody_gotowosci": kody,
+        **szyny,
+    }
 
 
 def widok_wytrzymalosci_z_biegu(

@@ -35,6 +35,7 @@ from .nastawy_modulu import NastawyZabezpieczenModulu
 from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
 from .rozdzielnica_gpz import (
     OPIS_POLA_ROZDZIELNICY,
+    WZOR_STRON_IAC,
     DostepnoscIac,
     KonfiguracjaElektrod,
     blad_spojnosci_rozdzielnicy,
@@ -1405,7 +1406,7 @@ class Substation(ENMElement):
     nn_sections: list[NnSection] = []
 
 
-def _pole_rozdzielnicy(klucz: str) -> Any:
+def _pole_rozdzielnicy(klucz: str) -> float | None:
     """Granice pola liczbowego rozdzielnicy z JEDNEGO opisu (`enm.rozdzielnica_gpz`)."""
     opis = OPIS_POLA_ROZDZIELNICY[klucz]
     return Field(default=None, ge=opis.od, le=opis.do, description=opis.nazwa_pl)
@@ -1433,7 +1434,7 @@ class RozdzielnicaSekcjiGpz(BaseModel):
     t_k_s: float | None = _pole_rozdzielnicy("t_k_s")
     i_p_ka: float | None = _pole_rozdzielnicy("i_p_ka")
     iac_dostepnosc: DostepnoscIac | None = None
-    iac_strony: str | None = Field(default=None, pattern=r"^F?L?R?$", min_length=1)
+    iac_strony: str | None = Field(default=None, pattern=WZOR_STRON_IAC, min_length=1)
     iac_i_a_ka: float | None = _pole_rozdzielnicy("iac_i_a_ka")
     iac_t_a_s: float | None = _pole_rozdzielnicy("iac_t_a_s")
     konfiguracja_elektrod: KonfiguracjaElektrod | None = None

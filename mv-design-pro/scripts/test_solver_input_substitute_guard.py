@@ -2108,7 +2108,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
     # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
     # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
+    # Karta GPZ-DANE-ANALIZ (2026-11-04): 4503 -> 4527 — POMIAR `contract_fields()` na
+    # `57f9c4b8b` (`git archive`: 4503) i na drzewie karty (4527). Roznica zbiorow +24, -0:
+    # blok rozdzielnicy sekcji GPZ (`rozdzielnica`, `u_r_kv`, `i_r_a`, `i_k_ka`, `t_k_s`,
+    # `i_p_ka`, `iac_dostepnosc`, `iac_strony`, `iac_i_a_ka`, `iac_t_a_s`,
+    # `konfiguracja_elektrod`, `odstep_elektrod_mm`, `odleglosc_robocza_mm`,
+    # `szerokosc_obudowy_mm`, `wysokosc_obudowy_mm`, `glebokosc_obudowy_mm`,
+    # `dokument_zrodlowy`), opis pol (`od`, `do`, `podstawa_zakresu_pl`), sekcja szyn
+    # (`pola_refs`), geometria luku sekcji (`klasa_pl`, `odniesienia`, `zrodlo_konfiguracji`).
+    # PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4527." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2435,7 +2444,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # kabli `network_model/catalog/{lv_cable_nkt,lv_cable_nkt_pvc,lv_cable_nkt_yaky,
         # mv_cable_tfk_full}.py`). POMIAR guardem na `e29e59e2c` (604) i na drzewie karty (608);
         # dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 608 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta GPZ-DANE-ANALIZ (2026-11-04): 608 -> 610 (+2 `enm/rozdzielnica_gpz.py`,
+        # `application/analyses/szyny_sekcji_gpz.py`). POMIAR guardem na drzewie karty; dlug
+        # i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2749,7 +2761,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Odcinek 2 karty ZU (2026-10-29): enm 78 -> 79 (+1 `enm/doziemienie_sieci.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
-        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta GPZ-DANE-ANALIZ (2026-11-04): enm 79 -> 80 (+1 `enm/rozdzielnica_gpz.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=80, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2861,7 +2875,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
+        # Karta GPZ-DANE-ANALIZ (2026-11-04): application 254 -> 255 (+1
+        # `application/analyses/szyny_sekcji_gpz.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

@@ -520,7 +520,10 @@ def test_szablony_katalogu_nie_deklaruja_jednostki_zakresu_pradowego_bez_podstaw
     from network_model.catalog.mv_auxiliary_catalog import get_all_protection_setting_templates
 
     szablony = get_all_protection_setting_templates()
-    assert len(szablony) == 8
+    # Pomiar 2026-11-04: 5 szablonów (3 referencyjne + e²TANGO-400/800) po kasacji fikcyjnych
+    # e²TANGO-1250/1600/2000 (karta KATALOG-PRZEJECIE-PR, commit 4f07359bc) — dawny pin 8
+    # i 13 pól prądowych liczył skasowane szablony.
+    assert len(szablony) == 5
     pola_pradowe = 0
     for szablon in szablony:
         for pole in szablon["params"]["setting_fields"]:
@@ -531,4 +534,4 @@ def test_szablony_katalogu_nie_deklaruja_jednostki_zakresu_pradowego_bez_podstaw
             else:
                 assert pole["unit"] == "s", (szablon["id"], pole)
                 assert "jednostka_status" not in pole
-    assert pola_pradowe == 13
+    assert pola_pradowe == 7

@@ -1402,6 +1402,7 @@
             "name": "Sekcja 1",
             "order": 0,
             "right_coupler_ref": null,
+            "rozdzielnica": null,
             "section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001"
           }
         ],

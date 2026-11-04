@@ -11623,9 +11623,10 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "Dane znamionowe rozdzielnicy sekcji podaje się jako zestaw pól.",
                 KOD_BLEDU_ROZDZIELNICY,
             )
-        zastana = next((s for s in existing_sections if s.get("section_id") == section_id), {}).get(
-            "rozdzielnica"
+        sekcja_zastana: Mapping[str, Any] = next(
+            (s for s in existing_sections if s.get("section_id") == section_id), {}
         )
+        zastana = sekcja_zastana.get("rozdzielnica")
         scalona: dict[str, Any] | None = None
         if zmiana is not None:
             scalona = {k: v for k, v in dict(zastana or {}).items() if v is not None}

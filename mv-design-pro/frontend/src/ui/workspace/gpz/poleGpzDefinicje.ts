@@ -177,7 +177,7 @@ export const POLA_ROZDZIELNICY_GPZ: readonly DefinicjaPolaRozdzielnicy[] = [
     rodzaj: 'tekst',
     etykietaPl: 'strony obudowy objęte klasyfikacją IAC',
     dozwolone: null,
-    wzor: '^F?L?R?$',
+    wzor: '^[F]?[L]?[R]?$',
     zrodloWartosciPl: ZRODLO_DANYCH_ROZDZIELNICY,
     konsumenci: [W],
   },
