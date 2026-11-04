@@ -233,7 +233,7 @@ describe('obrysy etykiet wg planu — iloczyn fikstura × skala × kadr × obrys
   // Oględziny koordynatora 2026-11-04 pkt 3: oznaczenia zacisków P1/P2 nie wchodzą na przekładnię
   // przekładnika (tabliczka „200–400/5”, „1/100”) przy żadnej skali i w żadnym kadrze — iloczyn
   // fikstura × skala × kadr, prostokąty NARYSOWANE planu (pismo powiększone też).
-  it.each(FIKSTURY.map(([n]) => n))('%s: P1/P2 rozłączne z przekładnią przekładnika na każdej skali i w każdym kadrze', (fikstura) => {
+  it.each(FIKSTURY.map(([n]) => n))('%s: oznaczenia zacisków pierwotnych T1 rozłączne z przekładnią przekładnika na każdej skali i w każdym kadrze', (fikstura) => {
     const bledy: string[] = [];
     let pary = 0;
     for (const p of PRZYPADKI.filter((x) => x.fikstura === fikstura)) {

@@ -27,7 +27,9 @@ import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import { symbolIdForPrimaryDeviceKind } from '../../compose/apparatusSequence';
 import type { PreviewSymbol } from '../../compose/preview';
-import { obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
+import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
+import { GRID } from '../../core/grid';
+import { czySymbolQet, obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
 import { buildSceneV3, type SceneV3 } from '../buildScene';
 import { buildW1cCases, buildW1cMatrixFixture, type W1cCase } from './fixtures/w1cMatrixCatalog';
 
@@ -51,6 +53,23 @@ function port(s: PreviewSymbol, dir: 'N' | 'S'): Punkt | null {
   const p = SYMBOL_DEFS[s.symbolId].ports.find((q) => q.dir === dir);
   return p ? { x: s.x + p.x, y: s.y + p.y } : null;
 }
+
+/** Symbol z kaflem stanu — wyrocznia z rejestru symboli QET (nie z kompozycji). */
+const zKaflem = (s: PreviewSymbol): boolean => {
+  const id = s.symbolId as SymbolId;
+  return czySymbolQet(id) && QET_SYMBOLE_POLA_SN[id].kafel !== null;
+};
+
+/** Węzeł odczepu za aparatem `s` (decyzja architekta 2026-11-04, UX04 §11.20 pkt 2): port S
+ *  aparatu bez kafla; raster pod portem S aparatu z kaflem (węzeł nie leży na krawędzi kafla). */
+function wezelZa(s: PreviewSymbol): Punkt | null {
+  const p = port(s, 'S');
+  return p ? { x: p.x, y: p.y + (zKaflem(s) ? GRID : 0) } : null;
+}
+
+/** Zwis aparatu bocznego pod węzłem odczepu: kafel stanu → dwa rastry (uwaga właściciela
+ *  2026-11-04, wzorzec e²TANGO: węzeł → poziomo → pionowo w dół w górny styk), bez kafla — 0. */
+const zwisBocznego = (s: PreviewSymbol): number => (zKaflem(s) ? 2 * GRID : 0);
 
 /** Iniekcja na kopii aparatów pola (kolejność rekordów bez zmian). */
 function zIniekcja(devices: readonly BayPrimaryDevice[], iniekcja: Iniekcja): BayPrimaryDevice[] {
@@ -116,7 +135,11 @@ function sprawdzPole(scena: SceneV3, bayRef: string, devices: readonly BayPrimar
     const d = dev(lat);
     const n = port(lat, 'N');
     if (!d || !n) continue;
-    const kotwicaS = tor.find((s) => port(s, 'S')?.y === lat.y);
+    // Aparat boczny z kaflem stanu (uziemnik QET) wisi DWA RASTRY pod węzłem odczepu, a węzeł
+    // za aparatem z kaflem leży raster pod jego portem S (`wezelZa`). Wyrocznia liczy oba
+    // odsunięcia z danych symbolu (kafel w rejestrze QET), nie z funkcji kompozycji; intencja
+    // bez zmian — kotwica = pozycja toru, której węzeł leży na wysokości odczepu.
+    const kotwicaS = tor.find((s) => wezelZa(s)?.y === lat.y - zwisBocznego(lat));
     const wezelKotwicy = kotwicaS
       ? (dev(kotwicaS) ? wezel(dev(kotwicaS)!, 'wy') : null)
       : dev(tor[0])
@@ -211,13 +234,17 @@ function sprawdzOdgalezienia(
     const n0 = port(kolumna[0], 'N')!;
     if (kotwica) {
       expect(odczep, `${opis}: odczep odgałęzienia ${n}`).toBeDefined();
-      expect(rowne(odczep!.points[0], port(kotwica, 'S')!), `${opis}: odczep od kotwicy`).toBe(true);
+      expect(rowne(odczep!.points[0], wezelZa(kotwica)!), `${opis}: odczep od węzła kotwicy`).toBe(true);
       expect(rowne(odczep!.points[odczep!.points.length - 1], n0), `${opis}: odczep do portu N kolumny`).toBe(true);
       sprawdzone += 1;
     } else {
       expect(odczep, `${opis}: odczep bez kotwicy na węźle`).toBeUndefined();
     }
+    // Przewody kolumny (`-wire-`): port → port na wspólnym węźle oraz dojście port S → węzeł
+    // odczepu aparatu z kaflem, którego nie pokrywa przewód kolumny (kotwica ostatnia w kolumnie).
+    // Odczepy aparatów bocznych kolumny (`-lateral-`) zaczynają się w węźle (`wezelZa`).
     const przewody = odcinki.filter((s) => (s.meta?.ownerRef ?? '').startsWith(`${owner}-wire-`));
+    const odczepyBoczne = odcinki.filter((s) => (s.meta?.ownerRef ?? '').startsWith(`${owner}-lateral-`));
     const oczekiwane: { od: Punkt; do_: Punkt }[] = [];
     for (let i = 0; i + 1 < kolumna.length; i++) {
       const a = dev(kolumna[i]);
@@ -226,19 +253,29 @@ function sprawdzOdgalezienia(
         oczekiwane.push({ od: port(kolumna[i], 'S')!, do_: port(kolumna[i + 1], 'N')! });
       }
     }
+    const oczekiwaneBoczne: { od: Punkt; do_: Punkt }[] = [];
+    const dojscia = new Set<PreviewSymbol>();
     for (const lat of boczne) {
-      const zaczep = kolumna.find((s) => port(s, 'S')?.y === lat.y);
+      const zaczep = kolumna.find((s) => wezelZa(s)?.y === lat.y - zwisBocznego(lat));
       const d = dev(lat);
       if (zaczep && d && dev(zaczep) && wezel(dev(zaczep)!, 'wy') === wezel(d, 'we')) {
-        oczekiwane.push({ od: port(zaczep, 'S')!, do_: port(lat, 'N')! });
+        oczekiwaneBoczne.push({ od: wezelZa(zaczep)!, do_: port(lat, 'N')! });
+        const pokryte = oczekiwane.some((w) => rowne(w.od, port(zaczep, 'S')!));
+        if (zKaflem(zaczep) && !pokryte) dojscia.add(zaczep);
       }
     }
+    for (const z of dojscia) oczekiwane.push({ od: port(z, 'S')!, do_: wezelZa(z)! });
     for (const { od, do_ } of oczekiwane) {
       const jest = przewody.some((p) => rowne(p.points[0], od) && rowne(p.points[p.points.length - 1], do_));
       expect(jest, `${opis}: przewód odgałęzienia ${JSON.stringify(od)} → ${JSON.stringify(do_)}`).toBe(true);
     }
+    for (const { od, do_ } of oczekiwaneBoczne) {
+      const jest = odczepyBoczne.some((p) => rowne(p.points[0], od) && rowne(p.points[p.points.length - 1], do_));
+      expect(jest, `${opis}: odczep aparatu bocznego odgałęzienia ${JSON.stringify(od)} → ${JSON.stringify(do_)}`).toBe(true);
+    }
     expect(przewody.length, `${opis}: liczba przewodów odgałęzienia ${n}`).toBe(oczekiwane.length);
-    sprawdzone += oczekiwane.length;
+    expect(odczepyBoczne.length, `${opis}: liczba odczepów bocznych odgałęzienia ${n}`).toBe(oczekiwaneBoczne.length);
+    sprawdzone += oczekiwane.length + oczekiwaneBoczne.length;
   }
   return sprawdzone;
 }

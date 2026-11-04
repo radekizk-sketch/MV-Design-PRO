@@ -393,13 +393,17 @@ describe('(A) podłoga S9-7 na liście wszystkich liter symboli z rejestrów', (
     expect(ponizej).toEqual([]);
   });
 
-  it('inwentarz obejmuje litery nazwane w decyzji (G maszyny, „3” przekształtnika i przekładnika Ferrantiego, „M” napędu, kody i znaki glifów)', () => {
+  it('inwentarz obejmuje litery nazwane w decyzji (G maszyny, „3” przekształtnika, „M” napędu, kody i znaki glifów; przekładnik Ferrantiego bez „3”)', () => {
     const jest = (zrodlo: LiteraSymbolu['zrodlo'], tekst: string, opis?: RegExp): boolean =>
       LITERY.some((l) => l.zrodlo === zrodlo && l.tekst === tekst && (!opis || opis.test(l.opis)));
     expect(jest('cad', 'G', /^cad\.generator/)).toBe(true);
     expect(jest('cad', '3')).toBe(true);
     expect(jest('cad-wnetrze', '51N')).toBe(true);
-    expect(jest('qet', '3', /^qetCoreBalanceCt$/)).toBe(true);
+    // Przekładnik Ferrantiego NIE ma już znaku „3” (uwaga właściciela 2026-11-04, odbiór B-02:
+    // oznaczenie wg rysunku ENEA Zeszyt 1, Z.10 s.89 — pierścień rdzenia i przerywany kontur
+    // kabla przewleczonego, bez kreski ukośnej z „3”). Intencja inwentarza zostaje: lista liter
+    // odpowiada rysunkowi — litera, której symbol nie ma, nie może się w niej pojawić.
+    expect(LITERY.some((l) => l.zrodlo === 'qet' && /^qetCoreBalanceCt$/.test(l.opis))).toBe(false);
     expect(jest('qet', 'M', /^qetBreakerZNapedem$/)).toBe(true);
     expect(jest('glif', '51N', /^protectionRelay\//)).toBe(true);
     expect(jest('glif', '!', /^protectionRelay\//)).toBe(true);

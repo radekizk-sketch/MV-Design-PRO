@@ -1247,6 +1247,83 @@ export function zwisAparatuBocznego(symbolId: SymbolId): number {
 }
 
 /**
+ * Odsunięcie WĘZŁA ODCZEPU od portu kotwicy [px świata] — decyzja architekta 2026-11-04 (odbiór
+ * B-02 pola liniowego, UX04 §11.20 pkt 2): węzeł odgałęzienia nie leży na krawędzi kafla stanu.
+ * Port aparatu z kaflem (łącznik QET) leży na krawędzi kafla, więc przewód wychodzi z portu
+ * pionowo o raster poza kafel, tam stoi węzeł (kropka) i dopiero od niego biegnie odczep
+ * (Q51 z portu S Q5 w Z.11.1, odgałęzienie przekładnika napięciowego spod Q0). Aparat bez kafla
+ * — węzeł w porcie (przewód toru wchodzi w port glifu, krawędzi kafla nie ma). JEDNA funkcja dla
+ * toru głównego (`polozeniaToruGlownego`, `kotwicaWzglednaY`), kolumny odgałęzienia
+ * (`ukladGalezi`) i kotwic kompozytorów (`compose/gpz.ts`, `compose/station.ts`).
+ */
+export function odsuniecieWezlaOdczepu(symbolId: SymbolId): number {
+  return czySymbolQet(symbolId) && QET_SYMBOLE_POLA_SN[symbolId].kafel !== null ? GRID : 0;
+}
+
+type PunktSceny = { readonly x: number; readonly y: number };
+
+/**
+ * Port kotwicy odczepu i węzeł odczepu aparatu `symbolId` stojącego w (`x`, `y`): za aparatem
+ * (`zaAparatem`) — port S i węzeł niżej o `odsuniecieWezlaOdczepu`; przed torem — port N
+ * i węzeł wyżej (zejście od szyny).
+ */
+export function wezelOdczepu(
+  symbolId: SymbolId,
+  x: number,
+  y: number,
+  zaAparatem: boolean,
+): { readonly port: PunktSceny; readonly wezel: PunktSceny } {
+  const def = SYMBOL_DEFS[symbolId];
+  const p = zaAparatem ? def.ports.find((q) => q.dir === 'S') ?? def.ports[0] : def.ports.find((q) => q.dir === 'N') ?? def.ports[0];
+  const port = { x: x + p.x, y: y + p.y };
+  const d = odsuniecieWezlaOdczepu(symbolId);
+  return { port, wezel: { x: port.x, y: zaAparatem ? port.y + d : port.y - d } };
+}
+
+/** Punkt `p` na łamanej osiowej `pts` (wierzchołek albo wnętrze odcinka poziomego/pionowego) —
+ *  T-styk węzła odczepu z przewodem toru (wyrocznie końców odcinków kompozycji GPZ i stacji;
+ *  ta sama definicja co `scene/buildScene.ts::pointTouchesSegment`). */
+export function punktNaLamanej(p: PunktSceny, pts: readonly PunktSceny[]): boolean {
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if ((p.x === a.x && p.y === a.y) || (p.x === b.x && p.y === b.y)) return true;
+    if (a.x === b.x && p.x === a.x && p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y)) return true;
+    if (a.y === b.y && p.y === a.y && p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x)) return true;
+  }
+  return false;
+}
+
+/**
+ * Dojścia port → węzeł odczepu, których nie pokrywa żaden przewód toru (`przewody`): przewód
+ * toru do następnego aparatu przechodzi przez węzeł, więc dojście rysuje się wyłącznie, gdy
+ * kotwica jest ostatnim aparatem toru albo tor bez portów ENM nie rysuje przewodów. Bez
+ * powtórzeń (kilka odczepów jednego węzła — jedno dojście) i bez odcinków zerowych.
+ */
+export function dojsciaDoWezlowOdczepu(
+  kotwice: readonly { readonly port: PunktSceny; readonly wezel: PunktSceny }[],
+  przewody: readonly (readonly PunktSceny[])[],
+): readonly (readonly PunktSceny[])[] {
+  const pokryty = (x: number, y1: number, y2: number): boolean =>
+    przewody.some((pts) =>
+      pts.some((a, i) => {
+        const b = pts[i + 1];
+        return b != null && a.x === x && b.x === x && Math.min(a.y, b.y) <= y1 && Math.max(a.y, b.y) >= y2;
+      }),
+    );
+  const wynik: PunktSceny[][] = [];
+  const widziane = new Set<string>();
+  for (const { port, wezel } of kotwice) {
+    if (port.y === wezel.y) continue;
+    const klucz = `${wezel.x},${wezel.y}`;
+    if (widziane.has(klucz)) continue;
+    widziane.add(klucz);
+    if (!pokryty(port.x, Math.min(port.y, wezel.y), Math.max(port.y, wezel.y))) wynik.push([port, wezel]);
+  }
+  return wynik;
+}
+
+/**
  * Odcinki odczepów aparatów bocznych pola — łańcuch BEZ NAKŁADANIA (rozstrzygnięcie
  * architekta KD-5, 2026-10-30: różne przewody na jednym odcinku to fikcja). Aparaty boczne
  * wspólnej kotwicy (ten sam węzeł toru, ta sama wysokość) wiszą na JEDNYM poziomym przewodzie:
@@ -1322,13 +1399,17 @@ export function polozeniaToruGlownego(
     const dol = szczyt + SYMBOL_DEFS[symbolId].height;
     // Zwis aparatów bocznych zawieszonych na porcie S tego aparatu (największy z nich).
     const zwis = Math.max(0, ...laterals.filter((lat) => lat.afterMainIndex === i).map((lat) => zwisAparatuBocznego(lat.symbolId)));
+    // Węzeł odczepu poza kaflem aparatu-kotwicy (`odsuniecieWezlaOdczepu`) — tylko gdy z portu S
+    // tego aparatu coś odchodzi (bez odczepu przewód toru nie ma węzła).
+    const zaczepione = laterals.some((lat) => lat.afterMainIndex === i) || galezie.some((g) => g.afterMainIndex === i);
+    const wezel = zaczepione ? odsuniecieWezlaOdczepu(symbolId) : 0;
     // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego.
-    let nastepny = dol + APPARATUS_STACK_VERTICAL_GAP + zwis;
+    let nastepny = dol + wezel + APPARATUS_STACK_VERTICAL_GAP + zwis;
     for (const galaz of galezie) {
       // Pas odgałęzienia niesie wiersz podpisu (t4, wysokość spoza rastru) — położenie aparatu
       // toru przyciągnięte w górę do siatki (aparaty i porty toru zawsze na rastrze).
       if (galaz.afterMainIndex === i) {
-        nastepny = Math.max(nastepny, snapUp(dol + pasOdgalezienia(galaz).wysokosc + APPARATUS_STACK_VERTICAL_GAP));
+        nastepny = Math.max(nastepny, snapUp(dol + wezel + pasOdgalezienia(galaz).wysokosc + APPARATUS_STACK_VERTICAL_GAP));
       }
     }
     szczyt = nastepny;
@@ -1337,14 +1418,16 @@ export function polozeniaToruGlownego(
   return { y, height: n > 0 ? y[n - 1] + SYMBOL_DEFS[plan.mainPath[n - 1]].height : 0 };
 }
 
-/** Y kotwicy względem szczytu stosu = dół aparatu `afterMainIndex` toru głównego
- *  (`polozeniaToruGlownego`, port S); dla -1 → 0 (port N). */
+/** Y WĘZŁA odczepu względem szczytu stosu = dół aparatu `afterMainIndex` toru głównego
+ *  (`polozeniaToruGlownego`, port S) + odsunięcie węzła poza kafel; dla -1 → port N pierwszego
+ *  aparatu minus odsunięcie (`odsuniecieWezlaOdczepu`, ta sama funkcja co kompozytory). */
 function kotwicaWzglednaY(
   plan: Parameters<typeof polozeniaToruGlownego>[0],
   afterMainIndex: number,
 ): number {
-  if (afterMainIndex < 0) return 0;
-  return polozeniaToruGlownego(plan).y[afterMainIndex] + SYMBOL_DEFS[plan.mainPath[afterMainIndex]].height;
+  if (afterMainIndex < 0) return plan.mainPath.length > 0 ? -odsuniecieWezlaOdczepu(plan.mainPath[0]) : 0;
+  const symbolId = plan.mainPath[afterMainIndex];
+  return polozeniaToruGlownego(plan).y[afterMainIndex] + SYMBOL_DEFS[symbolId].height + odsuniecieWezlaOdczepu(symbolId);
 }
 
 /**
@@ -1411,16 +1494,27 @@ export function ukladGalezi(
 ): {
   readonly pozycje: readonly PozycjaOdgalezienia[];
   readonly odczep: readonly { readonly x: number; readonly y: number }[] | null;
+  /** Przewody kolumny port → port i dojścia port → węzeł odczepu (`dojsciaDoWezlowOdczepu`). */
   readonly przewody: readonly (readonly { readonly x: number; readonly y: number }[])[];
+  /** Odczepy aparatów bocznych kolumny — od węzła odczepu (`points[0]`, kropka węzła). */
+  readonly odczepyBoczne: readonly (readonly { readonly x: number; readonly y: number }[])[];
 } {
   const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
   const osX = lewaX + sub.mainStack.width / 2;
   const kolumna: PozycjaOdgalezienia[] = [];
-  let y = kotwica.y + APPARATUS_STACK_VERTICAL_GAP;
+  // Położenia kolumny — ta sama reguła co tor główny (`polozeniaToruGlownego`: raster, zwis
+  // aparatów bocznych, węzeł odczepu poza kaflem kotwicy), pierwszy aparat raster pod węzłem.
+  const polozeniaKolumny = polozeniaToruGlownego({ mainPath: galaz.plan.mainPath, laterals: galaz.plan.laterals });
+  const y0 = kotwica.y + APPARATUS_STACK_VERTICAL_GAP;
   galaz.plan.mainPath.forEach((symbolId, i) => {
     const def = SYMBOL_DEFS[symbolId];
-    kolumna.push({ sequenceIndex: galaz.plan.mainSequenceIndices[i], symbolId, x: snapToGrid(osX - def.width / 2), y, boczny: false });
-    y += def.height + APPARATUS_STACK_VERTICAL_GAP;
+    kolumna.push({
+      sequenceIndex: galaz.plan.mainSequenceIndices[i],
+      symbolId,
+      x: snapToGrid(osX - def.width / 2),
+      y: y0 + polozeniaKolumny.y[i],
+      boczny: false,
+    });
   });
   const prawaKolumnyX = Math.max(...kolumna.map((k) => k.x + SYMBOL_DEFS[k.symbolId].width));
   const portKolumny = (k: PozycjaOdgalezienia, dir: 'N' | 'S') => {
@@ -1428,8 +1522,12 @@ export function ukladGalezi(
     const port = def.ports.find((p) => p.dir === dir) ?? def.ports[0];
     return { x: k.x + port.x, y: k.y + port.y };
   };
-  const kotwicaBocznegoY = (afterMainIndex: number): number =>
-    afterMainIndex >= 0 ? portKolumny(kolumna[afterMainIndex], 'S').y : portKolumny(kolumna[0], 'N').y;
+  // Węzeł odczepu aparatu bocznego kolumny (`wezelOdczepu`: poza kaflem kotwicy).
+  const wezelKolumny = (afterMainIndex: number) => {
+    const k = afterMainIndex >= 0 ? kolumna[afterMainIndex] : kolumna[0];
+    return wezelOdczepu(k.symbolId, k.x, k.y, afterMainIndex >= 0);
+  };
+  const kotwicaBocznegoY = (afterMainIndex: number): number => wezelKolumny(afterMainIndex).wezel.y;
   const odstepy = przesunieciaOdgalezien(galaz.plan.laterals, kotwicaBocznegoY);
   const boczne: PozycjaOdgalezienia[] = [];
   const przewody: (readonly { readonly x: number; readonly y: number }[])[] = [
@@ -1437,10 +1535,12 @@ export function ukladGalezi(
       kolumna.map((k) => ({ symbolId: k.symbolId, x: k.x, y: k.y, device: urzadzenie(k.sequenceIndex) })),
     ),
   ];
+  const kotwiceBocznych: { readonly port: PunktSceny; readonly wezel: PunktSceny }[] = [];
+  const odczepyBoczne: (readonly PunktSceny[])[] = [];
   galaz.plan.laterals.forEach((lat, i) => {
     const def = SYMBOL_DEFS[lat.symbolId];
-    const zaczep =
-      lat.afterMainIndex >= 0 ? portKolumny(kolumna[lat.afterMainIndex], 'S') : portKolumny(kolumna[0], 'N');
+    const kotwicaKolumny = wezelKolumny(lat.afterMainIndex);
+    const zaczep = kotwicaKolumny.wezel;
     const x = prawaKolumnyX + odstepy[i];
     const zwis = zwisAparatuBocznego(lat.symbolId);
     boczne.push({ sequenceIndex: lat.sequenceIndex, symbolId: lat.symbolId, x, y: zaczep.y + zwis, boczny: true });
@@ -1450,13 +1550,16 @@ export function ukladGalezi(
         : urzadzenie(galaz.plan.mainSequenceIndices[0]);
     if (!czyOdgalezienieNaWezleKotwicy(kotwicaBocznego, lat.afterMainIndex >= 0, urzadzenie(lat.sequenceIndex))) return;
     const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
-    przewody.push([zaczep, { x: x + north.x, y: zaczep.y }, ...(zwis > 0 ? [{ x: x + north.x, y: zaczep.y + zwis }] : [])]);
+    odczepyBoczne.push([zaczep, { x: x + north.x, y: zaczep.y }, ...(zwis > 0 ? [{ x: x + north.x, y: zaczep.y + zwis }] : [])]);
+    kotwiceBocznych.push(kotwicaKolumny);
   });
+  // Dojście port → węzeł odczepu, gdy węzła nie pokrywa przewód kolumny (kotwica ostatnia).
+  przewody.push(...dojsciaDoWezlowOdczepu(kotwiceBocznych, przewody));
   const pierwszy = kolumna[0];
   const north = pierwszy ? portKolumny(pierwszy, 'N') : null;
   const naWezle =
     pierwszy != null
     && czyOdgalezienieNaWezleKotwicy(kotwicaUrzadzenie, galaz.afterMainIndex >= 0, urzadzenie(pierwszy.sequenceIndex));
   const odczep = north && naWezle ? [{ x: kotwica.x, y: kotwica.y }, { x: north.x, y: kotwica.y }, north] : null;
-  return { pozycje: [...kolumna, ...boczne], odczep, przewody };
+  return { pozycje: [...kolumna, ...boczne], odczep, przewody, odczepyBoczne };
 }

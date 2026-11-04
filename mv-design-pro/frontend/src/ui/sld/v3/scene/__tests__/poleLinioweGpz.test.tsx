@@ -40,12 +40,12 @@ import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 import fxStacjeZamkniete from '../../../../../harness-fixtures/generated/geometria_stacji_zamkniete.json';
 import fxGpz110 from '../../../../../harness-fixtures/generated/geometria_stacji_gpz_110kv.json';
-import slownikFunkcjiEaz from '../../../../shared/slownikFunkcjiEaz.json';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
 import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
-import { obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
+import { czySymbolQet, obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
+import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
 import { prostokatKaflaStanu, SYMBOL_GLYPHS, type SwitchState } from '../../symbols/glyphs';
 import { DARK_SCADA_SLD_PALETTE, type StanKafla } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
@@ -313,10 +313,19 @@ function sprawdzOdgalezienie(
   const osKolumny = portSwiata(kolumna[0], 'N').x;
   for (const s of boczne) expect(portSwiata(s, 'N').x, `${nazwa}: aparat boczny na prawo od kolumny`).toBeGreaterThan(osKolumny);
   const q0 = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
+  // Decyzja architekta 2026-11-04 (§11.20 pkt 2): węzeł odgałęzienia NIE leży na krawędzi kafla —
+  // przewód wychodzi z portu S aparatu z kaflem (Q0, Q5) raster w dół, tam węzeł z kropką i od
+  // niego odczep. Wyrocznia niezależna od kompozycji: kafel kotwicy z `prostokatKaflaStanu`.
+  const wezel = (k: PreviewSymbol) => {
+    const p = portSwiata(k, 'S');
+    return { x: p.x, y: p.y + (symbolZKaflem(k.symbolId) ? GRID : 0) };
+  };
   expect(odczep, `${nazwa}: odczep odgałęzienia`).toBeDefined();
-  expect(odczep!.points[0], nazwa).toEqual(portSwiata(q0, 'S'));
+  expect(odczep!.points[0], nazwa).toEqual(wezel(q0));
+  expect(odczep!.points[0].y, `${nazwa}: węzeł odgałęzienia poza kaflem Q0`).toBeGreaterThan(q0.y + prostokatKaflaStanu(q0.symbolId).y + prostokatKaflaStanu(q0.symbolId).height);
   expect(odczep!.points[odczep!.points.length - 1], nazwa).toEqual(portSwiata(kolumna[0], 'N'));
   const przewody = scena.segments.filter((s) => s.meta?.ownerRef?.startsWith(`${pole.ref}#odgalezienie-0-wire-`));
+  const odczepyBoczne = scena.segments.filter((s) => s.meta?.ownerRef?.startsWith(`${pole.ref}#odgalezienie-0-lateral-`));
   for (let i = 0; i + 1 < kolumna.length; i++) {
     expect(
       przewodMiedzy(przewody, portSwiata(kolumna[i], 'S'), portSwiata(kolumna[i + 1], 'N')),
@@ -326,9 +335,25 @@ function sprawdzOdgalezienie(
   for (const s of boczne) {
     const ozn = mapa.get(s.meta?.deviceRef ?? '')!;
     const kotwica = kolumna.find((k) => mapa.get(k.meta?.deviceRef ?? '') === oczekiwane.zaczep[ozn])!;
-    expect(przewodMiedzy(przewody, portSwiata(kotwica, 'S'), portSwiata(s, 'N')), `${nazwa}: odczep ${ozn}`).toBeDefined();
+    expect(przewodMiedzy(odczepyBoczne, wezel(kotwica), portSwiata(s, 'N')), `${nazwa}: odczep ${ozn} od węzła`).toBeDefined();
+    // Węzeł odczepu poza kaflem kotwicy, przez który przechodzi przewód kolumny do następnego
+    // aparatu (Q51 z portu S Q5), jest rozgałęzieniem — ma kropkę (predykat kropki obejmuje
+    // odczepy kolumny `…-lateral-…`). Odczep z portu aparatu bez kafla na końcu kolumny (T3
+    // spod głowicy GK1) jest narożnikiem toru — bez kropki (reguła trzech ramion).
+    const w = wezel(kotwica);
+    const kropka = scena.symbols.some(
+      (d) => d.symbolId === 'junction' && d.x + SYMBOL_DEFS.junction.width / 2 === w.x && d.y + SYMBOL_DEFS.junction.height / 2 === w.y,
+    );
+    const rozgalezienie = symbolZKaflem(kotwica.symbolId) && kolumna.indexOf(kotwica) < kolumna.length - 1;
+    expect(kropka, `${nazwa}: kropka węzła odczepu ${ozn}`).toBe(rozgalezienie);
   }
-  expect(przewody, nazwa).toHaveLength(kolumna.length - 1 + boczne.length);
+  expect(przewody, nazwa).toHaveLength(kolumna.length - 1);
+  expect(odczepyBoczne, nazwa).toHaveLength(boczne.length);
+}
+
+/** Symbol z kaflem stanu (łącznik QET) — wyrocznia z rejestru symboli QET, nie z kompozycji. */
+function symbolZKaflem(id: SymbolId): boolean {
+  return czySymbolQet(id) && QET_SYMBOLE_POLA_SN[id].kafel !== null;
 }
 
 function sprawdzPole(enm: EnergyNetworkModel, scena: SceneV3, pole: PoleLiniowe, q1: StanQ1, q0: StanQ0): void {
@@ -1578,17 +1603,41 @@ function polaczeniaBezOdpowiednika(enm: EnergyNetworkModel, scena: SceneV3): str
     }
     const przewody = scena.segments.filter((s) => {
       const r = s.meta?.ownerRef ?? '';
-      return r.startsWith(`${pole.ref}#wire-`) || r.startsWith(`${pole.ref}#lateral-`) || r.startsWith(`${pole.ref}#odgalezienie-`);
+      return (
+        r.startsWith(`${pole.ref}#wire-`)
+        || r.startsWith(`${pole.ref}#lateral-`)
+        || r.startsWith(`${pole.ref}#odgalezienie-`)
+        || r.startsWith(`${pole.ref}#wezel-odczepu-`)
+      );
     });
-    for (const w of przewody) {
-      const konce = [w.points[0], w.points[w.points.length - 1]].map((p) => koncePunktu.get(`${p.x},${p.y}`));
-      if (konce.some((k) => !k)) {
-        naruszenia.push(`${pole.ref}: przewód ${w.meta?.ownerRef} kończy się poza portem aparatu`);
-        continue;
+    // Koniec przewodu: port aparatu albo T-styk na INNYM przewodzie pola (węzeł odczepu poza
+    // kaflem kotwicy — decyzja architekta 2026-11-04, UX04 §11.20 pkt 2: odczep zaczyna się
+    // raster pod portem S aparatu z kaflem, na przewodzie toru). Przewód jest węzłem grafu
+    // połączeń, więc T-styk łączy końce obu przewodów; koniec w powietrzu — naruszenie.
+    const naLamanej = (p: { x: number; y: number }, pts: readonly { x: number; y: number }[]): boolean =>
+      pts.some((a, i) => {
+        const b = pts[i + 1];
+        if (a.x === p.x && a.y === p.y) return true;
+        if (!b) return false;
+        return (a.x === b.x && a.x === p.x && p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y))
+          || (a.y === b.y && a.y === p.y && p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x));
+      });
+    przewody.forEach((_w, i) => rodzic.set(`przewod|${i}`, `przewod|${i}`));
+    przewody.forEach((w, i) => {
+      for (const p of [w.points[0], w.points[w.points.length - 1]]) {
+        const konce = koncePunktu.get(`${p.x},${p.y}`);
+        if (konce) {
+          for (const k of konce) polacz(`przewod|${i}`, k);
+          continue;
+        }
+        const j = przewody.findIndex((o, oj) => oj !== i && naLamanej(p, o.points));
+        if (j < 0) {
+          naruszenia.push(`${pole.ref}: przewód ${w.meta?.ownerRef} kończy się poza portem aparatu i poza przewodem`);
+          continue;
+        }
+        polacz(`przewod|${i}`, `przewod|${j}`);
       }
-      const wszystkie = konce.flat() as string[];
-      for (const k of wszystkie.slice(1)) polacz(wszystkie[0], k);
-    }
+    });
     const zejscie = scena.segments.find((s) => s.meta?.ownerRef === `${pole.ref}#descent`);
     const dolZejscia = zejscie?.points[zejscie.points.length - 1];
     const konceZejscia = dolZejscia ? koncePunktu.get(`${dolZejscia.x},${dolZejscia.y}`) ?? [] : [];

@@ -120,7 +120,10 @@ import {
   brakiPrzylaczyPola,
   czyAparatBoczny,
   czyOdgalezienieNaWezleKotwicy,
+  dojsciaDoWezlowOdczepu,
   odcinkiOdczepowBocznych,
+  punktNaLamanej,
+  wezelOdczepu,
   zwisAparatuBocznego,
   type OdczepBoczny,
   czyPoleNiesiePorty,
@@ -705,33 +708,23 @@ function buildBayStack(
   const branchSegments: ComposedSegment[] = [];
   const lateralInstances: ComposedSymbolInstance[] = [];
   const mainRightX = Math.max(...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width));
-  // Kotwica = port S aparatu `afterMainIndex` (dla -1: port N pierwszego) — ta sama kotwica
-  // co odcinek odgałęzienia niżej; odstęp poziomy z `ukladBocznyPola` (jedna reguła z planem).
-  const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => {
+  // Kotwica = WĘZEŁ odczepu przy porcie S aparatu `afterMainIndex` (dla -1: przy porcie N
+  // pierwszego), poza kaflem aparatu-kotwicy (`wezelOdczepu`, decyzja architekta 2026-11-04) —
+  // ta sama kotwica co pole GPZ; odstęp poziomy z `ukladBocznyPola` (jedna reguła z planem).
+  const wezelToru = (afterMainIndex: number) => {
     const inst = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
-    const d = SYMBOL_DEFS[inst.symbolId];
-    const port =
-      afterMainIndex >= 0 ? d.ports.find((p) => p.dir === 'S') ?? d.ports[0] : d.ports.find((p) => p.dir === 'N') ?? d.ports[0];
-    return { x: inst.x + port.x, y: inst.y + port.y };
+    return wezelOdczepu(inst.symbolId, inst.x, inst.y, afterMainIndex >= 0);
   };
+  const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => wezelToru(afterMainIndex).wezel;
+  // Kotwice z odczepem — dojście port → węzeł dorysowuje się, gdy nie pokrywa go przewód toru.
+  const kotwiceZOdczepem: ReturnType<typeof wezelToru>[] = [];
   const uklad = ukladBocznyPola(plan, (afterMainIndex) => kotwicaToru(afterMainIndex).y);
   if (laterals.length > 0) {
     const odstepy = uklad.boczne;
     const odczepy: (OdczepBoczny & { readonly ownerRef: string })[] = [];
     laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
-      const anchorInstance =
-        afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
-      const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
-      const anchorPortDef =
-        afterMainIndex >= 0
-          ? anchorDef.ports.find((p) => p.dir === 'S') ?? anchorDef.ports[0]
-          : anchorDef.ports.find((p) => p.dir === 'N') ?? anchorDef.ports[0];
-      const anchor: RoutePort = {
-        x: anchorInstance.x + anchorPortDef.x,
-        y: anchorInstance.y + anchorPortDef.y,
-        dir: anchorPortDef.dir,
-      };
+      const anchor = kotwicaToru(afterMainIndex);
       const x = mainRightX + odstepy[lateralIndex];
       // Aparat z kaflem stanu wisi pod węzłem odczepu (`zwisAparatuBocznego`).
       const zwis = zwisAparatuBocznego(item.symbolId);
@@ -788,6 +781,7 @@ function buildBayStack(
         if (!czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, item.device)) return;
       }
       odczepy.push({ ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`, kotwica: anchor, celX: x + north.x, zwis });
+      kotwiceZOdczepem.push(wezelToru(afterMainIndex));
     });
     // KD-5: odczepy wspólnej kotwicy łańcuchem bez nakładania (jedna reguła z polem GPZ).
     odcinkiOdczepowBocznych(odczepy).forEach((points, i) => branchSegments.push({ ownerRef: odczepy[i]!.ownerRef, points }));
@@ -852,9 +846,13 @@ function buildBayStack(
     });
     if (rysunek.odczep) {
       branchSegments.push({ ownerRef: `${bay.bayRef}#odgalezienie-${numer}`, points: rysunek.odczep });
+      kotwiceZOdczepem.push(wezelToru(galaz.afterMainIndex));
     }
     rysunek.przewody.forEach((points, wi) => {
       branchSegments.push({ ownerRef: `${bay.bayRef}#odgalezienie-${numer}-wire-${wi}`, points });
+    });
+    rysunek.odczepyBoczne.forEach((points, li) => {
+      branchSegments.push({ ownerRef: `${bay.bayRef}#odgalezienie-${numer}-lateral-${li}`, points });
     });
   });
 
@@ -868,6 +866,11 @@ function buildBayStack(
         })),
       ).map((points, wi) => ({ ownerRef: `${bay.bayRef}#wire-${wi}`, points }))
     : [];
+  // Dojście port → węzeł odczepu poza kaflem, gdy węzła nie pokrywa przewód toru (kotwica na
+  // końcu toru albo pole bez portów ENM) — przewód z portu do węzła, nie odczep (bez kropki).
+  dojsciaDoWezlowOdczepu(kotwiceZOdczepem, wireSegments.map((w) => w.points)).forEach((points, i) =>
+    branchSegments.push({ ownerRef: `${bay.bayRef}#wezel-odczepu-${i}`, points }),
+  );
   const torOdSzyny = !zPortami || czyTorOdSzyny(stackItems[0]?.device);
   return { instances, topPort, bottomPort, branchSegments, lateralInstances, identifierLabels, wireSegments, torOdSzyny };
 }
@@ -2302,8 +2305,11 @@ export function internalSegmentsEndAtPortsOrBus(composition: StationComposition)
     (s) => s.ownerRef.endsWith('#sn-bus') || s.ownerRef.endsWith('#lv-bus') || s.ownerRef.endsWith('#der-row-bus'),
   );
 
-  const endpointValid = (p: RouteVertex): boolean => {
+  const endpointValid = (p: RouteVertex, seg: (typeof composition.segments)[number]): boolean => {
     if (ports.some((port) => port.x === p.x && port.y === p.y)) return true;
+    // Węzeł odczepu poza kaflem kotwicy (decyzja architekta 2026-11-04, `wezelOdczepu`) — T-styk
+    // na innym odcinku kompozycji; ta sama reguła co pole GPZ (`gpzInternalSegmentsEndAtPortsOrBus`).
+    if (composition.segments.some((o) => o !== seg && punktNaLamanej(p, o.points))) return true;
     return busSegments.some((bus) => {
       const [a, b] = bus.points;
       if (!a || !b || a.y !== b.y || a.y !== p.y) return false;
@@ -2316,7 +2322,7 @@ export function internalSegmentsEndAtPortsOrBus(composition: StationComposition)
   return composition.segments.every((seg) => {
     const first = seg.points[0];
     const last = seg.points[seg.points.length - 1];
-    return !!first && !!last && endpointValid(first) && endpointValid(last);
+    return !!first && !!last && endpointValid(first, seg) && endpointValid(last, seg);
   });
 }
 

@@ -1815,16 +1815,19 @@ kierunek migracji) — wymaga rozstrzygnięcia sesji głównej przed wpięciem z
 
 ### 11.16. Blok przekaźnika na LOD2 i klik do zabezpieczeń pola
 
-**Wymaganie.** Blok przekaźnika: ≤ 4 kody funkcji zabezpieczeń (ANSI) + „+N", automatyka poza
-kanwą; natywny klik otwiera zakładkę inspektora „Zabezpieczenia i automatyka" z wierszami
-„ANSI + nazwa polska" prowadzącymi do nastaw; zero phantomów.
+**Wymaganie (stan po odbiorze B-02 2026-11-04, §11.19 pkt 7 i §11.20).** Blok przekaźnika: kółko
+przy Q0, POD kółkiem wszystkie kody funkcji pola w dwóch kolumnach pionowych, bez licznika „+n”;
+kody wyłącznie na LOD2, na LOD0 i LOD1 samo kółko. Natywny klik otwiera zakładkę inspektora
+„Zabezpieczenia i automatyka" z wierszami „ANSI + nazwa polska" prowadzącymi do nastaw; zero
+phantomów. (Dawne wymaganie „≤ 4 kody + „+N”, automatyka poza kanwą” zastąpione decyzją właściciela.)
 
 **Wykonanie.** Słownik funkcji EAZ ma lustro frontendu `ui/shared/slownikFunkcjiEaz.json`
 (parytet z `backend/src/network_model/catalog/funkcje_eaz.py` — `backend/tests/ci/test_parytet_slownika_funkcji_eaz.py`).
-Podział kodów pola na blok i „+N" ma jedno źródło `ui/shared/funkcjeEaz.ts::podzialFunkcjiNaSchemacie`
-(na schemacie wyłącznie rodzaj ZABEZPIECZENIE, najwyżej 4; automatyka, blokady i funkcje
-technologiczne liczone w „+N"), czytane przez `compose/protectionMarking.ts::kodyBlokuPrzekaznika`
-i `kodyWOkreguBlokuPrzekaznika` (GPZ i stacje). Klik w dowolny obiekt warstwy adnotacji
+Układ kodów pod kółkiem ma jedno źródło `compose/protectionMarking.ts::kolumnyKodowPodOkregiem`
+(lewa kolumna ⌈n/2⌉, prawa reszta, kolejność danych `Bay.protection_codes`) i
+`szerokoscBlokuPodOkregiem` (rezerwacja = rysunek), czytane przez kompozytor GPZ
+(`compose/gpz.ts::etykietyBlokuPowiazan`); dawne funkcje podziału na blok i „+N”
+(`podzialFunkcjiNaSchemacie`, `kodyBlokuPrzekaznika`, `kodyWOkreguBlokuPrzekaznika`) skasowane. Klik w dowolny obiekt warstwy adnotacji
 zabezpieczeń (okrąg, wiersze kodów, odniesienie 3U₀, linie) rozwiązuje pole
 (`canvas/poleAdnotacjiZabezpieczen.ts` — jedna reguła dla klasy obiektów), zaznacza je i otwiera
 kartę pola z wyróżnioną sekcją `zabezpieczenia` (`SldCanvasV3Workspace.handleElementClick`,
@@ -1840,9 +1843,11 @@ modelu (brak `equipment_refs` w trzech polach → wyjątek w `daneElementuKanwy.
 `backend/tests/ci/test_fikstury_enm_sld_ksztalt.py` pilnuje, że żadna fikstura nie gubi kluczy zrzutu
 (stara fikstura: 643 braki).
 
-**Testy.** `ui/shared/__tests__/funkcjeEaz.test.ts` (iloczyn liczba zabezpieczeń {0,1,2,4,5,6} ×
-inne {brak, automatyka, blokada, technologiczne, wszystkie} × położenie × kod spoza słownika,
-wyrocznia z jawnej tabeli rodzajów); `canvas/__tests__/klikBlokuPrzekaznika.test.tsx` (18; natywny
+**Testy.** `ui/shared/__tests__/funkcjeEaz.test.ts` (lustro słownika backendu; iloczyn liczba
+zabezpieczeń × inne funkcje × położenie × kod spoza słownika — wszystkie kody pod okręgiem, bez
+„+N”), `scene/__tests__/poleLinioweGpz.test.tsx` (wyrocznia bloku dwóch kolumn, brak „+n”,
+kody wyłącznie na LOD2), `scene/__tests__/wezelOdczepuPozaKaflem.contract.test.ts` (wiersz kodów ∩
+symbol, napis, przewód — każda fikstura × LOD, §11.20); `canvas/__tests__/klikBlokuPrzekaznika.test.tsx` (18; natywny
 `fireEvent.click` na uchwycie warstwy trafień po przybliżeniu kółkiem; fikstura {Z.11 bez urządzeń,
 ścieżka danych z urządzeniami} × obiekt {okrąg, wiersz kodów, wiersz 3U₀, linia wyłączania, inna
 adnotacja} × tryb {edycja modelu, przegląd wyników}; iniekcja — gałąź kliku wyłączona: 9 czerwonych);
@@ -1950,9 +1955,10 @@ produktu) rysuje na widoku dalekim abstrakcyjny kod rodzaju □/◇/◯ kontrakt
 symbol łącznika, zostaje.
 
 **Pkt 3 — wyłącznik wysuwny.** Człon wysuwny = pasma podwójnych szewronów nad i pod kaflem
-(`kafelStanu.uklad.czlonWysuwny`), kolorem członu (`inkCzlonu`), nie stanem wyłącznika: ENM nie
-niesie położenia członu wysuwnego (praca/próba/wysunięty), więc szewrony są neutralne — to luka
-modelu, nie decyzja rysunku. Okrąg napędu „M” wyłącznika wysuwnego leży cały w gabarycie (dawny
+(`kafelStanu.uklad.czlonWysuwny`). Stan po §11.20 pkt 3: trzy kafle w pionie (˄˄ / × / ˅˅);
+kafle członu mają kolor położenia członu (`GlyphProps.stanCzlonu`, domyślnie `nieustalony` — ENM
+nie niesie położenia członu wysuwnego, praca/próba/wysunięty), kafel wyłącznika — stan wyłącznika;
+dawny osobny kolor `inkCzlonu` skasowany. Okrąg napędu „M” wyłącznika wysuwnego leży cały w gabarycie (dawny
 ucięty półokrąg) — pin w `literaNapedu.test.tsx`.
 
 **Pkt 5 — LOD0/1/2.** Jedna tabela detali kafla `DETALE_KAFLA_WG_LOD` (`symbols/glyphs.tsx`):
@@ -1994,8 +2000,16 @@ w lewo dalej niż odstęp pól poszerza kolumnę poprzednią. Pomiar (j.św. = p
 
 | Fikstura | rozstaw pól przed | rozstaw pól po | rysunek pola przed | rysunek pola po |
 |---|---|---|---|---|
-| Z.10 (stały / trójpołożeniowy) | 528 / 544 | 312 / 368 | 322 / 419 | 242 / 279 |
-| Z.11.1 / Z.11 | 720 / 744 | 448 / 440 | 571 / 472 | 359 / 370 |
+| Z.10 (stały / trójpołożeniowy) | 528 / 544 | 312 / 344 | 322 / 419 | 242 / 255 |
+| Z.11.1 / Z.11 | 720 / 744 | 480 / 440 | 571 / 472 | 391 / 370 |
+
+Pomiar 2026-11-04 po §11.20 (scena LOD2, skala 1, rozpiętość x symboli, napisów i odcinków
+właściciela pola bez szyny; „przed” = `44a2c6c02` w tym samym pomiarze). Względem wcześniejszego
+pomiaru tej tabeli: Z.10 trójpołożeniowy 279 → 255 (zmiany poprzednika w tym samym przebiegu karty,
+przyczyny nie rozdzielano), Z.11.1 359 → 391 (+32 j.św.): tabliczka T3 w kolumnie odgałęzienia jest od
+§11.20 pkt 1 szukana tą samą funkcją co pozostałe, z blokiem kodów jako przeszkodą — staje za
+blokiem, a nie na nim (dawne 359 j.św. było szerokością z kolizją tabliczki z kodami, czerwony
+test T3).
 
 Pin: `canvas/__tests__/obrysyWgPlanu.test.tsx` — tła sąsiednich pól rozłączne na skalach sceny
 LOD2 kamery (≥ 1,02) we wszystkich kadrach pól; iniekcja (bez zapasu na pismo kadru) — 3 czerwone.
@@ -2006,3 +2020,64 @@ nadal obejmuje tusz (sprawdzane na każdej skali), ale tła sąsiednich pól mog
 tego położenia; uziemnik „uziemiony” = zamknięty (kafel czerwony, nie szary nieustalony —
 `polozenieLacznika`). Litera „M” napędu wyśrodkowana optycznie (środek tuszu = środek okręgu,
 ≤ 0,5 j.św.; importer `wysrodkuj_litery_w_okregach`).
+
+### 11.20. Decyzje architekta 2026-11-04 (odbiór B-02, następca 3) — wykonanie → test
+
+**Pkt 1 — tabliczka T3 w Z.11.1, wariant (a).** Jedna funkcja wyszukiwania miejsca tabliczki
+przekładnika `szukajMiejscaTabliczki` (`compose/gpz.ts`, prostokąt `prostokatTabliczki`) obsługuje
+i rezerwację (faza przed przekaźnikiem), i ułożenie końcowe tabliczek kolumny odgałęzienia toru
+(`meta.odgalezienieToru`). Przeszkody stałe: obrysy aparatów, oznaczenia pola, odcinki toru,
+pomiarowe i zabezpieczeniowe; w ułożeniu końcowym także blok przekaźnika (okrąg, kody,
+odniesienia) i wcześniej ułożone tabliczki. Przekaźnik Z.10 zostaje przy Q0 (wyrocznia
+„najbliżej Q0” zielona). Test T3 (`tabliczkiPrzekladnikow.test.ts`) — bez poluzowania, zielony.
+
+**Pkt 2 — węzeł odczepu poza kaflem, dla WSZYSTKICH kotwic.** Odczep z portu aparatu z kaflem
+stanu nie zaczyna się na krawędzi kafla: `apparatusSequence.ts::odsuniecieWezlaOdczepu` (GRID dla
+symbolu QET z kaflem, 0 bez kafla) i `wezelOdczepu` (port S → węzeł GRID niżej, port N → GRID
+wyżej) wyznaczają węzeł; przewód port → węzeł dokłada `dojsciaDoWezlowOdczepu` (bez duplikatów
+z przewodami pola), od węzła biegnie odczep, w węźle stoi kropka. Jedno źródło dla GPZ
+(`compose/gpz.ts`, odcinki `#wezel-odczepu-<i>`), stacji (`compose/station.ts`) i kolumny
+odgałęzienia (`ukladGalezi` → `odczepyBoczne`, właściciel `#odgalezienie-<n>-lateral-<k>`);
+`polozeniaToruGlownego` przesuwa następny aparat o węzeł, `kotwicaWzglednaY` liczy kotwicę
+z tym samym odsunięciem (predykat wejścia i wyjścia z jednej funkcji). Predykat kropki
+`scene/crossings.ts::ODCZEP_WEZLA_POLA` rozpoznaje właściciela odczepu kolumny. Pasmo poziomych
+odcinków aparatów bocznych liczone od węzła (`buildScene.ts::lateralApparatusGapsForKinds`,
+`zwisAparatuBocznego`). Niezmienniki przewodów (`gpzInternalSegmentsEndAtPortsOrBus`,
+`internalSegmentsEndAtPortsOrBus`) dopuszczają koniec na innym przewodzie (T-styk w węźle) —
+zmiana świadoma, komentarz intencji w kodzie. Pin kropek `wezlyMostkiRozlacznoscFikstur`
+65 → 69 (cztery węzły Q51 w kolumnie odgałęzienia Z.11, L1/L2 × dwa pola).
+
+**Pkt 3 — człon wysuwny i Q8.** Trzy kafle w pionie; kafle członu w kolorze położenia członu,
+kafel wyłącznika w kolorze stanu (`symbols/glyphs.tsx`, `data-kafel="czlon-gora|czlon-dol"`);
+napęd M w środku kafla wyłącznika. Uziemnik Q8: styk górny niżej (manifest importera: przegub
+(60, 90), styk zamknięty (60, 23,5) — 9,4 j.św. od krawędzi kafla, stopień glifu 0,554; dawny
+przegub 92,5 dawał ziemię 7,14 px na LOD1, poniżej podłogi 8 px; przegub 90 przy styku 25 dawał
+stopień 0,542 i importer odrzucał). Doprowadzenie: kropka → poziomo → pionowo w dół w styk górny.
+
+**Znalezisko po drodze, naprawione u źródła — korytarz magistrali przez pole GPZ.** Kontrakt (d)
+wykrył na fiksturze kanwy `b2Droga-add_sn_bay` (LOD2) wiersz kodów „ZS” na kablu magistrali:
+poziomy bieg korytarza y = 696 przechodził przez stos INNEGO pola liniowego GPZ (przewody pola,
+blok kodów; koniec przewodu pola na magistrali). Stan identyczny na `44a2c6c02` (zmierzone sondą
+w osobnej kopii `src`), tylko kody stały wtedy obok okręgu. Przyczyna: warunek objazdu
+`corridorLevelHitsOtherLineBayPort` (`buildScene.ts`) sprawdzał wyłącznie poziom dolnego portu
+pola. Naprawa: objazd pod GPZ, gdy korytarz leży w paśmie pola — od górnej krawędzi GPZ do dolnego
+portu pola + 2·GRID. Regresja `src/ui/sld/v3/scene` i `canvas`: 3176 zielonych, bez zmiany innych
+pinów.
+
+**Wyrocznia e2e ramki bloku — poprawiona z zachowaniem intencji.** Spec zrzutowy mierzył margines
+ramki od obrysu narysowanego okręgu, który leży 1 j.św. wewnątrz kwadratu okręgu
+(`OKRAG_PRZEKAZNIKA.r` = 11 w kwadracie 24), więc margines był zawyżony o 1 j.św.; przy skali
+1,45 mieściło się to w tolerancji 1 px, w kadrze Z.10 trójpołożeniowym (skala 2,76) dawało
+fałszywą czerwień (zapas 12,24 px < 12,80 px). Margines liczony teraz od lewej krawędzi tuszu
+wierszy (zaczep wierszy = lewa krawędź kwadratu okręgu); asercja „zapas prawy = margines
+(+ ≤ 1 j.św.)” bez zmian, komunikat porażki podaje wiersz najdalej w prawo, ramkę i skalę.
+
+**Testy.** `scene/__tests__/wezelOdczepuPozaKaflem.contract.test.ts` (185): 58 fikstur modelu ENM
++ macierz W1c × LOD {0, 1, 2} × wyrocznia {(a) kropka na kaflu domkniętym, (b) port aparatu
+z kaflem końcem ≤ 1 odcinka toru, (c) koniec odcinka na kaflu poza portem, (d) opis pola — P1/P2,
+tabliczki CT/VT/Ferrantiego, wiersze kodów — ∩ symbol, napis, przewód}; kontrola niepustości
+(kropki przy kaflach, wszystkie pięć rodzajów opisów); iniekcje sceny dla każdej wyroczni.
+Iniekcja produkcyjna `odsuniecieWezlaOdczepu` → 0: 9 czerwonych (36 naruszeń (a) i 36 (b)), bez
+naprawy korytarza: 1 czerwony (b2Droga L2). Kafle członu: `kafelStanu.test.tsx`,
+`znacznikRodzajuLacznika.test.tsx` (iniekcje: kafle członu barwione stanem wyłącznika, brak kafla
+członu). Ferranti bez „3”: `literySymboli.test.tsx`. Werdykt wizualny — właściciel (B-02).

@@ -1357,10 +1357,10 @@
           "ziemiaPrzy": null
         },
         "uziemnik": {
-          "przegub": [60, 92.5],
-          "styki": { "closed": [60, 25] },
+          "przegub": [60, 90],
+          "styki": { "closed": [60, 23.5] },
           "ziemiaPrzy": "przegub",
-          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pola Z.10, uziemnik Q8; wzorzec synoptyki e²TANGO): górny styk uziemnika niżej, z wyraźnym odstępem od górnej krawędzi kafla — styk stały z 20 na 25 j. QET (10 j.św. od krawędzi), przegub z 87,5 na 92,5 j. QET: nóż zachowuje stopień glifu 0,56 boku kafla (przedział 0,55–0,7), a symbol ziemi pod przegubem mieści się w kaflu (głębiej nie można — 27,5/95 wychodzi poza kafel); przewód od portu górnego wchodzi pionem w styk"
+          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pola Z.10, uziemnik Q8; wzorzec synoptyki e²TANGO): górny styk uziemnika niżej, z wyraźnym odstępem od górnej krawędzi kafla — styk stały z 20 na 23,5 j. QET (9,4 j.św. od krawędzi), przegub z 87,5 na 90 j. QET: nóż zachowuje stopień glifu 0,554 boku kafla (przedział 0,55–0,7), a symbol ziemi pod przegubem rośnie na dolnym brzegu LOD1 do podłogi 8 px w granicy kafla (przegub 92,5 dawał 7,14 px — test znacznikRodzajuLacznika); przewód od portu górnego wchodzi pionem w styk"
         },
         "trojpolozeniowy": {
           "przegub": [60, 75],

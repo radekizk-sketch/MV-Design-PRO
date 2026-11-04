@@ -203,17 +203,30 @@ describe('kafel stanu — iloczyn rodzaj × wariant × stan × motyw', () => {
             .map((n) => n.getAttribute('stroke'));
           expect(kreski.length).toBeGreaterThan(0);
           for (const k of kreski) expect(['none', kafle.glif]).toContain(k);
-          // Pasma członu wysuwnego (uwaga właściciela 2026-11-04, odbiór B-02 pkt 3): szewrony
-          // i przewód toru w kolorze TORU, ten sam w każdym stanie wyłącznika — nigdy kolor kafla
-          // ani glifu na kaflu (model niesie wykonanie, nie położenie członu).
+          // Człon wysuwny (decyzja właściciela 2026-11-04, synoptyka e²TANGO: trzy kafle w pionie).
+          // Intencja testu bez zmian — kolor szewronów NIE niesie stanu wyłącznika. Nowa geometria:
+          // szewrony stoją na WŁASNYCH kaflach członu (nad i pod kaflem wyłącznika), więc rysują się
+          // kolorem glifu kafla, a położenie członu niesie TŁO kafli członu (`stanCzlonu`; model ENM
+          // nie niesie położenia członu → „nieustalony"), niezależne od stanu wyłącznika.
           const pasma = glif.querySelector('[data-qet="czlon"]');
           expect(pasma !== null).toBe(czlon !== null);
+          const kafleCzlonu = [...grupa.querySelectorAll('[data-kafel^="czlon-"]')];
           if (pasma) {
             const kreskiPasm = [...pasma.querySelectorAll('[stroke]')].map((n) => n.getAttribute('stroke'));
             expect(kreskiPasm.length).toBe(2 + 8);
-            for (const k of kreskiPasm) expect(k).toBe('#123456');
+            for (const k of kreskiPasm) expect(k).toBe(kafle.glif);
             expect(pasma.querySelectorAll('[data-czlon-pasmo] line')).toHaveLength(8);
+            expect(kafleCzlonu.map((k) => k.getAttribute('data-kafel'))).toEqual(['czlon-gora', 'czlon-dol']);
+            for (const k of kafleCzlonu) {
+              expect(k.getAttribute('fill')).toBe(kafle.nieustalony);
+              expect(Number(k.getAttribute('width'))).toBeCloseTo(tw, 6);
+            }
+            // Kafle stykają się krawędziami z kaflem wyłącznika (bez szczeliny i zakładki).
+            const [g0, d0] = kafleCzlonu;
+            expect(Number(g0.getAttribute('y')) + Number(g0.getAttribute('height'))).toBeCloseTo(ty, 6);
+            expect(Number(d0.getAttribute('y'))).toBeCloseTo(ty + th, 6);
           } else {
+            expect(kafleCzlonu).toHaveLength(0);
             expect(glif.innerHTML).not.toContain('#123456');
           }
           // Znak stanu: „?" nieustalony, „!" awaria; zamknięty/otwarty bez znaku.

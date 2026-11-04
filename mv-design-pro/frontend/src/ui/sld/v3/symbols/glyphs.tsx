@@ -236,11 +236,6 @@ export interface GlyphProps {
    *  JEDNA tabela `STATE_COLOR`). Podane = łącznik z położeniem (`czyLacznikZPolozeniem`)
    *  rysuje się na kaflu stanu; brak = sam symbol (legenda, podgląd kreatora, harness mono). */
   readonly kafleStanu?: KafleStanuLacznika;
-  /** Kolor PASM CZŁONU WYSUWNEGO wyłącznika (szewrony i przewód toru nad i pod kaflem) — kolor
-   *  toru sprzed nadpisania kolorem glifu na kaflu (`zKafelemStanu`). Szewrony nie niosą stanu
-   *  styku wyłącznika (uwaga właściciela 2026-11-04, odbiór B-02 pkt 3): model ENM niesie
-   *  wyłącznie wykonanie stałe / wysuwne, nie położenie członu. Brak = `stroke`. */
-  readonly inkCzlonu?: string;
   /** Położenie CZŁONU WYSUWNEGO wyłącznika (decyzja właściciela 2026-11-04: kafle członu nad
    *  i pod kaflem wyłącznika niosą kolor stanu członu, kafel wyłącznika — stan wyłącznika; dwa
    *  niezależne stany). Model ENM nie niesie położenia członu (wsunięty / próba / wysunięty) —
@@ -1510,7 +1505,7 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
           stroke="none"
           data-kafel="tlo"
         />
-        <Glyph {...props} stroke={kafle.glif} inkCzlonu={czlon ? kafle.glif : stroke(props)} />
+        <Glyph {...props} stroke={kafle.glif} />
         {znak && (
           <text
             x={props.x + r.x + 1}
@@ -1742,7 +1737,6 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const f = props.skalaZnacznika ?? 1;
     const detale = DETALE_KAFLA_WG_LOD[props.lod ?? 2];
     const kafel = symbol.kafel ?? { x: 0, y: 0, width: symbol.szerokosc, height: symbol.wysokosc };
-    const inkCzlonu = props.inkCzlonu ?? ink;
     const pasmaCzlonu = symbol.czlon
       ? ([
           ['gora', symbol.czlon.gora, 0],
@@ -1804,12 +1798,13 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
         )}
         {symbol.czlon && (
           // Człon wysuwny (synoptyka e²TANGO): przewód toru i podwójne szewrony nad kaflem (˄˄)
-          // i pod kaflem (˅˅) — kolor toru, nigdy kolor stanu wyłącznika.
-          <g data-qet="czlon" data-czlon-kolor={inkCzlonu}>
-            <CadPrimitiveLayer prims={symbol.czlon.przewody} ink={inkCzlonu} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
+          // i pod kaflem (˅˅). Na kaflach członu (`zKafelemStanu`) kolor glifu kafla — tło kafla
+          // członu niesie położenie członu, kafel wyłącznika stan wyłącznika; bez kafla kolor toru.
+          <g data-qet="czlon" data-czlon-kolor={ink}>
+            <CadPrimitiveLayer prims={symbol.czlon.przewody} ink={ink} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
             {pasmaCzlonu.map((pasmo) => (
               <g key={pasmo.nazwa} data-czlon-pasmo={pasmo.nazwa}>
-                <CadPrimitiveLayer prims={pasmo.prims} ink={inkCzlonu} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+                <CadPrimitiveLayer prims={pasmo.prims} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
               </g>
             ))}
           </g>

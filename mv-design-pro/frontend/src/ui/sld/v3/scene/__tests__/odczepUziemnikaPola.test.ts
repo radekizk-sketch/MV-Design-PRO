@@ -22,7 +22,7 @@ import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10
 import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 import { GRID } from '../../core/grid';
-import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
+import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
 import type { PreviewSymbol } from '../../compose/preview';
 import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
 import { czySymbolQet, SYMBOL_DEFS } from '../../symbols/defs';
@@ -165,7 +165,7 @@ describe('odczep uziemnika pola: węzeł → poziomo → pionowo w górny styk (
   }
 });
 
-describe('oznaczenia P1/P2 × przekładnia T1 × odgałęzienie Q8 — rozłączne (uwaga właściciela 2026-11-04 pkt 3)', () => {
+describe(`oznaczenia ${ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne.join('/')} × przekładnia T1 × odgałęzienie Q8 — rozłączne (uwaga właściciela 2026-11-04 pkt 3)`, () => {
   for (const [nazwa, enm] of FIKSTURY) {
     for (const przylaczenie of PRZYLACZENIA) {
       it(`${nazwa} × ${przylaczenie} × L2`, () => {
@@ -174,13 +174,13 @@ describe('oznaczenia P1/P2 × przekładnia T1 × odgałęzienie Q8 — rozłącz
           const ct = bay.primary_devices!.find((d) => d.kind === 'CT')!;
           const zaciski = scena.labels.filter((l) => l.ownerRef.startsWith(`${bay.ref_id}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}`));
           const przekladnia = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#ct-rating-${ct.device_ref}`);
-          expect(zaciski.map((l) => l.text).sort(), bay.ref_id).toEqual(['P1', 'P2']);
+          expect(zaciski.map((l) => l.text).sort(), bay.ref_id).toEqual([...ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne]);
           expect(przekladnia.length, `${bay.ref_id}: przekładnia T1`).toBe(1);
           // Odgałęzienie Q8: odczep (odcinek kończący się w porcie N) i bryła uziemnika.
           const q8 = uziemnikiPola(scena, bay.ref_id).filter((s) => s.meta?.deviceRef === bay.primary_devices!.find((d) => d.designation === 'Q8')?.device_ref);
           expect(q8.length, `${bay.ref_id}: Q8 na scenie`).toBe(1);
           const n = portN(q8[0]);
-          const odczep = scena.segments.find((g) => g.points.at(-1)!.x === n.x && g.points.at(-1)!.y === n.y)!;
+          const odczep = scena.segments.find((g) => g.points[g.points.length - 1].x === n.x && g.points[g.points.length - 1].y === n.y)!;
           const def = SYMBOL_DEFS[q8[0].symbolId];
           const przeszkody: readonly [string, Rect][] = [
             ...prostokatyLamanej(odczep.points).map((r, i) => [`odczep Q8 odcinek ${i}`, r] as [string, Rect]),
@@ -190,7 +190,7 @@ describe('oznaczenia P1/P2 × przekładnia T1 × odgałęzienie Q8 — rozłącz
           for (const z of zaciski) {
             for (const [opis, r] of przeszkody) expect(zachodzi(z.rect, r), `${bay.ref_id}: ${z.text} × ${opis}`).toBe(false);
           }
-          expect(zachodzi(zaciski[0].rect, zaciski[1].rect), `${bay.ref_id}: P1 × P2`).toBe(false);
+          expect(zachodzi(zaciski[0].rect, zaciski[1].rect), `${bay.ref_id}: ${ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne.join(' × ')}`).toBe(false);
           for (const [opis, r] of przeszkody.filter(([o]) => o.startsWith('odczep') || o.startsWith('uziemnik'))) {
             expect(zachodzi(przekladnia[0].rect, r), `${bay.ref_id}: przekładnia × ${opis}`).toBe(false);
           }

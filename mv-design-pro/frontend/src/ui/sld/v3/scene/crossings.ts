@@ -408,9 +408,12 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
 
 /** Odczep z węzła pola: odcinek aparatu bocznego pola (`⟨pole⟩#lateral-…`), pola WN
  *  i pola SN transformatora GPZ (`⟨transformator⟩#hv-lateral-⟨n⟩`,
- *  `⟨transformator⟩#tr-field-lateral-⟨n⟩`) albo odgałęzienia toru pola
- *  (`⟨pole | transformator⟩#odgalezienie-⟨n⟩`, bez przewodów kolumny `…-wire-…`). */
-const ODCZEP_WEZLA_POLA = /#(lateral-|hv-lateral-\d+$|tr-field-lateral-\d+$|odgalezienie-\d+$)/;
+ *  `⟨transformator⟩#tr-field-lateral-⟨n⟩`), odgałęzienia toru pola
+ *  (`⟨pole | transformator⟩#odgalezienie-⟨n⟩`) albo aparatu bocznego kolumny odgałęzienia
+ *  (`…#odgalezienie-⟨n⟩-lateral-⟨k⟩`, decyzja architekta 2026-11-04: kropka i krawędź kafla
+ *  dla WSZYSTKICH kotwic — Q51 z portu S Q5 w Z.11.1); bez przewodów kolumny `…-wire-…`
+ *  i dojść port → węzeł (`…#wezel-odczepu-⟨k⟩`). */
+const ODCZEP_WEZLA_POLA = /#(lateral-|hv-lateral-\d+$|tr-field-lateral-\d+$|odgalezienie-\d+$|odgalezienie-\d+-lateral-\d+$)/;
 
 /**
  * JEDNO źródło prawdy odczepu z węzła modelu (reguła KLASA §3, predykaty parami): ten sam

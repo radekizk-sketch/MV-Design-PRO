@@ -91,7 +91,10 @@ import {
   czyAparatBoczny,
   czyElementModeluNaWyjsciu,
   czyOdgalezienieNaWezleKotwicy,
+  dojsciaDoWezlowOdczepu,
   odcinkiOdczepowBocznych,
+  punktNaLamanej,
+  wezelOdczepu,
   zwisAparatuBocznego,
   type OdczepBoczny,
   czyPoleNiesiePorty,
@@ -138,6 +141,7 @@ import {
   resolveStationProtectionMarking,
   resolveVtMountingAnnotations,
   type PlacedStackDevice,
+  type ResolvedCtRatingAnnotation,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
@@ -668,8 +672,10 @@ interface FieldStack {
   readonly branchSegments: readonly {
     readonly points: readonly RouteVertex[];
     /** Odcinek odgałęzienia toru (UX-04, rozszerzenie 4): przyrostek właściciela
-     *  `odgalezienie-<n>` (odczep) albo `odgalezienie-<n>-wire-<k>` (przewody kolumny
-     *  i odczepy jej aparatów bocznych) — ta sama nazwa co pole stacji. */
+     *  `odgalezienie-<n>` (odczep), `odgalezienie-<n>-wire-<k>` (przewody kolumny i dojścia
+     *  port → węzeł odczepu), `odgalezienie-<n>-lateral-<k>` (odczepy aparatów bocznych kolumny,
+     *  od węzła z kropką) albo `wezel-odczepu-<k>` (dojście toru głównego) — ta sama nazwa co
+     *  pole stacji. */
     readonly ownerSuffix?: string;
   }[];
   /** UX-04/POLE-LINIOWE-WZORZEC: przewody port → port między KOLEJNYMI aparatami toru
@@ -818,15 +824,17 @@ function buildFieldStack(
   const branchSegments: { readonly points: readonly RouteVertex[]; readonly ownerSuffix?: string }[] = [];
   const mainRightX =
     mainInstances.length > 0 ? Math.max(...mainInstances.map((inst) => inst.x + SYMBOL_DEFS[inst.symbolId].width)) : centerX;
-  // Kotwica = port S aparatu `afterMainIndex` (dla -1: port N pierwszego) — ta sama kotwica co
-  // odcinek odgałęzienia niżej; odstęp poziomy z `ukladBocznyPola` (jedna reguła z planem).
-  const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => {
+  // Kotwica = WĘZEŁ odczepu przy porcie S aparatu `afterMainIndex` (dla -1: przy porcie N
+  // pierwszego), poza kaflem aparatu-kotwicy (`wezelOdczepu`, decyzja architekta 2026-11-04) —
+  // ta sama kotwica dla aparatów bocznych i odgałęzień niżej; odstęp poziomy z `ukladBocznyPola`
+  // (jedna reguła z planem).
+  const wezelToru = (afterMainIndex: number) => {
     const inst = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
-    const d = SYMBOL_DEFS[inst.symbolId];
-    const port =
-      afterMainIndex >= 0 ? d.ports.find((p) => p.dir === 'S') ?? d.ports[0] : d.ports.find((p) => p.dir === 'N') ?? d.ports[0];
-    return { x: inst.x + port.x, y: inst.y + port.y };
+    return wezelOdczepu(inst.symbolId, inst.x, inst.y, afterMainIndex >= 0);
   };
+  const kotwicaToru = (afterMainIndex: number): { readonly x: number; readonly y: number } => wezelToru(afterMainIndex).wezel;
+  // Kotwice z odczepem — dojście port → węzeł dorysowuje się, gdy nie pokrywa go przewód toru.
+  const kotwiceZOdczepem: ReturnType<typeof wezelToru>[] = [];
   const uklad =
     mainInstances.length > 0 ? ukladBocznyPola(plan, (afterMainIndex) => kotwicaToru(afterMainIndex).y) : { boczne: [], galezie: [] };
   if (laterals.length > 0 && mainInstances.length > 0) {
@@ -834,16 +842,7 @@ function buildFieldStack(
     const odczepy: OdczepBoczny[] = [];
     laterals.forEach(({ spec, index, afterMainIndex }, numerOdgalezienia) => {
       const def = SYMBOL_DEFS[spec.symbolId];
-      const anchorInstance = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
-      const anchorDef = SYMBOL_DEFS[anchorInstance.symbolId];
-      const anchorPortDef =
-        afterMainIndex >= 0
-          ? anchorDef.ports.find((p) => p.dir === 'S') ?? anchorDef.ports[0]
-          : anchorDef.ports.find((p) => p.dir === 'N') ?? anchorDef.ports[0];
-      const anchor = {
-        x: anchorInstance.x + anchorPortDef.x,
-        y: anchorInstance.y + anchorPortDef.y,
-      };
+      const anchor = kotwicaToru(afterMainIndex);
       const lx = mainRightX + odstepy[numerOdgalezienia];
       // Aparat z kaflem stanu wisi pod węzłem odczepu (`zwisAparatuBocznego`).
       const zwis = zwisAparatuBocznego(spec.symbolId);
@@ -872,6 +871,7 @@ function buildFieldStack(
         if (!naWezle) return;
       }
       odczepy.push({ kotwica: anchor, celX: lx + north.x, zwis });
+      kotwiceZOdczepem.push(wezelToru(afterMainIndex));
     });
     odcinkiOdczepowBocznych(odczepy).forEach((points) => branchSegments.push({ points }));
   }
@@ -903,9 +903,15 @@ function buildFieldStack(
         pozycje.push({ instance, spec, boczny: pozycja.boczny, odgalezienie: numer });
       });
       // Odgałęzienia toru istnieją wyłącznie z portów — odczep i przewody z tych samych węzłów.
-      if (rysunek.odczep) branchSegments.push({ points: rysunek.odczep, ownerSuffix: `odgalezienie-${numer}` });
+      if (rysunek.odczep) {
+        branchSegments.push({ points: rysunek.odczep, ownerSuffix: `odgalezienie-${numer}` });
+        kotwiceZOdczepem.push(wezelToru(galaz.afterMainIndex));
+      }
       rysunek.przewody.forEach((points, wi) =>
         branchSegments.push({ points, ownerSuffix: `odgalezienie-${numer}-wire-${wi}` }),
+      );
+      rysunek.odczepyBoczne.forEach((points, li) =>
+        branchSegments.push({ points, ownerSuffix: `odgalezienie-${numer}-lateral-${li}` }),
       );
     });
   }
@@ -929,6 +935,11 @@ function buildFieldStack(
         })),
       ).map((points) => ({ points }))
     : [];
+  // Dojście port → węzeł odczepu poza kaflem, gdy węzła nie pokrywa przewód toru (kotwica na
+  // końcu toru albo pole bez portów ENM) — przewód z portu do węzła, nie odczep (bez kropki).
+  dojsciaDoWezlowOdczepu(kotwiceZOdczepem, wireSegments.map((w) => w.points)).forEach((points, i) =>
+    branchSegments.push({ points, ownerSuffix: `wezel-odczepu-${i}` }),
+  );
   const torOdSzyny = !zPortami || czyTorOdSzyny(stackSpecs[0]?.spec.device);
   return { instances, topPort, bottomPort, branchSegments, wireSegments, pozycje, torOdSzyny };
 }
@@ -2371,12 +2382,100 @@ function composeGpzPrzebieg(
         .filter((g) => g.ownerRef === bay.bayRef || g.ownerRef.startsWith(prefiksPolaPrzekaznika))
         .flatMap((g) => prostokatyOdcinkow(g.points)),
     ];
+    // Miejsce tabliczki przekładnika (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6): JEDNA
+    // funkcja wyszukiwania dla rezerwacji miejsc (przekładniki kolumny odgałęzienia, przed
+    // wyborem położenia przekaźnika) i końcowego ułożenia (po nim, z blokiem kodów przekaźnika
+    // jako przeszkodą) — decyzja architekta 2026-11-04 (UX04 §11.20 pkt 1, predykat z jednego
+    // źródła). Wynik zależy wyłącznie od `przeszkody` i geometrii przekładnika (determinizm).
+    const prostokatTabliczki = (ann: ResolvedCtRatingAnnotation, x: number, yy: number): V3Rect =>
+      prostokatEtykietyZakotwiczonej({ text: ann.text, labelClass: PROTECTION_FULL_LIST_LABEL_CLASS, anchor: { x, y: yy }, placement: 'right' });
+    const szukajMiejscaTabliczki = (
+      ann: ResolvedCtRatingAnnotation,
+      przeszkody: readonly V3Rect[],
+    ): { readonly x: number; readonly y: number } => {
+      const center = protectionDeviceCenter(ann.device);
+      const y = wysokoscAdnotacjiPrzekladnika(ann.device, center.y);
+      const obrys = obrysSymbolu(ann.device.symbolId);
+      const tabliczka = (x: number, yy: number) => prostokatTabliczki(ann, x, yy);
+      const wolna = (r: V3Rect) => !przeszkody.some((p) => rectsOverlap(p, r));
+      const x0 = snapUp(ann.device.x + obrys.x + obrys.width + GRID / 2);
+      // Kandydaci wysokości: najpierw wysokość z zacisku wtórnego
+      // (`wysokoscAdnotacjiPrzekladnika`), potem kolejne co pół oczka, naprzemiennie w dół
+      // i w górę; przycinani do pasa symbolu poszerzonego o `poszerzenie`.
+      const wysokosci = [y];
+      for (let k = 1; k <= MAKS_KROKOW_TABLICZKI; k += 1) wysokosci.push(y + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * (GRID / 2));
+      // Symbol z zaciskiem wtórnym na wschód wyprowadza z niego linię pomiarową, a wysokość
+      // wyjściowa stoi NAD nią (§11.7 pkt 6). W pasie symbolu ± oczko tabliczka może zejść pod
+      // linię (zostaje przy symbolu — np. przekładnik Ferrantiego pod uziemnikiem odczepu); pas
+      // poszerzony, który oddala tabliczkę od symbolu, rośnie wyłącznie w górę od linii —
+      // tabliczka odsunięta od symbolu nie przeskakuje własnej linii pomiarowej.
+      const zaciskWtorny = portWtornyWSwiecie(ann.device, 'wtorny');
+      const dolNadLinia = zaciskWtorny?.dir === 'E' ? zaciskWtorny.y - GRID / 4 : Infinity;
+      const wPasie = (poszerzenie: number): number[] => {
+        const gora = ann.device.y + obrys.y - poszerzenie;
+        const dolPasa = ann.device.y + obrys.y + obrys.height + poszerzenie;
+        const dol = poszerzenie > GRID ? Math.min(dolPasa, dolNadLinia) : dolPasa;
+        const w = wysokosci.filter((yy) => {
+          const r = tabliczka(x0, yy);
+          return r.y >= gora && r.y + r.height <= dol;
+        });
+        // Pas ma co najmniej wysokość symbolu + 2·GRID, a tabliczka jedną linię — pusty zbiór
+        // nie występuje dla symboli biblioteki; gdyby wystąpił, wysokość wyjściowa.
+        return w.length > 0 ? w : [y];
+      };
+      // Kolejność prób (stała — determinizm): pas symbolu ± oczko, kolumny od `x0` w prawo do
+      // prawej krawędzi kolumny (`rightX`); potem pas coraz szerszy (aż do ± 4 oczek) w tych
+      // samych kolumnach. Tabliczka zostaje przy symbolu i w kolumnie pola. Gdy nic nie jest
+      // wolne (model zdegenerowany — np. aparaty poza torem obok przekładnika), kolejne kolumny
+      // w prawo w pasie ± oczko aż do wolnej: tabliczka nigdy nie zostaje na przeszkodzie
+      // (silnik etykiet odrzuciłby ją — tabliczka znikałaby z rysunku).
+      let polozenie: { x: number; y: number } | null = null;
+      for (const poszerzenie of POSZERZENIA_PASA_TABLICZKI) {
+        const pas = wPasie(poszerzenie);
+        for (let xx = x0; polozenie === null && tabliczka(xx, y).x + tabliczka(xx, y).width <= rightX; xx += GRID) {
+          const yy = pas.find((h) => wolna(tabliczka(xx, h)));
+          if (yy !== undefined) polozenie = { x: xx, y: yy };
+        }
+        if (polozenie !== null) break;
+      }
+      if (polozenie === null) {
+        const pas = wPasie(GRID);
+        for (let xx = x0; polozenie === null; xx += GRID) {
+          const yy = pas.find((h) => wolna(tabliczka(xx, h)));
+          if (yy !== undefined) polozenie = { x: xx, y: yy };
+        }
+      }
+      return polozenie;
+    };
     // Wyjściowe miejsca tabliczek przekładników (tuż za symbolem, NAD linią pomiarową — §11.7
     // pkt 6, zapis rysunków Z.10/Z.11.1), o ile są wolne od rysunku pola: przekaźnik nie zajmuje
     // ich okręgiem, kodami ani liniami — tabliczka zostaje w swoim miejscu wyjściowym.
+    // Przekładnik KOLUMNY ODGAŁĘZIENIA (podpis aparatu po prawej symbolu, w pasie podpisów
+    // podstosu — Z.11.1 T3) ma miejsce wyjściowe zajęte własnym podpisem, więc jego tabliczka
+    // stoi dalej w prawo; jej miejsce REZERWUJE ta sama funkcja wyszukiwania co ułożenie końcowe
+    // (`szukajMiejscaTabliczki`, decyzja architekta 2026-11-04, UX04 §11.20 pkt 1) — przekaźnik
+    // (okrąg, blok kodów, linie) omija rezerwację, a ułożenie końcowe znajduje to samo miejsce.
+    const przeszkodyTabliczekStale: V3Rect[] = [
+      ...instances.map((d) => {
+        const o = obrysSymbolu(d.symbolId);
+        return { x: d.x + o.x, y: d.y + o.y, width: o.width, height: o.height };
+      }),
+      ...fieldDesignations.filter((d) => d.ownerRef.startsWith(prefiksPolaPrzekaznika)).map(prostokatEtykietyZakotwiczonej),
+      ...[...segments, ...measurementSegments, ...protectionSegments]
+        .filter((g) => g.ownerRef === bay.bayRef || g.ownerRef.startsWith(prefiksPolaPrzekaznika))
+        .flatMap((g) => prostokatyOdcinkow(g.points)),
+    ];
     const miejscaTabliczek: V3Rect[] = [];
     if (markingPola && hasCtRatings) {
+      const przeszkodyRezerwacji: V3Rect[] = [...przeszkodyTabliczekStale];
       for (const ann of resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances)) {
+        if (instances.find((d) => d === ann.device)?.meta.odgalezienieToru != null) {
+          const miejsce = szukajMiejscaTabliczki(ann, przeszkodyRezerwacji);
+          const r = prostokatTabliczki(ann, miejsce.x, miejsce.y);
+          miejscaTabliczek.push(r);
+          przeszkodyRezerwacji.push(r);
+          continue;
+        }
         const obrys = obrysSymbolu(ann.device.symbolId);
         const r = prostokatEtykietyZakotwiczonej({
           text: ann.text,
@@ -2489,75 +2588,14 @@ function composeGpzPrzebieg(
     // sloty (`prostokatEtykietyZakotwiczonej`) — jedno źródło położenia.
     if (annotationDetail === 'full' && hasCtRatings) {
       const ctAnnotations = resolveCtRatingAnnotations(bay.ctRatingAnnotations, instances);
-      const prefiksPola = `${bay.bayRef}#`;
-      const przeszkodyPola: V3Rect[] = [
-        ...instances.map((d) => {
-          const o = obrysSymbolu(d.symbolId);
-          return { x: d.x + o.x, y: d.y + o.y, width: o.width, height: o.height };
-        }),
-        ...fieldDesignations.filter((d) => d.ownerRef.startsWith(prefiksPola)).map(prostokatEtykietyZakotwiczonej),
-        ...[...segments, ...measurementSegments, ...protectionSegments]
-          .filter((g) => g.ownerRef === bay.bayRef || g.ownerRef.startsWith(prefiksPola))
-          .flatMap((g) => prostokatyOdcinkow(g.points)),
-        ...przeszkodyPrzekaznika,
-      ];
+      const przeszkodyPola: V3Rect[] = [...przeszkodyTabliczekStale, ...przeszkodyPrzekaznika];
       const zajete: V3Rect[] = [];
       ctAnnotations.forEach((ann, ctIndex) => {
-        const center = protectionDeviceCenter(ann.device);
-        const y = wysokoscAdnotacjiPrzekladnika(ann.device, center.y);
-        const obrys = obrysSymbolu(ann.device.symbolId);
-        const tabliczka = (x: number, yy: number) =>
-          prostokatEtykietyZakotwiczonej({ text: ann.text, labelClass: PROTECTION_FULL_LIST_LABEL_CLASS, anchor: { x, y: yy }, placement: 'right' });
-        const wolna = (r: V3Rect) => ![...przeszkodyPola, ...zajete].some((p) => rectsOverlap(p, r));
-        const x0 = snapUp(ann.device.x + obrys.x + obrys.width + GRID / 2);
-        // Kandydaci wysokości: najpierw wysokość z zacisku wtórnego
-        // (`wysokoscAdnotacjiPrzekladnika`), potem kolejne co pół oczka, naprzemiennie w dół
-        // i w górę; przycinani do pasa symbolu poszerzonego o `poszerzenie`.
-        const wysokosci = [y];
-        for (let k = 1; k <= MAKS_KROKOW_TABLICZKI; k += 1) wysokosci.push(y + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * (GRID / 2));
-        // Symbol z zaciskiem wtórnym na wschód wyprowadza z niego linię pomiarową, a wysokość
-        // wyjściowa stoi NAD nią (§11.7 pkt 6). W pasie symbolu ± oczko tabliczka może zejść pod
-        // linię (zostaje przy symbolu — np. przekładnik Ferrantiego pod uziemnikiem odczepu); pas
-        // poszerzony, który oddala tabliczkę od symbolu, rośnie wyłącznie w górę od linii —
-        // tabliczka odsunięta od symbolu nie przeskakuje własnej linii pomiarowej.
-        const zaciskWtorny = portWtornyWSwiecie(ann.device, 'wtorny');
-        const dolNadLinia = zaciskWtorny?.dir === 'E' ? zaciskWtorny.y - GRID / 4 : Infinity;
-        const wPasie = (poszerzenie: number): number[] => {
-          const gora = ann.device.y + obrys.y - poszerzenie;
-          const dolPasa = ann.device.y + obrys.y + obrys.height + poszerzenie;
-          const dol = poszerzenie > GRID ? Math.min(dolPasa, dolNadLinia) : dolPasa;
-          const w = wysokosci.filter((yy) => {
-            const r = tabliczka(x0, yy);
-            return r.y >= gora && r.y + r.height <= dol;
-          });
-          // Pas ma co najmniej wysokość symbolu + 2·GRID, a tabliczka jedną linię — pusty zbiór
-          // nie występuje dla symboli biblioteki; gdyby wystąpił, wysokość wyjściowa.
-          return w.length > 0 ? w : [y];
-        };
-        // Kolejność prób (stała — determinizm): pas symbolu ± oczko, kolumny od `x0` w prawo do
-        // prawej krawędzi kolumny (`rightX`); potem pas coraz szerszy (aż do ± 4 oczek) w tych
-        // samych kolumnach. Tabliczka zostaje przy symbolu i w kolumnie pola. Gdy nic nie jest
-        // wolne (model zdegenerowany — np. aparaty poza torem obok przekładnika), kolejne kolumny
-        // w prawo w pasie ± oczko aż do wolnej: tabliczka nigdy nie zostaje na przeszkodzie
-        // (silnik etykiet odrzuciłby ją — tabliczka znikałaby z rysunku).
-        let polozenie: { x: number; y: number } | null = null;
-        for (const poszerzenie of POSZERZENIA_PASA_TABLICZKI) {
-          const pas = wPasie(poszerzenie);
-          for (let xx = x0; polozenie === null && tabliczka(xx, y).x + tabliczka(xx, y).width <= rightX; xx += GRID) {
-            const yy = pas.find((h) => wolna(tabliczka(xx, h)));
-            if (yy !== undefined) polozenie = { x: xx, y: yy };
-          }
-          if (polozenie !== null) break;
-        }
-        if (polozenie === null) {
-          const pas = wPasie(GRID);
-          for (let xx = x0; polozenie === null; xx += GRID) {
-            const yy = pas.find((h) => wolna(tabliczka(xx, h)));
-            if (yy !== undefined) polozenie = { x: xx, y: yy };
-          }
-        }
-        const { x, y: yTabliczki } = polozenie;
-        const prostokat = tabliczka(x, yTabliczki);
+        // JEDNA funkcja wyszukiwania (decyzja architekta 2026-11-04, UX04 §11.20 pkt 1) — ta sama
+        // co rezerwacja miejsc tabliczek przekładników kolumny odgałęzienia przed wyborem
+        // położenia przekaźnika; tu z przeszkodami przekaźnika (okrąg, blok kodów, linie).
+        const { x, y: yTabliczki } = szukajMiejscaTabliczki(ann, [...przeszkodyPola, ...zajete]);
+        const prostokat = prostokatTabliczki(ann, x, yTabliczki);
         zajete.push(prostokat);
         tabliczkiPola.push({
           ownerRef: `${bay.bayRef}#${ann.przyrostek}-${ann.device.deviceRef ?? ctIndex}`,
@@ -4181,6 +4219,10 @@ export function gpzInternalSegmentsEndAtPortsOrBus(composition: GpzComposition):
   // odcinku szyny), kończy w zaczepie zejścia źródła. Szyna sekcji — jak dotąd.
   const endpointValid = (p: RouteVertex, seg: ComposedGpzSegment): boolean => {
     if (naPorcie(p)) return true;
+    // Węzeł odczepu poza kaflem kotwicy (decyzja architekta 2026-11-04, `wezelOdczepu`): odczep
+    // zaczyna się T-stykiem na przewodzie toru, dojście port → węzeł kończy się na odczepie.
+    // Koniec na INNYM odcinku kompozycji jest zaczepiony; koniec w powietrzu — nie.
+    if (composition.segments.some((o) => o !== seg && !o.meta.przedluzenieSzyny && punktNaLamanej(p, o.points))) return true;
     if (seg.meta.przedluzenieSzyny && zaczepyZrodel.some((z) => z.x === p.x && z.y === p.y)) return true;
     return busSegments.some((bus) => {
       if (bus === seg && seg.meta.przedluzenieSzyny) return false;

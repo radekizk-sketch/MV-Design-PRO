@@ -634,13 +634,22 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     // zapas 80,4–93,5 px w polach Z.10 i 18,4 px w Z.11.1 (pomiar 2026-10-29).
     const skala = b.ramka.width / b.ramkaSwiat;
     expect(b.okragLewa, `${opis}: okrąg przekaźnika w bloku`).not.toBeNull();
-    const margines = b.okragLewa! - b.ramka.x;
+    // Margines ramki = odległość lewej krawędzi tuszu wierszy (zaczep wierszy = lewa krawędź
+    // kwadratu okręgu, `ramkaBlokuPrzekaznika`) od lewej krawędzi ramki. Dawniej mierzony od
+    // obrysu NARYSOWANEGO okręgu, który leży 1 j.św. wewnątrz kwadratu (promień pomniejszony
+    // o kreskę) — margines zawyżony o 1 j.św.; przy skali 1,45 mieścił się w tolerancji 1 px,
+    // przy skali 2,76 (kadr Z.10 trójpołożeniowy) dawał fałszywą czerwień 12,24 < 12,80 px.
+    // Intencja bez zmian: zapas po prawej = ten sam margines co po lewej (+ ≤ 1 j.św.).
+    const margines = Math.min(...b.wiersze.map((w) => w.r.x)) - b.ramka.x;
     for (const w of b.wiersze) {
       const zTabeli = szerokoscZTabeliEm(w.tekst, w.fontWeight) * w.fontSize * skala;
       expect(Math.abs(w.r.width - zTabeli), `${opis}: „${w.tekst}" szerokość ${w.r.width.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
       zapiszPomiarSzerokosci({ kadr, motyw, rodzaj: 'wiersz bloku', tekst: w.tekst, klasa: klasaTresci(w.tekst), fontSize: w.fontSize, szerokoscPx: w.r.width, zTabeliPx: zTabeli });
     }
-    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≥ margines (${margines.toFixed(2)} px)`).toBeGreaterThanOrEqual(margines - TOLERANCJA_EKRANU_PX);
+    // Diagnostyka porażki: wiersz najdalej w prawo, jego tusz i ramka w px ekranu.
+    const najdalej = b.wiersze.reduce((a, w) => (w.r.x + w.r.width > a.r.x + a.r.width ? w : a));
+    const diag = `wiersz „${najdalej.tekst}" x ${najdalej.r.x.toFixed(2)} szer ${najdalej.r.width.toFixed(2)} (tabela ${(szerokoscZTabeliEm(najdalej.tekst, najdalej.fontWeight) * najdalej.fontSize * skala).toFixed(2)}, pismo ${najdalej.fontSize}), ramka x ${b.ramka.x.toFixed(2)} szer ${b.ramka.width.toFixed(2)}, okrąg x ${b.okragLewa!.toFixed(2)}, skala ${skala.toFixed(3)}`;
+    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≥ margines (${margines.toFixed(2)} px) — ${diag}`).toBeGreaterThanOrEqual(margines - TOLERANCJA_EKRANU_PX);
     expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≤ margines + 1 j.św. (${(margines + skala).toFixed(2)} px)`).toBeLessThanOrEqual(margines + skala + TOLERANCJA_EKRANU_PX);
     pomiary.push({
       kadr,

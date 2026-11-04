@@ -161,8 +161,14 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // treść rekordów, a z nią skróty `ref_id`) zmieniają kolejność komponowania lateralów, co
     // dokłada jedno skrzyżowanie lateral×lateral (7 → 8, `crossings.test.ts`). Każde z nich ma
     // rysowalny mostek (wyrocznia (c) zielona na każdej fiksturze × LOD wyżej).
+    // AKTUALIZACJA ŚWIADOMA kropek 65 → 69 (decyzja architekta 2026-11-04, UX04 §11.20 pkt 2:
+    // kropka i krawędź kafla dla WSZYSTKICH kotwic): pomiar sondą na fiksturze
+    // `pole_liniowe_z11_gpz_odgalezienie` — cztery nowe kropki to węzły odczepu uziemnika Q51
+    // z portu S odłącznika Q5 w kolumnie odgałęzienia (`…#odgalezienie-0-lateral-0`), dwa pola
+    // Z.11 wykonania stałego × LOD1/LOD2; dawniej odczep kolumny nosił właściciela `…-wire-…`,
+    // którego predykat kropki (`ODCZEP_WEZLA_POLA`) nie rozpoznawał — rozgałęzienie bez kropki.
     expect(przeciecia).toBe(113);
-    expect(kropki).toBe(65);
+    expect(kropki).toBe(69);
   });
 });
 

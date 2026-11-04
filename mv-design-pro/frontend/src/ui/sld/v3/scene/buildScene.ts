@@ -126,7 +126,7 @@ import {
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { czyZakonczenieToruKablowego, symboleRodzajuAparatu } from '../compose/apparatusSequence';
+import { czyZakonczenieToruKablowego, symboleRodzajuAparatu, zwisAparatuBocznego } from '../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_POLA, RODZAJE_LACZNIKOW_TORU } from '../compose/rodzajeAparatuPola';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../compose/zaciskiPrzekladnika';
@@ -4435,8 +4435,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           const port = gpzBayBottomPort(gpzGeometry!, bayRef);
           if (!port || (port.x === gpzPort.x && port.y === gpzPort.y)) return false;
           const entryX = first.composed.entryPort.x;
+          // Pas pola = od szyny GPZ do dolnego portu pola (+ pas 2×GRID): korytarz w tym
+          // paśmie przechodzi przez stos INNEGO pola liniowego — przez jego przewody, opisy
+          // przekładników i blok kodów zabezpieczenia (pomiar: fikstura kanwy
+          // `b2Droga-add_sn_bay`, korytarz y=696 przez pole dodane w GPZ — wiersz kodów „ZS”
+          // na kablu i koniec przewodu pola na magistrali). Dawny warunek patrzył tylko na
+          // poziom portu, więc pole sięgające pod korytarz przepuszczał.
           return (
-            Math.abs(port.y - corridorY) < 2 * GRID &&
+            corridorY > gpzGeometry!.bbox.y &&
+            corridorY < port.y + 2 * GRID &&
             port.x > Math.min(gpzPort.x, entryX) &&
             port.x < Math.max(gpzPort.x, entryX)
           );
@@ -6242,7 +6249,11 @@ export interface LateralApparatusGap {
  *  (a) środek symbolu POZA osią pionową toru głównego jego pola (oś =
  *      mediana środków X aparatów SZEREGOWYCH o tym samym `ownerRef`);
  *  (c) istnieje POZIOMY odcinek odgałęzienia łączący oś z symbolem (dotyka
- *      bboxa symbolu i sięga osi na wysokości symbolu).
+ *      bboxa symbolu w poziomie i sięga osi) na wysokości od węzła odczepu do dołu symbolu.
+ *      Aparat z kaflem stanu wisi pod węzłem (`zwisAparatuBocznego`, uwaga właściciela
+ *      2026-11-04, wzorzec e²TANGO: węzeł → poziomo → pionowo w dół w górny styk), więc pas
+ *      wysokości zaczyna się `zwis` nad symbolem — ta sama funkcja co kompozycja (predykat
+ *      z jednego źródła).
  * Punkt (b) spec („tor główny identyczny z ES i bez ES") jest dowodzony
  * KONSTRUKCYJNIE: `buildBayStack`/`buildFieldStack` budują tor główny z
  * `mainItems` PRZED doklejeniem laterali (odcinki toru nie zależą od nich) —
@@ -6290,11 +6301,12 @@ function lateralApparatusGapsForKinds(scene: SceneV3, kinds: ReadonlySet<string>
       // odcinków stykających się końcami (łańcuch KD-5, `odcinkiOdczepowBocznych`) — ta sama
       // reguła co kompozycja, więc odcinki jednej wysokości scala się przed oceną zasięgu.
       const poziomeWObrysie = new Map<number, [number, number][]>();
+      const gora = lat.y - zwisAparatuBocznego(lat.symbolId);
       for (const seg of scene.segments) {
         for (let i = 0; i + 1 < seg.points.length; i++) {
           const a = seg.points[i];
           const b = seg.points[i + 1];
-          if (a.y !== b.y || a.y < lat.y || a.y > lat.y + def.height) continue;
+          if (a.y !== b.y || a.y < gora || a.y > lat.y + def.height) continue;
           const lista = poziomeWObrysie.get(a.y) ?? [];
           lista.push([Math.min(a.x, b.x), Math.max(a.x, b.x)]);
           poziomeWObrysie.set(a.y, lista);

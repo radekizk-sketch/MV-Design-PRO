@@ -31,7 +31,9 @@ import {
   type AparatSekwencjiPola,
 } from '../apparatusSequence';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../../layout/apparatusStack';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { SYMBOL_DEFS, czySymbolQet } from '../../symbols/defs';
+import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
+import { GRID } from '../../core/grid';
 import przypadki from './fixtures/parytet_toru_glownego.json';
 
 interface PrzypadekParytetu {
@@ -154,7 +156,12 @@ describe('odgałęzienie przekładnika napięciowego Z.11.1/Z.11 — obchód, pl
       const polozenia = polozeniaToruGlownego(plan);
       const bez = polozeniaToruGlownego({ ...plan, galezie: [] });
       const dolKotwicy = polozenia.y[kotwica] + SYMBOL_DEFS[plan.mainPath[kotwica]].height;
-      const minimalnie = dolKotwicy + pasOdgalezienia(plan.galezie[0]).wysokosc + APPARATUS_STACK_VERTICAL_GAP;
+      // Węzeł odgałęzienia raster pod kaflem Q0 (decyzja architekta 2026-11-04, UX04 §11.20
+      // pkt 2: węzeł nie leży na krawędzi kafla) — pas odgałęzienia zaczyna się od węzła.
+      const idKotwicy = plan.mainPath[kotwica];
+      const wezel = czySymbolQet(idKotwicy) && QET_SYMBOLE_POLA_SN[idKotwicy].kafel !== null ? GRID : 0;
+      expect(wezel).toBe(GRID);
+      const minimalnie = dolKotwicy + wezel + pasOdgalezienia(plan.galezie[0]).wysokosc + APPARATUS_STACK_VERTICAL_GAP;
       expect(polozenia.y[kotwica + 1]).toBeGreaterThanOrEqual(minimalnie);
       expect(polozenia.y[kotwica + 1]).toBeLessThan(minimalnie + 8);
       expect(polozenia.y.every((y) => y % 8 === 0)).toBe(true);

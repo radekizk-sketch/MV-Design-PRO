@@ -285,6 +285,9 @@ def test_noz_ukladu_kafla_zawias_u_dolu_styk_u_gory_i_polozenia():
     # (znacznik rozłącznika z 07-13-08 — ten sam co w rozłączniku), uziemnik (ziemia
     # 02-15-01), przekładniki napięciowe wielouzwojeniowe (kopie elementu przekładnika)
     # i odejście kablowe pola wolnego (kabel 03-01-14 kreskowany + grot strzałki 02-05-01).
+    # Przekładnik Ferrantiego (uwaga właściciela 2026-11-04, ENEA Z.10 s.89): pierścień rdzenia
+    # i dwie kopie elementu 06-13-10 przesunięte o 7,5 j. QET — przerywany kontur kabla
+    # przewleczonego przez rdzeń (`pominPrymitywy`, `kreskowanie` w manifeście).
     zlozone_ids = {s["id"] for s in po_id.values() if s["zlozenie"]}
     assert zlozone_ids == {
         "bayReserve",
@@ -296,6 +299,7 @@ def test_noz_ukladu_kafla_zawias_u_dolu_styk_u_gory_i_polozenia():
         "qetEarthSwitch",
         "qetVoltageTransformer2",
         "qetVoltageTransformer3",
+        "qetCoreBalanceCt",
     }
     wiele_skladnikow = {w["symbolId"] for w in manifest["symbole"] if len(w["skladniki"]) > 1}
     assert wiele_skladnikow == zlozone_ids
@@ -339,7 +343,9 @@ def test_kafel_stanu_jest_jednym_kwadratem_dla_kazdego_lacznika():
     bok = float(zlozone.manifest["kafelStanu"]["bokQet"]) * zlozone.skala
     assert bok == 48.0
     pasmo = float(_uklad(zlozone)["czlonWysuwny"]["pasmoQet"]) * zlozone.skala
-    assert pasmo == 16.0
+    # Odbiór B-02 2026-11-04 (UX04 §11.20 pkt 3): człon wysuwny = trzy kafle w pionie
+    # (˄˄ / × / ˅˅) — pasmo członu jest kaflem o boku kafla stanu (dawniej pasmo 16 j.św.).
+    assert pasmo == bok
     for s in zlozone.symbole:
         if s["id"] in LACZNIKI_KAFLA:
             # Wyłącznik wysuwny: kafel przesunięty o pasmo członu, gabaryt wyższy o dwa pasma.

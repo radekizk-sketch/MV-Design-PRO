@@ -348,13 +348,21 @@ function naruszenia(
     if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`symbol ziemi: szerokość ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (podłoga ${PODLOGA_PX.L1} px w granicy kafla)`);
     if (lod === 'L1' && szer * skala < PODLOGA_PX.L1 - 1e-9) bledy.push(`symbol ziemi: ${(szer * skala).toFixed(2)} px na L1 < 8 px`);
   }
-  // Człon wysuwny: szewrony nad (w górę) i pod kaflem (w dół), kolor TORU w każdym stanie
-  // wyłącznika (uwaga właściciela 2026-11-04 pkt 3), szerokość z podłogą w granicy pasma.
+  // Człon wysuwny: szewrony nad (w górę) i pod kaflem (w dół), szerokość z podłogą w granicy
+  // pasma. Intencja „szewrony nie niosą stanu wyłącznika” (uwaga właściciela 2026-11-04 pkt 3)
+  // w geometrii trzech kafli e²TANGO (decyzja właściciela 2026-11-04): szewrony stoją na WŁASNYCH
+  // kaflach członu w kolorze glifu kafla, a tło kafli członu ma kolor STANU CZŁONU (model nie
+  // niesie położenia członu → „nieustalony”) — nigdy kolor stanu wyłącznika.
   const czlon = doc.querySelector('[data-qet="czlon"]');
   if (Boolean(czlon) !== wiersz.czlon) bledy.push(`człon wysuwny ${czlon ? 'obecny' : 'brak'} — tabela właściciela: ${wiersz.czlon ? 'wymagany' : 'zakazany'}`);
   if (czlon && symbol.czlon) {
     for (const n of czlon.querySelectorAll('[stroke]')) {
-      if (n.getAttribute('stroke') !== '#123456') bledy.push(`człon wysuwny: kolor ${n.getAttribute('stroke')} ≠ kolor toru #123456 (szewrony nie niosą stanu wyłącznika)`);
+      if (n.getAttribute('stroke') !== kafle.glif) bledy.push(`człon wysuwny: kolor szewronu ${n.getAttribute('stroke')} ≠ kolor glifu kafla ${kafle.glif}`);
+    }
+    const kafleCzlonu = [...doc.querySelectorAll('[data-kafel^="czlon-"]')];
+    if (kafleCzlonu.length !== 2) bledy.push(`człon wysuwny: ${kafleCzlonu.length} kafli członu ≠ 2 (nad i pod kaflem wyłącznika)`);
+    for (const k of kafleCzlonu) {
+      if (k.getAttribute('fill') !== kafle.nieustalony) bledy.push(`człon wysuwny: ${k.getAttribute('data-kafel')} w kolorze ${k.getAttribute('fill')} ≠ stan członu ${kafle.nieustalony} (kafel członu nie niesie stanu wyłącznika)`);
     }
     for (const [pasmo, wGore, y0] of [
       ['gora', true, 0],
@@ -378,9 +386,15 @@ function naruszenia(
       const ys = zr.flatMap((q) => (q.k === 'line' ? [q.y1, q.y2] : []));
       const obszar = { x: 0, y: y0, w: symbol.szerokosc, h: symbol.czlon.pasmo };
       const fGr = mnoznikGraniczny({ x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, [symbol.szerokosc / 2, y0 + symbol.czlon.pasmo / 2], obszar, QET_KRESKA_GLIFU / 2);
-      const wymagana = lod === 'L2' ? 12 : Math.max(12, Math.min(bokOczekiwany(lod, skala), 12 * fGr));
-      if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (podłoga ${PODLOGA_PX.L1} px w granicy pasma)`);
-      if (szer < 12 - 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(2)} j.św. mniejszy niż w proporcjach świata (12) — pomniejszony zamiast uproszczony`);
+      // Szewron kafla członu ma w proporcjach świata szerokość z rysunku (`szer0`, pół boku kafla
+      // członu wg manifestu) i rośnie TYM SAMYM mnożnikiem co znacznik rodzaju na kaflu wyłącznika
+      // (bok znacznika / 12) — proporcja szewron : „×” jest ta sama na każdym LOD (kształt zostaje),
+      // w granicy kafla członu.
+      const szer0 = Math.max(...xs) - Math.min(...xs);
+      const mnoznik = lod === 'L2' ? 1 : Math.max(1, Math.min(bokOczekiwany(lod, skala) / 12, fGr));
+      const wymagana = szer0 * mnoznik;
+      if (Math.abs(szer - wymagana) > 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(3)} j.św. ≠ ${wymagana.toFixed(3)} (mnożnik znacznika w granicy kafla członu)`);
+      if (szer < szer0 - 1e-6) bledy.push(`człon wysuwny: szewron ${szer.toFixed(2)} j.św. mniejszy niż w proporcjach świata (${szer0}) — pomniejszony zamiast uproszczony`);
     }
   }
   // Detale wg LOD (jedna tabela): napęd i znak niepewnego stanu.
@@ -577,8 +591,18 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
       (d) => {
         for (const n of d.querySelectorAll('[data-czlon-pasmo] [stroke]')) n.setAttribute('stroke', kafle.zamkniety);
       },
-      /szewrony nie niosą stanu wyłącznika/,
+      /kolor szewronu .* ≠ kolor glifu kafla/,
     ],
+    [
+      'kafle członu wysuwnego barwione stanem wyłącznika zamiast stanem członu',
+      'qetBreakerWysuwnyZNapedem',
+      'closed',
+      (d) => {
+        for (const n of d.querySelectorAll('[data-kafel^="czlon-"]')) n.setAttribute('fill', kafle.zamkniety);
+      },
+      /kafel członu nie niesie stanu wyłącznika/,
+    ],
+    ['brak kafla członu nad kaflem wyłącznika', 'qetBreakerWysuwny', 'open', (d) => d.querySelector('[data-kafel="czlon-gora"]')!.remove(), /1 kafli członu ≠ 2/],
     ['brak pasma szewronów pod kaflem', 'qetBreakerWysuwnyZNapedem', 'open', (d) => d.querySelector('[data-czlon-pasmo="dol"]')!.remove(), /brak pasma dol/],
     ['brak symbolu ziemi uziemnika (uziemnik nie do odróżnienia od odłącznika)', 'qetEarthSwitch', 'closed', (d) => d.querySelector('[data-qet="ziemia"]')!.remove(), /symbol ziemi brak/],
     [
