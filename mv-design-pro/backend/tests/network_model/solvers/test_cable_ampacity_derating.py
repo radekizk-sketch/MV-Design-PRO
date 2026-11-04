@@ -63,9 +63,9 @@ def test_kazdy_zestaw_ma_udokumentowana_podstawe() -> None:
 def test_zalozenie_zestawu_ziemnego_niesie_rozbicie_i_podstawe() -> None:
     """Slad WHITE BOX musi dac sie obronic: trzy wspolczynniki, iloczyn i skad pochodza."""
     zalozenie = ZIEMIA_3_KABLE_200MM.zalozenie_pl()
-    assert "f_grunt = 0.9" in zalozenie
-    assert "f_wiazka = 1.01" in zalozenie
-    assert "f_grupa = 0.82" in zalozenie
+    assert "współczynnik gruntu 0.9" in zalozenie
+    assert "wiązki 1.01" in zalozenie
+    assert "grupy 0.82" in zalozenie
     assert "0.7454" in zalozenie
     assert "MT880" in zalozenie
 

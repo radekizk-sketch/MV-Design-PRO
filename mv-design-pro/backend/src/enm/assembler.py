@@ -83,9 +83,7 @@ from enm.zero_sequence_transformer import (
     build_transformer_zero_seq_model,
 )
 from network_model.catalog.wartosci_robocze import zalozenia_parametrow_maszyn
-from network_model.core.autorytet_wyniku_zwarciowego import (
-    ProweniencjaWynikuZwarciowego,
-)
+from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
 from network_model.core.graph import NetworkGraph
@@ -97,16 +95,8 @@ from network_model.core.impedancja_przejscia import (
 )
 from network_model.core.node import NodeType
 from network_model.core.topologia import przeglad_wszerz
-from network_model.core.uziemienie import (
-    KLUCZ_OPCJI_STANU_AWSC,
-    StanAwsc,
-    stan_awsc_z_danych,
-)
-from network_model.core.voltage_factor import (
-    NadpisanieC,
-    Scenario,
-    nadpisanie_c_z_danych,
-)
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC, StanAwsc, stan_awsc_z_danych
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.core.ybus import S_BASE_MVA
 from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -321,11 +311,7 @@ def _admitancje_baterii_z_migawki(
         # Partia integracji 10: nazwa baterii z modelu w treści, identyfikator w `dane`.
         bateria = opis_obiektu(raw, "Bateria kondensatorów")
         napiecie_szyny = napiecia_szyn.get(bus_ref)
-        if (
-            not bus_ref
-            or not isinstance(napiecie_szyny, int | float)
-            or napiecie_szyny <= 0
-        ):
+        if not bus_ref or not isinstance(napiecie_szyny, int | float) or napiecie_szyny <= 0:
             raise OdmowaNazwana(
                 f"{bateria} nie ma przypisanej szyny przyłączenia o dodatnim napięciu "
                 "znamionowym.",
@@ -357,9 +343,7 @@ def _admitancje_baterii_z_migawki(
     return wynik
 
 
-def _boczniki_solvera_z_baterii(
-    admitancje: Sequence[AdmitancjaBaterii],
-) -> list[ShuntSpec]:
+def _boczniki_solvera_z_baterii(admitancje: Sequence[AdmitancjaBaterii]) -> list[ShuntSpec]:
     """Baterie kondensatorów ENM → istniejący mechanizm boczników solvera (``ShuntSpec``).
 
     Admitancje z ``_admitancje_baterii_z_migawki`` (wzór i podstawa tam) — te same, które
@@ -367,11 +351,7 @@ def _boczniki_solvera_z_baterii(
     a solver oddaje Q = b·|V|²·S_b.
     """
     return [
-        ShuntSpec(
-            node_id=_graph_id_from_ref(adm.bus_ref),
-            g_pu=adm.y_pu.real,
-            b_pu=adm.y_pu.imag,
-        )
+        ShuntSpec(node_id=_graph_id_from_ref(adm.bus_ref), g_pu=adm.y_pu.real, b_pu=adm.y_pu.imag)
         for adm in admitancje
     ]
 
@@ -533,9 +513,7 @@ class OdmowaWejsciaRozplywu(OdmowaDanychError):
     ``TopologyView``), ``elementy`` = ref_id elementów blokujących.
     """
 
-    def __init__(
-        self, kod: str, komunikat: str, *, elementy: tuple[str, ...] = ()
-    ) -> None:
+    def __init__(self, kod: str, komunikat: str, *, elementy: tuple[str, ...] = ()) -> None:
         super().__init__(f"{komunikat} (kod gotowości: {kod})")
         self.kod = kod
         self.elementy = elementy
@@ -717,9 +695,7 @@ def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
         )
     # `kod_odmowy_impedancji` zwraca `None` wyłącznie dla pary skończonych liczb; Z_f = 0
     # to zwarcie metaliczne (ta sama funkcja co w rdzeniu — artefakt biegu bez flagi).
-    return impedancja_przejscia_obliczeniowa(
-        float(cast(float, r_f)), float(cast(float, x_f))
-    )
+    return impedancja_przejscia_obliczeniowa(float(cast(float, r_f)), float(cast(float, x_f)))
 
 
 def _nastawy_u_zrodel(snapshot: dict[str, Any]) -> dict[str, float]:
@@ -740,9 +716,7 @@ def _nastawy_u_zrodel(snapshot: dict[str, Any]) -> dict[str, float]:
     return wynik
 
 
-def _wyspy_zasilone(
-    snapshot: dict[str, Any], graph: NetworkGraph
-) -> list[tuple[Wyspa, str, str]]:
+def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple[Wyspa, str, str]]:
     """Wyspy zasilone migawki jako ``(wyspa, ref_id źródła, węzeł IR szyny bilansującej)``.
 
     Predykat odmowy (≥ 2 źródła sieciowe w jednej wyspie) i przydział szyny
@@ -766,9 +740,7 @@ def _wyspy_zasilone(
         raise OdmowaWejsciaRozplywu(
             KOD_WIELE_ZRODEL_W_WYSPIE,
             f"{READINESS_CODES[KOD_WIELE_ZRODEL_W_WYSPIE].message_pl} — {opis}",
-            elementy=tuple(
-                zrodlo for wyspa in konflikty for zrodlo in wyspa.zrodla_sieciowe
-            ),
+            elementy=tuple(zrodlo for wyspa in konflikty for zrodlo in wyspa.zrodla_sieciowe),
         )
     wynik: list[tuple[Wyspa, str, str]] = []
     for wyspa in widok.wyspy:
@@ -844,9 +816,7 @@ def zloz_wejscie_rozplywu(
     # (``OdmowaWejsciaRozplywu``, kod ``source.multiple_grid_sources_in_island``).
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
-        raise OdmowaDanychError(
-            "Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM"
-        )
+        raise OdmowaDanychError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
     # O-49 pkt 5: szyna, której odbiorów ZIP rozpływ nie odwzorowuje dokładnie (jeden
     # wielomian na szynę), jest odmową NAZWANĄ — nigdy cichym złym wynikiem. Ten sam
     # predykat czyta bramka gotowości (`_check_power_flow`). Dokładne odwzorowanie wielu
@@ -937,9 +907,7 @@ def zloz_wejscie_rozplywu(
             # bus power (generation) is constant. Same gen->load conversion point
             # as p_mw/q_mvar above; None (no ZIP bus) => whole bus power is the base.
             zip_base_p_mw=(
-                None
-                if node.zip_load_active_power is None
-                else -float(node.zip_load_active_power)
+                None if node.zip_load_active_power is None else -float(node.zip_load_active_power)
             ),
             zip_base_q_mvar=(
                 None
@@ -1129,9 +1097,7 @@ def zloz_wejscie_zwarcia(
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
     if audit2_extensions_sc is not None:
-        apply_audit2_to_network_model(
-            graph=graph, audit2_extensions=audit2_extensions_sc
-        )
+        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
     # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
@@ -1197,9 +1163,7 @@ def zloz_wejscie_zwarcia(
         # rozszerzenia audytu 2 co dla grafu MAX, bo solver widzi WYŁĄCZNIE ``solve_graph``.
         graf_min = map_enm_to_network_graph(enm, scenario="MIN")
         if audit2_extensions_sc is not None:
-            apply_audit2_to_network_model(
-                graph=graf_min, audit2_extensions=audit2_extensions_sc
-            )
+            apply_audit2_to_network_model(graph=graf_min, audit2_extensions=audit2_extensions_sc)
         min_scenario_graph_result = build_min_scenario_graph(graf_min)
         solve_graph = min_scenario_graph_result.graph
         temperature_correction_notes = tuple(
@@ -1233,9 +1197,7 @@ def zloz_wejscie_zwarcia(
     sekcje_sn_wezlow: dict[str, Any] = {}
     b0_robocze_y0: dict[str, tuple[tuple[str, str, str, float], ...]] = {}
     if _short_circuit_requires_z0(short_circuit_type):
-        siec_zerowa = zbuduj_siec_zerowa(
-            enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc
-        )
+        siec_zerowa = zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c, stan_awsc=stan_awsc)
         z0_bus = siec_zerowa.z0_bus
         b0_robocze_y0 = siec_zerowa.b0_robocze
         brak_wyniku_zerowego = siec_zerowa.przyczyny
@@ -1263,9 +1225,7 @@ def zloz_wejscie_zwarcia(
     location_raw = options.get("location")
     if location_raw is not None:
         if not isinstance(location_raw, dict):
-            raise OdmowaDanychError(
-                "Lokalizacja zwarcia w opcjach biegu musi być słownikiem"
-            )
+            raise OdmowaDanychError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
         location_type = location_raw.get("location_type")
         element_ref = str(location_raw.get("element_ref") or "")
         if location_type in ("BUS", "NODE"):
@@ -1297,9 +1257,7 @@ def zloz_wejscie_zwarcia(
                 dane={"element_ref": element_ref, "location_type": str(location_type)},
             )
         else:
-            raise OdmowaDanychError(
-                f"Nieznany typ lokalizacji zwarcia: {location_type!r}"
-            )
+            raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4: bocznik zespołu uziemiającego z wartości
     # roboczej (stan AWSC przypadku) — ten sam mechanizm i ten sam predykat składowej sieci
     # zerowej co R′0/X′0 gałęzi z założenia katalogu. Karta ZEROWA-POJEMNOSCI: B′0 z wartości
@@ -1460,9 +1418,7 @@ OPCJE_ROZPLYWU_NIESYMETRYCZNEGO: dict[str, float | int] = {
 }
 
 
-def _opcje_rozplywu_niesymetrycznego(
-    options: dict[str, Any]
-) -> tuple[float, float, int]:
+def _opcje_rozplywu_niesymetrycznego(options: dict[str, Any]) -> tuple[float, float, int]:
     """Nastawy biegu: opcje przebiegu nadpisują ``OPCJE_ROZPLYWU_NIESYMETRYCZNEGO``
     (alias ``max_iter`` jak w rozpływie NR). Zwraca (base_mva, tolerance, max_iterations).
     """
@@ -1472,11 +1428,7 @@ def _opcje_rozplywu_niesymetrycznego(
             opcje[klucz] = options[klucz]
     if "max_iterations" not in options and "max_iter" in options:
         opcje["max_iterations"] = options["max_iter"]
-    return (
-        float(opcje["base_mva"]),
-        float(opcje["tolerance"]),
-        int(opcje["max_iterations"]),
-    )
+    return (float(opcje["base_mva"]), float(opcje["tolerance"]), int(opcje["max_iterations"]))
 
 
 @dataclass(frozen=True)
@@ -1559,11 +1511,7 @@ def _droga_zerowa(enm: EnergyNetworkModel, wyspy: tuple[Wyspa, ...]) -> DrogaZer
         # Drzewo od szyny bilansującej — jądro topologii (`network_model/core/topologia`),
         # kolejność sąsiadów po (sąsiad, krawędź): deterministyczny wybór rodzica.
         drzewo = przeglad_wszerz(slack, partial(_sasiedzi_posortowani, sasiedzi))
-        rodzic = {
-            szyna: (para[1], para[0])
-            for szyna, para in drzewo.items()
-            if para is not None
-        }
+        rodzic = {szyna: (para[1], para[0]) for szyna, para in drzewo.items() if para is not None}
         for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
             if ld.bus_ref not in szyny or ld.phases not in FAZY_ODBIORU_JEDNOFAZOWEGO:
                 continue
@@ -1581,8 +1529,7 @@ def _droga_zerowa(enm: EnergyNetworkModel, wyspy: tuple[Wyspa, ...]) -> DrogaZer
                     model = build_transformer_zero_seq_model(trafo)
                     strona_odbioru_lv = szyna == trafo.lv_bus_ref
                     zamyka = (
-                        model.connection is ZeroSeqConnection.LV_SHUNT_GROUND
-                        and strona_odbioru_lv
+                        model.connection is ZeroSeqConnection.LV_SHUNT_GROUND and strona_odbioru_lv
                     ) or (
                         model.connection is ZeroSeqConnection.HV_SHUNT_GROUND
                         and not strona_odbioru_lv
@@ -1734,15 +1681,10 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
     # Regulacja falownika: TEN SAM predykat aktywności co assembler rozpływu NR
     # (`_build_converter_control_by_node`); baza mocy nie wpływa na to, CZY regulacja
     # jest aktywna, więc pomiar idzie na bazie systemowej.
-    regulowane = _build_converter_control_by_node(
-        enm.model_dump(mode="json"), S_BASE_MVA
-    )
+    regulowane = _build_converter_control_by_node(enm.model_dump(mode="json"), S_BASE_MVA)
     if regulowane:
         for gen in sorted(enm.generators, key=lambda g: g.ref_id):
-            if (
-                gen.bus_ref in szyny_zasilone
-                and _graph_id_from_ref(gen.bus_ref) in regulowane
-            ):
+            if gen.bus_ref in szyny_zasilone and _graph_id_from_ref(gen.bus_ref) in regulowane:
                 bez_reprezentacji.append(
                     (
                         gen.ref_id,
@@ -1752,23 +1694,15 @@ def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
                 )
     for bateria in sorted(enm.shunt_capacitors, key=lambda s: s.ref_id):
         if bateria.bus_ref in szyny_zasilone:
-            bez_reprezentacji.append(
-                (bateria.ref_id, "bateria kondensatorów (bocznik)")
-            )
+            bez_reprezentacji.append((bateria.ref_id, "bateria kondensatorów (bocznik)"))
     for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
         if ld.bus_ref not in szyny_zasilone:
             continue
-        if jest_odbiorem_zip(
-            ld.materialized_params, float(enm.header.defaults.frequency_hz)
-        ):
-            bez_reprezentacji.append(
-                (ld.ref_id, "odbiór ZIP (zależny od napięcia/częstotliwości)")
-            )
+        if jest_odbiorem_zip(ld.materialized_params, float(enm.header.defaults.frequency_hz)):
+            bez_reprezentacji.append((ld.ref_id, "odbiór ZIP (zależny od napięcia/częstotliwości)"))
     for trafo in transformatory_wysp:
         if _zaczep_poza_znamionowym(trafo):
-            bez_reprezentacji.append(
-                (trafo.ref_id, "zaczep poza pozycją znamionową / OLTC")
-            )
+            bez_reprezentacji.append((trafo.ref_id, "zaczep poza pozycją znamionową / OLTC"))
     widziane: set[str] = set()
     bez_reprezentacji_unikalne: list[tuple[str, str]] = []
     for ref, opis in bez_reprezentacji:
@@ -1897,9 +1831,7 @@ def _spec_galezi_z_sekwencji(
     I0 ≡ 0 z topologii albo artefakt modelu szeregowego powyżej punktu zamknięcia),
     wtedy Z_m := 0 i Z_s := Z1 — tożsamość, nie podstawienie (spadek = (Z_s − Z_m)·I).
     """
-    z1_odn = impedancja_odniesiona_do_napiecia_ohm(
-        z1_ohm, napiecie_wlasne_kv, base_kv_ll
-    )
+    z1_odn = impedancja_odniesiona_do_napiecia_ohm(z1_ohm, napiecie_wlasne_kv, base_kv_ll)
     if z0_ohm is None:
         z_s, z_m = z1_odn, 0j
         podstawienie = (
@@ -1912,9 +1844,7 @@ def _spec_galezi_z_sekwencji(
             rf"\quad(U_{{odn}} = {base_kv_ll:g}\,\mathrm{{kV}})"
         )
     else:
-        z0_odn = impedancja_odniesiona_do_napiecia_ohm(
-            z0_ohm, napiecie_wlasne_kv, base_kv_ll
-        )
+        z0_odn = impedancja_odniesiona_do_napiecia_ohm(z0_ohm, napiecie_wlasne_kv, base_kv_ll)
         z_s = impedancja_wlasna_ohm(z0_odn, z1_odn)
         z_m = impedancja_wzajemna_ohm(z0_odn, z1_odn)
         podstawienie = (
@@ -1958,9 +1888,7 @@ def _spec_galezi_z_sekwencji(
     )
 
 
-def _moc_per_faza(
-    p_mw: float, q_mvar: float, fazy: str | None
-) -> dict[str, tuple[float, float]]:
+def _moc_per_faza(p_mw: float, q_mvar: float, fazy: str | None) -> dict[str, tuple[float, float]]:
     """Rozdział mocy odbioru na fazy wg ``Load.phases``: brak/``ABC`` = po 1/3 na fazę
     (odbiór trójfazowy symetryczny); ``A``/``B``/``C`` = cała moc na jednej fazie."""
     if fazy in FAZY_ODBIORU_JEDNOFAZOWEGO:
@@ -2025,15 +1953,11 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
 
     def _powod_bez_z0(ref_id: str) -> str:
         if ref_id in droga_zerowa.artefakt:
-            zamykajace = sorted(
-                {tr for ld, tr in droga_zerowa.zamkniecia_w_transformatorach}
-            )
+            zamykajace = sorted({tr for ld, tr in droga_zerowa.zamkniecia_w_transformatorach})
             return (
                 "prąd składowej zerowej tej krawędzi jest artefaktem modelu szeregowego: droga "
                 "prądu składowej zerowej odbiorów faza–N zamknięta poniżej, w transformatorze "
-                + ", ".join(
-                    nazwa_po_identyfikatorze(tr, indeks=nazwy) for tr in zamykajace
-                )
+                + ", ".join(nazwa_po_identyfikatorze(tr, indeks=nazwy) for tr in zamykajace)
             )
         return (
             "suma prądów trzech faz równa zeru z topologii: tą krawędzią nie płynie prąd "
@@ -2049,9 +1973,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     galaz_enm = {_graph_id_from_ref(g.ref_id): g for g in enm.branches}
     napiecia_galezi = napiecia_szyn_kv(enm)
     trafo_enm = {_graph_id_from_ref(t.ref_id): t for t in enm.transformers}
-    napiecia_kv = {
-        node_id: float(node.voltage_level) for node_id, node in graph.nodes.items()
-    }
+    napiecia_kv = {node_id: float(node.voltage_level) for node_id, node in graph.nodes.items()}
     tracer = WhiteBoxTracer()
     admitancja_pominieta: list[str] = []
     magnesujaca_pominieta: list[str] = []
@@ -2070,25 +1992,19 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 substitution=(
                     "droga prądu składowej zerowej zamknięta w uziemionym uzwojeniu "
                     "transformatora "
-                    + nazwa_po_identyfikatorze(
-                        punkt, indeks=nazwy, spoza_modelu=SPOZA_MODELU
-                    )
+                    + nazwa_po_identyfikatorze(punkt, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
                     if punkt is not None
                     else (
                         "droga prądu składowej zerowej zamknięta w punkcie neutralnym "
                         "źródła sieciowego "
                         + nazwa_po_identyfikatorze(
-                            zamkniecia_zr[ld.ref_id],
-                            indeks=nazwy,
-                            spoza_modelu=SPOZA_MODELU,
+                            zamkniecia_zr[ld.ref_id], indeks=nazwy, spoza_modelu=SPOZA_MODELU
                         )
                         + " (źródło idealne uziemione w modelu BFS)"
                     )
                 ),
                 result={
-                    "zamkniecie": (
-                        punkt if punkt is not None else zamkniecia_zr[ld.ref_id]
-                    ),
+                    "zamkniecie": (punkt if punkt is not None else zamkniecia_zr[ld.ref_id]),
                     "rodzaj": "transformator" if punkt is not None else "zrodlo",
                 },
             )
@@ -2103,10 +2019,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         uziemione_n: set[str] = set()
         for branch_id in sorted(graph.branches):
             branch = graph.branches[branch_id]
-            if (
-                branch.from_node_id not in wezly_zbior
-                or branch.to_node_id not in wezly_zbior
-            ):
+            if branch.from_node_id not in wezly_zbior or branch.to_node_id not in wezly_zbior:
                 continue
             if not getattr(branch, "in_service", True):
                 continue
@@ -2117,18 +2030,11 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         f"Gałąź IR '{branch_id}' nie ma odpowiednika linii/kabla w migawce ENM"
                     )
                 tory = liczba_torow(galaz)
-                z1_ohm = (
-                    complex(branch.r_ohm_per_km, branch.x_ohm_per_km) * branch.length_km
-                )
+                z1_ohm = complex(branch.r_ohm_per_km, branch.x_ohm_per_km) * branch.length_km
                 z0_ohm: complex | None
-                skladowa_z0 = skladowa_zerowa_galezi(
-                    galaz, napiecia_galezi.get(galaz.from_bus_ref)
-                )
+                skladowa_z0 = skladowa_zerowa_galezi(galaz, napiecia_galezi.get(galaz.from_bus_ref))
                 if galaz.ref_id in droga_zerowa.z_realnym_i0:
-                    if (
-                        skladowa_z0.r0_ohm_per_km is None
-                        or skladowa_z0.x0_ohm_per_km is None
-                    ):
+                    if skladowa_z0.r0_ohm_per_km is None or skladowa_z0.x0_ohm_per_km is None:
                         raise OdmowaWejsciaRozplywu(
                             KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
                             READINESS_CODES[KOD_NIESYMETRIA_BRAK_Z0_GALEZI].message_pl,
@@ -2141,9 +2047,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     )
                     zrodlo_z0_galezi = (
                         "rezystancja i reaktancja składowej zerowej gałęzi (wartość robocza: "
-                        + "; ".join(
-                            zalozenie for _, _, zalozenie, _ in skladowa_z0.robocze
-                        )
+                        + "; ".join(zalozenie for _, _, zalozenie, _ in skladowa_z0.robocze)
                         + ") × długość ÷ liczba torów"
                         if skladowa_z0.robocze
                         else (
@@ -2200,9 +2104,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         f"Gałąź IR '{branch_id}' nie ma odpowiednika transformatora w migawce ENM"
                     )
                 z1_pu = branch.get_impedance_pu(base_mva)
-                z1_ohm = impedancja_z_jednostek_wzglednych_ohm(
-                    z1_pu, base_kv_ll, base_mva
-                )
+                z1_ohm = impedancja_z_jednostek_wzglednych_ohm(z1_pu, base_kv_ll, base_mva)
                 model_z0 = build_transformer_zero_seq_model(trafo)
                 for krok in model_z0.trace:
                     tracer.add_step(WhiteBoxStep(**krok))
@@ -2285,10 +2187,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 )
         for switch_id in sorted(graph.switches):
             switch = graph.switches[switch_id]
-            if (
-                switch.from_node_id not in wezly_zbior
-                or switch.to_node_id not in wezly_zbior
-            ):
+            if switch.from_node_id not in wezly_zbior or switch.to_node_id not in wezly_zbior:
                 continue
             if not (getattr(switch, "in_service", True) and switch.is_closed):
                 continue
@@ -2328,12 +2227,9 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 ),
                 inputs={"p_mw": ld.p_mw, "q_mvar": ld.q_mvar, "phases": ld.phases},
                 substitution=", ".join(
-                    f"{faza}: {p:.6g} MW / {q:.6g} Mvar"
-                    for faza, (p, q) in rozdzial.items()
+                    f"{faza}: {p:.6g} MW / {q:.6g} Mvar" for faza, (p, q) in rozdzial.items()
                 ),
-                result={
-                    faza: {"p_mw": p, "q_mvar": q} for faza, (p, q) in rozdzial.items()
-                },
+                result={faza: {"p_mw": p, "q_mvar": q} for faza, (p, q) in rozdzial.items()},
             )
         load_specs: list[UnbalancedLoadSpec] = []
         for node_id in wezly:
@@ -2368,10 +2264,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                         formula_latex=r"S_{\varphi,gen} = -S_{gen}/3",
                         inputs={"p_gen_mw": gen_p, "q_gen_mvar": gen_q},
                         substitution=f"−{gen_p:.6g}/3 MW, −{gen_q:.6g}/3 Mvar na fazę",
-                        result={
-                            "p_mw_per_phase": -gen_p / 3.0,
-                            "q_mvar_per_phase": -gen_q / 3.0,
-                        },
+                        result={"p_mw_per_phase": -gen_p / 3.0, "q_mvar_per_phase": -gen_q / 3.0},
                     )
             if all(p == 0.0 and q == 0.0 for p, q in fazy_wezla.values()):
                 continue
@@ -2393,9 +2286,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
             key=f"pf_unbalanced_base[{zrodlo_ref}]",
             title=(
                 "Wyspa źródła "
-                + nazwa_po_identyfikatorze(
-                    zrodlo_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU
-                )
+                + nazwa_po_identyfikatorze(zrodlo_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
                 + ": baza jednej fazy solvera BFS"
             ),
             formula_latex=r"S_{b,\varphi} = S_b/3,\quad U_{b,\varphi} = U_{LL}/\sqrt{3}",
@@ -2429,14 +2320,10 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
 
     zalozenia: list[dict[str, Any]] = []
     if transformatory_szeregowe:
-        zalozenia.append(
-            _zalozenie(KOD_ZALOZENIE_TR_SZEREGOWY, transformatory_szeregowe)
-        )
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_TR_SZEREGOWY, transformatory_szeregowe))
     if droga_zerowa.artefakt:
         zalozenia.append(
-            _zalozenie(
-                KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA, sorted(droga_zerowa.artefakt)
-            )
+            _zalozenie(KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA, sorted(droga_zerowa.artefakt))
         )
     if droga_zerowa.zamkniecia_w_zrodlach:
         zalozenia.append(
@@ -2446,13 +2333,9 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
             )
         )
     if magnesujaca_pominieta:
-        zalozenia.append(
-            _zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta)
-        )
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta))
     if admitancja_pominieta:
-        zalozenia.append(
-            _zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta)
-        )
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta))
     # Karta LINIA-110: linie 110 kV, których Z1 i Z0 policzono z wartością roboczą geometrii —
     # ten sam zbiór (załączone) co założenia zwarć i rozpływu symetrycznego.
     linie_robocze = [str(z["element_ref"]) for z in zalozenia_linii_wn(enm, None)]

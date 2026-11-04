@@ -58,9 +58,7 @@ def _znana(wartosc: float | None) -> float | None:
 
 def _znana_zespolona(wartosc: complex | None) -> complex | None:
     """Jak `_znana`, dla wielkosci zespolonych (moce pozorne z wyniku PF)."""
-    if wartosc is None or not (
-        math.isfinite(wartosc.real) and math.isfinite(wartosc.imag)
-    ):
+    if wartosc is None or not (math.isfinite(wartosc.real) and math.isfinite(wartosc.imag)):
         return None
     return wartosc
 
@@ -102,9 +100,7 @@ class EnergyValidationBuilder:
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
         return [
-            self._pozycja_obciazenia(
-                EnergyCheckType.BRANCH_LOADING, branch_id, branch, pf, config
-            )
+            self._pozycja_obciazenia(EnergyCheckType.BRANCH_LOADING, branch_id, branch, pf, config)
             for branch_id, branch in sorted(graph.branches.items())
             if isinstance(branch, LineBranch) and branch.in_service
         ]
@@ -156,11 +152,7 @@ class EnergyValidationBuilder:
                 target_id=branch_id,
                 target_name=nazwa_elementu(
                     branch,
-                    (
-                        "transformers"
-                        if isinstance(branch, TransformerBranch)
-                        else "branches"
-                    ),
+                    "transformers" if isinstance(branch, TransformerBranch) else "branches",
                 ),
                 observed_value=None,
                 unit="%",
@@ -179,10 +171,7 @@ class EnergyValidationBuilder:
             "%",
         )
         assert wynik.prad_od_a is not None and wynik.prad_do_a is not None
-        assert (
-            wynik.prad_znamionowy_od_a is not None
-            and wynik.prad_znamionowy_do_a is not None
-        )
+        assert wynik.prad_znamionowy_od_a is not None and wynik.prad_znamionowy_do_a is not None
         assert wynik.zacisk_decydujacy is not None
         i_od_ka = a_na_ka(abs(wynik.prad_od_a))
         i_do_ka = a_na_ka(abs(wynik.prad_do_a))
@@ -407,7 +396,9 @@ class EnergyValidationBuilder:
             )
         else:
             status = EnergyValidationStatus.FAIL
-            why = f"Współczynnik mocy {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
+            why = (
+                f"Współczynnik mocy {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
+            )
 
         return [
             EnergyValidationItem(
@@ -482,9 +473,7 @@ def _white_box_progowe(
         _krok(f"Wzór: {wzor}", wzor_latex),
         _krok(f"Dane: {dane}"),
         _krok(f"Wynik: {wynik}", podstawienie_latex),
-        _krok(
-            f"Progi: ostrzeżenie {_pl(warn, 1)} {unit}, przekroczenie {_pl(fail, 1)} {unit}"
-        ),
+        _krok(f"Progi: ostrzeżenie {_pl(warn, 1)} {unit}, przekroczenie {_pl(fail, 1)} {unit}"),
         _krok(f"Porównanie z progami: {porownanie}"),
     )
 
@@ -526,9 +515,7 @@ def _build_summary(
     pass_count = sum(1 for i in items if i.status == EnergyValidationStatus.PASS)
     warning_count = sum(1 for i in items if i.status == EnergyValidationStatus.WARNING)
     fail_count = sum(1 for i in items if i.status == EnergyValidationStatus.FAIL)
-    not_computed_count = sum(
-        1 for i in items if i.status == EnergyValidationStatus.NOT_COMPUTED
-    )
+    not_computed_count = sum(1 for i in items if i.status == EnergyValidationStatus.NOT_COMPUTED)
 
     worst_id: str | None = None
     worst_margin: float | None = None

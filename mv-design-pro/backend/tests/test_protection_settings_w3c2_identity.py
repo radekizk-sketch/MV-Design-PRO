@@ -194,6 +194,22 @@ def _wynik_do_dict_wspolny(wynik: Any) -> dict[str, Any]:
     }
 
 
+def _bez_tekstow(wartosc: Any) -> Any:
+    """Struktura i liczby bez treści tekstów.
+
+    Intencja testu to „te same LICZBY przed i po W3-C2"; teksty zaleceń i notatek zmieniają
+    się niezależnie od metodyki (karta UX-04/ZU: proza słowami zamiast symboli spłaszczonych,
+    np. „k_b" -> „współczynnik bezpieczeństwa"). Tekst zostaje znacznikiem, więc obecność
+    i liczba zaleceń dalej są porównywane."""
+    if isinstance(wartosc, str):
+        return "<tekst>"
+    if isinstance(wartosc, dict):
+        return {klucz: _bez_tekstow(w) for klucz, w in wartosc.items()}
+    if isinstance(wartosc, list | tuple):
+        return [_bez_tekstow(w) for w in wartosc]
+    return wartosc
+
+
 @pytest.mark.parametrize("nazwa_wejscia", sorted(WEJSCIA_REPREZENTATYWNE))
 def test_tozsamosc_przed_po_dla_istniejacych_wejsc(
     modul_przed: ModuleType, nazwa_wejscia: str
@@ -214,7 +230,9 @@ def test_tozsamosc_przed_po_dla_istniejacych_wejsc(
     wejscie_po = WejscieDoPo(**kwargs)
     wynik_po = SilnikPo.calculate(wejscie_po)
 
-    assert _wynik_do_dict_wspolny(wynik_przed) == _wynik_do_dict_wspolny(wynik_po), (
+    assert _bez_tekstow(_wynik_do_dict_wspolny(wynik_przed)) == _bez_tekstow(
+        _wynik_do_dict_wspolny(wynik_po)
+    ), (
         f"Rozbieznosc PRZED/PO dla wejscia '{nazwa_wejscia}' — rozszerzenie W3-C2 "
         "zmienilo istniejaca liczbe zamiast byc czysto addytywne."
     )

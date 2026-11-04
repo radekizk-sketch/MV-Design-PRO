@@ -73,9 +73,7 @@ class CgmesRefMap:
 
     def to_json(self) -> str:
         """Canonical JSON (sorted keys, no whitespace) — deterministic bytes."""
-        return json.dumps(
-            self.to_dict(), sort_keys=True, ensure_ascii=False, separators=(",", ":")
-        )
+        return json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CgmesRefMap:

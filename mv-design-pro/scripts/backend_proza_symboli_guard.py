@@ -79,11 +79,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "backend" / "src"
-PIN_PLIK = (
-    Path(__file__).resolve().parent
-    / "guard_references"
-    / "backend_proza_symboli_pin.json"
-)
+PIN_PLIK = Path(__file__).resolve().parent / "guard_references" / "backend_proza_symboli_pin.json"
 
 #: Symbol z indeksem (`U_n`, `I_th`, `Z_0`), znak symbolu spłaszczonego (prim, bis, φ, indeks
 #: dolny Unicode), zapis `Ik''`, `IΔ` i symbole elektrotechniki pisane bez podkreślnika
@@ -106,12 +102,8 @@ SYMBOL_RE = re.compile(
 #: przepuszczała prozę spoza listy („Susceptancja B′1", „Stosunek X′0/X′1") i każdą prozę
 #: angielską („Equivalent impedance is zero; cannot compute Ik''"), a ekran i raport pokazują
 #: oba rodzaje tak samo.
-POLSKI_RE = re.compile(
-    r"[ąćęłńóśźż]|\b(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|[a-ząćęłńóśźż]{4,})\b"
-)
-_LOGGER = frozenset(
-    {"debug", "info", "warning", "warn", "error", "exception", "critical", "log"}
-)
+POLSKI_RE = re.compile(r"[ąćęłńóśźż]|\b(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|[a-ząćęłńóśźż]{4,})\b")
+_LOGGER = frozenset({"debug", "info", "warning", "warn", "error", "exception", "critical", "log"})
 
 PLIK_REJESTRU_ROWNAN = "application/proof_engine/equation_registry.py"
 PLIK_V126 = "network_model/solvers/v126_academic.py"
@@ -139,11 +131,7 @@ def jest_proza_z_symbolem(tekst: str | None) -> bool:
     if tekst.lstrip().startswith("<"):
         return False  # znaczniki (XML pakietu XLSX, HTML) — nie proza
     czysty = oczysc(tekst)
-    return (
-        " " in czysty
-        and bool(POLSKI_RE.search(czysty))
-        and bool(SYMBOL_RE.search(czysty))
-    )
+    return " " in czysty and bool(POLSKI_RE.search(czysty)) and bool(SYMBOL_RE.search(czysty))
 
 
 def _tekst(wezel: ast.AST) -> str | None:
@@ -151,11 +139,7 @@ def _tekst(wezel: ast.AST) -> str | None:
         return wezel.value
     if isinstance(wezel, ast.JoinedStr):
         return "".join(
-            (
-                c.value
-                if isinstance(c, ast.Constant) and isinstance(c.value, str)
-                else "{}"
-            )
+            (c.value if isinstance(c, ast.Constant) and isinstance(c.value, str) else "{}")
             for c in wezel.values
         )
     return None
@@ -186,9 +170,7 @@ def klucze_v126_z_podstawieniem(src: Path | None = None) -> frozenset[str]:
                 and isinstance(wartosc, ast.Call)
                 and any(
                     k.arg == "podstawienie"
-                    and not (
-                        isinstance(k.value, ast.Constant) and k.value.value is None
-                    )
+                    and not (isinstance(k.value, ast.Constant) and k.value.value is None)
                     for k in wartosc.keywords
                 )
             ):
@@ -210,9 +192,7 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
     for w in ast.walk(drzewo):
         cialo = getattr(w, "body", None)
         if (
-            isinstance(
-                w, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
-            )
+            isinstance(w, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
             and cialo
             and isinstance(cialo[0], ast.Expr)
             and isinstance(cialo[0].value, ast.Constant)
@@ -252,12 +232,8 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
         f = w.func
         nazwa = getattr(f, "attr", None) or getattr(f, "id", None)
         obiekt = getattr(f, "value", None)
-        nazwa_obiektu = (
-            getattr(obiekt, "id", None) or getattr(obiekt, "attr", None) or ""
-        )
-        if (
-            nazwa in _LOGGER and "log" in nazwa_obiektu.lower()
-        ) or nazwa == "AssertionError":
+        nazwa_obiektu = getattr(obiekt, "id", None) or getattr(obiekt, "attr", None) or ""
+        if (nazwa in _LOGGER and "log" in nazwa_obiektu.lower()) or nazwa == "AssertionError":
             for argument in [*w.args, *(k.value for k in w.keywords)]:
                 _oznacz(argument, pomin)
         if wzgledna == PLIK_KONTRAKTU_RESULTSET and nazwa == "Field":
@@ -272,11 +248,7 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
         if wzgledna == PLIK_V126 and _wywolanie_trace_add(w) and len(w.args) >= 2:
             _oznacz(w.args[1], pomin)
             klucz = w.args[0]
-            if (
-                len(w.args) >= 4
-                and isinstance(klucz, ast.Constant)
-                and klucz.value in klucze_v126
-            ):
+            if len(w.args) >= 4 and isinstance(klucz, ast.Constant) and klucz.value in klucze_v126:
                 _oznacz(w.args[3], pomin)
         if wzgledna == PLIK_NCRFG and _wywolanie_trace_add(w) and len(w.args) >= 3:
             _oznacz(w.args[2], pomin)
@@ -306,9 +278,7 @@ def trafienia_pliku(
 def zmierz(src: Path | None = None) -> dict[str, list[tuple[int, str]]]:
     src = SRC if src is None else src
     klucze_v126 = (
-        klucze_v126_z_podstawieniem(src)
-        if (src / PLIK_REJESTRU_V126).exists()
-        else (frozenset())
+        klucze_v126_z_podstawieniem(src) if (src / PLIK_REJESTRU_V126).exists() else (frozenset())
     )
     wynik: dict[str, list[tuple[int, str]]] = {}
     for sciezka in sorted(src.rglob("*.py")):
@@ -348,9 +318,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="pierwszy zapis pinu z pomiaru (tylko gdy pliku pinu jeszcze nie ma)",
     )
-    parser.add_argument(
-        "--lista", action="store_true", help="wypisz wszystkie trafienia"
-    )
+    parser.add_argument("--lista", action="store_true", help="wypisz wszystkie trafienia")
     args = parser.parse_args(argv)
     if not SRC.is_dir():
         print(f"FAILED: brak katalogu {SRC}")
@@ -368,30 +336,21 @@ def main(argv: list[str] | None = None) -> int:
         f"(pin łącznie {sum(pin.values())})."
     )
     for plik in przekroczenia:
-        print(
-            f"\nPRZEKROCZENIE {plik}: {len(zmierzone[plik])} > pin {pin.get(plik, 0)}"
-        )
+        print(f"\nPRZEKROCZENIE {plik}: {len(zmierzone[plik])} > pin {pin.get(plik, 0)}")
         for linia, tekst in zmierzone[plik]:
             print(f"  {plik}:{linia}\t{tekst[:200]!r}")
     if args.inicjuj:
         if PIN_PLIK.exists():
-            print(
-                f"FAILED: pin już istnieje ({PIN_PLIK}) — obniżaj go przez --aktualizuj."
-            )
+            print(f"FAILED: pin już istnieje ({PIN_PLIK}) — obniżaj go przez --aktualizuj.")
             return 1
         przekroczenia = []
         args.aktualizuj = True
     if args.aktualizuj:
         if przekroczenia:
-            print(
-                "\nFAILED: --aktualizuj odmawia podniesienia pinu — napisz te teksty słowami."
-            )
+            print("\nFAILED: --aktualizuj odmawia podniesienia pinu — napisz te teksty słowami.")
             return 1
         PIN_PLIK.write_text(
-            json.dumps(
-                {k: len(v) for k, v in zmierzone.items()}, indent=1, sort_keys=True
-            )
-            + "\n",
+            json.dumps({k: len(v) for k, v in zmierzone.items()}, indent=1, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         print(f"Zapisano pin: {PIN_PLIK}")

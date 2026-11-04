@@ -325,7 +325,7 @@ def test_no_candidate_meets_returns_null_with_reason() -> None:
     view = build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=0.999)
     assert view["dobor"] is None
     assert view["powod_braku"] is not None
-    assert "cosφ" in view["powod_braku"]
+    assert "współczynnika mocy" in view["powod_braku"]
     assert all(c["spelnia"] is False for c in view["candidates"])
 
 

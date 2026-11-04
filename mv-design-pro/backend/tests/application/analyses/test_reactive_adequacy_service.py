@@ -156,7 +156,7 @@ def test_voltage_violation_detected() -> None:
     assert view["verdict"] == "rezerwa Q wyczerpana"
     assert len(view["voltage_violations"]) == 1
     assert view["voltage_violations"][0]["bus_ref"] == "b1"
-    assert view["voltage_violations"][0]["kind_pl"] == "przekroczenie U_max"
+    assert view["voltage_violations"][0]["kind_pl"] == "przekroczenie napięcia maksymalnego"
 
 
 @pytest.mark.parametrize(

@@ -99,7 +99,10 @@ def test_regula_b0_iloczyn_pasmo_b1_b0(pasmo: str, b1: float | None, b0: float |
         assert wynik.robocze_b0 == ()
     else:
         ((pole, etykieta, zalozenie, wartosc),) = wynik.robocze_b0
-        assert (pole, etykieta) == ("b0_siemens_per_km", "B′0")
+        assert (pole, etykieta) == (
+            "b0_siemens_per_km",
+            "Susceptancja jednostkowa składowej zerowej",
+        )
         assert wartosc == wynik.b0_s_per_km
         assert zalozenie == (
             ZALOZENIE_ODCINKA_B0_KABEL_SN if kabel else ZALOZENIE_ODCINKA_B0_LINIA_SN
@@ -190,7 +193,9 @@ def test_konsumenci_pojemnosci_z_jednej_reguly(dlugosci_m: tuple[int, ...]) -> N
     assert wejscie.uziemienie_sn is not None
     (siec_v126,) = wejscie.uziemienie_sn.sieci
     nazwy = [d.nazwa_pl for d in siec_v126.dane_przyjete]
-    assert any(n.startswith("B′0 wartość robocza") for n in nazwy)
+    assert any(
+        n.startswith("Susceptancja jednostkowa składowej zerowej wartość robocza") for n in nazwy
+    )
     wynik = V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, wejscie)["result"]
     assert wynik["capacitive_earth_fault_current_a"] == pytest.approx(
         siec.prad_pojemnosciowy_a, abs=1e-4
@@ -202,7 +207,10 @@ def test_konsumenci_pojemnosci_z_jednej_reguly(dlugosci_m: tuple[int, ...]) -> N
         "neutral_earthing_design", {"result": wynik}, nazwy={}
     )["result"]
     assert powierzchnia["kompletnosc_dowodu"] == "NIEPELNY"
-    assert any(d["nazwa_pl"].startswith("B′0 wartość robocza") for d in wynik["dane_przyjete"])
+    assert any(
+        d["nazwa_pl"].startswith("Susceptancja jednostkowa składowej zerowej wartość robocza")
+        for d in wynik["dane_przyjete"]
+    )
 
     # Konsument 4: gotowość V12.6 — warunek pojemności doziemnej spełniony z reguły.
     from application.analyses.v126_gotowosc import ocen_gotowosc_v126
@@ -265,8 +273,10 @@ def test_zbior_z0_roboczych_biegow_b0_tylko_z_macierzy_y0() -> None:
     assert len(z_y0) == len(zalozenia_z0_galezi(enm, None))
     for zalozenie in z_y0:
         nazwy = [d["nazwa_pl"] for d in zalozenie["dane_przyjete"]]
-        assert (zalozenie["element_ref"] in b0_y0) is any(n.startswith("B′0") for n in nazwy)
-        assert any(n.startswith("R′0") for n in nazwy)
+        assert (zalozenie["element_ref"] in b0_y0) is any(
+            n.startswith("Susceptancja jednostkowa składowej zerowej") for n in nazwy
+        )
+        assert any(n.startswith("Rezystancja jednostkowa składowej zerowej") for n in nazwy)
 
 
 def _skladowe_kabli(enm: EnergyNetworkModel) -> list[Any]:
@@ -424,14 +434,22 @@ def test_bocznik_y0_zwarc_z_warunku_pojemnosci(wariant: str) -> None:
             przyjete_b0 = [
                 d
                 for d in wiersz.get("dane_przyjete_galezi") or ()
-                if d["nazwa_pl"].startswith("B′0")
+                if d["nazwa_pl"].startswith("Susceptancja jednostkowa składowej zerowej")
             ]
             assert bool(przyjete_b0) is (wchodzi and robocze)
             assert all(d["jakosc"] == "ESTIMATED" for d in przyjete_b0)
-            assert ("B′0" in str(surowy.get("zalozenia") or "")) is (wchodzi and robocze)
+            assert (
+                "Susceptancja jednostkowa składowej zerowej" in str(surowy.get("zalozenia") or "")
+            ) is (wchodzi and robocze)
             doziemienie = wiersz["doziemienie_sieci"]
             nazwy_przyjete = [d["nazwa_pl"] for d in doziemienie.get("dane_przyjete") or ()]
-            assert any(n.startswith("B′0 wartość robocza") for n in nazwy_przyjete) is robocze
+            assert (
+                any(
+                    n.startswith("Susceptancja jednostkowa składowej zerowej wartość robocza")
+                    for n in nazwy_przyjete
+                )
+                is robocze
+            )
             if TRYBY_WIERSZA_1F[wariant]:
                 assert wiersz.get("brak_wyniku_zerowego") is None and wiersz["ikss_a"] is not None
             else:
@@ -536,10 +554,12 @@ def test_dane_przyjete_wielkosci_z_modelu_niosa_b0_z_macierzy_y0(
     assert bool(b0_y0) is (wariant == "rezystor")
     szyna = migawka["substations"][0]["gpz_sections"][0]["bus_ref"]
     dane = dane_przyjete_wezla(enm, szyna, ze_skladowa_zerowa=True)
-    assert any(d["nazwa_pl"].startswith("B′0") for d in dane) is bool(b0_y0)
+    assert any(
+        d["nazwa_pl"].startswith("Susceptancja jednostkowa składowej zerowej") for d in dane
+    ) is bool(b0_y0)
     # Bez składowej zerowej (pętla nN, Z1 sieci zasilającej) — B′0 nigdy.
     assert not any(
-        d["nazwa_pl"].startswith("B′0")
+        d["nazwa_pl"].startswith("Susceptancja jednostkowa składowej zerowej")
         for d in dane_przyjete_wezla(enm, szyna, ze_skladowa_zerowa=False)
     )
 

@@ -228,9 +228,7 @@ ALLOWLIST: dict[tuple[str, str], str] = {
 # `reactanceOhmPerKm`). Multiplying/dividing these is network physics.
 # K7-B: + resistivity / conductivity — the removed earthing-grid (IEEE 80) and
 # instrument-transformer-burden code multiplied exactly those.
-_IMPEDANCE_FAMILY = (
-    r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
-)
+_IMPEDANCE_FAMILY = r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
 
 # K7-B: short-circuit / withstand quantities. Case-insensitive, because real
 # identifiers came in every spelling (`i_th_1s_ka`, `calculated_Ith_kA`,
@@ -325,8 +323,7 @@ PHYSICS_PATTERNS = [
 # identyfikatory, ktorymi kreator magistrali wystawial werdykt w UI (`deltaUPct`,
 # `delta_u_pct`, `sumaZnanychPct` przez `skumulowanySpadek`, `rated_current_a`, `izA`).
 _VERDICT_QUANTITY_FAMILY = (
-    r"\w*(?:delta_?u|spadek|spadku|rated_?current|ampacity|obciazalnosc|iznam)\w*"
-    r"|iz(?:_?a)?"
+    r"\w*(?:delta_?u|spadek|spadku|rated_?current|ampacity|obciazalnosc|iznam)\w*" r"|iz(?:_?a)?"
 )
 # Porownanie i suma dotycza KAZDEJ rodziny fizycznej guarda, nie tylko nowej.
 _OCENA_FAMILY = "|".join(
@@ -362,9 +359,7 @@ OCENA_PATTERNS = [
     # suma: wielkosc fizyczna jako skladnik (`suma += o.delta_u_pct`, `s + o.deltaUPct`)
     re.compile(rf"{_PLUS}\s*{_ACCESS_PATH}\b(?:{_OCENA_FAMILY})\b", re.IGNORECASE),
     # (`licznik += 1` nie jest suma wielkosci — calkowity krok licznika pominiety)
-    re.compile(
-        rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s*{_PLUS}(?!\s*\d+(?![.\w]))", re.IGNORECASE
-    ),
+    re.compile(rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s*{_PLUS}(?!\s*\d+(?![.\w]))", re.IGNORECASE),
     # deklaracja stalej progu z jednostka fizyczna (`const LIMIT_SPADKU_PCT = 5`)
     re.compile(
         r"\b(?:const|let|var)\s+[A-Z0-9_]*(?:LIMIT|PROG)[A-Z0-9_]*"
@@ -374,9 +369,7 @@ OCENA_PATTERNS = [
 
 # Literaly napisow wycinane przed wzorcami oceny (napis nie liczy; lacznik w testid
 # ani nawias w tekscie nie sa operatorem).
-_STRING_LITERAL = re.compile(
-    r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`"
-)
+_STRING_LITERAL = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`")
 
 
 def _bez_napisow(line: str) -> str:
@@ -556,8 +549,7 @@ def check_allowlist_freshness(
 def main() -> int:
     if not any(d.exists() for d in SCAN_DIRS):
         print(
-            "ui-no-physics-guard: no scan directory found: "
-            + ", ".join(str(d) for d in SCAN_DIRS),
+            "ui-no-physics-guard: no scan directory found: " + ", ".join(str(d) for d in SCAN_DIRS),
             file=sys.stderr,
         )
         return 2

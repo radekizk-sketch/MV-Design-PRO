@@ -213,7 +213,7 @@ def test_requirement_scales_with_pn() -> None:
     assert view["wymaganie"]["pn_mw"] == pytest.approx(1.0)
     ocena = _ocena(view)
     assert ocena.limit is not None
-    assert "[−0,33 Mvar, 0,33 Mvar]" in (ocena.limit.zakres_stosowalnosci_pl or "")
+    assert "od −0,33 Mvar do 0,33 Mvar" in (ocena.limit.zakres_stosowalnosci_pl or "")
 
 
 def test_whitebox_trace_present() -> None:

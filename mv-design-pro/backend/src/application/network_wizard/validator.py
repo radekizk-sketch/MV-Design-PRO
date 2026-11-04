@@ -58,9 +58,7 @@ def _eval_k1(enm: dict[str, Any]) -> StepState:
             else StepStatus.PARTIAL if completion > 0 else StepStatus.EMPTY
         )
     )
-    return StepState(
-        step_id="K1", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K1", status=status, completion_percent=completion, issues=issues)
 
 
 def _eval_k2(enm: dict[str, Any]) -> StepState:
@@ -136,10 +134,7 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
         )
     )
     return StepState(
-        step_id="K2",
-        status=status,
-        completion_percent=min(100, completion),
-        issues=issues,
+        step_id="K2", status=status, completion_percent=min(100, completion), issues=issues
     )
 
 
@@ -158,9 +153,7 @@ def _eval_k3(enm: dict[str, Any]) -> StepState:
             )
         )
     status = StepStatus.COMPLETE if buses else StepStatus.EMPTY
-    return StepState(
-        step_id="K3", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K3", status=status, completion_percent=completion, issues=issues)
 
 
 def _eval_k4(enm: dict[str, Any]) -> StepState:
@@ -194,13 +187,9 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
             )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
     status = (
-        StepStatus.ERROR
-        if has_blockers
-        else StepStatus.COMPLETE if lines else StepStatus.EMPTY
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if lines else StepStatus.EMPTY
     )
-    return StepState(
-        step_id="K4", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K4", status=status, completion_percent=completion, issues=issues)
 
 
 def _eval_k5(enm: dict[str, Any]) -> StepState:
@@ -231,13 +220,9 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
             )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
     status = (
-        StepStatus.ERROR
-        if has_blockers
-        else StepStatus.COMPLETE if trafos else StepStatus.EMPTY
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if trafos else StepStatus.EMPTY
     )
-    return StepState(
-        step_id="K5", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K5", status=status, completion_percent=completion, issues=issues)
 
 
 def _eval_k6(enm: dict[str, Any]) -> StepState:
@@ -264,9 +249,7 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
         # `create_device`, `update_element_parameters`): ten sam kontrakt ZIP — tabliczka,
         # której rozpływ nie policzy, nie wchodzi do modelu (wycofanie kroku). Pole `model`
         # kreator wyprowadza ze współczynników (`step_controller._apply_k6`).
-        blad_zip = zip_odbioru_z_parametrow_materializacji(
-            ld.get("materialized_params")
-        )
+        blad_zip = zip_odbioru_z_parametrow_materializacji(ld.get("materialized_params"))
         if blad_zip is not None:
             issues.append(
                 WizardIssue(
@@ -279,13 +262,9 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
             )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
     status = (
-        StepStatus.ERROR
-        if has_blockers
-        else StepStatus.COMPLETE if cnt > 0 else StepStatus.EMPTY
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if cnt > 0 else StepStatus.EMPTY
     )
-    return StepState(
-        step_id="K6", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K6", status=status, completion_percent=completion, issues=issues)
 
 
 def _zrodla_z_impedancja_zerowa(enm: dict[str, Any]) -> list[dict[str, Any]]:
@@ -297,9 +276,7 @@ def _zrodla_z_impedancja_zerowa(enm: dict[str, Any]) -> list[dict[str, Any]]:
     wynik = []
     for zrodlo in enm.get("sources", []):
         napiecie = napiecia.get(zrodlo.get("bus_ref"))
-        if isinstance(napiecie, int | float) and not impedancja_zerowa_zrodla_dozwolona(
-            napiecie
-        ):
+        if isinstance(napiecie, int | float) and not impedancja_zerowa_zrodla_dozwolona(napiecie):
             continue
         wynik.append(zrodlo)
     return wynik
@@ -356,9 +333,7 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
         s
         for s in sources
         if not dane_zerowe(
-            r0_ohm=s.get("r0_ohm"),
-            x0_ohm=s.get("x0_ohm"),
-            z0_z1_ratio=s.get("z0_z1_ratio"),
+            r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
         )
     ]
     if lines_no_z0:
@@ -394,14 +369,10 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
     with_z0 = (len(lines) - len(lines_no_z0)) + (len(sources) - len(src_no_z0))
     completion = round((with_z0 / total) * 100) if total > 0 else 100
     status = StepStatus.COMPLETE if completion == 100 else StepStatus.PARTIAL
-    return StepState(
-        step_id="K7", status=status, completion_percent=completion, issues=issues
-    )
+    return StepState(step_id="K7", status=status, completion_percent=completion, issues=issues)
 
 
-def _compute_readiness(
-    enm: dict[str, Any], prereq_steps: list[StepState]
-) -> ReadinessMatrix:
+def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> ReadinessMatrix:
     """Compute analysis readiness matrix."""
     has_blockers = any(s.status == StepStatus.ERROR for s in prereq_steps)
     buses = enm.get("buses", [])
@@ -437,9 +408,7 @@ def _compute_readiness(
     all_lines_z0 = all(_skladowa_zerowa_linii(line, napiecia).znana for line in lines)
     sc1f_missing = list(sc3f_missing)
     if not all_lines_z0:
-        sc1f_missing.append(
-            "Brak impedancji zerowej w gałęziach bez podstawy wartości roboczej"
-        )
+        sc1f_missing.append("Brak impedancji zerowej w gałęziach bez podstawy wartości roboczej")
 
     # Load flow
     lf_missing: list[str] = []
@@ -500,9 +469,7 @@ def validate_wizard_state(enm: dict[str, Any]) -> WizardStateResponse:
 
     readiness = _compute_readiness(enm, prereq_steps)
 
-    k9 = StepState(
-        step_id="K9", status=StepStatus.COMPLETE, completion_percent=100, issues=[]
-    )
+    k9 = StepState(step_id="K9", status=StepStatus.COMPLETE, completion_percent=100, issues=[])
     available = readiness.short_circuit_3f.available or readiness.load_flow.available
     k10 = StepState(
         step_id="K10",
@@ -516,9 +483,7 @@ def validate_wizard_state(enm: dict[str, Any]) -> WizardStateResponse:
     # Required steps: K1 (name), K2 (source), K3 (buses). Optional: K4-K7.
     required_ids = {"K1", "K2", "K3"}
     required_complete = all(
-        s.status == StepStatus.COMPLETE
-        for s in prereq_steps
-        if s.step_id in required_ids
+        s.status == StepStatus.COMPLETE for s in prereq_steps if s.step_id in required_ids
     )
     optional_ok = all(
         s.status in (StepStatus.COMPLETE, StepStatus.EMPTY, StepStatus.PARTIAL)

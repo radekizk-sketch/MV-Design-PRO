@@ -1229,9 +1229,7 @@ def _pozycja_normatywna(
     """
     pulap = pulap_strat_tier2_w(rodzaj, float(moc_kva))
     if pulap is None:
-        raise ValueError(
-            f"{item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat"
-        )
+        raise ValueError(f"{item_id}: moc {moc_kva} kVA poza tab. I.1/I.2 — brak pułapu strat")
     pk_w, p0_w = pulap
     uk_proc, i0_proc = GEAFOL_24KV_UK_I0_PROC[moc_kva]
     tabela = _NUMER_TABELI_TIER2[rodzaj]
@@ -1348,27 +1346,8 @@ TRANSFORMER_SN_NN_04_TIER2: list[dict[str, Any]] = [
 # strone nN; IEC 60076-5 tab. 1 nieodczytana) — pozycji brak (zablokowane danymi), zamiast
 # dawnego szacunku bez zrodla.
 
-_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (
-    0.385,
-    0.434,
-    0.48,
-    0.5,
-    0.65,
-    0.69,
-    0.8,
-    1.0,
-)
-_MOCE_BLOKOWYCH_KVA: tuple[int, ...] = (
-    500,
-    630,
-    800,
-    1000,
-    1250,
-    1600,
-    2000,
-    2500,
-    3150,
-)
+_NAPIECIA_NN_BLOKOWYCH_KV: tuple[float, ...] = (0.385, 0.434, 0.48, 0.5, 0.65, 0.69, 0.8, 1.0)
+_MOCE_BLOKOWYCH_KVA: tuple[int, ...] = (500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150)
 
 
 def _etykieta_mocy(moc_kva: int) -> str:
@@ -1452,11 +1431,7 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
 
 def get_all_transformer_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy transformatorow w katalogu."""
-    return (
-        TRANSFORMER_WN_SN_110_15
-        + TRANSFORMER_WN_SN_110_20
-        + get_sn_nn_transformer_types()
-    )
+    return TRANSFORMER_WN_SN_110_15 + TRANSFORMER_WN_SN_110_20 + get_sn_nn_transformer_types()
 
 
 def get_wn_sn_transformer_types() -> list[dict[str, Any]]:
@@ -1488,48 +1463,31 @@ def get_transformer_catalog_statistics() -> dict[str, Any]:
     vector_groups = sorted({t["params"]["vector_group"] for t in all_types})
     power_ratings = sorted({t["params"]["rated_power_mva"] for t in all_types})
     napiecia = sorted(
-        {
-            (t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"])
-            for t in all_types
-        }
+        {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in all_types}
     )
 
     return {
         "liczba_transformatorow_ogolem": len(all_types),
         "liczba_wn_sn": len(wn_sn),
         "liczba_sn_nn": len(sn_nn),
-        "statusy_weryfikacji": sorted(
-            {t["params"]["verification_status"] for t in all_types}
-        ),
-        "statusy_katalogowe": sorted(
-            {t["params"]["catalog_status"] for t in all_types}
-        ),
+        "statusy_weryfikacji": sorted({t["params"]["verification_status"] for t in all_types}),
+        "statusy_katalogowe": sorted({t["params"]["catalog_status"] for t in all_types}),
         "grupy_polaczen": vector_groups,
         "moce_znamionowe_mva": power_ratings,
         "producenci": sorted(
-            {
-                str(t["params"]["manufacturer"])
-                for t in all_types
-                if t["params"].get("manufacturer")
-            }
+            {str(t["params"]["manufacturer"]) for t in all_types if t["params"].get("manufacturer")}
         ),
         "napiecia_wn_sn": [
             f"{hv:g}/{lv:g} kV"
             for hv, lv in napiecia
             if (hv, lv)
-            in {
-                (t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"])
-                for t in wn_sn
-            }
+            in {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in wn_sn}
         ],
         "napiecia_sn_nn": [
             f"{hv:g}/{lv:g} kV"
             for hv, lv in napiecia
             if (hv, lv)
-            in {
-                (t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"])
-                for t in sn_nn
-            }
+            in {(t["params"]["voltage_hv_kv"], t["params"]["voltage_lv_kv"]) for t in sn_nn}
         ],
     }
 
@@ -1538,26 +1496,18 @@ def get_transformer_catalog_quality_summary() -> dict[str, Any]:
     """Zwraca jawne metadane jakosci dla katalogu transformatorow."""
     all_types = get_all_transformer_types()
     verified = sum(
-        1
-        for item in all_types
-        if item["params"]["verification_status"] == "ZWERYFIKOWANY"
+        1 for item in all_types if item["params"]["verification_status"] == "ZWERYFIKOWANY"
     )
     unverified = sum(
-        1
-        for item in all_types
-        if item["params"]["verification_status"] == "NIEWERYFIKOWANY"
+        1 for item in all_types if item["params"]["verification_status"] == "NIEWERYFIKOWANY"
     )
 
     return {
         "liczba_transformatorow_ogolem": len(all_types),
         "liczba_zweryfikowanych": verified,
         "liczba_nieweryfikowanych": unverified,
-        "statusy_weryfikacji": sorted(
-            {t["params"]["verification_status"] for t in all_types}
-        ),
-        "statusy_katalogowe": sorted(
-            {t["params"]["catalog_status"] for t in all_types}
-        ),
+        "statusy_weryfikacji": sorted({t["params"]["verification_status"] for t in all_types}),
+        "statusy_katalogowe": sorted({t["params"]["catalog_status"] for t in all_types}),
         "contract_version": "2.0",
     }
 

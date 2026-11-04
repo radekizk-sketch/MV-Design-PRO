@@ -71,7 +71,7 @@ def _pasmo(**inne: object) -> PasmoWidma:
 
 def test_pasmo_walidacja() -> None:
     assert _pasmo()
-    with pytest.raises(ValidationError, match="f_min < f_max"):
+    with pytest.raises(ValidationError, match="dolna granica mniejsza od górnej"):
         _pasmo(f_min_hz=150000.0, f_max_hz=2000.0)
     with pytest.raises(ValidationError, match="węższe od rozdzielczości"):
         _pasmo(pasmo_agregacji_hz=100.0)

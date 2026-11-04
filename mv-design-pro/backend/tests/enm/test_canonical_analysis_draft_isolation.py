@@ -411,7 +411,7 @@ def test_create_1f_run_blocks_without_z0_basis():
     )
     assert get_enm(case_id).branches[-1].r_ohm_per_km == 0.0
 
-    with pytest.raises(ValueError, match="składowej zerowej Z0"):
+    with pytest.raises(ValueError, match="kompletnej składowej zerowej"):
         create_run(
             case_id=case_id,
             klucz_twin=case_id,

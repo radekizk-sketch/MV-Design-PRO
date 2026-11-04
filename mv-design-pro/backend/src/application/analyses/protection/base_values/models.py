@@ -157,9 +157,7 @@ class ProtectedElementContext:
             "transformer_rated_power_mva": self.transformer_rated_power_mva,
             "transformer_voltage_hv_kv": self.transformer_voltage_hv_kv,
             "transformer_voltage_lv_kv": self.transformer_voltage_lv_kv,
-            "transformer_side": (
-                self.transformer_side.value if self.transformer_side else None
-            ),
+            "transformer_side": (self.transformer_side.value if self.transformer_side else None),
             "connection_rated_current_a": self.connection_rated_current_a,
         }
 
@@ -302,9 +300,7 @@ class ProtectionSetpoint:
             if self.unit != "pu":
                 raise ValueError(f"Dla bazy {self.basis.value} jednostka musi być 'pu'")
             if self.multiplier is None:
-                raise ValueError(
-                    f"Dla bazy {self.basis.value} wymagany jest multiplier"
-                )
+                raise ValueError(f"Dla bazy {self.basis.value} wymagany jest multiplier")
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
                 raise ValueError(

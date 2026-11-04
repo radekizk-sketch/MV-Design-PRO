@@ -344,7 +344,7 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         sc = svc.evaluate_single(enm, "short_circuit")
         assert sc.status in ("partial", "blocked")
-        assert any("u_k" in m for m in sc.missing_fields_pl)
+        assert any("Napięcie zwarcia" in m for m in sc.missing_fields_pl)
 
     def test_dynamika_blocked_without_der_dynamic_model_with_named_fix(self) -> None:
         """Karta AB-P1 (przepisane z testu skasowanej bramki „stabilność"; intencja

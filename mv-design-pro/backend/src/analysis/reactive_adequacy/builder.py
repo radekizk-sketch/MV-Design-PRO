@@ -100,9 +100,7 @@ class ReactiveAdequacyBuilder:
         ordered_loads = sorted(loads or [], key=lambda load: load.ref)
 
         # --- Przeplyw "dane niekompletne": brak wyniku power-flow / brak zrodel.
-        top_missing = self._top_level_missing(
-            ordered_buses, ordered_sources, power_flow_converged
-        )
+        top_missing = self._top_level_missing(ordered_buses, ordered_sources, power_flow_converged)
 
         source_entries = tuple(self._build_source(s) for s in ordered_sources)
         violations = self._build_violations(ordered_buses, nazwy)
@@ -131,9 +129,7 @@ class ReactiveAdequacyBuilder:
 
         verdict, is_adequate, why = self._classify(
             top_missing=top_missing,
-            nasycone_nazwy=tuple(
-                nazwa_po_identyfikatorze(ref, indeks=nazwy) for ref in saturated
-            ),
+            nasycone_nazwy=tuple(nazwa_po_identyfikatorze(ref, indeks=nazwy) for ref in saturated),
             wezly_z_naruszeniem=tuple(
                 nazwa_po_identyfikatorze(v.bus_ref, indeks=nazwy) for v in violations
             ),
@@ -337,12 +333,8 @@ class ReactiveAdequacyBuilder:
             if b.v_pu is None:
                 continue  # wezel nierozwiazany — brak |V| do oceny
             v = float(b.v_pu)
-            u_min = (
-                float(b.u_min_pu) if b.u_min_pu is not None else self.default_u_min_pu
-            )
-            u_max = (
-                float(b.u_max_pu) if b.u_max_pu is not None else self.default_u_max_pu
-            )
+            u_min = float(b.u_min_pu) if b.u_min_pu is not None else self.default_u_min_pu
+            u_max = float(b.u_max_pu) if b.u_max_pu is not None else self.default_u_max_pu
             if v > u_max:
                 dev = _round(v - u_max)
                 kind = "przekroczenie napięcia maksymalnego"
@@ -364,12 +356,9 @@ class ReactiveAdequacyBuilder:
             white_box = (
                 WhiteBoxStep(
                     symbol="ΔU",
-                    formula_latex=(
-                        r"\Delta U = |V| - U_{max}\ (\text{lub}\ |V| - U_{min})"
-                    ),
+                    formula_latex=(r"\Delta U = |V| - U_{max}\ (\text{lub}\ |V| - U_{min})"),
                     substitution_pl=(
-                        f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; "
-                        f"{_round(u_max)}] p.u."
+                        f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; " f"{_round(u_max)}] p.u."
                     ),
                     result_pl=f"ΔU = {dev} p.u. ({kind})",
                     unit_check_pl=(
@@ -397,9 +386,7 @@ class ReactiveAdequacyBuilder:
     def _build_balance(
         self, sources: list[SourceReactiveInput], loads: list[LoadReactiveInput]
     ) -> ReactiveBalance:
-        q_actuals = [
-            float(s.q_actual_mvar) for s in sources if s.q_actual_mvar is not None
-        ]
+        q_actuals = [float(s.q_actual_mvar) for s in sources if s.q_actual_mvar is not None]
         q_loads = [float(load.q_mvar) for load in loads if load.q_mvar is not None]
         # Rozbicie sumy netto na wklady per zrodlo (kolejnosc jak ``sources`` —
         # posortowana po ``ref`` przez ``build`` — determinizm).
@@ -453,13 +440,9 @@ class ReactiveAdequacyBuilder:
     # --- rezerwa systemowa ----------------------------------------------
 
     @staticmethod
-    def _network_headroom(
-        entries: tuple[SourceReactiveEntry, ...], attr: str
-    ) -> float | None:
+    def _network_headroom(entries: tuple[SourceReactiveEntry, ...], attr: str) -> float | None:
         vals = [
-            getattr(e, attr)
-            for e in entries
-            if not e.is_saturated and getattr(e, attr) is not None
+            getattr(e, attr) for e in entries if not e.is_saturated and getattr(e, attr) is not None
         ]
         if not vals:
             return None
@@ -467,20 +450,14 @@ class ReactiveAdequacyBuilder:
 
     # --- proweniencja ----------------------------------------------------
 
-    def _build_provenance(
-        self, sources: list[SourceReactiveInput]
-    ) -> ProvenanceTag | None:
+    def _build_provenance(self, sources: list[SourceReactiveInput]) -> ProvenanceTag | None:
         """Najgorsza jakosc pol Q-granic, od ktorych zalezal werdykt.
 
         Jakosc per zrodlo (``limits_field_quality``) liczy warstwa application
         przez ``resolve_card_field_quality_map`` (najgorsza z pol Q-granic karty).
         Tu jedynie KOMPONUJEMY najgorsza po wszystkich zrodlach (jak SSCI).
         """
-        qualities = [
-            s.limits_field_quality
-            for s in sources
-            if s.limits_field_quality is not None
-        ]
+        qualities = [s.limits_field_quality for s in sources if s.limits_field_quality is not None]
         if not qualities:
             return None
         from solver_input.provenance import FieldQuality
@@ -530,9 +507,7 @@ class ReactiveAdequacyBuilder:
             if nasycone_nazwy:
                 parts.append("źródła nasycone: " + ", ".join(nasycone_nazwy))
             if wezly_z_naruszeniem:
-                parts.append(
-                    "węzły z naruszeniem napięcia: " + ", ".join(wezly_z_naruszeniem)
-                )
+                parts.append("węzły z naruszeniem napięcia: " + ", ".join(wezly_z_naruszeniem))
             why = (
                 "Rezerwa Q wyczerpana — "
                 + "; ".join(parts)
@@ -552,19 +527,11 @@ class ReactiveAdequacyBuilder:
 
     @staticmethod
     def _headroom_phrase(net_up: float | None, net_down: float | None) -> str:
-        up = (
-            f"{net_up} Mvar"
-            if net_up is not None
-            else "brak (wszystkie źródła nasycone w górę)"
-        )
+        up = f"{net_up} Mvar" if net_up is not None else "brak (wszystkie źródła nasycone w górę)"
         down = (
-            f"{net_down} Mvar"
-            if net_down is not None
-            else "brak (wszystkie źródła nasycone w dół)"
+            f"{net_down} Mvar" if net_down is not None else "brak (wszystkie źródła nasycone w dół)"
         )
-        return (
-            f"Rezerwa systemowa z nienasyconych źródeł: w górę = {up}, w dół = {down}."
-        )
+        return f"Rezerwa systemowa z nienasyconych źródeł: w górę = {up}, w dół = {down}."
 
     @staticmethod
     def _append_provenance(why: str, provenance: ProvenanceTag | None) -> str:

@@ -154,7 +154,7 @@ def oczekiwane_odrzucenia(cechy: dict[str, Any]) -> set[str]:
         elif cechy["pomiar"] == "niepelny":
             odrzucenia.add("bez kompletu parametrów pomiaru")
     elif cechy["pomiar"] == "niepelny" and supra:
-        odrzucenia.add("wymaga pasma rozdzielczości rbw_hz")
+        odrzucenia.add("wymaga pasma rozdzielczości")
     if cechy["fsw"] is not None and not supra:
         odrzucenia.add("częstotliwość przełączania dopuszczalna wyłącznie")
     return odrzucenia

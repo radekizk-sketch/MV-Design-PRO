@@ -200,7 +200,7 @@ class TestVoltageViolation:
         assert v.summary.voltage_violation_count == 1
         viol = v.voltage_violations[0]
         assert viol.bus_ref == "HOT"
-        assert viol.kind_pl == "przekroczenie U_max"
+        assert viol.kind_pl == "przekroczenie napięcia maksymalnego"
         assert viol.deviation_pu == pytest.approx(0.03)
         assert v.summary.violated_bus_refs == ("HOT",)
         # Uzasadnienia (werdykt i naruszenie) nazywaja wezel nazwa z modelu (karta #144).
@@ -216,7 +216,7 @@ class TestVoltageViolation:
         ]
         v = ReactiveAdequacyBuilder().build(buses, sources, nazwy=_NAZWY)
         viol = v.voltage_violations[0]
-        assert viol.kind_pl == "poniżej U_min"
+        assert viol.kind_pl == "poniżej napięcia minimalnego"
         assert viol.deviation_pu == pytest.approx(-0.05)
 
     def test_unsolved_bus_voltage_not_evaluated(self) -> None:

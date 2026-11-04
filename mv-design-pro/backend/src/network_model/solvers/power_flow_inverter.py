@@ -66,9 +66,7 @@ class InverterControl:
     q_over_p: float = 0.0
     # COSPHI_P: ascending points (p_frac_of_pmax, q_over_p_ratio); piecewise-linear.
     cosphi_p_points: tuple[tuple[float, float], ...] = ()
-    p_max_pu: float = (
-        0.0  # rated P (pu on base_mva) for the COSPHI_P fraction; 0 => use |P|
-    )
+    p_max_pu: float = 0.0  # rated P (pu on base_mva) for the COSPHI_P fraction; 0 => use |P|
     # Q(U) volt-var droop (matches the Q(U) proof-pack representation):
     qu_deadband_low_pu: float = 1.0
     qu_deadband_high_pu: float = 1.0
@@ -155,9 +153,7 @@ def validate_inverter_control(c: InverterControl) -> None:
     if c.f0_hz <= 0.0:
         raise OdmowaDanychError(f"inverter f0_hz must be > 0, got {c.f0_hz}")
     if c.lfsm_droop_pct < 0.0:
-        raise OdmowaDanychError(
-            f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}"
-        )
+        raise OdmowaDanychError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
     if c.mode is InverterMode.Q_U:
         if c.qu_deadband_low_pu > c.qu_deadband_high_pu:
             raise OdmowaDanychError(
@@ -464,17 +460,13 @@ def inverter_control_from_params(
 
     def _q_over_p(cosphi: float, absorbing: bool) -> float:
         cosphi = max(-1.0, min(1.0, cosphi))
-        tan_phi = (
-            (max(0.0, 1.0 - cosphi * cosphi)) ** 0.5 / cosphi if cosphi != 0 else 0.0
-        )
+        tan_phi = (max(0.0, 1.0 - cosphi * cosphi)) ** 0.5 / cosphi if cosphi != 0 else 0.0
         return -abs(tan_phi) if absorbing else abs(tan_phi)
 
     absorbing = bool(params.get("q_absorbing", False))
     q_over_p = _q_over_p(float(params.get("cosphi", 1.0)), absorbing)
     raw_pts = params.get("cosphi_p_points") or ()
-    cosphi_p_points = tuple(
-        (float(x), _q_over_p(float(cp), absorbing)) for x, cp in raw_pts
-    )
+    cosphi_p_points = tuple((float(x), _q_over_p(float(cp), absorbing)) for x, cp in raw_pts)
     qmin = float(params.get("qu_q_min_mvar", params.get("qmin_mvar", 0.0))) / base_mva
     qmax = float(params.get("qu_q_max_mvar", params.get("qmax_mvar", 0.0))) / base_mva
 

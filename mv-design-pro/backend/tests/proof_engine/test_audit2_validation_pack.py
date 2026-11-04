@@ -182,7 +182,7 @@ def test_device_withstand_proof_fails_idyn_exceeded():
         generated_at_iso="2026-04-01T00:00:00Z",
     )
     assert proof.pass_status is False
-    assert "I_dyn" in proof.summary_pl
+    assert "wytrzymałości dynamicznej" in proof.summary_pl
 
 
 def test_vt_grounding_proof_passes_for_19_petersen():

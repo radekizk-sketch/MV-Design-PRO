@@ -308,10 +308,7 @@ class ArcFlashBuilder:
                 substitution_pl=(
                     f"$I_{{bf}}$ = {_round(i_bf)} kA, $G$ = {_round(gap)} mm, "
                     f"$U$ = {_round(voltage)} kV [{cfg.value}]; kotwy: "
-                    + ", ".join(
-                        f"{k} = {_round(v)} kA"
-                        for k, v in sorted(i_arc_anchors.items())
-                    )
+                    + ", ".join(f"{k} = {_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
                     + f"; $\\mathrm{{VarCf}}$ = {_round(var_cf)}"
                 ),
                 result_pl=(
@@ -381,8 +378,7 @@ class ArcFlashBuilder:
                     f"$t$ = {_round(arc_time_ms)} ms, $D$ = {_round(working_distance)} mm, "
                     f"$CF$ = {_round(cf)}; kotwy: "
                     + ", ".join(
-                        f"{k} = {_round(v)} J/cm²"
-                        for k, v in sorted(e_anchors_jcm2.items())
+                        f"{k} = {_round(v)} J/cm²" for k, v in sorted(e_anchors_jcm2.items())
                     )
                 ),
                 result_pl=(
@@ -398,9 +394,7 @@ class ArcFlashBuilder:
         )
 
         # 3e) Granica łuku AFB — odległość, na której E = 1,2 cal/cm² (= 5,0208 J/cm²).
-        afb = self._arc_flash_boundary(
-            voltage, e_anchors_jcm2, working_distance, cfg, table
-        )
+        afb = self._arc_flash_boundary(voltage, e_anchors_jcm2, working_distance, cfg, table)
         steps.append(
             WhiteBoxStep(
                 symbol="AFB",
@@ -413,9 +407,7 @@ class ArcFlashBuilder:
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
                     f"$U$ = {_round(voltage)} kV, $D$ = {_round(working_distance)} mm"
                 ),
-                result_pl=(
-                    f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"
-                ),
+                result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
                 unit_check_pl=(
                     "Granica łuku w mm: odległość, na której energia incydentu spada do "
                     "1,2 cal/cm²."
@@ -435,11 +427,7 @@ class ArcFlashBuilder:
                 formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
                 substitution_pl=(
                     f"E = {_round(incident_energy_cal)} cal/cm²; tablica progów NFPA 70E: "
-                    + (
-                        "PUSTA (dane niekompletne)"
-                        if self._ppe_table.is_empty
-                        else "wypełniona"
-                    )
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
                 unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
@@ -628,9 +616,7 @@ class ArcFlashBuilder:
             )
         )
 
-        afb = self._arc_flash_boundary_lv(
-            working_distance, incident_energy_jcm2, energy_coeffs_600
-        )
+        afb = self._arc_flash_boundary_lv(working_distance, incident_energy_jcm2, energy_coeffs_600)
         steps.append(
             WhiteBoxStep(
                 symbol="AFB",
@@ -643,9 +629,7 @@ class ArcFlashBuilder:
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
                     f"$U$ = {_round(voltage)} kV, $D$ = {_round(working_distance)} mm"
                 ),
-                result_pl=(
-                    f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"
-                ),
+                result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
                 unit_check_pl=(
                     "Granica łuku w mm: odległość, na której energia incydentu spada do "
                     "1,2 cal/cm²."
@@ -664,11 +648,7 @@ class ArcFlashBuilder:
                 formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
                 substitution_pl=(
                     f"E = {_round(incident_energy_cal)} cal/cm²; tablica progów NFPA 70E: "
-                    + (
-                        "PUSTA (dane niekompletne)"
-                        if self._ppe_table.is_empty
-                        else "wypełniona"
-                    )
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
                 unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
@@ -751,9 +731,7 @@ class ArcFlashBuilder:
         steps.append(
             WhiteBoxStep(
                 symbol="E_Lee",
-                formula_latex=(
-                    r"E = 2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ D^{2}"
-                ),
+                formula_latex=(r"E = 2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ D^{2}"),
                 substitution_pl=(
                     f"$V$ = {_round(voltage)} kV, $I_{{bf}}$ = {_round(i_bf)} kA, "
                     f"$t$ = {_round(arc_time)} s, $D$ = {_round(working_distance)} mm "
@@ -769,9 +747,7 @@ class ArcFlashBuilder:
         )
 
         # AFB Lee: odległość, na której E = 1,2 cal/cm² (próg publiczny).
-        afb_lee = math.sqrt(
-            lee_constant * voltage * i_bf * arc_time / INCIDENT_ENERGY_AFB_CAL_CM2
-        )
+        afb_lee = math.sqrt(lee_constant * voltage * i_bf * arc_time / INCIDENT_ENERGY_AFB_CAL_CM2)
         steps.append(
             WhiteBoxStep(
                 symbol="AFB_Lee",
@@ -797,11 +773,7 @@ class ArcFlashBuilder:
                 formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
                 substitution_pl=(
                     f"E = {_round(e_lee)} cal/cm²; tablica progów NFPA 70E: "
-                    + (
-                        "PUSTA (dane niekompletne)"
-                        if self._ppe_table.is_empty
-                        else "wypełniona"
-                    )
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
                 unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
@@ -860,9 +832,7 @@ class ArcFlashBuilder:
 
     # --- wyniki "dane niekompletne" -------------------------------------
 
-    def _incomplete_input_result(
-        self, item: ArcFlashInput, missing: list[str]
-    ) -> ArcFlashResult:
+    def _incomplete_input_result(self, item: ArcFlashInput, missing: list[str]) -> ArcFlashResult:
         why = (
             "Dane niekompletne — brak: "
             + ", ".join(missing)
@@ -940,9 +910,7 @@ class ArcFlashBuilder:
     # --- równania (IEEE 1584-2018, współczynniki z TABLICY) -------------
 
     @staticmethod
-    def _arc_current_at_anchor(
-        i_bf_ka: float, gap_mm: float, c: ArcCurrentCoeffs
-    ) -> float:
+    def _arc_current_at_anchor(i_bf_ka: float, gap_mm: float, c: ArcCurrentCoeffs) -> float:
         """Prąd łuku pośredni I_arc [kA] dla JEDNEJ kotwy (IEEE 1584-2018, Eq 1).
 
         x1 = k1 + k2·lg(I_bf) + k3·lg(G)
@@ -985,9 +953,7 @@ class ArcFlashBuilder:
         )
 
     @staticmethod
-    def _arc_current_final_lv(
-        voltage_kv: float, i_arc_600_ka: float, i_bf_ka: float
-    ) -> float:
+    def _arc_current_final_lv(voltage_kv: float, i_arc_600_ka: float, i_bf_ka: float) -> float:
         """Prąd łuku SKORYGOWANY do rzeczywistego napięcia LV (IEEE 1584-2018, Eq 25).
 
         I_arc = [ (0,6/U)^2 · (1/I_arc,600^2 − (0,6^2−U^2)/(0,6^2·I_bf^2)) ]^(−1/2)
@@ -1048,11 +1014,7 @@ class ArcFlashBuilder:
             + k[9] * i_bf_ka
         )
         x3 = (k[2] * i_arc_ka) / denom
-        x4 = (
-            k[10] * math.log10(i_bf_ka)
-            + k[12] * math.log10(i_arc_ka)
-            + math.log10(1.0 / cf)
-        )
+        x4 = k[10] * math.log10(i_bf_ka) + k[12] * math.log10(i_arc_ka) + math.log10(1.0 / cf)
         x5 = k[11] * math.log10(working_distance_mm)
         return float(x1 * 10.0 ** (x2 + x3 + x4 + x5))
 
@@ -1079,9 +1041,7 @@ class ArcFlashBuilder:
         (``equations.rs::intermediate_e``, gałąź ``i_arc_600.is_some()``).
         """
         assert c.k is not None and len(c.k) == 13
-        assert (
-            i_arc_final_ka > 0.0
-        ), "I_arc musi być dodatni dla log10 (model IEEE 1584)"
+        assert i_arc_final_ka > 0.0, "I_arc musi być dodatni dla log10 (model IEEE 1584)"
         assert i_arc_600_ka > 0.0, "I_arc,600 musi być dodatni (Eq.1, kotwa 600 V)"
         assert cf > 0.0, "CF musi być dodatni dla log10(1/CF)"
         k = c.k
@@ -1097,18 +1057,12 @@ class ArcFlashBuilder:
             + k[9] * i_bf_ka
         )
         x3 = (k[2] * i_arc_600_ka) / denom
-        x4 = (
-            k[10] * math.log10(i_bf_ka)
-            + k[12] * math.log10(i_arc_final_ka)
-            + math.log10(1.0 / cf)
-        )
+        x4 = k[10] * math.log10(i_bf_ka) + k[12] * math.log10(i_arc_final_ka) + math.log10(1.0 / cf)
         x5 = k[11] * math.log10(working_distance_mm)
         return float(x1 * 10.0 ** (x2 + x3 + x4 + x5))
 
     @staticmethod
-    def _enclosure_correction(
-        item: ArcFlashInput, c: EnclosureCorrectionCoeffs
-    ) -> float:
+    def _enclosure_correction(item: ArcFlashInput, c: EnclosureCorrectionCoeffs) -> float:
         """Korekcja rozmiaru obudowy CF (IEEE 1584-2018, Tab. 7; współczynniki z TABLICY).
 
         Otwarte powietrze (VOA/HOA) ⇒ CF = 1 (brak obudowy, brak wpisu tablicy).
@@ -1181,9 +1135,7 @@ class ArcFlashBuilder:
         return ArcFlashBuilder._eq_11_12_inch(_ENCLOSURE_HIGH_MM, voltage_kv, cfg)
 
     @staticmethod
-    def _eq_11_12_inch(
-        dim_mm: float, voltage_kv: float | None, cfg: ElectrodeConfig
-    ) -> float:
+    def _eq_11_12_inch(dim_mm: float, voltage_kv: float | None, cfg: ElectrodeConfig) -> float:
         """Transformacja eq.11/12 IEEE 1584-2018 dla wymiaru obudowy > 660,4 mm [cale].
 
         dim_in = (660,4 + (dim − 660,4)·(V_oc + a)/b) / 25,4, gdzie (a,b) zależą od
@@ -1218,9 +1170,7 @@ class ArcFlashBuilder:
             k12 = c.k[11]
             e_jcm2 = e_anchors_jcm2[anchor.name]
             f = e_jcm2 / working_distance_mm**k12
-            afb_anchors[anchor.name] = (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (
-                1.0 / k12
-            )
+            afb_anchors[anchor.name] = (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (1.0 / k12)
         return cls._interpolate_anchor(voltage_kv, afb_anchors)
 
     @staticmethod
@@ -1243,9 +1193,7 @@ class ArcFlashBuilder:
         return (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (1.0 / k12)
 
     @staticmethod
-    def _interpolate_anchor(
-        voltage_kv: float, anchor_values: dict[str, float]
-    ) -> float:
+    def _interpolate_anchor(voltage_kv: float, anchor_values: dict[str, float]) -> float:
         """Interpolacja po napięciu między kotwami (IEEE 1584-2018, Eq 16-24).
 
         Postać publiczna (kotwy 600/2700/14300 V):

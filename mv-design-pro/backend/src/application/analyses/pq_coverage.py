@@ -39,19 +39,13 @@ from typing import Any
 
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterKind, ConverterType
-from network_model.solvers.ncrfg_ptpiree.contracts import (
-    PtpireeDerKind,
-    technologia_modulu,
-)
+from network_model.solvers.ncrfg_ptpiree.contracts import PtpireeDerKind, technologia_modulu
 from network_model.solvers.ncrfg_ptpiree.stosowalnosc import (
     NAZWA_TECHNOLOGII_PL,
     POWOD_MAGAZYNU_PL,
     RODZAJE_Z_ROZPORZADZENIA,
 )
-from solver_input.provenance import (
-    classify_dynamic_capability,
-    resolve_card_field_quality_map,
-)
+from solver_input.provenance import classify_dynamic_capability, resolve_card_field_quality_map
 from werdykt import (
     DanaPrzyjeta,
     FieldQuality,
@@ -165,9 +159,7 @@ def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
 
 def _punkt_krytyczny_pl(punkty: list[dict[str, Any]], krytyczny: dict[str, Any]) -> str:
     dolna = krytyczny["zapas_dolny_mvar"] <= krytyczny["zapas_gorny_mvar"]
-    strona = (
-        "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
-    )
+    strona = "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
     tekst = (
         f"P = {format_liczba(krytyczny['p_mw'])} MW, strona {strona}: producent "
         f"{_mvar(krytyczny['q_min_mvar'])} … {_mvar(krytyczny['q_max_mvar'])}, wymagane "
@@ -255,9 +247,7 @@ def _ocena(
         dowod=StatusDowodu(
             metoda="DEKLARACJA",
             poziom=classify_dynamic_capability(ZDOLNOSC_POKRYCIA_PQ).tier,
-            rodzaj_twierdzenia=classify_dynamic_capability(
-                ZDOLNOSC_POKRYCIA_PQ
-            ).claim_kind,
+            rodzaj_twierdzenia=classify_dynamic_capability(ZDOLNOSC_POKRYCIA_PQ).claim_kind,
             status_modelu="NIE_DOTYCZY",
             status_danych=_status_danych(converter, pn_mw),
             odniesienie=f"karta katalogowa typu {converter.id} (krzywa zdolności P–Q producenta)",
@@ -282,9 +272,7 @@ def _ocena(
     )
 
 
-def build_pq_coverage_view(
-    converter: ConverterType, profile: NcRfgProfile
-) -> dict[str, Any]:
+def build_pq_coverage_view(converter: ConverterType, profile: NcRfgProfile) -> dict[str, Any]:
     """Zbuduj widok pokrycia wymaganego zakresu mocy biernej obszarem zdolności P–Q typu.
 
     Typ bez krzywej producenta daje rekord ``NIE_OCENIONO`` z nazwanym brakiem (bez punktów),
@@ -326,9 +314,7 @@ def build_pq_coverage_view(
             f"zapasem: {sum(1 for pt in punkty if pt['margines_mvar'] < 0.0)} z {len(punkty)}"
         )
     else:
-        wynik_sladu = (
-            "brak punktów krzywej producenta (pole `pq_curve`) — porównanie niewykonane"
-        )
+        wynik_sladu = "brak punktów krzywej producenta (pole `pq_curve`) — porównanie niewykonane"
 
     return {
         "typ_katalogowy": {

@@ -269,7 +269,7 @@ class TestPetlaIT:
     @pytest.mark.parametrize(
         ("kwargs", "fragment"),
         [
-            ({"b0_siemens_per_km": -1e-5, "length_km": 0.1}, "Susceptancja zerowa b_0"),
+            ({"b0_siemens_per_km": -1e-5, "length_km": 0.1}, "Susceptancja zerowa odcinka"),
             ({"b0_siemens_per_km": 1e-5, "length_km": 0.0}, "Długość odcinka sieci IT"),
             (
                 {"b0_siemens_per_km": 1e-5, "length_km": 0.1, "n_parallel": 0},

@@ -1006,19 +1006,19 @@ class Generator(ENMElement):
         if variant == "LV_BEHIND_STATION_TRANSFORMER":
             if self.station_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga station_ref."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
+                    f"stacji wymaga wskazania stacji SN/nN."
                 )
             if self.blocking_transformer_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga blocking_transformer_ref."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
+                    f"stacji wymaga wskazania transformatora blokowego."
                 )
         elif variant == "DEDICATED_MV_CONNECTION":
             if self.station_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'DEDICATED_MV_CONNECTION' nie może mieć station_ref "
+                    f"Generator '{self.ref_id}': dedykowane przyłącze SN nie może mieć "
+                    f"wskazania stacji "
                     f"(generator ma dedykowane przyłącze SN, nie idzie przez stację)."
                 )
         elif variant == "nn_side":
@@ -1036,8 +1036,8 @@ class Generator(ENMElement):
         elif variant == "block_transformer":
             if self.blocking_transformer_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'block_transformer' wymaga blocking_transformer_ref."
+                    f"Generator '{self.ref_id}': przyłączenie przez transformator blokowy "
+                    f"wymaga wskazania transformatora blokowego."
                 )
         return self
 

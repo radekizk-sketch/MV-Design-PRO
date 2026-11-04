@@ -1817,7 +1817,7 @@ _WARUNKI_NN = {
     ("przekroj", "warunki", "oczekiwane"),
     [
         ("SN", {"set_name": "zestaw-nieznany"}, "Nieznany zestaw warunków ułożenia"),
-        ("SN", {"set_name": "wlasne", "f_grunt": 1.0}, "współczynnik wiązki"),
+        ("SN", {"set_name": "wlasne", "f_grunt": 1.0}, "współczynników (gruntu, wiązki i grupy)"),
         (
             "SN",
             {

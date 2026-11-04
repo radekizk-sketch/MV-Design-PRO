@@ -353,9 +353,13 @@ def test_dowod_sc3f_i_raport_nazywaja_zalozenia(maszyna: str, rodzaj_tb: str) ->
         assert "zalozenia_zaniku" not in wiersz_raportu
         return
     assert zdanie in ostrzezenia
-    linie = [linia for linia in bilans if linia.startswith("Założenie krzywej zaniku Ib: ")]
+    linie = [
+        linia
+        for linia in bilans
+        if linia.startswith("Założenie krzywej zaniku prądu wyłączeniowego: ")
+    ]
     assert linie == [
-        f"Założenie krzywej zaniku Ib: {zdanie_zalozenia_krzywej_pl(w)}"
+        f"Założenie krzywej zaniku prądu wyłączeniowego: {zdanie_zalozenia_krzywej_pl(w)}"
         for w in wiersz["zalozenia_zaniku"]
     ]
 

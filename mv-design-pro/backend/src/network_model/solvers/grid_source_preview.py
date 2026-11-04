@@ -45,9 +45,7 @@ class GridSourcePreviewResult:
     formula_ref: str = "IEC 60909 / short_circuit_core"
 
 
-def compute_grid_source_preview(
-    data: GridSourcePreviewInput,
-) -> GridSourcePreviewResult:
+def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePreviewResult:
     """Compute a GPZ short-circuit source preview with the same core formulas as IEC 60909.
 
     Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c = tabela 1 IEC 60909-0 dla U_nQ i scenariusza
@@ -95,13 +93,9 @@ def compute_grid_source_preview(
     )
 
 
-def _build_positive_sequence_impedance(
-    data: GridSourcePreviewInput, c: float
-) -> complex:
+def _build_positive_sequence_impedance(data: GridSourcePreviewInput, c: float) -> complex:
     if data.voltage_kv <= 0:
-        raise OdmowaDanychError(
-            "napięcie znamionowe sieci zasilającej musi być dodatnie"
-        )
+        raise OdmowaDanychError("napięcie znamionowe sieci zasilającej musi być dodatnie")
 
     mode = data.short_circuit_mode.upper().strip()
     if mode == "IMPEDANCE":
@@ -143,9 +137,7 @@ def _build_zero_sequence_impedance(
                 "r0_ohm must be non-negative when zero-sequence impedance is set"
             )
         if data.x0_ohm is None or data.x0_ohm <= 0:
-            raise OdmowaDanychError(
-                "x0_ohm must be positive when zero-sequence impedance is set"
-            )
+            raise OdmowaDanychError("x0_ohm must be positive when zero-sequence impedance is set")
         return complex(data.r0_ohm, data.x0_ohm)
 
     if data.z0_z1_ratio is not None:

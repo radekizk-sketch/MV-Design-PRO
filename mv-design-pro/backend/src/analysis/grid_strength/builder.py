@@ -48,9 +48,7 @@ class GridStrengthBuilder:
         very_weak_threshold: float = DEFAULT_VERY_WEAK_THRESHOLD,
     ) -> None:
         if very_weak_threshold > weak_threshold:
-            raise ValueError(
-                "very_weak_threshold nie może być większy niż weak_threshold"
-            )
+            raise ValueError("very_weak_threshold nie może być większy niż weak_threshold")
         self.weak_threshold = float(weak_threshold)
         self.very_weak_threshold = float(very_weak_threshold)
 
@@ -196,9 +194,7 @@ class GridStrengthBuilder:
         numerator = sum(float(i.s_sc_mva) * float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
         sum_sn = sum(float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
         wscr = _round(numerator / (sum_sn**2))
-        verdict, _is_weak = _classify(
-            wscr, self.weak_threshold, self.very_weak_threshold
-        )
+        verdict, _is_weak = _classify(wscr, self.weak_threshold, self.very_weak_threshold)
         why = (
             f"WSCR = {wscr} dla {len(valid)} źródeł — sieć {verdict}. "
             "WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu "

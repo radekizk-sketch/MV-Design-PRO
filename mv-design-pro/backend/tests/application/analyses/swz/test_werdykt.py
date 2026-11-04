@@ -23,7 +23,7 @@ class TestOcenSwzMcbSpelnia:
         assert result.ia_wymagane_a == pytest.approx(80.0)
         assert result.margines == pytest.approx(500.0 / 80.0)
         assert result.t_wymagany_s == pytest.approx(0.4)
-        assert "≥" in result.przyczyna_pl
+        assert "nie mniejszy od" in result.przyczyna_pl
 
 
 class TestOcenSwzMcbNieSpelnia:
@@ -199,7 +199,7 @@ class TestOcenSwzWkladkaGgKartaD2:
         assert result.status == SwzStatus.NIE_SPELNIA
         assert result.ia_wymagane_a == pytest.approx(31.25)
         assert result.margines == pytest.approx(20.0 / 31.25)
-        assert "Inf" in result.przyczyna_pl
+        assert "prądu niezadziałania" in result.przyczyna_pl
         assert "IEC 60269-1" in result.przyczyna_pl
 
     def test_ik1_min_at_inf_boundary_nie_spelnia(self) -> None:
@@ -237,7 +237,7 @@ class TestOcenSwzWkladkaGgKartaD2:
         )
         assert result.status == SwzStatus.NIEROZSTRZYGALNE
         assert result.ia_wymagane_a is None
-        assert "t_wymagany" in result.przyczyna_pl
+        assert "wymagan" in result.przyczyna_pl
         assert "0.4" in result.przyczyna_pl or "0,4" in result.przyczyna_pl
 
     def test_in_below_16a_out_of_verified_scope_nierozstrzygalne(self) -> None:

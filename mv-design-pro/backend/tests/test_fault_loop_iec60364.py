@@ -307,7 +307,7 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.0, x_ohm=0.0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.0, x_ohm=0.0),
         )
-        with pytest.raises(ValueError, match=r"degenerated case"):
+        with pytest.raises(ValueError, match=r"przypadek zdegenerowany"):
             compute_fault_loop(bad)
 
     def test_cr_fix_tiny_z_loop_rejected(self) -> None:

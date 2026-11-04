@@ -8,7 +8,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "87067cc06215c1d97d41c61a7ebffd59be55f7f439f8bbfaf0f1bf9d528b39ee"
+    "sha256": "878b24a21f1ab5113fc11f4c4a59a65ff7e9a1c7d0a49bebbaeab698093ce0a8"
   },
   "dobor_kompensacji/golden/bus_sn_c_noc": {
     "parametry": {
@@ -20,7 +20,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "0d3b9538e5af73ae2d5075e98f6d14ca6301de84c59177e5cb6aaf2b69707226"
+    "sha256": "a18f0ec4cfecd828484231aae5081d146f67c6a575d8100f44a618b3ae03076a"
   },
   "dobor_kompensacji/kompensacja/bus_pcc_dzien": {
     "parametry": {
@@ -31,7 +31,7 @@
       },
       "siec": "kompensacja"
     },
-    "sha256": "fbf74ec9924322877c70e16e136c1552179c64d27a7cde82c193aa69e1fe68d9"
+    "sha256": "67f3145e3e4783b17f6fb470efe29df114204f8b1f9b6b9b09cb68d080973c80"
   },
   "dobor_kompensacji/kompensacja/bus_pcc_noc": {
     "parametry": {
@@ -103,7 +103,7 @@
       "kwargs": {},
       "siec": "pierscien"
     },
-    "sha256": "2ef1a570bb95c448afb14c4932bdd7e12e68efe695664db8d8dbf96204fe8a49"
+    "sha256": "ad3d2aae211f03c489c97280a80d6d5dc96badf0baafecb021db02d21bcce12c"
   },
   "kontyngencje_n1/pierscien/zakres": {
     "parametry": {

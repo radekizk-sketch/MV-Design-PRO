@@ -667,7 +667,7 @@ def test_v126_bilans_strat_bez_p0_to_odmowa_z_rekordem(
     # elementu i zdanie straciłoby „gdzie").
     assert rekord.odwolania == tuple(OdwolanieElementu(RODZAJ_ELEMENT, ref) for ref in bez_p0)
     tekst = str(odmowa.value)
-    assert f"transformatorów bez P0: {len(bez_p0)}" in tekst
+    assert f"transformatorów bez strat jałowych: {len(bez_p0)}" in tekst
     assert not any(ref in tekst for ref in ("tr/a1", "tr/b2", "v126."))
     # Granica biegu V12.6 (`nazwy_w_odmowach_modelu`) dokłada nazwy z migawki.
     from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_modelu

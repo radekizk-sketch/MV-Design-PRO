@@ -37,9 +37,7 @@ def _bess(
     use_case: str,
 ) -> StationTemplate:
     der_options = (
-        replace(
-            DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count
-        ),
+        replace(DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count),
     )
     nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 15.0)
     return StationTemplate(
@@ -68,10 +66,7 @@ def _bess(
             nn_feeder_cb_options=NN_CB_OPTIONS,
             der_options=(*der_options,),
             der_total_count=TemplateParamInt(
-                default=bess_count,
-                min_value=1,
-                max_value=10,
-                label_pl="Liczba kontenerów BESS",
+                default=bess_count, min_value=1, max_value=10, label_pl="Liczba kontenerów BESS"
             ),
             ct_options=CT_OPTIONS,
             vt_options=VT_OPTIONS,

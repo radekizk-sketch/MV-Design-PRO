@@ -268,7 +268,7 @@ class TestMissingBaseValues:
 
         infos = [r for r in results if r.code == SanityCheckCode.GEN_PARTIAL_ANALYSIS]
         assert len(infos) >= 1
-        assert any("Un" in r.message_pl for r in infos)
+        assert any("napięcia znamionowego" in r.message_pl for r in infos)
 
     def test_missing_in_info(self) -> None:
         """Brak In gdy potrzebne → INFO."""
@@ -284,7 +284,7 @@ class TestMissingBaseValues:
 
         infos = [r for r in results if r.code == SanityCheckCode.GEN_PARTIAL_ANALYSIS]
         assert len(infos) >= 1
-        assert any("In" in r.message_pl for r in infos)
+        assert any("prądu znamionowego" in r.message_pl for r in infos)
 
     def test_no_missing_when_full(self) -> None:
         """Pełne dane → brak INFO o brakach."""
@@ -372,7 +372,7 @@ class TestVoltageOverlap:
         errors = [r for r in results if r.code == SanityCheckCode.VOLT_OVERLAP]
         assert len(errors) == 1
         assert errors[0].severity == SanityCheckSeverity.ERROR
-        assert "U<" in errors[0].message_pl and "U>" in errors[0].message_pl
+        assert "podnapięciowy" in errors[0].message_pl and "nadnapięciowemu" in errors[0].message_pl
 
     def test_voltage_equal_error(self) -> None:
         """U< == U> → ERROR."""
@@ -440,7 +440,7 @@ class TestVoltageULtTooLow:
         warns = [r for r in results if r.code == SanityCheckCode.VOLT_U_LT_TOO_LOW]
         assert len(warns) == 1
         assert warns[0].severity == SanityCheckSeverity.WARN
-        assert "0,5" in warns[0].message_pl
+        assert "połowy napięcia znamionowego" in warns[0].message_pl
 
     def test_u_lt_ok(self) -> None:
         """U< >= 0.5 → brak WARN."""
@@ -798,7 +798,7 @@ class TestOvercurrentOverlap:
         errors = [r for r in results if r.code == SanityCheckCode.OC_OVERLAP]
         assert len(errors) == 1
         assert errors[0].severity == SanityCheckSeverity.ERROR
-        assert "I>" in errors[0].message_pl and "I>>" in errors[0].message_pl
+        assert "zwłoczny" in errors[0].message_pl and "bezzwłocznemu" in errors[0].message_pl
 
     def test_oc_no_overlap(self) -> None:
         """I> < I>> → brak ERROR."""
@@ -845,7 +845,7 @@ class TestOvercurrentIGtTooLow:
         warns = [r for r in results if r.code == SanityCheckCode.OC_I_GT_TOO_LOW]
         assert len(warns) == 1
         assert warns[0].severity == SanityCheckSeverity.WARN
-        assert "1,0" in warns[0].message_pl
+        assert "poniżej prądu znamionowego" in warns[0].message_pl
 
     def test_i_gt_ok(self) -> None:
         """I> >= 1.0 → brak WARN."""

@@ -156,11 +156,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
-from enm.nazwy_elementow import (
-    ELEMENT_SPOZA_MODELU,
-    nazwa_elementu,
-    nazwa_po_identyfikatorze,
-)
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from enm.slownik_komunikatow import pole
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
@@ -178,10 +174,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
-from network_model.solvers.protection_lv_curves import (
-    FUSE_GG_IF_MULTIPLIER,
-    MCCB_I2_MULTIPLIER,
-)
+from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MCCB_I2_MULTIPLIER
 from solver_input.uklad_sieci_nn import uklad_tn
 from werdykt import DanaPrzyjeta
 
@@ -212,12 +205,7 @@ def _wartosc(
     których stoi wartość (prąd zwarciowy sieci nN liczonej z wartością roboczą tolerancji):
     źródło je nazywa, a sekcja niesie je listą — WYŁĄCZNIE gdy są."""
     if not dane_przyjete:
-        return {
-            "status": "OK",
-            "wartosc": wartosc,
-            "zrodlo_pl": zrodlo_pl,
-            "reason_pl": None,
-        }
+        return {"status": "OK", "wartosc": wartosc, "zrodlo_pl": zrodlo_pl, "reason_pl": None}
     nazwy = "; ".join(d.nazwa_pl for d in dane_przyjete)
     return {
         "status": "OK",
@@ -230,21 +218,11 @@ def _wartosc(
 
 
 def _brak(reason_pl: str) -> dict[str, Any]:
-    return {
-        "status": "brak danych",
-        "wartosc": None,
-        "zrodlo_pl": None,
-        "reason_pl": reason_pl,
-    }
+    return {"status": "brak danych", "wartosc": None, "zrodlo_pl": None, "reason_pl": reason_pl}
 
 
 def _nie_dotyczy(reason_pl: str) -> dict[str, Any]:
-    return {
-        "status": "nie dotyczy",
-        "wartosc": None,
-        "zrodlo_pl": None,
-        "reason_pl": reason_pl,
-    }
+    return {"status": "nie dotyczy", "wartosc": None, "zrodlo_pl": None, "reason_pl": reason_pl}
 
 
 def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str, Any]:
@@ -261,9 +239,7 @@ def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str
             dane_przyjete_petli_zserializowanej(petla, punkt_pl),
         )
     return {
-        **_brak(
-            widok.get("reason_pl") or f"Pętla doziemna układu {system} niedostępna."
-        ),
+        **_brak(widok.get("reason_pl") or f"Pętla doziemna układu {system} niedostępna."),
         "kod_odmowy": widok.get("kod_odmowy"),
     }
 
@@ -298,11 +274,7 @@ def _nierozstrzygalne(reason_pl: str) -> dict[str, Any]:
 
 
 def _kandydat_z_urzadzenia(u: UrzadzenieOchronneNn) -> KandydatAparatuNn:
-    zdolnosc = (
-        u.conditional_sc_current_ka
-        if u.kind == KIND_FUSE_SWITCH
-        else u.wlasna_zdolnosc_ka
-    )
+    zdolnosc = u.conditional_sc_current_ka if u.kind == KIND_FUSE_SWITCH else u.wlasna_zdolnosc_ka
     return KandydatAparatuNn(
         id=u.id,
         nazwa=u.nazwa,
@@ -365,11 +337,7 @@ def _pole_warunkow(warunki: dict[str, Any], klucz: str, rodzaj: type[Any]) -> An
 
 
 def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
-    params = (
-        cable.materialized_params
-        if isinstance(cable.materialized_params, dict)
-        else None
-    )
+    params = cable.materialized_params if isinstance(cable.materialized_params, dict) else None
     iz_katalogowe = params.get("i_max_a") if params else None
     if iz_katalogowe is None:
         return {
@@ -512,9 +480,7 @@ def _zacisk_od_strony_rozdzielnicy(
     return None
 
 
-def _ib_z_rozplywu(
-    run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do"]
-) -> float | None:
+def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do"]) -> float | None:
     """Prąd zacisku `zacisk` gałęzi `branch_ref` [A] z tabeli gałęzi biegu; `None` —
     gałęzi nie ma w wyniku (aparat bez impedancji) albo prąd zacisku nie jest wynikiem.
     """
@@ -527,9 +493,7 @@ def _ib_z_rozplywu(
 
 def _ik_z_biegu_zwarciowego(
     run: CanonicalRun, bus_ref: str
-) -> tuple[
-    float | None, float | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]
-]:
+) -> tuple[float | None, float | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]]:
     """(ikss_ka, ith_ka, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
     w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE build_short_circuit_results).
     ``(None, None, False, (), [])`` gdy punkt nie występuje w wyniku tego biegu (uczciwy brak,
@@ -709,8 +673,7 @@ def _build_row(
     # przez typ (a nie tylko przez pole `type`) — resolver aparatu przyjmuje wyłącznie te klasy.
     aparat_korzenia = (
         root_branch
-        if isinstance(root_branch, SwitchBranch | FuseBranch)
-        and root_branch.type in _TYPY_APARATU
+        if isinstance(root_branch, SwitchBranch | FuseBranch) and root_branch.type in _TYPY_APARATU
         else None
     )
 
@@ -748,9 +711,7 @@ def _build_row(
     galaz_ib_ref: str | None = None
     ib_odmowa_pl: str | None = None
     if load_flow_run is not None:
-        zacisk_korzenia = _zacisk_od_strony_rozdzielnicy(
-            path, trafo.lv_bus_ref, root_branch_ref
-        )
+        zacisk_korzenia = _zacisk_od_strony_rozdzielnicy(path, trafo.lv_bus_ref, root_branch_ref)
         if zacisk_korzenia is None:
             ib_odmowa_pl = route_error or (
                 f"Gałąź {root_branch_ref} nie leży na trasie od szyny rozdzielnicy "
@@ -798,9 +759,7 @@ def _build_row(
         if ib_a is None:
             zrodlo_ib = "tabliczka"
             zacisk_ib = galaz_ib_ref = None
-            ib_a = _ib_z_tabliczki(
-                obciazenie["p_mw"], obciazenie["q_mvar"], trafo.ulv_kv
-            )
+            ib_a = _ib_z_tabliczki(obciazenie["p_mw"], obciazenie["q_mvar"], trafo.ulv_kv)
         ib_sekcja = _wartosc(ib_a, zrodlo_ib_pl, dane_ib)
 
     # --- Iz′ (min po kablach trasy — najsłabsze ogniwo) -----------------
@@ -820,9 +779,7 @@ def _build_row(
                 najgorszy["reason_pl"],
             )
             iz_prime_a: float | None = najgorszy["iz_prime_a"]
-            kabel_decydujacy = next(
-                c for c in kable if c.ref_id == najgorszy["branch_ref"]
-            )
+            kabel_decydujacy = next(c for c in kable if c.ref_id == najgorszy["branch_ref"])
         else:
             iz_sekcja = _brak(
                 "; ".join(r["reason_pl"] for r in rozklady_iz if r.get("reason_pl"))
@@ -836,13 +793,10 @@ def _build_row(
         )
     else:
         iz_sekcja = _brak(
-            route_error
-            or "Brak odcinków kablowych na trasie do najgorszego punktu tego odpływu."
+            route_error or "Brak odcinków kablowych na trasie do najgorszego punktu tego odpływu."
         )
         iz_prime_a = None
-        przewod_sekcja = _brak(
-            route_error or "Brak odcinków kablowych na trasie tego odpływu."
-        )
+        przewod_sekcja = _brak(route_error or "Brak odcinków kablowych na trasie tego odpływu.")
 
     dlugosc_sekcja = (
         _wartosc(dlugosc_m, "suma długości odcinków kablowych trasy (model)")
@@ -856,9 +810,7 @@ def _build_row(
     widok_tt_it: dict[str, Any] | None = None
     if ib_a is None:
         dobor_status = "brak danych"
-        dobor_reason: str | None = (
-            f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}"
-        )
+        dobor_reason: str | None = f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}"
     elif system is None:
         dobor_status = "brak danych"
         dobor_reason = (
@@ -871,14 +823,10 @@ def _build_row(
         # (niżej, sekcje `ik_min` i `swz`), kryteria przeciążeniowe (i)/(ii) — jak w TN.
         dobor_status = "nie dotyczy"
         dobor_reason, dobor_kod = odmowa_doboru_nadpradowego_tt_it(system)
-        widok_tt_it = build_swz_view(
-            enm, station.ref_id, worst_bus_ref, root_branch_ref
-        )
+        widok_tt_it = build_swz_view(enm, station.ref_id, worst_bus_ref, root_branch_ref)
     elif iz_prime_a is None:
         dobor_status = "brak danych"
-        dobor_reason = (
-            "Obciążalność skorygowana niedostępna — dobór i kryteria jej wymagają."
-        )
+        dobor_reason = "Obciążalność skorygowana niedostępna — dobór i kryteria jej wymagają."
     else:
         wynik_dobor = wybierz_aparat_dla_obwodu_nn(
             enm=enm,
@@ -900,8 +848,8 @@ def _build_row(
     dane_ik_max: tuple[DanaPrzyjeta, ...] = ()
     dane_ith: tuple[DanaPrzyjeta, ...] = ()
     if short_circuit_run is not None:
-        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik, robocze_maszyn = (
-            _ik_z_biegu_zwarciowego(short_circuit_run, worst_bus_ref)
+        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
+            short_circuit_run, worst_bus_ref
         )
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
         dane_tolerancji: tuple[DanaPrzyjeta, ...] = (
@@ -918,14 +866,10 @@ def _build_row(
         # parametru maszyny wirującej — dana przyjęta wg wielkości, na której stoi dane
         # sprawdzenie.
         dane_ik_max = (
-            dane_tolerancji
-            + dane_linii_ik
-            + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ikss")
+            dane_tolerancji + dane_linii_ik + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ikss")
         )
         dane_ith = (
-            dane_tolerancji
-            + dane_linii_ik
-            + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ith")
+            dane_tolerancji + dane_linii_ik + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ith")
         )
     # Dane przyjęte Ik1_min (pętla z wartością roboczą tolerancji) — z wyniku doboru.
     dane_ik1_min: tuple[DanaPrzyjeta, ...] = tuple(
@@ -935,9 +879,7 @@ def _build_row(
     ik_max_sekcja = (
         _wartosc(ikss_ka, zrodlo_ik_max_pl, dane_ik_max)
         if ikss_ka is not None
-        else _brak(
-            "Brak biegu zwarciowego IEC 60909 (parametr short_circuit_run_id) dla punktu."
-        )
+        else _brak("Brak biegu zwarciowego IEC 60909 (parametr short_circuit_run_id) dla punktu.")
     )
     if dobor_wejscie is not None:
         ik_min_sekcja = _wartosc(
@@ -990,9 +932,7 @@ def _build_row(
                 f"materialized_params gałęzi '{root_branch_ref}' (Catalog Binding)",
             )
             zapas_sekcja = (
-                _nierozstrzygalne(
-                    f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}"
-                )
+                _nierozstrzygalne(f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}")
                 if ib_a is None
                 else (
                     _wartosc((ir_a - ib_a) / ir_a * 100.0, "(Ir−Ib)/Ir", dane_ib)
@@ -1012,17 +952,13 @@ def _build_row(
                 kandydat_blad = f"Dane katalogowe aparatu niespójne: {exc}"
 
             if kandydat is None:
-                zle = _nierozstrzygalne(
-                    kandydat_blad or "Dane katalogowe aparatu niespójne."
-                )
+                zle = _nierozstrzygalne(kandydat_blad or "Dane katalogowe aparatu niespójne.")
                 k2_i2_sekcja = zle
                 kryterium_i_sekcja = zle
                 kryterium_ii_sekcja = zle
                 swz_sekcja = zle
                 status_doboru_sekcja = zle
-            elif (
-                widok_tt_it is not None and ib_a is not None and iz_prime_a is not None
-            ):
+            elif widok_tt_it is not None and ib_a is not None and iz_prime_a is not None:
                 # Układ TT/IT (karta W5-E-TTIT): kryteria przeciążeniowe (i)/(ii) jak w TN
                 # (ten sam kod), SWZ = werdykt wyjaśnialny pętli doziemnej, dobór wg SWZ
                 # przy Ik_min = odmowa nazwana kodem limitu (status „nie dotyczy").
@@ -1054,10 +990,7 @@ def _build_row(
                     else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
                 )
                 swz_sekcja = _swz_tt_it(widok_tt_it, system or "")
-                status_doboru_sekcja = {
-                    **_nie_dotyczy(dobor_reason or ""),
-                    "kod_odmowy": dobor_kod,
-                }
+                status_doboru_sekcja = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
             # `ib_a is None` => `dobor_wejscie is None` (dobór liczony wyłącznie przy
             # ustalonym Ib, gałąź wyżej) — warunek jawny, żeby gałąź oceny miała Ib.
             elif dobor_wejscie is None or ib_a is None:
@@ -1076,17 +1009,12 @@ def _build_row(
                         or "Minimalny prąd zwarcia jednofazowego albo napięcie fazowe niedostępne dla tego obwodu."
                     )
                 else:
-                    brak_wej = {
-                        **_nie_dotyczy(dobor_reason or ""),
-                        "kod_odmowy": dobor_kod,
-                    }
+                    brak_wej = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
                 k2_i2_sekcja = brak_wej
                 kryterium_i_sekcja = brak_wej
                 kryterium_ii_sekcja = brak_wej
                 swz_sekcja = (
-                    _swz_tt_it(widok_tt_it, system or "")
-                    if widok_tt_it is not None
-                    else brak_wej
+                    _swz_tt_it(widok_tt_it, system or "") if widok_tt_it is not None else brak_wej
                 )
                 status_doboru_sekcja = (
                     {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
@@ -1106,9 +1034,7 @@ def _build_row(
                 )
                 kr_i = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_I)
                 kr_ii = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_II)
-                kr_swz = next(
-                    k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_SWZ
-                )
+                kr_swz = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_SWZ)
                 kryterium_i_sekcja = _wartosc(
                     {"status": kr_i.status.value, "wartosci": kr_i.wartosci},
                     kr_i.uzasadnienie_pl,
@@ -1176,9 +1102,7 @@ def _build_row(
     # Wiersz arkusza nazywa obwód nazwą odpływu z modelu albo opisem rodzaju — nigdy
     # identyfikatorem gałęzi (ten zostaje w `feeder_root_branch_ref`).
     wyszczegolnienie = (
-        nazwa_elementu(root_branch, "branches")
-        if root_branch is not None
-        else ELEMENT_SPOZA_MODELU
+        nazwa_elementu(root_branch, "branches") if root_branch is not None else ELEMENT_SPOZA_MODELU
     )
 
     return {
@@ -1240,9 +1164,7 @@ def _build_provenance(
     enm_hash = compute_enm_hash(enm)
     return {
         "load_flow_run_id": str(load_flow_run.id) if load_flow_run else None,
-        "short_circuit_run_id": (
-            str(short_circuit_run.id) if short_circuit_run else None
-        ),
+        "short_circuit_run_id": (str(short_circuit_run.id) if short_circuit_run else None),
         "fault_duration_s": fault_duration_s,
         "rewizja_modelu": enm_hash,
         "swiezosc": {
@@ -1250,9 +1172,7 @@ def _build_provenance(
                 load_flow_run.snapshot_hash == enm_hash if load_flow_run else None
             ),
             "short_circuit_aktualny": (
-                short_circuit_run.snapshot_hash == enm_hash
-                if short_circuit_run
-                else None
+                short_circuit_run.snapshot_hash == enm_hash if short_circuit_run else None
             ),
         },
     }
@@ -1303,9 +1223,7 @@ def build_nn_circuit_sheet(
     # nN (ta sama bramka co pętla zwarcia/SWZ/dobór — `odmowa_pasma_nn`). Transformator
     # spoza pasma nie znika po cichu: jego kod odmowy trafia do `missing_data`.
     odmowy_pasma = {
-        t.ref_id: odmowa
-        for t in transformatory
-        if (odmowa := odmowa_pasma_nn({}, t)) is not None
+        t.ref_id: odmowa for t in transformatory if (odmowa := odmowa_pasma_nn({}, t)) is not None
     }
     if len(odmowy_pasma) == len(transformatory):
         pierwsza = odmowy_pasma[transformatory[0].ref_id]
@@ -1357,9 +1275,7 @@ def build_nn_circuit_sheet(
     widok_petli = build_feeder_fault_loop_view(enm, station_ref)
     if widok_petli.get("status") == "OK":
         for f in widok_petli.get("feeders", []):
-            worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get(
-                "worst_point_bus_ref"
-            )
+            worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
 
     # Kolejność wierszy: po `feeder_root_branch_ref` w obrębie CAŁEJ stacji
     # (jak dotąd), niezależnie od transformatora — numeracja `nr` ciągła.
@@ -1367,9 +1283,7 @@ def build_nn_circuit_sheet(
     # Odpływ zaczyna się na szynie rozdzielnicy: wyłącznik główny nN (incomer)
     # nie jest odpływem — ta sama definicja co w pętli zwarcia/SWZ
     # (`fault_loop.route.incomer_branch_refs`, jedno źródło dla obu konsumentów).
-    incomers = incomer_branch_refs(
-        enm, station.bus_refs, [t.lv_bus_ref for t in transformatory]
-    )
+    incomers = incomer_branch_refs(enm, station.bus_refs, [t.lv_bus_ref for t in transformatory])
     for trafo in transformatory:
         paths = przypisanie.paths_by_transformer.get(trafo.ref_id, {})
         wlasne = {
@@ -1378,9 +1292,7 @@ def build_nn_circuit_sheet(
             if przypisanie.owner_by_bus.get(bus_ref) == trafo.ref_id
         }
         hop_counts = {bus_ref: p.hop_count for bus_ref, p in wlasne.items()}
-        for root_branch_ref, bus_refs in group_bus_refs_by_feeder(
-            wlasne, incomers
-        ).items():
+        for root_branch_ref, bus_refs in group_bus_refs_by_feeder(wlasne, incomers).items():
             odplywy.append((root_branch_ref, trafo, bus_refs, hop_counts))
     odplywy.sort(key=lambda item: item[0])
 
@@ -1397,9 +1309,7 @@ def build_nn_circuit_sheet(
         }
 
     wiersze = []
-    for nr, (root_branch_ref, trafo, bus_refs_odplywu, hop_counts) in enumerate(
-        odplywy, start=1
-    ):
+    for nr, (root_branch_ref, trafo, bus_refs_odplywu, hop_counts) in enumerate(odplywy, start=1):
         wiersze.append(
             _build_row(
                 enm=enm,
@@ -1456,11 +1366,7 @@ def build_nn_circuit_sheet_row_for_breaker(
     # gałęziach) — ten sam wybór co pętla zwarcia/SWZ tego punktu (klasa B-02).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return {
-            "status": "brak danych",
-            "missing_data": transformer_missing,
-            "reason_pl": None,
-        }
+        return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
     odmowa = odmowa_pasma_nn({}, trafo)
     if odmowa is not None:
         return odmowa
@@ -1468,11 +1374,7 @@ def build_nn_circuit_sheet_row_for_breaker(
     try:
         hop_count = len(path_to_bus(enm, trafo.lv_bus_ref, bus_ref).branches)
     except RouteExtractionError as exc:
-        return {
-            "status": "brak danych",
-            "missing_data": ["route"],
-            "reason_pl": str(exc),
-        }
+        return {"status": "brak danych", "missing_data": ["route"], "reason_pl": str(exc)}
 
     wiersz = _build_row(
         enm=enm,

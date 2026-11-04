@@ -768,7 +768,10 @@ def test_galaz_bez_z0_odcina_wezel_brak_danych(r1_ohm_per_km: float) -> None:
     brak = siec.przyczyny[_ref_to_uuid("szyna-za-kablem")]
     assert brak.przyczyna == "brak_danych"
     assert brak.elementy == ("kabel-bez-z0",)
-    assert "R′1 albo X′1 odcinka nieznane albo niedodatnie" in brak.wyjasnienie.zdanie_pl
+    assert (
+        "rezystancja albo reaktancja zgodna odcinka nieznana albo niedodatnia"
+        in brak.wyjasnienie.zdanie_pl
+    )
 
 
 def test_kotwica_1e6_nie_udaje_uziemienia(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1033,8 +1036,8 @@ def wyrocznia_cieplna_rezystora(
 # Dane przyjęte bocznika zespołu w wierszach zwarcia doziemnego (§0 pkt 4, zasada nr 4)
 # ---------------------------------------------------------------------------
 
-_R0_TU = "Rezystancja zerowa transformatora uziemiającego R0"
-_X0_TU = "Reaktancja zerowa transformatora uziemiającego X0"
+_R0_TU = "Rezystancja zerowa transformatora uziemiającego"
+_X0_TU = "Reaktancja zerowa transformatora uziemiającego"
 _R_REZ = "Rezystancja rezystora uziemiającego"
 _I_AWSC = "Prąd czynny wymuszany przez AWSC (strona pierwotna)"
 _NASTAWA = "Prąd nastawy dławika"

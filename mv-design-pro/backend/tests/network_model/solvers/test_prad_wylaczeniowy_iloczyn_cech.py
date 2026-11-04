@@ -365,7 +365,7 @@ def test_eksport_glowna_linia_pokazuje_ib_i_idc(topologia: str, tb_s: float | No
     bilans = "\n".join(_sc_row_bilans_linie(wiersz_raportu))
     if tb_s is None:
         # Pochodzenie t_b w eksporcie (PDF/DOCX) — zdanie źródła z backendu, nie z raportu.
-        assert f"Czas wyłączenia tb: {wiersz['tb_zrodlo']['opis_pl']}" in bilans
+        assert f"Czas wyłączenia: {wiersz['tb_zrodlo']['opis_pl']}" in bilans
     else:
         assert "Czas wyłączenia tb:" not in bilans
 
@@ -401,7 +401,7 @@ def test_dowod_sc3f_ta_sama_definicja_co_slad(topologia: str, tb_s: float | None
     # wartości robocze parametrów maszyny (np. liczba par biegunów p bez tabliczki) — to inna
     # dana przyjęta, niezależna od t_b.
     ostrzezenia = " ".join(wynik.proof_sc3f.summary.warnings)
-    zdanie_tb = "czasie wyłączenia t_b będącym wartością roboczą"
+    zdanie_tb = "czasie wyłączenia będącym wartością roboczą"
     if tb_s is None:
         assert zdanie_tb in ostrzezenia and wiersz["tb_zrodlo"]["opis_pl"] in ostrzezenia
     else:

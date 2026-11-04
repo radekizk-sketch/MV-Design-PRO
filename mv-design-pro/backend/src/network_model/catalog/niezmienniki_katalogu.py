@@ -158,9 +158,7 @@ class RegulaKatalogu:
             raise BladRejestruNiezmiennikow(
                 f"{self.kod}: reguła klasy twardej wymaga kodu {PRZEDROSTEK_TWARDY}nnn."
             )
-        if self.klasa in KLASY_MIEKKIE and not self.kod.startswith(
-            PRZEDROSTEK_WIARYGODNOSCI
-        ):
+        if self.klasa in KLASY_MIEKKIE and not self.kod.startswith(PRZEDROSTEK_WIARYGODNOSCI):
             raise BladRejestruNiezmiennikow(
                 f"{self.kod}: reguła miękka wymaga kodu {PRZEDROSTEK_WIARYGODNOSCI}nnn."
             )
@@ -211,9 +209,7 @@ def _rejestr(*reguly: RegulaKatalogu) -> dict[str, RegulaKatalogu]:
     wynik: dict[str, RegulaKatalogu] = {}
     for regula in reguly:
         if regula.kod in wynik:
-            raise BladRejestruNiezmiennikow(
-                f"Duplikat kodu reguły katalogu: {regula.kod}."
-            )
+            raise BladRejestruNiezmiennikow(f"Duplikat kodu reguły katalogu: {regula.kod}.")
         wynik[regula.kod] = regula
     return dict(sorted(wynik.items()))
 
@@ -1232,8 +1228,7 @@ RODZINY_BEZ_REGUL: dict[str, str] = {
     ),
     "bess-inverter": "Przekształtnik magazynu: jak PV.",
     "bess-battery": (
-        "Pakiet baterii: pojemność / napięcie DC / C-rate są bramkami TWARDYMI "
-        "(KAT-T-018..020)."
+        "Pakiet baterii: pojemność / napięcie DC / C-rate są bramkami TWARDYMI " "(KAT-T-018..020)."
     ),
     "converter": "Przekształtnik (PV/BESS/WIND) — jak PV.",
     "wind-inverter": "Przekształtnik farmy wiatrowej — podzbiór rodziny przekształtników.",
@@ -1350,9 +1345,7 @@ def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
     if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
     if icw > icu * LUZ_POROWNANIA:
-        return _odstepstwo(
-            "KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA"
-        )
+        return _odstepstwo("KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA")
     return _WynikReguly(policzona=True)
 
 
@@ -1422,9 +1415,7 @@ POWODY_POMINIECIA: dict[str, str] = {
 }
 
 
-def przeglad_rodziny(
-    rodzina: str, pozycje: Iterable[Any]
-) -> WynikPrzegladuWiarygodnosci:
+def przeglad_rodziny(rodzina: str, pozycje: Iterable[Any]) -> WynikPrzegladuWiarygodnosci:
     """Przeglad wiarygodnosci JEDNEJ rodziny katalogu.
 
     ZERO ODMOWY, ZERO ZMIAN DANYCH. Regula wiarygodnosci nigdy nie podnosi
@@ -1495,7 +1486,5 @@ def przeglad_wiarygodnosci(
         )
     nadmiarowe = sorted(set(rodziny) - set(RODZINY_PRZEGLADU))
     if nadmiarowe:
-        raise BladRejestruNiezmiennikow(
-            f"Rodziny spoza przeglądu: {', '.join(nadmiarowe)}."
-        )
+        raise BladRejestruNiezmiennikow(f"Rodziny spoza przeglądu: {', '.join(nadmiarowe)}.")
     return tuple(przeglad_rodziny(nazwa, rodziny[nazwa]) for nazwa in sorted(rodziny))

@@ -371,7 +371,10 @@ def test_czas_wlasny_roboczy_przenosi_sie_na_pochodzenie_tb() -> None:
     zrodlo, _ = _zrodlo_tb({"a": 0.30})
     assert zrodlo["czas_wlasny_pochodzenie"] == "PROPOZYCJA"
     assert zrodlo["wartosc_robocza"] is True and zrodlo["jakosc"] == "ESTIMATED"
-    assert "Czas własny wyłącznika jest wartością roboczą, więc t_b też" in zrodlo["opis_pl"]
+    assert (
+        "Czas własny wyłącznika jest wartością roboczą, więc czas wyłączenia też"
+        in zrodlo["opis_pl"]
+    )
 
 
 def test_pola_nie_przy_szynie_punktu_nie_wplywaja_na_inne_punkty() -> None:

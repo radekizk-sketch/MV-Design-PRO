@@ -217,7 +217,7 @@ def test_zalozenie_i_dane_przyjete_z0_tylko_w_sieci_zerowej_kabla(
     # Dyn11 ma własną sieć zerową — Z0 kabla SN nie wchodzi do jego prądu.
     if doziemne and pola and szyna == N1:
         assert [d["nazwa_pl"].split()[0] for d in dane] == [
-            {"r0_ohm_per_km": "R′0", "x0_ohm_per_km": "X′0"}[p] for p in sorted(pola)
+            {"r0_ohm_per_km": "Rezystancja", "x0_ohm_per_km": "Reaktancja"}[p] for p in sorted(pola)
         ]
         assert {d["jakosc"] for d in dane} == {"ESTIMATED"}
     else:

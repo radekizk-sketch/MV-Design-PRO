@@ -425,7 +425,7 @@ class TestStanyTrzecie:
         # Fikstura stacji nN nie materializuje obciążalności kabla: kryteria przeciążeniowe są
         # „brak danych" (Iz′), nie „nie dotyczy" — inny stan niż dobór wg SWZ.
         assert wiersz["kryterium_i_ib_in_iz"]["status"] == "brak danych"
-        assert "Iz′" in wiersz["kryterium_i_ib_in_iz"]["reason_pl"]
+        assert "Obciążalność skorygowana" in wiersz["kryterium_i_ib_in_iz"]["reason_pl"]
 
     def test_aparat_bez_materialized_params_brak_danych(self) -> None:
         enm = _siec_referencyjna()

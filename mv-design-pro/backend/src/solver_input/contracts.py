@@ -63,9 +63,7 @@ class SolverInputIssue(BaseModel):
     code: str = Field(..., description="Stable machine code (e.g. E-D01, SI-001)")
     severity: SolverInputIssueSeverity
     message: str = Field(..., description="Technical description")
-    element_ref: str | None = Field(
-        default=None, description="Affected element `ref_id`"
-    )
+    element_ref: str | None = Field(default=None, description="Affected element `ref_id`")
     field_path: str | None = Field(default=None, description="Affected field path")
 
     model_config = {"frozen": True}
@@ -246,9 +244,7 @@ class SimplifiedGridSource(BaseModel):
 
     sk_mva: float = Field(..., gt=0.0, description="Moc zwarciowa po stronie SN [MVA]")
     r_x_ratio: float = Field(
-        default=0.1,
-        ge=0.0,
-        description="Stosunek R/X po stronie SN (typowo 0.1 dla SN)",
+        default=0.1, ge=0.0, description="Stosunek R/X po stronie SN (typowo 0.1 dla SN)"
     )
 
     model_config = {"frozen": True}
@@ -316,9 +312,7 @@ class SolverInputEnvelope(BaseModel):
     enm_revision: str
     analysis_type: SolverAnalysisType
     eligibility: EligibilityResult
-    provenance_summary: ProvenanceSummarySchema = Field(
-        default_factory=ProvenanceSummarySchema
-    )
+    provenance_summary: ProvenanceSummarySchema = Field(default_factory=ProvenanceSummarySchema)
     payload: dict[str, Any] = Field(
         default_factory=dict,
         description="Analysis-specific payload (strict schema per analysis_type)",
