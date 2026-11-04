@@ -3,6 +3,8 @@ import { KLASA_AKCJI_NIEAKTYWNEJ } from '../../../shared/akcjeStanow';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { useAppStateStore } from '../../../app-state/store';
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useStationDerStore } from '../../../network-build/station-der/store';
 import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
@@ -17,11 +19,29 @@ import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../sld/v2/stat
 // (`get_default_mv_catalog`) i — dla filtra — jeden transformator SN/nN, który na tej liście
 // nie ma prawa się pojawić.
 const katalogTransformatorow = vi.hoisted(() => ({
-  fetchTransformerTypes: vi.fn(async () => [
-    { id: 'tr-wn-sn-110-20-25mva-yd11', name: 'TR 110/20 kV 25 MVA Yd11', voltage_hv_kv: 110 },
-    { id: 'tr-wn-sn-110-15-25mva-yd11', name: 'TR 110/15 kV 25 MVA Yd11', voltage_hv_kv: 110 },
-    { id: 'tr-sn-nn-15-0p4-630kva', name: 'TR 15/0,4 kV 630 kVA', voltage_hv_kv: 15 },
-  ]),
+  fetchTransformerTypes: vi.fn(async () =>
+    (
+      [
+        ['tr-wn-sn-110-20-25mva-yd11', 'TR 110/20 kV 25 MVA Yd11', 25, 110, 20, 11, 120, 0.35, 25, 'Yd11'],
+        ['tr-wn-sn-110-15-25mva-yd11', 'TR 110/15 kV 25 MVA Yd11', 25, 110, 15, 11, 120, 0.35, 25, 'Yd11'],
+        ['tr-sn-nn-15-04-630kva-dyn11', 'TR 15/0.4 kV 630 kVA Dyn11', 0.63, 15, 0.4, 5, 8, 1.5, 1.3, 'Dyn11'],
+      ] as const
+    ).map(([id, name, sn, hv, lv, uk, pk, i0, p0, grupa]) => ({
+      id,
+      name,
+      rated_power_mva: sn,
+      voltage_hv_kv: hv,
+      voltage_lv_kv: lv,
+      uk_percent: uk,
+      pk_kw: pk,
+      i0_percent: i0,
+      p0_kw: p0,
+      vector_group: grupa,
+      tap_min: 0,
+      tap_max: 0,
+      tap_step_percent: 0,
+    })),
+  ),
 }));
 vi.mock('../../../catalog/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../catalog/api')>()),
@@ -126,24 +146,121 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.getByText('Katalog transformatora 110/SN')).toBeInTheDocument();
     });
 
-    it('lista transformatorów 110/SN to pozycje katalogu backendu — bez domyślnego wyboru', async () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    // Karta KATALOG-PRZEJECIE-PR (decyzja architekta): wybór typu transformatora 110/SN jest
+    // operacją modelu `assign_catalog_to_element` na transformatorze stacji GPZ źródła;
+    // tabliczka (Sn, uk, przekładnia, grupa) pochodzi z elementu modelu, nie z formularza.
+    function snapshotGpz(transformatory: Array<Record<string, unknown>>) {
+      return {
+        header: {
+          enm_version: '1.0',
+          name: 'GPZ',
+          created_at: '2026-11-04T00:00:00Z',
+          updated_at: '2026-11-04T00:00:00Z',
+          revision: 1,
+          hash_sha256: 'gpz-test',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        loads: [],
+        generators: [],
+        sources: [
+          {
+            id: 'src-gpz',
+            ref_id: 'gpz/src',
+            name: 'Źródło GPZ 110 kV',
+            bus_ref: 'gpz/hv',
+            substation_ref: 'gpz/stacja',
+            tags: [],
+            meta: {},
+          },
+        ],
+        substations: [
+          {
+            id: 'stacja-gpz',
+            ref_id: 'gpz/stacja',
+            name: 'GPZ',
+            station_type: 'gpz',
+            bus_refs: [],
+            transformer_refs: transformatory.map((tr) => tr.ref_id),
+            tags: [],
+            meta: {},
+          },
+        ],
+        transformers: transformatory,
+      } as unknown as EnergyNetworkModel;
+    }
+    const TR1 = {
+      id: 'tr1',
+      ref_id: 'gpz/tr1',
+      name: 'TR1 110/15 kV',
+      hv_bus_ref: 'gpz/hv',
+      lv_bus_ref: 'gpz/s1',
+      sn_mva: 25,
+      uhv_kv: 110,
+      ulv_kv: 15,
+      uk_percent: 11,
+      pk_kw: 120,
+      vector_group: 'Yd11',
+      catalog_ref: 'tr-wn-sn-110-15-25mva-yd11',
+      catalog_namespace: 'TRAFO_SN_NN',
+      tags: [],
+      meta: {},
+    };
+
+    it('transformator 110/SN GPZ: lista typów z katalogu o napięciu jego szyn, wybór = operacja modelu', async () => {
+      const operacja = vi.fn(async () => undefined);
+      useSnapshotStore.setState({
+        snapshot: snapshotGpz([TR1]),
+        executeDomainOperation: operacja as never,
+      });
+      useAppStateStore.setState({ activeCaseId: 'case-gpz' });
+      render(
+        <GpzConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'gpz/src' }} />,
+      );
       fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
-      const karta = screen.getByTestId('gpz-card-content-transformer');
-      const wybor = within(karta).getAllByRole('combobox')[0] as HTMLSelectElement;
+      const wybor = screen.getByTestId('gpz-transformer-select-gpz/tr1') as HTMLSelectElement;
       await waitFor(() =>
         expect(within(wybor).getByRole('option', { name: 'TR 110/15 kV 25 MVA Yd11' })).toBeInTheDocument(),
       );
-      expect(wybor.value).toBe('');
+      // Typ 110/20 kV i transformator SN/nN nie należą do listy szyn 15 kV.
       expect(
         Array.from(wybor.options)
           .filter((o) => !o.disabled)
           .map((o) => o.value),
-      ).toEqual(['tr-wn-sn-110-15-25mva-yd11', 'tr-wn-sn-110-20-25mva-yd11']);
-      // Wybór pozycji katalogu zalicza kartę transformatora w kompletności.
-      expect(screen.getByText(/Zakres konfiguracji: 1\/4/)).toBeInTheDocument();
-      fireEvent.change(wybor, { target: { value: 'tr-wn-sn-110-15-25mva-yd11' } });
+      ).toEqual(['tr-wn-sn-110-15-25mva-yd11']);
+      expect(wybor.value).toBe('tr-wn-sn-110-15-25mva-yd11');
+      const tabliczka = screen.getByTestId('gpz-transformer-plate-gpz/tr1');
+      expect(tabliczka).toHaveTextContent('25 MVA');
+      expect(tabliczka).toHaveTextContent('11 %');
+      expect(tabliczka).toHaveTextContent('Yd11');
       expect(screen.getByText(/Zakres konfiguracji: 2\/4/)).toBeInTheDocument();
+
+      fireEvent.change(wybor, { target: { value: 'tr-wn-sn-110-15-25mva-yd11' } });
+      expect(operacja).toHaveBeenCalledWith('case-gpz', 'assign_catalog_to_element', {
+        element_ref: 'gpz/tr1',
+        catalog_binding: expect.objectContaining({
+          catalog_namespace: 'TRAFO_SN_NN',
+          catalog_item_id: 'tr-wn-sn-110-15-25mva-yd11',
+        }),
+      });
+    });
+
+    it('GPZ na granicy SN (bez transformatorów w modelu) — uczciwy stan zamiast pustej listy', () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([]) });
+      render(
+        <GpzConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'gpz/src' }} />,
+      );
+      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      expect(screen.getByTestId('gpz-transformer-boundary-sn')).toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+
+    it('bez GPZ w modelu karta transformatora nie udaje wyboru', () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      expect(screen.getByTestId('gpz-transformer-no-gpz')).toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 
     it('karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {

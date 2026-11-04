@@ -4,6 +4,10 @@ import type { TransformerType } from '../../catalog/types';
 
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useActiveCaseId } from '../../app-state/store';
+import { buildCatalogBinding } from '../../catalog/catalogBinding';
+import type { CatalogNamespace } from '../../catalog/types';
+import type { EnergyNetworkModel, Transformer } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
@@ -31,8 +35,6 @@ interface GpzData {
   hvVoltageKv: number;
   hvShortCircuitMva: number | null;
   hvRX: number | null;
-  transformerCatalogId: string;
-  transformerNominalMva: number | null;
   sectionsCount: number;
   hasCoupler: boolean;
   busbarSystem: string;
@@ -47,15 +49,18 @@ interface GpzData {
 export interface OpcjaTransformatora110 {
   readonly id: string;
   readonly label: string;
+  /** Napięcie dolne typu — lista dla transformatora modelu zawiera wyłącznie typy o napięciu
+   * jego szyn SN (backend i tak odmawia innego: `odmowa_napiec_typu_transformatora`). */
+  readonly voltageLvKv: number;
 }
 
 /** Transformatory sieciowe WN/SN z katalogu (górne napięcie 110 kV), porządek nazw. */
 export function opcjeTransformatorow110(
-  typy: readonly Pick<TransformerType, 'id' | 'name' | 'voltage_hv_kv'>[],
+  typy: readonly Pick<TransformerType, 'id' | 'name' | 'voltage_hv_kv' | 'voltage_lv_kv'>[],
 ): OpcjaTransformatora110[] {
   return typy
     .filter((typ) => typ.voltage_hv_kv === 110)
-    .map((typ) => ({ id: typ.id, label: typ.name }))
+    .map((typ) => ({ id: typ.id, label: typ.name, voltageLvKv: typ.voltage_lv_kv }))
     .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id));
 }
 
@@ -70,13 +75,40 @@ function emptyGpzData(): GpzData {
     hvVoltageKv: 110,
     hvShortCircuitMva: null,
     hvRX: null,
-    transformerCatalogId: '',
-    transformerNominalMva: null,
     sectionsCount: 2,
     hasCoupler: true,
     busbarSystem: 'pojedynczy sekcjonowany',
     baysPerSectionCount: [0, 0],
   };
+}
+
+/** Transformatory 110/SN stacji GPZ, której źródłem jest `gpzRef` (kolejność `transformer_refs`).
+ * `istnieje` = w modelu jest takie źródło ze stacją GPZ. */
+export function transformatoryGpzZrodla(
+  snapshot: EnergyNetworkModel | null,
+  gpzRef: string | null,
+): { istnieje: boolean; transformatory: Transformer[] } {
+  if (!snapshot || !gpzRef) return { istnieje: false, transformatory: [] };
+  const zrodlo = (snapshot.sources ?? []).find((s) => s.ref_id === gpzRef);
+  const stacja = zrodlo?.substation_ref
+    ? (snapshot.substations ?? []).find(
+        (st) => st.ref_id === zrodlo.substation_ref && st.station_type === 'gpz',
+      )
+    : undefined;
+  if (!stacja) return { istnieje: false, transformatory: [] };
+  const poRefie = new Map((snapshot.transformers ?? []).map((tr) => [tr.ref_id, tr]));
+  return {
+    istnieje: true,
+    transformatory: stacja.transformer_refs
+      .map((ref) => poRefie.get(ref))
+      .filter((tr): tr is Transformer => tr !== undefined),
+  };
+}
+
+const LICZBA_PL = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 3 });
+function formatujLiczbe(wartosc: number | null | undefined, jednostka: string): string {
+  if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) return MISSING_DASH;
+  return jednostka ? `${LICZBA_PL.format(wartosc)} ${jednostka}` : LICZBA_PL.format(wartosc);
 }
 
 const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
@@ -130,6 +162,31 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     };
   }, []);
 
+  const activeCaseId = useActiveCaseId();
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
+  const [komunikatTransformatora, setKomunikatTransformatora] = useState<string | null>(null);
+  // Transformatory 110/SN GPZ to elementy MODELU (`Substation.transformer_refs` stacji GPZ
+  // źródła) — wybór typu jest operacją `assign_catalog_to_element` na tym elemencie, a moc,
+  // u_k i grupa połączeń są tabliczką z katalogu, nie polami formularza.
+  const transformatoryGpz = useMemo(
+    () => transformatoryGpzZrodla(snapshot, gpzRef),
+    [snapshot, gpzRef],
+  );
+  const zmienTypTransformatora = (transformator: Transformer, catalogItemId: string) => {
+    if (!activeCaseId) {
+      setKomunikatTransformatora('Zmiana typu transformatora wymaga aktywnego zakresu obliczeń.');
+      return;
+    }
+    setKomunikatTransformatora(null);
+    void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
+      element_ref: transformator.ref_id,
+      catalog_binding: buildCatalogBinding(
+        (transformator.catalog_namespace as CatalogNamespace | null | undefined) ?? 'TRAFO_SN_NN',
+        catalogItemId,
+      ),
+    });
+  };
+
   const gpzNameFromSnapshot = useMemo(() => {
     if (!gpzRef || !snapshot) return null;
     const source = (snapshot.sources ?? []).find(
@@ -146,12 +203,13 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     const checks = [
       data.name.trim().length > 0,
       hasShortCircuitInput,
-      opcjeTransformatora.some((option) => option.id === data.transformerCatalogId),
+      transformatoryGpz.istnieje &&
+        transformatoryGpz.transformatory.every((tr) => Boolean(tr.catalog_ref)),
       data.sectionsCount > 0,
     ];
     const done = checks.filter(Boolean).length;
     return { done, total: checks.length };
-  }, [data, opcjeTransformatora]);
+  }, [data, transformatoryGpz]);
 
   return (
     <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-4">
@@ -296,14 +354,79 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
 
         {activeCard === 'transformer' && (
           <div data-testid="gpz-card-content-transformer" className="space-y-3">
-            <SelectField
-              label="Katalog transformatora 110/SN"
-              required
-              value={data.transformerCatalogId}
-              onChange={(v) => setData((d) => ({ ...d, transformerCatalogId: v }))}
-              options={opcjeTransformatora}
-              placeholder="— wybierz transformator z katalogu —"
-            />
+            <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
+              Katalog transformatora 110/SN
+            </div>
+            {!transformatoryGpz.istnieje && (
+              <p
+                data-testid="gpz-transformer-no-gpz"
+                className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted"
+              >
+                W modelu nie ma jeszcze tego GPZ. Utwórz GPZ (źródło zasilania SN) — typ
+                transformatorów 110/SN wybierasz przy jego tworzeniu i tu go później zmieniasz.
+              </p>
+            )}
+            {transformatoryGpz.istnieje && transformatoryGpz.transformatory.length === 0 && (
+              <p
+                data-testid="gpz-transformer-boundary-sn"
+                className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted"
+              >
+                GPZ jest zasilany na granicy SN: moc zwarciowa podana po stronie SN zawiera już
+                impedancję transformatorów 110/SN, więc nie są one elementami modelu
+                obliczeniowego. Transformatory powstają, gdy zasilanie GPZ jest zadane
+                równoważnikiem sieci po stronie 110 kV.
+              </p>
+            )}
+            {transformatoryGpz.transformatory.map((transformator) => {
+              const opcje = opcjeTransformatora.filter(
+                (opcja) => opcja.voltageLvKv === transformator.ulv_kv,
+              );
+              const wartosc = transformator.catalog_ref ?? '';
+              const opcjeZWartoscia =
+                wartosc && !opcje.some((opcja) => opcja.id === wartosc)
+                  ? [...opcje, { id: wartosc, label: `${wartosc} (spoza listy 110/SN)` }]
+                  : opcje;
+              return (
+                <div
+                  key={transformator.ref_id}
+                  data-testid={`gpz-transformer-${transformator.ref_id}`}
+                  className="space-y-2 rounded border border-scada-border p-2"
+                >
+                  <SelectField
+                    label={transformator.name || transformator.ref_id}
+                    required
+                    value={wartosc}
+                    onChange={(v) => zmienTypTransformatora(transformator, v)}
+                    options={opcjeZWartoscia}
+                    placeholder="— wybierz transformator z katalogu —"
+                    testId={`gpz-transformer-select-${transformator.ref_id}`}
+                  />
+                  <dl
+                    data-testid={`gpz-transformer-plate-${transformator.ref_id}`}
+                    className="grid grid-cols-2 gap-x-3 gap-y-1 text-[length:var(--mvd-font-size-data)]"
+                  >
+                    <dt className="text-scada-muted">Moc znamionowa Sn</dt>
+                    <dd className="text-scada-text">{formatujLiczbe(transformator.sn_mva, 'MVA')}</dd>
+                    <dt className="text-scada-muted">Napięcie zwarcia uk</dt>
+                    <dd className="text-scada-text">{formatujLiczbe(transformator.uk_percent, '%')}</dd>
+                    <dt className="text-scada-muted">Przekładnia</dt>
+                    <dd className="text-scada-text">
+                      {formatujLiczbe(transformator.uhv_kv, '')}/{formatujLiczbe(transformator.ulv_kv, 'kV')}
+                    </dd>
+                    <dt className="text-scada-muted">Grupa połączeń</dt>
+                    <dd className="text-scada-text">{transformator.vector_group || MISSING_DASH}</dd>
+                  </dl>
+                </div>
+              );
+            })}
+            {komunikatTransformatora && (
+              <p
+                data-testid="gpz-transformer-notice"
+                className="text-[length:var(--mvd-font-size-data)] text-scada-muted"
+              >
+                {komunikatTransformatora}
+              </p>
+            )}
             {bladKatalogu && (
               <p
                 data-testid="gpz-transformer-catalog-error"
@@ -312,16 +435,10 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                 Nie udało się pobrać transformatorów z katalogu: {bladKatalogu}
               </p>
             )}
-            <NumberField
-              label="Moc znamionowa Sn"
-              unit="MVA"
-              value={data.transformerNominalMva}
-              onChange={(v) => setData((d) => ({ ...d, transformerNominalMva: v }))}
-              placeholder="25 / 40 / 63"
-            />
-            {/* W5-A: u_k i grupa połączeń to TABLICZKA z pozycji katalogowej wybranej wyżej —
-                wolne pola tekstowe (z domyślną „YNyn0") były fantomem: nic ich nie czytało,
-                a grupa spoza słownika IEC 60076-1 nie ma prawa wejść do modelu. */}
+            {/* Moc, u_k, przekładnia i grupa połączeń to TABLICZKA z pozycji katalogowej
+                elementu modelu (materializacja `assign_catalog_to_element`) — dawne pole
+                „Moc znamionowa Sn" i lista z grupami Yyn0/YNyn0 były fantomem: nic ich nie
+                czytało (karta KATALOG-PRZEJECIE-PR). */}
           </div>
         )}
 
@@ -469,9 +586,18 @@ interface SelectFieldProps {
   options: readonly SelectOption[];
   required?: boolean;
   placeholder?: string;
+  testId?: string;
 }
 
-function SelectField({ label, value, onChange, options, required, placeholder }: SelectFieldProps) {
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+  placeholder,
+  testId,
+}: SelectFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
@@ -479,6 +605,7 @@ function SelectField({ label, value, onChange, options, required, placeholder }:
         {required && <span className="text-red-400"> *</span>}
       </label>
       <select
+        data-testid={testId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text focus:border-scada-sn focus:outline-none"
