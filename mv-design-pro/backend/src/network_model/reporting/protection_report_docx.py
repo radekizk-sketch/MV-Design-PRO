@@ -27,17 +27,22 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
     NAGLOWKI_NASTAW_PL,
+    NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
     powod_braku_pl,
+    rekordy_ziemnozwarciowe,
     uzasadnienia_sprawdzen,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
+    wiersz_ziemnozwarciowy,
     zdania_funkcji_nieocenianych,
+    zdanie_ziemnozwarciowe,
 )
 
 # Check for python-docx availability
@@ -335,6 +340,31 @@ def export_protection_coordination_to_docx(
         note.add_run("Wykres TCC dostępny w eksporcie interaktywnym").italic = True
     else:
         doc.add_paragraph("Brak krzywych TCC", style="No Spacing")
+
+    doc.add_paragraph()
+
+    # ==========================================================================
+    # GROUND-FAULT PROTECTION AND STATION EARTHING (ta sama treść co PDF)
+    # ==========================================================================
+    doc.add_heading(NAGLOWEK_ZIEMNOZWARCIOWYCH_PL, level=1)
+    rekordy_zz = rekordy_ziemnozwarciowe(result.get("ziemnozwarciowe"))
+    if rekordy_zz:
+        zz_table = doc.add_table(rows=1, cols=len(NAGLOWKI_ZIEMNOZWARCIOWYCH_PL))
+        zz_table.style = "Table Grid"
+        hdr_cells = zz_table.rows[0].cells
+        for i, h in enumerate(NAGLOWKI_ZIEMNOZWARCIOWYCH_PL):
+            hdr_cells[i].text = h
+            hdr_cells[i].paragraphs[0].runs[0].bold = True
+        for rekord in rekordy_zz:
+            row = zz_table.add_row().cells
+            for i, wartosc in enumerate(wiersz_ziemnozwarciowy(rekord)):
+                row[i].text = wartosc
+        for rekord in rekordy_zz:
+            doc.add_paragraph(zdanie_ziemnozwarciowe(rekord), style="No Spacing")
+    else:
+        doc.add_paragraph(
+            "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie", style="No Spacing"
+        )
 
     doc.add_paragraph()
 

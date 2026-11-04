@@ -188,6 +188,9 @@ class CoordinationAnalysisResult:
     sc_run_id: str | None = None
     sc_run_id_min: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    #: ocena zabezpieczeń ziemnozwarciowych (czułość, selektywność, stopniowanie) i uziemień
+    #: stacji z biegu maksymalnego — ``WynikOcenyZiemnozwarciowej.to_dict()``
+    ziemnozwarciowe: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -209,4 +212,5 @@ class CoordinationAnalysisResult:
             "sc_run_id": self.sc_run_id,
             "sc_run_id_min": self.sc_run_id_min,
             "created_at": self.created_at.isoformat(),
+            "ziemnozwarciowe": self.ziemnozwarciowe,
         }

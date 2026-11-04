@@ -33,9 +33,11 @@ stopni fazowych, `ProtectionRequirementV0.i_pickup_51n_a/i_inst_50n_a` zostają
 `None` z definicji). Ogniwo 2 tego łańcucha (nastawy 50N/51N reagujące na
 grupę) zeszło razem z konsumentem, którego dowodziło; ogniwo 1 (fizyka
 zwarcia 1F reagująca na grupę połączeń, solver + `enm.mapping`) zostaje —
-`_run_1ph_on_lv`/`_hand_zt0_ohm_lv` są też dzielone z
-``test_vector_group_earth_fault_touch_voltage.py`` (dowód napięcia dotykowego
-na TEJ SAMEJ parze sieci).
+`_run_1ph_on_lv`/`_hand_zt0_ohm_lv`. Dawny dowód napięcia dotykowego na tej parze
+sieci (most SC_1F → dowód uziemień) zszedł razem z mostem (karta
+EWALUATORY-ZIEMNOZWARCIOWE): zwarcie po stronie nN wraca przewodem PEN, a prąd
+uziomowy stacji SN liczy solver doziemień SN wg sposobu pracy punktu neutralnego
+(``tests/network_model/solvers/test_doziemienie_sn.py``).
 """
 
 from __future__ import annotations

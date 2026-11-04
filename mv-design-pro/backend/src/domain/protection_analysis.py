@@ -129,9 +129,12 @@ class ProtectionResult:
     strefy: dict[str, dict[str, Any]]
     summary: ProtectionResultSummary
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    #: ocena zabezpieczeń ziemnozwarciowych i uziemień stacji z obliczenia zwarcia doziemnego
+    #: sieci SN (``WynikOcenyZiemnozwarciowej.to_dict()``); ``None`` — bieg sprzed tej oceny
+    ziemnozwarciowe: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "run_id": self.run_id,
             "sc_run_id": self.sc_run_id,
             "protection_case_id": self.protection_case_id,
@@ -143,6 +146,9 @@ class ProtectionResult:
             "summary": self.summary.to_dict(),
             "created_at": self.created_at.isoformat(),
         }
+        if self.ziemnozwarciowe is not None:
+            wynik["ziemnozwarciowe"] = self.ziemnozwarciowe
+        return wynik
 
 
 @dataclass(frozen=True)

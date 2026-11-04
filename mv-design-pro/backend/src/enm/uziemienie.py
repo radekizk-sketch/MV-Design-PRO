@@ -25,6 +25,7 @@ CO TU JEST (moduł-liść: wyłącznie stdlib, importowany przez ``enm/models.py
 
 from __future__ import annotations
 
+import math
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
@@ -82,6 +83,35 @@ def blad_konfiguracji_uziemienia(
             "cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω] w polu "
             "„X cewki” — nie wolno przyjąć X_N = 0"
         )
+    return None
+
+
+#: Karta EWALUATORY-ZIEMNOZWARCIOWE: pola uziomu stacji (`Substation`) edytowalne przez
+#: `update_element_parameters` — jeden zbiór dla listy dopuszczonych kluczy i walidacji.
+POLA_UZIOMU_STACJI: tuple[str, ...] = ("uziom_rezystancja_ohm", "uziom_wspolczynnik_redukcji")
+
+
+def odmowa_uziomu_stacji(parametry: dict[str, Any]) -> str | None:
+    """Zdanie odmowy zapisu danych uziomu stacji albo ``None`` (ten sam przedział co model:
+    R_E > 0 Ω, r ∈ (0; 1]; ``None`` zdejmuje daną)."""
+    rezystancja = parametry.get("uziom_rezystancja_ohm")
+    if "uziom_rezystancja_ohm" in parametry and rezystancja is not None:
+        if (
+            isinstance(rezystancja, bool)
+            or not isinstance(rezystancja, int | float)
+            or not math.isfinite(rezystancja)
+            or rezystancja <= 0
+        ):
+            return "Rezystancja uziemienia stacji R_E musi być liczbą dodatnią [Ω]."
+    r = parametry.get("uziom_wspolczynnik_redukcji")
+    if "uziom_wspolczynnik_redukcji" in parametry and r is not None:
+        if (
+            isinstance(r, bool)
+            or not isinstance(r, int | float)
+            or not math.isfinite(r)
+            or not 0 < r <= 1
+        ):
+            return "Współczynnik redukcyjny r uziomu stacji musi leżeć w przedziale (0; 1]."
     return None
 
 

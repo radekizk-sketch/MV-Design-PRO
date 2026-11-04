@@ -76,9 +76,12 @@ from network_model.pochodne import (
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.doziemienie_sn import (
+    ETYKIETY_SPOSOBU_UZIEMIENIA_PL,
     ETYKIETY_STANU_PL,
+    PODSTAWA_PRADU_UZIOMOWEGO,
     STAN_PO_AWSC,
     STAN_PRZED,
+    DaneUziomuStacji,
     PunktDoziemienia,
     StanWymuszenia,
     StrefaPomiaru,
@@ -86,7 +89,9 @@ from network_model.solvers.doziemienie_sn import (
     WielkosciPola,
     WynikDoziemienia,
     WynikPunktuDoziemienia,
+    WynikUziemieniaStacji,
     oblicz_doziemienie,
+    uziemienia_stacji,
 )
 from network_model.solvers.short_circuit_core import build_zbus
 from solver_input.provenance import classify_dynamic_capability
@@ -497,6 +502,8 @@ class ObliczenieDoziemne:
     punkty: Mapping[str, tuple[str, str]]
     dane_przyjete: tuple[DanaPrzyjeta, ...]
     slad_budowy: tuple[dict[str, Any], ...]
+    #: wejście biegu c_max (uziemienia stacji liczą się z tego samego rozwiązania)
+    wejscie_max: WejscieDoziemienia
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -520,6 +527,20 @@ class ObliczenieDoziemne:
             "dane_przyjete": [d.model_dump(mode="json") for d in self.dane_przyjete],
             "slad": list(self.wynik_min.slad),
         }
+
+
+def _wartosci_json(wartosc: Any) -> Any:
+    """Ślad budowy sieci zerowej w postaci JSON: liczba zespolona → ``{"re", "im"}`` (ta sama
+    postać co ślad biegu zwarciowego), skalar numpy → liczba Pythona."""
+    if isinstance(wartosc, complex):
+        return {"re": float(wartosc.real), "im": float(wartosc.imag)}
+    if isinstance(wartosc, dict):
+        return {k: _wartosci_json(v) for k, v in wartosc.items()}
+    if isinstance(wartosc, (list, tuple)):
+        return [_wartosci_json(v) for v in wartosc]
+    if hasattr(wartosc, "item"):
+        return _wartosci_json(wartosc.item())
+    return wartosc
 
 
 def oblicz_siec_doziemna(
@@ -621,7 +642,8 @@ def oblicz_siec_doziemna(
         c_max=c_max,
         punkty=meta,
         dane_przyjete=tuple(dane),
-        slad_budowy=tuple(slad),
+        slad_budowy=tuple(_wartosci_json(k) for k in slad),
+        wejscie_max=_wejscie(c_max),
     )
 
 
@@ -1036,6 +1058,9 @@ class WynikOcenyZiemnozwarciowej:
     oceny: tuple[RekordOcenyZiemnozwarciowej, ...]
     odmowy: tuple[RekordOcenyZiemnozwarciowej, ...]
     obliczenie: ObliczenieDoziemne | None
+    #: uziemienia stacji (PN-EN 50522) z tego samego rozwiązania sieci zerowej
+    uziemienia: tuple[RekordOcenyZiemnozwarciowej, ...] = ()
+    wyniki_uziemien: tuple[WynikUziemieniaStacji, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1043,6 +1068,8 @@ class WynikOcenyZiemnozwarciowej:
             "oceny": [r.to_dict() for r in self.oceny],
             "odmowy": [r.to_dict() for r in self.odmowy],
             "doziemienie": self.obliczenie.to_dict() if self.obliczenie is not None else None,
+            "uziemienia": [r.to_dict() for r in self.uziemienia],
+            "wyniki_uziemien": [w.to_dict() for w in self.wyniki_uziemien],
         }
 
 
@@ -1104,8 +1131,18 @@ def dzialania_funkcji(
     return wyniki
 
 
-def _klucz_najgorszy(d: DzialaniePunktu) -> tuple[float, str]:
-    return (_NIE_DZIALA if d.t_zadzialania_s is None else d.t_zadzialania_s, d.punkt_ref)
+def _klucz_najgorszy(d: DzialaniePunktu) -> tuple[int, float, float, str]:
+    """Punkt decydujący czułości (``max``): najpierw punkty, w których funkcja nie działa, potem
+    najmniejsza wielkość decydująca (najmniejszy zapas do progu — próg jest wspólny dla
+    wszystkich punktów funkcji), potem najdłuższy czas. Sam czas nie wystarcza: przy
+    charakterystyce niezależnej czas jest równy w każdym punkcie, a rekord musi podać
+    najmniejszą wartość strefy, nie dowolną."""
+    return (
+        1 if d.t_zadzialania_s is None else 0,
+        -d.wartosc,
+        _NIE_DZIALA if d.t_zadzialania_s is None else d.t_zadzialania_s,
+        d.punkt_ref,
+    )
 
 
 def ocen_funkcje(
@@ -1113,8 +1150,9 @@ def ocen_funkcje(
     obliczenie: ObliczenieDoziemne,
     *,
     odniesienie: str,
-) -> list[RekordOcenyZiemnozwarciowej]:
-    """Rekordy czułości, selektywności i stopniowania czasowego każdej gotowej funkcji."""
+) -> tuple[list[RekordOcenyZiemnozwarciowej], dict[str, list[DzialaniePunktu]]]:
+    """Rekordy czułości, selektywności i stopniowania czasowego każdej gotowej funkcji oraz
+    działanie każdej funkcji w każdym punkcie (c_min) — wejście czasu trwania zwarcia t_F."""
     cti = CoordinationConfig().get_minimum_grading_margin_s()
     rekordy: list[RekordOcenyZiemnozwarciowej] = []
     gotowe = [f for f in funkcje if not f.braki and f.wezel_pomiaru is not None]
@@ -1339,7 +1377,7 @@ def ocen_funkcje(
             gotowe, dzialania_min, cti=cti, obliczenie=obliczenie, odniesienie=odniesienie
         )
     )
-    return rekordy
+    return rekordy, dzialania_min
 
 
 def _stopniowanie(
@@ -1503,11 +1541,294 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
                 ),
             )
         )
-    rekordy = ocen_funkcje(funkcje, obliczenie, odniesienie=odniesienie)
+    rekordy, dzialania = ocen_funkcje(funkcje, obliczenie, odniesienie=odniesienie)
     oceny = [r for r in rekordy if r.kryterium != "ODMOWA"]
     odmowy.extend(r for r in rekordy if r.kryterium == "ODMOWA")
     odmowy.extend(_braki_awsc(enm, funkcje, obliczenie))
-    return WynikOcenyZiemnozwarciowej(tuple(funkcje), tuple(oceny), tuple(odmowy), obliczenie)
+    wyniki_uziemien, uziemienia = ocen_uziemienia_stacji(
+        enm, funkcje, obliczenie, dzialania, odniesienie=odniesienie
+    )
+    return WynikOcenyZiemnozwarciowej(
+        tuple(funkcje),
+        tuple(oceny),
+        tuple(odmowy),
+        obliczenie,
+        uziemienia=tuple(uziemienia),
+        wyniki_uziemien=wyniki_uziemien,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 6. Uziemienie stacji (PN-EN 50522): prąd uziomowy, napięcie uziomowe, R_E,max
+# ---------------------------------------------------------------------------
+
+#: Podstawa limitu napięcia dotykowego dopuszczalnego U_Tp(t_F) — treści normy w repozytorium
+#: brak (decyzja O-74 pkt 3, plan A/B §2.3): krzywa U_Tp(t_F) to dane właściciela, więc każdy
+#: rekord napięcia uziomowego kończy się statusem BRAK_PODSTAWY z liczbami (nigdy „spełnia").
+PODSTAWA_U_TP = PodstawaWymagania(
+    rodzaj="NORMA",
+    dokument="PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+    status="NIEUSTALONE",
+    uwagi_pl=(
+        "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — "
+        "dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez "
+        "werdyktu"
+    ),
+)
+KOD_NAPIECIE_KROKOWE_BEZ_GEOMETRII = "uziemienie.napiecie_krokowe_brak_geometrii"
+BRAK_GEOMETRII_UZIOMU_PL = (
+    "Geometria uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywność gruntu — "
+    "model jej nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni "
+    "gruntu; liczba bez geometrii byłaby zgadywaniem."
+)
+
+
+def _stacje_uziomu(
+    enm: EnergyNetworkModel, obliczenie: ObliczenieDoziemne
+) -> tuple[list[DaneUziomuStacji], dict[str, DanaPrzyjeta]]:
+    """Stacje z węzłem SN w obliczeniu doziemnym + dane przyjęte stacji (r = 1 przy nieznanym r)."""
+    stacje: list[DaneUziomuStacji] = []
+    dane: dict[str, DanaPrzyjeta] = {}
+    for stacja in sorted(enm.substations, key=lambda s: s.ref_id):
+        szyny = set(stacja.bus_refs) | {sek.bus_ref for sek in stacja.gpz_sections}
+        wezly = frozenset(
+            ref_to_graph_id(ref) for ref in szyny if ref_to_graph_id(ref) in obliczenie.punkty
+        )
+        if not wezly:
+            continue
+        nazwa = nazwa_elementu(stacja, "substations")
+        r = stacja.uziom_wspolczynnik_redukcji
+        if r is None:
+            r = 1.0
+            dane[stacja.ref_id] = DanaPrzyjeta(
+                nazwa_pl=f"współczynnik redukcyjny r uziomu ({nazwa})",
+                wartosc=Wielkosc(wartosc=1.0, jednostka="1"),
+                powod_pl=(
+                    "Współczynnik redukcyjny r nieznany — przyjęto r = 1 zachowawczo (cały prąd "
+                    "zwarcia doziemnego wraca przez uziom stacji, bez udziału ekranów kabli "
+                    "i przewodów odgromowych). Podaj r w danych uziomu stacji."
+                ),
+                jakosc=FieldQuality.ESTIMATED,
+            )
+        stacje.append(
+            DaneUziomuStacji(
+                stacja_ref=stacja.ref_id,
+                nazwa_pl=nazwa,
+                wezly=wezly,
+                rezystancja_ohm=stacja.uziom_rezystancja_ohm,
+                wspolczynnik_r=r,
+            )
+        )
+    return stacje, dane
+
+
+def _czas_trwania_zwarcia(
+    funkcje: Sequence[FunkcjaZiemnozwarciowa],
+    dzialania: Mapping[str, Sequence[DzialaniePunktu]],
+    punkt_ref: str,
+) -> float | None:
+    """t_F: czas wyłączenia zwarcia w punkcie — najkrótszy czas funkcji, która je WYŁĄCZA:
+    funkcji pola, w którego strefie leży punkt, albo funkcji napięciowej 59N (działa przy
+    zwarciu w całej sieci). Zbędne zadziałanie pola zdrowego zwarcia nie wyłącza, ZAWSC nie
+    wyłącza (automatyka). ``None`` — żadna funkcja modelu nie wyłącza zwarcia."""
+    rodzaj = {f.klucz: f for f in funkcje}
+    czasy = [
+        d.t_zadzialania_s
+        for klucz, lista in dzialania.items()
+        if rodzaj[klucz].kod != "ZAWSC"
+        for d in lista
+        if d.punkt_ref == punkt_ref
+        and d.t_zadzialania_s is not None
+        and (d.w_strefie or rodzaj[klucz].rodzaj == "U0")
+    ]
+    return min(czasy) if czasy else None
+
+
+def ocen_uziemienia_stacji(
+    enm: EnergyNetworkModel,
+    funkcje: Sequence[FunkcjaZiemnozwarciowa],
+    obliczenie: ObliczenieDoziemne,
+    dzialania: Mapping[str, Sequence[DzialaniePunktu]],
+    *,
+    odniesienie: str,
+) -> tuple[tuple[WynikUziemieniaStacji, ...], list[RekordOcenyZiemnozwarciowej]]:
+    """Prąd uziomowy I_E (tablica 1 PN-EN 50522) i napięcie uziomowe U_E każdej stacji z TEGO
+    SAMEGO rozwiązania sieci zerowej (c_max), które zasila ocenę zabezpieczeń; R_E nieznane →
+    R_E,max = U_Tp(t_F)/I_E z liczbami (I_E = r·I_odn); r nieznane → r = 1 (dana przyjęta). Napięcie
+    krokowe — NIE_OCENIONO (model nie niesie geometrii uziomu)."""
+    stacje, dane_r = _stacje_uziomu(enm, obliczenie)
+    wyniki = uziemienia_stacji(obliczenie.wynik_max, obliczenie.wejscie_max, stacje)
+    rekordy: list[RekordOcenyZiemnozwarciowej] = []
+    for w in wyniki:
+        t_f = _czas_trwania_zwarcia(funkcje, dzialania, w.punkt_ref)
+        przyjete_r = dane_r.get(w.stacja_ref)
+        dane = obliczenie.dane_przyjete + ((przyjete_r,) if przyjete_r is not None else ())
+        czas_pl = (
+            f"t_F = {_liczba(t_f)} s (najszybsza funkcja ziemnozwarciowa wyłączająca zwarcie)"
+            if t_f is not None
+            else "t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia "
+            "w tym punkcie (praca z doziemieniem albo sygnalizacja)"
+        )
+        przedmiot = Przedmiot(
+            element_ref=w.stacja_ref,
+            nazwa_pl=w.nazwa_pl,
+            opis_pl=f"Uziom stacji {w.nazwa_pl} — zwarcie doziemne w punkcie {w.nazwa_punktu_pl}",
+        )
+        r_e_max_latex = (
+            rf"R_{{E,max}} = \frac{{U_{{Tp}}(t_F)}}{{I_E}} = "
+            rf"\frac{{U_{{Tp}}(t_F)}}{{{_liczba(w.prad_uziomowy_a)}\,\mathrm{{A}}}}"
+        )
+        wspolne = {
+            "stacja_ref": w.stacja_ref,
+            "punkt_ref": w.punkt_ref,
+            "nazwa_punktu_pl": w.nazwa_punktu_pl,
+            "stan": w.stan,
+            "sposob": w.sposob,
+            "sposob_pl": ETYKIETY_SPOSOBU_UZIEMIENIA_PL[w.sposob],
+            "wzor_latex": w.wzor_latex,
+            "prad_zwarcia_a": w.prad_zwarcia_a,
+            "prad_dlawika_a": w.prad_dlawika_a,
+            "prad_odniesienia_a": w.prad_odniesienia_a,
+            "prad_uziomowy_a": w.prad_uziomowy_a,
+            "wspolczynnik_r": w.wspolczynnik_r,
+            "wspolczynnik_r_przyjety": przyjete_r is not None,
+            "rezystancja_uziomu_ohm": w.rezystancja_uziomu_ohm,
+            "napiecie_uziomowe_v": w.napiecie_uziomowe_v,
+            "t_f_s": t_f,
+            "r_e_max_latex": r_e_max_latex,
+        }
+        zakres = ZakresWaznosci(
+            rodzaj_analizy="SHORT_CIRCUIT",
+            opis_pl=(
+                "Zwarcie jednofazowe z ziemią w węźle SN stacji, stan ustalony, c = "
+                f"{_liczba(obliczenie.c_max)} (IEC 60909-0 tabela 1); prąd uziomowy wg "
+                f"{PODSTAWA_PRADU_UZIOMOWEGO} — wiersz: {ETYKIETY_SPOSOBU_UZIEMIENIA_PL[w.sposob]}"
+            ),
+            wykluczenia=(
+                "rozkład potencjału na powierzchni gruntu (napięcia dotykowe i krokowe "
+                "rzeczywiste) — model nie niesie geometrii uziomu",
+                "zwarcie przez rezystancję przejścia R_F > 0",
+                "przeniesienie potencjału na sieć nN (układ sieci nN)",
+            ),
+        )
+        slad = [
+            OdnosnikSladu(
+                krok=f"uziemienie:{w.stacja_ref}",
+                opis_pl="prąd uziomowy z rozwiązania sieci zerowej solvera doziemień SN",
+            )
+        ]
+        stosowalnosc = Stosowalnosc(
+            dotyczy=True, powod_pl="stacja z węzłem SN w sieci z drogą prądu zerowego"
+        )
+        if w.napiecie_uziomowe_v is not None:
+            kryterium = "NAPIECIE_UZIOMOWE"
+            ocena = ocen_kryterium(
+                kryterium_id=f"uziemienie.{w.stacja_ref}.napiecie_uziomowe",
+                przedmiot=przedmiot,
+                kryterium=Kryterium(
+                    opis_pl=(
+                        "Napięcie uziomowe U_E = R_E·I_E nie większe niż napięcie dotykowe "
+                        f"dopuszczalne U_Tp(t_F); {czas_pl}"
+                    ),
+                    warunek_latex=r"U_E = R_E\cdot I_E \le U_{Tp}(t_F)",
+                    relacja="NIE_WIECEJ",
+                ),
+                podstawa=PODSTAWA_U_TP,
+                stosowalnosc=stosowalnosc,
+                wynik=WynikKryterium(
+                    wielkosc_pl="napięcie uziomowe U_E",
+                    symbol_latex=r"U_E",
+                    wartosc=Wielkosc(wartosc=w.napiecie_uziomowe_v, jednostka="V"),
+                    punkt_krytyczny_pl=f"zwarcie w punkcie {w.nazwa_punktu_pl}",
+                    metoda="OBLICZENIE",
+                ),
+                limit=None,
+                niepewnosc=_NIEPEWNOSC,
+                dowod=_dowod(odniesienie, dane),
+                zakres_waznosci=zakres,
+                slad=slad,
+            )
+        else:
+            kryterium = "REZYSTANCJA_DOPUSZCZALNA"
+            ocena = ocen_kryterium(
+                kryterium_id=f"uziemienie.{w.stacja_ref}.rezystancja_dopuszczalna",
+                przedmiot=przedmiot,
+                kryterium=Kryterium(
+                    opis_pl=(
+                        "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja "
+                        "R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; "
+                        f"{czas_pl}"
+                    ),
+                    warunek_latex=r_e_max_latex,
+                    relacja="NIE_WIECEJ",
+                ),
+                podstawa=PODSTAWA_U_TP,
+                stosowalnosc=stosowalnosc,
+                wynik=WynikKryterium(
+                    wielkosc_pl="prąd uziomowy I_E = r·I_odn (mianownik R_E,max)",
+                    symbol_latex=r"I_E",
+                    wartosc=Wielkosc(wartosc=w.prad_uziomowy_a, jednostka="A"),
+                    punkt_krytyczny_pl=f"zwarcie w punkcie {w.nazwa_punktu_pl}",
+                    metoda="OBLICZENIE",
+                ),
+                limit=None,
+                niepewnosc=_NIEPEWNOSC,
+                dowod=_dowod(odniesienie, dane),
+                zakres_waznosci=zakres,
+                slad=slad,
+            )
+        rekordy.append(
+            RekordOcenyZiemnozwarciowej(
+                urzadzenie_ref=w.stacja_ref,
+                nazwa_urzadzenia_pl=w.nazwa_pl,
+                funkcja_ref=None,
+                kod=None,
+                kryterium=kryterium,
+                ocena=ocena,
+                dodatkowe=wspolne,
+            )
+        )
+        rekordy.append(_rekord_napiecia_krokowego(w))
+    return wyniki, rekordy
+
+
+def _rekord_napiecia_krokowego(w: WynikUziemieniaStacji) -> RekordOcenyZiemnozwarciowej:
+    """Napięcie krokowe bez geometrii uziomu — NIE_OCENIONO z wyjaśnieniem, bez liczby."""
+    from application.ocena_niewykonana import ocena_niewykonana
+    from werdykt import ClaimKind, EvidenceTier
+
+    ocena = ocena_niewykonana(
+        kryterium_id=f"uziemienie.{w.stacja_ref}.napiecie_krokowe",
+        przedmiot=Przedmiot(
+            element_ref=w.stacja_ref,
+            nazwa_pl=w.nazwa_pl,
+            opis_pl=f"Uziom stacji {w.nazwa_pl} — napięcie krokowe",
+        ),
+        opis_kryterium_pl="Napięcie krokowe przy zwarciu doziemnym w stacji",
+        podstawa=PODSTAWA_U_TP,
+        powod_stosowalnosci_pl="stacja z węzłem SN w sieci z drogą prądu zerowego",
+        rodzaj_twierdzenia=ClaimKind.STATIC_CALCULATION,
+        poziom=EvidenceTier.UNVALIDATED_MODEL,
+        status_modelu="NIE_DOTYCZY",
+        zakres_waznosci=ZakresWaznosci(
+            rodzaj_analizy="SHORT_CIRCUIT",
+            opis_pl="Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+        ),
+        powod_braku_niepewnosci_pl="ocena się nie odbyła — niepewność nie dotyczy",
+        czego_brakuje=(BRAK_GEOMETRII_UZIOMU_PL,),
+    )
+    return RekordOcenyZiemnozwarciowej(
+        urzadzenie_ref=w.stacja_ref,
+        nazwa_urzadzenia_pl=w.nazwa_pl,
+        funkcja_ref=None,
+        kod=None,
+        kryterium="NAPIECIE_KROKOWE",
+        ocena=ocena,
+        dodatkowe={
+            "kod_braku": KOD_NAPIECIE_KROKOWE_BEZ_GEOMETRII,
+            "czego_brakuje_pl": BRAK_GEOMETRII_UZIOMU_PL,
+        },
+    )
 
 
 def _braki_awsc(
@@ -1551,3 +1872,52 @@ def _braki_awsc(
             )
         )
     return wynik
+
+
+def kroki_sladu_ziemnozwarciowego(wynik: WynikOcenyZiemnozwarciowej) -> list[dict[str, Any]]:
+    """Kroki śladu White Box biegu zabezpieczeń dla części ziemnozwarciowej: budowa sieci
+    zerowej z modelu, rozwiązanie solvera doziemień (c_min i c_max), prąd i napięcie uziomowe
+    stacji. Słowniki o kształcie ``ProtectionTraceStep`` (warstwa domeny buduje kroki)."""
+    kroki: list[dict[str, Any]] = []
+    obliczenie = wynik.obliczenie
+    if obliczenie is None:
+        return kroki
+    kroki.append(
+        {
+            "step": "siec_zerowa_z_modelu",
+            "description_pl": (
+                "Sieć składowej zerowej z modelu: boczniki pojemnościowe B0 odcinków, punkty "
+                "neutralne źródeł i transformatorów (sposób pracy z modelu)"
+            ),
+            "inputs": {"dane_przyjete": [d.model_dump(mode="json") for d in obliczenie.dane_przyjete]},
+            "outputs": {"slad_budowy": list(obliczenie.slad_budowy)},
+        }
+    )
+    for wariant, rozwiazanie, c in (
+        ("c_min", obliczenie.wynik_min, obliczenie.c_min),
+        ("c_max", obliczenie.wynik_max, obliczenie.c_max),
+    ):
+        kroki.append(
+            {
+                "step": f"zwarcie_doziemne_{wariant}",
+                "description_pl": (
+                    f"Zwarcie doziemne w każdej szynie SN, c = {_liczba(c)} — prądy 3I0 i napięcia "
+                    "3U0 pól (solver doziemień SN)"
+                ),
+                "inputs": {"c": c, "wersja_solvera": rozwiazanie.wersja},
+                "outputs": {
+                    "skladowe": [s.to_dict() for s in rozwiazanie.skladowe],
+                    "slad": list(rozwiazanie.slad),
+                },
+            }
+        )
+    for w in wynik.wyniki_uziemien:
+        kroki.append(
+            {
+                "step": "uziemienie_stacji",
+                "description_pl": f"Prąd i napięcie uziomowe stacji {w.nazwa_pl} (PN-EN 50522)",
+                "inputs": {"stacja_ref": w.stacja_ref, "punkt_ref": w.punkt_ref},
+                "outputs": w.to_dict(),
+            }
+        )
+    return kroki

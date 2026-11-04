@@ -706,35 +706,44 @@ class LossesEnergyInput:
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class EarthingGroundFaultInput:
-    """
-    Dane wejściowe dla dowodu P19: Doziemienia / uziemienia SN.
+    """Dane wejściowe dowodu uziemienia stacji SN — WYŁĄCZNIE liczby solvera doziemień SN
+    (``network_model.solvers.doziemienie_sn.WynikUziemieniaStacji``) i czas trwania zwarcia
+    t_F z oceny zabezpieczeń ziemnozwarciowych. Generator dowodu nic nie liczy: prezentuje wzór
+    wiersza tablicy 1 PN-EN 50522, podstawienie i wynik solvera.
 
     Attributes:
-        project_name: Nazwa projektu
-        case_name: Nazwa przypadku obliczeniowego
-        run_timestamp: Czas uruchomienia
-        solver_version: Wersja solvera / źródła danych
-        fault_location: Lokalizacja zwarcia (opcjonalnie)
-        fault_type: Typ zwarcia (np. 1F-Z) (opcjonalnie)
-        earthing_mode: Opisowy tryb uziemienia (np. rezystor/cewka/izolowana)
-        u0_v: Napięcie zerowe U_0 [V]
-        z_e_ohm: Impedancja uziemienia Z_E [Ω]
-        i_u_a: Prąd przez uziom I_u [A]
-        i_p_a: Prąd przez pozostałe ścieżki I_p [A]
-        r_u_ohm: Rezystancja uziemienia stanowiska R_u [Ω]
+        project_name, case_name, run_timestamp, solver_version: nagłówek dowodu
+        stacja_pl: nazwa stacji (uziomu)
+        punkt_pl: nazwa szyny SN, na której zwarcie daje największy prąd uziomowy
+        sposob_pl: sposób pracy punktu neutralnego (wiersz tablicy 1)
+        wzor_pradu_latex: wzór prądu uziomowego wiersza (z solvera)
+        prad_zwarcia_a: |I_F| — prąd zwarcia doziemnego (I_C, I_Res albo I″k1)
+        prad_dlawika_a: I_L dławików tej stacji (tylko sieć kompensowana z dławikiem w stacji)
+        prad_odniesienia_a: I_odn — prąd odniesienia wiersza tablicy 1
+        wspolczynnik_r: współczynnik redukcyjny r (podany albo przyjęty)
+        wspolczynnik_r_przyjety: ``True`` — r = 1 przyjęte (dana ESTIMATED)
+        prad_uziomowy_a: I_E = r·I_odn
+        rezystancja_uziomu_ohm: R_E (``None`` — nieznana)
+        napiecie_uziomowe_v: U_E = R_E·I_E (``None`` przy nieznanym R_E)
+        czas_trwania_zwarcia_s: t_F (``None`` — żadna funkcja modelu nie wyłącza zwarcia)
     """
 
     project_name: str
     case_name: str
     run_timestamp: datetime
     solver_version: str
-    fault_location: str | None = None
-    fault_type: str | None = None
-    earthing_mode: str | None = None
-    u0_v: float | None = None
-    z_e_ohm: float | None = None
-    i_u_a: float | None = None
-    i_p_a: float | None = None
-    r_u_ohm: float | None = None
+    stacja_pl: str
+    punkt_pl: str
+    sposob_pl: str
+    wzor_pradu_latex: str
+    prad_zwarcia_a: float
+    prad_dlawika_a: float | None
+    prad_odniesienia_a: float
+    wspolczynnik_r: float
+    wspolczynnik_r_przyjety: bool
+    prad_uziomowy_a: float
+    rezystancja_uziomu_ohm: float | None
+    napiecie_uziomowe_v: float | None
+    czas_trwania_zwarcia_s: float | None

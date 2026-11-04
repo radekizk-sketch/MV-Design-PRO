@@ -604,3 +604,194 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
         slad=tuple(slad),
         punkty_bez_drogi_zerowej=bez_drogi,
     )
+
+
+# ---------------------------------------------------------------------------
+# Uziemienie stacji: prąd uziomowy I_E i napięcie uziomowe U_E (PN-EN 50522)
+# ---------------------------------------------------------------------------
+
+#: Sposób pracy punktu neutralnego sieci zerowej stacji wobec wiersza tablicy 1 PN-EN 50522.
+SposobPracyUziemienia = Literal[
+    "IZOLOWANA",
+    "KOMPENSOWANA_Z_DLAWIKIEM_W_STACJI",
+    "KOMPENSOWANA_BEZ_DLAWIKA_W_STACJI",
+    "UZIEMIONA_MALA_IMPEDANCJA",
+]
+ETYKIETY_SPOSOBU_UZIEMIENIA_PL: dict[str, str] = {
+    "IZOLOWANA": "sieć z izolowanym punktem neutralnym",
+    "KOMPENSOWANA_Z_DLAWIKIEM_W_STACJI": "sieć kompensowana, dławik w tej stacji",
+    "KOMPENSOWANA_BEZ_DLAWIKA_W_STACJI": "sieć kompensowana, dławik poza tą stacją",
+    "UZIEMIONA_MALA_IMPEDANCJA": "sieć z punktem neutralnym uziemionym przez małą impedancję",
+}
+#: Wzór prądu uziomowego wiersza (LaTeX) — prąd odniesienia z rozwiązania sieci zerowej.
+WZORY_PRADU_UZIOMOWEGO_LATEX: dict[str, str] = {
+    "IZOLOWANA": r"I_E = r\cdot I_C",
+    "KOMPENSOWANA_Z_DLAWIKIEM_W_STACJI": r"I_E = r\cdot\sqrt{I_L^2 + I_{Res}^2}",
+    "KOMPENSOWANA_BEZ_DLAWIKA_W_STACJI": r"I_E = r\cdot I_{Res}",
+    "UZIEMIONA_MALA_IMPEDANCJA": r"I_E = r\cdot I''_{k1}",
+}
+PODSTAWA_PRADU_UZIOMOWEGO = "PN-EN 50522:2011, tablica 1 (prądy miarodajne dla uziemień)"
+
+
+@dataclass(frozen=True)
+class DaneUziomuStacji:
+    """Uziom stacji: węzły SN stacji (graf przed scaleniem łącznikami), rezystancja uziemienia
+    R_E (``None`` — nieznana) i współczynnik redukcyjny r (podany albo przyjęty)."""
+
+    stacja_ref: str
+    nazwa_pl: str
+    wezly: frozenset[str]
+    rezystancja_ohm: float | None
+    wspolczynnik_r: float
+
+
+@dataclass(frozen=True)
+class WynikUziemieniaStacji:
+    stacja_ref: str
+    nazwa_pl: str
+    punkt_ref: str
+    nazwa_punktu_pl: str
+    stan: StanWymuszenia
+    sposob: SposobPracyUziemienia
+    prad_zwarcia_a: float
+    prad_dlawika_a: float | None
+    prad_odniesienia_a: float
+    wspolczynnik_r: float
+    prad_uziomowy_a: float
+    rezystancja_uziomu_ohm: float | None
+    napiecie_uziomowe_v: float | None
+    wzor_latex: str
+    slad: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stacja_ref": self.stacja_ref,
+            "nazwa_pl": self.nazwa_pl,
+            "punkt_ref": self.punkt_ref,
+            "nazwa_punktu_pl": self.nazwa_punktu_pl,
+            "stan": self.stan,
+            "sposob": self.sposob,
+            "sposob_pl": ETYKIETY_SPOSOBU_UZIEMIENIA_PL[self.sposob],
+            "prad_zwarcia_a": self.prad_zwarcia_a,
+            "prad_dlawika_a": self.prad_dlawika_a,
+            "prad_odniesienia_a": self.prad_odniesienia_a,
+            "wspolczynnik_r": self.wspolczynnik_r,
+            "prad_uziomowy_a": self.prad_uziomowy_a,
+            "rezystancja_uziomu_ohm": self.rezystancja_uziomu_ohm,
+            "napiecie_uziomowe_v": self.napiecie_uziomowe_v,
+            "wzor_latex": self.wzor_latex,
+            "slad": dict(self.slad),
+        }
+
+
+def _sposob_skladowej(
+    skladowa: SkladowaSieciZerowej, dlawik_w_stacji: bool
+) -> SposobPracyUziemienia:
+    """Wiersz tablicy 1 z punktów neutralnych składowej sieci zerowej (bez zgadywania: typ
+    każdego punktu neutralnego jest daną modelu). Punkt uziemiony małą impedancją (rezystor
+    albo bezpośrednio) rozstrzyga — prąd zwarcia zamyka się przez niego."""
+    typy = {typ for _, typ in skladowa.punkty_neutralne}
+    if typy & {"resistor_grounded", "directly_grounded"}:
+        return "UZIEMIONA_MALA_IMPEDANCJA"
+    if "petersen_coil" in typy:
+        return (
+            "KOMPENSOWANA_Z_DLAWIKIEM_W_STACJI"
+            if dlawik_w_stacji
+            else "KOMPENSOWANA_BEZ_DLAWIKA_W_STACJI"
+        )
+    return "IZOLOWANA"
+
+
+def uziemienia_stacji(
+    wynik: WynikDoziemienia,
+    wejscie: WejscieDoziemienia,
+    stacje: Sequence[DaneUziomuStacji],
+) -> tuple[WynikUziemieniaStacji, ...]:
+    """Prąd uziomowy I_E i napięcie uziomowe U_E = R_E·I_E każdej stacji przy zwarciu
+    doziemnym w jej węźle SN (PN-EN 50522, tablica 1), z TEGO SAMEGO rozwiązania sieci zerowej,
+    które zasila ocenę zabezpieczeń.
+
+    Prąd odniesienia wiersza: sieć izolowana — prąd pojemnościowy zwarcia I_C = |I_F|; sieć
+    kompensowana — prąd resztkowy I_Res = |I_F| (składowa czynna i rozstrojenie, a w stanie po
+    wymuszeniu AWSC także składowa wymuszona), z dławikiem w stacji ``√(I_L² + I_Res²)`` z
+    prądem dławików tej stacji I_L z rozwiązania; sieć uziemiona małą impedancją — I″k1 = |I_F|.
+    Stacja ma kilka węzłów SN albo punkt ma dwa stany wymuszenia → wynik o największym I_E
+    (miarodajny dla uziomu)."""
+    punkty_wezla = {p.punkt_ref: p.wezel for p in wejscie.punkty}
+    dlawiki = {
+        b.element_ref: b.wezel
+        for b in wejscie.boczniki
+        if b.punkt_neutralny is not None and b.punkt_neutralny.typ == "petersen_coil"
+    }
+    skladowe = {s.numer: s for s in wynik.skladowe}
+    wyniki: list[WynikUziemieniaStacji] = []
+    for stacja in stacje:
+        if not (0.0 < stacja.wspolczynnik_r <= 1.0):
+            raise OdmowaDanychError(
+                f"Współczynnik redukcyjny r stacji {stacja.nazwa_pl} = {stacja.wspolczynnik_r!r} "
+                "spoza przedziału (0; 1]"
+            )
+        dlawiki_stacji = sorted(ref for ref, wezel in dlawiki.items() if wezel in stacja.wezly)
+        kandydaci: list[WynikUziemieniaStacji] = []
+        for punkt in wynik.punkty:
+            if punkty_wezla.get(punkt.punkt_ref) not in stacja.wezly:
+                continue
+            skladowa = skladowe[punkt.skladowa]
+            sposob = _sposob_skladowej(skladowa, dlawik_w_stacji=bool(dlawiki_stacji))
+            i_f = abs(punkt.prad_doziemny_a)
+            prady_n = dict(punkt.prady_punktow_neutralnych_a)
+            i_l: float | None = None
+            if sposob == "KOMPENSOWANA_Z_DLAWIKIEM_W_STACJI":
+                i_l = float(sum(abs(prady_n.get(ref, 0j)) for ref in dlawiki_stacji))
+                i_odn = math.sqrt(i_l * i_l + i_f * i_f)
+            else:
+                i_odn = i_f
+            i_e = stacja.wspolczynnik_r * i_odn
+            u_e = stacja.rezystancja_ohm * i_e if stacja.rezystancja_ohm is not None else None
+            kandydaci.append(
+                WynikUziemieniaStacji(
+                    stacja_ref=stacja.stacja_ref,
+                    nazwa_pl=stacja.nazwa_pl,
+                    punkt_ref=punkt.punkt_ref,
+                    nazwa_punktu_pl=punkt.nazwa_pl,
+                    stan=punkt.stan,
+                    sposob=sposob,
+                    prad_zwarcia_a=i_f,
+                    prad_dlawika_a=i_l,
+                    prad_odniesienia_a=i_odn,
+                    wspolczynnik_r=stacja.wspolczynnik_r,
+                    prad_uziomowy_a=i_e,
+                    rezystancja_uziomu_ohm=stacja.rezystancja_ohm,
+                    napiecie_uziomowe_v=u_e,
+                    wzor_latex=WZORY_PRADU_UZIOMOWEGO_LATEX[sposob],
+                    slad={
+                        "key": f"uziemienie[{stacja.stacja_ref}]",
+                        "title": f"Prąd i napięcie uziomowe stacji {stacja.nazwa_pl}",
+                        "formula_latex": WZORY_PRADU_UZIOMOWEGO_LATEX[sposob]
+                        + r";\quad U_E = R_E\cdot I_E",
+                        "inputs": {
+                            "punkt_ref": punkt.punkt_ref,
+                            "stan": punkt.stan,
+                            "i_f_a": i_f,
+                            "i_l_a": i_l,
+                            "dlawiki": dlawiki_stacji,
+                            "r": stacja.wspolczynnik_r,
+                            "r_e_ohm": stacja.rezystancja_ohm,
+                        },
+                        "substitution": (
+                            f"I_E = {stacja.wspolczynnik_r:.4g}·{i_odn:.4g} A = {i_e:.4g} A"
+                            + (
+                                f"; U_E = {stacja.rezystancja_ohm:.4g} Ω·{i_e:.4g} A = "
+                                f"{u_e:.4g} V"
+                                if u_e is not None and stacja.rezystancja_ohm is not None
+                                else "; R_E nieznane — U_E nieobliczone"
+                            )
+                        ),
+                        "result": {"i_e_a": i_e, "u_e_v": u_e},
+                        "notes": PODSTAWA_PRADU_UZIOMOWEGO,
+                    },
+                )
+            )
+        if kandydaci:
+            wyniki.append(max(kandydaci, key=lambda k: (k.prad_uziomowy_a, k.punkt_ref, k.stan)))
+    return tuple(wyniki)

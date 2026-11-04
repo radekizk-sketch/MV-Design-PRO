@@ -239,3 +239,61 @@ def ustaw_funkcje(
             {"protection_ref": sterownik_ref, "grupa": 1, "nastawy": nastawy},
         )
     )
+
+
+NASTAWY_51N_POLA: dict[str, Any] = {
+    "prog": 5.0,
+    "jednostka_progu": "A_PIERWOTNY",
+    "krzywa": "DT",
+    "zwloka_s": 0.8,
+}
+NASTAWY_51N_ODEJSCIA: dict[str, Any] = {**NASTAWY_51N_POLA, "zwloka_s": 0.3}
+
+
+def nastawy_67n(sposob: SposobPracy) -> dict[str, Any]:
+    """67N pola: kryterium sin φ (90°) w sieci izolowanej, cos φ (0°) w pozostałych."""
+    return {
+        "prog": 2.0,
+        "jednostka_progu": "A_PIERWOTNY",
+        "krzywa": "DT",
+        "zwloka_s": 0.5,
+        "kierunek": "DO_LINII",
+        "kat_charakterystyczny_deg": 90.0 if sposob == "IZOLOWANY" else 0.0,
+    }
+
+
+def scena_z_nastawami(sposob: SposobPracy) -> dict[str, Any]:
+    """Scena z odejściem ST1, 51N i 67N w polach GPZ oraz 51N w odejściu ST1."""
+    enm = zbuduj_scene(sposob)
+    enm, st1 = dodaj_odejscie_stacji(enm)
+    for pole in pola_liniowe(enm):
+        enm = ustaw_funkcje(
+            enm,
+            sterownik_pola(enm, pole["ref_id"])["ref_id"],
+            {"51N": NASTAWY_51N_POLA, "67N": nastawy_67n(sposob)},
+        )
+    return ustaw_funkcje(enm, st1, {"51N": NASTAWY_51N_ODEJSCIA})
+
+
+def ustaw_uziom_stacji(
+    enm: dict[str, Any],
+    *,
+    rezystancja_ohm: float | None,
+    wspolczynnik_r: float | None,
+) -> dict[str, Any]:
+    """Dane uziomu stacji GPZ operacją `update_element_parameters` (ścieżka projektanta)."""
+    stacja = next(s for s in enm["substations"] if s.get("gpz_sections"))
+    parametry: dict[str, Any] = {}
+    if rezystancja_ohm is not None:
+        parametry["uziom_rezystancja_ohm"] = rezystancja_ohm
+    if wspolczynnik_r is not None:
+        parametry["uziom_wspolczynnik_redukcji"] = wspolczynnik_r
+    if not parametry:
+        return enm
+    return ok(
+        op(
+            enm,
+            "update_element_parameters",
+            {"element_ref": stacja["ref_id"], "parameters": parametry},
+        )
+    )

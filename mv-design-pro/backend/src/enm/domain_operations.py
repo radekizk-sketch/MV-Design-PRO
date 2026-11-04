@@ -191,7 +191,7 @@ from .tor_pola import (
     pola_z_zaciskiem_szyny,
     wolne_pole_szyny,
 )
-from .uziemienie import blad_konfiguracji_uziemienia
+from .uziemienie import POLA_UZIOMU_STACJI, blad_konfiguracji_uziemienia, odmowa_uziomu_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
@@ -11002,6 +11002,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
                 # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
                 "station_type",
+                # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (R_E i współczynnik r) — dana
+                # projektowa oceny uziemienia; kontrola wartości niżej.
+                *POLA_UZIOMU_STACJI,
             },
             # Bateria kondensatorów: nazwa i stan łącznika baterii (`status`). Qn/Un zmienia
             # WYŁĄCZNIE przypisanie innej pozycji katalogu (`assign_catalog_to_element`) —
@@ -11037,6 +11040,11 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         odmowa_baterii = odmowa_parametrow_baterii(enm, {**current_element, **parameters})
         if odmowa_baterii is not None:
             return _error_response(odmowa_baterii, "params.invalid_value")
+
+    if coll == "substations":
+        odmowa_uziomu = odmowa_uziomu_stacji(parameters)
+        if odmowa_uziomu is not None:
+            return _error_response(odmowa_uziomu, "params.invalid_value")
 
     # Deklaracja rodzaju stacji: zmiana wyłącznie w obrębie stacji SN/nN (deklaracja funkcji
     # `mv_lv` albo rodzaj topologiczny) — rozdzielnia źródłowa i rozdzielnica nN mają inną

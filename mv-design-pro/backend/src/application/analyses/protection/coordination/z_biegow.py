@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Any
 from uuid import UUID
 
@@ -39,6 +40,7 @@ from enm.canonical_analysis import (
     build_branch_results,
     get_run,
     ocen_zabezpieczenia_biegu,
+    ocen_zabezpieczenia_ziemnozwarciowe_biegu,
 )
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.mapping import map_enm_to_network_graph
@@ -120,12 +122,15 @@ def koordynacja_z_biegow(
 
     ocena_max = ocen_zabezpieczenia_biegu(model, bieg_max, uow_factory=uow_factory)
     ocena_min = ocen_zabezpieczenia_biegu(model, bieg_min, uow_factory=uow_factory)
-    if not ocena_max.nastawy:
+    # Ocena ziemnozwarciowa i uziemienia — ta sama funkcja co bieg oceny zabezpieczeń
+    # (jedna ścieżka); stopniowanie funkcji ziemnozwarciowych jest jej częścią.
+    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(model, bieg_max)
+    if not ocena_max.nastawy and not ziemne.funkcje:
         raise OdmowaKoordynacji(
             "BRAK_ZABEZPIECZEN_W_MODELU",
-            "Model nie ma żadnego zabezpieczenia nadprądowego — koordynacji nie ma czego "
-            "sprawdzać. Dodaj zabezpieczenie w polu albo przy wyłączniku liniowym i wpisz jego "
-            "nastawy.",
+            "Model nie ma żadnego zabezpieczenia nadprądowego ani ziemnozwarciowego — "
+            "koordynacji nie ma czego sprawdzać. Dodaj zabezpieczenie w polu albo przy "
+            "wyłączniku liniowym i wpisz jego nastawy.",
         )
 
     strefy = {
@@ -198,7 +203,8 @@ def koordynacja_z_biegow(
         sc_run_id_min=str(sc_run_id_min),
         pf_run_id=str(pf_run_id) if pf_run_id else None,
     )
-    return OvercurrentCoordinationAnalyzer(config=config).analyze(wejscie)
+    wynik = OvercurrentCoordinationAnalyzer(config=config).analyze(wejscie)
+    return replace(wynik, ziemnozwarciowe=ziemne.to_dict())
 
 
 __all__ = ["BiegNiemiarodajnyError", "OdmowaKoordynacji", "koordynacja_z_biegow"]

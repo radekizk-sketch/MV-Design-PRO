@@ -575,15 +575,6 @@
       }
     },
     {
-      "area": "STATIONS",
-      "code": "earthing.electrode_data_missing",
-      "fix_navigation": {
-        "focus": "earth_electrode",
-        "panel": "inspector",
-        "tab": "uziemienie"
-      }
-    },
-    {
       "area": "SOURCES",
       "code": "earthing.neutral_grounding_inconsistent",
       "fix_navigation": {
@@ -1589,7 +1580,7 @@
       }
     }
   ],
-  "count": 187,
+  "count": 186,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

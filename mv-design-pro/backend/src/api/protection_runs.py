@@ -119,7 +119,11 @@ class ProtectionResultResponse(BaseModel):
     werdyktu wyjaśnialnego; ``odmowy`` — urządzenia wstrzymane nazwanymi brakami z akcjami
     naprawczymi; ``pominiete`` — urządzenia, których ocena nadprądowa nie dotyczy (z
     przyczyną); ``nastawy`` — rozwiązane nastawy urządzeń (jednostki, przekładnia, zakresy
-    katalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu.
+    katalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu;
+    ``ziemnozwarciowe`` — ocena funkcji ziemnozwarciowych (51N, 67N, Yo>, Go>, Bo>, 32N, 59N,
+    ZAWSC) i uziemień stacji z obliczenia zwarcia doziemnego sieci SN: rekordy werdyktu
+    wyjaśnialnego (``oceny``, ``odmowy``, ``uziemienia``), wynik solvera (``doziemienie``,
+    ``wyniki_uziemien``); ``None`` — bieg sprzed tej oceny.
     """
 
     run_id: str
@@ -138,6 +142,7 @@ class ProtectionResultResponse(BaseModel):
     rewizja_biegu: int | None
     rewizja_biezaca: int | None
     zmiany_od_biegu: list[dict[str, Any]]
+    ziemnozwarciowe: dict[str, Any] | None = None
 
 
 class ProtectionTraceResponse(BaseModel):
@@ -375,6 +380,7 @@ def get_protection_run_results(
         "created_at": (
             run.finished_at.isoformat() if run.finished_at else run.created_at.isoformat()
         ),
+        "ziemnozwarciowe": result.get("ziemnozwarciowe"),
         **_swiezosc_wyniku(run, uow_factory),
     }
 

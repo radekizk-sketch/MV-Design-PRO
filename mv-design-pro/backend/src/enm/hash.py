@@ -153,6 +153,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # listy. `None` = tabliczka niedostarczona (każdy przekładnik sprzed karty) — poza odciskiem;
     # podana lista jest treścią modelu (dobór obciążenia obwodów wtórnych).
     "measurements": ("rdzenie", "uzwojenia"),
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (R_E, współczynnik r). `None` = dana
+    # nieznana (stacja sprzed karty) — poza odciskiem; podana zmienia ocenę uziemienia.
+    "substations": ("uziom_rezystancja_ohm", "uziom_wspolczynnik_redukcji"),
     # + karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie
     # (układ połączeń, stopnie, tolerancja pojemności, dławik ograniczający, rezystory
     # rozładowcze). `None` = parametr nienadany przez projektanta (rozstrzyga typ katalogowy

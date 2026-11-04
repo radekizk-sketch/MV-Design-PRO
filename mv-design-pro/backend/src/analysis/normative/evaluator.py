@@ -147,9 +147,9 @@ def _evaluate_rule(
             config,
         )
     if rule.rule_id == "NR_P19_001":
-        return _evaluate_touch_voltage_rule(
+        return _evaluate_earth_potential_rule(
             rule,
-            key_results.get("u_touch_v"),
+            key_results.get("u_e_v"),
             target_id,
             config,
         )
@@ -287,7 +287,7 @@ def _evaluate_selectivity_rule(
     )
 
 
-def _evaluate_touch_voltage_rule(
+def _evaluate_earth_potential_rule(
     rule: NormativeRule,
     value: ProofValue | None,
     target_id: str,
@@ -298,8 +298,8 @@ def _evaluate_touch_voltage_rule(
 
     observed = float(value.value)
     unit = value.unit
-    warn = config.touch_voltage_warn_v
-    fail = config.touch_voltage_fail_v
+    warn = config.earth_potential_warn_v
+    fail = config.earth_potential_fail_v
 
     if warn is None and fail is None:
         return NormativeItem(
@@ -313,8 +313,8 @@ def _evaluate_touch_voltage_rule(
             limit_value=None,
             limit_unit=unit,
             margin=None,
-            why_pl="Brak limitów napięcia dotykowego w konfiguracji.",
-            requires=("touch_voltage_warn_v", "touch_voltage_fail_v"),
+            why_pl="Brak limitów napięcia uziomowego w konfiguracji.",
+            requires=("earth_potential_warn_v", "earth_potential_fail_v"),
         )
 
     warn_value = warn if warn is not None else fail

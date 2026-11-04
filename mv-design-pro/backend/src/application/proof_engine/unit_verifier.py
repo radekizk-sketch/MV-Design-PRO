@@ -435,19 +435,19 @@ class UnitVerifier:
         },
         # P19: Earthing / Ground Fault (SN)
         "EQ_EARTH_001": {
-            "rule": "V / Ω = A",
-            "inputs": {"U_{0}": "V", "Z_{E}": "Ω"},
+            "rule": "— · A = A",
+            "inputs": {"r": "—", "I_{odn}": "A"},
             "output": "A",
         },
         "EQ_EARTH_002": {
-            "rule": "A + A = A",
-            "inputs": {"I_{u}": "A", "I_{p}": "A"},
-            "output": "A",
+            "rule": "Ω · A = V",
+            "inputs": {"R_{E}": "Ω", "I_{E}": "A"},
+            "output": "V",
         },
         "EQ_EARTH_003": {
-            "rule": "A · Ω = V",
-            "inputs": {"I_{u}": "A", "R_{u}": "Ω"},
-            "output": "V",
+            "rule": "V / A = Ω",
+            "inputs": {"U_{Tp}": "V", "I_{E}": "A"},
+            "output": "Ω",
         },
     }
 
