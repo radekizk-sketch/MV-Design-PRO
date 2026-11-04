@@ -43,7 +43,8 @@
  */
 
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
-import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, czySymbolQet, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { QET_SYMBOLE_POLA_SN } from '../cad/qet/qetPoleSn';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor, PortAparatuPolaView } from '../../v2/model/widokPolStacji';
@@ -1225,6 +1226,24 @@ export function ukladBocznyPola(
 export interface OdczepBoczny {
   readonly kotwica: { readonly x: number; readonly y: number };
   readonly celX: number;
+  /** Zwis aparatu bocznego pod kotwicą (`zwisAparatuBocznego`): odczep kończy się pionem
+   *  w dół o tyle do portu N aparatu. */
+  readonly zwis?: number;
+}
+
+/**
+ * Zwis aparatu bocznego pola pod węzłem odczepu [px świata] — uwaga właściciela 2026-11-04
+ * (odbiór B-02 pola Z.10, uziemnik Q8; wzorzec synoptyki e²TANGO, pole „Bank 1"): odgałęzienie
+ * do łącznika z kaflem stanu wychodzi z węzła na torze, biegnie POZIOMO, potem PIONOWO w dół
+ * i wchodzi wprost w górny styk aparatu. Gdy port N aparatu leżał na wysokości węzła, odcinek
+ * poziomy biegł wzdłuż górnej krawędzi kafla (wrażenie wejścia pod kafel). Aparat z kaflem
+ * stanu wisi więc dwa rastry pod węzłem; aparat bez kafla — na wysokości węzła (przewód wchodzi
+ * w port glifu, bez krawędzi kafla). JEDNA funkcja położenia aparatu (`compose/gpz.ts`,
+ * `compose/station.ts`, kolumny odgałęzień), odcinka odczepu (`odcinkiOdczepowBocznych`)
+ * i gabarytu pola (`bayApparatusPlanFootprint`).
+ */
+export function zwisAparatuBocznego(symbolId: SymbolId): number {
+  return czySymbolQet(symbolId) && QET_SYMBOLE_POLA_SN[symbolId].kafel !== null ? 2 * GRID : 0;
 }
 
 /**
@@ -1239,8 +1258,8 @@ export interface OdczepBoczny {
  */
 export function odcinkiOdczepowBocznych(
   odczepy: readonly OdczepBoczny[],
-): readonly (readonly [{ readonly x: number; readonly y: number }, { readonly x: number; readonly y: number }])[] {
-  return odczepy.map(({ kotwica, celX }) => {
+): readonly (readonly { readonly x: number; readonly y: number }[])[] {
+  return odczepy.map(({ kotwica, celX, zwis = 0 }) => {
     const kierunek = Math.sign(celX - kotwica.x);
     let startX = kotwica.x;
     for (const inny of odczepy) {
@@ -1253,7 +1272,8 @@ export function odcinkiOdczepowBocznych(
     return [
       { x: startX, y: kotwica.y },
       { x: celX, y: kotwica.y },
-    ] as const;
+      ...(zwis > 0 ? [{ x: celX, y: kotwica.y + zwis }] : []),
+    ];
   });
 }
 
@@ -1281,18 +1301,29 @@ export interface BayApparatusPlanFootprint {
  * głównego (pomiar do przekaźnika pola) biegną pod odgałęzieniem, nie przez nie. Odgałęzienie
  * od węzła szyny (`afterMainIndex = -1`) wisi równolegle do toru od szyny i nie przesuwa toru
  * (przesunięcie odsunęłoby cały tor od szyny o wysokość odgałęzienia).
+ * Ta sama zasada dla ZWISU aparatu bocznego (`zwisAparatuBocznego`, uziemnik Q8 z kaflem stanu
+ * wisi dwa rastry pod węzłem odczepu): aparat toru za kotwicą aparatu bocznego stoi o zwis niżej,
+ * więc zwisający aparat boczny ma obok siebie to samo miejsce co przed zwisem, a linie wtórne
+ * aparatów toru (pomiar przekładnika T1 do przekaźnika) nadal biegną pod nim, nie przez niego.
+ * Aparat boczny od węzła szyny (`afterMainIndex = -1`) — jak odgałęzienie: toru nie przesuwa.
  */
 export function polozeniaToruGlownego(
-  plan: Pick<BayApparatusPlan, 'mainPath'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
+  plan: Pick<BayApparatusPlan, 'mainPath'> &
+    Partial<Pick<BayApparatusPlan, 'galezie'>> & {
+      readonly laterals?: readonly Pick<LateralApparatusPlanEntry, 'symbolId' | 'afterMainIndex'>[];
+    },
 ): { readonly y: readonly number[]; readonly height: number } {
   const galezie = plan.galezie ?? [];
+  const laterals = plan.laterals ?? [];
   const y: number[] = [];
   let szczyt = 0;
   plan.mainPath.forEach((symbolId, i) => {
     y.push(szczyt);
     const dol = szczyt + SYMBOL_DEFS[symbolId].height;
+    // Zwis aparatów bocznych zawieszonych na porcie S tego aparatu (największy z nich).
+    const zwis = Math.max(0, ...laterals.filter((lat) => lat.afterMainIndex === i).map((lat) => zwisAparatuBocznego(lat.symbolId)));
     // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego.
-    let nastepny = dol + APPARATUS_STACK_VERTICAL_GAP;
+    let nastepny = dol + APPARATUS_STACK_VERTICAL_GAP + zwis;
     for (const galaz of galezie) {
       // Pas odgałęzienia niesie wiersz podpisu (t4, wysokość spoza rastru) — położenie aparatu
       // toru przyciągnięte w górę do siatki (aparaty i porty toru zawsze na rastrze).
@@ -1309,7 +1340,7 @@ export function polozeniaToruGlownego(
 /** Y kotwicy względem szczytu stosu = dół aparatu `afterMainIndex` toru głównego
  *  (`polozeniaToruGlownego`, port S); dla -1 → 0 (port N). */
 function kotwicaWzglednaY(
-  plan: Pick<BayApparatusPlan, 'mainPath'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
+  plan: Parameters<typeof polozeniaToruGlownego>[0],
   afterMainIndex: number,
 ): number {
   if (afterMainIndex < 0) return 0;
@@ -1340,7 +1371,7 @@ export function bayApparatusPlanFootprint(
   plan.laterals.forEach((lat, i) => {
     const def = SYMBOL_DEFS[lat.symbolId];
     lateralExtension = Math.max(lateralExtension, uklad.boczne[i] + def.width);
-    height = Math.max(height, anchorRelY(lat.afterMainIndex) + def.height);
+    height = Math.max(height, anchorRelY(lat.afterMainIndex) + zwisAparatuBocznego(lat.symbolId) + def.height);
   });
   galezie.forEach((galaz, i) => {
     const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
@@ -1411,14 +1442,15 @@ export function ukladGalezi(
     const zaczep =
       lat.afterMainIndex >= 0 ? portKolumny(kolumna[lat.afterMainIndex], 'S') : portKolumny(kolumna[0], 'N');
     const x = prawaKolumnyX + odstepy[i];
-    boczne.push({ sequenceIndex: lat.sequenceIndex, symbolId: lat.symbolId, x, y: zaczep.y, boczny: true });
+    const zwis = zwisAparatuBocznego(lat.symbolId);
+    boczne.push({ sequenceIndex: lat.sequenceIndex, symbolId: lat.symbolId, x, y: zaczep.y + zwis, boczny: true });
     const kotwicaBocznego =
       lat.afterMainIndex >= 0
         ? urzadzenie(galaz.plan.mainSequenceIndices[lat.afterMainIndex])
         : urzadzenie(galaz.plan.mainSequenceIndices[0]);
     if (!czyOdgalezienieNaWezleKotwicy(kotwicaBocznego, lat.afterMainIndex >= 0, urzadzenie(lat.sequenceIndex))) return;
     const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
-    przewody.push([zaczep, { x: x + north.x, y: zaczep.y }]);
+    przewody.push([zaczep, { x: x + north.x, y: zaczep.y }, ...(zwis > 0 ? [{ x: x + north.x, y: zaczep.y + zwis }] : [])]);
   });
   const pierwszy = kolumna[0];
   const north = pierwszy ? portKolumny(pierwszy, 'N') : null;

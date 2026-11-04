@@ -5,15 +5,10 @@
  * własnej tabeli kodów — każdy kod `Bay.protection_codes` ma wpis w słowniku backendu (walidator
  * modelu), a tu tylko go odczytujemy.
  *
- * Dwóch konsumentów jednej klasyfikacji (karta UX-04/POLE-LINIOWE-WZORZEC):
- *  · blok przekaźnika na schemacie — co najwyżej `MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE` kodów
- *    funkcji rodzaju ZABEZPIECZENIE i znacznik „+N" pozostałych funkcji pola; automatyka,
- *    blokady i zabezpieczenia technologiczne nie stoją na kanwie
- *    (`compose/protectionMarking.ts::kodyBlokuPrzekaznika`);
- *  · sekcja „Zabezpieczenia i automatyka" karty pola w inspektorze — wiersz na KAŻDĄ funkcję
- *    (kod IEEE C37.2, zapis z rysunku, nazwa polska, rodzaj).
- * Ten sam predykat (`czyFunkcjaNaSchemacie`) rozstrzyga, co jest na kanwie, a co liczy „+N" —
- * para predykatów z jednego źródła (CLAUDE.md, reguła KLASA pkt 3).
+ * Konsument: sekcja „Zabezpieczenia i automatyka" karty pola w inspektorze — wiersz na KAŻDĄ
+ * funkcję (kod IEEE C37.2, zapis z rysunku, nazwa polska, rodzaj). Blok przekaźnika na schemacie
+ * rysuje WSZYSTKIE kody pola bez klasyfikacji i bez licznika (odbiór B-02 właściciela 2026-11-04,
+ * korekta: „napis +3 ma zniknąć całkowicie"; `compose/protectionMarking.ts`).
  */
 import slownik from './slownikFunkcjiEaz.json';
 
@@ -60,33 +55,3 @@ export const RODZAJ_FUNKCJI_EAZ_PL: Readonly<Record<RodzajFunkcjiEaz, string>> =
   BLOKADA: 'blokada',
   TECHNOLOGICZNE: 'zabezpieczenie technologiczne',
 };
-
-/** Najwięcej kodów funkcji zabezpieczeń w bloku przekaźnika na schemacie. */
-export const MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE = 4;
-
-/**
- * Czy funkcja może stać na kanwie: rodzaj ZABEZPIECZENIE. Kod spoza słownika zostaje na kanwie —
- * to dana modelu, której nie umiemy sklasyfikować; ukrycie jej byłoby cichym pominięciem.
- */
-export function czyFunkcjaNaSchemacie(kod: string): boolean {
-  const f = funkcjaEaz(kod);
-  return f === null || f.rodzaj === 'ZABEZPIECZENIE';
-}
-
-export interface PodzialFunkcjiNaSchemacie {
-  /** Kody narysowane w bloku przekaźnika — kolejność danych modelu. */
-  readonly naSchemacie: readonly string[];
-  /** Funkcje pola poza kanwą (nadmiar zabezpieczeń i każda automatyka/blokada/technologiczne). */
-  readonly pozaSchematem: readonly string[];
-}
-
-/** Podział funkcji pola na blok przekaźnika i resztę (jedno źródło dla rysunku i „+N"). */
-export function podzialFunkcjiNaSchemacie(kody: readonly string[]): PodzialFunkcjiNaSchemacie {
-  const naSchemacie: string[] = [];
-  const pozaSchematem: string[] = [];
-  for (const kod of kody) {
-    if (czyFunkcjaNaSchemacie(kod) && naSchemacie.length < MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE) naSchemacie.push(kod);
-    else pozaSchematem.push(kod);
-  }
-  return { naSchemacie, pozaSchematem };
-}

@@ -9,8 +9,9 @@
  * `SldCanvasV3` — w czterech skalach: dolny brzeg LOD1 (0,51, podłoga znacznika 8 px), wejście
  * w LOD1 (0,69), dolna granica LOD2 (1,02) i podgląd ×3 (LOD2). Wiersze: wyłącznik (bez i z napędem M), odłącznik,
  * rozłącznik (sam i z bezpiecznikami), uziemnik, łącznik trójpołożeniowy (bez i z napędem).
- * Kolumny: zamknięty, otwarty, uziemiony, nieustalony, awaria, brak stanu w modelu. Człon wysuwny
- * nie ma wiersza — model go nie zna (luka opisana w §11.14).
+ * Kolumny: zamknięty, otwarty, uziemiony, nieustalony, awaria, brak stanu w modelu. Wiersze
+ * wyłącznika wysuwnego: trzy kafle (człon ˄˄, wyłącznik ×, człon ˅˅); kafle członu w stanie
+ * nieustalonym — model ENM nie niesie położenia członu (`GlyphProps.stanCzlonu`, §11.20).
  *
  * Wynik: `docs/uiux/zrzuty/ux04-pole-liniowe/tablica-lacznikow-rodzaj-x-stan-<motyw>.png`.
  * Determinizm: stała kolejność, stała czcionka schematu, `deviceScaleFactor` 1 (piksel CSS =

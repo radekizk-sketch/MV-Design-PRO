@@ -92,6 +92,7 @@ import {
   czyElementModeluNaWyjsciu,
   czyOdgalezienieNaWezleKotwicy,
   odcinkiOdczepowBocznych,
+  zwisAparatuBocznego,
   type OdczepBoczny,
   czyPoleNiesiePorty,
   czyTorOdSzyny,
@@ -120,13 +121,16 @@ import {
   ctRatingAnnotationsWidth,
   czyPrzekaznikZPowiazaniamiObwodow,
   fullCodesListLines,
-  kodyWOkreguBlokuPrzekaznika,
   protectionAnnotationColumnWidth,
   odniesieniaPrzekaznikaPola,
-  kolumnyKodowPozaOkregiem,
+  kolumnyKodowPodOkregiem,
+  liczbaWejscPomiarowychZajetych,
+  liczbaZrodelPomiaruPola,
+  odsuniecieKodowPodOkregiem,
+  pionWejsciaPomiarowego,
+  szerokoscBlokuPodOkregiem,
   szerokoscKolumnyKodow,
   ODSTEP_KOLUMN_KODOW_EAZ,
-  szerokoscListyPoPrawejPrzekaznika,
   szerokoscPrzekaznikaZPowiazaniami,
   vtMountingAnnotationsWidth,
   protectionDeviceCenter,
@@ -136,6 +140,7 @@ import {
   type PlacedStackDevice,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
+import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import {
   brakiTopologiiFunkcjiPola,
   protectionTopologyGapCode,
@@ -840,11 +845,13 @@ function buildFieldStack(
         y: anchorInstance.y + anchorPortDef.y,
       };
       const lx = mainRightX + odstepy[numerOdgalezienia];
-      const ports = portsInWorld(spec.symbolId, lx, anchor.y);
+      // Aparat z kaflem stanu wisi pod węzłem odczepu (`zwisAparatuBocznego`).
+      const zwis = zwisAparatuBocznego(spec.symbolId);
+      const ports = portsInWorld(spec.symbolId, lx, anchor.y + zwis);
       const lateralInstance: ComposedGpzSymbolInstance = {
         symbolId: spec.symbolId,
         x: lx,
-        y: anchor.y,
+        y: anchor.y + zwis,
         ...daneRekordu(spec),
         ports,
         meta: metaPozycji(spec, index),
@@ -864,7 +871,7 @@ function buildFieldStack(
             : czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, spec.device);
         if (!naWezle) return;
       }
-      odczepy.push({ kotwica: anchor, celX: lx + north.x });
+      odczepy.push({ kotwica: anchor, celX: lx + north.x, zwis });
     });
     odcinkiOdczepowBocznych(odczepy).forEach((points) => branchSegments.push({ points }));
   }
@@ -1345,9 +1352,15 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
   const codes = bay.protectionMarking?.codes ?? bay.protectionCodes ?? [];
   if (czyPrzekaznikZPowiazaniamiObwodow(codes, bay.primaryDevices)) {
     // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 6): przekaźnik zwarcie przy polu,
-    // pełna lista kodów po prawej okręgu — ta sama arytmetyka co rysunek
-    // (`adnotacjePolaGpz`, `szerokoscPrzekaznikaZPowiazaniami`).
-    return szerokoscPrzekaznikaZPowiazaniami(codes, odniesieniaPrzekaznikaPola(bay, codes)) + pasmoAdnotacjiCtVt(bay);
+    // piony wejść pomiarowych na zachód od okręgu i kody funkcji pod okręgiem — ta sama
+    // arytmetyka co rysunek (`adnotacjePolaGpz`, `szerokoscPrzekaznikaZPowiazaniami`).
+    return (
+      szerokoscPrzekaznikaZPowiazaniami(
+        codes,
+        odniesieniaPrzekaznikaPola(bay, codes),
+        liczbaZrodelPomiaruPola(codes, bay.primaryDevices),
+      ) + pasmoAdnotacjiCtVt(bay)
+    );
   }
   return protectionAnnotationColumnWidth({
     protectionMarking: codes.length > 0 ? { codes } : undefined,
@@ -2226,29 +2239,44 @@ function composeGpzPrzebieg(
       markingPola && powiazanyPola && markingPola.tripTarget ? portWtornyWSwiecie(markingPola.tripTarget, 'wylacz') : null;
     const odejsciaPola =
       markingPola && powiazanyPola ? odejsciaLiniiPomiarowych(markingPola.zrodlaPomiaru) : { odejscia: [], bezZacisku: [] };
-    // Odniesienia obwodów spoza pola (źródło 3U₀) i szerokość bloku kodów po prawej okręgu.
+    // Odniesienia obwodów spoza pola (źródło 3U₀).
     const odniesieniaPola = markingPola ? odniesieniaPrzekaznikaPola(bay, markingPola.codes) : [];
-    const listaPoPrawejPola =
-      markingPola && powiazanyPola ? szerokoscListyPoPrawejPrzekaznika(markingPola.codes, odniesieniaPola) : 0;
-    const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
-    // Wysokość okręgu: linia wyłączania pozioma z cewki wyłączającej wyłącznika.
+    const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W) — przekaźnik bez powiązań
+    // Wejście linii wyłączania przekaźnika z powiązaniami — od góry (port wtórny `wylacz`).
+    const wylaczPortDef = SYMBOL_DEFS.protectionRelay.secondaryPorts.find((p) => p.name === 'wylacz')!;
+    // Liczba zajętych wejść pomiarowych (źródła ponad wejścia — `missingData` niżej).
+    const liczbaWejscPola = liczbaWejscPomiarowychZajetych(odejsciaPola.odejscia.length);
+    // Wysokość okręgu: linia wyłączania z cewki wyłączającej wyłącznika biegnie poziomo nad
+    // okrąg i wchodzi do niego od góry o oczko niżej; bez cewki — okrąg na wysokości kotwicy.
     const circleTopY = markingPola
       ? cewkaPola
-        ? cewkaPola.y - linkPortDef.y
+        ? cewkaPola.y + GRID - wylaczPortDef.y
         : snapToGrid(protectionDeviceCenter(markingPola.anchor).y - PROTECTION_ANNOTATION_DIAMETER / 2)
       : 0;
     // Położenie prawe — prawo-wyrównane do rezerwacji kolumny (przekaźnik bez powiązań obwodów
     // wtórnych, model stacji R-2 §17.3; dla przekaźnika z powiązaniami — położenie ostatnie).
-    const polozeniePrawe = snapToGrid(rightX - listaPoPrawejPola - PROTECTION_ANNOTATION_DIAMETER);
-    // Blok przekaźnika z powiązaniami (odbiór B-02 właściciela 2026-11-04 pkt 7): okrąg, po jego
-    // prawej kody funkcji w DWÓCH kolumnach pionowych (`kolumnyKodowPozaOkregiem`), pod lewą
-    // kolumną odniesienia obwodów spoza pola. Ta sama funkcja wyboru położenia i rysunku.
+    const polozeniePrawe = snapToGrid(
+      rightX -
+        (markingPola && powiazanyPola
+          ? szerokoscBlokuPodOkregiem(markingPola.codes, odniesieniaPola)
+          : PROTECTION_ANNOTATION_DIAMETER),
+    );
+    // Blok przekaźnika z powiązaniami (odbiór B-02 właściciela 2026-11-04, korekta wiążąca):
+    // okrąg BEZ kodów, POD nim WSZYSTKIE kody funkcji pola w DWÓCH kolumnach pionowych
+    // (`kolumnyKodowPodOkregiem`) od lewej krawędzi okręgu, pod lewą kolumną odniesienia
+    // obwodów spoza pola. Pierwszy wiersz górną krawędzią na dolnej krawędzi okręgu albo — gdy
+    // zajęte jest wejście dolne — pod pasem jego linii (`odsuniecieKodowPodOkregiem`). Ta sama
+    // funkcja wyboru położenia i rysunku.
     const etykietyBlokuPowiazan = (circleLeftX: number): SimpleAnchoredOwnerInput[] => {
       if (!markingPola || !powiazanyPola) return [];
-      const [lewa, prawa] = kolumnyKodowPozaOkregiem(markingPola.codes);
-      const xLewej = circleLeftX + PROTECTION_ANNOTATION_DIAMETER;
+      const [lewa, prawa] = kolumnyKodowPodOkregiem(markingPola.codes);
+      // Zaczep 'right' odsuwa prostokąt o `GRID` — kotwica o oczko przed krawędzią kolumny.
+      const xLewej = circleLeftX - GRID;
       const xPrawej = xLewej + szerokoscKolumnyKodow(lewa) + ODSTEP_KOLUMN_KODOW_EAZ;
-      const yWiersza = (w: number): number => circleTopY + GRID + w * ODSTEP_WIERSZY_KODOW_EAZ;
+      const gornaKrawedz =
+        circleTopY + PROTECTION_ANNOTATION_DIAMETER + odsuniecieKodowPodOkregiem(liczbaWejscPola);
+      const polowaWiersza = labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS) / 2;
+      const yWiersza = (w: number): number => gornaKrawedz + polowaWiersza + w * ODSTEP_WIERSZY_KODOW_EAZ;
       const komorki = [
         ...lewa.map((kod, w) => ({ kod, x: xLewej, w })),
         ...prawa.map((kod, w) => ({ kod, x: xPrawej, w })),
@@ -2275,18 +2303,23 @@ function composeGpzPrzebieg(
       });
       return wynik;
     };
-    // Linia wyłączania od zaczepu na aparacie docelowym do wejścia `link` okręgu.
+    // Linia wyłączania od zaczepu na aparacie docelowym do wejścia okręgu: przekaźnik
+    // z powiązaniami — od góry (`wylacz`; z cewki poziomo nad okrąg i w dół), bez powiązań —
+    // wejście `link`.
     const liniaWylaczania = (circleLeftX: number): RouteVertex[] | null => {
       if (!markingPola?.tripTarget) return null;
       const targetPort = zaczepLiniiWylaczania(markingPola.tripTarget, cewkaPola);
-      const link = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
-      return cewkaPola
-        ? [{ x: targetPort.x, y: targetPort.y }, link]
-        : [targetPort, { x: link.x, y: targetPort.y }, link];
+      const wejscieDef = powiazanyPola ? wylaczPortDef : linkPortDef;
+      const wejscie = { x: circleLeftX + wejscieDef.x, y: circleTopY + wejscieDef.y };
+      return [{ x: targetPort.x, y: targetPort.y }, { x: wejscie.x, y: targetPort.y }, wejscie];
     };
     // Linie pomiarowe z powiązań modelu: każde źródło (kolejność od najwyższego odejścia) z zacisku
     // wtórnego do WŁASNEGO wejścia przekaźnika (`WEJSCIA_POMIAROWE_PRZEKAZNIKA`); `null` w miejscu
     // źródła ponad liczbę wejść.
+    // Pion źródła na zachód od okręgu (`pionWejsciaPomiarowego`: źródło wyższe dalej od okręgu);
+    // wejście zachodnie — z pionu poziomo do okręgu, wejście dolne (`pomiar`) — z pionu pasem
+    // o oczko pod okręgiem i w górę do wejścia (pas nad kolumnami kodów,
+    // `odsuniecieKodowPodOkregiem`).
     const trasyPomiarowe = (circleLeftX: number): ({ readonly punkty: RouteVertex[]; readonly pionX: number } | null)[] =>
       odejsciaPola.odejscia.map(({ zacisk, odejscieY }, indeks) => {
         const nazwaWejscia = WEJSCIA_POMIAROWE_PRZEKAZNIKA[indeks];
@@ -2295,11 +2328,15 @@ function composeGpzPrzebieg(
           : undefined;
         if (!wejscie) return null;
         const wejscieSwiat = { x: circleLeftX + wejscie.x, y: circleTopY + wejscie.y };
-        const pionX = wejscie.dir === 'W' ? wejscieSwiat.x - GRID : wejscieSwiat.x;
+        const pionX = circleLeftX - pionWejsciaPomiarowego(indeks, liczbaWejscPola);
         const punkty: RouteVertex[] = [{ x: zacisk.x, y: zacisk.y }];
         if (zacisk.dir === 'S') punkty.push({ x: zacisk.x, y: odejscieY });
-        punkty.push({ x: pionX, y: odejscieY }, { x: pionX, y: wejscieSwiat.y });
-        if (wejscie.dir === 'W') punkty.push(wejscieSwiat);
+        if (wejscie.dir === 'W') {
+          punkty.push({ x: pionX, y: odejscieY }, { x: pionX, y: wejscieSwiat.y }, wejscieSwiat);
+        } else {
+          const pasY = wejscieSwiat.y + GRID;
+          punkty.push({ x: pionX, y: odejscieY }, { x: pionX, y: pasY }, { x: wejscieSwiat.x, y: pasY }, wejscieSwiat);
+        }
         return { punkty, pionX };
       });
     // Odbiór B-02 właściciela 2026-11-04 pkt 7: przekaźnik z powiązaniami stoi TUŻ przy
@@ -2354,13 +2391,22 @@ function composeGpzPrzebieg(
         if (!zajete) miejscaTabliczek.push(r);
       }
     }
+    // Ramka bloku w świecie (okrąg ∪ wiersze z marginesem, `ramkaBlokuPrzekaznika`) — `null`,
+    // gdy blok nie ma wierszy. Ten sam prostokąt co meta sceny i wyrocznie testów.
+    const ramkaBlokuWSwiecie = (circleLeftX: number): V3Rect | null => {
+      const wiersze = etykietyBlokuPowiazan(circleLeftX).map(prostokatEtykietyZakotwiczonej);
+      if (wiersze.length === 0) return null;
+      const r = ramkaBlokuPrzekaznika(circleLeftX, circleTopY, wiersze);
+      return { x: circleLeftX + r.x, y: circleTopY + r.y, width: r.width, height: r.height };
+    };
     const kolizjaPolozenia = (circleLeftX: number): boolean => {
       if (!markingPola) return false;
       const przeszkody: V3Rect[] = [...przeszkodyStalePola, ...miejscaTabliczek];
       const aparaty = instances.map((d) => ({ d, r: gabarytAparatu(d) }));
       const okrag: V3Rect = { x: circleLeftX, y: circleTopY, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
       const blok = etykietyBlokuPowiazan(circleLeftX).map(prostokatEtykietyZakotwiczonej);
-      for (const r of [okrag, ...blok]) {
+      const ramka = ramkaBlokuWSwiecie(circleLeftX);
+      for (const r of [okrag, ...blok, ...(ramka ? [ramka] : [])]) {
         if (aparaty.some((a) => rectsOverlap(a.r, r)) || przeszkody.some((p) => rectsOverlap(p, r))) return true;
       }
       const trasy = trasyPomiarowe(circleLeftX);
@@ -2410,9 +2456,11 @@ function composeGpzPrzebieg(
     // (wyłączania i pomiarowe) w wybranym położeniu.
     const przeszkodyPrzekaznika: V3Rect[] = [];
     if (markingPola && annotationDetail === 'full') {
+      const ramka = ramkaBlokuWSwiecie(circleLeftXPola);
       przeszkodyPrzekaznika.push(
         { x: circleLeftXPola, y: circleTopY, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER },
         ...etykietyBlokuPowiazan(circleLeftXPola).map(prostokatEtykietyZakotwiczonej),
+        ...(ramka ? [ramka] : []),
       );
       const wylaczanie = liniaWylaczania(circleLeftXPola);
       if (wylaczanie) przeszkodyPrzekaznika.push(...prostokatyOdcinkow(wylaczanie));
@@ -2639,14 +2687,20 @@ function composeGpzPrzebieg(
             bayRef: bay.bayRef,
             x: circleLeftX,
             y: circleTopY,
-            // Prefiks kodów mieszczący się w okręgu pismem 8 px (`kodyWOkreguBlokuPrzekaznika`) —
-            // to samo źródło co wiersze poza okręgiem i pełna lista wyżej.
-            protectionCodes: annotationDetail === 'full' ? kodyWOkreguBlokuPrzekaznika(marking.codes) : undefined,
+            // Przekaźnik z powiązaniami: okrąg bez kodów (wszystkie kody pod okręgiem,
+            // `etykietyBlokuPowiazan`). Model stacji: prefiks kodów mieszczący się w okręgu pismem
+            // 8 px (`kodyWOkreguPrzekaznika`) — to samo źródło co pełna lista wyżej.
+            protectionCodes:
+              annotationDetail === 'full' && !powiazany ? kodyWOkreguPrzekaznika(marking.codes) : undefined,
             ...(topologyGaps.length > 0 ? { protectionTopologyGaps: topologyGaps } : {}),
             ...(ramkaBloku ? { ramkaBloku, wierszeBloku: etykietyBloku.map((e) => e.ownerRef) } : {}),
           });
 
-          if (annotationDetail === 'full' && marking.tripTarget) {
+          // Odbiór B-02 (oględziny koordynatora 2026-11-04): na LOD1 („tylko okrąg”, bez kodów)
+          // przekaźnik stoi tam, gdzie na LOD2 — przy Q0 — i jest z nim połączony linią
+          // wyłączania (gałąź jest już pod `annotationDetail !== 'none'`); kody i linie pomiarowe —
+          // dopiero LOD2.
+          if (marking.tripTarget) {
             // §17.2: „nigdy linia do domyślnego aparatu" — dochodzi WYŁĄCZNIE do aparatu
             // rozwiązanego z `breaker_ref` albo z powiązania modelu
             // (`funkcje_eaz_wylaczajace`). Zaczep: cewka wyłączająca symbolu (port wtórny
@@ -2664,7 +2718,7 @@ function composeGpzPrzebieg(
             // kończy się na porcie toru aparatu. Linia do cewki wyłączającej (zacisk sterujący
             // cewki Q0 w kaflu wyłącznika) sama wskazuje aparat: numer wisiał w połowie linii
             // bez związku z niczym (uwaga właściciela 2026-10-29 pkt 5).
-            if (!cewkaWylaczajaca) {
+            if (!cewkaWylaczajaca && annotationDetail === 'full') {
               protectionLabels.push({
                 ownerRef: `${bay.bayRef}#device-number`,
                 ownerKind: 'protection',

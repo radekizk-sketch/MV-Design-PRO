@@ -791,6 +791,22 @@ def prostokat_ts_swiata(punkty: Sequence[tuple[float, float]], swiat: Any) -> di
     return {"x": zaokr(x0), "y": zaokr(y0), "width": zaokr(x1 - x0), "height": zaokr(y1 - y0)}
 
 
+def zrodla_skladnikow(skladniki: Sequence[Any]) -> list[dict[str, str]]:
+    """Pliki źródłowe symbolu — każdy element QET raz, w kolejności pierwszego składnika (symbol
+    złożony z kilku składników tego samego elementu, np. kontur kabla przekładnika
+    Ferrantiego, ma jedno źródło)."""
+    wynik: list[dict[str, str]] = []
+    for s in skladniki:
+        wpis = {
+            "sciezka": s.element.sciezka,
+            "upstreamBlobSha": s.element.upstream_sha,
+            "sha256": s.element.sha256,
+        }
+        if wpis not in wynik:
+            wynik.append(wpis)
+    return wynik
+
+
 def zloz_symbol(
     wpis: dict[str, Any],
     elementy: dict[str, Element],
@@ -1141,14 +1157,7 @@ def zloz_symbol(
         "znaczniki": [],
         "ziemia": None,
         "czlon": None,
-        "zrodla": [
-            {
-                "sciezka": s.element.sciezka,
-                "upstreamBlobSha": s.element.upstream_sha,
-                "sha256": s.element.sha256,
-            }
-            for s in skladniki
-        ],
+        "zrodla": zrodla_skladnikow(skladniki),
     }
     wynik["_udzialy"] = udzialy
     return wynik
@@ -2016,14 +2025,7 @@ def uloz_kafel_lacznika(
             else None
         ),
         "czlon": czlon,
-        "zrodla": [
-            {
-                "sciezka": s.element.sciezka,
-                "upstreamBlobSha": s.element.upstream_sha,
-                "sha256": s.element.sha256,
-            }
-            for s in skladniki
-        ],
+        "zrodla": zrodla_skladnikow(skladniki),
     }
     wynik["_udzialy"] = udzialy
     return wynik

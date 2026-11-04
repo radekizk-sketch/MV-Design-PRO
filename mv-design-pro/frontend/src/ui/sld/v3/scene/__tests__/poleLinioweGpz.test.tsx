@@ -860,6 +860,25 @@ describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 wł
     });
   }
 
+  // Oględziny koordynatora 2026-11-04: na LOD1 okrąg (bez kodów) stoi tam, gdzie na LOD2,
+  // i jest połączony z cewką Q0 linią wyłączania; na LOD0 przekaźnika nie ma (GPZ zwinięty).
+  for (const [nazwaFx, enm] of FIKSTURY) {
+    it(`${nazwaFx} · LOD1: okrąg w położeniu LOD2, linia wyłączania do cewki Q0, bez kodów`, () => {
+      const l1 = buildSceneV3(enm, 1);
+      const l2 = buildSceneV3(enm, 2);
+      for (const pole of polaLiniowe(enm)) {
+        const p1 = l1.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
+        const p2 = l2.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay')!;
+        expect(p1, pole.ref).toBeDefined();
+        expect({ x: p1!.x, y: p1!.y }, pole.ref).toEqual({ x: p2.x, y: p2.y });
+        expect(p1!.meta?.protectionCodes, `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
+        const w1 = l1.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
+        const w2 = l2.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`)!;
+        expect(w1?.points, `${pole.ref}: linia wyłączania na LOD1 = LOD2`).toEqual(w2.points);
+      }
+    });
+  }
+
   it('iniekcja: przekaźnik dalej od Q0 o dwa oczka — położenie nie jest najbliższe (o oczko w lewo wolne)', () => {
     const [, enm] = FIKSTURY[0];
     const scena = buildSceneV3(enm, 2);
@@ -869,13 +888,18 @@ describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 wł
     expect(naruszeniaPolozeniaPrzekaznika(przesunPrzekaznik(dalej, pole.ref, -GRID), pole.ref)).toEqual([]);
   });
 
-  it('linia wyłączania krótka: Z.10 ≤ 10·GRID, Z.11.1 i Z.11 ≤ 25·GRID (przed odbiorem: 20·GRID i 39·GRID)', () => {
+  // Pomiar 2026-11-04 po korekcie właściciela (kody pod okręgiem, piony wejść pomiarowych na
+  // zachód od okręgu, wejście wyłączania od góry): Z.10 112 / 88 px, Z.11.1 176 px, Z.11 232 px
+  // (przed odbiorem B-02: 160 i 312 px). Pion źródła najniższego (T2) omija podpis uziemnika Q8,
+  // a kolumny kodów — tabliczkę przekładni T1, więc okrąg stoi o dwa oczka dalej niż w układzie
+  // z kodami po prawej okręgu.
+  it('linia wyłączania krótka: Z.10 ≤ 14·GRID, Z.11.1 i Z.11 ≤ 29·GRID (przed odbiorem: 20·GRID i 39·GRID)', () => {
     for (const [, enm] of FIKSTURY) {
       const scena = buildSceneV3(enm, 2);
       for (const pole of polaLiniowe(enm)) {
         const g = scena.segments.find((x) => x.meta?.ownerRef === `${pole.ref}#trip-line`)!;
         const dlugosc = g.points.slice(1).reduce((suma, b, i) => suma + Math.abs(b.x - g.points[i].x) + Math.abs(b.y - g.points[i].y), 0);
-        expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual((pole.pole === 'Z10' ? 10 : 25) * GRID);
+        expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual((pole.pole === 'Z10' ? 14 : 29) * GRID);
       }
     }
   });
@@ -899,16 +923,13 @@ function prostokatBloku(przekaznik: PreviewSymbol): Rect | null {
 }
 
 /**
- * Wyrocznia treści bloku przekaźnika (karta UX-04: „≤ 4 kody funkcji zabezpieczeń + »+N«,
- * automatyka poza kanwą") — z SUROWEGO słownika backendu (`slownikFunkcjiEaz.json`, rodzaj
- * ZABEZPIECZENIE), bez funkcji produkcyjnej podziału: cztery pierwsze kody zabezpieczeń
- * w kolejności modelu i „+N" wszystkich pozostałych funkcji pola.
+ * Wyrocznia treści bloku przekaźnika — odbiór B-02 właściciela 2026-11-04 (korekta wiążąca):
+ * „WSZYSTKIE kody funkcji (51, 50, 51N, ZS i pozostałe — bez ukrywania żadnej, bez licznika)
+ * POD kółkiem, pionowo w dwóch kolumnach”. Wprost z modelu (`Bay.protection_codes`): każdy kod
+ * w kolejności danych, żadnego „+n”, okrąg bez kodów.
  */
 function oczekiwanyBlokPrzekaznika(kodyModelu: readonly string[]): string[] {
-  const funkcje = slownikFunkcjiEaz.funkcje as Record<string, { rodzaj: string }>;
-  const zabezpieczenia = kodyModelu.filter((k) => funkcje[k]?.rodzaj === 'ZABEZPIECZENIE').slice(0, 4);
-  const reszta = kodyModelu.length - zabezpieczenia.length;
-  return reszta > 0 ? [...zabezpieczenia, `+${reszta}`] : zabezpieczenia;
+  return [...kodyModelu];
 }
 
 function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): string[] {
@@ -928,7 +949,22 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
     const wBloku = [...(przekaznik.meta?.protectionCodes ?? []), ...wiersze.flatMap((l) => l.text.split(' · '))];
     if (new Set(wBloku).size !== wBloku.length) bledy.push(`${pole.ref}: funkcja powtórzona w bloku (${wBloku.join(', ')})`);
     const oczekiwany = oczekiwanyBlokPrzekaznika(kodyModelu);
-    if (wBloku.join() !== oczekiwany.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${oczekiwany.join(', ')} (≤ 4 zabezpieczenia i „+N")`);
+    if (wBloku.join() !== oczekiwany.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${oczekiwany.join(', ')} (wszystkie kody pola, bez „+n")`);
+    if (wBloku.some((k) => /^\+\d/.test(k))) bledy.push(`${pole.ref}: licznik „+n" w bloku`);
+    if ((przekaznik.meta?.protectionCodes ?? []).length > 0) bledy.push(`${pole.ref}: okrąg niesie kody (${przekaznik.meta!.protectionCodes!.join(', ')})`);
+    // Kody POD okręgiem: każdy wiersz bloku leży niżej niż dolna krawędź okręgu, a lewa kolumna
+    // zaczyna się w lewej krawędzi okręgu.
+    {
+      const o = obrysSymbolu(przekaznik.symbolId);
+      const dolOkregu = przekaznik.y + o.y + o.height;
+      const lewaOkregu = przekaznik.x + o.x;
+      for (const l of [...wiersze, ...odniesienia]) {
+        if (l.rect.y < dolOkregu) bledy.push(`${pole.ref}: wiersz bloku ${l.text} nie pod okręgiem`);
+      }
+      if (wiersze.length > 0 && Math.min(...wiersze.map((l) => l.rect.x)) !== lewaOkregu) {
+        bledy.push(`${pole.ref}: lewa kolumna kodów nie w lewej krawędzi okręgu`);
+      }
+    }
     const rama = prostokatBloku(przekaznik);
     if (!rama) {
       bledy.push(`${pole.ref}: brak ramki bloku`);
@@ -950,7 +986,7 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
         }
       }
     }
-    // Kody poza okręgiem w DWÓCH kolumnach pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7):
+    // Kody pod okręgiem w DWÓCH kolumnach pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7):
     // lewa kolumna i odniesienia źródła 3U₀ pod nią mają wspólną lewą krawędź prostokątów (zrzut
     // pola Z.10 2026-10-29: wiersze wyśrodkowane rozjeżdżały się o 36 px), prawa kolumna stoi na
     // prawo od lewej, ma ≤ tyle komórek co lewa i jej komórki leżą w wierszach lewej; kolejność
@@ -1032,53 +1068,62 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: element bloku poza ramką`);
   });
 
-  it('iniekcja: pełna lista z kodami okręgu (stan przed naprawą) — funkcja powtórzona', () => {
+  it('iniekcja: kod powtórzony w drugiej komórce — funkcja powtórzona', () => {
     const s = zmien((k) => {
-      const kody = przekaznikZ(k).meta!.protectionCodes!;
-      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`) as { text: string };
-      l.text = `${kody.join(' · ')} · ${l.text}`;
+      const pierwsza = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`)!;
+      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full-2`) as { text: string };
+      l.text = pierwsza.text;
     });
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('funkcja powtórzona w bloku');
   });
 
-  // Iloczyn cech treści bloku: {automatyka na kanwie, piąty kod zabezpieczeń, brak „+N",
-  // pełna lista (stan przed kartą)} — każda odmiana czerwieni wyrocznię. Komórki kodów:
-  // `#protection-codes-full`, `-2`, `-3` … (kolumnami).
+  // Iloczyn cech treści bloku (korekta właściciela 2026-11-04): {kod ukryty (automatyka SPZ 79
+  // zdjęta), licznik „+n" zamiast reszty kodów (stan przed korektą), dwa pierwsze kody
+  // w okręgu zamiast pod nim, wiersz kodów obok okręgu zamiast pod nim (stan przed korektą)} —
+  // każda odmiana czerwieni wyrocznię. Komórki kodów: `#protection-codes-full`, `-2`, `-3` …
+  // (kolumnami).
   const komorkiKodow = (k: SceneV3) =>
     k.labels.filter((x) => /#protection-codes-full(-\d+)?$/.test(x.ownerRef ?? '') && (x.ownerRef ?? '').startsWith(`${poleZ111.ref}#`)) as { -readonly [K in keyof OwnedLabel]: OwnedLabel[K] }[];
-  const dodajKomorke = (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }, tekst: string, przed?: string) => {
-    const komorki = komorkiKodow(k);
-    const wzor = komorki[komorki.length - 1];
-    const nowa = { ...wzor, ownerRef: `${poleZ111.ref}#protection-codes-full-${komorki.length + 1}`, text: tekst };
-    const i = przed ? k.labels.findIndex((x) => x.ownerRef === komorki.find((c) => c.text === przed)?.ownerRef) : k.labels.indexOf(wzor) + 1;
-    k.labels = [...k.labels.slice(0, i), nowa, ...k.labels.slice(i)];
-  };
+  type ScenaZmienna = { -readonly [K in keyof SceneV3]: SceneV3[K] };
   it.each([
-    ['automatyka SPZ (79) na kanwie', (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => dodajKomorke(k, '79')],
     [
-      'piąty kod zabezpieczeń (50BF) na kanwie',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => dodajKomorke(k, '50BF', komorkiKodow(k).find((c) => /^\+\d+$/.test(c.text))!.text),
-    ],
-    [
-      'brak znacznika „+N"',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
-        const n = komorkiKodow(k).find((c) => /^\+\d+$/.test(c.text))!;
-        k.labels = k.labels.filter((x) => x.ownerRef !== n.ownerRef);
+      'automatyka SPZ (79) ukryta',
+      (k: ScenaZmienna) => {
+        const c = komorkiKodow(k).find((x) => x.text === '79')!;
+        k.labels = k.labels.filter((x) => x.ownerRef !== c.ownerRef);
       },
+      'blok ',
     ],
     [
-      'pełna lista funkcji (stan przed kartą)',
-      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
-        const [pierwsza, ...reszta] = komorkiKodow(k);
-        pierwsza.text = (enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.slice(2).join(' · ');
+      'licznik „+12 funkcji" zamiast kodów (stan przed korektą)',
+      (k: ScenaZmienna) => {
+        const [, , trzecia, ...reszta] = komorkiKodow(k);
+        trzecia.text = '+12 funkcji';
         const zbedne = new Set(reszta.map((c) => c.ownerRef));
         k.labels = k.labels.filter((x) => !zbedne.has(x.ownerRef));
       },
+      'licznik „+n" w bloku',
     ],
-  ] as const)('iniekcja: %s — blok ≠ wyrocznia', (_opis, zmiana) => {
-    expect(komorkiKodow(scenaBazowa).some((c) => /^\+\d+$/.test(c.text))).toBe(true);
+    [
+      'dwa pierwsze kody w okręgu (stan przed korektą)',
+      (k: ScenaZmienna) => {
+        const [pierwsza, druga] = komorkiKodow(k);
+        (przekaznikZ(k).meta as { protectionCodes?: readonly string[] }).protectionCodes = [pierwsza.text, druga.text];
+        k.labels = k.labels.filter((x) => x.ownerRef !== pierwsza.ownerRef && x.ownerRef !== druga.ownerRef);
+      },
+      'okrąg niesie kody',
+    ],
+    [
+      'kody obok okręgu (stan przed korektą)',
+      (k: ScenaZmienna) => {
+        for (const c of komorkiKodow(k)) c.rect = { ...c.rect, x: c.rect.x + 4 * GRID, y: c.rect.y - 4 * GRID };
+      },
+      'nie pod okręgiem',
+    ],
+  ] as const)('iniekcja: %s — czerwień', (_opis, zmiana, komunikat) => {
+    expect(komorkiKodow(scenaBazowa).length).toBe((enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.length);
     const s = zmien(zmiana);
-    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: blok `);
+    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(komunikat);
   });
 
   // Układ kolumn (pkt 7): {kody jednym wierszem poziomym, jedna kolumna zamiast dwóch, prawa
@@ -1181,6 +1226,72 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     const okrag = doc.querySelector('circle')!;
     expect(Number(rama.getAttribute('stroke-width'))).toBeLessThan(Number(okrag.getAttribute('stroke-width')));
   });
+});
+
+/**
+ * Test kontraktowy korekty właściciela 2026-11-04 (odbiór B-02, blok zabezpieczenia): dla N
+ * funkcji pola N ∈ {0, 1, 2, 3, 5, 8} na LOD2 WSZYSTKIE kody stoją pod okręgiem w dwóch
+ * kolumnach (lewa ⌈N/2⌉), bez żadnego „+n" i bez kodów w okręgu; na LOD0 i LOD1 kodów nie ma
+ * (na LOD1 zostaje sam okrąg przy Q0, na LOD0 GPZ jest zwinięty). Kody — prefiks listy funkcji
+ * pola z modelu (kolejność danych), dopełniony kodami słownika spoza pola, gdy pole ma ich mniej
+ * niż N. Warunek „T2 z linią pomiarową" wyroczni bloku dotyczy pola z funkcją 51N — przy
+ * prefiksie bez 51N przekładnik Ferrantiego nie zasila żadnej funkcji pola i linii nie ma. Iloczyn: N × LOD {0, 1, 2} × wykonanie {Z.10, Z.11.1, Z.11}
+ * × łączniki {trójpołożeniowy, stały} × sekcja {1, 2} (fikstury). N = 0: pole bez funkcji nie
+ * rysuje przekaźnika (§17.2: brak danych = brak oznaczenia).
+ */
+describe('UX-04 — kontrakt bloku zabezpieczenia: N funkcji × LOD (korekta właściciela 2026-11-04)', () => {
+  const zKodami = (enm: EnergyNetworkModel, n: number): EnergyNetworkModel => {
+    const kopia = structuredClone(enm);
+    const liniowe = new Set(polaLiniowe(enm).map((p) => p.ref));
+    for (const b of kopia.bays ?? []) {
+      if (!liniowe.has(b.ref_id)) continue;
+      const wlasne = b.protection_codes ?? [];
+      const dopelnienie = ['67N', '27', '59', '81U', '81O'].filter((k) => !wlasne.includes(k));
+      (b as { protection_codes?: string[] }).protection_codes = [...wlasne, ...dopelnienie].slice(0, n);
+    }
+    return kopia;
+  };
+  const etykietyKodow = (scena: SceneV3, bayRef: string) =>
+    scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? ''));
+  for (const [nazwaFx, enm] of FIKSTURY) {
+    for (const n of [0, 1, 2, 3, 5, 8]) {
+      it(`${nazwaFx} · N = ${n}: LOD2 — wszystkie kody pod okręgiem w dwóch kolumnach, LOD0/LOD1 — bez kodów`, () => {
+        const model = zKodami(enm, n);
+        const pola = polaLiniowe(model);
+        for (const pole of pola) expect((model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!.length, pole.ref).toBe(n);
+        const l2 = buildSceneV3(model, 2);
+        if (n === 0) {
+          for (const pole of pola) {
+            expect(l2.symbols.some((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay'), pole.ref).toBe(false);
+            expect(etykietyKodow(l2, pole.ref)).toEqual([]);
+          }
+        } else {
+          const bezT2 = (komunikat: string): boolean =>
+            !(
+              komunikat.endsWith('przekładnik Ferrantiego bez linii pomiarowej do przekaźnika') &&
+              !(model.bays ?? []).find((b) => komunikat.startsWith(`${b.ref_id}:`))!.protection_codes!.includes('51N')
+            );
+          expect(naruszeniaBlokuPrzekaznika(model, l2).filter(bezT2)).toEqual([]);
+          for (const pole of pola) {
+            const komorki = etykietyKodow(l2, pole.ref);
+            expect(komorki.map((l) => l.text).sort(), pole.ref).toEqual([...(model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!].sort());
+            expect(new Set(komorki.map((l) => l.rect.x)).size, `${pole.ref}: kolumny`).toBe(n === 1 ? 1 : 2);
+          }
+        }
+        for (const lod of [0, 1] as const) {
+          const scena = buildSceneV3(model, lod);
+          for (const pole of pola) {
+            expect(etykietyKodow(scena, pole.ref), `${pole.ref} · LOD${lod}`).toEqual([]);
+            const p = scena.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
+            expect(p?.meta?.protectionCodes, `${pole.ref} · LOD${lod}: okrąg bez kodów`).toBeUndefined();
+            if (lod === 1 && n > 0) expect(p, `${pole.ref} · LOD1: okrąg przy Q0`).toBeDefined();
+          }
+          expect(scena.labels.some((l) => /^\+\d/.test(l.text)), `LOD${lod}: licznik „+n"`).toBe(false);
+        }
+        expect(l2.labels.some((l) => /^\+\d/.test(l.text)), 'LOD2: licznik „+n"').toBe(false);
+      });
+    }
+  }
 });
 
 /** Rodzaj etykiety warstwy adnotacji zabezpieczeń z sufiksu `ownerRef` (kontrakt kompozytorów

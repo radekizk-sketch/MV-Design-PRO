@@ -241,6 +241,12 @@ export interface GlyphProps {
    *  styku wyłącznika (uwaga właściciela 2026-11-04, odbiór B-02 pkt 3): model ENM niesie
    *  wyłącznie wykonanie stałe / wysuwne, nie położenie członu. Brak = `stroke`. */
   readonly inkCzlonu?: string;
+  /** Położenie CZŁONU WYSUWNEGO wyłącznika (decyzja właściciela 2026-11-04: kafle członu nad
+   *  i pod kaflem wyłącznika niosą kolor stanu członu, kafel wyłącznika — stan wyłącznika; dwa
+   *  niezależne stany). Model ENM nie niesie położenia członu (wsunięty / próba / wysunięty) —
+   *  wyłącznie wykonanie stałe / wysuwne — więc kanwa nie podaje wartości i kafle członu
+   *  rysują się w stanie nieustalonym (brak danych ≠ stan). Brak = `'nieustalony'`. */
+  readonly stanCzlonu?: StanKafla;
   /** Poziom szczegółu kanwy (LOD0/LOD1/LOD2) — wybiera DETALE kafla z jednej tabeli
    *  `DETALE_KAFLA_WG_LOD` (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5). Brak = LOD2
    *  (legenda, eksport, podgląd kreatora — pełny rysunek). */
@@ -1467,9 +1473,33 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
     if (!kafle || !stan) return <Glyph {...props} />;
     const r = prostokatKaflaStanu(id);
     const znak = DETALE_KAFLA_WG_LOD[props.lod ?? 2].znakNiepewny ? ZNAK_KAFLA[stan] : undefined;
+    // Człon wysuwny (decyzja właściciela 2026-11-04, synoptyka e²TANGO): OSOBNE kafle nad i pod
+    // kaflem wyłącznika, ta sama szerokość, stykające się krawędziami; kolor = stan członu
+    // (`stanCzlonu`), nie stan wyłącznika. Kafle członu zostają na każdym LOD (kształt).
+    const czlon = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].czlon : null;
+    const stanCzlonu: StanKafla = props.stanCzlonu ?? 'nieustalony';
+    const kafleCzlonu = czlon
+      ? ([
+          ['gora', r.y - czlon.pasmo],
+          ['dol', r.y + r.height],
+        ] as const)
+      : [];
     return (
-      <g data-kafel-stanu={stan} data-kafel-symbol={id}>
+      <g data-kafel-stanu={stan} data-kafel-symbol={id} {...(czlon ? { 'data-kafel-czlonu': stanCzlonu } : {})}>
         <title>{OPIS_POLOZENIA_PL[props.state ?? 'unknown']}</title>
+        {kafleCzlonu.map(([nazwa, y]) => (
+          <rect
+            key={nazwa}
+            x={props.x + r.x}
+            y={props.y + y}
+            width={r.width}
+            height={czlon!.pasmo}
+            rx={1.5}
+            fill={kafle[stanCzlonu]}
+            stroke="none"
+            data-kafel={`czlon-${nazwa}`}
+          />
+        ))}
         <rect
           x={props.x + r.x}
           y={props.y + r.y}
@@ -1480,7 +1510,7 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
           stroke="none"
           data-kafel="tlo"
         />
-        <Glyph {...props} stroke={kafle.glif} inkCzlonu={stroke(props)} />
+        <Glyph {...props} stroke={kafle.glif} inkCzlonu={czlon ? kafle.glif : stroke(props)} />
         {znak && (
           <text
             x={props.x + r.x + 1}

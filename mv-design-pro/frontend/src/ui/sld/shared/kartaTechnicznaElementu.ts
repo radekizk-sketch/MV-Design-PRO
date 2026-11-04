@@ -56,7 +56,7 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
-import { czyFunkcjaNaSchemacie, funkcjaEaz, podzialFunkcjiNaSchemacie, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
+import { funkcjaEaz, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
 import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
@@ -975,17 +975,15 @@ function opisGeneratora(g: Generator): string {
 /**
  * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
  * KAŻDĄ funkcję `Bay.protection_codes` — kod (numer IEEE C37.2 albo skrót krajowy), zapis
- * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`),
- * miejsce na schemacie (blok przekaźnika niesie ≤ 4 kody zabezpieczeń, reszta to „+N" — ten sam
- * podział `podzialFunkcjiNaSchemacie`) i przejście do nastaw: pole z urządzeniem
+ * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`)
+ * i przejście do nastaw (blok przekaźnika na schemacie niesie wszystkie kody pola — odbiór B-02
+ * właściciela 2026-11-04, więc karta nie rozróżnia funkcji „na schemacie” i „poza nim”): pole z urządzeniem
  * zabezpieczeniowym → ekran E-27 (edytor nastaw), pole bez urządzenia → kreator przekaźnika
  * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
  * „brak w słowniku funkcji", nie zmyśloną nazwę.
  */
 function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): SekcjaKarty {
   const kody = bay.protection_codes ?? [];
-  const { naSchemacie } = podzialFunkcjiNaSchemacie(kody);
-  const rysowane = new Set(naSchemacie);
   const maUrzadzenie = przypisaniaZabezpieczenPola(ix, bay, aparaty).length > 0;
   const akcja: AkcjaWierszaKarty = maUrzadzenie
     ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
@@ -1009,7 +1007,6 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: read
           { klucz: 'oznaczenie', etykieta: 'Oznaczenie' },
           { klucz: 'funkcja', etykieta: 'Funkcja' },
           { klucz: 'rodzaj', etykieta: 'Rodzaj' },
-          { klucz: 'schemat', etykieta: 'Na schemacie' },
         ],
         wiersze: kody.map((kod) => {
           const f = funkcjaEaz(kod);
@@ -1020,11 +1017,6 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: read
               oznaczenie: f?.oznaczeniePl ?? null,
               funkcja: f?.nazwaPl ?? 'brak w słowniku funkcji',
               rodzaj: f ? RODZAJ_FUNKCJI_EAZ_PL[f.rodzaj] : null,
-              schemat: rysowane.has(kod)
-                ? 'w bloku przekaźnika'
-                : czyFunkcjaNaSchemacie(kod)
-                  ? 'poza schematem (ponad 4 kody, „+N")'
-                  : 'poza schematem (automatyka)',
             },
             akcja,
           };

@@ -27,6 +27,7 @@ import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES, PROTECTION_ANNOTATION_DIAMETER } from
 import type { PanelPolaGpz } from '../../compose/gpzAdnotacje';
 import { GRID, type V3Rect } from '../../core/grid';
 import { kolumnyBlokuWPismie } from '../../core/kolumnyBloku';
+import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../../core/text';
 import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
@@ -226,6 +227,26 @@ describe('obrysy etykiet wg planu — iloczyn fikstura × skala × kadr × obrys
       });
     }
     expect(sprawdzone).toBeGreaterThan(0);
+    expect(bledy).toEqual([]);
+  });
+
+  // Oględziny koordynatora 2026-11-04 pkt 3: oznaczenia zacisków P1/P2 nie wchodzą na przekładnię
+  // przekładnika (tabliczka „200–400/5”, „1/100”) przy żadnej skali i w żadnym kadrze — iloczyn
+  // fikstura × skala × kadr, prostokąty NARYSOWANE planu (pismo powiększone też).
+  it.each(FIKSTURY.map(([n]) => n))('%s: P1/P2 rozłączne z przekładnią przekładnika na każdej skali i w każdym kadrze', (fikstura) => {
+    const bledy: string[] = [];
+    let pary = 0;
+    for (const p of PRZYPADKI.filter((x) => x.fikstura === fikstura)) {
+      const zaciski = p.plan.drawn.filter((d) => d.label.ownerRef.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA));
+      const tabliczki = p.plan.drawn.filter((d) => /#(ct|cbct|vt)-rating-/.test(d.label.ownerRef));
+      for (const z of zaciski) {
+        for (const tb of tabliczki) {
+          pary += 1;
+          if (zachodzi(z.rect, tb.rect)) bledy.push(`${fikstura} @${p.skala} ${p.kadr.slice(-7)}: „${z.text}" × „${tb.text}"`);
+        }
+      }
+    }
+    expect(pary).toBeGreaterThan(0);
     expect(bledy).toEqual([]);
   });
 

@@ -41,7 +41,7 @@
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
-import { kodyPozaOkregiemPrzekaznika, kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
+import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import type {
   CtRatingAnnotationView,
   MiniBlockBayDescriptor,
@@ -49,7 +49,6 @@ import type {
   VtMountingAnnotationView,
 } from '../../v2/model/widokPolStacji';
 import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
-import { podzialFunkcjiNaSchemacie } from '../../../shared/funkcjeEaz';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
@@ -85,32 +84,6 @@ export function fullCodesListText(codes: readonly string[]): string | null {
   return wiersze.length > 0 ? wiersze.join(' · ') : null;
 }
 
-/** Znacznik funkcji pola poza kanwą w bloku przekaźnika — „+N" (N > 0). */
-export function znacznikFunkcjiPozaSchematem(liczba: number): string {
-  return `+${liczba}`;
-}
-
-/**
- * Kody RYSOWANE w bloku przekaźnika (karta UX-04/POLE-LINIOWE-WZORZEC): co najwyżej
- * `MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE` kodów funkcji rodzaju ZABEZPIECZENIE w kolejności danych
- * i — gdy pole ma więcej funkcji — znacznik „+N" wszystkich pozostałych (nadmiar zabezpieczeń,
- * automatyka, blokady, zabezpieczenia technologiczne); pełna lista stoi w karcie pola
- * inspektora („Zabezpieczenia i automatyka"). Podział z jednego źródła
- * (`ui/shared/funkcjeEaz.ts::podzialFunkcjiNaSchemacie`). JEDYNE wejście rysunku i rezerwacji
- * kolumny: okrąg (`kodyWOkreguBlokuPrzekaznika`), wiersze (`fullCodesListLines`,
- * `wierszeKodowPozaOkregiem`) i szerokość (`szerokoscWierszyAdnotacjiPrzekaznika`) czytają tę
- * listę, a logika pola (cel linii wyłączania, źródła pomiaru, braki topologii) — pełne `codes`.
- */
-export function kodyBlokuPrzekaznika(codes: readonly string[]): readonly string[] {
-  const { naSchemacie, pozaSchematem } = podzialFunkcjiNaSchemacie(codes);
-  return pozaSchematem.length > 0 ? [...naSchemacie, znacznikFunkcjiPozaSchematem(pozaSchematem.length)] : naSchemacie;
-}
-
-/** Kody w okręgu przekaźnika — prefiks `kodyBlokuPrzekaznika` mieszczący się pismem 8 px. */
-export function kodyWOkreguBlokuPrzekaznika(codes: readonly string[]): readonly string[] {
-  return kodyWOkreguPrzekaznika(kodyBlokuPrzekaznika(codes));
-}
-
 /** Liczba kodów w jednym wierszu pełnej listy funkcji EAZ. */
 export const KODY_EAZ_W_WIERSZU = 5;
 
@@ -134,9 +107,8 @@ function wierszeKodow(codes: readonly string[]): readonly string[] {
  * (stacja, GPZ).
  */
 export function fullCodesListLines(codes: readonly string[]): readonly string[] {
-  const blok = kodyBlokuPrzekaznika(codes);
-  if (kodyWOkreguPrzekaznika(blok).length === blok.length) return [];
-  return wierszeKodow(blok);
+  if (kodyWOkreguPrzekaznika(codes).length === codes.length) return [];
+  return wierszeKodow(codes);
 }
 
 /** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
@@ -165,19 +137,18 @@ export function odniesieniaPrzekaznikaPola(
 }
 
 /**
- * Kody funkcji POZA okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola GPZ, w DWÓCH
- * KOLUMNACH pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7: „kody funkcji na SLD pionowo
- * w dwóch kolumnach”, wzór: tabliczka sygnalizacji panelu sterownika pola). Okrąg niesie
- * prefiks listy, który mieści się w nim pismem 8 px (`kodyWOkreguPrzekaznika`), kolumny —
- * WYŁĄCZNIE pozostałe kody bloku (`kodyBlokuPrzekaznika`, z „+N” funkcji spoza schematu);
- * wypełnienie kolumnami (najpierw lewa, z góry w dół): lewa ma ⌈n/2⌉ kodów, prawa resztę.
- * Uwaga 2026-10-29 pkt 5 bez zmian: każda funkcja ma JEDNĄ reprezentację (okrąg ∪ kolumny).
- * Pełna lista funkcji, nastawy i automatyka — inspektor pola („Zabezpieczenia i automatyka”).
+ * Kody funkcji POD okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola GPZ, w DWÓCH
+ * KOLUMNACH pionowych — odbiór B-02 właściciela 2026-11-04 (korekta wiążąca): „WSZYSTKIE kody
+ * funkcji (51, 50, 51N, ZS i pozostałe — bez ukrywania żadnej, bez licznika) POD kółkiem,
+ * pionowo w dwóch kolumnach”. Okrąg nie niesie kodów; kolumny niosą KAŻDY kod pola w kolejności
+ * danych (`Bay.protection_codes`), wypełnienie kolumnami (najpierw lewa, z góry w dół): lewa ma
+ * ⌈n/2⌉ kodów, prawa resztę. Kody są wyłącznie na LOD2 (`ProtectionAnnotationDetail` `'full'`);
+ * na LOD0/LOD1 zostaje sam okrąg przy Q0. Nastawy i opis funkcji — inspektor pola
+ * („Zabezpieczenia i automatyka”).
  */
-export function kolumnyKodowPozaOkregiem(codes: readonly string[]): readonly [readonly string[], readonly string[]] {
-  const kody = kodyPozaOkregiemPrzekaznika(kodyBlokuPrzekaznika(codes));
-  const wLewej = Math.ceil(kody.length / 2);
-  return [kody.slice(0, wLewej), kody.slice(wLewej)];
+export function kolumnyKodowPodOkregiem(codes: readonly string[]): readonly [readonly string[], readonly string[]] {
+  const wLewej = Math.ceil(codes.length / 2);
+  return [codes.slice(0, wLewej), codes.slice(wLewej)];
 }
 
 /** Odstęp kolumn kodów bloku przekaźnika [px świata] — oczko między tuszem kolumn. */
@@ -186,12 +157,6 @@ export const ODSTEP_KOLUMN_KODOW_EAZ = GRID;
 /** Szerokość kolumny kodów pismem listy (najszerszy kod); 0 = kolumna pusta. */
 export function szerokoscKolumnyKodow(kolumna: readonly string[]): number {
   return kolumna.length > 0 ? Math.max(...kolumna.map((k) => measureLabelWidth(k, PROTECTION_FULL_LIST_LABEL_CLASS))) : 0;
-}
-
-/** Liczba wierszy bloku przekaźnika układu powiązań: wiersze kolumn kodów i po nich wiersze
- *  odniesień obwodów spoza pola. JEDNA arytmetyka rysunku (`compose/gpz.ts`) i rezerwacji. */
-export function liczbaWierszyBlokuPrzekaznika(codes: readonly string[], odniesienia: readonly string[]): number {
-  return kolumnyKodowPozaOkregiem(codes)[0].length + odniesienia.length;
 }
 
 /** Margines ramki bloku przekaźnika wokół okręgu i wierszy [px świata] — pół rastru: ramka
@@ -204,7 +169,7 @@ export function szerokoscWierszyAdnotacjiPrzekaznika(
   codes: readonly string[],
   odniesienia: readonly string[],
 ): number {
-  const [lewa, prawa] = kolumnyKodowPozaOkregiem(codes);
+  const [lewa, prawa] = kolumnyKodowPodOkregiem(codes);
   const kolumny =
     szerokoscKolumnyKodow(lewa) + (prawa.length > 0 ? ODSTEP_KOLUMN_KODOW_EAZ + szerokoscKolumnyKodow(prawa) : 0);
   return Math.max(kolumny, szerokoscKolumnyKodow(odniesienia));
@@ -359,35 +324,72 @@ export function czyPrzekaznikZPowiazaniamiObwodow(
   );
 }
 
-/**
- * Wejścia pomiarowe przekaźnika w kolejności przydziału źródłom (od najwyższego zacisku
- * wtórnego w dół): wejście lewe pod wejściem wyłączania, potem dwa dolne. Kolejność dobrana
- * tak, że pion źródła wyższego kończy się nad poziomem źródła niższego — linie pomiarowe
- * kolejnych źródeł nie krzyżują się (dowód w `compose/__tests__`).
- */
-export const WEJSCIA_POMIAROWE_PRZEKAZNIKA = ['pomiar-lewy', 'pomiar', 'pomiar-prawy'] as const;
+/** Liczba źródeł pomiaru przekaźnika pola wg rekordów modelu — aparaty z powiązaniem
+ *  `funkcje_eaz_zasilane` z funkcją pola; TEN SAM predykat co źródła linii pomiarowych
+ *  (`resolveStationProtectionMarking::zrodlaPomiaru`). Wejście rezerwacji szerokości. */
+export function liczbaZrodelPomiaruPola(
+  codes: readonly string[],
+  aparaty: readonly AparatZPowiazaniamiObwodow[] | undefined,
+): number {
+  const funkcjePola = new Set(codes);
+  return (aparaty ?? []).filter((a) => czyPowiazany(a.funkcjeEazZasilane, funkcjePola)).length;
+}
 
 /**
- * Szerokość części przekaźnikowej kolumny pola w układzie powiązań obwodów wtórnych —
- * prześwit od pasma adnotacji (GRID), tor pionu wejścia lewego (GRID), okrąg i (gdy kodów >2)
- * pełna lista kodów PO PRAWEJ okręgu, wiersz pod wierszem (`fullCodesListLines`). Ta sama
- * arytmetyka co rysunek (`compose/gpz.ts`).
+ * Wejścia pomiarowe przekaźnika z powiązaniami obwodów wtórnych w kolejności przydziału źródłom
+ * (od najwyższego odejścia w dół). Linia wyłączania wchodzi od góry (`wylacz`, port N), więc
+ * oba wejścia zachodnie są pomiarowe: źródło wyższe — wejście górne, niższe — dolne, trzecie —
+ * wejście dolne okręgu przez pas pod okręgiem (nad kolumnami kodów). Piony źródeł stoją na
+ * zachód od okręgu, źródło wyższe dalej od okręgu (`pionWejsciaPomiarowego`): pion źródła
+ * wyższego kończy się nad poziomem odejścia źródła niższego, a poziome odcinki wejść leżą nad
+ * pionami źródeł niższych — linie kolejnych źródeł nie krzyżują się, a żadna nie przecina
+ * kolumn kodów pod okręgiem (odbiór B-02 właściciela 2026-11-04, korekta). Dowód
+ * w `scene/__tests__/poleLinioweGpz.test.tsx`.
+ */
+export const WEJSCIA_POMIAROWE_PRZEKAZNIKA = ['pomiar-gorny', 'pomiar-lewy', 'pomiar'] as const;
+
+/** Wejście dolne okręgu (`pomiar`) — źródło dochodzi do niego pasem pod okręgiem: tyle pasów
+ *  rezerwuje się między okręgiem a kolumnami kodów, gdy wejście jest zajęte. */
+export const PASY_POD_OKREGIEM_WEJSCIA_DOLNEGO = 2;
+
+/** Liczba źródeł pomiaru przyjętych przez wejścia przekaźnika (nadmiar — `missingData`). */
+export function liczbaWejscPomiarowychZajetych(liczbaZrodel: number): number {
+  return Math.min(liczbaZrodel, WEJSCIA_POMIAROWE_PRZEKAZNIKA.length);
+}
+
+/** Odległość pionu źródła `indeks` (0 = najwyższe odejście) od lewej krawędzi okręgu [px świata]
+ *  przy `liczbaWejsc` zajętych wejściach: źródło wyższe dalej od okręgu, najniższe o oczko. */
+export function pionWejsciaPomiarowego(indeks: number, liczbaWejsc: number): number {
+  return (liczbaWejsc - indeks) * GRID;
+}
+
+/** Przesunięcie górnej krawędzi pierwszego wiersza kodów pod dolną krawędzią okręgu [px świata]:
+ *  wiersze stoją TUŻ pod okręgiem, a gdy zajęte jest wejście dolne — pod pasem jego linii. */
+export function odsuniecieKodowPodOkregiem(liczbaWejsc: number): number {
+  return liczbaWejsc >= WEJSCIA_POMIAROWE_PRZEKAZNIKA.length ? PASY_POD_OKREGIEM_WEJSCIA_DOLNEGO * GRID : 0;
+}
+
+/** Szerokość bloku przekaźnika z powiązaniami od lewej krawędzi okręgu: okrąg albo kolumny kodów
+ *  pod nim (z marginesem ramki), co szersze. */
+export function szerokoscBlokuPodOkregiem(codes: readonly string[], odniesienia: readonly string[] = []): number {
+  const wiersze = szerokoscWierszyAdnotacjiPrzekaznika(codes, odniesienia);
+  return wiersze > 0
+    ? Math.max(PROTECTION_ANNOTATION_DIAMETER, snapUp(wiersze + RAMKA_BLOKU_PRZEKAZNIKA_MARGINES))
+    : PROTECTION_ANNOTATION_DIAMETER;
+}
+
+/**
+ * Szerokość części przekaźnikowej kolumny pola w układzie powiązań obwodów wtórnych — prześwit
+ * od pasma adnotacji (GRID), piony wejść pomiarowych na zachód od okręgu (po oczku na zajęte
+ * wejście, co najmniej jedno) i blok (okrąg z kolumnami kodów pod nim,
+ * `szerokoscBlokuPodOkregiem`). Ta sama arytmetyka co rysunek (`compose/gpz.ts`).
  */
 export function szerokoscPrzekaznikaZPowiazaniami(
   codes: readonly string[],
   odniesienia: readonly string[] = [],
+  liczbaZrodel = 1,
 ): number {
-  return 2 * GRID + PROTECTION_ANNOTATION_DIAMETER + szerokoscListyPoPrawejPrzekaznika(codes, odniesienia);
-}
-
-/** Pasmo wierszy bloku po prawej okręgu przekaźnika (prześwit + najszerszy wiersz + margines
- *  ramki bloku, `RAMKA_BLOKU_PRZEKAZNIKA_MARGINES`) — 0, gdy blok nie ma wierszy (bez ramki). */
-export function szerokoscListyPoPrawejPrzekaznika(
-  codes: readonly string[],
-  odniesienia: readonly string[] = [],
-): number {
-  const szerokosc = szerokoscWierszyAdnotacjiPrzekaznika(codes, odniesienia);
-  return szerokosc > 0 ? GRID + snapUp(szerokosc + RAMKA_BLOKU_PRZEKAZNIKA_MARGINES) : 0;
+  return GRID + Math.max(1, liczbaWejscPomiarowychZajetych(liczbaZrodel)) * GRID + szerokoscBlokuPodOkregiem(codes, odniesienia);
 }
 
 /**

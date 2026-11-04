@@ -576,6 +576,7 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
         ramka: prost(rama.getBoundingClientRect()),
         ramkaSwiat: Number(rama.getAttribute('width')),
         okragLewa: okrag ? okrag.getBoundingClientRect().x : null,
+        okragDol: okrag ? okrag.getBoundingClientRect().bottom : null,
         wiersze: [...svg.querySelectorAll('g[data-owner-ref] > text')]
           .filter((t) => {
             const ref = t.parentElement!.getAttribute('data-owner-ref') ?? '';
@@ -614,6 +615,11 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     const zapasDolny = b.ramka.y + b.ramka.height - Math.max(...b.wiersze.map((w) => w.r.y + w.r.height));
     const opis = `${kadr} · ${motyw} · blok ${b.pole}`;
     expect(rozrzutLewych, `${opis}: co najwyżej dwie kolumny kodów (${lewe.map((x) => x.toFixed(1)).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    // Odbiór B-02 właściciela 2026-11-04 (korekta): wszystkie kody pod okręgiem, bez licznika „+n".
+    for (const w of b.wiersze) expect(w.tekst, `${opis}: licznik „+n" w bloku`).not.toMatch(/^\+\d/);
+    if (b.okragDol !== null) {
+      for (const w of b.wiersze) expect(w.r.y, `${opis}: „${w.tekst}" pod okręgiem`).toBeGreaterThanOrEqual(b.okragDol - TOLERANCJA_EKRANU_PX);
+    }
     for (const w of b.wiersze) {
       expect(w.r.x, `${opis}: „${w.tekst}" wewnątrz ramki (lewa)`).toBeGreaterThanOrEqual(b.ramka.x);
       expect(w.r.x + w.r.width, `${opis}: „${w.tekst}" wewnątrz ramki (prawa)`).toBeLessThanOrEqual(b.ramka.x + b.ramka.width);
@@ -823,8 +829,8 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
  *  prostokąt liczy tabela posuwów kroju (wiersze bloku przekaźnika, tabliczka przekładnika T1),
  *  z przewagą {cyfr, wielkich liter} × motyw {ciemny, jasny} — każda komórka zmierzona
  *  (asercja szerokości ± 1 px w `zmierzBlokPrzekaznika` i `sprawdzPrzekladnikPradowy`), więc
- *  test nie jest pusty. Po karcie bloku LOD2 (≤ 4 kody zabezpieczeń + „+N", automatyka poza
- *  kanwą) wiersze bloku i tabliczka T1 („200-400/5 A · zaczep 400 A · 5P20") niosą przewagę cyfr;
+ *  test nie jest pusty. Blok LOD2 niesie wszystkie kody funkcji pola pod okręgiem (odbiór B-02
+ *  2026-11-04, bez licznika „+n"); wiersze bloku i tabliczka T1 niosą przewagę cyfr;
  *  komórkę wielkich liter niosą podpisy aparatów pola (Q1, PF0, GK1 — `zmierzPodpisyPola`). */
 function oczekujPokryciaKlasSzerokosci(prefiksKadru: string): void {
   const komorki = new Set(POMIARY_SZEROKOSCI.filter((p) => p.kadr.startsWith(prefiksKadru)).map((p) => `${p.klasa}|${p.motyw}`));
@@ -1149,6 +1155,14 @@ async function zrzutLod(page: Page, nazwa: string, deviceRef: string, pole: Pole
   }
   const clip = lod === 0 ? (await svg.boundingBox())! : await kadrPola(page, (pole.primary_devices ?? []).map((d) => d.device_ref));
   zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip }));
+  // Histereza LOD (`canvas/camera.ts`): po zejściu do LOD0 widok całej sieci w paśmie histerezy
+  // zostałby na LOD0 (GPZ zwinięty, bez uchwytów aparatów) — kamera wraca najpierw do LOD2.
+  for (let i = 0; i < 40 && (await svg.getAttribute('data-scene-lod')) !== '2'; i += 1) {
+    const k = (await svg.boundingBox())!;
+    await page.mouse.move(k.x + k.width / 2, k.y + k.height / 2);
+    await page.mouse.wheel(0, -120);
+    await page.waitForTimeout(150);
+  }
   await widokCalejSieci(page);
 }
 

@@ -121,6 +121,7 @@ import {
   czyAparatBoczny,
   czyOdgalezienieNaWezleKotwicy,
   odcinkiOdczepowBocznych,
+  zwisAparatuBocznego,
   type OdczepBoczny,
   czyPoleNiesiePorty,
   czyTorOdSzyny,
@@ -139,12 +140,12 @@ import {
   type BayApparatusSource,
   type BrakPrzylaczaPolaSn,
 } from './apparatusSequence';
+import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
   bayHasProtectionAnnotation,
   fullCodesListLines,
-  kodyWOkreguBlokuPrzekaznika,
   odniesieniaPrzekaznikaPola,
   ODSTEP_WIERSZY_KODOW_EAZ,
   protectionDeviceCenter,
@@ -732,7 +733,9 @@ function buildBayStack(
         dir: anchorPortDef.dir,
       };
       const x = mainRightX + odstepy[lateralIndex];
-      const lateralY = anchor.y;
+      // Aparat z kaflem stanu wisi pod węzłem odczepu (`zwisAparatuBocznego`).
+      const zwis = zwisAparatuBocznego(item.symbolId);
+      const lateralY = anchor.y + zwis;
       const ports = portsInWorld(def, x, lateralY);
       const instance: ComposedSymbolInstance = {
         symbolId: item.symbolId,
@@ -784,7 +787,7 @@ function buildBayStack(
         // Odgałęzienie poza węzłem kotwicy — symbol zostaje, przewodu z domysłu nie ma.
         if (!czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, item.device)) return;
       }
-      odczepy.push({ ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`, kotwica: anchor, celX: x + north.x });
+      odczepy.push({ ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`, kotwica: anchor, celX: x + north.x, zwis });
     });
     // KD-5: odczepy wspólnej kotwicy łańcuchem bez nakładania (jedna reguła z polem GPZ).
     odcinkiOdczepowBocznych(odczepy).forEach((points, i) => branchSegments.push({ ownerRef: odczepy[i]!.ownerRef, points }));
@@ -1359,8 +1362,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // łapie na fixturze referencyjnej (0 pól z OBOMA jednocześnie).
       let relayCircleTopY: number | null = null;
       // R-2 (§17.3 zd. 2): tekst pełnej listy kodów — pusta, gdy okrąg niesie wszystkie
-      // kody bloku (`kodyWOkreguBlokuPrzekaznika`: ≤ 4 kody zabezpieczeń i „+N"). Liczone RAZ (miernik niżej używa
-      // do odsunięcia).
+      // kody pola (`kodyWOkreguPrzekaznika`; wszystkie kody, bez licznika — odbiór B-02
+      // 2026-11-04). Liczone RAZ (miernik niżej używa do odsunięcia).
       const marking = resolveStationProtectionMarking(bay, stackDevices);
       const fullListLines =
         annotationDetail === 'full' && marking ? fullCodesListLines(marking.codes) : [];
@@ -1385,14 +1388,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           x: circleLeftX,
           y: circleTopY,
           ports: portsInWorld(SYMBOL_DEFS.protectionRelay, circleLeftX, circleTopY),
-          // spec §17.3: maks. 2 kody — prefiks kodów bloku (`kodyBlokuPrzekaznika`: ≤ 4 kody
-          // zabezpieczeń w kolejności danych i „+N"; zero sortowania/fabrykacji), który
-          // mieści się w okręgu pismem podłogi 8 px (`kodyWOkreguBlokuPrzekaznika`,
-          // `symbols/okragPrzekaznika.ts`) — pełna lista w etykiecie slotu pola (R-2,
+          // spec §17.3: maks. 2 kody — prefiks kodów pola w kolejności danych (zero
+          // sortowania/fabrykacji), który mieści się w okręgu pismem podłogi 8 px
+          // (`kodyWOkreguPrzekaznika`, `symbols/okragPrzekaznika.ts`) — pełna lista w etykiecie slotu pola (R-2,
           // `#protection-codes-full` niżej), gdy okrąg nie niesie wszystkich.
           // §17.4 L1 (`'circle-only'`): okrąg BEZ kodów — `undefined`, glif
           // rysuje sam kontur.
-          protectionCodes: annotationDetail === 'full' ? kodyWOkreguBlokuPrzekaznika(marking.codes) : undefined,
+          protectionCodes: annotationDetail === 'full' ? kodyWOkreguPrzekaznika(marking.codes) : undefined,
           // F10.5 (spec §20.2): adnotacja „!" przy okręgu (glif czyta
           // WYŁĄCZNIE obecność/pustkę — treść ostrzeżenia żyje w
           // `missingData`/inspektorze, nie na scenie, spec §20.3 „zwarta,

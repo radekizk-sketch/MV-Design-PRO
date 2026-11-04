@@ -1,6 +1,6 @@
 /**
- * Podział funkcji EAZ pola na blok przekaźnika i „+N" (karta UX-04/POLE-LINIOWE-WZORZEC:
- * „≤ 4 kody funkcji zabezpieczeń (ANSI) + »+N«, automatyka poza kanwą").
+ * Słownik funkcji EAZ i blok przekaźnika układu powiązań pola GPZ (odbiór B-02 właściciela
+ * 2026-11-04, korekta wiążąca: „WSZYSTKIE kody funkcji … bez ukrywania żadnej, bez licznika”).
  *
  * Wyrocznia niezależna od kodu produkcyjnego: jawna tabela rodzajów kodów użytych w teście
  * (zapis ze standardu ENEA / IEEE C37.2), sprawdzona z surowym słownikiem backendu
@@ -8,18 +8,14 @@
  *
  * Iloczyn cech: liczba kodów zabezpieczeń {0, 1, 2, 4, 5, 6} × funkcje nie-zabezpieczeniowe
  * {brak, automatyka, blokada, technologiczne, wszystkie trzy} × położenie nie-zabezpieczenia
- * {na początku listy, na końcu} × kod spoza słownika {brak, obecny}.
+ * {na początku listy, na końcu} × kod spoza słownika {brak, obecny} — kolumny pod okręgiem
+ * niosą KAŻDY kod pola w kolejności danych, bez znacznika „+N”.
  */
 import { describe, expect, it } from 'vitest';
 
 import slownik from '../slownikFunkcjiEaz.json';
-import {
-  czyFunkcjaNaSchemacie,
-  funkcjaEaz,
-  MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE,
-  podzialFunkcjiNaSchemacie,
-} from '../funkcjeEaz';
-import { kodyBlokuPrzekaznika, kodyWOkreguBlokuPrzekaznika } from '../../sld/v3/compose/protectionMarking';
+import { funkcjaEaz } from '../funkcjeEaz';
+import { kolumnyKodowPodOkregiem } from '../../sld/v3/compose/protectionMarking';
 
 const ZABEZPIECZENIA = ['51', '50', '51N', '67N', 'ZS', '50BF'] as const;
 const INNE: Readonly<Record<string, readonly string[]>> = {
@@ -44,12 +40,6 @@ const RODZAJ_WYROCZNI: Readonly<Record<string, string>> = {
   '63': 'TECHNOLOGICZNE',
 };
 
-function oczekiwanyBlok(kody: readonly string[]): string[] {
-  const naSchemacie = kody.filter((k) => (RODZAJ_WYROCZNI[k] ?? 'ZABEZPIECZENIE') === 'ZABEZPIECZENIE').slice(0, 4);
-  const reszta = kody.length - naSchemacie.length;
-  return reszta > 0 ? [...naSchemacie, `+${reszta}`] : naSchemacie;
-}
-
 describe('słownik funkcji EAZ — lustro backendu', () => {
   it('tabela wyroczni zgodna z surowym słownikiem backendu', () => {
     const funkcje = slownik.funkcje as Record<string, { rodzaj: string }>;
@@ -64,15 +54,10 @@ describe('słownik funkcji EAZ — lustro backendu', () => {
       expect(f.oznaczeniePl.length).toBeGreaterThan(0);
     }
     expect(funkcjaEaz('XYZ')).toBeNull();
-    expect(czyFunkcjaNaSchemacie('XYZ')).toBe(true);
-  });
-
-  it('limit kodów na schemacie wynosi 4', () => {
-    expect(MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE).toBe(4);
   });
 });
 
-describe('blok przekaźnika: ≤ 4 kody zabezpieczeń i „+N" (iloczyn cech)', () => {
+describe('blok przekaźnika: wszystkie kody pola pod okręgiem, bez „+N" (iloczyn cech)', () => {
   for (const n of [0, 1, 2, 4, 5, 6]) {
     for (const [nazwaInnych, inne] of Object.entries(INNE)) {
       for (const polozenie of ['na początku', 'na końcu'] as const) {
@@ -81,26 +66,16 @@ describe('blok przekaźnika: ≤ 4 kody zabezpieczeń i „+N" (iloczyn cech)', 
           const kody = polozenie === 'na początku' ? [...inne, ...zab] : [...zab, ...inne];
           if (kody.length === 0) continue;
           it(`${n} zabezpieczeń${obcy ? ' + kod spoza słownika' : ''} × ${nazwaInnych} ${polozenie}`, () => {
-            const blok = kodyBlokuPrzekaznika(kody);
-            expect(blok).toEqual(oczekiwanyBlok(kody));
-            // Para predykatów z jednego źródła: każdy kod pola jest ALBO w bloku, ALBO liczony w „+N".
-            const { naSchemacie, pozaSchematem } = podzialFunkcjiNaSchemacie(kody);
-            expect([...naSchemacie, ...pozaSchematem].sort()).toEqual([...kody].sort());
-            expect(naSchemacie.length).toBeLessThanOrEqual(4);
-            expect(naSchemacie.every((k) => czyFunkcjaNaSchemacie(k))).toBe(true);
-            // Okrąg niesie prefiks bloku (nie pełnej listy) — automatyka nigdy w okręgu.
-            const okrag = kodyWOkreguBlokuPrzekaznika(kody);
-            expect(okrag).toEqual(blok.slice(0, okrag.length));
-            expect(okrag.some((k) => RODZAJ_WYROCZNI[k] === 'AUTOMATYKA')).toBe(false);
+            const [lewa, prawa] = kolumnyKodowPodOkregiem(kody);
+            // Kolumny wypełniane kolumnami: lewa ⌈n/2⌉, prawa reszta, kolejność danych.
+            expect([...lewa, ...prawa]).toEqual(kody);
+            expect(lewa.length).toBe(Math.ceil(kody.length / 2));
+            expect([...lewa, ...prawa].some((k) => k.startsWith('+'))).toBe(false);
+            // Każdy rodzaj funkcji (także automatyka, blokady, technologiczne) stoi w bloku.
+            for (const k of inne) expect([...lewa, ...prawa]).toContain(k);
           });
         }
       }
     }
   }
-
-  it('iniekcja: podział bez filtra rodzaju (stan przed kartą) — wyrocznia czerwona', () => {
-    const kody = ['79', '51', '50', 'SCO'];
-    const bezFiltra = kody.slice(0, 4);
-    expect(bezFiltra).not.toEqual(oczekiwanyBlok(kody));
-  });
 });

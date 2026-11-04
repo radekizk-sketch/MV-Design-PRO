@@ -203,15 +203,18 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         () => ({ odSzyny: 'right', odOdplywu: 'left' }),
       ],
       [
-        'uziemnik na węźle zacisku górnego — odczep przy zacisku górnym (Z.10), jego oznaczenie po stronie podpisów',
+        'uziemnik na węźle zacisku górnego — odczep nad zaciskiem górnym, oznaczenia po prawej',
         (e) => zmienPola(e, (devices) => naWezleZacisku(devices, 'we')),
         true,
         true,
-        // Z.10: przekładnik wisi tuż pod wyłącznikiem (węzeł `w2` = przewód 8 j.św. między
-        // kaflami), więc odczep z węzła wychodzi przy zacisku górnym. Z.11/Z.11.1: węzeł `w2`
-        // niesie odgałęzienie przekładnika napięciowego i tor biegnie długim przewodem od
-        // wyłącznika do przekładnika — odczep wychodzi pod wyłącznikiem, daleko nad P1.
-        (fikstura) => (fikstura.startsWith('Z.10') ? { odSzyny: 'left', odOdplywu: 'right' } : { odSzyny: 'right', odOdplywu: 'right' }),
+        // Uwaga właściciela 2026-11-04 (uziemnik Q8 wisi pod węzłem odczepu,
+        // `zwisAparatuBocznego`): przekładnik za kotwicą uziemnika stoi o zwis niżej
+        // (`polozeniaToruGlownego`), więc odczep z węzła `w2` wychodzi pod wyłącznikiem, nad
+        // zaciskiem górnym — P1 zostaje po prawej (strona przeciwna do podpisów) także w Z.10.
+        // Dawniej (Z.10, przewód 8 j.św. między kaflami) odczep biegł przy zacisku górnym i P1
+        // przechodził na stronę podpisów. Z.11/Z.11.1: odgałęzienie przekładnika napięciowego
+        // na węźle `w2` — odczep daleko nad P1.
+        () => ({ odSzyny: 'right', odOdplywu: 'right' }),
       ],
     ];
     for (const [opis, zmiana, zaciski, tab, strony] of WARIANTY) {

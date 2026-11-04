@@ -1075,13 +1075,36 @@
     {
       "symbolId": "qetCoreBalanceCt",
       "namePl": "Przekładnik Ferrantiego",
-      "zlozenie": null,
-      "skladniki": [{ "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [0, 0] }],
+      "zlozenie": "element QET en_60617_06_13_10 (rdzeń pierścieniowy, przewód toru, doprowadzenie uzwojenia wtórnego) + dwa przewody tego elementu przesunięte o ±7,5 j. QET i rysowane przerywaną — kontur kabla przewleczonego przez rdzeń wg rysunku ENEA Z.10 s.89",
+      "skladniki": [
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [-7.5, 0] },
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [7.5, 0] }
+      ],
       "porty": [
         { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
         { "name": "bottom", "skladnik": 0, "zacisk": [0, 40] }
       ],
-      "uwaga": "Element EN 60617 06-13-10: przekładnik z trzema przewlekanymi przewodami pierwotnymi (znak „3”) — trzy żyły kabla przechodzą przez rdzeń pierścieniowy. Przewód przechodzi przez symbol bez przerwy toru (port ENM „obwod”).",
+      "uwaga": "Oznaczenie Ferrantiego wg rysunku standardu ENEA (Zeszyt 1, Z.10 s.89; uwaga właściciela 2026-11-04): pierścień rdzenia i kabel przewleczony przez rdzeń — dwie przerywane linie konturu kabla po obu stronach osi toru, wychodzące ponad i pod pierścień. Kreska ukośna ze znakiem „3” elementu EN 60617 06-13-10 (trzy przewlekane przewody) pominięta — z nią symbol wyglądał jak drugi zwykły przekładnik prądowy. Przewód przechodzi przez symbol bez przerwy toru (port ENM „obwod”).",
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [3, 4],
+          "powod": "kreska ukośna i znak „3” elementu QET (trzy przewlekane przewody pierwotne) — uwaga właściciela 2026-11-04: symbol mylony ze zwykłym przekładnikiem prądowym; oznaczenie Ferrantiego wg rysunku ENEA (kontur kabla, składniki 1 i 2)"
+        },
+        { "skladnik": 1, "prymitywy": [0, 3, 4, 5, 6, 7], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" },
+        { "skladnik": 2, "prymitywy": [0, 3, 4, 5, 6, 7], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" }
+      ],
+      "zaciskiPozaTorem": [
+        { "skladnik": 1, "zacisk": [0, -40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 1, "zacisk": [0, 40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 2, "zacisk": [0, -40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 2, "zacisk": [0, 40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" }
+      ],
+      "kreskowanie": [
+        { "skladnik": 1, "prymitywy": [1], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" },
+        { "skladnik": 2, "prymitywy": [1], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" }
+      ],
       "portyWtorne": [
         {
           "name": "wtorny",
@@ -1094,30 +1117,25 @@
       "skalaRysunku": {
         "k": 2,
         "srodek": [0, 1],
-        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) i podłoga pisma S9-7 obejmująca litery symboli (decyzja architekta §11.7 pkt 5, 2026-10-30: znak „3” ≥ 8 jednostek świata, czyli ≥ 8 px przy wejściu w LOD2) — jednokładność rysunku źródła wokół środka rdzenia, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół środka rdzenia, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
       },
       "skalaLokalna": [
         {
           "skladnik": 0,
           "prymitywy": [5, 6, 7],
-          "srodek": [17.894736842105264, 0],
-          "skala": 0.525,
-          "powod": "doprowadzenie uzwojenia wtórnego przekładnika Ferrantiego (x 20…60) i jego kreski zmniejszone przed jednokładnością rysunku (skala 2) do odcinka x 19…40: początek na krawędzi rdzenia o promieniu 19 (decyzja niżej), koniec w porcie wtórnym (40, 0) na rastrze — środek 340/19 i skala 21/40 wynikają z tych dwóch punktów; rdzeń rośnie do stopnia toru, a doprowadzenie nie wydłuża gabarytu ponad port wtórny"
+          "srodek": [3.8596491228070176, 0],
+          "skala": 0.64375,
+          "powod": "doprowadzenie uzwojenia wtórnego przekładnika Ferrantiego (x 20…60) i jego kreski zmniejszone przed jednokładnością rysunku (skala 2) do odcinka x 14,25…40: początek na krawędzi rdzenia o promieniu 14,25 (decyzja niżej), koniec w porcie wtórnym (40, 0) na rastrze — środek 1,375/0,35625 i skala 25,75/40 wynikają z tych dwóch punktów"
         },
         {
           "skladnik": 0,
           "prymitywy": [0],
           "srodek": [0, 1],
-          "skala": 0.95,
-          "powod": "rdzeń pierścieniowy (promień 20 wokół (0, 1), o 1 jednostkę poza rastrem zacisków ±40) zmniejszony do promienia 19 wokół własnego środka przed jednokładnością rysunku (skala 2): pierścień średnicy 76 mieści się w czterech rastrach od zacisku toru, więc gabaryt wzdłuż toru zostaje 32 (bez tej decyzji przesunięcie źródła 2 jednostki po jednokładności dokładało piąty raster — 40, z 7,2 jednostki pustego gabarytu pod pierścieniem); różnica 5 % promienia jest niewidoczna, rdzeń 30,4 j. (stopień toru 0,63)"
+          "skala": 0.7125,
+          "powod": "rdzeń pierścieniowy (promień 20 wokół (0, 1)) zmniejszony do promienia 14,25 wokół własnego środka przed jednokładnością rysunku (skala 2) — uwaga właściciela 2026-11-04: średnica przekładnika Ferrantiego ok. 25 % mniejsza (dawniej promień 19 j. QET, rdzeń 30,4 j.św.; teraz 22,8 j.św.)"
         },
-        {
-          "skladnik": 0,
-          "prymitywy": [4],
-          "srodek": [5, -1.4],
-          "skala": 1.1111111111111112,
-          "powod": "znak „3” (trzy przewlekane przewody pierwotne) powiększony 10/9 wokół lewego górnego narożnika pisma przed jednokładnością rysunku (skala 2): pismo 9 × 0,4 × 2 × 10/9 = 8 jednostek świata — podłoga S9-7 przy wejściu w LOD2 (decyzja architekta §11.7 pkt 5); znak rośnie w prawo i w dół, w głąb rdzenia, z dala od osi toru i od kreski ukośnej"
-        }
+        { "skladnik": 1, "prymitywy": [1], "srodek": [0, 1], "skala": 0.45, "powod": "kontur kabla przewleczonego przez rdzeń skrócony do 0,45 długości przewodu elementu wokół środka rdzenia (0, 1): wychodzi ok. 3 j.św. ponad i pod pierścień (rysunek ENEA Z.10 s.89) i mieści się w gabarycie symbolu" },
+        { "skladnik": 2, "prymitywy": [1], "srodek": [0, 1], "skala": 0.45, "powod": "kontur kabla przewleczonego przez rdzeń skrócony do 0,45 długości przewodu elementu wokół środka rdzenia (0, 1): wychodzi ok. 3 j.św. ponad i pod pierścień (rysunek ENEA Z.10 s.89) i mieści się w gabarycie symbolu" }
       ]
     },
     {
@@ -1311,11 +1329,11 @@
     "uklad": {
       "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy styku stałym znacznik rodzaju aparatu („×” wyłącznik, kreska „⊤” odłącznik, kreska z okręgiem „○” rozłącznik, kreska uziemnik z symbolem ziemi) o boku 12 j.św. = 25 % boku kafla 48 j.św. (przedział właściciela 22–28 %), kreska znacznika = kreska noża, margines znacznika od krawędzi kafla ≥ 4 j.św. (tusz), odstęp tuszu znacznika od noża ≥ 1 j.św. poza strefą styku (5 j.św. wokół punktu, w którym nóż spoczywa na styku w danym położeniu, i wokół przegubu dla sprzężenia napędu oraz pionu ziemi); symbol ziemi pod uziemnikiem skierowany w dół, szerokość 12 j.św., pion odgałęzienia 3 j.św.",
       "czlonWysuwny": {
-        "pasmoQet": 40,
-        "szerokoscSzewronuQet": 30,
-        "wysokoscSzewronuQet": 12.5,
-        "odstepSzewronowQet": 12.5,
-        "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 3; synoptyka e²TANGO z wyłącznikiem wysuwnym): człon wysuwny wyłącznika — pasmo nad kaflem z podwójnym szewronem w górę (˄˄) i pasmo pod kaflem z podwójnym szewronem w dół (˅˅), w osi toru, przewód toru przechodzi przez pasma; pasmo 16 j.św., szewron 12 × 5 j.św., odstęp szewronów 5 j.św. Szewrony nie mają koloru stanu wyłącznika — model ENM niesie wyłącznie wykonanie (stałe / wysuwne), nie położenie członu (wsunięty / próba / wysunięty), więc pasma są neutralne (kreska toru)"
+        "pasmoQet": 120,
+        "szerokoscSzewronuQet": 60,
+        "wysokoscSzewronuQet": 25,
+        "odstepSzewronowQet": 20,
+        "powod": "decyzja właściciela 2026-11-04 (odbiór B-02; synoptyka e²TANGO z wyłącznikiem wysuwnym): człon wysuwny wyłącznika — OSOBNE kafle nad i pod kaflem wyłącznika, trzy kafle w pionie stykające się krawędziami, ta sama szerokość: górny kafel z podwójnym szewronem w górę (˄˄), kafel wyłącznika (×), dolny kafel z podwójnym szewronem w dół (˅˅); tor przechodzi przez wszystkie trzy. Kafel członu jest kwadratem boku kafla stanu (120 j. QET = 48 j.św.), szewron 24 × 10 j.św., odstęp szewronów 8 j.św. Kolor kafli członu = stan członu wysuwnego (położenie członu), kolor kafla wyłącznika = stan wyłącznika — dwa niezależne stany (`symbols/glyphs.tsx::zKafelemStanu`, `stanCzlonu`)"
       },
       "znacznik": {
         "bokQet": 30,
@@ -1339,9 +1357,10 @@
           "ziemiaPrzy": null
         },
         "uziemnik": {
-          "przegub": [60, 87.5],
-          "styki": { "closed": [60, 20] },
-          "ziemiaPrzy": "przegub"
+          "przegub": [60, 92.5],
+          "styki": { "closed": [60, 25] },
+          "ziemiaPrzy": "przegub",
+          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pola Z.10, uziemnik Q8; wzorzec synoptyki e²TANGO): górny styk uziemnika niżej, z wyraźnym odstępem od górnej krawędzi kafla — styk stały z 20 na 25 j. QET (10 j.św. od krawędzi), przegub z 87,5 na 92,5 j. QET: nóż zachowuje stopień glifu 0,56 boku kafla (przedział 0,55–0,7), a symbol ziemi pod przegubem mieści się w kaflu (głębiej nie można — 27,5/95 wychodzi poza kafel); przewód od portu górnego wchodzi pionem w styk"
         },
         "trojpolozeniowy": {
           "przegub": [60, 75],
