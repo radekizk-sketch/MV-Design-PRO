@@ -2114,7 +2114,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `paragraf_znamienia` (`WielkoscKryteriumWylaczania` — I_sc dla SN/WN wg IEC 62271-100,
     # I_cu dla nN wg IEC 60947-2, I_1 bezpiecznika wg IEC 60282-1 z jednego predykatu pasma).
     # PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4506." in wyjscie, wyjscie
+    # Karta KD6-SZCZEGOLY (wyprowadzenie pradow pola, 2026-11-04): 4506 -> 4508 — POMIAR
+    # `contract_fields()` na `f782a4844` (`git archive`: 4506, pin zgodny) i na drzewie karty
+    # (4508). Roznica zbiorow +2, -0: `tk_biegu_s`, `wzory_pradow` (`PradyPola` — T_k biegu, dla
+    # ktorego solver policzyl I_th, i wzory i_p / I_th / I_b z krokow sladu wiersza biegu;
+    # `kappa`, `m_factor`, `n_factor` byly juz w zbiorze). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4508." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
