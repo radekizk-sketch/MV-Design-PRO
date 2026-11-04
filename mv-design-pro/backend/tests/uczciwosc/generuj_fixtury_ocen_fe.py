@@ -874,6 +874,26 @@ def _oceny_kompensacji() -> dict[str, Any]:
 
 
 #: Plik fixtury frontu → funkcja budująca jego treść.
+def _oceny_referencyjne() -> dict[str, Any]:
+    """Rekordy K sprawdzeń zgodności referencyjnej (karta WERDYKT-MIGRACJA-190, E61/D71/D72):
+    pole zgodne z profilem i pole z wyłącznikiem przed rozłącznikiem (kolejność toru naruszona,
+    celka katalogowa niedopasowana) — sprawdzenia z raportu silnika, nie ręczne słowniki."""
+    from reference_engine import evaluate_enm
+
+    from tests.reference_engine.test_compliance_engine import _device, _enm, _rmu_line_bay
+
+    zle = _rmu_line_bay("bay/cb")
+    zle.primary_devices.insert(0, _device("bay/cb/q0", "CB"))
+    raport = evaluate_enm(_enm([_rmu_line_bay("bay/ok"), zle]), pack_ids=["iec62271"])
+    checks = raport.packs[0].checks
+    zgodne = next(c for c in checks if c.ocena.status_maszynowy == "SPELNIA")
+    niezgodne = next(c for c in checks if c.ocena.status_maszynowy == "NIE_SPELNIA")
+    return {
+        "zgodne": zgodne.model_dump(mode="json"),
+        "niezgodne": niezgodne.model_dump(mode="json"),
+    }
+
+
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
     _FRONTEND_SRC / "ui2" / "wyniki" / "dynamika" / "__tests__" / "rekordyOceny.json": _dynamika,
@@ -941,6 +961,11 @@ FIXTURY: dict[Path, Any] = {
     / "kompensacja"
     / "__tests__"
     / "rekordyKompensacji.json": _oceny_kompensacji,
+    _FRONTEND_SRC
+    / "ui2"
+    / "referencje"
+    / "__tests__"
+    / "rekordyReferencyjne.json": (_oceny_referencyjne),
 }
 
 

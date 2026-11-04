@@ -395,4 +395,7 @@ def test_lista_sprawdzen_v1_czyta_ten_sam_predykat(
         return
 
     assert sprawdzenia, "brak sprawdzenia family.voltage mimo deklaracji rodziny"
-    assert all(s.status == ("pass" if przechodzi else "fail") for s in sprawdzenia)
+    assert all(
+        s.ocena.status_maszynowy == ("SPELNIA" if przechodzi else "NIE_SPELNIA")
+        for s in sprawdzenia
+    )

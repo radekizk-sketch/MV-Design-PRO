@@ -7,8 +7,8 @@
  * zgodności silnika referencji przez GOTOWY klient `ui2/referencje/api.ts`.
  *
  * pkt 2.3: dla WYBRANEGO elementu (pole LUB stacja — `element_ref` z selekcji)
- *   lista per pakiet: sprawdzenia ✓/✗ przefiltrowane po `element_ref`; przy ✗
- *   ZAWSZE `message_pl` (powód). Pakiety bez sprawdzeń dla elementu — pomijane.
+ *   lista per pakiet: sprawdzenia przefiltrowane po `element_ref`, każde z etykietą
+ *   i wyjaśnieniem rekordu oceny oraz ZAWSZE `message_pl` (powód). Pakiety bez sprawdzeń dla elementu — pomijane.
  * pkt 2.7: dla STACJI dodatkowo reguły OSD `implemented=false` prezentowane
  *   INFORMACYJNIE („poza zakresem walidacji — powód"), NIE jako błąd/✗.
  *
@@ -35,6 +35,7 @@ import {
   type ReferenceStationRule,
 } from '../../referencje/api';
 import { BrakiPakietowDanych } from '../../referencje/BrakiPakietowDanych';
+import { SprawdzenieReferencyjne } from '../../referencje/SprawdzenieReferencyjne';
 import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 
@@ -193,23 +194,12 @@ export function ZgodnoscReferencyjna({
                 </div>
                 <ul className="mvd-zgodnosc-lista">
                   {checks.map((check, i) => (
-                    <li
-                      key={`${check.rule_code}-${i}`}
-                      className="mvd-zgodnosc-check"
-                      data-testid={`mvd-zgodnosc-check-${pack.pack_id}-${i}`}
-                      data-status={check.status}
-                    >
-                      <span
-                        className={
-                          check.status === 'pass'
-                            ? 'mvd-zgodnosc-ikona-ok'
-                            : 'mvd-zgodnosc-ikona-zle'
-                        }
-                        aria-hidden="true"
-                      >
-                        {check.status === 'pass' ? '✓' : '✗'}
-                      </span>
-                      <span className="mvd-zgodnosc-tresc">{check.message_pl}</span>
+                    <li key={check.ocena.kryterium_id} className="mvd-zgodnosc-check">
+                      <SprawdzenieReferencyjne
+                        check={check}
+                        testid={`mvd-zgodnosc-check-${pack.pack_id}-${i}`}
+                        bezNazwyElementu
+                      />
                     </li>
                   ))}
                 </ul>

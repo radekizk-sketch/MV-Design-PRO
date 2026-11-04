@@ -71,6 +71,18 @@ describe('SekcjaPokryciaAnaliz — stany', () => {
 });
 
 describe('SekcjaPokryciaAnaliz — treść', () => {
+  // Karta WERDYKT-MIGRACJA-190: punktacja pokrycia to miara, nie ocena — dawny próg okna
+  // (≥ 80 zieleń / ≥ 40 bursztyn / reszta czerwień) zdjęty. Iloczyn: punktacja w każdym
+  // dawnym przedziale i na jego granicach.
+  it.each([0, 39, 40, 79, 80, 100])('punktacja %i bez koloru werdyktu', async (punkty) => {
+    mockFetchOk(odpowiedz({ pokrycie: { ...odpowiedz().pokrycie, total_score: punkty } }));
+    render(<SekcjaPokryciaAnaliz />);
+    const wynik = await screen.findByTestId('mvd-pokrycie-punktacja');
+    expect(wynik).toHaveTextContent(`${punkty} / 100`);
+    expect(wynik.className).toContain('mvd-ref-score-miara');
+    expect(wynik.className).not.toMatch(/mvd-ref-score-(ok|warn|err)/);
+  });
+
   it('pokazuje punktację, braki i luki krytyczne wprost z backendu', async () => {
     const spy = mockFetchOk(odpowiedz());
     render(<SekcjaPokryciaAnaliz />);

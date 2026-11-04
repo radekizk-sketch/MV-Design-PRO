@@ -142,7 +142,9 @@ class TestCreatorTemplatesComplyWithProfiles:
         )
         report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
         return [
-            f"{c.element_ref}:{c.rule_code}" for c in report.packs[0].checks if c.status == "fail"
+            f"{c.element_ref}:{c.rule_code}"
+            for c in report.packs[0].checks
+            if c.ocena.status_maszynowy == "NIE_SPELNIA"
         ]
 
     def test_bay_templates_comply_with_profiles_gpz(self) -> None:
@@ -184,7 +186,9 @@ class TestCreatorTemplatesComplyWithProfiles:
             header=ENMHeader(name="Sabotaż"), substations=[station], bays=[bay]
         )
         report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
-        fails = [c.rule_code for c in report.packs[0].checks if c.status == "fail"]
+        fails = [
+            c.rule_code for c in report.packs[0].checks if c.ocena.status_maszynowy == "NIE_SPELNIA"
+        ]
         assert "profile.forbidden" in fails
 
 
@@ -231,7 +235,7 @@ class TestFamilyTemplatesMatchCells:
             )
             checks = _cell_match_check_for_bay(bay, pack, family)
             assert len(checks) == 1
-            assert checks[0].status == "pass", f"{template.template_ref}: {checks[0].message_pl}"
+            assert checks[0].spelniony, f"{template.template_ref}: {checks[0].message_pl}"
             checked += 1
         # 4 rodziny z celkami × 3 typy pól = 12 szablonów.
         assert checked == 12

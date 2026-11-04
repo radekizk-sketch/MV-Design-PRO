@@ -89,7 +89,9 @@ class TestNormCompliance:
         bay.primary_devices = [d for d in bay.primary_devices if d.kind != "CABLE_HEAD"]
         pack = _pack_report(_enm([bay]), "iec62271")
         assert any(
-            c.rule_code == "profile.required.CABLE_HEAD" and c.status == "fail" for c in pack.checks
+            c.rule_code == "profile.required.CABLE_HEAD"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
+            for c in pack.checks
         )
 
     def test_missing_switching_function_bites(self) -> None:
@@ -97,7 +99,8 @@ class TestNormCompliance:
         bay.primary_devices = [d for d in bay.primary_devices if d.kind != "LOAD_SWITCH"]
         pack = _pack_report(_enm([bay]), "iec62271")
         assert any(
-            c.rule_code.startswith("profile.one_of.") and c.status == "fail" for c in pack.checks
+            c.rule_code.startswith("profile.one_of.") and c.ocena.status_maszynowy == "NIE_SPELNIA"
+            for c in pack.checks
         )
 
     def test_wrong_order_bites(self) -> None:
@@ -115,7 +118,10 @@ class TestNormCompliance:
             ],
         )
         pack = _pack_report(_enm([bay]), "iec62271")
-        assert any(c.rule_code == "profile.order" and c.status == "fail" for c in pack.checks)
+        assert any(
+            c.rule_code == "profile.order" and c.ocena.status_maszynowy == "NIE_SPELNIA"
+            for c in pack.checks
+        )
 
     def test_earth_switch_in_main_path_bites(self) -> None:
         bay = _rmu_line_bay("bay/es-w-osi")
@@ -124,7 +130,8 @@ class TestNormCompliance:
                 device.placement = "MIDSTREAM"
         pack = _pack_report(_enm([bay]), "iec62271")
         assert any(
-            c.rule_code == "profile.lateral_placement.ES" and c.status == "fail"
+            c.rule_code == "profile.lateral_placement.ES"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
 
@@ -137,7 +144,8 @@ class TestNormCompliance:
                 device.switch_state = closed
         pack = _pack_report(_enm([bay]), "iec62271")
         assert any(
-            c.rule_code == "iec62271.interlock.es_vs_main" and c.status == "fail"
+            c.rule_code == "iec62271.interlock.es_vs_main"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
         # Pozytyw: łącznik toru otwarty ⇒ sprawdzenie pass.
@@ -146,7 +154,7 @@ class TestNormCompliance:
                 device.switch_state = open_
         pack = _pack_report(_enm([bay]), "iec62271")
         assert any(
-            c.rule_code == "iec62271.interlock.es_vs_main" and c.status == "pass"
+            c.rule_code == "iec62271.interlock.es_vs_main" and c.ocena.status_maszynowy == "SPELNIA"
             for c in pack.checks
         )
 
@@ -157,23 +165,33 @@ class TestManufacturerCompliance:
         bay = _rmu_line_bay("bay/ct")
         bay.primary_devices.insert(1, _device("bay/ct/t1", "CT"))
         pack = _pack_report(_enm([bay]), "siemens_8djh")
-        assert any(c.rule_code == "family.apparatus.CT" and c.status == "fail" for c in pack.checks)
+        assert any(
+            c.rule_code == "family.apparatus.CT" and c.ocena.status_maszynowy == "NIE_SPELNIA"
+            for c in pack.checks
+        )
         # Ta sama sieć wobec rodziny wyłącznikowej (UniGear) — CT w słowniku.
         pack_ug = _pack_report(_enm([bay]), "abb_unigear")
         assert any(
-            c.rule_code == "family.apparatus.CT" and c.status == "pass" for c in pack_ug.checks
+            c.rule_code == "family.apparatus.CT" and c.ocena.status_maszynowy == "SPELNIA"
+            for c in pack_ug.checks
         )
 
     def test_network_voltage_above_family_levels_bites(self) -> None:
         enm = _enm([_rmu_line_bay()])
         enm.buses[0].voltage_kv = 30.0  # ponad 24 kV rodzin RMU
         pack = _pack_report(enm, "abb_safering")
-        assert any(c.rule_code == "family.voltage" and c.status == "fail" for c in pack.checks)
+        assert any(
+            c.rule_code == "family.voltage" and c.ocena.status_maszynowy == "NIE_SPELNIA"
+            for c in pack.checks
+        )
 
     def test_network_15kv_fits_families_up_to_17_5(self) -> None:
         # Dobór: napięcie znamionowe rozdzielnicy ≥ napięcie sieci (15 ≤ 17,5).
         pack = _pack_report(_enm([_rmu_line_bay()]), "abb_safering")
-        assert any(c.rule_code == "family.voltage" and c.status == "pass" for c in pack.checks)
+        assert any(
+            c.rule_code == "family.voltage" and c.ocena.status_maszynowy == "SPELNIA"
+            for c in pack.checks
+        )
 
 
 def _rmu_tr_bay(ref_id: str = "bay/tr") -> Bay:
@@ -199,7 +217,8 @@ class TestOsdCompliance:
         station = _station(construction="slupowa")
         pack = _pack_report(_enm([_rmu_line_bay()], station), "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.station.prefabricated_compact_preferred" and c.status == "fail"
+            c.rule_code == "osd_enea.station.prefabricated_compact_preferred"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
 
@@ -221,7 +240,8 @@ class TestOsdCompliance:
         station = _station(construction="prefabrykowana")
         pack = _pack_report(_enm([_rmu_line_bay()], station), "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.station.bay_composition" and c.status == "fail"
+            c.rule_code == "osd_enea.station.bay_composition"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
 
@@ -247,7 +267,7 @@ class TestOsdCompliance:
         pack = _pack_report(enm, "osd_enea")
         assert any(
             c.rule_code == "osd_enea.station.pole_station_cable_entry_forbidden"
-            and c.status == "fail"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
         # Pozytyw: ta sama stacja słupowa bez kabla — sprawdzenie pass.
@@ -256,7 +276,7 @@ class TestOsdCompliance:
         )
         assert any(
             c.rule_code == "osd_enea.station.pole_station_cable_entry_forbidden"
-            and c.status == "pass"
+            and c.ocena.status_maszynowy == "SPELNIA"
             for c in pack_ok.checks
         )
 
@@ -286,12 +306,14 @@ class TestOsdCompliance:
 
         pack = _pack_report(enm_with_trafo(0.8), "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.station.transformer_power_limit" and c.status == "fail"
+            c.rule_code == "osd_enea.station.transformer_power_limit"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack.checks
         )
         pack_ok = _pack_report(enm_with_trafo(0.4), "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.station.transformer_power_limit" and c.status == "pass"
+            c.rule_code == "osd_enea.station.transformer_power_limit"
+            and c.ocena.status_maszynowy == "SPELNIA"
             for c in pack_ok.checks
         )
 
@@ -319,7 +341,8 @@ class TestOsdCompliance:
         enm_fail = _enm([remote_bay(), _rmu_tr_bay()], _station(construction="prefabrykowana"))
         pack_fail = _pack_report(enm_fail, "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement" and c.status == "fail"
+            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement"
+            and c.ocena.status_maszynowy == "NIE_SPELNIA"
             for c in pack_fail.checks
         )
 
@@ -348,7 +371,8 @@ class TestOsdCompliance:
         )
         pack_ok = _pack_report(enm_ok, "osd_enea")
         assert any(
-            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement" and c.status == "pass"
+            c.rule_code == "osd_enea.telemechanika.line_bay_u_i_measurement"
+            and c.ocena.status_maszynowy == "SPELNIA"
             for c in pack_ok.checks
         )
 
@@ -403,7 +427,7 @@ class TestCellMatchCompliance:
         assert family is not None
         checks = _cell_match_check_for_bay(_rmu_line_bay(), pack, family)
         assert len(checks) == 1
-        assert checks[0].status == "pass"
+        assert checks[0].spelniony
         assert "C" in checks[0].message_pl
 
     def test_bay_with_apparatus_outside_cell_bites(self) -> None:
@@ -418,7 +442,7 @@ class TestCellMatchCompliance:
         bay.primary_devices.insert(0, _device("bay/cb/q0", "CB"))
         checks = _cell_match_check_for_bay(bay, pack, family)
         assert len(checks) == 1
-        assert checks[0].status == "fail"
+        assert not checks[0].spelniony
         # Karta #142: skład pola słowami („Wyłącznik”), kandydat — oznaczeniem celki
         # producenta z jej nazwą; kody rodzajów aparatu ENM nie trafiają do treści.
         from reference_engine.compliance import _kind_pl
@@ -432,17 +456,17 @@ class TestCellMatchCompliance:
         # Karta #142: gałąź „aparat bez symbolu” (osiągalna, gdy model dostanie rodzaj
         # aparatu bez wpisu w słowniku symboli) nazywa aparat słowami, nie kodem ENM.
         from reference_engine import get_reference_pack
-        from reference_engine.compliance import _checks_for_pack, _kind_pl
+        from reference_engine.compliance import _kind_pl, sprawdzenia_pakietu
 
         pakiet = get_reference_pack("iec60617")
         okrojony = pakiet.model_copy(
             update={"symbol_map": [e for e in pakiet.symbol_map if e.kind != "ES"]}
         )
         enm = _enm([_rmu_line_bay()])
-        checks = _checks_for_pack(
+        checks = sprawdzenia_pakietu(
             okrojony, enm, {s.ref_id: s for s in enm.substations}, {"bus/sn": 15.0}
         )
-        niezgodne = [c for c in checks if c.status == "fail"]
+        niezgodne = [c for c in checks if not c.spelniony]
         assert len(niezgodne) == 1
         assert _kind_pl("ES") in niezgodne[0].message_pl
         assert re.search(r"\bES\b", niezgodne[0].message_pl) is None

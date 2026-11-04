@@ -3,7 +3,7 @@
  * REFERENCE_ENGINE_SPEC_V1.md §9, V12K-060).
  *
  * Tabela Reference Score per pakiet referencyjny (pkt 8 dyrektywy) + lista
- * sprawdzeń ✓/✗ z powodem PL (pkt 7). Read-only, 100% PL, zero fizyki.
+ * sprawdzeń z rekordem oceny i powodem PL (pkt 7). Read-only, 100% PL, zero fizyki.
  * `score_percent = null` ⇒ „nie dotyczy" (zero sprawdzeń stosowalnych —
  * uczciwy raport, bez sztucznych 100%).
  *
@@ -16,6 +16,7 @@
 import { Fragment, useEffect, useState } from 'react';
 
 import { BrakiPakietowDanych } from '../../ui2/referencje/BrakiPakietowDanych';
+import { SprawdzenieReferencyjne } from '../../ui2/referencje/SprawdzenieReferencyjne';
 import { WyborPakietuReferencyjnego } from '../../ui2/referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../ui2/referencje/wyborPakietu';
 import { fetchReferenceCompliance } from './api';
@@ -34,11 +35,13 @@ function scoreLabel(pack: ReferencePackComplianceReport): string {
   return `${pack.score_percent}%`;
 }
 
+/**
+ * Wynik pakietu (Reference Score) to miara udziału sprawdzeń zgodnych, nie ocena — bez koloru
+ * werdyktu i bez progu okna (dawniej 100 % zieleń / ≥ 80 % bursztyn / reszta czerwień, karta
+ * WERDYKT-MIGRACJA-190). Ocenę niesie każdy rekord sprawdzenia na liście pakietu.
+ */
 function scoreClass(pack: ReferencePackComplianceReport): string {
-  if (pack.score_percent == null) return 'text-slate-400';
-  if (pack.score_percent === 100) return 'text-emerald-600';
-  if (pack.score_percent >= 80) return 'text-amber-600';
-  return 'text-rose-600';
+  return pack.score_percent == null ? 'text-slate-400' : 'text-slate-700';
 }
 
 export function ReferencePanel({ caseId }: ReferencePanelProps) {
@@ -166,24 +169,11 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
                       data-testid={`reference-checks-${pack.pack_id}`}
                     >
                       {pack.checks.map((check, index) => (
-                        <li
-                          key={`${check.element_ref}-${check.rule_code}-${index}`}
-                          className="flex gap-1.5 text-[11px]"
-                        >
-                          <span
-                            className={
-                              check.status === 'pass'
-                                ? 'text-emerald-600'
-                                : 'text-rose-600'
-                            }
-                            aria-label={
-                              check.status === 'pass' ? 'zgodne' : 'niezgodne'
-                            }
-                          >
-                            {check.status === 'pass' ? '✓' : '✗'}
-                          </span>
-                          <span className="text-slate-500">{check.element_ref}:</span>
-                          <span className="text-slate-700">{check.message_pl}</span>
+                        <li key={check.ocena.kryterium_id}>
+                          <SprawdzenieReferencyjne
+                            check={check}
+                            testid={`reference-check-${pack.pack_id}-${index}`}
+                          />
                         </li>
                       ))}
                     </ul>

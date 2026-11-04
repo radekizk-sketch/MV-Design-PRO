@@ -25,6 +25,7 @@ import { ZgodnoscReferencyjna } from '../../spaces/model/ZgodnoscReferencyjna';
 import { useAppStateStore } from '../../../ui/app-state/store';
 import type { ReferencePackSummary } from '../api';
 import { useWyborPakietu } from '../wyborPakietu';
+import { SPRAWDZENIE_ZGODNE, sprawdzenieDla } from './fixturyReferencyjne';
 
 const NORMA: ReferencePackSummary = {
   pack_id: 'iec62271',
@@ -69,15 +70,7 @@ const RAPORT = {
       passed: 1,
       failed: 0,
       score_percent: 100,
-      checks: [
-        {
-          element_ref: 'bay-1',
-          pack_id: 'iec62271',
-          rule_code: 'profile.order',
-          status: 'pass' as const,
-          message_pl: 'Kolejność aparatów zgodna.',
-        },
-      ],
+      checks: [sprawdzenieDla(SPRAWDZENIE_ZGODNE, 'bay-1', 'iec62271')],
     },
   ],
 };

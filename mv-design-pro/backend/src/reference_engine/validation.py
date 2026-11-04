@@ -7,7 +7,8 @@ Kierunek zależności: enm.validator → reference_engine (import leniwy w
 walidatorze); ten moduł NIE importuje walidatora.
 
 JEDNA implementacja sprawdzeń (pkt 10/12 dyrektywy): znaleziska wyprowadzane
-z TYCH SAMYCH sprawdzeń silnika zgodności (`compliance.evaluate_enm`) przez
+z TYCH SAMYCH sprawdzeń silnika zgodności (`compliance.sprawdzenia_pakietow`, ten sam
+obiekt `Sprawdzenie`, który raport opakowuje rekordem K) przez
 mapowanie rule_code → kod walidatora. Zasady na żywo (spec §6):
 
 - tylko ścieżka danych (`bay.primary_devices` niepuste),
@@ -24,8 +25,13 @@ from enm.models import Bay, EnergyNetworkModel
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from pydantic import BaseModel
 
-from .compliance import evaluate_enm
-from .registry import FIELD_PROFILE_PACK_ID, family_for_pack, list_reference_packs
+from .compliance import sprawdzenia_pakietow
+from .registry import (
+    FIELD_PROFILE_PACK_ID,
+    family_for_pack,
+    get_reference_pack,
+    list_reference_packs,
+)
 
 
 class LiveReferenceFinding(BaseModel):
@@ -78,10 +84,11 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
         pola_po_ref.setdefault(bay.ref_id, bay)
 
     # Normy: profile pól (iec62271) — wszystkie pola ze ścieżką danych.
-    report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
-    for pack_report in report.packs:
-        for check in pack_report.checks:
-            if check.status != "fail":
+    for _pack, sprawdzenia in sprawdzenia_pakietow(
+        enm, [get_reference_pack(FIELD_PROFILE_PACK_ID)]
+    ):
+        for check in sprawdzenia:
+            if check.spelniony:
                 continue
             if check.rule_code == "iec62271.interlock.es_vs_main":
                 continue  # W034 ostrzega na żywo — zero duplikatów (spec §6)
@@ -127,12 +134,12 @@ def reference_validation_issues(enm: EnergyNetworkModel) -> list[LiveReferenceFi
             }
             for pack_id in bound_pack_ids
         }
-        family_report = evaluate_enm(enm, pack_ids=bound_pack_ids)
-        for pack_report in family_report.packs:
-            for check in pack_report.checks:
-                if check.status != "fail":
+        pakiety_rodzin = [get_reference_pack(pack_id) for pack_id in bound_pack_ids]
+        for pack, sprawdzenia in sprawdzenia_pakietow(enm, pakiety_rodzin):
+            for check in sprawdzenia:
+                if check.spelniony:
                     continue
-                if check.element_ref not in bound_bay_refs.get(pack_report.pack_id, set()):
+                if check.element_ref not in bound_bay_refs.get(pack.pack_id, set()):
                     continue
                 issue_code = _issue_code_for_rule(check.rule_code)
                 if issue_code is None:

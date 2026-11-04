@@ -94,14 +94,14 @@ def _checks(enm: EnergyNetworkModel) -> list:
 def test_obiekt_powyzej_5mw_bez_ukladu_kontrolnego_fail() -> None:
     checks = _checks(_enm(moc_mw=6.0, rodzaje_ukladow=["PODSTAWOWY"]))
     assert len(checks) == 1
-    assert checks[0].status == "fail"
+    assert checks[0].ocena.status_maszynowy == "NIE_SPELNIA"
     assert "5 MW" in checks[0].message_pl
 
 
 def test_obiekt_powyzej_5mw_z_ukladem_kontrolnym_pass() -> None:
     checks = _checks(_enm(moc_mw=6.0, rodzaje_ukladow=["PODSTAWOWY", "KONTROLNY"]))
     assert len(checks) == 1
-    assert checks[0].status == "pass"
+    assert checks[0].ocena.status_maszynowy == "SPELNIA"
 
 
 def test_obiekt_ponizej_progu_z_ukladem_kontrolnym_bez_sprawdzenia() -> None:
@@ -128,5 +128,5 @@ def test_pole_pomiarowe_na_szynie_nn_nie_jest_ukladem_rozliczeniowym_sn() -> Non
     tylko_nn_kontrolny = _checks(
         _enm(moc_mw=6.0, rodzaje_ukladow=["PODSTAWOWY"], rodzaje_ukladow_nn=["KONTROLNY"])
     )
-    assert [c.status for c in tylko_nn_kontrolny] == ["fail"]
+    assert [c.ocena.status_maszynowy for c in tylko_nn_kontrolny] == ["NIE_SPELNIA"]
     assert _checks(_enm(moc_mw=6.0, rodzaje_ukladow=[], rodzaje_ukladow_nn=["KONTROLNY"])) == []

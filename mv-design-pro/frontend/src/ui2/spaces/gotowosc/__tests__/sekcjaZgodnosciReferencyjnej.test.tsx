@@ -2,7 +2,8 @@
  * Testy sekcji „Ocena zgodności referencyjnej" (REF-A, HANDOFF pkt 2.1).
  * Mock globalnego `fetch` na kontrakcie HANDOFF §1.1 (wymóg §3.4 — brak
  * backendu na tej gałęzi). Weryfikacja: null→„nie dotyczy" (NIGDY 0%/100%),
- * progi kolorów (100/≥80/<80/null), rozwinięcie sprawdzeń, stany
+ * wynik pakietu jako miara bez koloru werdyktu (karta WERDYKT-MIGRACJA-190 zdjęła próg okna
+ * 100/≥80/<80), rozwinięcie sprawdzeń z rekordem oceny z backendu, stany
  * pusty/ładowanie/błąd/bez przypadku.
  *
  * REF-PAKIET: sekcja pobiera DWIE różne rzeczy — katalog referencji
@@ -23,6 +24,11 @@ import type {
   ReferencePackComplianceReport,
   ReferencePackSummary,
 } from '../../../referencje/api';
+import {
+  SPRAWDZENIE_NIEZGODNE,
+  SPRAWDZENIE_ZGODNE,
+  sprawdzenieDla,
+} from '../../../referencje/__tests__/fixturyReferencyjne';
 
 function pack(over: Partial<ReferencePackComplianceReport> = {}): ReferencePackComplianceReport {
   return {
@@ -167,74 +173,46 @@ describe('SekcjaZgodnosciReferencyjnej — tabela i wynik', () => {
     expect(wynik.className).toContain('mvd-ref-score-nd');
   });
 
-  it('100% ⇒ kolor zieleni (mvd-ref-score-ok)', async () => {
-    mockFetchOk(raport([pack({ pack_id: 'ok', score_percent: 100 })]));
+  // Iloczyn: wynik pakietu {100, 85, 80, 60, 0} — zawsze ta sama klasa miary, żaden kolor
+  // werdyktu (dawny próg okna 100 % zieleń / ≥ 80 % bursztyn / reszta czerwień).
+  it.each([100, 85, 80, 60, 0])('wynik %i%% ⇒ miara bez koloru werdyktu', async (wartosc) => {
+    mockFetchOk(raport([pack({ pack_id: 'm', score_percent: wartosc })]));
     render(<SekcjaZgodnosciReferencyjnej />);
-    const wynik = await screen.findByTestId('mvd-ref-wynik-ok');
-    expect(wynik).toHaveTextContent('100%');
-    expect(wynik.className).toContain('mvd-ref-score-ok');
-  });
-
-  it('≥80% (85%) ⇒ kolor bursztynu (mvd-ref-score-warn)', async () => {
-    mockFetchOk(raport([pack({ pack_id: 'w', score_percent: 85 })]));
-    render(<SekcjaZgodnosciReferencyjnej />);
-    const wynik = await screen.findByTestId('mvd-ref-wynik-w');
-    expect(wynik).toHaveTextContent('85%');
-    expect(wynik.className).toContain('mvd-ref-score-warn');
-  });
-
-  it('próg 80% (dokładnie 80) nadal bursztyn, nie czerwień', async () => {
-    mockFetchOk(raport([pack({ pack_id: 'g', score_percent: 80 })]));
-    render(<SekcjaZgodnosciReferencyjnej />);
-    const wynik = await screen.findByTestId('mvd-ref-wynik-g');
-    expect(wynik.className).toContain('mvd-ref-score-warn');
-    expect(wynik.className).not.toContain('mvd-ref-score-err');
-  });
-
-  it('<80% (60%) ⇒ kolor czerwieni (mvd-ref-score-err)', async () => {
-    mockFetchOk(raport([pack({ pack_id: 'e', score_percent: 60 })]));
-    render(<SekcjaZgodnosciReferencyjnej />);
-    const wynik = await screen.findByTestId('mvd-ref-wynik-e');
-    expect(wynik).toHaveTextContent('60%');
-    expect(wynik.className).toContain('mvd-ref-score-err');
+    const wynik = await screen.findByTestId('mvd-ref-wynik-m');
+    expect(wynik).toHaveTextContent(`${wartosc}%`);
+    expect(wynik.className).toContain('mvd-ref-score-miara');
+    expect(wynik.className).not.toMatch(/mvd-ref-score-(ok|warn|err)/);
   });
 });
 
 describe('SekcjaZgodnosciReferencyjnej — rozwinięcie sprawdzeń', () => {
-  it('rozwinięcie wiersza pokazuje checks[] z message_pl i ✓/✗', async () => {
+  it('rozwinięcie wiersza pokazuje sprawdzenia z etykietą i wyjaśnieniem rekordu backendu', async () => {
     mockFetchOk(
       raport([
         pack({
-          pack_id: 'osd_enea',
-          name_pl: 'OSD Enea',
-          checks: [
-            {
-              element_ref: 'POLE-3',
-              pack_id: 'osd_enea',
-              rule_code: 'reference.bays.forbidden_apparatus',
-              status: 'fail',
-              message_pl: 'Aparat niedozwolony w polu liniowym.',
-            },
-            {
-              element_ref: 'POLE-1',
-              pack_id: 'osd_enea',
-              rule_code: 'reference.bays.missing_required_apparatus',
-              status: 'pass',
-              message_pl: 'Skład aparatów zgodny z wymaganiem.',
-            },
-          ],
+          pack_id: 'iec62271',
+          name_pl: 'IEC 62271',
+          checks: [SPRAWDZENIE_NIEZGODNE, SPRAWDZENIE_ZGODNE],
         }),
       ]),
     );
     render(<SekcjaZgodnosciReferencyjnej />);
-    const rozwin = await screen.findByRole('button', { name: /OSD Enea/ });
+    const rozwin = await screen.findByRole('button', { name: /IEC 62271/ });
     fireEvent.click(rozwin);
-    const lista = await screen.findByTestId('mvd-ref-checks-osd_enea');
-    expect(within(lista).getByText('Aparat niedozwolony w polu liniowym.')).toBeInTheDocument();
-    expect(within(lista).getByText('Skład aparatów zgodny z wymaganiem.')).toBeInTheDocument();
-    expect(within(lista).getByText('✗')).toBeInTheDocument();
-    expect(within(lista).getByText('✓')).toBeInTheDocument();
-    expect(within(lista).getByLabelText(GOTOWOSC_STRINGS.refCheckNiezgodne)).toBeInTheDocument();
+    const lista = await screen.findByTestId('mvd-ref-checks-iec62271');
+    for (const [i, check] of [SPRAWDZENIE_NIEZGODNE, SPRAWDZENIE_ZGODNE].entries()) {
+      const wiersz = within(lista).getByTestId(`mvd-ref-check-iec62271-${i}`);
+      expect(wiersz.dataset.status).toBe(check.ocena.status_maszynowy);
+      expect(wiersz).toHaveTextContent(check.ocena.etykieta.etykieta_pl);
+      expect(wiersz).toHaveTextContent(check.message_pl);
+      expect(wiersz).toHaveTextContent(check.ocena.przedmiot.nazwa_pl);
+      // Identyfikator elementu nie trafia do treści (nazwa z modelu, karta #142).
+      expect(wiersz.textContent).not.toContain(check.element_ref);
+      // Wyjaśnienie rekordu (karta werdyktu) dostępne w wierszu.
+      expect(within(wiersz).getByTestId(`mvd-werdykt-${check.ocena.kryterium_id}`)).toBeInTheDocument();
+    }
+    // Bez własnych znaków ✓/✗ ekranu.
+    expect(lista.textContent).not.toMatch(/[✓✗]/);
   });
 
   it('ponowny klik zwija wiersz (sprawdzenia znikają)', async () => {
@@ -243,15 +221,7 @@ describe('SekcjaZgodnosciReferencyjnej — rozwinięcie sprawdzeń', () => {
         pack({
           pack_id: 'p',
           name_pl: 'IEC 62271',
-          checks: [
-            {
-              element_ref: 'POLE-2',
-              pack_id: 'p',
-              rule_code: 'reference.bays.family_mismatch',
-              status: 'fail',
-              message_pl: 'Rodzina rozdzielnicy niezgodna.',
-            },
-          ],
+          checks: [sprawdzenieDla(SPRAWDZENIE_NIEZGODNE, 'POLE-2', 'p')],
         }),
       ]),
     );

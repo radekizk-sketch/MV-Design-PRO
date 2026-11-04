@@ -4,6 +4,8 @@
  * CANONICAL: Język polski w UI. Brak nazw kodowych.
  */
 
+import type { OcenaKryterium } from '../../ui2/wyniki/wzorzec/werdykt';
+
 // ---------------------------------------------------------------------------
 // Diagnostics API response types
 // ---------------------------------------------------------------------------
@@ -125,12 +127,16 @@ export const ANALYSIS_LABELS_PL: Record<AnalysisType, string> = {
 
 export type ReferencePackKind = 'norm' | 'manufacturer' | 'osd';
 
+/**
+ * Sprawdzenie zgodności referencyjnej — rekord K (`ocena`) zamiast gołego statusu (karta
+ * WERDYKT-MIGRACJA-190): ekran pokazuje etykietę i wyjaśnienie rekordu, nigdy własny ✓/✗.
+ */
 export interface ReferenceComplianceCheck {
   element_ref: string;
   pack_id: string;
   rule_code: string;
-  status: 'pass' | 'fail';
   message_pl: string;
+  ocena: OcenaKryterium;
 }
 
 export interface ReferencePackComplianceReport {

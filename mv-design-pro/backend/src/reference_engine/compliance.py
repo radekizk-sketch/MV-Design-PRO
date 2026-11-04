@@ -12,6 +12,7 @@ nie istnieje druga kopia logiki (pkt 10/12 dyrektywy).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from enm.interlock_rules import (
     device_state,
@@ -21,7 +22,7 @@ from enm.interlock_rules import (
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
 from enm.pola import czy_pole_nn, pola_sn_stacji, poziom_pol
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
-from enm.slownik_komunikatow import opis_obiektu
+from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tor_pola import szyny_stacji
 from network_model.catalog.switchgear import (
     SwitchgearFamily,
@@ -45,6 +46,7 @@ from .models import (
     ReferenceFieldProfile,
     ReferencePack,
 )
+from .oceny import ocena_sprawdzenia
 from .registry import (
     FIELD_PROFILE_PACK_ID,
     family_for_pack,
@@ -53,6 +55,22 @@ from .registry import (
     list_reference_packs,
     pakiet_osd_operatora,
 )
+
+
+@dataclass(frozen=True)
+class Sprawdzenie:
+    """Wynik jednej reguły silnika zgodności — JEDNO źródło predykatu sprawdzenia.
+
+    Raport (``evaluate_enm``) opakowuje go rekordem K (``oceny.ocena_sprawdzenia``), walidacja
+    na żywo (``validation.py``) czyta go bez budowy rekordu — ten sam obiekt, ten sam
+    ``spelniony`` (karta WERDYKT-MIGRACJA-190).
+    """
+
+    element_ref: str
+    rule_code: str
+    spelniony: bool
+    message_pl: str
+
 
 # Nazwy PL aparatów — z JEDYNEGO słownika symboli (pakiet iec60617).
 _KIND_NAME_PL: dict[str, str] = {
@@ -136,21 +154,18 @@ def _station_type_of(bay: Bay, substations_by_ref: dict[str, Substation]) -> str
 # ---------------------------------------------------------------------------
 
 
-def _profile_checks_for_bay(
-    bay: Bay, profile: ReferenceFieldProfile, pack_id: str
-) -> list[ComplianceCheck]:
+def _profile_checks_for_bay(bay: Bay, profile: ReferenceFieldProfile) -> list[Sprawdzenie]:
     devices: list[BayPrimaryDevice] = list(bay.primary_devices or [])
     kinds = [d.kind for d in devices]
     present = set(kinds)
-    checks: list[ComplianceCheck] = []
+    checks: list[Sprawdzenie] = []
 
     def add(rule_code: str, ok: bool, message_pl: str) -> None:
         checks.append(
-            ComplianceCheck(
+            Sprawdzenie(
                 element_ref=bay.ref_id,
-                pack_id=pack_id,
                 rule_code=rule_code,
-                status="pass" if ok else "fail",
+                spelniony=ok,
                 message_pl=message_pl,
             )
         )
@@ -237,7 +252,7 @@ def _kind_is_field_apparatus(kind: str) -> bool:
     return kind in _KIND_TO_FAMILY_APPARATUS or kind == "TRANSFORMER_DEVICE"
 
 
-def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
+def _interlock_checks_for_bay(bay: Bay) -> list[Sprawdzenie]:
     """Blokada uziemnika (wspólny predykat z W034 — enm/interlock_rules.py).
 
     Sprawdzenie STOSOWALNE tylko, gdy pole niesie uziemnik ze ZNANYM stanem
@@ -259,11 +274,10 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
         else "Blokada uziemnik ↔ łącznik toru głównego zachowana."
     )
     return [
-        ComplianceCheck(
+        Sprawdzenie(
             element_ref=bay.ref_id,
-            pack_id=pack_id,
             rule_code="iec62271.interlock.es_vs_main",
-            status="fail" if violated else "pass",
+            spelniony=not violated,
             message_pl=message,
         )
     ]
@@ -276,7 +290,7 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
 
 def _cell_match_check_for_bay(
     bay: Bay, pack: ReferencePack, family: SwitchgearFamily
-) -> list[ComplianceCheck]:
+) -> list[Sprawdzenie]:
     """Dopasowanie pola do konfiguracji celki z katalogu producenta (spec §7).
 
     Bramka danych: brak `cell_configurations` w pakiecie ALBO brak
@@ -325,11 +339,10 @@ def _cell_match_check_for_bay(
         + ")."
     )
     return [
-        ComplianceCheck(
+        Sprawdzenie(
             element_ref=bay.ref_id,
-            pack_id=pack.pack_id,
             rule_code="family.cell_match",
-            status="pass" if matched else "fail",
+            spelniony=matched is not None,
             message_pl=message,
         )
     ]
@@ -338,18 +351,16 @@ def _cell_match_check_for_bay(
 def _family_checks_for_bay(
     bay: Bay,
     family: SwitchgearFamily,
-    pack_id: str,
     buses_voltage_kv: dict[str, float],
-) -> list[ComplianceCheck]:
-    checks: list[ComplianceCheck] = []
+) -> list[Sprawdzenie]:
+    checks: list[Sprawdzenie] = []
 
     def add(rule_code: str, ok: bool, message_pl: str) -> None:
         checks.append(
-            ComplianceCheck(
+            Sprawdzenie(
                 element_ref=bay.ref_id,
-                pack_id=pack_id,
                 rule_code=rule_code,
-                status="pass" if ok else "fail",
+                spelniony=ok,
                 message_pl=message_pl,
             )
         )
@@ -458,17 +469,16 @@ def _bay_remote_control_evidence(bay: Bay) -> bool:
     return False
 
 
-def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[ComplianceCheck]:
+def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Sprawdzenie]:
     implemented = {rule.rule_id for rule in pack.station_rules if rule.implemented}
-    checks: list[ComplianceCheck] = []
+    checks: list[Sprawdzenie] = []
 
     def add(element_ref: str, rule_code: str, ok: bool, message_pl: str) -> None:
         checks.append(
-            ComplianceCheck(
+            Sprawdzenie(
                 element_ref=element_ref,
-                pack_id=pack.pack_id,
                 rule_code=rule_code,
-                status="pass" if ok else "fail",
+                spelniony=ok,
                 message_pl=message_pl,
             )
         )
@@ -666,13 +676,14 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
 # ---------------------------------------------------------------------------
 
 
-def _checks_for_pack(
+def sprawdzenia_pakietu(
     pack: ReferencePack,
     enm: EnergyNetworkModel,
     substations_by_ref: dict[str, Substation],
     buses_voltage_kv: dict[str, float],
-) -> list[ComplianceCheck]:
-    checks: list[ComplianceCheck] = []
+) -> list[Sprawdzenie]:
+    """Sprawdzenia jednego pakietu (deterministycznie posortowane)."""
+    checks: list[Sprawdzenie] = []
     bays = _sorted_bays(enm)
 
     if pack.pack_id == FIELD_PROFILE_PACK_ID:
@@ -686,8 +697,8 @@ def _checks_for_pack(
             )
             if profile is None:
                 continue
-            checks.extend(_profile_checks_for_bay(bay, profile, pack.pack_id))
-            checks.extend(_interlock_checks_for_bay(bay, pack.pack_id))
+            checks.extend(_profile_checks_for_bay(bay, profile))
+            checks.extend(_interlock_checks_for_bay(bay))
 
     elif pack.pack_id == "iec60617":
         mapped_kinds = {entry.kind for entry in pack.symbol_map}
@@ -696,11 +707,10 @@ def _checks_for_pack(
                 continue
             unknown = sorted({d.kind for d in bay.primary_devices} - mapped_kinds)
             checks.append(
-                ComplianceCheck(
+                Sprawdzenie(
                     element_ref=bay.ref_id,
-                    pack_id=pack.pack_id,
                     rule_code="iec60617.symbols_mapped",
-                    status="fail" if unknown else "pass",
+                    spelniony=not unknown,
                     message_pl=(
                         "Wszystkie aparaty pola mają symbol w słowniku IEC 60617."
                         if not unknown
@@ -715,7 +725,7 @@ def _checks_for_pack(
         family = family_for_pack(pack)
         if family is not None:
             for bay in bays:
-                checks.extend(_family_checks_for_bay(bay, family, pack.pack_id, buses_voltage_kv))
+                checks.extend(_family_checks_for_bay(bay, family, buses_voltage_kv))
                 checks.extend(_cell_match_check_for_bay(bay, pack, family))
 
     elif pack.kind == "osd":
@@ -765,30 +775,77 @@ def evaluate_enm(
             braki.append(odmowa.rekord())
         packs.sort(key=lambda p: p.pack_id)
 
+    reports = [
+        _raport_pakietu(pack, enm, checks) for pack, checks in sprawdzenia_pakietow(enm, packs)
+    ]
+    return ReferenceComplianceReport(packs=reports, braki_pakietow=braki)
+
+
+def sprawdzenia_pakietow(
+    enm: EnergyNetworkModel, packs: Sequence[ReferencePack]
+) -> list[tuple[ReferencePack, list[Sprawdzenie]]]:
+    """Sprawdzenia wskazanych pakietów — wspólne wejście raportu i walidacji na żywo."""
     substations_by_ref = {s.ref_id: s for s in enm.substations}
     buses_voltage_kv = {
         bus.ref_id: bus.voltage_kv
         for bus in enm.buses
         if bus.voltage_kv is not None and bus.voltage_kv > 0
     }
+    return [
+        (pack, sprawdzenia_pakietu(pack, enm, substations_by_ref, buses_voltage_kv))
+        for pack in packs
+    ]
 
-    reports: list[PackComplianceReport] = []
-    for pack in packs:
-        checks = _checks_for_pack(pack, enm, substations_by_ref, buses_voltage_kv)
-        passed = sum(1 for c in checks if c.status == "pass")
-        failed = len(checks) - passed
-        score = round(100 * passed / len(checks)) if checks else None
-        reports.append(
-            PackComplianceReport(
+
+def _nazwy_elementow(enm: EnergyNetworkModel) -> dict[str, str]:
+    """Nazwa z modelu każdego elementu, którego dotyczą sprawdzenia (pole albo stacja)."""
+    nazwy = {s.ref_id: opis_obiektu(s, "Stacja") for s in enm.substations}
+    for bay in enm.bays:
+        nazwy.setdefault(bay.ref_id, opis_obiektu(bay, "Pole"))
+    return nazwy
+
+
+def _raport_pakietu(
+    pack: ReferencePack, enm: EnergyNetworkModel, sprawdzenia: Sequence[Sprawdzenie]
+) -> PackComplianceReport:
+    nazwy = _nazwy_elementow(enm) if sprawdzenia else {}
+    # Ta sama reguła może dotyczyć elementu wielokrotnie (dwa aparaty tego samego rodzaju,
+    # dwa transformatory stacji) — identyfikator kryterium dostaje numer kolejny wystąpienia
+    # w deterministycznie posortowanej liście sprawdzeń.
+    wystapienia: dict[tuple[str, str], int] = {}
+    checks: list[ComplianceCheck] = []
+    for s in sprawdzenia:
+        klucz = (s.element_ref, s.rule_code)
+        wystapienia[klucz] = wystapienia.get(klucz, 0) + 1
+        nazwa = nazwy.get(s.element_ref) or opis_elementu(enm, s.element_ref, "Element")
+        checks.append(
+            ComplianceCheck(
+                element_ref=s.element_ref,
                 pack_id=pack.pack_id,
-                name_pl=pack.name_pl,
-                kind=pack.kind,
-                version=pack.version,
-                applicable=len(checks),
-                passed=passed,
-                failed=failed,
-                score_percent=score,
-                checks=checks,
+                rule_code=s.rule_code,
+                message_pl=s.message_pl,
+                ocena=ocena_sprawdzenia(
+                    pack=pack,
+                    element_ref=s.element_ref,
+                    nazwa_elementu_pl=nazwa,
+                    rule_code=s.rule_code,
+                    wystapienie=wystapienia[klucz],
+                    spelniony=s.spelniony,
+                    message_pl=s.message_pl,
+                ),
             )
         )
-    return ReferenceComplianceReport(packs=reports, braki_pakietow=braki)
+    # Liczniki z rekordów (jedno źródło z etykietą sprawdzenia na ekranie).
+    passed = sum(1 for c in checks if c.ocena.status_maszynowy == "SPELNIA")
+    failed = sum(1 for c in checks if c.ocena.status_maszynowy == "NIE_SPELNIA")
+    return PackComplianceReport(
+        pack_id=pack.pack_id,
+        name_pl=pack.name_pl,
+        kind=pack.kind,
+        version=pack.version,
+        applicable=len(checks),
+        passed=passed,
+        failed=failed,
+        score_percent=round(100 * passed / len(checks)) if checks else None,
+        checks=checks,
+    )

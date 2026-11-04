@@ -65,3 +65,32 @@
   color: var(--mvd-ink);
   font-size: 12px;
 }
+
+/* Wiersz sprawdzenia zgodności referencyjnej (karta WERDYKT-MIGRACJA-190). */
+.mvd-refspr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+}
+
+.mvd-refspr-wiersz {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mvd-refspr-element {
+  color: var(--mvd-muted);
+}
+
+.mvd-refspr-tresc {
+  color: var(--mvd-ink);
+}
+
+.mvd-refspr-szczegol > summary {
+  cursor: pointer;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}

@@ -81,8 +81,6 @@ export const GOTOWOSC_STRINGS = {
   refKolSprawdzenia: 'Zaliczone / oblane',
   refKolWynik: 'Wynik',
   refNieDotyczy: 'nie dotyczy',
-  refCheckZgodne: 'zgodne',
-  refCheckNiezgodne: 'niezgodne',
   refBrakSprawdzen: 'Brak sprawdzeń w tym pakiecie.',
 
   // Filtry (waga / cel / gałąź)

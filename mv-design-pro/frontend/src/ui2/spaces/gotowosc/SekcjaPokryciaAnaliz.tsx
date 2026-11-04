@@ -15,13 +15,6 @@ import { useActiveCaseId } from '../../../ui/app-state';
 import { fetchPokrycieAnaliz, type PokrycieResponse } from './insightsApi';
 import { GOTOWOSC_STRINGS } from './strings';
 
-/** Klasa koloru punktacji (tokeny `--mvd-*`): ≥80 ok / ≥40 warn / <40 err. */
-function klasaPunktacji(punkty: number): string {
-  if (punkty >= 80) return 'mvd-ref-score-ok';
-  if (punkty >= 40) return 'mvd-ref-score-warn';
-  return 'mvd-ref-score-err';
-}
-
 export function SekcjaPokryciaAnaliz() {
   const caseId = useActiveCaseId();
   const [rozwinieta, setRozwinieta] = useState(true);
@@ -94,7 +87,7 @@ export function SekcjaPokryciaAnaliz() {
               <p className="mvd-pokrycie-wynik">
                 <span>{GOTOWOSC_STRINGS.pokrycieWynik}: </span>
                 <span
-                  className={`mvd-num mvd-ref-score ${klasaPunktacji(widok.total_score)}`}
+                  className="mvd-num mvd-ref-score mvd-ref-score-miara"
                   data-testid="mvd-pokrycie-punktacja"
                 >
                   {widok.total_score.toFixed(0)} / 100

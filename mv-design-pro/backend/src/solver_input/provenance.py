@@ -643,6 +643,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta P42/D8 doboru kompensacji; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="referencje.zgodnosc_konfiguracji",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Zgodność referencyjna pól i stacji: konfiguracja zapisana w modelu (skład, "
+                "kolejność i stany aparatów pola, konstrukcja stacji, moc transformatorów, "
+                "pomiary) porównana z regułami pakietu referencyjnego — profilu pola z normy, "
+                "karty rodziny rozdzielnicy producenta albo standardu operatora "
+                "(reference_engine/compliance.py). To fakt konfiguracyjny, dla którego "
+                "deklaracja w modelu jest właściwą podstawą; parametrów znamionowych aparatów "
+                "sprawdzenia nie oceniają."
+            ),
+            audit_ref="REFERENCE_ENGINE_SPEC_V1 §7; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="wiarygodnosc.pasma_wyniku",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

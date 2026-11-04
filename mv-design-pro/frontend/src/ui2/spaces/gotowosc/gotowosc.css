@@ -333,14 +333,10 @@
 .mvd-ref-score {
   font-weight: 600;
 }
-.mvd-ref-score-ok {
-  color: var(--mvd-ok);
-}
-.mvd-ref-score-warn {
-  color: var(--mvd-warn);
-}
-.mvd-ref-score-err {
-  color: var(--mvd-err);
+/* Wynik zgodności referencyjnej i punktacja pokrycia to miary, nie oceny — bez koloru
+   werdyktu (karta WERDYKT-MIGRACJA-190). */
+.mvd-ref-score-miara {
+  color: var(--mvd-ink);
 }
 .mvd-ref-score-nd {
   color: var(--mvd-muted);
@@ -361,14 +357,8 @@
   gap: 6px;
   font-size: 12px;
 }
-.mvd-ref-check-ok {
-  color: var(--mvd-ok);
-}
 .mvd-ref-check-err {
   color: var(--mvd-err);
-}
-.mvd-ref-check-el {
-  color: var(--mvd-muted);
 }
 .mvd-ref-check-msg {
   color: var(--mvd-ink);

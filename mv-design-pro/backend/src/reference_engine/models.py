@@ -15,6 +15,7 @@ from typing import Literal
 
 from network_model.odmowa_pakietu import RekordBrakuPakietu
 from pydantic import BaseModel, Field
+from werdykt import OcenaKryterium
 
 # Słownik aparatów = kanon `BayPrimaryDevice.kind` (enm/models.py) — jedna
 # nomenklatura dla danych pola, profili referencyjnych i mapy symboli.
@@ -160,17 +161,22 @@ class ReferencePack(BaseModel):
 # Raport zgodności (spec §7)
 # ---------------------------------------------------------------------------
 
-CheckStatus = Literal["pass", "fail"]
-
 
 class ComplianceCheck(BaseModel):
-    """Pojedyncze sprawdzenie ✓/✗ elementu wobec pakietu (pkt 7 dyrektywy)."""
+    """Pojedyncze sprawdzenie elementu wobec pakietu (pkt 7 dyrektywy).
+
+    Karta WERDYKT-MIGRACJA-190: dawny goły status ``pass``/``fail`` zastąpiony rekordem K
+    (``ocena``, relacja logiczna): co oceniono (element z nazwą z modelu), względem jakiej
+    reguły pakietu, na jakiej podstawie (dokument, wersja pakietu, jednostka redakcyjna),
+    jaki stan stwierdzono (``message_pl``) i jaki dowód (konfiguracja zapisana w modelu
+    porównana z pakietem — deklaracja, nie obliczenie).
+    """
 
     element_ref: str
     pack_id: str
     rule_code: str
-    status: CheckStatus
     message_pl: str
+    ocena: OcenaKryterium
 
 
 class PackComplianceReport(BaseModel):

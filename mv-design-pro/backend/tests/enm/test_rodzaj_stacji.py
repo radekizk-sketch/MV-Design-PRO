@@ -505,7 +505,8 @@ def test_zgodnosc_osd_obejmuje_kazda_deklaracje_stacji_sn_nn(deklaracja: str) ->
 
     pack = _pack_report(_enm([_rmu_line_bay()], _station(deklaracja, "slupowa")), "osd_enea")
     assert any(
-        c.rule_code == "osd_enea.station.prefabricated_compact_preferred" and c.status == "fail"
+        c.rule_code == "osd_enea.station.prefabricated_compact_preferred"
+        and c.ocena.status_maszynowy == "NIE_SPELNIA"
         for c in pack.checks
     )
 

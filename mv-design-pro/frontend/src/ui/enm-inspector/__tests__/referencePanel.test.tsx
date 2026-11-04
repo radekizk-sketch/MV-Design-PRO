@@ -1,7 +1,7 @@
 /**
  * ReferencePanel — zakładka „Referencje" Inspektora ENM (Reference Engine V1,
  * spec §9/§12): tabela Reference Score, „nie dotyczy" dla score null,
- * rozwinięcie sprawdzeń ✓/✗, stan błędu. Fetch mockowany (kontrakt
+ * rozwinięcie sprawdzeń z rekordem oceny, stan błędu. Fetch mockowany (kontrakt
  * GET /api/cases/{id}/reference/compliance).
  *
  * REF-PAKIET: panel dzieli wybór referencji z przestrzeniami „Model" i
@@ -16,6 +16,10 @@ import { useWyborPakietu } from '../../../ui2/referencje/wyborPakietu';
 import type { ReferencePackSummary } from '../../../ui2/referencje/api';
 import { ReferencePanel } from '../ReferencePanel';
 import type { ReferenceComplianceReport } from '../types';
+import {
+  SPRAWDZENIE_NIEZGODNE,
+  SPRAWDZENIE_ZGODNE,
+} from '../../../ui2/referencje/__tests__/fixturyReferencyjne';
 
 const KATALOG: ReferencePackSummary[] = [
   {
@@ -49,22 +53,7 @@ const REPORT: ReferenceComplianceReport = {
       passed: 7,
       failed: 5,
       score_percent: 58,
-      checks: [
-        {
-          element_ref: 'bay/zle',
-          pack_id: 'iec62271',
-          rule_code: 'profile.required.CABLE_HEAD',
-          status: 'fail',
-          message_pl: 'Brak wymaganego aparatu: Głowica kablowa.',
-        },
-        {
-          element_ref: 'bay/ok',
-          pack_id: 'iec62271',
-          rule_code: 'profile.order',
-          status: 'pass',
-          message_pl: 'Kolejność aparatów toru głównego zgodna.',
-        },
-      ],
+      checks: [SPRAWDZENIE_NIEZGODNE, SPRAWDZENIE_ZGODNE],
     },
     {
       pack_id: 'osd_enea',
@@ -128,16 +117,25 @@ describe('ReferencePanel', () => {
     expect(adresy).toContain('/api/cases/case-1/reference/compliance?packs=osd_enea');
   });
 
-  it('rozwija listę sprawdzeń ✓/✗ po kliknięciu wiersza pakietu', async () => {
+  it('rozwija listę sprawdzeń z rekordem oceny po kliknięciu wiersza pakietu', async () => {
     render(<ReferencePanel caseId="case-1" />);
     await waitFor(() =>
       expect(screen.getByTestId('reference-score-row-iec62271')).toBeInTheDocument(),
     );
     fireEvent.click(screen.getByTestId('reference-score-row-iec62271'));
     const checks = screen.getByTestId('reference-checks-iec62271');
-    expect(checks.textContent).toContain('Brak wymaganego aparatu: Głowica kablowa.');
-    expect(checks.textContent).toContain('✗');
-    expect(checks.textContent).toContain('✓');
+    // Karta WERDYKT-MIGRACJA-190: etykieta i wyjaśnienie z rekordu backendu, bez własnych ✓/✗.
+    for (const check of [SPRAWDZENIE_NIEZGODNE, SPRAWDZENIE_ZGODNE]) {
+      expect(checks.textContent).toContain(check.message_pl);
+      expect(checks.textContent).toContain(check.ocena.etykieta.etykieta_pl);
+      expect(
+        screen.getByTestId(`mvd-werdykt-${check.ocena.kryterium_id}`),
+      ).toBeInTheDocument();
+    }
+    expect(checks.textContent).not.toMatch(/[✓✗]/);
+    // Wynik pakietu to miara — bez koloru werdyktu.
+    const wynik = screen.getByTestId('reference-score-value-iec62271');
+    expect(wynik.className).not.toMatch(/emerald|amber|rose/);
   });
 
   it('pokazuje komunikat błędu przy nieudanym fetch', async () => {

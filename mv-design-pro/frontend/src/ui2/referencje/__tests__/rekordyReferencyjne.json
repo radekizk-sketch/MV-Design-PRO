@@ -1,0 +1,224 @@
+{
+  "niezgodne": {
+    "element_ref": "bay/cb",
+    "message_pl": "Błędna kolejność aparatów toru głównego: Wyłącznik → Rozłącznik → Głowica kablowa (kanon od szyny w dół: Odłącznik → Rozłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "DEKLARACJA",
+        "odniesienie": "reference_engine/compliance.py",
+        "poziom": "DECLARATION",
+        "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium naruszone",
+        "semantyka": "negatywna"
+      },
+      "kompletnosc_dowodu": "PELNY",
+      "kryterium": {
+        "opis_pl": "Kolejność aparatów toru głównego zgodna z kolejnością kanoniczną profilu (od szyny w dół)",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "referencje.iec62271.bay/cb.profile.order",
+      "limit": null,
+      "margines": {
+        "definicja_latex": null,
+        "niedefiniowalny": true,
+        "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+        "punkt_pl": "Błędna kolejność aparatów toru głównego: Wyłącznik → Rozłącznik → Głowica kablowa (kanon od szyny w dół: Odłącznik → Rozłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": null,
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)",
+        "jednostka_redakcyjna": "profil pola — kolejność kanoniczna toru",
+        "rodzaj": "NORMA",
+        "status": "WSKAZANE",
+        "uwagi_pl": "reguły pakietu „IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)” są odwzorowaniem normy w programie (profil pola, słownik symboli), nie cytatem jej treści",
+        "wydanie": "pakiet referencyjny programu w wersji 1.0.0"
+      },
+      "powody_niepelnosci": [],
+      "przedmiot": {
+        "element_ref": "bay/cb",
+        "nazwa_pl": "Pole „Pole liniowe RMU”",
+        "opis_pl": "Pole „Pole liniowe RMU” wobec pakietu referencyjnego „IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)”"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "kolejność aparatów toru głównego: Błędna kolejność aparatów toru głównego: Wyłącznik → Rozłącznik → Głowica kablowa (kanon od szyny w dół: Odłącznik → Rozłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+        "zastrzezenia": [
+          "Podstawa „IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)”, wydanie pakiet referencyjny programu w wersji 1.0.0, profil pola — kolejność kanoniczna toru (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Zakres ważności: Konfiguracja pól rozdzielnic SN i stacji zapisana w modelu (skład, kolejność, położenie i stany aparatów, konstrukcja stacji, moc transformatorów, pomiary) porównana z regułami pakietu referencyjnego — wynik nie obejmuje: parametry znamionowe aparatów (prądy, wytrzymałości zwarciowe) — ocenia je dobór aparatury; pola rozdzielnic nN; reguły pakietu oznaczone jako nieegzekwowane w programie."
+        ],
+        "zdanie_pl": "Kolejność aparatów toru głównego zgodna z kolejnością kanoniczną profilu (od szyny w dół) (Pole „Pole liniowe RMU”) — kryterium naruszone. Kolejność aparatów toru głównego: Błędna kolejność aparatów toru głównego: Wyłącznik → Rozłącznik → Głowica kablowa (kanon od szyny w dół: Odłącznik → Rozłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa). (stan przeciwny do wymaganego wg profil pola — kolejność kanoniczna toru „IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)”)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "DEKLARACJA",
+        "punkt_krytyczny_pl": "Błędna kolejność aparatów toru głównego: Wyłącznik → Rozłącznik → Głowica kablowa (kanon od szyny w dół: Odłącznik → Rozłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+        "symbol_latex": "",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wielkosc_pl": "kolejność aparatów toru głównego"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Konfiguracja pól rozdzielnic SN i stacji zapisana w modelu (skład, kolejność, położenie i stany aparatów, konstrukcja stacji, moc transformatorów, pomiary) porównana z regułami pakietu referencyjnego.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": null,
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "parametry znamionowe aparatów (prądy, wytrzymałości zwarciowe) — ocenia je dobór aparatury",
+          "pola rozdzielnic nN",
+          "reguły pakietu oznaczone jako nieegzekwowane w programie"
+        ]
+      }
+    },
+    "pack_id": "iec62271",
+    "rule_code": "profile.order"
+  },
+  "zgodne": {
+    "element_ref": "bay/cb",
+    "message_pl": "Brak aparatów zakazanych dla profilu.",
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "DEKLARACJA",
+        "odniesienie": "reference_engine/compliance.py",
+        "poziom": "DECLARATION",
+        "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione",
+        "semantyka": "pozytywna"
+      },
+      "kompletnosc_dowodu": "PELNY",
+      "kryterium": {
+        "opis_pl": "Pole nie ma aparatów zakazanych dla profilu",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "referencje.iec62271.bay/cb.profile.forbidden",
+      "limit": null,
+      "margines": {
+        "definicja_latex": null,
+        "niedefiniowalny": true,
+        "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+        "punkt_pl": "Brak aparatów zakazanych dla profilu.",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": null,
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)",
+        "jednostka_redakcyjna": "profil pola — aparaty zakazane",
+        "rodzaj": "NORMA",
+        "status": "WSKAZANE",
+        "uwagi_pl": "reguły pakietu „IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)” są odwzorowaniem normy w programie (profil pola, słownik symboli), nie cytatem jej treści",
+        "wydanie": "pakiet referencyjny programu w wersji 1.0.0"
+      },
+      "powody_niepelnosci": [],
+      "przedmiot": {
+        "element_ref": "bay/cb",
+        "nazwa_pl": "Pole „Pole liniowe RMU”",
+        "opis_pl": "Pole „Pole liniowe RMU” wobec pakietu referencyjnego „IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)”"
+      },
+      "slad": [],
+      "status_maszynowy": "SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)”, wydanie pakiet referencyjny programu w wersji 1.0.0, profil pola — aparaty zakazane (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Zakres ważności: Konfiguracja pól rozdzielnic SN i stacji zapisana w modelu (skład, kolejność, położenie i stany aparatów, konstrukcja stacji, moc transformatorów, pomiary) porównana z regułami pakietu referencyjnego — wynik nie obejmuje: parametry znamionowe aparatów (prądy, wytrzymałości zwarciowe) — ocenia je dobór aparatury; pola rozdzielnic nN; reguły pakietu oznaczone jako nieegzekwowane w programie."
+        ],
+        "zdanie_pl": "Pole nie ma aparatów zakazanych dla profilu (Pole „Pole liniowe RMU”) — kryterium spełnione. Obecność aparatów zakazanych: Brak aparatów zakazanych dla profilu. (stan wymagany wg profil pola — aparaty zakazane „IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)”)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "DEKLARACJA",
+        "punkt_krytyczny_pl": "Brak aparatów zakazanych dla profilu.",
+        "symbol_latex": "",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 1.0
+        },
+        "wielkosc_pl": "obecność aparatów zakazanych"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Konfiguracja pól rozdzielnic SN i stacji zapisana w modelu (skład, kolejność, położenie i stany aparatów, konstrukcja stacji, moc transformatorów, pomiary) porównana z regułami pakietu referencyjnego.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": null,
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "parametry znamionowe aparatów (prądy, wytrzymałości zwarciowe) — ocenia je dobór aparatury",
+          "pola rozdzielnic nN",
+          "reguły pakietu oznaczone jako nieegzekwowane w programie"
+        ]
+      }
+    },
+    "pack_id": "iec62271",
+    "rule_code": "profile.forbidden"
+  }
+}

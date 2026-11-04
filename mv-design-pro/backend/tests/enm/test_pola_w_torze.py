@@ -585,12 +585,12 @@ def test_zgodnosc_osd_stacja_slupowa_widzi_kabel_na_zacisku_pola() -> None:
             stacja["construction_type"] = "slupowa"
     raport = evaluate_enm(EnergyNetworkModel.model_validate(enm), ["osd_enea"])
     werdykty = [
-        c.status
+        c.ocena.status_maszynowy
         for pakiet in raport.packs
         for c in pakiet.checks
         if c.rule_code == "osd_enea.station.pole_station_cable_entry_forbidden"
     ]
-    assert werdykty == ["fail"]
+    assert werdykty == ["NIE_SPELNIA"]
 
 
 # ---------------------------------------------------------------------------

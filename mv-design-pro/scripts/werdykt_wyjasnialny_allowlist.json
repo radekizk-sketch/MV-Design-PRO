@@ -255,13 +255,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "reference_engine.models:ComplianceCheck.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "werdykt.decyzja:PochodneKryterium.status",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Typ pomocniczy implementacji kontraktu (`werdykt/`): status maszynowy wewnątrz silnika oceny, z którego powstaje rekord kanoniczny z wyjaśnieniem (reguła decyzji §2.2/§2.3) — nie jest powierzchnią dla człowieka.",
@@ -542,27 +535,6 @@
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/enm-inspector/ReferencePanel.tsx:ReferencePanel",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E61"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/enm-inspector/ReferencePanel.tsx:ReferencePanel.aria-label",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E61"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/enm-inspector/ReferencePanel.tsx:ReferencePanel.className",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E61"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui/fault-scenarios/FaultScenariosPanel.tsx:FaultScenariosPanel",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz E57: 57. `ui/fault-scenarios/FaultScenariosPanel.tsx:155-156` \"Analiza dostępna / zablokowana\" + issues. **ENUM_WEWNETRZNY.** Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -588,34 +560,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Scalenie gałęzi UI/UX z programem (2026-10-28): `graph.status` projekcji domeny nN (`LvDomainProjectionV1`, wartości `OK` | `brak danych`) to DOSTĘPNOŚĆ danych modelu — czy stacja ma domenę nN w modelu — a nie ocena kryterium. Trójdzielna mapa przekłada ją na stan ładowania karty nN (`gotowe` / `brak_domeny`); tekst dla człowieka pochodzi wyłącznie z `graph.reason_pl` backendu albo z komunikatu błędu pobrania, żaden werdykt ani ton oceny nie powstaje.",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/spaces/gotowosc/SekcjaZgodnosciReferencyjnej.tsx:SekcjaZgodnosciReferencyjnej",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D71 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D71"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/spaces/gotowosc/SekcjaZgodnosciReferencyjnej.tsx:SekcjaZgodnosciReferencyjnej.className",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D71 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D71"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/spaces/model/ZgodnoscReferencyjna.tsx:ZgodnoscReferencyjna",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D72 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D72"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/spaces/model/ZgodnoscReferencyjna.tsx:ZgodnoscReferencyjna.className",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D72 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D72"
   }
  ]
 }

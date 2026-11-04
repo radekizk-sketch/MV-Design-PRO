@@ -104,7 +104,9 @@ def test_pole_zu_z_kreatora_oceniane_profilem(typ_stacji: str | None, stos: str)
     kontrole = [c for c in raport.packs[0].checks if c.element_ref == pole_ref]
     # Pole ZU z aparatami JEST oceniane (dawniej brak profilu = zero kontroli = cicha zgodność).
     assert any(c.rule_code.startswith("profile.required.") for c in kontrole)
-    assert {c.rule_code for c in kontrole if c.status == "fail"} == oczekiwane
+    assert {
+        c.rule_code for c in kontrole if c.ocena.status_maszynowy == "NIE_SPELNIA"
+    } == oczekiwane
     # Każda kontrola niesie wyjaśnienie dla projektanta.
     assert all(c.message_pl for c in kontrole)
 

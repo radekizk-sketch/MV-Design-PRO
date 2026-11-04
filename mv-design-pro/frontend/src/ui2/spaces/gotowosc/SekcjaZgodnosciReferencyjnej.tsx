@@ -2,7 +2,7 @@
  * Sekcja „Ocena zgodności referencyjnej" przestrzeni „Gotowość" (Reference
  * Engine V1, HANDOFF pkt 2.1). Tabela per pakiet referencyjny: rodzaj, wersja,
  * zaliczone/oblane, wynik (Reference Score). Rozwijalna sekcja i rozwijalny
- * wiersz → lista sprawdzeń ✓/✗ z powodem PL.
+ * wiersz → lista sprawdzeń z rekordem oceny (etykieta, wyjaśnienie) i powodem PL.
  *
  * ZAKAZ DRUGIEJ DEFINICJI (HANDOFF §3.1): typy, etykiety rodzajów i klient
  * pochodzą WYŁĄCZNIE z `ui2/referencje/api.ts` (reeksport kontraktu
@@ -10,8 +10,7 @@
  * `GET /api/cases/{id}/reference/compliance`.
  *
  * `score_percent = null` ⇒ DOKŁADNIE „nie dotyczy" (nigdy 0% ani 100%) —
- * HANDOFF §3.3. Kolory wyniku (tokeny `--mvd-*`): 100% zieleń / ≥80% bursztyn /
- * <80% czerwień / null szarość.
+ * HANDOFF §3.3. Wynik jest miarą bez koloru werdyktu; „nie dotyczy” wyszarzone.
  *
  * Źródło `case_id`: aktywny przypadek (`useActiveCaseId`, `ui/app-state`) —
  * wzorzec innych ekranów. Brak przypadku → uczciwy stan pusty PL (bez wołania
@@ -33,6 +32,7 @@ import {
   type ReferencePackComplianceReport,
 } from '../../referencje/api';
 import { BrakiPakietowDanych } from '../../referencje/BrakiPakietowDanych';
+import { SprawdzenieReferencyjne } from '../../referencje/SprawdzenieReferencyjne';
 import { WyborPakietuReferencyjnego } from '../../referencje/WyborPakietuReferencyjnego';
 import { useWyborPakietu, zawezenieDlaWyboru } from '../../referencje/wyborPakietu';
 import { GOTOWOSC_STRINGS } from './strings';
@@ -43,12 +43,13 @@ function etykietaWyniku(pack: ReferencePackComplianceReport): string {
   return `${pack.score_percent}%`;
 }
 
-/** Klasa koloru wyniku (tokeny `--mvd-*`): 100 ok / ≥80 warn / <80 err / null nd. */
+/**
+ * Wynik pakietu (Reference Score) to miara udziału sprawdzeń zgodnych, nie ocena — bez koloru
+ * werdyktu i bez progu okna (dawniej 100 % zieleń / ≥ 80 % bursztyn / reszta czerwień, karta
+ * WERDYKT-MIGRACJA-190). „Nie dotyczy” wyszarzone; ocenę niesie rekord każdego sprawdzenia.
+ */
 function klasaWyniku(pack: ReferencePackComplianceReport): string {
-  if (pack.score_percent == null) return 'mvd-ref-score-nd';
-  if (pack.score_percent === 100) return 'mvd-ref-score-ok';
-  if (pack.score_percent >= 80) return 'mvd-ref-score-warn';
-  return 'mvd-ref-score-err';
+  return pack.score_percent == null ? 'mvd-ref-score-nd' : 'mvd-ref-score-miara';
 }
 
 export function SekcjaZgodnosciReferencyjnej() {
@@ -187,28 +188,11 @@ export function SekcjaZgodnosciReferencyjnej() {
                                 data-testid={`mvd-ref-checks-${pack.pack_id}`}
                               >
                                 {pack.checks.map((check, index) => (
-                                  <li
-                                    key={`${check.element_ref}-${check.rule_code}-${index}`}
-                                    className="mvd-ref-check"
-                                  >
-                                    <span
-                                      className={
-                                        check.status === 'pass'
-                                          ? 'mvd-ref-check-ok'
-                                          : 'mvd-ref-check-err'
-                                      }
-                                      aria-label={
-                                        check.status === 'pass'
-                                          ? GOTOWOSC_STRINGS.refCheckZgodne
-                                          : GOTOWOSC_STRINGS.refCheckNiezgodne
-                                      }
-                                    >
-                                      {check.status === 'pass' ? '✓' : '✗'}
-                                    </span>
-                                    <span className="mvd-ref-check-el mvd-num">
-                                      {check.element_ref}
-                                    </span>
-                                    <span className="mvd-ref-check-msg">{check.message_pl}</span>
+                                  <li key={check.ocena.kryterium_id} className="mvd-ref-check">
+                                    <SprawdzenieReferencyjne
+                                      check={check}
+                                      testid={`mvd-ref-check-${pack.pack_id}-${index}`}
+                                    />
                                   </li>
                                 ))}
                               </ul>

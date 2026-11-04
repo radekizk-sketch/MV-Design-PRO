@@ -13,6 +13,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWyborPakietu } from '../../../referencje/wyborPakietu';
 import type { ReferencePackSummary } from '../../../referencje/api';
 import { ZgodnoscReferencyjna } from '../ZgodnoscReferencyjna';
+import {
+  SPRAWDZENIE_NIEZGODNE,
+  SPRAWDZENIE_ZGODNE,
+  sprawdzenieDla,
+} from '../../../referencje/__tests__/fixturyReferencyjne';
+
+// Rekordy sprawdzeń z backendu (karta WERDYKT-MIGRACJA-190) przypisane do pól testu.
+const ZGODNE_BAY1 = sprawdzenieDla(SPRAWDZENIE_ZGODNE, 'bay-1', 'iec62271');
+const NIEZGODNE_BAY1 = sprawdzenieDla(SPRAWDZENIE_NIEZGODNE, 'bay-1', 'iec62271');
+const INNE_POLE = {
+  ...sprawdzenieDla(SPRAWDZENIE_ZGODNE, 'bay-2', 'iec62271'),
+  message_pl: 'Inne pole — nie powinno być widoczne.',
+};
 
 const RAPORT = {
   packs: [
@@ -25,29 +38,7 @@ const RAPORT = {
       passed: 1,
       failed: 1,
       score_percent: 50,
-      checks: [
-        {
-          element_ref: 'bay-1',
-          pack_id: 'iec62271',
-          rule_code: 'reference.bays.required',
-          status: 'pass' as const,
-          message_pl: 'Zgodny z profilem pola liniowego.',
-        },
-        {
-          element_ref: 'bay-1',
-          pack_id: 'iec62271',
-          rule_code: 'reference.bays.order',
-          status: 'fail' as const,
-          message_pl: 'Niezgodna kolejność aparatów w torze głównym.',
-        },
-        {
-          element_ref: 'bay-2',
-          pack_id: 'iec62271',
-          rule_code: 'reference.bays.required',
-          status: 'pass' as const,
-          message_pl: 'Inne pole — nie powinno być widoczne.',
-        },
-      ],
+      checks: [ZGODNE_BAY1, NIEZGODNE_BAY1, INNE_POLE],
     },
     {
       pack_id: 'schneider_sm6',
@@ -165,25 +156,20 @@ describe('REF-B — sekcja Zgodność referencyjna w inspektorze', () => {
     expect(screen.queryByText('Inne pole — nie powinno być widoczne.')).toBeNull();
   });
 
-  it('sprawdzenie pass ma znacznik ✓', async () => {
+  it.each([
+    [0, ZGODNE_BAY1],
+    [1, NIEZGODNE_BAY1],
+  ] as const)('sprawdzenie %i: etykieta rekordu backendu, powód i wyjaśnienie', async (i, check) => {
     mockFetch();
     render(
       <ZgodnoscReferencyjna elementRef="bay-1" caseId="c1" czyStacja={false} multiSelekcja={false} />,
     );
-    const ok = await screen.findByTestId('mvd-zgodnosc-check-iec62271-0');
-    expect(ok.getAttribute('data-status')).toBe('pass');
-    expect(ok.textContent).toContain('✓');
-  });
-
-  it('sprawdzenie fail ma ✗ i ZAWSZE message_pl (powód)', async () => {
-    mockFetch();
-    render(
-      <ZgodnoscReferencyjna elementRef="bay-1" caseId="c1" czyStacja={false} multiSelekcja={false} />,
-    );
-    const zle = await screen.findByTestId('mvd-zgodnosc-check-iec62271-1');
-    expect(zle.getAttribute('data-status')).toBe('fail');
-    expect(zle.textContent).toContain('✗');
-    expect(zle.textContent).toContain('Niezgodna kolejność aparatów');
+    const wiersz = await screen.findByTestId(`mvd-zgodnosc-check-iec62271-${i}`);
+    expect(wiersz.getAttribute('data-status')).toBe(check.ocena.status_maszynowy);
+    expect(wiersz.textContent).toContain(check.ocena.etykieta.etykieta_pl);
+    expect(wiersz.textContent).toContain(check.message_pl);
+    expect(wiersz.textContent).not.toMatch(/[✓✗]/);
+    expect(screen.getByTestId(`mvd-werdykt-${check.ocena.kryterium_id}`)).toBeTruthy();
   });
 
   it('pakiet bez sprawdzeń dla elementu jest pomijany (bez szumu)', async () => {
