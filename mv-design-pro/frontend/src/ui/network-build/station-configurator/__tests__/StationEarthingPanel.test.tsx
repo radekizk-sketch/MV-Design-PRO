@@ -35,8 +35,8 @@ const minimalProps = {
   snSwitchgear: {
     layout: 'sectioned_busbar' as const,
     nominalVoltageKv: 15,
-    nominalCurrentA: 630,
-    nominalShortCircuitKa: 16,
+    ratedCurrent: null,
+    ratedShortCircuit: null,
     sectionsCount: 2,
     hasCoupler: true,
     baysCount: 6,

@@ -50,8 +50,11 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
     expect(screen.getByTestId('atrapa-przegladarka')).toBeTruthy();
     expect(screen.queryByTestId('atrapa-schemat')).toBeNull();
 
-    // E5.x: „Właściwości" wstawione za „Schemat", więc powrót do schematu to dwa kroki w lewo.
+    // E5.x: „Właściwości" wstawione za „Schemat", a za nimi tabela zbiorcza „Odcinki SN"
+    // (karta JEDNA-SCIEZKA-EDYCJI) — powrót do schematu to trzy kroki w lewo.
     fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-szablony'), { key: 'ArrowLeft' });
+    expect(screen.getByTestId('mvd-model-odcinki')).toBeTruthy();
+    fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-odcinki'), { key: 'ArrowLeft' });
     expect(screen.getByTestId('mvd-model-wlasciwosci-pusto')).toBeTruthy();
     fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-wlasciwosci'), { key: 'ArrowLeft' });
     expect(screen.getByTestId('atrapa-schemat')).toBeTruthy();

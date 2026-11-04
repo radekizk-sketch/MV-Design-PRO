@@ -2,6 +2,7 @@
 export const MODEL_WARSZTAT_STRINGS = {
   zakladkaSchemat: 'Sieć na schemacie',
   zakladkaWlasciwosci: 'Właściwości',
+  zakladkaOdcinki: 'Odcinki SN',
   zakladkaSzablony: 'Szablony stacji',
   zakladkaKatalog: 'Katalog typów',
   zakladkaKartyWidmowe: 'Karty widmowe',

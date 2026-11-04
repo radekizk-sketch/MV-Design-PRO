@@ -17,12 +17,14 @@ describe('P30e: field-definitions (mode-aware)', () => {
     describe('MODEL_EDIT mode', () => {
       const mode: OperatingMode = 'MODEL_EDIT';
 
-      it('Bus: includes identification, state, electrical_params, audit', () => {
+      // Karta JEDNA-SCIEZKA-EDYCJI: sekcja „Stan" szyny skasowana (`in_service`/`lifecycle_state`
+      // nie istnieją w modelu ENM; backend odrzucał oba klucze).
+      it('Bus: includes identification, electrical_params, audit — bez fantomowej sekcji stanu', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
         const sectionIds = sections.map((s) => s.id);
 
         expect(sectionIds).toContain('identification');
-        expect(sectionIds).toContain('state');
+        expect(sectionIds).not.toContain('state');
         expect(sectionIds).toContain('electrical_params');
         expect(sectionIds).toContain('audit');
       });
@@ -96,14 +98,17 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(allReadOnly).toBe(true);
       });
 
-      it('LineBranch: local_params are editable (branch_type, length_km)', () => {
+      // Karta JEDNA-SCIEZKA-EDYCJI: rodzaj odcinka = klucz modelu `type`, odczyt (zmiana kabel ↔
+      // linia to inny element); długość edytowalna przez rejestr pól.
+      it('LineBranch: length_km edytowalne, rodzaj odcinka `type` tylko do odczytu', () => {
         const sections = getFieldDefinitionsForMode('LineBranch', mode);
         const localParamsSection = sections.find((s) => s.id === 'local_params');
 
-        const branchTypeField = localParamsSection?.fields.find((f) => f.key === 'branch_type');
+        const typeField = localParamsSection?.fields.find((f) => f.key === 'type');
         const lengthField = localParamsSection?.fields.find((f) => f.key === 'length_km');
 
-        expect(branchTypeField?.editable).toBe(true);
+        expect(localParamsSection?.fields.find((f) => f.key === 'branch_type')).toBeUndefined();
+        expect(typeField?.editable).toBe(false);
         expect(lengthField?.editable).toBe(true);
       });
 
@@ -115,12 +120,14 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(tapField?.editable).toBe(true);
       });
 
-      it('Switch: state (OPEN/CLOSED) is editable in MODEL_EDIT', () => {
+      it('Switch: położenie `status` (closed/open) is editable in MODEL_EDIT', () => {
         const sections = getFieldDefinitionsForMode('Switch', mode);
         const stateSection = sections.find((s) => s.id === 'state');
 
-        const stateField = stateSection?.fields.find((f) => f.key === 'state');
+        const stateField = stateSection?.fields.find((f) => f.key === 'status');
         expect(stateField?.editable).toBe(true);
+        expect(stateField?.enumOptions).toEqual(['closed', 'open']);
+        expect(stateSection?.fields.map((f) => f.key)).toEqual(['status']);
       });
 
       it('Load: electrical_params (p_mw, q_mvar, cos_phi) are editable', () => {
@@ -228,12 +235,11 @@ describe('P30e: field-definitions (mode-aware)', () => {
     describe('CASE_CONFIG mode', () => {
       const mode: OperatingMode = 'CASE_CONFIG';
 
-      it('Bus: includes identification, state, electrical_params', () => {
+      it('Bus: includes identification, electrical_params', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
         const sectionIds = sections.map((s) => s.id);
 
         expect(sectionIds).toContain('identification');
-        expect(sectionIds).toContain('state');
         expect(sectionIds).toContain('electrical_params');
       });
 
@@ -245,15 +251,9 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(sectionIds).not.toContain('calculated');
       });
 
-      it('Bus: only in_service is editable', () => {
+      it('Bus: żadne pole nie jest edytowalne w konfiguracji przypadku', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
-        const stateSection = sections.find((s) => s.id === 'state');
-
-        const inServiceField = stateSection?.fields.find((f) => f.key === 'in_service');
-        const lifecycleField = stateSection?.fields.find((f) => f.key === 'lifecycle_state');
-
-        expect(inServiceField?.editable).toBe(true);
-        expect(lifecycleField?.editable).toBe(false);
+        expect(sections.flatMap((s) => s.fields).filter((f) => f.editable)).toEqual([]);
       });
 
       it('Bus: name is read-only', () => {
@@ -265,11 +265,11 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(nameField?.editable).toBe(false);
       });
 
-      it('Switch: state (OPEN/CLOSED) is editable', () => {
+      it('Switch: położenie `status` is editable', () => {
         const sections = getFieldDefinitionsForMode('Switch', mode);
         const stateSection = sections.find((s) => s.id === 'state');
 
-        const stateField = stateSection?.fields.find((f) => f.key === 'state');
+        const stateField = stateSection?.fields.find((f) => f.key === 'status');
         expect(stateField?.editable).toBe(true);
       });
 
@@ -318,12 +318,12 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(rxMinField?.editable).toBe(true);
       });
 
-      it('LineBranch: in_service is editable, length_km is read-only', () => {
+      it('LineBranch: stan łączeniowy `status` is editable, length_km is read-only', () => {
         const sections = getFieldDefinitionsForMode('LineBranch', mode);
 
         const inServiceField = sections
           .find((s) => s.id === 'state')
-          ?.fields.find((f) => f.key === 'in_service');
+          ?.fields.find((f) => f.key === 'status');
 
         const lengthField = sections
           .find((s) => s.id === 'local_params')
@@ -337,12 +337,11 @@ describe('P30e: field-definitions (mode-aware)', () => {
     describe('RESULT_VIEW mode', () => {
       const mode: OperatingMode = 'RESULT_VIEW';
 
-      it('Bus: includes identification, state, electrical_params, calculated', () => {
+      it('Bus: includes identification, electrical_params, calculated', () => {
         const sections = getFieldDefinitionsForMode('Bus', mode);
         const sectionIds = sections.map((s) => s.id);
 
         expect(sectionIds).toContain('identification');
-        expect(sectionIds).toContain('state');
         expect(sectionIds).toContain('electrical_params');
         expect(sectionIds).toContain('calculated');
       });
@@ -387,11 +386,11 @@ describe('P30e: field-definitions (mode-aware)', () => {
         expect(tapField?.editable).toBe(false);
       });
 
-      it('Switch: state (OPEN/CLOSED) is read-only', () => {
+      it('Switch: położenie `status` is read-only', () => {
         const sections = getFieldDefinitionsForMode('Switch', mode);
         const stateField = sections
           .find((s) => s.id === 'state')
-          ?.fields.find((f) => f.key === 'state');
+          ?.fields.find((f) => f.key === 'status');
 
         expect(stateField?.editable).toBe(false);
       });

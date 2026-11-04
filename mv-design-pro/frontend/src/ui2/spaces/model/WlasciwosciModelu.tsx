@@ -5,9 +5,11 @@
  * z `ui/property-grid` (reuse całego modułu jak powierzchnia). Kontrakt:
  * - selekcja: wspólny store `ui/selection` (`selectedElements`),
  * - dane: snapshot ENM ze store `ui/topology/snapshotStore` (surowe rekordy),
- * - zapis: WYŁĄCZNIE istniejąca operacja domenowa `update_element_parameters`
- *   (ta sama ścieżka co InspectorEngineeringView / KreatorEdycjiParametrow) —
- *   zero nowych ścieżek mutacji, zero fizyki.
+ * - zapis: WYŁĄCZNIE operacja domenowa zbudowana przez definicję pola w rejestrze pól
+ *   (`ui2/model/rejestrPol.ts`, karta JEDNA-SCIEZKA-EDYCJI) — `update_element_parameters`
+ *   dla parametrów, `open_switch`/`close_switch` dla położenia łącznika. Klucz spoza rejestru
+ *   nie jest wysyłany (dawniej każda kontrolka wysyłała surowy klucz, a backend odrzucał
+ *   18 z nich kodem `params.key_not_allowed`). Zero fizyki.
  *
  * Uczciwy stan pusty PL bez selekcji; multi-edit gdy zaznaczono wiele elementów
  * (container automatycznie wybiera `PropertyGridMultiEdit`).
@@ -19,6 +21,7 @@ import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import type { EnergyNetworkModel } from '../../../types/enm';
+import { definicjaPolaSiatki } from '../../model/rejestrPol';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
 import { ZgodnoscReferencyjna } from './ZgodnoscReferencyjna';
 
@@ -74,16 +77,18 @@ export function WlasciwosciModelu() {
     [selectedElements, snapshot],
   );
 
-  // Zapis parametru — istniejąca operacja domenowa (ta sama ścieżka co reszta UI).
+  // Zapis pola — operacja zbudowana przez definicję rejestru pól (walidacja tej samej definicji).
   const zapiszParametr = useCallback(
     (elementId: string, fieldKey: string, value: unknown) => {
       if (!activeCaseId) return;
-      void executeDomainOperation(activeCaseId, 'update_element_parameters', {
-        element_ref: elementId,
-        parameters: { [fieldKey]: value },
-      });
+      const element = elementy.find((el) => el.id === elementId);
+      if (!element) return;
+      const definicja = definicjaPolaSiatki(element.type, fieldKey);
+      if (!definicja || definicja.waliduj(value) !== null) return;
+      const { operacja, ladunek } = definicja.zapis(elementId, value, element.data);
+      void executeDomainOperation(activeCaseId, operacja, ladunek);
     },
-    [activeCaseId, executeDomainOperation],
+    [activeCaseId, elementy, executeDomainOperation],
   );
 
   const zapiszParametrPojedynczy = useCallback(

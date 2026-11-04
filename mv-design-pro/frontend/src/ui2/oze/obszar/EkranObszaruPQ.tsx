@@ -312,6 +312,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
               {OBSZAR_STRINGS.limityGenerator}
             </label>
             <select
+              // stan-widoku: wybór źródła i typu do podglądu obszaru PQ — selekcja widoku, nie dana modelu
               id="mvd-obszar-limity-generator"
               value={generator?.ref_id ?? ''}
               onChange={(e) => setWybranyGenerator(e.target.value)}
@@ -579,6 +580,7 @@ export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszar
             <div className="mvd-obszar-param">
               <label htmlFor="mvd-obszar-typ">{OBSZAR_STRINGS.paramNakladka}</label>
               <select
+                // stan-widoku: wybór źródła i typu do podglądu obszaru PQ — selekcja widoku, nie dana modelu
                 id="mvd-obszar-typ"
                 value={wybranyTyp}
                 onChange={(e) => setWybranyTyp(e.target.value)}

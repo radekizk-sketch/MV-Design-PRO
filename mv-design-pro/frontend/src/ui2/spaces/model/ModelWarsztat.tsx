@@ -18,6 +18,7 @@ import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Works
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { PrzegladarkaSzablonow } from './szablony';
+import { TabelaOdcinkowSN } from './TabelaOdcinkowSN';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
 import { PanelKartWidmowych } from './karty-widmowe/PanelKartWidmowych';
@@ -36,6 +37,7 @@ import './modelWarsztat.css';
 const ZAKLADKI = [
   { id: 'schemat', etykieta: T.zakladkaSchemat, tylkoEkspercki: false },
   { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci, tylkoEkspercki: false },
+  { id: 'odcinki', etykieta: T.zakladkaOdcinki, tylkoEkspercki: false },
   { id: 'szablony', etykieta: T.zakladkaSzablony, tylkoEkspercki: false },
   { id: 'katalog', etykieta: T.zakladkaKatalog, tylkoEkspercki: false },
   { id: 'karty', etykieta: T.zakladkaKartyWidmowe, tylkoEkspercki: false },
@@ -113,6 +115,7 @@ export function ModelWarsztat() {
         {zakladka === 'diagnostyka' && szczegolyAudytowe && <EnmInspectorPage />}
         {zakladka === 'schemat' && <SldCanvasV3Workspace />}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
+        {zakladka === 'odcinki' && <TabelaOdcinkowSN />}
         {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
             onZastosuj={(idSzablonu) => {

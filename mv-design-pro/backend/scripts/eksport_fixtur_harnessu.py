@@ -5311,6 +5311,37 @@ def kontrakt_ladunkow_operacji() -> dict[str, Any]:
     }
 
 
+def rejestr_pol_edycji() -> dict[str, Any]:
+    """Klucze, które `update_element_parameters` przyjmuje, dla każdej kolekcji modelu.
+
+    Karta JEDNA-SCIEZKA-EDYCJI: jedno źródło prawdy o polach edytowalnych — lista dopuszczonych
+    parametrów operacji (`PARAMETRY_EDYTOWALNE_WG_KOLEKCJI`) i kontrakt pól kolekcji bez listy
+    (`_pola_kontraktu_kolekcji`). Rejestr pól interfejsu (`ui2/model/rejestrPol.ts`) jest z nim
+    przypięty testem: żadna kontrolka siatki, karty ani kreatora nie wysyła klucza, który
+    operacja odrzuca kodem `params.key_not_allowed`. `parametry_operacji` — klucze czytane
+    przez operację, choć nie są polem modelu (cos φ odbioru → Q)."""
+    from enm.domain_operations import (
+        _PARAMETRY_POLA_EDYTOWALNE,
+        KOLEKCJE_Z_KONTRAKTEM_POL,
+        PARAMETRY_EDYTOWALNE_WG_KOLEKCJI,
+        _pola_kontraktu_kolekcji,
+    )
+
+    # Pole rozdzielni (`bays`) ma własną bramkę kluczy (`_zmien_parametry_pola`) — ta sama
+    # rola co lista kolekcji, więc idzie do tej samej sekcji eksportu.
+    listy = {**PARAMETRY_EDYTOWALNE_WG_KOLEKCJI, "bays": _PARAMETRY_POLA_EDYTOWALNE}
+    return {
+        "kolekcje_z_lista": {
+            kolekcja: sorted(klucze) for kolekcja, klucze in sorted(listy.items())
+        },
+        "kolekcje_z_kontraktem": {
+            kolekcja: sorted(_pola_kontraktu_kolekcji(kolekcja))
+            for kolekcja in sorted(KOLEKCJE_Z_KONTRAKTEM_POL)
+        },
+        "parametry_operacji": {"loads": ["cos_phi"]},
+    }
+
+
 FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     **{
         f"punkt_startu_{rodzaj}_{stan}": _fabryka_sceny_punktu_startu(rodzaj, stan)
@@ -5365,6 +5396,7 @@ FIXTURY: dict[str, Any] = {
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
     "punkt_neutralny_sn_grup_polaczen": punkt_neutralny_sn_grup_polaczen,
     "kontrakt_ladunkow_operacji": kontrakt_ladunkow_operacji,
+    "rejestr_pol_edycji": rejestr_pol_edycji,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,

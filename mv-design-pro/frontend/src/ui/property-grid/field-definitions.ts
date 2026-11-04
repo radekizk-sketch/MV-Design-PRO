@@ -17,7 +17,36 @@
  * 9. Metadane audytowe — READ-ONLY
  */
 
-import type { ElementType, OperatingMode, PropertySection } from '../types';
+import type { ElementType, OperatingMode, PropertyField, PropertySection } from '../types';
+import { definicjaPolaSiatki } from '../../ui2/model/rejestrPol';
+
+/**
+ * Wartość pola siatki z surowego rekordu modelu (karta JEDNA-SCIEZKA-EDYCJI).
+ *
+ * Pole z rejestru pól czyta wartość odczytem swojej definicji (np. zaczep z podzespołu
+ * `tap_changer`); pole odczytu czyta klucz modelu, także zagnieżdżony (`rating.in_a`).
+ * Brak wartości w modelu = `null` — siatka nie pokazuje wartości wpisanej w kod (dawne
+ * „domyślne" 15 kV, 1 km, 5000 MVA udawały dane modelu). Wyjątkiem jest stała opisowa
+ * `element_type`, która nie jest daną modelu.
+ */
+export function wartoscPolaZModelu(
+  elementType: ElementType,
+  field: PropertyField,
+  dane: Readonly<Record<string, unknown>>
+): unknown {
+  const definicja = definicjaPolaSiatki(elementType, field.key);
+  if (definicja) return definicja.odczyt(dane);
+  let biezacy: unknown = dane;
+  for (const czesc of field.key.split('.')) {
+    if (typeof biezacy !== 'object' || biezacy === null) {
+      biezacy = undefined;
+      break;
+    }
+    biezacy = (biezacy as Record<string, unknown>)[czesc];
+  }
+  if (biezacy !== undefined && biezacy !== null) return biezacy;
+  return field.key === 'element_type' ? field.value : null;
+}
 
 /**
  * Section order (canonical, deterministic).
@@ -73,19 +102,15 @@ export function getBusFieldDefinitions(): PropertySection[] {
         { key: 'element_type', label: 'Typ obiektu', value: 'Bus', type: 'string', editable: false, source: 'instance' },
       ],
     },
-    {
-      id: 'state',
-      label: SECTION_LABELS.state,
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
-      ],
-    },
+    // Karta JEDNA-SCIEZKA-EDYCJI: sekcja „Stan" (W eksploatacji / Cykl życia) skasowana —
+    // model ENM nie ma ani `in_service`, ani `lifecycle_state` (backend odrzucał oba klucze
+    // kodem `params.key_not_allowed`). Element wyłączony z ruchu to scenariusz łączeniowy
+    // przypadku (`OperatingScenario.out_of_service`), nie flaga elementu modelu.
     {
       id: 'electrical_params',
       label: SECTION_LABELS.electrical_params,
       fields: [
-        { key: 'voltage_kv', label: 'Napięcie znamionowe', value: 15.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        { key: 'voltage_kv', label: 'Napięcie znamionowe', value: null, type: 'number', unit: 'kV', editable: true, source: 'instance' },
         // Karta K7c-FE (grep property-grid vs modelem ENM Bus, ta sama klasa co
         // naprawione Source.voltage_kv→sn_voltage_kv): `Bus` ENM (`types/enm.ts`,
         // `backend/src/enm/models.py::Bus`) NIE MA pól `bus_type`/`rated_current_a` —
@@ -142,19 +167,21 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       id: 'state',
       label: SECTION_LABELS.state,
       fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: „W eksploatacji" i „Cykl życia" (klucze nieobecne
+        // w modelu, odrzucane przez backend) zastąpione realnym stanem łączeniowym odcinka
+        // `status` (gałąź wyłączona z ruchu = otwarta). Zapis: rejestr pól `POLE_STAN_ODCINKA`.
+        { key: 'status', label: 'Stan łączeniowy', value: null, type: 'enum', editable: true, enumOptions: ['closed', 'open'], enumLabels: { closed: 'załączony', open: 'wyłączony' }, source: 'instance' },
       ],
     },
     {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        // Odbiór K7c-FE: klucze zgodne z modelem ENM `BranchBase.from_bus_ref`/`to_bus_ref`
-        // (były `from_bus_id`/`to_bus_id` — ta sama klasa fantomu co `Source.bus_id`→`bus_ref`:
-        // pola zawsze puste, edycja zapisywała klucz, którego nic nie czyta).
-        { key: 'from_bus_ref', label: 'Szyna początkowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
-        { key: 'to_bus_ref', label: 'Szyna końcowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucze zgodne z modelem ENM `BranchBase.from_bus_ref`/`to_bus_ref`.
+        // Karta JEDNA-SCIEZKA-EDYCJI: końce odcinka tylko do odczytu — przepięcie końca to
+        // operacja topologiczna (backend odrzucał klucze `params.key_not_allowed`).
+        { key: 'from_bus_ref', label: 'Szyna początkowa', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
+        { key: 'to_bus_ref', label: 'Szyna końcowa', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
       ],
     },
     {
@@ -162,7 +189,7 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'type_ref',
+          key: 'catalog_ref',
           label: 'Typ przewodu (katalog)',
           value: null,
           type: 'type_ref_with_actions',
@@ -177,17 +204,22 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'r_ohm_per_km', label: "Rezystancja R'", value: null, type: 'number', unit: 'Ω/km', editable: false, source: 'type' },
         { key: 'x_ohm_per_km', label: "Reaktancja X'", value: null, type: 'number', unit: 'Ω/km', editable: false, source: 'type' },
-        { key: 'c_nf_per_km', label: "Pojemność C' (kabel)", value: null, type: 'number', unit: 'nF/km', editable: false, source: 'type' },
-        { key: 'b_us_per_km', label: "Susceptancja B'", value: null, type: 'number', unit: 'μS/km', editable: false, source: 'type' },
-        { key: 'rated_current_a', label: 'Prąd dopuszczalny', value: null, type: 'number', unit: 'A', editable: false, source: 'type' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: klucze modelu ENM (dawne `c_nf_per_km`/`b_us_per_km`/
+        // `rated_current_a` nie istniały w rekordzie odcinka — pola zawsze „brak danych").
+        { key: 'b_siemens_per_km', label: "Susceptancja B'", value: null, type: 'number', unit: 'S/km', editable: false, source: 'type' },
+        { key: 'rating.in_a', label: 'Prąd dopuszczalny', value: null, type: 'number', unit: 'A', editable: false, source: 'type' },
       ],
     },
     {
       id: 'local_params',
       label: SECTION_LABELS.local_params,
       fields: [
-        { key: 'branch_type', label: 'Typ', value: 'CABLE', type: 'enum', editable: true, enumOptions: ['CABLE', 'LINE'], source: 'instance' },
-        { key: 'length_km', label: 'Długość', value: 1.0, type: 'number', unit: 'km', editable: true, source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: rodzaj odcinka z klucza modelu `type` — odczyt (kabel ↔ linia
+        // to inny element, nie edycja pola; klucz `branch_type` backend odrzucał).
+        { key: 'type', label: 'Rodzaj', value: null, type: 'enum', editable: false, enumOptions: ['cable', 'line_overhead'], enumLabels: { cable: 'kabel', line_overhead: 'linia napowietrzna' }, source: 'instance' },
+        // Długość: definicja rejestru pól (`POLE_DLUGOSC_ODCINKA_KM`) — ta sama walidacja co karta
+        // odcinka i kreator magistrali.
+        { key: 'length_km', label: 'Długość', value: null, type: 'number', unit: 'km', editable: true, source: 'instance' },
       ],
     },
     {
@@ -233,22 +265,18 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
         { key: 'element_type', label: 'Typ obiektu', value: 'TransformerBranch', type: 'string', editable: false, source: 'instance' },
       ],
     },
-    {
-      id: 'state',
-      label: SECTION_LABELS.state,
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
-      ],
-    },
+    // Karta JEDNA-SCIEZKA-EDYCJI: sekcja „Stan" (W eksploatacji / Cykl życia) skasowana —
+    // model ENM nie ma ani `in_service`, ani `lifecycle_state` (backend odrzucał oba klucze
+    // kodem `params.key_not_allowed`). Element wyłączony z ruchu to scenariusz łączeniowy
+    // przypadku (`OperatingScenario.out_of_service`), nie flaga elementu modelu.
     {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        // Odbiór K7c-FE: klucze zgodne z modelem ENM `Transformer.hv_bus_ref`/`lv_bus_ref`
-        // (były `hv_bus_id`/`lv_bus_id` — ta sama klasa fantomu co `Source.bus_id`→`bus_ref`).
-        { key: 'hv_bus_ref', label: 'Szyna GN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
-        { key: 'lv_bus_ref', label: 'Szyna DN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucze zgodne z modelem ENM `Transformer.hv_bus_ref`/`lv_bus_ref`.
+        // Karta JEDNA-SCIEZKA-EDYCJI: odczyt — przyłączenie zmienia operacja topologiczna.
+        { key: 'hv_bus_ref', label: 'Szyna GN', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
+        { key: 'lv_bus_ref', label: 'Szyna DN', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
       ],
     },
     {
@@ -256,7 +284,7 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'type_ref',
+          key: 'catalog_ref',
           label: 'Typ transformatora (katalog)',
           value: null,
           type: 'type_ref_with_actions',
@@ -269,9 +297,12 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       id: 'type_params',
       label: SECTION_LABELS.type_params,
       fields: [
-        { key: 'rated_power_mva', label: 'Moc znamionowa Sn', value: null, type: 'number', unit: 'MVA', editable: false, source: 'type' },
-        { key: 'voltage_hv_kv', label: 'Napięcie GN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
-        { key: 'voltage_lv_kv', label: 'Napięcie DN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: klucze modelu ENM `Transformer` (były `rated_power_mva`,
+        // `voltage_hv_kv`, `voltage_lv_kv` — klucze typu katalogowego, których rekord modelu nie
+        // ma, więc pola pokazywały zawsze „brak danych").
+        { key: 'sn_mva', label: 'Moc znamionowa Sn', value: null, type: 'number', unit: 'MVA', editable: false, source: 'type' },
+        { key: 'uhv_kv', label: 'Napięcie GN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
+        { key: 'ulv_kv', label: 'Napięcie DN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
         { key: 'uk_percent', label: 'Napięcie zwarcia uk%', value: null, type: 'number', unit: '%', editable: false, source: 'type' },
         { key: 'pk_kw', label: 'Straty obciążeniowe Pk', value: null, type: 'number', unit: 'kW', editable: false, source: 'type' },
         { key: 'i0_percent', label: 'Prąd jałowy i0%', value: null, type: 'number', unit: '%', editable: false, source: 'type' },
@@ -284,7 +315,9 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       id: 'local_params',
       label: SECTION_LABELS.local_params,
       fields: [
-        { key: 'tap_position', label: 'Aktualny zaczep', value: 0, type: 'number', editable: true, source: 'instance' },
+        // Pozycja zaczepu z rejestru pól (`POLE_ZACZEP_TRANSFORMATORA`): podzespół `tap_changer`,
+        // gdy transformator go ma, inaczej `tap_position` — zero wartości domyślnej.
+        { key: 'tap_position', label: 'Aktualny zaczep', value: null, type: 'number', editable: true, source: 'instance' },
       ],
     },
     {
@@ -328,24 +361,29 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
         // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
         { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'Switch', type: 'string', editable: false, source: 'instance' },
-        { key: 'switch_type', label: 'Podtyp', value: 'BREAKER', type: 'enum', editable: false, enumOptions: ['BREAKER', 'DISCONNECTOR', 'LOAD_SWITCH', 'FUSE'], source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: łącznik żyje w kolekcji `branches` (`SwitchBranch`/`FuseBranch`);
+        // podtyp to klucz modelu `type` (dawny `switch_type` nie istniał w rekordzie).
+        { key: 'type', label: 'Podtyp', value: null, type: 'enum', editable: false, enumOptions: ['breaker', 'switch', 'disconnector', 'bus_coupler', 'fuse'], enumLabels: { breaker: 'wyłącznik', switch: 'rozłącznik', disconnector: 'odłącznik', bus_coupler: 'sprzęgło', fuse: 'bezpiecznik' }, source: 'instance' },
       ],
     },
     {
       id: 'state',
       label: SECTION_LABELS.state,
       fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'state', label: 'Pozycja', value: 'CLOSED', type: 'enum', editable: true, enumOptions: ['CLOSED', 'OPEN'], source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: położenie łącznika = `status` modelu, zapis WYŁĄCZNIE
+        // operacją otwarcia/zamknięcia (`POLE_POLOZENIE_LACZNIKA`); `in_service`/`lifecycle_state`
+        // nie istnieją w modelu.
+        { key: 'status', label: 'Położenie', value: null, type: 'enum', editable: true, enumOptions: ['closed', 'open'], enumLabels: { closed: 'zamknięty', open: 'otwarty' }, source: 'instance' },
       ],
     },
     {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        { key: 'from_node_id', label: 'Szyna', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
-        { key: 'to_node_id', label: 'Szyna końcowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Klucze modelu `BranchBase.from_bus_ref`/`to_bus_ref` (dawne `from_node_id`/`to_node_id`
+        // nie istniały); odczyt — przepięcie łącznika to operacja topologiczna.
+        { key: 'from_bus_ref', label: 'Szyna', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
+        { key: 'to_bus_ref', label: 'Szyna końcowa', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
       ],
     },
     {
@@ -353,7 +391,7 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.type_reference,
       fields: [
         {
-          key: 'equipment_type_ref',
+          key: 'catalog_ref',
           label: 'Typ aparatu (katalog)',
           value: null,
           type: 'type_ref_with_actions',
@@ -375,15 +413,10 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
         { key: 'medium', label: 'Ośrodek gaszący', value: '', type: 'string', editable: false, source: 'type' },
       ],
     },
-    {
-      id: 'electrical_params',
-      label: SECTION_LABELS.electrical_params,
-      fields: [
-        { key: 'voltage_kv', label: 'Napięcie znamionowe Un', value: 15.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
-        { key: 'rated_current_a', label: 'Prąd znamionowy In', value: 1250, type: 'number', unit: 'A', editable: true, source: 'instance' },
-        { key: 'breaking_current_ka', label: 'Prąd wyłączalny Ik', value: 25.0, type: 'number', unit: 'kA', editable: true, source: 'instance' },
-      ],
-    },
+    // Karta JEDNA-SCIEZKA-EDYCJI: dawna sekcja „Parametry elektryczne" łącznika (Un 15 kV,
+    // In 1250 A, Ik 25 kA — wartości wpisane w kod, klucze nieobecne w `SwitchBranch`) skasowana.
+    // Parametry znamionowe aparatu pochodzą z typu katalogowego (sekcja wyżej); wartość
+    // projektanta aparatu SN to `overrides` w kreatorze edycji parametrów (zasada nr 4).
     {
       id: 'calculated',
       label: SECTION_LABELS.calculated,
@@ -425,14 +458,10 @@ export function getSourceFieldDefinitions(): PropertySection[] {
         { key: 'element_type', label: 'Typ obiektu', value: 'Source', type: 'string', editable: false, source: 'instance' },
       ],
     },
-    {
-      id: 'state',
-      label: SECTION_LABELS.state,
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
-      ],
-    },
+    // Karta JEDNA-SCIEZKA-EDYCJI: sekcja „Stan" (W eksploatacji / Cykl życia) skasowana —
+    // model ENM nie ma ani `in_service`, ani `lifecycle_state` (backend odrzucał oba klucze
+    // kodem `params.key_not_allowed`). Element wyłączony z ruchu to scenariusz łączeniowy
+    // przypadku (`OperatingScenario.out_of_service`), nie flaga elementu modelu.
     {
       id: 'topology',
       label: SECTION_LABELS.topology,
@@ -443,7 +472,8 @@ export function getSourceFieldDefinitions(): PropertySection[] {
         // niżej: pole ZAWSZE pokazywało puste „—" zamiast realnej szyny
         // przyłączenia, a edycja zapisywała klucz, którego nic nie czyta —
         // zmiana przyłączenia przez property-grid była martwa).
-        { key: 'bus_ref', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: odczyt — zmiana szyny przyłączenia to operacja topologiczna.
+        { key: 'bus_ref', label: 'Szyna przyłączenia', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
       ],
     },
     {
@@ -456,12 +486,12 @@ export function getSourceFieldDefinitions(): PropertySection[] {
         // źródła, a edycja zapisywała klucz, którego nic w modelu nie czyta;
         // ten sam defekt co niżej w `applyCaseConfigRules`/`validation.ts` —
         // naprawione w komplecie, KLASA NIE INSTANCJA).
-        { key: 'sk3_mva', label: "Moc zwarciowa Sk\"", value: 5000, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
-        { key: 'rx_ratio', label: 'Stosunek R/X', value: 0.1, type: 'number', editable: true, source: 'instance' },
+        { key: 'sk3_mva', label: "Moc zwarciowa Sk\"", value: null, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
+        { key: 'rx_ratio', label: 'Stosunek R/X', value: null, type: 'number', editable: true, source: 'instance' },
         // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.sn_voltage_kv`
         // (był `voltage_kv` — `Source` NIE MA takiego pola, ma `sn_voltage_kv`;
         // ta sama klasa fantomu co `sk_mva` powyżej — etykieta bez zmian).
-        { key: 'sn_voltage_kv', label: 'Napięcie znamionowe Un', value: 110.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        { key: 'sn_voltage_kv', label: 'Napięcie znamionowe Un', value: null, type: 'number', unit: 'kV', editable: true, source: 'instance' },
         // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — opcjonalne,
         // brak wartości domyślnej (zero fabrykacji; `null` = nie podano).
         { key: 'sk3_min_mva', label: "Moc zwarciowa Sk\"min", value: null, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
@@ -516,31 +546,30 @@ export function getLoadFieldDefinitions(): PropertySection[] {
         { key: 'element_type', label: 'Typ obiektu', value: 'Load', type: 'string', editable: false, source: 'instance' },
       ],
     },
-    {
-      id: 'state',
-      label: SECTION_LABELS.state,
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: true, type: 'boolean', editable: true, source: 'instance' },
-        { key: 'lifecycle_state', label: 'Stan cyklu życia', value: 'AKTYWNY', type: 'enum', editable: true, enumOptions: ['PROJEKTOWANY', 'AKTYWNY', 'WYLACZONY'], source: 'instance' },
-      ],
-    },
+    // Karta JEDNA-SCIEZKA-EDYCJI: sekcja „Stan" (W eksploatacji / Cykl życia) skasowana —
+    // model ENM nie ma ani `in_service`, ani `lifecycle_state` (backend odrzucał oba klucze
+    // kodem `params.key_not_allowed`). Element wyłączony z ruchu to scenariusz łączeniowy
+    // przypadku (`OperatingScenario.out_of_service`), nie flaga elementu modelu.
     {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        // Odbiór K7c-FE: klucz zgodny z modelem ENM `Load.bus_ref` (był `bus_id` — ta sama
-        // klasa fantomu co `Source.bus_id`→`bus_ref`).
-        { key: 'bus_ref', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucz zgodny z modelem ENM `Load.bus_ref`; odczyt (operacja topologiczna).
+        { key: 'bus_ref', label: 'Szyna przyłączenia', value: null, type: 'ref', refType: 'Bus', editable: false, source: 'instance' },
       ],
     },
     {
       id: 'electrical_params',
       label: SECTION_LABELS.electrical_params,
       fields: [
-        { key: 'p_mw', label: 'Moc czynna P', value: 1.0, type: 'number', unit: 'MW', editable: true, source: 'instance' },
-        { key: 'q_mvar', label: 'Moc bierna Q', value: 0.3, type: 'number', unit: 'Mvar', editable: true, source: 'instance' },
-        { key: 'cos_phi', label: 'Współczynnik mocy cos φ', value: 0.95, type: 'number', editable: true, source: 'instance' },
-        { key: 'load_type', label: 'Typ modelu', value: 'CONSTANT_POWER', type: 'enum', editable: true, enumOptions: ['CONSTANT_POWER', 'CONSTANT_IMPEDANCE', 'ZIP'], source: 'instance' },
+        { key: 'p_mw', label: 'Moc czynna P', value: null, type: 'number', unit: 'MW', editable: true, source: 'instance' },
+        { key: 'q_mvar', label: 'Moc bierna Q', value: null, type: 'number', unit: 'Mvar', editable: true, source: 'instance' },
+        // Karta JEDNA-SCIEZKA-EDYCJI: cos φ to parametr OPERACJI (backend wyznacza Q z P,
+        // `POLE_COS_PHI_ODBIORU`), nie pole modelu — wartość pusta, bo model jej nie niesie.
+        { key: 'cos_phi', label: 'Współczynnik mocy cos φ', value: null, type: 'number', editable: true, source: 'instance' },
+        // Model odbioru = klucz modelu `model`, WYPROWADZANY przez backend ze współczynników ZIP
+        // (O-49 pkt 2) — odczyt. Dawny `load_type` backend odrzucał.
+        { key: 'model', label: 'Model odbioru', value: null, type: 'enum', editable: false, enumOptions: ['pq', 'zip'], enumLabels: { pq: 'stała moc (PQ)', zip: 'ZIP' }, source: 'instance' },
       ],
     },
     {
@@ -694,8 +723,7 @@ function applyModelEditRules(
 /**
  * CASE_CONFIG mode: wariantowe pola (status, parametry przypadku).
  * - identification (READ-ONLY)
- * - state: in_service (EDITABLE), lifecycle_state (READ-ONLY)
- * - For Switch: state (OPEN/CLOSED) EDITABLE
+ * - state: Switch/LineBranch `status` EDITABLE (położenie / stan łączeniowy)
  * - For Load/Source: p_mw, q_mvar EDITABLE
  * - For TransformerBranch: tap_position EDITABLE
  */
@@ -706,14 +734,15 @@ function applyCaseConfigRules(
   const allowedSections = ['identification', 'state', 'topology', 'local_params', 'electrical_params', 'short_circuit'];
 
   // Define editable fields per element type in CASE_CONFIG mode
-  const editableFields = new Set<string>([
-    'in_service', // All types
-  ]);
+  // Karta JEDNA-SCIEZKA-EDYCJI: `in_service` skasowane (model go nie ma); stan łączeniowy
+  // odcinka i położenie łącznika to klucz modelu `status`.
+  const editableFields = new Set<string>();
 
   // Element-specific editable fields
   switch (elementType) {
     case 'Switch':
-      editableFields.add('state'); // OPEN/CLOSED position
+    case 'LineBranch':
+      editableFields.add('status');
       break;
     case 'TransformerBranch':
       editableFields.add('tap_position'); // Zaczep transformatora

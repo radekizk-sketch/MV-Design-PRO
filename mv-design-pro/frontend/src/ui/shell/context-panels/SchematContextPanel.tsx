@@ -506,6 +506,7 @@ export function SchematContextPanel() {
 
       <div className="min-h-0 flex-1 overflow-auto px-2 py-2">
         <input
+          // stan-widoku: fraza wyszukiwania drzewa projektu — filtr widoku, nie dana modelu
           data-testid="project-tree-search-input"
           value={treeQuery}
           onChange={(event) => setTreeQuery(event.target.value)}

@@ -173,7 +173,7 @@ function Komorka<T>({
     .join(' ');
   const testId = `${testid}-komorka-${kolumna.klucz}-${rowKey}`;
 
-  if (!kolumna.edytor) {
+  if (!kolumna.edytor || (kolumna.edytowalnaWWierszu && !kolumna.edytowalnaWWierszu(wiersz))) {
     return (
       <td className={klasy || undefined} data-testid={testId}>
         {kolumna.odczyt(wiersz)}
@@ -187,6 +187,8 @@ function Komorka<T>({
     return (
       <td className={klasy || undefined} data-testid={testId}>
         <input
+          // Pole niekontrolowane: po zapisie model wraca nową wartością — klucz odświeża pole.
+          key={surowa === null ? '' : String(surowa)}
           type="number"
           className="mvd-edyt-tabela-input"
           defaultValue={surowa === null ? '' : surowa}
@@ -216,6 +218,7 @@ function Komorka<T>({
           data-testid={`${testId}-select`}
           onChange={(e) => onEdytuj(wiersz, kolumna.klucz, e.target.value)}
         >
+          {surowa === null ? <option value="">—</option> : null}
           {kolumna.edytor.opcje.map((o) => (
             <option key={o.id} value={o.id}>
               {o.etykieta}

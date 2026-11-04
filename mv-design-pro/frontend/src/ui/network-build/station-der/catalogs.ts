@@ -312,10 +312,10 @@ export type KlasaTransformatoraPrzelacznika =
   | 'transformer_15_04'
   | 'block_transformer';
 
-export function selectTapChangersForTransformer(
-  tapChangers: readonly TapChangerItem[],
+export function selectTapChangersForTransformer<T extends TapChangerItem>(
+  tapChangers: readonly T[],
   type: KlasaTransformatoraPrzelacznika,
-): readonly TapChangerItem[] {
+): readonly T[] {
   return tapChangers.filter((tc) => tc.applicable_to.includes(type));
 }
 
@@ -349,10 +349,10 @@ export function klasaTransformatoraPrzelacznika(
 }
 
 /** Pobiera szczegóły przełącznika zaczepów z katalogu podanego przez wołającego. */
-export function getTapChanger(
-  tapChangers: readonly TapChangerItem[],
+export function getTapChanger<T extends TapChangerItem>(
+  tapChangers: readonly T[],
   id: string | null,
-): TapChangerItem | null {
+): T | null {
   if (!id) return null;
   return tapChangers.find((tc) => tc.id === id) ?? null;
 }

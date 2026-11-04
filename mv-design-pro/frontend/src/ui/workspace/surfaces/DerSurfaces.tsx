@@ -1014,6 +1014,7 @@ function PvInverterCatalogPanel({
                 Wykaz z backendu obejmuje {wykaz.rejestr.length} pozycji falownikowych i konwerterowych z oficjalnych wykazów PTPiREE, akceptowanych przez OSD od {wykaz.manifest.accepted_from}. Pozycja wykazu nie niesie parametrów elektrycznych urządzenia.
               </p>
               <input
+                // stan-widoku: fraza wyszukiwania katalogu — filtr widoku, nie dana modelu
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}

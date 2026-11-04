@@ -519,7 +519,9 @@ function PropertyFieldRow({ field, onFieldChange, mode, canEdit }: PropertyField
       <div className="flex items-center gap-1">
         {isReadOnly ? (
           <span className="text-xs font-mono text-gray-900">
-            {formatMultiEditValue(multiEditValue)}
+            {multiEditValue.kind === 'uniform' && field.enumLabels?.[String(multiEditValue.value)]
+              ? field.enumLabels[String(multiEditValue.value)]
+              : formatMultiEditValue(multiEditValue)}
           </span>
         ) : (
           <FieldInput
@@ -619,7 +621,7 @@ function FieldInput({ field, multiEditValue, onChange }: FieldInputProps) {
         >
           {field.enumOptions?.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {field.enumLabels?.[option] ?? option}
             </option>
           ))}
         </select>

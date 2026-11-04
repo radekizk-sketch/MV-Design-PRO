@@ -370,7 +370,8 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       render(<StationConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'stn/s1/station' }} />);
 
       fireEvent.click(screen.getByTestId('station-config-tab-sn-switchgear'));
-      expect((screen.getByTestId('sn-switchgear-layout') as HTMLSelectElement).value).toBe(
+      expect(screen.getByTestId('sn-switchgear-layout')).toHaveAttribute(
+        'data-layout',
         sprzeglo ? 'sectioned_busbar' : 'single_busbar',
       );
 
@@ -1113,7 +1114,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.queryByTestId('station-port-nN-PV-2')).not.toBeInTheDocument();
     });
 
-    it('pokazuje zrodla OZE zapisane w ENM dla wybranej stacji', () => {
+    it('pokazuje zrodla OZE zapisane w ENM dla wybranej stacji', async () => {
       useSnapshotStore.setState({
         snapshot: {
           header: {
@@ -1183,7 +1184,19 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.getByText(/PV: 1/)).toBeInTheDocument();
       expect(screen.getByText('PV 01 - fotowoltaika')).toBeInTheDocument();
       expect(screen.getByText('500')).toBeInTheDocument();
-      expect(screen.queryByText('Usuń')).not.toBeInTheDocument();
+
+      // Karta JEDNA-SCIEZKA-EDYCJI: dawniej źródło z modelu NIE miało „Usuń", bo odłączenie
+      // zmieniało tylko lokalny magazyn (fikcja wobec modelu). Teraz odłączenie to operacja
+      // modelu `delete_element` — klik natywny → potwierdzenie → operacja na źródle z modelu.
+      const execute = vi.fn(async () => ({ error: null }) as never);
+      useSnapshotStore.setState({ executeDomainOperation: execute as never });
+      const { useAppStateStore } = await import('../../../app-state');
+      useAppStateStore.setState({ activeCaseId: 'case-1' });
+      fireEvent.click(screen.getByText('Usuń'));
+      fireEvent.click(screen.getByTestId('der-detach-ok'));
+      await vi.waitFor(() =>
+        expect(execute).toHaveBeenCalledWith('case-1', 'delete_element', { element_ref: 'pv/station-01/converter' }),
+      );
     });
   });
 });

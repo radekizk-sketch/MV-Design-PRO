@@ -117,6 +117,7 @@ import {
   zrodloParametruMaszyny,
 } from './wartosciRoboczeMaszyny';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
+import { kluczeDopuszczoneKolekcji, kolekcjaElementu } from '../../model/rejestrPol';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
 interface WierszParametru {
@@ -237,6 +238,28 @@ function podpowiedzMaszyny(
 
 /** Konwersja tekstu na typ: dla kluczy tekstowych tekst; inaczej liczba / tak-nie / brak
  *  wartości wykrywane automatycznie, reszta jako tekst. */
+/**
+ * Karta JEDNA-SCIEZKA-EDYCJI: parametry o wartości STRUKTURALNEJ (obiekt, lista) mają własną
+ * sekcję albo kartę edycji (wartości projektanta aparatu i maszyny, geometria słupa, dane
+ * modułu NC RfG, warunki ułożenia kabla, przełącznik zaczepów, nastawy) — w wierszu
+ * „parametr → wartość" (pole tekstowe) byłyby zapisem napisu zamiast struktury.
+ */
+const KLUCZE_STRUKTURALNE: ReadonlySet<string> = new Set([
+  'meta', 'materialized_params', 'overrides', 'geometria_slupa', 'cable_laying_conditions',
+  'tap_changer', 'rating', 'ports', 'runtime_inputs', 'deklaracje_modulu', 'dynamika',
+  'nastawy_zabezpieczen', 'limits', 'nominal_limits', 'tags', 'ordered_segment_refs',
+  'connected_branch_refs', 'dlawik', 'rezystor', 'spz', 'wylaczenie_od_transformatorow_refs',
+  'data_umowy_przylaczeniowej', 'modul_istniejacy',
+]);
+
+/** Wartość parametru z rekordu modelu jako tekst pola (`''` — model jej nie niesie). */
+function wartoscZModelu(element: Readonly<Record<string, unknown>> | null, klucz: string): string {
+  const v = element?.[klucz];
+  if (typeof v === 'number' || typeof v === 'string') return String(v);
+  if (typeof v === 'boolean') return v ? 'tak' : 'nie';
+  return '';
+}
+
 function parsujWartosc(raw: string, klucz = ''): string | number | boolean | null {
   const trimmed = raw.trim();
   if (KLUCZE_TEKSTOWE.has(klucz.trim())) return trimmed;
@@ -255,6 +278,29 @@ export function KreatorEdycjiParametrow() {
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
 
   const elementRef = readString(context?.element_ref);
+  // Karta JEDNA-SCIEZKA-EDYCJI: klucz wiersza to wybór z kontraktu operacji dla kolekcji
+  // elementu (eksport backendu), a wartość startowa to wartość z MODELU — dawniej klucz był
+  // wolnym tekstem (literówka = odmowa `params.key_not_allowed`), a pole wartości puste.
+  const migawka = useSnapshotStore((s) => s.snapshot);
+  const kolekcja = useMemo(() => kolekcjaElementu(migawka, elementRef), [migawka, elementRef]);
+  const rekordElementu = useMemo<Readonly<Record<string, unknown>> | null>(() => {
+    if (!kolekcja || !migawka) return null;
+    const lista = (migawka as unknown as Record<string, unknown>)[kolekcja];
+    return Array.isArray(lista)
+      ? ((lista as Array<Record<string, unknown>>).find((el) => el.ref_id === elementRef) ?? null)
+      : null;
+  }, [kolekcja, migawka, elementRef]);
+  const kluczeWiersza = useMemo(
+    () =>
+      kolekcja
+        ? kluczeDopuszczoneKolekcji(kolekcja).filter((k) => {
+          if (KLUCZE_STRUKTURALNE.has(k)) return false;
+          const v = rekordElementu?.[k];
+          return v === undefined || v === null || typeof v !== 'object';
+        })
+        : [],
+    [kolekcja, rekordElementu],
+  );
   // Element podpisany NAZWĄ z migawki (ten sam most nazw co lista gotowości) — nie
   // identyfikatorem maszynowym (karta ETYKIETA-STACJI-PRZELOTOWEJ: naprawa W043).
   const nazwaObiektu = useNazwaObiektu();
@@ -301,7 +347,7 @@ export function KreatorEdycjiParametrow() {
     ? ''
     : poleKontekstu || kluczZWymogu(readString(context?.required));
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
-    { klucz: initialKey, wartosc: readString(context?.value) },
+    { klucz: initialKey, wartosc: readString(context?.value) || wartoscZModelu(rekordElementu, initialKey) },
   ]);
   // Uzasadnienie wartości projektanta aparatu SN — czytane przez backend jako
   // `overrides[].reason` (`enm/wartosci_projektanta.py`: `nadpisania_aparatu_sn`,
@@ -325,8 +371,16 @@ export function KreatorEdycjiParametrow() {
   );
 
   const wypelnione = useMemo(
-    () => wiersze.filter((w) => w.klucz.trim() && w.wartosc.trim() !== ''),
-    [wiersze],
+    // Do zapisu idą wyłącznie wiersze ZMIENIONE wobec modelu (wartość startowa z modelu nie
+    // jest zmianą).
+    () =>
+      wiersze.filter(
+        (w) =>
+          w.klucz.trim()
+          && w.wartosc.trim() !== ''
+          && w.wartosc.trim() !== wartoscZModelu(rekordElementu, w.klucz.trim()),
+      ),
+    [wiersze, rekordElementu],
   );
 
   // Plan AB O-50 pkt 5: generator ma w modelu dane modułu NC RfG (art. 4, data umowy, nastawy
@@ -494,8 +548,14 @@ export function KreatorEdycjiParametrow() {
     setWiersze((p) => (p.length <= 1 ? p : p.filter((_, i) => i !== index)));
   }, []);
   const zmienWiersz = useCallback((index: number, pole: keyof WierszParametru, value: string) => {
-    setWiersze((p) => p.map((w, i) => (i === index ? { ...w, [pole]: value } : w)));
-  }, []);
+    setWiersze((p) =>
+      p.map((w, i) => {
+        if (i !== index) return w;
+        // Wybór parametru wczytuje jego bieżącą wartość z modelu.
+        return pole === 'klucz' ? { klucz: value, wartosc: wartoscZModelu(rekordElementu, value) } : { ...w, wartosc: value };
+      }),
+    );
+  }, [rekordElementu]);
 
   const onZapisz = useCallback(async () => {
     if (!activeCaseId) {
@@ -760,11 +820,17 @@ export function KreatorEdycjiParametrow() {
         <KreatorInfo>{T.parametryPomoc}</KreatorInfo>
         {wiersze.map((w, i) => (
           <KreatorSiatka kolumny={2} key={`param-${i}`}>
-            <PoleTekstowe
+            <PoleWyboru
               etykieta={T.klucz}
               wartosc={w.klucz}
               onZmiana={(v) => zmienWiersz(i, 'klucz', v)}
-              placeholder={T.kluczPlaceholder}
+              opcje={[
+                { id: '', etykieta: kolekcja ? T.kluczWybierz : T.kluczBrakElementu },
+                ...kluczeWiersza.map((k) => ({ id: k, etykieta: k })),
+                // Klucz wskazany akcją naprawczą spoza listy wiersza zostaje widoczny — backend
+                // oceni go i odmówi jawnie, zamiast cichej zamiany na inny parametr.
+                ...(w.klucz && !kluczeWiersza.includes(w.klucz) ? [{ id: w.klucz, etykieta: w.klucz }] : []),
+              ]}
               testid={`mvd-kreator-edycja-klucz-${i}`}
             />
             {slownikDlaKlucza(w.klucz) ? (

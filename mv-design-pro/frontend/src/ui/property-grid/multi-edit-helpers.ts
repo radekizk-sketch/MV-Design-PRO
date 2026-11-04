@@ -12,7 +12,7 @@
  */
 
 import type { PropertyField, PropertySection, ElementType, OperatingMode, MultiEditFieldValue } from '../types';
-import { getFieldDefinitionsForMode } from './field-definitions';
+import { getFieldDefinitionsForMode, wartoscPolaZModelu } from './field-definitions';
 
 /**
  * Element data for multi-edit.
@@ -44,7 +44,7 @@ export function getCommonFields(elements: ElementData[], mode: OperatingMode = '
       ...section,
       fields: section.fields.map((field) => ({
         ...field,
-        value: elements[0].data[field.key] ?? field.value,
+        value: wartoscPolaZModelu(elements[0].type, field, elements[0].data),
       })),
     }));
   }
@@ -68,7 +68,7 @@ export function getCommonFields(elements: ElementData[], mode: OperatingMode = '
         // Merge values across all elements
         const mergedValue = mergeFieldValues(
           field.key,
-          elements.map((el) => el.data[field.key])
+          elements.map((el) => wartoscPolaZModelu(el.type, field, el.data))
         );
 
         return {

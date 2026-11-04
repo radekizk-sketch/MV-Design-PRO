@@ -2697,6 +2697,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
         >
           <input
+            // stan-widoku: opcja eksportu rysunku (legenda) — ustawienie eksportu, nie dana modelu
             type="checkbox"
             checked={includeLegendInExport}
             onChange={(event) => setIncludeLegendInExport(event.target.checked)}

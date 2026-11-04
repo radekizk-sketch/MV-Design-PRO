@@ -295,7 +295,9 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
             {activeCard === 'basic' && (
               <StationConnectionPanel basic={basic} topology={topology} />
             )}
-            {activeCard === 'sn-switchgear' && <StationConfigSnSwitchgearCard {...snSwitchgear} />}
+            {activeCard === 'sn-switchgear' && (
+              <StationConfigSnSwitchgearCard {...snSwitchgear} onOpenApparatus={() => setActiveCard('apparatus')} />
+            )}
             {activeCard === 'bays' && <StationBayTechnicalPanel bays={bays} />}
             {activeCard === 'apparatus' && <StationApparatusPanel bays={bays} protection={protection} />}
             {activeCard === 'ct' && <MeasurementPackagePanel mode="ct" measurements={measurements} />}

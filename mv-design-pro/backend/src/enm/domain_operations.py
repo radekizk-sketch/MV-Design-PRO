@@ -26,6 +26,7 @@ from domain.readiness_bridge import opis_kanoniczny
 from enm.assembler import czestotliwosc_studium_hz
 from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
+    klasa_transformatora_przelacznika,
     tap_changer_fields_from_catalog,
 )
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
@@ -10480,6 +10481,274 @@ def _pola_kontraktu_kolekcji(coll: str) -> frozenset[str]:
     return frozenset(nazwy)
 
 
+def _q_odbioru_z_cos_phi(
+    odbior: dict[str, Any], parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """`cos_phi` operacji → `q_mvar` odbioru (P z tej samej zmiany albo z modelu).
+
+    Podanie jednocześnie Q i cos φ jest sprzecznością (dwie definicje jednej wielkości) —
+    odmowa nazwana, nie wybór jednej z nich. cos φ spoza (0; 1] i P niedodatnie (cos φ
+    nie definiuje Q odbioru bez poboru mocy czynnej) — odmowa bez skutku w modelu.
+    """
+    zmiany = dict(parameters)
+    cos_phi = zmiany.pop("cos_phi")
+    if "q_mvar" in zmiany:
+        return parameters, _error_response(
+            f"Pole {pole('cos_phi', 'update_element_parameters')}: podaj albo moc bierną Q, "
+            "albo cos φ — obie wartości opisują tę samą wielkość.",
+            "params.invalid_value",
+        )
+    if isinstance(cos_phi, bool) or not isinstance(cos_phi, int | float) or not 0 < cos_phi <= 1:
+        return parameters, _error_response(
+            f"Pole {pole('cos_phi', 'update_element_parameters')}: cos φ musi być liczbą "
+            "z przedziału (0; 1].",
+            "params.invalid_value",
+        )
+    moc_czynna = zmiany.get("p_mw", odbior.get("p_mw"))
+    if isinstance(moc_czynna, bool) or not isinstance(moc_czynna, int | float) or moc_czynna <= 0:
+        return parameters, _error_response(
+            f"Pole {pole('cos_phi', 'update_element_parameters')}: cos φ wyznacza moc bierną "
+            "odbioru z dodatniej mocy czynnej P — uzupełnij P albo podaj Q wprost.",
+            "params.invalid_value",
+        )
+    zmiany["q_mvar"] = moc_bierna_z_czynnej_i_cos_phi(float(moc_czynna), float(cos_phi))
+    return zmiany, None
+
+
+def _warunki_ulozenia_kabla_sn(
+    enm: dict[str, Any], galaz: dict[str, Any], parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Warunki ułożenia kabla SN → `meta.cable_laying_conditions` (parser toru DER).
+
+    Jeden parser z kreatorem pola DER (`_der_cable_laying_conditions`): ta sama walidacja nazwy
+    zestawu i współczynników własnych, ta sama postać zapisu, którą czyta raport toru DER
+    (`api/der_sn_documents._cable_derating_from_model`). „Warunki katalogowe" albo `None`
+    zdejmują zapis (brak korekty = warunki katalogowe). Kabel nN ma tablice PN-HD 60364-5-52
+    i własną operację — tu odmowa z nazwą tej drogi, nie drugi parser.
+    """
+    from enm.domain_operations_v2 import _der_cable_laying_conditions
+
+    zmiany = dict(parameters)
+    opis = zmiany.pop("cable_laying_conditions")
+    if galaz.get("type") != "cable":
+        return parameters, _error_response(
+            "Warunki ułożenia dotyczą wyłącznie odcinków kablowych.",
+            "cable.laying_conditions_not_cable",
+        )
+    napiecia = [
+        bus.get("voltage_kv")
+        for bus in enm.get("buses", [])
+        if isinstance(bus, dict)
+        and bus.get("ref_id") in (galaz.get("from_bus_ref"), galaz.get("to_bus_ref"))
+    ]
+    if any(w_pasmie_nn(napiecie) for napiecie in napiecia):
+        return parameters, _error_response(
+            f"{opis_elementu(enm, str(galaz.get('ref_id') or ''), 'Kabel')} leży w sieci nN — "
+            "warunki ułożenia kabla nN ustawia operacja warunków ułożenia kabla nN "
+            "(tablice PN-HD 60364-5-52).",
+            "cable.laying_conditions_nn_segment",
+        )
+    zapis, blad = _der_cable_laying_conditions({"cable_laying_conditions": opis})
+    if blad is not None:
+        return parameters, _error_response(blad, "cable.laying_conditions_invalid")
+    meta = dict(zmiany.get("meta", galaz.get("meta") or {}))
+    if zapis is None:
+        meta.pop("cable_laying_conditions", None)
+    else:
+        meta["cable_laying_conditions"] = zapis
+    zmiany["meta"] = meta
+    return zmiany, None
+
+
+def _zaczepy_transformatora_z_parametrow(
+    enm: dict[str, Any],
+    element_ref: str,
+    transformator: dict[str, Any],
+    parameters: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """`tap_changer` zmiany → podzespół zaczepów zgodny z kontraktem (V12K-045).
+
+    Ta sama brama co operacje stacyjne (`_blad_zaczepow`) — wcześniej ta droga zapisywała
+    podzespół bez kontroli. Pozycja katalogowa (`catalog_ref`) materializuje pola z katalogu
+    przełączników (`tap_changer_fields_from_catalog`, ta sama funkcja co GPZ), pola jawne
+    zmiany mają pierwszeństwo; przełącznik nieprzeznaczony dla klasy transformatora (napięcia
+    z modelu, `klasa_transformatora_przelacznika`) jest odmową. `None` zdejmuje podzespół.
+    """
+    from enm.models import TapChanger
+
+    zaczepy = parameters["tap_changer"]
+    if zaczepy is None:
+        return parameters, None
+    transformator_pl = opis_elementu(enm, element_ref, "Transformator")
+    if not isinstance(zaczepy, dict):
+        return parameters, _error_response(
+            f"{transformator_pl} — podzespół zaczepów musi być obiektem.",
+            "transformer.tap_changer_invalid",
+        )
+    pola = {klucz: wartosc for klucz, wartosc in zaczepy.items() if wartosc is not None}
+    pozycja_katalogu = pola.get("catalog_ref")
+    if pozycja_katalogu is not None:
+        przelacznik = get_tap_changer(str(pozycja_katalogu))
+        if przelacznik is None:
+            return parameters, _error_response(
+                f"{transformator_pl} — przełącznika zaczepów „{pozycja_katalogu}” nie ma "
+                "w katalogu przełączników.",
+                "transformer.tap_changer_catalog_unknown",
+            )
+        klasa = klasa_transformatora_przelacznika(
+            transformator.get("uhv_kv"), transformator.get("ulv_kv")
+        )
+        if klasa is None or klasa not in przelacznik.applicable_to:
+            return parameters, _error_response(
+                f"{transformator_pl} — przełącznik „{przelacznik.label_pl}” nie jest "
+                "przeznaczony dla transformatora o tych napięciach znamionowych.",
+                "transformer.tap_changer_not_applicable",
+            )
+        pola = {**tap_changer_fields_from_catalog(przelacznik), **pola}
+    try:
+        znormalizowane = TapChanger.model_validate(pola).model_dump(mode="json", exclude_none=True)
+    except ValidationError:
+        return parameters, _error_response(
+            f"{transformator_pl} — podzespół zaczepów ma niepoprawny kształt.",
+            "transformer.tap_changer_invalid",
+        )
+    blad = _blad_zaczepow(znormalizowane)
+    if blad is not None:
+        return parameters, _error_response(
+            f"{transformator_pl} — {blad}", "transformer.tap_changer_invalid"
+        )
+    return {**parameters, "tap_changer": znormalizowane}, None
+
+
+#: Parametry `update_element_parameters` dopuszczone dla kolekcji z jawną listą — JEDNO
+#: źródło prawdy o tym, które pole elementu wolno zmienić tą operacją. Czyta je operacja
+#: (odmowa `params.key_not_allowed` dla klucza spoza listy) i eksport kontraktu dla
+#: interfejsu (`harness-fixtures/generated/rejestr_pol_edycji.json`), z którego rejestr pól
+#: UI (`ui2/model/rejestrPol.ts`) sprawdza, że żadna kontrolka nie wysyła klucza odrzucanego
+#: przez backend (karta JEDNA-SCIEZKA-EDYCJI).
+PARAMETRY_EDYTOWALNE_WG_KOLEKCJI: dict[str, set[str]] = {
+    "branches": {
+        "name",
+        "status",
+        "length_km",
+        "r_ohm_per_km",
+        "x_ohm_per_km",
+        "b_siemens_per_km",
+        "r0_ohm_per_km",
+        "x0_ohm_per_km",
+        "b0_siemens_per_km",
+        "rating",
+        "insulation",
+        "screen_bonding",
+        # W5-C: pozycja normalna łącznika — kontrola wartości niżej (wyłącznie
+        # „zamknięta" albo zdjęcie deklaracji; punkt podziału = `set_normal_open_point`).
+        "normal_state",
+        # Karta LINIA-110: geometria słupa linii (dana projektu).
+        "geometria_slupa",
+        # Karta JEDNA-SCIEZKA-EDYCJI: warunki ułożenia kabla SN (zestaw współczynników
+        # obciążalności, `meta.cable_laying_conditions`) — ten sam parser co tor DER
+        # (`_der_cable_laying_conditions`); kabel nN ma własną operację z tablicami nN.
+        "cable_laying_conditions",
+        "catalog_ref",
+        "parameter_source",
+        "overrides",
+        "meta",
+        "source_mode",
+        "catalog_namespace",
+        "materialized_params",
+    },
+    "transformers": {
+        "name",
+        "sn_mva",
+        "uhv_kv",
+        "ulv_kv",
+        "uk_percent",
+        "pk_kw",
+        "p0_kw",
+        "i0_percent",
+        "vector_group",
+        "hv_neutral",
+        "lv_neutral",
+        "lv_earthing_system",
+        "lv_voltage_tolerance",
+        "n_parallel",
+        "tap_position",
+        "tap_min",
+        "tap_max",
+        "tap_step_percent",
+        # B-2 (karta KD-3): KANONICZNY podzespol zaczepow (V12K-045) —
+        # do tej pory jedyne zrodlo prawdy o regulacji nie mialo zadnej
+        # drogi zapisu poza operacja zrodla GPZ, wiec zaczepy
+        # transformatora stacyjnego byly nieedytowalne. Dopisanie go tu
+        # NIE tworzy pola rownoleglego: starsze `tap_*` zostaja dla
+        # zgodnosci wstecznej, kanonem jest `tap_changer`.
+        "tap_changer",
+        "catalog_ref",
+        "parameter_source",
+        "overrides",
+        "meta",
+        "source_mode",
+        "catalog_namespace",
+        "materialized_params",
+    },
+    "branch_points": {
+        "name",
+        "catalog_ref",
+        "catalog_namespace",
+        "catalog_version",
+        "source_mode",
+        "materialized_params",
+        "completeness_status",
+        "runtime_inputs",
+        "branch_occupied",
+        "ports",
+        "meta",
+    },
+    "generators": {
+        "name",
+        "p_mw",
+        "q_mvar",
+        "catalog_ref",
+        "quantity",
+        "n_parallel",
+        "parameter_source",
+        "overrides",
+        "limits",
+        "connection_variant",
+        "blocking_transformer_ref",
+        "station_ref",
+        "meta",
+        "in_service",
+        # Karta W6-1: kontrakt parametrow dynamicznych (ParametryDynamiczne,
+        # unia dyskryminowana po `rodzina`). Zapis surowy tutaj — pelna
+        # walidacja (dyskryminator, proweniencja, walidatory krzyzowe) idzie
+        # przez `EnergyNetworkModel.model_validate` na granicy API (ten sam
+        # mechanizm co `limits`/`overrides`), zero zdublowanej walidacji.
+        "dynamika",
+        # Odbior Pakietu C (plan AB O-50 pkt 5): pola NC RfG modulu — status art. 4,
+        # data umowy przylaczeniowej, nastawy zabezpieczen i deklaracje modulu.
+        # Walidowane PRZED zapisem tym samym pisarzem co `add_converter_source`
+        # (`enm/deklaracje_modulu.py::pola_nc_rfg_generatora`).
+        *POLA_NC_RFG_GENERATORA,
+    },
+    "substations": {
+        "name",
+        "entry_point_ref",
+        "meta",
+        # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
+        # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
+        "station_type",
+    },
+    # Bateria kondensatorów: nazwa i stan łącznika baterii (`status`). Qn/Un zmienia
+    # WYŁĄCZNIE przypisanie innej pozycji katalogu (`assign_catalog_to_element`) —
+    # katalog-first. Karta UX-04/POLE-BKR-MODEL: wartości projektanta parametrów
+    # baterii (układ, stopnie i ich stan, tolerancja, dławik, rozładowanie) oraz
+    # transformatory, których wyłączenie wyłącza baterię — pierwszeństwo przed typem
+    # (`enm.bateria_kondensatorow.parametry_baterii`), kontrola kształtu modelem niżej.
+    "shunt_capacitors": {"name", "status", *POLA_BATERII_EDYTOWALNE},
+}
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu.
 
@@ -10515,6 +10784,15 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     current_element = enm[coll][idx]
     if coll == "bays":
         return _zmien_parametry_pola(enm, element_ref, parameters)
+
+    # Karta JEDNA-SCIEZKA-EDYCJI: cos φ odbioru jest parametrem OPERACJI, nie polem modelu —
+    # model niesie P i Q, a Q wyznacza ta sama algebra co kreator odbioru nN
+    # (`moc_bierna_z_czynnej_i_cos_phi`, Q = P·tg φ, charakter indukcyjny). Zamiana przed
+    # bramką kontraktu: do modelu trafia wyłącznie `q_mvar`.
+    if coll == "loads" and "cos_phi" in parameters:
+        parameters, odmowa_cos_phi = _q_odbioru_z_cos_phi(current_element, parameters)
+        if odmowa_cos_phi is not None:
+            return odmowa_cos_phi
 
     generator_type = str(current_element.get("gen_type") or "").upper()
     generator_requires_catalog = coll == "generators" and generator_type in {
@@ -10594,123 +10872,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     if coll in KOLEKCJE_Z_LISTA_PARAMETROW:
         immutable_keys = {"ref_id", "id", "type"}
-        allowlist_by_collection = {
-            "branches": {
-                "name",
-                "status",
-                "length_km",
-                "r_ohm_per_km",
-                "x_ohm_per_km",
-                "b_siemens_per_km",
-                "r0_ohm_per_km",
-                "x0_ohm_per_km",
-                "b0_siemens_per_km",
-                "rating",
-                "insulation",
-                "screen_bonding",
-                # W5-C: pozycja normalna łącznika — kontrola wartości niżej (wyłącznie
-                # „zamknięta" albo zdjęcie deklaracji; punkt podziału = `set_normal_open_point`).
-                "normal_state",
-                # Karta LINIA-110: geometria słupa linii (dana projektu).
-                "geometria_slupa",
-                "catalog_ref",
-                "parameter_source",
-                "overrides",
-                "meta",
-                "source_mode",
-                "catalog_namespace",
-                "materialized_params",
-            },
-            "transformers": {
-                "name",
-                "sn_mva",
-                "uhv_kv",
-                "ulv_kv",
-                "uk_percent",
-                "pk_kw",
-                "p0_kw",
-                "i0_percent",
-                "vector_group",
-                "hv_neutral",
-                "lv_neutral",
-                "lv_earthing_system",
-                "lv_voltage_tolerance",
-                "n_parallel",
-                "tap_position",
-                "tap_min",
-                "tap_max",
-                "tap_step_percent",
-                # B-2 (karta KD-3): KANONICZNY podzespol zaczepow (V12K-045) —
-                # do tej pory jedyne zrodlo prawdy o regulacji nie mialo zadnej
-                # drogi zapisu poza operacja zrodla GPZ, wiec zaczepy
-                # transformatora stacyjnego byly nieedytowalne. Dopisanie go tu
-                # NIE tworzy pola rownoleglego: starsze `tap_*` zostaja dla
-                # zgodnosci wstecznej, kanonem jest `tap_changer`.
-                "tap_changer",
-                "catalog_ref",
-                "parameter_source",
-                "overrides",
-                "meta",
-                "source_mode",
-                "catalog_namespace",
-                "materialized_params",
-            },
-            "branch_points": {
-                "name",
-                "catalog_ref",
-                "catalog_namespace",
-                "catalog_version",
-                "source_mode",
-                "materialized_params",
-                "completeness_status",
-                "runtime_inputs",
-                "branch_occupied",
-                "ports",
-                "meta",
-            },
-            "generators": {
-                "name",
-                "p_mw",
-                "q_mvar",
-                "catalog_ref",
-                "quantity",
-                "n_parallel",
-                "parameter_source",
-                "overrides",
-                "limits",
-                "connection_variant",
-                "blocking_transformer_ref",
-                "station_ref",
-                "meta",
-                "in_service",
-                # Karta W6-1: kontrakt parametrow dynamicznych (ParametryDynamiczne,
-                # unia dyskryminowana po `rodzina`). Zapis surowy tutaj — pelna
-                # walidacja (dyskryminator, proweniencja, walidatory krzyzowe) idzie
-                # przez `EnergyNetworkModel.model_validate` na granicy API (ten sam
-                # mechanizm co `limits`/`overrides`), zero zdublowanej walidacji.
-                "dynamika",
-                # Odbior Pakietu C (plan AB O-50 pkt 5): pola NC RfG modulu — status art. 4,
-                # data umowy przylaczeniowej, nastawy zabezpieczen i deklaracje modulu.
-                # Walidowane PRZED zapisem tym samym pisarzem co `add_converter_source`
-                # (`enm/deklaracje_modulu.py::pola_nc_rfg_generatora`).
-                *POLA_NC_RFG_GENERATORA,
-            },
-            "substations": {
-                "name",
-                "entry_point_ref",
-                "meta",
-                # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
-                # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
-                "station_type",
-            },
-            # Bateria kondensatorów: nazwa i stan łącznika baterii (`status`). Qn/Un zmienia
-            # WYŁĄCZNIE przypisanie innej pozycji katalogu (`assign_catalog_to_element`) —
-            # katalog-first. Karta UX-04/POLE-BKR-MODEL: wartości projektanta parametrów
-            # baterii (układ, stopnie i ich stan, tolerancja, dławik, rozładowanie) oraz
-            # transformatory, których wyłączenie wyłącza baterię — pierwszeństwo przed typem
-            # (`enm.bateria_kondensatorow.parametry_baterii`), kontrola kształtu modelem niżej.
-            "shunt_capacitors": {"name", "status", *POLA_BATERII_EDYTOWALNE},
-        }
+        allowlist_by_collection = PARAMETRY_EDYTOWALNE_WG_KOLEKCJI
         illegal_keys = sorted(
             key
             for key in parameters
@@ -10726,6 +10888,35 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "params.key_not_allowed",
             )
 
+    # Karta JEDNA-SCIEZKA-EDYCJI: długość odcinka — ta sama dziedzina co przy tworzeniu
+    # odcinka (`dlugosc_m > 0` w operacjach ciągu SN): długość niedodatnia nie wchodzi do
+    # modelu żadną z dróg zapisu.
+    if coll == "branches" and "length_km" in parameters:
+        dlugosc = parameters["length_km"]
+        # Typ inny niż liczba to złamanie kontraktu pola — także napis „850" i wartość
+        # logiczna, które walidacja modelu w trybie luźnym po cichu zamieniłaby na liczbę.
+        if isinstance(dlugosc, bool) or not isinstance(dlugosc, int | float):
+            return _error_response(
+                f"Pole {pole('length_km', 'update_element_parameters')}: długość odcinka musi "
+                "być liczbą.",
+                KOD_MODELU_NIEZGODNEGO_Z_KONTRAKTEM,
+            )
+        if dlugosc <= 0:
+            return _error_response(
+                f"Pole {pole('length_km', 'update_element_parameters')}: długość odcinka musi "
+                "być liczbą większą od zera.",
+                "params.invalid_value",
+            )
+    if coll == "branches" and "cable_laying_conditions" in parameters:
+        parameters, odmowa_ulozenia = _warunki_ulozenia_kabla_sn(enm, current_element, parameters)
+        if odmowa_ulozenia is not None:
+            return odmowa_ulozenia
+    if coll == "transformers" and "tap_changer" in parameters:
+        parameters, odmowa_zaczepow = _zaczepy_transformatora_z_parametrow(
+            enm, element_ref, current_element, parameters
+        )
+        if odmowa_zaczepow is not None:
+            return odmowa_zaczepow
     if coll == "shunt_capacitors" and "status" in parameters:
         if parameters["status"] not in ("closed", "open"):
             return _error_response(

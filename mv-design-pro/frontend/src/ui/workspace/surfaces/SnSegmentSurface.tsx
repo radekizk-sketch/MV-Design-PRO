@@ -5,17 +5,42 @@
  * 4 karty: Identyfikacja & rodzina / Katalog & przewód / Trasa & ułożenie /
  * Obciążalność.
  *
- * Backend: katalogi w mv_cable_line_catalog.py (KABEL_SN, LINIA_SN).
- * Pełne wpięcie do operacji domenowej continue_trunk_segment_sn /
- * insert_station_on_segment_sn - Etap 6 (insert tool).
+ * Karta JEDNA-SCIEZKA-EDYCJI: każda kontrolka czyta wartość z modelu ENM i zapisuje ją
+ * operacją domenową albo jest jawnym odczytem. Dawna karta trzymała osiem pól w lokalnym
+ * stanie bez zapisu (oznaczenie, rodzina, przekrój, długość, sposób ułożenia, temperatura
+ * otoczenia, rezystywność gruntu, Idd), startowała z wartościami wpisanymi w kod (20 °C,
+ * 1 K·m/W, „w ziemi") i miała własną listę katalogową. Teraz:
+ * - oznaczenie, długość, warunki ułożenia — definicje rejestru pól (`ui2/model/rejestrPol.ts`)
+ *   → `update_element_parameters`;
+ * - typ katalogowy — lista z katalogu backendu (`/api/catalog/cable-types`, `line-types`)
+ *   → `assign_catalog_to_element`;
+ * - rodzina (kabel / linia), przekrój, Idd — odczyt z modelu (zmiana rodziny to inny element,
+ *   przekrój i Idd wynikają z typu katalogowego);
+ * - temperatura otoczenia i rezystywność gruntu USUNIĘTE: rdzeń korekty obciążalności SN nie
+ *   ma tablic IEC 60287 dla tych wielkości, więc pola nie miały żadnego konsumenta. Warunki
+ *   ułożenia to nazwany zestaw współczynników z udokumentowaną podstawą (ten sam katalog
+ *   zestawów co kreator źródła OZE, `/api/solver/cable-laying-conditions`).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveCaseId } from '../../app-state/store';
 import { buildCatalogBinding } from '../../catalog/catalogBinding';
-import type { CatalogNamespace } from '../../catalog/types';
+import type { CableType, CatalogNamespace, LineType } from '../../catalog/types';
+import { fetchCableTypes, fetchLineTypes, getCatalogErrorMessage } from '../../catalog/api';
+import {
+  fetchCableLayingConditions,
+  type CableLayingConditionsCatalog,
+} from '../../../ui2/kreatory/zrodlo-oze/derSelectionApi';
+import {
+  POLE_DLUGOSC_ODCINKA,
+  POLE_WARUNKI_ULOZENIA_KABLA,
+  polaNazwy,
+  warunkiUlozeniaZModelu,
+  type DefinicjaPola,
+  type RekordModelu,
+} from '../../../ui2/model/rejestrPol';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
@@ -52,42 +77,12 @@ function segmentDefaultCard(routeState: WorkspaceSurfaceDescriptor['routeState']
     : 'identification';
 }
 
-interface SegmentData {
-  designation: string;
-  family: 'kabel_sn' | 'linia_napowietrzna_sn';
-  catalogItemId: string;
-  conductorMm2: number | null;
-  lengthM: number | null;
-  layingType: 'ziemia' | 'kanal' | 'powietrze';
-  ambientTempC: number | null;
-  groundResistivity: number | null;
-  ampacityA: number | null;
-}
-
 interface SegmentEndpointStatus {
   endpointBusRef: string | null;
   isFree: boolean;
   reasonPl: string;
   station: Substation | null;
 }
-
-const CABLE_SN_CATALOG = [
-  { id: 'cable-tfk-yakxs-3x70', label: 'YAKXS 3×70 mm² · 12/20 kV' },
-  { id: 'cable-tfk-yakxs-3x120', label: 'YAKXS 3×120 mm² · 12/20 kV' },
-  { id: 'cable-nkt-na2xs2y-3x150', label: 'NA2XS2Y 3×150 mm² · 12/20 kV' },
-  { id: 'cable-tfk-yakxs-3x240', label: 'YAKXS 3×240 mm² · 12/20 kV' },
-  { id: 'cable-tfk-xrukpz-3x95', label: 'XRUKPZ 3×95 mm² · 12/20 kV' },
-];
-
-const LINE_SN_CATALOG = [
-  { id: 'line-afl-50', label: 'AFL-6 50 mm² · żłobiona' },
-  { id: 'line-afl-70', label: 'AFL-6 70 mm² · żłobiona' },
-  { id: 'line-afl-95', label: 'AFL-6 95 mm² · żłobiona' },
-  { id: 'line-afl-120', label: 'AFL-6 120 mm² · żłobiona' },
-];
-
-const DEFAULT_CABLE_SN_CATALOG_ID = CABLE_SN_CATALOG[0].id;
-const DEFAULT_LINE_SN_CATALOG_ID = LINE_SN_CATALOG[0].id;
 
 const SEGMENT_NUMBER_FORMAT_PL = new Intl.NumberFormat('pl-PL', {
   maximumFractionDigits: 2,
@@ -191,28 +186,32 @@ function evaluateSegmentEndpoint(
   };
 }
 
-function formatLengthM(segment: Branch | null, draftLengthM: number | null): string {
-  if (segment && 'length_km' in segment && typeof segment.length_km === 'number') {
-    return `${SEGMENT_NUMBER_FORMAT_PL.format(segment.length_km * 1000)} m`;
-  }
-  return draftLengthM === null ? MISSING_DASH : `${SEGMENT_NUMBER_FORMAT_PL.format(draftLengthM)} m`;
+function formatLengthM(segment: Branch | null): string {
+  const metry = segment ? POLE_DLUGOSC_ODCINKA.odczyt(segment as unknown as RekordModelu) : null;
+  return typeof metry === 'number' ? `${SEGMENT_NUMBER_FORMAT_PL.format(metry)} m` : MISSING_DASH;
 }
 
-function formatAmpacity(branch: Branch | null, draftAmpacityA: number | null): string {
+/** Idd z modelu (`rating.in_a`, materializowane z typu katalogowego) — odczyt, nie edycja. */
+function ampacityA(branch: Branch | null): number | null {
   const rating = branch && 'rating' in branch ? branch.rating : null;
-  const ratedCurrent = typeof rating?.in_a === 'number' ? rating.in_a : draftAmpacityA;
+  return typeof rating?.in_a === 'number' ? rating.in_a : null;
+}
+
+function formatAmpacity(branch: Branch | null): string {
+  const ratedCurrent = ampacityA(branch);
   return ratedCurrent === null ? MISSING_DASH : `${SEGMENT_NUMBER_FORMAT_PL.format(ratedCurrent)} A`;
 }
 
-function segmentFamilyLabel(branch: Branch | null, draftFamily: SegmentData['family']): string {
+function segmentFamilyLabel(branch: Branch | null): string {
   if (branch?.type === 'line_overhead') return 'Linia napowietrzna SN';
   if (branch?.type === 'cable') return 'Kabel SN';
-  return draftFamily === 'linia_napowietrzna_sn' ? 'Linia napowietrzna SN' : 'Kabel SN';
+  return MISSING_DASH;
 }
 
-function selectedCatalogLabel(catalogId: string, family: SegmentData['family']): string {
-  const catalog = family === 'kabel_sn' ? CABLE_SN_CATALOG : LINE_SN_CATALOG;
-  return catalog.find((item) => item.id === catalogId)?.label ?? MISSING_DASH;
+/** Nazwa typu z katalogu backendu (pozycja o identyfikatorze `catalog_ref` odcinka). */
+function catalogItemName(catalogRef: string | null | undefined, items: readonly { id: string; name: string }[]): string {
+  if (!catalogRef) return MISSING_DASH;
+  return items.find((item) => item.id === catalogRef)?.name ?? MISSING_DASH;
 }
 
 function readMaterializedString(branch: Branch | null, keys: readonly string[]): string | null {
@@ -310,7 +309,7 @@ function normalizeCatalogLabel(value: string): string | null {
     .replace(/\s+/gu, ' ');
 }
 
-function conductorLabel(branch: Branch | null, draft: SegmentData): string {
+function conductorLabel(branch: Branch | null, catalogName: string): string {
   if (branch?.type === 'line_overhead') {
     const materializedMaterial = readMaterializedString(branch, [
       'conductor_material',
@@ -328,7 +327,7 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
       return [material, section].filter(Boolean).join(' ');
     }
     const normalized = normalizeCatalogLabel(catalogRef);
-    return normalized ?? selectedCatalogLabel(draft.catalogItemId, 'linia_napowietrzna_sn');
+    return normalized ?? catalogName;
   }
   if (branch?.type === 'cable') {
     const workingSection = typeof branch.cross_section_mm2 === 'number'
@@ -341,12 +340,12 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
       ? `${workingSection}${returnSection ? `/${returnSection}` : ''} mm²`
       : null;
     const material = branch.conductor_material?.trim().replace(/^AL$/i, 'Al') || null;
-    return [material, section].filter(Boolean).join(' ') || selectedCatalogLabel(draft.catalogItemId, draft.family);
+    return [material, section].filter(Boolean).join(' ') || catalogName;
   }
-  return selectedCatalogLabel(draft.catalogItemId, draft.family);
+  return catalogName;
 }
 
-function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
+function catalogRefLabel(branch: Branch | null, catalogName: string): string {
   const materializedLabel = readMaterializedString(branch, [
     'type_designation',
     'type_label',
@@ -367,9 +366,9 @@ function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
       }
       return normalized;
     }
-    const conductor = conductorLabel(branch, draft);
+    const conductor = conductorLabel(branch, catalogName);
     if (conductor && conductor !== MISSING_DASH) return `Linia napowietrzna ${conductor}`;
-    return selectedCatalogLabel(draft.catalogItemId, 'linia_napowietrzna_sn');
+    return catalogName;
   }
   const cableLabel = formatMvCableCatalogLabel(branch, candidate);
   if (cableLabel) return cableLabel;
@@ -377,7 +376,7 @@ function catalogRefLabel(branch: Branch | null, draft: SegmentData): string {
     const normalized = normalizeCatalogLabel(candidate);
     if (normalized) return normalized;
   }
-  return selectedCatalogLabel(draft.catalogItemId, draft.family);
+  return catalogName;
 }
 
 interface SnSegmentSurfaceProps {
@@ -405,17 +404,35 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     setActiveCard(segmentDefaultCard(routeState));
   }, [routeState]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [data, setData] = useState<SegmentData>(() => ({
-    designation: '',
-    family: 'kabel_sn',
-    catalogItemId: DEFAULT_CABLE_SN_CATALOG_ID,
-    conductorMm2: null,
-    lengthM: null,
-    layingType: 'ziemia',
-    ambientTempC: 20,
-    groundResistivity: 1,
-    ampacityA: null,
-  }));
+  const [catalogItems, setCatalogItems] = useState<{ kable: CableType[]; linie: LineType[] }>({ kable: [], linie: [] });
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [layingCatalog, setLayingCatalog] = useState<CableLayingConditionsCatalog | null>(null);
+  const [layingCatalogError, setLayingCatalogError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Katalog typów odcinków SN z backendu — ta sama lista co kreator magistrali.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchCableTypes(), fetchLineTypes()])
+      .then(([kable, linie]) => {
+        if (cancelled) return;
+        setCatalogItems({ kable: Array.isArray(kable) ? kable : [], linie: Array.isArray(linie) ? linie : [] });
+        setCatalogError(null);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setCatalogError(getCatalogErrorMessage(error));
+      });
+    fetchCableLayingConditions()
+      .then((katalog) => {
+        if (!cancelled) setLayingCatalog(katalog);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setLayingCatalogError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const segmentName = useMemo(() => {
     if (!segmentRef) return 'Odcinek SN';
@@ -425,7 +442,6 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     return branch ? segmentPublicIdentity(snapshot, branch as Branch).displayName : 'Odcinek SN';
   }, [segmentRef, snapshot]);
 
-  const catalogOptions = data.family === 'kabel_sn' ? CABLE_SN_CATALOG : LINE_SN_CATALOG;
   const segmentBranch = useMemo(() => {
     if (!segmentRef || !snapshot) return null;
     return (snapshot.branches ?? []).find((branch) => branch.ref_id === segmentRef || branch.id === segmentRef) ?? null;
@@ -442,20 +458,26 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     });
     return corridor?.ref_id ?? corridor?.id ?? null;
   }, [segmentRef, snapshot]);
-  const segmentSummary = useMemo(() => ({
-    family: segmentFamilyLabel(segmentBranch as Branch | null, data.family),
-    catalog: catalogRefLabel(segmentBranch as Branch | null, data),
-    conductor: conductorLabel(segmentBranch as Branch | null, data),
-    length: formatLengthM(segmentBranch as Branch | null, data.lengthM),
-    ampacity: formatAmpacity(segmentBranch as Branch | null, data.ampacityA),
-    endpoint: endpointStatus.isFree ? 'wolny zacisk końcowy' : 'zacisk zajęty',
-  }), [data, endpointStatus.isFree, segmentBranch]);
-  const isOverheadSegment = segmentBranch
-    ? segmentBranch.type === 'line_overhead'
-    : data.family === 'linia_napowietrzna_sn';
-  const isCableSegment = segmentBranch
-    ? segmentBranch.type === 'cable'
-    : data.family === 'kabel_sn';
+  const isOverheadSegment = segmentBranch?.type === 'line_overhead';
+  const isCableSegment = segmentBranch?.type === 'cable';
+  const catalogOptions = useMemo(
+    () => (isOverheadSegment ? catalogItems.linie : isCableSegment ? catalogItems.kable : []),
+    [catalogItems, isCableSegment, isOverheadSegment],
+  );
+  const segmentSummary = useMemo(() => {
+    const branch = segmentBranch as Branch | null;
+    const catalogName = catalogItemName(branch?.catalog_ref, catalogOptions);
+    return {
+      family: segmentFamilyLabel(branch),
+      catalog: catalogRefLabel(branch, catalogName),
+      conductor: conductorLabel(branch, catalogName),
+      length: formatLengthM(branch),
+      ampacity: formatAmpacity(branch),
+      endpoint: endpointStatus.isFree ? 'wolny zacisk końcowy' : 'zacisk zajęty',
+    };
+  }, [catalogOptions, endpointStatus.isFree, segmentBranch]);
+  const segmentRecord = (segmentBranch ?? {}) as unknown as RekordModelu;
+  const layingConditions = segmentBranch ? warunkiUlozeniaZModelu(segmentRecord) : null;
   const canAppendZksn = endpointStatus.isFree && isCableSegment;
   const canAppendBranchPole = endpointStatus.isFree && isOverheadSegment;
   const selectedCatalogNamespace: CatalogNamespace | null = segmentBranch?.catalog_namespace
@@ -465,12 +487,33 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
       : isCableSegment
         ? 'KABEL_SN'
         : null;
-  const selectedCatalogRef = segmentBranch?.catalog_ref ?? data.catalogItemId;
+  const selectedCatalogRef = segmentBranch?.catalog_ref ?? null;
   const terminationStandardHint = isOverheadSegment
     ? 'Linia napowietrzna: kontynuuj przez stację albo słup rozgałęźny. ZK SN stosuj na odcinku kablowym.'
     : 'Kabel SN: kontynuuj przez stację albo ZK SN. Słup rozgałęźny stosuj na linii napowietrznej.';
+  /** Zapis pola rejestru: walidacja definicji → operacja domenowa (jedna ścieżka edycji). */
+  const savePole = useCallback(
+    (definicja: DefinicjaPola, wartosc: unknown) => {
+      const odmowa = definicja.waliduj(wartosc);
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        if (odmowa) next[definicja.id] = odmowa;
+        else delete next[definicja.id];
+        return next;
+      });
+      if (odmowa) return;
+      if (!activeCaseId || !segmentRef) {
+        setActionNotice('Zapis parametru odcinka wymaga aktywnego zakresu obliczeń i odcinka SN.');
+        return;
+      }
+      setActionNotice(null);
+      const { operacja, ladunek } = definicja.zapis(segmentRef, wartosc, segmentRecord);
+      void executeDomainOperation(activeCaseId, operacja, ladunek);
+    },
+    [activeCaseId, executeDomainOperation, segmentRecord, segmentRef],
+  );
   const handleCatalogItemChange = (catalogItemId: string) => {
-    setData((d) => ({ ...d, catalogItemId }));
+    if (!catalogItemId) return;
     if (!activeCaseId || !segmentRef || !selectedCatalogNamespace) {
       setActionNotice('Zmiana typu katalogowego wymaga aktywnego zakresu obliczeń i odcinka SN.');
       return;
@@ -708,113 +751,132 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
       </nav>
 
       <div className="flex-1 overflow-auto p-4">
-        {activeCard === 'identification' && (
+        {!segmentBranch && (
+          <div data-testid="segment-missing-in-model" className="text-[length:var(--mvd-font-size-data)] text-scada-muted">
+            Odcinka nie ma w bieżącym modelu sieci — parametry pokaże karta po wskazaniu odcinka na schemacie.
+          </div>
+        )}
+
+        {segmentBranch && activeCard === 'identification' && (
           <div data-testid="segment-content-identification" className="space-y-3">
-            <Field
+            <CommitTextField
               label="Oznaczenie"
               required
-              value={data.designation}
-              onChange={(v) => setData((d) => ({ ...d, designation: v }))}
+              testId="segment-field-name"
+              value={typeof segmentBranch.name === 'string' ? segmentBranch.name : ''}
+              error={fieldErrors[NAZWA_ODCINKA.id] ?? null}
+              onCommit={(v) => savePole(NAZWA_ODCINKA, v)}
               placeholder="np. K-12 / GPZ-Stacja-01"
             />
-            <SelectField
+            <ReadOnlyField
               label="Rodzina"
-              required
-              value={data.family}
-              onChange={(v) =>
-                setData((d) => ({
-                  ...d,
-                  family: v as SegmentData['family'],
-                  catalogItemId:
-                    v === 'linia_napowietrzna_sn'
-                      ? DEFAULT_LINE_SN_CATALOG_ID
-                      : DEFAULT_CABLE_SN_CATALOG_ID,
-                }))
-              }
-              options={[
-                { id: 'kabel_sn', label: 'Kabel SN' },
-                { id: 'linia_napowietrzna_sn', label: 'Linia napowietrzna SN' },
-              ]}
+              testId="segment-field-family"
+              value={segmentSummary.family}
+              hint="Kabel i linia napowietrzna to różne elementy modelu — zmianę rodziny wykonuje się przez wymianę odcinka."
             />
           </div>
         )}
 
-        {activeCard === 'catalog' && (
+        {segmentBranch && activeCard === 'catalog' && (
           <div data-testid="segment-content-catalog" className="space-y-3">
             <SelectField
               label="Typ katalogowy"
               required
-              value={data.catalogItemId}
+              value={selectedCatalogRef ?? ''}
               onChange={handleCatalogItemChange}
-              options={catalogOptions}
+              options={[
+                ...(selectedCatalogRef ? [] : [{ id: '', label: 'Wybierz typ z katalogu' }]),
+                ...(selectedCatalogRef && !catalogOptions.some((o) => o.id === selectedCatalogRef)
+                  ? [{ id: selectedCatalogRef, label: selectedCatalogRef }]
+                  : []),
+                ...catalogOptions.map((o) => ({ id: o.id, label: o.name })),
+              ]}
               testId="segment-catalog-item-select"
             />
-            <NumberField
-              label="Przekrój żył roboczych"
-              unit="mm²"
-              value={data.conductorMm2}
-              onChange={(v) => setData((d) => ({ ...d, conductorMm2: v }))}
+            {catalogError && (
+              <div data-testid="segment-catalog-error" className="text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
+                {catalogError}
+              </div>
+            )}
+            <ReadOnlyField
+              label="Przewód (z typu katalogowego)"
+              testId="segment-field-conductor"
+              value={segmentSummary.conductor}
             />
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-              Parametry elektryczne odcinka są pobierane z wybranego typu katalogowego.
+              Parametry elektryczne i przekrój odcinka są pobierane z wybranego typu katalogowego.
               Zmiana R/X/C jest operacją ekspercką i wymaga jawnego uzasadnienia technicznego.
             </p>
           </div>
         )}
 
-        {activeCard === 'route' && (
+        {segmentBranch && activeCard === 'route' && (
           <div data-testid="segment-content-route" className="space-y-3">
-            <NumberField
-              label="Długość trasy"
-              unit="m"
+            <CommitNumberField
+              label={POLE_DLUGOSC_ODCINKA.etykieta}
+              unit={POLE_DLUGOSC_ODCINKA.jednostka ?? undefined}
               required
-              value={data.lengthM}
-              onChange={(v) => setData((d) => ({ ...d, lengthM: v }))}
+              testId="segment-field-length"
+              value={POLE_DLUGOSC_ODCINKA.odczyt(segmentRecord) as number | null}
+              error={fieldErrors[POLE_DLUGOSC_ODCINKA.id] ?? null}
+              onCommit={(v) => savePole(POLE_DLUGOSC_ODCINKA, v)}
               placeholder="np. 850"
             />
-            <SelectField
-              label="Sposób ułożenia"
-              value={data.layingType}
-              onChange={(v) => setData((d) => ({ ...d, layingType: v as SegmentData['layingType'] }))}
-              options={[
-                { id: 'ziemia', label: 'W ziemi' },
-                { id: 'kanal', label: 'W kanale' },
-                { id: 'powietrze', label: 'W powietrzu' },
-              ]}
-            />
-            <NumberField
-              label="Temperatura otoczenia"
-              unit="°C"
-              value={data.ambientTempC}
-              onChange={(v) => setData((d) => ({ ...d, ambientTempC: v }))}
-            />
-            <NumberField
-              label="Rezystywność gruntu"
-              unit="K·m/W"
-              value={data.groundResistivity}
-              onChange={(v) => setData((d) => ({ ...d, groundResistivity: v }))}
-            />
+            {isCableSegment ? (
+              <LayingConditionsEditor
+                catalog={layingCatalog}
+                catalogError={layingCatalogError}
+                current={layingConditions}
+                error={fieldErrors[POLE_WARUNKI_ULOZENIA_KABLA.id] ?? null}
+                onSave={(v) => savePole(POLE_WARUNKI_ULOZENIA_KABLA, v)}
+              />
+            ) : (
+              <p data-testid="segment-laying-not-applicable" className="text-[length:var(--mvd-font-size-data)] text-scada-muted">
+                Warunki ułożenia dotyczą kabla. Obciążalność linii napowietrznej wynika z typu przewodu.
+              </p>
+            )}
           </div>
         )}
 
-        {activeCard === 'rating' && (
+        {segmentBranch && activeCard === 'rating' && (
           <div data-testid="segment-content-rating" className="space-y-3">
-            <NumberField
-              label="Obciążalność długotrwała Idd"
-              unit="A"
-              value={data.ampacityA}
-              onChange={(v) => setData((d) => ({ ...d, ampacityA: v }))}
+            <ReadOnlyField
+              label="Obciążalność długotrwała Idd (z typu katalogowego)"
+              testId="segment-field-ampacity"
+              value={segmentSummary.ampacity}
             />
+            {isCableSegment && (
+              <ReadOnlyField
+                label="Warunki ułożenia"
+                testId="segment-field-laying-summary"
+                value={layingSummary(layingCatalog, layingConditions)}
+              />
+            )}
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-              Wynik analizy obciążalności cieplnej dostępny po obliczeniach
-              rozpływu mocy. Aktualny wynik:{' '}
-              <span className="font-medium">{MISSING_DASH}</span>
+              Obciążalność skorygowaną warunkami ułożenia i jej wykorzystanie prądem roboczym
+              liczy analiza obciążalności cieplnej po obliczeniu rozpływu mocy.
             </p>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+const NAZWA_ODCINKA = polaNazwy('branches');
+
+/** Opis warunków ułożenia z katalogu zestawów (dane backendu, bez rachunku). */
+function layingSummary(
+  catalog: CableLayingConditionsCatalog | null,
+  current: { set_name: string; opis_pl?: string } | null,
+): string {
+  if (!catalog) return MISSING_DASH;
+  const name = current?.set_name ?? catalog.default_name;
+  const set = catalog.sets.find((item) => item.name === name);
+  if (name === catalog.custom_name) {
+    return `Współczynniki własne${current?.opis_pl ? ` — ${current.opis_pl}` : ''}`;
+  }
+  return set ? `${set.label_pl} (f = ${SEGMENT_NUMBER_FORMAT_PL.format(set.total)}; ${set.basis})` : name;
 }
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
@@ -830,64 +892,232 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
+const INPUT_CLASS =
+  'w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none';
+
+function FieldLabel({ label, unit, required }: { label: string; unit?: string; required?: boolean }) {
+  return (
+    <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
+      {label}
+      {unit && <span> [{unit}]</span>}
+      {required && <span className="text-red-400"> *</span>}
+    </label>
+  );
 }
 
-function Field({ label, value, onChange, placeholder, required }: FieldProps) {
+function FieldError({ error, testId }: { error: string | null; testId?: string }) {
+  if (!error) return null;
   return (
-    <div>
-      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
-      />
+    <div data-testid={testId ? `${testId}-error` : undefined} className="mt-1 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
+      {error}
     </div>
   );
 }
 
-interface NumberFieldProps {
+interface CommitTextFieldProps {
   label: string;
-  unit?: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
+  value: string;
+  onCommit: (value: string) => void;
+  error: string | null;
+  testId: string;
   placeholder?: string;
   required?: boolean;
 }
 
-function NumberField({ label, unit, value, onChange, placeholder, required }: NumberFieldProps) {
+/** Pole tekstowe modelu: wartość z modelu, zapis przy opuszczeniu pola albo Enter. */
+function CommitTextField({ label, value, onCommit, error, testId, placeholder, required }: CommitTextFieldProps) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => {
+    if (draft !== value) onCommit(draft);
+  };
   return (
     <div>
-      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
-        {unit && <span> [{unit}]</span>}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
+      <FieldLabel label={label} required={required} />
       <input
-        type="number"
-        value={value === null ? '' : value}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (raw === '') {
-            onChange(null);
-            return;
-          }
-          const num = Number(raw);
-          onChange(Number.isNaN(num) ? null : num);
+        type="text"
+        data-testid={testId}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+        placeholder={placeholder}
+        className={INPUT_CLASS}
+      />
+      <FieldError error={error} testId={testId} />
+    </div>
+  );
+}
+
+interface CommitNumberFieldProps {
+  label: string;
+  unit?: string;
+  value: number | null;
+  onCommit: (value: number | null) => void;
+  error: string | null;
+  testId: string;
+  placeholder?: string;
+  required?: boolean;
+}
+
+function parseNumber(raw: string): number | null {
+  if (raw.trim() === '') return null;
+  const num = Number(raw.replace(',', '.'));
+  return Number.isFinite(num) ? num : Number.NaN;
+}
+
+/** Pole liczbowe modelu: wartość z modelu, zapis przy opuszczeniu pola albo Enter. */
+function CommitNumberField({ label, unit, value, onCommit, error, testId, placeholder, required }: CommitNumberFieldProps) {
+  const fromModel = value === null ? '' : String(value);
+  const [draft, setDraft] = useState(fromModel);
+  useEffect(() => setDraft(fromModel), [fromModel]);
+  const commit = () => {
+    if (draft !== fromModel) onCommit(parseNumber(draft));
+  };
+  return (
+    <div>
+      <FieldLabel label={label} unit={unit} required={required} />
+      <input
+        type="text"
+        inputMode="decimal"
+        data-testid={testId}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
         }}
         placeholder={placeholder ?? 'Wprowadź wartość'}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
+        className={INPUT_CLASS}
       />
+      <FieldError error={error} testId={testId} />
+    </div>
+  );
+}
+
+function ReadOnlyField({ label, value, testId, hint }: { label: string; value: string; testId: string; hint?: string }) {
+  return (
+    <div>
+      <FieldLabel label={label} />
+      <div data-testid={testId} className="rounded border border-scada-border/70 bg-scada-bg px-2 py-1.5 text-sm text-scada-text">
+        {value || MISSING_DASH}
+      </div>
+      {hint && <div className="mt-1 text-[length:var(--mvd-font-size-data)] text-scada-muted">{hint}</div>}
+    </div>
+  );
+}
+
+interface LayingConditionsEditorProps {
+  catalog: CableLayingConditionsCatalog | null;
+  catalogError: string | null;
+  current: { set_name: string; f_grunt?: number; f_wiazka?: number; f_grupa?: number; opis_pl?: string } | null;
+  error: string | null;
+  onSave: (value: Record<string, unknown>) => void;
+}
+
+/**
+ * Warunki ułożenia kabla: nazwany zestaw z katalogu backendu (zapis od razu) albo
+ * współczynniki własne z opisem (zapis przyciskiem — trzy współczynniki i opis tworzą jeden
+ * opis warunków, który backend waliduje w całości).
+ */
+function LayingConditionsEditor({ catalog, catalogError, current, error, onSave }: LayingConditionsEditorProps) {
+  const selected = current?.set_name ?? catalog?.default_name ?? '';
+  const [choice, setChoice] = useState(selected);
+  useEffect(() => setChoice(selected), [selected]);
+  const isCustom = catalog !== null && choice === catalog.custom_name;
+  const fromModel = (klucz: 'f_grunt' | 'f_wiazka' | 'f_grupa') =>
+    current?.set_name === catalog?.custom_name && typeof current?.[klucz] === 'number' ? String(current[klucz]) : '';
+  const [custom, setCustom] = useState({ f_grunt: '', f_wiazka: '', f_grupa: '', opis_pl: '' });
+  useEffect(() => {
+    setCustom({
+      f_grunt: fromModel('f_grunt'),
+      f_wiazka: fromModel('f_wiazka'),
+      f_grupa: fromModel('f_grupa'),
+      opis_pl: current?.set_name === catalog?.custom_name ? current?.opis_pl ?? '' : '',
+    });
+  }, [current, catalog]);
+
+  if (!catalog) {
+    return (
+      <div data-testid="segment-laying-loading" className="text-[length:var(--mvd-font-size-data)] text-scada-muted">
+        {catalogError ?? 'Wczytywanie zestawów warunków ułożenia z katalogu…'}
+      </div>
+    );
+  }
+  const set = catalog.sets.find((item) => item.name === choice);
+  return (
+    <div className="space-y-2">
+      <FieldLabel label="Warunki ułożenia kabla" />
+      <select
+        data-testid="segment-field-laying"
+        value={choice}
+        onChange={(e) => {
+          const name = e.target.value;
+          setChoice(name);
+          if (name !== catalog.custom_name) onSave({ set_name: name });
+        }}
+        className={INPUT_CLASS}
+      >
+        {catalog.sets.map((item) => (
+          <option key={item.name} value={item.name}>
+            {item.label_pl}
+          </option>
+        ))}
+        {!catalog.sets.some((item) => item.name === catalog.custom_name) && (
+          <option value={catalog.custom_name}>Współczynniki własne</option>
+        )}
+      </select>
+      {set && (
+        <div data-testid="segment-laying-basis" className="text-[length:var(--mvd-font-size-data)] text-scada-muted">
+          Współczynnik łączny f = {SEGMENT_NUMBER_FORMAT_PL.format(set.total)} · {set.basis}. {set.assumption_pl}
+        </div>
+      )}
+      {isCustom && (
+        <div data-testid="segment-laying-custom" className="grid gap-2 sm:grid-cols-3">
+          {(['f_grunt', 'f_wiazka', 'f_grupa'] as const).map((klucz) => (
+            <div key={klucz}>
+              <FieldLabel label={{ f_grunt: 'Współczynnik gruntu', f_wiazka: 'Współczynnik wiązki', f_grupa: 'Współczynnik grupy' }[klucz]} />
+              <input
+                type="text"
+                inputMode="decimal"
+                data-testid={`segment-laying-${klucz}`}
+                value={custom[klucz]}
+                onChange={(e) => setCustom((c) => ({ ...c, [klucz]: e.target.value }))}
+                className={INPUT_CLASS}
+              />
+            </div>
+          ))}
+          <div className="sm:col-span-3">
+            <FieldLabel label="Opis warunków" required />
+            <input
+              type="text"
+              data-testid="segment-laying-opis"
+              value={custom.opis_pl}
+              onChange={(e) => setCustom((c) => ({ ...c, opis_pl: e.target.value }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <button
+            type="button"
+            data-testid="segment-laying-save"
+            onClick={() => {
+              const opis: Record<string, unknown> = { set_name: catalog.custom_name, opis_pl: custom.opis_pl.trim() };
+              for (const klucz of ['f_grunt', 'f_wiazka', 'f_grupa'] as const) {
+                const liczba = parseNumber(custom[klucz]);
+                if (liczba !== null) opis[klucz] = liczba;
+              }
+              onSave(opis);
+            }}
+            className="border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20"
+          >
+            Zapisz współczynniki własne
+          </button>
+        </div>
+      )}
+      <p className="text-[length:var(--mvd-font-size-data)] text-scada-muted">{catalog.limitation_pl}</p>
+      <FieldError error={error} testId="segment-field-laying" />
     </div>
   );
 }

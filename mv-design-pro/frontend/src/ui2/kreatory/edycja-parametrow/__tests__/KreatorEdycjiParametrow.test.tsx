@@ -23,11 +23,27 @@ let context: Record<string, unknown> = { element_ref: 'tr-1' };
 const snapshotState = {
   error: null as string | null,
   executeDomainOperation: executeDomainOperationMock,
-  snapshot: null as {
-    generators?: Record<string, unknown>[];
-    branches?: Record<string, unknown>[];
-  } | null,
+  snapshot: null as Record<string, Record<string, unknown>[]> | null,
 };
+
+/**
+ * Model z elementem każdej kolekcji, której klucze ćwiczą testy (karta JEDNA-SCIEZKA-EDYCJI:
+ * klucz wiersza to wybór z kontraktu kolekcji elementu, a wartość startowa — wartość modelu).
+ */
+const MODEL_PODSTAWOWY: Record<string, Record<string, unknown>[]> = {
+  transformers: [{ ref_id: 'tr-1', name: 'T1', tap_position: 0, vector_group: 'Dyn5' }],
+  bays: [{ ref_id: 'bay-1', name: 'Pole 1', bay_number: '1', feeder_short_name: 'L1' }],
+  branches: [{ ref_id: 'line-1', name: 'Linia 1', type: 'cable', length_km: 1.2 }],
+  shunt_capacitors: [{ ref_id: 'cap-1', name: 'Bateria', dlawik_ograniczajacy: true, dlawik_indukcyjnosc_mh: 2 }],
+};
+
+/** Wybór parametru z listy kontraktu i wpis wartości (wartość z modelu zastąpiona wpisem). */
+async function ustawParametr(i: number, klucz: string, wartosc: string): Promise<void> {
+  await userEvent.selectOptions(screen.getByTestId(`mvd-kreator-edycja-klucz-${i}`), klucz);
+  const pole = screen.getByTestId(`mvd-kreator-edycja-wartosc-${i}`);
+  await userEvent.clear(pole);
+  await userEvent.type(pole, wartosc);
+}
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -71,13 +87,16 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
 
   it('wysyła parametry pod kluczem `parameters` z konwersją liczby (naprawa phantoma updates)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: 'tr-1' } });
+    snapshotState.snapshot = MODEL_PODSTAWOWY;
     render(<KreatorEdycjiParametrow />);
     // Uzasadnienie istnieje tylko jako `overrides[].reason` aparatu SN — poza sekcją aparatu
     // byłoby kontrolką-widmem (operacja nie czyta `reason` na poziomie ładunku).
     expect(screen.queryByTestId('mvd-kreator-edycja-powod')).toBeNull();
 
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'tap_position');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), '2');
+    // Lista parametrów pochodzi z kontraktu kolekcji, a wartość startowa — z modelu.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'tap_position');
+    expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0')).toHaveValue('0');
+    await ustawParametr(0, 'tap_position', '2');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
@@ -92,59 +111,79 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('„nie" daje fałsz, a angielskie true/null zostają tekstem (słownik tylko polski)', async () => {
+  // Intencja: słownik wartości jest polski („tak"/„nie"/„brak"); angielskie „null" zostaje
+  // tekstem. Klucze to realne parametry kontraktu (dawne `in_service`/`note` przy
+  // transformatorze backend odrzucał kodem `params.key_not_allowed`).
+  it('„nie" daje fałsz, a angielskie null zostaje tekstem (słownik tylko polski)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
+    context = { element_ref: 'cap-1' };
+    snapshotState.snapshot = MODEL_PODSTAWOWY;
     render(<KreatorEdycjiParametrow />);
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'nie');
+    await ustawParametr(0, 'dlawik_ograniczajacy', 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'null');
+    await ustawParametr(1, 'dlawik_indukcyjnosc_mh', 'null');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
         'case-1',
         'update_element_parameters',
-        expect.objectContaining({ parameters: { in_service: false, note: 'null' } }),
+        expect.objectContaining({ parameters: { dlawik_ograniczajacy: false, dlawik_indukcyjnosc_mh: 'null' } }),
       );
     });
   });
 
-  it('obsługuje wiele parametrów z konwersją tak-nie/brak', async () => {
+  it('obsługuje wiele parametrów z konwersją tak-nie/brak; wartość równa modelowi nie jest zmianą', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
+    context = { element_ref: 'cap-1' };
+    snapshotState.snapshot = MODEL_PODSTAWOWY;
     render(<KreatorEdycjiParametrow />);
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'tak');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'dlawik_ograniczajacy');
+    // Wartość z modelu („tak") wczytana — bez zmiany zapis jest zablokowany.
+    expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0')).toHaveValue('tak');
+    expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+    await ustawParametr(0, 'dlawik_ograniczajacy', 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'brak');
+    await ustawParametr(1, 'dlawik_indukcyjnosc_mh', 'brak');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
         'case-1',
         'update_element_parameters',
-        expect.objectContaining({ parameters: { in_service: true, note: null } }),
+        expect.objectContaining({ parameters: { dlawik_ograniczajacy: false, dlawik_indukcyjnosc_mh: null } }),
       );
     });
+  });
+
+  it('lista parametrów = kontrakt kolekcji elementu (bez parametrów strukturalnych)', () => {
+    snapshotState.snapshot = MODEL_PODSTAWOWY;
+    render(<KreatorEdycjiParametrow />);
+    const opcje = [...screen.getByTestId('mvd-kreator-edycja-klucz-0').querySelectorAll('option')].map((o) => o.value);
+    expect(opcje).toContain('tap_position');
+    expect(opcje).toContain('uk_percent');
+    // Pole spoza kontraktu transformatora i parametry strukturalne (własne sekcje) nie są do wyboru.
+    for (const klucz of ['length_km', 'in_service', 'note', 'tap_changer', 'overrides', 'meta', 'id', 'ref_id']) {
+      expect(opcje).not.toContain(klucz);
+    }
   });
 
   // K6: klucz TEKSTOWY kontraktu (pole `str` modelu) × wartość o kształcie liczby — wartość
   // zostaje tekstem. Dawniej „01" szło jako liczba 1 i backend odrzucał `Bay.bay_number`
   // (string_type), a nazwa „2" zapisywała się jako liczba. Klucz liczbowy dalej dostaje liczbę.
   it.each([
-    ['bay_number', '01', '01'],
-    ['name', '2', '2'],
-    ['feeder_short_name', '15', '15'],
-    ['vector_group', '11', '11'],
-    ['length_km', '0.5', 0.5],
-    ['tap_position', '-2', -2],
-  ])('klucz %s z wartością „%s" → %j', async (klucz, wpis, oczekiwana) => {
+    ['bay-1', 'bay_number', '01', '01'],
+    ['tr-1', 'name', '2', '2'],
+    ['bay-1', 'feeder_short_name', '15', '15'],
+    ['tr-1', 'vector_group', '11', '11'],
+    ['line-1', 'length_km', '0.5', 0.5],
+    ['tr-1', 'tap_position', '-2', -2],
+  ])('%s: klucz %s z wartością „%s" → %j', async (ref, klucz, wpis, oczekiwana) => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
+    context = { element_ref: ref };
+    snapshotState.snapshot = MODEL_PODSTAWOWY;
     render(<KreatorEdycjiParametrow />);
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), klucz);
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), wpis);
+    await ustawParametr(0, klucz, wpis);
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -573,8 +612,7 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       snapshotState.snapshot = { generators: [generator('fw_scig')] };
       render(<KreatorEdycjiParametrow />);
       await userEvent.type(await screen.findByTestId(`${M}-i_lr_ratio`), 'sześć');
-      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'name');
-      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'Silnik pompy');
+      await ustawParametr(0, 'name', 'Silnik pompy');
       await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
       expect(await screen.findByText(/Wartość parametru maszyny nie jest liczbą/)).toBeTruthy();
       expect(executeDomainOperationMock).not.toHaveBeenCalled();

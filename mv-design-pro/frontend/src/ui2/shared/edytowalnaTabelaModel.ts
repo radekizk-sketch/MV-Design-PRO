@@ -41,6 +41,12 @@ export interface KolumnaEdytowalna<T> {
   readonly wartoscEdycji?: (wiersz: T) => string | number | null;
   /** Brak = kolumna tylko do odczytu. */
   readonly edytor?: EdytorKomorki;
+  /**
+   * Czy komórka TEGO wiersza jest edytowalna (brak = każda). Pole, które dla danego wiersza
+   * nie ma znaczenia w modelu (np. warunki ułożenia dla linii napowietrznej), renderuje się
+   * jako odczyt — kontrolka bez znaczenia w modelu byłaby fantomem.
+   */
+  readonly edytowalnaWWierszu?: (wiersz: T) => boolean;
 }
 
 export type StanZapisuKomorki = 'idle' | 'zapisywanie' | 'blad';

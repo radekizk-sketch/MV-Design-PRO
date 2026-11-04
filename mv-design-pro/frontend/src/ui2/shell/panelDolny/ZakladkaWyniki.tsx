@@ -111,6 +111,7 @@ export function ZakladkaWyniki({ onWybierzElement }: KontekstPaneluDolnego) {
         <label className="mvd-dolny-pole">
           <span>Rodzaj</span>
           <select
+            // stan-widoku: filtr tabeli wyników — stan widoku, nie dana modelu
             value={rodzajFiltra ?? ''}
             onChange={(e) => setRodzaj(e.target.value === '' ? null : e.target.value)}
             disabled={!tabela}
@@ -127,6 +128,7 @@ export function ZakladkaWyniki({ onWybierzElement }: KontekstPaneluDolnego) {
         <label className="mvd-dolny-pole">
           <span>Szukaj</span>
           <input
+            // stan-widoku: filtr tabeli wyników — stan widoku, nie dana modelu
             type="search"
             value={tekst}
             onChange={(e) => setTekst(e.target.value)}

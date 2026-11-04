@@ -7,6 +7,11 @@
  * kreatorze stacji byłby zapisem jednokrotnym — błąd długości przewodu dałoby się poprawić
  * tylko usunięciem i ponownym utworzeniem przekładnika. Model edytora: `obwodWtornyPola.ts`.
  * Odmowę operacji pokazuje zdaniem z backendu; ZERO fizyki w UI.
+ *
+ * Karta JEDNA-SCIEZKA-EDYCJI: JEDYNY edytor obwodu wtórnego. Dawny drugi edytor przy nastawach
+ * zabezpieczenia (`ObwodWtornyPrzekladnika`, ui2) miał własny model formularza tej samej
+ * operacji bez uzwojenia VT i bez usunięcia obwodu — zastąpiony tym edytorem w trybie jednego
+ * przekładnika (`przekladnikRef`). Zakres: wszystkie przekładniki pola (`bayRef`) albo jeden.
  */
 import { useState } from 'react';
 
@@ -23,8 +28,10 @@ import {
   type UzwojenieVt,
 } from './obwodWtornyPola';
 
-export interface EdytorObwoduWtornegoPolaProps {
-  readonly bayRef: string;
+export type EdytorObwoduWtornegoPolaProps = (
+  | { readonly bayRef: string; readonly przekladnikRef?: undefined }
+  | { readonly przekladnikRef: string; readonly bayRef?: undefined }
+) & {
   readonly snapshot: EnergyNetworkModel | null;
   readonly activeCaseId: string | null;
   readonly executeDomainOperation: (
@@ -33,7 +40,7 @@ export interface EdytorObwoduWtornegoPolaProps {
     payload: Record<string, unknown>,
   ) => Promise<DomainOpResponseV1 | null>;
   readonly bladStore?: () => string | null;
-}
+};
 
 const POLE = 'rounded border border-scada-border bg-white px-1.5 py-1 text-xs';
 
@@ -75,12 +82,16 @@ function PoleLiczby({
 
 export function EdytorObwoduWtornegoPola({
   bayRef,
+  przekladnikRef,
   snapshot,
   activeCaseId,
   executeDomainOperation,
   bladStore,
 }: EdytorObwoduWtornegoPolaProps): JSX.Element | null {
-  const przekladniki = przekladnikiPola(snapshot, bayRef);
+  const przekladniki =
+    przekladnikRef !== undefined
+      ? (snapshot?.measurements ?? []).filter((m) => m.ref_id === przekladnikRef)
+      : przekladnikiPola(snapshot, bayRef ?? '');
   const [edytowany, setEdytowany] = useState<string | null>(null);
   const [formularz, setFormularz] = useState<FormularzObwodu | null>(null);
   const [blad, setBlad] = useState<string | null>(null);

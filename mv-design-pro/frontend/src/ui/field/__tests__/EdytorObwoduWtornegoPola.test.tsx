@@ -67,6 +67,53 @@ describe('Lista przekładników pola', () => {
   });
 });
 
+describe('Tryb jednego przekładnika (nastawy zabezpieczenia) — ten sam edytor', () => {
+  // Karta JEDNA-SCIEZKA-EDYCJI: dawny drugi edytor przy nastawach zabezpieczenia zastąpiony
+  // tym edytorem z `przekladnikRef`; iloczyn: przekładnik {w polu, spoza pola, nieistniejący}.
+  function renderujJeden(przekladnikRef: string) {
+    const execute = vi.fn().mockResolvedValue({ snapshot: {} });
+    render(
+      <EdytorObwoduWtornegoPola
+        przekladnikRef={przekladnikRef}
+        snapshot={migawka([VT, CT, CT_INNEGO_POLA])}
+        activeCaseId="case-1"
+        executeDomainOperation={execute}
+      />,
+    );
+    return execute;
+  }
+
+  it('pokazuje wyłącznie wskazany przekładnik — także spoza pola karty', () => {
+    renderujJeden('ct/9');
+    expect(screen.getAllByTestId(/^obwod-wtorny-(ct|vt)\/\d$/).map((w) => w.dataset.testid)).toEqual(['obwod-wtorny-ct/9']);
+  });
+
+  it('przekładnika nie ma w modelu — sekcji nie ma (nie ma czego zapisać)', () => {
+    renderujJeden('ct/404');
+    expect(screen.queryByTestId('obwod-wtorny-pola')).toBeNull();
+  });
+
+  it('zapis obwodu wskazanego przekładnika idzie operacją modelu', async () => {
+    const u = userEvent.setup();
+    const execute = renderujJeden('ct/9');
+    await u.click(screen.getByTestId('obwod-wtorny-ct/9-edytuj'));
+    await u.type(screen.getByTestId('obwod-wtorny-ct/9-dlugosc'), '5');
+    await u.type(screen.getByTestId('obwod-wtorny-ct/9-przekroj'), '2.5');
+    await u.click(screen.getByTestId('obwod-wtorny-ct/9-dodaj-aparat'));
+    await u.type(screen.getByTestId('obwod-wtorny-ct/9-aparat-0-nazwa'), 'Przekaźnik');
+    await u.type(screen.getByTestId('obwod-wtorny-ct/9-aparat-0-moc'), '1');
+    await u.click(screen.getByTestId('obwod-wtorny-ct/9-zapisz'));
+    expect(execute).toHaveBeenCalledWith('case-1', 'set_measurement_secondary_circuit', {
+      measurement_ref: 'ct/9',
+      obwod_wtorny: {
+        dlugosc_przewodu_m: 5,
+        przekroj_przewodu_mm2: 2.5,
+        obciazenia_aparatow: [{ nazwa: 'Przekaźnik', moc_va: 1 }],
+      },
+    });
+  });
+});
+
 describe('Zapis i usunięcie obwodu — natywne kliknięcia', () => {
   it('CT z zapisanym obwodem: formularz startuje z modelu; zmiana długości wysyła pełny obwód', async () => {
     const execute = renderuj();

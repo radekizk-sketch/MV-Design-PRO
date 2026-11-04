@@ -51,10 +51,10 @@ describe('multi-edit-helpers', () => {
     });
 
     it('handles boolean values', () => {
-      const uniform = mergeFieldValues('in_service', [true, true, true]);
+      const uniform = mergeFieldValues('flaga', [true, true, true]);
       expect(uniform).toEqual({ kind: 'uniform', value: true });
 
-      const mixed = mergeFieldValues('in_service', [true, false, true]);
+      const mixed = mergeFieldValues('flaga', [true, false, true]);
       expect(mixed).toEqual({ kind: 'mixed' });
     });
 
@@ -168,7 +168,6 @@ describe('multi-edit-helpers', () => {
           data: {
             name: 'Bus 1',
             voltage_kv: 10,
-            in_service: true,
           },
         },
       ];
@@ -178,49 +177,28 @@ describe('multi-edit-helpers', () => {
       expect(sections.length).toBeGreaterThan(0);
     });
 
+    // Karta JEDNA-SCIEZKA-EDYCJI: `in_service` nie istnieje w modelu (pole skasowane); wartość
+    // „różne" pokazuje teraz realne pole edytowalne — stan łączeniowy odcinka `status`, a pole
+    // z rejestru czyta wartość odczytem definicji (zaczep z podzespołu `tap_changer`).
     it('returns common fields for multiple elements of same type', () => {
       const elements: ElementData[] = [
-        {
-          id: 'bus-1',
-          type: 'Bus',
-          name: 'Bus 1',
-          data: {
-            name: 'Bus 1',
-            voltage_kv: 10,
-            in_service: true,
-          },
-        },
-        {
-          id: 'bus-2',
-          type: 'Bus',
-          name: 'Bus 2',
-          data: {
-            name: 'Bus 2',
-            voltage_kv: 10,
-            in_service: false,
-          },
-        },
+        { id: 'k-1', type: 'LineBranch', name: 'K-1', data: { name: 'K-1', length_km: 0.5, status: 'closed' } },
+        { id: 'k-2', type: 'LineBranch', name: 'K-2', data: { name: 'K-2', length_km: 0.5, status: 'open' } },
       ];
 
-      const sections = getCommonFields(elements);
-      expect(sections).toBeTruthy();
-      expect(sections.length).toBeGreaterThan(0);
+      const pola = getCommonFields(elements).flatMap((s) => s.fields);
+      expect(pola.find((f) => f.key === 'length_km')!.value).toEqual({ kind: 'uniform', value: 0.5 });
+      expect(pola.find((f) => f.key === 'status')!.value).toEqual({ kind: 'mixed' });
+      expect(pola.find((f) => f.key === 'in_service')).toBeUndefined();
+    });
 
-      // Find 'voltage_kv' field
-      const voltageField = sections
-        .flatMap((s) => s.fields)
-        .find((f) => f.key === 'voltage_kv');
-
-      expect(voltageField).toBeTruthy();
-      expect(voltageField!.value).toEqual({ kind: 'uniform', value: 10 });
-
-      // Find 'in_service' field (should be mixed)
-      const inServiceField = sections
-        .flatMap((s) => s.fields)
-        .find((f) => f.key === 'in_service');
-
-      expect(inServiceField).toBeTruthy();
-      expect(inServiceField!.value).toEqual({ kind: 'mixed' });
+    it('pole rejestru czyta wartość odczytem definicji (zaczep z tap_changer)', () => {
+      const elements: ElementData[] = [
+        { id: 't-1', type: 'TransformerBranch', name: 'T-1', data: { tap_changer: { current_position: 2 }, tap_position: 0 } },
+        { id: 't-2', type: 'TransformerBranch', name: 'T-2', data: { tap_position: 2 } },
+      ];
+      const pola = getCommonFields(elements).flatMap((s) => s.fields);
+      expect(pola.find((f) => f.key === 'tap_position')!.value).toEqual({ kind: 'uniform', value: 2 });
     });
 
     it('returns empty for mixed types', () => {

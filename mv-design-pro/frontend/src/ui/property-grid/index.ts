@@ -55,4 +55,4 @@ export {
 } from './validation';
 
 // Re-export types from validation
-export type { ValidationResult, ValidatorFn } from './validation';
+export type { ValidationResult } from './validation';

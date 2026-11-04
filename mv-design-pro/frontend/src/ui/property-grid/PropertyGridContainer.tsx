@@ -86,19 +86,21 @@ export function PropertyGridContainer({
           : null;
 
     switch (elementType) {
+      // Karta JEDNA-SCIEZKA-EDYCJI: klucz modelu ENM to `catalog_ref` (dawne `type_ref` /
+      // `equipment_type_ref` nie istnieją w rekordach — bieżący typ był zawsze „brak").
       case 'LineBranch': {
-        const currentTypeRef = elementData.type_ref as string | null;
+        const currentTypeRef = (elementData.catalog_ref as string | null | undefined) ?? null;
         return {
           category: explicitNamespace ? NAMESPACE_TO_PICKER_CATEGORY[explicitNamespace] ?? null : null,
           currentTypeRef,
         };
       }
       case 'TransformerBranch': {
-        const currentTypeRef = elementData.type_ref as string | null;
+        const currentTypeRef = (elementData.catalog_ref as string | null | undefined) ?? null;
         return { category: 'TRANSFORMER', currentTypeRef };
       }
       case 'Switch': {
-        const currentTypeRef = elementData.equipment_type_ref as string | null;
+        const currentTypeRef = (elementData.catalog_ref as string | null | undefined) ?? null;
         return { category: 'SWITCH_EQUIPMENT', currentTypeRef };
       }
       default:

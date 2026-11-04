@@ -47,8 +47,9 @@ describe('Property Grid Field Definitions', () => {
 
     it('should have sections in deterministic order', () => {
       const sectionIds = sections.map((s) => s.id);
+      // Karta JEDNA-SCIEZKA-EDYCJI: fantomowa sekcja „Stan" szyny skasowana.
       expect(sectionIds[0]).toBe('identification');
-      expect(sectionIds[1]).toBe('state');
+      expect(sectionIds[1]).toBe('electrical_params');
     });
 
     it('should have identification section with ID, name, ref_id fields', () => {
@@ -109,7 +110,8 @@ describe('Property Grid Field Definitions', () => {
       const typeRefSection = sections.find((s) => s.id === 'type_reference');
       expect(typeRefSection).toBeDefined();
 
-      const typeRefField = typeRefSection!.fields.find((f) => f.key === 'type_ref');
+      // Karta JEDNA-SCIEZKA-EDYCJI: klucz modelu ENM `catalog_ref` (dawny `type_ref` nie istniał).
+      const typeRefField = typeRefSection!.fields.find((f) => f.key === 'catalog_ref');
       expect(typeRefField).toBeDefined();
       // type_ref_with_actions has editable: true for button access,
       // but source: 'type' makes the value read-only
@@ -163,7 +165,10 @@ describe('Property Grid Field Definitions', () => {
       const fieldKeys = typeParamsSection!.fields.map((f) => f.key);
       expect(fieldKeys).toContain('uk_percent');
       expect(fieldKeys).toContain('pk_kw');
-      expect(fieldKeys).toContain('rated_power_mva');
+      // Klucz modelu ENM `Transformer.sn_mva` (dawny `rated_power_mva` nie istniał w rekordzie).
+      expect(fieldKeys).toContain('sn_mva');
+      expect(fieldKeys).toContain('uhv_kv');
+      expect(fieldKeys).toContain('ulv_kv');
     });
 
     it('should have editable tap_position in local_params', () => {
@@ -179,25 +184,25 @@ describe('Property Grid Field Definitions', () => {
   describe('Switch Field Definitions', () => {
     const sections = getSwitchFieldDefinitions();
 
-    it('should have state section with editable switch state', () => {
+    // Karta JEDNA-SCIEZKA-EDYCJI: położenie łącznika = klucz modelu `status` (closed/open),
+    // zapis operacją otwarcia/zamknięcia; `in_service` (nieobecny w modelu) skasowany.
+    it('should have state section with editable switch position `status`', () => {
       const stateSection = sections.find((s) => s.id === 'state');
       expect(stateSection).toBeDefined();
 
-      const stateField = stateSection!.fields.find((f) => f.key === 'state');
+      const stateField = stateSection!.fields.find((f) => f.key === 'status');
       expect(stateField).toBeDefined();
       expect(stateField!.editable).toBe(true);
       expect(stateField!.type).toBe('enum');
-      expect(stateField!.enumOptions).toContain('OPEN');
-      expect(stateField!.enumOptions).toContain('CLOSED');
+      expect(stateField!.enumOptions).toEqual(['closed', 'open']);
+      expect(stateField!.enumLabels).toEqual({ closed: 'zamknięty', open: 'otwarty' });
     });
 
-    it('should have in_service as editable boolean', () => {
-      const stateSection = sections.find((s) => s.id === 'state');
-      const inServiceField = stateSection!.fields.find((f) => f.key === 'in_service');
-
-      expect(inServiceField).toBeDefined();
-      expect(inServiceField!.editable).toBe(true);
-      expect(inServiceField!.type).toBe('boolean');
+    it('nie niesie fantomów in_service / lifecycle_state / electrical_params', () => {
+      const klucze = sections.flatMap((s) => s.fields.map((f) => f.key));
+      expect(klucze).not.toContain('in_service');
+      expect(klucze).not.toContain('lifecycle_state');
+      expect(sections.find((s) => s.id === 'electrical_params')).toBeUndefined();
     });
   });
 
@@ -234,7 +239,7 @@ describe('Property Grid Field Definitions', () => {
   describe('Load Field Definitions', () => {
     const sections = getLoadFieldDefinitions();
 
-    it('should have electrical_params section with editable P, Q and load_type', () => {
+    it('should have electrical_params section with editable P, Q and read-only model', () => {
       const paramsSection = sections.find((s) => s.id === 'electrical_params');
       expect(paramsSection).toBeDefined();
 
@@ -244,21 +249,25 @@ describe('Property Grid Field Definitions', () => {
       expect(pField!.type).toBe('number');
       expect(pField!.unit).toBe('MW');
 
-      const loadTypeField = paramsSection!.fields.find((f) => f.key === 'load_type');
-      expect(loadTypeField).toBeDefined();
-      expect(loadTypeField!.type).toBe('enum');
-      expect(loadTypeField!.enumOptions).toContain('CONSTANT_POWER');
-      expect(loadTypeField!.enumOptions).toContain('ZIP');
+      // Karta JEDNA-SCIEZKA-EDYCJI: model odbioru = klucz `model` (pq/zip), wyprowadzany przez
+      // backend ze współczynników ZIP — odczyt (dawny `load_type` backend odrzucał).
+      expect(paramsSection!.fields.find((f) => f.key === 'load_type')).toBeUndefined();
+      const modelField = paramsSection!.fields.find((f) => f.key === 'model');
+      expect(modelField).toBeDefined();
+      expect(modelField!.type).toBe('enum');
+      expect(modelField!.editable).toBe(false);
+      expect(modelField!.enumOptions).toEqual(['pq', 'zip']);
     });
 
-    it('should have topology section with editable bus_ref', () => {
+    it('should have topology section with read-only bus_ref', () => {
       // Odbiór K7c-FE (2026-09-09): klucz zgodny z modelem ENM `Load.bus_ref`
       // (był `bus_id` — klucz-fantom naprawiony w 387024dc).
       const topologySection = sections.find((s) => s.id === 'topology');
       const busField = topologySection!.fields.find((f) => f.key === 'bus_ref');
 
       expect(busField).toBeDefined();
-      expect(busField!.editable).toBe(true);
+      // Karta JEDNA-SCIEZKA-EDYCJI: przepięcie odbioru to operacja topologiczna.
+      expect(busField!.editable).toBe(false);
       expect(busField!.type).toBe('ref');
     });
   });
@@ -275,7 +284,7 @@ describe('Property Grid Field Definitions', () => {
       const xField = typeParamsSection!.fields.find((f) => f.key === 'x_ohm_per_km');
       expect(xField!.unit).toBe('Ω/km');
 
-      const currentField = typeParamsSection!.fields.find((f) => f.key === 'rated_current_a');
+      const currentField = typeParamsSection!.fields.find((f) => f.key === 'rating.in_a');
       expect(currentField!.unit).toBe('A');
     });
 

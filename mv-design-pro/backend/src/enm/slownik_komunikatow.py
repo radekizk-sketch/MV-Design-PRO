@@ -154,6 +154,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "k_pf": "Wrażliwość częstotliwościowa P (k_pf)",  # odbior/strings.ts zipKPf
     "k_qf": "Wrażliwość częstotliwościowa Q (k_qf)",  # odbior/strings.ts zipKQf
     "karty_widmowe_ref": "Karty widmowe urządzenia",  # karty widmowe wytwórcy (wiązanie katalogowe)
+    "cos_phi": "Współczynnik mocy cos φ",  # ui/property-grid/field-definitions.ts cos_phi
     "length_km": "Długość",  # odcinek-nn/strings.ts dlugosc
     "add_nn_cable_segment:length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
     "length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
@@ -236,9 +237,9 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "u_min_pu": "U< — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "add_grid_source_sn:u_set_pu": "Napięcie zadane szyny bilansującej",  # zrodlo/strings.ts uSetPu
     "u_set_pu": "Nastawa napięcia U",  # zrodlo-oze/strings.ts uSetPu
-    "uhv_kv": "Napięcie GN",  # ui/property-grid/field-definitions.ts voltage_hv_kv
+    "uhv_kv": "Napięcie GN",  # ui/property-grid/field-definitions.ts uhv_kv
     "uk_percent": "Napięcie zwarcia uk",  # transformator/strings.ts paramUk
-    "ulv_kv": "Napięcie DN",  # ui/property-grid/field-definitions.ts voltage_lv_kv
+    "ulv_kv": "Napięcie DN",  # ui/property-grid/field-definitions.ts ulv_kv
     "v0_pu": "Napięcie odniesienia modelu obciążenia [p.u.]",  # wielkość odniesienia ZIP (bez pola w kreatorze)
     "add_grid_source_sn:voltage_kv": "Napięcie SN",  # zrodlo/strings.ts napiecieSn
     "add_grid_source_sn:sections_count": "Liczba sekcji szyn SN",  # zrodlo/strings.ts liczbaSekcji

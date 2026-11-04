@@ -33,8 +33,8 @@ const minimalProps = {
   snSwitchgear: {
     layout: 'sectioned_busbar' as const,
     nominalVoltageKv: 15,
-    nominalCurrentA: 630,
-    nominalShortCircuitKa: 16,
+    ratedCurrent: null,
+    ratedShortCircuit: null,
     sectionsCount: 2,
     hasCoupler: true,
     baysCount: 6,
@@ -227,24 +227,39 @@ describe('StationConfigTopologyCard', () => {
   });
 });
 
+// Karta JEDNA-SCIEZKA-EDYCJI: karta rozdzielnicy nie ma kontrolek bez zapisu — typ układu
+// wynika z modelu pól, znamiona z aparatury pól (dane karty albo wartość robocza z podstawą).
 describe('StationConfigSnSwitchgearCard', () => {
-  it('wybór layout — single/sectioned/simplified/busbarless', () => {
-    const onChange = vi.fn();
-    const { container } = render(
+  const bazowe = {
+    nominalVoltageKv: 15,
+    sectionsCount: 1,
+    hasCoupler: false,
+    baysCount: 4,
+    reservesCount: 0,
+    readinessLabelPl: 'gotowe',
+  } as const;
+
+  it('typ układu i znamiona to odczyt modelu — żadnej kontrolki edycji', () => {
+    const { container } = render(<StationConfigSnSwitchgearCard layout="sectioned_busbar" {...bazowe} />);
+    expect(screen.getByTestId('sn-switchgear-layout')).toHaveTextContent('Sekcjonowany system szyn');
+    expect(container.querySelector('input, select')).toBeNull();
+    expect(screen.getByTestId('sn-switchgear-in-a')).toHaveTextContent('brak aparatu w polach');
+    expect(screen.getByTestId('sn-switchgear-in-a')).not.toHaveTextContent('630');
+  });
+
+  it('znamię z karty i wartość robocza są rozróżnione (jakość, źródło, podstawa)', () => {
+    render(
       <StationConfigSnSwitchgearCard
         layout="single_busbar"
-        nominalVoltageKv={15}
-        sectionsCount={1}
-        hasCoupler={false}
-        baysCount={4}
-        reservesCount={0}
-        readinessLabelPl="gotowe"
-        onChange={onChange}
+        {...bazowe}
+        ratedCurrent={{ wartosc: 630, jednostka: 'A', zrodloPl: 'RL-630, pole 01', jakosc: 'DATASHEET' }}
+        ratedShortCircuit={{ wartosc: 20, jednostka: 'kA', zrodloPl: 'RL-630, pole 01', jakosc: 'ESTIMATED', podstawaPl: 'IEC 62271-1' }}
       />,
     );
-    const select = container.querySelector('[data-testid="sn-switchgear-layout"]') as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: 'sectioned_busbar' } });
-    expect(onChange).toHaveBeenCalledWith({ layout: 'sectioned_busbar' });
+    expect(screen.getByTestId('sn-switchgear-in-a')).toHaveAttribute('data-jakosc', 'DATASHEET');
+    expect(screen.getByTestId('sn-switchgear-isc-ka')).toHaveAttribute('data-jakosc', 'ESTIMATED');
+    expect(screen.getByTestId('sn-switchgear-isc-ka')).toHaveTextContent('wartość robocza');
+    expect(screen.getByTestId('sn-switchgear-isc-ka')).toHaveTextContent('IEC 62271-1');
   });
 });
 

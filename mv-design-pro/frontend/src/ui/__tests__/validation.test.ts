@@ -1,328 +1,74 @@
 // @vitest-environment node
 /**
- * Property Grid Validation Tests — P12b
+ * Property Grid Validation Tests.
  *
- * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md § D.4: Inline validation
- * - AGENTS.md: Frontend = NOT-A-SOLVER (syntactic validation only)
- *
- * Tests client-side syntactic validation rules.
+ * Karta JEDNA-SCIEZKA-EDYCJI: walidacja siatki = walidacja definicji pola w rejestrze
+ * (`ui2/model/rejestrPol.ts`). Intencja dawnych testów (odmowa pustej nazwy, ujemnego
+ * napięcia, ułamkowego zaczepu, cos φ > 1; pomijanie pól odczytu, typu i wyników) zostaje;
+ * zmienia się źródło reguły — jedno dla siatki, karty odcinka i kreatorów. Dawne granice
+ * wymyślone w kodzie (długość ≤ 500 km, zaczep ±20) zniknęły: długość ma dziedzinę operacji
+ * (> 0), zakres zaczepu sprawdza backend na podstawie przełącznika z katalogu.
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateField, validateElement } from '../property-grid/validation';
+import { KOD_ODMOWY_REJESTRU, validateField, validateElement } from '../property-grid/validation';
+import { POLE_DLUGOSC_ODCINKA } from '../../ui2/model/rejestrPol';
 import type { PropertyField } from '../types';
 
-describe('Property Grid Validation', () => {
-  describe('validateField', () => {
-    it('should validate required string fields', () => {
-      const field: PropertyField = {
-        key: 'name',
-        label: 'Nazwa',
-        value: '',
-        type: 'string',
-        editable: true,
-        source: 'instance',
-      };
+function pole(key: string, value: unknown, extra: Partial<PropertyField> = {}): PropertyField {
+  return { key, label: key, value, type: 'number', editable: true, source: 'instance', ...extra };
+}
 
-      const result = validateField('Bus', field, '');
-      expect(result.valid).toBe(false);
-      expect(result.code).toBe('E-REQ-01');
-    });
-
-    it('should pass valid string fields', () => {
-      const field: PropertyField = {
-        key: 'name',
-        label: 'Nazwa',
-        value: 'Bus1',
-        type: 'string',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, 'Bus1');
-      expect(result.valid).toBe(true);
-    });
-
-    it('should validate positive number fields', () => {
-      const field: PropertyField = {
-        key: 'voltage_kv',
-        label: 'Napięcie',
-        value: -5,
-        type: 'number',
-        unit: 'kV',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, -5);
-      expect(result.valid).toBe(false);
-      expect(result.code).toBe('E-RANGE-01');
-    });
-
-    it('should pass valid positive number fields', () => {
-      const field: PropertyField = {
-        key: 'voltage_kv',
-        label: 'Napięcie',
-        value: 15,
-        type: 'number',
-        unit: 'kV',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, 15);
-      expect(result.valid).toBe(true);
-    });
-
-    it('should validate maximum value', () => {
-      const field: PropertyField = {
-        key: 'voltage_kv',
-        label: 'Napięcie',
-        value: 1000,
-        type: 'number',
-        unit: 'kV',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, 1000);
-      expect(result.valid).toBe(false);
-      expect(result.severity).toBe('WARNING');
-    });
-
-    it('should validate required reference fields', () => {
-      // Odbiór K7c-FE (2026-09-09, karta KASACJA-DATA-MANAGER — błąd napotkany przy
-      // pełnym vitest src/ui, naprawiony u źródła): `validateField` dopasowuje regułę
-      // po `${elementType}.${field.key}` (`property-grid/validation.ts`); rejestr ma
-      // wpis `LineBranch.from_bus_ref`, nie `LineBranch.from_bus_id` (klucz-fantom
-      // sprzed naprawy w 387024dc) — z tamtym kluczem `requiredRef` nigdy się nie
-      // uruchamiało, więc pusta referencja przechodziła walidację.
-      const field: PropertyField = {
-        key: 'from_bus_ref',
-        label: 'Szyna początkowa',
-        value: '',
-        type: 'ref',
-        refType: 'Bus',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('LineBranch', field, '');
-      expect(result.valid).toBe(false);
-      expect(result.code).toBe('E-REF-01');
-    });
-
-    it('should validate tap_position as integer', () => {
-      const field: PropertyField = {
-        key: 'tap_position',
-        label: 'Zaczep',
-        value: 1.5,
-        type: 'number',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('TransformerBranch', field, 1.5);
-      expect(result.valid).toBe(false);
-      expect(result.code).toBe('E-TYPE-02');
-    });
-
-    it('should validate tap_position range', () => {
-      const field: PropertyField = {
-        key: 'tap_position',
-        label: 'Zaczep',
-        value: 25,
-        type: 'number',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('TransformerBranch', field, 25);
-      expect(result.valid).toBe(false);
-      expect(result.code).toBe('E-RANGE-03');
-    });
-
-    it('should validate cos_phi range', () => {
-      const field: PropertyField = {
-        key: 'cos_phi',
-        label: 'cos φ',
-        value: 1.5,
-        type: 'number',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Load', field, 1.5);
-      expect(result.valid).toBe(false);
-    });
-
-    it('should allow null for optional number fields', () => {
-      const field: PropertyField = {
-        key: 'rated_current_a',
-        label: 'Prąd znamionowy',
-        value: null,
-        type: 'number',
-        unit: 'A',
-        editable: true,
-        source: 'instance',
-      };
-
-      // rated_current_a is not required, only validated if present
-      const result = validateField('Bus', field, null);
-      expect(result.valid).toBe(true);
-    });
+describe('Walidacja siatki właściwości z rejestru pól', () => {
+  it('odmawia pustej nazwy po polsku', () => {
+    const wynik = validateField('Bus', pole('name', '', { type: 'string' }), '');
+    expect(wynik.valid).toBe(false);
+    expect(wynik.code).toBe(KOD_ODMOWY_REJESTRU);
+    expect(wynik.message).toBe('Nazwa nie może być pusta.');
   });
 
-  describe('validateElement', () => {
-    it('should validate all editable instance fields', () => {
-      const fields: PropertyField[] = [
-        {
-          key: 'id',
-          label: 'ID',
-          value: 'bus-1',
-          type: 'string',
-          editable: false,
-          source: 'instance',
-        },
-        {
-          key: 'name',
-          label: 'Nazwa',
-          value: '',
-          type: 'string',
-          editable: true,
-          source: 'instance',
-        },
-        {
-          key: 'voltage_kv',
-          label: 'Napięcie',
-          value: -5,
-          type: 'number',
-          unit: 'kV',
-          editable: true,
-          source: 'instance',
-        },
-      ];
-
-      const messages = validateElement('Bus', fields);
-
-      // Should have 2 errors: empty name and negative voltage
-      expect(messages.length).toBe(2);
-      expect(messages.some((m) => m.field === 'name')).toBe(true);
-      expect(messages.some((m) => m.field === 'voltage_kv')).toBe(true);
-    });
-
-    it('should skip non-editable fields', () => {
-      const fields: PropertyField[] = [
-        {
-          key: 'id',
-          label: 'ID',
-          value: '', // Would fail required if validated
-          type: 'string',
-          editable: false, // But not editable
-          source: 'instance',
-        },
-      ];
-
-      const messages = validateElement('Bus', fields);
-      expect(messages.length).toBe(0);
-    });
-
-    it('should skip calculated fields', () => {
-      const fields: PropertyField[] = [
-        {
-          key: 'ikss_ka',
-          label: 'Ik"',
-          value: null,
-          type: 'number',
-          unit: 'kA',
-          editable: false,
-          source: 'calculated',
-        },
-      ];
-
-      const messages = validateElement('Bus', fields);
-      expect(messages.length).toBe(0);
-    });
-
-    it('should skip type fields', () => {
-      const fields: PropertyField[] = [
-        {
-          key: 'r_ohm_per_km',
-          label: "R'",
-          value: 0, // Would fail positive if validated
-          type: 'number',
-          unit: 'Ω/km',
-          editable: false,
-          source: 'type',
-        },
-      ];
-
-      const messages = validateElement('LineBranch', fields);
-      expect(messages.length).toBe(0);
-    });
+  it('przyjmuje niepustą nazwę', () => {
+    expect(validateField('Bus', pole('name', 'Szyna 1', { type: 'string' }), 'Szyna 1').valid).toBe(true);
   });
 
-  describe('Error codes', () => {
-    it('should use E-* prefix for errors', () => {
-      const field: PropertyField = {
-        key: 'name',
-        label: 'Nazwa',
-        value: '',
-        type: 'string',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, '');
-      expect(result.code).toMatch(/^E-/);
-    });
-
-    it('should use W-* prefix for warnings', () => {
-      const field: PropertyField = {
-        key: 'voltage_kv',
-        label: 'Napięcie',
-        value: 600,
-        type: 'number',
-        unit: 'kV',
-        editable: true,
-        source: 'instance',
-      };
-
-      const result = validateField('Bus', field, 600);
-      expect(result.code).toMatch(/^W-/);
-      expect(result.severity).toBe('WARNING');
-    });
+  it('odmawia ujemnego napięcia szyny i przyjmuje dodatnie', () => {
+    expect(validateField('Bus', pole('voltage_kv', -5), -5).valid).toBe(false);
+    expect(validateField('Bus', pole('voltage_kv', 15), 15).valid).toBe(true);
   });
 
-  describe('Polish messages', () => {
-    it('should return Polish error messages', () => {
-      const field: PropertyField = {
-        key: 'name',
-        label: 'Nazwa',
-        value: '',
-        type: 'string',
-        editable: true,
-        source: 'instance',
-      };
+  it('długość odcinka: ta sama dziedzina co karta odcinka (> 0, bez górnej granicy)', () => {
+    for (const wartosc of [0, -1, Number.NaN]) {
+      expect(validateField('LineBranch', pole('length_km', wartosc), wartosc).valid).toBe(false);
+      expect(POLE_DLUGOSC_ODCINKA.waliduj(wartosc)).not.toBeNull();
+    }
+    // 800 km odrzucała dawna reguła siatki (≤ 500), kreator magistrali przyjmował — jedna reguła.
+    expect(validateField('LineBranch', pole('length_km', 800), 800).valid).toBe(true);
+    expect(POLE_DLUGOSC_ODCINKA.waliduj(800_000)).toBeNull();
+  });
 
-      const result = validateField('Bus', field, '');
-      expect(result.message).toBe('Pole wymagane');
-    });
+  it('zaczep transformatora musi być całkowity (zakres sprawdza backend)', () => {
+    expect(validateField('TransformerBranch', pole('tap_position', 1.5), 1.5).valid).toBe(false);
+    expect(validateField('TransformerBranch', pole('tap_position', 25), 25).valid).toBe(true);
+  });
 
-    it('should return Polish range messages', () => {
-      const field: PropertyField = {
-        key: 'voltage_kv',
-        label: 'Napięcie',
-        value: -5,
-        type: 'number',
-        unit: 'kV',
-        editable: true,
-        source: 'instance',
-      };
+  it('cos φ odbioru z przedziału (0; 1]', () => {
+    expect(validateField('Load', pole('cos_phi', 1.5), 1.5).valid).toBe(false);
+    expect(validateField('Load', pole('cos_phi', 0), 0).valid).toBe(false);
+    expect(validateField('Load', pole('cos_phi', 0.9), 0.9).valid).toBe(true);
+  });
 
-      const result = validateField('Bus', field, -5);
-      expect(result.message).toBe('Wartość musi być większa od 0');
-    });
+  it('pole spoza rejestru (odczyt) nie ma reguły', () => {
+    expect(validateField('LineBranch', pole('from_bus_ref', '', { type: 'ref' }), '').valid).toBe(true);
+  });
+
+  it('validateElement zbiera odmowy tylko pól edytowalnych instancji', () => {
+    const komunikaty = validateElement('Bus', [
+      pole('id', '', { type: 'string', editable: false }),
+      pole('name', '', { type: 'string' }),
+      pole('voltage_kv', -5),
+      pole('ikss_ka', null, { editable: false, source: 'calculated' }),
+    ]);
+    expect(komunikaty.map((k) => k.field).sort()).toEqual(['name', 'voltage_kv']);
+    expect(validateElement('LineBranch', [pole('r_ohm_per_km', 0, { editable: false, source: 'type' })])).toEqual([]);
   });
 });

@@ -626,6 +626,7 @@ export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStud
           <div className="mvd-studium-pole">
             <label htmlFor="mvd-studium-rodzaj">{STUDIUM_STRINGS.paramRodzaj}</label>
             <select
+              // stan-widoku: parametr studium przyłączeniowego (rodzaj, typ, operator) — dane zapytania studium, nie dana modelu
               id="mvd-studium-rodzaj"
               value={rodzaj}
               onChange={(e) => setRodzaj(e.target.value as RodzajZrodlaStudium)}
@@ -659,6 +660,7 @@ export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStud
               </p>
             ) : (
               <select
+                // stan-widoku: parametr studium przyłączeniowego (rodzaj, typ, operator) — dane zapytania studium, nie dana modelu
                 id="mvd-studium-typ"
                 value={efektywnyTyp}
                 onChange={(e) => setWybranyTyp(e.target.value)}
@@ -710,6 +712,7 @@ export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStud
               </p>
             ) : (
               <select
+                // stan-widoku: parametr studium przyłączeniowego (rodzaj, typ, operator) — dane zapytania studium, nie dana modelu
                 id="mvd-studium-operator"
                 value={operatorId}
                 onChange={(e) => setOperatorId(e.target.value)}

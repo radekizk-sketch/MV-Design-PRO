@@ -29,7 +29,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ProtectionSetting } from '../../../types/enm';
 import { PoleLiczbowe, PolePrzelacznikBinarny, PoleWyboru } from '../rama';
 import { NASTAWY_STRINGS as T } from './stringsNastaw';
-import { ObwodWtornyPrzekladnika } from './ObwodWtornyPrzekladnika';
+import { EdytorObwoduWtornegoPola } from '../../../ui/field/EdytorObwoduWtornegoPola';
 
 /** Funkcje nadprądowe edytowane tym edytorem (ocenia je jedna ścieżka backendu). */
 export const FUNKCJE_EDYTORA = ['overcurrent_51', 'overcurrent_50'] as const;
@@ -134,6 +134,7 @@ export function EdytorNastawZabezpieczenia({
 }: EdytorNastawZabezpieczeniaProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const migawka = useSnapshotStore((s) => s.snapshot);
   const przypisanie = useSnapshotStore(
     (s) => s.snapshot?.protection_assignments?.find((p) => p.ref_id === urzadzenieRef) ?? null,
   );
@@ -294,7 +295,14 @@ export function EdytorNastawZabezpieczenia({
       })}
 
       {nastawy.ct_ref ? (
-        <ObwodWtornyPrzekladnika ctRef={nastawy.ct_ref} testid={`${testid}-obwod`} />
+        // Jeden edytor obwodu wtórnego (ten sam co karta pola) w trybie jednego przekładnika.
+        <EdytorObwoduWtornegoPola
+          przekladnikRef={nastawy.ct_ref}
+          snapshot={migawka}
+          activeCaseId={caseId}
+          executeDomainOperation={executeDomainOperation}
+          bladStore={() => useSnapshotStore.getState().error}
+        />
       ) : null}
 
       {nastawy.braki.length > 0 ? (

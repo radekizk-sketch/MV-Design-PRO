@@ -4,17 +4,28 @@
  * Naprawa eng.13: wybór przełącznika zaczepów z katalogu audytu 2
  * (OLTC vs DETC, ±10% / ±5%, AVR support).
  *
- * Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`tapChangers` prop,
- * dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
- * modułowego (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
+ * Karta JEDNA-SCIEZKA-EDYCJI: każde pole czyta model ENM i zapisuje go operacją domenową
+ * (rodzic, `StationConfiguratorSurface`, przez definicje rejestru pól). Dawniej Sn, U_DN, u_k,
+ * P_k, P_0 i pozycja zaczepu wołały `onChange`, który je GUBIŁ (rodzic obsługiwał tylko typ
+ * katalogowy, grupę połączeń i przełącznik zaczepów), a przełącznik zaczepów trafiał do
+ * drugiej prawdy (konfiguracja stacji audytu 2) zamiast do podzespołu `tap_changer` modelu.
+ * - Dane tabliczkowe (Sn, U_DN, u_k, P_k, P_0) są TYLKO DO ODCZYTU, gdy transformator ma typ
+ *   katalogowy (SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW: parametry z typu); bez typu —
+ *   edytowalne wprost w modelu.
+ * - Pozycja zaczepu jest zawsze edytowalna (stan pracy, nie dana tabliczkowa).
+ * - Katalog przełączników zaczepów z backendu (`GET /api/catalog/tap-changers`).
+ * Pola liczbowe zapisują przy opuszczeniu pola albo Enter (jedna operacja na wartość,
+ * nie na każdy znak).
  */
+
+import { useEffect, useState } from 'react';
 
 import {
   getTapChanger,
   klasaTransformatoraPrzelacznika,
   selectTapChangersForTransformer,
 } from '../../station-der/catalogs';
-import type { TapChangerItem } from '../../station-der/audit2-api';
+import type { TapChangerCatalogType } from '../../../catalog/types';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
@@ -43,10 +54,11 @@ export interface StationConfigTransformerRow {
   readonly ukPercent?: number | null;
   readonly pkKw?: number | null;
   readonly p0Kw?: number | null;
+  /** Pozycja zaczepu z modelu (podzespół `tap_changer`, inaczej `tap_position`). */
   readonly tapPosition?: number | null;
   readonly tapMin?: number | null;
   readonly tapMax?: number | null;
-  /** Naprawa eng.13: catalog_ref do wybranego przełącznika zaczepów. */
+  /** Przełącznik zaczepów z katalogu — `tap_changer.catalog_ref` modelu. */
   readonly tapChangerCatalogRef?: string | null;
   readonly hvNeutralLabelPl?: string | null;
   readonly lvNeutralLabelPl?: string | null;
@@ -63,8 +75,8 @@ export interface StationConfigTransformerCardProps {
   readonly transformerCatalogError?: string | null;
   /** W5-A (F-4): słownik grup połączeń IEC 60076-1 z backendu (`useGrupyPolaczen`); `null` = niedostępny. */
   readonly vectorGroupOptions?: readonly string[] | null;
-  /** Karta FAB-L: katalog przełączników zaczepów — ze snapshotu audytu 2. */
-  readonly tapChangers: readonly TapChangerItem[];
+  /** Katalog przełączników zaczepów z backendu (`fetchTapChangers`). */
+  readonly tapChangers: readonly TapChangerCatalogType[];
   readonly onChange?: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => void;
   readonly onAddTransformer?: () => void;
 }
@@ -87,12 +99,55 @@ const STATUS_LABEL: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
  * Transformator spoza klas nie dostaje oferty (dawniej: domysł „blokowy").
  */
 function selectTapChangersForTransformerByVoltage(
-  tapChangers: readonly TapChangerItem[],
+  tapChangers: readonly TapChangerCatalogType[],
   hvKv: number,
   lvKv: number,
-): readonly TapChangerItem[] {
+): readonly TapChangerCatalogType[] {
   const klasa = klasaTransformatoraPrzelacznika(hvKv, lvKv);
   return klasa === null ? [] : selectTapChangersForTransformer(tapChangers, klasa);
+}
+
+interface PoleLiczboweProps {
+  readonly label: string;
+  readonly value: number | null | undefined;
+  readonly testId: string;
+  readonly readOnly: boolean;
+  readonly onCommit: (value: number) => void;
+  readonly step?: string;
+}
+
+/** Pole liczbowe modelu: wartość z modelu, zapis przy opuszczeniu pola albo Enter. */
+function PoleLiczbowe({ label, value, testId, readOnly, onCommit, step }: PoleLiczboweProps): JSX.Element {
+  const zModelu = typeof value === 'number' ? String(value) : '';
+  const [szkic, setSzkic] = useState(zModelu);
+  useEffect(() => setSzkic(zModelu), [zModelu]);
+  const zatwierdz = () => {
+    if (szkic === zModelu || szkic.trim() === '') return;
+    const liczba = Number(szkic.replace(',', '.'));
+    if (Number.isFinite(liczba)) onCommit(liczba);
+    else setSzkic(zModelu);
+  };
+  return (
+    <label className="flex flex-col">
+      <span className="text-scada-muted">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        step={step}
+        data-testid={testId}
+        value={szkic}
+        readOnly={readOnly}
+        aria-readonly={readOnly}
+        title={readOnly ? 'Wartość z typu katalogowego — zmień typ, aby zmienić dane tabliczkowe.' : undefined}
+        onChange={(e) => setSzkic(e.target.value)}
+        onBlur={zatwierdz}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') zatwierdz();
+        }}
+        className={`rounded border border-scada-border px-1 py-0.5 ${readOnly ? 'bg-scada-panel-raised text-scada-muted' : 'bg-scada-bg'}`}
+      />
+    </label>
+  );
 }
 
 function optionLabel(option: StationTransformerCatalogOption): string {
@@ -222,17 +277,13 @@ export function StationConfigTransformerCard(
               );
             })()}
             <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
-              <label className="flex flex-col">
-                <span className="text-scada-muted">Sn [MVA]</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  data-testid={`tr-sn-${tr.transformerId}`}
-                  value={tr.snMva ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { snMva: Number(e.target.value) })}
-                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-                />
-              </label>
+              <PoleLiczbowe
+                label="Sn [MVA]"
+                testId={`tr-sn-${tr.transformerId}`}
+                value={tr.snMva}
+                readOnly={Boolean(tr.catalogRef)}
+                onCommit={(v) => onChange?.(tr.transformerId, { snMva: v })}
+              />
               <div>
                 <span className="text-scada-muted">U_HV / U_LV: </span>
                 <span className="font-mono">{tr.uhvKv} / {tr.ulvKv} kV</span>
@@ -242,9 +293,12 @@ export function StationConfigTransformerCard(
                 <select
                   data-testid={`tr-ulv-${tr.transformerId}`}
                   value={tr.ulvKv}
+                  disabled={Boolean(tr.catalogRef)}
+                  title={tr.catalogRef ? 'Wartość z typu katalogowego.' : undefined}
                   onChange={(e) => onChange?.(tr.transformerId, { ulvKv: Number(e.target.value) })}
                   className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
                 >
+                  {!availableLvVoltages.includes(tr.ulvKv) && <option value={tr.ulvKv}>{tr.ulvKv} kV</option>}
                   {availableLvVoltages.map((v) => (
                     <option key={v} value={v}>{v} kV</option>
                   ))}
@@ -267,46 +321,38 @@ export function StationConfigTransformerCard(
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col">
-                <span className="text-scada-muted">u_k [%]</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  data-testid={`tr-uk-${tr.transformerId}`}
-                  value={tr.ukPercent ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { ukPercent: Number(e.target.value) })}
-                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-                />
-              </label>
-              <label className="flex flex-col">
-                <span className="text-scada-muted">P_k [kW]</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={tr.pkKw ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { pkKw: Number(e.target.value) })}
-                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-                />
-              </label>
-              <label className="flex flex-col">
-                <span className="text-scada-muted">P_0 [kW]</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={tr.p0Kw ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { p0Kw: Number(e.target.value) })}
-                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-                />
-              </label>
-              <label className="flex flex-col">
-                <span className="text-scada-muted">Pozycja zaczepu</span>
-                <input
-                  type="number"
-                  value={tr.tapPosition ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { tapPosition: Number(e.target.value) })}
-                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-                />
-              </label>
+              <PoleLiczbowe
+                label="u_k [%]"
+                testId={`tr-uk-${tr.transformerId}`}
+                value={tr.ukPercent}
+                readOnly={Boolean(tr.catalogRef)}
+                onCommit={(v) => onChange?.(tr.transformerId, { ukPercent: v })}
+              />
+              <PoleLiczbowe
+                label="P_k [kW]"
+                testId={`tr-pk-${tr.transformerId}`}
+                value={tr.pkKw}
+                readOnly={Boolean(tr.catalogRef)}
+                onCommit={(v) => onChange?.(tr.transformerId, { pkKw: v })}
+              />
+              <PoleLiczbowe
+                label="P_0 [kW]"
+                testId={`tr-p0-${tr.transformerId}`}
+                value={tr.p0Kw}
+                readOnly={Boolean(tr.catalogRef)}
+                onCommit={(v) => onChange?.(tr.transformerId, { p0Kw: v })}
+              />
+              <PoleLiczbowe
+                label={
+                  typeof tr.tapMin === 'number' && typeof tr.tapMax === 'number'
+                    ? `Pozycja zaczepu (${tr.tapMin}…${tr.tapMax})`
+                    : 'Pozycja zaczepu'
+                }
+                testId={`tr-tap-${tr.transformerId}`}
+                value={tr.tapPosition}
+                readOnly={false}
+                onCommit={(v) => onChange?.(tr.transformerId, { tapPosition: v })}
+              />
               <label className="col-span-2 flex flex-col">
                 <span className="text-scada-muted">Przełącznik zaczepów (z katalogu)</span>
                 <select
@@ -317,7 +363,7 @@ export function StationConfigTransformerCard(
                   }
                   className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
                 >
-                  <option value="">— wybierz z katalogu —</option>
+                  <option value="">{tr.tapChangerCatalogRef ? 'bez przełącznika zaczepów' : '— wybierz z katalogu —'}</option>
                   {selectTapChangersForTransformerByVoltage(tapChangers, tr.uhvKv, tr.ulvKv).map((tc) => (
                     <option key={tc.id} value={tc.id}>
                       {tc.label_pl}

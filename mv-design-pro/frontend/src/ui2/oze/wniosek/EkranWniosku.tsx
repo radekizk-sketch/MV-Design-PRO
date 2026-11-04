@@ -257,6 +257,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
           <label className="mvd-wniosek-pole mvd-wniosek-pole--szerokie">
             <span>{T.wezel}</span>
             <select
+              // stan-widoku: pole wniosku o warunki przyłączenia (dokument) — treść dokumentu, nie dana modelu
               value={busRef}
               onChange={(e) => {
                 setBusRef(e.target.value);
@@ -281,6 +282,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
             <label className="mvd-wniosek-pole">
               <span>{T.nazwaProjektu}</span>
               <input
+                // stan-widoku: pole wniosku o warunki przyłączenia (dokument) — treść dokumentu, nie dana modelu
                 type="text"
                 value={nazwaProjektu}
                 onChange={(e) => {
@@ -295,6 +297,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
                 {T.nazwaPrzypadku} <em className="mvd-wniosek-opc">({T.poleOpcjonalne})</em>
               </span>
               <input
+                // stan-widoku: pole wniosku o warunki przyłączenia (dokument) — treść dokumentu, nie dana modelu
                 type="text"
                 value={nazwaPrzypadku}
                 onChange={(e) => {
@@ -309,6 +312,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
                 {T.wnioskodawca} <em className="mvd-wniosek-opc">({T.poleOpcjonalne})</em>
               </span>
               <input
+                // stan-widoku: pole wniosku o warunki przyłączenia (dokument) — treść dokumentu, nie dana modelu
                 type="text"
                 value={wnioskodawca}
                 onChange={(e) => {
@@ -323,6 +327,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
                 {T.adres} <em className="mvd-wniosek-opc">({T.poleOpcjonalne})</em>
               </span>
               <input
+                // stan-widoku: pole wniosku o warunki przyłączenia (dokument) — treść dokumentu, nie dana modelu
                 type="text"
                 value={adres}
                 onChange={(e) => {

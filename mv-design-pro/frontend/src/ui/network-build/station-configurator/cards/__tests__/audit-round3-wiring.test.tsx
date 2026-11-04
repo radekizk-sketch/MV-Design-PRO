@@ -11,11 +11,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
 import { StationConfigProtectionCard } from '../StationConfigProtectionCard';
-import type { HvFuseItem, TapChangerItem } from '../../../station-der/audit2-api';
+import type { HvFuseItem } from '../../../station-der/audit2-api';
+import type { TapChangerCatalogType } from '../../../../catalog/types';
 
-// Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
-// (`audit2_catalogs.py::TapChangerItem.to_dict`), nie statyk modułowy.
-const TAP_CHANGER_FIXTURES: readonly TapChangerItem[] = [
+// Karta FAB-L: katalog z backendu — kształt 1:1 z `audit2_catalogs.py::TapChangerItem.to_dict`
+// (karta JEDNA-SCIEZKA-EDYCJI: karta transformatora czyta `GET …/catalog/audit2/tap-changers`
+// przez `fetchTapChangers`, typ `TapChangerCatalogType`), nie statyk modułowy.
+const TAP_CHANGER_FIXTURES: readonly TapChangerCatalogType[] = [
   {
     id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
     label_pl: 'OLTC 110/SN 19 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 19,

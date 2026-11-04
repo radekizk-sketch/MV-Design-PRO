@@ -1,25 +1,49 @@
 /**
  * Karta 3 — Rozdzielnia SN (PR-8a, brief 2 §8 karta 3).
+ *
+ * Karta JEDNA-SCIEZKA-EDYCJI: dawniej typ układu, prąd znamionowy i prąd zwarciowy znamionowy
+ * były kontrolkami bez zapisu (`onChange` nikt nie obsługiwał), a wartości 630 A / 16 kA były
+ * wpisane w kod konfiguratora i udawały daną rozdzielnicy. Teraz:
+ * - typ układu wynika z modelu (pole o roli sprzęgła ⇒ sekcjonowany) — odczyt;
+ * - znamiona rozdzielnicy to znamiona APARATURY pól stacji z katalogu (`apparatus_catalog_ref`
+ *   pola → `GET /api/catalog/mv-apparatus-types`); wartością stacji jest najsłabszy aparat
+ *   (ogranicza całą rozdzielnicę). Gdy karta aparatu nie podaje znamienia, pokazana jest
+ *   wartość robocza z rejestru backendu (`wartosci_robocze`, zasada nr 4) z jakością
+ *   „szacowana" i źródłem. Zmiana znamion = zmiana aparatu pola (karta „Aparatura").
+ * - pole bez aparatu w modelu to brak MODELU (nie brak katalogu) — pokazany jawnie.
  */
 
 export type BusbarLayout = 'single_busbar' | 'sectioned_busbar' | 'simplified' | 'busbarless';
+
+/** Znamię rozdzielnicy z aparatury pól — wartość, źródło i jakość danej. */
+export interface ZnamieRozdzielnicy {
+  readonly wartosc: number;
+  readonly jednostka: string;
+  /** Aparat ograniczający (nazwa pozycji katalogu) i pole, w którym stoi. */
+  readonly zrodloPl: string;
+  /** `DATASHEET` — dana karty producenta; `ESTIMATED` — wartość robocza rejestru backendu. */
+  readonly jakosc: 'DATASHEET' | 'ESTIMATED';
+  /** Podstawa wartości roboczej (norma / założenie) — tylko dla `ESTIMATED`. */
+  readonly podstawaPl?: string | null;
+}
 
 export interface StationConfigSnSwitchgearCardProps {
   readonly layout: BusbarLayout;
   /** Napięcie szyny SN stacji z modelu; `null` — model go nie podaje (bez domysłu). */
   readonly nominalVoltageKv: number | null;
-  readonly nominalCurrentA?: number | null;
-  readonly nominalShortCircuitKa?: number | null;
+  /** Prąd znamionowy rozdzielnicy (najsłabszy aparat pól) albo `null` — brak aparatu w polach. */
+  readonly ratedCurrent?: ZnamieRozdzielnicy | null;
+  /** Prąd zwarciowy znamionowy (cieplny 1 s) rozdzielnicy albo `null`. */
+  readonly ratedShortCircuit?: ZnamieRozdzielnicy | null;
+  /** Pola SN stacji bez aparatu w modelu (brak modelu, nie katalogu). */
+  readonly baysWithoutApparatus?: number;
   readonly sectionsCount: number;
   readonly hasCoupler: boolean;
   readonly baysCount: number;
   readonly reservesCount: number;
   readonly readinessLabelPl: string;
-  readonly onChange?: (changes: Partial<{
-    layout: BusbarLayout;
-    nominalCurrentA: number;
-    nominalShortCircuitKa: number;
-  }>) => void;
+  /** Przejście do karty aparatury pól (jedyna droga zmiany znamion). */
+  readonly onOpenApparatus?: () => void;
 }
 
 const LAYOUT_LABEL_PL: Record<BusbarLayout, string> = {
@@ -29,12 +53,36 @@ const LAYOUT_LABEL_PL: Record<BusbarLayout, string> = {
   busbarless: 'Układ bezszynowy',
 };
 
+const LICZBA_PL = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 });
+
+function Znamie({ label, znamie, testId }: { label: string; znamie: ZnamieRozdzielnicy | null | undefined; testId: string }) {
+  return (
+    <div data-testid={testId} data-jakosc={znamie?.jakosc ?? 'BRAK'}>
+      <div className="text-scada-muted">{label}</div>
+      {znamie ? (
+        <>
+          <div className="font-mono text-scada-text">
+            {LICZBA_PL.format(znamie.wartosc)} {znamie.jednostka}
+            {znamie.jakosc === 'ESTIMATED' && <span className="ml-1 text-[10px] text-scada-muted">(wartość robocza)</span>}
+          </div>
+          <div className="text-[10px] text-scada-muted">
+            {znamie.zrodloPl}
+            {znamie.jakosc === 'ESTIMATED' && znamie.podstawaPl ? ` · ${znamie.podstawaPl}` : ''}
+          </div>
+        </>
+      ) : (
+        <div className="text-scada-muted italic">brak aparatu w polach</div>
+      )}
+    </div>
+  );
+}
+
 export function StationConfigSnSwitchgearCard(
   props: StationConfigSnSwitchgearCardProps,
 ): JSX.Element {
   const {
-    layout, nominalVoltageKv, nominalCurrentA, nominalShortCircuitKa,
-    sectionsCount, hasCoupler, baysCount, reservesCount, readinessLabelPl, onChange,
+    layout, nominalVoltageKv, ratedCurrent = null, ratedShortCircuit = null, baysWithoutApparatus = 0,
+    sectionsCount, hasCoupler, baysCount, reservesCount, readinessLabelPl, onOpenApparatus,
   } = props;
 
   return (
@@ -43,47 +91,20 @@ export function StationConfigSnSwitchgearCard(
         Rozdzielnia SN
       </div>
 
-      <label className="flex flex-col">
-        <span className="text-scada-muted">Typ układu</span>
-        <select
-          data-testid="sn-switchgear-layout"
-          value={layout}
-          onChange={(e) => onChange?.({ layout: e.target.value as BusbarLayout })}
-          className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
-        >
-          {(Object.keys(LAYOUT_LABEL_PL) as BusbarLayout[]).map((l) => (
-            <option key={l} value={l}>{LAYOUT_LABEL_PL[l]}</option>
-          ))}
-        </select>
-      </label>
+      <div>
+        <div className="text-scada-muted">Typ układu (z modelu pól)</div>
+        <div data-testid="sn-switchgear-layout" data-layout={layout} className="text-scada-text">
+          {LAYOUT_LABEL_PL[layout]}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
           <div className="text-scada-muted">Napięcie znamionowe</div>
           <div className="font-mono text-scada-text">{nominalVoltageKv !== null ? `${nominalVoltageKv} kV` : 'brak danych'}</div>
         </div>
-        <div>
-          <div className="text-scada-muted">Prąd znamionowy</div>
-          <input
-            type="number"
-            data-testid="sn-switchgear-in-a"
-            value={nominalCurrentA ?? ''}
-            onChange={(e) => onChange?.({ nominalCurrentA: Number(e.target.value) })}
-            className="w-full rounded border border-scada-border bg-scada-bg px-2 py-0.5 text-scada-text"
-          />
-        </div>
-        <div>
-          <div className="text-scada-muted">Prąd zwarciowy znamionowy</div>
-          <input
-            type="number"
-            step="0.1"
-            data-testid="sn-switchgear-isc-ka"
-            value={nominalShortCircuitKa ?? ''}
-            onChange={(e) => onChange?.({ nominalShortCircuitKa: Number(e.target.value) })}
-            className="w-full rounded border border-scada-border bg-scada-bg px-2 py-0.5 text-scada-text"
-          />
-          <span className="text-[10px] text-scada-muted">kA</span>
-        </div>
+        <Znamie label="Prąd znamionowy" znamie={ratedCurrent} testId="sn-switchgear-in-a" />
+        <Znamie label="Prąd zwarciowy znamionowy (1 s)" znamie={ratedShortCircuit} testId="sn-switchgear-isc-ka" />
         <div>
           <div className="text-scada-muted">Sekcje</div>
           <div className="font-mono text-scada-text">{sectionsCount}</div>
@@ -107,6 +128,22 @@ export function StationConfigSnSwitchgearCard(
           <div className="text-scada-text">{readinessLabelPl}</div>
         </div>
       </div>
+
+      {baysWithoutApparatus > 0 && (
+        <div data-testid="sn-switchgear-bays-without-apparatus" className="text-[10px] text-scada-muted">
+          Pola bez aparatu w modelu: {baysWithoutApparatus} — znamiona rozdzielnicy liczone z pól z aparatem.
+        </div>
+      )}
+      {onOpenApparatus && (
+        <button
+          type="button"
+          data-testid="sn-switchgear-open-apparatus"
+          onClick={onOpenApparatus}
+          className="self-start rounded border border-scada-border px-2 py-1 text-scada-text hover:border-scada-sn"
+        >
+          Zmień aparaturę pól
+        </button>
+      )}
     </div>
   );
 }

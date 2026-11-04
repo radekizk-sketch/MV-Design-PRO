@@ -5,7 +5,31 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
+// Karta JEDNA-SCIEZKA-EDYCJI: katalog typów i zestawy warunków ułożenia pochodzą z backendu —
+// test podstawia odpowiedzi klientów (kształt z `ui/catalog/types.ts` i `derSelectionApi.ts`).
+vi.mock('../../../catalog/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../catalog/api')>()),
+  fetchCableTypes: vi.fn(async () => [
+    { id: 'cable-tfk-yakxs-3x120', name: 'YAKXS 3×120 mm² 12/20 kV' },
+    { id: 'cable-nkt-na2xs2y-3x150', name: 'NA2XS2Y 3×150 mm² 12/20 kV' },
+  ]),
+  fetchLineTypes: vi.fn(async () => [{ id: 'line-base-al-st-70', name: 'AFL-6 70 mm²' }]),
+}));
+vi.mock('../../../../ui2/kreatory/zrodlo-oze/derSelectionApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../ui2/kreatory/zrodlo-oze/derSelectionApi')>()),
+  fetchCableLayingConditions: vi.fn(async () => ({
+    sets: [
+      { name: 'warunki_katalogowe', label_pl: 'Warunki katalogowe', f_grunt: 1, f_wiazka: 1, f_grupa: 1, total: 1, basis: 'katalog', assumption_pl: '' },
+      { name: 'ziemia_3_kable_warstwa_200mm', label_pl: 'W ziemi, 3 kable w warstwie', f_grunt: 1, f_wiazka: 0.85, f_grupa: 1, total: 0.85, basis: 'PN-HD 60364-5-52', assumption_pl: '' },
+    ],
+    custom_name: 'wlasne',
+    default_name: 'warunki_katalogowe',
+    limitation_pl: 'Lista zestawów jest krótka.',
+  })),
+}));
+
 import { SnSegmentSurface } from '../SnSegmentSurface';
+import { useAppStateStore } from '../../../app-state/store';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useSelectionStore } from '../../../selection/store';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
@@ -137,24 +161,119 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     useSelectionStore.getState().centerSldOnElement(null);
   });
 
-  it('SnSegmentSurface (E-12) renderuje 4 karty i przełączanie rodziny zmienia katalog', () => {
-    render(<SnSegmentSurface surface={minimalSurface} />);
-    expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
-    expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
-    expect(screen.getByText('Typ katalogowy i przewód')).toBeInTheDocument();
-    expect(screen.getByText('Trasa i ułożenie')).toBeInTheDocument();
-    expect(screen.getByText('Obciążalność')).toBeInTheDocument();
+  // Karta JEDNA-SCIEZKA-EDYCJI — iloczyn cech: pole karty (oznaczenie, długość, typ katalogowy,
+  // warunki ułożenia) × rodzaj odcinka (kabel / linia) × wartość (poprawna / odrzucona). Każda
+  // kontrolka czyta model i zapisuje operacją domenową; odczyt nie ma kontrolki edycji.
+  describe('SnSegmentSurface — jedna ścieżka edycji', () => {
+    const execute = vi.fn(async () => true);
+    beforeEach(() => {
+      execute.mockClear();
+      useSnapshotStore.setState({ executeDomainOperation: execute as never });
+      useAppStateStore.setState({ activeCaseId: 'case-1' });
+    });
 
-    // Domyślnie kabel SN
-    const familySelect = screen.getByDisplayValue('Kabel SN') as HTMLSelectElement;
-    expect(familySelect).toBeInTheDocument();
+    function renderCable(card: string) {
+      const snapshot = buildSnapshot(false);
+      snapshot.branches[0] = {
+        ...snapshot.branches[0],
+        name: 'K-12',
+        catalog_ref: 'cable-tfk-yakxs-3x120',
+        rating: { in_a: 280 },
+      } as never;
+      useSnapshotStore.getState().setSnapshot({ snapshot } as never);
+      return render(
+        <SnSegmentSurface surface={{ ...(segmentSurface as WorkspaceSurfaceDescriptor), routeState: { route: 'unknown', payload: { defaultCard: card } } }} />,
+      );
+    }
 
-    // Przełączanie na linię napowietrzną
-    fireEvent.change(familySelect, { target: { value: 'linia_napowietrzna_sn' } });
+    it('karty: wartości z modelu, rodzina/przewód/Idd tylko do odczytu, bez wartości z kodu', async () => {
+      renderCable('identification');
+      expect(screen.getByTestId('segment-field-name')).toHaveValue('K-12');
+      expect(screen.getByTestId('segment-field-family')).toHaveTextContent('Kabel SN');
+      expect(screen.queryByDisplayValue('Kabel SN')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('segment-tab-route'));
+      expect(screen.getByTestId('segment-field-length')).toHaveValue('500');
+      expect(screen.queryByText(/Temperatura otoczenia/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Rezystywność gruntu/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('segment-tab-rating'));
+      expect(screen.getByTestId('segment-field-ampacity')).toHaveTextContent('280 A');
+      expect(screen.getByTestId('segment-content-rating').querySelector('input')).toBeNull();
+    });
 
-    // Karta "Typ katalogowy i przewód"
-    fireEvent.click(screen.getByTestId('segment-tab-catalog'));
-    expect(screen.getAllByText(/AFL-6 50 mm²/).length).toBeGreaterThan(0);
+    it('oznaczenie: zapis update_element_parameters {name}; pusta nazwa odrzucona bez operacji', () => {
+      renderCable('identification');
+      const pole = screen.getByTestId('segment-field-name');
+      fireEvent.change(pole, { target: { value: '  ' } });
+      fireEvent.blur(pole);
+      expect(execute).not.toHaveBeenCalled();
+      expect(screen.getByTestId('segment-field-name-error')).toHaveTextContent('Nazwa nie może być pusta.');
+      fireEvent.change(pole, { target: { value: 'K-13' } });
+      fireEvent.blur(pole);
+      expect(execute).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+        element_ref: 'seg-1',
+        parameters: { name: 'K-13' },
+      });
+    });
+
+    it.each([
+      ['850', true, { length_km: 0.85 }],
+      ['1200,5', true, { length_km: 1.2005 }],
+      ['0', false, null],
+      ['-5', false, null],
+      ['abc', false, null],
+    ] as const)('długość %s m → zapis=%s', (wpis, zapis, parametry) => {
+      renderCable('route');
+      const pole = screen.getByTestId('segment-field-length');
+      fireEvent.change(pole, { target: { value: wpis } });
+      fireEvent.keyDown(pole, { key: 'Enter' });
+      if (zapis) {
+        expect(execute).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+          element_ref: 'seg-1',
+          parameters: parametry,
+        });
+      } else {
+        expect(execute).not.toHaveBeenCalled();
+        expect(screen.getByTestId('segment-field-length-error')).toBeInTheDocument();
+      }
+    });
+
+    it('typ katalogowy z katalogu backendu → assign_catalog_to_element', async () => {
+      renderCable('catalog');
+      const select = screen.getByTestId('segment-catalog-item-select');
+      expect(await screen.findByRole('option', { name: 'NA2XS2Y 3×150 mm² 12/20 kV' })).toBeInTheDocument();
+      expect(select).toHaveValue('cable-tfk-yakxs-3x120');
+      fireEvent.change(select, { target: { value: 'cable-nkt-na2xs2y-3x150' } });
+      expect(execute).toHaveBeenCalledWith('case-1', 'assign_catalog_to_element', expect.objectContaining({ element_ref: 'seg-1' }));
+    });
+
+    it('warunki ułożenia kabla: zestaw z backendu → cable_laying_conditions; współczynniki własne przyciskiem', async () => {
+      renderCable('route');
+      const select = await screen.findByTestId('segment-field-laying');
+      expect(select).toHaveValue('warunki_katalogowe');
+      fireEvent.change(select, { target: { value: 'ziemia_3_kable_warstwa_200mm' } });
+      expect(execute).toHaveBeenLastCalledWith('case-1', 'update_element_parameters', {
+        element_ref: 'seg-1',
+        parameters: { cable_laying_conditions: { set_name: 'ziemia_3_kable_warstwa_200mm' } },
+      });
+      fireEvent.change(select, { target: { value: 'wlasne' } });
+      expect(execute).toHaveBeenCalledTimes(1);
+      fireEvent.change(screen.getByTestId('segment-laying-f_grunt'), { target: { value: '0,9' } });
+      fireEvent.change(screen.getByTestId('segment-laying-opis'), { target: { value: 'grunt suchy' } });
+      fireEvent.click(screen.getByTestId('segment-laying-save'));
+      expect(execute).toHaveBeenLastCalledWith('case-1', 'update_element_parameters', {
+        element_ref: 'seg-1',
+        parameters: { cable_laying_conditions: { set_name: 'wlasne', opis_pl: 'grunt suchy', f_grunt: 0.9 } },
+      });
+    });
+
+    it('linia napowietrzna: brak warunków ułożenia kabla (backend i tak odmawia)', () => {
+      const snapshot = buildSnapshot(false);
+      snapshot.branches[0] = { ...snapshot.branches[0], type: 'line_overhead', catalog_ref: 'line-base-al-st-70' } as never;
+      useSnapshotStore.getState().setSnapshot({ snapshot } as never);
+      render(<SnSegmentSurface surface={{ ...(segmentSurface as WorkspaceSurfaceDescriptor), routeState: { route: 'unknown', payload: { defaultCard: 'route' } } }} />);
+      expect(screen.queryByTestId('segment-field-laying')).not.toBeInTheDocument();
+      expect(screen.getByTestId('segment-laying-not-applicable')).toBeInTheDocument();
+    });
   });
 
   // V12K-352: pozycje menu odcinka obiecują KONKRETNĄ kartę (deep-link `payload.defaultCard`,
@@ -165,9 +284,10 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     ['route', 'segment-content-route'],
     ['rating', 'segment-content-rating'],
   ] as const)('SnSegmentSurface otwiera kartę z deep-linku defaultCard=%s', (karta, testId) => {
+    useSnapshotStore.getState().setSnapshot({ snapshot: buildSnapshot(false) } as never);
     render(
       <SnSegmentSurface
-        surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: karta } } }}
+        surface={{ ...(segmentSurface as WorkspaceSurfaceDescriptor), routeState: { route: 'unknown', payload: { defaultCard: karta } } }}
       />,
     );
     expect(screen.getByTestId(testId)).toBeInTheDocument();

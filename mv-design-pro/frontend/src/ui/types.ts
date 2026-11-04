@@ -158,6 +158,8 @@ export interface PropertyField {
   editable: boolean;
   type: 'string' | 'number' | 'boolean' | 'enum' | 'ref' | 'type_ref_with_actions';
   enumOptions?: string[];
+  /** Polskie etykiety wartości wyliczeniowych (wartość modelu → etykieta na ekranie). */
+  enumLabels?: Readonly<Record<string, string>>;
   refType?: ElementType;
   validation?: ValidationMessage;
   source?: 'instance' | 'type' | 'calculated' | 'audit';

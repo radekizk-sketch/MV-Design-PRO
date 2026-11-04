@@ -19,7 +19,8 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   parametryPomoc: 'Podaj pary parametr → wartość. Liczby, odpowiedzi „tak" / „nie" oraz „brak" '
     + '(brak wartości) są rozpoznawane automatycznie; pozostałe wpisy traktowane są jako tekst.',
   klucz: 'Klucz',
-  kluczPlaceholder: 'np. tap_position',
+  kluczWybierz: '— wybierz parametr modelu —',
+  kluczBrakElementu: 'Elementu nie ma w modelu — brak parametrów do edycji.',
   wartosc: 'Wartość',
   wartoscPlaceholder: 'np. 2, tak, brak',
   wartoscZeSlownika: '— wybierz wartość ze słownika —',

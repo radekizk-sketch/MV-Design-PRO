@@ -57,9 +57,17 @@ import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../shared/rodzajStacji';
 import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
-import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import { fetchMvApparatusTypes, fetchTapChangers, fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import { znamionaRozdzielnicy } from '../../network-build/station-configurator/znamionaRozdzielnicy';
+import {
+  POLE_PRZELACZNIK_ZACZEPOW,
+  POLE_ZACZEP_TRANSFORMATORA,
+  poleLiczbowe,
+  type DefinicjaPola,
+  type RekordModelu,
+} from '../../../ui2/model/rejestrPol';
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
-import type { TransformerType } from '../../catalog/types';
+import type { MVApparatusType, TapChangerCatalogType, TransformerType } from '../../catalog/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import type {
@@ -76,6 +84,23 @@ import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
+
+const dodatniaTabliczki = (opis: string) => (wartosc: unknown): string | null =>
+  typeof wartosc === 'number' && Number.isFinite(wartosc) && wartosc > 0 ? null : `${opis} musi być liczbą większą od zera.`;
+
+/**
+ * Pola karty transformatora → definicje rejestru pól (karta JEDNA-SCIEZKA-EDYCJI). Typ
+ * katalogowy i grupa połączeń mają własne operacje (wyżej); reszta idzie tędy.
+ */
+const POLA_TRANSFORMATORA_KARTY: ReadonlyArray<readonly [keyof StationConfigTransformerRow, DefinicjaPola]> = [
+  ['snMva', poleLiczbowe('transformers', 'sn_mva', 'Moc znamionowa Sn', 'MVA', dodatniaTabliczki('Moc znamionowa'))],
+  ['ulvKv', poleLiczbowe('transformers', 'ulv_kv', 'Napięcie DN', 'kV', dodatniaTabliczki('Napięcie DN'))],
+  ['ukPercent', poleLiczbowe('transformers', 'uk_percent', 'Napięcie zwarcia uk', '%', dodatniaTabliczki('Napięcie zwarcia'))],
+  ['pkKw', poleLiczbowe('transformers', 'pk_kw', 'Straty obciążeniowe Pk', 'kW', dodatniaTabliczki('Straty obciążeniowe'))],
+  ['p0Kw', poleLiczbowe('transformers', 'p0_kw', 'Straty jałowe P0', 'kW', dodatniaTabliczki('Straty jałowe'))],
+  ['tapPosition', POLE_ZACZEP_TRANSFORMATORA],
+  ['tapChangerCatalogRef', POLE_PRZELACZNIK_ZACZEPOW],
+];
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -105,8 +130,11 @@ function buildBaseStationProps(stationName: string) {
     snSwitchgear: {
       layout: 'sectioned_busbar' as const,
       nominalVoltageKv: 15,
-      nominalCurrentA: 630,
-      nominalShortCircuitKa: 16,
+      // Karta JEDNA-SCIEZKA-EDYCJI: dawne 630 A / 16 kA wpisane w kod skasowane — znamiona
+      // rozdzielnicy pochodzą z aparatury pól (`znamionaRozdzielnicy`), brak = jawny brak.
+      ratedCurrent: null,
+      ratedShortCircuit: null,
+      baysWithoutApparatus: 0,
       sectionsCount: 1,
       hasCoupler: false,
       baysCount: 0,
@@ -517,10 +545,12 @@ function deriveStationTransformerRows(
     ukPercent: transformer.uk_percent ?? null,
     pkKw: transformer.pk_kw ?? null,
     p0Kw: transformer.p0_kw ?? null,
-    tapPosition: transformer.tap_position ?? null,
-    tapMin: transformer.tap_min ?? null,
-    tapMax: transformer.tap_max ?? null,
-    tapChangerCatalogRef: null,
+    // Karta JEDNA-SCIEZKA-EDYCJI: zaczep i przełącznik z MODELU (podzespół `tap_changer`,
+    // inaczej pola `tap_*`) — dawniej przełącznik czytany z konfiguracji stacji audytu 2.
+    tapPosition: POLE_ZACZEP_TRANSFORMATORA.odczyt(transformer as unknown as RekordModelu) as number | null,
+    tapMin: transformer.tap_changer?.min_position ?? transformer.tap_min ?? null,
+    tapMax: transformer.tap_changer?.max_position ?? transformer.tap_max ?? null,
+    tapChangerCatalogRef: POLE_PRZELACZNIK_ZACZEPOW.odczyt(transformer as unknown as RekordModelu) as string | null,
     hvNeutralLabelPl: transformer.hv_neutral?.type ?? null,
     lvNeutralLabelPl: transformer.lv_neutral?.type ?? null,
     statusForSc: transformer.uk_percent ? 'gotowe' : 'częściowe',
@@ -610,7 +640,30 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // sekcji w modelu, a karta zabezpieczeń czyta je z backendu.
   const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
   const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
-  const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
+  // Karta JEDNA-SCIEZKA-EDYCJI: katalog przełączników zaczepów z katalogu backendu
+  // (`/api/catalog/tap-changers`) — wybór trafia do podzespołu `tap_changer` modelu.
+  const [tapChangers, setTapChangers] = useState<TapChangerCatalogType[]>([]);
+  const [mvApparatusTypes, setMvApparatusTypes] = useState<MVApparatusType[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchMvApparatusTypes()
+      .then((items) => {
+        if (!cancelled) setMvApparatusTypes(Array.isArray(items) ? items : []);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) notify(getCatalogErrorMessage(error), 'error');
+      });
+    fetchTapChangers()
+      .then((items) => {
+        if (!cancelled) setTapChangers(Array.isArray(items) ? items : []);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) notify(getCatalogErrorMessage(error), 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
   // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
   // (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`).
@@ -1023,6 +1076,37 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     [activeCaseId, executeDomainOperation],
   );
 
+  /** Surowy rekord transformatora z modelu (wejście definicji pola przy zapisie). */
+  const transformerRecord = useCallback(
+    (transformerId: string): RekordModelu =>
+      ((snapshot?.transformers ?? []).find((t) => t.ref_id === transformerId || t.id === transformerId) ??
+        {}) as unknown as RekordModelu,
+    [snapshot?.transformers],
+  );
+
+  /** Zapis pola rejestru — walidacja definicji, operacja domenowa, komunikat odmowy backendu. */
+  const zapiszPoleModelu = useCallback(
+    async (definicja: DefinicjaPola, elementRef: string, wartosc: unknown, rekord: RekordModelu) => {
+      const odmowa = definicja.waliduj(wartosc);
+      if (odmowa) {
+        notify(odmowa, 'warning');
+        return;
+      }
+      if (!activeCaseId) {
+        notify('Wybierz aktywny przypadek obliczeniowy.', 'warning');
+        return;
+      }
+      const { operacja, ladunek } = definicja.zapis(elementRef, wartosc, rekord);
+      try {
+        const response = await executeDomainOperation(activeCaseId, operacja, ladunek);
+        if (response?.error) notify(response.error, 'error');
+      } catch (error) {
+        notify(error instanceof Error ? error.message : 'Nie udało się zapisać parametru.', 'error');
+      }
+    },
+    [activeCaseId, executeDomainOperation],
+  );
+
   const handleShowOnSld = useCallback(
     (derId: string) => {
       // Naprawa hmi.1: przekazujemy derId jako entityRef do SLD aby skupić
@@ -1045,21 +1129,43 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     });
   }, [activeCaseId, runIdOgladany, stationRef]);
 
+  // Karta JEDNA-SCIEZKA-EDYCJI: „Odłącz" to operacja MODELU (`delete_element` źródła — backend
+  // sprząta zależności deterministycznie). Dawniej usuwało wyłącznie wpis lokalnego magazynu
+  // stacja↔DER (`detachDer`), więc źródło zostawało w modelu, w obliczeniach i po odświeżeniu
+  // wracało na ekran. Wpis lokalny (nakładka do czasu odświeżenia migawki) znika dopiero po
+  // potwierdzeniu operacji przez backend.
+  const derWModelu = useCallback(
+    (derId: string) => (snapshot?.generators ?? []).some((g) => g.ref_id === derId),
+    [snapshot?.generators],
+  );
+
   const requestDetach = useCallback(
     (derId: string) => {
-      const der = localDers.find((d) => d.id === derId);
+      const der = ders.find((d) => d.id === derId);
       if (!der) return;
       setPendingDetach({ derId, name: der.name });
     },
-    [localDers],
+    [ders],
   );
 
-  const confirmDetach = useCallback(() => {
+  const confirmDetach = useCallback(async () => {
     if (!pendingDetach) return;
-    detachDer(pendingDetach.derId);
-    notify(`Odłączono "${pendingDetach.name}" od stacji.`, 'info');
+    const { derId, name } = pendingDetach;
     setPendingDetach(null);
-  }, [pendingDetach, detachDer]);
+    if (derWModelu(derId)) {
+      if (!activeCaseId) {
+        notify('Wybierz aktywny przypadek obliczeniowy.', 'warning');
+        return;
+      }
+      const response = await executeDomainOperation(activeCaseId, 'delete_element', { element_ref: derId });
+      if (!response || response.error) {
+        notify(response?.error ?? `Nie udało się odłączyć "${name}".`, 'error');
+        return;
+      }
+    }
+    detachDer(derId);
+    notify(`Odłączono "${name}" od stacji.`, 'info');
+  }, [pendingDetach, derWModelu, activeCaseId, executeDomainOperation, detachDer]);
 
   // Phase 8: helper do mutacji audit2 config (centralizuje budowe body).
   const mutateAudit2 = useCallback(
@@ -1108,7 +1214,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     const base = buildBaseStationProps(stationName);
     const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
     // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
-    const transformerTapChangers = audit2Config.data?.transformer_tap_changers ?? {};
     const bayFuses = audit2Config.data?.bay_hv_fuses ?? {};
     const bayVts = audit2Config.data?.bay_vts ?? {};
     const bayWithstand = audit2Config.data?.bay_device_withstand ?? {};
@@ -1179,15 +1284,17 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         hasCoupler: stationHasCoupler,
         baysCount: stationBays.length,
         readinessLabelPl: stationBays.length > 0 ? 'wariant katalogowy' : 'do konfiguracji',
+        ...znamionaRozdzielnicy(
+          stationSnBays(snapshot, station).map((bay, index) => ({
+            designation: bayDesignation(bay, index),
+            apparatusCatalogRef: bay.apparatus_catalog_ref ?? null,
+          })),
+          mvApparatusTypes,
+        ),
       },
       transformer: {
         ...base.transformer,
-        // Phase 8: rzutuj tapChangerCatalogRef per row + onChange przekazuje
-        // patch transformer_tap_changers do mutateAudit2.
-        transformers: stationTransformers.map((tr) => ({
-          ...tr,
-          tapChangerCatalogRef: transformerTapChangers[tr.transformerId] ?? null,
-        })),
+        transformers: stationTransformers,
         availableLvVoltages: stationLvVoltages,
         transformerCatalogOptions: stationTransformerCatalogOptions,
         transformerCatalogLoading,
@@ -1202,12 +1309,13 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           if ('vectorGroup' in changes) {
             void handleChangeTransformerVectorGroup(transformerId, changes.vectorGroup);
           }
-          if ('tapChangerCatalogRef' in changes) {
-            mutateAudit2({
-              transformer_tap_changers: {
-                [transformerId]: changes.tapChangerCatalogRef ?? '',
-              },
-            });
+          // Karta JEDNA-SCIEZKA-EDYCJI: dane tabliczkowe (bez typu katalogowego), pozycja zaczepu
+          // i przełącznik zaczepów — operacja modelu przez definicje rejestru pól.
+          const rekord = transformerRecord(transformerId);
+          for (const [klucz, definicja] of POLA_TRANSFORMATORA_KARTY) {
+            if (klucz in changes) {
+              void zapiszPoleModelu(definicja, transformerId, changes[klucz], rekord);
+            }
           }
         },
       },
@@ -1274,7 +1382,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onShowOnSld: handleShowOnSld,
         onAddDer: handleAddDer,
         onDetachDer: requestDetach,
-        canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
+        // Odłączyć można każde źródło stacji: z modelu (operacja) albo nakładkę lokalną.
+        canDetachDer: (derId: string) => ders.some((der) => der.id === derId),
         blockTransformers,
         ncRfgOperators,
       },
@@ -1302,6 +1411,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     handleAddDer,
     handleAddTransformer,
     handleAssignTransformerCatalog,
+    transformerRecord,
+    zapiszPoleModelu,
     requestDetach,
     audit2Config.data,
     uziemienieSn.data,
@@ -1317,6 +1428,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     transformerCatalogLoading,
     blockTransformers,
     tapChangers,
+    mvApparatusTypes,
     hvFuses,
     ncRfgOperators,
   ]);
@@ -1470,7 +1582,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               </button>
               <button
                 type="button"
-                onClick={confirmDetach}
+                onClick={() => void confirmDetach()}
                 className="rounded bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
                 data-testid="der-detach-ok"
               >

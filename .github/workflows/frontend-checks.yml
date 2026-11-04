@@ -119,3 +119,10 @@ jobs:
       - name: Slad Proza Bez LaTeX Guard
         working-directory: mv-design-pro
         run: python scripts/slad_proza_bez_latex_guard.py
+      # Karta JEDNA-SCIEZKA-EDYCJI: kontrolka w pliku czytajacym model, ktorej stan nie
+      # dociera do operacji modelu (ani zadania backendu), kontrolka z pustym onChange
+      # i otwarcie formularza operacji bez formularza w rejestrze. Lista dozwolona pusta,
+      # stan widoku deklarowany znacznikiem `stan-widoku: <powod>` przy kontrolce.
+      - name: Jedna Sciezka Edycji Guard
+        working-directory: mv-design-pro
+        run: python scripts/jedna_sciezka_edycji_guard.py

@@ -194,7 +194,13 @@ export async function fetchCableLayingConditions(
   if (!response.ok) {
     throw new Error(await readSolverError(response));
   }
-  return response.json() as Promise<CableLayingConditionsCatalog>;
+  const body = (await response.json()) as Partial<CableLayingConditionsCatalog> | null;
+  // Odpowiedź bez listy zestawów to złamany kontrakt — jawny błąd zamiast awarii ekranu
+  // (karta odcinka i tabela odcinków czytają `sets` bez dalszego sprawdzania).
+  if (!body || !Array.isArray(body.sets) || typeof body.custom_name !== 'string') {
+    throw new Error('Katalog warunków ułożenia kabla: odpowiedź serwera bez listy zestawów.');
+  }
+  return body as CableLayingConditionsCatalog;
 }
 
 async function readSolverError(response: Response): Promise<string> {

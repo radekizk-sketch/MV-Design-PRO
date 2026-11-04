@@ -15,6 +15,7 @@ import type { OcenaDoboruMagistraliRequest, OdcinekOcenyRequest } from './ocenaD
 import type { TrunkBranchKind } from '../../../ui/network-build/semanticValidator';
 import type { TrunkNextStep } from '../../../ui/network-build/trunkContinuation';
 import type { CableType, LineType } from '../../../ui/catalog/types';
+import { POLE_DLUGOSC_ODCINKA } from '../../model/rejestrPol';
 
 export type RodzajOdcinka = 'KABEL' | 'LINIA';
 
@@ -82,8 +83,11 @@ export function walidujFormularz(data: MagistralaFormData): BladPola[] {
   if (!data.catalog_ref?.trim()) {
     errors.push({ field: 'catalog_ref', message: 'Wybierz typ odcinka z katalogu (kabel lub linia).' });
   }
-  if (!isPositive(data.dlugosc_m)) {
-    errors.push({ field: 'dlugosc_m', message: 'Długość odcinka musi być dodatnia.' });
+  // Karta JEDNA-SCIEZKA-EDYCJI: ta sama definicja długości co karta odcinka SN i siatka
+  // właściwości (rejestr pól) — jedna dziedzina, jeden komunikat.
+  const bladDlugosci = POLE_DLUGOSC_ODCINKA.waliduj(data.dlugosc_m);
+  if (bladDlugosci !== null) {
+    errors.push({ field: 'dlugosc_m', message: bladDlugosci });
   }
   if (data.cos_phi <= 0 || data.cos_phi > 1) {
     errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });

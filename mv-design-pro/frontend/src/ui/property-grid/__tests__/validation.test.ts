@@ -12,7 +12,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PropertyField } from '../../types';
-import { validateField } from '../validation';
+import { getFieldDefinitionsForMode } from '../field-definitions';
+import { KOD_ODMOWY_REJESTRU, validateField } from '../validation';
 
 function pole(nadpisz: Partial<PropertyField> = {}): PropertyField {
   return {
@@ -30,13 +31,13 @@ describe('validateField — Source.sk3_mva (naprawa klucza)', () => {
   it('odrzuca brak wartości (requiredNumber)', () => {
     const wynik = validateField('Source', pole({ value: null }), null);
     expect(wynik.valid).toBe(false);
-    expect(wynik.code).toBe('E-REQ-02');
+    expect(wynik.code).toBe(KOD_ODMOWY_REJESTRU);
   });
 
   it('odrzuca wartość ujemną/zerową (positiveNumber)', () => {
     const wynik = validateField('Source', pole({ value: 0 }), 0);
     expect(wynik.valid).toBe(false);
-    expect(wynik.code).toBe('E-RANGE-01');
+    expect(wynik.code).toBe(KOD_ODMOWY_REJESTRU);
   });
 
   it('przyjmuje wartość dodatnią', () => {
@@ -61,7 +62,7 @@ describe('validateField — Source scenariusz MIN (CV-4.3 K7)', () => {
       -1,
     );
     expect(wynik.valid).toBe(false);
-    expect(wynik.code).toBe('E-RANGE-01');
+    expect(wynik.code).toBe(KOD_ODMOWY_REJESTRU);
   });
 
   it('ik3_min_ka: puste dozwolone, dodatnia wartość przechodzi', () => {
@@ -94,37 +95,32 @@ describe('validateField — Source scenariusz MIN (CV-4.3 K7)', () => {
  * po `${elementType}.${field.key}`), więc pole zawsze przechodziło walidację
  * mimo braku wartości.
  */
-describe('validateField — Source.bus_ref / Source.sn_voltage_kv (naprawa klucza, CV-4.3 K7c)', () => {
-  it('bus_ref: pusta referencja jest odrzucana (requiredRef)', () => {
-    const wynik = validateField('Source', pole({ key: 'bus_ref', value: '' }), '');
-    expect(wynik.valid).toBe(false);
-    expect(wynik.code).toBe('E-REF-01');
-  });
-
-  it('bus_ref: niepusta referencja przechodzi', () => {
-    expect(validateField('Source', pole({ key: 'bus_ref', value: 'bus-1' }), 'bus-1').valid).toBe(true);
-  });
-
-  // Odbiór K7c-FE (KLASA, NIE INSTANCJA): te same reguły `requiredRef` dla referencji szyn
-  // POZOSTAŁYCH typów elementów — klucze modelu ENM (`from_bus_ref`/`to_bus_ref`,
-  // `hv_bus_ref`/`lv_bus_ref`, `Load.bus_ref`); z kluczami `*_bus_id` reguła nigdy nie biegła.
+/**
+ * Karta JEDNA-SCIEZKA-EDYCJI: referencje szyn (`bus_ref`, `from_bus_ref`/`to_bus_ref`,
+ * `hv_bus_ref`/`lv_bus_ref`) są w siatce TYLKO DO ODCZYTU — przepięcie elementu to operacja
+ * topologiczna, a `update_element_parameters` odrzucał te klucze kodem
+ * `params.key_not_allowed`. Intencja dawnych testów („pusta referencja nie trafia do modelu")
+ * jest zachowana mocniej: referencji w ogóle nie da się z siatki zapisać.
+ */
+describe('referencje szyn — odczyt, sn_voltage_kv — reguła rejestru', () => {
   it.each([
+    ['Source', 'bus_ref'],
     ['LineBranch', 'from_bus_ref'],
     ['LineBranch', 'to_bus_ref'],
     ['TransformerBranch', 'hv_bus_ref'],
     ['TransformerBranch', 'lv_bus_ref'],
     ['Load', 'bus_ref'],
-  ] as const)('%s.%s: pusta referencja odrzucana, niepusta przechodzi', (typ, klucz) => {
-    const pusta = validateField(typ, pole({ key: klucz, value: '' }), '');
-    expect(pusta.valid).toBe(false);
-    expect(pusta.code).toBe('E-REF-01');
-    expect(validateField(typ, pole({ key: klucz, value: 'bus-1' }), 'bus-1').valid).toBe(true);
+  ] as const)('%s.%s: pole nieedytowalne', (typ, klucz) => {
+    const pola = getFieldDefinitionsForMode(typ, 'MODEL_EDIT').flatMap((s) => s.fields);
+    const pole = pola.find((f) => f.key === klucz);
+    expect(pole).toBeDefined();
+    expect(pole?.editable).toBe(false);
   });
 
   it('sn_voltage_kv: brak wartości odrzucony (requiredNumber)', () => {
     const wynik = validateField('Source', pole({ key: 'sn_voltage_kv', value: null }), null);
     expect(wynik.valid).toBe(false);
-    expect(wynik.code).toBe('E-REQ-02');
+    expect(wynik.code).toBe(KOD_ODMOWY_REJESTRU);
   });
 
   it('sn_voltage_kv: wartość dodatnia przechodzi', () => {
@@ -146,7 +142,7 @@ describe('validateField — Source.u_set_pu (napięcie zadane szyny bilansujące
   it('wartość poza pasmem 0,8-1,2 p.u. jest odrzucana', () => {
     const ponizej = validateField('Source', pole({ key: 'u_set_pu', value: 0.7 }), 0.7);
     expect(ponizej.valid).toBe(false);
-    expect(ponizej.code).toBe('E-RANGE-03');
+    expect(ponizej.code).toBe(KOD_ODMOWY_REJESTRU);
     const powyzej = validateField('Source', pole({ key: 'u_set_pu', value: 1.3 }), 1.3);
     expect(powyzej.valid).toBe(false);
   });

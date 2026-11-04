@@ -1551,6 +1551,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 Zakres obiektowy
               </span>
               <select
+                // stan-widoku: zakres i poziom szczegółowości raportu — parametr wydruku, nie dana modelu
                 value={scope}
                 onChange={(event) => {
                   setScope(event.target.value as typeof scope);
@@ -1570,6 +1571,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 Szczegółowość
               </span>
               <select
+                // stan-widoku: zakres i poziom szczegółowości raportu — parametr wydruku, nie dana modelu
                 value={detailLevel}
                 onChange={(event) => {
                   setDetailLevel(event.target.value as typeof detailLevel);

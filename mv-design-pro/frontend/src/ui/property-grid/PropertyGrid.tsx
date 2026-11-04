@@ -18,7 +18,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import type { ElementType, PropertyField, PropertySection as PropertySectionType, ValidationMessage } from '../types';
 import { type RuntimeOperatingMode } from '../operatingMode';
-import { getFieldDefinitionsForMode, SECTION_LABELS } from './field-definitions';
+import { getFieldDefinitionsForMode, SECTION_LABELS, wartoscPolaZModelu } from './field-definitions';
 import { useSelectionStore, useCanEdit } from '../selection';
 import { ValidationBadge, ValidationSummary, ValidationIcon } from './ValidationBadge';
 import { UnitLabel, ValueWithUnit } from './UnitLabel';
@@ -74,7 +74,7 @@ export function PropertyGrid({
       fields: section.fields.map((field) => {
         const baseField = {
           ...field,
-          value: elementData[field.key] ?? field.value,
+          value: wartoscPolaZModelu(elementType, field, elementData),
           validation: validationMessages.find((v) => v.field === field.key) ??
                       localValidationErrors.get(field.key),
         };
@@ -92,7 +92,7 @@ export function PropertyGrid({
         return baseField;
       }),
     }));
-  }, [sections, elementData, validationMessages, localValidationErrors, onAssignType, onClearType]);
+  }, [sections, elementType, elementData, validationMessages, localValidationErrors, onAssignType, onClearType]);
 
   // Combine backend + local validation messages for summary
   const allValidationMessages = useMemo(() => {
@@ -498,7 +498,7 @@ function PropertyFieldRow({
                   field.source === 'calculated' ? 'text-blue-700' : 'text-gray-900'
                 )}
               >
-                {formatValue(field.value)}
+                {field.enumLabels?.[String(field.value)] ?? formatValue(field.value)}
               </span>
             )}
           </>
@@ -598,7 +598,7 @@ function FieldInput({ field, onChange, elementType: _elementType }: FieldInputPr
         >
           {field.enumOptions?.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {field.enumLabels?.[option] ?? option}
             </option>
           ))}
         </select>

@@ -193,8 +193,9 @@ export interface TapChangerCatalogType {
   step_percent: number;
   range_percent: number;
   regulated_side: 'hv' | 'lv';
-  switching_time_s: number;
-  operations_before_maintenance_thousand: number;
+  // Bez `switching_time_s` i `operations_before_maintenance_thousand`: backend usunął je
+  // z pozycji (karta K-Q — dane konkretnego wyrobu bez źródła), typ udawał pola, których
+  // odpowiedź nie niesie (`audit2_catalogs.py::TapChangerItem`).
   supports_avr: boolean;
   applicable_to: string[];
 }
