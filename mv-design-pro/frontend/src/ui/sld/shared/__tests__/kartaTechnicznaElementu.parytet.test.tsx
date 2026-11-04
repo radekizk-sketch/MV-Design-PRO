@@ -18,7 +18,9 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, EnergyNetworkModel } from '../../../../types/enm';
+import { symbolIdForPrimaryDeviceKind } from '../../v3/compose/apparatusSequence';
+import { ROLA_SYMBOLU_PL } from '../identyfikatorAparatu';
 import { KartaTechnicznaElementu } from '../../../network-build/inspektor-elementu/KartaTechnicznaElementu';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import {
@@ -34,6 +36,28 @@ import {
 } from '../kartaTechnicznaElementu';
 
 type Wariant = 'pelne' | 'brak';
+
+/** Rejestr ZAMKNIĘTY rodzajów rekordu aparatu pola — nowy rodzaj w `types/enm.ts` bez wpisu
+ *  tu nie skompiluje się (iloczyn testu roli niżej). */
+const RODZAJE_REKORDU = {
+  CB: true,
+  LOAD_SWITCH: true,
+  DS: true,
+  ES: true,
+  CT: true,
+  VT: true,
+  CABLE_HEAD: true,
+  TRANSFORMER_DEVICE: true,
+  FUSE: true,
+  GENERATOR_PV: true,
+  GENERATOR_BESS: true,
+  GENERATOR_FW: true,
+  PCS: true,
+  BATTERY: true,
+  SURGE_ARRESTER: true,
+  UNBALANCE_CT: true,
+  PHASE_TO_PHASE_VT: true,
+} as const satisfies Record<BayPrimaryDeviceKind, true>;
 
 const KATALOGI: KatalogiKarty = {
   aparatySn: new Map([
@@ -296,6 +320,7 @@ function model(wariant: Wariant): EnergyNetworkModel {
         sk3_min_mva: jesli(180),
         ik3_min_ka: jesli(6.93),
         rx_ratio_min: jesli(0.12),
+        u_set_pu: jesli(1.05),
         catalog_ref: jesli('siec-110-250'),
         tags: [],
         meta: {},
@@ -463,6 +488,34 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     expect(w.get('izolacja')!.wartosc).toBe('polietylen usieciowany (XLPE)');
     expect(wiersze(karta('odcinek', 'brak')).get('material')!.wartosc).toBeNull();
   });
+
+  // Iloczyn: KAŻDY rodzaj rekordu aparatu pola (`BayPrimaryDeviceKind`, rejestr zamknięty
+  // `satisfies Record<…>`) × karta aparatu. Rola techniczna pochodzi z JEDNEGO słownika
+  // symboli kanwy (`ROLA_SYMBOLU_PL`) przez symbol, którym scena rysuje rekord
+  // (`symbolIdForPrimaryDeviceKind`); rekord bez symbolu na kanwie nie dostaje roli zastępczej.
+  it.each(Object.keys(RODZAJE_REKORDU) as BayPrimaryDeviceKind[])(
+    'aparat pola z rekordu %s: rola techniczna z rodzaju symbolu kanwy albo brak wiersza',
+    (kind) => {
+      const snapshot = model('pelne');
+      const zRekordem = {
+        ...snapshot,
+        bays: snapshot.bays.map((b) =>
+          b.ref_id === 'bay-in'
+            ? { ...b, primary_devices: [{ device_ref: 'dev-x', kind, symbol_ref: 'x', placement: 'MIDSTREAM', is_controllable: false }] }
+            : b,
+        ),
+      } as EnergyNetworkModel;
+      const k = buildKartaTechniczna(zRekordem, { kind: 'apparatus', elementId: 'dev-x' } as DaneElementuKanwy, KATALOGI);
+      expect(k?.rodzaj).toBe('aparat');
+      const symbol = symbolIdForPrimaryDeviceKind(kind);
+      const rola = wiersze(k!).get('rola');
+      if (symbol === null) {
+        expect(rola).toBeUndefined();
+        return;
+      }
+      expect(rola?.wartosc).toBe(ROLA_SYMBOLU_PL[symbol]);
+    },
+  );
 
   it('stacja bez transformatora w modelu: jawny stan pusty sekcji, nie tabliczka zastępcza', () => {
     const snapshot = model('pelne');

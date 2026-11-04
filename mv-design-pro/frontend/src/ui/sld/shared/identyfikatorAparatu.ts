@@ -7,8 +7,10 @@
  * pary ⟨pole, rodzaj aparatu⟩. Ta para ma JEDNĄ postać tekstową — `${bayRef}#${SymbolId}` —
  * budowaną i rozbieraną WYŁĄCZNIE tutaj. Czytają ją: menu kontekstowe kanwy i pasek działań
  * inspektora (`akcjeElementu.ts`), wykonawca akcji (`sldActionExecutor.ts`), rejestr menu
- * (`SldCommandService.ts`), stan łącznika (`ui/shared/stanLacznika.ts`) i karta aparatu
- * inspektora inżynierskiego (`InspectorEngineeringView.tsx`).
+ * (`SldCommandService.ts`), stan łącznika (`ui/shared/stanLacznika.ts`) i nagłówek aparatu
+ * inspektora inżynierskiego (`InspectorEngineeringView.tsx`). Rolę techniczną rekordu aparatu
+ * w karcie technicznej (`kartaTechnicznaElementu.ts`) daje ta sama tabela `ROLA_SYMBOLU_PL`
+ * przez symbol, którym scena rysuje rekord.
  *
  * Słownik rodzajów aparatu to `SymbolId` kanwy v3 — ten sam, którym scena rysuje symbol.
  * Nazwa rodzaju pochodzi z biblioteki symboli (`SYMBOL_DEFS[id].labelPl`, ta sama nazwa
@@ -100,10 +102,6 @@ export function rozbierzIdentyfikatorAparatu(
 /** Nazwa rodzaju aparatu — ta sama co w legendzie arkusza (`SYMBOL_DEFS.labelPl`). */
 export function nazwaAparatuPl(symbolId: SymbolId): string {
   return SYMBOL_DEFS[symbolId].labelPl;
-}
-
-export function rolaAparatuPl(symbolId: SymbolId): string {
-  return ROLA_SYMBOLU_PL[symbolId];
 }
 
 /** Głowica kablowa — jedyny aparat, z którego wyprowadza się ciąg główny SN. */

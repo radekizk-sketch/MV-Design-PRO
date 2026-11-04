@@ -94,9 +94,7 @@ import {
 } from '../shared/transformatoryStacji';
 import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
 import {
-  jestGlowicaKablowa,
   nazwaAparatuPl,
-  rolaAparatuPl,
   rozbierzIdentyfikatorAparatu,
   type IdentyfikatorAparatu,
 } from '../sld/shared/identyfikatorAparatu';
@@ -1032,131 +1030,35 @@ function isSemanticGpzSource(selectedElement: SelectedElement): boolean {
     || (selectedElement.type === 'Source' && selectedElement.id.includes('/substation'));
 }
 
-function formatBayLabelForApparatus(
-  bayRef: string,
-  snapshot: EnergyNetworkModel | null,
-  fieldItems: readonly FieldReadModelItem[],
-): string {
-  const fieldItem = fieldItems.find((item) => item.bay_ref === bayRef || item.bay_id === bayRef);
-  const bay = snapshot?.bays?.find((item) => item.ref_id === bayRef || item.id === bayRef);
-  return fieldItem?.bay_name ?? bay?.name ?? bayRef;
-}
-
-function bayVoltageLabel(
-  bayRef: string,
-  snapshot: EnergyNetworkModel | null,
-  fieldItems: readonly FieldReadModelItem[],
-): string {
-  const fieldItem = fieldItems.find((item) => item.bay_ref === bayRef || item.bay_id === bayRef);
-  const bay = snapshot?.bays?.find((item) => item.ref_id === bayRef || item.id === bayRef);
-  const gpzSectionBusRef = fieldItem?.canonical_model.base_model.gpz_section_id
-    ? snapshot?.substations
-      ?.flatMap((station) => station.gpz_sections ?? [])
-      .find((section) => section.section_id === fieldItem.canonical_model.base_model.gpz_section_id)
-      ?.bus_ref
-    : null;
-  const busRef = bay?.bus_ref ?? gpzSectionBusRef ?? null;
-  const bus = busRef ? findOperationalBus(snapshot, busRef) : null;
-  return bus ? `${bus.voltage_kv} kV` : 'nie wyznaczono';
-}
-
 /**
- * Karta APARATU pola trafionego na kanwie. Tożsamość ⟨pole, `SymbolId`⟩ pochodzi z tematu
- * kliknięcia kanwy (`refOperacjiTematu` → `rozbierzIdentyfikatorAparatu`, jeden parser);
- * nazwa rodzaju i rola z jednego słownika (`shared/identyfikatorAparatu.ts`). Operacje
- * aparatu (w tym „Wyprowadź ciąg główny z głowicy") daje pasek działań inspektora z rejestru
- * menu i jednego wykonawcy — karta nie buduje drugiej ścieżki tej samej operacji.
+ * Aparat pola trafiony na kanwie (`refOperacjiTematu` → `rozbierzIdentyfikatorAparatu`, jeden
+ * parser). Treść aparatu daje WYŁĄCZNIE karta techniczna panelu z kanwy
+ * (`kartaTechnicznaElementu.ts`: rekord aparatu z `deviceRef` sceny — nazwa, rola techniczna
+ * z jednego słownika symboli, dane znamionowe; symbol bez rekordu — karta pola), a operacje
+ * aparatu (w tym „Wyprowadź ciąg główny z głowicy") — pasek działań z rejestru menu i jednego
+ * wykonawcy. Ten widok dokłada tylko skrót konfiguracji pola, którego pasek nie ma; dawne
+ * sekcje „Parametry aparatu" / „Wyprowadzenie sieci SN" były drugą ścieżką tych samych danych
+ * i nie renderowały się nigdy, bo karta techniczna zastępuje sekcje widoku (K6).
  */
 function buildApparatusSectionsForElement(
   apparatus: IdentyfikatorAparatu,
-  snapshot: EnergyNetworkModel | null,
-  readinessIssues: ReadinessIssue[],
-  fieldItems: readonly FieldReadModelItem[],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
-  const apparatusLabel = nazwaAparatuPl(apparatus.symbolId);
-  const apparatusRole = rolaAparatuPl(apparatus.symbolId);
-  const bayLabel = formatBayLabelForApparatus(apparatus.bayRef, snapshot, fieldItems);
-  const voltageLabel = bayVoltageLabel(apparatus.bayRef, snapshot, fieldItems);
-  const readinessForApparatus = readinessIssues.filter((issue) =>
-    issueTargetsElement(issue, apparatus.bayRef),
-  );
-  const isCableHead = jestGlowicaKablowa(apparatus.symbolId);
-
-  const sections: PropertySection[] = [
-    {
-      id: 'ident',
-      label: 'Identyfikacja',
-      fields: [
-        { key: 'name', label: 'Nazwa', value: apparatusLabel },
-        { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
-        { key: 'bay', label: 'Pole powiązane', value: bayLabel },
-        { key: 'role', label: 'Rola techniczna', value: apparatusRole },
-      ],
-    },
-    {
-      id: 'engineering',
-      label: 'Parametry aparatu',
-      fields: [
-        { key: 'voltage', label: 'Napięcie odniesienia', value: voltageLabel },
-        { key: 'source', label: 'Źródło danych', value: 'Karta pola SN i katalog aparatury' },
-        {
-          key: 'edit_scope',
-          label: 'Zakres edycji',
-          value: 'Aparatura, przekładniki, zabezpieczenia i powiązania pola',
-        },
-      ],
-    },
-  ];
-
-  if (isCableHead) {
-    sections.push({
-      id: 'outgoing',
-      label: 'Wyprowadzenie sieci SN',
-      fields: [
-        {
-          key: 'rule',
-          label: 'Zasada projektowa',
-          value: 'Ciąg główny wyprowadza się wyłącznie z głowicy odpływowej pola SN.',
-        },
-        {
-          key: 'variants',
-          label: 'Dalsze warianty',
-          value: 'stacja transformatorowa, ZKSN, słup rozgałęźny albo kolejny odcinek ciągu',
-        },
-      ],
-    });
-  }
-
-  if (readinessForApparatus.length > 0) {
-    sections.push({
-      id: 'readiness',
-      label: 'Zakres obliczeń',
-      fields: readinessForApparatus.map((issue, index) => ({
-        key: `readiness_${index}`,
-        label: issue.severity === 'BLOCKER' ? 'Do konfiguracji' : 'Uwaga projektowa',
-        value: issue.message_pl,
-      })),
-    });
-  }
-
-  const actions: QuickAction[] = [
-    {
-      id: 'edit_field_apparatus',
-      label: 'Skonfiguruj pole SN',
-      op: 'update_element_parameters',
-      context: {
-        element_ref: apparatus.bayRef,
-        field_ref: apparatus.bayRef,
-        target_tab: 'apparatus',
-      },
-    },
-  ];
-
   return {
-    sections,
+    sections: [],
     elementType: 'apparatus',
-    elementName: apparatusLabel,
-    actions,
+    elementName: nazwaAparatuPl(apparatus.symbolId),
+    actions: [
+      {
+        id: 'edit_field_apparatus',
+        label: 'Skonfiguruj pole SN',
+        op: 'update_element_parameters',
+        context: {
+          element_ref: apparatus.bayRef,
+          field_ref: apparatus.bayRef,
+          target_tab: 'apparatus',
+        },
+      },
+    ],
   };
 }
 
@@ -2482,12 +2384,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const { sections, elementType, elementName, actions } = useMemo(
     () => {
       if (aparatZaznaczenia) {
-        return buildApparatusSectionsForElement(
-          aparatZaznaczenia,
-          snapshot,
-          readinessIssues,
-          fieldReadModelData.fields,
-        );
+        return buildApparatusSectionsForElement(aparatZaznaczenia);
       }
       if (isSelectedBay) {
         return buildBaySections(

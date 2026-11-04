@@ -12,7 +12,6 @@ import {
   jestGlowicaKablowa,
   jestSymbolem,
   nazwaAparatuPl,
-  rolaAparatuPl,
   rozbierzIdentyfikatorAparatu,
 } from '../identyfikatorAparatu';
 
@@ -62,9 +61,9 @@ describe('identyfikator aparatu — co NIE jest aparatem', () => {
 describe('słownik aparatu — jedna nazwa, jedna rola', () => {
   it.each(SYMBOLE)('%s ma nazwę z biblioteki symboli i niepustą rolę', (symbolId) => {
     expect(nazwaAparatuPl(symbolId)).toBe(SYMBOL_DEFS[symbolId].labelPl);
-    expect(rolaAparatuPl(symbolId).trim().length).toBeGreaterThan(10);
+    expect(ROLA_SYMBOLU_PL[symbolId].trim().length).toBeGreaterThan(10);
     // Rola nie powtarza kodu technicznego ani nazwy (to byłby pusty opis).
-    expect(rolaAparatuPl(symbolId)).not.toContain(symbolId);
+    expect(ROLA_SYMBOLU_PL[symbolId]).not.toContain(symbolId);
   });
 
   it('tabela ról ma dokładnie te klucze co biblioteka symboli', () => {

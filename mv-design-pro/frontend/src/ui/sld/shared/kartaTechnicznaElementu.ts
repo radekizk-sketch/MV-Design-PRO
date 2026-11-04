@@ -58,6 +58,8 @@ import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
+import { ROLA_SYMBOLU_PL } from './identyfikatorAparatu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
 // ---------------------------------------------------------------------------
@@ -231,7 +233,7 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'tr_blokowy',
     'kabel_sn',
   ],
-  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min'],
+  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min', 'u_set'],
   szyna: ['nazwa', 'napiecie', 'stacja', 'pola', 'galezie'],
 };
 
@@ -988,6 +990,13 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
   };
 }
 
+/** Rola techniczna aparatu z rekordu pola — rola symbolu, którym kanwa rysuje rekord. */
+function rolaRekordu(aparat: AparatPola): string | null {
+  const kind = aparat.urzadzenie?.kind;
+  const symbol = kind ? symbolIdForPrimaryDeviceKind(kind) : null;
+  return symbol ? ROLA_SYMBOLU_PL[symbol] : null;
+}
+
 function kartaAparatu(
   ix: IndeksModelu,
   aparat: AparatPola,
@@ -996,6 +1005,7 @@ function kartaAparatu(
   globalId: string | null,
 ): KartaTechniczna {
   const zn = znamionaAparatu(aparat, katalogi);
+  const rola = rolaRekordu(aparat);
   const nazwa = aparat.galaz
     ? publicTechnicalLabel(aparat.galaz.name, aparat.rodzajPl)
     : `${aparat.rodzajPl}${aparat.urzadzenie?.designation ? ` ${aparat.urzadzenie.designation}` : ''}`;
@@ -1015,6 +1025,10 @@ function kartaAparatu(
     : [
         wiersz('nazwa', 'Nazwa', nazwa, galaz ? { edycja: edycja(galaz.ref_id, 'name', galaz.name) } : {}),
         wiersz('rodzaj', 'Rodzaj', aparat.rodzajPl),
+        // Rola techniczna z JEDNEGO słownika symboli kanwy (`ROLA_SYMBOLU_PL`) — rekord pola
+        // rysowany jest symbolem `symbolIdForPrimaryDeviceKind`; rekord bez symbolu na kanwie
+        // (np. przekładnik niezrównoważenia baterii) nie ma roli w torze pola.
+        ...(rola ? [wiersz('rola', 'Rola techniczna', rola)] : []),
         wiersz('pole', 'Pole', nazwaPola(bay)),
         wiersz('stacja', 'Stacja', bay ? nazwaStacji(ix, stacjaPola(ix.model, bay.ref_id)) : null),
         ...(globalId ? [wiersz('identyfikator', 'Identyfikator na schemacie', globalId)] : []),
@@ -1243,6 +1257,17 @@ function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
           wiersz('rx_min', 'Stosunek R/X (min.)', zapisLiczby(s.rx_ratio_min, ''), { zrodloPl: z('rx_ratio_min') }),
         ],
         zrodloPl: zrodloDanychElementuPl(s, null),
+      },
+      {
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej (`Source.u_set_pu`) — parametr
+        // rozpływu mocy źródła; brak w modelu = „brak danych", bez domyślnego 1,0 p.u.
+        id: 'rozplyw',
+        tytul: 'Rozpływ mocy',
+        wiersze: [
+          wiersz('u_set', 'Napięcie zadane szyny bilansującej', zapisLiczby(s.u_set_pu, 'p.u.'), {
+            zrodloPl: z('u_set_pu'),
+          }),
+        ],
       },
     ],
   };

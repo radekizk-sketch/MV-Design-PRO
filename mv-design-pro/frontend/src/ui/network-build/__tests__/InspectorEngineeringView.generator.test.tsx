@@ -271,39 +271,25 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     }];
   });
 
-  it('pokazuje kartę projektową bez surowych identyfikatorów i z zabezpieczeniem nN', () => {
-    render(<InspectorEngineeringView />);
+  // Źródło z wpisem w modelu ma kartę techniczną panelu z kanwy (K6, `kartaZrodla`) — ona
+  // jest JEDYNYM opisem danych obiektu w inspektorze; dawne sekcje widoku (katalog falownika,
+  // NC RfG, FRT, zamiar zabezpieczenia nN) nie renderują się przy karcie. Pełną konfigurację
+  // falownika niesie powierzchnia E-21, otwierana z bloku akcji źródła przekształtnikowego,
+  // który zostaje obok karty. Do tej poprawki test sprawdzał sekcje niewidoczne dla
+  // użytkownika — panel czytał selekcję z niezamockowanego sklepu.
+  it('pokazuje kartę źródła bez surowych identyfikatorów i wejście do konfiguracji falownika', () => {
+    const { container } = render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Falownik PV w stacji')).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
+    expect(screen.getByTestId('inspektor-karta-wartosc-nazwa')).toHaveTextContent('Falownik PV 0.5 MW / 0.4 kV nN');
+    expect(screen.getByTestId('inspektor-karta-wartosc-stacja')).toHaveTextContent('Stacja PV ST-001');
+    expect(screen.getByTestId('inspektor-karta-wartosc-moc')).toHaveTextContent('0,5 MW');
     expect(screen.getByText('Konfiguracja falownika PV')).toBeInTheDocument();
     expect(screen.getByTestId('open-pv-inverter-config')).toBeInTheDocument();
-    expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
-    expect(screen.getByText('Huawei SUN2000-185KTL (185 kW · 0,4 kV)')).toBeInTheDocument();
-    expect(screen.getByText('Huawei')).toBeInTheDocument();
-    expect(screen.getByText('NC RfG i regulacja')).toBeInTheDocument();
-    expect(screen.getByText('PSE — Polskie Sieci Elektroenergetyczne')).toBeInTheDocument();
-    expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
-    // Karta FAB-L: etykieta modelu dynamicznego jest dziś REALNYM formatowaniem
-    // (`formatDerDynamicProfileLabelPl`) profilu backendu `default_pv_gfl`, nie
-    // zaszytym literałem starego katalogu frontu (usunięty razem z auto-selekcją
-    // „po rodzaju urządzenia"). Karta W6-1: etykieta niesie proweniencję jawnie.
-    expect(
-      screen.getByText(
-        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, t_odp=0.05 s)'
-          + ' [profil typowy normy: IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21]',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();
-    expect(screen.getAllByText('Falownik PV 0.5 MW / 0.4 kV nN').length).toBeGreaterThan(0);
-    expect(screen.getByText('Stacja PV ST-001')).toBeInTheDocument();
-    expect(screen.getByText('TR 15/0,4 kV 630 kVA Dyn11 · 15/0.4 kV · 0.63 MVA Dyn11')).toBeInTheDocument();
-    expect(screen.getByText('Elektrometal e2TANGO-400')).toBeInTheDocument();
-    expect(screen.getByText('wyłącznik nN źródła PV')).toBeInTheDocument();
-    expect(screen.getByText('falownik PV i kabel nN do PCC')).toBeInTheDocument();
-    expect(screen.getByText('nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN')).toBeInTheDocument();
     expect(screen.queryByText('pv-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('conv-pv-nn-0p5mw-0p4kv')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('conv-pv-nn-0p5mw-0p4kv');
     expect(screen.queryByText(/Hash semantyczny/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('NC RfG i regulacja')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('open-pv-inverter-config'));
     expect(openRouteSurface).toHaveBeenCalledWith(
@@ -316,24 +302,22 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     );
   });
 
-  it('również zwykłe kliknięcie generatora otwiera tę samą kartę projektową', () => {
+  it('również zwykłe kliknięcie generatora otwiera tę samą kartę źródła', () => {
     mockSelectedElements = [{
       id: 'pv-1',
       type: 'PVInverter',
       name: 'Falownik PV 0.5 MW / 0.4 kV nN',
     }];
 
-    render(<InspectorEngineeringView />);
+    const { container } = render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Elektrometal e2TANGO-400')).toBeInTheDocument();
-    expect(screen.getByText('wyłącznik nN źródła PV')).toBeInTheDocument();
-    // 2026-07-17: podtytuł nagłówka = rola układu + REALNY wariant
-    // przyłączenia z ENM (fixture: connection_variant='nn_side' →
-    // „Po stronie nN stacji"), nie dawny hardkod „PV za transformatorem
-    // SN/nN" (kłamał dla ról nie-PV i wariantów innych niż blokowy).
-    expect(screen.getAllByText('Po stronie nN stacji', { exact: false }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
+    expect(screen.getByTestId('inspektor-karta-wartosc-nazwa')).toHaveTextContent('Falownik PV 0.5 MW / 0.4 kV nN');
+    // Wariant przyłączenia z ENM (fixture: connection_variant='nn_side'), nie hardkod.
+    expect(screen.getByTestId('inspektor-karta-wartosc-wariant')).toHaveTextContent('po stronie nN stacji');
+    expect(screen.getByTestId('open-pv-inverter-config')).toBeInTheDocument();
     expect(screen.queryByText('pv-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('conv-pv-nn-0p5mw-0p4kv')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('conv-pv-nn-0p5mw-0p4kv');
   });
   it('dla klikalnego symbolu falownika bez wpisu ENM pokazuje pelny zakres karty bez falszywych wynikow', () => {
     const originalGenerators = snapshot.generators;
