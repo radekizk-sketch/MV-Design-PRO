@@ -56,8 +56,14 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
-import { czyFunkcjaNaSchemacie, funkcjaEaz, podzialFunkcjiNaSchemacie, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
-import { kodyFunkcjiSterownika, nazwaUrzadzeniaSterownika, sterownikPola } from '../../shared/sterownikZabezpieczen';
+import { czyFunkcjaNaSchemacie, etykietaFunkcjiEaz, funkcjaEaz, podzialFunkcjiNaSchemacie } from '../../shared/funkcjeEaz';
+import { aparatyWyzwalaneFunkcji, opisNastawFunkcji } from '../../shared/opisNastawSterownika';
+import {
+  kodyFunkcjiSterownika,
+  nazwaUrzadzeniaSterownika,
+  numerGrupyEfektywnej,
+  sterownikPola,
+} from '../../shared/sterownikZabezpieczen';
 import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
@@ -959,22 +965,23 @@ function opisGeneratora(g: Generator): string {
 }
 
 /**
- * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
- * KAŻDĄ funkcję sterownika pola (`ProtectionAssignment.funkcje`, włączoną) — kod (numer IEEE C37.2 albo skrót krajowy), zapis
- * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`),
- * miejsce na schemacie (blok przekaźnika niesie ≤ 4 kody zabezpieczeń, reszta to „+N" — ten sam
- * podział `podzialFunkcjiNaSchemacie`) i przejście do nastaw: pole z urządzeniem
- * zabezpieczeniowym → ekran E-27 (edytor nastaw), pole bez urządzenia → kreator przekaźnika
- * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
- * „brak w słowniku funkcji", nie zmyśloną nazwę.
+ * Sekcja „Zabezpieczenia i automatyka" karty pola (karta OCHRONA-JEDNO-ZRODLO, standard warsztatu
+ * §10): zwarta tabela — funkcja sterownika pola = wiersz (włączone funkcje w kolejności
+ * sterownika; dwa stopnie jednej funkcji to dwa wiersze): funkcja (zapis z rysunku i kod), nazwa,
+ * nastawy aktywnej grupy z jednostkami, czas (charakterystyka, TMS, zwłoki), aparat wyzwalany
+ * z macierzy wyzwoleń i miejsce na schemacie (blok przekaźnika niesie ≤ 4 kody zabezpieczeń,
+ * reszta to „+N" — ten sam podział `podzialFunkcjiNaSchemacie`). Wartości z JEDNEGO zapisu
+ * (`opisNastawFunkcji`), tego samego co edytor nastaw E-27. Przejście do edycji: pole ze
+ * sterownikiem → ekran E-27, pole bez sterownika → kreator przekaźnika (`add_relay`). Kod spoza
+ * słownika (model go nie dopuszcza) dostaje jawne „brak w słowniku funkcji".
  */
 function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty {
   const sterownik = sterownikPolaKarty(ix, bay);
   const kody = kodyFunkcjiSterownika(sterownik);
   const { naSchemacie } = podzialFunkcjiNaSchemacie(kody);
   const rysowane = new Set(naSchemacie);
-  const maUrzadzenie = sterownik !== null;
-  const akcja: AkcjaWierszaKarty = maUrzadzenie
+  const grupa = sterownik ? numerGrupyEfektywnej(sterownik) : null;
+  const akcja: AkcjaWierszaKarty = sterownik
     ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
     : {
         etykietaPl: 'Dodaj urządzenie (nastawy)',
@@ -990,34 +997,43 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty 
     tabele: [
       {
         klucz: 'funkcje_eaz',
-        podpis: 'Funkcje zabezpieczeń i automatyki pola',
+        podpis:
+          grupa !== null
+            ? `Funkcje zabezpieczeń i automatyki pola — nastawy grupy ${grupa} (aktywnej)`
+            : 'Funkcje zabezpieczeń i automatyki pola',
         kolumny: [
-          { klucz: 'kod', etykieta: 'Kod (ANSI)' },
-          { klucz: 'oznaczenie', etykieta: 'Oznaczenie' },
           { klucz: 'funkcja', etykieta: 'Funkcja' },
-          { klucz: 'rodzaj', etykieta: 'Rodzaj' },
-          { klucz: 'schemat', etykieta: 'Na schemacie' },
+          { klucz: 'nazwa', etykieta: 'Nazwa' },
+          { klucz: 'nastawy', etykieta: 'Nastawy' },
+          { klucz: 'czas', etykieta: 'Czas' },
+          { klucz: 'wylacznik', etykieta: 'Wyłącza' },
+          { klucz: 'schemat', etykieta: 'Schemat' },
         ],
-        wiersze: kody.map((kod) => {
-          const f = funkcjaEaz(kod);
-          return {
-            klucz: kod,
-            komorki: {
-              kod: f?.ansi ? `${kod} (ANSI ${f.ansi})` : kod,
-              oznaczenie: f?.oznaczeniePl ?? null,
-              funkcja: f?.nazwaPl ?? 'brak w słowniku funkcji',
-              rodzaj: f ? RODZAJ_FUNKCJI_EAZ_PL[f.rodzaj] : null,
-              schemat: rysowane.has(kod)
-                ? 'w bloku przekaźnika'
-                : czyFunkcjaNaSchemacie(kod)
-                  ? 'poza schematem (ponad 4 kody, „+N")'
-                  : 'poza schematem (automatyka)',
-            },
-            akcja,
-          };
-        }),
+        wiersze: (sterownik?.funkcje ?? [])
+          .filter((fn) => fn.wlaczona !== false)
+          .map((fn) => {
+            const f = funkcjaEaz(fn.kod);
+            const opis = opisNastawFunkcji(sterownik, fn, grupa ?? undefined);
+            return {
+              klucz: fn.ref,
+              komorki: {
+                funkcja: etykietaFunkcjiEaz(fn.kod),
+                nazwa: f?.nazwaPl ?? 'brak w słowniku funkcji',
+                nastawy: opis.nastawy ?? (opis.wSchemacie > 0 ? 'brak nastaw' : null),
+                czas: opis.czas,
+                wylacznik: aparatyWyzwalaneFunkcji(ix.model, bay, sterownik, fn.ref),
+                schemat: rysowane.has(fn.kod)
+                  ? 'w bloku'
+                  : czyFunkcjaNaSchemacie(fn.kod)
+                    ? '„+N"'
+                    : 'poza schematem',
+              },
+              akcja,
+            };
+          }),
         pustaPl: 'Pole nie ma funkcji zabezpieczeń ani automatyki w modelu.',
-        zrodloPl: 'Funkcje: model pola (Bay.protection_codes); nazwy: słownik funkcji EAZ.',
+        zrodloPl:
+          'Funkcje, nastawy i macierz wyzwoleń: sterownik pola w modelu; nazwy: rejestr funkcji EAZ.',
       },
     ],
   };

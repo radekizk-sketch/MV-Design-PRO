@@ -32,6 +32,14 @@ import type {
 } from '../../../../types/enm';
 import { isSwitchBranch } from '../../../../types/enm';
 import { stanObiektuLacznika } from '../../../shared/stanObiektu';
+import {
+  funkcjeWylaczajaceAparat,
+  funkcjeZasilaneZAparatu,
+  kodyFunkcjiSterownika,
+  refAparatuWyzwalanego,
+  sterownikPola,
+  wylacznikSterownika,
+} from '../../../shared/sterownikZabezpieczen';
 import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
@@ -1886,7 +1894,7 @@ function buildExplicitStationMiniBays(
       esState: states.esState,
       // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH, gdy pole niesie
       // zmaterializowane aparaty; `undefined` → konwencja §12.4.
-      primaryDevices: projectBayPrimaryDevices(bay, branchByRef, snapshot.bays),
+      primaryDevices: projectBayPrimaryDevices(bay, branchByRef, snapshot.bays, sterownikPola(snapshot, bay.ref_id)),
       // UX-04/POLE-BKR-MODEL: bateria na zacisku końca toru pola (ta sama funkcja co GPZ).
       ...bateriaWidokuPola(bay, snapshot),
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
@@ -2177,6 +2185,10 @@ export function projectBayPrimaryDevices(
   // Karta UX-04 (stan obiektu): wszystkie pola modelu — stan obiektu łącznika z gałęzi czyta
   // regułę `stanObiektuLacznika` (aparat pola wskazujący gałąź może leżeć w innym polu).
   polaModelu: readonly Bay[] | null | undefined,
+  // Karta OCHRONA-JEDNO-ZRODLO: sterownik pola (`sterownikPola`) — powiązania funkcji EAZ
+  // z aparatami (zasilane z przekładnika, wyłączane przez macierz) czyta się z NIEGO, nie
+  // z rekordu aparatu (jedna struktura zabezpieczeń w modelu).
+  sterownik: ProtectionAssignment | null = null,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
   if (!devices || devices.length === 0) {
@@ -2210,10 +2222,23 @@ export function projectBayPrimaryDevices(
       // i liczba uzwojeń wtórnych z rekordu — pola obecne tylko, gdy rekord je niesie.
       ...(device.naped ? { naped: device.naped } : {}),
       ...(device.wykonanie === 'WYSUWNE' ? { wysuwny: true } : {}),
-      ...(device.funkcje_eaz_zasilane?.length ? { funkcjeEazZasilane: [...device.funkcje_eaz_zasilane] } : {}),
-      ...(device.funkcje_eaz_wylaczajace?.length ? { funkcjeEazWylaczajace: [...device.funkcje_eaz_wylaczajace] } : {}),
+      ...zFunkcjamiEaz(
+        funkcjeZasilaneZAparatu(sterownik, device.device_ref),
+        funkcjeWylaczajaceAparat(sterownik, refAparatuWyzwalanego(device)),
+      ),
       ...(device.uzwojenia?.length ? { liczbaUzwojenWtornych: device.uzwojenia.length } : {}),
     }));
+}
+
+/** Powiązania funkcji EAZ aparatu — pola obecne tylko, gdy niepuste (jak dotąd). */
+function zFunkcjamiEaz(
+  zasilane: readonly string[],
+  wylaczajace: readonly string[],
+): Pick<BayPrimaryDeviceView, 'funkcjeEazZasilane' | 'funkcjeEazWylaczajace'> {
+  return {
+    ...(zasilane.length ? { funkcjeEazZasilane: [...zasilane] } : {}),
+    ...(wylaczajace.length ? { funkcjeEazWylaczajace: [...wylaczajace] } : {}),
+  };
 }
 
 /** Klasa wyrobu z katalogu (`materialized_params.device_kind`) → rodzaj aparatu pola —
@@ -2287,16 +2312,12 @@ function aparatyZGaleziPola(
 // =============================================================================
 
 /**
- * Projekcja adnotacji zabezpieczeń JEDNEGO pola (§17.2, zero zgadywania):
- * `Bay.protection_codes` (WYŁĄCZNIE gdy niepuste — inaczej `undefined`, „brak
- * danych = brak oznaczenia") + `Bay.protection_ref` rozwiązany na
- * `ProtectionAssignment` w `snapshot.protection_assignments` (SUROWE refy
- * `breaker_ref`/`ct_ref` — dopasowanie na aparat NARYSOWANEGO stosu dzieje
- * się w `compose/protectionMarking.ts`, ten adapter nie zna geometrii).
- * Zgodnie z modelem `Bay(ENMElement)` (`backend/src/enm/models.py:701-714`) —
- * w PRZECIWIEŃSTWIE do `primary_devices` (errata E1/V12K-030), `protection_codes`
- * i `protection_ref` żyją WPROST na snapshot `Bay`, nie na field-view — bez
- * defensywnego szwu (kanał danych już domknięty).
+ * Projekcja adnotacji zabezpieczeń JEDNEGO pola (§17.2, zero zgadywania): kody włączonych
+ * funkcji sterownika POLA (`sterownikPola`, WYŁĄCZNIE gdy niepuste — inaczej `undefined`,
+ * „brak danych = brak oznaczenia"), aparat wykonawczy z macierzy wyzwoleń i przekładniki
+ * z wejść sterownika (SUROWE refy — dopasowanie na aparat NARYSOWANEGO stosu dzieje się
+ * w `compose/protectionMarking.ts`, ten adapter nie zna geometrii). Karta
+ * OCHRONA-JEDNO-ZRODLO: jedna struktura zabezpieczeń w modelu — rekord pola nie niesie kodów.
  *
  * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana,
  * `snapshot` zwężony do `Pick<..., 'protection_assignments'>` (jedyne pole
@@ -2309,24 +2330,17 @@ export function resolveBayProtectionMarking(
   bay: Bay,
   snapshot: Pick<EnergyNetworkModel, 'protection_assignments'>,
 ): BayProtectionMarkingView | undefined {
-  const codes = bay.protection_codes ?? [];
+  const sterownik = sterownikPola(snapshot, bay.ref_id);
+  const codes = kodyFunkcjiSterownika(sterownik);
   if (codes.length === 0) return undefined;
-  const assignment = bay.protection_ref
-    ? (snapshot.protection_assignments ?? []).find(
-        (pa: ProtectionAssignment) => pa.ref_id === bay.protection_ref || pa.id === bay.protection_ref,
-      )
-    : undefined;
+  const ctStrony2 = sterownik?.wejscia?.ct_strony_2_refs ?? [];
   return {
     codes,
-    breakerRef: assignment?.breaker_ref,
-    ctRef: assignment?.ct_ref ?? undefined,
-    // F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
-    // różnicowej (87T) — `undefined` gdy puste (dana strefy niedostarczona,
-    // patrz `BayProtectionMarkingView.ctRefsSecondary` docstring).
-    ctRefsSecondary:
-      assignment?.ct_refs_secondary && assignment.ct_refs_secondary.length > 0
-        ? assignment.ct_refs_secondary
-        : undefined,
+    breakerRef: wylacznikSterownika(sterownik),
+    ctRef: sterownik?.wejscia?.ct_ref ?? undefined,
+    // F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT drugiej strony strefy różnicowej (87T)
+    // z wejść sterownika — `undefined` gdy puste (strefa 2×CT niemodelowana).
+    ctRefsSecondary: ctStrony2.length > 0 ? ctStrony2 : undefined,
   };
 }
 

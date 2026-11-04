@@ -13,6 +13,7 @@ from application.analyses.protection.base_values.models import (
     TransformerSide,
 )
 from application.analyses.protection.base_values.resolver import resolve_base_values
+from application.analyses.protection.catalog.catalog_store import profile_charakterystyk
 from application.analyses.protection.ocena_nadpradowa import (
     NastawaStopnia,
     progi_stopnia,
@@ -325,6 +326,16 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
         # Wyłączniki liniowe (bez pola) z przekładnikami i zabezpieczeniami przy nich — ekran
         # „Zabezpieczenia i automatyka" prowadzi z nich do kreatorów CT i zabezpieczenia.
         "wylaczniki_liniowe": wylaczniki_liniowe(enm.model_dump(mode="json")),
+        # Profile charakterystyk funkcji do wyboru w edytorze nastaw — ten sam predykat
+        # użyteczności co zapis (`update_protection_settings`) i ocena (karta
+        # OCHRONA-JEDNO-ZRODLO: wyrób i charakterystyki to dwa osobne odwołania sterownika).
+        "profile_charakterystyk": [
+            {
+                "kod": profil.device_id,
+                "etykieta_pl": " ".join(c for c in (profil.vendor, profil.model) if c),
+            }
+            for profil in profile_charakterystyk()
+        ],
     }
 
 

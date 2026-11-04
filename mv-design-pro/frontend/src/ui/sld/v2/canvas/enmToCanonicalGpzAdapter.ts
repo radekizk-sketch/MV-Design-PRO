@@ -26,7 +26,7 @@ import type {
   Substation,
   Transformer,
 } from '../../../../types/enm';
-import { kodyFunkcjiPola } from '../../../shared/sterownikZabezpieczen';
+import { kodyFunkcjiPola, sterownikPola } from '../../../shared/sterownikZabezpieczen';
 import type {
   BayFieldRole,
   CanonicalGpzBay,
@@ -558,7 +558,12 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
     // pierwotnych, przypisań zabezpieczeń i pomiarów w modelu daje tu `undefined` —
     // „brak danych = brak rysunku" (spec §17.2).
-    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef, protectionCtx.bays),
+    primaryDevices: projectBayPrimaryDevices(
+      bay,
+      protectionCtx.galezieWgRef,
+      protectionCtx.bays,
+      sterownikPola(protectionCtx, bay.ref_id),
+    ),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
     // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu

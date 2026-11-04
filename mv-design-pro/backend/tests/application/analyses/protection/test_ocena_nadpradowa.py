@@ -33,16 +33,15 @@ from application.analyses.protection.ocena_nadpradowa import (
     KOD_APARAT_OTWARTY,
     KOD_APARAT_POZA_TOREM,
     KOD_BRAK_MNOZNIKA,
-    KOD_BRAK_POZYCJI_KATALOGU,
     KOD_BRAK_PROGU,
     KOD_BRAK_PRZEKLADNIKA,
     KOD_BRAK_STOPNI,
     KOD_BRAK_ZWLOKI,
     KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
     KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
-    KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
     KOD_MNOZNIK_POZA_ZAKRESEM,
     KOD_PRAD_NIELICZBOWY,
+    KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
     KOD_PROG_POZA_ZAKRESEM,
     KOD_STREFA_NIEJEDNOZNACZNA,
     KOD_WEJSCIE_NIEZGODNE,
@@ -50,6 +49,9 @@ from application.analyses.protection.ocena_nadpradowa import (
     POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
     POMINIETE_WYLACZONE,
     WIARYGODNOSC_NIEUSTALONA,
+    ZRODLO_CHARAKTERYSTYK_PROJEKTANT,
+    ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+    ZRODLO_CHARAKTERYSTYK_WYROB,
     czas_stopnia,
     ocen_zabezpieczenia,
     prad_roboczy_przekaznika,
@@ -63,6 +65,7 @@ from enm.models import (
     Measurement,
     ProtectionAssignment,
 )
+from network_model.catalog.types import ProtectionDeviceType
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
@@ -216,6 +219,7 @@ def _przypisanie(
     *,
     ct_ref: str | None = "ct",
     catalog_ref: str | None = REL_REF,
+    charakterystyki_ref: str | None = None,
     is_enabled: bool = True,
 ) -> ProtectionAssignment:
     return sterownik(
@@ -226,6 +230,7 @@ def _przypisanie(
         catalog_ref=catalog_ref,
         stopnie=settings,
         is_enabled=is_enabled,
+        **({"charakterystyki_ref": charakterystyki_ref} if charakterystyki_ref else {}),
     )
 
 
@@ -339,17 +344,17 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
             None,
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
         ),
-        # zakres katalogu bez ustalonej jednostki (pozycja producenta bez karty w repo)
+        # profil charakterystyk wskazany przez projektanta, którego nie ma w katalogu
         (
-            _przypisanie(Q1, [_stopien_51()], catalog_ref=REL_BEZ_JEDNOSTKI),
+            _przypisanie(Q1, [_stopien_51()], charakterystyki_ref="PROFIL-NIEISTNIEJACY"),
             None,
-            KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
+            KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
         ),
-        # brak pozycji katalogu
+        # profil charakterystyk wskazany przez projektanta bez ustalonej jednostki zakresów
         (
-            _przypisanie(Q1, [_stopien_51()], catalog_ref=None),
+            _przypisanie(Q1, [_stopien_51()], charakterystyki_ref=REL_BEZ_JEDNOSTKI),
             None,
-            KOD_BRAK_POZYCJI_KATALOGU,
+            KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
         ),
         # brak przekładnika
         (_przypisanie(Q1, [_stopien_51()], ct_ref=None), None, KOD_BRAK_PRZEKLADNIKA),
@@ -367,6 +372,143 @@ def test_kazdy_brak_jest_nazwany_i_blokuje_ocene(przypisanie, ct, kod) -> None:
     kody = {b.kod for b in nastawy.braki}
     assert kod in kody
     assert all(b.akcja_naprawcza_pl for b in nastawy.braki)
+
+
+# ---------------------------------------------------------------------------
+# Wyrób (catalog_ref) i charakterystyki funkcji (charakterystyki_ref) — dwa odwołania sterownika.
+# Iloczyn: źródło charakterystyk {projektant, wyrób z profilem, wyrób bez profilu, profil bez
+# jednostki, brak wyrobu} × zgodność nastawy z profilem {zgodna, krzywa spoza profilu} ×
+# skutek {blokada, sprawdzenie na założeniu}.
+# ---------------------------------------------------------------------------
+
+#: Wyrób z kartą w katalogu urządzeń bez profilu analitycznego (``analytical_library_ref``) —
+#: postać karty wyrobu, który podaje dane urządzenia, ale nie zakresy nastaw funkcji.
+WYROB_BEZ_PROFILU = "WYROB-BEZ-ZAKRESOW"
+
+
+class _KatalogZWyrobemBezProfilu:
+    """Resolver katalogu modelu z jedną dodatkową kartą wyrobu bez profilu analitycznego."""
+
+    def __init__(self, bazowy: Any) -> None:
+        self._bazowy = bazowy
+
+    def get_protection_device_type(self, ref: str) -> ProtectionDeviceType | None:
+        if ref == WYROB_BEZ_PROFILU:
+            return ProtectionDeviceType(
+                id=WYROB_BEZ_PROFILU,
+                name_pl="Sterownik polowy (karta bez zakresów nastaw)",
+                analytical_library_ref=None,
+            )
+        return self._bazowy.get_protection_device_type(ref)
+
+
+@pytest.fixture
+def katalog_z_wyrobem_bez_profilu(monkeypatch: pytest.MonkeyPatch) -> None:
+    import application.analyses.protection.ocena_nadpradowa as modul
+
+    oryginal = modul.katalog_dla_modelu
+    monkeypatch.setattr(
+        modul, "katalog_dla_modelu", lambda enm: _KatalogZWyrobemBezProfilu(oryginal(enm))
+    )
+
+
+@pytest.mark.parametrize(
+    ("catalog_ref", "charakterystyki_ref", "zrodlo", "profil", "fragment_powodu"),
+    [
+        (REL_REF, None, ZRODLO_CHARAKTERYSTYK_WYROB, "REF-OC-200", None),
+        (REL_REF, "REF-OC-EF-300", ZRODLO_CHARAKTERYSTYK_PROJEKTANT, "REF-OC-EF-300", None),
+        (None, "REF-OC-200", ZRODLO_CHARAKTERYSTYK_PROJEKTANT, "REF-OC-200", None),
+        (None, None, ZRODLO_CHARAKTERYSTYK_ROBOCZE, "REF-OC-EF-300", "nie wskazuje wyrobu"),
+        (
+            REL_BEZ_JEDNOSTKI,
+            None,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            "REF-OC-EF-300",
+            "nie mają ustalonej jednostki",
+        ),
+        (
+            WYROB_BEZ_PROFILU,
+            None,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            "REF-OC-EF-300",
+            "nie podaje zakresów",
+        ),
+    ],
+    ids=[
+        "wyrob",
+        "projektant_przed_wyrobem",
+        "projektant_bez_wyrobu",
+        "brak_wyrobu",
+        "profil_bez_jednostki",
+        "wyrob_bez_profilu",
+    ],
+)
+@pytest.mark.usefixtures("katalog_z_wyrobem_bez_profilu")
+def test_charakterystyki_z_jednego_rozstrzygniecia_wg_pierwszenstwa(
+    catalog_ref: str | None,
+    charakterystyki_ref: str | None,
+    zrodlo: str,
+    profil: str,
+    fragment_powodu: str | None,
+) -> None:
+    """Brak zakresów w karcie wyrobu nie blokuje oceny (zasada nr 4): profil roboczy, dana
+    przyjęta ``ESTIMATED`` w danych przyjętych rekordu, kompletność ``NIEPELNY``. Profil
+    wyrobu albo projektanta jest daną źródłową — rekord bez danej przyjętej charakterystyk."""
+    przypisanie = _przypisanie(
+        Q2, [_stopien_51()], catalog_ref=catalog_ref, charakterystyki_ref=charakterystyki_ref
+    )
+    nastawy = rozwiaz_nastawy(_model(), przypisanie)
+    assert nastawy.gotowe, nastawy.braki
+    assert nastawy.charakterystyki is not None
+    assert (nastawy.charakterystyki.zrodlo, nastawy.charakterystyki.zdolnosc.device_id) == (
+        zrodlo,
+        profil,
+    )
+    (ocena,) = _ocen(_model(przypisanie)).oceny
+    dane = ocena.ocena.dowod.status_danych.dane_przyjete
+    nazwy = [d.nazwa_pl for d in dane if d.nazwa_pl.startswith("charakterystyki funkcji")]
+    if fragment_powodu is None:
+        assert nazwy == []
+        assert nastawy.charakterystyki.dana_przyjeta is None
+        assert ocena.ocena.dowod.status_danych.stan == "ZWALIDOWANE"
+    else:
+        dana = nastawy.charakterystyki.dana_przyjeta
+        assert dana is not None and dana.jakosc == "ESTIMATED"
+        assert fragment_powodu in dana.powod_pl
+        assert nazwy == [dana.nazwa_pl]
+        assert ocena.ocena.dowod.status_danych.stan == "UNVALIDATED_INPUT"
+        assert ocena.ocena.kompletnosc_dowodu == "NIEPELNY"
+    assert nastawy.to_dict()["charakterystyki"]["zrodlo"] == zrodlo
+
+
+@pytest.mark.parametrize(
+    ("catalog_ref", "blokuje"),
+    [(REL_REF, True), (None, False), (WYROB_BEZ_PROFILU, False)],
+    ids=["profil_wyrobu_blokuje", "profil_roboczy_brak_wyrobu", "profil_roboczy_bez_zakresow"],
+)
+@pytest.mark.parametrize(
+    ("stopien_poza", "kod"),
+    [
+        (lambda: _stopien_51(krzywa="IEC_EI"), KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU),
+        (lambda: _stopien_51(tms=1.5), KOD_MNOZNIK_POZA_ZAKRESEM),
+        (lambda: _stopien_51(prog=0.1), KOD_PROG_POZA_ZAKRESEM),
+    ],
+    ids=["krzywa", "mnoznik", "prog"],
+)
+@pytest.mark.usefixtures("katalog_z_wyrobem_bez_profilu")
+def test_niezgodnosc_z_profilem_blokuje_tylko_dla_danej_zrodlowej(
+    catalog_ref: str | None, blokuje: bool, stopien_poza: Any, kod: str
+) -> None:
+    """Predykat parami: zgodność nastawy z profilem jest blokadą, gdy profil jest daną wyrobu,
+    a sprawdzeniem na założeniu (widocznym w ``sprawdzenia`` z ``w_zakresie=False``), gdy profil
+    jest wartością roboczą — założenie nie może zatrzymać oceny (zasada nr 4)."""
+    nastawy = rozwiaz_nastawy(_model(), _przypisanie(Q1, [stopien_poza()], catalog_ref=catalog_ref))
+    kody = {b.kod for b in nastawy.braki}
+    assert (kod in kody) is blokuje
+    assert nastawy.gotowe is (not blokuje)
+    if not blokuje and kod != KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU:
+        (stopien,) = nastawy.stopnie
+        assert any(not s["w_zakresie"] for s in stopien.slad["sprawdzenia_zakresu"])
 
 
 def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:

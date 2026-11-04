@@ -2,7 +2,8 @@
 export { KreatorPrzekaznika } from './KreatorPrzekaznika';
 export {
   EdytorNastawZabezpieczenia,
-  formularzZNastaw,
-  nastawyZFormularza,
+  formularzZeSterownika,
+  ladunekZapisu,
+  nastawyDoZapisu,
 } from './EdytorNastawZabezpieczenia';
 export type { EdytorNastawZabezpieczeniaProps } from './EdytorNastawZabezpieczenia';

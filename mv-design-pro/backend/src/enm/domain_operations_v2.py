@@ -1139,6 +1139,29 @@ def _kody_z_ladunku(payload: dict[str, Any]) -> tuple[list[str] | None, dict[str
     return list(zestaw), None
 
 
+def _odmowa_profilu_charakterystyk(profil_ref: Any, opis: str) -> dict[str, Any] | None:
+    """Odmowa wskazania profilu charakterystyk funkcji (``charakterystyki_ref``) — albo ``None``.
+
+    Charakterystyki (zakresy nastaw, krzywe) to odwołanie OSOBNE od wyrobu (``catalog_ref``):
+    ``None`` zdejmuje wskazanie (ocena wraca do profilu wyrobu albo profilu roboczego, zasada
+    nr 4). Predykat użyteczności profilu jest JEDEN dla zapisu i oceny
+    (`catalog_store.profil_charakterystyk`) — wspólny dla `add_relay`
+    i `update_protection_settings`.
+    """
+    from application.analyses.protection.catalog.catalog_store import profil_charakterystyk
+
+    if profil_ref is None:
+        return None
+    if isinstance(profil_ref, str) and profil_charakterystyk(profil_ref) is not None:
+        return None
+    return _error_response(
+        f"Profil charakterystyk „{profil_ref}” dla {opis} nie istnieje w katalogu analitycznym "
+        "albo nie ma ustalonej jednostki zakresów nastaw — wybierz profil z listy profili "
+        "charakterystyk.",
+        "relay.characteristics_invalid",
+    )
+
+
 def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj sterownik zabezpieczeń do pola stacji albo do wyłącznika liniowego.
 
@@ -1211,7 +1234,22 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     kody, blad_kodow = _kody_z_ladunku(payload)
     if blad_kodow is not None:
         return blad_kodow
-    istniejacy = sterownik_pola(enm, field_ref) if field_ref else None
+    # Jeden sterownik na kotwicę: pole (``sterownik_pola``) albo wyłącznik liniowy bez pola —
+    # sterownik o referencji deterministycznej tego wyłącznika. Bez drugiej gałęzi ponowny
+    # dobór przy wyłączniku liniowym nie widział istniejącego sterownika (bramka CT pytała
+    # o wszystkie funkcje jak o nowe, a zapis dokładał drugi rekord o tej samej referencji).
+    istniejacy = (
+        sterownik_pola(enm, field_ref)
+        if field_ref
+        else next(
+            (
+                p
+                for p in enm.get("protection_assignments") or []
+                if p.get("ref_id") == referencja_sterownika_pola(str(breaker_ref))
+            ),
+            None,
+        )
+    )
     if kody is None:
         kody = [str(f.get("kod")) for f in (istniejacy or {}).get("funkcje") or []]
     if not kody:
@@ -1321,6 +1359,13 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
     if prad_wejscia is not None:
         sterownik["prad_znamionowy_wejscia_a"] = prad_wejscia
+    if "charakterystyki_ref" in payload:
+        odmowa_profilu = _odmowa_profilu_charakterystyk(
+            payload["charakterystyki_ref"], f"zabezpieczenia {nazwa}"
+        )
+        if odmowa_profilu is not None:
+            return odmowa_profilu
+        sterownik["charakterystyki_ref"] = payload["charakterystyki_ref"]
 
     # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
     roboczy = kopia_graniczna_enm(enm)
@@ -1379,7 +1424,9 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
       scenariusza, nie zmienia modelu);
     * ``funkcje`` — zestaw kodów funkcji (funkcja, która zostaje, zachowuje nastawy);
     * ``wlaczone`` — ``{funkcja_ref: bool}``;
-    * ``macierz_wyzwolen``, ``wejscia``, ``prad_znamionowy_wejscia_a``.
+    * ``macierz_wyzwolen``, ``wejscia``, ``prad_znamionowy_wejscia_a``;
+    * ``charakterystyki_ref`` — profil charakterystyk funkcji (``None`` zdejmuje wskazanie),
+      odrzucany kodem ``relay.characteristics_invalid``, gdy profil nie jest użyteczny.
 
     Niekompletne nastawy przechodzą (brak gotowości nazywa ocena), sprzeczne są odrzucane
     kodem ``relay.settings_invalid`` — reguła `enm.nastawy_zabezpieczen.bledy_sterownika`,
@@ -1452,6 +1499,11 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
     for klucz in ("macierz_wyzwolen", "wejscia", "prad_znamionowy_wejscia_a"):
         if klucz in payload:
             sterownik[klucz] = payload[klucz]
+    if "charakterystyki_ref" in payload:
+        odmowa_profilu = _odmowa_profilu_charakterystyk(payload["charakterystyki_ref"], opis)
+        if odmowa_profilu is not None:
+            return odmowa_profilu
+        sterownik["charakterystyki_ref"] = payload["charakterystyki_ref"]
     aktywna = sterownik.get("aktywna_grupa", 1)
     grupy = sterownik.get("grupy_nastaw") or []
     if grupy and not any(g.get("numer") == aktywna for g in grupy):

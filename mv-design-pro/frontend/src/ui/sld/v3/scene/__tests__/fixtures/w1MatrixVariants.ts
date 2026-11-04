@@ -16,6 +16,7 @@
  * transformatorowe LBS-FUSE+ES · CB+CT+zabezpieczenie.
  */
 
+import { sterownikTestowy } from '../../../../../../test/sterownik';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -269,7 +270,10 @@ export function buildW1MatrixFixture(): W1MatrixFixture {
     const bay = polaSn(station.ref_id).find((b) => (b.field_role ?? b.bay_role) === variant.targetRole)!;
     bay.primary_devices = variant.devices.map((d) => ({ ...d })) as Bay['primary_devices'];
     if (variant.protectionCodes) {
-      bay.protection_codes = [...variant.protectionCodes];
+      // Karta OCHRONA-JEDNO-ZRODLO: kody funkcji pola niesie sterownik pola (jedna struktura).
+      (enm.protection_assignments ??= []).push(
+        sterownikTestowy({ bayRef: bay.ref_id, kody: [...variant.protectionCodes] }),
+      );
     }
     targets.push({ variant, stationRef: station.ref_id, fieldRef: bay.ref_id });
   }

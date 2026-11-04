@@ -1122,9 +1122,13 @@ class ProtectionAssignment(ENMElement):
 
     Karta OCHRONA-JEDNO-ZRODLO (dyrektywa właściciela 2026-11-04, ADR-022). Sterownik stoi
     w polu (``bay_ref``) albo przy wyłączniku liniowym bez pola (pole ``None``, wyłącznik
-    w macierzy wyzwoleń); wskazuje pozycję katalogu urządzeń (``catalog_ref``, przestrzeń
-    ``ZABEZPIECZENIE``) i wariant wejścia prądowego (``prad_znamionowy_wejscia_a`` — 1 A albo
-    5 A). Funkcje są GENERYCZNE: kod z rejestru `network_model.catalog.funkcje_eaz` (schemat
+    w macierzy wyzwoleń); wskazuje WYRÓB z kartą producenta (``catalog_ref`` — pozycja
+    katalogu urządzeń, przestrzeń ``ZABEZPIECZENIE``) i OSOBNO charakterystyki analityczne
+    funkcji (``charakterystyki_ref`` — profil katalogu analitycznego z zakresami nastaw
+    i krzywymi; ``None`` — profil z wyrobu albo profil roboczy wg zasady nr 4,
+    `application.analyses.protection.ocena_nadpradowa.charakterystyki_sterownika`) oraz
+    wariant wejścia prądowego (``prad_znamionowy_wejscia_a`` — 1 A albo 5 A). Funkcje są
+    GENERYCZNE: kod z rejestru `network_model.catalog.funkcje_eaz` (schemat
     nastaw i wymagane wejścia), nastawy w grupach 1–4, aktywna grupa bazowa, macierz wyzwoleń
     (funkcja → wyłącznik; SPZ to funkcja 79 z nastawami w grupie i pobudzeniem w macierzy).
     Kody funkcji pola na schemacie, karta pola, oceny i raporty czytają TĘ strukturę
@@ -1141,6 +1145,7 @@ class ProtectionAssignment(ENMElement):
     bay_ref: str | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
+    charakterystyki_ref: str | None = None
     prad_znamionowy_wejscia_a: float | None = Field(default=None, gt=0)
     wejscia: WejsciaZabezpieczenia = Field(default_factory=WejsciaZabezpieczenia)
     funkcje: list[FunkcjaZabezpieczenia] = []
@@ -1858,7 +1863,6 @@ class BaySecondaryArchitecture(BaseModel):
         "mieszany",
         "brak",
     ] = "brak"
-
 
 
 class AlarmEntry(BaseModel):

@@ -669,6 +669,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_item_id",
             "catalog_item_version",
             "catalog_ref",
+            "charakterystyki_ref",
             "field_ref",
             "funkcje",
             "name",
@@ -689,6 +690,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("protection_ref",),
         optional_fields=(
             "aktywna_grupa",
+            "charakterystyki_ref",
             "funkcje",
             "grupa",
             "macierz_wyzwolen",

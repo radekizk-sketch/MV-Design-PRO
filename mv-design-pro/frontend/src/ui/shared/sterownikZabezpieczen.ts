@@ -73,6 +73,18 @@ export function aparatySterownika(sterownik: ProtectionAssignment | null | undef
   return [...zbior].sort();
 }
 
+/** Aparat wykonawczy sterownika na schemacie — pierwszy aparat macierzy pierwszej włączonej
+ *  funkcji, która cokolwiek wyzwala (kolejność funkcji sterownika); `undefined` — sterownik
+ *  niczego nie wyzwala (bez domysłu z pola). */
+export function wylacznikSterownika(sterownik: ProtectionAssignment | null | undefined): string | undefined {
+  for (const f of sterownik?.funkcje ?? []) {
+    if (f.wlaczona === false) continue;
+    const aparat = aparatyFunkcji(sterownik, f.ref)[0];
+    if (aparat) return aparat;
+  }
+  return undefined;
+}
+
 /** Referencja aparatu pola w macierzy wyzwoleń: gałąź, którą reprezentuje, albo sam aparat. */
 export function refAparatuWyzwalanego(aparat: Pick<BayPrimaryDevice, 'device_ref' | 'linked_ref'>): string {
   return aparat.linked_ref ?? aparat.device_ref;

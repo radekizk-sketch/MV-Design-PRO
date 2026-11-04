@@ -377,9 +377,8 @@ def test_wynik_jest_deterministyczny() -> None:
     ("model", "kod_braku"),
     [
         (lambda: _enm(ct_ref=None), "zabezpieczenia.brak_przekladnika"),
-        (lambda: _enm(catalog_ref=None), "zabezpieczenia.brak_pozycji_katalogu"),
     ],
-    ids=["bez_przekladnika", "bez_pozycji_katalogu"],
+    ids=["bez_przekladnika"],
 )
 def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: str) -> None:
     """Iloczyn braków urządzenia (przekładnik, katalog) — każdy daje brak
@@ -391,6 +390,29 @@ def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
     assert kod_braku in {b["kod"] for b in czas["braki_nastaw"]}
+
+
+@pytest.mark.parametrize(
+    ("catalog_ref", "robocze"),
+    [(PRZEKAZNIK_KATALOG, False), (None, True)],
+    ids=["wyrob_z_profilem", "bez_wyrobu_profil_roboczy"],
+)
+def test_brak_wyrobu_nie_blokuje_czasu_a_profil_roboczy_jest_zalozeniem(
+    catalog_ref: str | None, robocze: bool
+) -> None:
+    """Zasada nr 4: sterownik bez wyrobu z zakresami nastaw dostaje profil roboczy
+    charakterystyk — czas wyłączenia jest liczony, a założenie stoi w komentarzu obliczeń
+    (``zalozenia_pl``) i w źródle charakterystyk. Czerwony na bazie: brak pozycji katalogu
+    dawał ``READINESS_BRAK_NASTAW`` i pole bez czasu."""
+    czas = _czas(enm=_enm(catalog_ref=catalog_ref))
+    assert czas["kody_gotowosci"] == []
+    # 5 A wtórne × 400/5 = 400 A < 8 kA → DT 0,3 s + czas własny roboczy 0,060 s
+    assert czas["czlon_nastawczy_s"] == pytest.approx(0.3)
+    assert czas["charakterystyki"]["zrodlo"] == ("WARTOSC_ROBOCZA" if robocze else "WYROB")
+    zalozenia_charakterystyk = [z for z in czas["zalozenia_pl"] if "profil" in z]
+    assert bool(zalozenia_charakterystyk) is robocze
+    if robocze:
+        assert czas["charakterystyki"]["jakosc"] == "ESTIMATED"
 
 
 def test_prog_bez_strony_przekladnika_odrzuca_model() -> None:

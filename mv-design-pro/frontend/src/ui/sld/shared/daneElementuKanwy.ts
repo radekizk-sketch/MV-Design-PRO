@@ -25,6 +25,7 @@ import type {
   Substation,
 } from '../../../types/enm';
 import type { SelectedElement } from '../../types';
+import { sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { getMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
@@ -650,7 +651,12 @@ export function buildDaneElementuStacji(
       } else {
         // UX-04/POLE-LINIOWE-WZORZEC: TA SAMA sekwencja co rysunek (porty ENM albo
         // `placement`, `orderedSymbolPrimaryDevices`) i ten sam wybór symbolu (wariant rysunku).
-        const sekwencja = orderedSymbolPrimaryDevices(projectBayPrimaryDevices(poleTrafione, galezieWgRef, snapshot?.bays) ?? [])
+        const sekwencja = orderedSymbolPrimaryDevices(projectBayPrimaryDevices(
+          poleTrafione,
+          galezieWgRef,
+          snapshot?.bays,
+          sterownikPola(snapshot, poleTrafione.ref_id),
+        ) ?? [])
           .map((d) => ({ ref: d.deviceRef, symbol: symbolAparatuPola(d), oznaczenie: d.designation }))
           .filter((d): d is { ref: string; symbol: NonNullable<typeof d.symbol>; oznaczenie: string | undefined } => d.symbol != null);
         const identyfikatory = apparatusIdentifiers(

@@ -205,7 +205,9 @@ def _grupy(enm: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _wartosci(enm: dict[str, Any], grupa: int) -> dict[str, dict[str, Any]]:
     (wpis,) = (g for g in _grupy(enm) if g["numer"] == grupa)
-    return {f["funkcja_ref"]: {n["klucz"]: n["wartosc"] for n in f["nastawy"]} for f in wpis["funkcje"]}
+    return {
+        f["funkcja_ref"]: {n["klucz"]: n["wartosc"] for n in f["nastawy"]} for f in wpis["funkcje"]
+    }
 
 
 @pytest.mark.parametrize("grupa", NUMERY_GRUP_NASTAW)
@@ -303,3 +305,139 @@ def test_nastawy_w_grupie_nieaktywnej_nie_zmieniaja_grupy_aktywnej() -> None:
     )
     assert _sterownik(enm)["aktywna_grupa"] == 2
     assert _wartosci(enm, 1) == {f: dict(sorted(w.items())) for f, w in KOMPLET.items()}
+
+
+# ---------------------------------------------------------------------------
+# Bramka przekładnika prądowego ``add_relay`` — iloczyn: funkcja dokładana {prądowa, LoM bez
+# prądu} × funkcja prądowa już w sterowniku {nie, tak} × przekładnik {brak}. Predykat parami:
+# bramka pyta o funkcje DOKŁADANE (zbiór nowych kodów), brak wejścia funkcji istniejącej nazywa
+# ocena (`enm.zabezpieczenie.brakujace_wejscia`).
+# ---------------------------------------------------------------------------
+
+
+@cache
+def _siec_bez_przekladnika_bazowa() -> tuple[dict[str, Any], str]:
+    enm, odcinek_gpz, _odcinek_s01 = siec_magistrali()
+    przed = {g["ref_id"] for g in enm["branches"]}
+    enm = operacja(
+        enm,
+        "insert_section_switch_sn",
+        {
+            "segment_id": odcinek_gpz,
+            "insert_at": {"mode": "RATIO", "value": POLOZENIE_WYLACZNIKA},
+            "switch_type": "WYLACZNIK",
+            "catalog_ref": KATALOG_APARATU,
+            "switch_name": "Wyłącznik liniowy bez przekładnika",
+        },
+    )
+    (wylacznik,) = (
+        g["ref_id"] for g in enm["branches"] if g["ref_id"] not in przed and g["type"] == "breaker"
+    )
+    return enm, wylacznik
+
+
+def _relay_bez_ct(enm: dict[str, Any], wylacznik: str, funkcje: list[str]) -> dict[str, Any]:
+    return execute_domain_operation(
+        copy.deepcopy(enm),
+        "add_relay",
+        {
+            "breaker_ref": wylacznik,
+            "funkcje": funkcje,
+            "catalog_ref": KATALOG_PRZEKAZNIKA,
+            "name": "Sterownik bez przekładnika",
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("istniejace", "dokladane", "odmowa"),
+    [
+        ([], ["51"], True),
+        ([], ["81R"], False),
+        (["51", "81R"], ["51", "81R", "81U"], False),
+        (["51", "81R"], ["51", "81R", "81U", "50"], True),
+    ],
+    ids=["nowa_pradowa", "nowa_lom", "lom_przy_istniejacej_pradowej", "nowa_pradowa_przy_lom"],
+)
+def test_bramka_przekladnika_dotyczy_wylacznie_funkcji_dokladanych(
+    istniejace: list[str], dokladane: list[str], odmowa: bool
+) -> None:
+    enm, wylacznik = _siec_bez_przekladnika_bazowa()
+    if istniejace:
+        pierwszy = _relay_bez_ct(enm, wylacznik, ["81R"])
+        assert pierwszy.get("error") is None, pierwszy.get("error")
+        enm = operacja(
+            pierwszy["snapshot"],
+            "update_protection_settings",
+            {"protection_ref": pierwszy["selection_hint"]["element_id"], "funkcje": istniejace},
+        )
+    wynik = _relay_bez_ct(enm, wylacznik, dokladane)
+    if odmowa:
+        assert wynik.get("error_code") == "relay.ct_missing"
+        return
+    assert wynik.get("error") is None, wynik.get("error")
+    (sterownik,) = (
+        p
+        for p in wynik["snapshot"]["protection_assignments"]
+        if p["ref_id"] == wynik["selection_hint"]["element_id"]
+    )
+    assert sorted(f["kod"] for f in sterownik["funkcje"]) == sorted(
+        set(istniejace) | set(dokladane)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Charakterystyki funkcji — odwołanie OSOBNE od wyrobu. Predykat parami: zapis przyjmuje profil
+# wtedy i tylko wtedy, gdy ocena czyta go jako profil projektanta (jeden predykat
+# `catalog_store.profil_charakterystyk`) — dla KAŻDEGO rekordu katalogu analitycznego.
+# ---------------------------------------------------------------------------
+
+
+def _profile_analityczne() -> list[str]:
+    from application.analyses.protection.catalog.catalog_store import list_devices
+
+    return [d.device_id for d in list_devices()]
+
+
+@pytest.mark.parametrize("profil", [*_profile_analityczne(), "PROFIL-NIEISTNIEJACY"])
+def test_zapis_profilu_charakterystyk_i_ocena_z_jednego_predykatu(profil: str) -> None:
+    from application.analyses.protection.catalog.catalog_store import profil_charakterystyk
+    from application.analyses.protection.ocena_nadpradowa import (
+        ZRODLO_CHARAKTERYSTYK_PROJEKTANT,
+        charakterystyki_sterownika,
+    )
+    from enm.models import EnergyNetworkModel
+
+    enm, zabezpieczenie = _siec_z_przekaznikiem()
+    przed = copy.deepcopy(enm)
+    wynik = execute_domain_operation(
+        enm,
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "charakterystyki_ref": profil},
+    )
+    uzyteczny = profil_charakterystyk(profil) is not None
+    if not uzyteczny:
+        assert wynik.get("error_code") == "relay.characteristics_invalid"
+        assert profil in str(wynik.get("error"))
+        assert enm == przed
+        return
+    assert wynik.get("error") is None, wynik.get("error")
+    model = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    (sterownik,) = (p for p in model.protection_assignments if p.ref_id == zabezpieczenie)
+    assert sterownik.charakterystyki_ref == profil
+    assert sterownik.catalog_ref == KATALOG_PRZEKAZNIKA  # wyrób nietknięty
+    charakterystyki, braki = charakterystyki_sterownika(model, sterownik)
+    assert braki == []
+    assert charakterystyki is not None
+    assert (charakterystyki.zrodlo, charakterystyki.zdolnosc.device_id) == (
+        ZRODLO_CHARAKTERYSTYK_PROJEKTANT,
+        profil,
+    )
+    # ``None`` zdejmuje wskazanie — ocena wraca do profilu wyrobu (KATALOG_PRZEKAZNIKA).
+    zdjete = operacja(
+        wynik["snapshot"],
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "charakterystyki_ref": None},
+    )
+    (rekord,) = (p for p in zdjete["protection_assignments"] if p["ref_id"] == zabezpieczenie)
+    assert rekord.get("charakterystyki_ref") is None

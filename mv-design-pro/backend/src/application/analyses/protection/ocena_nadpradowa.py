@@ -46,7 +46,10 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from application.analyses.prad_zwarciowy_galezi import prad_netto_galezi_z_wkladow
-from application.analyses.protection.catalog.catalog_store import load_device_capability
+from application.analyses.protection.catalog.catalog_store import (
+    load_device_capability,
+    profil_charakterystyk,
+)
 from application.analyses.protection.catalog.models import (
     JEDNOSTKA_ZAKRESU_KROTNOSC_IN,
     DeviceCapability,
@@ -78,6 +81,8 @@ from network_model.catalog.funkcje_eaz import (
     etykieta_funkcji_eaz,
 )
 from network_model.catalog.wartosci_robocze import (
+    PROFIL_CHARAKTERYSTYK_ROBOCZY,
+    dana_przyjeta_charakterystyk,
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
 )
@@ -133,9 +138,7 @@ from werdykt import (
 KOD_BRAK_PRZEKLADNIKA = "zabezpieczenia.brak_przekladnika"
 KOD_PRZEKLADNIK_NIE_PRADOWY = "zabezpieczenia.przekladnik_nie_pradowy"
 KOD_PRZEKLADNIA_NIEPOPRAWNA = "zabezpieczenia.przekladnia_niepoprawna"
-KOD_BRAK_POZYCJI_KATALOGU = "zabezpieczenia.brak_pozycji_katalogu"
-KOD_KATALOG_BEZ_ZAKRESOW = "zabezpieczenia.katalog_bez_zakresow_nastaw"
-KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA = "zabezpieczenia.jednostka_zakresu_nieustalona"
+KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY = "zabezpieczenia.profil_charakterystyk_nieuzyteczny"
 KOD_WEJSCIE_NIEZGODNE = "zabezpieczenia.wejscie_przekaznika_niezgodne"
 KOD_BRAK_PROGU = "zabezpieczenia.brak_progu"
 KOD_JEDNOSTKA_PROGU_NIEUSTALONA = "zabezpieczenia.jednostka_progu_nieustalona"
@@ -324,6 +327,9 @@ class NastawyUrzadzenia:
     wejscie_nasycenia: CtBurdenInput | None
     pozycja_katalogu: str | None
     zakresy: dict[str, Any] | None
+    #: Źródło charakterystyk funkcji (`charakterystyki_sterownika`): profil, pochodzenie
+    #: i dana przyjęta profilu roboczego — wchodzi do danych przyjętych każdego rekordu oceny.
+    charakterystyki: CharakterystykiSterownika | None
     stopnie: tuple[StopienNastaw, ...]
     braki: tuple[PozycjaGotowosci, ...]
     funkcje_nieoceniane: tuple[dict[str, str], ...]
@@ -344,6 +350,9 @@ class NastawyUrzadzenia:
             "obwod_wtorny_ct": _opis_wejscia_nasycenia(self.wejscie_nasycenia),
             "pozycja_katalogu": self.pozycja_katalogu,
             "zakresy": self.zakresy,
+            "charakterystyki": (
+                self.charakterystyki.to_dict() if self.charakterystyki is not None else None
+            ),
             "stopnie": [s.to_dict() for s in self.stopnie],
             "braki": [b.to_dict() for b in self.braki],
             "funkcje_nieoceniane": list(self.funkcje_nieoceniane),
@@ -579,55 +588,94 @@ def _przekladnik(
     return ct, []
 
 
-def _zdolnosc_katalogu(
+#: Pochodzenie charakterystyk funkcji sterownika (`charakterystyki_sterownika`).
+ZRODLO_CHARAKTERYSTYK_PROJEKTANT = "PROJEKTANT"
+ZRODLO_CHARAKTERYSTYK_WYROB = "WYROB"
+ZRODLO_CHARAKTERYSTYK_ROBOCZE = "WARTOSC_ROBOCZA"
+
+
+@dataclass(frozen=True)
+class CharakterystykiSterownika:
+    """Charakterystyki analityczne funkcji sterownika (zakresy nastaw, krzywe) i ich źródło.
+
+    ``zrodlo`` — ``PROJEKTANT`` (profil wskazany w sterowniku, ``charakterystyki_ref``),
+    ``WYROB`` (profil związany z pozycją katalogu wyrobu, ``analytical_library_ref``) albo
+    ``WARTOSC_ROBOCZA`` (profil roboczy rejestru wartości roboczych — wyrób nie podał zakresów,
+    zasada nr 4); ``dana_przyjeta`` — wpis danych przyjętych werdyktu dla profilu roboczego."""
+
+    zdolnosc: DeviceCapability
+    zrodlo: str
+    dana_przyjeta: DanaPrzyjeta | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "profil": self.zdolnosc.device_id,
+            "model": self.zdolnosc.model,
+            "zrodlo": self.zrodlo,
+            "jakosc": self.dana_przyjeta.jakosc if self.dana_przyjeta is not None else None,
+            "powod_pl": self.dana_przyjeta.powod_pl if self.dana_przyjeta is not None else None,
+        }
+
+
+def charakterystyki_sterownika(
     enm: EnergyNetworkModel, assignment: ProtectionAssignment
-) -> tuple[DeviceCapability | None, list[PozycjaGotowosci]]:
+) -> tuple[CharakterystykiSterownika | None, list[PozycjaGotowosci]]:
+    """Charakterystyki funkcji sterownika — JEDNO rozstrzygnięcie (ocena, edytor nastaw, raport).
+
+    Pierwszeństwo: profil wskazany przez projektanta (``charakterystyki_ref``) > profil związany
+    z wyrobem w katalogu (``analytical_library_ref`` pozycji ``catalog_ref``) > profil roboczy
+    (`PROFIL_CHARAKTERYSTYK_ROBOCZY`, zasada nr 4: brak zakresów w karcie wyrobu nie blokuje
+    oceny — dana przyjęta ``ESTIMATED``). Profil wskazany przez projektanta, którego nie ma
+    w katalogu analitycznym albo który nie ma ustalonej jednostki zakresów, jest nazwanym
+    brakiem modelu (operacja zapisu go odrzuca — tu obrona odczytu migawki).
+    """
     nazwa = nazwa_elementu(assignment, "protection_assignments")
-    if not assignment.catalog_ref:
-        return None, [
-            PozycjaGotowosci(
-                kod=KOD_BRAK_POZYCJI_KATALOGU,
-                komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma pozycji katalogowej — zakres nastaw "
-                    "przekaźnika jest nieznany, więc nastaw nie da się sprawdzić."
-                ),
-                akcja_naprawcza_pl="Wskaż typ przekaźnika z katalogu zabezpieczeń.",
-            )
-        ]
+    if assignment.charakterystyki_ref:
+        wskazany = profil_charakterystyk(assignment.charakterystyki_ref)
+        if wskazany is None:
+            return None, [
+                PozycjaGotowosci(
+                    kod=KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
+                    komunikat_pl=(
+                        f"Profil charakterystyk sterownika {nazwa} nie istnieje w katalogu "
+                        "analitycznym albo nie ma ustalonej jednostki zakresów nastaw."
+                    ),
+                    akcja_naprawcza_pl=(
+                        f"Wskaż w karcie pola profil charakterystyk sterownika {nazwa} "
+                        "z katalogu analitycznego albo zdejmij wskazanie."
+                    ),
+                )
+            ]
+        return CharakterystykiSterownika(wskazany, ZRODLO_CHARAKTERYSTYK_PROJEKTANT, None), []
     # JEDEN RESOLVER katalogu (`enm.katalog_projektu`): katalog statyczny + pozycje projektu
     # niesione przez model — ten sam, którym operacje zapisu sprawdzają `catalog_ref`.
-    typ = katalog_dla_modelu(enm).get_protection_device_type(assignment.catalog_ref)
-    ref_analityczny = typ.analytical_library_ref if typ is not None else None
-    zdolnosc = load_device_capability(ref_analityczny) if ref_analityczny else None
-    if zdolnosc is None:
-        return None, [
-            PozycjaGotowosci(
-                kod=KOD_KATALOG_BEZ_ZAKRESOW,
-                komunikat_pl=(
-                    f"Pozycja katalogowa zabezpieczenia {nazwa} nie niesie zakresów nastaw "
-                    "(brak powiązania z katalogiem analitycznym urządzeń)."
-                ),
-                akcja_naprawcza_pl=(
-                    "Wybierz typ przekaźnika, którego pozycja katalogowa ma zakresy nastaw."
-                ),
-            )
-        ]
-    if zdolnosc.jednostka_zakresow_pradowych is None:
-        return zdolnosc, [
-            PozycjaGotowosci(
-                kod=KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
-                komunikat_pl=(
-                    f"Zakresy nastaw prądowych pozycji katalogu „{zdolnosc.model}” nie mają "
-                    "ustalonej jednostki ani podstawy (karta producenta) — nie są używane do "
-                    "oceny."
-                ),
-                akcja_naprawcza_pl=(
-                    "Wybierz typ przekaźnika z zakresami potwierdzonymi kartą producenta albo "
-                    "profilem referencyjnym."
-                ),
-            )
-        ]
-    return zdolnosc, []
+    typ = (
+        katalog_dla_modelu(enm).get_protection_device_type(assignment.catalog_ref)
+        if assignment.catalog_ref
+        else None
+    )
+    z_wyrobu = profil_charakterystyk(typ.analytical_library_ref if typ is not None else None)
+    if z_wyrobu is not None:
+        return CharakterystykiSterownika(z_wyrobu, ZRODLO_CHARAKTERYSTYK_WYROB, None), []
+    if not assignment.catalog_ref:
+        powod = "sterownik nie wskazuje wyrobu z katalogu urządzeń"
+    elif typ is None or not typ.analytical_library_ref:
+        powod = f"karta wyrobu {typ.name_pl if typ is not None else assignment.catalog_ref} nie podaje zakresów nastaw"
+    else:
+        powod = f"zakresy nastaw wyrobu {typ.name_pl} nie mają ustalonej jednostki ani podstawy"
+    roboczy = load_device_capability(PROFIL_CHARAKTERYSTYK_ROBOCZY)
+    if roboczy is None:  # pragma: no cover - spójność rejestru i katalogu pilnuje test
+        raise AssertionError("profil roboczy charakterystyk nie istnieje w katalogu analitycznym")
+    return (
+        CharakterystykiSterownika(
+            roboczy,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            dana_przyjeta_charakterystyk(
+                sterownik_pl=nazwa, profil_pl=roboczy.model, powod_pl=powod
+            ),
+        ),
+        [],
+    )
 
 
 def progi_stopnia(
@@ -667,8 +715,14 @@ def _rozwiaz_stopien(
     nazwa: str,
     ct: PrzekladnikPradowy,
     zdolnosc: DeviceCapability,
+    profil_roboczy: bool = False,
 ) -> tuple[StopienNastaw | None, list[PozycjaGotowosci]]:
-    """Jeden stopień 50/51: kompletność, przeliczenie na stronę pierwotną, zakresy katalogu."""
+    """Jeden stopień 50/51: kompletność, przeliczenie na stronę pierwotną, zakresy katalogu.
+
+    ``profil_roboczy`` — charakterystyki z profilu roboczego (zasada nr 4: wyrób nie podał
+    zakresów). Zgodność z profilem (funkcja, krzywa, wejście, zakresy) jest wtedy sprawdzeniem
+    na założeniu — widocznym w ``sprawdzenia`` — a nie blokadą oceny; braki kompletności nastaw
+    (próg, jednostka, krzywa, zwłoka, mnożnik) blokują zawsze, bo są brakami MODELU."""
     funkcja = nastawa.funkcja
     etykieta = ETYKIETY_FUNKCJI_PL[funkcja]
     braki: list[PozycjaGotowosci] = []
@@ -682,6 +736,10 @@ def _rozwiaz_stopien(
                 funkcja=funkcja,
             )
         )
+
+    def brak_zgodnosci(kod: str, komunikat: str, akcja: str) -> None:
+        if not profil_roboczy:
+            brak(kod, komunikat, akcja)
 
     akcja_nastaw = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
     if nastawa.prog is None or nastawa.prog <= 0:
@@ -731,13 +789,13 @@ def _rozwiaz_stopien(
 
     kod = funkcja
     if kod not in zdolnosc.functions_supported:
-        brak(
+        brak_zgodnosci(
             KOD_FUNKCJA_SPOZA_KATALOGU,
             f"Przekaźnik „{zdolnosc.model}” nie ma funkcji {kod} według katalogu.",
             f"Usuń stopień {etykieta} albo wybierz przekaźnik z funkcją {kod}.",
         )
     if nastawa.krzywa not in zdolnosc.curves_supported:
-        brak(
+        brak_zgodnosci(
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
             f"Przekaźnik „{zdolnosc.model}” nie ma charakterystyki "
             f"{ETYKIETY_KRZYWYCH_PL[nastawa.krzywa]} według katalogu.",
@@ -754,7 +812,7 @@ def _rozwiaz_stopien(
         zdolnosc.jednostka_zakresow_pradowych == JEDNOSTKA_ZAKRESU_KROTNOSC_IN
         and i2n not in zdolnosc.rated_current_inputs_a
     ):
-        brak(
+        brak_zgodnosci(
             KOD_WEJSCIE_NIEZGODNE,
             f"Prąd znamionowy wtórny przekładnika ({_liczba(i2n)} A) nie jest prądem "
             f"znamionowym wejścia przekaźnika „{zdolnosc.model}” "
@@ -768,7 +826,7 @@ def _rozwiaz_stopien(
         and maksimum is not None
         and not w_zakresie(wartosc_w_jednostce_zakresu, minimum, maksimum)
     ):
-        brak(
+        brak_zgodnosci(
             KOD_PROG_POZA_ZAKRESEM,
             f"Próg stopnia {etykieta} zabezpieczenia {nazwa} po stronie wtórnej wynosi "
             f"{_liczba(wartosc_w_jednostce_zakresu)} {jednostka_zakresu_pl}, poza zakresem "
@@ -803,7 +861,7 @@ def _rozwiaz_stopien(
                 }
             )
             if not czas_w_zakresie:
-                brak(
+                brak_zgodnosci(
                     KOD_ZWLOKA_POZA_ZAKRESEM,
                     f"Zwłoka stopnia {etykieta} ({_liczba(zwloka)} s) jest poza zakresem "
                     f"przekaźnika {_liczba(zdolnosc.t_51_s_min)}–"
@@ -826,7 +884,7 @@ def _rozwiaz_stopien(
             }
         )
         if not czas_w_zakresie:
-            brak(
+            brak_zgodnosci(
                 KOD_MNOZNIK_POZA_ZAKRESEM,
                 f"Mnożnik czasowy stopnia {etykieta} ({_liczba(tms)}) jest poza zakresem "
                 f"przekaźnika {_liczba(zdolnosc.tms_51_min)}–{_liczba(zdolnosc.tms_51_max)}.",
@@ -876,7 +934,8 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
     braki: list[PozycjaGotowosci] = []
     ct, braki_ct = _przekladnik(enm, assignment)
     braki.extend(braki_ct)
-    zdolnosc, braki_katalogu = _zdolnosc_katalogu(enm, assignment)
+    charakterystyki, braki_katalogu = charakterystyki_sterownika(enm, assignment)
+    zdolnosc = charakterystyki.zdolnosc if charakterystyki is not None else None
     braki.extend(braki_katalogu)
 
     nieoceniane = tuple(
@@ -904,7 +963,14 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
             braki.extend(_braki_kompletnosci(nastawa, nazwa))
             continue
         stopien, braki_stopnia = _rozwiaz_stopien(
-            nastawa=nastawa, nazwa=nazwa, ct=ct, zdolnosc=zdolnosc
+            nastawa=nastawa,
+            nazwa=nazwa,
+            ct=ct,
+            zdolnosc=zdolnosc,
+            profil_roboczy=(
+                charakterystyki is not None
+                and charakterystyki.zrodlo == ZRODLO_CHARAKTERYSTYK_ROBOCZE
+            ),
         )
         braki.extend(braki_stopnia)
         if stopien is not None:
@@ -928,6 +994,7 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
         wejscie_nasycenia=wejscie,
         pozycja_katalogu=assignment.catalog_ref,
         zakresy=_zakresy_katalogu(zdolnosc) if zdolnosc is not None else None,
+        charakterystyki=charakterystyki,
         stopnie=tuple(stopnie),
         braki=tuple(braki),
         funkcje_nieoceniane=nieoceniane,
@@ -1681,6 +1748,15 @@ def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> Pod
     )
 
 
+def _dane_przyjete_charakterystyk(nastawy: NastawyUrzadzenia) -> tuple[DanaPrzyjeta, ...]:
+    """Profil roboczy charakterystyk (zasada nr 4) — zakresy nastaw i krzywa stopnia stoją na
+    założeniu, więc każdy rekord oceny sterownika niesie je w danych przyjętych."""
+    charakterystyki = nastawy.charakterystyki
+    if charakterystyki is None or charakterystyki.dana_przyjeta is None:
+        return ()
+    return (charakterystyki.dana_przyjeta,)
+
+
 def _dowod_obliczenia(
     odniesienie: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 ) -> StatusDowodu:
@@ -1793,7 +1869,8 @@ def ocena_punktu_rekord(
                 else ()
             )
             + dane_galezi
-            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss"),
+            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss")
+            + _dane_przyjete_charakterystyk(nastawy),
         ),
         zakres_waznosci=_zakres_waznosci(wiarygodnosc, powod_wiarygodnosci),
         slad=[

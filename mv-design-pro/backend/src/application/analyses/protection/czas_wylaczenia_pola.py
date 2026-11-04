@@ -251,6 +251,11 @@ def _czas_wylaczenia_pola(
         "stala_a": ((odniesienie or {}).get("stale") or {}).get("A"),
         "stala_b": ((odniesienie or {}).get("stale") or {}).get("B"),
         "stopnie": slady_stopni,
+        # Źródło charakterystyk funkcji (wyrób / projektant / profil roboczy, zasada nr 4) —
+        # ten sam obiekt, którym ocena zabezpieczeń opisuje swoje dane przyjęte.
+        "charakterystyki": (
+            nastawy.charakterystyki.to_dict() if nastawy.charakterystyki is not None else None
+        ),
     }
 
     if decydujacy is None:
@@ -308,6 +313,8 @@ def _czas_wylaczenia_pola(
         }
 
     zalozenia = [_ZALOZENIE_PRADU_POLA]
+    if nastawy.charakterystyki is not None and nastawy.charakterystyki.dana_przyjeta is not None:
+        zalozenia.append(nastawy.charakterystyki.dana_przyjeta.powod_pl)
     if czas_wlasny.robocza:
         zalozenia.append(_zalozenie_czasu_wlasnego(czas_wlasny))
     return {

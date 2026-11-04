@@ -865,6 +865,48 @@ def dana_przyjeta_tolerancji_nn(
 
 
 # ---------------------------------------------------------------------------
+# Rodzina: sterownik zabezpieczeń — charakterystyki funkcji (zakresy nastaw), karta
+# OCHRONA-JEDNO-ZRODLO
+# ---------------------------------------------------------------------------
+#
+# Sterownik w modelu wskazuje DWIE rzeczy niezależnie: wyrób z kartą producenta (pozycja katalogu
+# urządzeń, ``ProtectionAssignment.catalog_ref``) i charakterystyki analityczne funkcji (profil
+# katalogu analitycznego z zakresami nastaw i krzywymi, ``ProtectionAssignment.charakterystyki_ref``).
+# Karta wyrobu często nie podaje zakresów nastaw w jednostce, którą da się porównać z nastawą —
+# wtedy ocena NIE staje: biegnie z profilem roboczym (zasada nr 4), a dana przyjęta mówi, że
+# zakresy nie są danymi producenta. Projektant zmienia profil w karcie pola i przelicza.
+
+#: Profil roboczy charakterystyk funkcji nadprądowych i ziemnozwarciowych (50/51/50N/51N) —
+#: profil referencyjny katalogu analitycznego bez marki (decyzja D-33): krzywe IEC 60255-151
+#: (SI, VI) i czas niezależny, zakresy w krotności prądu znamionowego wejścia In.
+PROFIL_CHARAKTERYSTYK_ROBOCZY: Final = "REF-OC-EF-300"
+_ODNIESIENIE_PROFILU_CHARAKTERYSTYK = (
+    "profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — "
+    "założenie inżynierskie, nie dane producenta"
+)
+
+
+def dana_przyjeta_charakterystyk(
+    *, sterownik_pl: str, profil_pl: str, powod_pl: str
+) -> DanaPrzyjeta:
+    """Profil roboczy charakterystyk funkcji jako dana przyjęta werdyktu (§3c pkt 4).
+
+    ``ESTIMATED`` — zakresy nastaw i krzywe pochodzą z profilu referencyjnego, nie z karty
+    wyrobu, więc stan danych ``UNVALIDATED_INPUT`` i kompletność ``NIEPELNY``. ``powod_pl`` —
+    dlaczego wyrób nie dał charakterystyk (brak pozycji, pozycja bez zakresów, zakresy bez
+    jednostki)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"charakterystyki funkcji sterownika {sterownik_pl}",
+        wartosc=None,
+        powod_pl=_zdanie(
+            f"{powod_pl} — przyjęto profil {profil_pl} ({_ODNIESIENIE_PROFILU_CHARAKTERYSTYK}); "
+            "zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw"
+        ),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Rodzina: linia napowietrzna 110 kV — geometria słupa, przewód odgromowy, grunt (karta LINIA-110)
 # ---------------------------------------------------------------------------
 #

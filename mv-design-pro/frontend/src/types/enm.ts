@@ -1828,6 +1828,10 @@ export interface ProtectionAssignment extends ENMElement {
   bay_ref?: string | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
+  /** Profil charakterystyk funkcji (zakresy nastaw, krzywe) z katalogu analitycznego —
+   *  odwołanie OSOBNE od wyrobu (`catalog_ref`). `null` — profil wyrobu albo profil roboczy
+   *  (zasada nr 4), rozstrzygane przez backend (`ocena_nadpradowa.charakterystyki_sterownika`). */
+  charakterystyki_ref?: string | null;
   prad_znamionowy_wejscia_a?: number | null;
   wejscia: WejsciaZabezpieczenia;
   funkcje: FunkcjaZabezpieczenia[];

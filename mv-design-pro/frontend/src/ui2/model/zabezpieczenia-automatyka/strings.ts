@@ -1,5 +1,5 @@
 /**
- * Teksty PL ekranu „Zabezpieczenia i automatyka" (E-27, realny dostawca ui2).
+ * Teksty PL ekranu „Zabezpieczenia i automatyka" (E-27).
  * Wyłącznie polski język techniczny; zdanie celu jest cytatem z karty §0.3
  * (FLOW §0.3 „kontrakt ekranu prowadzącego").
  */
@@ -13,65 +13,43 @@ export const ZABEZPIECZENIA_STRINGS = {
   // Stan zerowy — brak aktywnego projektu.
   brakProjektuTytul: 'Brak aktywnego projektu',
   brakProjektuOpis: 'Przegląd zabezpieczeń i automatyki pracuje na modelu pól wybranego '
-    + 'projektu. Bez aktywnego projektu nie ma z czego zestawić przypisań zabezpieczeń '
-    + 'ani sterowników polowych.',
+    + 'projektu. Bez aktywnego projektu nie ma z czego zestawić sterowników zabezpieczeń.',
   brakProjektuAkcja: 'Wybierz projekt',
 
-  // Stan zerowy — projekt bez pól w modelu.
+  // Stan zerowy — projekt bez pól i bez sterowników wyłączników liniowych.
   brakPolTytul: 'Model sieci nie ma jeszcze pól',
-  brakPolOpis: 'Zabezpieczenia i automatyka są opisane na polach rozdzielni. Zbuduj model '
-    + 'sieci (stacje i pola SN), aby zobaczyć przypisania zabezpieczeń i sterowniki polowe.',
+  brakPolOpis: 'Zabezpieczenia i automatyka są opisane sterownikami pól rozdzielni i wyłączników '
+    + 'liniowych. Zbuduj model sieci (stacje i pola SN), aby przypisać sterowniki.',
   brakPolAkcja: 'Otwórz model sieci',
 
-  // Sekcja ZABEZPIECZENIA.
-  zabezpieczeniaTytul: 'Zabezpieczenia pól',
-  zabezpieczeniaOpis: 'Przypisania zabezpieczeń na polach modelu. Nastawy edytujesz w sekcji '
-    + '„Nastawy zabezpieczeń nadprądowych" poniżej albo w karcie pola.',
-  kolPole: 'Pole',
+  // Tabela sterowników (sterownik = wiersz, standard warsztatu §10).
+  zabezpieczeniaTytul: 'Sterowniki zabezpieczeń i automatyki',
+  kolPole: 'Pole / wyłącznik',
   kolUrzadzenie: 'Urządzenie',
-  kolSzablon: 'Szablon / rodzina',
   kolFunkcje: 'Funkcje',
+  kolGrupa: 'Grupa',
+  kolSpz: 'SPZ',
   kolAkcja: 'Edycja',
-  szablonBrak: 'uniwersalne',
-  otworzKartePola: 'Otwórz kartę pola',
-  otworzKartePolaOpis: 'Otwórz kartę pola z nastawami zabezpieczeń (panel pola)',
-
-  // Sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21).
-  nastawyTytul: 'Nastawy zabezpieczeń nadprądowych',
-  nastawyOpis: 'Nastawy I> i I>> każdego zabezpieczenia nadprądowego modelu — w polach '
-    + 'rozdzielni i przy wyłącznikach liniowych. Zapis trafia do modelu sieci; ocena '
-    + 'zabezpieczeń i koordynacja czytają nastawy stąd. Przeliczenie progu przez przekładnię '
-    + 'i sprawdzenie z zakresami katalogu robi backend.',
-  nastawyBrak: 'Model nie ma jeszcze zabezpieczeń nadprądowych. Dodaj zabezpieczenie w polu '
-    + 'SN albo przy wyłączniku liniowym (menu elementu na schemacie).',
+  bezSterownika: 'bez sterownika',
+  szablonOpis: (szablon: string, rodzina: string | null) =>
+    `Szablon pola: ${szablon}${rodzina ? ` · ${rodzina}` : ''}`,
+  spzWlaczone: (cykle: number | null) => (cykle === null ? 'wł.' : `wł., ${cykle} cykl.`),
+  spzWylaczone: 'wył.',
+  nastawy: 'Nastawy',
+  nastawyZwin: 'Zwiń',
+  nastawyOpis: 'Nastawy funkcji sterownika w grupach 1–4 (zapis do modelu sieci)',
+  dodajSterownik: 'Dodaj sterownik',
+  otworzKartePola: 'Karta pola',
+  otworzKartePolaOpis: 'Otwórz kartę pola (panel zabezpieczeń pola)',
   nastawyLadowanie: 'Wczytywanie nastaw z modelu…',
   nastawyBlad: 'Nie udało się pobrać nastaw zabezpieczeń',
-  wylacznikiTytul: 'Wyłączniki liniowe',
-  wylacznikiOpis: 'Wyłączniki wstawione w odcinki SN (poza polami rozdzielni). Zabezpieczenie '
-    + 'wyłącznika liniowego wymaga przekładnika prądowego przy tym wyłączniku.',
+
+  // Wyłączniki liniowe bez sterownika.
+  wylacznikiTytul: 'Wyłączniki liniowe bez sterownika',
   wylacznikBezNazwy: 'Wyłącznik bez nazwy',
   wylacznikStanCt: (n: number) => (n > 0 ? `przekładnik: ${n}` : 'bez przekładnika'),
-  wylacznikStanZab: (n: number) => (n > 0 ? `zabezpieczenie: ${n}` : 'bez zabezpieczenia'),
   dodajPrzekladnik: 'Dodaj przekładnik prądowy',
-  dodajZabezpieczenie: 'Dodaj zabezpieczenie',
-
-  // Sekcja AUTOMATYKA.
-  automatykaTytul: 'Sterowniki polowe i automatyka',
-  automatykaOpis: 'Funkcje automatyki i stan SPZ zestawione ze sterowników pól '
-    + '(zabezpieczenie zintegrowane). Braki pokazujemy jawnie.',
-  cechyTytul: 'Funkcje automatyki',
-  spzTytul: 'Samoczynne ponowne załączenie (SPZ)',
-  spzNieSkonfigurowano: 'Nie skonfigurowano',
-  spzAktywny: 'Aktywny',
-  spzOdstawiony: 'Odstawiony',
-  spzProbySzybkie: 'Próby szybkie',
-  spzProbyWolne: 'Próby wolne',
-  spzStan: 'Stan',
-  spzBlokada: 'Blokada',
-  cechaWl: 'włączona',
-  cechaWyl: 'wyłączona',
-  brakSterownikow: 'Żadne pole nie ma zintegrowanego sterownika automatyki. Automatyka '
-    + 'pojawia się po przypisaniu zabezpieczenia z funkcjami sterującymi.',
+  dodajZabezpieczenie: 'Dodaj sterownik',
 
   // Następny krok.
   nastepnyEyebrow: 'NASTĘPNY KROK',

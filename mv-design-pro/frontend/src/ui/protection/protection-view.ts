@@ -13,7 +13,7 @@
  */
 
 import type { ElementProtectionAssignment, ProtectionSettingsSummary } from './element-assignment';
-import type { NastawyUrzadzeniaWidok, SlownikNastaw } from './nastawyModelu';
+import type { NastawyUrzadzeniaWidok, PozycjaSlownika } from './nastawyModelu';
 import type { ElementType } from '../types';
 
 // =============================================================================
@@ -54,8 +54,9 @@ export interface ProtectionViewResponse {
   enm_revision: number;
   view_status: ProtectionViewStatus;
   assignments: ProtectionViewAssignment[];
-  /** Listy wyboru edytora nastaw z backendu (funkcje, charakterystyki, jednostki progu). */
-  slownik_nastaw?: SlownikNastaw;
+  /** Profile charakterystyk funkcji do wyboru w edytorze nastaw (katalog analityczny, ten sam
+   *  predykat użyteczności co zapis i ocena backendu). */
+  profile_charakterystyk?: PozycjaSlownika[];
   /** Wyłączniki liniowe (bez pola) z przekładnikami i zabezpieczeniami przy nich. */
   wylaczniki_liniowe?: WylacznikLiniowy[];
 }

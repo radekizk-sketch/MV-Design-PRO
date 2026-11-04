@@ -375,6 +375,7 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     # sterownik zabezpieczen (ADR-022): pole, wejscia, funkcje, grupy nastaw, macierz wyzwolen
     "bay_ref": "Pole",
     "prad_znamionowy_wejscia_a": "Prąd znamionowy wejścia [A]",
+    "charakterystyki_ref": "Profil charakterystyk funkcji",
     "wejscia": "Wejścia pomiarowe",
     "ct_ref": "Przekładnik prądowy",
     "vt_ref": "Przekładnik napięciowy",

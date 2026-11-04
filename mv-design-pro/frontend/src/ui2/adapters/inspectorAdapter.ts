@@ -66,7 +66,14 @@ import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
-import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
+import {
+  aparatySterownika,
+  kodyFunkcjiSterownika,
+  liczbaNastawGrupyEfektywnej,
+  nazwaUrzadzeniaSterownika,
+  numerGrupyEfektywnej,
+  sterownikPola,
+} from '../../ui/shared/sterownikZabezpieczen';
 import {
   etykietaPozycjiNormalnej,
   opisLacznikowPortow,
@@ -405,7 +412,9 @@ function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWla
   ]);
 }
 
-function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
+function wlasciwosciPola(el: Bay, model: EnergyNetworkModel): WierszWlasciwosci[] {
+  // Karta OCHRONA-JEDNO-ZRODLO: funkcje pola = funkcje jego sterownika (jedna struktura).
+  const kody = kodyFunkcjiSterownika(sterownikPola(model, el.ref_id));
   return bezNulli([
     // Nazwa roli z kanonu słownictwa ról pól (karta #141), nigdy surowy kod roli.
     wr('Rola pola', fieldRoleLabelPl(el.bay_role)),
@@ -415,7 +424,7 @@ function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
     w('Kierunek (stacja docelowa)', el.outgoing_destination_ref ?? null),
     w(
       'Funkcje zabezpieczeniowe',
-      el.protection_codes && el.protection_codes.length > 0 ? el.protection_codes.join(', ') : null,
+      kody.length > 0 ? kody.join(', ') : null,
     ),
   ]);
 }
@@ -490,10 +499,12 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj zabezpieczenia', ETYKIETA_RODZAJU_ZABEZPIECZENIA[el.device_type] ?? el.device_type),
-    wr('Wyłącznik', el.breaker_ref),
+    wr('Urządzenie', nazwaUrzadzeniaSterownika(el)),
+    w('Funkcje', kodyFunkcjiSterownika(el).join(', ') || null),
+    w('Aparaty wyzwalane', aparatySterownika(el).join(', ') || null),
+    wr('Aktywna grupa nastaw', numerGrupyEfektywnej(el)),
+    wr('Liczba nastaw w aktywnej grupie', liczbaNastawGrupyEfektywnej(el)),
     wr('Aktywne', el.is_enabled ? 'Tak' : 'Nie'),
-    wr('Liczba nastaw', el.settings.length),
   ]);
 }
 
@@ -565,7 +576,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
-      return wlasciwosciPola(element as unknown as Bay);
+      return wlasciwosciPola(element as unknown as Bay, model);
     case 'wezel':
       return wlasciwosciWezla(element as unknown as Junction);
     case 'punkt_rozgalezienia':
