@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
@@ -180,58 +180,76 @@ describe('InspectorEngineeringView', () => {
   });
 
   it('pokazuje kanoniczne etykiety dla stacji i układu PV/BESS/FW', () => {
-    // Odbudowa 2026-07-17 (dług: test wykluczony w vite.config zamiast
-    // naprawiony). Intencja BEZ ZMIAN: etykiety kanoniczne PL, zero przecieku
-    // surowych enumów (mv_lv/nn_side). Asercje dopasowane do obecnej
-    // struktury: podtytuł nagłówka = rola układu + REALNY wariant
-    // przyłączenia z ENM (naprawa hardkodu „PV za transformatorem SN/nN",
-    // który kłamał dla farmy wiatrowej na nn_side — regresja złapana przy
-    // odbudowie tego testu).
-    render(<InspectorEngineeringView />);
+    // Intencja BEZ ZMIAN (odbudowa 2026-07-17): etykiety kanoniczne PL, zero przecieku
+    // surowych enumów (mv_lv/nn_side), wariant przyłączenia z ENM (nie hardkod). Treść daje
+    // karta techniczna źródła (K6, `kartaZrodla`) — sekcje widoku nie renderują się przy
+    // karcie. Problem gotowości obiektu zostaje widoczny w sekcji „Kontrola" obok karty
+    // (do tej poprawki karta zdejmowała go z inspektora razem z sekcjami widoku).
+    const { container } = render(<InspectorEngineeringView />);
 
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
+    expect(screen.getByTestId('inspektor-karta-wartosc-rodzaj')).toHaveTextContent('Źródło przekształtnikowe FW');
+    expect(screen.getByTestId('inspektor-karta-wartosc-wariant')).toHaveTextContent('po stronie nN stacji');
     expect(
-      screen.getAllByText((content) => content.includes('Układ') && content.includes('wiatrowej')).length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText('Układ farmy wiatrowej - Po stronie nN stacji')).toBeInTheDocument();
-    expect(screen.getByText('Po stronie nN stacji (przez TR SN/nN)')).toBeInTheDocument();
-    expect(screen.getByText('Wymagany wariant katalogowy układu PV/BESS/FW')).toBeInTheDocument();
-    expect(screen.queryByText('mv_lv')).not.toBeInTheDocument();
-    expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
+      within(screen.getByTestId('engineering-section-kontrola')).getByText('Wymagany wariant katalogowy układu PV/BESS/FW'),
+    ).toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('mv_lv');
+    expect(container.textContent ?? '').not.toContain('nn_side');
+  });
+
+  // Iloczyn: obiekt z kartą techniczną × problem gotowości {blokada, ostrzeżenie, cudzy}.
+  // Sekcja „Kontrola" pokazuje problemy obiektu (blokadę i ostrzeżenie), nie pokazuje
+  // problemu innego obiektu, a bez problemów nie ma pustej sekcji.
+  it.each([
+    { nazwa: 'blokada obiektu', severity: 'BLOCKER', ref: 'gen-1', widoczna: true, etykieta: 'Konfiguracja' },
+    { nazwa: 'ostrzeżenie obiektu', severity: 'WARNING', ref: 'gen-1', widoczna: true, etykieta: 'Ostrzeżenie' },
+    { nazwa: 'problem innego obiektu', severity: 'BLOCKER', ref: 'seg-1', widoczna: false, etykieta: 'Konfiguracja' },
+  ])('karta techniczna × $nazwa: sekcja Kontrola', ({ severity, ref, widoczna, etykieta }) => {
+    mockReadinessIssues = [{ severity, element_ref: ref, element_refs: [], message_pl: 'Problem badany' }];
+    render(<InspectorEngineeringView />);
+    expect(screen.getByTestId('inspektor-karta')).toBeInTheDocument();
+    const sekcja = screen.queryByTestId('engineering-section-kontrola');
+    expect(sekcja !== null).toBe(widoczna);
+    expect(screen.queryByText('Problem badany') !== null).toBe(widoczna);
+    if (sekcja) expect(within(sekcja).getByText(etykieta)).toBeInTheDocument();
   });
 
   // Karta aparatu pola (wyłącznik, głowica kablowa i każdy inny `SymbolId`) — tożsamość
   // z tematu kliknięcia kanwy, nie z id selekcji: `InspectorEngineeringView.apparatus.test.tsx`
   // (iloczyn rodzaj aparatu × karta) i natywny klik na kanwie w `punktStartuCiagu.test.tsx`.
 
-  it('wybiera akcje segmentu po semantyce selekcji zamiast po branch.type', () => {
+  // Kategoria działań odcinka pochodzi z RODZAJU GAŁĘZI MODELU (`menuKindGalezi`, jedno
+  // źródło z menu kanwy) — pasek działań inspektora pokazuje pozycje rejestru menu tej
+  // kategorii. Iloczyn: rodzaj gałęzi {napowietrzna, kablowa} × pozycja zakończenia odcinka
+  // {słup rozgałęźny, ZK SN}. Dawna wersja testu sprawdzała sekcje widoku wybierane po
+  // podpowiedzi semantycznej selekcji sprzecznej z modelem (odcinek kablowy z rolą
+  // „napowietrzny"); te sekcje nie renderują się przy karcie technicznej odcinka.
+  it.each([
+    { rodzaj: 'line_overhead', rola: 'MV_OVERHEAD_SEGMENT', jest: 'insert-pole', niema: 'insert-zksn' },
+    { rodzaj: 'cable', rola: 'MV_CABLE_SEGMENT', jest: 'insert-zksn', niema: 'insert-pole' },
+  ])('odcinek $rodzaj: pasek działań z kategorii rodzaju gałęzi modelu', ({ rodzaj, rola, jest, niema }) => {
+    const pierwotny = snapshot.branches[0].type;
+    snapshot.branches[0].type = rodzaj;
     mockSelectedElements = [{
       id: 'seg-1',
       type: 'LineBranch',
       name: 'Segment testowy',
       semanticHash: 'semantic:v1',
-      semanticElementKind: 'MV_OVERHEAD_SEGMENT',
-      semanticEngineeringRole: 'MV_OVERHEAD_SEGMENT',
+      semanticElementKind: rola,
+      semanticEngineeringRole: rola,
     }];
     mockReadinessIssues = [];
 
-    render(<InspectorEngineeringView />);
+    try {
+      render(<InspectorEngineeringView />);
 
-    expect(screen.getAllByText('Odcinek napowietrzny SN').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Kabel SN')).not.toBeInTheDocument();
-    expect(screen.getByText('Wstaw słup rozgałęźny')).toBeInTheDocument();
-    expect(screen.queryByText('Wstaw ZKSN')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Wstaw słup rozgałęźny'));
-
-    expect(openOperationForm).toHaveBeenCalledWith(
-      'insert_branch_pole_on_segment_sn',
-      expect.objectContaining({
-        segment_ref: 'seg-1',
-        semantic_element_kind: 'MV_OVERHEAD_SEGMENT',
-        semantic_engineering_role: 'MV_OVERHEAD_SEGMENT',
-        semantic_hash: 'semantic:v1',
-      }),
-    );
+      expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'odcinek');
+      const pasek = screen.getByTestId('inspektor-dzialania');
+      expect(within(pasek).getByTestId(`inspektor-akcja-${jest}`)).toBeInTheDocument();
+      expect(within(pasek).queryByTestId(`inspektor-akcja-${niema}`)).not.toBeInTheDocument();
+    } finally {
+      snapshot.branches[0].type = pierwotny;
+    }
   });
 
   it.each([

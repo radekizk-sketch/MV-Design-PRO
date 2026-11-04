@@ -77,7 +77,7 @@ function trafieniaSymboli(enm: EnergyNetworkModel, lod: SceneLod): readonly Traf
       (a) => [a.testId, a.klasa] as const,
     ),
   );
-  return scene.symbols.flatMap((symbol, i) => {
+  return scene.symbols.flatMap((symbol, i): Trafienie[] => {
     const ownerRef = symbol.meta?.ownerRef;
     if (!ownerRef) return [];
     const wynik = resolveCanvasMenuSubject(

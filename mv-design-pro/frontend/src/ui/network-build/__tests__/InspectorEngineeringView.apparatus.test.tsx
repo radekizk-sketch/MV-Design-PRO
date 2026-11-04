@@ -41,7 +41,9 @@ function render(ui: ReactElement) {
 
 const openOperationForm = vi.fn();
 
-const snapshot = {
+// `let`: każdy przypadek iloczynu dostaje NOWĄ migawkę (migawki są niemutowalne — indeksy
+// modelu są pamiętane po tożsamości obiektu, jak w aplikacji).
+let snapshot = {
   buses: [
     {
       ref_id: 'bus-sn-1',
@@ -172,10 +174,15 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
 
   function wyposazPole(kind: BayPrimaryDeviceKind): string {
     const deviceRef = `dev-${kind}`;
-    snapshot.bays[0] = {
-      ...snapshot.bays[0],
-      primary_devices: [
-        { device_ref: deviceRef, kind, symbol_ref: kind, placement: 'MIDSTREAM', is_controllable: false },
+    snapshot = {
+      ...snapshot,
+      bays: [
+        {
+          ...snapshot.bays[0],
+          primary_devices: [
+            { device_ref: deviceRef, kind, symbol_ref: kind, placement: 'MIDSTREAM', is_controllable: false },
+          ],
+        },
       ],
     };
     return deviceRef;

@@ -1170,35 +1170,41 @@ function buildSemanticSegmentSections(
   };
 }
 
+/**
+ * Sekcja „Kontrola" — problemy gotowości wskazujące obiekt (którykolwiek z `refs`). JEDNA
+ * reguła dla sekcji widoku i dla karty technicznej panelu z kanwy: karta zastępuje sekcje
+ * danych obiektu (K6), ale nie zdejmuje z inspektora tego, co blokuje obliczenia obiektu.
+ */
+function sekcjaKontroli(readinessIssues: ReadinessIssue[], refs: readonly string[]): PropertySection | null {
+  const dotyczy = (issue: ReadinessIssue) => refs.some((ref) => ref !== '' && issueTargetsElement(issue, ref));
+  const elementBlockers = readinessIssues.filter((issue) => issue.severity === 'BLOCKER' && dotyczy(issue));
+  const elementWarnings = readinessIssues.filter((issue) => issue.severity !== 'BLOCKER' && dotyczy(issue));
+  if (elementBlockers.length === 0 && elementWarnings.length === 0) return null;
+  return {
+    id: 'readiness',
+    label: 'Kontrola',
+    fields: [
+      ...elementBlockers.map((b, i) => ({
+        key: `blocker_${i}`,
+        label: 'Konfiguracja',
+        value: sanitizeEngineerText(b.message_pl),
+      })),
+      ...elementWarnings.map((w, i) => ({
+        key: `warning_${i}`,
+        label: 'Ostrzeżenie',
+        value: sanitizeEngineerText(w.message_pl),
+      })),
+    ],
+  };
+}
+
 function appendReadinessSection(
   sections: PropertySection[],
   readinessIssues: ReadinessIssue[],
   elementId: string,
 ): void {
-  const elementBlockers = readinessIssues.filter(
-    (issue) => issue.severity === 'BLOCKER' && issueTargetsElement(issue, elementId),
-  );
-  const elementWarnings = readinessIssues.filter(
-    (issue) => issue.severity !== 'BLOCKER' && issueTargetsElement(issue, elementId),
-  );
-  if (elementBlockers.length > 0 || elementWarnings.length > 0) {
-    sections.push({
-      id: 'readiness',
-      label: 'Kontrola',
-      fields: [
-        ...elementBlockers.map((b, i) => ({
-          key: `blocker_${i}`,
-          label: 'Konfiguracja',
-          value: sanitizeEngineerText(b.message_pl),
-        })),
-        ...elementWarnings.map((w, i) => ({
-          key: `warning_${i}`,
-          label: 'Ostrzeżenie',
-          value: sanitizeEngineerText(w.message_pl),
-        })),
-      ],
-    });
-  }
+  const sekcja = sekcjaKontroli(readinessIssues, [elementId]);
+  if (sekcja) sections.push(sekcja);
 }
 
 function buildSemanticConverterSections(
@@ -2243,28 +2249,7 @@ function buildSectionsForElement(
   }
 
   // Sekcja kontroli konfiguracji dla tego elementu.
-  const elementBlockers = readinessIssues.filter(
-    (issue) => issue.severity === 'BLOCKER' && issueTargetsElement(issue, elementId),
-  );
-  const elementWarnings = readinessIssues.filter(
-    (issue) => issue.severity !== 'BLOCKER' && issueTargetsElement(issue, elementId),
-  );
-  if (elementBlockers.length > 0 || elementWarnings.length > 0) {
-    sections.push({
-      id: 'readiness', label: 'Kontrola', fields: [
-        ...elementBlockers.map((b, i) => ({
-          key: `blocker_${i}`,
-          label: 'Konfiguracja',
-          value: sanitizeEngineerText(b.message_pl),
-        })),
-        ...elementWarnings.map((w, i) => ({
-          key: `warning_${i}`,
-          label: 'Ostrzeżenie',
-          value: sanitizeEngineerText(w.message_pl),
-        })),
-      ],
-    });
-  }
+  appendReadinessSection(sections, readinessIssues, elementId);
 
   return { sections, elementType, elementName, actions };
 }
@@ -2587,6 +2572,11 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // nazwą i innym rodzajem. Zostają: dowód obliczeń, akcje źródła przekształtnikowego,
   // schemat pola i operacje, których pasek działań panelu nie ma.
   const kartaObiektu = stanPanelu?.karta ?? null;
+  // Problemy gotowości obiektu z kartą techniczną — ta sama sekcja „Kontrola" co w widoku bez
+  // karty (ref selekcji i ref obiektu karty: aparat pola z kanwy ma selekcję na polu).
+  const kontrolaKarty = kartaObiektu
+    ? sekcjaKontroli(readinessIssues, [elementId ?? '', kartaObiektu.elementRef])
+    : null;
   const pokazTechCard = Boolean(techCardSubjectWithActions) && !kartaObiektu;
   const akcjeKartyBezPaska = kartaObiektu ? techCardSubjectWithActions?.actions ?? [] : [];
   const operacjeModelu: OperacjaModeluInspektora[] =
@@ -2749,6 +2739,15 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
       {/* Sections */}
       <div>
+        {kontrolaKarty && (
+          <SectionBlock
+            section={kontrolaKarty}
+            elementId={elementId}
+            activeCaseId={activeCaseId}
+            executeDomainOperation={executeDomainOperation}
+          />
+        )}
+
         {!kartaObiektu && sections.map((section, index) => (
           <SectionBlock
             key={`${section.id}:${index}`}

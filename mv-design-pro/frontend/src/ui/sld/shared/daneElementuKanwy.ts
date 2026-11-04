@@ -37,6 +37,7 @@ import {
 import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import type { PreviewElementKind } from '../v3/compose/preview';
+import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 /**
@@ -720,6 +721,18 @@ export function buildDaneElementuKanwy(
     const punkt = (snapshot?.branch_points ?? []).find((bp) => bp.ref_id === id || bp.id === id);
     if (!punkt) return null;
     return buildDaneWezlaSn(snapshot, overlayPayload, punkt.branch_point_type, id);
+  }
+  if (elementKind === 'segment') {
+    // Gałąź ŁĄCZNIKA albo bezpiecznika (`breaker`, `switch`, `fuse`…) nie jest odcinkiem SN:
+    // to aparat toru. Predykat z JEDNEGO źródła rodzajów gałęzi (`types/rodzajeGalezi.ts`) —
+    // ten sam podział, którym menu kanwy daje takiej gałęzi kategorię aparatu
+    // (`menuKindGalezi`). Do tej poprawki selekcja wyłącznika z drzewa albo wyszukiwarki
+    // (temat kotwicy `galaz` → `segment`) dawała kartę „Odcinek kablowy" z trasą i katalogiem
+    // kabla dla wyłącznika.
+    const galaz = (snapshot?.branches ?? []).find((b) => b.ref_id === id || b.id === id);
+    if (galaz && jestRodzajemGaleziAparatu(galaz.type)) {
+      return buildDaneElementuKanwy(snapshot, sldData, overlayPayload, 'apparatus', galaz.ref_id, undefined);
+    }
   }
   if (elementKind === 'der') return buildDaneObiektuModelu(snapshot, overlayPayload, 'generator', id);
   if (elementKind === 'source') return buildDaneObiektuModelu(snapshot, overlayPayload, 'grid_source', id);
