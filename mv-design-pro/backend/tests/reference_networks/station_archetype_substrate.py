@@ -44,6 +44,7 @@ prints the companions as JSON to stdout.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import math
 import os
@@ -3369,11 +3370,35 @@ def _zapisz_artefakt(nazwa: str) -> str:
     tresc = render_companions()[nazwa]
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
-            if kanonizuj_artefakt(fh.read()) == kanonizuj_artefakt(tresc):
-                return path
+            na_dysku = fh.read()
+        if kanonizuj_artefakt(na_dysku) == kanonizuj_artefakt(tresc):
+            return path
+        tresc = zakotwicz_linie(na_dysku, tresc)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(tresc)
     return path
+
+
+def zakotwicz_linie(na_dysku: str, tresc: str) -> str:
+    """Kotwica w szumie PER LINIA (karta ZU, 2026-11-04): gdy artefakt zmienia się realnie
+    (np. tekst uwagi śladu), linie, które różnią się od zapisanych wyłącznie szumem ostatniej
+    cyfry (`kanonizuj_artefakt`), zostają zapisem z dysku. Bez tego każda zmiana tekstu
+    wnosiła do repozytorium szum tej maszyny w niezwiązanych liniach (pomiar:
+    `shortCircuit.ts` R/X 0.500002 → 0.500003 w czterech podstawieniach przy zmianie
+    wyłącznie tytułów kroków). Dopasowanie linii: `difflib.SequenceMatcher` na liniach
+    skanonizowanych — kanonicznie wynik jest równy świeżej treści (test świeżości)."""
+    stare = na_dysku.splitlines(keepends=True)
+    nowe = tresc.splitlines(keepends=True)
+    dopasowanie = difflib.SequenceMatcher(
+        None,
+        [kanonizuj_artefakt(linia) for linia in stare],
+        [kanonizuj_artefakt(linia) for linia in nowe],
+        autojunk=False,
+    )
+    wynik: list[str] = []
+    for rodzaj, a0, a1, b0, b1 in dopasowanie.get_opcodes():
+        wynik.extend(stare[a0:a1] if rodzaj == "equal" else nowe[b0:b1])
+    return "".join(wynik)
 
 
 def write_companions() -> str:

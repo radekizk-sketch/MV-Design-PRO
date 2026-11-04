@@ -480,7 +480,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {
@@ -526,7 +526,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "i_dc_a": 0.00201755083335
               },
-              "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+              "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
               "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
@@ -652,7 +652,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {
@@ -698,7 +698,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "i_dc_a": 0.00183413712122
               },
-              "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+              "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
               "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
