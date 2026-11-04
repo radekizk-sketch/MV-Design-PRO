@@ -129,22 +129,18 @@ describe('nóż łącznika QET — koniec na styku w położeniu stykowym, bez p
     }
   }
 
-  it('odłącznik zamknięty: nóż kończy się na dole okręgu „○”, wnętrze okręgu puste, przewód kończy się na górze okręgu (zero krzyżyka)', () => {
+  it('odłącznik zamknięty: nóż kończy się na środku kreski styku „⊤”, bez okręgu (okrąg należy wyłącznie do rozłącznika), przewód kończy się na kresce', () => {
+    // Uwaga właściciela 2026-11-04 (odbiór B-02 pkt 2): odłącznik = kreska styku „⊤” bez okręgu.
     const s = QET_SYMBOLE_POLA_SN.qetDisconnector;
-    const [okrag] = znacznikStyku('qetDisconnector', 'closed').filter((p): p is Extract<CadPrimitive, { k: 'circle' }> => p.k === 'circle');
+    const styk = znacznikStyku('qetDisconnector', 'closed');
+    expect(styk.filter((p) => p.k === 'circle')).toEqual([]);
+    const [kreska] = styk.filter((p): p is Linia => p.k === 'line');
+    expect(kreska.y1).toBeCloseTo(kreska.y2, 6);
     const { b } = nozWPolozeniu('qetDisconnector', 'closed');
-    // Współrzędne pliku TS zaokrąglone do 1e-4 (importer, `zaokr`).
-    expect(b[0]).toBeCloseTo(okrag.cx, 3);
-    expect(b[1]).toBeCloseTo(okrag.cy + okrag.r, 3);
-    // Żadna kreska symbolu nie wchodzi do wnętrza okręgu (przewód od portu górnego kończy się na
-    // górze okręgu; nóż — na dole).
-    const linie = [...s.przewody, ...s.noz!.prymitywy].filter((p): p is Linia => p.k === 'line');
-    for (const l of linie) {
-      for (let i = 0; i <= 50; i += 1) {
-        const x = l.x1 + ((l.x2 - l.x1) * i) / 50;
-        const y = l.y1 + ((l.y2 - l.y1) * i) / 50;
-        expect(Math.hypot(x - okrag.cx, y - okrag.cy), `(${x}; ${y})`).toBeGreaterThanOrEqual(okrag.r - 1e-3);
-      }
-    }
+    expect(b[0]).toBeCloseTo((kreska.x1 + kreska.x2) / 2, 3);
+    expect(b[1]).toBeCloseTo(kreska.y1, 3);
+    // Przewód od portu górnego kończy się na kresce styku (tor ciągły przez styk zamknięty).
+    const przewodGorny = s.przewody.filter((p): p is Linia => p.k === 'line').find((l) => Math.min(l.y1, l.y2) === 0)!;
+    expect(Math.max(przewodGorny.y1, przewodGorny.y2)).toBeCloseTo(kreska.y1, 3);
   });
 });

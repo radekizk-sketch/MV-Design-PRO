@@ -733,31 +733,152 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
   });
 });
 
-describe('UX-04 — przekaźnik pola obok pola (wymaganie właściciela 2026-10-29 pkt 6)', () => {
+/**
+ * Odbiór B-02 właściciela 2026-11-04 pkt 7: przekaźnik pola z powiązaniami obwodów wtórnych stoi
+ * TUŻ PRZY wyłączniku Q0 (krótka linia wyłączania), nie za planem pola. Wyrocznia sceny, niezależna
+ * od funkcji wyboru położenia: (a) okrąg na prawo od obrysu Q0 w odstępie ≥ GRID; (b) położenie
+ * NAJBLIŻSZE — grupa przekaźnika (okrąg, ramka i wiersze bloku, końce linii wyłączania
+ * i pomiarowych) przesunięta o oczko w lewo narusza warunek rysunku: odstęp od Q0, wejście na obcy
+ * symbol, podpis albo tor pola, linia przez obcy aparat, linia pomiarowa wracająca przez własny
+ * zacisk wtórny, przecięcie linii przekaźnika. Ta sama wyrocznia na scenie bez przesunięcia jest
+ * pusta (brak fałszywych alarmów). Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki
+ * {trójpołożeniowy, stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID}.
+ */
+const WIERSZ_BLOKU_POLA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
+const odcinkiProstokaty = (punkty: readonly { x: number; y: number }[]): Rect[] =>
+  punkty.slice(1).map((b, i) => {
+    const a = punkty[i];
+    return { x: Math.min(a.x, b.x) - 0.5, y: Math.min(a.y, b.y) - 0.5, width: Math.abs(b.x - a.x) + 1, height: Math.abs(b.y - a.y) + 1 };
+  });
+const obrysSwiat = (s: PreviewSymbol): Rect => {
+  const o = obrysSymbolu(s.symbolId);
+  return { x: s.x + o.x, y: s.y + o.y, width: o.width, height: o.height };
+};
+/** Gabaryt symbolu dla przewodów: obrys tuszu ∪ prostokąt definicji (jak `symbolWireCollisions`). */
+const gabarytSwiat = (s: PreviewSymbol): Rect => {
+  const o = obrysSwiat(s);
+  const d = SYMBOL_DEFS[s.symbolId];
+  const x0 = Math.min(o.x, s.x);
+  const y0 = Math.min(o.y, s.y);
+  return { x: x0, y: y0, width: Math.max(o.x + o.width, s.x + d.width) - x0, height: Math.max(o.y + o.height, s.y + d.height) - y0 };
+};
+
+function naruszeniaPolozeniaPrzekaznika(scena: SceneV3, bayRef: string): string[] {
+  const bledy: string[] = [];
+  const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === bayRef && s.symbolId === 'protectionRelay');
+  const q0 = symbolePola(scena, bayRef).find((s) => s.symbolId === 'qetBreaker' || s.symbolId === 'qetBreakerZNapedem');
+  if (!przekaznik || !q0) return [`${bayRef}: brak przekaźnika albo Q0`];
+  const okrag = obrysSwiat(przekaznik);
+  const odstep = okrag.x - (obrysSwiat(q0).x + obrysSwiat(q0).width);
+  if (odstep < GRID) bledy.push(`odstęp od Q0 ${odstep} < GRID`);
+  const rama = prostokatBloku(przekaznik);
+  const wiersze = scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? ''));
+  const wlasneEtykiety = new Set(wiersze.map((l) => l.ownerRef));
+  const grupa = [okrag, ...(rama ? [rama] : []), ...wiersze.map((l) => l.rect)];
+  for (const sym of scena.symbols) {
+    if (sym === przekaznik) continue;
+    if (grupa.some((r) => zachodzi(r, gabarytSwiat(sym)))) bledy.push(`blok × symbol ${sym.meta?.testId ?? sym.symbolId}`);
+  }
+  for (const l of scena.labels) {
+    if (!wlasneEtykiety.has(l.ownerRef) && grupa.some((r) => zachodzi(r, l.rect))) bledy.push(`blok × etykieta ${l.ownerRef}`);
+  }
+  const liniePrzekaznika = scena.segments.filter(
+    (g) => g.meta?.ownerRef === `${bayRef}#trip-line` || (g.meta?.kind === 'measurementLink' && (g.meta?.ownerRef ?? '').startsWith(`${bayRef}#`)),
+  );
+  const toryPola = scena.segments.filter((g) => !liniePrzekaznika.includes(g) && (g.meta?.ownerRef === bayRef || (g.meta?.ownerRef ?? '').startsWith(`${bayRef}#`)));
+  for (const tor of toryPola) {
+    if (odcinkiProstokaty(tor.points).some((r) => grupa.some((b) => zachodzi(r, b)))) bledy.push(`blok × tor ${tor.meta?.ownerRef}`);
+  }
+  const symbolePolaWszystkie = symbolePola(scena, bayRef);
+  const zrodloLinii = (g: (typeof liniePrzekaznika)[number]): { s: PreviewSymbol; dir: string } | null => {
+    for (const s of symbolePolaWszystkie) {
+      for (const p of [...SYMBOL_DEFS[s.symbolId].secondaryPorts, ...SYMBOL_DEFS[s.symbolId].ports]) {
+        if (rowne({ x: s.x + p.x, y: s.y + p.y }, g.points[0])) return { s, dir: p.dir };
+      }
+    }
+    return null;
+  };
+  const odcinkiLinii = liniePrzekaznika.map((g) => ({ g, zrodlo: zrodloLinii(g), odcinki: odcinkiProstokaty(g.points) }));
+  for (const { g, zrodlo, odcinki } of odcinkiLinii) {
+    for (const sym of scena.symbols) {
+      if (sym === przekaznik || sym === zrodlo?.s) continue;
+      if (odcinki.some((r) => zachodzi(r, gabarytSwiat(sym)))) bledy.push(`linia ${g.meta?.ownerRef} × symbol ${sym.meta?.testId ?? sym.symbolId}`);
+    }
+    for (const l of scena.labels) {
+      if (odcinki.some((r) => zachodzi(r, l.rect))) bledy.push(`linia ${g.meta?.ownerRef} × etykieta ${l.ownerRef}`);
+    }
+    if (g.meta?.kind === 'measurementLink' && zrodlo) {
+      const ost = g.points[g.points.length - 1];
+      const przed = g.points[g.points.length - 2];
+      const pionX = ost.y === przed.y ? przed.x : ost.x;
+      const zacisk = g.points[0];
+      if (zrodlo.dir === 'E' && pionX < zacisk.x + GRID / 2) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (E)`);
+      if (zrodlo.dir === 'W' && pionX > zacisk.x - GRID / 2) bledy.push(`linia ${g.meta?.ownerRef} wraca przez zacisk (W)`);
+    }
+  }
+  odcinkiLinii.forEach((a, i) =>
+    odcinkiLinii.slice(i + 1).forEach((b) => {
+      if (a.odcinki.some((ra) => b.odcinki.some((rb) => zachodzi(ra, rb)))) bledy.push(`linie ${a.g.meta?.ownerRef} × ${b.g.meta?.ownerRef}`);
+    }),
+  );
+  return bledy;
+}
+
+/** Grupa przekaźnika pola przesunięta o `dx`: okrąg (z ramką bloku w meta), wiersze bloku, koniec
+ *  linii wyłączania przy okręgu, część linii pomiarowych za zaciskiem wtórnym (pion i wejście). */
+function przesunPrzekaznik(scena: SceneV3, bayRef: string, dx: number): SceneV3 {
+  const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === bayRef && s.symbolId === 'protectionRelay')!;
+  return {
+    ...scena,
+    symbols: scena.symbols.map((s) => (s === przekaznik ? { ...s, x: s.x + dx } : s)),
+    labels: scena.labels.map((l) =>
+      (l.ownerRef ?? '').startsWith(`${bayRef}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '') ? { ...l, rect: { ...l.rect, x: l.rect.x + dx } } : l,
+    ),
+    segments: scena.segments.map((g) => {
+      if (g.meta?.ownerRef === `${bayRef}#trip-line`) {
+        return { ...g, points: g.points.map((q, i) => (i === g.points.length - 1 ? { x: q.x + dx, y: q.y } : q)) };
+      }
+      if (g.meta?.kind === 'measurementLink' && (g.meta?.ownerRef ?? '').startsWith(`${bayRef}#`)) {
+        const zacisk = g.points[0];
+        return { ...g, points: g.points.map((q, i) => (i === 0 || q.x === zacisk.x ? q : { x: q.x + dx, y: q.y })) };
+      }
+      return g;
+    }),
+  };
+}
+
+describe('UX-04 — przekaźnik pola tuż przy wyłączniku Q0 (odbiór B-02 właściciela pkt 7)', () => {
   for (const [nazwaFx, enm] of FIKSTURY) {
-    it(`${nazwaFx}: okrąg przekaźnika na prawo od planu pola (aparaty i ich podpisy) w odstępie od GRID do 6×GRID`, () => {
+    it(`${nazwaFx}: okrąg na prawo od Q0, położenie najbliższe wolne (o oczko w lewo — naruszenie)`, () => {
       const scena = buildSceneV3(enm, 2);
-      for (const pole of polaLiniowe(enm)) {
-        const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
-        expect(przekaznik, pole.ref).toBeDefined();
-        const aparaty = symbolePola(scena, pole.ref).map((s) => {
-          const o = obrysSymbolu(s.symbolId);
-          return s.x + o.x + o.width;
-        });
-        // Plan pola = aparaty, ich podpisy i pasmo adnotacji CT/VT (tabliczka przekładnika
-        // z rdzeni modelu, decyzja architekta §11.7 pkt 6 — `polozenieOkreguPrzekaznika` stawia
-        // okrąg ZA tym pasmem): przekaźnik stoi obok tak rozumianego planu.
-        const podpisy = scena.labels
-          .filter((l) => /#(etykieta-aparatu-|ct-rating-|vt-rating-|cbct-rating-|vt-mounting-)/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`))
-          .map((l) => l.rect.x + l.rect.width);
-        const prawaPlanu = Math.max(...aparaty, ...podpisy);
-        const lewaPrzekaznika = przekaznik!.x + obrysSymbolu(przekaznik!.symbolId).x;
-        const odstep = lewaPrzekaznika - prawaPlanu;
-        expect(odstep, `${pole.ref}: odstęp ${odstep}`).toBeGreaterThanOrEqual(GRID);
-        expect(odstep, `${pole.ref}: odstęp ${odstep}`).toBeLessThanOrEqual(6 * GRID);
+      const pola = polaLiniowe(enm);
+      expect(pola.length).toBeGreaterThan(0);
+      for (const pole of pola) {
+        expect(naruszeniaPolozeniaPrzekaznika(scena, pole.ref), `${pole.ref}: położenie wybrane`).toEqual([]);
+        expect(naruszeniaPolozeniaPrzekaznika(przesunPrzekaznik(scena, pole.ref, -GRID), pole.ref).length, `${pole.ref}: o oczko bliżej Q0`).toBeGreaterThan(0);
       }
     });
   }
+
+  it('iniekcja: przekaźnik dalej od Q0 o dwa oczka — położenie nie jest najbliższe (o oczko w lewo wolne)', () => {
+    const [, enm] = FIKSTURY[0];
+    const scena = buildSceneV3(enm, 2);
+    const pole = polaLiniowe(enm)[0];
+    const dalej = przesunPrzekaznik(scena, pole.ref, 2 * GRID);
+    expect(naruszeniaPolozeniaPrzekaznika(dalej, pole.ref)).toEqual([]);
+    expect(naruszeniaPolozeniaPrzekaznika(przesunPrzekaznik(dalej, pole.ref, -GRID), pole.ref)).toEqual([]);
+  });
+
+  it('linia wyłączania krótka: Z.10 ≤ 10·GRID, Z.11.1 i Z.11 ≤ 25·GRID (przed odbiorem: 20·GRID i 39·GRID)', () => {
+    for (const [, enm] of FIKSTURY) {
+      const scena = buildSceneV3(enm, 2);
+      for (const pole of polaLiniowe(enm)) {
+        const g = scena.segments.find((x) => x.meta?.ownerRef === `${pole.ref}#trip-line`)!;
+        const dlugosc = g.points.slice(1).reduce((suma, b, i) => suma + Math.abs(b.x - g.points[i].x) + Math.abs(b.y - g.points[i].y), 0);
+        expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual((pole.pole === 'Z10' ? 10 : 25) * GRID);
+      }
+    }
+  });
 });
 
 /**
@@ -829,12 +950,30 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
         }
       }
     }
-    // Wiersze bloku (kody poza okręgiem i odniesienie źródła 3U₀) — kolumna o wspólnej lewej
-    // krawędzi prostokątów i tekst zaczepiony w tej krawędzi (zrzut pola Z.10 2026-10-29:
-    // wiersze wyśrodkowane w prostokątach szacowanej szerokości rozjeżdżały się o 36 px).
+    // Kody poza okręgiem w DWÓCH kolumnach pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7):
+    // lewa kolumna i odniesienia źródła 3U₀ pod nią mają wspólną lewą krawędź prostokątów (zrzut
+    // pola Z.10 2026-10-29: wiersze wyśrodkowane rozjeżdżały się o 36 px), prawa kolumna stoi na
+    // prawo od lewej, ma ≤ tyle komórek co lewa i jej komórki leżą w wierszach lewej; kolejność
+    // kodów kolumnami (lewa z góry na dół, potem prawa) = kolejność modelu (sprawdzana wyżej).
     const wierszeBloku = [...wiersze, ...odniesienia];
-    if (new Set(wierszeBloku.map((l) => l.rect.x)).size > 1) {
+    const xLewej = Math.min(...wierszeBloku.map((l) => l.rect.x));
+    const lewa = wiersze.filter((l) => l.rect.x === xLewej);
+    const prawa = wiersze.filter((l) => l.rect.x !== xLewej);
+    if (odniesienia.some((l) => l.rect.x !== xLewej) || lewa.length !== wiersze.length - prawa.length || new Set(prawa.map((l) => l.rect.x)).size > 1) {
       bledy.push(`${pole.ref}: wiersze bloku bez wspólnej lewej krawędzi (${wierszeBloku.map((l) => l.rect.x).join(', ')})`);
+    }
+    if (prawa.length > lewa.length) bledy.push(`${pole.ref}: prawa kolumna kodów dłuższa od lewej`);
+    else if (prawa.length !== Math.floor(wiersze.length / 2)) bledy.push(`${pole.ref}: kody nie w dwóch kolumnach (lewa ${lewa.length}, prawa ${prawa.length})`);
+    if (wiersze.length > 0 && wiersze.slice(0, lewa.length).some((l) => l.rect.x !== xLewej)) {
+      bledy.push(`${pole.ref}: kody nie układają się kolumnami (lewa, potem prawa)`);
+    }
+    if (prawa.some((l) => l.rect.x < Math.max(...lewa.map((c) => c.rect.x + c.rect.width)))) bledy.push(`${pole.ref}: prawa kolumna wchodzi na lewą`);
+    prawa.forEach((l, w) => {
+      if (lewa[w] === undefined || l.rect.y !== lewa[w].rect.y) bledy.push(`${pole.ref}: komórka prawej kolumny poza wierszem lewej (${l.text})`);
+    });
+    const kolumnaLewa = [...lewa, ...odniesienia];
+    for (let w = 1; w < kolumnaLewa.length; w += 1) {
+      if (kolumnaLewa[w].rect.y <= kolumnaLewa[w - 1].rect.y) bledy.push(`${pole.ref}: lewa kolumna nie biegnie w dół`);
     }
     for (const l of wierszeBloku) {
       if (l.wyrownanieTekstu !== 'poczatek') bledy.push(`${pole.ref}: wiersz bloku ${l.ownerRef} nie zaczepiony w lewej krawędzi (${l.wyrownanieTekstu ?? 'środek'})`);
@@ -903,22 +1042,83 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
   });
 
   // Iloczyn cech treści bloku: {automatyka na kanwie, piąty kod zabezpieczeń, brak „+N",
-  // pełna lista (stan przed kartą)} — każda odmiana czerwieni wyrocznię.
-  const wierszKodow = (k: SceneV3) => k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`) as { text: string };
+  // pełna lista (stan przed kartą)} — każda odmiana czerwieni wyrocznię. Komórki kodów:
+  // `#protection-codes-full`, `-2`, `-3` … (kolumnami).
+  const komorkiKodow = (k: SceneV3) =>
+    k.labels.filter((x) => /#protection-codes-full(-\d+)?$/.test(x.ownerRef ?? '') && (x.ownerRef ?? '').startsWith(`${poleZ111.ref}#`)) as { -readonly [K in keyof OwnedLabel]: OwnedLabel[K] }[];
+  const dodajKomorke = (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }, tekst: string, przed?: string) => {
+    const komorki = komorkiKodow(k);
+    const wzor = komorki[komorki.length - 1];
+    const nowa = { ...wzor, ownerRef: `${poleZ111.ref}#protection-codes-full-${komorki.length + 1}`, text: tekst };
+    const i = przed ? k.labels.findIndex((x) => x.ownerRef === komorki.find((c) => c.text === przed)?.ownerRef) : k.labels.indexOf(wzor) + 1;
+    k.labels = [...k.labels.slice(0, i), nowa, ...k.labels.slice(i)];
+  };
   it.each([
-    ['automatyka SPZ (79) na kanwie', (t: string) => `${t} · 79`],
-    ['piąty kod zabezpieczeń (50BF) na kanwie', (t: string) => t.replace(/ · \+\d+$/, ' · 50BF$&')],
-    ['brak znacznika „+N"', (t: string) => t.replace(/ · \+\d+$/, '')],
+    ['automatyka SPZ (79) na kanwie', (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => dodajKomorke(k, '79')],
+    [
+      'piąty kod zabezpieczeń (50BF) na kanwie',
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => dodajKomorke(k, '50BF', komorkiKodow(k).find((c) => /^\+\d+$/.test(c.text))!.text),
+    ],
+    [
+      'brak znacznika „+N"',
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+        const n = komorkiKodow(k).find((c) => /^\+\d+$/.test(c.text))!;
+        k.labels = k.labels.filter((x) => x.ownerRef !== n.ownerRef);
+      },
+    ],
     [
       'pełna lista funkcji (stan przed kartą)',
-      () => (enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.slice(2).join(' · '),
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+        const [pierwsza, ...reszta] = komorkiKodow(k);
+        pierwsza.text = (enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.slice(2).join(' · ');
+        const zbedne = new Set(reszta.map((c) => c.ownerRef));
+        k.labels = k.labels.filter((x) => !zbedne.has(x.ownerRef));
+      },
     ],
   ] as const)('iniekcja: %s — blok ≠ wyrocznia', (_opis, zmiana) => {
-    const s = zmien((k) => {
-      const l = wierszKodow(k);
-      l.text = zmiana(l.text);
-    });
+    expect(komorkiKodow(scenaBazowa).some((c) => /^\+\d+$/.test(c.text))).toBe(true);
+    const s = zmien(zmiana);
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: blok `);
+  });
+
+  // Układ kolumn (pkt 7): {kody jednym wierszem poziomym, jedna kolumna zamiast dwóch, prawa
+  // kolumna przesunięta o pół wiersza, odniesienie 3U₀ pod prawą kolumną} — czerwień.
+  it.each([
+    [
+      'kody w jednym wierszu poziomym (stan przed odbiorem)',
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+        const komorki = komorkiKodow(k);
+        let x = komorki[0].rect.x;
+        for (const c of komorki) {
+          c.rect = { ...c.rect, x, y: komorki[0].rect.y };
+          x += c.rect.width + GRID;
+        }
+      },
+      'prawa kolumna kodów dłuższa od lewej',
+    ],
+    [
+      'prawa kolumna o pół wiersza niżej',
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+        const komorki = komorkiKodow(k);
+        const x0 = Math.min(...komorki.map((c) => c.rect.x));
+        for (const c of komorki) if (c.rect.x !== x0) c.rect = { ...c.rect, y: c.rect.y + GRID / 2 };
+      },
+      'komórka prawej kolumny poza wierszem lewej',
+    ],
+    [
+      'odniesienie 3U₀ pod prawą kolumną',
+      (k: { -readonly [K in keyof SceneV3]: SceneV3[K] }) => {
+        const komorki = komorkiKodow(k);
+        const x0 = Math.min(...komorki.map((c) => c.rect.x));
+        const xP = komorki.find((c) => c.rect.x !== x0)!.rect.x;
+        const u0 = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#zrodlo-u0`) as { rect: Rect };
+        u0.rect = { ...u0.rect, x: xP };
+      },
+      'wiersze bloku bez wspólnej lewej krawędzi',
+    ],
+  ] as const)('iniekcja układu kolumn: %s — czerwień', (_opis, zmiana, komunikat) => {
+    expect(new Set(komorkiKodow(scenaBazowa).map((c) => c.rect.x)).size).toBe(2);
+    expect(naruszeniaBlokuPrzekaznika(enmZ11, zmien(zmiana)).join('\n')).toContain(komunikat);
   });
 
   it('iniekcja: numer „52" w połowie linii wyłączania (stan przed naprawą) — numer bez związku', () => {

@@ -21,14 +21,13 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
-import { fontSizeForScreenFloorWithinProportion } from '../../core/text';
+import { MIN_OPIS_CELU_KADRU_PX, fontSizeForScreenFloorWithinProportion } from '../../core/text';
 import { planSceneLabels } from '../labelLegibility';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
 import { stationSnSectionBusRefs } from '../../../shared/stationBusResolution';
 import {
-  MIN_OPIS_CELU_KADRU_PX,
   SASIEDZI_ELEKTRYCZNIE_WYMAGANI,
   nalezyDoZakresu,
   podlogaOpisowCelu,

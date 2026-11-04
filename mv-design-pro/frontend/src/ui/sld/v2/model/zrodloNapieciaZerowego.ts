@@ -177,9 +177,14 @@ export function zrodloU0Deskryptora(
   return zrodloU0 ? { zrodloU0 } : {};
 }
 
-/** Tekst odniesienia przy przekaźniku: obwód okrężny „Z, Zz" z przekładnika pola pomiaru
- *  napięcia (rysunek ENEA Z.10/Z.11.1) — `null`, gdy źródło niepotwierdzone. */
+/** Tekst odniesienia przy przekaźniku: źródło 3U₀ — przekładnik pola pomiaru napięcia i to pole
+ *  (rysunek ENEA Z.10/Z.11.1) — `null`, gdy źródło niepotwierdzone. Odbiór B-02 właściciela
+ *  2026-11-04 pkt 8 (zwężenie pola): zapis zwarty „3U₀ ← T1, Pole pomiarowe”; oznaczenie obwodu
+ *  okrężnego otwartego trójkąta („Z, Zz”) i powiązanie modelu — w inspektorze pola. */
 export function tekstOdniesieniaZrodlaU0(zrodlo: ZrodloU0PolaView | undefined): string | null {
   if (!zrodlo?.potwierdzone || !zrodlo.vtOznaczenie) return null;
-  return `3U₀ (Z, Zz) ← ${zrodlo.vtOznaczenie}, pole ${zrodlo.poleZrodlaOznaczenie ?? ''}`.trimEnd();
+  const pole = zrodlo.poleZrodlaOznaczenie?.trim();
+  if (!pole) return `3U₀ ← ${zrodlo.vtOznaczenie}`;
+  // Oznaczenie pola będące nazwą „Pole …” nie powtarza słowa „pole”; numer pola — „pole 7”.
+  return `3U₀ ← ${zrodlo.vtOznaczenie}, ${/^pole\b/i.test(pole) ? pole : `pole ${pole}`}`;
 }

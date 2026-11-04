@@ -1,10 +1,14 @@
 /**
- * TABLICZKA PRZEKŁADNIKA PRĄDOWEGO NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja
- * architekta §11.7 pkt 6): zapis przekładni i klas rdzeni z `BayPrimaryDevice.rdzenie` oraz
- * kanał adnotacji pola (`resolveBayCtRatingAnnotations`).
+ * PRZEKŁADNIA PRZEKŁADNIKA NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6; odbiór
+ * B-02 właściciela 2026-11-04 pkt 6): KRÓTKA przekładnia z `BayPrimaryDevice.rdzenie`
+ * („200–400/5”) i `BayPrimaryDevice.uzwojenia` („15/√3 / 0,1/√3 kV” — „SN” szablonu zastąpione
+ * napięciem szyny pola) oraz kanał adnotacji pola (`resolveBayCtRatingAnnotations`). Klasy,
+ * FS, zaczep i kolejne rdzenie/uzwojenia NIE trafiają na schemat (inspektor pola).
  *
- * Iloczyn cech: liczba rdzeni (0 × 1 × 3) × strona pierwotna (wspólna × różna × zapis bez „/")
- * × FS (brak × całkowity × ułamkowy) × przeznaczenia (każde z sześciu, pary rodzajów) × źródło
+ * Iloczyn cech: liczba rdzeni (0 × 1 × 3) × zapis (zakres zaczepów × jedna wartość × spacje ×
+ * jednostka „A”) × zaczep rekordu (brak × projektanta × roboczy) × napięcie szyny (15 × 20 ×
+ * 0,4 × brak szyny × brak napięcia) × zapis VT („SN” szablonu × liczba × bez separatora) ×
+ * przeznaczenia (każde z sześciu, pary rodzajów) × źródło
  * adnotacji (pomiar CT pola wskazany przez `linked_ref` × aparat bez pomiaru × pomiar innego
  * pola) × rodzaj aparatu (CT × przekładnik Ferrantiego). Zbiory przeznaczeń — parytet z
  * backendem (`network_model/catalog/przekladniki.py`), rozjazd = czerwony test.
@@ -14,16 +18,15 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { PrzeznaczenieRdzenia, RdzenPrzekladnikaPradowego } from '../../../../../types/przekladniki';
+import type { PrzeznaczenieRdzenia, RdzenPrzekladnikaPradowego, UzwojeniePrzekladnikaNapieciowego } from '../../../../../types/przekladniki';
 import type { Bay, BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
 import { resolveBayCtRatingAnnotations } from '../../canvas/enmToSldAdapter';
 import {
   PRZEZNACZENIA_POMIAROWE,
   PRZEZNACZENIA_ZABEZPIECZENIOWE,
   przeznaczeniePrzekladnika,
-  tekstKlasRdzeni,
-  tekstPrzekladniRdzeni,
-  tekstZaczepu,
+  krotkaPrzekladniaRdzeni,
+  krotkaPrzekladniaUzwojen,
   zaczepyPierwotneA,
   zaczepyPrzekladnika,
 } from '../tabliczkaPrzekladnika';
@@ -55,28 +58,45 @@ const Z11 = [
   rdzen('200-400/5', '5P20', ['ZABEZPIECZENIA']),
 ];
 
-describe('tabliczka przekładnika — zapis przekładni i klas z rdzeni modelu', () => {
+describe('krótka przekładnia CT na schemacie — pierwszy rdzeń, półpauza w zakresie zaczepów', () => {
   it.each([
-    ['brak rdzeni (null)', null, null, null],
-    ['pusta lista', [], null, null],
-    ['Z.10: jeden rdzeń 5P20', Z10, '200-400/5 A', '5P20'],
-    ['Z.11: trzy rdzenie o wspólnej stronie pierwotnej', Z11, '200-400/5/5/5 A', '0,2S FS5 / 0,2 FS5 / 5P20'],
-    [
-      'różne strony pierwotne — przekładnie rdzeni po przecinku',
-      [rdzen('200-400/5', '5P20', ['ZABEZPIECZENIA']), rdzen('300/1', '0,5', ['POMIAR'], 10)],
-      '200-400/5, 300/1 A',
-      '5P20 / 0,5 FS10',
-    ],
-    [
-      'zapis bez „/" — bez składania stron (zero domysłu)',
-      [rdzen('400', '5P20', ['ZABEZPIECZENIA']), rdzen('400', '10P10', ['ZABEZPIECZENIA'])],
-      '400, 400 A',
-      '5P20 / 10P10',
-    ],
-    ['FS ułamkowy w zapisie polskim', [rdzen(' 100/1 ', '0,5S', ['ROZLICZENIE'], 2.5)], '100/1 A', '0,5S FS2,5'],
-  ] as const)('%s', (_opis, rdzenie, przekladnia, klasy) => {
-    expect(tekstPrzekladniRdzeni(rdzenie as readonly RdzenPrzekladnikaPradowego[] | null)).toBe(przekladnia);
-    expect(tekstKlasRdzeni(rdzenie as readonly RdzenPrzekladnikaPradowego[] | null)).toBe(klasy);
+    ['brak rdzeni (null)', null, null],
+    ['pusta lista', [], null],
+    ['Z.10: jeden rdzeń 5P20', Z10, '200–400/5'],
+    ['Z.11: trzy rdzenie — wyłącznie przekładnia (bez „/5/5”, bez klas)', Z11, '200–400/5'],
+    ['jedna wartość pierwotna', [rdzen('300/1', '0,5', ['POMIAR'], 10)], '300/1'],
+    ['zapis ze spacjami i jednostką', [rdzen(' 100 - 200 / 5 A ', '5P20', ['ZABEZPIECZENIA'])], '100–200/5'],
+    ['trzy zaczepy', [rdzen('150-300-600/1', '5P20', ['ZABEZPIECZENIA'])], '150–300–600/1'],
+  ] as const)('%s', (_opis, rdzenie, oczekiwana) => {
+    const tekst = krotkaPrzekladniaRdzeni(rdzenie as readonly RdzenPrzekladnikaPradowego[] | null);
+    expect(tekst).toBe(oczekiwana);
+    // Na schemacie nigdy klasa dokładności ani FS (opis pełny — inspektor pola).
+    if (tekst !== null) expect(tekst).not.toMatch(/P20|FS|0,2S|kl\./);
+  });
+});
+
+describe('krótka przekładnia VT na schemacie — liczbowo z napięcia szyny pola', () => {
+  const uzw = (przekladnia: string, klasa = '0,2'): UzwojeniePrzekladnikaNapieciowego =>
+    ({ przekladnia, moc_va: 30, klasa, przeznaczenie: ['POMIAR'] }) as UzwojeniePrzekladnikaNapieciowego;
+  const SZABLON = [uzw('SN/√3 / 0,1/√3'), uzw('SN/√3 / 0,1/√3'), uzw('SN/√3 / 0,1/3', '3P')];
+  it.each([
+    ['brak uzwojeń', null, 15, null],
+    ['pusta lista', [], 15, null],
+    ['szablon × szyna 15 kV', SZABLON, 15, '15/√3 / 0,1/√3 kV'],
+    ['szablon × szyna 20 kV', SZABLON, 20, '20/√3 / 0,1/√3 kV'],
+    ['szablon × szyna 6,3 kV (zapis polski)', SZABLON, 6.3, '6,3/√3 / 0,1/√3 kV'],
+    ['szablon × brak napięcia szyny — „SN” zostaje (brak danej jawny)', SZABLON, null, 'SN/√3 / 0,1/√3 kV'],
+    ['szablon × napięcie 0 — nieważne, „SN” zostaje', SZABLON, 0, 'SN/√3 / 0,1/√3 kV'],
+    ['zapis liczbowy z rekordu — bez zmian', [uzw('15/√3 / 0,1/√3')], 20, '15/√3 / 0,1/√3 kV'],
+    ['zapis bez separatora stron — bez zmian i bez jednostki', [uzw('15000/100')], 15, '15000/100'],
+  ] as const)('%s', (_opis, uzwojenia, un, oczekiwana) => {
+    const tekst = krotkaPrzekladniaUzwojen(uzwojenia as readonly UzwojeniePrzekladnikaNapieciowego[] | null, un);
+    expect(tekst).toBe(oczekiwana);
+    // Wada z oględzin: wielokropek i lista kolejnych uzwojeń na schemacie.
+    if (tekst !== null) {
+      expect(tekst).not.toContain('…');
+      expect(tekst.split(' / ').length).toBeLessThanOrEqual(2);
+    }
   });
 });
 
@@ -144,8 +164,8 @@ describe('kanał adnotacji pola — pomiar CT ma pierwszeństwo, aparat bez pomi
             expect(a.deviceRef).toBe('T1');
             expect(a.identifier).toBeNull();
             expect(a.measurementRef).toBeNull();
-            expect(a.ratioText).toBe(tekstPrzekladniRdzeni(rdzenie));
-            expect(a.klasy).toBe(tekstKlasRdzeni(rdzenie));
+            expect(a.ratioText).toBe(krotkaPrzekladniaRdzeni(rdzenie));
+            expect(a.ratioText).toBe('200–400/5');
             expect(a.purpose).toBe(przeznaczeniePrzekladnika(rdzenie));
           }
           if (wynik.length === 0) expect(resolveBayCtRatingAnnotations(bay, snap(pomiary))).toBeUndefined();
@@ -167,18 +187,12 @@ describe('zaczepy przekładnika — lustro backendu (wspólna tabela przypadków
       expect(zaczepyPrzekladnika(zapisy)).toEqual(oczekiwane);
     });
   }
-  it('opis zaczepu na schemacie: polski zapis liczby, brak zaczepu → brak opisu', () => {
-    expect(tekstZaczepu(400)).toBe('zaczep 400 A');
-    expect(tekstZaczepu(2.5)).toBe('zaczep 2,5 A');
-    expect(tekstZaczepu(null)).toBeNull();
-    expect(tekstZaczepu(undefined)).toBeNull();
-  });
 });
 
-describe('zaczep na schemacie — tabliczka aparatu CT (rekord × źródło zaczepu)', () => {
-  // Iloczyn: zaczep rekordu {brak, 200 projektanta, 400 roboczy} × rdzenie {1, 3}. Opis zaczepu
-  // stoi tuż po przekładni, przed klasami; ten sam tekst rezerwuje szerokość pasma
-  // (`ctRatingLabelText` — jedna funkcja dla rezerwacji i rysunku).
+describe('zaczep NIE na schemacie — tabliczka aparatu CT (rekord × źródło zaczepu)', () => {
+  // Iloczyn: zaczep rekordu {brak, 200 projektanta, 400 roboczy} × rdzenie {1, 3}. Odbiór B-02
+  // (pkt 6 i 8): wybrany zaczep jest w inspektorze pola; etykieta schematu = krótka przekładnia
+  // niezależnie od zaczepu — ten sam tekst rezerwuje szerokość pasma (`ctRatingLabelText`).
   const r1 = [rdzen('200-400/5', '5P20', ['ZABEZPIECZENIA'])];
   const r3 = [
     rdzen('200-400/5', '0,2S', ['ROZLICZENIE'], 5),
@@ -203,11 +217,28 @@ describe('zaczep na schemacie — tabliczka aparatu CT (rekord × źródło zacz
         } as BayPrimaryDevice;
         const bay = { ref_id: 'pole', primary_devices: [aparat] } as unknown as Bay;
         const [wpis] = resolveBayCtRatingAnnotations(bay, { measurements: [] } as unknown as EnergyNetworkModel) ?? [];
-        expect(wpis.zaczepA).toBe(zaczepA ?? undefined);
-        const tekst = ctRatingLabelText(wpis);
-        const oczekiwanyZaczep = zaczepA !== null ? ` · zaczep ${zaczepA} A` : '';
-        expect(tekst).toBe(`${tekstPrzekladniRdzeni(rdzenie)}${oczekiwanyZaczep} · ${tekstKlasRdzeni(rdzenie)}`);
+        expect(ctRatingLabelText(wpis)).toBe('200–400/5');
       });
     }
   }
+});
+
+describe('kanał adnotacji pola — VT z napięciem szyny pola (bus_ref × szyny migawki)', () => {
+  const vt = {
+    device_ref: 'TV1',
+    kind: 'VT',
+    placement: 'MIDSTREAM',
+    uzwojenia: [{ przekladnia: 'SN/√3 / 0,1/√3', moc_va: 30, klasa: '0,2', przeznaczenie: ['POMIAR'] }],
+  } as unknown as BayPrimaryDevice;
+  const bay = { ref_id: 'pole', bus_ref: 'szyna-1', primary_devices: [vt] } as unknown as Bay;
+  it.each([
+    ['szyna pola 15 kV', [{ ref_id: 'szyna-1', voltage_kv: 15 }], '15/√3 / 0,1/√3 kV'],
+    ['szyna pola 20 kV, inna 110 kV', [{ ref_id: 'szyna-0', voltage_kv: 110 }, { ref_id: 'szyna-1', voltage_kv: 20 }], '20/√3 / 0,1/√3 kV'],
+    ['tylko inna szyna — brak danej, „SN” zostaje', [{ ref_id: 'szyna-0', voltage_kv: 110 }], 'SN/√3 / 0,1/√3 kV'],
+    ['migawka bez szyn', undefined, 'SN/√3 / 0,1/√3 kV'],
+  ] as const)('%s', (_opis, buses, oczekiwana) => {
+    const [wpis] = resolveBayCtRatingAnnotations(bay, { measurements: [], ...(buses ? { buses: buses as never } : {}) }) ?? [];
+    expect(wpis.rodzajPrzekladnika).toBe('VT');
+    expect(ctRatingLabelText(wpis)).toBe(oczekiwana);
+  });
 });

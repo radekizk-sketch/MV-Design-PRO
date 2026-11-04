@@ -38,10 +38,8 @@ import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { bateriaWidokuPola } from '../model/bateriaPola';
 import {
   przeznaczeniePrzekladnika,
-  tekstKlasRdzeni,
-  tekstKlasUzwojen,
-  tekstPrzekladniRdzeni,
-  tekstPrzekladniUzwojen,
+  krotkaPrzekladniaRdzeni,
+  krotkaPrzekladniaUzwojen,
 } from '../model/tabliczkaPrzekladnika';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
 import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
@@ -2346,21 +2344,22 @@ export function resolveBayProtectionMarking(
  * pole nie ma ani pomiaru CT, ani aparatu CT z tabliczką rdzeni (brak danych =
  * brak oznaczenia, §18.3 dosłownie). Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja
  * architekta §11.7 pkt 6): aparat CT pola z `BayPrimaryDevice.rdzenie`, na który nie
- * wskazuje pomiar CT pola, daje adnotację z tabliczki (przekładnia i klasy rdzeni,
- * `v2/model/tabliczkaPrzekladnika.ts`), zakotwiczoną po `deviceRef`.
- * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
- * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
- * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
+ * wskazuje pomiar CT pola, daje adnotację z tabliczki (KRÓTKA przekładnia —
+ * `v2/model/tabliczkaPrzekladnika.ts`), zakotwiczoną po `deviceRef`. Odbiór B-02
+ * (2026-11-04, pkt 6 i 8): układ pomiarowy, liczba rdzeni, klasy i zaczep NIE są
+ * przenoszone na schemat — opis pełny w inspektorze (pomiaru i pola).
  *
  * F11.1 (SLD_CAD_SPEC_V3 §18.3, rejestr device-ref w GPZ): eksportowana,
- * `snapshot` zwężony do `Pick<..., 'measurements'>` — `v2/canvas/
+ * `snapshot` zwężony do `Pick<..., 'measurements'>` (+ `buses` — napięcie szyny pola) — `v2/canvas/
  * enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
  * `CanonicalGpzBay.ctRatingAnnotations` (jedna prawda stacja↔GPZ).
  */
 export function resolveBayCtRatingAnnotations(
   bay: Bay,
-  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'> & { readonly buses?: EnergyNetworkModel['buses'] },
 ): readonly CtRatingAnnotationView[] | undefined {
+  // Napięcie znamionowe szyny pola — strona pierwotna krótkiej przekładni VT („15/√3 / 0,1/√3 kV”).
+  const napiecieSzynyKv = (snapshot.buses ?? []).find((b) => b.ref_id === bay.bus_ref)?.voltage_kv ?? null;
   const measurements = (snapshot.measurements ?? []).filter(
     (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,
   );
@@ -2368,15 +2367,10 @@ export function resolveBayCtRatingAnnotations(
     measurementRef: m.ref_id,
     identifier: m.name,
     ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
-    arrangement: m.ct_arrangement ?? undefined,
     // W5 (§12–15/uwaga 7): przeznaczenie CT (pomiarowy/zabezpieczeniowy/łączony)
     // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
     // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
     purpose: m.purpose,
-    // CTVT-RENDER: liczba rdzeni CT = długość listy `Measurement.rdzenie` (tabliczka
-    // IEC 61869-2), doklejana do etykiety WYŁĄCZNIE gdy lista obecna (`undefined` gdy
-    // `null`/brak — uczciwy brak, zero fabrykacji).
-    cores: m.rdzenie?.length ?? undefined,
   }));
   // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): tabliczka aparatu CT
   // pola (`BayPrimaryDevice.rdzenie` — z szablonu pola albo z pozycji katalogu) dla aparatu, na
@@ -2393,9 +2387,7 @@ export function resolveBayCtRatingAnnotations(
         deviceRef: d.device_ref,
         rodzajPrzekladnika: 'CT',
         identifier: null,
-        ratioText: tekstPrzekladniRdzeni(d.rdzenie)!,
-        klasy: tekstKlasRdzeni(d.rdzenie)!,
-        ...(d.zaczep_pierwotny_a != null ? { zaczepA: d.zaczep_pierwotny_a } : {}),
+        ratioText: krotkaPrzekladniaRdzeni(d.rdzenie)!,
         purpose: przeznaczeniePrzekladnika(d.rdzenie),
       }];
     }
@@ -2405,8 +2397,7 @@ export function resolveBayCtRatingAnnotations(
         deviceRef: d.device_ref,
         rodzajPrzekladnika: 'VT',
         identifier: null,
-        ratioText: tekstPrzekladniUzwojen(d.uzwojenia)!,
-        klasy: tekstKlasUzwojen(d.uzwojenia)!,
+        ratioText: krotkaPrzekladniaUzwojen(d.uzwojenia, napiecieSzynyKv)!,
         purpose: przeznaczeniePrzekladnika(d.uzwojenia),
       }];
     }

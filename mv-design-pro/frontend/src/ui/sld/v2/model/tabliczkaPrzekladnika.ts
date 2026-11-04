@@ -1,20 +1,13 @@
 /**
- * TABLICZKA PRZEKŁADNIKA PRĄDOWEGO NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja
- * architekta §11.7 pkt 6, 2026-10-30) — zapis przekładni i klas rdzeni z danych modelu
- * (`BayPrimaryDevice.rdzenie`, tabliczka PN-EN 61869-2). CZYSTE formatowanie zapisu tabliczki:
- * zero fizyki, zero zaokrągleń, zero domysłu — brak rdzeni w rekordzie = brak tabliczki.
+ * PRZEKŁADNIA PRZEKŁADNIKA NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6; odbiór
+ * B-02 właściciela 2026-11-04 pkt 6 i 8) — CZYSTE formatowanie zapisu tabliczki z danych modelu
+ * (`BayPrimaryDevice.rdzenie`, PN-EN 61869-2; `BayPrimaryDevice.uzwojenia`, PN-EN 61869-3): zero
+ * fizyki, zero zaokrągleń, zero domysłu — brak rdzeni/uzwojeń w rekordzie = brak opisu.
  *
- * Zapis wg rysunku ENEA Zeszyt 1 (Z.10 s.89: „200-400/5", „kl. 5P20"; Z.11 s.90:
- * „200-400/5/5/5"): rdzenie o wspólnym zapisie strony pierwotnej dają jedną przekładnię
- * z prądami wtórnymi kolejnych rdzeni („200-400/5/5/5 A"); rdzenie o różnej stronie pierwotnej
- * — przekładnie kolejnych rdzeni po przecinku. Klasy kolejnych rdzeni rozdziela „/" (kolejność
- * rdzeni z modelu), rdzeń pomiarowy z FS niesie go po klasie („0,2S FS5").
- *
- * Przekładnik napięciowy (`BayPrimaryDevice.uzwojenia`, tabliczka PN-EN 61869-3) — zapis
- * rysunku Z.11.1 s.91 („SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3"): uzwojenia o wspólnej stronie
- * pierwotnej dają jedną przekładnię z napięciami wtórnymi kolejnych uzwojeń; klasy kolejnych
- * uzwojeń po „ / ". Przekładnik Ferrantiego (`BayPrimaryDevice.przekladnia`) — zapis z rekordu
- * bez zmian („1/100").
+ * Na schemacie wyłącznie KRÓTKA przekładnia (LOD2): CT „200–400/5”, VT liczbowo
+ * „15/√3 / 0,1/√3 kV”. Pełne dane tabliczki — kolejne rdzenie i uzwojenia, klasy dokładności,
+ * współczynniki FS, wybrany zaczep — są w inspektorze pola (`ui/field/EdytorWyposazeniaPola.tsx`),
+ * nie powtarzane na schemacie (uwaga właściciela: nadmiar opisów poszerzał pole).
  */
 import type {
   PrzeznaczenieRdzenia,
@@ -25,31 +18,6 @@ import type {
 /** Liczba w zapisie polskim (przecinek dziesiętny) — bez zaokrąglania. */
 function liczbaPl(wartosc: number): string {
   return String(wartosc).replace('.', ',');
-}
-
-/** Rozbicie zapisu przekładni rdzenia na stronę pierwotną i wtórną (ostatni „/"). `null`, gdy
- *  zapis nie ma „/" (nie da się go złożyć z innymi bez domysłu). */
-function stronyPrzekladni(przekladnia: string): { readonly pierwotna: string; readonly wtorna: string } | null {
-  const i = przekladnia.lastIndexOf('/');
-  if (i <= 0 || i === przekladnia.length - 1) return null;
-  return { pierwotna: przekladnia.slice(0, i).trim(), wtorna: przekladnia.slice(i + 1).trim() };
-}
-
-/** Przekładnia tabliczki (np. „200-400/5 A", „200-400/5/5/5 A"); `null` bez rdzeni. */
-export function tekstPrzekladniRdzeni(rdzenie: readonly RdzenPrzekladnikaPradowego[] | null | undefined): string | null {
-  if (!rdzenie || rdzenie.length === 0) return null;
-  const strony = rdzenie.map((r) => stronyPrzekladni(r.przekladnia.trim()));
-  const pierwsza = strony[0];
-  const wspolnaPierwotna = pierwsza !== null && strony.every((s) => s !== null && s.pierwotna === pierwsza.pierwotna);
-  if (wspolnaPierwotna) return `${pierwsza.pierwotna}/${strony.map((s) => s!.wtorna).join('/')} A`;
-  return `${rdzenie.map((r) => r.przekladnia.trim()).join(', ')} A`;
-}
-
-/** Klasy dokładności rdzeni w kolejności z modelu (np. „5P20", „0,2S FS5 / 0,2 FS5 / 5P20");
- *  `null` bez rdzeni. */
-export function tekstKlasRdzeni(rdzenie: readonly RdzenPrzekladnikaPradowego[] | null | undefined): string | null {
-  if (!rdzenie || rdzenie.length === 0) return null;
-  return rdzenie.map((r) => (r.fs != null ? `${r.klasa} FS${liczbaPl(r.fs)}` : r.klasa)).join(' / ');
 }
 
 /** Przeznaczenia rdzenia zabezpieczeniowego i pomiarowego — lustro
@@ -106,11 +74,6 @@ export function zaczepyPrzekladnika(przekladnie: readonly string[]): readonly nu
   return wspolne ? [...wspolne].sort((a, b) => a - b) : [];
 }
 
-/** Opis wybranego zaczepu na schemacie („zaczep 400 A"); `null` bez zaczepu w rekordzie. */
-export function tekstZaczepu(zaczepA: number | null | undefined): string | null {
-  return zaczepA != null ? `zaczep ${liczbaPl(zaczepA)} A` : null;
-}
-
 /** Separator stron przekładni uzwojenia przekładnika napięciowego w zapisie tabliczki
  *  („15/√3 / 0,1/√3") — ukośnik ze spacjami; ukośnik bez spacji należy do zapisu napięcia
  *  fazowego („/√3"). */
@@ -123,24 +86,39 @@ function stronyPrzekladniUzwojenia(przekladnia: string): { readonly pierwotna: s
   return wtorna === '' ? null : { pierwotna: przekladnia.slice(0, i).trim(), wtorna };
 }
 
-/** Przekładnia tabliczki przekładnika napięciowego (np. „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3");
- *  uzwojenia o różnej stronie pierwotnej albo zapisie bez separatora stron — przekładnie
- *  kolejnych uzwojeń po przecinku. `null` bez uzwojeń. */
-export function tekstPrzekladniUzwojen(
+/** Oznaczenie napięcia sieci w zapisie przekładni szablonu pola (`bay_templates`: „SN/√3 / 0,1/√3”
+ *  — szablon obsługuje rozdzielnice 15 kV i 20 kV, „SN” = napięcie sieci). */
+const NAPIECIE_SIECI_SZABLONU = 'SN';
+
+/**
+ * KRÓTKA przekładnia przekładnika napięciowego NA SCHEMACIE (uwaga właściciela 2026-11-04, odbiór
+ * B-02 pkt 6: „VT liczbowo, np. 15/√3 / 0,1/√3 kV — dziś SN/√3 … z wielokropkiem”): jedna
+ * przekładnia — strona pierwotna i wtórna PIERWSZEGO uzwojenia (pozostałe uzwojenia, klasy i moce
+ * — w inspektorze pola), z oznaczeniem „SN” zastąpionym napięciem znamionowym szyny pola
+ * (`Bus.voltage_kv` — dana modelu, nie domysł; szablon definiuje „SN” jako napięcie sieci).
+ * Szyna bez napięcia — „SN” zostaje (brak danej widoczny wprost). Zapis bez separatora stron —
+ * bez zmian. `null` bez uzwojeń.
+ */
+export function krotkaPrzekladniaUzwojen(
   uzwojenia: readonly UzwojeniePrzekladnikaNapieciowego[] | null | undefined,
+  napiecieSzynyKv: number | null | undefined,
 ): string | null {
   if (!uzwojenia || uzwojenia.length === 0) return null;
-  const strony = uzwojenia.map((u) => stronyPrzekladniUzwojenia(u.przekladnia.trim()));
-  const pierwsza = strony[0];
-  const wspolnaPierwotna = pierwsza !== null && strony.every((s) => s !== null && s.pierwotna === pierwsza.pierwotna);
-  if (wspolnaPierwotna) return [pierwsza.pierwotna, ...strony.map((s) => s!.wtorna)].join(SEPARATOR_STRON_VT);
-  return uzwojenia.map((u) => u.przekladnia.trim()).join(', ');
+  const zapis = uzwojenia[0].przekladnia.trim();
+  const strony = stronyPrzekladniUzwojenia(zapis);
+  if (!strony) return zapis;
+  const pierwotna =
+    napiecieSzynyKv != null && Number.isFinite(napiecieSzynyKv) && napiecieSzynyKv > 0
+      ? strony.pierwotna.replace(new RegExp(`^${NAPIECIE_SIECI_SZABLONU}(?=/|$)`), liczbaPl(napiecieSzynyKv))
+      : strony.pierwotna;
+  return `${pierwotna}${SEPARATOR_STRON_VT}${strony.wtorna} kV`;
 }
 
-/** Klasy dokładności uzwojeń w kolejności z modelu (np. „0,2 / 0,2 / 0,5/3P"); `null` bez uzwojeń. */
-export function tekstKlasUzwojen(
-  uzwojenia: readonly UzwojeniePrzekladnikaNapieciowego[] | null | undefined,
-): string | null {
-  if (!uzwojenia || uzwojenia.length === 0) return null;
-  return uzwojenia.map((u) => u.klasa.trim()).join(SEPARATOR_STRON_VT);
+/** KRÓTKA przekładnia przekładnika prądowego NA SCHEMACIE (odbiór B-02 pkt 6: „200–400/5”):
+ *  zapis przekładni PIERWSZEGO rdzenia (rdzenie przekładnika dzielą zaczepy strony pierwotnej —
+ *  `zaczepyPrzekladnika`), półpauza w zakresie zaczepów strony pierwotnej; pozostałe rdzenie,
+ *  klasy, zaczep i moce — w inspektorze pola. `null` bez rdzeni. */
+export function krotkaPrzekladniaRdzeni(rdzenie: readonly RdzenPrzekladnikaPradowego[] | null | undefined): string | null {
+  if (!rdzenie || rdzenie.length === 0) return null;
+  return rdzenie[0].przekladnia.trim().replace(/\s*-\s*/g, '–').replace(/\s*\/\s*/g, '/').replace(/\s*A$/, '');
 }

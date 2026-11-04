@@ -34,12 +34,8 @@
  * ctRatingAnnotations`, jedna pozycja per CT z ratingiem — `resolveBayCtRating
  * Annotations`, `v2/canvas/enmToSldAdapter.ts`). Dopasowanie na aparat
  * NARYSOWANEGO stosu — TA SAMA reguła co miernik: `measurementRef ===
- * linked_ref`. F10.6 (D3, DOMAIN): układ pomiarowy (3×CT fazowe / przekładnik
- * sumujący Ferranti-I0, `Measurement.ct_arrangement`) dokleja TRZECI człon do
- * etykiety (`ctArrangementLabelText` niżej), GDY dane obecne — glif
- * `currentTransformer` sam pozostaje jeden niezależnie od danych (spec §18.3
- * dopuszcza „wariant symbolu LUB adnotacji"; wybrano adnotację — zero nowego
- * glifu).
+ * linked_ref`. Układ pomiarowy, liczba rdzeni i klasy NIE są doklejane do etykiety
+ * (odbiór B-02 2026-11-04) — opis pełny w inspektorze pola.
  */
 
 import { GRID, snapUp } from '../core/grid';
@@ -52,7 +48,6 @@ import type {
   RodzajPrzekladnikaTabliczki,
   VtMountingAnnotationView,
 } from '../../v2/model/widokPolStacji';
-import { tekstZaczepu } from '../../v2/model/tabliczkaPrzekladnika';
 import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
 import { podzialFunkcjiNaSchemacie } from '../../../shared/funkcjeEaz';
 
@@ -170,42 +165,49 @@ export function odniesieniaPrzekaznikaPola(
 }
 
 /**
- * Wiersze kodów funkcji POZA okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola
- * GPZ: okrąg niesie prefiks listy, który mieści się w nim pismem 8 px (co najwyżej dwa kody,
- * §17.3; `kodyWOkreguPrzekaznika`), wiersze — WYŁĄCZNIE pozostałe, po
- * `KODY_EAZ_W_WIERSZU` w wierszu. Uwaga właściciela 2026-10-29 pkt 5: okrąg „51 50" powtarzał
- * część pełnej listy stojącej obok — blok przekaźnika ma JEDNĄ reprezentację każdej funkcji
- * (okrąg ∪ wiersze, w ramce bloku). Układ stacji (R-2 §17.3) zostaje przy pełnej liście
- * (`fullCodesListLines`).
+ * Kody funkcji POZA okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola GPZ, w DWÓCH
+ * KOLUMNACH pionowych (odbiór B-02 właściciela 2026-11-04 pkt 7: „kody funkcji na SLD pionowo
+ * w dwóch kolumnach”, wzór: tabliczka sygnalizacji panelu sterownika pola). Okrąg niesie
+ * prefiks listy, który mieści się w nim pismem 8 px (`kodyWOkreguPrzekaznika`), kolumny —
+ * WYŁĄCZNIE pozostałe kody bloku (`kodyBlokuPrzekaznika`, z „+N” funkcji spoza schematu);
+ * wypełnienie kolumnami (najpierw lewa, z góry w dół): lewa ma ⌈n/2⌉ kodów, prawa resztę.
+ * Uwaga 2026-10-29 pkt 5 bez zmian: każda funkcja ma JEDNĄ reprezentację (okrąg ∪ kolumny).
+ * Pełna lista funkcji, nastawy i automatyka — inspektor pola („Zabezpieczenia i automatyka”).
  */
-export function wierszeKodowPozaOkregiem(codes: readonly string[]): readonly string[] {
-  return wierszeKodow(kodyPozaOkregiemPrzekaznika(kodyBlokuPrzekaznika(codes)));
+export function kolumnyKodowPozaOkregiem(codes: readonly string[]): readonly [readonly string[], readonly string[]] {
+  const kody = kodyPozaOkregiemPrzekaznika(kodyBlokuPrzekaznika(codes));
+  const wLewej = Math.ceil(kody.length / 2);
+  return [kody.slice(0, wLewej), kody.slice(wLewej)];
 }
 
-/** Wiersze tekstu w bloku przekaźnika układu powiązań: kody poza okręgiem i po nich
- *  odniesienia obwodów spoza pola — kolejność rysunku, odstęp `ODSTEP_WIERSZY_KODOW_EAZ`.
- *  JEDNA lista rezerwacji kolumny (`szerokoscListyPoPrawejPrzekaznika`) i rysunku
- *  (`compose/gpz.ts`): blok z wierszami dostaje ramkę, bez wierszy — sam okrąg. */
-export function wierszeAdnotacjiPrzekaznika(
-  codes: readonly string[],
-  odniesienia: readonly string[],
-): readonly string[] {
-  return [...wierszeKodowPozaOkregiem(codes), ...odniesienia];
+/** Odstęp kolumn kodów bloku przekaźnika [px świata] — oczko między tuszem kolumn. */
+export const ODSTEP_KOLUMN_KODOW_EAZ = GRID;
+
+/** Szerokość kolumny kodów pismem listy (najszerszy kod); 0 = kolumna pusta. */
+export function szerokoscKolumnyKodow(kolumna: readonly string[]): number {
+  return kolumna.length > 0 ? Math.max(...kolumna.map((k) => measureLabelWidth(k, PROTECTION_FULL_LIST_LABEL_CLASS))) : 0;
+}
+
+/** Liczba wierszy bloku przekaźnika układu powiązań: wiersze kolumn kodów i po nich wiersze
+ *  odniesień obwodów spoza pola. JEDNA arytmetyka rysunku (`compose/gpz.ts`) i rezerwacji. */
+export function liczbaWierszyBlokuPrzekaznika(codes: readonly string[], odniesienia: readonly string[]): number {
+  return kolumnyKodowPozaOkregiem(codes)[0].length + odniesienia.length;
 }
 
 /** Margines ramki bloku przekaźnika wokół okręgu i wierszy [px świata] — pół rastru: ramka
  *  nie dotyka tekstu, a wejście lewe i dolne okręgu leżą o pół rastru wewnątrz ramki. */
 export const RAMKA_BLOKU_PRZEKAZNIKA_MARGINES = GRID / 2;
 
-/** Szerokość wierszy bloku (najszerszy z `wierszeAdnotacjiPrzekaznika`); 0 = brak. */
+/** Szerokość wierszy bloku: dwie kolumny kodów z odstępem albo najszerszy wiersz odniesienia;
+ *  0 = blok bez wierszy (sam okrąg). */
 export function szerokoscWierszyAdnotacjiPrzekaznika(
   codes: readonly string[],
   odniesienia: readonly string[],
 ): number {
-  const wiersze = wierszeAdnotacjiPrzekaznika(codes, odniesienia);
-  return wiersze.length > 0
-    ? Math.max(...wiersze.map((wiersz) => measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS)))
-    : 0;
+  const [lewa, prawa] = kolumnyKodowPozaOkregiem(codes);
+  const kolumny =
+    szerokoscKolumnyKodow(lewa) + (prawa.length > 0 ? ODSTEP_KOLUMN_KODOW_EAZ + szerokoscKolumnyKodow(prawa) : 0);
+  return Math.max(kolumny, szerokoscKolumnyKodow(odniesienia));
 }
 
 type ProtectionAwareBay = Pick<
@@ -229,52 +231,16 @@ export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
   );
 }
 
-/** Etykieta PL układu pomiarowego CT (§18.3, F10.6, D3) — `null` gdy dana
- *  niedostarczona (adnotacja pozostaje bez członu układu, zero zgadywania). */
-export function ctArrangementLabelText(
-  arrangement: CtRatingAnnotationView['arrangement'] | null | undefined,
-): string | null {
-  if (arrangement === '3xCT') return '3×CT';
-  if (arrangement === 'ferranti') return 'Ferranti-I0';
-  return null;
-}
-
-/** Etykieta PL liczby rdzeni CT (§20.2, CTVT-RENDER) — `null` gdy dana
- *  niedostarczona LUB niepoprawna (≤0). „N rdz." = N rdzeni (uzwojeń wtórnych,
- *  IEC 61869-2). Zero zgadywania: człon dokleja się WYŁĄCZNIE dla realnej danej
- *  długości listy `Measurement.rdzenie`. */
-export function ctCoresLabelText(cores: number | null | undefined): string | null {
-  if (cores == null || !Number.isFinite(cores) || cores <= 0) return null;
-  return `${cores} rdz.`;
-}
-
 /**
- * Tekst etykiety adnotacji CT (§18.3: „identyfikator aparatu i przekładnię,
- * np. «T1 · 300/5»") — separator „·" jak w pełnej liście kodów §17.3/podpisie
- * linii §19.2 (spójna typografia adnotacji). F10.6 (D3): gdy `arrangement`
- * obecny, doklejony jako trzeci człon („T1 · 300/5 · 3×CT"). CTVT-RENDER
- * (CTVT-MODEL/V12K-176): gdy `cores` obecne, doklejone jako KOLEJNY człon
- * („T1 · 300/5 · 3×CT · 2 rdz.") — brak `cores` pozostawia tekst F10.4/F10.6
- * bez zmian (zero dryfu bez danych). JEDNA funkcja dla rezerwacji szerokości
- * (`ctRatingAnnotationsWidth` niżej) i rysunku (`resolveCtRatingAnnotations`
- * niżej) — zero rozjazdu tekst↔szerokość.
+ * Tekst etykiety adnotacji przekładnika (§18.3: „identyfikator aparatu i przekładnię, np.
+ * «T1 · 300/5»”). Odbiór B-02 właściciela 2026-11-04 (pkt 6 i 8): na schemacie WYŁĄCZNIE krótka
+ * przekładnia („200–400/5”, „15/√3 / 0,1/√3 kV”); klasy dokładności, wybrany zaczep, układ
+ * pomiarowy i liczba rdzeni są w inspektorze pola, nie poszerzają pola na schemacie. JEDNA
+ * funkcja dla rezerwacji szerokości (`ctRatingAnnotationsWidth` niżej) i rysunku
+ * (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
  */
-export function ctRatingLabelText(
-  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores' | 'klasy' | 'zaczepA'>,
-): string {
-  // Karta UX-04/POLE-LINIOWE-WZORZEC (§11.7 pkt 6): adnotacja z tabliczki aparatu nie ma
-  // identyfikatora (tożsamość niesie narysowany aparat) — tekst to przekładnia i klasy rdzeni
-  // („200-400/5 A · 5P20", zapis rysunku ENEA Z.10). Przekładnik wieloprzekładniowy: wybrany
-  // zaczep tuż po przekładni („200-400/5 A · zaczep 400 A · 5P20").
-  const members = [entry.identifier ? `${entry.identifier} · ${entry.ratioText}` : entry.ratioText];
-  const zaczep = tekstZaczepu(entry.zaczepA);
-  if (zaczep) members.push(zaczep);
-  const arrangementLabel = ctArrangementLabelText(entry.arrangement);
-  if (arrangementLabel) members.push(arrangementLabel);
-  const coresLabel = ctCoresLabelText(entry.cores);
-  if (coresLabel) members.push(coresLabel);
-  if (entry.klasy) members.push(entry.klasy);
-  return members.join(' · ');
+export function ctRatingLabelText(entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText'>): string {
+  return entry.identifier ? `${entry.identifier} · ${entry.ratioText}` : entry.ratioText;
 }
 
 /** Etykieta PL montażu VT (§20.2, CTVT-RENDER) — `bus`⇒„szynowy",

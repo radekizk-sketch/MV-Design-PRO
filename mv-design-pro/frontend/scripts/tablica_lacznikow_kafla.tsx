@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { QET_BOK_KAFLA_STANU } from '../src/ui/sld/v3/cad/qet/qetPoleSn';
+import { QET_BOK_KAFLA_STANU, QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../src/ui/sld/v3/cad/qet/qetPoleSn';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../src/ui/sld/v3/canvas/camera';
 import { strokeScaleFactor } from '../src/ui/sld/v3/compose/preview';
 import { SLD_FONT_FAMILY } from '../src/ui/sld/v3/core/text';
@@ -59,7 +59,13 @@ const KOLUMNY: ReadonlyArray<readonly [string, SwitchState | undefined]> = [
   ['awaria', 'bad'],
   ['brak stanu', undefined],
 ];
-const SKALE: ReadonlyArray<readonly [string, number, 1 | 2]> = [
+/** Rodzaje z położeniem „uziemiony”: łącznik trójpołożeniowy (zestyk uziemiający) i uziemnik
+ *  („uziemiony” = zamknięty). Pozostałe w kolumnie „uziemiony” — „nie dotyczy” (oględziny odbioru
+ *  B-02 2026-11-04: zamiast szarego „?”). */
+const Z_UZIEMIENIEM: ReadonlySet<SymbolId> = new Set<SymbolId>(['qetEarthSwitch', 'qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem']);
+const SKALE: ReadonlyArray<readonly [string, number, 0 | 1 | 2]> = [
+  ['LOD0 — skala 0,3 px/j.św. (detale zdjęte, kształt z dolnego brzegu LOD1)', 0.3, 0],
+  ['LOD0 — skala 0,45 px/j.św. (detale zdjęte, kształt z dolnego brzegu LOD1)', 0.45, 0],
   ['LOD1 — dolny brzeg, skala 0,51 px/j.św. (podłoga znacznika 8 px)', DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN), 1],
   ['LOD1 — wejście, skala 0,69 px/j.św.', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN), 1],
   ['LOD2 — dolna granica, skala 1,02 px/j.św.', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN), 2],
@@ -71,14 +77,16 @@ const MOTYWY = [
 ] as const;
 
 const OPIS_W = 220;
+const WYSOKOSC_MAKS = Math.max(...WIERSZE.map(([, id]) => QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].wysokosc));
 /** Najmniejszy krok kolumny [px] — nagłówki stanów nie nachodzą na siebie w bloku LOD1. */
 const KOLUMNA_MIN = 84;
 const NAGLOWEK_H = 22;
 const TYTUL_H = 26;
 const ODSTEP = 14;
 
-function blok(skala: number, lod: 1 | 2, tytul: string, paleta: (typeof MOTYWY)[number][1], y0: number): { el: JSX.Element; h: number; w: number } {
-  const wiersz = QET_BOK_KAFLA_STANU * skala + ODSTEP;
+function blok(skala: number, lod: 0 | 1 | 2, tytul: string, paleta: (typeof MOTYWY)[number][1], y0: number): { el: JSX.Element; h: number; w: number } {
+  // Wiersz mieści najwyższy symbol (wyłącznik wysuwny: kafel + dwa pasma członu).
+  const wiersz = WYSOKOSC_MAKS * skala + ODSTEP;
   const kom = Math.max(wiersz, KOLUMNA_MIN);
   const w = OPIS_W + KOLUMNY.length * kom;
   const h = TYTUL_H + NAGLOWEK_H + WIERSZE.length * wiersz;
@@ -94,12 +102,18 @@ function blok(skala: number, lod: 1 | 2, tytul: string, paleta: (typeof MOTYWY)[
         const y = TYTUL_H + NAGLOWEK_H + r * wiersz;
         return (
           <g key={id}>
-            <text x={8} y={y + (QET_BOK_KAFLA_STANU * skala) / 2 + 4} fontSize={12} {...tekst}>{nazwa}</text>
-            {KOLUMNY.map(([kol, stan], c) => (
-              <g key={kol} transform={`translate(${OPIS_W + c * kom} ${y}) scale(${skala})`}>
-                <Glyph x={0} y={0} state={stan} stroke={paleta.baseStroke} kafleStanu={paleta.state} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznikaKafla(skala, lod)} />
-              </g>
-            ))}
+            <text x={8} y={y + (WYSOKOSC_MAKS * skala) / 2 + 4} fontSize={12} {...tekst}>{nazwa}</text>
+            {KOLUMNY.map(([kol, stan], c) =>
+              stan === 'earthed' && !Z_UZIEMIENIEM.has(id) ? (
+                <text key={kol} x={OPIS_W + c * kom} y={y + (QET_BOK_KAFLA_STANU * skala) / 2 + 4} fontSize={11} {...tekst} data-nie-dotyczy="1">
+                  nie dotyczy
+                </text>
+              ) : (
+                <g key={kol} transform={`translate(${OPIS_W + c * kom} ${y + ((WYSOKOSC_MAKS - QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].wysokosc) * skala) / 2}) scale(${skala})`}>
+                  <Glyph x={0} y={0} state={stan} stroke={paleta.baseStroke} kafleStanu={paleta.state} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznikaKafla(skala, lod)} lod={lod} />
+                </g>
+              ),
+            )}
           </g>
         );
       })}

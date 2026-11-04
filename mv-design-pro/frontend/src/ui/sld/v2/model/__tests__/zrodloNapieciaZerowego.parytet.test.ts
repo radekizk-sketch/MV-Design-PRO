@@ -93,7 +93,8 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
     expect(polePomiaru?.funkcja_pomiaru).toBe('NAPIECIA_SZYN');
     expect(zrodlo.vtOznaczenie).toBe('T1');
     const tekst = tekstOdniesieniaZrodlaU0(zrodlo);
-    expect(tekst).toMatch(/^3U₀ \(Z, Zz\) ← T1, pole /);
+    expect(tekst).toMatch(/^3U₀ ← T1, \S/);
+    expect(tekst).not.toContain('Z, Zz');
     expect(tekst).toContain(zrodlo.poleZrodlaOznaczenie ?? '∅');
   });
 
@@ -122,7 +123,7 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
           { numer: '7', nazwa: 'Pole pomiaru napięcia sekcji 1', brak: OZNACZENIE_POLA_BEZ_NUMERU }[polePo],
         );
         const tekst = tekstOdniesieniaZrodlaU0(zrodlo) ?? '';
-        expect(tekst.startsWith('3U₀ (Z, Zz) ← ')).toBe(true);
+        expect(tekst.startsWith('3U₀ ← ')).toBe(true);
         expect(tekst, 'identyfikator aparatu w tekście').not.toContain(zrodlo.vtRef ?? '∅');
         expect(tekst, 'identyfikator pola w tekście').not.toContain(zrodlo.poleZrodlaRef ?? '∅');
       });

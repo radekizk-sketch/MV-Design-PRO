@@ -1931,3 +1931,78 @@ do siatki) — wycofana.
 
 **Sonda punktu trafienia.** Porażka `punktAparatu` melduje teraz, co przykrywa środek uchwytu,
 położenie uchwytu, wymiary okna i przewinięte elementy — to ona wskazała przyczynę wyżej.
+
+### 11.19. Odbiór B-02 właściciela 2026-11-04 („do poprawy”) — wykonanie → test
+
+Zakres karty: geometria symboli, ich czytelność i kompaktowość pola. Topologia pola, model ENM,
+solvery i kontrakty FROZEN — bez zmian. Zrzuty PRZED: `zrzuty/ux04-pole-liniowe/przed/*-przed.png`
+(stan `44a2c6c02`); zrzuty PO — pod tymi samymi nazwami w `zrzuty/ux04-pole-liniowe/`, nowe kadry
+`pole-z10-lod{0,1}-*`, `pole-z11-1-lod{0,1}-*`. Werdykt wizualny — właściciel (B-02).
+
+**Pkt 2 — rozróżnienie aparatów (cała klasa łączników QET).** Znacznik styku stałego z jednej
+deklaracji manifestu importera (`kafelStanu.znacznikRodzaju`): wyłącznik „×”, rozłącznik — kreska
+z okręgiem i nóż, odłącznik — kreska „⊤” bez okręgu (dawny „○” odłącznika skasowany; okrąg należy
+wyłącznie do rozłącznika), uziemnik — kreska, nóż i ziemia. Pin:
+`symbols/__tests__/znacznikRodzajuLacznika.test.tsx` (rodzaj × stan × LOD), test importera
+`backend/tests/ci/test_qet_pole_sn_import.py`. Renderer harnessu v2 `station-rozdzielnia`
+(`StationRozdzielniaSN.tsx`, wyłącznie wejścia `gallery`/`station-rozdzielnia`, poza ścieżką
+produktu) rysuje na widoku dalekim abstrakcyjny kod rodzaju □/◇/◯ kontraktu N-8 — to nie jest
+symbol łącznika, zostaje.
+
+**Pkt 3 — wyłącznik wysuwny.** Człon wysuwny = pasma podwójnych szewronów nad i pod kaflem
+(`kafelStanu.uklad.czlonWysuwny`), kolorem członu (`inkCzlonu`), nie stanem wyłącznika: ENM nie
+niesie położenia członu wysuwnego (praca/próba/wysunięty), więc szewrony są neutralne — to luka
+modelu, nie decyzja rysunku. Okrąg napędu „M” wyłącznika wysuwnego leży cały w gabarycie (dawny
+ucięty półokrąg) — pin w `literaNapedu.test.tsx`.
+
+**Pkt 5 — LOD0/1/2.** Jedna tabela detali kafla `DETALE_KAFLA_WG_LOD` (`symbols/glyphs.tsx`):
+LOD2 — komplet; LOD1 — bez napędu i osprzętu; LOD0 — kształt charakterystyczny w skali dolnego
+brzegu LOD1 (`SKALA_DOLNA_LOD1`), bez detali. Testy: rodzina × LOD w `kafelStanu.test.tsx`,
+`znacznikRodzajuLacznika.test.tsx`, `literaNapedu.test.tsx`; iniekcje (detal na LOD0, napęd na
+LOD1) — czerwone. Ograniczenie: na LOD0 kafel rysuje się w skali dolnego brzegu LOD1, więc
+symbol nie maleje poniżej tej skali (czytelność kosztem proporcji widoku przeglądowego).
+
+**Pkt 6 — opisy przekładników wg LOD.** LOD0 — same symbole; LOD1 — oznaczenia T1/T2/T3
+(`odLod: 1`, wyjątek od `SLD_LOD_SPEC_OPERATOR_GRADE.md` §6 zapisany tamże); LOD2 — krótka
+przekładnia: CT `200–400/5` (`krotkaPrzekladniaRdzeni`), VT liczbowo z napięcia szyny pola
+`15/√3 / 0,1/√3 kV` (`krotkaPrzekladniaUzwojen`, „SN” szablonu → `Bus.voltage_kv`), bez
+wielokropka. Rdzenie, klasy, zaczep, układ 3×CT i obwody („Z, Zz”) — wyłącznie w inspektorze pola
+(`ui/field/EdytorWyposazeniaPola.tsx`). Odniesienie źródła 3U₀ skrócone do `3U₀ ← T1, Pole
+pomiarowe`. Pin: `scene/__tests__/tabliczkiPrzekladnikow.test.ts` (fikstura × LOD × rodzaj;
+iniekcja LOD1 — 4 czerwone), e2e `zrzutLod` (LOD1: T1 widoczne, bez przekładni; LOD0: bez obu).
+
+**Pkt 7 — przekaźnik przy Q0.** Okrąg przekaźnika z powiązaniami obwodów wtórnych stoi w pierwszym
+od wyłącznika wolnym położeniu co oczko (okrąg, kody, linie wyłączania i pomiarowe nie wchodzą na
+aparaty, podpisy i tory pola; linia pomiarowa odchodzi od zacisku wtórnego w jego kierunku; linie
+się nie przecinają). Kody funkcji spoza okręgu — dwie kolumny pionowe (`kolumnyKodowPozaOkregiem`,
+kolumnami: lewa ⌈n/2⌉, prawa reszta), odniesienia obwodów spoza pola pod lewą kolumną. Klik
+i pełna lista funkcji w inspektorze — bez zmian. Linia wyłączania (długość, j.św.): Z.10 160 → 80
+(łącznik stały) / 64 (trójpołożeniowy); Z.11.1/Z.11 312 → 144 / 200. W Z.11.1 przekaźnik stoi na
+prawo od odgałęzienia, bo zacisk wtórny przekładnika napięciowego T3 w odgałęzieniu jest
+skierowany na wschód, a linia pomiarowa nie może wracać przez jego symbol. Pin:
+`scene/__tests__/poleLinioweGpz.test.tsx` — wyrocznia położenia najbliższego (przesunięcie grupy
+przekaźnika o oczko w lewo = naruszenie; bez przesunięcia = brak naruszeń), wyrocznia bloku dwóch
+kolumn; iniekcje produkcyjne: przekaźnik w dawnym położeniu prawym (4 czerwone), jedna kolumna
+kodów (6 czerwonych); iniekcje sceny: kody w wierszu, prawa kolumna o pół wiersza, odniesienie
+pod prawą kolumną, 79/50BF/brak „+N”/pełna lista.
+
+**Pkt 8 — zwężenie pola.** Kompozycja GPZ w dwóch przebiegach: wstępny mierzy rysunek każdego pola
+(symbole, przekaźnik z ramką, etykiety pola w piśmie podłogi opisów celu kadru na dolnej krawędzi
+LOD2, linie), właściwy układa kolumny na zmierzonej szerokości (rezerwacja z pasm jest górną
+granicą; pola z przekaźnikiem prawo-wyrównanym nie zwężają się); tusz pola następnego wychodzący
+w lewo dalej niż odstęp pól poszerza kolumnę poprzednią. Pomiar (j.św. = px przy skali 1):
+
+| Fikstura | rozstaw pól przed | rozstaw pól po | rysunek pola przed | rysunek pola po |
+|---|---|---|---|---|
+| Z.10 (stały / trójpołożeniowy) | 528 / 544 | 312 / 368 | 322 / 419 | 242 / 279 |
+| Z.11.1 / Z.11 | 720 / 744 | 448 / 440 | 571 / 472 | 359 / 370 |
+
+Pin: `canvas/__tests__/obrysyWgPlanu.test.tsx` — tła sąsiednich pól rozłączne na skalach sceny
+LOD2 kamery (≥ 1,02) we wszystkich kadrach pól; iniekcja (bez zapasu na pismo kadru) — 3 czerwone.
+Na skalach niższych scena LOD2 powstaje wyłącznie przez wymuszony LOD (`lodOverride`), tam tło
+nadal obejmuje tusz (sprawdzane na każdej skali), ale tła sąsiednich pól mogą na siebie zachodzić.
+
+**Uwagi koordynatora.** Tablica łączników: kolumna „uziemiony” — „nie dotyczy” dla aparatów bez
+tego położenia; uziemnik „uziemiony” = zamknięty (kafel czerwony, nie szary nieustalony —
+`polozenieLacznika`). Litera „M” napędu wyśrodkowana optycznie (środek tuszu = środek okręgu,
+≤ 0,5 j.św.; importer `wysrodkuj_litery_w_okregach`).

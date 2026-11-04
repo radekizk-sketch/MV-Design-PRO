@@ -34,6 +34,7 @@ import type {
 } from '../../../../../types/enm';
 import { pole } from '../../../../../test/pola';
 import { polaSnStacji } from '../../../../shared/polaStacji';
+import { ctRatingLabelText } from '../../../v3/compose/protectionMarking';
 
 function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
   return {
@@ -2206,33 +2207,34 @@ describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035
  * nie rzutuje (przypięte niżej — decyzja wyglądu SLD oczekuje werdyktu właściciela B-02).
  */
 describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3/D4/D5, V12K-036)', () => {
-  it('ctRatingAnnotations niesie arrangement z Measurement.ct_arrangement, undefined gdy dana niedostarczona', () => {
-    const snap = makeStationOnlySnapshot('ST-1');
-    snap.bays = [
-      {
-        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-    ];
-    snap.measurements = [
-      {
-        id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 300, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection', ct_arrangement: '3xCT',
-      },
-      {
-        id: 'm2', ref_id: 'ct-2', name: 'CT2', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 150, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection',
-      },
-    ] as never;
-
-    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
-    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.arrangement]));
-    expect(byRef.get('ct-1')).toBe('3xCT');
-    expect(byRef.get('ct-2')).toBeUndefined();
+  it('odbiór B-02 (pkt 6): adnotacja pomiaru CT = nazwa · przekładnia — układ 3×CT i rdzenie poza schematem', () => {
+    // Iloczyn: układ {3xCT, ferranti, brak} × rdzenie {3, brak}. Każda kombinacja daje TĘ SAMĄ
+    // etykietę; układ i liczba rdzeni są w inspektorze pomiaru (`ui2/adapters/inspectorAdapter.ts`).
+    const rdzen = (klasa: string) => ({ przekladnia: '300/5', moc_va: 10, klasa, przeznaczenie: ['POMIAR'] });
+    for (const uklad of ['3xCT', 'ferranti', undefined] as const) {
+      for (const rdzenie of [[rdzen('0,5'), rdzen('5P20'), rdzen('5P20')], undefined]) {
+        const snap = makeStationOnlySnapshot('ST-1');
+        snap.bays = [
+          {
+            id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+            bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+          } as never,
+        ];
+        snap.measurements = [
+          {
+            id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
+            measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+            rating: { ratio_primary: 300, ratio_secondary: 5 },
+            connection: 'star', purpose: 'protection',
+            ...(uklad ? { ct_arrangement: uklad } : {}),
+            ...(rdzenie ? { rdzenie } : {}),
+          },
+        ] as never;
+        const [a] = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
+        expect(Object.keys(a).sort(), `${uklad} × ${rdzenie?.length}`).toEqual(['identifier', 'measurementRef', 'purpose', 'ratioText']);
+        expect(ctRatingLabelText(a)).toBe('CT1 · 300/5');
+      }
+    }
   });
 
   it('W5 (§12–15/uwaga 7): ctRatingAnnotations niesie purpose z Measurement.purpose (wariant CT z danych)', () => {
@@ -2298,41 +2300,6 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     const byRef = new Map(snap.bays.map((b) => [b.ref_id, resolveBayProtectionMarking(b, snap)?.ctRefsSecondary]));
     expect(byRef.get('bay-1')).toEqual(['ct-2']);
     expect(byRef.get('bay-2')).toBeUndefined();
-  });
-
-  it('CTVT-RENDER (V12K-176): ctRatingAnnotations niesie cores = liczba Measurement.rdzenie, undefined gdy dana niedostarczona', () => {
-    // Rozszerzenie 4 karty UX-04: liczba rdzeni pochodzi z JEDNEGO źródła — listy rdzeni
-    // tabliczki (IEC 61869-2); dawne pole `ct_cores` usunięte z kontraktu.
-    const rdzen = (klasa: string, przeznaczenie: 'POMIAR' | 'ZABEZPIECZENIA') => ({
-      przekladnia: '300/5', moc_va: 10, klasa, przeznaczenie: [przeznaczenie],
-    });
-    const snap = makeStationOnlySnapshot('ST-1');
-    snap.bays = [
-      {
-        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-    ];
-    snap.measurements = [
-      {
-        id: 'm1', ref_id: 'ct-3rdz', name: 'CT1', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 300, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection',
-        rdzenie: [rdzen('0,5', 'POMIAR'), rdzen('5P20', 'ZABEZPIECZENIA'), rdzen('5P20', 'ZABEZPIECZENIA')],
-      },
-      {
-        id: 'm2', ref_id: 'ct-brak', name: 'CT2', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 150, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection',
-      },
-    ] as never;
-
-    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
-    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.cores]));
-    expect(byRef.get('ct-3rdz')).toBe(3);
-    expect(byRef.get('ct-brak')).toBeUndefined();
   });
 
   it('CTVT-RENDER (V12K-176): vtMountingAnnotations niesie montaż z Measurement.vt_mounting, undefined gdy ŻADEN VT pola nie niesie danej', () => {

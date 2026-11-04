@@ -66,7 +66,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { RdzenPrzekladnikaPradowego } from '../src/types/przekladniki';
-import { tekstKlasRdzeni, tekstPrzekladniRdzeni, tekstZaczepu } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
+import { krotkaPrzekladniaRdzeni } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
 import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../src/ui/sld/v3/compose/zaciskiPrzekladnika';
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
@@ -708,9 +708,10 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
   expect(srodek(zaciski[odOdplywu]), `${kadr}: ${odOdplywu} pod pierścieniem T1 (strona odpływu)`).toBeGreaterThan(srodekT1);
   const tabliczka = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}#ct-rating-${t1.device_ref}"] > text`);
   await expect(tabliczka, `${kadr}: tabliczka T1`).toHaveCount(1);
-  const zaczep = tekstZaczepu(t1.zaczep_pierwotny_a);
-  expect(zaczep, `${kadr}: T1 200-400/5 A z zaczepem w modelu`).not.toBeNull();
-  await expect(tabliczka).toHaveText(`${tekstPrzekladniRdzeni(t1.rdzenie)} · ${zaczep} · ${tekstKlasRdzeni(t1.rdzenie)}`);
+  // Odbiór B-02 (2026-11-04, pkt 6): na schemacie krótka przekładnia „200–400/5”; klasy i zaczep
+  // — w inspektorze pola.
+  await expect(tabliczka).toHaveText(krotkaPrzekladniaRdzeni(t1.rdzenie)!);
+  await expect(tabliczka).toHaveText('200–400/5');
   // Decyzja architekta §11.7 pkt 7: tabliczka (przewaga cyfr) — szerokość tuszu w przeglądarce
   // = tabela posuwów kroju × pismo × skala kamery (macierz ekranowa tekstu), w granicy 1 px.
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
@@ -1092,6 +1093,42 @@ async function zrzut(
   await widokCalejSieci(page);
 }
 
+/**
+ * Zrzut pola na poziomie szczegółu LOD0 albo LOD1 kamery (odbiór B-02 właściciela 2026-11-04 pkt 5
+ * i 6): z widoku całej sieci kółko kamery wokół aparatu pola, aż kanwa rysuje żądany LOD. Pin
+ * opisów przekładników wg LOD: LOD1 — oznaczenia aparatów (T1) bez przekładni; LOD0 — same symbole
+ * (bez oznaczeń i przekładni). Kadr zrzutu — ten sam co kadr pola (`kadrPola`).
+ */
+async function zrzutLod(page: Page, nazwa: string, deviceRef: string, pole: Pole, lod: 0 | 1): Promise<void> {
+  await widokCalejSieci(page);
+  const svg = page.locator(KANWA);
+  const uchwyt = page.locator(`[data-hit-klasa="aparat"][data-hit-device-ref="${deviceRef}"]`).first();
+  for (let i = 0; i < 24; i += 1) {
+    const biezacy = Number(await svg.getAttribute('data-scene-lod'));
+    if (biezacy === lod) break;
+    const box = await uchwyt.boundingBox();
+    const k = (await svg.boundingBox())!;
+    await page.mouse.move(box ? box.x + box.width / 2 : k.x + k.width / 2, box ? box.y + box.height / 2 : k.y + k.height / 2);
+    await page.mouse.wheel(0, biezacy > lod ? 120 : -120);
+    await page.waitForTimeout(200);
+  }
+  await expect(svg, `${nazwa}: poziom szczegółu LOD${lod}`).toHaveAttribute('data-scene-lod', String(lod));
+  await czekajNaStabilnaGeometrie(uchwyt);
+  const przekladnie = (pole.primary_devices ?? []).filter((d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0);
+  for (const ct of przekladnie) {
+    const tekst = ct.rdzenie![0].przekladnia.trim().replace(/\s*-\s*/g, '–').replace(/\s*\/\s*/g, '/').replace(/\s*A$/, '');
+    await expect(svg.locator('text', { hasText: tekst }), `${nazwa}: bez przekładni ${tekst} na LOD${lod}`).toHaveCount(0);
+  }
+  const oznaczeniaCt = przekladnie.map((d) => d.designation ?? '').filter((o) => o !== '');
+  for (const ozn of oznaczeniaCt) {
+    const napis = svg.locator('[data-owner-ref*="#etykieta-aparatu-"] text', { hasText: new RegExp(`^${ozn}$`) });
+    if (lod === 1) await expect(napis.first(), `${nazwa}: oznaczenie ${ozn} na LOD1`).toBeVisible();
+    else await expect(napis, `${nazwa}: bez oznaczenia ${ozn} na LOD0`).toHaveCount(0);
+  }
+  zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip: await kadrPola(page, (pole.primary_devices ?? []).map((d) => d.device_ref)) }));
+  await widokCalejSieci(page);
+}
+
 /** Kadr zrzutu pola: obrys uchwytów WSZYSTKICH aparatów pola ∪ panel pola GPZ
  *  (`sld-v3-gpz-panel-*`, z podpisem pola i każdym tekstem, którego środek leży w panelu) ∪
  *  etykiety oznaczeń aparatów pola (także na lewo od panelu), z wąskim marginesem i przycięty do kanwy — zrzut
@@ -1408,6 +1445,13 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   await oczekujKafla(page, q0Staly.device_ref, 'zamkniety', 'zbliżenie: Q0 zamknięty');
   zapiszOdcisk('pole-z10-zblizenie-ciemny', await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, 'pole-z10-zblizenie-ciemny.png'), clip: await kadrPola(page, aparatyStalego) }));
 
+  // ---- 7a. Poziomy szczegółu LOD1 i LOD0 kamery (odbiór B-02 pkt 5 i 6), oba motywy -------
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    for (const lod of [1, 0] as const) await zrzutLod(page, `pole-z10-lod${lod}-${klucz}`, q0.device_ref, poleZajete, lod);
+  }
+  await ustawMotyw(page, 'dark_scada');
+
   // ---- 8. „Otwórz łącznik" z menu wyłącznika → kafel zielony (oba motywy) -----------------
   await widokCalejSieci(page);
   const menuQ0 = await prawyKlikAparatu(page, q0.device_ref);
@@ -1560,6 +1604,8 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
       await oczekujKafla(page, a.device_ref, stanKaflaZModelu(polozenieAparatu(enm, a.device_ref)), `${klucz}: ${a.designation} wg rekordu położenia`);
     }
     await zrzut(page, `pole-z11-1-stan-wyjsciowy-${klucz}`, q0.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
+    // Poziomy szczegółu LOD1 i LOD0 kamery (odbiór B-02 pkt 5 i 6).
+    for (const lod of [1, 0] as const) await zrzutLod(page, `pole-z11-1-lod${lod}-${klucz}`, q0.device_ref, poleZ11Po, lod);
   }
 
   // ---- 3. Położenia z menu aparatu: Q0 otwarty, Q1 uziemiony (przez otwarte), Q5 zamknięty ---

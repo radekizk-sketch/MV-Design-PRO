@@ -34,6 +34,7 @@ import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
 import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { MIN_OPIS_CELU_KADRU_PX } from '../core/text';
 import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
@@ -586,9 +587,6 @@ export interface SasiadElektrycznieWymagany {
 }
 
 export const SASIEDZI_ELEKTRYCZNIE_WYMAGANI: readonly SasiadElektrycznieWymagany[] = [];
-
-/** K2b §0.2 (b): podłoga opisów celu kadru [px ekranu]. */
-export const MIN_OPIS_CELU_KADRU_PX = 13;
 
 /**
  * Czy obiekt rysunku o `ownerRef` należy do zakresu kadru `refy` — JEDNA relacja

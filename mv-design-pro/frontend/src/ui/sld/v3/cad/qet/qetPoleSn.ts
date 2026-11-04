@@ -63,7 +63,7 @@ export interface QetNozSymbolu {
 }
 
 /** Rodzaj aparatu rozpoznawany po znaczniku przy styku stałym (wzorzec HMI e²TANGO). */
-export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik' | 'czlon_wysuwny';
+export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
 
 export interface QetPunkt {
   readonly x: number;
@@ -72,11 +72,10 @@ export interface QetPunkt {
 
 /** Znacznik rodzaju aparatu przy styku stałym: `kotwica` = punkt styku, na którym spoczywa nóż
  *  w położeniu `styk` (zamkniętym albo uziemionym) — punkt, wokół którego znacznik rośnie na
- *  podłodze LOD1. Znacznik członu wysuwnego (`styk` = `wysuw`, okrąg obok krzyżyka wyłącznika):
- *  kotwica = lewy bok obwiedni krzyżyka na wysokości styku zamknięcia. */
+ *  podłodze LOD1. */
 export interface QetZnacznikStyku {
   readonly rodzaj: QetRodzajZnacznika;
-  readonly styk: 'closed' | 'earthed' | 'wysuw';
+  readonly styk: 'closed' | 'earthed';
   readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
 }
@@ -84,6 +83,14 @@ export interface QetZnacznikStyku {
 /** Symbol uziemienia łącznika: `kotwica` = punkt przyłączenia (przegub uziemnika albo dolny koniec
  *  kreski zestyku uziemiającego); pierwszy prymityw to pion odgałęzienia, dalej kreski malejące
  *  w dół. */
+export interface QetCzlonWysuwny {
+  readonly pasmo: number;
+  /** Przewód toru w pasmach (od portu do kafla) — kreska przewodu, kolor toru. */
+  readonly przewody: readonly CadPrimitive[];
+  readonly gora: readonly CadPrimitive[];
+  readonly dol: readonly CadPrimitive[];
+}
+
 export interface QetZiemiaSymbolu {
   readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
@@ -139,6 +146,12 @@ export interface QetSymbolPolaSn {
   readonly znaczniki: readonly QetZnacznikStyku[];
   /** Symbol uziemienia skierowany w dół (uziemnik, łącznik trójpołożeniowy) albo `null`. */
   readonly ziemia: QetZiemiaSymbolu | null;
+  /** Człon wysuwny wyłącznika (uwaga właściciela 2026-11-04, synoptyka e²TANGO): pasmo `pasmo`
+   *  nad kaflem z podwójnym szewronem w górę (`gora`) i pod kaflem z podwójnym szewronem w dół
+   *  (`dol`), w osi toru; kafel stoi w `kafel.y` = `pasmo`. Szewrony nie niosą stanu wyłącznika
+   *  (model ENM niesie wyłącznie wykonanie stałe / wysuwne) — kreska toru, bez koloru kafla.
+   *  `null` — symbol bez członu wysuwnego. */
+  readonly czlon: QetCzlonWysuwny | null;
   readonly zrodla: readonly QetZrodloSymbolu[];
 }
 
@@ -155,21 +168,18 @@ export const QET_KRESKA_GLIFU = 2;
  *  znacznika (linia środkowa), `udzial` = dopuszczalny przedział boku / bok kafla, `margines` =
  *  najmniejsza odległość tuszu znacznika od krawędzi kafla, `odstep` = najmniejsza odległość tuszu
  *  znacznika od tuszu noża poza strefą styku, `strefa` = promień strefy styku (wokół punktu, w którym
- *  nóż spoczywa na styku, i wokół przegubu), `odstepWysuwu` = odstęp linii środkowych znacznika
- *  członu wysuwnego od obwiedni krzyżyka wyłącznika. Kreska znacznika = `QET_KRESKA_GLIFU`. */
+ *  nóż spoczywa na styku, i wokół przegubu). Kreska znacznika = `QET_KRESKA_GLIFU`. */
 export const QET_ZNACZNIK_STYKU = {
   bok: 12,
   udzial: [0.22, 0.28],
   margines: 4,
   odstep: 1,
   strefa: 5,
-  odstepWysuwu: 0.9,
 } as const;
 
 /** Kotwica znacznika względem punktu styku: `srodek` — środek obwiedni znacznika w punkcie styku,
- *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku, `obok_krzyzyka` — okrąg
- *  członu wysuwnego obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego. */
-export const QET_KOTWICE_ZNACZNIKOW = { wylacznik: 'srodek', odlacznik: 'od_przegubu', rozlacznik: 'od_przegubu', uziemnik: 'srodek', czlon_wysuwny: 'obok_krzyzyka' } as const;
+ *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku. */
+export const QET_KOTWICE_ZNACZNIKOW = { wylacznik: 'srodek', odlacznik: 'srodek', rozlacznik: 'od_przegubu', uziemnik: 'srodek' } as const;
 
 /** Symbol uziemienia łącznika [jednostki świata, skala bazowa LOD2]: szerokość górnej (najszerszej)
  *  kreski i długość pionu odgałęzienia od punktu przyłączenia. */
@@ -226,6 +236,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       },
     ],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
     ],
@@ -255,7 +266,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     osprzet: [
       { k: 'line', x1: 16, y1: 38, x2: 24, y2: 38, kreskowana: true },
       { k: 'circle', cx: 9, cy: 38, r: 7, fill: 'none' },
-      { k: 'letter', x: 8.2986, y: 39.2879, t: 'M', size: 8.4 },
+      { k: 'letter', x: 9, y: 37.9774, t: 'M', size: 8.4 },
     ],
     noz: {
       cx: 24,
@@ -278,6 +289,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       },
     ],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt', upstreamBlobSha: '6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af', sha256: '380e368975529f40340312b3625581f33926712553eabe84836e8bf987ee94c5' },
@@ -286,126 +298,146 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
   qetBreakerWysuwny: {
     id: 'qetBreakerWysuwny',
     namePl: 'Wyłącznik w wykonaniu wysuwnym',
-    zlozenie: 'element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla',
+    zlozenie: null,
     szerokosc: 48,
-    wysokosc: 48,
+    wysokosc: 80,
     porty: [
       { name: 'top', x: 24, y: 0, dir: 'N' },
-      { name: 'bottom', x: 24, y: 48, dir: 'S' },
+      { name: 'bottom', x: 24, y: 80, dir: 'S' },
     ],
     portyWtorne: [
-      { name: 'wylacz', x: 48, y: 24, dir: 'E' },
+      { name: 'wylacz', x: 48, y: 40, dir: 'E' },
     ],
     doprowadzenia: [],
-    obrys: { x: 5.1, y: 0, width: 42.9, height: 48 },
-    glif: { x: 5.1, y: 11, width: 33.7492, height: 27 },
-    kafel: { x: 0, y: 0, width: 48, height: 48 },
+    obrys: { x: 18, y: 0, width: 30, height: 80 },
+    glif: { x: 18, y: 27, width: 20.8492, height: 27 },
+    kafel: { x: 0, y: 16, width: 48, height: 48 },
     przewody: [
-      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 17 },
-      { k: 'line', x1: 24, y1: 38, x2: 24, y2: 48 },
+      { k: 'line', x1: 24, y1: 16, x2: 24, y2: 33 },
+      { k: 'line', x1: 24, y1: 54, x2: 24, y2: 64 },
     ],
     stale: [],
     osprzet: [],
     noz: {
       cx: 24,
-      cy: 38,
+      cy: 54,
       katy: { open: 45, closed: 0, unknown: 22.5 },
       zasiegi: { open: 1, closed: 1, unknown: 0.6 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 17, nozStanu: true },
+        { k: 'line', x1: 24, y1: 54, x2: 24, y2: 33, nozStanu: true },
       ],
     },
     znaczniki: [
       {
         rodzaj: 'wylacznik',
         styk: 'closed',
-        kotwica: { x: 24, y: 17 },
+        kotwica: { x: 24, y: 33 },
         prymitywy: [
-          { k: 'line', x1: 18, y1: 11, x2: 30, y2: 23 },
-          { k: 'line', x1: 30, y1: 11, x2: 18, y2: 23 },
-        ],
-      },
-      {
-        rodzaj: 'czlon_wysuwny',
-        styk: 'wysuw',
-        kotwica: { x: 18, y: 17 },
-        prymitywy: [
-          { k: 'circle', cx: 11.1, cy: 17, r: 6, fill: 'none' },
+          { k: 'line', x1: 18, y1: 27, x2: 30, y2: 39 },
+          { k: 'line', x1: 30, y1: 27, x2: 18, y2: 39 },
         ],
       },
     ],
     ziemia: null,
+    czlon: {
+      pasmo: 16,
+      przewody: [
+        { k: 'line', x1: 24, y1: 0, x2: 24, y2: 16 },
+        { k: 'line', x1: 24, y1: 64, x2: 24, y2: 80 },
+      ],
+      gora: [
+        { k: 'line', x1: 24, y1: 3, x2: 18, y2: 8 },
+        { k: 'line', x1: 24, y1: 3, x2: 30, y2: 8 },
+        { k: 'line', x1: 24, y1: 8, x2: 18, y2: 13 },
+        { k: 'line', x1: 24, y1: 8, x2: 30, y2: 13 },
+      ],
+      dol: [
+        { k: 'line', x1: 24, y1: 72, x2: 18, y2: 67 },
+        { k: 'line', x1: 24, y1: 72, x2: 30, y2: 67 },
+        { k: 'line', x1: 24, y1: 77, x2: 18, y2: 72 },
+        { k: 'line', x1: 24, y1: 77, x2: 30, y2: 72 },
+      ],
+    },
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
-      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
     ],
   },
   qetBreakerWysuwnyZNapedem: {
     id: 'qetBreakerWysuwnyZNapedem',
     namePl: 'Wyłącznik w wykonaniu wysuwnym z napędem silnikowym',
-    zlozenie: 'element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla',
+    zlozenie: 'element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M), w układzie kafla; człon wysuwny — pasma podwójnych szewronów nad kaflem (˄˄) i pod kaflem (˅˅) w osi toru (kafelStanu.uklad.czlonWysuwny)',
     szerokosc: 48,
-    wysokosc: 48,
+    wysokosc: 80,
     porty: [
       { name: 'top', x: 24, y: 0, dir: 'N' },
-      { name: 'bottom', x: 24, y: 48, dir: 'S' },
+      { name: 'bottom', x: 24, y: 80, dir: 'S' },
     ],
     portyWtorne: [
-      { name: 'wylacz', x: 48, y: 24, dir: 'E' },
+      { name: 'wylacz', x: 48, y: 40, dir: 'E' },
     ],
     doprowadzenia: [],
-    obrys: { x: 2, y: 0, width: 46, height: 48 },
-    glif: { x: 5.1, y: 11, width: 33.7492, height: 27 },
-    kafel: { x: 0, y: 0, width: 48, height: 48 },
+    obrys: { x: 2, y: 0, width: 46, height: 80 },
+    glif: { x: 18, y: 27, width: 20.8492, height: 27 },
+    kafel: { x: 0, y: 16, width: 48, height: 48 },
     przewody: [
-      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 17 },
-      { k: 'line', x1: 24, y1: 38, x2: 24, y2: 48 },
+      { k: 'line', x1: 24, y1: 16, x2: 24, y2: 33 },
+      { k: 'line', x1: 24, y1: 54, x2: 24, y2: 64 },
     ],
     stale: [],
     osprzet: [
-      { k: 'line', x1: 16, y1: 38, x2: 24, y2: 38, kreskowana: true },
-      { k: 'circle', cx: 9, cy: 38, r: 7, fill: 'none' },
-      { k: 'letter', x: 8.2986, y: 39.2879, t: 'M', size: 8.4 },
+      { k: 'line', x1: 16, y1: 54, x2: 24, y2: 54, kreskowana: true },
+      { k: 'circle', cx: 9, cy: 54, r: 7, fill: 'none' },
+      { k: 'letter', x: 9, y: 53.9774, t: 'M', size: 8.4 },
     ],
     noz: {
       cx: 24,
-      cy: 38,
+      cy: 54,
       katy: { open: 45, closed: 0, unknown: 22.5 },
       zasiegi: { open: 1, closed: 1, unknown: 0.6 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 17, nozStanu: true },
+        { k: 'line', x1: 24, y1: 54, x2: 24, y2: 33, nozStanu: true },
       ],
     },
     znaczniki: [
       {
         rodzaj: 'wylacznik',
         styk: 'closed',
-        kotwica: { x: 24, y: 17 },
+        kotwica: { x: 24, y: 33 },
         prymitywy: [
-          { k: 'line', x1: 18, y1: 11, x2: 30, y2: 23 },
-          { k: 'line', x1: 30, y1: 11, x2: 18, y2: 23 },
-        ],
-      },
-      {
-        rodzaj: 'czlon_wysuwny',
-        styk: 'wysuw',
-        kotwica: { x: 18, y: 17 },
-        prymitywy: [
-          { k: 'circle', cx: 11.1, cy: 17, r: 6, fill: 'none' },
+          { k: 'line', x1: 18, y1: 27, x2: 30, y2: 39 },
+          { k: 'line', x1: 30, y1: 27, x2: 18, y2: 39 },
         ],
       },
     ],
     ziemia: null,
+    czlon: {
+      pasmo: 16,
+      przewody: [
+        { k: 'line', x1: 24, y1: 0, x2: 24, y2: 16 },
+        { k: 'line', x1: 24, y1: 64, x2: 24, y2: 80 },
+      ],
+      gora: [
+        { k: 'line', x1: 24, y1: 3, x2: 18, y2: 8 },
+        { k: 'line', x1: 24, y1: 3, x2: 30, y2: 8 },
+        { k: 'line', x1: 24, y1: 8, x2: 18, y2: 13 },
+        { k: 'line', x1: 24, y1: 8, x2: 30, y2: 13 },
+      ],
+      dol: [
+        { k: 'line', x1: 24, y1: 72, x2: 18, y2: 67 },
+        { k: 'line', x1: 24, y1: 72, x2: 30, y2: 67 },
+        { k: 'line', x1: 24, y1: 77, x2: 18, y2: 72 },
+        { k: 'line', x1: 24, y1: 77, x2: 30, y2: 72 },
+      ],
+    },
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt', upstreamBlobSha: '6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af', sha256: '380e368975529f40340312b3625581f33926712553eabe84836e8bf987ee94c5' },
-      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
     ],
   },
   qetDisconnector: {
     id: 'qetDisconnector',
     namePl: 'Odłącznik',
-    zlozenie: 'element QET en_60617_07_13_06 (odłącznik: nóż) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” przy styku stałym',
+    zlozenie: null,
     szerokosc: 48,
     wysokosc: 48,
     porty: [
@@ -414,11 +446,11 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     portyWtorne: [],
     doprowadzenia: [],
-    obrys: { x: 18, y: 0, width: 20.8492, height: 48 },
-    glif: { x: 18, y: 5, width: 20.8492, height: 33 },
+    obrys: { x: 18, y: 0, width: 25.0919, height: 48 },
+    glif: { x: 18, y: 11, width: 25.0919, height: 27 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
-      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 5 },
+      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 11 },
       { k: 'line', x1: 24, y1: 38, x2: 24, y2: 48 },
     ],
     stale: [],
@@ -429,23 +461,23 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       katy: { open: 45, closed: 0, unknown: 22.5 },
       zasiegi: { open: 1, closed: 1, unknown: 0.6 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 17, nozStanu: true },
+        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 11, nozStanu: true },
       ],
     },
     znaczniki: [
       {
         rodzaj: 'odlacznik',
         styk: 'closed',
-        kotwica: { x: 24, y: 17 },
+        kotwica: { x: 24, y: 11 },
         prymitywy: [
-          { k: 'circle', cx: 24, cy: 11, r: 6, fill: 'none' },
+          { k: 'line', x1: 18, y1: 11, x2: 30, y2: 11 },
         ],
       },
     ],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt', upstreamBlobSha: '58a1758ff8fda670013b32a3a2068633223b4e9c', sha256: '0a1a9c5b8092fcffd965065ef857e5a3518163eb35a15ae0b1dbd2be0acac939' },
-      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
     ],
   },
   qetLoadBreakSwitch: {
@@ -490,6 +522,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       },
     ],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt', upstreamBlobSha: 'ca96486920218370b3afffb17a0ae8bfe3f6414c', sha256: '4c915a01c21f75b0de97ea4d60091305f8b5d5a72bb0d4d9f609866ee2a16646' },
     ],
@@ -540,6 +573,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       },
     ],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_21/en_60617_07_21_09.elmt', upstreamBlobSha: '8079d0cde1116a3efa45064a5211b3cbf92ba2e0', sha256: 'ea22ec9ed0b85e21116bb8b8c2a0c42cdff8c789429ab945898ee7be8f45ac29' },
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt', upstreamBlobSha: 'ca96486920218370b3afffb17a0ae8bfe3f6414c', sha256: '4c915a01c21f75b0de97ea4d60091305f8b5d5a72bb0d4d9f609866ee2a16646' },
@@ -592,6 +626,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
         { k: 'line', x1: 21.6, y1: 44, x2: 26.4, y2: 44 },
       ],
     },
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/10_allpole/450_high_voltage/interrupteur_sectionneur_de_terre.elmt', upstreamBlobSha: 'addcaa782655cfe3d85a8f285cb48ec02194fee5', sha256: 'c6f1aa6b7d2e925b28df88b4173491022c62e101ce74638308df4a972633bffb' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt', upstreamBlobSha: '4c1c408e1e15c304f08c67cb03a5456b941bc614', sha256: '90623920517cb61c0eee48982fffe94b1669e46d16ddf52b9e8dedca88c18061' },
@@ -600,7 +635,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
   qetThreePositionSwitch: {
     id: 'qetThreePositionSwitch',
     namePl: 'Łącznik trójpołożeniowy',
-    zlozenie: 'złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż) + en_60617_07_13_07 (okrąg styku odłączającego — znacznik „○” funkcji odłącznika przy zestyku szynowym) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym)',
+    zlozenie: 'złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym)',
     szerokosc: 48,
     wysokosc: 48,
     porty: [
@@ -609,54 +644,54 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     portyWtorne: [],
     doprowadzenia: [],
-    obrys: { x: 18, y: 0, width: 23, height: 48 },
-    glif: { x: 18, y: 5, width: 17, height: 29 },
+    obrys: { x: 18, y: 0, width: 24.5, height: 48 },
+    glif: { x: 18, y: 5, width: 23.6777, height: 31 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
       { k: 'line', x1: 24, y1: 0, x2: 24, y2: 5 },
-      { k: 'line', x1: 24, y1: 28, x2: 24, y2: 48 },
+      { k: 'line', x1: 24, y1: 30, x2: 24, y2: 48 },
     ],
     stale: [],
     osprzet: [],
     noz: {
       cx: 24,
-      cy: 28,
+      cy: 30,
       katy: { open: 45, closed: 0, earthed: 90, unknown: 22.5 },
-      zasiegi: { open: 1, closed: 1, earthed: 1, unknown: 0.6 },
+      zasiegi: { open: 1, closed: 1, earthed: 0.5, unknown: 0.6 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 28, x2: 24, y2: 17, nozStanu: true },
+        { k: 'line', x1: 24, y1: 30, x2: 24, y2: 5, nozStanu: true },
       ],
     },
     znaczniki: [
       {
         rodzaj: 'odlacznik',
         styk: 'closed',
-        kotwica: { x: 24, y: 17 },
+        kotwica: { x: 24, y: 5 },
         prymitywy: [
-          { k: 'circle', cx: 24, cy: 11, r: 6, fill: 'none' },
+          { k: 'line', x1: 18, y1: 5, x2: 30, y2: 5 },
         ],
       },
       {
         rodzaj: 'uziemnik',
         styk: 'earthed',
-        kotwica: { x: 35, y: 28 },
+        kotwica: { x: 36.5, y: 30 },
         prymitywy: [
-          { k: 'line', x1: 35, y1: 34, x2: 35, y2: 22 },
+          { k: 'line', x1: 36.5, y1: 36, x2: 36.5, y2: 24 },
         ],
       },
     ],
     ziemia: {
-      kotwica: { x: 35, y: 34 },
+      kotwica: { x: 36.5, y: 36 },
       prymitywy: [
-        { k: 'line', x1: 35, y1: 34, x2: 35, y2: 37 },
-        { k: 'line', x1: 29, y1: 37, x2: 41, y2: 37 },
-        { k: 'line', x1: 30.8, y1: 40, x2: 39.2, y2: 40 },
-        { k: 'line', x1: 32.6, y1: 43, x2: 37.4, y2: 43 },
+        { k: 'line', x1: 36.5, y1: 36, x2: 36.5, y2: 39 },
+        { k: 'line', x1: 30.5, y1: 39, x2: 42.5, y2: 39 },
+        { k: 'line', x1: 32.3, y1: 42, x2: 40.7, y2: 42 },
+        { k: 'line', x1: 34.1, y1: 45, x2: 38.9, y2: 45 },
       ],
     },
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt', upstreamBlobSha: '58a1758ff8fda670013b32a3a2068633223b4e9c', sha256: '0a1a9c5b8092fcffd965065ef857e5a3518163eb35a15ae0b1dbd2be0acac939' },
-      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt', upstreamBlobSha: '4c1c408e1e15c304f08c67cb03a5456b941bc614', sha256: '90623920517cb61c0eee48982fffe94b1669e46d16ddf52b9e8dedca88c18061' },
     ],
@@ -664,7 +699,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
   qetThreePositionSwitchZNapedem: {
     id: 'qetThreePositionSwitchZNapedem',
     namePl: 'Łącznik trójpołożeniowy z napędem zasobnikowym',
-    zlozenie: 'złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż) + en_60617_07_13_07 (okrąg styku odłączającego — znacznik „○” funkcji odłącznika przy zestyku szynowym) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym) + en_60617_02_13_20 (napęd energią zmagazynowaną) i en_60617_02_13_01 (napęd ręczny) po lewej stronie osi',
+    zlozenie: 'złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym) + en_60617_02_13_20 (napęd energią zmagazynowaną) i en_60617_02_13_01 (napęd ręczny) po lewej stronie osi',
     szerokosc: 48,
     wysokosc: 48,
     porty: [
@@ -673,59 +708,59 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     portyWtorne: [],
     doprowadzenia: [],
-    obrys: { x: 8, y: 0, width: 33, height: 48 },
-    glif: { x: 18, y: 5, width: 17, height: 29 },
+    obrys: { x: 8, y: 0, width: 34.5, height: 48 },
+    glif: { x: 18, y: 5, width: 23.6777, height: 31 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
       { k: 'line', x1: 24, y1: 0, x2: 24, y2: 5 },
-      { k: 'line', x1: 24, y1: 28, x2: 24, y2: 48 },
+      { k: 'line', x1: 24, y1: 30, x2: 24, y2: 48 },
     ],
     stale: [],
     osprzet: [
-      { k: 'path', d: 'M 8 24 L 16 24 L 16 32 L 8 32 Z', fill: 'none' },
-      { k: 'line', x1: 16, y1: 28, x2: 24, y2: 28, kreskowana: true },
-      { k: 'line', x1: 12, y1: 41, x2: 12, y2: 32, kreskowana: true },
-      { k: 'line', x1: 10.5, y1: 41, x2: 13.5, y2: 41 },
+      { k: 'path', d: 'M 8 26 L 16 26 L 16 34 L 8 34 Z', fill: 'none' },
+      { k: 'line', x1: 16, y1: 30, x2: 24, y2: 30, kreskowana: true },
+      { k: 'line', x1: 12, y1: 43, x2: 12, y2: 34, kreskowana: true },
+      { k: 'line', x1: 10.5, y1: 43, x2: 13.5, y2: 43 },
     ],
     noz: {
       cx: 24,
-      cy: 28,
+      cy: 30,
       katy: { open: 45, closed: 0, earthed: 90, unknown: 22.5 },
-      zasiegi: { open: 1, closed: 1, earthed: 1, unknown: 0.6 },
+      zasiegi: { open: 1, closed: 1, earthed: 0.5, unknown: 0.6 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 28, x2: 24, y2: 17, nozStanu: true },
+        { k: 'line', x1: 24, y1: 30, x2: 24, y2: 5, nozStanu: true },
       ],
     },
     znaczniki: [
       {
         rodzaj: 'odlacznik',
         styk: 'closed',
-        kotwica: { x: 24, y: 17 },
+        kotwica: { x: 24, y: 5 },
         prymitywy: [
-          { k: 'circle', cx: 24, cy: 11, r: 6, fill: 'none' },
+          { k: 'line', x1: 18, y1: 5, x2: 30, y2: 5 },
         ],
       },
       {
         rodzaj: 'uziemnik',
         styk: 'earthed',
-        kotwica: { x: 35, y: 28 },
+        kotwica: { x: 36.5, y: 30 },
         prymitywy: [
-          { k: 'line', x1: 35, y1: 34, x2: 35, y2: 22 },
+          { k: 'line', x1: 36.5, y1: 36, x2: 36.5, y2: 24 },
         ],
       },
     ],
     ziemia: {
-      kotwica: { x: 35, y: 34 },
+      kotwica: { x: 36.5, y: 36 },
       prymitywy: [
-        { k: 'line', x1: 35, y1: 34, x2: 35, y2: 37 },
-        { k: 'line', x1: 29, y1: 37, x2: 41, y2: 37 },
-        { k: 'line', x1: 30.8, y1: 40, x2: 39.2, y2: 40 },
-        { k: 'line', x1: 32.6, y1: 43, x2: 37.4, y2: 43 },
+        { k: 'line', x1: 36.5, y1: 36, x2: 36.5, y2: 39 },
+        { k: 'line', x1: 30.5, y1: 39, x2: 42.5, y2: 39 },
+        { k: 'line', x1: 32.3, y1: 42, x2: 40.7, y2: 42 },
+        { k: 'line', x1: 34.1, y1: 45, x2: 38.9, y2: 45 },
       ],
     },
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt', upstreamBlobSha: '58a1758ff8fda670013b32a3a2068633223b4e9c', sha256: '0a1a9c5b8092fcffd965065ef857e5a3518163eb35a15ae0b1dbd2be0acac939' },
-      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt', upstreamBlobSha: '4c1c408e1e15c304f08c67cb03a5456b941bc614', sha256: '90623920517cb61c0eee48982fffe94b1669e46d16ddf52b9e8dedca88c18061' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_20.elmt', upstreamBlobSha: '2f5f838b2563c4aacb697a370ed99f5f946f5a71', sha256: '3d6b970baee6dccc23fa5a951387da2586435d9bc9d3eb1f6bc87ef553d60823' },
@@ -765,6 +800,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_09/en_60617_06_09_10.elmt', upstreamBlobSha: '37de2decfe2a496cd014a1dd411a5e8d52e990ca', sha256: '6d503d4d18bd0e56180c2746bc5cecc64b3d8459a19560c248e0f2fd7b3ad04b' },
     ],
@@ -801,6 +837,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_10.elmt', upstreamBlobSha: '4742b0a5097196c28ac3c07e30ce427a95a36ad2', sha256: 'aa682e01f0d11a98eb7b2d6e75fbc86060f03ace910bca1de13f37e134cabd9c' },
     ],
@@ -835,6 +872,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt', upstreamBlobSha: 'a883a2e6daec80c241594505c96295c917884adc', sha256: '465d743960ead5eec0f57d26618a67a44747c7d3b6233bfb5e038c614f08235b' },
     ],
@@ -870,6 +908,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt', upstreamBlobSha: 'a883a2e6daec80c241594505c96295c917884adc', sha256: '465d743960ead5eec0f57d26618a67a44747c7d3b6233bfb5e038c614f08235b' },
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt', upstreamBlobSha: 'a883a2e6daec80c241594505c96295c917884adc', sha256: '465d743960ead5eec0f57d26618a67a44747c7d3b6233bfb5e038c614f08235b' },
@@ -907,6 +946,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt', upstreamBlobSha: 'a883a2e6daec80c241594505c96295c917884adc', sha256: '465d743960ead5eec0f57d26618a67a44747c7d3b6233bfb5e038c614f08235b' },
       { sciezka: '10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt', upstreamBlobSha: 'a883a2e6daec80c241594505c96295c917884adc', sha256: '465d743960ead5eec0f57d26618a67a44747c7d3b6233bfb5e038c614f08235b' },
@@ -938,6 +978,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_03/en_60617_03_03/en_60617_03_03_05.elmt', upstreamBlobSha: '93d917ff316a374b81696b92ddf91501d4da2b49', sha256: '1e2924d7d302763cbafd0808721245d3bbba236070def150ad6045b91b0f6574' },
     ],
@@ -971,6 +1012,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/10_allpole/450_high_voltage/signal_capacitif.elmt', upstreamBlobSha: 'fa4f0d85eabef67c8dfcf4cd102fdba3bc7c91d4', sha256: '652e3adf083d3d3379fd71abc6ede79b095d5f03bde319a88b30046fdb26875e' },
     ],
@@ -998,6 +1040,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     noz: null,
     znaczniki: [],
     ziemia: null,
+    czlon: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt', upstreamBlobSha: '0b62c546b2fc8651ae8c8d75cab73e657e9effc6', sha256: 'efbd93c234ca3e7e37f39db946ce13237165a1ccdd471149ea01368e1779c416' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_05/en_60617_02_05_01.elmt', upstreamBlobSha: 'a898d98255ccabb9b81d0e4b185723c95d5b3536', sha256: 'ec063ecc7d68e914b08d949aee8d70be7e549175beeecc06710795cd624e20e6' },

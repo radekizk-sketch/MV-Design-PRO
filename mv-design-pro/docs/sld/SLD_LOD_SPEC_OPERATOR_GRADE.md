@@ -55,6 +55,13 @@ LOD MUSI uprościć szczegół wizualny. NIE wolno mu zmienić:
 | 3 | + Q-numery aparatów, ratingi katalogowe, pomiary (jeśli warstwa Pomiary aktywna) |
 | 4 | + wszystkie warstwy diagnostyczne |
 
+Decyzja właściciela 2026-11-04 (odbiór B-02 pola liniowego, pkt 6) — wyjątek od tabeli dla
+przekładników w polach GPZ: oznaczenia przekładników prądowych, napięciowych i Ferrantiego
+(`T1`, `T2`, `T3`) są widoczne od LOD1 (filtr `odLod: 1` etykiet aparatów,
+`compose/gpz.ts::RODZAJE_PRZEKLADNIKOW_OD_LOD1`); przekładnia skrócona (`200–400/5`,
+`15/√3 / 0,1/√3 kV`) — od LOD2; LOD0 — same symbole. Pełne dane tabliczki — wyłącznie inspektor
+pola. Pin: `v3/scene/__tests__/tabliczkiPrzekladnikow.test.ts` („opis przekładnika wg LOD”).
+
 Locked labels (CAD lock, Phase 2) NIE są ukrywane przez declutter.
 
 ## 7. Element kinds (kanon)

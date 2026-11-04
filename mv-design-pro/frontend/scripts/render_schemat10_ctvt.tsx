@@ -2,7 +2,7 @@
  * SCHEMAT-10 CTVT-RENDER (CTVT-MODEL/V12K-176, SLD_CAD_SPEC_V3 §18.3/§20.2) —
  * dowód wizualny L2 konsumenta-renderu pól `Measurement.ct_cores`/`vt_mounting`:
  *  - Panel A (Z DANYMI): pole z CT niosącym ct_cores=3 (+ układ 3×CT) i VT
- *    niosącym vt_mounting='cable' — etykieta CT „CT1 · 300/5 · 3×CT · 3 rdz."
+ *    niosącym vt_mounting='cable' — etykieta CT „CT1 · 300/5" (układ i rdzenie — w inspektorze pola, odbiór B-02 2026-11-04)
  *    ORAZ nowa adnotacja montażu VT „V1 · kablowy" widoczne w kolumnie
  *    adnotacji tuż za torem głównym;
  *  - Panel B (BEZ DANYCH): TE SAME aparaty CT/VT ale BEZ ct_cores/vt_mounting
@@ -57,7 +57,7 @@ function bayWithData(): MiniBlockBayDescriptor {
     bayRef: 'ctvt-with', fieldRole: FIELD_ROLE.LINE_IN, designation: 'L1', hasMissingRequiredDevice: false,
     primaryDevices: primaryDevices(),
     ctRatingAnnotations: [
-      { measurementRef: MEAS_CT, identifier: 'CT1', ratioText: '300/5', arrangement: '3xCT', cores: 3 },
+      { measurementRef: MEAS_CT, identifier: 'CT1', ratioText: '300/5' },
     ],
     vtMountingAnnotations: [{ measurementRef: MEAS_VT, identifier: 'V1', mounting: 'cable' }],
   };
@@ -186,7 +186,7 @@ const title =
   `Warunkowo: obecne WYŁĄCZNIE gdy Measurement niesie ct_cores/vt_mounting — None ⇒ zero adnotacji, zero zmiany geometrii.</text>`;
 
 const panels =
-  renderComposition(compWith, 20, 84, 'Z DANYMI — ct_cores=3, vt_mounting=kablowy', 'etykieta CT „CT1 · 300/5 · 3×CT · 3 rdz." + adnotacja VT „V1 · kablowy"') +
+  renderComposition(compWith, 20, 84, 'Z DANYMI — ct_cores=3, vt_mounting=kablowy', 'etykieta CT „CT1 · 300/5" + adnotacja VT „V1 · kablowy"') +
   renderComposition(compWithout, 40 + PANEL_W, 84, 'BEZ DANYCH — ct_cores=None, vt_mounting=None', 'te same aparaty CT/VT, ZERO adnotacji (warunkowość §0.2)');
 
 const svg =

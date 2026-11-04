@@ -75,7 +75,9 @@ function oczekiwanyKafel(id: SymbolId, state: SwitchState | undefined): StanKafl
   // Uziemiony: tylko łącznik trójpołożeniowy (dwa XSWI wg IEC 61850-7-4 — zestyk uziemiający
   // zamknięty, tor główny OTWARTY). Kolor kafla mówi o torze głównym (uwaga właściciela
   // 2026-10-30), nóż na zestyku uziemiającym mówi, że pole jest uziemione; na każdym innym
-  // symbolu „uziemiony" to stan bez znaczenia → nieustalony.
+  // symbolu „uziemiony" to stan bez znaczenia → nieustalony. Uziemnik (kanoniczny i QET):
+  // „uziemiony” = ZAMKNIĘTY (oględziny odbioru B-02 2026-11-04 — wcześniej szary „?”).
+  if (state === 'earthed' && (id === 'earthSwitch' || id === 'qetEarthSwitch')) return 'zamkniety';
   if (state === 'earthed') return TROJPOLOZENIOWE.has(id) ? 'otwarty' : 'nieustalony';
   return 'nieustalony';
 }
@@ -84,6 +86,8 @@ function oczekiwanyKafel(id: SymbolId, state: SwitchState | undefined): StanKafl
 function oczekiwanaGeometria(id: SymbolId, state: SwitchState | undefined): string {
   if (state === 'closed' || state === 'open') return state;
   if (state === 'earthed' && TROJPOLOZENIOWE.has(id)) return 'earthed';
+  // Uziemnik: „uziemiony” = nóż na jego (jedynym) styku — położenie zamknięte.
+  if (state === 'earthed' && (id === 'earthSwitch' || id === 'qetEarthSwitch')) return 'closed';
   return 'unknown';
 }
 
@@ -105,7 +109,11 @@ const RODZAJE_SYMBOLE: ReadonlyArray<readonly [BayPrimaryDeviceKind, string, Sym
 /** Wyrocznia prostokąta kafla NIEZALEŻNA od `prostokatKaflaStanu`: QET — kwadrat z jednej
  *  stałej w gabarycie; kanoniczny — obrys rysunku z marginesem. */
 function oczekiwanyProstokat(id: SymbolId): { x: number; y: number; width: number; height: number } {
-  if (czySymbolQet(id)) return { x: 0, y: 0, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  // Wyłącznik wysuwny: kafel w paśmie członu (`kafel.y` = pasmo szewronów nad kaflem).
+  if (czySymbolQet(id)) {
+    const y = QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].kafel?.y ?? 0;
+    return { x: 0, y, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  }
   const o = obrysSymbolu(id);
   return {
     x: o.x - KAFEL_STANU_MARGINES,
@@ -179,7 +187,10 @@ describe('kafel stanu — iloczyn rodzaj × wariant × stan × motyw', () => {
           expect(ty).toBeCloseTo(r.y, 6);
           expect(tw).toBeCloseTo(r.width, 6);
           expect(th).toBeCloseTo(r.height, 6);
-          const o = obrysSymbolu(id);
+          // Wyłącznik wysuwny: pasma członu leżą poza kaflem — kafel obejmuje rysunek aparatu
+          // (`glif`), przewody pasm i szewrony stoją nad i pod nim.
+          const czlon = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].czlon : null;
+          const o = czlon ? QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].glif : obrysSymbolu(id);
           expect(o.x).toBeGreaterThanOrEqual(tx);
           expect(o.y).toBeGreaterThanOrEqual(ty);
           expect(o.x + o.width).toBeLessThanOrEqual(tx + tw);
@@ -187,10 +198,24 @@ describe('kafel stanu — iloczyn rodzaj × wariant × stan × motyw', () => {
           // Symbol na kaflu w kolorze glifu kafla (kontrast z kaflem, nie z tłem kanwy).
           const glif = grupa.querySelector(`[data-symbol-canon="${id}"]`)!;
           expect(glif).not.toBeNull();
-          const kreski = [...glif.querySelectorAll('[stroke]')].map((n) => n.getAttribute('stroke'));
+          const kreski = [...glif.querySelectorAll('[stroke]')]
+            .filter((n) => !n.closest('[data-qet="czlon"]'))
+            .map((n) => n.getAttribute('stroke'));
           expect(kreski.length).toBeGreaterThan(0);
           for (const k of kreski) expect(['none', kafle.glif]).toContain(k);
-          expect(glif.innerHTML).not.toContain('#123456');
+          // Pasma członu wysuwnego (uwaga właściciela 2026-11-04, odbiór B-02 pkt 3): szewrony
+          // i przewód toru w kolorze TORU, ten sam w każdym stanie wyłącznika — nigdy kolor kafla
+          // ani glifu na kaflu (model niesie wykonanie, nie położenie członu).
+          const pasma = glif.querySelector('[data-qet="czlon"]');
+          expect(pasma !== null).toBe(czlon !== null);
+          if (pasma) {
+            const kreskiPasm = [...pasma.querySelectorAll('[stroke]')].map((n) => n.getAttribute('stroke'));
+            expect(kreskiPasm.length).toBe(2 + 8);
+            for (const k of kreskiPasm) expect(k).toBe('#123456');
+            expect(pasma.querySelectorAll('[data-czlon-pasmo] line')).toHaveLength(8);
+          } else {
+            expect(glif.innerHTML).not.toContain('#123456');
+          }
           // Znak stanu: „?" nieustalony, „!" awaria; zamknięty/otwarty bez znaku.
           const znak = grupa.querySelector('[data-kafel="znak"]');
           const oczekiwanyZnak = oczekiwany === 'nieustalony' ? '?' : oczekiwany === 'bledny' ? '!' : null;

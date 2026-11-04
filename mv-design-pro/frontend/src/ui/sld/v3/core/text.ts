@@ -310,6 +310,12 @@ export function enlargedFontSizeWithinProportion(cls: LabelClass, scale: number)
   return fontSizeForScreenFloorWithinProportion(cls, scale, MIN_READABLE_LABEL_SCREEN_PX);
 }
 
+/** K2b §0.2 (b): podłoga opisów celu kadru [px ekranu] — pismo opisów celu kadru (pole, stacja)
+ *  nie schodzi poniżej niej na ekranie (`canvas/zakresKadru.ts::podlogaOpisowCelu`). Ta sama
+ *  wartość wyznacza zapas szerokości kolumny pola GPZ na powiększone opisy celu
+ *  (`compose/gpz.ts::szerokosciRysunkuPol`). */
+export const MIN_OPIS_CELU_KADRU_PX = 13;
+
 /**
  * Ta sama para granic co `enlargedFontSizeWithinProportion`, z podłogą ekranową
  * `screenPx` podaną przez wołającego. Jedyny inny konsument: podłoga OPISÓW CELU

@@ -7,8 +7,9 @@
  * (`uzwojenia`), Ferrantiego (`przekladnia`) — ma na scenie dokładnie jedną tabliczkę, przy SWOIM
  * symbolu, bez kolizji z rysunkiem i innymi napisami.
  *
- * Wyrocznia niezależna od kompozytora: treść z SUROWYCH danych fikstury (zapis tabliczki wg
- * rysunków Z.10/Z.11.1), kolizje z obrysów symboli sceny i prostokątów etykiet (scena oraz plan
+ * Wyrocznia niezależna od kompozytora: treść z SUROWYCH danych fikstury — odbiór B-02 właściciela
+ * 2026-11-04 (pkt 6): na schemacie KRÓTKA przekładnia („200–400/5”, VT liczbowo z napięcia szyny
+ * pola „15/√3 / 0,1/√3 kV”), bez klas, zaczepu i kolejnych rdzeni (inspektor pola), kolizje z obrysów symboli sceny i prostokątów etykiet (scena oraz plan
  * etykiet kanwy przy skalach roboczych).
  *
  * Iloczyn cech: fikstura {Z.10 w sekcji 1, Z.10 w sekcji 2, Z.11.1 i Z.11, Z.11 z przekładnikiem
@@ -60,7 +61,7 @@ interface Wzorzec {
   readonly przyrostek: string;
   readonly symbol: string;
   readonly maTabliczke: (d: BayPrimaryDevice) => boolean;
-  readonly tresc: (d: BayPrimaryDevice) => string;
+  readonly tresc: (d: BayPrimaryDevice, unKv: number | undefined) => string;
 }
 
 /** Zapis tabliczki z surowych danych — wg rysunków standardu (Z.10 s.89, Z.11.1 s.91). */
@@ -69,25 +70,15 @@ const WZORCE: Readonly<Record<Rodzaj, Wzorzec>> = {
     przyrostek: 'ct-rating',
     symbol: 'currentTransformer',
     maTabliczke: (d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0,
-    tresc: (d) => {
-      const r = d.rdzenie!;
-      const pierwotna = r[0].przekladnia.split('/')[0];
-      const wspolna = r.every((x) => x.przekladnia.split('/')[0] === pierwotna);
-      const przekladnia = wspolna ? `${pierwotna}/${r.map((x) => x.przekladnia.split('/')[1]).join('/')} A` : `${r.map((x) => x.przekladnia).join(', ')} A`;
-      const klasy = r.map((x) => (x.fs != null ? `${x.klasa} FS${String(x.fs).replace('.', ',')}` : x.klasa)).join(' / ');
-      const zaczep = d.zaczep_pierwotny_a != null ? [`zaczep ${d.zaczep_pierwotny_a} A`] : [];
-      return [przekladnia, ...zaczep, klasy].join(' · ');
-    },
+    tresc: (d) => d.rdzenie![0].przekladnia.replace(/-/g, '–'),
   },
   napięciowy: {
     przyrostek: 'vt-rating',
     symbol: 'voltageTransformer',
     maTabliczke: (d) => d.kind === 'VT' && (d.uzwojenia?.length ?? 0) > 0,
-    tresc: (d) => {
-      const u = d.uzwojenia!;
-      const strony = u.map((x) => x.przekladnia.split(' / '));
-      const przekladnia = [strony[0][0], ...strony.map((s) => s[1])].join(' / ');
-      return `${przekladnia} · ${u.map((x) => x.klasa).join(' / ')}`;
+    tresc: (d, unKv) => {
+      const [pierwotna, wtorna] = d.uzwojenia![0].przekladnia.split(' / ');
+      return `${pierwotna.replace('SN', String(unKv).replace('.', ','))} / ${wtorna} kV`;
     },
   },
   Ferrantiego: {
@@ -127,7 +118,10 @@ function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Ro
       continue;
     }
     const l = etykiety[0];
-    if (l.text !== w.tresc(d)) n.push(`${ref}: treść „${l.text}" ≠ „${w.tresc(d)}"`);
+    const unKv = (enm.buses ?? []).find((b) => b.ref_id === bay.bus_ref)?.voltage_kv;
+    const tresc = w.tresc(d, unKv);
+    if (l.text !== tresc) n.push(`${ref}: treść „${l.text}" ≠ „${tresc}"`);
+    if (/…|P20|FS|zaczep|SN\//.test(l.text)) n.push(`${ref}: nadmiarowy opis na schemacie „${l.text}"`);
     const symbol = scena.symbols.find((s) => s.meta?.ownerRef === bay.ref_id && s.meta?.deviceRef === d.device_ref);
     if (!symbol || rodzajSymbolu(symbol.symbolId) !== w.symbol) {
       n.push(`${ref}: brak symbolu ${w.symbol} aparatu na scenie`);
@@ -183,6 +177,41 @@ describe('tabliczki przekładników przy symbolach — scena LOD2 (iloczyn fikst
         const liczba = (enm.bays ?? []).flatMap((b) => (b.primary_devices ?? []).filter(WZORCE[rodzaj].maTabliczke)).length;
         expect(liczba, 'fikstura niesie przekładnik tego rodzaju z tabliczką').toBeGreaterThan(0);
         expect(naruszeniaTabliczek(enm, SCENY.get(nazwa)!, rodzaj, !TYLKO_KOLIZJE.has(nazwa))).toEqual([]);
+      });
+    }
+  }
+});
+
+describe('odbiór B-02 (pkt 6): opis przekładnika wg LOD (iloczyn fikstura × LOD × rodzaj)', () => {
+  // LOD0 — same symbole; LOD1 — oznaczenia (T1, T2, T3), bez przekładni; LOD2 — oznaczenia
+  // i krótkie przekładnie. Pozostałe podpisy aparatów (Q0, Q1…) — wyłącznie LOD2.
+  for (const [nazwa, enm] of FIKSTURY) {
+    for (const lod of [0, 1, 2] as const) {
+      it(`${nazwa} · LOD${lod}`, () => {
+        const scena = lod === 2 ? SCENY.get(nazwa)! : buildSceneV3(enm, lod);
+        const n: string[] = [];
+        for (const rodzaj of RODZAJE) {
+          const w = WZORCE[rodzaj];
+          for (const bay of enm.bays ?? []) {
+            for (const d of (bay.primary_devices ?? []).filter(w.maTabliczke)) {
+              const oznaczenie = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#etykieta-aparatu-${d.device_ref}`);
+              const tabliczka = scena.labels.filter((l) => l.ownerRef === `${bay.ref_id}#${w.przyrostek}-${d.device_ref}`);
+              const oczekOznaczenie = lod >= 1 && !!d.designation ? 1 : 0;
+              if (oznaczenie.length !== oczekOznaczenie) n.push(`${d.device_ref}: ${oznaczenie.length} oznaczeń (oczekiwano ${oczekOznaczenie})`);
+              if (oczekOznaczenie && oznaczenie[0].text !== d.designation) n.push(`${d.device_ref}: oznaczenie „${oznaczenie[0].text}" ≠ „${d.designation}"`);
+              if (tabliczka.length !== (lod === 2 ? 1 : 0)) n.push(`${d.device_ref}: ${tabliczka.length} przekładni na LOD${lod}`);
+            }
+          }
+        }
+        if (lod < 2) {
+          const przekladnikowe = new Set(
+            (enm.bays ?? []).flatMap((b) => (b.primary_devices ?? []).filter((d) => RODZAJE.some((r) => WZORCE[r].maTabliczke(d))).map((d) => `${b.ref_id}#etykieta-aparatu-${d.device_ref}`)),
+          );
+          for (const l of scena.labels) {
+            if (l.ownerRef.includes('#etykieta-aparatu-') && !przekladnikowe.has(l.ownerRef) && !l.unresolved) n.push(`LOD${lod}: podpis aparatu ${l.text} poza przekładnikami`);
+          }
+        }
+        expect(n).toEqual([]);
       });
     }
   }

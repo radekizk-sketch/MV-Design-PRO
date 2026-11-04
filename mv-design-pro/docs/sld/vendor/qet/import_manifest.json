@@ -212,18 +212,10 @@
     {
       "symbolId": "qetBreakerWysuwny",
       "namePl": "Wyłącznik w wykonaniu wysuwnym",
-      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla",
+      "zlozenie": null,
       "skladniki": [
         {
           "element": "en_60617_07_13_05",
-          "obrot": 0,
-          "przesuniecie": [
-            0,
-            0
-          ]
-        },
-        {
-          "element": "en_60617_07_13_07",
           "obrot": 0,
           "przesuniecie": [
             0,
@@ -257,17 +249,9 @@
               4
             ],
             "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
-          },
-          {
-            "rodzaj": "czlon_wysuwny",
-            "styk": "wysuw",
-            "skladnik": 1,
-            "prymitywy": [
-              6
-            ],
-            "powod": "człon wysuwny (rozstrzygnięcie architekta 2026-10-30 pkt 3, decyzja właściciela 2026-10-30: „○” odłącznik lub człon wysuwny): okrąg „○” (kształt okręgu styku odłączającego EN 60617 07-13-07, ten sam co znacznik odłącznika) obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego, na wysokości styku zamknięcia — wykonanie wysuwne z modelu (`BayPrimaryDevice.wykonanie` = WYSUWNE)"
           }
-        ]
+        ],
+        "czlonWysuwny": true
       },
       "pominPrymitywy": [
         {
@@ -277,18 +261,6 @@
             1
           ],
           "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
-        },
-        {
-          "skladnik": 1,
-          "prymitywy": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "powod": "z odłącznika dwukierunkowego 07-13-07 zostaje wyłącznie okrąg styku odłączającego — znacznik „○” członu wysuwnego"
         }
       ],
       "porty": [
@@ -319,38 +291,12 @@
           "dir": "E",
           "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
         }
-      ],
-      "zaciskiPozaTorem": [
-        {
-          "skladnik": 1,
-          "zacisk": [
-            -20,
-            -40
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 1,
-          "zacisk": [
-            0,
-            20
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 1,
-          "zacisk": [
-            20,
-            -40
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        }
       ]
     },
     {
       "symbolId": "qetBreakerWysuwnyZNapedem",
       "namePl": "Wyłącznik w wykonaniu wysuwnym z napędem silnikowym",
-      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla",
+      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M), w układzie kafla; człon wysuwny — pasma podwójnych szewronów nad kaflem (˄˄) i pod kaflem (˅˅) w osi toru (kafelStanu.uklad.czlonWysuwny)",
       "skladniki": [
         {
           "element": "en_60617_07_13_05",
@@ -362,14 +308,6 @@
         },
         {
           "element": "en_60617_02_13_26",
-          "obrot": 0,
-          "przesuniecie": [
-            0,
-            0
-          ]
-        },
-        {
-          "element": "en_60617_07_13_07",
           "obrot": 0,
           "przesuniecie": [
             0,
@@ -403,21 +341,13 @@
               4
             ],
             "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
-          },
-          {
-            "rodzaj": "czlon_wysuwny",
-            "styk": "wysuw",
-            "skladnik": 2,
-            "prymitywy": [
-              6
-            ],
-            "powod": "człon wysuwny (rozstrzygnięcie architekta 2026-10-30 pkt 3, decyzja właściciela 2026-10-30: „○” odłącznik lub człon wysuwny): okrąg „○” (kształt okręgu styku odłączającego EN 60617 07-13-07, ten sam co znacznik odłącznika) obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego, na wysokości styku zamknięcia — wykonanie wysuwne z modelu (`BayPrimaryDevice.wykonanie` = WYSUWNE)"
           }
         ],
         "osprzetKotwica": [
           6,
           0
-        ]
+        ],
+        "czlonWysuwny": true
       },
       "pominPrymitywy": [
         {
@@ -427,18 +357,6 @@
             1
           ],
           "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
-        },
-        {
-          "skladnik": 2,
-          "prymitywy": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "powod": "z odłącznika dwukierunkowego 07-13-07 zostaje wyłącznie okrąg styku odłączającego — znacznik „○” członu wysuwnego"
         }
       ],
       "porty": [
@@ -490,91 +408,76 @@
           "skala": 3.5,
           "powod": "okrąg napędu z literą M powiększony 3,5× wokół punktu styku z linią sprzężenia — litera M 8,4 j.św., czytelna w całym LOD2 (§11.1 wiersz 4 karty UX-04)"
         }
-      ],
-      "zaciskiPozaTorem": [
-        {
-          "skladnik": 2,
-          "zacisk": [
-            -20,
-            -40
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [
-            0,
-            20
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [
-            20,
-            -40
-          ],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
-        }
       ]
     },
     {
       "symbolId": "qetDisconnector",
       "namePl": "Odłącznik",
-      "zlozenie": "element QET en_60617_07_13_06 (odłącznik: nóż) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” przy styku stałym",
+      "zlozenie": null,
       "skladniki": [
-        { "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] }
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
       ],
       "ukladKafla": {
-        "rodzaj": "dwupolozeniowy",
-        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "rodzaj": "odlacznik",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
         "znaczniki": [
           {
             "rodzaj": "odlacznik",
             "styk": "closed",
-            "skladnik": 1,
-            "prymitywy": [6],
-            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — odłącznik oraz człon wysuwny lub odłączalny: okrąg „○” (konwencja właściciela wg e²TANGO; kształt okręgu styku odłączającego EN 60617 07-13-07) zawieszony nad punktem styku — nóż zamknięty dochodzi do okręgu"
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2; wzorzec HMI e²TANGO 3Q1): odłącznik — kreska styku stałego prostopadła do noża („⊤”, IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika. Od uziemnika odróżnia go brak symbolu ziemi"
           }
         ]
       },
       "pominPrymitywy": [
         {
           "skladnik": 0,
-          "prymitywy": [0, 1],
+          "prymitywy": [
+            0,
+            1
+          ],
           "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
-        },
-        {
-          "skladnik": 0,
-          "prymitywy": [3],
-          "powod": "kreska styku odłącznika (IEC 60617 S00220) zastąpiona znacznikiem „○” wg konwencji właściciela 2026-10-30; sama kreska styku oznacza w kaflu uziemnik"
-        },
-        {
-          "skladnik": 1,
-          "prymitywy": [0, 1, 2, 3, 4, 5],
-          "powod": "z odłącznika dwukierunkowego 07-13-07 zostaje wyłącznie okrąg styku odłączającego — znacznik „○”"
         }
       ],
       "porty": [
-        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
-        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
-      ],
-      "zaciskiPozaTorem": [
         {
-          "skladnik": 1,
-          "zacisk": [-20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika — nie jest zaciskiem toru"
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
         },
         {
-          "skladnik": 1,
-          "zacisk": [0, 20],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 1,
-          "zacisk": [20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika — nie jest zaciskiem toru"
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
         }
       ]
     },
@@ -746,247 +649,387 @@
     {
       "symbolId": "qetThreePositionSwitch",
       "namePl": "Łącznik trójpołożeniowy",
-      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż) + en_60617_07_13_07 (okrąg styku odłączającego — znacznik „○” funkcji odłącznika przy zestyku szynowym) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym)",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym)",
       "skladniki": [
-        { "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_07_13_07", "obrot": -90, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_15_01", "obrot": 0, "przesuniecie": [0, 0] }
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": -90,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_15_01",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
       ],
       "ukladKafla": {
         "rodzaj": "trojpolozeniowy",
-        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
         "znaczniki": [
           {
             "rodzaj": "odlacznik",
             "styk": "closed",
-            "skladnik": 1,
-            "prymitywy": [6],
-            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — odłącznik oraz człon wysuwny lub odłączalny: okrąg „○” (konwencja właściciela wg e²TANGO; kształt okręgu styku odłączającego EN 60617 07-13-07) zawieszony nad punktem styku — nóż zamknięty dochodzi do okręgu — funkcja odłącznika łącznika trójpołożeniowego (decyzja właściciela 2026-10-30: znaczniki obu funkcji przy odpowiednich stykach stałych)"
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2): funkcja odłącznika łącznika trójpołożeniowego przy styku zamknięcia — kreska styku „⊤” (IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika"
           },
           {
             "rodzaj": "uziemnik",
             "styk": "earthed",
-            "skladnik": 2,
-            "prymitywy": [5],
+            "skladnik": 1,
+            "prymitywy": [
+              5
+            ],
             "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — funkcja uziemnika: sama kreska zestyku uziemiającego prostopadła do noża w położeniu uziemionym"
           }
         ],
         "ziemia": {
-          "skladnik": 3,
-          "prymitywy": [0, 2, 3],
+          "skladnik": 2,
+          "prymitywy": [
+            0,
+            2,
+            3
+          ],
           "powod": "symbol uziemienia EN 60617 02-15-01 (IEC 60617 S00200) pod uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia (wzorzec HMI e²TANGO, polecenie właściciela 2026-10-30): najszersza kreska u góry przy pionie, kreski maleją w dół"
         }
       },
       "pominPrymitywy": [
         {
           "skladnik": 0,
-          "prymitywy": [0, 1],
+          "prymitywy": [
+            0,
+            1
+          ],
           "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
         },
         {
-          "skladnik": 0,
-          "prymitywy": [3],
-          "powod": "kreska styku odłącznika (S00220) zastąpiona znacznikiem „○” funkcji odłącznika; sama kreska styku oznacza w kaflu funkcję uziemnika"
-        },
-        {
           "skladnik": 1,
-          "prymitywy": [0, 1, 2, 3, 4, 5],
-          "powod": "z odłącznika dwukierunkowego zostaje wyłącznie okrąg styku odłączającego — znacznik „○”"
-        },
-        {
-          "skladnik": 2,
-          "prymitywy": [0, 1, 2, 3, 4, 6],
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
           "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku — zestyk uziemiający"
         },
         {
-          "skladnik": 3,
-          "prymitywy": [1],
+          "skladnik": 2,
+          "prymitywy": [
+            1
+          ],
           "powod": "pion odgałęzienia ziemi generuje układ kafla (kafelStanu.uklad.ziemia.pionQet) od punktu przyłączenia"
         },
         {
-          "skladnik": 3,
-          "prymitywy": [4],
+          "skladnik": 2,
+          "prymitywy": [
+            4
+          ],
           "powod": "czwarta kreska źródła (szerokość 1 j. QET) — po skali ziemi 0,6 j.św., węższa od grubości kreski glifu (2 j.św.), rysowałaby się jako plamka; symbol uziemienia IEC 60617 S00200 ma trzy kreski"
         }
       ],
       "porty": [
-        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
-        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
       ],
       "zaciskiPozaTorem": [
         {
           "skladnik": 1,
-          "zacisk": [-20, -40],
+          "zacisk": [
+            -20,
+            -40
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 1,
-          "zacisk": [0, 20],
+          "zacisk": [
+            0,
+            20
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 1,
-          "zacisk": [20, -40],
+          "zacisk": [
+            20,
+            -40
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 2,
-          "zacisk": [-20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [0, 20],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 3,
-          "zacisk": [0, -15],
+          "zacisk": [
+            0,
+            -15
+          ],
           "powod": "zacisk symbolu uziemienia — obwód uziemienia łącznika, nie port pola"
         }
       ],
-      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „○”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem)."
+      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „⊤”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem)."
     },
     {
       "symbolId": "qetThreePositionSwitchZNapedem",
       "namePl": "Łącznik trójpołożeniowy z napędem zasobnikowym",
-      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż) + en_60617_07_13_07 (okrąg styku odłączającego — znacznik „○” funkcji odłącznika przy zestyku szynowym) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym) + en_60617_02_13_20 (napęd energią zmagazynowaną) i en_60617_02_13_01 (napęd ręczny) po lewej stronie osi",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym) + en_60617_02_13_20 (napęd energią zmagazynowaną) i en_60617_02_13_01 (napęd ręczny) po lewej stronie osi",
       "skladniki": [
-        { "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_07_13_07", "obrot": -90, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_15_01", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_13_20", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_13_01", "obrot": -90, "przesuniecie": [-24, 18] }
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": -90,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_15_01",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_20",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_01",
+          "obrot": -90,
+          "przesuniecie": [
+            -24,
+            18
+          ]
+        }
       ],
       "ukladKafla": {
         "rodzaj": "trojpolozeniowy",
-        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
         "znaczniki": [
           {
             "rodzaj": "odlacznik",
             "styk": "closed",
-            "skladnik": 1,
-            "prymitywy": [6],
-            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — odłącznik oraz człon wysuwny lub odłączalny: okrąg „○” (konwencja właściciela wg e²TANGO; kształt okręgu styku odłączającego EN 60617 07-13-07) zawieszony nad punktem styku — nóż zamknięty dochodzi do okręgu — funkcja odłącznika łącznika trójpołożeniowego (decyzja właściciela 2026-10-30: znaczniki obu funkcji przy odpowiednich stykach stałych)"
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2): funkcja odłącznika łącznika trójpołożeniowego przy styku zamknięcia — kreska styku „⊤” (IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika"
           },
           {
             "rodzaj": "uziemnik",
             "styk": "earthed",
-            "skladnik": 2,
-            "prymitywy": [5],
+            "skladnik": 1,
+            "prymitywy": [
+              5
+            ],
             "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — funkcja uziemnika: sama kreska zestyku uziemiającego prostopadła do noża w położeniu uziemionym"
           }
         ],
         "ziemia": {
-          "skladnik": 3,
-          "prymitywy": [0, 2, 3],
+          "skladnik": 2,
+          "prymitywy": [
+            0,
+            2,
+            3
+          ],
           "powod": "symbol uziemienia EN 60617 02-15-01 (IEC 60617 S00200) pod uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia (wzorzec HMI e²TANGO, polecenie właściciela 2026-10-30): najszersza kreska u góry przy pionie, kreski maleją w dół"
         },
-        "osprzetKotwica": [6, 0]
+        "osprzetKotwica": [
+          6,
+          0
+        ]
       },
       "pominPrymitywy": [
         {
           "skladnik": 0,
-          "prymitywy": [0, 1],
+          "prymitywy": [
+            0,
+            1
+          ],
           "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
         },
         {
-          "skladnik": 0,
-          "prymitywy": [3],
-          "powod": "kreska styku odłącznika (S00220) zastąpiona znacznikiem „○” funkcji odłącznika; sama kreska styku oznacza w kaflu funkcję uziemnika"
-        },
-        {
           "skladnik": 1,
-          "prymitywy": [0, 1, 2, 3, 4, 5],
-          "powod": "z odłącznika dwukierunkowego zostaje wyłącznie okrąg styku odłączającego — znacznik „○”"
-        },
-        {
-          "skladnik": 2,
-          "prymitywy": [0, 1, 2, 3, 4, 6],
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
           "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku — zestyk uziemiający"
         },
         {
-          "skladnik": 3,
-          "prymitywy": [1],
+          "skladnik": 2,
+          "prymitywy": [
+            1
+          ],
           "powod": "pion odgałęzienia ziemi generuje układ kafla (kafelStanu.uklad.ziemia.pionQet) od punktu przyłączenia"
         },
         {
-          "skladnik": 3,
-          "prymitywy": [4],
+          "skladnik": 2,
+          "prymitywy": [
+            4
+          ],
           "powod": "czwarta kreska źródła (szerokość 1 j. QET) — po skali ziemi 0,6 j.św., węższa od grubości kreski glifu (2 j.św.), rysowałaby się jako plamka; symbol uziemienia IEC 60617 S00200 ma trzy kreski"
         }
       ],
       "porty": [
-        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
-        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
       ],
       "zaciskiPozaTorem": [
         {
           "skladnik": 1,
-          "zacisk": [-20, -40],
+          "zacisk": [
+            -20,
+            -40
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 1,
-          "zacisk": [0, 20],
+          "zacisk": [
+            0,
+            20
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 1,
-          "zacisk": [20, -40],
+          "zacisk": [
+            20,
+            -40
+          ],
           "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
         },
         {
           "skladnik": 2,
-          "zacisk": [-20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [0, 20],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 2,
-          "zacisk": [20, -40],
-          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
-        },
-        {
-          "skladnik": 3,
-          "zacisk": [0, -15],
+          "zacisk": [
+            0,
+            -15
+          ],
           "powod": "zacisk symbolu uziemienia — obwód uziemienia łącznika, nie port pola"
         }
       ],
-      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „○”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem).",
+      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „⊤”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem).",
       "osprzet": [
         {
-          "skladnik": 4,
+          "skladnik": 3,
           "powod": "napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY; ENEA Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91: kwadrat na kreskowanym sprzężeniu mechanicznym przy łączniku Q1) — kształt EN 60617 02-13-20 (napęd energią zmagazynowaną); koniec sprzężenia w przegubie noża, kwadrat po LEWEJ stronie osi (prawą zajmuje zestyk uziemiający z ziemią)"
         },
         {
-          "skladnik": 5,
+          "skladnik": 4,
           "powod": "obsługa ręczna napędu (ENEA Zeszyt 1, Z.10/Z.11/Z.11.1: od kwadratu napędu w dół kreskowany odcinek zakończony poprzeczką) — kształt EN 60617 02-13-01 (napęd ręczny); obrót o −90° stawia koniec sprzężenia w środku dolnego boku kwadratu, a poprzeczkę na dole"
         }
       ],
       "skalaLokalna": [
         {
-          "skladnik": 4,
-          "prymitywy": [0],
-          "srodek": [-14, 0],
+          "skladnik": 3,
+          "prymitywy": [
+            0
+          ],
+          "srodek": [
+            -14,
+            0
+          ],
           "skala": 2,
           "powod": "kwadrat napędu powiększony 2× wokół punktu styku z linią sprzężenia — znak napędu czytelny w kaflu (bok 8 j.św.)"
         },
         {
-          "skladnik": 5,
-          "prymitywy": [0, 1],
-          "srodek": [8, 0],
+          "skladnik": 4,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "srodek": [
+            8,
+            0
+          ],
           "skala": 0.75,
           "powod": "odcinek obsługi ręcznej skrócony do 0,75 wokół końca sprzężenia — poprzeczka mieści się w kaflu z marginesem pod kwadratem napędu"
         }
@@ -1266,18 +1309,30 @@
     "powod": "jednolity kwadratowy kafel stanu łączników pola (wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik, rozłącznik z bezpiecznikami, uziemnik, łącznik trójpołożeniowy) — wymaganie właściciela 2026-10-29: kwadrat 48 × 48 jednostek świata w skali bazowej LOD2 (120 jednostek QET przy skali 0,4), jeden wymiar dla wszystkich łączników i stanów; kreska glifu 5 jednostek QET (2 jednostki świata = bok/24) — grubość proporcjonalna do kafla (uwaga właściciela 2026-10-29: wyraźny znak rodzaju aparatu); zacisk źródła wewnątrz kafla przedłużony przewodem do krawędzi, zacisk poza kaflem przeniesiony na krawędź z przycięciem przewodu",
     "kreskaGlifuQet": 5,
     "uklad": {
-      "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy styku stałym znacznik rodzaju aparatu („×” wyłącznik, „○” odłącznik i człon wysuwny, kreska z okręgiem rozłącznik, kreska uziemnik) o boku 12 j.św. = 25 % boku kafla 48 j.św. (przedział właściciela 22–28 %), kreska znacznika = kreska noża, margines znacznika od krawędzi kafla ≥ 4 j.św. (tusz), odstęp tuszu znacznika od noża ≥ 1 j.św. poza strefą styku (5 j.św. wokół punktu, w którym nóż spoczywa na styku w danym położeniu, i wokół przegubu dla sprzężenia napędu oraz pionu ziemi); symbol ziemi pod uziemnikiem skierowany w dół, szerokość 12 j.św., pion odgałęzienia 3 j.św.",
+      "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy styku stałym znacznik rodzaju aparatu („×” wyłącznik, kreska „⊤” odłącznik, kreska z okręgiem „○” rozłącznik, kreska uziemnik z symbolem ziemi) o boku 12 j.św. = 25 % boku kafla 48 j.św. (przedział właściciela 22–28 %), kreska znacznika = kreska noża, margines znacznika od krawędzi kafla ≥ 4 j.św. (tusz), odstęp tuszu znacznika od noża ≥ 1 j.św. poza strefą styku (5 j.św. wokół punktu, w którym nóż spoczywa na styku w danym położeniu, i wokół przegubu dla sprzężenia napędu oraz pionu ziemi); symbol ziemi pod uziemnikiem skierowany w dół, szerokość 12 j.św., pion odgałęzienia 3 j.św.",
+      "czlonWysuwny": {
+        "pasmoQet": 40,
+        "szerokoscSzewronuQet": 30,
+        "wysokoscSzewronuQet": 12.5,
+        "odstepSzewronowQet": 12.5,
+        "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 3; synoptyka e²TANGO z wyłącznikiem wysuwnym): człon wysuwny wyłącznika — pasmo nad kaflem z podwójnym szewronem w górę (˄˄) i pasmo pod kaflem z podwójnym szewronem w dół (˅˅), w osi toru, przewód toru przechodzi przez pasma; pasmo 16 j.św., szewron 12 × 5 j.św., odstęp szewronów 5 j.św. Szewrony nie mają koloru stanu wyłącznika — model ENM niesie wyłącznie wykonanie (stałe / wysuwne), nie położenie członu (wsunięty / próba / wysunięty), więc pasma są neutralne (kreska toru)"
+      },
       "znacznik": {
         "bokQet": 30,
         "udzial": [0.22, 0.28],
         "marginesQet": 10,
         "odstepOdNozaQet": 2.5,
-        "strefaStykuQet": 12.5,
-        "odstepWysuwuQet": 2.25
+        "strefaStykuQet": 12.5
       },
       "noz": { "katOtwarty": 45, "zasiegNieustalony": 0.6 },
       "ziemia": { "szerokoscQet": 30, "pionQet": 7.5 },
       "rodzaje": {
+        "odlacznik": {
+          "przegub": [60, 95],
+          "styki": { "closed": [60, 27.5] },
+          "ziemiaPrzy": null,
+          "powod": "odłącznik (uwaga właściciela 2026-11-04, odbiór B-02 pkt 2): znacznik — sama kreska styku „⊤” bez okręgu, więc nóż ma długość noża uziemnika (67,5 j. QET), żeby stopień glifu mieścił się w przedziale kafla jak u pozostałych łączników; przegub jak w łączniku dwupołożeniowym"
+        },
         "dwupolozeniowy": {
           "przegub": [60, 95],
           "styki": { "closed": [60, 42.5] },
@@ -1289,8 +1344,9 @@
           "ziemiaPrzy": "przegub"
         },
         "trojpolozeniowy": {
-          "przegub": [60, 70],
-          "styki": { "closed": [60, 42.5], "earthed": [87.5, 70] },
+          "przegub": [60, 75],
+          "styki": { "closed": [60, 12.5], "earthed": [91.25, 75] },
+          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pkt 2): funkcja odłącznika ma kreskę styku „⊤” bez okręgu, więc styk zamknięcia przesunięty w górę o długość okręgu (z 42,5 na 12,5 j. QET), przegub i zestyk uziemiający o 5 j. QET niżej, zestyk uziemiający o 3,75 j. QET w prawo — kreska uziemnika powiększona do podłogi czytelności (8 px na dolnym brzegu LOD1) nie nachodzi na nóż otwarty, żeby stopień glifu został w przedziale kafla; zasięg noża na zestyku uziemiającym = 0,5 długości (liczba dokładna)",
           "ziemiaPrzy": "earthed"
         }
       }

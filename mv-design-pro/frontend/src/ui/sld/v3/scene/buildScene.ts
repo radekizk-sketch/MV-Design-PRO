@@ -5822,7 +5822,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET pola GPZ — ta sama reguła
             // poziomu szczegółu co identyfikatory aparatów stacji; etykieta stanu nieznanego
             // (`unresolved`) zostaje na każdym LOD (stan łącznika nie znika z rysunku).
-            && !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#etykieta-aparatu-') && !owner.unresolved)
+            // Odbiór B-02 (pkt 6): oznaczenia przekładników (`odLod: 1`) zostają na LOD1.
+            && !(
+              owner.ownerKind === 'apparatus'
+              && owner.ownerRef.includes('#etykieta-aparatu-')
+              && !owner.unresolved
+              && (owner.odLod ?? 2) > lod
+            )
             // §11.7 pkt 6: oznaczenia zacisków P1/P2 przekładnika — szczegół pola, wyłącznie LOD 2.
             && !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA)),
         );

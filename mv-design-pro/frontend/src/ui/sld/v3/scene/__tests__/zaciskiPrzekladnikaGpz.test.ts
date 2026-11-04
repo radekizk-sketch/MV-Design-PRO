@@ -29,7 +29,6 @@ import { GRID, snapDown, snapUp } from '../../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../../core/text';
 import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
 import { SYMBOL_DEFS } from '../../symbols/defs';
-import { tekstKlasRdzeni, tekstPrzekladniRdzeni } from '../../../v2/model/tabliczkaPrzekladnika';
 import { buildSceneV3, labelCollisions, labelWireCollisions, sceneObstacleRects, type SceneV3 } from '../buildScene';
 import { naruszeniaOznaczeniaZacisku, type StronaOznaczenia } from './oznaczeniaZaciskow';
 
@@ -129,9 +128,9 @@ function sprawdzPole(
     expect(tab, `${bay.ref_id}: bez tabliczki`).toEqual([]);
     return;
   }
-  // Wybrany zaczep przekładnika wieloprzekładniowego (rekord aparatu) tuż po przekładni.
-  const zaczep = ct.zaczep_pierwotny_a != null ? [`zaczep ${ct.zaczep_pierwotny_a} A`] : [];
-  expect(tab.map((l) => l.text)).toEqual([[tekstPrzekladniRdzeni(ct.rdzenie), ...zaczep, tekstKlasRdzeni(ct.rdzenie)].join(' · ')]);
+  // Odbiór B-02 (2026-11-04, pkt 6): krótka przekładnia pierwszego rdzenia; zaczep i klasy —
+  // w inspektorze pola (wyrocznia z surowego rekordu, niezależna od formatera).
+  expect(tab.map((l) => l.text)).toEqual([ct.rdzenie![0].przekladnia.replace(/-/g, '–')]);
   // Linia pomiarowa z zacisku wtórnego (wschód) — tabliczka w wierszu nad nią.
   const wtorny = def.secondaryPorts.find((p) => p.name === 'wtorny');
   if (wtorny?.dir === 'E') {
@@ -162,12 +161,12 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
       });
     }
 
-    it(`${nazwa}: Z.11 trzy rdzenie — przekładnia wspólnej strony pierwotnej i klasy z FS`, () => {
+    it(`${nazwa}: Z.11 trzy rdzenie — wyłącznie krótka przekładnia (bez „/5/5”, klas i zaczepu)`, () => {
       const trojrdzeniowe = polaLiniowe(enm).filter((b) => (przekladnik(b).rdzenie?.length ?? 0) === 3);
       const scena = buildSceneV3(enm, 2);
       for (const bay of trojrdzeniowe) {
         expect(tabliczka(scena, bay.ref_id, przekladnik(bay).device_ref).map((l) => l.text)).toEqual([
-          '200-400/5/5/5 A · zaczep 400 A · 0,2S FS5 / 0,2 FS5 / 5P20',
+          '200–400/5',
         ]);
       }
     });
@@ -188,7 +187,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         true,
       ],
       ['pole rdzeni nieobecne — bez tabliczki, zaciski zostają', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: undefined })), true, false],
-      ['zaczep niewybrany — tabliczka bez członu zaczepu', (e) => zmienCt(e, (d) => ({ ...d, zaczep_pierwotny_a: null })), true, true],
+      ['zaczep niewybrany — tabliczka ta sama (zaczep tylko w inspektorze)', (e) => zmienCt(e, (d) => ({ ...d, zaczep_pierwotny_a: null })), true, true],
       ['pusta lista rdzeni', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: [] })), true, false],
       [
         'bez przekładnika Ferrantiego — kafel przekładnika na krawędzi toru, oznaczenia po prawej kafla',

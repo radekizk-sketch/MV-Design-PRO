@@ -121,9 +121,9 @@ export interface BayProtectionMarkingView {
  * `Cable`/`OverheadLine.name`) + przekładnia sformatowana z `Measurement.
  * rating.ratio_primary`/`ratio_secondary` (np. „300/5" — CZYSTE formatowanie,
  * zero fizyki/zaokrągleń). BEZ-DOMAIN: oba pola źródłowe (`name`, `rating`)
- * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`) — układ pomiarowy
- * (3×CT fazowe / Ferranti-I0, `arrangement` niżej) to F10.6 (D3, DOMAIN,
- * `Measurement.ct_arrangement`). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
+ * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`). Układ pomiarowy
+ * (`Measurement.ct_arrangement`) i liczba rdzeni — w inspektorze pomiaru, nie na
+ * schemacie (odbiór B-02 2026-11-04). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
  * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
  * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
  */
@@ -148,27 +148,10 @@ export interface CtRatingAnnotationView {
    *  narysowany aparat (podpis aparatu pola), a tekst adnotacji to tabliczka. */
   readonly identifier: string | null;
   readonly ratioText: string;
-  /** Klasy dokładności rdzeni z tabliczki aparatu (`BayPrimaryDevice.rdzenie[].klasa`
-   *  z FS rdzenia pomiarowego, np. „5P20", „0,2S FS5 / 0,2 FS5 / 5P20"); `undefined` dla
-   *  adnotacji z pomiaru. */
-  readonly klasy?: string;
-  /** Wybrany zaczep pierwotny [A] przekładnika wieloprzekładniowego z rekordu aparatu
-   *  (`BayPrimaryDevice.zaczep_pierwotny_a`, uwaga właściciela 2026-10-30: „przekładnik 200–400 —
-   *  jednoznacznie wyróżniony wybrany zaczep"); `undefined` — przekładnik o jednej przekładni
-   *  albo adnotacja z pomiaru (pomiar niesie przekładnię wybraną w `ratioText`). */
-  readonly zaczepA?: number;
-  /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
-   *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
-   *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
-   *  §18.3 „zero zgadywania"). */
-  readonly arrangement?: '3xCT' | 'ferranti';
-  /** CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT (osobne uzwojenia
-   *  wtórne, tabliczka IEC 61869-2) z długości listy `Measurement.rdzenie`. Doklejona jako
-   *  DODATKOWY człon etykiety (`ctRatingLabelText`, „… · N rdz.") WYŁĄCZNIE gdy
-   *  dana obecna — `undefined` gdy `Measurement.rdzenie` nieobecne (zero zmiany
-   *  tekstu/szerokości względem F10.4/F10.6, uczciwy brak). Oś odrębna od
-   *  `arrangement`. */
-  readonly cores?: number;
+  // Uwaga właściciela 2026-11-04 (odbiór B-02 pkt 6 i 8): na schemacie wyłącznie krótka
+  // przekładnia (`ratioText`); klasy dokładności, zaczep pierwotny, układ pomiarowy i liczba
+  // rdzeni są w inspektorze pola (`ui/field/EdytorWyposazeniaPola.tsx`) — pola tych członów
+  // etykiety usunięte z widoku (jedna prawda opisu przekładnika: inspektor).
   /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7 „CT pomiarowy vs
    *  zabezpieczeniowy") — przeznaczenie CT z `Measurement.purpose`. Wariant CT
    *  Z DANYCH, nie z domysłu: `undefined` gdy pomiar nie niesie `purpose`

@@ -49,7 +49,6 @@ function planOrderedSymbols(role: FieldRole): readonly string[] {
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   bayHasProtectionAnnotation,
-  ctCoresLabelText,
   ctRatingLabelText,
   protectionAnnotationColumnWidth,
   vtMountingAnnotationLabelText,
@@ -1357,8 +1356,8 @@ describe('V3 compose/station — F10.5 §20.2: walidacja topologiczna funkcji za
 // ---------------------------------------------------------------------------
 // F10.4 (spec §18.3, ct_annotation_probe) — adnotacja CT: identyfikator +
 // przekładnia, WYŁĄCZNIE z danych (BEZ-DOMAIN: `Measurement.rating`/`.name`
-// już istnieją w ENM; układ 3×CT/Ferranti-I0 — NOWE pole DOMAIN, F10.6, poza
-// zakresem). `makeLineBayPrimaryDevices()` (wyżej) niesie CT z
+// już istnieją w ENM; układ 3×CT/Ferranti-I0 i rdzenie — w inspektorze pomiaru, nie na
+// schemacie, odbiór B-02 2026-11-04). `makeLineBayPrimaryDevices()` (wyżej) niesie CT z
 // `deviceRef:'ct-1'`, `linkedRef:'meas-metering-1'`.
 // ---------------------------------------------------------------------------
 
@@ -1394,28 +1393,16 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
     expect(resolved.rect.y % GRID).toBe(0);
   });
 
-  it('F10.6 (§18.3, D3, V12K-036): arrangement obecny dokleja trzeci człon „· 3×CT"/„· Ferranti-I0" do etykiety CT', () => {
-    const bay3xCt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+  it('odbiór B-02 (pkt 6): etykieta CT = identyfikator · przekładnia — bez członu układu i rdzeni', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
-      ctRatingAnnotations: [
-        { measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', arrangement: '3xCT' },
-      ],
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
     });
-    const composition3xCt = composeStation(buildComposeInput(makeStation('ct-rating-3xct', [bay3xCt])));
-    const labels3xCt = composition3xCt.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
-    expect(labels3xCt).toHaveLength(1);
-    expect(labels3xCt[0].text).toBe('CT1 · 300/5 · 3×CT');
-
-    const bayFerranti = makeBay(FIELD_ROLE.LINE_IN, 0, {
-      primaryDevices: makeLineBayPrimaryDevices(),
-      ctRatingAnnotations: [
-        { measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', arrangement: 'ferranti' },
-      ],
-    });
-    const compositionFerranti = composeStation(buildComposeInput(makeStation('ct-rating-ferranti', [bayFerranti])));
-    const labelsFerranti = compositionFerranti.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
-    expect(labelsFerranti).toHaveLength(1);
-    expect(labelsFerranti[0].text).toBe('CT1 · 300/5 · Ferranti-I0');
+    const composition = composeStation(buildComposeInput(makeStation('ct-rating-krotka', [bay])));
+    const labels = composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(labels).toHaveLength(1);
+    expect(labels[0].text).toBe('CT1 · 300/5');
+    expect(labels[0].text).not.toMatch(/3×CT|Ferranti|rdz\.|P20|zaczep/);
   });
 
   it('(§18.3 zero zgadywania) measurementRef NIEROZWIĄZYWALNY w stosie ⇒ ZERO etykiety + missingData `bay.protection.ct_rating_anchor_unresolved` (NIGDY etykieta bez kotwicy)', () => {
@@ -1627,49 +1614,11 @@ function makeLineBayWithVtPrimaryDevices(): readonly BayPrimaryDeviceView[] {
   ];
 }
 
-describe('CTVT-RENDER §18.3: liczba rdzeni CT doklejona do etykiety (Measurement.rdzenie)', () => {
-  it('ctCoresLabelText: dana obecna ⇒ „N rdz."; None/≤0/NaN ⇒ null (zero fabrykacji)', () => {
-    expect(ctCoresLabelText(2)).toBe('2 rdz.');
-    expect(ctCoresLabelText(3)).toBe('3 rdz.');
-    expect(ctCoresLabelText(null)).toBeNull();
-    expect(ctCoresLabelText(undefined)).toBeNull();
-    expect(ctCoresLabelText(0)).toBeNull();
-    expect(ctCoresLabelText(-1)).toBeNull();
-    expect(ctCoresLabelText(Number.NaN)).toBeNull();
-  });
-
-  it('ctRatingLabelText: cores doklejone jako kolejny człon; brak cores ⇒ tekst F10.4/F10.6 bez zmian (inwariancja)', () => {
-    // Bez cores (i bez arrangement) — dwuczłonowy tekst F10.4 NIETKNIĘTY.
+describe('odbiór B-02 (pkt 6): etykieta przekładnika na schemacie — wyłącznie krótka przekładnia', () => {
+  it('ctRatingLabelText: z identyfikatorem „T · przekładnia”, bez identyfikatora sama przekładnia', () => {
     expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5' })).toBe('CT1 · 300/5');
-    // Arrangement bez cores — trójczłonowy tekst F10.6 NIETKNIĘTY.
-    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', arrangement: '3xCT' }))
-      .toBe('CT1 · 300/5 · 3×CT');
-    // Cores bez arrangement.
-    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', cores: 2 }))
-      .toBe('CT1 · 300/5 · 2 rdz.');
-    // Arrangement + cores — pełny czteroczłonowy tekst.
-    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', arrangement: 'ferranti', cores: 3 }))
-      .toBe('CT1 · 300/5 · Ferranti-I0 · 3 rdz.');
-  });
-
-  it('render: cores obecne ⇒ etykieta CT niesie „· N rdz."; cores None ⇒ etykieta bez członu rdzeni (inwariancja tekstu)', () => {
-    const bayWithCores = makeBay(FIELD_ROLE.LINE_IN, 0, {
-      primaryDevices: makeLineBayPrimaryDevices(),
-      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', cores: 3 }],
-    });
-    const withCores = composeStation(buildComposeInput(makeStation('ct-cores', [bayWithCores])));
-    const labelWith = withCores.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
-    expect(labelWith).toHaveLength(1);
-    expect(labelWith[0].text).toBe('CT1 · 300/5 · 3 rdz.');
-
-    const bayNoCores = makeBay(FIELD_ROLE.LINE_IN, 0, {
-      primaryDevices: makeLineBayPrimaryDevices(),
-      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
-    });
-    const noCores = composeStation(buildComposeInput(makeStation('ct-no-cores', [bayNoCores])));
-    const labelNo = noCores.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
-    expect(labelNo).toHaveLength(1);
-    expect(labelNo[0].text).toBe('CT1 · 300/5');
+    expect(ctRatingLabelText({ identifier: null, ratioText: '200–400/5' })).toBe('200–400/5');
+    expect(ctRatingLabelText({ identifier: null, ratioText: '15/√3 / 0,1/√3 kV' })).toBe('15/√3 / 0,1/√3 kV');
   });
 });
 
@@ -1749,7 +1698,7 @@ describe('CTVT-RENDER §20.2: adnotacja montażu VT (vt_mounting)', () => {
   it('koegzystencja CT+VT: obie etykiety obecne w tym samym lewym paśmie, na RÓŻNYCH Y (różne aparaty)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayWithVtPrimaryDevices(),
-      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', cores: 2 }],
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
       vtMountingAnnotations: [{ measurementRef: 'meas-vt-1', identifier: 'V1', mounting: 'cable' }],
     });
     const composition = composeStation(buildComposeInput(makeStation('ctvt-coexist', [bay])));
@@ -1758,7 +1707,7 @@ describe('CTVT-RENDER §20.2: adnotacja montażu VT (vt_mounting)', () => {
     const vtLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#vt-mounting-'));
     expect(ctLabels).toHaveLength(1);
     expect(vtLabels).toHaveLength(1);
-    expect(ctLabels[0].text).toBe('CT1 · 300/5 · 2 rdz.');
+    expect(ctLabels[0].text).toBe('CT1 · 300/5');
     expect(vtLabels[0].text).toBe('V1 · kablowy');
     // Ten sam lewy anchor X, różne Y (kotwice na CT vs VT).
     expect(ctLabels[0].anchor.x).toBe(vtLabels[0].anchor.x);

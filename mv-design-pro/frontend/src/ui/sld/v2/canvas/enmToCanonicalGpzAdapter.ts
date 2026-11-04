@@ -133,6 +133,8 @@ export function buildCanonicalGpzProps(
     // UX-04/POLE-BKR-MODEL: bateria kondensatorów na końcu toru pola (`bateriaWidokuPola`
     // — ta sama relacja co pola stacji i backend `pole_baterii`).
     shunt_capacitors: enm.shunt_capacitors ?? [],
+    // Odbiór B-02 (pkt 6): napięcie szyny pola — strona pierwotna krótkiej przekładni VT.
+    buses: enm.buses ?? [],
   };
 
   // GPZ-PARYTET cz. 3 (pkt 2): pole TR, którego JEDYNYM transformatorem jest transformator
@@ -388,7 +390,7 @@ export function extractTransformerDesignation(name: string | null | undefined, i
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
 type ProtectionCtx = Pick<
   EnergyNetworkModel,
-  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays' | 'shunt_capacitors'
+  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays' | 'shunt_capacitors' | 'buses'
 > & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;

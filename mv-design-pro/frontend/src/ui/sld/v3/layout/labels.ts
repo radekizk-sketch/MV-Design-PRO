@@ -791,6 +791,10 @@ export interface SimpleAnchoredOwnerInput {
    *  LOD dla etykiety opisującej element w stanie błędu/UNRESOLVED.
    *  `undefined` = bez zmiany. */
   readonly unresolved?: boolean;
+  /** Najniższy poziom szczegółu, na którym etykieta aparatu pola GPZ jest na rysunku
+   *  (`buildSceneV3`, filtr etykiet wg LOD). `undefined` = 2 (pełny detal). Odbiór B-02
+   *  właściciela 2026-11-04 pkt 6: oznaczenia przekładników (T1, T2, T3) od LOD1. */
+  readonly odLod?: 1 | 2;
   /** K2b×K3: obrys symbolu, przy którym stoi etykieta (ten sam układ współrzędnych
    *  co `anchor`) — przenoszony 1:1 na `OwnedLabel.obrysKotwicy`. Przesunięcie
    *  kotwicy przesuwa go razem z nią (`przesunKotwiczonaEtykiete`). */

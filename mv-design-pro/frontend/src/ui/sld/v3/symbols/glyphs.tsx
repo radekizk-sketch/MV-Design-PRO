@@ -33,6 +33,7 @@ import type { UkladPolaczenBaterii } from '../../../../types/enm';
 import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
 import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
 import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, zasiegPionowyTuszu } from '../core/text';
+import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
 import { KRESKA_OKREGU_PRZEKAZNIKA, OKRAG_PRZEKAZNIKA, PISMO_KODU_W_OKREGU, ukladKodowWOkregu } from './okragPrzekaznika';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
@@ -101,6 +102,9 @@ export function polozenieZeStanu(state: SwitchState | undefined, maZestykUziemia
  *  symbolu rozstrzyga, czy aparat ma zestyk uziemiający (łącznik trójpołożeniowy z napędem
  *  i bez napędu to ten sam rodzaj). */
 export function polozenieLacznika(id: SymbolId, state: SwitchState | undefined): PolozenieLacznika {
+  // Uziemnik: „uziemiony” = ZAMKNIĘTY (jego jedyny styk jest stykiem uziemiającym) — kafel
+  // zamknięty, nie szary nieustalony (uwaga koordynatora z oględzin odbioru B-02 2026-11-04).
+  if (state === 'earthed' && rodzajSymbolu(id) === 'earthSwitch') return POLOZENIE_ZE_STANU.closed;
   return polozenieZeStanu(state, rodzajSymbolu(id) === 'qetThreePositionSwitch');
 }
 
@@ -232,6 +236,15 @@ export interface GlyphProps {
    *  JEDNA tabela `STATE_COLOR`). Podane = łącznik z położeniem (`czyLacznikZPolozeniem`)
    *  rysuje się na kaflu stanu; brak = sam symbol (legenda, podgląd kreatora, harness mono). */
   readonly kafleStanu?: KafleStanuLacznika;
+  /** Kolor PASM CZŁONU WYSUWNEGO wyłącznika (szewrony i przewód toru nad i pod kaflem) — kolor
+   *  toru sprzed nadpisania kolorem glifu na kaflu (`zKafelemStanu`). Szewrony nie niosą stanu
+   *  styku wyłącznika (uwaga właściciela 2026-11-04, odbiór B-02 pkt 3): model ENM niesie
+   *  wyłącznie wykonanie stałe / wysuwne, nie położenie członu. Brak = `stroke`. */
+  readonly inkCzlonu?: string;
+  /** Poziom szczegółu kanwy (LOD0/LOD1/LOD2) — wybiera DETALE kafla z jednej tabeli
+   *  `DETALE_KAFLA_WG_LOD` (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5). Brak = LOD2
+   *  (legenda, eksport, podgląd kreatora — pełny rysunek). */
+  readonly lod?: 0 | 1 | 2;
   /** Mnożnik boku ZNACZNIKA RODZAJU APARATU na kaflu stanu (`skalaZnacznikaKafla`, rozstrzygnięcie
    *  architekta 2026-10-30 pkt 1: podłoga 8 px na LOD1). Kanwa podaje go z tego samego miejsca co
    *  `strokeScale`; brak = 1 (rysunek świata: legenda, harness, eksport bez kamery). */
@@ -1426,9 +1439,11 @@ const ZNAK_KAFLA: Readonly<Partial<Record<StanKafla, string>>> = { nieustalony: 
  *  kafel), więc kafle aparatów jednego pola są równe. Symbol kanoniczny: obrys CAŁEGO
  *  rysunku (`obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
 export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
-  if (czySymbolQet(id) && QET_SYMBOLE_POLA_SN[id].kafel) {
-    // Kwadrat z JEDNEJ stałej (wymaganie właściciela 2026-10-29) — nie z wymiaru rysunku.
-    return { x: 0, y: 0, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  const kafel = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].kafel : null;
+  if (kafel) {
+    // Kwadrat z JEDNEJ stałej (wymaganie właściciela 2026-10-29) — nie z wymiaru rysunku;
+    // wyłącznik wysuwny ma kafel w paśmie członu (`kafel.y` = pasmo szewronów nad kaflem).
+    return { x: 0, y: kafel.y, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
   }
   const o = obrysSymbolu(id);
   const m = KAFEL_STANU_MARGINES;
@@ -1451,7 +1466,7 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
     const stan = kafle ? stanKaflaLacznika(id, props.state) : null;
     if (!kafle || !stan) return <Glyph {...props} />;
     const r = prostokatKaflaStanu(id);
-    const znak = ZNAK_KAFLA[stan];
+    const znak = DETALE_KAFLA_WG_LOD[props.lod ?? 2].znakNiepewny ? ZNAK_KAFLA[stan] : undefined;
     return (
       <g data-kafel-stanu={stan} data-kafel-symbol={id}>
         <title>{OPIS_POLOZENIA_PL[props.state ?? 'unknown']}</title>
@@ -1465,7 +1480,7 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
           stroke="none"
           data-kafel="tlo"
         />
-        <Glyph {...props} stroke={kafle.glif} />
+        <Glyph {...props} stroke={kafle.glif} inkCzlonu={stroke(props)} />
         {znak && (
           <text
             x={props.x + r.x + 1}
@@ -1534,30 +1549,141 @@ function kreskaPiktogramuKafla(props: GlyphProps, symbol: QetSymbolPolaSn): numb
 export const PODLOGA_ZNACZNIKA_LOD1_PX = 8;
 
 /**
+ * DETALE KAFLA WG LOD — JEDNA tabela (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5): przy
+ * oddaleniu kafel zdejmuje DETALE, a kształt rozróżniający aparat (znacznik „×”, kreska „⊤”,
+ * kreska z okręgiem, ziemia, szewrony członu wysuwnego) zostaje zawsze i rośnie do podłogi
+ * czytelności (`skalaZnacznikaKafla`, `skalaKsztaltuWKaflu`) zamiast maleć razem z kaflem.
+ *  • `naped` — kwalifikator napędu „M” (atrybut łącznika; pełna informacja w inspektorze);
+ *  • `znakNiepewny` — znak „?”/„!” w narożniku kafla stanu nieustalonego/błędnego (drugim
+ *    nośnikiem obok koloru zostaje geometria noża: skrócony nóż w połowie kąta otwarcia).
+ */
+export const DETALE_KAFLA_WG_LOD: Readonly<Record<0 | 1 | 2, { readonly naped: boolean; readonly znakNiepewny: boolean }>> = {
+  2: { naped: true, znakNiepewny: true },
+  1: { naped: false, znakNiepewny: true },
+  0: { naped: false, znakNiepewny: false },
+};
+
+/**
  * Mnożnik boku znacznika rodzaju aparatu (JEDNO źródło dla kanwy, tablicy łączników i testów):
  * bok na ekranie = max(udział · bok kafla · skala, 8 px) na LOD1 — podłoga wygrywa z udziałem
  * 22–28 % (rozstrzygnięcie architekta 2026-10-30 pkt 1; przy skali 0,51, dolnym brzegu LOD1,
- * znacznik ma 15,7 j.św. = 33 % kafla). Na LOD0 i LOD2 — 1 (proporcje świata). Znacznik rośnie
+ * znacznik ma 15,7 j.św. = 33 % kafla). Na LOD2 — 1 (proporcje świata). Na LOD0 (uwaga właściciela
+ * 2026-11-04, odbiór B-02 pkt 5: przy oddaleniu kształt rozróżniający nie maleje względem kafla,
+ * detale znikają wg `DETALE_KAFLA_WG_LOD`) — mnożnik dolnego brzegu LOD1 (`SKALA_DOLNA_LOD1`):
+ * kształt ma w kaflu wielkość z dolnego brzegu LOD1 (15,7 j.św. = 33 % kafla) — największą, przy
+ * której znacznik nie nachodzi na nóż w żadnym położeniu (pomiar w `znacznikRodzajuLacznika.test.tsx`:
+ * mnożnik z podłogi na skali 0,45 daje krzyżyk na nożu otwartym). Na ekranie LOD0 kształt ma więc
+ * 15,7 j.św. × skala (< 8 px poniżej skali 0,51 — kafel 48 j.św. ma wtedy < 24,5 px). Znacznik rośnie
  * wokół swojej kotwicy (punktu styku), kreska zostaje kreską noża (`QET_KRESKA_GLIFU`).
  */
 export function skalaZnacznikaKafla(cameraScale: number, lod: 0 | 1 | 2): number {
-  if (lod !== 1 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
-  return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * cameraScale));
+  if (lod === 2 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  const s = lod === 0 ? Math.max(cameraScale, SKALA_DOLNA_LOD1) : cameraScale;
+  return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * s));
+}
+
+/** Dolny brzeg LOD1 (zejście do LOD0, `l0Max · (1 − margines histerezy)` = 0,51). */
+export const SKALA_DOLNA_LOD1 = DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN);
+
+/** Prostokąt osiowy. */
+interface Obwiednia {
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+}
+
+function obwiedniaPrymitywow(prims: readonly CadPrimitive[]): Obwiednia {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of prims) {
+    if (p.k === 'line') {
+      x0 = Math.min(x0, p.x1, p.x2);
+      x1 = Math.max(x1, p.x1, p.x2);
+      y0 = Math.min(y0, p.y1, p.y2);
+      y1 = Math.max(y1, p.y1, p.y2);
+    } else if (p.k === 'circle') {
+      x0 = Math.min(x0, p.cx - p.r);
+      x1 = Math.max(x1, p.cx + p.r);
+      y0 = Math.min(y0, p.cy - p.r);
+      y1 = Math.max(y1, p.cy + p.r);
+    } else {
+      throw new Error(`kształt rozróżniający kafla z prymitywem ${p.k} — dopuszczalne linie i okręgi`);
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/** Odstęp tuszu kształtu rozróżniającego od krawędzi obszaru, w którym rośnie [j.św.]. */
+export const ODSTEP_KSZTALTU_OD_KRAWEDZI = 0;
+
+/**
+ * Mnożnik kształtu rozróżniającego (znacznik, ziemia, szewrony) w obszarze `obszar` (kafel stanu
+ * albo pasmo członu): żądany mnożnik `f` (`skalaZnacznikaKafla`) ograniczony tak, żeby kształt
+ * powiększony wokół `kotwicy` nie wyszedł poza obszar pomniejszony o `ODSTEP_KSZTALTU_OD_KRAWEDZI`
+ * (tusz z połową kreski). Nigdy poniżej 1 — kształt nie maleje względem proporcji świata.
+ */
+export function skalaKsztaltuWKaflu(
+  prims: readonly CadPrimitive[],
+  kotwica: { readonly x: number; readonly y: number },
+  obszar: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  f: number,
+): number {
+  if (f <= 1) return 1;
+  const o = obwiedniaPrymitywow(prims);
+  const m = ODSTEP_KSZTALTU_OD_KRAWEDZI + QET_KRESKA_GLIFU / 2;
+  const granice = [
+    [kotwica.x - o.x0, kotwica.x - (obszar.x + m)],
+    [o.x1 - kotwica.x, obszar.x + obszar.width - m - kotwica.x],
+    [kotwica.y - o.y0, kotwica.y - (obszar.y + m)],
+    [o.y1 - kotwica.y, obszar.y + obszar.height - m - kotwica.y],
+  ] as const;
+  let fMax = f;
+  for (const [zasieg, miejsce] of granice) {
+    if (zasieg > 1e-9) fMax = Math.min(fMax, miejsce / zasieg);
+  }
+  return Math.max(1, fMax);
+}
+
+/**
+ * Symbol ziemi w skali `f`: pion odgałęzienia (pierwszy prymityw — przyłączenie do łącznika) bez
+ * zmian, kreski ziemi rosną wokół środka najszerszej (górnej) kreski — kształt ziemi rośnie w dół
+ * od miejsca przyłączenia, nie przesuwa się względem pionu (granica kafla `skalaKsztaltuWKaflu`).
+ */
+export function prymitywyZiemiWSkali(
+  prims: readonly CadPrimitive[],
+  kafel: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  f: number,
+): readonly CadPrimitive[] {
+  const [pion, gorna, ...reszta] = prims;
+  if (!pion || !gorna || gorna.k !== 'line') return prims;
+  const kreski = [gorna, ...reszta];
+  const kotwica = { x: (gorna.x1 + gorna.x2) / 2, y: gorna.y1 };
+  return [pion, ...prymitywyWSkali(kreski, kotwica, skalaKsztaltuWKaflu(kreski, kotwica, kafel, f))];
+}
+
+/** Prymitywy w skali `f` wokół kotwicy (jednokładność współrzędnych, kreska bez zmian). */
+export function prymitywyWSkali(
+  prims: readonly CadPrimitive[],
+  kotwica: { readonly x: number; readonly y: number },
+  f: number,
+): readonly CadPrimitive[] {
+  if (f === 1) return prims;
+  const x = (v: number) => kotwica.x + (v - kotwica.x) * f;
+  const y = (v: number) => kotwica.y + (v - kotwica.y) * f;
+  return prims.map((p) => {
+    if (p.k === 'line') return { ...p, x1: x(p.x1), y1: y(p.y1), x2: x(p.x2), y2: y(p.y2) };
+    if (p.k === 'circle') return { ...p, cx: x(p.cx), cy: y(p.cy), r: p.r * f };
+    throw new Error(`kształt rozróżniający kafla z prymitywem ${p.k} — dopuszczalne linie i okręgi`);
+  });
 }
 
 /** Prymitywy znacznika w skali `f` wokół kotwicy (jednokładność współrzędnych, kreska bez zmian).
  *  Znacznik składa się z linii i okręgów (importer — `znaczniki` w `qetPoleSn.ts`). */
 export function prymitywyZnacznikaWSkali(z: QetZnacznikStyku, f: number): readonly CadPrimitive[] {
-  if (f === 1) return z.prymitywy;
-  const kx = z.kotwica.x;
-  const ky = z.kotwica.y;
-  const x = (v: number) => kx + (v - kx) * f;
-  const y = (v: number) => ky + (v - ky) * f;
-  return z.prymitywy.map((p) => {
-    if (p.k === 'line') return { ...p, x1: x(p.x1), y1: y(p.y1), x2: x(p.x2), y2: y(p.y2) };
-    if (p.k === 'circle') return { ...p, cx: x(p.cx), cy: y(p.cy), r: p.r * f };
-    throw new Error(`znacznik QET z prymitywem ${p.k} — importer dopuszcza linie i okręgi`);
-  });
+  return prymitywyWSkali(z.prymitywy, z.kotwica, f);
 }
 
 /**
@@ -1581,6 +1707,22 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
     const prymitywyNoza = noz && polozenie ? prymitywyNozaQet(noz, polozenie) : [];
+    // Kształty rozróżniające rosną do podłogi czytelności w obrębie kafla / pasma członu;
+    // detale (napęd) wg jednej tabeli LOD (`DETALE_KAFLA_WG_LOD`).
+    const f = props.skalaZnacznika ?? 1;
+    const detale = DETALE_KAFLA_WG_LOD[props.lod ?? 2];
+    const kafel = symbol.kafel ?? { x: 0, y: 0, width: symbol.szerokosc, height: symbol.wysokosc };
+    const inkCzlonu = props.inkCzlonu ?? ink;
+    const pasmaCzlonu = symbol.czlon
+      ? ([
+          ['gora', symbol.czlon.gora, 0],
+          ['dol', symbol.czlon.dol, kafel.y + kafel.height],
+        ] as const).map(([nazwa, prims, y]) => {
+          const obszar = { x: 0, y, width: symbol.szerokosc, height: symbol.czlon!.pasmo };
+          const kotwica = { x: symbol.szerokosc / 2, y: y + symbol.czlon!.pasmo / 2 };
+          return { nazwa, prims: prymitywyWSkali(prims, kotwica, skalaKsztaltuWKaflu(prims, kotwica, obszar, f)) };
+        })
+      : [];
     return (
       <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
         <g data-qet="przewody">
@@ -1603,7 +1745,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
           {symbol.znaczniki.map((z) => (
             <g key={`${z.styk}-${z.rodzaj}`} data-qet="znacznik" data-znacznik-rodzaj={z.rodzaj} data-znacznik-styk={z.styk}>
               <CadPrimitiveLayer
-                prims={prymitywyZnacznikaWSkali(z, props.skalaZnacznika ?? 1)}
+                prims={prymitywyZnacznikaWSkali(z, skalaKsztaltuWKaflu(z.prymitywy, z.kotwica, kafel, f))}
                 ink={ink}
                 paper="none"
                 strokeWidth={wGlifu}
@@ -1615,12 +1757,31 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
         </g>
         {symbol.ziemia && (
           <g data-qet="ziemia">
-            <CadPrimitiveLayer prims={symbol.ziemia.prymitywy} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+            <CadPrimitiveLayer
+              prims={prymitywyZiemiWSkali(symbol.ziemia.prymitywy, kafel, f)}
+              ink={ink}
+              paper="none"
+              strokeWidth={wGlifu}
+              nonScalingStroke={false}
+              state="closed"
+            />
           </g>
         )}
-        {symbol.osprzet.length > 0 && (
+        {detale.naped && symbol.osprzet.length > 0 && (
           <g data-qet="osprzet">
             <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+          </g>
+        )}
+        {symbol.czlon && (
+          // Człon wysuwny (synoptyka e²TANGO): przewód toru i podwójne szewrony nad kaflem (˄˄)
+          // i pod kaflem (˅˅) — kolor toru, nigdy kolor stanu wyłącznika.
+          <g data-qet="czlon" data-czlon-kolor={inkCzlonu}>
+            <CadPrimitiveLayer prims={symbol.czlon.przewody} ink={inkCzlonu} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
+            {pasmaCzlonu.map((pasmo) => (
+              <g key={pasmo.nazwa} data-czlon-pasmo={pasmo.nazwa}>
+                <CadPrimitiveLayer prims={pasmo.prims} ink={inkCzlonu} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+              </g>
+            ))}
           </g>
         )}
       </g>

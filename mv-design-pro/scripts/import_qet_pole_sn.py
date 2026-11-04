@@ -26,7 +26,8 @@ Zasady (fail-closed — każde odstępstwo przerywa import z komunikatem):
   e²TANGO, decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy =
   ZAMKNIĘTY, obrót o kąt z układu = OTWARTY, połowa kąta z zasięgiem z układu = NIEUSTALONY,
   obrót na zestyk uziemiający = UZIEMIONY; przy styku stałym ZNACZNIK rodzaju aparatu („×”
-  wyłącznik, „○” odłącznik i człon wysuwny, kreska z okręgiem rozłącznik, kreska uziemnik)
+  wyłącznik, kreska „⊤” odłącznik, kreska z okręgiem „○” rozłącznik, kreska uziemnik z ziemią;
+  wyłącznik wysuwny — pasma szewronów nad i pod kaflem)
   w jednym rozmiarze kafla, symbol ziemi pod uziemnikiem skierowany w dół; każdy prymityw
   źródła ma dokładnie jedną rolę układu albo jawne pominięcie, a rozmiar znacznika, margines,
   odstęp od noża i kierunek ziemi są sprawdzane (``uloz_kafel_lacznika``);
@@ -1139,6 +1140,7 @@ def zloz_symbol(
         "noz": None,
         "znaczniki": [],
         "ziemia": None,
+        "czlon": None,
         "zrodla": [
             {
                 "sciezka": s.element.sciezka,
@@ -1200,21 +1202,17 @@ def stopien_symboli(manifest: dict[str, Any], kafel: KafelStanu | None) -> Stopi
 #: (eksport do TS: ``QET_KOTWICE_ZNACZNIKOW``). ``srodek``: środek obwiedni znacznika leży
 #: w punkcie styku — nóż zamyka się na środku znaku (krzyżyk wyłącznika; kreska styku
 #: uziemnika). ``od_przegubu``: punkt obwiedni zwrócony do przegubu leży w punkcie styku — nóż
-#: dochodzi do okręgu, nie przechodzi przez niego (okrąg odłącznika i członu wysuwnego; okrąg
-#: rozłącznika zawieszony pod kreską styku). ``obok_krzyzyka``: znacznik członu wysuwnego
-#: (okrąg „○", rozstrzygnięcie architekta 2026-10-30 pkt 3) stoi OBOK krzyżyka wyłącznika, po
-#: stronie przeciwnej do noża otwartego, na wysokości styku zamknięcia — środek w odległości
-#: boku znacznika + ``odstepWysuwuQet`` od osi toru; kotwica (punkt, wokół którego znacznik rośnie
-#: na podłodze LOD1) = lewy bok obwiedni krzyżyka na wysokości styku.
+#: dochodzi do okręgu, nie przechodzi przez niego (okrąg rozłącznika zawieszony pod kreską
+#: styku). Odłącznik ma kreskę styku „⊤" bez okręgu (uwaga właściciela 2026-11-04, odbiór B-02
+#: pkt 2: okrąg należy wyłącznie do rozłącznika) — kotwica ``srodek`` jak kreska uziemnika.
+#: Człon wysuwny wyłącznika nie jest znacznikiem styku: to pasma szewronów nad i pod kaflem
+#: (``kafelStanu.uklad.czlonWysuwny``).
 RODZAJE_ZNACZNIKOW: dict[str, str] = {
     "wylacznik": "srodek",
-    "odlacznik": "od_przegubu",
+    "odlacznik": "srodek",
     "rozlacznik": "od_przegubu",
     "uziemnik": "srodek",
-    "czlon_wysuwny": "obok_krzyzyka",
 }
-#: Styk znacznika członu wysuwnego — nie jest położeniem noża (nóż nigdy na nim nie spoczywa).
-STYK_WYSUWU = "wysuw"
 #: Położenia, w których nóż spoczywa na styku stałym (styk znacznika).
 STYKI = ("closed", "earthed")
 
@@ -1232,6 +1230,18 @@ class RodzajUkladuKafla:
 
 
 @dataclass(frozen=True)
+class CzlonWysuwny:
+    """Pasma członu wysuwnego wyłącznika (``kafelStanu.uklad.czlonWysuwny``, jednostki QET):
+    pasmo nad kaflem z podwójnym szewronem w górę i pasmo pod kaflem z podwójnym szewronem
+    w dół, w osi toru (synoptyka e²TANGO z wyłącznikiem wysuwnym)."""
+
+    pasmo: float
+    szerokosc: float
+    wysokosc: float
+    odstep: float
+
+
+@dataclass(frozen=True)
 class UkladKafla:
     """Jedna deklaracja proporcji kafla łącznika (``kafelStanu.uklad`` manifestu) — znacznik
     rodzaju aparatu przy styku stałym, nóż, symbol ziemi i rozmieszczenie rodzajów. Wszystkie
@@ -1244,7 +1254,7 @@ class UkladKafla:
     margines_znacznika: float
     odstep: float
     strefa_styku: float
-    odstep_wysuwu: float
+    czlon_wysuwny: CzlonWysuwny
     kat_otwarty: float
     zasieg_nieustalony: float
     szerokosc_ziemi: float
@@ -1280,9 +1290,25 @@ def uklad_kafla(manifest: dict[str, Any], kafel: KafelStanu | None) -> UkladKafl
     margines = float(zn["marginesQet"])
     odstep = float(zn["odstepOdNozaQet"])
     strefa = float(zn["strefaStykuQet"])
-    odstep_wysuwu = float(zn["odstepWysuwuQet"])
-    if margines < 0 or odstep < 0 or strefa <= 0 or odstep_wysuwu < 0:
+    if margines < 0 or odstep < 0 or strefa <= 0:
         raise BladImportu("kafelStanu.uklad: margines, odstęp i strefa styku nieujemne")
+    cw = deklaracja["czlonWysuwny"]
+    _powod(cw, "kafelStanu.uklad.czlonWysuwny", "pasma członu wysuwnego")
+    czlon = CzlonWysuwny(
+        pasmo=float(cw["pasmoQet"]),
+        szerokosc=float(cw["szerokoscSzewronuQet"]),
+        wysokosc=float(cw["wysokoscSzewronuQet"]),
+        odstep=float(cw["odstepSzewronowQet"]),
+    )
+    if not (
+        0 < czlon.wysokosc
+        and 0 < czlon.szerokosc < kafel.wysokosc
+        and czlon.wysokosc + czlon.odstep < czlon.pasmo
+    ):
+        raise BladImportu(
+            "kafelStanu.uklad.czlonWysuwny: dwa szewrony (wysokość + odstęp) muszą zmieścić się "
+            "w paśmie, a szerokość szewronu w boku kafla"
+        )
     noz = deklaracja["noz"]
     kat = float(noz["katOtwarty"])
     zasieg = float(noz["zasiegNieustalony"])
@@ -1334,7 +1360,7 @@ def uklad_kafla(manifest: dict[str, Any], kafel: KafelStanu | None) -> UkladKafl
         margines_znacznika=margines,
         odstep=odstep,
         strefa_styku=strefa,
-        odstep_wysuwu=odstep_wysuwu,
+        czlon_wysuwny=czlon,
         kat_otwarty=kat,
         zasieg_nieustalony=zasieg,
         szerokosc_ziemi=szer_ziemi,
@@ -1376,6 +1402,29 @@ def _ksztalty(r: Rysunek) -> list[Ksztalt]:
         naroza = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
         return [("odcinek", a, b) for a, b in zip(naroza, naroza[1:], strict=False)]
     raise BladImportu(f"kształt {r.rodzaj!r} bez pomiaru odstępu")
+
+
+def wysrodkuj_litery_w_okregach(rysunki: Sequence[Rysunek], ident: str) -> list[Rysunek]:
+    """Litera kwalifikatora w okręgu (napęd „M”, EN 60617 02-13-26) wyśrodkowana OPTYCZNIE
+    w okręgu (uwaga właściciela 2026-11-04: „wyśrodkuj literę M, teraz jest krzywo”): środek
+    tuszu litery = środek okręgu. W poziomie ``text-anchor: middle`` (litera symetryczna), w pionie
+    punkt ``dominant-baseline: central`` przesunięty o środek zasięgu tuszu kroju
+    (``zasieg_tuszu_wzgledem_srodka``) — nie pozycja źródła QET, która odsuwała literę o 0,7 j.św.
+    w lewo i 1,3 j.św. w dół."""
+    okregi = [r for r in rysunki if r.rodzaj == "circle"]
+    wynik: list[Rysunek] = []
+    for r in rysunki:
+        if r.rodzaj != "letter":
+            wynik.append(r)
+            continue
+        p = r.punkty[0]
+        w = [o for o in okregi if math.dist(o.punkty[0], p) < o.promien]
+        if len(w) != 1:
+            raise BladImportu(f"{ident}: litera {r.tekst!r} osprzętu poza okręgiem kwalifikatora")
+        c = w[0].punkty[0]
+        gora, dol = zasieg_tuszu_wzgledem_srodka(r.tekst, r.rozmiar)
+        wynik.append(replace(r, punkty=[(c[0], c[1] - (gora + dol) / 2)]))
+    return wynik
 
 
 def _odl_punkt_odcinek(p: tuple[float, float], a: tuple[float, float], b: tuple[float, float]):
@@ -1488,7 +1537,7 @@ def uloz_kafel_lacznika(
 ) -> dict[str, Any]:
     """Łącznik w JEDNOLITYM kaflu stanu wg wzorca HMI e²TANGO (decyzja właściciela 2026-10-30):
     zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy
-    styku stałym ZNACZNIK rodzaju aparatu („×” wyłącznik, „○” odłącznik, kreska z okręgiem
+    styku stałym ZNACZNIK rodzaju aparatu („×” wyłącznik, kreska „⊤” odłącznik, kreska z okręgiem
     rozłącznik, kreska uziemnik) w jednym rozmiarze; symbol ziemi pod uziemnikiem, skierowany
     w dół, na końcu pionu odgałęzienia; osprzęt = wyłącznie napęd (atrybut łącznika).
 
@@ -1542,18 +1591,10 @@ def uloz_kafel_lacznika(
     for pi in noz_d["prymitywy"]:
         przypisz(si_noza, int(pi), "noz")
     znaczniki_d = list(deklaracja.get("znaczniki", []))
-    if [z.get("styk") for z in znaczniki_d].count(STYK_WYSUWU) > 1:
-        raise BladImportu(f"{ident}: więcej niż jeden znacznik członu wysuwnego")
     for i, z in enumerate(znaczniki_d):
         if z.get("rodzaj") not in RODZAJE_ZNACZNIKOW:
             raise BladImportu(f"{ident}: rodzaj znacznika {z.get('rodzaj')!r} nieznany")
-        wysuw = z.get("rodzaj") == "czlon_wysuwny"
-        if wysuw != (z.get("styk") == STYK_WYSUWU):
-            raise BladImportu(
-                f"{ident}: znacznik członu wysuwnego wyłącznie przy styku {STYK_WYSUWU!r} "
-                f"(znacznik {z.get('rodzaj')!r} przy {z.get('styk')!r})"
-            )
-        if not wysuw and z.get("styk") not in rodzaj.styki:
+        if z.get("styk") not in rodzaj.styki:
             raise BladImportu(f"{ident}: znacznik przy styku {z.get('styk')!r} spoza układu")
         for pi in z["prymitywy"]:
             przypisz(int(z["skladnik"]), int(pi), f"znacznik{i}")
@@ -1565,12 +1606,14 @@ def uloz_kafel_lacznika(
                 "jeden (brak znacznika przerywa import)"
             )
     rodzaj_przy = {z["styk"]: z["rodzaj"] for z in znaczniki_d}
-    if STYK_WYSUWU in rodzaj_przy and rodzaj_przy.get("closed") != "wylacznik":
+    wysuwny = deklaracja.get("czlonWysuwny", False)
+    if wysuwny not in (True, False):
+        raise BladImportu(f"{ident}: czlonWysuwny wyłącznie true albo false")
+    if wysuwny and rodzaj_przy.get("closed") != "wylacznik":
         raise BladImportu(
-            f"{ident}: znacznik członu wysuwnego wyłącznie obok krzyżyka wyłącznika "
+            f"{ident}: człon wysuwny wyłącznie przy wyłączniku "
             f"(styk zamknięcia: {rodzaj_przy.get('closed')!r})"
         )
-    rodzaj_przy.pop(STYK_WYSUWU, None)
     ziemia_d = deklaracja.get("ziemia")
     styk_ziemi = {"przegub": "closed", "earthed": "earthed"}.get(str(rodzaj.ziemia_przy))
     for styk, rz in rodzaj_przy.items():
@@ -1645,12 +1688,7 @@ def uloz_kafel_lacznika(
         if wym <= 0:
             raise BladImportu(f"{ident}: znacznik {z['rodzaj']} bez wymiaru")
         sigma = uklad.bok_znacznika / wym
-        if RODZAJE_ZNACZNIKOW[z["rodzaj"]] == "obok_krzyzyka":
-            # Środek okręgu obok krzyżyka, po stronie przeciwnej do noża otwartego (nóż otwiera
-            # się w prawo), na wysokości styku zamknięcia.
-            styk = (C[0] - uklad.bok_znacznika - uklad.odstep_wysuwu, C[1])
-            a = ((x0 + x1) / 2, (y0 + y1) / 2)
-        elif RODZAJE_ZNACZNIKOW[z["rodzaj"]] == "srodek":
+        if RODZAJE_ZNACZNIKOW[z["rodzaj"]] == "srodek":
             styk = rodzaj.styki[z["styk"]]
             a = ((x0 + x1) / 2, (y0 + y1) / 2)
         else:
@@ -1732,6 +1770,7 @@ def uloz_kafel_lacznika(
         ]
     elif deklaracja.get("osprzetKotwica") is not None:
         raise BladImportu(f"{ident}: kotwica osprzętu bez osprzętu")
+    osprzet = wysrodkuj_litery_w_okregach(osprzet, ident)
 
     # Porty toru: górny przy styku stałym, dolny przy przegubie (brak dolnego — uziemnik).
     wykorzystane: set[tuple[int, float, float]] = set()
@@ -1877,35 +1916,87 @@ def uloz_kafel_lacznika(
     if stopien is not None:
         sprawdz_stopien(ident, udzialy, stopien.kafel)
 
+    # Człon wysuwny: pasmo szewronów nad kaflem i pod kaflem — kafel przesuwa się o pasmo w dół,
+    # gabaryt rośnie o dwa pasma, porty toru zostają na krawędziach gabarytu.
+    pasmo = uklad.czlon_wysuwny.pasmo if wysuwny else 0.0
+
     def swiat(q: tuple[float, float]) -> tuple[float, float]:
-        return (q[0] * skala, q[1] * skala)
+        return (q[0] * skala, (q[1] + pasmo) * skala)
 
     def ts_(r: Rysunek, noz_stanu: bool = False) -> dict[str, Any]:
         return prymityw_ts_swiata(r, swiat, skala, ident, noz_stanu)
+
+    czlon: dict[str, Any] | None = None
+    if wysuwny:
+        cw = uklad.czlon_wysuwny
+        pol = cw.szerokosc / 2
+
+        def szewrony(y_srodka: float, w_gore: bool) -> list[dict[str, Any]]:
+            # Dwa szewrony symetryczne względem środka pasma; wierzchołek w kierunku ruchu członu.
+            wynik_s = []
+            for dy in (-cw.odstep / 2, cw.odstep / 2):
+                g = y_srodka + dy - (cw.wysokosc / 2 if w_gore else -cw.wysokosc / 2)
+                r = y_srodka + dy + (cw.wysokosc / 2 if w_gore else -cw.wysokosc / 2)
+                for xr in (os_x - pol, os_x + pol):
+                    wynik_s.append(
+                        {
+                            "k": "line",
+                            "x1": zaokr(os_x * skala),
+                            "y1": zaokr(g * skala),
+                            "x2": zaokr(xr * skala),
+                            "y2": zaokr(r * skala),
+                        }
+                    )
+            return wynik_s
+
+        # Przewód toru w pasmach — poza kaflem, więc rysowany kreską toru razem z szewronami
+        # (nie kolorem glifu na kaflu).
+        przewody_czlonu = [
+            Rysunek("line", [(os_x, -pasmo), (os_x, 0.0)]),
+            Rysunek("line", [(os_x, bok), (os_x, bok + pasmo)]),
+        ]
+        czlon = {
+            "pasmo": zaokr(pasmo * skala),
+            "przewody": [ts_(r) for r in przewody_czlonu],
+            "gora": szewrony(pasmo / 2, True),
+            "dol": szewrony(bok + pasmo + pasmo / 2, False),
+        }
 
     def punkt_ts(q: tuple[float, float]) -> dict[str, float]:
         x, y = swiat(q)
         return {"x": zaokr(x), "y": zaokr(y)}
 
+    if wysuwny:
+        porty = [
+            (n, (q[0], -pasmo) if k == "N" else (q[0], bok + pasmo) if k == "S" else q, k)
+            for n, q, k in porty
+        ]
     wszystko = tresc + obwiednia(przewody) + [q for _, q, _ in porty + wtorne]
+    if wysuwny:
+        wszystko += obwiednia(przewody_czlonu)
     glif = [q for rys in polozenia.values() for q in obwiednia(rys)] + obwiednia(rys_znacznikow)
     wynik: dict[str, Any] = {
         "id": ident,
         "namePl": str(wpis["namePl"]),
         "zlozenie": wpis.get("zlozenie"),
         "szerokosc": zaokr(bok * skala),
-        "wysokosc": zaokr(bok * skala),
+        "wysokosc": zaokr((bok + 2 * pasmo) * skala),
         "porty": [{"name": n, **punkt_ts(q), "dir": k} for n, q, k in porty],
         "portyWtorne": [{"name": n, **punkt_ts(q), "dir": k} for n, q, k in wtorne],
         "doprowadzenia": [],
         "obrys": prostokat_ts_swiata(wszystko, swiat),
         "glif": prostokat_ts_swiata(glif, swiat),
-        "kafel": {"x": 0, "y": 0, "width": zaokr(bok * skala), "height": zaokr(bok * skala)},
+        "kafel": {
+            "x": 0,
+            "y": zaokr(pasmo * skala),
+            "width": zaokr(bok * skala),
+            "height": zaokr(bok * skala),
+        },
         "przewody": [ts_(r) for r in przewody],
         "stale": [],
         "osprzet": [ts_(r) for r in osprzet],
         "noz": {
-            **{"cx": zaokr(H[0] * skala), "cy": zaokr(H[1] * skala)},
+            **{"cx": zaokr(H[0] * skala), "cy": zaokr((H[1] + pasmo) * skala)},
             "katy": {k: zaokr(katy[k]) for k in POLOZENIA if k in katy},
             "zasiegi": {k: zaokr(zasiegi[k]) for k in POLOZENIA if k in zasiegi},
             "prymitywy": [ts_(r, noz_stanu=True) for r in noz],
@@ -1914,11 +2005,7 @@ def uloz_kafel_lacznika(
             {
                 "rodzaj": z["rodzaj"],
                 "styk": z["styk"],
-                "kotwica": punkt_ts(
-                    (C[0] - uklad.bok_znacznika / 2, C[1])
-                    if z["styk"] == STYK_WYSUWU
-                    else rodzaj.styki[z["styk"]]
-                ),
+                "kotwica": punkt_ts(rodzaj.styki[z["styk"]]),
                 "prymitywy": [ts_(r) for r in rr],
             }
             for z, rr in znaczniki
@@ -1928,6 +2015,7 @@ def uloz_kafel_lacznika(
             if kotwica_ziemi is not None
             else None
         ),
+        "czlon": czlon,
         "zrodla": [
             {
                 "sciezka": s.element.sciezka,
@@ -2028,7 +2116,7 @@ export interface QetNozSymbolu {
 }
 
 /** Rodzaj aparatu rozpoznawany po znaczniku przy styku stałym (wzorzec HMI e²TANGO). */
-export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik' | 'czlon_wysuwny';
+export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
 
 export interface QetPunkt {
   readonly x: number;
@@ -2037,11 +2125,10 @@ export interface QetPunkt {
 
 /** Znacznik rodzaju aparatu przy styku stałym: `kotwica` = punkt styku, na którym spoczywa nóż
  *  w położeniu `styk` (zamkniętym albo uziemionym) — punkt, wokół którego znacznik rośnie na
- *  podłodze LOD1. Znacznik członu wysuwnego (`styk` = `wysuw`, okrąg obok krzyżyka wyłącznika):
- *  kotwica = lewy bok obwiedni krzyżyka na wysokości styku zamknięcia. */
+ *  podłodze LOD1. */
 export interface QetZnacznikStyku {
   readonly rodzaj: QetRodzajZnacznika;
-  readonly styk: 'closed' | 'earthed' | 'wysuw';
+  readonly styk: 'closed' | 'earthed';
   readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
 }
@@ -2049,6 +2136,14 @@ export interface QetZnacznikStyku {
 /** Symbol uziemienia łącznika: `kotwica` = punkt przyłączenia (przegub uziemnika albo dolny koniec
  *  kreski zestyku uziemiającego); pierwszy prymityw to pion odgałęzienia, dalej kreski malejące
  *  w dół. */
+export interface QetCzlonWysuwny {
+  readonly pasmo: number;
+  /** Przewód toru w pasmach (od portu do kafla) — kreska przewodu, kolor toru. */
+  readonly przewody: readonly CadPrimitive[];
+  readonly gora: readonly CadPrimitive[];
+  readonly dol: readonly CadPrimitive[];
+}
+
 export interface QetZiemiaSymbolu {
   readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
@@ -2104,6 +2199,12 @@ export interface QetSymbolPolaSn {
   readonly znaczniki: readonly QetZnacznikStyku[];
   /** Symbol uziemienia skierowany w dół (uziemnik, łącznik trójpołożeniowy) albo `null`. */
   readonly ziemia: QetZiemiaSymbolu | null;
+  /** Człon wysuwny wyłącznika (uwaga właściciela 2026-11-04, synoptyka e²TANGO): pasmo `pasmo`
+   *  nad kaflem z podwójnym szewronem w górę (`gora`) i pod kaflem z podwójnym szewronem w dół
+   *  (`dol`), w osi toru; kafel stoi w `kafel.y` = `pasmo`. Szewrony nie niosą stanu wyłącznika
+   *  (model ENM niesie wyłącznie wykonanie stałe / wysuwne) — kreska toru, bez koloru kafla.
+   *  `null` — symbol bez członu wysuwnego. */
+  readonly czlon: QetCzlonWysuwny | null;
   readonly zrodla: readonly QetZrodloSymbolu[];
 }
 
@@ -2120,13 +2221,11 @@ export const QET_KRESKA_GLIFU = {kreskaGlifu};
  *  znacznika (linia środkowa), `udzial` = dopuszczalny przedział boku / bok kafla, `margines` =
  *  najmniejsza odległość tuszu znacznika od krawędzi kafla, `odstep` = najmniejsza odległość tuszu
  *  znacznika od tuszu noża poza strefą styku, `strefa` = promień strefy styku (wokół punktu, w którym
- *  nóż spoczywa na styku, i wokół przegubu), `odstepWysuwu` = odstęp linii środkowych znacznika
- *  członu wysuwnego od obwiedni krzyżyka wyłącznika. Kreska znacznika = `QET_KRESKA_GLIFU`. */
+ *  nóż spoczywa na styku, i wokół przegubu). Kreska znacznika = `QET_KRESKA_GLIFU`. */
 export const QET_ZNACZNIK_STYKU = {znacznikStyku} as const;
 
 /** Kotwica znacznika względem punktu styku: `srodek` — środek obwiedni znacznika w punkcie styku,
- *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku, `obok_krzyzyka` — okrąg
- *  członu wysuwnego obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego. */
+ *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku. */
 export const QET_KOTWICE_ZNACZNIKOW = {kotwiceZnacznikow} as const;
 
 /** Symbol uziemienia łącznika [jednostki świata, skala bazowa LOD2]: szerokość górnej (najszerszej)
@@ -2237,7 +2336,6 @@ def generuj() -> str:
                 "margines": zaokr(uklad.margines_znacznika * skala),
                 "odstep": zaokr(uklad.odstep * skala),
                 "strefa": zaokr(uklad.strefa_styku * skala),
-                "odstepWysuwu": zaokr(uklad.odstep_wysuwu * skala),
             }
         ),
     )

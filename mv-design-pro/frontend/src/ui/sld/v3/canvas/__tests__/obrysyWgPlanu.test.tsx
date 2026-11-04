@@ -10,9 +10,10 @@
  * 0,35–0,5 na fiksturach pól liniowych).
  *
  * ILOCZYN CECH: fikstura {Z.10 stałe w sekcji 1, Z.10 stałe w sekcji 2, Z.11.1 i Z.11} × skala
- * kamery {2,5 (pismo naturalne), 1,5, 1,0, 0,7, 0,5, 0,35} × kadr {brak, każde pole GPZ}
- * × obrys {ramka bloku, tło pola} × warunek {zawiera narysowany tusz, ciasny (dokładnie suma
- * + margines), tożsamość ze sceną w piśmie naturalnym, tła rozłączne}. Plus render DOM kanwy
+ * kamery {2,5 (pismo naturalne), 1,5, 1,02 (dolna krawędź LOD2), 1,0, 0,7, 0,5, 0,35} × kadr
+ * {brak, każde pole GPZ} × obrys {ramka bloku, tło pola} × warunek {zawiera narysowany tusz,
+ * ciasny (dokładnie suma + margines), tożsamość ze sceną w piśmie naturalnym, tła rozłączne
+ * (na skalach sceny LOD2 w kamerze — kolumny pól zwężone w odbiorze B-02 pkt 8)}. Plus render DOM kanwy
  * (kadr pola, pismo powiększone) i iniekcja: obrys sceny NIE obejmuje tuszu planu.
  */
 import { afterEach, describe, expect, it } from 'vitest';
@@ -28,6 +29,7 @@ import { GRID, type V3Rect } from '../../core/grid';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../../core/text';
 import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
+import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../camera';
 import { planSceneLabels, type LabelRenderPlan } from '../labelLegibility';
 import { paneleWgPlanu, ramkiBlokowWgPlanu } from '../obrysyWgPlanu';
 import { SldCanvasV3, symbolTestId } from '../SldCanvasV3';
@@ -41,7 +43,9 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
   ['Z.10, stałe w sekcji 2', snapshot(fxStaly2)],
   ['Z.11.1 i Z.11', snapshot(fxZ11)],
 ];
-const SKALE = [2.5, 1.5, 1.0, 0.7, 0.5, 0.35] as const;
+const SKALE = [2.5, 1.5, 1.02, 1.0, 0.7, 0.5, 0.35] as const;
+/** Dolna krawędź LOD2 z histerezą (`canvas/camera.ts`) — najmniejsza skala sceny LOD2 w kamerze. */
+const SKALA_DOLNA_LOD2 = DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN);
 const SKALA_NATURALNA = 2.5;
 /** Wiersz bloku przekaźnika — wyrocznia NIEZALEŻNA od listy członków sceny (wzorzec `ownerRef`). */
 const WIERSZ_BLOKU = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
@@ -135,11 +139,19 @@ function naruszenia(p: Przypadek): string[] {
     if (!rowne(panel.rect, oczekiwane)) bledy.push(`${opis}: tło ${panel.bayRef.slice(-7)} ${JSON.stringify(panel.rect)} ≠ ${JSON.stringify(oczekiwane)}`);
     for (const c of [...czlonkowie, ...ramkiPola]) if (!zawiera(panel.rect, c)) bledy.push(`${opis}: tusz poza tłem ${panel.bayRef.slice(-7)}`);
   });
-  panele.forEach((a, i) =>
-    panele.slice(i + 1).forEach((b) => {
-      if (zachodzi(a.rect, b.rect)) bledy.push(`${opis}: tła ${a.bayRef.slice(-7)} × ${b.bayRef.slice(-7)} zachodzą`);
-    }),
-  );
+  // Tła sąsiednich pól rozłączne na skalach, na których kamera rysuje scenę LOD2 (≥ dolna krawędź
+  // LOD2 z histerezą, `SKALA_DOLNA_LOD2`): kolumna pola GPZ jest zwężona do zmierzonego rysunku
+  // pola (odbiór B-02 pkt 8) z zapasem na pismo powiększone podłogą opisów celu kadru NA TEJ
+  // krawędzi (`compose/gpz.ts::szerokosciRysunkuPol`). Scena LOD2 na skali niższej powstaje
+  // wyłącznie przez wymuszony LOD (`lodOverride` — zrzuty dokumentacyjne); tam pismo rośnie dalej
+  // (sufit proporcji klasy), a obrysy tła nadal obejmują tusz — sprawdzane wyżej na każdej skali.
+  if (p.skala >= SKALA_DOLNA_LOD2 - EPS) {
+    panele.forEach((a, i) =>
+      panele.slice(i + 1).forEach((b) => {
+        if (zachodzi(a.rect, b.rect)) bledy.push(`${opis}: tła ${a.bayRef.slice(-7)} × ${b.bayRef.slice(-7)} zachodzą`);
+      }),
+    );
+  }
   // Pismo naturalne bez kadru: obrysy kanwy = obrysy sceny (rysunek bez zmian).
   if (p.skala === SKALA_NATURALNA && p.kadr === 'brak') {
     ramki.forEach((r, i) => {

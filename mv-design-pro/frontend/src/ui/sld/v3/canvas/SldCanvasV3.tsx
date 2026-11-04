@@ -606,6 +606,7 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
         skalaZnacznika={skalaZnacznikaKafla(cameraScale, props.lod)}
+        lod={props.lod}
         {...daneGlifuSymbolu(symbol)}
         ramkaBloku={props.ramkaBloku}
         kafleStanu={palette.state}
