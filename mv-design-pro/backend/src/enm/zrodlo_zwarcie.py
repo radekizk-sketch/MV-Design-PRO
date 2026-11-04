@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from typing import TypeGuard
 
 from .models import Source
 
@@ -39,8 +40,11 @@ class TrybDanych(str, Enum):
     PRAD_ZWARCIOWY = "PRAD_ZWARCIOWY"
 
 
-def dodatnia(wartosc: object) -> bool:
-    """Dana liczbowa obecna i > 0 (``None``/0/ujemna = brak danej, nie „zero fizyczne")."""
+def dodatnia(wartosc: object) -> TypeGuard[int | float]:
+    """Dana liczbowa obecna i > 0 (``None``/0/ujemna = brak danej, nie „zero fizyczne").
+
+    ``TypeGuard``: po prawdziwym wyniku wartość jest liczbą (porównania bez rzutowania).
+    """
     return isinstance(wartosc, int | float) and not isinstance(wartosc, bool) and wartosc > 0
 
 

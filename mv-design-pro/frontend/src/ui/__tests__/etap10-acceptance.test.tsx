@@ -91,8 +91,10 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
 
   // === Test C: Konfigurator GPZ (E-10) ===
   it('C. GPZ ma 5 kart konfiguracyjnych z polskimi etykietami', () => {
+    // Karta KATALOG-PRZEJECIE-PR: karta danych zasilania to „Sieć zasilająca" — GPZ zasilany na
+    // granicy SN nie ma strony 110 kV w modelu, a dane są tymi samymi polami źródła.
     render(<GpzConfiguratorSurface surface={sampleSurface} />);
-    ['Identyfikacja', 'Strona 110 kV', 'Transformator 110/SN', 'Sekcje SN', 'Bilans pól SN'].forEach((label) => {
+    ['Identyfikacja', 'Sieć zasilająca', 'Transformator 110/SN', 'Sekcje SN', 'Pola SN'].forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
   });

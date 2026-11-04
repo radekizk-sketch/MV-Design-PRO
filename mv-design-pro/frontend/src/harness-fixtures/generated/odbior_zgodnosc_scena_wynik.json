@@ -1,6 +1,6 @@
 {
   "analysis_id": "run-lf-scena-pomiary",
-  "input_hash": "66621ab10965b9fdbc051e5e4256fdd40553ecaf23ef3102bb97cec557aaa9db",
+  "input_hash": "160aec4d0bb63c022255468dab12aa3fe3fb8cc18576b0caf1ae5b33c6aa1dca",
   "podsumowanie": {
     "brak_miejsca_pomiaru": 1,
     "brak_odpowiednika": 1,
@@ -60,18 +60,18 @@
       "jednostka": "MW",
       "kod_odmowy": null,
       "miejsce_pomiaru_pl": "Zacisk początkowy — szyna Stacja B SN",
-      "odchylka_bezwzgledna": -0.099645,
+      "odchylka_bezwzgledna": -0.099528,
       "odchylka_pct": -12.5,
       "slad_pl": [
-        "Model P na zacisku od (Zacisk początkowy — szyna Stacja B SN) = -0.797159 MW",
-        "Pomiar P = -0.896804 MW",
-        "Odchyłka = pomiar − model = -0.099645 MW (-12.500000%)",
+        "Model P na zacisku od (Zacisk początkowy — szyna Stacja B SN) = -0.796222 MW",
+        "Pomiar P = -0.895749 MW",
+        "Odchyłka = pomiar − model = -0.099528 MW (-12.500000%)",
         "Tolerancja = ±10.000000%",
         "Werdykt: poza tolerancją"
       ],
       "tolerancja_pct": 10.0,
-      "wartosc_model": -0.797159,
-      "wartosc_pomiar": -0.896804,
+      "wartosc_model": -0.796222,
+      "wartosc_pomiar": -0.895749,
       "werdykt": "poza tolerancją",
       "wielkosc": "P",
       "zacisk": "od"
@@ -88,7 +88,7 @@
       ],
       "tolerancja_pct": null,
       "wartosc_model": null,
-      "wartosc_pomiar": -0.198947,
+      "wartosc_pomiar": -0.198749,
       "werdykt": "brak miejsca pomiaru",
       "wielkosc": "Q",
       "zacisk": null

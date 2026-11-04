@@ -86,19 +86,11 @@ _E2E_DIR = _FRONTEND_ROOT / "e2e"
 #: czasu zbior jest ZAMKNIETY i zapadkowy: kazda NOWA referencja bez pokrycia
 #: wywala test (nie wolno jej tu dopisac „bo tak bylo"), a znikniecie wpisu
 #: rowniez (naprawa sieci zlotej ma wrocic tu jako zmiana tej listy).
-_REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA: frozenset[tuple[str | None, str]] = frozenset(
-    {
-        ("KABEL_SN", "cable-yakxs-3x120"),
-        ("LINIA_SN", "line-afl-70"),
-        ("TRAFO_SN_NN", "tr-110-15-25mva-ynd11"),
-        ("TRAFO_SN_NN", "tr-15-04-630kva-dyn11"),
-        ("ZRODLO_SN", "src-gpz-110kv-2500mva"),
-        # Wytworcy sieci zlotej niosą GOLĄ referencje (bez `catalog_namespace`),
-        # wiec nie sa wiazaniem katalogowym w rozumieniu `CatalogBinding`.
-        (None, "gen-sync-2mva"),
-        (None, "conv-pv-nn-0p5mw"),
-    }
-)
+#: NAPRAWA (karta KATALOG-PRZEJECIE-PR, decyzja architekta 2026-11-04): siec zlota dostaje
+#: tabliczki z realnego katalogu przez produkcyjne `assign_catalog_to_element`
+#: (`WIAZANIA_KATALOGOWE_SIECI_ZLOTEJ`); zbior jest PUSTY i zostaje zapadka — kazda nowa
+#: referencja bez pokrycia wywala test.
+_REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA: frozenset[tuple[str | None, str]] = frozenset()
 
 
 def _tekst(path: Path) -> str:

@@ -15,17 +15,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 643.64107688,
-        "ratio_ik_ir": 6.68891428196,
-        "mu": 0.704673157753,
+        "ikss_partial_a": 639.753787144,
+        "ratio_ik_ir": 6.64851638201,
+        "mu": 0.705774861132,
         "q": 1.0,
-        "ib_a": 453.556590104,
+        "ib_a": 451.52214028,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
-          "argument": 6.68891428196,
+          "argument": 6.64851638201,
           "regula": "WEZEL",
           "podstawa_reguly": "NORMA",
           "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
@@ -36,8 +36,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704673157753,
-            "wartosc": 0.704673157753
+            "wartosc_surowa": 0.705774861132,
+            "wartosc": 0.705774861132
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -46,16 +46,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704673157753,
-            "wartosc": 0.704673157753
+            "wartosc_surowa": 0.705774861132,
+            "wartosc": 0.705774861132
           },
           "waga": 0.0,
-          "wynik": 0.704673157753
+          "wynik": 0.705774861132
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 643.64107688,
-        "delta_u_wzgledne": 0.920492791096,
+        "ikss_zaciski_a": 639.753787144,
+        "delta_u_wzgledne": 0.914933447065,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -63,46 +63,46 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
           }
         ]
       }
     ],
-    "ikss_machines_a": 643.64107688,
-    "ib_machines_a": 453.556590104,
+    "ikss_machines_a": 639.753787144,
+    "ib_machines_a": 451.52214028,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "z_kk_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
+        "re": 0.0548895832459,
+        "im": 0.991717179195
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 8953.14360646,
+      "ikss_total_a": 9591.16334962,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.657180323,
+      "small_motor_limit_a": 479.558167481,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -111,7 +111,7 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 9,591 kA, c = 1,10, t_min = 0,10 s.",
         "latex": null
       },
       {
@@ -140,31 +140,31 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
       },
       {
-        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
       },
       {
-        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+        "tekst": "Suma wkładów maszyn: I″k,M = 0,640 kA, Ib,M = 0,452 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,480 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,480) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 9.591\\;\\mathrm{kA} = 0.480\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -176,7 +176,7 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 9,591 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
           },
           {
@@ -207,23 +207,23 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -232,12 +232,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+            "tekst": "Suma wkładów maszyn: I″k,M = 0,640 kA, Ib,M = 0,452 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,480 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,480) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 9.591\\;\\mathrm{kA} = 0.480\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -266,7 +266,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,480 kA)",
         "status": "PASS"
       },
       {
@@ -275,7 +275,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "c0afaecca81325bf6ad554b763f5bcceb311c27f5472744d9e8b47ef94f647fb",
+    "input_hash": "0784c920e8d54259e9805ab2c177e6e97c26c82b2761c3d7c56cf3fc55849652",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -385,17 +385,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 81.9603927841,
-        "ratio_ik_ir": 6.24622083846,
-        "mu": 0.71755931419,
+        "ikss_partial_a": 81.9272781408,
+        "ratio_ik_ir": 6.24369716369,
+        "mu": 0.717638132565,
         "q": 1.0,
-        "ib_a": 58.811443237,
+        "ib_a": 58.7941388912,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
-          "argument": 6.24622083846,
+          "argument": 6.24369716369,
           "regula": "WEZEL",
           "podstawa_reguly": "NORMA",
           "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
@@ -406,8 +406,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.71755931419,
-            "wartosc": 0.71755931419
+            "wartosc_surowa": 0.717638132565,
+            "wartosc": 0.717638132565
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -416,16 +416,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.71755931419,
-            "wartosc": 0.71755931419
+            "wartosc_surowa": 0.717638132565,
+            "wartosc": 0.717638132565
           },
           "waga": 0.0,
-          "wynik": 0.71755931419
+          "wynik": 0.717638132565
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 601.042880417,
-        "delta_u_wzgledne": 0.859571675017,
+        "ikss_zaciski_a": 600.8000397,
+        "delta_u_wzgledne": 0.859224380325,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -436,16 +436,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.24",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.24"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.24, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.24} = 0.718"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8592",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1561}{1.10} = 0.8592"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
@@ -454,25 +454,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 81.9603927841,
-    "ib_machines_a": 58.811443237,
+    "ikss_machines_a": 81.9272781408,
+    "ib_machines_a": 58.7941388912,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "z_kk_ohm": {
-        "re": 0.497749640826,
-        "im": 4.9706358826
+        "re": 0.498337044228,
+        "im": 4.97060850045
       },
       "i_base_a": 524.863881081,
-      "ikss_total_a": 13984.4749902,
+      "ikss_total_a": 13984.3873205,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 699.223749511,
+      "small_motor_limit_a": 699.219366026,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -513,16 +513,16 @@
         "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.24",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.24"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
-        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.24, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.24} = 0.718"
       },
       {
-        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
-        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8592",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1561}{1.10} = 0.8592"
       },
       {
         "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
@@ -580,16 +580,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.24",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.24"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.24, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.24} = 0.718"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8592",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1561}{1.10} = 0.8592"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
@@ -645,7 +645,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "023600666d557093bc35085c9ad6e5ada8bfed3fe70377fd9273645f73541632",
+    "input_hash": "f6eab85bcd3d5229f4ca63c5b018818d37ada7392cd320927d21530377fcfb52",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -755,17 +755,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 1470.69046773,
-        "ratio_ik_ir": 0.407569697971,
+        "ikss_partial_a": 1526.37001503,
+        "ratio_ik_ir": 0.42300006675,
         "mu": 1.0,
         "q": 1.0,
-        "ib_a": 1470.69046773,
+        "ib_a": 1526.37001503,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
-          "argument": 0.407569697971,
+          "argument": 0.42300006675,
           "regula": "BEZ_ZANIKU",
           "podstawa_reguly": "NORMA",
           "podstawa_reguly_pl": "μ = 1 przy każdym t_min dla I″k/I_r ≤ 2, zwarcie odległe od generatora (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
@@ -776,8 +776,8 @@
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 39.2184124728,
-        "delta_u_wzgledne": 0.0587584099303,
+        "ikss_zaciski_a": 40.7032004009,
+        "delta_u_wzgledne": 0.0609829716153,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -785,46 +785,46 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4049}{6.6229 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.526\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.42",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.041}{0.096} = 0.42"
           },
           {
             "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
             "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0610",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0106}{1.05} = 0.0610"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.526 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.526\\;\\mathrm{kA} = 1.526\\;\\mathrm{kA}"
           }
         ]
       }
     ],
-    "ikss_machines_a": 1470.69046773,
-    "ib_machines_a": 1470.69046773,
+    "ikss_machines_a": 1526.37001503,
+    "ib_machines_a": 1526.37001503,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "z_kk_ohm": {
-        "re": 0.00258532311663,
-        "im": 0.0115678190986
+        "re": 0.0025148335115,
+        "im": 0.0102939568329
       },
       "i_base_a": 144337.567297,
-      "ikss_total_a": 20457.5242806,
+      "ikss_total_a": 22883.2785993,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 1022.87621403,
+      "small_motor_limit_a": 1144.16392996,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -833,7 +833,7 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,458 kA, c = 1,05, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 22,883 kA, c = 1,05, t_min = 0,10 s.",
         "latex": null
       },
       {
@@ -862,31 +862,31 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4049}{6.6229 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.526\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.42",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.041}{0.096} = 0.42"
       },
       {
         "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
         "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
       },
       {
-        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
-        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0610",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0106}{1.05} = 0.0610"
       },
       {
-        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
-        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
+        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.526 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.526\\;\\mathrm{kA} = 1.526\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 1,471 kA, Ib,M = 1,471 kA.",
+        "tekst": "Suma wkładów maszyn: I″k,M = 1,526 kA, Ib,M = 1,526 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,023 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,023) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.458\\;\\mathrm{kA} = 1.023\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,144 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,144) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 22.883\\;\\mathrm{kA} = 1.144\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -898,7 +898,7 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,458 kA, c = 1,05, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 22,883 kA, c = 1,05, t_min = 0,10 s.",
             "latex": null
           },
           {
@@ -929,23 +929,23 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4049}{6.6229 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.526\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.42",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.041}{0.096} = 0.42"
           },
           {
             "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
             "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0610",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0106}{1.05} = 0.0610"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.526 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.526\\;\\mathrm{kA} = 1.526\\;\\mathrm{kA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -954,12 +954,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 1,471 kA, Ib,M = 1,471 kA.",
+            "tekst": "Suma wkładów maszyn: I″k,M = 1,526 kA, Ib,M = 1,526 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,023 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,023) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.458\\;\\mathrm{kA} = 1.023\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,144 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,144) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 22.883\\;\\mathrm{kA} = 1.144\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -988,7 +988,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,023 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,144 kA)",
         "status": "PASS"
       },
       {
@@ -997,7 +997,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "7acb1d234d78ca6e7ec145634c65f8bb8ceada1cf26c31f727254c33e8e1dae6",
+    "input_hash": "32a7506a4500efb7718b2d0a74d2779c5df4fb10200f953ab3e442ba331ad7b5",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -1107,17 +1107,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 643.64107688,
-        "ratio_ik_ir": 6.68891428196,
-        "mu": 0.704673157753,
+        "ikss_partial_a": 639.753787144,
+        "ratio_ik_ir": 6.64851638201,
+        "mu": 0.705774861132,
         "q": 1.0,
-        "ib_a": 453.556590104,
+        "ib_a": 451.52214028,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
-          "argument": 6.68891428196,
+          "argument": 6.64851638201,
           "regula": "WEZEL",
           "podstawa_reguly": "NORMA",
           "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
@@ -1128,8 +1128,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704673157753,
-            "wartosc": 0.704673157753
+            "wartosc_surowa": 0.705774861132,
+            "wartosc": 0.705774861132
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -1138,16 +1138,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704673157753,
-            "wartosc": 0.704673157753
+            "wartosc_surowa": 0.705774861132,
+            "wartosc": 0.705774861132
           },
           "waga": 0.0,
-          "wynik": 0.704673157753
+          "wynik": 0.705774861132
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 643.64107688,
-        "delta_u_wzgledne": 0.920492791096,
+        "ikss_zaciski_a": 639.753787144,
+        "delta_u_wzgledne": 0.914933447065,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -1155,46 +1155,46 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
           }
         ]
       }
     ],
-    "ikss_machines_a": 643.64107688,
-    "ib_machines_a": 453.556590104,
+    "ikss_machines_a": 639.753787144,
+    "ib_machines_a": 451.52214028,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "z_kk_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
+        "re": 0.0548895832459,
+        "im": 0.991717179195
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 8953.14360646,
+      "ikss_total_a": 9591.16334962,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.657180323,
+      "small_motor_limit_a": 479.558167481,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -1203,7 +1203,7 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 9,591 kA, c = 1,10, t_min = 0,10 s.",
         "latex": null
       },
       {
@@ -1232,31 +1232,31 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
       },
       {
-        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
       },
       {
-        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+        "tekst": "Suma wkładów maszyn: I″k,M = 0,640 kA, Ib,M = 0,452 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,480 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,480) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 9.591\\;\\mathrm{kA} = 0.480\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -1268,7 +1268,7 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 9,591 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
           },
           {
@@ -1299,23 +1299,23 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4049}{0.4414 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.640\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.65",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.640}{0.096} = 6.65"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.65, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.706",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.65} = 0.706"
           },
           {
-            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
-            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9149",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1662}{1.10} = 0.9149"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.452 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.706 \\cdot 1.000 \\cdot 0.640\\;\\mathrm{kA} = 0.452\\;\\mathrm{kA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -1324,12 +1324,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,644 kA, Ib,M = 0,454 kA.",
+            "tekst": "Suma wkładów maszyn: I″k,M = 0,640 kA, Ib,M = 0,452 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,448 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,448) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,480 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,480) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 9.591\\;\\mathrm{kA} = 0.480\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -1358,7 +1358,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,448 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,480 kA)",
         "status": "PASS"
       },
       {
@@ -1367,7 +1367,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "955418c43bf5157b7b370090434ef2f89761d0d0cd0e92d40e522c79f149fd96",
+    "input_hash": "a3fe7d1f47d611b22df69587fb3d80dc4c15657a428d3f4edae98c4028b6c3a2",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -1525,7 +1525,7 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9637}{0.9637 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
           },
           {
             "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
@@ -1553,18 +1553,18 @@
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "z_kk_ohm": {
-        "re": 0.755712041326,
-        "im": 1.92641924066
+        "re": 0.989291921259,
+        "im": 1.92945208281
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 4603.52239368,
+      "ikss_total_a": 4393.45156319,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 230.176119684,
+      "small_motor_limit_a": 219.672578159,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -1573,7 +1573,7 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,393 kA, c = 1,10, t_min = 0,10 s.",
         "latex": null
       },
       {
@@ -1602,7 +1602,7 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9637}{0.9637 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
       },
       {
         "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
@@ -1625,8 +1625,8 @@
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,220 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,220) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.393\\;\\mathrm{kA} = 0.220\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -1638,7 +1638,7 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,393 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
           },
           {
@@ -1669,7 +1669,7 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9637}{0.9637 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
           },
           {
             "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
@@ -1698,8 +1698,8 @@
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,220 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,220) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.393\\;\\mathrm{kA} = 0.220\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -1728,7 +1728,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,230 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 0,220 kA)",
         "status": "PASS"
       },
       {
@@ -1737,7 +1737,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "348228c374f30a4f1a886db7d91cc937d0bef0009f4f915b2fa5e2c83f707dc0",
+    "input_hash": "0a9b739d93d0e00f744e37b70621bf03dfc253e8e09c867dd5b196b404e3f99e",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,

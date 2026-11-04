@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from enm.domain_operations import (
     add_gpz_section,
     delete_gpz_section,
@@ -463,3 +464,96 @@ def test_add_then_update_then_delete_chain() -> None:
     enm = r3["snapshot"]
     assert len(enm["substations"][0]["gpz_sections"]) == 1
     assert enm["substations"][0]["gpz_sections"][0]["section_id"] == "SEC-A"
+
+
+# ---------------------------------------------------------------------------
+# Szyna sekcji — jeden predykat dodawania i edycji (karta KATALOG-PRZEJECIE-PR)
+# ILOCZYN CECH: {add, update} × {szyna wolna tej stacji, szyna zajęta przez inną sekcję SN,
+# szyna zajęta przez sekcję WN, szyna spoza stacji, szyna własna edytowanej sekcji}.
+# Do karty dodanie przyjmowało szynę zajętą (dwie sekcje na jednej szynie) i szynę spoza
+# stacji (sekcja GPZ na szynie innej stacji).
+# ---------------------------------------------------------------------------
+
+
+def _gpz_dwie_sekcje_i_obca_szyna() -> dict[str, Any]:
+    enm = _gpz_with_one_section()
+    enm["buses"].append(
+        {
+            "ref_id": "b15-obca",
+            "name": "Szyna stacji SN",
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {},
+        }
+    )
+    enm["buses"].append(
+        {
+            "ref_id": "b15-3",
+            "name": "B15-3",
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {},
+        }
+    )
+    stacja = enm["substations"][0]
+    stacja["bus_refs"] = ["b15", "b15-2", "b15-3", "b110"]
+    stacja["gpz_sections"].append(
+        {"section_id": "SEC-B", "order": 2, "name": "sekcja B", "bus_ref": "b15-2"}
+    )
+    stacja["gpz_hv_sections"] = [
+        {"section_id": "HV-A", "order": 1, "name": "sekcja 110", "bus_ref": "b110"}
+    ]
+    return enm
+
+
+@pytest.mark.parametrize(
+    ("bus_ref", "kod"),
+    [
+        ("b15-3", None),
+        ("b15-2", "gpz_section.add.bus_taken"),
+        ("b15", "gpz_section.add.bus_taken"),
+        ("b15-obca", "gpz_section.add.bus_outside_station"),
+    ],
+)
+def test_add_gpz_section_szyna_sekcji(bus_ref: str, kod: str | None) -> None:
+    enm = _gpz_dwie_sekcje_i_obca_szyna()
+    response = add_gpz_section(
+        enm, {"substation_ref": "GPZ-1", "side": "lv", "section_id": "SEC-C", "bus_ref": bus_ref}
+    )
+    assert response.get("error_code") == kod
+    if kod is not None:
+        assert response["snapshot"] is None
+        assert len(enm["substations"][0]["gpz_sections"]) == 2
+
+
+def test_add_gpz_section_hv_na_szynie_zajetej_przez_sekcje_wn() -> None:
+    enm = _gpz_dwie_sekcje_i_obca_szyna()
+    response = add_gpz_section(
+        enm, {"substation_ref": "GPZ-1", "side": "hv", "section_id": "HV-B", "bus_ref": "b110"}
+    )
+    assert response.get("error_code") == "gpz_section.add.bus_taken"
+
+
+@pytest.mark.parametrize(
+    ("bus_ref", "kod"),
+    [
+        ("b15", None),  # własna szyna edytowanej sekcji
+        ("b15-3", None),
+        ("b15-2", "gpz_section.update.bus_taken"),
+        ("b15-obca", "gpz_section.update.bus_outside_station"),
+    ],
+)
+def test_update_gpz_section_szyna_sekcji(bus_ref: str, kod: str | None) -> None:
+    enm = _gpz_dwie_sekcje_i_obca_szyna()
+    response = update_gpz_section(
+        enm,
+        {
+            "substation_ref": "GPZ-1",
+            "side": "lv",
+            "section_id": "SEC-A",
+            "updates": {"bus_ref": bus_ref},
+        },
+    )
+    assert response.get("error_code") == kod

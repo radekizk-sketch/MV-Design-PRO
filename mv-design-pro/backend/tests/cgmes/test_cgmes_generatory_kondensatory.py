@@ -554,13 +554,21 @@ def test_model_bez_generatorow_i_kondensatorow_bajty_bazy() -> None:
     niosą ``Switch.open`` [SSH, bieżące położenie] zamiast ``Switch.normalOpen`` [EQ]
     wyprowadzanego dawniej z położenia. Iloczyn obu atrybutów:
     ``tests/cgmes/test_cgmes_stan_lacznika.py``.
+
+    2026-11-04 (karta KATALOG-PRZEJECIE-PR, sieć złota z tabliczkami z realnego katalogu):
+    EQ 37bae631… → f860bd90…, TP bez zmian. Różnią się WYŁĄCZNIE parametry elektryczne:
+    kabel (r 0,3864 → 0,6072 Ω, x 0,252 → 0,24 Ω, bch, r0, x0; b0ch zniknął — katalog nie
+    podaje B′0), linia (r 0,9486 → 1,2648 Ω, x 1,054 → 1,1005 Ω, bch, r0, x0) i uzwojenia
+    obu transformatorów (r, x z uk/Pk pozycji katalogu) — skutek R′/X′/uk z kart pozycji
+    `cable-tfk-yakxs-3x120`, `line-base-al-st-70`, `tr-wn-sn-110-15-25mva-yd11`,
+    `wzl-tpmnr-630-15-04` zamiast wartości wpisanych ręcznie.
     """
     import hashlib
 
     enm = build_golden_enm().model_copy(update={"generators": []})
     eq, tp = _eq_tp_z_paczki(enm)
     assert hashlib.sha256(eq).hexdigest() == (
-        "37bae631c7508f89ee32980345867edaef085a3ea108f95776d0ebc57ee0d44f"
+        "f860bd902469995af691525c628ac0f34d3d61fd455da23992bfd4a3c7d7c294"
     )
     assert hashlib.sha256(tp).hexdigest() == (
         "017360fa12246b715487abf123f4c19b7fc08c1148262d72f3ef776d6f1d520b"

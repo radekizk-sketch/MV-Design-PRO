@@ -8,8 +8,8 @@
   "bus_results": [
     {
       "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-      "v_pu": 1.02614051687,
-      "angle_deg": 30.19420147,
+      "v_pu": 1.02627772955,
+      "angle_deg": 30.1772811306,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
@@ -18,30 +18,30 @@
       "bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "v_pu": 1.0,
       "angle_deg": 0.0,
-      "p_injected_mw": -0.746797186462,
-      "q_injected_mvar": -0.0756580800728,
+      "p_injected_mw": -0.745917418594,
+      "q_injected_mvar": -0.114830947979,
       "status": "solved"
     },
     {
       "bus_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "v_pu": 1.01505953156,
-      "angle_deg": 60.1381237029,
+      "v_pu": 1.01642465767,
+      "angle_deg": 60.1392416363,
       "p_injected_mw": -0.05,
       "q_injected_mvar": -0.15,
       "status": "solved"
     },
     {
       "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-      "v_pu": 1.02614086751,
-      "angle_deg": 30.1942180062,
+      "v_pu": 1.02627808825,
+      "angle_deg": 30.1772971711,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
     },
     {
       "bus_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-      "v_pu": 1.03032490243,
-      "angle_deg": 30.351359551,
+      "v_pu": 1.03158728161,
+      "angle_deg": 30.3278880002,
       "p_injected_mw": 0.8,
       "q_injected_mvar": 0.2,
       "status": "solved"
@@ -50,48 +50,48 @@
   "branch_results": [
     {
       "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-      "p_from_mw": 0.0503973646599,
-      "q_from_mvar": 0.151686953045,
-      "p_to_mw": -0.0500000000008,
+      "p_from_mw": 0.0503841042175,
+      "q_from_mvar": 0.151487629235,
+      "p_to_mw": -0.0500000000007,
       "q_to_mvar": -0.15,
-      "losses_p_mw": 0.000397364659094,
-      "losses_q_mvar": 0.00168695304432
+      "losses_p_mw": 0.000384104216737,
+      "losses_q_mvar": 0.00148762923463
     },
     {
       "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
-      "p_from_mw": -0.000227964841426,
-      "q_from_mvar": -0.0153239342357,
-      "p_to_mw": 0.000227964927488,
-      "q_to_mvar": -0.0153805169482,
-      "losses_p_mw": 8.60621483475e-11,
-      "losses_q_mvar": -0.0307044511839
+      "p_from_mw": -0.000155330459671,
+      "q_from_mvar": -0.0347945309707,
+      "p_to_mw": 0.000155330527363,
+      "q_to_mvar": -0.034890291924,
+      "losses_p_mw": 6.76915717489e-11,
+      "losses_q_mvar": -0.0696848228947
     },
     {
       "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "p_from_mw": -0.746797186461,
-      "q_from_mvar": -0.0756580800728,
-      "p_to_mw": 0.746900023738,
-      "q_to_mvar": 0.0782269544279,
-      "losses_p_mw": 0.00010283727697,
-      "losses_q_mvar": 0.00256887435508
+      "p_from_mw": -0.745917418594,
+      "q_from_mvar": -0.114830947979,
+      "p_to_mw": 0.746021378143,
+      "q_to_mvar": 0.11721108501,
+      "losses_p_mw": 0.000103959548504,
+      "losses_q_mvar": 0.00238013703034
     },
     {
       "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "p_from_mw": -0.797297625415,
-      "q_from_mvar": -0.199209693204,
-      "p_to_mw": 0.800000000048,
-      "q_to_mvar": 0.199999999981,
-      "losses_p_mw": 0.00270237463283,
-      "losses_q_mvar": 0.000790306776468
+      "p_from_mw": -0.7964057201,
+      "q_from_mvar": -0.199014128725,
+      "p_to_mw": 0.800000000043,
+      "q_to_mvar": 0.19999999998,
+      "losses_p_mw": 0.00359427994277,
+      "losses_q_mvar": 0.000985871255082
     }
   ],
   "summary": {
-    "total_losses_p_mw": 0.00320257665495,
-    "total_losses_q_mvar": -0.025658317008,
+    "total_losses_p_mw": 0.0040823437757,
+    "total_losses_q_mvar": -0.0648311853746,
     "min_v_pu": 1.0,
-    "max_v_pu": 1.03032490243,
-    "slack_p_mw": -0.746797186462,
-    "slack_q_mvar": -0.0756580800728
+    "max_v_pu": 1.03158728161,
+    "slack_p_mw": -0.745917418594,
+    "slack_q_mvar": -0.114830947979
   },
   "unsolved_node_ids": [],
   "kryteria_napiecia": {

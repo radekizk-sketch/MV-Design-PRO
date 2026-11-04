@@ -2,43 +2,49 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
 import type { TransformerType } from '../../catalog/types';
 
-import { MISSING_DASH } from '../../shared/formatPolishValue';
+import { MISSING_DASH, formatPolishValue } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveCaseId } from '../../app-state/store';
 import { buildCatalogBinding } from '../../catalog/catalogBinding';
 import type { CatalogNamespace } from '../../catalog/types';
-import type { EnergyNetworkModel, Transformer } from '../../../types/enm';
+import type { EnergyNetworkModel, Source, Substation, Transformer } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { GpzSectionsEditor } from '../../network-build/cards/GpzSectionsEditor';
+import { TabelaPolSn, type SekcjaTabeliPol } from '../../network-build/cards/TabelaPolSn';
+import {
+  KOMUNIKAT_STOSUNKU_RX,
+  KOMUNIKAT_STOSUNKU_RX_MIN,
+  stosunekRxPoprawny,
+} from '../../../ui2/model/stosunekRxZrodla';
 
-type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
-type ShortCircuitInputMode = 'HV_110_ADVANCED' | 'SN_SIMPLIFIED';
+/**
+ * Konfigurator GPZ 110/SN (ekran E-10) — JEDYNY edytor GPZ (karta KATALOG-PRZEJECIE-PR,
+ * decyzja architekta). Każda kontrolka jest operacją modelu, a wartości są czytane z modelu:
+ *  - Identyfikacja: nazwa stacji GPZ → `update_element_parameters` na stacji; oznaczenie
+ *    tylko do odczytu (operacja edycji stacji nie przyjmuje `designation`);
+ *  - Zasilanie: S″k, R/X, S″k,min, R/X (MIN) albo R i X sieci zasilającej → `update_element_parameters`
+ *    na źródle GPZ — te same pola, które czyta bieg zwarciowy (`enm/zrodlo_zwarcie.py`);
+ *  - Transformator 110/SN: typ → `assign_catalog_to_element` (tabliczka z katalogu);
+ *  - Sekcje SN: `add/update/delete_gpz_section` przez `GpzSectionsEditor`;
+ *  - Pola SN: pola (`Bay`) stacji na szynach sekcji z modelu — dodanie (kreator `add_sn_bay`),
+ *    karta pola E-11, usunięcie (`delete_element`), bateria/zespół pola BKR/ZU (`TabelaPolSn`).
+ * Do tej karty cały ekran poza transformatorem był stanem formularza bez operacji (nazwa,
+ * oznaczenie, operator, lokalizacja, tryb i S″k sieci 110 kV, R/X, liczba sekcji, sprzęgło,
+ * system szyn, bilans) — inżynier wpisywał S″k, a zwarcia liczyły z innej wartości.
+ */
+
+type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays';
 
 const CARD_LABELS: Record<GpzCardId, string> = {
   identification: 'Identyfikacja',
-  'hv-side': 'Strona 110 kV',
+  'hv-side': 'Sieć zasilająca',
   transformer: 'Transformator 110/SN',
   sections: 'Sekcje SN',
-  'bays-balance': 'Bilans pól SN',
+  bays: 'Pola SN',
 };
 
 interface GpzConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
-}
-
-interface GpzData {
-  name: string;
-  designation: string;
-  operator: string;
-  location: string;
-  shortCircuitInputMode: ShortCircuitInputMode;
-  snShortCircuitMva: number | null;
-  hvVoltageKv: number;
-  hvShortCircuitMva: number | null;
-  hvRX: number | null;
-  sectionsCount: number;
-  hasCoupler: boolean;
-  busbarSystem: string;
-  baysPerSectionCount: number[];
 }
 
 /** Opcja listy transformatorów 110/SN — z KATALOGU backendu (`/api/catalog/transformer-types`),
@@ -64,51 +70,105 @@ export function opcjeTransformatorow110(
     .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id));
 }
 
-function emptyGpzData(): GpzData {
-  return {
-    name: '',
-    designation: '',
-    operator: '',
-    location: '',
-    shortCircuitInputMode: 'HV_110_ADVANCED',
-    snShortCircuitMva: null,
-    hvVoltageKv: 110,
-    hvShortCircuitMva: null,
-    hvRX: null,
-    sectionsCount: 2,
-    hasCoupler: true,
-    busbarSystem: 'pojedynczy sekcjonowany',
-    baysPerSectionCount: [0, 0],
-  };
+/** GPZ modelu dla źródła `gpzRef`: źródło, jego stacja GPZ i transformatory 110/SN stacji
+ * (kolejność `transformer_refs`). `istnieje` = w modelu jest takie źródło ze stacją GPZ. */
+export interface GpzModelu {
+  readonly istnieje: boolean;
+  readonly zrodlo: Source | null;
+  readonly stacja: Substation | null;
+  readonly transformatory: Transformer[];
 }
 
-/** Transformatory 110/SN stacji GPZ, której źródłem jest `gpzRef` (kolejność `transformer_refs`).
- * `istnieje` = w modelu jest takie źródło ze stacją GPZ. */
-export function transformatoryGpzZrodla(
-  snapshot: EnergyNetworkModel | null,
-  gpzRef: string | null,
-): { istnieje: boolean; transformatory: Transformer[] } {
-  if (!snapshot || !gpzRef) return { istnieje: false, transformatory: [] };
-  const zrodlo = (snapshot.sources ?? []).find((s) => s.ref_id === gpzRef);
+export function gpzModelu(snapshot: EnergyNetworkModel | null, gpzRef: string | null): GpzModelu {
+  const brak: GpzModelu = { istnieje: false, zrodlo: null, stacja: null, transformatory: [] };
+  if (!snapshot || !gpzRef) return brak;
+  const zrodlo = (snapshot.sources ?? []).find((s) => s.ref_id === gpzRef) ?? null;
   const stacja = zrodlo?.substation_ref
     ? (snapshot.substations ?? []).find(
         (st) => st.ref_id === zrodlo.substation_ref && st.station_type === 'gpz',
-      )
-    : undefined;
-  if (!stacja) return { istnieje: false, transformatory: [] };
+      ) ?? null
+    : null;
+  if (!zrodlo || !stacja) return { ...brak, zrodlo };
   const poRefie = new Map((snapshot.transformers ?? []).map((tr) => [tr.ref_id, tr]));
   return {
     istnieje: true,
+    zrodlo,
+    stacja,
     transformatory: stacja.transformer_refs
       .map((ref) => poRefie.get(ref))
       .filter((tr): tr is Transformer => tr !== undefined),
   };
 }
 
-const LICZBA_PL = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 3 });
-function formatujLiczbe(wartosc: number | null | undefined, jednostka: string): string {
+/** Zgodność wstecz nazwy pomocnika testów transformatora (ten sam wynik co `gpzModelu`). */
+export function transformatoryGpzZrodla(
+  snapshot: EnergyNetworkModel | null,
+  gpzRef: string | null,
+): { istnieje: boolean; transformatory: Transformer[] } {
+  const gpz = gpzModelu(snapshot, gpzRef);
+  return { istnieje: gpz.istnieje, transformatory: gpz.transformatory };
+}
+
+/** Liczba w formaterze wspólnym: wartości całkowite bez zbędnych zer, ułamkowe do `maks`
+ * miejsc (kontrakt prezentacji §10 pkt 7). */
+function liczba(wartosc: number | null | undefined, jednostka = '', maks = 3): string {
   if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) return MISSING_DASH;
-  return jednostka ? `${LICZBA_PL.format(wartosc)} ${jednostka}` : LICZBA_PL.format(wartosc);
+  let miejsca = 0;
+  while (miejsca < maks && Math.abs(wartosc * 10 ** miejsca - Math.round(wartosc * 10 ** miejsca)) > 1e-9) {
+    miejsca += 1;
+  }
+  return formatPolishValue(wartosc, { decimals: miejsca, ...(jednostka ? { unit: jednostka } : {}) });
+}
+
+/** Wiersz danych sieci zasilającej: pole źródła, etykieta, jednostka, reguła poprawności. */
+interface PoleZasilania {
+  readonly klucz: keyof Source & string;
+  readonly etykieta: string;
+  readonly jednostka: string;
+  readonly opcjonalne: boolean;
+  readonly poprawne: (v: number) => boolean;
+  readonly komunikat: string;
+}
+
+const DODATNIA = (v: number) => Number.isFinite(v) && v > 0;
+
+/** Pola sieci zasilającej źródła GPZ — te, które czyta bieg zwarciowy (tryb danych źródła
+ * z `enm/zrodlo_zwarcie.py::tryb_danych`: impedancja jawna R+jX ma pierwszeństwo przed S″k). */
+export function polaZasilania(zrodlo: Source): PoleZasilania[] {
+  const impedancja =
+    typeof zrodlo.r_ohm === 'number' && typeof zrodlo.x_ohm === 'number'
+    && !(zrodlo.r_ohm === 0 && zrodlo.x_ohm === 0);
+  if (impedancja) {
+    return [
+      { klucz: 'r_ohm', etykieta: 'Rezystancja sieci R_Q', jednostka: 'Ω', opcjonalne: false, poprawne: (v) => Number.isFinite(v) && v >= 0, komunikat: 'Rezystancja R musi być nieujemna.' },
+      { klucz: 'x_ohm', etykieta: 'Reaktancja sieci X_Q', jednostka: 'Ω', opcjonalne: false, poprawne: DODATNIA, komunikat: 'Reaktancja X musi być dodatnia.' },
+    ];
+  }
+  const wn = zrodlo.source_side === 'HV_110';
+  return [
+    { klucz: wn ? 'sk3_hv_mva' : 'sk3_mva', etykieta: wn ? 'Moc zwarciowa S″k (110 kV)' : 'Moc zwarciowa S″k', jednostka: 'MVA', opcjonalne: false, poprawne: DODATNIA, komunikat: 'Moc zwarciowa S″k musi być dodatnia.' },
+    { klucz: 'rx_ratio', etykieta: 'Stosunek R/X', jednostka: '', opcjonalne: false, poprawne: stosunekRxPoprawny, komunikat: KOMUNIKAT_STOSUNKU_RX },
+    { klucz: 'sk3_min_mva', etykieta: 'Moc zwarciowa S″k,min', jednostka: 'MVA', opcjonalne: true, poprawne: DODATNIA, komunikat: 'Moc zwarciowa S″k,min musi być dodatnia.' },
+    { klucz: 'rx_ratio_min', etykieta: 'Stosunek R/X (MIN)', jednostka: '', opcjonalne: true, poprawne: stosunekRxPoprawny, komunikat: KOMUNIKAT_STOSUNKU_RX_MIN },
+  ];
+}
+
+/**
+ * Sekcje GPZ jako sekcje tabeli pól: szyna sekcji, nazwa, sekcja GPZ (kontekst kreatora pola)
+ * i sprzęgła sekcji z modelu (`left/right_coupler_ref` → nazwa gałęzi).
+ */
+export function sekcjeTabeliPolGpz(stacja: Substation, galezie: readonly { ref_id: string; name: string }[]): SekcjaTabeliPol[] {
+  const nazwaGalezi = new Map(galezie.map((g) => [g.ref_id, g.name || g.ref_id]));
+  return [...(stacja.gpz_sections ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .map((s) => ({
+      busRef: s.bus_ref,
+      etykieta: s.name || s.section_id,
+      gpzSectionId: s.section_id,
+      sprzegla: [s.left_coupler_ref, s.right_coupler_ref]
+        .filter((r): r is string => typeof r === 'string' && r.length > 0)
+        .map((r) => nazwaGalezi.get(r) ?? r),
+    }));
 }
 
 const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
@@ -116,16 +176,16 @@ const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
   'hv-side',
   'transformer',
   'sections',
-  'bays-balance',
+  'bays',
 ]);
 
 /** Karta W2-B (klasa `ACTION_ROADMAP_HINT_PL`): deep-link na konkretną kartę
  *  E-10 — wzorzec `stationDefaultCard` z `StationConfiguratorSurface.tsx`.
  *  Akcje menu SLD "Pokaż dane zwarciowe źródła" (GPZ) / "Pokaż dane
- *  zwarciowe sekcji" (`show-sc-source`/`show-sc-data`,
- *  `shared/sldActionExecutor.ts`) otwierają WPROST kartę "Strona 110 kV"
- *  zamiast zostawiać użytkownika na domyślnej "Identyfikacja". Nieznana/
- *  brakująca wartość = uczciwy domyślny start. */
+ *  zwarciowe sekcji" (`show-sc-source`/`show-sc-data`) otwierają kartę sieci zasilającej,
+ *  "Dodaj sekcję rozdzielni SN" (`add-section`) — kartę sekcji
+ *  (`shared/sldActionExecutor.ts::ACTION_DEFAULT_CARD`). Nieznana/brakująca wartość =
+ *  uczciwy domyślny start. */
 function gpzDefaultCard(surface: WorkspaceSurfaceDescriptor): GpzCardId {
   const payload = surface.routeState?.payload;
   const defaultCard = payload && typeof payload === 'object'
@@ -136,14 +196,20 @@ function gpzDefaultCard(surface: WorkspaceSurfaceDescriptor): GpzCardId {
     : 'identification';
 }
 
+const TEKST = 'text-[length:var(--mvd-font-size-data)]';
+
 export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
   const [activeCard, setActiveCard] = useState<GpzCardId>(() => gpzDefaultCard(surface));
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
+  const activeCaseId = useActiveCaseId();
   const gpzRef = surface.entityRef ?? null;
-  const [data, setData] = useState<GpzData>(() => emptyGpzData());
+  const gpz = useMemo(() => gpzModelu(snapshot, gpzRef), [snapshot, gpzRef]);
   const [opcjeTransformatora, setOpcjeTransformatora] = useState<OpcjaTransformatora110[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  const [komunikat, setKomunikat] = useState<{ karta: GpzCardId; tekst: string } | null>(null);
+
   useEffect(() => {
     let anulowane = false;
     fetchTransformerTypes()
@@ -162,70 +228,68 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     };
   }, []);
 
-  const activeCaseId = useActiveCaseId();
-  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
-  const [komunikatTransformatora, setKomunikatTransformatora] = useState<string | null>(null);
-  // Transformatory 110/SN GPZ to elementy MODELU (`Substation.transformer_refs` stacji GPZ
-  // źródła) — wybór typu jest operacją `assign_catalog_to_element` na tym elemencie, a moc,
-  // u_k i grupa połączeń są tabliczką z katalogu, nie polami formularza.
-  const transformatoryGpz = useMemo(
-    () => transformatoryGpzZrodla(snapshot, gpzRef),
-    [snapshot, gpzRef],
-  );
-  const zmienTypTransformatora = (transformator: Transformer, catalogItemId: string) => {
+  /** Operacja modelu z karty `karta`; odmowa backendu wraca w komunikacie tej karty. */
+  const wykonaj = async (
+    karta: GpzCardId,
+    nazwa: string,
+    payload: Record<string, unknown>,
+  ): Promise<boolean> => {
     if (!activeCaseId) {
-      setKomunikatTransformatora('Zmiana typu transformatora wymaga aktywnego zakresu obliczeń.');
-      return;
+      setKomunikat({ karta, tekst: 'Zmiana GPZ wymaga aktywnego zakresu obliczeń.' });
+      return false;
     }
-    setKomunikatTransformatora(null);
-    void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
-      element_ref: transformator.ref_id,
-      catalog_binding: buildCatalogBinding(
-        (transformator.catalog_namespace as CatalogNamespace | null | undefined) ?? 'TRAFO_SN_NN',
-        catalogItemId,
-      ),
-    });
+    setKomunikat(null);
+    const odpowiedz = await executeDomainOperation(activeCaseId, nazwa, payload);
+    if (!odpowiedz || odpowiedz.error) {
+      setKomunikat({ karta, tekst: odpowiedz?.error ?? 'Operacja nie została wykonana.' });
+      return false;
+    }
+    return true;
   };
 
-  const gpzNameFromSnapshot = useMemo(() => {
-    if (!gpzRef || !snapshot) return null;
-    const source = (snapshot.sources ?? []).find(
-      (s: { ref_id: string; name?: string }) => s.ref_id === gpzRef,
-    );
-    return source?.name ?? null;
-  }, [gpzRef, snapshot]);
+  const komunikatKarty = (karta: GpzCardId) =>
+    komunikat && komunikat.karta === karta ? (
+      <p data-testid={`gpz-card-error-${karta}`} className={`${TEKST} text-sygnal-blokada-tusz`}>
+        {komunikat.tekst}
+      </p>
+    ) : null;
 
-  const completeness = useMemo(() => {
-    const hasShortCircuitInput =
-      data.shortCircuitInputMode === 'HV_110_ADVANCED'
-        ? data.hvShortCircuitMva !== null && data.hvShortCircuitMva > 0
-        : data.snShortCircuitMva !== null && data.snShortCircuitMva > 0;
+  const brakGpz = (
+    <p data-testid="gpz-no-model" className={`${TEKST} text-scada-muted`}>
+      W modelu nie ma jeszcze tego GPZ. Utwórz GPZ akcją „Dodaj źródło zasilania GPZ” z panelu
+      budowy sieci — konfigurator edytuje GPZ istniejący w modelu.
+    </p>
+  );
+
+  const kompletnosc = useMemo(() => {
+    if (!gpz.istnieje || !gpz.zrodlo || !gpz.stacja) return { done: 0, total: 4 };
+    const zasilanie = polaZasilania(gpz.zrodlo).filter((p) => !p.opcjonalne);
     const checks = [
-      data.name.trim().length > 0,
-      hasShortCircuitInput,
-      transformatoryGpz.istnieje &&
-        transformatoryGpz.transformatory.every((tr) => Boolean(tr.catalog_ref)),
-      data.sectionsCount > 0,
+      Boolean(gpz.stacja.name?.trim()),
+      zasilanie.every((p) => typeof gpz.zrodlo?.[p.klucz] === 'number'),
+      gpz.transformatory.every((tr) => Boolean(tr.catalog_ref)),
+      (gpz.stacja.gpz_sections ?? []).length > 0,
     ];
-    const done = checks.filter(Boolean).length;
-    return { done, total: checks.length };
-  }, [data, transformatoryGpz]);
+    return { done: checks.filter(Boolean).length, total: checks.length };
+  }, [gpz]);
+
+  const napiecieSzynyZrodla = useMemo(() => {
+    const szyna = (snapshot?.buses ?? []).find((b) => b.ref_id === gpz.zrodlo?.bus_ref);
+    return szyna?.voltage_kv ?? null;
+  }, [snapshot, gpz.zrodlo]);
 
   return (
-    <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
-        <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
-          Główny Punkt Zasilający 110/SN
-        </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {data.name || gpzNameFromSnapshot || 'GPZ 110/SN'}
+    <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-3">
+      <div className="mb-2 flex items-baseline gap-3">
+        <h2 className="text-base font-semibold text-scada-text">
+          {gpz.stacja?.name || gpz.zrodlo?.name || 'GPZ 110/SN'}
         </h2>
-        <div className="mt-1 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-          Zakres konfiguracji: {completeness.done}/{completeness.total} kart technicznych
-        </div>
+        <span className={`${TEKST} text-scada-muted`}>
+          Główny Punkt Zasilający · konfiguracja {kompletnosc.done}/{kompletnosc.total}
+        </span>
       </div>
 
-      <nav role="tablist" className="flex shrink-0 border-b border-scada-border">
+      <nav role="tablist" className="flex shrink-0 flex-wrap border-b border-scada-border">
         {(Object.keys(CARD_LABELS) as GpzCardId[]).map((id) => (
           <button
             key={id}
@@ -236,7 +300,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             aria-selected={activeCard === id}
             onClick={() => setActiveCard(id)}
             className={
-              'whitespace-nowrap px-3 py-2 text-[length:var(--mvd-font-size-data)] font-medium '
+              `whitespace-nowrap px-3 py-1.5 ${TEKST} font-medium `
               + (activeCard === id
                 ? 'border-b-2 border-scada-sn text-scada-text'
                 : 'border-b-2 border-transparent text-scada-muted hover:text-scada-text')
@@ -247,399 +311,293 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
         ))}
       </nav>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto py-2">
         {activeCard === 'identification' && (
-          <div data-testid="gpz-card-content-identification" className="space-y-3">
-            <Field
-              label="Nazwa GPZ"
-              required
-              value={data.name}
-              onChange={(v) => setData((d) => ({ ...d, name: v }))}
-              placeholder="np. GPZ Wschód"
-            />
-            <Field
-              label="Oznaczenie ruchowe"
-              value={data.designation}
-              onChange={(v) => setData((d) => ({ ...d, designation: v }))}
-              placeholder="np. RPZ-W"
-            />
-            <Field
-              label="OSD / operator"
-              value={data.operator}
-              onChange={(v) => setData((d) => ({ ...d, operator: v }))}
-              placeholder="PSE / Energa / Tauron / Enea / PGE"
-            />
-            <Field
-              label="Lokalizacja"
-              value={data.location}
-              onChange={(v) => setData((d) => ({ ...d, location: v }))}
-              placeholder="Obszar / gmina"
-            />
+          <div data-testid="gpz-card-content-identification" className="space-y-1">
+            {!gpz.stacja ? brakGpz : (
+              <dl className={`grid grid-cols-[14rem_1fr] items-center gap-x-3 gap-y-1 ${TEKST}`}>
+                <dt className="text-scada-muted">Nazwa GPZ</dt>
+                <dd>
+                  <PoleTekstowe
+                    key={`${gpz.stacja.ref_id}-${gpz.stacja.name}`}
+                    testId="gpz-name-input"
+                    wartosc={gpz.stacja.name ?? ''}
+                    onZatwierdz={(nazwa) =>
+                      wykonaj('identification', 'update_element_parameters', {
+                        element_ref: gpz.stacja!.ref_id,
+                        parameters: { name: nazwa },
+                      })}
+                  />
+                </dd>
+                <dt className="text-scada-muted">Oznaczenie ruchowe</dt>
+                <dd data-testid="gpz-designation" className="text-scada-text">
+                  {gpz.stacja.designation || MISSING_DASH}
+                </dd>
+              </dl>
+            )}
+            {komunikatKarty('identification')}
           </div>
         )}
 
         {activeCard === 'hv-side' && (
-          <div data-testid="gpz-card-content-hv-side" className="space-y-3">
-            <div className="grid gap-2 md:grid-cols-2">
-              <button
-                type="button"
-                data-testid="gpz-short-circuit-mode-hv"
-                onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'HV_110_ADVANCED' }))}
-                className={
-                  'border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold '
-                  + (data.shortCircuitInputMode === 'HV_110_ADVANCED'
-                    ? 'border-scada-sn bg-scada-surface text-scada-text'
-                    : 'border-scada-border text-scada-muted hover:text-scada-text')
-                }
-              >
-                Tryb WN/SN: Sk3 na szynie 110 kV
-              </button>
-              <button
-                type="button"
-                data-testid="gpz-short-circuit-mode-sn"
-                onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'SN_SIMPLIFIED' }))}
-                className={
-                  'border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold '
-                  + (data.shortCircuitInputMode === 'SN_SIMPLIFIED'
-                    ? 'border-scada-sn bg-scada-surface text-scada-text'
-                    : 'border-scada-border text-scada-muted hover:text-scada-text')
-                }
-              >
-                Tryb uproszczony: tylko Sk3 po stronie SN
-              </button>
-            </div>
-
-            {data.shortCircuitInputMode === 'HV_110_ADVANCED' && (
-              <>
-            <NumberField
-              label="Napięcie znamionowe WN"
-              unit="kV"
-              value={data.hvVoltageKv}
-              onChange={(v) => setData((d) => ({ ...d, hvVoltageKv: v ?? 110 }))}
-              required
-            />
-            <NumberField
-              label="Moc zwarciowa S''k 110 kV"
-              unit="MVA"
-              value={data.hvShortCircuitMva}
-              onChange={(v) => setData((d) => ({ ...d, hvShortCircuitMva: v }))}
-              required
-              placeholder="np. 2500"
-            />
-            <NumberField
-              label="Stosunek R/X źródła 110 kV"
-              unit="-"
-              value={data.hvRX}
-              onChange={(v) => setData((d) => ({ ...d, hvRX: v }))}
-              placeholder="0,1"
-            />
-              </>
+          <div data-testid="gpz-card-content-hv-side" className="space-y-1">
+            {!gpz.zrodlo ? brakGpz : (
+              <table className={`${TEKST}`}>
+                <tbody>
+                  <tr>
+                    <th className="w-56 py-0.5 pr-3 text-left font-normal text-scada-muted">Strona zadania danych</th>
+                    <td data-testid="gpz-supply-side" className="text-scada-text" colSpan={2}>
+                      {gpz.zrodlo.source_side === 'HV_110'
+                        ? 'szyna 110 kV (transformatory 110/SN w modelu)'
+                        : 'szyny SN (impedancja transformatorów 110/SN w równoważniku)'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="py-0.5 pr-3 text-left font-normal text-scada-muted">
+                      Napięcie znamionowe U<sub>n</sub>
+                    </th>
+                    <td data-testid="gpz-supply-un" className="mvd-num text-scada-text">{liczba(napiecieSzynyZrodla)}</td>
+                    <td className="pl-1 text-scada-muted">kV</td>
+                  </tr>
+                  {polaZasilania(gpz.zrodlo).map((pole) => (
+                    <tr key={pole.klucz}>
+                      <th className="py-0.5 pr-3 text-left font-normal text-scada-muted">{pole.etykieta}</th>
+                      <td>
+                        <PoleLiczbowe
+                          key={`${pole.klucz}-${String(gpz.zrodlo?.[pole.klucz])}`}
+                          testId={`gpz-supply-${pole.klucz}`}
+                          wartosc={typeof gpz.zrodlo?.[pole.klucz] === 'number' ? (gpz.zrodlo[pole.klucz] as number) : null}
+                          opcjonalne={pole.opcjonalne}
+                          poprawne={pole.poprawne}
+                          komunikat={pole.komunikat}
+                          onBlad={(tekst) => setKomunikat({ karta: 'hv-side', tekst })}
+                          onZatwierdz={(v) =>
+                            wykonaj('hv-side', 'update_element_parameters', {
+                              element_ref: gpz.zrodlo!.ref_id,
+                              parameters: { [pole.klucz]: v },
+                            })}
+                        />
+                      </td>
+                      <td className="pl-1 text-scada-muted">{pole.jednostka}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
-            {data.shortCircuitInputMode === 'SN_SIMPLIFIED' && (
-              <NumberField
-                label="Moc zwarciowa S''k po stronie SN"
-                unit="MVA"
-                value={data.snShortCircuitMva}
-                onChange={(v) => setData((d) => ({ ...d, snShortCircuitMva: v }))}
-                required
-                placeholder="np. 310"
-              />
-            )}
-            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-              Parametry zwarciowe zasilają obliczenia IEC 60909 po stronie serwerowej.
-              Po dobraniu wariantu GPZ karta prowadzi dalej do transformatora i sekcji SN.
-            </p>
+            {komunikatKarty('hv-side')}
           </div>
         )}
 
         {activeCard === 'transformer' && (
-          <div data-testid="gpz-card-content-transformer" className="space-y-3">
-            <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
-              Katalog transformatora 110/SN
-            </div>
-            {!transformatoryGpz.istnieje && (
-              <p
-                data-testid="gpz-transformer-no-gpz"
-                className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted"
-              >
+          <div data-testid="gpz-card-content-transformer" className="space-y-1">
+            {!gpz.istnieje && (
+              <p data-testid="gpz-transformer-no-gpz" className={`${TEKST} text-scada-muted`}>
                 W modelu nie ma jeszcze tego GPZ. Utwórz GPZ (źródło zasilania SN) — typ
                 transformatorów 110/SN wybierasz przy jego tworzeniu i tu go później zmieniasz.
               </p>
             )}
-            {transformatoryGpz.istnieje && transformatoryGpz.transformatory.length === 0 && (
-              <p
-                data-testid="gpz-transformer-boundary-sn"
-                className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted"
-              >
+            {gpz.istnieje && gpz.transformatory.length === 0 && (
+              <p data-testid="gpz-transformer-boundary-sn" className={`${TEKST} text-scada-muted`}>
                 GPZ jest zasilany na granicy SN: moc zwarciowa podana po stronie SN zawiera już
                 impedancję transformatorów 110/SN, więc nie są one elementami modelu
-                obliczeniowego. Transformatory powstają, gdy zasilanie GPZ jest zadane
-                równoważnikiem sieci po stronie 110 kV.
+                obliczeniowego.
               </p>
             )}
-            {transformatoryGpz.transformatory.map((transformator) => {
-              const opcje = opcjeTransformatora.filter(
-                (opcja) => opcja.voltageLvKv === transformator.ulv_kv,
-              );
-              const wartosc = transformator.catalog_ref ?? '';
-              const opcjeZWartoscia =
-                wartosc && !opcje.some((opcja) => opcja.id === wartosc)
-                  ? [...opcje, { id: wartosc, label: `${wartosc} (spoza listy 110/SN)` }]
-                  : opcje;
-              return (
-                <div
-                  key={transformator.ref_id}
-                  data-testid={`gpz-transformer-${transformator.ref_id}`}
-                  className="space-y-2 rounded border border-scada-border p-2"
-                >
-                  <SelectField
-                    label={transformator.name || transformator.ref_id}
-                    required
-                    value={wartosc}
-                    onChange={(v) => zmienTypTransformatora(transformator, v)}
-                    options={opcjeZWartoscia}
-                    placeholder="— wybierz transformator z katalogu —"
-                    testId={`gpz-transformer-select-${transformator.ref_id}`}
-                  />
-                  <dl
-                    data-testid={`gpz-transformer-plate-${transformator.ref_id}`}
-                    className="grid grid-cols-2 gap-x-3 gap-y-1 text-[length:var(--mvd-font-size-data)]"
-                  >
-                    <dt className="text-scada-muted">Moc znamionowa Sn</dt>
-                    <dd className="text-scada-text">{formatujLiczbe(transformator.sn_mva, 'MVA')}</dd>
-                    <dt className="text-scada-muted">Napięcie zwarcia uk</dt>
-                    <dd className="text-scada-text">{formatujLiczbe(transformator.uk_percent, '%')}</dd>
-                    <dt className="text-scada-muted">Przekładnia</dt>
-                    <dd className="text-scada-text">
-                      {formatujLiczbe(transformator.uhv_kv, '')}/{formatujLiczbe(transformator.ulv_kv, 'kV')}
-                    </dd>
-                    <dt className="text-scada-muted">Grupa połączeń</dt>
-                    <dd className="text-scada-text">{transformator.vector_group || MISSING_DASH}</dd>
-                  </dl>
-                </div>
-              );
-            })}
-            {komunikatTransformatora && (
-              <p
-                data-testid="gpz-transformer-notice"
-                className="text-[length:var(--mvd-font-size-data)] text-scada-muted"
-              >
-                {komunikatTransformatora}
-              </p>
+            {gpz.transformatory.length > 0 && (
+              <table className={`w-full ${TEKST}`}>
+                <thead>
+                  <tr className="text-left text-scada-muted">
+                    <th className="font-normal">Transformator</th>
+                    <th className="font-normal">Typ z katalogu</th>
+                    <th className="font-normal text-right">S_n [MVA]</th>
+                    <th className="font-normal text-right">u_k [%]</th>
+                    <th className="font-normal text-right">U_WN/U_SN [kV]</th>
+                    <th className="font-normal">Grupa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gpz.transformatory.map((transformator) => {
+                    const opcje = opcjeTransformatora.filter(
+                      (opcja) => opcja.voltageLvKv === transformator.ulv_kv,
+                    );
+                    const wartosc = transformator.catalog_ref ?? '';
+                    const opcjeZWartoscia =
+                      wartosc && !opcje.some((opcja) => opcja.id === wartosc)
+                        ? [...opcje, { id: wartosc, label: `${wartosc} (spoza listy 110/SN)`, voltageLvKv: transformator.ulv_kv }]
+                        : opcje;
+                    return (
+                      <tr
+                        key={transformator.ref_id}
+                        data-testid={`gpz-transformer-${transformator.ref_id}`}
+                        className="border-t border-scada-border"
+                      >
+                        <td className="py-0.5 pr-2 text-scada-text">{transformator.name || transformator.ref_id}</td>
+                        <td className="pr-2">
+                          <select
+                            data-testid={`gpz-transformer-select-${transformator.ref_id}`}
+                            value={wartosc}
+                            onChange={(e) =>
+                              void wykonaj('transformer', 'assign_catalog_to_element', {
+                                element_ref: transformator.ref_id,
+                                catalog_binding: buildCatalogBinding(
+                                  (transformator.catalog_namespace as CatalogNamespace | null | undefined) ?? 'TRAFO_SN_NN',
+                                  e.target.value,
+                                ),
+                              })}
+                            className="w-full rounded border border-scada-border bg-scada-surface px-1 py-0.5 text-scada-text"
+                          >
+                            <option value="" disabled>— wybierz z katalogu —</option>
+                            {opcjeZWartoscia.map((opt) => (
+                              <option key={opt.id} value={opt.id}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <PlytaTransformatora transformator={transformator} />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
             {bladKatalogu && (
-              <p
-                data-testid="gpz-transformer-catalog-error"
-                className="text-[length:var(--mvd-font-size-data)] text-red-400"
-              >
+              <p data-testid="gpz-transformer-catalog-error" className={`${TEKST} text-sygnal-blokada-tusz`}>
                 Nie udało się pobrać transformatorów z katalogu: {bladKatalogu}
               </p>
             )}
-            {/* Moc, u_k, przekładnia i grupa połączeń to TABLICZKA z pozycji katalogowej
-                elementu modelu (materializacja `assign_catalog_to_element`) — dawne pole
-                „Moc znamionowa Sn" i lista z grupami Yyn0/YNyn0 były fantomem: nic ich nie
-                czytało (karta KATALOG-PRZEJECIE-PR). */}
+            {komunikatKarty('transformer')}
           </div>
         )}
 
         {activeCard === 'sections' && (
-          <div data-testid="gpz-card-content-sections" className="space-y-3">
-            <NumberField
-              label="Liczba sekcji szyn SN"
-              unit="szt."
-              value={data.sectionsCount}
-              onChange={(v) =>
-                setData((d) => ({
-                  ...d,
-                  sectionsCount: Math.max(1, v ?? 1),
-                  baysPerSectionCount:
-                    v && v > d.baysPerSectionCount.length
-                      ? [
-                          ...d.baysPerSectionCount,
-                          ...Array(v - d.baysPerSectionCount.length).fill(0),
-                        ]
-                      : d.baysPerSectionCount.slice(0, v ?? 1),
-                }))}
-              required
-            />
-            <CheckboxField
-              label="Sprzęgło między sekcjami"
-              checked={data.hasCoupler}
-              onChange={(v) => setData((d) => ({ ...d, hasCoupler: v }))}
-            />
-            <SelectField
-              label="System szyn"
-              value={data.busbarSystem}
-              onChange={(v) => setData((d) => ({ ...d, busbarSystem: v }))}
-              options={[
-                { id: 'pojedynczy sekcjonowany', label: 'Pojedynczy, sekcjonowany' },
-                { id: 'pojedynczy bez sekcji', label: 'Pojedynczy, bez sekcji' },
-                { id: 'podwojny', label: 'Podwójny' },
-              ]}
-            />
+          <div data-testid="gpz-card-content-sections">
+            {gpz.stacja ? <GpzSectionsEditor station={gpz.stacja} /> : brakGpz}
           </div>
         )}
 
-        {activeCard === 'bays-balance' && (
-          <div data-testid="gpz-card-content-bays-balance" className="space-y-3">
-            <p className="text-sm text-scada-muted">
-              Bilans pól SN per sekcja: pola liniowe, transformatorowe, pomiarowe,
-              sprzęgła, sekcyjne, źródłowe i rezerwowe.
-            </p>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {data.baysPerSectionCount.map((count, idx) => (
-                <div
-                  key={idx}
-                  className="rounded border border-scada-border bg-scada-surface p-3"
-                >
-                  <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
-                    Sekcja {String.fromCharCode(65 + idx)}
-                  </div>
-                  <div className="mt-1 text-lg font-semibold text-scada-text">
-                    {count > 0 ? `${count} pól` : MISSING_DASH}
-                  </div>
-                  <p className="mt-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-                    Pola dodaje się z menu kontekstowego sekcji lub przez akcję
-                    "Dodaj pole SN".
-                  </p>
-                </div>
-              ))}
-            </div>
+        {activeCard === 'bays' && (
+          <div data-testid="gpz-card-content-bays">
+            {!gpz.stacja ? brakGpz : (
+              <TabelaPolSn
+                stationRef={gpz.stacja.ref_id}
+                sekcje={sekcjeTabeliPolGpz(gpz.stacja, snapshot?.branches ?? [])}
+              />
+            )}
           </div>
         )}
       </div>
-
-      <div className="border-t border-scada-border p-3 text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        Karta GPZ pokazuje dane katalogowe, sekcje SN, transformatory i bilans pól.
-        Nowy układ GPZ dodaje akcja "Dodaj źródło zasilania GPZ" z panelu budowy sieci.
-      </div>
     </div>
   );
 }
 
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}
-
-function Field({ label, value, onChange, placeholder, required }: FieldProps) {
+function PlytaTransformatora({ transformator }: { transformator: Transformer }): JSX.Element {
+  // Moc, u_k, przekładnia i grupa połączeń to TABLICZKA pozycji katalogowej elementu modelu
+  // (materializacja `assign_catalog_to_element`) — nie pola formularza.
   return (
-    <div>
-      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
-      />
-    </div>
+    <>
+      <td data-testid={`gpz-transformer-plate-${transformator.ref_id}`} className="mvd-num text-right text-scada-text">
+        {liczba(transformator.sn_mva, 'MVA')}
+      </td>
+      <td className="mvd-num text-right text-scada-text">{liczba(transformator.uk_percent, '%')}</td>
+      <td className="mvd-num text-right text-scada-text">
+        {liczba(transformator.uhv_kv)}/{liczba(transformator.ulv_kv)}
+      </td>
+      <td className="pl-2 text-scada-text">{transformator.vector_group || MISSING_DASH}</td>
+    </>
   );
 }
 
-interface NumberFieldProps {
-  label: string;
-  unit?: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-  placeholder?: string;
-  required?: boolean;
+interface PoleTekstoweProps {
+  readonly testId: string;
+  readonly wartosc: string;
+  /** `false` = odmowa operacji: pole wraca do wartości z modelu (komunikat w karcie). */
+  readonly onZatwierdz: (wartosc: string) => Promise<boolean>;
 }
 
-function NumberField({ label, unit, value, onChange, placeholder, required }: NumberFieldProps) {
+/** Pole tekstowe zatwierdzane Enterem albo opuszczeniem pola — jedna operacja na zmianę. */
+function PoleTekstowe({ testId, wartosc, onZatwierdz }: PoleTekstoweProps): JSX.Element {
+  const [szkic, setSzkic] = useState(wartosc);
+  const zatwierdz = () => {
+    const nowa = szkic.trim();
+    if (nowa && nowa !== wartosc) {
+      void onZatwierdz(nowa).then((ok) => {
+        if (!ok) setSzkic(wartosc);
+      });
+    } else setSzkic(wartosc);
+  };
   return (
-    <div>
-      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
-        {unit && <span className="text-scada-muted"> [{unit}]</span>}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
-      <input
-        type="number"
-        value={value === null ? '' : value}
-        onChange={(e) => {
-          const next = e.target.value === '' ? null : Number(e.target.value);
-          onChange(next === null || Number.isNaN(next) ? null : next);
-        }}
-        placeholder={placeholder ?? 'Wprowadź wartość'}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
-      />
-    </div>
+    <input
+      type="text"
+      data-testid={testId}
+      value={szkic}
+      onChange={(e) => setSzkic(e.target.value)}
+      onBlur={zatwierdz}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+      className="w-64 rounded border border-scada-border bg-scada-surface px-2 py-0.5 text-scada-text focus:border-scada-sn focus:outline-none"
+    />
   );
 }
 
-interface SelectOption {
-  id: string;
-  label: string;
+interface PoleLiczboweProps {
+  readonly testId: string;
+  readonly wartosc: number | null;
+  readonly opcjonalne: boolean;
+  readonly poprawne: (v: number) => boolean;
+  readonly komunikat: string;
+  readonly onBlad: (komunikat: string) => void;
+  /** `false` = odmowa operacji: pole wraca do wartości z modelu (komunikat w karcie). */
+  readonly onZatwierdz: (wartosc: number | null) => Promise<boolean>;
 }
 
-interface SelectFieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: readonly SelectOption[];
-  required?: boolean;
-  placeholder?: string;
-  testId?: string;
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  required,
-  placeholder,
-  testId,
-}: SelectFieldProps) {
+/** Pole liczbowe zatwierdzane Enterem albo opuszczeniem pola. Puste pole czyści daną
+ * opcjonalną (scenariusz MIN liczy się wtedy z danych maksymalnych); dana wymagana i wartość
+ * niepoprawna nie wychodzą do backendu — komunikat wraca do karty. */
+function PoleLiczbowe(props: PoleLiczboweProps): JSX.Element {
+  const { testId, wartosc, opcjonalne, poprawne, komunikat, onBlad, onZatwierdz } = props;
+  // Zapis polski (przecinek dziesiętny, kontrakt prezentacji §10); wpis przyjmuje przecinek i kropkę.
+  const tekst0 = wartosc === null ? '' : String(wartosc).replace('.', ',');
+  const [szkic, setSzkic] = useState(tekst0);
+  // Wartość z modelu zmieniona poza polem (inna operacja, przeładowanie migawki) → pole ją pokazuje.
+  useEffect(() => setSzkic(tekst0), [tekst0]);
+  const zapisz = (v: number | null) => {
+    void onZatwierdz(v).then((ok) => {
+      if (!ok) setSzkic(tekst0);
+    });
+  };
+  const zatwierdz = () => {
+    const tekst = szkic.trim().replace(',', '.');
+    if (tekst === '') {
+      if (wartosc === null) return;
+      if (opcjonalne) zapisz(null);
+      else {
+        onBlad(komunikat);
+        setSzkic(tekst0);
+      }
+      return;
+    }
+    const liczbaWpisana = Number(tekst);
+    if (!poprawne(liczbaWpisana)) {
+      onBlad(komunikat);
+      setSzkic(tekst0);
+      return;
+    }
+    if (liczbaWpisana !== wartosc) zapisz(liczbaWpisana);
+  };
   return (
-    <div>
-      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
-      <select
-        data-testid={testId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text focus:border-scada-sn focus:outline-none"
-      >
-        {placeholder !== undefined && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((opt) => (
-          <option key={opt.id} value={opt.id}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-interface CheckboxFieldProps {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function CheckboxField({ label, checked, onChange }: CheckboxFieldProps) {
-  return (
-    <label className="flex items-center gap-2 text-sm text-scada-text">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-scada-border bg-scada-surface text-scada-sn focus:ring-scada-sn"
-      />
-      {label}
-    </label>
+    <input
+      type="text"
+      inputMode="decimal"
+      data-testid={testId}
+      value={szkic}
+      placeholder={opcjonalne ? 'z danych MAX' : undefined}
+      onChange={(e) => setSzkic(e.target.value)}
+      onBlur={zatwierdz}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+      className="mvd-num w-32 rounded border border-scada-border bg-scada-surface px-2 py-0.5 text-right text-scada-text focus:border-scada-sn focus:outline-none"
+    />
   );
 }
 

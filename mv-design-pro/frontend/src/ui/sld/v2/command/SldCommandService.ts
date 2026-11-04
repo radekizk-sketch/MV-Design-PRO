@@ -131,7 +131,7 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', section: 'Analizuj' },
   ],
   gpz: [
-    // Karta W2-B: dane zwarciowe źródła mieszkają w karcie „Strona 110 kV" konfiguratora GPZ.
+    // Karta W2-B: dane zwarciowe źródła mieszkają w karcie „Sieć zasilająca" konfiguratora GPZ.
     { id: 'show-sc-source', labelPl: 'Pokaż dane zwarciowe źródła', section: 'Otwórz' },
     { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', section: 'Edytuj' },
     { id: 'add-section', labelPl: 'Dodaj sekcję rozdzielni SN', section: 'Dodaj' },

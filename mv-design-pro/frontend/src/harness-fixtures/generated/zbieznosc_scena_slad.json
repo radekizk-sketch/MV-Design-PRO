@@ -1,11 +1,11 @@
 {
   "solver_version": "load-flow-newton-raphson-v1",
   "solver_method": "newton-raphson",
-  "proof_ref": "proof:power-flow:0c498f96556fea04142a93a244261aab4b92c4f8b2651e574d8954eff6f72e20",
+  "proof_ref": "proof:power-flow:090cc5b541975eae7721be2bdff842312dc28ce1a265d016a60761a31e9e96df",
   "proof_status": "complete",
   "reporting_status": "reportable",
-  "input_hash": "0028af91bb44ee3e82fda6220adcfe989b4836cffa2025aef705ffc892d224e4",
-  "snapshot_id": "b9a4e660138b377262e5b22b551df04991f81eb7c34d03cbd25a0487ba0a503a",
+  "input_hash": "15817d2571de51400479bc0cc0d1a34f9f45f9b2ecad5d95f260f465ccd5e395",
+  "snapshot_id": "8e614d5bc79f63366c184327f4a08b0878ccfdeb561f9e33ca03b5f62e431f22",
   "case_id": "case-demo",
   "run_id": "run-lf-scena-zbieznosc",
   "init_state": {
@@ -56,7 +56,7 @@
     "applied_phase_shifts": [
       {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-        "vector_group": "YNd11",
+        "vector_group": "Yd11",
         "clock_number": 11,
         "phase_shift_deg": 30.0,
         "phase_shift_rad": 0.523598775598,
@@ -79,26 +79,26 @@
   "iterations": [
     {
       "k": 1,
-      "norm_mismatch": 0.0542191907917,
-      "max_mismatch_pu": 0.0535218512663,
+      "norm_mismatch": 0.0592053023215,
+      "max_mismatch_pu": 0.0585503598394,
       "cause_if_failed": null
     },
     {
       "k": 2,
-      "norm_mismatch": 0.00162311479368,
-      "max_mismatch_pu": 0.00158439840398,
+      "norm_mismatch": 0.00176070186306,
+      "max_mismatch_pu": 0.00172852085033,
       "cause_if_failed": null
     },
     {
       "k": 3,
-      "norm_mismatch": 1.35045716351e-06,
-      "max_mismatch_pu": 1.26099514358e-06,
+      "norm_mismatch": 1.44150510438e-06,
+      "max_mismatch_pu": 1.37163798308e-06,
       "cause_if_failed": null
     },
     {
       "k": 4,
-      "norm_mismatch": 2.7896262452e-12,
-      "max_mismatch_pu": 2.08266887279e-12,
+      "norm_mismatch": 8.17002078629e-12,
+      "max_mismatch_pu": 6.24352246982e-12,
       "cause_if_failed": null
     }
   ],
@@ -111,16 +111,49 @@
       "name": "Kabel SN 1",
       "catalog_binding": {
         "catalog_namespace": "KABEL_SN",
-        "catalog_item_id": "cable-yakxs-3x120",
-        "catalog_item_version": null
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "KABEL_SN",
-        "catalog_item_id": "cable-yakxs-3x120",
-        "catalog_item_version": null
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
-      "materialized_params": null,
+      "source_catalog_label": "KABEL_SN:cable-tfk-yakxs-3x120@2024.1",
+      "materialized_params": {
+        "b0_siemens_per_km": null,
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "frequency_hz": 50.0,
+        "insulation_type": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "max_temperature_c": 90.0,
+        "number_of_cores": 3,
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "short_circuit_temperature_c": 250.0,
+        "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "trade_name": "YAKXS 3x120/16",
+        "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -133,16 +166,40 @@
       "name": "Linia SN 1",
       "catalog_binding": {
         "catalog_namespace": "LINIA_SN",
-        "catalog_item_id": "line-afl-70",
-        "catalog_item_version": null
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "LINIA_SN",
-        "catalog_item_id": "line-afl-70",
-        "catalog_item_version": null
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "LINIA_SN:line-afl-70",
-      "materialized_params": null,
+      "source_catalog_label": "LINIA_SN:line-base-al-st-70@2024.1",
+      "materialized_params": {
+        "b0_siemens_per_km": null,
+        "b_us_per_km": 2.9,
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "max_temperature_c": 70.0,
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rated_current_a": 230.0,
+        "short_circuit_temperature_c": 200.0,
+        "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+        "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "trade_name": null,
+        "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -155,16 +212,27 @@
       "name": "TR 110/15",
       "catalog_binding": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-110-15-25mva-ynd11",
-        "catalog_item_version": null
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-110-15-25mva-ynd11",
-        "catalog_item_version": null
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
-      "materialized_params": null,
+      "source_catalog_label": "TRAFO_SN_NN:tr-wn-sn-110-15-25mva-yd11@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1",
+        "i0_percent": 0.35,
+        "p0_kw": 25.0,
+        "pk_kw": 120.0,
+        "rated_power_mva": 25.0,
+        "uk_percent": 11.0,
+        "vector_group": "Yd11",
+        "voltage_hv_kv": 110.0,
+        "voltage_lv_kv": 15.0
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -177,16 +245,27 @@
       "name": "TR 15/0.4",
       "catalog_binding": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-15-04-630kva-dyn11",
-        "catalog_item_version": null
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-15-04-630kva-dyn11",
-        "catalog_item_version": null
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
-      "materialized_params": null,
+      "source_catalog_label": "TRAFO_SN_NN:wzl-tpmnr-630-15-04@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1",
+        "i0_percent": 1.3,
+        "p0_kw": 0.85,
+        "pk_kw": 6.3,
+        "rated_power_mva": 0.63,
+        "uk_percent": 4.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -198,36 +277,32 @@
       "element_type": "ZRODLO",
       "name": "Farma PV",
       "catalog_binding": {
-        "catalog_namespace": null,
-        "catalog_item_id": "conv-pv-nn-0p5mw",
-        "catalog_item_version": null
+        "catalog_namespace": "ZRODLO_NN_PV",
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
-        "catalog_namespace": null,
-        "catalog_item_id": "conv-pv-nn-0p5mw",
-        "catalog_item_version": null
+        "catalog_namespace": "ZRODLO_NN_PV",
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "conv-pv-nn-0p5mw",
-      "materialized_params": null,
-      "manual_override_count": 0,
-      "has_manual_overrides": false
-    },
-    {
-      "element_id": "gen_sync",
-      "element_type": "ZRODLO",
-      "name": "Generator synchroniczny",
-      "catalog_binding": {
-        "catalog_namespace": null,
-        "catalog_item_id": "gen-sync-2mva",
-        "catalog_item_version": null
+      "source_catalog_label": "ZRODLO_NN_PV:conv-pv-nn-0p5mw-0p4kv@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1",
+        "control_mode": "Q_U_DROOP",
+        "k_sc": null,
+        "max_power_kw": 500.0,
+        "pmax_mw": 0.5,
+        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+        "ptpiree_status": "NIEPOWIAZANY",
+        "rated_power_ac_kw": 550.0,
+        "sn_mva": 0.55,
+        "un_kv": 0.4
       },
-      "source_catalog": {
-        "catalog_namespace": null,
-        "catalog_item_id": "gen-sync-2mva",
-        "catalog_item_version": null
-      },
-      "source_catalog_label": "gen-sync-2mva",
-      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
       "manual_override_count": 0,
       "has_manual_overrides": false
     },
@@ -236,20 +311,20 @@
       "element_type": "ZRODLO_SN",
       "name": "System 110 kV",
       "catalog_binding": {
-        "catalog_namespace": "ZRODLO_SN",
-        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_namespace": null,
+        "catalog_item_id": null,
         "catalog_item_version": null
       },
       "source_catalog": {
-        "catalog_namespace": "ZRODLO_SN",
-        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_namespace": null,
+        "catalog_item_id": null,
         "catalog_item_version": null
       },
-      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "source_catalog_label": null,
       "materialized_params": null,
-      "parameter_origin": "CATALOG",
-      "parameter_source": "CATALOG",
-      "source_mode": "KATALOG",
+      "parameter_origin": "MANUAL_EQUIVALENT",
+      "parameter_source": "MANUAL_EQUIVALENT",
+      "source_mode": "EKSPERCKI_RECZNY",
       "manual_override_count": 0,
       "has_manual_overrides": false
     }
@@ -275,8 +350,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": 0,
-            "u_controlled_kv": 15.0075449408,
-            "u_regulation_kv": 15.0075449408,
+            "u_controlled_kv": 15.0095415381,
+            "u_regulation_kv": 15.0095415381,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -1,
@@ -291,8 +366,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -1,
-            "u_controlled_kv": 15.1973919011,
-            "u_regulation_kv": 15.1973919011,
+            "u_controlled_kv": 15.199418909,
+            "u_regulation_kv": 15.199418909,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,
@@ -307,8 +382,8 @@
             "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
             "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
             "position_before": -2,
-            "u_controlled_kv": 15.392107753,
-            "u_regulation_kv": 15.392107753,
+            "u_controlled_kv": 15.3941659432,
+            "u_regulation_kv": 15.3941659432,
             "setpoint_kv": 15.4,
             "deadband_kv": 0.1,
             "position_after": -2,
@@ -337,16 +412,49 @@
       "name": "Kabel SN 1",
       "catalog_binding": {
         "catalog_namespace": "KABEL_SN",
-        "catalog_item_id": "cable-yakxs-3x120",
-        "catalog_item_version": null
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "KABEL_SN",
-        "catalog_item_id": "cable-yakxs-3x120",
-        "catalog_item_version": null
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "KABEL_SN:cable-yakxs-3x120",
-      "materialized_params": null,
+      "source_catalog_label": "KABEL_SN:cable-tfk-yakxs-3x120@2024.1",
+      "materialized_params": {
+        "b0_siemens_per_km": null,
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "frequency_hz": 50.0,
+        "insulation_type": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "max_temperature_c": 90.0,
+        "number_of_cores": 3,
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "short_circuit_temperature_c": 250.0,
+        "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "trade_name": "YAKXS 3x120/16",
+        "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+          "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -359,16 +467,40 @@
       "name": "Linia SN 1",
       "catalog_binding": {
         "catalog_namespace": "LINIA_SN",
-        "catalog_item_id": "line-afl-70",
-        "catalog_item_version": null
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "LINIA_SN",
-        "catalog_item_id": "line-afl-70",
-        "catalog_item_version": null
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "LINIA_SN:line-afl-70",
-      "materialized_params": null,
+      "source_catalog_label": "LINIA_SN:line-base-al-st-70@2024.1",
+      "materialized_params": {
+        "b0_siemens_per_km": null,
+        "b_us_per_km": 2.9,
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "2024.1",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 70.0,
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 88.0,
+        "max_temperature_c": 70.0,
+        "r0_ohm_per_km": 1.224,
+        "r_ohm_per_km": 0.408,
+        "rated_current_a": 230.0,
+        "short_circuit_temperature_c": 200.0,
+        "source_reference": "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN",
+        "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+        "trade_name": null,
+        "voltage_rating_kv": 20.0,
+        "wartosci_robocze": {
+          "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+          "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+        },
+        "x0_ohm_per_km": 1.065,
+        "x_ohm_per_km": 0.355
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -381,16 +513,27 @@
       "name": "TR 110/15",
       "catalog_binding": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-110-15-25mva-ynd11",
-        "catalog_item_version": null
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-110-15-25mva-ynd11",
-        "catalog_item_version": null
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "TRAFO_SN_NN:tr-110-15-25mva-ynd11",
-      "materialized_params": null,
+      "source_catalog_label": "TRAFO_SN_NN:tr-wn-sn-110-15-25mva-yd11@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1",
+        "i0_percent": 0.35,
+        "p0_kw": 25.0,
+        "pk_kw": 120.0,
+        "rated_power_mva": 25.0,
+        "uk_percent": 11.0,
+        "vector_group": "Yd11",
+        "voltage_hv_kv": 110.0,
+        "voltage_lv_kv": 15.0
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -403,16 +546,27 @@
       "name": "TR 15/0.4",
       "catalog_binding": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-15-04-630kva-dyn11",
-        "catalog_item_version": null
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
         "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_item_id": "tr-15-04-630kva-dyn11",
-        "catalog_item_version": null
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "TRAFO_SN_NN:tr-15-04-630kva-dyn11",
-      "materialized_params": null,
+      "source_catalog_label": "TRAFO_SN_NN:wzl-tpmnr-630-15-04@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "wzl-tpmnr-630-15-04",
+        "catalog_item_version": "2024.1",
+        "i0_percent": 1.3,
+        "p0_kw": 0.85,
+        "pk_kw": 6.3,
+        "rated_power_mva": 0.63,
+        "uk_percent": 4.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
       "parameter_origin": "CATALOG",
       "parameter_source": "CATALOG",
       "source_mode": "KATALOG",
@@ -424,36 +578,32 @@
       "element_type": "ZRODLO",
       "name": "Farma PV",
       "catalog_binding": {
-        "catalog_namespace": null,
-        "catalog_item_id": "conv-pv-nn-0p5mw",
-        "catalog_item_version": null
+        "catalog_namespace": "ZRODLO_NN_PV",
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1"
       },
       "source_catalog": {
-        "catalog_namespace": null,
-        "catalog_item_id": "conv-pv-nn-0p5mw",
-        "catalog_item_version": null
+        "catalog_namespace": "ZRODLO_NN_PV",
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1"
       },
-      "source_catalog_label": "conv-pv-nn-0p5mw",
-      "materialized_params": null,
-      "manual_override_count": 0,
-      "has_manual_overrides": false
-    },
-    "gen_sync": {
-      "element_id": "gen_sync",
-      "element_type": "ZRODLO",
-      "name": "Generator synchroniczny",
-      "catalog_binding": {
-        "catalog_namespace": null,
-        "catalog_item_id": "gen-sync-2mva",
-        "catalog_item_version": null
+      "source_catalog_label": "ZRODLO_NN_PV:conv-pv-nn-0p5mw-0p4kv@2024.1",
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1",
+        "control_mode": "Q_U_DROOP",
+        "k_sc": null,
+        "max_power_kw": 500.0,
+        "pmax_mw": 0.5,
+        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+        "ptpiree_status": "NIEPOWIAZANY",
+        "rated_power_ac_kw": 550.0,
+        "sn_mva": 0.55,
+        "un_kv": 0.4
       },
-      "source_catalog": {
-        "catalog_namespace": null,
-        "catalog_item_id": "gen-sync-2mva",
-        "catalog_item_version": null
-      },
-      "source_catalog_label": "gen-sync-2mva",
-      "materialized_params": null,
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_mode": "KATALOG",
       "manual_override_count": 0,
       "has_manual_overrides": false
     },
@@ -462,34 +612,35 @@
       "element_type": "ZRODLO_SN",
       "name": "System 110 kV",
       "catalog_binding": {
-        "catalog_namespace": "ZRODLO_SN",
-        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_namespace": null,
+        "catalog_item_id": null,
         "catalog_item_version": null
       },
       "source_catalog": {
-        "catalog_namespace": "ZRODLO_SN",
-        "catalog_item_id": "src-gpz-110kv-2500mva",
+        "catalog_namespace": null,
+        "catalog_item_id": null,
         "catalog_item_version": null
       },
-      "source_catalog_label": "ZRODLO_SN:src-gpz-110kv-2500mva",
+      "source_catalog_label": null,
       "materialized_params": null,
-      "parameter_origin": "CATALOG",
-      "parameter_source": "CATALOG",
-      "source_mode": "KATALOG",
+      "parameter_origin": "MANUAL_EQUIVALENT",
+      "parameter_source": "MANUAL_EQUIVALENT",
+      "source_mode": "EKSPERCKI_RECZNY",
       "manual_override_count": 0,
       "has_manual_overrides": false
     }
   },
   "catalog_context_summary": {
-    "element_count": 7,
+    "element_count": 6,
     "by_type": {
       "ODCINEK_SN": 2,
       "TRANSFORMATOR_SN_NN": 2,
-      "ZRODLO": 2,
+      "ZRODLO": 1,
       "ZRODLO_SN": 1
     },
     "by_parameter_origin": {
-      "CATALOG": 5
+      "CATALOG": 5,
+      "MANUAL_EQUIVALENT": 1
     },
     "manual_override_element_count": 0,
     "manual_override_count": 0

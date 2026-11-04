@@ -15,6 +15,8 @@ const navigateToSldMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 const resolved: { station: string | null; bus: string | null } = { station: 'st-1', bus: 'bus-1' };
+/** Kontekst operacji (np. „Dodaj pole" z karty pól konfiguratora z wybraną rolą). */
+let kontekstOperacji: Record<string, unknown> = {};
 const snapshotState = {
   error: null as string | null,
   snapshot: {},
@@ -34,7 +36,7 @@ vi.mock('../../../../ui/topology/snapshotStore', () => {
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useNetworkBuildStore: (selector: (s: { closeOperationForm: typeof closeFormMock }) => unknown) =>
     selector({ closeOperationForm: closeFormMock }),
-  useActiveOperationContext: () => ({}),
+  useActiveOperationContext: () => kontekstOperacji,
 }));
 
 vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
@@ -131,7 +133,20 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     fetchBayTemplatesMock.mockResolvedValue([]);
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    kontekstOperacji = {};
+  });
+
+  it.each([
+    ['BKR', 'BKR'],
+    ['ZU', 'ZU'],
+    ['NIEZNANA', 'OUT'],
+  ])('rola z kontekstu %s → rola wstępnie wybrana %s (spoza listy ról modelu: domyślna)', (rola, oczekiwana) => {
+    kontekstOperacji = { bay_role: rola };
+    render(<KreatorPolaSn />);
+    expect((screen.getByTestId('mvd-kreator-pole-rola') as HTMLSelectElement).value).toBe(oczekiwana);
+  });
 
   it('dodaje pole SN z rolą, aparatem i katalogiem (operacja domenowa)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });

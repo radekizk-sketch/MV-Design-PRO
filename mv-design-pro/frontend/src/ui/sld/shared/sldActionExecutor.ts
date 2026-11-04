@@ -70,7 +70,7 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'open-source': 'E-10', // GPZ konfigurator
   'add-section': 'E-10',
   // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL, hint-przekierowanie): dane
-  // zwarciowe źródła/sekcji GPZ mieszkają w karcie "Strona 110 kV" tego
+  // zwarciowe źródła/sekcji GPZ mieszkają w karcie „Sieć zasilająca" tego
   // samego konfiguratora — martwy toast zamieniony na nawigację z
   // deep-linkiem `payload.defaultCard` (`ACTION_DEFAULT_CARD` niżej, czytany
   // przez `gpzDefaultCard` w `GpzConfiguratorSurface.tsx`, wzorzec
@@ -127,6 +127,9 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
 export const ACTION_DEFAULT_CARD: Readonly<Record<string, string>> = {
   'show-sc-source': 'hv-side',
   'show-sc-data': 'hv-side',
+  // Karta KATALOG-PRZEJECIE-PR: „Dodaj sekcję rozdzielni SN" otwierała kartę „Identyfikacja"
+  // konfiguratora GPZ — teraz kartę „Sekcje SN" z edytorem sekcji (operacja add_gpz_section).
+  'add-section': 'sections',
   // V12K-352: pozycje menu stacji i odcinka obiecują KONKRETNĄ kartę konfiguratora —
   // dotąd cztery pozycje odcinka („Zmień katalog", „Edytuj parametry ułożenia/linii",
   // „Pokaż obciążalność cieplną") otwierały tę samą kartę „Identyfikacja". Klucze kart
@@ -200,7 +203,7 @@ export function routeSurfaceLabelPl(screenCode: string): string {
  * Pozostałe 5 kluczy było hintami-PRZEKIEROWANIAMI do REALNIE istniejących
  * miejsc — zamienione na nawigację (fix_navigation), nie skasowane:
  * `show-sc-source`/`show-sc-data` → `ACTION_TO_SCREEN['E-10']` +
- * `ACTION_DEFAULT_CARD` (karta "Strona 110 kV" konfiguratora GPZ, weryfikacja
+ * `ACTION_DEFAULT_CARD` (karta „Sieć zasilająca" konfiguratora GPZ, weryfikacja
  * `resolveGpzSourceRefForSectionBus` dla refu sekcji); `change-family-to-overhead`/
  * `change-family-to-cable` → `ACTION_TO_SCREEN['E-12']` (pole "Rodzina" na
  * karcie domyślnej konfiguratora odcinka); `show-measurements` → branch 1c

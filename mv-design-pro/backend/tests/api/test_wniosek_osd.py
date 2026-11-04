@@ -207,11 +207,20 @@ def test_bilans_zawiera_moc_zainstalowana() -> None:
 
 
 def _pf_run_plain_golden() -> CanonicalRun:
-    """PF na CZYSTYM golden network (bez augmentacji tego pliku testowego) —
-    ``gen_pv`` nie ma ``materialized_params``, a jego ``catalog_ref`` w golden
-    nie odpowiada żadnej pozycji katalogu domyślnego (rozjazd nazwy), więc
-    jego moc zainstalowana jest GENUINIE nieznana solverowi/katalogowi."""
-    set_enm("c-pf-plain", build_golden_enm())
+    """PF na golden network z ``gen_pv`` BEZ typu katalogowego i tabliczki — moc
+    zainstalowana źródła jest GENUINIE nieznana solverowi/katalogowi.
+
+    Karta KATALOG-PRZEJECIE-PR: sieć złota ma dziś realną kartę ``gen_pv``
+    (``conv-pv-nn-0p5mw-0p4kv``), więc stan „moc nieznana" jest budowany jawnie."""
+    enm = build_golden_enm().model_copy(deep=True)
+    for gen in enm.generators:
+        if gen.ref_id == "gen_pv":
+            gen.catalog_ref = None
+            gen.catalog_namespace = None
+            gen.parameter_source = None
+            gen.source_mode = None
+            gen.materialized_params = None
+    set_enm("c-pf-plain", enm)
     return execute_run(
         create_run(case_id="c-pf-plain", klucz_twin="c-pf-plain", analysis_type="PF").id
     )

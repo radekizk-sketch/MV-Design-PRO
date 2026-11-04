@@ -1,15 +1,15 @@
 {
   "result_version": "1.0.0",
   "converged": true,
-  "iterations_count": 6,
+  "iterations_count": 5,
   "tolerance_used": 1e-08,
   "base_mva": 100.0,
   "slack_bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
   "bus_results": [
     {
       "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-      "v_pu": 0.968556421661,
-      "angle_deg": 26.8094341802,
+      "v_pu": 0.972589324759,
+      "angle_deg": 27.0712039405,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
@@ -18,30 +18,30 @@
       "bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "v_pu": 1.0,
       "angle_deg": 0.0,
-      "p_injected_mw": 11.4961870737,
-      "q_injected_mvar": 6.40880179731,
+      "p_injected_mw": 11.5678485678,
+      "q_injected_mvar": 6.01937922535,
       "status": "solved"
     },
     {
       "bus_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "v_pu": 0.748329967937,
-      "angle_deg": 40.5582958475,
+      "v_pu": 0.788009851029,
+      "angle_deg": 43.6662080415,
       "p_injected_mw": -3.2,
       "q_injected_mvar": -1.2,
       "status": "solved"
     },
     {
       "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-      "v_pu": 0.968548597972,
-      "angle_deg": 26.809274879,
+      "v_pu": 0.972581631411,
+      "angle_deg": 27.0710362431,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
     },
     {
       "bus_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-      "v_pu": 0.920122651143,
-      "angle_deg": 25.2246717376,
+      "v_pu": 0.911445708111,
+      "angle_deg": 25.6126099066,
       "p_injected_mw": -7.6,
       "q_injected_mvar": -2.6,
       "status": "solved"
@@ -50,48 +50,48 @@
   "branch_results": [
     {
       "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-      "p_from_mw": 3.54157716166,
-      "q_from_mvar": 2.65011545339,
-      "p_to_mw": -3.19999999996,
-      "q_to_mvar": -1.19999999998,
-      "losses_p_mw": 0.341577161695,
-      "losses_q_mvar": 1.45011545341
+      "p_from_mw": 3.49856456284,
+      "q_from_mvar": 2.3563369362,
+      "p_to_mw": -3.19999957722,
+      "q_to_mvar": -1.19999971913,
+      "losses_p_mw": 0.298564985621,
+      "losses_q_mvar": 1.15633721707
     },
     {
       "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
-      "p_from_mw": 0.00379067548483,
-      "q_from_mvar": -0.0127240965529,
-      "p_to_mw": -0.00379064751576,
-      "q_to_mvar": -0.014630705205,
-      "losses_p_mw": 2.7969069347e-08,
-      "losses_q_mvar": -0.0273548017579
+      "p_from_mw": 0.00274872608066,
+      "q_from_mvar": -0.0312317415055,
+      "p_to_mw": -0.00274870451494,
+      "q_to_mvar": -0.0313523196822,
+      "losses_p_mw": 2.15657119957e-08,
+      "losses_q_mvar": -0.0625840611877
     },
     {
       "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "p_from_mw": 11.4961870737,
-      "q_from_mvar": 6.40880179731,
-      "p_to_mw": -11.4629259426,
-      "q_to_mvar": -5.57793900923,
-      "losses_p_mw": 0.0332611310803,
-      "losses_q_mvar": 0.830862788083
+      "p_from_mw": 11.5678485678,
+      "q_from_mvar": 6.01937922535,
+      "p_to_mw": -11.5351993428,
+      "q_to_mvar": -5.27188050582,
+      "losses_p_mw": 0.032649224975,
+      "losses_q_mvar": 0.747498719527
     },
     {
       "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-      "p_from_mw": 7.92127173358,
-      "q_from_mvar": 2.95510133785,
-      "p_to_mw": -7.6,
-      "q_to_mvar": -2.6,
-      "losses_p_mw": 0.321271733579,
-      "losses_q_mvar": 0.355101337852
+      "p_from_mw": 8.03655873443,
+      "q_from_mvar": 2.97805204391,
+      "p_to_mw": -7.59999999731,
+      "q_to_mvar": -2.60000000043,
+      "losses_p_mw": 0.436558737117,
+      "losses_q_mvar": 0.378052043485
     }
   ],
   "summary": {
-    "total_losses_p_mw": 0.696110054323,
-    "total_losses_q_mvar": 2.60872477759,
-    "min_v_pu": 0.748329967937,
+    "total_losses_p_mw": 0.767772969278,
+    "total_losses_q_mvar": 2.21930391889,
+    "min_v_pu": 0.788009851029,
     "max_v_pu": 1.0,
-    "slack_p_mw": 11.4961870737,
-    "slack_q_mvar": 6.40880179731
+    "slack_p_mw": 11.5678485678,
+    "slack_q_mvar": 6.01937922535
   },
   "unsolved_node_ids": [],
   "kryteria_napiecia": {

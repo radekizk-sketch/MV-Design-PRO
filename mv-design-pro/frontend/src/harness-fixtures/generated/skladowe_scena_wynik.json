@@ -60,8 +60,8 @@
         "tryb_pl": "punkt neutralny izolowany",
         "charakter": "pojemnosciowy",
         "charakter_pl": "prąd pojemnościowy sieci",
-        "prad_a": 2.6532,
-        "i_c_a": 2.6532,
+        "prad_a": 7.7331,
+        "i_c_a": 7.7331,
         "i_l_a": null,
         "i_w_a": null,
         "rozstrojenie": null,
@@ -85,13 +85,13 @@
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
               "u_n_kv": 15.0,
-              "b0_s": 0.00010212,
+              "b0_s": 0.000297649072376,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
-            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "I_C = √3·15 kV·0,0002976 S = 7,7331 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0002976\\ \\mathrm{S} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "i_c_a": 2.6532
+              "i_c_a": 7.7331
             }
           },
           {
@@ -99,15 +99,15 @@
             "title": "Prąd doziemienia — prąd pojemnościowy sieci",
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
-              "i_c_a": 2.6532,
+              "i_c_a": 7.7331,
               "i_l_a": null,
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
-            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "|0,0000 + j7,7331| A = 7,7331 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,7{,}7331\\right|\\ \\mathrm{A} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "prad_a": 2.6532,
+              "prad_a": 7.7331,
               "rozstrojenie": null
             }
           },
@@ -119,7 +119,7 @@
               "u_f_v": 8660.25403784,
               "y_s": {
                 "re": 0.0,
-                "im": 0.00030636
+                "im": 0.000892947217128
               },
               "z_f_ohm": null
             },
@@ -138,22 +138,31 @@
           {
             "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
             "wartosc": {
-              "wartosc": 1.2e-06,
+              "wartosc": 1.16e-06,
               "jednostka": "S/km"
             },
             "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          },
+          {
+            "nazwa_pl": "B′0 wartość robocza (Kabel SN 1)",
+            "wartosc": {
+              "wartosc": 0.00012252211349,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
         "kompletnosc_dowodu": "NIEPELNY"
       },
-      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
+      "proof_ref": "proof:short-circuit:e90396dad6fb31642e5338f27cdbafcf2ce6922daeb8fcd34316a525be1600cf",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
+        "proof_ref": "proof:short-circuit:e90396dad6fb31642e5338f27cdbafcf2ce6922daeb8fcd34316a525be1600cf",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [],
@@ -174,16 +183,16 @@
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "target_name": "GPZ 110 kV",
-      "ikss_ka": 13.5609476289,
-      "ip_ka": 33.5650953299,
-      "ith_ka": 13.7948215713,
-      "sk_mva": 2583.70753213,
-      "rk_ohm": 1.50864781367,
-      "xk_ohm": 15.3807233888,
-      "zk_ohm": 15.4545355863,
-      "rx_ratio": 0.0980869218911,
-      "xr_ratio": 10.1950390605,
-      "kappa": 1.75018053077,
+      "ikss_ka": 13.0814819695,
+      "ip_ka": 32.29460055,
+      "ith_ka": 13.3024725784,
+      "sk_mva": 2492.35705503,
+      "rk_ohm": 1.59667408846,
+      "xk_ohm": 15.9412170009,
+      "zk_ohm": 16.0209789843,
+      "rx_ratio": 0.100160112516,
+      "xr_ratio": 9.98401434342,
+      "kappa": 1.74565321406,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
       "un_kv": 110.0,
@@ -251,23 +260,23 @@
           ]
         }
       ],
-      "ib_ka": 13.5609476289,
-      "i_dc_ka": 0.880096447772,
-      "ik_ka": 13.5609476289,
-      "ik_thevenin_ka": 13.5609476289,
+      "ib_ka": 13.0814819695,
+      "i_dc_ka": 0.795446643528,
+      "ik_ka": 13.0814819695,
+      "ik_thevenin_ka": 13.0814819695,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 190.297102185,
+      "i2t_ka2s": 176.955776698,
       "z1_ohm": {
-        "re": 0.497749640826,
-        "im": 4.9706358826
+        "re": 0.498337044228,
+        "im": 4.97060850045
       },
       "z2_ohm": {
-        "re": 0.497749640826,
-        "im": 4.9706358826
+        "re": 0.498337044228,
+        "im": 4.97060850045
       },
       "z0_ohm": {
-        "re": 0.513148532018,
-        "im": 5.43945162364
+        "re": 0.6,
+        "im": 6.0
       },
       "branch_contributions": null,
       "branch_contributions_available": true,
@@ -280,13 +289,13 @@
       "reporting_status_pl": "raportowalny",
       "proof_status_pl": "pełny",
       "reporting_limitations_pl": [],
-      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
+      "proof_ref": "proof:short-circuit:e856a300c104fc0a7c5ecf0617efd274c1ec3e1160a78bc7623a5cf8024edcd7",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
+        "proof_ref": "proof:short-circuit:e856a300c104fc0a7c5ecf0617efd274c1ec3e1160a78bc7623a5cf8024edcd7",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
@@ -317,16 +326,16 @@
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "target_name": "Szyna nN",
-      "ikss_ka": 20.7050643036,
-      "ip_ka": 44.372460575,
-      "ith_ka": 20.8606621923,
-      "sk_mva": 14.3448893391,
-      "rk_ohm": 0.00779095361547,
-      "xk_ohm": 0.0342597666628,
-      "zk_ohm": 0.0351344641346,
-      "rx_ratio": 0.227408250971,
-      "xr_ratio": 4.39737782481,
-      "kappa": 1.51538132461,
+      "ikss_ka": 23.2033741399,
+      "ip_ka": 48.7163122673,
+      "ith_ka": 23.3629722612,
+      "sk_mva": 16.0757691669,
+      "rk_ohm": 0.00756934956268,
+      "xk_ohm": 0.0304240618466,
+      "zk_ohm": 0.0313515325311,
+      "rx_ratio": 0.248794838797,
+      "xr_ratio": 4.01937598399,
+      "kappa": 1.48459592777,
       "c_factor": 1.05,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
       "un_kv": 0.4,
@@ -394,23 +403,23 @@
           ]
         }
       ],
-      "ib_ka": 20.7050643036,
-      "i_dc_ka": 0.0231146423755,
-      "ik_ka": 20.7050643036,
-      "ik_thevenin_ka": 20.7050643036,
+      "ib_ka": 23.2033741399,
+      "i_dc_ka": 0.0132302542585,
+      "ik_ka": 23.2033741399,
+      "ik_thevenin_ka": 23.2033741399,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 435.167227101,
+      "i2t_ka2s": 545.828472879,
       "z1_ohm": {
-        "re": 0.00258532311663,
-        "im": 0.0115678190986
+        "re": 0.0025148335115,
+        "im": 0.0102939568329
       },
       "z2_ohm": {
-        "re": 0.00258532311663,
-        "im": 0.0115678190986
+        "re": 0.0025148335115,
+        "im": 0.0102939568329
       },
       "z0_ohm": {
-        "re": 0.00262030738221,
-        "im": 0.0111241284657
+        "re": 0.00253968253968,
+        "im": 0.00983614818084
       },
       "branch_contributions": null,
       "branch_contributions_available": true,
@@ -423,13 +432,13 @@
       "reporting_status_pl": "raportowalny",
       "proof_status_pl": "pełny",
       "reporting_limitations_pl": [],
-      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
+      "proof_ref": "proof:short-circuit:9f116fc383d4c815d7390667174e9a59bbea261de82cf9977605c9426270f3a8",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
+        "proof_ref": "proof:short-circuit:9f116fc383d4c815d7390667174e9a59bbea261de82cf9977605c9426270f3a8",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
@@ -515,8 +524,8 @@
         "tryb_pl": "punkt neutralny izolowany",
         "charakter": "pojemnosciowy",
         "charakter_pl": "prąd pojemnościowy sieci",
-        "prad_a": 2.6532,
-        "i_c_a": 2.6532,
+        "prad_a": 7.7331,
+        "i_c_a": 7.7331,
         "i_l_a": null,
         "i_w_a": null,
         "rozstrojenie": null,
@@ -540,13 +549,13 @@
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
               "u_n_kv": 15.0,
-              "b0_s": 0.00010212,
+              "b0_s": 0.000297649072376,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
-            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "I_C = √3·15 kV·0,0002976 S = 7,7331 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0002976\\ \\mathrm{S} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "i_c_a": 2.6532
+              "i_c_a": 7.7331
             }
           },
           {
@@ -554,15 +563,15 @@
             "title": "Prąd doziemienia — prąd pojemnościowy sieci",
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
-              "i_c_a": 2.6532,
+              "i_c_a": 7.7331,
               "i_l_a": null,
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
-            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "|0,0000 + j7,7331| A = 7,7331 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,7{,}7331\\right|\\ \\mathrm{A} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "prad_a": 2.6532,
+              "prad_a": 7.7331,
               "rozstrojenie": null
             }
           },
@@ -574,7 +583,7 @@
               "u_f_v": 8660.25403784,
               "y_s": {
                 "re": 0.0,
-                "im": 0.00030636
+                "im": 0.000892947217128
               },
               "z_f_ohm": null
             },
@@ -593,22 +602,31 @@
           {
             "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
             "wartosc": {
-              "wartosc": 1.2e-06,
+              "wartosc": 1.16e-06,
               "jednostka": "S/km"
             },
             "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          },
+          {
+            "nazwa_pl": "B′0 wartość robocza (Kabel SN 1)",
+            "wartosc": {
+              "wartosc": 0.00012252211349,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
         "kompletnosc_dowodu": "NIEPELNY"
       },
-      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
+      "proof_ref": "proof:short-circuit:4437c25f722fc1246d83c859e5504fd09cd9e84df99bb4e8e9aa8cce5673bfb8",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
+        "proof_ref": "proof:short-circuit:4437c25f722fc1246d83c859e5504fd09cd9e84df99bb4e8e9aa8cce5673bfb8",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [],
@@ -684,8 +702,8 @@
         "tryb_pl": "punkt neutralny izolowany",
         "charakter": "pojemnosciowy",
         "charakter_pl": "prąd pojemnościowy sieci",
-        "prad_a": 2.6532,
-        "i_c_a": 2.6532,
+        "prad_a": 7.7331,
+        "i_c_a": 7.7331,
         "i_l_a": null,
         "i_w_a": null,
         "rozstrojenie": null,
@@ -709,13 +727,13 @@
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
               "u_n_kv": 15.0,
-              "b0_s": 0.00010212,
+              "b0_s": 0.000297649072376,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
-            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "I_C = √3·15 kV·0,0002976 S = 7,7331 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0002976\\ \\mathrm{S} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "i_c_a": 2.6532
+              "i_c_a": 7.7331
             }
           },
           {
@@ -723,15 +741,15 @@
             "title": "Prąd doziemienia — prąd pojemnościowy sieci",
             "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
             "inputs": {
-              "i_c_a": 2.6532,
+              "i_c_a": 7.7331,
               "i_l_a": null,
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
-            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "substitution": "|0,0000 + j7,7331| A = 7,7331 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,7{,}7331\\right|\\ \\mathrm{A} = 7{,}7331\\ \\mathrm{A}",
             "result": {
-              "prad_a": 2.6532,
+              "prad_a": 7.7331,
               "rozstrojenie": null
             }
           },
@@ -743,7 +761,7 @@
               "u_f_v": 8660.25403784,
               "y_s": {
                 "re": 0.0,
-                "im": 0.00030636
+                "im": 0.000892947217128
               },
               "z_f_ohm": null
             },
@@ -762,22 +780,31 @@
           {
             "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
             "wartosc": {
-              "wartosc": 1.2e-06,
+              "wartosc": 1.16e-06,
               "jednostka": "S/km"
             },
             "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          },
+          {
+            "nazwa_pl": "B′0 wartość robocza (Kabel SN 1)",
+            "wartosc": {
+              "wartosc": 0.00012252211349,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
         "kompletnosc_dowodu": "NIEPELNY"
       },
-      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
+      "proof_ref": "proof:short-circuit:a64d30c658e7215299bffc4ad7499f95ed1e8024b6cf47761e62ee9bfc79c612",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
+        "proof_ref": "proof:short-circuit:a64d30c658e7215299bffc4ad7499f95ed1e8024b6cf47761e62ee9bfc79c612",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [],
@@ -815,19 +842,19 @@
       "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
       "inputs": {
         "ref_id": "cab_main_b",
-        "r0_ohm_per_km": 0.42,
-        "x0_ohm_per_km": 0.31,
+        "r0_ohm_per_km": 1.330562,
+        "x0_ohm_per_km": 0.3,
         "length_km": 2.4
       },
-      "substitution": "Z0 = 1.008 + j0.744 Ω (szereg Szyna SN↔Stacja B SN)",
+      "substitution": "Z0 = 3.19335 + j0.72 Ω (szereg Szyna SN↔Stacja B SN)",
       "substitution_latex": null,
       "result": {
         "z0_ohm": {
-          "re": 1.008,
-          "im": 0.744
+          "re": 3.1933488,
+          "im": 0.72
         }
       },
-      "notes": null
+      "notes": "Wartość robocza (zasada nr 4): R′0 = 1.33056 Ω/km — R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 0.3 Ω/km — X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
     },
     {
       "key": "z0_line[line_b_c]",
@@ -835,19 +862,19 @@
       "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
       "inputs": {
         "ref_id": "line_b_c",
-        "r0_ohm_per_km": 0.46,
-        "x0_ohm_per_km": 1.2,
+        "r0_ohm_per_km": 1.224,
+        "x0_ohm_per_km": 1.065,
         "length_km": 3.1
       },
-      "substitution": "Z0 = 1.426 + j3.72 Ω (szereg Stacja B SN↔Stacja C SN)",
+      "substitution": "Z0 = 3.7944 + j3.3015 Ω (szereg Stacja B SN↔Stacja C SN)",
       "substitution_latex": null,
       "result": {
         "z0_ohm": {
-          "re": 1.426,
-          "im": 3.72
+          "re": 3.7944,
+          "im": 3.3015
         }
       },
-      "notes": null
+      "notes": "Wartość robocza (zasada nr 4): R′0 = 1.224 Ω/km — R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku); X′0 = 1.065 Ω/km — X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
     },
     {
       "key": "z0_source[src_gpz]",
@@ -879,13 +906,13 @@
           {
             "ref_id": "cab_main_b",
             "nazwa_pl": "Kabel SN 1",
-            "b0_s": 9.84e-05,
-            "zrodlo_b0": "model"
+            "b0_s": 0.000294053072376,
+            "zrodlo_b0": "wartosc_robocza"
           },
           {
             "ref_id": "line_b_c",
             "nazwa_pl": "Linia SN 1",
-            "b0_s": 3.72e-06,
+            "b0_s": 3.596e-06,
             "zrodlo_b0": "wartosc_robocza"
           }
         ],
@@ -906,14 +933,14 @@
       "formula_latex": "\\text{grupa połączeń} \\rightarrow (\\text{GN}, \\text{DN})",
       "inputs": {
         "ref_id": "tr_hv_sn",
-        "vector_group": "YNd11",
+        "vector_group": "Yd11",
         "hv_neutral": null,
         "lv_neutral": null
       },
-      "substitution": "GN: YN → gwiazda z uziemionym punktem neutralnym; DN: d → trójkąt",
+      "substitution": "GN: Y → uzwojenie bez drogi do ziemi; DN: d → trójkąt",
       "substitution_latex": null,
       "result": {
-        "hv_winding": "grounded_wye",
+        "hv_winding": "open",
         "lv_winding": "delta",
         "zn_hv_ohm": {
           "re": 0.0,
@@ -931,21 +958,21 @@
       "title": "Transformator TR 110/15: impedancja zerowa Z_T0",
       "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
       "inputs": {
-        "uk_percent": 12.0,
+        "uk_percent": 11.0,
         "pk_kw": 120.0,
         "sn_mva": 25.0,
         "s_base_mva": 100.0
       },
-      "substitution": "Z_T0 = 0.0048 + j0.119904 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.479616 pu (na S_base = 100 MVA)",
+      "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
       "substitution_latex": null,
       "result": {
         "z_t0_pu_sn": {
           "re": 0.0048,
-          "im": 0.119903961569
+          "im": 0.109895222826
         },
         "z_t0_pu_base": {
           "re": 0.0192,
-          "im": 0.479615846277
+          "im": 0.439580891304
         }
       },
       "notes": null
@@ -955,11 +982,11 @@
       "title": "Transformator TR 110/15: połączenie sekwencji zerowej",
       "formula_latex": "(\\text{GN},\\text{DN}) \\rightarrow \\text{połączenie},\\ Z_0 = Z_{T0} + 3Z_{N}",
       "inputs": {
-        "hv_winding": "grounded_wye",
+        "hv_winding": "open",
         "lv_winding": "delta",
         "z_t0_pu_base": {
           "re": 0.0192,
-          "im": 0.479615846277
+          "im": 0.439580891304
         },
         "zn_hv_3_pu": {
           "re": 0.0,
@@ -970,14 +997,11 @@
           "im": 0.0
         }
       },
-      "substitution": "bocznik do ziemi po stronie GN: Z0 = 0.0192 + j0.479616 pu",
+      "substitution": "brak drogi prądu zerowego: Z0 = — (otwarte)",
       "substitution_latex": null,
       "result": {
-        "connection": "hv_shunt_ground",
-        "z0_pu": {
-          "re": 0.0192,
-          "im": 0.479615846277
-        }
+        "connection": "open",
+        "z0_pu": null
       },
       "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
     },
@@ -1012,21 +1036,21 @@
       "title": "Transformator TR 15/0.4: impedancja zerowa Z_T0",
       "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
       "inputs": {
-        "uk_percent": 4.5,
-        "pk_kw": 6.5,
+        "uk_percent": 4.0,
+        "pk_kw": 6.3,
         "sn_mva": 0.63,
         "s_base_mva": 100.0
       },
-      "substitution": "Z_T0 = 0.0103175 + j0.0438013 pu (na S_rT = 0.63 MVA); Z_T0 = 1.63769 + j6.95258 pu (na S_base = 100 MVA)",
+      "substitution": "Z_T0 = 0.01 + j0.0387298 pu (na S_rT = 0.63 MVA); Z_T0 = 1.5873 + j6.14759 pu (na S_base = 100 MVA)",
       "substitution_latex": null,
       "result": {
         "z_t0_pu_sn": {
-          "re": 0.0103174603175,
-          "im": 0.0438012558336
+          "re": 0.01,
+          "im": 0.0387298334621
         },
         "z_t0_pu_base": {
-          "re": 1.63769211388,
-          "im": 6.95258029104
+          "re": 1.5873015873,
+          "im": 6.14759261303
         }
       },
       "notes": null
@@ -1039,8 +1063,8 @@
         "hv_winding": "delta",
         "lv_winding": "grounded_wye",
         "z_t0_pu_base": {
-          "re": 1.63769211388,
-          "im": 6.95258029104
+          "re": 1.5873015873,
+          "im": 6.14759261303
         },
         "zn_hv_3_pu": {
           "re": 0.0,
@@ -1051,13 +1075,13 @@
           "im": 0.0
         }
       },
-      "substitution": "bocznik do ziemi po stronie DN: Z0 = 1.63769 + j6.95258 pu",
+      "substitution": "bocznik do ziemi po stronie DN: Z0 = 1.5873 + j6.14759 pu",
       "substitution_latex": null,
       "result": {
         "connection": "lv_shunt_ground",
         "z0_pu": {
-          "re": 1.63769211388,
-          "im": 6.95258029104
+          "re": 1.5873015873,
+          "im": 6.14759261303
         }
       },
       "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
@@ -1087,6 +1111,92 @@
       "element_ref": "gen_pv",
       "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
       "scenariusz": "MAX"
+    },
+    {
+      "code": "branch.z0_wartosc_robocza",
+      "element_ref": "cab_main_b",
+      "message_pl": "Kabel SN 1: R′0 i X′0 z wartości roboczej katalogu — R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+      "scenariusz": "MAX",
+      "parametr": "r0_ohm_per_km",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "R′0 z katalogu (Kabel SN 1)",
+          "wartosc": {
+            "wartosc": 1.330562,
+            "jednostka": "Ω/km"
+          },
+          "powod_pl": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "X′0 z katalogu (Kabel SN 1)",
+          "wartosc": {
+            "wartosc": 0.3,
+            "jednostka": "Ω/km"
+          },
+          "powod_pl": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+          "jakosc": "ESTIMATED"
+        }
+      ],
+      "skladniki_z0": [
+        {
+          "pole": "r0_ohm_per_km",
+          "etykieta": "R′0",
+          "zalozenie": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+          "wartosc": 1.330562,
+          "nazwa": "Kabel SN 1"
+        },
+        {
+          "pole": "x0_ohm_per_km",
+          "etykieta": "X′0",
+          "zalozenie": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+          "wartosc": 0.3,
+          "nazwa": "Kabel SN 1"
+        }
+      ]
+    },
+    {
+      "code": "branch.z0_wartosc_robocza",
+      "element_ref": "line_b_c",
+      "message_pl": "Linia SN 1: R′0 i X′0 z wartości roboczej katalogu — R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku); X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+      "scenariusz": "MAX",
+      "parametr": "r0_ohm_per_km",
+      "dane_przyjete": [
+        {
+          "nazwa_pl": "R′0 z katalogu (Linia SN 1)",
+          "wartosc": {
+            "wartosc": 1.224,
+            "jednostka": "Ω/km"
+          },
+          "powod_pl": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+          "jakosc": "ESTIMATED"
+        },
+        {
+          "nazwa_pl": "X′0 z katalogu (Linia SN 1)",
+          "wartosc": {
+            "wartosc": 1.065,
+            "jednostka": "Ω/km"
+          },
+          "powod_pl": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+          "jakosc": "ESTIMATED"
+        }
+      ],
+      "skladniki_z0": [
+        {
+          "pole": "r0_ohm_per_km",
+          "etykieta": "R′0",
+          "zalozenie": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+          "wartosc": 1.224,
+          "nazwa": "Linia SN 1"
+        },
+        {
+          "pole": "x0_ohm_per_km",
+          "etykieta": "X′0",
+          "zalozenie": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+          "wartosc": 1.065,
+          "nazwa": "Linia SN 1"
+        }
+      ]
     },
     {
       "code": "fault.parametry_maszyny_robocze",
@@ -1131,7 +1241,7 @@
     "case_ref": "case-demo",
     "case_kind": "ZWARCIOWY_MAKS",
     "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-    "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+    "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
     "rewizja_modelu": 1,
     "variant_ref": null,
     "run_ref": "run-sc-scena-skladowe",
@@ -1157,14 +1267,14 @@
       "project_ref": null,
       "run_ref": "run-sc-scena-skladowe",
       "analysis_type": "short_circuit_sn",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
     },
     "reproducibility": {
       "case_ref": "case-demo",
       "analysis_case_ref": "case-demo",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-      "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-      "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+      "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+      "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "enm_projection_version": "v12xx.m1.1",
       "variant_ref": null,
       "operating_variant_ref": null,
@@ -1174,16 +1284,16 @@
       "method_version": "canonical_run_v1",
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
-      "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "a8d5e4cca53ebf668dfa4db2e32e9b9c271134ec084bef03bf22a1a19b589932",
+      "input_hash": "926fcbe7977e4e77980df8db9f7e6d907336134174d376a91ff92025a691c4f2",
+      "result_hash": "67a2a9bce8e30f2a353a675b40b977d7392a4ce2cbfa3aaf93421e2a67583af2",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
       "proof_renderer_version": "white_box_trace_v1",
-      "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-      "catalog_materialization_status": "not_materialized",
+      "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+      "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+      "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+      "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
       "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",

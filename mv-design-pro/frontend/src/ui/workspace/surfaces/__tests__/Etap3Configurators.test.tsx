@@ -80,76 +80,16 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('GpzConfiguratorSurface (E-10)', () => {
-    it('tryb uproszczony GPZ pokazuje tylko moc zwarciowa po stronie SN', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
-
-      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
-      expect(screen.getByText(/Stosunek R\/X/)).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('gpz-short-circuit-mode-sn'));
-
-      expect(screen.getByText(/Moc zwarciowa S''k po stronie SN/)).toBeInTheDocument();
-      expect(screen.queryByText(/Moc zwarciowa S''k 110 kV/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Stosunek R\/X/)).not.toBeInTheDocument();
-    });
-
-    it('renderuje 5 kart konfiguracyjnych z polskimi etykietami', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
-      expect(screen.getByText('Strona 110 kV')).toBeInTheDocument();
-      expect(screen.getByText('Transformator 110/SN')).toBeInTheDocument();
-      expect(screen.getByText('Sekcje SN')).toBeInTheDocument();
-      expect(screen.getByText('Bilans pól SN')).toBeInTheDocument();
-    });
-
-    it('nie pokazuje technicznego identyfikatora akcji ani tekstu roadmapy', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.queryByText(/add_grid_source_sn/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/roadmap/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/Dodaj źródło zasilania GPZ/)).toBeInTheDocument();
-    });
-
-    it('domyślnie aktywna jest karta Identyfikacja', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
-      expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
-    });
-
-    // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): deep-link 'show-sc-source'/
-    // 'show-sc-data' z sldActionExecutor.ts otwiera E-10 z `payload.defaultCard:
-    // 'hv-side'` zamiast marnego toastu — wzorzec `defaultCard` identyczny jak
-    // StationConfiguratorSurface (der-sources, patrz test niżej w tym pliku).
-    it('payload.defaultCard="hv-side" otwiera od razu kartę Strona 110 kV (deep-link show-sc-source/show-sc-data)', () => {
-      render(
-        <GpzConfiguratorSurface
-          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'hv-side' } } }}
-        />,
-      );
-      expect(screen.getByTestId('gpz-card-content-hv-side')).toBeInTheDocument();
-      expect(screen.queryByTestId('gpz-card-content-identification')).not.toBeInTheDocument();
-    });
-
-    it('payload.defaultCard nieznane/puste wraca do karty Identyfikacja (uczciwy domyślny start)', () => {
-      render(
-        <GpzConfiguratorSurface
-          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'nie-taka-karta' } } }}
-        />,
-      );
-      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
-    });
-
-    it('zmiana karty wyświetla nową zawartość', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
-      expect(screen.getByTestId('gpz-card-content-transformer')).toBeInTheDocument();
-      expect(screen.getByText('Katalog transformatora 110/SN')).toBeInTheDocument();
-    });
-
-    // Karta KATALOG-PRZEJECIE-PR (decyzja architekta): wybór typu transformatora 110/SN jest
-    // operacją modelu `assign_catalog_to_element` na transformatorze stacji GPZ źródła;
-    // tabliczka (Sn, uk, przekładnia, grupa) pochodzi z elementu modelu, nie z formularza.
-    function snapshotGpz(transformatory: Array<Record<string, unknown>>) {
+    // Karta KATALOG-PRZEJECIE-PR (decyzja architekta): konfigurator GPZ jest JEDYNYM edytorem
+    // GPZ — każda kontrolka jest operacją modelu, wartości czytane z modelu. Dawne testy tej
+    // powierzchni sprawdzały stan formularza (`setData`) bez skutku w modelu — fantom (tryb
+    // S″k, liczba sekcji, sprzęgło, system szyn); przepisane na operacje i odczyt modelu.
+    function snapshotGpz(
+      transformatory: Array<Record<string, unknown>>,
+      zrodlo: Record<string, unknown> = {},
+      stacja: Record<string, unknown> = {},
+      bays: Array<Record<string, unknown>> = [],
+    ) {
       return {
         header: {
           enm_version: '1.0',
@@ -160,10 +100,15 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           hash_sha256: 'gpz-test',
           defaults: { frequency_hz: 50, unit_system: 'SI' },
         },
-        buses: [],
+        buses: [
+          { id: 'b-hv', ref_id: 'gpz/hv', name: 'Szyna 110 kV', voltage_kv: 110, tags: [], meta: {} },
+          { id: 'b-s1', ref_id: 'gpz/s1', name: 'Szyna SN 1', voltage_kv: 15, tags: [], meta: {} },
+          { id: 'b-s2', ref_id: 'gpz/s2', name: 'Szyna SN 2', voltage_kv: 15, tags: [], meta: {} },
+        ],
         branches: [],
         loads: [],
         generators: [],
+        bays,
         sources: [
           {
             id: 'src-gpz',
@@ -173,6 +118,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
             substation_ref: 'gpz/stacja',
             tags: [],
             meta: {},
+            ...zrodlo,
           },
         ],
         substations: [
@@ -181,10 +127,11 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
             ref_id: 'gpz/stacja',
             name: 'GPZ',
             station_type: 'gpz',
-            bus_refs: [],
+            bus_refs: ['gpz/hv', 'gpz/s1', 'gpz/s2'],
             transformer_refs: transformatory.map((tr) => tr.ref_id),
             tags: [],
             meta: {},
+            ...stacja,
           },
         ],
         transformers: transformatory,
@@ -207,18 +154,218 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       tags: [],
       meta: {},
     };
+    const ZRODLO_WN = { source_side: 'HV_110', sk3_mva: 3000, sk3_hv_mva: 3000, rx_ratio: 0.1 };
+    const SEKCJE = {
+      gpz_sections: [
+        { section_id: 's1', order: 0, name: 'Sekcja 1', bus_ref: 'gpz/s1' },
+        { section_id: 's2', order: 1, name: 'Sekcja 2', bus_ref: 'gpz/s2' },
+      ],
+    };
+    const otworz = (karta?: string) => {
+      render(<GpzConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'gpz/src' }} />);
+      if (karta) fireEvent.click(screen.getByTestId(`gpz-card-tab-${karta}`));
+    };
+    const operacjaModelu = (odpowiedz: Record<string, unknown> = { error: null }) => {
+      const operacja = vi.fn(async () => odpowiedz);
+      useSnapshotStore.setState({ executeDomainOperation: operacja as never });
+      useAppStateStore.setState({ activeCaseId: 'case-gpz' });
+      return operacja;
+    };
+
+    it('renderuje 5 kart konfiguracyjnych z polskimi etykietami', () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      for (const etykieta of ['Identyfikacja', 'Sieć zasilająca', 'Transformator 110/SN', 'Sekcje SN', 'Pola SN']) {
+        expect(screen.getByRole('tab', { name: etykieta })).toBeInTheDocument();
+      }
+    });
+
+    it('bez GPZ w modelu mówi, jak go utworzyć — bez identyfikatora akcji i bez pól', () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      expect(screen.queryByText(/add_grid_source_sn/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/roadmap/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('gpz-no-model')).toHaveTextContent(/Dodaj źródło zasilania GPZ/);
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      for (const karta of ['hv-side', 'sections', 'bays']) {
+        fireEvent.click(screen.getByTestId(`gpz-card-tab-${karta}`));
+        expect(screen.getByTestId('gpz-no-model')).toBeInTheDocument();
+      }
+    });
+
+    it('domyślnie aktywna jest karta Identyfikacja', () => {
+      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
+      expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
+    });
+
+    // Karta W2-B: deep-link menu SLD (`ACTION_DEFAULT_CARD`) — 'show-sc-source'/'show-sc-data'
+    // otwierają kartę sieci zasilającej, 'add-section' — kartę sekcji.
+    it.each([
+      ['hv-side', 'gpz-card-content-hv-side'],
+      ['sections', 'gpz-card-content-sections'],
+    ])('payload.defaultCard="%s" otwiera od razu właściwą kartę', (karta, tresc) => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: karta } } }}
+        />,
+      );
+      expect(screen.getByTestId(tresc)).toBeInTheDocument();
+      expect(screen.queryByTestId('gpz-card-content-identification')).not.toBeInTheDocument();
+    });
+
+    it('payload.defaultCard nieznane/puste wraca do karty Identyfikacja (uczciwy domyślny start)', () => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'nie-taka-karta' } } }}
+        />,
+      );
+      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
+    });
+
+    it('Identyfikacja: nazwa z modelu, zmiana = update_element_parameters na stacji; oznaczenie tylko do odczytu', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, { name: 'GPZ Wschód', designation: 'RPZ-W' }) });
+      const operacja = operacjaModelu();
+      otworz();
+      const nazwa = screen.getByTestId('gpz-name-input') as HTMLInputElement;
+      expect(nazwa.value).toBe('GPZ Wschód');
+      expect(screen.getByTestId('gpz-designation')).toHaveTextContent('RPZ-W');
+      // Pola operatora i lokalizacji nie mają nośnika w modelu — nie ma ich na ekranie.
+      expect(screen.queryByText(/OSD \/ operator/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Lokalizacja/)).not.toBeInTheDocument();
+      fireEvent.change(nazwa, { target: { value: 'GPZ Zachód' } });
+      fireEvent.blur(nazwa);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_element_parameters', {
+          element_ref: 'gpz/stacja',
+          parameters: { name: 'GPZ Zachód' },
+        }),
+      );
+      // Ta sama nazwa nie wysyła operacji.
+      operacja.mockClear();
+      fireEvent.change(nazwa, { target: { value: 'GPZ Wschód' } });
+      fireEvent.blur(nazwa);
+      expect(operacja).not.toHaveBeenCalled();
+    });
+
+    it('Sieć zasilająca po stronie 110 kV: wartości z modelu, S″k 110 kV = operacja na źródle', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], { ...ZRODLO_WN, sk3_min_mva: 2000 }) });
+      const operacja = operacjaModelu();
+      otworz('hv-side');
+      expect(screen.getByTestId('gpz-supply-side')).toHaveTextContent(/szyna 110 kV/);
+      expect(screen.getByTestId('gpz-supply-un')).toHaveTextContent('110');
+      const sk = screen.getByTestId('gpz-supply-sk3_hv_mva') as HTMLInputElement;
+      expect(sk.value).toBe('3000');
+      expect((screen.getByTestId('gpz-supply-rx_ratio') as HTMLInputElement).value).toBe('0,1');
+      expect((screen.getByTestId('gpz-supply-sk3_min_mva') as HTMLInputElement).value).toBe('2000');
+      expect(screen.queryByTestId('gpz-supply-sk3_mva')).not.toBeInTheDocument();
+      fireEvent.change(sk, { target: { value: '1000' } });
+      fireEvent.keyDown(sk, { key: 'Enter' });
+      fireEvent.blur(sk);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_element_parameters', {
+          element_ref: 'gpz/src',
+          parameters: { sk3_hv_mva: 1000 },
+        }),
+      );
+    });
+
+    it('Sieć zasilająca: puste S″k,min czyści daną (null), puste S″k wymagane nie wychodzi do backendu', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], { ...ZRODLO_WN, sk3_min_mva: 2000 }) });
+      const operacja = operacjaModelu();
+      otworz('hv-side');
+      const skMin = screen.getByTestId('gpz-supply-sk3_min_mva');
+      fireEvent.change(skMin, { target: { value: '' } });
+      fireEvent.blur(skMin);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_element_parameters', {
+          element_ref: 'gpz/src',
+          parameters: { sk3_min_mva: null },
+        }),
+      );
+      operacja.mockClear();
+      const sk = screen.getByTestId('gpz-supply-sk3_hv_mva');
+      fireEvent.change(sk, { target: { value: '' } });
+      fireEvent.blur(sk);
+      expect(operacja).not.toHaveBeenCalled();
+      expect(screen.getByTestId('gpz-card-error-hv-side')).toHaveTextContent(/S″k musi być dodatnia/);
+    });
+
+    it.each([['0'], ['-0.2'], ['abc']])('Sieć zasilająca: R/X = %s jest odrzucony jedną regułą (bez operacji)', (wpis) => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      const operacja = operacjaModelu();
+      otworz('hv-side');
+      const rx = screen.getByTestId('gpz-supply-rx_ratio') as HTMLInputElement;
+      fireEvent.change(rx, { target: { value: wpis } });
+      fireEvent.blur(rx);
+      expect(operacja).not.toHaveBeenCalled();
+      expect(screen.getByTestId('gpz-card-error-hv-side')).toHaveTextContent('Stosunek R/X musi być liczbą dodatnią.');
+      // Zapis polski (przecinek dziesiętny) — pole wraca do wartości z modelu.
+      expect(rx.value).toBe('0,1');
+    });
+
+    it('Sieć zasilająca: R/X powyżej 1 (równoważnik z siecią kablową) jest przyjęty', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      const operacja = operacjaModelu();
+      otworz('hv-side');
+      const rx = screen.getByTestId('gpz-supply-rx_ratio');
+      fireEvent.change(rx, { target: { value: '1,5' } });
+      fireEvent.blur(rx);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_element_parameters', {
+          element_ref: 'gpz/src',
+          parameters: { rx_ratio: 1.5 },
+        }),
+      );
+    });
+
+    it('Sieć zasilająca po stronie SN: S″k szyn SN (sk3_mva), bez pola 110 kV', () => {
+      useSnapshotStore.setState({
+        snapshot: snapshotGpz([], { source_side: 'SN', bus_ref: 'gpz/s1', sk3_mva: 300, rx_ratio: 0.1 }),
+      });
+      otworz('hv-side');
+      expect(screen.getByTestId('gpz-supply-side')).toHaveTextContent(/szyny SN/);
+      expect(screen.getByTestId('gpz-supply-un')).toHaveTextContent('15');
+      expect((screen.getByTestId('gpz-supply-sk3_mva') as HTMLInputElement).value).toBe('300');
+      expect(screen.queryByTestId('gpz-supply-sk3_hv_mva')).not.toBeInTheDocument();
+    });
+
+    it('Sieć zasilająca z impedancją jawną: edycja R i X (to one liczą zwarcie), bez pól S″k', () => {
+      useSnapshotStore.setState({
+        snapshot: snapshotGpz([], { source_side: 'SN', bus_ref: 'gpz/s1', r_ohm: 0.05, x_ohm: 0.5, sk3_mva: 300 }),
+      });
+      otworz('hv-side');
+      expect((screen.getByTestId('gpz-supply-r_ohm') as HTMLInputElement).value).toBe('0,05');
+      expect((screen.getByTestId('gpz-supply-x_ohm') as HTMLInputElement).value).toBe('0,5');
+      expect(screen.queryByTestId('gpz-supply-sk3_mva')).not.toBeInTheDocument();
+    });
+
+    it('odmowa backendu wraca w komunikacie karty', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      operacjaModelu({ error: 'Sk3 min przekracza Sk3 max.' });
+      otworz('hv-side');
+      const sk = screen.getByTestId('gpz-supply-sk3_hv_mva');
+      fireEvent.change(sk, { target: { value: '100' } });
+      fireEvent.blur(sk);
+      expect(await screen.findByTestId('gpz-card-error-hv-side')).toHaveTextContent('Sk3 min przekracza Sk3 max.');
+      // Pole nie udaje wartości, której model nie przyjął: wraca do danej z modelu.
+      await waitFor(() => expect((sk as HTMLInputElement).value).toBe(String(ZRODLO_WN.sk3_hv_mva)));
+    });
+
+    it('odmowa backendu zmiany nazwy GPZ: pole wraca do nazwy z modelu', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      operacjaModelu({ error: 'Nazwa zajęta.' });
+      otworz('identification');
+      const nazwa = screen.getByTestId('gpz-name-input') as HTMLInputElement;
+      const przed = nazwa.value;
+      fireEvent.change(nazwa, { target: { value: 'GPZ Inny' } });
+      fireEvent.blur(nazwa);
+      expect(await screen.findByTestId('gpz-card-error-identification')).toHaveTextContent('Nazwa zajęta.');
+      await waitFor(() => expect(nazwa.value).toBe(przed));
+    });
 
     it('transformator 110/SN GPZ: lista typów z katalogu o napięciu jego szyn, wybór = operacja modelu', async () => {
-      const operacja = vi.fn(async () => undefined);
-      useSnapshotStore.setState({
-        snapshot: snapshotGpz([TR1]),
-        executeDomainOperation: operacja as never,
-      });
-      useAppStateStore.setState({ activeCaseId: 'case-gpz' });
-      render(
-        <GpzConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'gpz/src' }} />,
-      );
-      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1]) });
+      const operacja = operacjaModelu();
+      otworz('transformer');
       const wybor = screen.getByTestId('gpz-transformer-select-gpz/tr1') as HTMLSelectElement;
       await waitFor(() =>
         expect(within(wybor).getByRole('option', { name: 'TR 110/15 kV 25 MVA Yd11' })).toBeInTheDocument(),
@@ -230,11 +377,12 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           .map((o) => o.value),
       ).toEqual(['tr-wn-sn-110-15-25mva-yd11']);
       expect(wybor.value).toBe('tr-wn-sn-110-15-25mva-yd11');
-      const tabliczka = screen.getByTestId('gpz-transformer-plate-gpz/tr1');
-      expect(tabliczka).toHaveTextContent('25 MVA');
-      expect(tabliczka).toHaveTextContent('11 %');
-      expect(tabliczka).toHaveTextContent('Yd11');
-      expect(screen.getByText(/Zakres konfiguracji: 2\/4/)).toBeInTheDocument();
+      const wiersz = screen.getByTestId('gpz-transformer-gpz/tr1');
+      expect(screen.getByTestId('gpz-transformer-plate-gpz/tr1')).toHaveTextContent('25 MVA');
+      expect(wiersz).toHaveTextContent('11 %');
+      expect(wiersz).toHaveTextContent('Yd11');
+      // Nazwa jest, transformator ma typ; S″k źródła i sekcje SN — brak w modelu.
+      expect(screen.getByText(/konfiguracja 2\/4/)).toBeInTheDocument();
 
       fireEvent.change(wybor, { target: { value: 'tr-wn-sn-110-15-25mva-yd11' } });
       expect(operacja).toHaveBeenCalledWith('case-gpz', 'assign_catalog_to_element', {
@@ -248,10 +396,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
 
     it('GPZ na granicy SN (bez transformatorów w modelu) — uczciwy stan zamiast pustej listy', () => {
       useSnapshotStore.setState({ snapshot: snapshotGpz([]) });
-      render(
-        <GpzConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'gpz/src' }} />,
-      );
-      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      otworz('transformer');
       expect(screen.getByTestId('gpz-transformer-boundary-sn')).toBeInTheDocument();
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
@@ -263,20 +408,48 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     });
 
-    it('karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
-      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
-      expect(screen.getByText(/MVA/)).toBeInTheDocument();
+    it('Sekcje SN: edytor sekcji stacji GPZ (operacje add/update/delete_gpz_section)', () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, SEKCJE) });
+      otworz('sections');
+      expect(screen.getByTestId('gpz-sections-editor')).toBeInTheDocument();
+      expect(screen.getByTestId('gpz-section-row-lv-s1')).toHaveTextContent('Sekcja 1');
+      expect(screen.getByTestId('gpz-section-row-lv-s2')).toHaveTextContent('Szyna SN 2');
+      expect(screen.getByText(/konfiguracja 4\/4/)).toBeInTheDocument();
     });
 
-    it('karta Bilans pól SN pokazuje braki danych jako kreskę zamiast zera', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-bays-balance'));
-      const balanceContent = screen.getByTestId('gpz-card-content-bays-balance');
-      const dashes = balanceContent.querySelectorAll('div');
-      const dashCount = Array.from(dashes).filter((el) => el.textContent === '—').length;
-      expect(dashCount).toBeGreaterThan(0);
+    it('Pola SN: pola z modelu per sekcja GPZ (wspólna tabela pól), sprzęgło z modelu, „Dodaj pole" = kreator add_sn_bay', () => {
+      const snap = snapshotGpz([TR1], ZRODLO_WN, {
+        gpz_sections: [
+          { section_id: 's1', order: 0, name: 'Sekcja 1', bus_ref: 'gpz/s1', right_coupler_ref: 'gpz/sprz' },
+          { section_id: 's2', order: 1, name: 'Sekcja 2', bus_ref: 'gpz/s2', left_coupler_ref: 'gpz/sprz' },
+        ],
+      }, [
+        { ref_id: 'pole-1', name: 'Pole 1', bay_role: 'OUT', bus_ref: 'gpz/s1', substation_ref: 'gpz/stacja', equipment_refs: [], tags: [], meta: {} },
+        { ref_id: 'pole-2', name: 'Pole 2', bay_role: 'BKR', bus_ref: 'gpz/s1', substation_ref: 'gpz/stacja', equipment_refs: [], tags: [], meta: {} },
+        // Pole innej stacji na szynie o tym samym refie nie należy do tego GPZ.
+        { ref_id: 'pole-5', name: 'Pole 5', bay_role: 'OUT', bus_ref: 'gpz/s2', substation_ref: 'inna', equipment_refs: [], tags: [], meta: {} },
+      ]);
+      useSnapshotStore.setState({
+        snapshot: { ...snap, branches: [{ id: 'sp', ref_id: 'gpz/sprz', name: 'Sprzęgło SN', type: 'bus_coupler', tags: [], meta: {} }] } as never,
+      });
+      otworz('bays');
+      expect(screen.getByTestId('tabela-pol-sn-sekcja-gpz/s1')).toHaveTextContent('Sprzęgło: Sprzęgło SN');
+      expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-1')).toHaveTextContent('Pole liniowe wyjściowe');
+      expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-2')).toHaveTextContent('Pole baterii kondensatorów');
+      expect(screen.queryByTestId('tabela-pol-sn-wiersz-pole-5')).not.toBeInTheDocument();
+      expect(screen.getByTestId('tabela-pol-sn-pusta-gpz/s2')).toBeInTheDocument();
+      fireEvent.change(screen.getByTestId('tabela-pol-sn-rola-gpz/s2'), { target: { value: 'ZU' } });
+      fireEvent.click(screen.getByTestId('tabela-pol-sn-dodaj-gpz/s2'));
+      const formularz = useNetworkBuildStore.getState().activeSurface;
+      expect(formularz?.routeState.payload?.operation).toBe('add_sn_bay');
+      expect(formularz?.routeState.payload?.context).toEqual({
+        bus_ref: 'gpz/s2',
+        station_ref: 'gpz/stacja',
+        gpz_section_id: 's2',
+        bay_role: 'ZU',
+      });
+      // Dawny tekst odsyłający do menu kontekstowego nie istnieje — karta sama dodaje pola.
+      expect(screen.queryByText(/menu kontekstowego/)).not.toBeInTheDocument();
     });
   });
 

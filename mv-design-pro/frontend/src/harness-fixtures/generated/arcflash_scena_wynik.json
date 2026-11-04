@@ -1,11 +1,11 @@
 {
-  "analysis_id": "ff32aca1cce4dd921b01bf9f04ea06a91e7b218c4ea043343992c490ebe02869",
+  "analysis_id": "020bf5813f696e7e74ebe897880c3ee85e4e20c1de7f64480ed53552532c7c58",
   "context": {
     "project_name": "CGMES Golden Net",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+    "snapshot_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
     "run_id": "run-sc-scena-zwarcia"
   },
   "status": "COMPUTED_RALPH_LEE",
@@ -709,7 +709,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 8.9701,
+      "i_bf_ka": 9.6144,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -729,28 +729,28 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 8.5157,
-      "i_arc_min_ka": 8.4233,
+      "i_arc_ka": 9.1245,
+      "i_arc_min_ka": 9.0256,
       "i_arc_at_anchors_ka": {
-        "V600": 6.584,
-        "V2700": 7.7469,
-        "V14300": 8.4719
+        "V600": 7.0715,
+        "V2700": 8.2923,
+        "V14300": 9.0772
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
-      "incident_energy_cal_cm2": 7.6885,
-      "incident_energy_joule_cm2": 32.1689,
-      "arc_flash_boundary_mm": 1487.7185,
+      "incident_energy_cal_cm2": 8.2122,
+      "incident_energy_joule_cm2": 34.36,
+      "arc_flash_boundary_mm": 1551.5722,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 9.12 kA (I_arc_min ≈ 9.03 kA), energia incydentu E ≈ 8.21 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1551.6 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=9.6144 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=9.0772 kA, V2700=8.2923 kA, V600=7.0715 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 9.1245 kA, I_arc_min = 9.0256 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -765,8 +765,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9611 J/cm², V2700=28.5188 J/cm², V600=19.8503 J/cm²",
-          "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=9.6144 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=34.1393 J/cm², V2700=30.482 J/cm², V600=21.394 J/cm²",
+          "result_pl": "E = 34.36 J/cm² = 8.2122 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -774,14 +774,14 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1551.5722 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 8.2122 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
@@ -825,7 +825,7 @@
       "status_label_pl": "metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018)",
       "method": "RALPH_LEE",
       "electrode_config": "VCB",
-      "i_bf_ka": 13.9866,
+      "i_bf_ka": 13.9874,
       "voltage_kv": 110.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -840,34 +840,34 @@
       "i_arc_at_anchors_ka": null,
       "arc_variation_cf": null,
       "enclosure_correction_cf": null,
-      "incident_energy_cal_cm2": 3183.7026,
-      "incident_energy_joule_cm2": 13320.6116,
-      "arc_flash_boundary_mm": 23436.1904,
+      "incident_energy_cal_cm2": 3183.8705,
+      "incident_energy_joule_cm2": 13321.3143,
+      "arc_flash_boundary_mm": 23436.8086,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "POZA zakresem ważności IEEE 1584-2018 (U=110.0 kV, I_bf=13.99 kA; zakres: 208 V–15 kV, I_bf 200 A–65 kA (600 V<U<=15 kV) dla tej klasy napięcia). Zastosowano metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018): E ≈ 3183.7 cal/cm², AFB ≈ 23436.2 mm, ŚOI = dane niekompletne — tablice NFPA 70E. To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku).",
+      "why_pl": "POZA zakresem ważności IEEE 1584-2018 (U=110.0 kV, I_bf=13.99 kA; zakres: 208 V–15 kV, I_bf 200 A–65 kA (600 V<U<=15 kV) dla tej klasy napięcia). Zastosowano metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018): E ≈ 3183.87 cal/cm², AFB ≈ 23436.8 mm, ŚOI = dane niekompletne — tablice NFPA 70E. To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku).",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "E_Lee",
           "formula_latex": "E = 2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ D^{2}",
-          "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s, D=455.0 mm [poza zakresem IEEE 1584-2018]",
-          "result_pl": "E = 3183.7026 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "substitution_pl": "V=110.0 kV, I_bf=13.9874 kA, t=0.2 s, D=455.0 mm [poza zakresem IEEE 1584-2018]",
+          "result_pl": "E = 3183.8705 cal/cm² (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "V w kV, I_bf w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
         },
         {
           "symbol": "AFB_Lee",
           "formula_latex": "D_{AFB} = \\sqrt{2{,}142\\times10^{6}\\cdot V\\cdot I_{bf}\\cdot t \\big/ 1{,}2}",
-          "substitution_pl": "V=110.0 kV, I_bf=13.9866 kA, t=0.2 s; E_próg = 1.2 cal/cm²",
-          "result_pl": "AFB = 23436.1904 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
+          "substitution_pl": "V=110.0 kV, I_bf=13.9874 kA, t=0.2 s; E_próg = 1.2 cal/cm²",
+          "result_pl": "AFB = 23436.8086 mm (metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018))",
           "unit_check_pl": "D_AFB w mm; odległość, na której E = 1,2 cal/cm².",
           "table_ref": "metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 3183.7026 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 3183.8705 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
@@ -911,7 +911,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 21.0926,
+      "i_bf_ka": 23.7565,
       "voltage_kv": 0.4,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -931,26 +931,26 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 12.3832,
-      "i_arc_min_ka": 10.8035,
+      "i_arc_ka": 13.8131,
+      "i_arc_min_ka": 12.051,
       "i_arc_at_anchors_ka": {
-        "V600": 15.5285
+        "V600": 17.3717
       },
       "arc_variation_cf": 0.2551,
       "enclosure_correction_cf": 0.9999,
-      "incident_energy_cal_cm2": 9.4221,
-      "incident_energy_joule_cm2": 39.4221,
-      "arc_flash_boundary_mm": 1652.2113,
+      "incident_energy_cal_cm2": 10.5822,
+      "incident_energy_joule_cm2": 44.2761,
+      "arc_flash_boundary_mm": 1776.7394,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash LV (konfiguracja VCB, IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 15.53 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 12.38 kA (I_arc_min ≈ 10.8 kA), energia incydentu E ≈ 9.42 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1652.2 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash LV (konfiguracja VCB, IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 17.37 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 13.81 kA (I_arc_min ≈ 12.05 kA), energia incydentu E ≈ 10.58 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1776.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,600} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\quad(\\text{Eq.1, kotwa }600\\text{ V});\\quad I_{arc} = \\left[\\left(\\tfrac{0{,}6}{U}\\right)^{2}\\!\\left(\\tfrac{1}{I_{arc,600}^{2}}-\\tfrac{0{,}6^{2}-U^{2}}{0{,}6^{2}\\,I_{bf}^{2}}\\right)\\right]^{-1/2}\\quad(\\text{Eq.25});\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=21.0926 kA, G=104.0 mm, U=0.4 kV [VCB, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; I_arc,600(Eq.1)=15.5285 kA; VarCf=0.2551",
-          "result_pl": "I_arc = 12.3832 kA (Eq.25, skorygowany do U=0.4 kV), I_arc_min = 10.8035 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=23.7565 kA, G=104.0 mm, U=0.4 kV [VCB, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; I_arc,600(Eq.1)=17.3717 kA; VarCf=0.2551",
+          "result_pl": "I_arc = 13.8131 kA (Eq.25, skorygowany do U=0.4 kV), I_arc_min = 12.051 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc,I_arc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V).",
           "table_ref": "I_arc,600[VCB,V600] (Tab.1) = open_source_IEEE_1584; Eq.25 publiczna postać zamknięta (bez tablicy)"
         },
@@ -965,8 +965,8 @@
         {
           "symbol": "E",
           "formula_latex": "E = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_3 = k_3\\,I_{arc,600}/\\mathrm{denom}(I_{bf})\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=21.0926 kA, I_arc,600=15.5285 kA (nieskorygowany, człon x3), I_arc=12.3832 kA (Eq.25, człon x4), G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999 [wiersz kotwy 600 V, U rzeczywiste=0.4 kV]",
-          "result_pl": "E = 39.4221 J/cm² = 9.4221 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=23.7565 kA, I_arc,600=17.3717 kA (nieskorygowany, człon x3), I_arc=13.8131 kA (Eq.25, człon x4), G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999 [wiersz kotwy 600 V, U rzeczywiste=0.4 kV]",
+          "result_pl": "E = 44.2761 J/cm² = 10.5822 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego).",
           "table_ref": "E[VCB,V600] (Tab.3) = open_source_IEEE_1584"
         },
@@ -974,14 +974,14 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\text{wiersz 600 V});\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=0.4 kV, D=455.0 mm",
-          "result_pl": "AFB = 1652.2113 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1776.7394 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB,V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 9.4221 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 10.5822 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
@@ -1025,7 +1025,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 8.9701,
+      "i_bf_ka": 9.6144,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -1045,28 +1045,28 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 8.5157,
-      "i_arc_min_ka": 8.4233,
+      "i_arc_ka": 9.1245,
+      "i_arc_min_ka": 9.0256,
       "i_arc_at_anchors_ka": {
-        "V600": 6.584,
-        "V2700": 7.7469,
-        "V14300": 8.4719
+        "V600": 7.0715,
+        "V2700": 8.2923,
+        "V14300": 9.0772
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
-      "incident_energy_cal_cm2": 7.6885,
-      "incident_energy_joule_cm2": 32.1689,
-      "arc_flash_boundary_mm": 1487.7185,
+      "incident_energy_cal_cm2": 8.2122,
+      "incident_energy_joule_cm2": 34.36,
+      "arc_flash_boundary_mm": 1551.5722,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 9.12 kA (I_arc_min ≈ 9.03 kA), energia incydentu E ≈ 8.21 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1551.6 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=9.6144 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=9.0772 kA, V2700=8.2923 kA, V600=7.0715 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 9.1245 kA, I_arc_min = 9.0256 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -1081,8 +1081,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=31.9611 J/cm², V2700=28.5188 J/cm², V600=19.8503 J/cm²",
-          "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=9.6144 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=34.1393 J/cm², V2700=30.482 J/cm², V600=21.394 J/cm²",
+          "result_pl": "E = 34.36 J/cm² = 8.2122 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -1090,14 +1090,14 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 1487.7185 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 1551.5722 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 8.2122 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
@@ -1141,7 +1141,7 @@
       "status_label_pl": "policzony (IEEE 1584-2018, współczynniki open-source — weryfikacja z normą wymagana)",
       "method": "IEEE_1584_2018",
       "electrode_config": "VCB",
-      "i_bf_ka": 4.6116,
+      "i_bf_ka": 4.4032,
       "voltage_kv": 15.0,
       "arc_time_s": 0.2,
       "conductor_gap_mm": 104.0,
@@ -1161,28 +1161,28 @@
         "https://webstore.iec.ch/en/publication/3711",
         "https://webstore.iec.ch/en/publication/3712"
       ],
-      "i_arc_ka": 4.3796,
-      "i_arc_min_ka": 4.3321,
+      "i_arc_ka": 4.1811,
+      "i_arc_min_ka": 4.1358,
       "i_arc_at_anchors_ka": {
-        "V600": 3.303,
-        "V2700": 4.0235,
-        "V14300": 4.3593
+        "V600": 3.1479,
+        "V2700": 3.8438,
+        "V14300": 4.1619
       },
       "arc_variation_cf": 0.0217,
       "enclosure_correction_cf": 0.9999,
-      "incident_energy_cal_cm2": 4.0755,
-      "incident_energy_joule_cm2": 17.0521,
-      "arc_flash_boundary_mm": 992.4671,
+      "incident_energy_cal_cm2": 3.899,
+      "incident_energy_joule_cm2": 16.3134,
+      "arc_flash_boundary_mm": 964.8288,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 4.38 kA (I_arc_min ≈ 4.33 kA), energia incydentu E ≈ 4.08 cal/cm² na odległości roboczej, granica łuku AFB ≈ 992.5 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 4.18 kA (I_arc_min ≈ 4.14 kA), energia incydentu E ≈ 3.9 cal/cm² na odległości roboczej, granica łuku AFB ≈ 964.8 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.303 kA; VarCf=0.0217",
-          "result_pl": "I_arc = 4.3796 kA, I_arc_min = 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=4.4032 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.1619 kA, V2700=3.8438 kA, V600=3.1479 kA; VarCf=0.0217",
+          "result_pl": "I_arc = 4.1811 kA, I_arc_min = 4.1358 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
         },
@@ -1197,8 +1197,8 @@
         {
           "symbol": "E",
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=16.9365 J/cm², V2700=15.0216 J/cm², V600=9.6432 J/cm²",
-          "result_pl": "E = 17.0521 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
+          "substitution_pl": "I_bf=4.4032 kA, G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999; kotwy: V14300=16.2025 J/cm², V2700=14.3647 J/cm², V600=9.1707 J/cm²",
+          "result_pl": "E = 16.3134 J/cm² = 3.899 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
@@ -1206,14 +1206,14 @@
           "symbol": "AFB",
           "formula_latex": "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
           "substitution_pl": "E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm",
-          "result_pl": "AFB = 992.4671 mm (IEEE 1584-2018, współczynniki open-source)",
+          "result_pl": "AFB = 964.8288 mm (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
           "table_ref": "E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny"
         },
         {
           "symbol": "ŚOI",
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
-          "substitution_pl": "E = 4.0755 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
+          "substitution_pl": "E = 3.899 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
           "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"

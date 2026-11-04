@@ -8,7 +8,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "87067cc06215c1d97d41c61a7ebffd59be55f7f439f8bbfaf0f1bf9d528b39ee"
+    "sha256": "6391aacd22ba5ac0c13e1605fd88780ba78ce87117fc02d59ca9fc8e9042824f"
   },
   "dobor_kompensacji/golden/bus_sn_c_noc": {
     "parametry": {
@@ -20,7 +20,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "0d3b9538e5af73ae2d5075e98f6d14ca6301de84c59177e5cb6aaf2b69707226"
+    "sha256": "58f17a1a4d1906980d2c66bad175a388911766f51ebf80100d7eff18bcf7469a"
   },
   "dobor_kompensacji/kompensacja/bus_pcc_dzien": {
     "parametry": {
@@ -56,7 +56,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "0ddfa1b21c429d053905f8761b4eda2352fc5e93106095063efd26c79c622da9"
+    "sha256": "45cfb704c29ff7963ed5328b890717bf31d409e3f0a3ff163c76985b107b4c75"
   },
   "hosting_capacity/golden/domyslni_kandydaci_max10": {
     "parametry": {
@@ -66,7 +66,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "f3a32f25de0a940fbd0ded3576675c15f7714af91712ae2995c51cb379314df2"
+    "sha256": "d9be0f7a3f1988fbf33e3cc14498b859be18583cdd5c4edc6c41a650eb7f38bc"
   },
   "hosting_capacity/napiecie_graniczne/b_rem_max10": {
     "parametry": {
@@ -175,7 +175,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "c24f60537a18a9d4126c9e4aa6a964fc1c6332c17ee912a1d57c79b5c16f423b"
+    "sha256": "35c696026c033adde6aa0ed7773c9ac2ffe128bf0a293fb8d7a18c3c7beb7922"
   },
   "odpowiedz_osd/golden/lfsm_o": {
     "parametry": {
@@ -189,7 +189,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "67951ec53140db272a2ee52133a7596e51c71237b5f83397f240025e8c90df25"
+    "sha256": "e17d07b1e54906d9bbf1de8615c925c730a448d8a53ccf75b893dc057e9afc87"
   },
   "odpowiedz_osd/golden/lfsm_u": {
     "parametry": {
@@ -203,7 +203,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "fa6c3b97b91670ee66c5b208ec438c2a7bcf7e5064ff0de4a6f85960f05bbf35"
+    "sha256": "dc616e5975dd5b76ecc9f586db325693d9823cd4423ce0beddfe0ff5d4bf4b08"
   },
   "odpowiedz_osd/golden/moc_bierna": {
     "parametry": {
@@ -215,7 +215,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "76b51856f75e751f1ffbc481d91b2450799e23eb05295d85a3df3a9ccedae0ec"
+    "sha256": "399a672582158457c3ebe71a840d01059bfd17370d7b954f5e9cfc5d75651caf"
   },
   "odpowiedz_osd/golden/ograniczenie_p": {
     "parametry": {
@@ -227,7 +227,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "0019382fe6feee06b6a7df69ad5dd37ba567db23fa238e447f871d4db0ba7882"
+    "sha256": "366acf72062a8763e289eefd01fbc89851c2e25ecf8269c89f0e7a8b6e821acc"
   },
   "odpowiedz_osd/kompensacja/cosfi": {
     "parametry": {
@@ -304,7 +304,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "b4da4b041d8e1966daf86d210160898ea11660543759149486ac27ab5c0f7e2c"
+    "sha256": "af8a437b326a3ac04ad2a46e67999e673547c37daf4b3de01150e99ab1895584"
   },
   "pq_area/golden/bus_sn_c_p4_q3": {
     "parametry": {

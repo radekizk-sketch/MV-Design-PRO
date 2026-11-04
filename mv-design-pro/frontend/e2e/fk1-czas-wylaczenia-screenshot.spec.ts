@@ -20,10 +20,12 @@
  *
  * Kadr 1: tabela oceny (obie gałęzie, źródło czasu „z założenia przypadku").
  * Kadr 2: ten sam ekran z otwartym dowodem gałęzi „Linia SN 1" (krok 1 nazywa
- *         źródło czasu; krok 2 — uczciwy stan „rachunku nie przeprowadzono",
- *         bo ta gałąź złotej sieci nie ma pełnych danych katalogowych do
- *         obliczenia wytrzymałości cieplnej — osobny, zmierzony i nazwany
- *         dług, patrz meldunek karty).
+ *         źródło czasu).
+ * Kadr 3: pełny dowód tej gałęzi — od karty KATALOG-PRZEJECIE-PR linia sieci
+ *         złotej jest związana z pozycją katalogu `line-base-al-st-70`
+ *         (Jth(1 s) = 88 A·√s/mm², 70 mm²), więc rachunek cieplny przebiega do
+ *         kryterium; dawny stan „rachunku nie przeprowadzono" wynikał z
+ *         nieistniejącej pozycji `line-afl-70`.
  * Oba motywy. Wyjście: docs/audit/visual/dowody/fk1_czas_<kadr>_<motyw>.png
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -96,13 +98,12 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
         fullPage: true,
       });
 
-      // Kadr 3 — uczciwy stan zerowy (K6/H-5): sieć złota nie niesie pełnych
-      // danych katalogowych wytrzymałości cieplnej dla tej gałęzi (dług
-      // nazwany w meldunku karty) — dowód pokazuje TO wprost, nie fabrykuje
-      // kryteriów/zaleceń, których backend nie policzył.
+      // Kadr 3 — pełny dowód: dane cieplne linii z pozycji katalogu, rachunek
+      // doprowadzony do kryterium (prąd gałęzi wobec prądu dopuszczalnego).
       await expect(
-        page.getByText('Rachunku cieplnego nie przeprowadzono').first(),
+        page.getByText('Sprawdzenie kryterium cieplnego (zapis prądowy)').first(),
       ).toBeVisible();
+      await expect(page.getByText('Rachunku cieplnego nie przeprowadzono')).toHaveCount(0);
       await bramkaTresciMatematycznej(page);
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_dowod_pelny_${theme}.png`),

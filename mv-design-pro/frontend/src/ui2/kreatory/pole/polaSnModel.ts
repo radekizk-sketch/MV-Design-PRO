@@ -9,7 +9,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
-import type { BayModelRole } from '../../../types/enm';
+import { BAY_MODEL_ROLES, type BayModelRole } from '../../../types/enm';
 
 export type RolaPola = BayModelRole;
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
@@ -109,6 +109,16 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   manufacturer_ref: null,
   earthing_role: '',
 };
+
+/**
+ * Rola wstępnie wybrana w kreatorze: `bay_role` z kontekstu operacji (np. „Dodaj pole" z karty
+ * pól konfiguratora z wybraną rolą), o ile należy do listy ról modelu; inaczej rola domyślna.
+ */
+export function rolaPoczatkowa(kontekstRola: unknown): RolaPola {
+  return typeof kontekstRola === 'string' && (BAY_MODEL_ROLES as readonly string[]).includes(kontekstRola)
+    ? (kontekstRola as RolaPola)
+    : DANE_DOMYSLNE.bay_role;
+}
 
 /** Kolejność ról w wyborze kreatora (najczęstsza rola dokładanego pola na początku). */
 const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'BKR', 'ZU'];

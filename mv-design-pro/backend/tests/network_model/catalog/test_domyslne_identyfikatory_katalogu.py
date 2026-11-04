@@ -228,3 +228,121 @@ def test_domyslny_kabel_odgalezienia_konfiguratora_stacji_ma_karte_producenta() 
     # Te same parametry co dawny profil `cable-enea-operator-na2xs2y-1x150`: Al, 150 mm², 12/20 kV.
     assert (str(rekord["conductor_material"]).upper(), rekord["cross_section_mm2"]) == ("AL", 150.0)
     assert rekord["voltage_rating_kv"] == 20.0
+
+
+# ---------------------------------------------------------------------------
+# Sieć złota i jej fikstury harnessu (decyzja architekta 2026-11-04, pkt 2)
+# ---------------------------------------------------------------------------
+
+#: Pozycje referencyjne sieci złotej z powodem; prawdziwość sprawdzana mechanicznie:
+#: w tej samej przestrzeni, rodzaju i napięciu nie ma pozycji spoza modeli referencyjnych
+#: o mocy w przedziale [0,5·P; 2·P] pozycji.
+_WYJATKI_REFERENCYJNE_SIECI_ZLOTEJ: dict[str, str] = {
+    "conv-pv-nn-0p5mw-0p4kv": (
+        "Farma PV sieci złotej stoi na szynie 0,4 kV z mocą 0,4 MW; pozycje PV z kartą przy "
+        "0,4 kV to falowniki 8–10 kVA (SMA STP, Fronius Symo), a pozycje z kartą rzędu 0,5 MW "
+        "mają inne napięcie strony AC (0,8 kV i wyżej)."
+    ),
+}
+
+_FIKSTURY = _BACKEND.parent / "frontend" / "src" / "harness-fixtures" / "generated"
+
+
+def _siec_zlota():  # noqa: ANN202 — import leniwy: budowniczy woła operacje domenowe
+    from tests.cgmes.golden_enm import build_golden_enm
+
+    return build_golden_enm()
+
+
+def _elementy_z_pochodzeniem(enm) -> list:  # noqa: ANN001
+    elementy = []
+    for kolekcja in ("sources", "transformers", "branches", "generators", "loads"):
+        elementy.extend(getattr(enm, kolekcja))
+    return elementy
+
+
+def test_siec_zlota_wskazuje_realne_pozycje_z_tabliczka_z_katalogu() -> None:
+    pozycje = _pozycje()
+    referencje = []
+    for element in _elementy_z_pochodzeniem(_siec_zlota()):
+        ref = getattr(element, "catalog_ref", None)
+        zrodlo = getattr(element, "parameter_source", None)
+        if zrodlo == "CATALOG":
+            # Deklaracja pochodzenia katalogowego ma pokrycie: pozycja i jej tabliczka.
+            assert ref, f"{element.ref_id}: parameter_source=CATALOG bez catalog_ref"
+            assert getattr(element, "materialized_params", None), element.ref_id
+        if not ref:
+            continue
+        referencje.append(ref)
+        assert ref in pozycje, f"{element.ref_id}: {ref} nie istnieje w katalogu"
+        if any(r.get("verification_status") == "REFERENCYJNY" for _, r in pozycje[ref]):
+            assert ref in _WYJATKI_REFERENCYJNE_SIECI_ZLOTEJ, f"{element.ref_id}: {ref}"
+    # Pomiar 2026-11-04: pięć wiązań (dwa transformatory, kabel, linia, farma PV).
+    assert len(referencje) == 5
+    assert set(_WYJATKI_REFERENCYJNE_SIECI_ZLOTEJ) <= set(referencje), "martwy wyjątek"
+
+
+def _moc_czynna_mw(rekord: dict) -> float:
+    """Moc czynna pozycji przekształtnika [MW] — pola obu przestrzeni (MW albo kW)."""
+    for pole, mnoznik in (("pmax_mw", 1.0), ("pn_ac_mw", 1.0), ("p_max_kw", 1e-3)):
+        if rekord.get(pole):
+            return float(rekord[pole]) * mnoznik
+    return 0.0
+
+
+def test_wyjatek_referencyjny_sieci_zlotej_jest_prawdziwy() -> None:
+    """Wyjątek referencyjny trzyma tylko wtedy, gdy katalog nie ma pozycji z kartą.
+
+    Kryterium: ta sama przestrzeń katalogu, ten sam rodzaj (jeśli przestrzeń go niesie),
+    to samo napięcie znamionowe i moc czynna w paśmie [0,5·P; 2·P].
+    """
+    pozycje = _pozycje()
+    for ident in _WYJATKI_REFERENCYJNE_SIECI_ZLOTEJ:
+        for przestrzen, rekord in pozycje[ident]:
+            moc = _moc_czynna_mw(rekord)
+            assert moc > 0, (ident, przestrzen)
+            konkurenci = sorted(
+                inny_id
+                for inny_id, wpisy in pozycje.items()
+                for inna_przestrzen, inny in wpisy
+                if inna_przestrzen == przestrzen
+                and inny.get("kind") == rekord.get("kind")
+                and inny.get("un_kv") == rekord.get("un_kv")
+                and inny.get("verification_status") != "REFERENCYJNY"
+                and 0.5 * moc <= _moc_czynna_mw(inny) <= 2 * moc
+            )
+            assert konkurenci == [], f"{ident}: są pozycje spoza referencyjnych {konkurenci}"
+
+
+def test_fikstury_sieci_zlotej_niosa_tylko_jej_realne_wiazania() -> None:
+    """Fikstury harnessu z migawką sieci złotej niosą dokładnie wiązania budowniczego."""
+    import json
+
+    oczekiwane = {e.catalog_ref for e in _elementy_z_pochodzeniem(_siec_zlota()) if e.catalog_ref}
+    # Fikstura niesie migawkę elementów sieci złotej, gdy ma nazwę sieci i pola wiązania
+    # katalogowego; pozostałe (wyniki, wymagania) mają tylko nazwę sieci w nagłówku.
+    pliki = sorted(
+        p
+        for p in _FIKSTURY.glob("*.json")
+        if '"CGMES Golden Net"' in (tekst := p.read_text("utf-8")) and '"catalog_ref"' in tekst
+    )
+    # Pomiar 2026-11-04: pięć fikstur z migawką elementów sieci złotej (pulpit, sieć złota,
+    # składowe, zbieżność, tolerancja robocza zwarć).
+    assert len(pliki) == 5, [p.name for p in pliki]
+
+    def zbierz(wartosc, wynik: set[str]) -> None:  # noqa: ANN001
+        if isinstance(wartosc, dict):
+            ref = wartosc.get("catalog_ref")
+            if isinstance(ref, str) and ref:
+                wynik.add(ref)
+            for v in wartosc.values():
+                zbierz(v, wynik)
+        elif isinstance(wartosc, list):
+            for v in wartosc:
+                zbierz(v, wynik)
+
+    for plik in pliki:
+        znalezione: set[str] = set()
+        zbierz(json.loads(plik.read_text("utf-8")), znalezione)
+        assert znalezione <= oczekiwane | set(_pozycje()), (plik.name, znalezione - set(_pozycje()))
+        assert znalezione & oczekiwane, f"{plik.name}: brak wiązań sieci złotej"

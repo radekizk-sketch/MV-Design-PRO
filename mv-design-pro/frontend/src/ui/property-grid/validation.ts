@@ -15,6 +15,11 @@
  */
 
 import type { PropertyField, ValidationMessage } from '../types';
+import {
+  KOMUNIKAT_STOSUNKU_RX,
+  KOMUNIKAT_STOSUNKU_RX_MIN,
+  stosunekRxPoprawny,
+} from '../../ui2/model/stosunekRxZrodla';
 
 // =============================================================================
 // Types
@@ -79,7 +84,9 @@ const VALIDATION_RULES: Record<string, ValidatorFn[]> = {
   // (był 'Source.sk_mva', niedopasowany do klucza pola 'sk3_mva' — reguła nigdy
   // się nie uruchamiała; ten sam defekt naprawiony w komplecie, KLASA NIE INSTANCJA).
   'Source.sk3_mva': [requiredNumber, positiveNumber],
-  'Source.rx_ratio': [positiveNumber, maxValue(1)],
+  // Karta KATALOG-PRZEJECIE-PR: R/X z JEDNEJ definicji (`ui2/model/stosunekRxZrodla.ts`, lustro
+  // backendu) — dawne `maxValue(1)` nie miało podstawy normowej (R/X równoważnika SN bywa > 1).
+  'Source.rx_ratio': [stosunekRx(KOMUNIKAT_STOSUNKU_RX)],
   // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.sn_voltage_kv` (był
   // 'Source.voltage_kv' — `Source` nie ma pola `voltage_kv`, ta sama klasa
   // fantomu co `bus_ref` powyżej).
@@ -89,7 +96,7 @@ const VALIDATION_RULES: Record<string, ValidatorFn[]> = {
   // `sources.sk_min_exceeds_max`) — poza zakresem walidacji SYNTAKTYCZNEJ tego pliku.
   'Source.sk3_min_mva': [positiveNumber],
   'Source.ik3_min_ka': [positiveNumber],
-  'Source.rx_ratio_min': [positiveNumber],
+  'Source.rx_ratio_min': [stosunekRx(KOMUNIKAT_STOSUNKU_RX_MIN)],
   // CV-4.3 K7c: napięcie zadane szyny bilansującej — opcjonalne, pasmo 0,8-1,2
   // p.u. (ten sam przedział co backend, `zrodlo_zwarcie.py::PASMO_U_SET_PU`,
   // i kreator, `zrodloModel.ts::PASMO_U_SET_PU`).
@@ -193,6 +200,16 @@ function integerValue(value: unknown): ValidationResult {
     };
   }
   return { valid: true };
+}
+
+/** Stosunek R/X źródła — reguła `stosunekRxPoprawny` (brak wartości ocenia walidator wymagalności). */
+function stosunekRx(komunikat: string): ValidatorFn {
+  return (value: unknown): ValidationResult => {
+    if (value === null || value === undefined || stosunekRxPoprawny(value)) {
+      return { valid: true };
+    }
+    return { valid: false, message: komunikat, code: 'E-RANGE-01', severity: 'ERROR' };
+  };
 }
 
 /**

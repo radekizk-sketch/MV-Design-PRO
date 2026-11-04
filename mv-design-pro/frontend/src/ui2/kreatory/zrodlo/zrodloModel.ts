@@ -27,6 +27,11 @@ import {
   zbudujPayload as zbudujPayloadZespolu,
   type ZespolFormData,
 } from '../zespol-uziemiajacy/zespolModel';
+import {
+  KOMUNIKAT_STOSUNKU_RX,
+  KOMUNIKAT_STOSUNKU_RX_MIN,
+  stosunekRxPoprawny,
+} from '../../model/stosunekRxZrodla';
 
 export type ShortCircuitInputSide = 'SN' | 'HV_110';
 export type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
@@ -355,8 +360,8 @@ function walidujDaneScenariuszaMin(
   if (data.ik3_min_ka !== null && data.ik3_min_ka <= 0) {
     errors.push({ field: 'ik3_min_ka', message: 'Prąd zwarciowy Ik″min musi być dodatni.' });
   }
-  if (data.rx_ratio_min !== null && data.rx_ratio_min < 0) {
-    errors.push({ field: 'rx_ratio_min', message: 'Stosunek R/X (MIN) musi być nieujemny.' });
+  if (data.rx_ratio_min !== null && !stosunekRxPoprawny(data.rx_ratio_min)) {
+    errors.push({ field: 'rx_ratio_min', message: KOMUNIKAT_STOSUNKU_RX_MIN });
   }
   if (
     data.sk3_min_mva !== null
@@ -447,8 +452,8 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       if (!isPositive(data.sk3_hv_mva)) {
         errors.push({ field: 'sk3_hv_mva', message: 'Podaj moc zwarciową Sk″ na szynie 110 kV.' });
       }
-      if (data.rx_ratio === null || data.rx_ratio < 0) {
-        errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
+      if (!stosunekRxPoprawny(data.rx_ratio)) {
+        errors.push({ field: 'rx_ratio', message: KOMUNIKAT_STOSUNKU_RX });
       }
       errors.push(...walidujDaneScenariuszaMin(data, data.sk3_hv_mva));
     } else if (trybParametruZwarciowego(data) === 'IMPEDANCE') {
@@ -473,8 +478,8 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       if (!isPositive(data.sk3_mva)) {
         errors.push({ field: 'sk3_mva', message: 'Moc zwarciowa Sk″ musi być dodatnia.' });
       }
-      if (data.rx_ratio === null || data.rx_ratio < 0) {
-        errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
+      if (!stosunekRxPoprawny(data.rx_ratio)) {
+        errors.push({ field: 'rx_ratio', message: KOMUNIKAT_STOSUNKU_RX });
       }
       errors.push(...walidujDaneScenariuszaMin(data, data.sk3_mva));
     }
@@ -482,7 +487,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     if (!isPositive(data.sk3_mva)) {
       errors.push({ field: 'sk3_mva', message: `Moc zwarciowa Sk″ musi pochodzić z ${sourceDescriptor}.` });
     }
-    if (data.rx_ratio === null || data.rx_ratio < 0) {
+    if (!stosunekRxPoprawny(data.rx_ratio)) {
       errors.push({ field: 'rx_ratio', message: `Stosunek R/X musi pochodzić z ${sourceDescriptor}.` });
     }
   }
@@ -577,7 +582,7 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
     if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
       return null;
     }
-  } else if (!isPositive(previewSk3Mva) || data.rx_ratio === null || data.rx_ratio < 0) {
+  } else if (!isPositive(previewSk3Mva) || !stosunekRxPoprawny(data.rx_ratio)) {
     return null;
   }
   if (
@@ -872,7 +877,7 @@ export function wierszeGotowosci(data: GridSourceFormData): WierszGotowosci[] {
   const impedancyjny = trybParametruZwarciowego(data) === 'IMPEDANCE';
   const hasShortCircuitInput = impedancyjny
     ? data.r_ohm !== null && data.r_ohm >= 0 && isPositive(data.x_ohm)
-    : isPositive(hv ? data.sk3_hv_mva : data.sk3_mva) && data.rx_ratio !== null;
+    : isPositive(hv ? data.sk3_hv_mva : data.sk3_mva) && stosunekRxPoprawny(data.rx_ratio);
 
   const wiersze: Array<[string, WierszGotowosci['stan'], string]> = [
     ['Identyfikacja', data.source_name.trim() ? 'kompletne' : 'brak', 'Kompletne'],

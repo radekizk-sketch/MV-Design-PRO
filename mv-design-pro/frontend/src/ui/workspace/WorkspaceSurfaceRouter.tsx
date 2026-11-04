@@ -146,6 +146,7 @@ import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
+import { OPERATION_LABELS_PL } from '../audit/AuditTrailPanel';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -2758,9 +2759,10 @@ function ExportButton({
 
 function OperationWithoutFormNotice({ operation }: { operation: CanonicalOpName }) {
   const closeActiveSurface = useNetworkBuildStore((state) => state.closeActiveSurface);
-  const label = operation === 'delete_element'
-    ? 'Usunięcie elementu'
-    : 'Odświeżenie modelu';
+  // Nagłówek z JEDNEJ mapy etykiet operacji (`OPERATION_LABELS_PL`, rekord po `CanonicalOpName`
+  // — kompletny z typu). Dawny warunek dawał „Odświeżenie modelu" każdej operacji bez
+  // formularza poza usunięciem elementu (np. operacjom sekcji GPZ).
+  const label = OPERATION_LABELS_PL[operation];
 
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

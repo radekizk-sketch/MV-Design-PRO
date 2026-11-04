@@ -48,6 +48,7 @@ import {
   maSzyne,
   rolaLabel,
   OPCJE_ROLI_UZIEMNIKA,
+  rolaPoczatkowa,
   walidujFormularz,
   wyborPomiaruLabel,
   zbudujPayload,
@@ -104,7 +105,10 @@ export function KreatorPolaSn() {
   }, [context, snapshot]);
   const hasSzyne = maSzyne(kontekst);
 
-  const [dane, setDane] = useState<PolaSnFormData>(() => ({ ...DANE_DOMYSLNE }));
+  const [dane, setDane] = useState<PolaSnFormData>(() => ({
+    ...DANE_DOMYSLNE,
+    bay_role: rolaPoczatkowa(context?.bay_role),
+  }));
   const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');

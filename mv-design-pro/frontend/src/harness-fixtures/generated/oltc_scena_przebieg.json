@@ -8,8 +8,8 @@
   "project_id": null,
   "result_status": "VALID",
   "scenario_ref": null,
-  "snapshot_hash": "b9a4e660138b377262e5b22b551df04991f81eb7c34d03cbd25a0487ba0a503a",
-  "solver_input_hash": "da3250d8ce2c8f827c845f77e41b3f560958cb31d885e98812fc4dca8b025b11",
+  "snapshot_hash": "8e614d5bc79f63366c184327f4a08b0878ccfdeb561f9e33ca03b5f62e431f22",
+  "solver_input_hash": "a28f98429b35851e6fcfaff7153476b4f186f9e87d0873a444e3c19e1567bb93",
   "started_at": "2026-09-16T09:00:00+00:00",
   "status": "DONE",
   "study_case_id": "case-demo"

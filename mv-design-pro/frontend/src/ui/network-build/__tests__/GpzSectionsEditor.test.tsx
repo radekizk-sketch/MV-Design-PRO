@@ -3,7 +3,9 @@
  *
  * Pokrycie:
  *  - Render: lista LV/HV, przyciski "+ LV"/"+ HV", akcje "Edytuj"/"Usuń".
- *  - Add flow: open form → fill → submit → wywołanie add_gpz_section z poprawnym payload.
+ *  - Add flow: open form → fill → submit → WYKONANIE add_gpz_section z poprawnym payload
+ *    (karta KATALOG-PRZEJECIE-PR: dawny mock `executeDomainOperation` maskował defekt — rejestr
+ *    formularzy nie miał formularza tych operacji, więc w aplikacji nic się nie zapisywało).
  *  - Edit flow: open form pre-fill → modify → submit → wywołanie update_gpz_section.
  *  - Delete flow: confirm → wywołanie delete_gpz_section.
  *  - Walidacja: pusty section_id, brak bus_ref, duplicate section_id.
@@ -15,7 +17,7 @@ import { render, fireEvent } from '@testing-library/react';
 import { GpzSectionsEditor } from '../cards/GpzSectionsEditor';
 import type { Substation } from '../../../types/enm';
 
-const openOperationForm = vi.fn();
+const executeDomainOperation = vi.fn();
 
 let currentSnapshot: Record<string, unknown> = {};
 
@@ -23,13 +25,12 @@ vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (selector: (state: unknown) => unknown) =>
     selector({
       snapshot: currentSnapshot,
+      executeDomainOperation,
     }),
 }));
 
-vi.mock('../networkBuildStore', () => ({
-  useNetworkBuildStore: (
-    selector: (state: { openOperationForm: typeof openOperationForm }) => unknown,
-  ) => selector({ openOperationForm }),
+vi.mock('../../app-state/store', () => ({
+  useActiveCaseId: () => 'case-1',
 }));
 
 function buildGpz(): Substation {
@@ -40,7 +41,7 @@ function buildGpz(): Substation {
     tags: [],
     meta: {},
     station_type: 'gpz',
-    bus_refs: ['b15-A', 'b15-B', 'b110-A'],
+    bus_refs: ['b15-A', 'b15-B', 'b15-C', 'b110-A', 'b110-B'],
     transformer_refs: [],
     gpz_sections: [
       { section_id: 'SEC-A', order: 1, name: 'sekcja A', bus_ref: 'b15-A' },
@@ -53,12 +54,15 @@ function buildGpz(): Substation {
 }
 
 beforeEach(() => {
-  openOperationForm.mockReset();
+  executeDomainOperation.mockReset();
+  executeDomainOperation.mockResolvedValue({ error: null });
   currentSnapshot = {
     buses: [
       { ref_id: 'b15-A', name: 'Szyna 15 A', voltage_kv: 15 },
       { ref_id: 'b15-B', name: 'Szyna 15 B', voltage_kv: 15 },
+      { ref_id: 'b15-C', name: 'Szyna 15 C', voltage_kv: 15 },
       { ref_id: 'b110-A', name: 'Szyna 110', voltage_kv: 110 },
+      { ref_id: 'b110-B', name: 'Szyna 110 B', voltage_kv: 110 },
     ],
   };
 });
@@ -96,23 +100,59 @@ describe('GpzSectionsEditor — Add flow', () => {
     expect(form.getAttribute('data-side')).toBe('lv');
   });
 
-  it('Form LV pokazuje TYLKO szyny SN (voltage < 60)', () => {
+  it('Form LV pokazuje TYLKO wolne szyny SN (bez sekcji, voltage < 60)', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
     const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toContain('b15-A');
-    expect(optionValues).toContain('b15-B');
-    expect(optionValues).not.toContain('b110-A');
+    expect(optionValues).toEqual(['', 'b15-C']);
   });
 
-  it('Form HV pokazuje TYLKO szyny HV (voltage >= 60)', () => {
+  it('Form HV pokazuje TYLKO wolne szyny HV (bez sekcji, voltage >= 60)', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-sections-editor-add-hv'));
     const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toContain('b110-A');
-    expect(optionValues).not.toContain('b15-A');
+    expect(optionValues).toEqual(['', 'b110-B']);
+  });
+
+  it('Edycja sekcji zostawia jej własną szynę na liście, cudzej nie pokazuje', () => {
+    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-section-edit-lv-SEC-A'));
+    const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toEqual(['', 'b15-A', 'b15-C']);
+  });
+
+  it('Brak wolnej szyny → jawny komunikat w formularzu', () => {
+    currentSnapshot = {
+      buses: [
+        { ref_id: 'b15-A', name: 'Szyna 15 A', voltage_kv: 15 },
+        { ref_id: 'b15-B', name: 'Szyna 15 B', voltage_kv: 15 },
+      ],
+    };
+    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
+    expect(getByTestId('gpz-sections-editor-no-free-bus').textContent).toMatch(/jedna szyna/);
+  });
+
+  it('Nowa sekcja ma proponowany identyfikator (następny wolny numer)', () => {
+    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
+    const input = getByTestId('gpz-sections-editor-input-section-id') as HTMLInputElement;
+    expect(input.value).toBe('GPZ-1/sekcja-sn-01');
+  });
+
+  it('Odmowa backendu wraca w polu błędu edytora, formularz zostaje otwarty', async () => {
+    executeDomainOperation.mockResolvedValue({ error: 'Szyna jest już szyną innej sekcji.' });
+    const { getByTestId, findByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
+    fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), { target: { value: 'b15-C' } });
+    fireEvent.click(getByTestId('gpz-sections-editor-submit'));
+    expect((await findByTestId('gpz-sections-editor-operation-error')).textContent).toMatch(
+      /innej sekcji/,
+    );
+    expect(getByTestId('gpz-sections-editor-form')).toBeTruthy();
   });
 
   it('Submit add z section_id + bus → wywołuje add_gpz_section z payload', () => {
@@ -125,22 +165,23 @@ describe('GpzSectionsEditor — Add flow', () => {
       target: { value: 'sekcja C' },
     });
     fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), {
-      target: { value: 'b15-A' },
+      target: { value: 'b15-C' },
     });
     fireEvent.change(getByTestId('gpz-sections-editor-input-order'), {
       target: { value: '3' },
     });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
 
-    expect(openOperationForm).toHaveBeenCalledTimes(1);
-    expect(openOperationForm).toHaveBeenCalledWith(
+    expect(executeDomainOperation).toHaveBeenCalledTimes(1);
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
       'add_gpz_section',
       expect.objectContaining({
         substation_ref: 'GPZ-1',
         side: 'lv',
         section_id: 'SEC-C',
         name: 'sekcja C',
-        bus_ref: 'b15-A',
+        bus_ref: 'b15-C',
         order: 3,
       }),
     );
@@ -149,9 +190,10 @@ describe('GpzSectionsEditor — Add flow', () => {
   it('Submit add z pustym section_id → walidacja inline (NIE wywołuje op)', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
-    fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), { target: { value: 'b15-A' } });
+    fireEvent.change(getByTestId('gpz-sections-editor-input-section-id'), { target: { value: '' } });
+    fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), { target: { value: 'b15-C' } });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
     expect(getByTestId('gpz-sections-editor-error').textContent).toMatch(/section_id/i);
   });
 
@@ -161,9 +203,9 @@ describe('GpzSectionsEditor — Add flow', () => {
     fireEvent.change(getByTestId('gpz-sections-editor-input-section-id'), {
       target: { value: 'SEC-A' }, // duplikat
     });
-    fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), { target: { value: 'b15-A' } });
+    fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), { target: { value: 'b15-C' } });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
     expect(getByTestId('gpz-sections-editor-error').textContent).toMatch(/już istnieje/i);
   });
 
@@ -174,7 +216,7 @@ describe('GpzSectionsEditor — Add flow', () => {
       target: { value: 'SEC-Z' },
     });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
     expect(getByTestId('gpz-sections-editor-error').textContent).toMatch(/szynę|bus/i);
   });
 
@@ -183,7 +225,7 @@ describe('GpzSectionsEditor — Add flow', () => {
     fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
     fireEvent.click(getByTestId('gpz-sections-editor-cancel'));
     expect(queryByTestId('gpz-sections-editor-form')).toBeNull();
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
   });
 });
 
@@ -212,8 +254,9 @@ describe('GpzSectionsEditor — Edit flow', () => {
       target: { value: '5' },
     });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    expect(openOperationForm).toHaveBeenCalledTimes(1);
-    expect(openOperationForm).toHaveBeenCalledWith(
+    expect(executeDomainOperation).toHaveBeenCalledTimes(1);
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
       'update_gpz_section',
       expect.objectContaining({
         substation_ref: 'GPZ-1',
@@ -234,7 +277,8 @@ describe('GpzSectionsEditor — Edit flow', () => {
       target: { value: 'HV renamed' },
     });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    expect(openOperationForm).toHaveBeenCalledWith(
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
       'update_gpz_section',
       expect.objectContaining({ side: 'hv', section_id: 'HV-A' }),
     );
@@ -245,8 +289,8 @@ describe('GpzSectionsEditor — Edit flow', () => {
     fireEvent.click(getByTestId('gpz-section-edit-lv-SEC-A'));
     fireEvent.change(getByTestId('gpz-sections-editor-input-name'), { target: { value: '' } });
     fireEvent.click(getByTestId('gpz-sections-editor-submit'));
-    const call = openOperationForm.mock.calls[0];
-    expect(call?.[1]).toMatchObject({ updates: expect.objectContaining({ name: null }) });
+    const call = executeDomainOperation.mock.calls[0];
+    expect(call?.[2]).toMatchObject({ updates: expect.objectContaining({ name: null }) });
   });
 });
 
@@ -255,14 +299,15 @@ describe('GpzSectionsEditor — Delete flow (inline confirm)', () => {
     const { getByTestId, queryByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-B'));
     expect(queryByTestId('gpz-section-delete-confirm-lv-SEC-B')).toBeTruthy();
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
   });
 
   it('Klik "Usuń" → "Tak" → wywołuje delete_gpz_section', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-B'));
     fireEvent.click(getByTestId('gpz-section-delete-confirm-yes-lv-SEC-B'));
-    expect(openOperationForm).toHaveBeenCalledWith(
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
       'delete_gpz_section',
       expect.objectContaining({
         substation_ref: 'GPZ-1',
@@ -277,14 +322,15 @@ describe('GpzSectionsEditor — Delete flow (inline confirm)', () => {
     fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-A'));
     fireEvent.click(getByTestId('gpz-section-delete-confirm-no-lv-SEC-A'));
     expect(queryByTestId('gpz-section-delete-confirm-lv-SEC-A')).toBeNull();
-    expect(openOperationForm).not.toHaveBeenCalled();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
   });
 
   it('Delete HV section + confirm → side=hv w payload', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-hv-HV-A'));
     fireEvent.click(getByTestId('gpz-section-delete-confirm-yes-hv-HV-A'));
-    expect(openOperationForm).toHaveBeenCalledWith(
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
       'delete_gpz_section',
       expect.objectContaining({ side: 'hv', section_id: 'HV-A' }),
     );

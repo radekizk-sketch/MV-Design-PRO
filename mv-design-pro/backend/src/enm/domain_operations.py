@@ -181,6 +181,8 @@ from .zajetosc_pol import (
 )
 from .zrodlo_zwarcie import (
     PASMO_U_SET_PU,
+    STRONA_ROWNOWAZNIKA_WN,
+    dodatnia,
     klucz_mocy_zwarciowej,
     strona_rownowaznika,
     u_set_pu_w_pasmie,
@@ -10480,6 +10482,112 @@ def _pola_kontraktu_kolekcji(coll: str) -> frozenset[str]:
     return frozenset(nazwy)
 
 
+#: Dane zwarciowe źródła, które edycja parametrów sprawdza tym samym warunkiem co
+#: `add_grid_source_sn` (`_resolve_manual_source_equivalent`): podana liczba musi być dodatnia.
+_DANE_ZWARCIOWE_DODATNIE_ZRODLA = (
+    "sk3_mva",
+    "sk3_hv_mva",
+    "ik3_ka",
+    "rx_ratio",
+    "sk3_min_mva",
+    "ik3_min_ka",
+    "rx_ratio_min",
+)
+#: Nazwy danych zwarciowych źródła w komunikatach odmowy (etykiety kreatora źródła
+#: `ui2/kreatory/zrodlo/strings.ts`: sk3, sk3Hv, rx, sk3Min, ik3Min, rxMin).
+_NAZWY_DANYCH_ZWARCIOWYCH_ZRODLA = {
+    "sk3_mva": "„Moc zwarciowa Sk″”",
+    "sk3_hv_mva": "„Moc zwarciowa Sk″ (110 kV)”",
+    "ik3_ka": "„Prąd zwarciowy Ik″”",
+    "rx_ratio": "„Stosunek R/X”",
+    "sk3_min_mva": "„Sk″min”",
+    "ik3_min_ka": "„Ik″min”",
+    "rx_ratio_min": "„Stosunek R/X (MIN)”",
+}
+#: Klucze rekordu `materialized_params` ręcznego równoważnika (`add_grid_source_sn`), które
+#: edycja parametrów przepisuje razem z polem źródła — rekord nie może opisywać innej sieci
+#: zasilającej niż pola, które czytają zwarcia i rozpływ.
+_KLUCZE_REKORDU_ROWNOWAZNIKA = (
+    *_DANE_ZWARCIOWE_DODATNIE_ZRODLA,
+    "r_ohm",
+    "x_ohm",
+    "r0_ohm",
+    "x0_ohm",
+    "z0_z1_ratio",
+    "u_set_pu",
+)
+
+
+def _parametry_zwarciowe_zrodla(
+    zrodlo: dict[str, Any], parameters: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Edycja danych zwarciowych źródła: te same reguły co przy tworzeniu równoważnika.
+
+    1. Podane Sk″, Ik″ i R/X (MAX i MIN) są liczbami dodatnimi — warunek
+       `_resolve_manual_source_equivalent`. Górnej granicy R/X norma nie podaje (IEC 60909-0
+       przyjmuje R_Q = 0,1·X_Q dla sieci powyżej 35 kV bez danych; R/X równoważnika SN z siecią
+       kablową bywa powyżej 1), więc granica jest tylko dolna.
+    2. Źródło zadane po stronie 110 kV (`source_side == "HV_110"`) niesie Sk″ szyny 110 kV
+       w DWÓCH polach (`sk3_mva` czyta mapper zwarć, `sk3_hv_mva` opisuje stronę) — zmiana
+       jednego przepisuje drugie, różne wartości są odmową. Źródło po stronie SN nie ma Sk″ 110 kV.
+    3. Sk″min nie przekracza Sk″max (ten sam warunek co tworzenie i walidator).
+    4. Rekord `materialized_params` ręcznego równoważnika przepisuje zmienione pola.
+    """
+    for klucz in _DANE_ZWARCIOWE_DODATNIE_ZRODLA:
+        if klucz in parameters and parameters[klucz] is not None:
+            if not dodatnia(parameters[klucz]):
+                return parameters, _error_response(
+                    f"Źródło zasilania: {_NAZWY_DANYCH_ZWARCIOWYCH_ZRODLA[klucz]} musi być "
+                    "liczbą dodatnią "
+                    f"(podano {parameters[klucz]!r}).",
+                    "source.manual_equivalent_invalid",
+                )
+    wynik = dict(parameters)
+    if zrodlo.get("source_side") == STRONA_ROWNOWAZNIKA_WN:
+        if "sk3_hv_mva" in wynik and "sk3_mva" in wynik:
+            if wynik["sk3_hv_mva"] != wynik["sk3_mva"]:
+                return parameters, _error_response(
+                    "Źródło zadane po stronie 110 kV ma jedną moc zwarciową Sk″ szyny 110 kV — "
+                    f"{_NAZWY_DANYCH_ZWARCIOWYCH_ZRODLA['sk3_mva']} i "
+                    f"{_NAZWY_DANYCH_ZWARCIOWYCH_ZRODLA['sk3_hv_mva']} muszą być równe.",
+                    "source.manual_equivalent_invalid",
+                )
+        elif "sk3_hv_mva" in wynik:
+            wynik["sk3_mva"] = wynik["sk3_hv_mva"]
+        elif "sk3_mva" in wynik:
+            wynik["sk3_hv_mva"] = wynik["sk3_mva"]
+    elif wynik.get("sk3_hv_mva") is not None:
+        return parameters, _error_response(
+            "Moc zwarciową Sk″ szyny 110 kV ma wyłącznie źródło zadane po stronie 110 kV — "
+            f"dla źródła na szynach SN podaj {_NAZWY_DANYCH_ZWARCIOWYCH_ZRODLA['sk3_mva']}.",
+            "source.manual_equivalent_invalid",
+        )
+    sk_max = wynik.get("sk3_mva", zrodlo.get("sk3_mva"))
+    sk_min = wynik.get("sk3_min_mva", zrodlo.get("sk3_min_mva"))
+    if dodatnia(sk_max) and dodatnia(sk_min) and sk_min > sk_max:
+        return parameters, _error_response(
+            f"Sk3 min ({sk_min:g} MVA) przekracza Sk3 max ({sk_max:g} MVA) — dane "
+            "scenariusza minimalnego muszą być nie większe niż maksymalnego.",
+            "source.manual_equivalent_invalid",
+        )
+    rekord = zrodlo.get("materialized_params")
+    if (
+        "materialized_params" not in wynik
+        and isinstance(rekord, dict)
+        and rekord.get("manual_equivalent") is True
+    ):
+        nowy = dict(rekord)
+        for klucz in _KLUCZE_REKORDU_ROWNOWAZNIKA:
+            if klucz in wynik:
+                if wynik[klucz] is None:
+                    nowy.pop(klucz, None)
+                else:
+                    nowy[klucz] = wynik[klucz]
+        if nowy != rekord:
+            wynik["materialized_params"] = nowy
+    return wynik, None
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu.
 
@@ -10841,6 +10949,10 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                     else "source.invalid_lv_voltage_tolerance"
                 ),
             )
+    if coll == "sources":
+        parameters, blad_zrodla = _parametry_zwarciowe_zrodla(current_element, parameters)
+        if blad_zrodla is not None:
+            return blad_zrodla
     # Karta LINIA-110: geometria słupa — kształt sprawdza model (`GeometriaSlupaLinii`), a
     # R′/X′/B′/Z′0 linii z przewodem 110 kV wynikają z geometrii: ręczna zmiana tych pól na
     # takiej linii jest odmową (drogą danych zmierzonych albo OSD jest `EKSPERCKI_RECZNY`).
@@ -11397,6 +11509,48 @@ def _szyny_stron_gpz(enm: dict[str, Any], sub: dict[str, Any]) -> tuple[set[str]
     return wn, sn
 
 
+def _blad_szyny_sekcji_gpz(
+    enm: dict[str, Any],
+    sub: dict[str, Any],
+    side: str,
+    bus_ref: str,
+    operacja: str,
+    sekcja_edytowana: str | None = None,
+) -> dict[str, Any] | None:
+    """Szyna sekcji GPZ: szyna TEJ stacji, właściwej strony, niezajęta przez inną sekcję.
+
+    JEDEN predykat dodawania i edycji sekcji (`add_gpz_section`/`update_gpz_section`). Do
+    karty KATALOG-PRZEJECIE-PR dodanie sekcji przyjmowało szynę zajętą już przez inną sekcję
+    (dwie sekcje na jednej szynie — bilans pól i sprzęgła liczone podwójnie) oraz szynę spoza
+    stacji (sekcja GPZ na szynie stacji SN/nN); obie sytuacje są teraz nazwaną odmową.
+    ``sekcja_edytowana`` — przy edycji jej własna szyna nie jest „zajęta".
+    """
+    if bus_ref not in (sub.get("bus_refs") or []):
+        return _error_response(
+            f"Szyna wskazana w polu {pole('gpz_section.bus_ref')} nie należy do "
+            f"{opis_nazwy(sub.get('name'), 'stacji GPZ')} — sekcja GPZ leży na szynie tej stacji.",
+            f"gpz_section.{operacja}.bus_outside_station",
+        )
+    strona_niezgodna = _blad_strony_sekcji_gpz(enm, sub, side, bus_ref)
+    if strona_niezgodna is not None:
+        return strona_niezgodna
+    for pole_sekcji in ("gpz_sections", "gpz_hv_sections"):
+        for sekcja in sub.get(pole_sekcji) or []:
+            if sekcja.get("bus_ref") != bus_ref:
+                continue
+            if pole_sekcji == _resolve_gpz_sections_field(side) and (
+                sekcja.get("section_id") == sekcja_edytowana
+            ):
+                continue
+            return _error_response(
+                f"Szyna wskazana w polu {pole('gpz_section.bus_ref')} jest już szyną "
+                f"{opis_nazwy(sekcja.get('name'), 'innej sekcji')} — jedna szyna niesie jedną "
+                "sekcję.",
+                f"gpz_section.{operacja}.bus_taken",
+            )
+    return None
+
+
 def _blad_strony_sekcji_gpz(
     enm: dict[str, Any], sub: dict[str, Any], side: str, bus_ref: str
 ) -> dict[str, Any] | None:
@@ -11489,9 +11643,9 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             "gpz_section.add.bus_ref_missing",
         )
 
-    strona_niezgodna = _blad_strony_sekcji_gpz(enm, sub, side, bus_ref)
-    if strona_niezgodna is not None:
-        return strona_niezgodna
+    blad_szyny = _blad_szyny_sekcji_gpz(enm, sub, side, bus_ref, "add")
+    if blad_szyny is not None:
+        return blad_szyny
 
     existing = list(sub.get(sections_field) or [])
     zajeta = next((s for s in existing if s.get("section_id") == section_id), None)
@@ -11605,6 +11759,11 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "sieci.",
                 "gpz_section.update.bus_ref_missing",
             )
+        blad_szyny = _blad_szyny_sekcji_gpz(
+            enm, sub, side, updates["bus_ref"], "update", sekcja_edytowana=section_id
+        )
+        if blad_szyny is not None:
+            return blad_szyny
 
     new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)

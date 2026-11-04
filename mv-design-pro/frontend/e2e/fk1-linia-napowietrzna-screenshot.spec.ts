@@ -2,39 +2,24 @@
  * Karta F-K1 faza 7 (V12K-211) — zrzuty ekranu do oceny właściciela (dyrektywa #8).
  *
  * Scena „cieplna" ma odgałęzienie NAPOWIETRZNE: „Linia SN 1" (`line_b_c`,
- * katalog linii AFL 70 mm² — `catalog_ref="line-afl-70"`). Przed kartą F-K1
+ * katalog AFL 6 70/11 — `catalog_ref="line-base-al-st-70"`). Przed kartą F-K1
  * faza 7 każda linia napowietrzna kończyła się werdyktem NIEDOSTĘPNY BEZ
  * ROZRÓŻNIENIA PRZYCZYNY, bo dane cieplne nie docierały z katalogu do modelu.
  *
- * HARNESS-RESZTA-kontynuacja (2026-09-16): scena „cieplna" przełączona z
- * ręcznie pisanego mocka (trzecia, dedykowana gałąź „Odgałęzienie napowietrzne
- * L-03", z KOMPLETNYMI danymi cieplnymi demonstrującymi pełny dowód „przewód
- * goły") na REALNY bieg backendu (`cieplna_scena_wynik.json`/
- * `cieplna_scena_dowody.json`, sieć złota). Sieć złota MA linię napowietrzną
- * („Linia SN 1"), ale jej `BranchRating` (`tests/cgmes/golden_enm.py`) NIE
- * niesie `ith_ka` (pole opcjonalne, puste na TEJ gałęzi tej sieci — inne
- * fixtury w repo je ustawiają, więc to nie jest ograniczenie modelu/kontraktu)
- * — bilans cieplny wraca UCZCIWIE jako `UNAVAILABLE` z kodem
- * `conductor.thermal_data_missing`, DOKŁADNIE zgodnie z fixem tej karty
- * (jawny, nazwany powód zamiast milczącego domysłu) — ale bez PEŁNEGO dowodu
- * (materiał/rodzaj/granica temperatury), bo rachunku nie da się przeprowadzić
- * bez tego pola. Karta DOWOD-CIEPLNY (2026-09-25) zmierzyła przyczynę: pozycja
- * `line-afl-70` NIE ISTNIEJE w katalogu (tak samo pozostałe sześć `catalog_ref`
- * sieci złotej), a parametry elektryczne linii w budowniczym (0,306 Ω/km) nie
- * odpowiadają żadnej pozycji katalogu. Wiązanie przez produkcyjną materializację
- * (`line-base-al-st-70`, AFL 6 70/11) daje pełny dowód przewodu gołego, ale zmienia
- * liczby rozpływu i zwarć sieci złotej (38 fikstur harnessu) — decyzja sesji
- * głównej, nazwana w meldunku karty. Do tej decyzji spec przypina UCZCIWY stan
- * „brak danych" i treść dowodu (wzór przez KaTeX, zero surowego LaTeX-u). Mechanizm „przewód
- * goły → pełny dowód z kompletnymi danymi" sam w sobie pozostaje pokryty
- * `backend/tests/network_model/solvers/test_line_thermal_chain.py` (zielony,
- * niezależny od tej sceny).
+ * Scena jest REALNYM biegiem backendu (`cieplna_scena_wynik.json`/
+ * `cieplna_scena_dowody.json`, sieć złota `tests/cgmes/golden_enm.py`). Do karty
+ * KATALOG-PRZEJECIE-PR sieć złota wskazywała siedem NIEISTNIEJĄCYCH pozycji
+ * katalogu (m.in. `line-afl-70`), więc linia nie miała `ith_ka` i bilans wracał
+ * jako `conductor.thermal_data_missing` („Rachunku cieplnego nie przeprowadzono").
+ * Sieć złota wiąże teraz linię produkcyjną operacją `assign_catalog_to_element`
+ * z pozycją `line-base-al-st-70` (Jth(1 s) = 88 A·√s/mm², S = 70 mm²,
+ * I_th(1 s) = 6,16 kA) — spec przypina PEŁNY dowód przewodu gołego: współczynnik k
+ * z karty, sekcja materiałowa, prąd dopuszczalny i kryterium, wszystkie
+ * podstawienia przez KaTeX (zero surowego LaTeX-u).
  *
- * Kadr 1: tabela oceny — linia napowietrzna widoczna z uczciwym werdyktem
- *         NIEDOSTĘPNY (nie biały ekran, nie cichy pomin).
- * Kadr 2: jej dowód obliczeniowy otwarty — krok źródła czasu (realny) +
- *         uczciwy krok „rachunku nie przeprowadzono" (zamiast fabrykowanych
- *         danych materiałowych, których backend nie policzył).
+ * Kadr 1: tabela oceny — linia napowietrzna z werdyktem wyjaśnionym liczbowo.
+ * Kadr 2: jej dowód obliczeniowy otwarty realnym klikiem — krok źródła czasu,
+ *         krok współczynnika k z karty katalogowej i sekcja materiałowa.
  * Oba motywy. Wyjście: docs/audit/visual/dowody/fk1_linia_<kadr>_<motyw>.png
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -92,18 +77,16 @@ test.describe('F-K1 faza 7 — linia napowietrzna w kryterium cieplnym', () => {
       });
 
       // Kadr 2 — dowód otwarty REALNYM klikiem w wiersz (ścieżka projektanta):
-      // krok źródła czasu (realny, z założenia przypadku) + uczciwy krok
-      // „rachunku nie przeprowadzono" zamiast fabrykowanych danych materiału
-      // (patrz nagłówek pliku — dług nazwany, nie ukryty).
+      // krok źródła czasu (z założenia przypadku) + krok współczynnika k z karty
+      // katalogowej przewodu gołego + sekcja materiałowa (dane z pozycji katalogu).
       await page.getByText(LINIA).first().click();
       await expect(page.getByTestId('mvd-jakosc-cieplna-dowod')).toBeVisible();
       await expect(
         page.getByText('Czas trwania zwarcia z założenia przypadku').first(),
       ).toBeVisible();
-      await expect(
-        page.getByText('Rachunku cieplnego nie przeprowadzono').first(),
-      ).toBeVisible();
-      await expect(page.getByTestId('mvd-jakosc-cieplna-material')).toHaveCount(0);
+      await expect(page.getByText('Współczynnik materiałowy k żyły').first()).toBeVisible();
+      await expect(page.getByText('Rachunku cieplnego nie przeprowadzono')).toHaveCount(0);
+      await expect(page.getByTestId('mvd-jakosc-cieplna-material')).toBeVisible();
       // Karta DOWOD-CIEPLNY: podstawienie kroku czasu idzie przez KaTeX (pole
       // `substitution_latex`), nie jako surowy tekst `$$t_k = 1\ \mathrm{s}$$`.
       const podstawienie = page.getByTestId('mvd-dowod-pole-podstawienie').first();

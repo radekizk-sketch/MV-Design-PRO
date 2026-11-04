@@ -1,11 +1,11 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "24894dc518fb2a2233e82ccdfd272e1208dc5a33691284ff11289deeb527d3be",
+  "deterministic_signature": "a9c8a5624f57a6b434012104225572a4ab7df3708f0f61d9a2599248e39551b6",
   "element_results": [
     {
       "element_ref": "bus_hv",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -27,113 +27,113 @@
     {
       "element_ref": "bus_sn_b",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
       "values": {
-        "angle_deg": 30.1942180063,
+        "angle_deg": 30.1772971711,
         "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "element_id": "bus_sn_b",
         "flags": [],
         "graph_role": null,
         "name": "Stacja B SN",
         "synthetic": false,
-        "u_kv": 15.3921130127,
-        "u_pu": 1.02614086751,
+        "u_kv": 15.3941713237,
+        "u_pu": 1.02627808825,
         "un_kv": 15.0
       }
     },
     {
       "element_ref": "bus_sn_c",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "values": {
-        "angle_deg": 30.351359551,
+        "angle_deg": 30.3278880002,
         "bus_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
         "element_id": "bus_sn_c",
         "flags": [],
         "graph_role": null,
         "name": "Stacja C SN",
         "synthetic": false,
-        "u_kv": 15.4548735364,
-        "u_pu": 1.03032490243,
+        "u_kv": 15.4738092242,
+        "u_pu": 1.03158728161,
         "un_kv": 15.0
       }
     },
     {
       "element_ref": "bus_sn_main",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "values": {
-        "angle_deg": 30.1942014701,
+        "angle_deg": 30.1772811306,
         "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "element_id": "bus_sn_main",
         "flags": [],
         "graph_role": null,
         "name": "Szyna SN",
         "synthetic": false,
-        "u_kv": 15.392107753,
-        "u_pu": 1.02614051687,
+        "u_kv": 15.3941659432,
+        "u_pu": 1.02627772955,
         "un_kv": 15.0
       }
     },
     {
       "element_ref": "bus_nn",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "values": {
-        "angle_deg": 60.1381237029,
+        "angle_deg": 60.1392416363,
         "bus_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
         "element_id": "bus_nn",
         "flags": [],
         "graph_role": null,
         "name": "Szyna nN",
         "synthetic": false,
-        "u_kv": 0.406023812625,
-        "u_pu": 1.01505953156,
+        "u_kv": 0.406569863066,
+        "u_pu": 1.01642465767,
         "un_kv": 0.4
       }
     },
     {
       "element_ref": "cab_main_b",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "39aa2231-26fb-59c4-87e3-39a81c06367c",
       "values": {
         "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
-        "cos_phi": 0.0148747454193,
-        "delta_u_kv": -5.25967717024e-06,
-        "delta_u_pct": -3.50645144698e-05,
+        "cos_phi": 0.00446417605152,
+        "delta_u_kv": -5.38049737919e-06,
+        "delta_u_pct": -3.58699825176e-05,
         "element_id": "cab_main_b",
         "flags": [],
         "from_bus": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "graph_role": null,
-        "i_a": 0.57485671398,
-        "i_do_a": 0.576978672194,
-        "loading_pct": 0.206063811498,
+        "i_a": 1.30496397604,
+        "i_do_a": 1.30855494826,
+        "loading_pct": 0.568936934027,
         "loading_powod_braku_pl": null,
-        "losses_p_mw": 8.60621483475e-11,
-        "losses_q_mvar": -0.0307044511838,
+        "losses_p_mw": 6.76915717489e-11,
+        "losses_q_mvar": -0.0696848228947,
         "name": "Kabel SN 1",
-        "p_from_mw": -0.0002279648415,
-        "p_mw": -0.0002279648415,
-        "p_to_mw": 0.000227964927563,
-        "q_from_mvar": -0.0153239342356,
-        "q_mvar": -0.0153239342356,
-        "q_to_mvar": -0.0153805169483,
-        "s_mva": 0.0153256297889,
+        "p_from_mw": -0.000155330459671,
+        "p_mw": -0.000155330459671,
+        "p_to_mw": 0.000155330527363,
+        "q_from_mvar": -0.0347945309707,
+        "q_mvar": -0.0347945309707,
+        "q_to_mvar": -0.034890291924,
+        "s_mva": 0.0347948776837,
         "synthetic": false,
         "to_bus": "d93618a6-23da-5d59-ae10-a7242961b790"
       }
@@ -141,33 +141,33 @@
     {
       "element_ref": "line_b_c",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
       "values": {
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
-        "cos_phi": 0.970175335098,
-        "delta_u_kv": -0.0627605237694,
-        "delta_u_pct": -0.418403491796,
+        "cos_phi": 0.970167518256,
+        "delta_u_kv": -0.0796379005118,
+        "delta_u_pct": -0.530919336745,
         "element_id": "line_b_c",
         "flags": [],
         "from_bus": "d93618a6-23da-5d59-ae10-a7242961b790",
         "graph_role": null,
-        "i_a": 30.8255880735,
-        "i_do_a": 30.8055078854,
-        "loading_pct": 14.6788514636,
+        "i_a": 30.7872357733,
+        "i_do_a": 30.7678104139,
+        "loading_pct": 13.385754684,
         "loading_powod_braku_pl": null,
-        "losses_p_mw": 0.00270237463283,
-        "losses_q_mvar": 0.000790306776469,
+        "losses_p_mw": 0.00359427994277,
+        "losses_q_mvar": 0.000985871255082,
         "name": "Linia SN 1",
-        "p_from_mw": -0.797297625415,
-        "p_mw": -0.797297625415,
-        "p_to_mw": 0.800000000048,
-        "q_from_mvar": -0.199209693204,
-        "q_mvar": -0.199209693204,
-        "q_to_mvar": 0.199999999981,
-        "s_mva": 0.82180776667,
+        "p_from_mw": -0.7964057201,
+        "p_mw": -0.7964057201,
+        "p_to_mw": 0.800000000043,
+        "q_from_mvar": -0.199014128725,
+        "q_mvar": -0.199014128725,
+        "q_to_mvar": 0.19999999998,
+        "s_mva": 0.820895056899,
         "synthetic": false,
         "to_bus": "e22c09ea-bf55-54b7-8c57-88efc2eb8989"
       }
@@ -175,33 +175,33 @@
     {
       "element_ref": "tr_hv_sn",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
       "values": {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-        "cos_phi": 0.994907303403,
+        "cos_phi": 0.988356872831,
         "delta_u_kv": null,
-        "delta_u_pct": -2.61405168653,
+        "delta_u_pct": -2.62777295468,
         "element_id": "tr_hv_sn",
         "flags": [],
         "from_bus": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
         "graph_role": null,
-        "i_a": 3.93973255986,
-        "i_do_a": 28.169087803,
-        "loading_pct": 3.00247946324,
+        "i_a": 3.96117153684,
+        "i_do_a": 28.3223764884,
+        "loading_pct": 3.01881815809,
         "loading_powod_braku_pl": null,
-        "losses_p_mw": 0.000102837277005,
-        "losses_q_mvar": 0.0025688743558,
+        "losses_p_mw": 0.000103959548504,
+        "losses_q_mvar": 0.00238013703034,
         "name": "TR 110/15",
-        "p_from_mw": -0.746797186573,
-        "p_mw": -0.746797186573,
-        "p_to_mw": 0.74690002385,
-        "q_from_mvar": -0.0756580800352,
-        "q_mvar": -0.0756580800352,
-        "q_to_mvar": 0.078226954391,
-        "s_mva": 0.75061986581,
+        "p_from_mw": -0.745917418594,
+        "p_mw": -0.745917418594,
+        "p_to_mw": 0.746021378143,
+        "q_from_mvar": -0.114830947979,
+        "q_mvar": -0.114830947979,
+        "q_to_mvar": 0.11721108501,
+        "s_mva": 0.754704539523,
         "synthetic": false,
         "tap_position": -2,
         "tap_switch_count": 2,
@@ -211,33 +211,33 @@
     {
       "element_ref": "tr_sn_nn",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "158eec95-939b-5b35-97ad-9433334b5506",
       "values": {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-        "cos_phi": 0.315298824937,
+        "cos_phi": 0.315597586198,
         "delta_u_kv": null,
-        "delta_u_pct": 1.10813359491,
+        "delta_u_pct": 0.985343058064,
         "element_id": "tr_sn_nn",
         "flags": [],
         "from_bus": "d93618a6-23da-5d59-ae10-a7242961b790",
         "graph_role": null,
-        "i_a": 5.9955165242,
-        "i_do_a": 224.831869658,
-        "loading_pct": 24.7250934227,
+        "i_a": 5.98746414565,
+        "i_do_a": 224.529905462,
+        "loading_pct": 24.6918859732,
         "loading_powod_braku_pl": null,
-        "losses_p_mw": 0.000397364659096,
-        "losses_q_mvar": 0.00168695304432,
+        "losses_p_mw": 0.000384104216737,
+        "losses_q_mvar": 0.00148762923463,
         "name": "TR 15/0.4",
-        "p_from_mw": 0.05039736466,
-        "p_mw": 0.05039736466,
-        "p_to_mw": -0.0500000000009,
-        "q_from_mvar": 0.151686953045,
-        "q_mvar": 0.151686953045,
+        "p_from_mw": 0.0503841042175,
+        "p_mw": 0.0503841042175,
+        "p_to_mw": -0.0500000000007,
+        "q_from_mvar": 0.151487629235,
+        "q_mvar": 0.151487629235,
         "q_to_mvar": -0.15,
-        "s_mva": 0.159840001529,
+        "s_mva": 0.15964667165,
         "synthetic": false,
         "to_bus": "d70aff7b-d056-5804-acce-c9bc5707612b"
       }
@@ -245,7 +245,7 @@
     {
       "element_ref": "gen_pv",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -260,7 +260,7 @@
     {
       "element_ref": "gen_sync",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -275,31 +275,31 @@
     {
       "element_ref": "src_gpz",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "values": {
         "bus_ref": "bus_hv",
-        "cos_phi": 0.994907303403,
-        "p_injected_mw": -0.746797186573,
-        "q_injected_mvar": -0.0756580800351,
-        "s_mva": 0.75061986581
+        "cos_phi": 0.988356872831,
+        "p_injected_mw": -0.745917418594,
+        "q_injected_mvar": -0.114830947979,
+        "s_mva": 0.754704539523
       }
     },
     {
       "element_ref": "sub_gpz",
       "element_type": "Substation",
-      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+      "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": null,
       "values": {
         "alarm_count": 0,
-        "p_feeders_mw": -0.746900260755,
-        "p_supply_mw": -0.746797186573,
-        "q_feeders_mvar": -0.0475227401597,
-        "q_supply_mvar": -0.0756580800351
+        "p_feeders_mw": -0.746021615883,
+        "p_supply_mw": -0.745917418594,
+        "q_feeders_mvar": -0.0475264994903,
+        "q_supply_mvar": -0.114830947979
       }
     }
   ],
@@ -308,7 +308,7 @@
     "applicability_status": "applicable",
     "converged": true,
     "dopuszczalnosc_raportowa": true,
-    "max_v_pu": 1.03032490243,
+    "max_v_pu": 1.03158728161,
     "min_v_pu": 1.0,
     "oltc_control": {
       "converged": true,
@@ -329,8 +329,8 @@
               "position_before": 0,
               "reason": "step_down",
               "setpoint_kv": 15.4,
-              "u_controlled_kv": 15.0075449408,
-              "u_regulation_kv": 15.0075449408
+              "u_controlled_kv": 15.0095415381,
+              "u_regulation_kv": 15.0095415381
             }
           ],
           "iteration": 0
@@ -345,8 +345,8 @@
               "position_before": -1,
               "reason": "step_down",
               "setpoint_kv": 15.4,
-              "u_controlled_kv": 15.1973919011,
-              "u_regulation_kv": 15.1973919011
+              "u_controlled_kv": 15.199418909,
+              "u_regulation_kv": 15.199418909
             }
           ],
           "iteration": 1
@@ -361,8 +361,8 @@
               "position_before": -2,
               "reason": "within_deadband",
               "setpoint_kv": 15.4,
-              "u_controlled_kv": 15.392107753,
-              "u_regulation_kv": 15.392107753
+              "u_controlled_kv": 15.3941659432,
+              "u_regulation_kv": 15.3941659432
             }
           ],
           "iteration": 2
@@ -391,173 +391,173 @@
       "controlled_bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "points": [
         {
-          "controlled_bus_kv": 16.9087295413,
+          "controlled_bus_kv": 16.9110302924,
           "converged": true,
-          "losses_mw": 0.00265630794051,
+          "losses_mw": 0.00338814137068,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.446872255903,
+          "min_bus_kv": 0.447379107833,
           "position": -9,
           "tap_ratio": 0.8875
         },
         {
-          "controlled_bus_kv": 16.6740107128,
+          "controlled_bus_kv": 16.6762739754,
           "converged": true,
-          "losses_mw": 0.00273125656529,
+          "losses_mw": 0.00348342666588,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.440555338576,
+          "min_bus_kv": 0.441067685096,
           "position": -8,
           "tap_ratio": 0.9
         },
         {
-          "controlled_bus_kv": 16.4457237411,
+          "controlled_bus_kv": 16.4479505215,
           "converged": true,
-          "losses_mw": 0.00280723626494,
+          "losses_mw": 0.00358000998269,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.434409893103,
+          "min_bus_kv": 0.434927770631,
           "position": -7,
           "tap_ratio": 0.9125
         },
         {
-          "controlled_bus_kv": 16.223607887,
+          "controlled_bus_kv": 16.2257991534,
           "converged": true,
-          "losses_mw": 0.00288424680592,
+          "losses_mw": 0.00367789029802,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.428428965677,
+          "min_bus_kv": 0.428952409773,
           "position": -6,
           "tap_ratio": 0.925
         },
         {
-          "controlled_bus_kv": 16.0074161941,
+          "controlled_bus_kv": 16.0095728776,
           "converged": true,
-          "losses_mw": 0.00296228625665,
+          "losses_mw": 0.00377706477488,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.422605970248,
+          "min_bus_kv": 0.423135015639,
           "position": -5,
           "tap_ratio": 0.9375
         },
         {
-          "controlled_bus_kv": 15.7969148694,
+          "controlled_bus_kv": 15.7990378674,
           "converged": true,
-          "losses_mw": 0.00304135493769,
+          "losses_mw": 0.00387753296666,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.416934671491,
+          "min_bus_kv": 0.417469352168,
           "position": -4,
           "tap_ratio": 0.95
         },
         {
-          "controlled_bus_kv": 15.5918821747,
+          "controlled_bus_kv": 15.5939723519,
           "converged": true,
-          "losses_mw": 0.00312145199069,
+          "losses_mw": 0.00397929316962,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.411409155693,
+          "min_bus_kv": 0.411949504941,
           "position": -3,
           "tap_ratio": 0.9625
         },
         {
-          "controlled_bus_kv": 15.392107753,
+          "controlled_bus_kv": 15.3941659432,
           "converged": true,
-          "losses_mw": 0.00320257665499,
+          "losses_mw": 0.0040823437757,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.406023812625,
+          "min_bus_kv": 0.406569863066,
           "position": -2,
           "tap_ratio": 0.975
         },
         {
-          "controlled_bus_kv": 15.1973919011,
+          "controlled_bus_kv": 15.199418909,
           "converged": true,
-          "losses_mw": 0.00328472820555,
+          "losses_mw": 0.00418668320887,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.400773316145,
+          "min_bus_kv": 0.40132509979,
           "position": -1,
           "tap_ratio": 0.9875
         },
         {
-          "controlled_bus_kv": 15.0075449408,
+          "controlled_bus_kv": 15.0095415381,
           "converged": true,
-          "losses_mw": 0.00336790670631,
+          "losses_mw": 0.00429231278756,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.395652615347,
+          "min_bus_kv": 0.396210160462,
           "position": 0,
           "tap_ratio": 1.0
         },
         {
-          "controlled_bus_kv": 14.8223864047,
+          "controlled_bus_kv": 14.8243533521,
           "converged": true,
-          "losses_mw": 0.00345210910209,
+          "losses_mw": 0.00439922225887,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.390656873321,
+          "min_bus_kv": 0.391220217141,
           "position": 1,
           "tap_ratio": 1.0125
         },
         {
-          "controlled_bus_kv": 14.6417448593,
+          "controlled_bus_kv": 14.6436828772,
           "converged": true,
-          "losses_mw": 0.00353733701124,
+          "losses_mw": 0.00450741870524,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.385781541482,
+          "min_bus_kv": 0.386350711244,
           "position": 2,
           "tap_ratio": 1.025
         },
         {
-          "controlled_bus_kv": 14.4654569807,
+          "controlled_bus_kv": 14.4673667709,
           "converged": true,
-          "losses_mw": 0.00362358892983,
+          "losses_mw": 0.00461689763391,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.381022255885,
+          "min_bus_kv": 0.381597281526,
           "position": 3,
           "tap_ratio": 1.0375
         },
         {
-          "controlled_bus_kv": 14.2933672598,
+          "controlled_bus_kv": 14.2952495014,
           "converged": true,
-          "losses_mw": 0.0037108641251,
+          "losses_mw": 0.00472765742841,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.376374868878,
+          "min_bus_kv": 0.376955779906,
           "position": 4,
           "tap_ratio": 1.05
         },
         {
-          "controlled_bus_kv": 14.1253275062,
+          "controlled_bus_kv": 14.1271828567,
           "converged": true,
-          "losses_mw": 0.00379916184824,
+          "losses_mw": 0.00483969644933,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.371835427976,
+          "min_bus_kv": 0.372422253494,
           "position": 5,
           "tap_ratio": 1.0625
         },
         {
-          "controlled_bus_kv": 13.9611964235,
+          "controlled_bus_kv": 13.9630255202,
           "converged": true,
-          "losses_mw": 0.00388848131952,
+          "losses_mw": 0.00495301302049,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.367400164544,
+          "min_bus_kv": 0.367992933282,
           "position": 6,
           "tap_ratio": 1.075
         },
         {
-          "controlled_bus_kv": 13.8008392154,
+          "controlled_bus_kv": 13.8026426757,
           "converged": true,
-          "losses_mw": 0.00397882170998,
+          "losses_mw": 0.00506760540879,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.363065483291,
+          "min_bus_kv": 0.363664223625,
           "position": 7,
           "tap_ratio": 1.0875
         },
         {
-          "controlled_bus_kv": 13.6441272185,
+          "controlled_bus_kv": 13.6459056412,
           "converged": true,
-          "losses_mw": 0.00407018211482,
+          "losses_mw": 0.00518347179978,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.358827952498,
+          "min_bus_kv": 0.359432692472,
           "position": 8,
           "tap_ratio": 1.1
         },
         {
-          "controlled_bus_kv": 13.4909374136,
+          "controlled_bus_kv": 13.4926913823,
           "converged": true,
-          "losses_mw": 0.00416256376566,
+          "losses_mw": 0.00530061243278,
           "max_bus_kv": 110.0,
-          "min_bus_kv": 0.354684289983,
+          "min_bus_kv": 0.355295057566,
           "position": 9,
           "tap_ratio": 1.1125
         }
@@ -581,79 +581,79 @@
         },
         {
           "latex": "t(-9) = 1 + \\frac{(-9 - 0) \\cdot 1.2500}{100} = 0.887500",
-          "tekst": "Pozycja n = -9: t = 0,887500, U szyny regulowanej = 16,909 kV, straty = 0,002656 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -9: t = 0,887500, U szyny regulowanej = 16,911 kV, straty = 0,003388 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-8) = 1 + \\frac{(-8 - 0) \\cdot 1.2500}{100} = 0.900000",
-          "tekst": "Pozycja n = -8: t = 0,900000, U szyny regulowanej = 16,674 kV, straty = 0,002731 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -8: t = 0,900000, U szyny regulowanej = 16,676 kV, straty = 0,003483 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-7) = 1 + \\frac{(-7 - 0) \\cdot 1.2500}{100} = 0.912500",
-          "tekst": "Pozycja n = -7: t = 0,912500, U szyny regulowanej = 16,446 kV, straty = 0,002807 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -7: t = 0,912500, U szyny regulowanej = 16,448 kV, straty = 0,003580 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-6) = 1 + \\frac{(-6 - 0) \\cdot 1.2500}{100} = 0.925000",
-          "tekst": "Pozycja n = -6: t = 0,925000, U szyny regulowanej = 16,224 kV, straty = 0,002884 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -6: t = 0,925000, U szyny regulowanej = 16,226 kV, straty = 0,003678 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-5) = 1 + \\frac{(-5 - 0) \\cdot 1.2500}{100} = 0.937500",
-          "tekst": "Pozycja n = -5: t = 0,937500, U szyny regulowanej = 16,007 kV, straty = 0,002962 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -5: t = 0,937500, U szyny regulowanej = 16,010 kV, straty = 0,003777 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-4) = 1 + \\frac{(-4 - 0) \\cdot 1.2500}{100} = 0.950000",
-          "tekst": "Pozycja n = -4: t = 0,950000, U szyny regulowanej = 15,797 kV, straty = 0,003041 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -4: t = 0,950000, U szyny regulowanej = 15,799 kV, straty = 0,003878 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-3) = 1 + \\frac{(-3 - 0) \\cdot 1.2500}{100} = 0.962500",
-          "tekst": "Pozycja n = -3: t = 0,962500, U szyny regulowanej = 15,592 kV, straty = 0,003121 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -3: t = 0,962500, U szyny regulowanej = 15,594 kV, straty = 0,003979 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-2) = 1 + \\frac{(-2 - 0) \\cdot 1.2500}{100} = 0.975000",
-          "tekst": "Pozycja n = -2: t = 0,975000, U szyny regulowanej = 15,392 kV, straty = 0,003203 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -2: t = 0,975000, U szyny regulowanej = 15,394 kV, straty = 0,004082 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(-1) = 1 + \\frac{(-1 - 0) \\cdot 1.2500}{100} = 0.987500",
-          "tekst": "Pozycja n = -1: t = 0,987500, U szyny regulowanej = 15,197 kV, straty = 0,003285 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = -1: t = 0,987500, U szyny regulowanej = 15,199 kV, straty = 0,004187 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(0) = 1 + \\frac{(0 - 0) \\cdot 1.2500}{100} = 1.000000",
-          "tekst": "Pozycja n = 0: t = 1,000000, U szyny regulowanej = 15,008 kV, straty = 0,003368 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 0: t = 1,000000, U szyny regulowanej = 15,010 kV, straty = 0,004292 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(1) = 1 + \\frac{(1 - 0) \\cdot 1.2500}{100} = 1.012500",
-          "tekst": "Pozycja n = 1: t = 1,012500, U szyny regulowanej = 14,822 kV, straty = 0,003452 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 1: t = 1,012500, U szyny regulowanej = 14,824 kV, straty = 0,004399 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(2) = 1 + \\frac{(2 - 0) \\cdot 1.2500}{100} = 1.025000",
-          "tekst": "Pozycja n = 2: t = 1,025000, U szyny regulowanej = 14,642 kV, straty = 0,003537 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 2: t = 1,025000, U szyny regulowanej = 14,644 kV, straty = 0,004507 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(3) = 1 + \\frac{(3 - 0) \\cdot 1.2500}{100} = 1.037500",
-          "tekst": "Pozycja n = 3: t = 1,037500, U szyny regulowanej = 14,465 kV, straty = 0,003624 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 3: t = 1,037500, U szyny regulowanej = 14,467 kV, straty = 0,004617 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(4) = 1 + \\frac{(4 - 0) \\cdot 1.2500}{100} = 1.050000",
-          "tekst": "Pozycja n = 4: t = 1,050000, U szyny regulowanej = 14,293 kV, straty = 0,003711 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 4: t = 1,050000, U szyny regulowanej = 14,295 kV, straty = 0,004728 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(5) = 1 + \\frac{(5 - 0) \\cdot 1.2500}{100} = 1.062500",
-          "tekst": "Pozycja n = 5: t = 1,062500, U szyny regulowanej = 14,125 kV, straty = 0,003799 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 5: t = 1,062500, U szyny regulowanej = 14,127 kV, straty = 0,004840 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(6) = 1 + \\frac{(6 - 0) \\cdot 1.2500}{100} = 1.075000",
-          "tekst": "Pozycja n = 6: t = 1,075000, U szyny regulowanej = 13,961 kV, straty = 0,003888 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 6: t = 1,075000, U szyny regulowanej = 13,963 kV, straty = 0,004953 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(7) = 1 + \\frac{(7 - 0) \\cdot 1.2500}{100} = 1.087500",
-          "tekst": "Pozycja n = 7: t = 1,087500, U szyny regulowanej = 13,801 kV, straty = 0,003979 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 7: t = 1,087500, U szyny regulowanej = 13,803 kV, straty = 0,005068 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(8) = 1 + \\frac{(8 - 0) \\cdot 1.2500}{100} = 1.100000",
-          "tekst": "Pozycja n = 8: t = 1,100000, U szyny regulowanej = 13,644 kV, straty = 0,004070 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 8: t = 1,100000, U szyny regulowanej = 13,646 kV, straty = 0,005183 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": "t(9) = 1 + \\frac{(9 - 0) \\cdot 1.2500}{100} = 1.112500",
-          "tekst": "Pozycja n = 9: t = 1,112500, U szyny regulowanej = 13,491 kV, straty = 0,004163 MW, rozpływ zbieżny: tak."
+          "tekst": "Pozycja n = 9: t = 1,112500, U szyny regulowanej = 13,493 kV, straty = 0,005301 MW, rozpływ zbieżny: tak."
         },
         {
           "latex": null,
@@ -661,15 +661,15 @@
         }
       ]
     },
-    "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
+    "proof_ref": "proof:power-flow:9e7c64183626fa31fb7ea0df416e6cca1dac4d15bd32f93cab4796bfead3c915",
     "proof_status": "complete",
     "quality_status": "accepted",
     "reporting_status": "reportable",
-    "slack_p_mw": -0.746797186573,
-    "slack_q_mvar": -0.0756580800351,
+    "slack_p_mw": -0.745917418594,
+    "slack_q_mvar": -0.114830947979,
     "solver_method": "newton-raphson",
-    "total_losses_p_mw": 0.00320257665499,
-    "total_losses_q_mvar": -0.0256583170073
+    "total_losses_p_mw": 0.0040823437757,
+    "total_losses_q_mvar": -0.0648311853746
   },
   "readiness_snapshot": {
     "blockers": [],

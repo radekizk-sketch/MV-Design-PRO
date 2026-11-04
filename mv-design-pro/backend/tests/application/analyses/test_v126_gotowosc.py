@@ -158,11 +158,27 @@ def test_zaden_rodzaj_wycofany_poza_hosting_i_opf_nie_jest_wycofany() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _zlota_siec_z_gen_pv_bez_karty() -> EnergyNetworkModel:
+    """Złota sieć z `gen_pv` BEZ karty przekształtnika (bez typu i tabliczki).
+
+    Karta KATALOG-PRZEJECIE-PR: sieć złota dostaje tabliczki z realnego katalogu, więc
+    `gen_pv` ma dziś kartę (`conv-pv-nn-0p5mw-0p4kv`). Klasa „brak karty" jest stanem
+    MODELU (przekształtnik bez typu), więc test buduje go jawnie — intencja bez zmian."""
+    enm = build_golden_enm().model_copy(deep=True)
+    for gen in enm.generators:
+        if gen.ref_id == "gen_pv":
+            gen.catalog_ref = None
+            gen.catalog_namespace = None
+            gen.parameter_source = None
+            gen.source_mode = None
+            gen.materialized_params = None
+    return enm
+
+
 def _zlota_siec_z_karta_pv(klucz_wstrzykniety: dict[int, float] | None) -> EnergyNetworkModel:
-    """Kopia złotej sieci, w której `gen_pv` MA kartę przekształtnika (napięcie,
-    moc znamionowa, tryb). Złota sieć bazowa nie niesie karty w ogóle, więc ten
-    wariant jest potrzebny do rozróżnienia klasy „brak karty" od klasy „karta bez
-    widma". Karta AB-H0: karta katalogowa NIE niesie widma (pole skasowane);
+    """Kopia złotej sieci, w której `gen_pv` ma kartę przekształtnika o JAWNIE podanej
+    tabliczce (napięcie, moc znamionowa, tryb) — wariant rozróżnia klasę „brak karty"
+    (`_zlota_siec_z_gen_pv_bez_karty`) od klasy „karta bez widma". Karta AB-H0: karta katalogowa NIE niesie widma (pole skasowane);
     `klucz_wstrzykniety` wkłada klucz skasowanego pola mimo katalogu — żeby pinować,
     że most i gotowość go NIE czytają."""
     enm = build_golden_enm().model_copy(deep=True)
@@ -178,7 +194,7 @@ def _zlota_siec_z_karta_pv(klucz_wstrzykniety: dict[int, float] | None) -> Energ
 def _zlota_siec_z_drugim_pv_bez_widma() -> EnergyNetworkModel:
     """Złota sieć (`gen_pv` BEZ karty) + drugi przekształtnik `gen_pv2` Z kartą, ale
     bez widma — iloczyn cech „brak karty × karta bez widma" w JEDNYM modelu."""
-    enm = build_golden_enm().model_copy(deep=True)
+    enm = _zlota_siec_z_gen_pv_bez_karty()
     wzor = next(gen for gen in enm.generators if gen.ref_id == "gen_pv")
     enm.generators.append(
         wzor.model_copy(
@@ -194,14 +210,14 @@ def _zlota_siec_z_drugim_pv_bez_widma() -> EnergyNetworkModel:
 
 
 def test_pq_gen_pv_bez_karty_jest_brakiem_karty_nie_widma() -> None:
-    """ZWERYFIKOWANE REALNYM WYWOŁANIEM: `gen_pv` w złotej sieci nie ma ŻADNEJ
+    """ZWERYFIKOWANE REALNYM WYWOŁANIEM: `gen_pv` bez typu (wariant złotej sieci) nie ma ŻADNEJ
     karty katalogowej przekształtnika (`materialized_params is None`), więc
     `_oceb_karte_przeksztaltnika` zwraca `converter_card_missing` ZANIM spojrzy
     na widmo. Gotowość NAZYWA tę przyczynę (karta B-02, 2026-09-10) — przed
     naprawą meldowała „brak widma" z kluczem `harmonic_spectra`, a widmo ręczne
     NIE odblokowuje biegu bez mocy znamionowej (prąd bazowy wstrzyknięcia).
     Brak karty NIE ma klucza parametru: formularz go nie usunie."""
-    enm = build_golden_enm()
+    enm = _zlota_siec_z_gen_pv_bez_karty()
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
     kody = {w.kod for w in wynik.warunki}
     assert "generator.converter_card_missing" in kody
@@ -218,7 +234,7 @@ def test_pq_widmo_reczne_nie_odblokowuje_gen_pv_bez_karty() -> None:
     """Widmo ręczne dla generatora BEZ karty: most nadal pomija go CAŁKOWICIE
     (`model.harmonic_sources == []`), a gotowość dalej nazywa brak karty — nie
     udaje, że parametr cokolwiek naprawił (predykaty parami z bramką 422)."""
-    enm = build_golden_enm()
+    enm = _zlota_siec_z_gen_pv_bez_karty()
     parametry = {"harmonic_spectra": {"gen_pv": {"5": 4.0}}}
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
     model = build_v126_input_from_enm(enm, parameters=parametry)
@@ -334,7 +350,7 @@ def test_pq_widmo_reczne_dla_gen_pv2_zostawia_gen_pv_bez_karty_jako_uwage() -> N
 
 
 def test_ssci_brak_karty_przeksztaltnika_na_gen_pv() -> None:
-    enm = build_golden_enm()
+    enm = _zlota_siec_z_gen_pv_bez_karty()
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.SSCI_IMPEDANCE, {})
     brak = next(w for w in wynik.warunki if w.kod == "generator.converter_card_missing")
     assert brak.elementy == ("gen_pv",)

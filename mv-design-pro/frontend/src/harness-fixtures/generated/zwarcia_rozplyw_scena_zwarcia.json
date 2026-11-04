@@ -11,7 +11,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.64364107688,
+        "i_ka": 0.639753787144,
         "direction": "to_from"
       },
       {
@@ -22,7 +22,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 8.31160967663,
+        "i_ka": 8.95445137877,
         "direction": "from_to"
       },
       {
@@ -33,7 +33,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.0169356078962,
+        "i_ka": 0.0232864608573,
         "direction": "to_from"
       }
     ],
@@ -45,7 +45,7 @@
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -53,20 +53,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240618504502,
-              "im": -0.472283019087
+              "re": -0.0243953703315,
+              "im": -0.440763190753
             },
             {
-              "re": -0.00406748265563,
-              "im": -0.0383375406851
+              "re": -0.00411722241594,
+              "im": -0.0385523092371
             },
             {
-              "re": -0.0240618504502,
-              "im": -0.472283019087
+              "re": -0.0243953703315,
+              "im": -0.440763190753
             },
             {
-              "re": 0.00353145437217,
-              "im": -0.436347849852
+              "re": 0.00986351047584,
+              "im": -0.404754348171
             }
           ]
         },
@@ -81,24 +81,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "v_to_pu": {
-            "re": 0.00353145437217,
-            "im": -0.436347849852
+            "re": 0.00986351047584,
+            "im": -0.404754348171
           },
           "y_series_pu": {
-            "re": 1.06146539885,
-            "im": -1.17940599872
+            "re": 1.01244502275,
+            "im": -0.880926429105
           },
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
+        "substitution": "|(-0.0243954-j0.440763 - 0.00986351-j0.404754) * 1.01245-j0.880926| * 9591.16",
+        "substitution_latex": "\\left| \\left(\\left(-0.0243954 - j 0.440763\\right) - \\left(0.00986351 - j 0.404754\\right)\\right) \\cdot \\left(1.01245 - j 0.880926\\right)\\right| \\cdot 9591.16",
         "result": {
-          "fraction": 0.0718899534254,
-          "i_contrib_a": 643.64107688,
+          "fraction": 0.0667024180304,
+          "i_contrib_a": 639.753787144,
           "direction": "to_from"
         },
         "notes": null
@@ -112,24 +112,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406748265563,
-            "im": -0.0383375406851
+            "re": -0.00411722241594,
+            "im": -0.0385523092371
           },
           "v_to_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "y_series_pu": {
-            "re": 0.085481848241,
-            "im": -2.13533588466
+            "re": 0.10116054889,
+            "im": -2.3160543878
           },
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
+        "substitution": "|(-0.00411722-j0.0385523 - -0.0243954-j0.440763) * 0.101161-j2.31605| * 9591.16",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411722 - j 0.0385523\\right) - \\left(-0.0243954 - j 0.440763\\right)\\right) \\cdot \\left(0.101161 - j 2.31605\\right)\\right| \\cdot 9591.16",
         "result": {
-          "fraction": 0.928345399333,
-          "i_contrib_a": 8311.60967663,
+          "fraction": 0.933614729763,
+          "i_contrib_a": 8954.45137877,
           "direction": "from_to"
         },
         "notes": null
@@ -140,13 +140,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "Σ = 8311.61 ≈ 8953.14",
-        "substitution_latex": "\\sum = 8311.61 \\approx 8953.14",
+        "substitution": "Σ = 8954.45 ≈ 9591.16",
+        "substitution_latex": "\\sum = 8954.45 \\approx 9591.16",
         "result": {
-          "sum_into_fault_a": 8311.60967663,
-          "fraction_sum": 0.928345399333
+          "sum_into_fault_a": 8954.45137877,
+          "fraction_sum": 0.933614729763
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -161,9 +161,9 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "suma_modulow_pominietych_thevenin_a": 9.61e-14,
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 3.63e-15
+          "suma_modulow_pominietych_falownik_a": 0.0
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
@@ -190,7 +190,7 @@
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.63e-18,
+        "i_ka": 0.0,
         "kat_deg": null
       },
       {
@@ -198,7 +198,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 7.15e-17,
+        "i_ka": 9.61e-17,
         "kat_deg": null
       }
     ],
@@ -211,10 +211,10 @@
         "node_id": "bus_sn_c",
         "node_name": "Stacja C SN",
         "klasa": "WKLAD",
-        "i_ka": 0.64364107688,
-        "i_zaciski_ka": 0.64364107688,
-        "kat_deg": 4.46786953875,
-        "udzial": 0.0717542244052,
+        "i_ka": 0.639753787144,
+        "i_zaciski_ka": 0.639753787144,
+        "kat_deg": 5.40014482846,
+        "udzial": 0.0665408629464,
         "przyczyna": null
       },
       {
@@ -224,10 +224,10 @@
         "node_id": "bus_hv",
         "node_name": "GPZ 110 kV",
         "klasa": "WKLAD",
-        "i_ka": 8.31160967663,
-        "i_zaciski_ka": 1.13340131954,
-        "kat_deg": -0.34563801554,
-        "udzial": 0.926592673042,
+        "i_ka": 8.95445137877,
+        "i_zaciski_ka": 1.22106155165,
+        "kat_deg": -0.385247110917,
+        "udzial": 0.931353489308,
         "przyczyna": null
       }
     ],
@@ -245,23 +245,23 @@
             "im": -23.9603960396
           },
           "z_kf_pu": {
-            "re": 0.00406748265563,
-            "im": 0.0383375406851
+            "re": 0.00411722241594,
+            "im": 0.0385523092371
           },
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 110.0
         },
-        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
-        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411722+j0.0385523)| * 9591.16 A = 8954.45 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411722 + j 0.0385523\\right) \\right| \\cdot 9591.16\\,\\mathrm{A} = 8954.45\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.92832850753,
-            "im": -0.00560022951317
+            "re": 0.933593625529,
+            "im": -0.00627741991274
           },
-          "i_a": 8311.60967663,
-          "i_zaciski_a": 1133.40131954,
-          "kat_deg": -0.34563801554,
+          "i_a": 8954.45137877,
+          "i_zaciski_a": 1221.06155165,
+          "kat_deg": -0.385247110917,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -279,23 +279,23 @@
             "im": -0.16434621868
           },
           "z_kf_pu": {
-            "re": -0.00353145437217,
-            "im": 0.436347849852
+            "re": -0.00986351047584,
+            "im": 0.404754348171
           },
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 15.0
         },
-        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
-        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00986351+j0.404754)| * 9591.16 A = 639.754 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00986351 + j 0.404754\\right) \\right| \\cdot 9591.16\\,\\mathrm{A} = 639.754\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.0716714924702,
-            "im": 0.00560022951317
+            "re": 0.0664063744707,
+            "im": 0.00627741991274
           },
-          "i_a": 643.64107688,
-          "i_zaciski_a": 643.64107688,
-          "kat_deg": 4.46786953875,
+          "i_a": 639.753787144,
+          "i_zaciski_a": 639.753787144,
+          "kat_deg": 5.40014482846,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -307,31 +307,31 @@
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "short_circuit_type": "3F",
-          "ik_thevenin_a": 8953.14360646,
-          "ik_inverters_a": 16.9356078962,
-          "ik_total_a": 8970.07921436,
+          "ik_thevenin_a": 9591.16334962,
+          "ik_inverters_a": 23.2864608573,
+          "ik_total_a": 9614.44981048,
           "liczba_zrodel": 2,
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
-        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 9591.16+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 9591.16+j0 A wobec I_k''(Th) = 9591.16 A; reszta ≤ dopuszczalnej 9.59116e-06 A.",
+        "substitution_latex": "\\left(9591.16 + j 0\\right) + \\left(0 + j 0\\right) = \\left(9591.16 + j 0\\right)\\,\\mathrm{A} \\approx 9591.16\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 9.59116e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
-            "re": 8953.14360646,
-            "im": -1.03739239421e-12
+            "re": 9591.16334962,
+            "im": 6.67910171614e-13
           },
-          "suma_modulow_zrodel_a": 8955.25075351,
+          "suma_modulow_zrodel_a": 9594.20516591,
           "prad_czlonow_poprzecznych_a": {
-            "re": 3.22444782745e-13,
-            "im": 3.55037637656e-13
+            "re": 2.56704830872e-12,
+            "im": 1.65814398108e-13
           },
           "suma_bilansu_a": {
-            "re": 8953.14360646,
-            "im": -6.82354756554e-13
+            "re": 9591.16334962,
+            "im": 8.33724569722e-13
           },
-          "reszta_a": 6.82354756554e-13,
-          "tolerancja_a": 8.95314360646e-06,
+          "reszta_a": 3.73228970727e-12,
+          "tolerancja_a": 9.59116334962e-06,
           "bilans_domkniety": true
         },
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
@@ -371,7 +371,7 @@
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
       "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "rewizja_modelu": 1,
       "variant_ref": null,
       "run_ref": "run-sc-scena-zwarcia",
@@ -397,14 +397,14 @@
         "project_ref": null,
         "run_ref": "run-sc-scena-zwarcia",
         "analysis_type": "short_circuit_sn",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
       },
       "reproducibility": {
         "case_ref": "case-demo",
         "analysis_case_ref": "case-demo",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
         "enm_projection_version": "v12xx.m1.1",
         "variant_ref": null,
         "operating_variant_ref": null,
@@ -414,16 +414,16 @@
         "method_version": "canonical_run_v1",
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
-        "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "ebb79573eb23a428cd2c9ee58b07f98317ed6850ec7a0e71c7b36170446bf1fb",
+        "input_hash": "0450bc5c6d14296d13de65909c6a24880000d2c11582db7d0b629f82a33e4515",
+        "result_hash": "3d2bd0728aae618917927c817c87cebb2a27b22b1d3d49db511f1d7caf38c5a5",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1",
-        "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_status": "not_materialized",
+        "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_status": "partial",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
         "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",
@@ -450,7 +450,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.0819603927841,
+        "i_ka": 0.0819272781408,
         "direction": "to_from"
       },
       {
@@ -461,7 +461,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.00014241630032,
+        "i_ka": 0.000181466426146,
         "direction": "from_to"
       },
       {
@@ -472,7 +472,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.0819603927841,
+        "i_ka": 0.0819272781408,
         "direction": "to_from"
       },
       {
@@ -483,7 +483,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.00201466417562,
+        "i_ka": 0.0028015617795,
         "direction": "to_from"
       },
       {
@@ -494,7 +494,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00215655762982,
+        "i_ka": 0.00298207903401,
         "direction": "to_from"
       }
     ],
@@ -506,7 +506,7 @@
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "fault_index": 1,
-          "ik_thevenin_a": 13984.4749902,
+          "ik_thevenin_a": 13984.3873205,
           "n_nodes": 4
         },
         "substitution": "i_inj[1] = -1 (pu); V = Z_bus @ i_inj",
@@ -514,20 +514,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.00406748265563,
-              "im": -0.0383375406851
+              "re": -0.00411722241594,
+              "im": -0.0385523092371
             },
             {
-              "re": -0.00411363339526,
-              "im": -0.0410796353934
+              "re": -0.00411848796883,
+              "im": -0.0410794090947
             },
             {
-              "re": -0.00406748265563,
-              "im": -0.0383375406851
+              "re": -0.00411722241594,
+              "im": -0.0385523092371
             },
             {
-              "re": -0.00166086690814,
-              "im": -0.0355355378636
+              "re": -0.000950643971485,
+              "im": -0.0355474701668
             }
           ]
         },
@@ -542,24 +542,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.00406748265563,
-            "im": -0.0383375406851
+            "re": -0.00411722241594,
+            "im": -0.0385523092371
           },
           "v_to_pu": {
-            "re": -0.00166086690814,
-            "im": -0.0355355378636
+            "re": -0.000950643971485,
+            "im": -0.0355474701668
           },
           "y_series_pu": {
-            "re": 1.06146539885,
-            "im": -1.17940599872
+            "re": 1.01244502275,
+            "im": -0.880926429105
           },
-          "ik_thevenin_a": 13984.4749902
+          "ik_thevenin_a": 13984.3873205
         },
-        "substitution": "|(-0.00406748-j0.0383375 - -0.00166087-j0.0355355) * 1.06147-j1.17941| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.00166087 - j 0.0355355\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00411722-j0.0385523 - -0.000950644-j0.0355475) * 1.01245-j0.880926| * 13984.4",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411722 - j 0.0385523\\right) - \\left(-0.000950644 - j 0.0355475\\right)\\right) \\cdot \\left(1.01245 - j 0.880926\\right)\\right| \\cdot 13984.4",
         "result": {
-          "fraction": 0.00586081299737,
-          "i_contrib_a": 81.9603927841,
+          "fraction": 0.00585848176706,
+          "i_contrib_a": 81.9272781408,
           "direction": "to_from"
         },
         "notes": null
@@ -573,24 +573,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00411363339526,
-            "im": -0.0410796353934
+            "re": -0.00411848796883,
+            "im": -0.0410794090947
           },
           "v_to_pu": {
-            "re": -0.00406748265563,
-            "im": -0.0383375406851
+            "re": -0.00411722241594,
+            "im": -0.0385523092371
           },
           "y_series_pu": {
-            "re": 0.085481848241,
-            "im": -2.13533588466
+            "re": 0.10116054889,
+            "im": -2.3160543878
           },
-          "ik_thevenin_a": 13984.4749902
+          "ik_thevenin_a": 13984.3873205
         },
-        "substitution": "|(-0.00411363-j0.0410796 - -0.00406748-j0.0383375) * 0.0854818-j2.13534| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00411363 - j 0.0410796\\right) - \\left(-0.00406748 - j 0.0383375\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00411849-j0.0410794 - -0.00411722-j0.0385523) * 0.101161-j2.31605| * 13984.4",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411849 - j 0.0410794\\right) - \\left(-0.00411722 - j 0.0385523\\right)\\right) \\cdot \\left(0.101161 - j 2.31605\\right)\\right| \\cdot 13984.4",
         "result": {
-          "fraction": 0.00586081299737,
-          "i_contrib_a": 81.9603927841,
+          "fraction": 0.00585848176706,
+          "i_contrib_a": 81.9272781408,
           "direction": "to_from"
         },
         "notes": null
@@ -601,13 +601,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-          "ik_thevenin_a": 13984.4749902
+          "ik_thevenin_a": 13984.3873205
         },
-        "substitution": "Σ = 81.9604 ≈ 13984.5",
-        "substitution_latex": "\\sum = 81.9604 \\approx 13984.5",
+        "substitution": "Σ = 81.9273 ≈ 13984.4",
+        "substitution_latex": "\\sum = 81.9273 \\approx 13984.4",
         "result": {
-          "sum_into_fault_a": 81.9603927841,
-          "fraction_sum": 0.00586081299737
+          "sum_into_fault_a": 81.9272781408,
+          "fraction_sum": 0.00585848176706
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -622,7 +622,7 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 3.2e-14,
+          "suma_modulow_pominietych_thevenin_a": 3.19e-14,
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
@@ -643,7 +643,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 3.2e-17,
+        "i_ka": 3.19e-17,
         "kat_deg": null
       }
     ],
@@ -656,10 +656,10 @@
         "node_id": "bus_sn_c",
         "node_name": "Stacja C SN",
         "klasa": "WKLAD",
-        "i_ka": 0.0819603927841,
-        "i_zaciski_ka": 0.601042880417,
-        "kat_deg": 1.32821897902,
-        "udzial": 0.00585990933583,
+        "i_ka": 0.0819272781408,
+        "i_zaciski_ka": 0.6008000397,
+        "kat_deg": 2.47228029611,
+        "udzial": 0.00585723275053,
         "przyczyna": null
       },
       {
@@ -671,8 +671,8 @@
         "klasa": "WKLAD",
         "i_ka": 13.9025367488,
         "i_zaciski_ka": 13.9025367488,
-        "kat_deg": -0.00782962142253,
-        "udzial": 0.993987487357,
+        "kat_deg": -0.0145645614378,
+        "udzial": 0.99393505324,
         "przyczyna": null
       }
     ],
@@ -690,23 +690,23 @@
             "im": -23.9603960396
           },
           "z_kf_pu": {
-            "re": 0.00411363339526,
-            "im": 0.0410796353934
+            "re": 0.00411848796883,
+            "im": 0.0410794090947
           },
-          "ik_thevenin_a": 13984.4749902,
+          "ik_thevenin_a": 13984.3873205,
           "un_zwarcia_kv": 110.0,
           "un_zrodla_kv": 110.0
         },
-        "substitution": "I = |(2.39604-j23.9604) * (0.00411363+j0.0410796)| * 13984.5 A = 13902.5 A",
-        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411363 + j 0.0410796\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 13902.5\\,\\mathrm{A}",
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411849+j0.0410794)| * 13984.4 A = 13902.5 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411849 + j 0.0410794\\right) \\right| \\cdot 13984.4\\,\\mathrm{A} = 13902.5\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.99414076172,
-            "im": -0.000135851993281
+            "re": 0.994146971263,
+            "im": -0.000252711719364
           },
           "i_a": 13902.5367488,
           "i_zaciski_a": 13902.5367488,
-          "kat_deg": -0.00782962142253,
+          "kat_deg": -0.0145645614378,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -724,23 +724,23 @@
             "im": -0.16434621868
           },
           "z_kf_pu": {
-            "re": 0.00166086690814,
-            "im": 0.0355355378636
+            "re": 0.000950643971485,
+            "im": 0.0355474701668
           },
-          "ik_thevenin_a": 13984.4749902,
+          "ik_thevenin_a": 13984.3873205,
           "un_zwarcia_kv": 110.0,
           "un_zrodla_kv": 15.0
         },
-        "substitution": "I = |(0.0115042-j0.164346) * (0.00166087+j0.0355355)| * 13984.5 A = 81.9604 A",
-        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 81.9604\\,\\mathrm{A}",
+        "substitution": "I = |(0.0115042-j0.164346) * (0.000950644+j0.0355475)| * 13984.4 A = 81.9273 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.000950644 + j 0.0355475\\right) \\right| \\cdot 13984.4\\,\\mathrm{A} = 81.9273\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.00585923828036,
-            "im": 0.000135851993281
+            "re": 0.00585302873749,
+            "im": 0.000252711719364
           },
-          "i_a": 81.9603927841,
-          "i_zaciski_a": 601.042880417,
-          "kat_deg": 1.32821897902,
+          "i_a": 81.9272781408,
+          "i_zaciski_a": 600.8000397,
+          "kat_deg": 2.47228029611,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -752,31 +752,31 @@
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "short_circuit_type": "3F",
-          "ik_thevenin_a": 13984.4749902,
-          "ik_inverters_a": 2.15655762983,
-          "ik_total_a": 13986.6315479,
+          "ik_thevenin_a": 13984.3873205,
+          "ik_inverters_a": 2.98207903401,
+          "ik_total_a": 13987.3693996,
           "liczba_zrodel": 2,
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 13984.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.5+j0 A wobec I_k''(Th) = 13984.5 A; reszta ≤ dopuszczalnej 1.39845e-05 A.",
-        "substitution_latex": "\\left(13984.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(13984.5 + j 0\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 1.39845e-05\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 13984.4+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.4+j0 A wobec I_k''(Th) = 13984.4 A; reszta ≤ dopuszczalnej 1.39844e-05 A.",
+        "substitution_latex": "\\left(13984.4 + j 0\\right) + \\left(0 + j 0\\right) = \\left(13984.4 + j 0\\right)\\,\\mathrm{A} \\approx 13984.4\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 1.39844e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
-            "re": 13984.4749902,
-            "im": -8.79296635503e-14
+            "re": 13984.3873205,
+            "im": 4.05453448593e-13
           },
-          "suma_modulow_zrodel_a": 13984.4971416,
+          "suma_modulow_zrodel_a": 13984.464027,
           "prad_czlonow_poprzecznych_a": {
-            "re": 4.34742010365e-14,
-            "im": 4.28933257375e-14
+            "re": 2.20323163313e-12,
+            "im": -1.73666386057e-13
           },
           "suma_bilansu_a": {
-            "re": 13984.4749902,
-            "im": -4.50363378128e-14
+            "re": 13984.3873205,
+            "im": 2.31787062536e-13
           },
-          "reszta_a": 4.50363378128e-14,
-          "tolerancja_a": 1.39844749902e-05,
+          "reszta_a": 3.64535526982e-12,
+          "tolerancja_a": 1.39843873205e-05,
           "bilans_domkniety": true
         },
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
@@ -816,7 +816,7 @@
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
       "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "rewizja_modelu": 1,
       "variant_ref": null,
       "run_ref": "run-sc-scena-zwarcia",
@@ -842,14 +842,14 @@
         "project_ref": null,
         "run_ref": "run-sc-scena-zwarcia",
         "analysis_type": "short_circuit_sn",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
       },
       "reproducibility": {
         "case_ref": "case-demo",
         "analysis_case_ref": "case-demo",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
         "enm_projection_version": "v12xx.m1.1",
         "variant_ref": null,
         "operating_variant_ref": null,
@@ -859,16 +859,16 @@
         "method_version": "canonical_run_v1",
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
-        "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "ebb79573eb23a428cd2c9ee58b07f98317ed6850ec7a0e71c7b36170446bf1fb",
+        "input_hash": "0450bc5c6d14296d13de65909c6a24880000d2c11582db7d0b629f82a33e4515",
+        "result_hash": "3d2bd0728aae618917927c817c87cebb2a27b22b1d3d49db511f1d7caf38c5a5",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1",
-        "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_status": "not_materialized",
+        "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_status": "partial",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
         "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",
@@ -895,7 +895,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 1.47069046773,
+        "i_ka": 1.52637001503,
         "direction": "to_from"
       },
       {
@@ -906,7 +906,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 18.9916485476,
+        "i_ka": 21.3641659655,
         "direction": "from_to"
       },
       {
@@ -917,7 +917,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 20.4575242806,
+        "i_ka": 22.8832785993,
         "direction": "from_to"
       }
     ],
@@ -929,7 +929,7 @@
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "fault_index": 2,
-          "ik_thevenin_a": 20457.5242806,
+          "ik_thevenin_a": 22883.2785993,
           "n_nodes": 4
         },
         "substitution": "i_inj[2] = -1 (pu); V = Z_bus @ i_inj",
@@ -937,20 +937,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240618504502,
-              "im": -0.472283019087
+              "re": -0.0243953703315,
+              "im": -0.440763190753
             },
             {
-              "re": -0.00406748265563,
-              "im": -0.0383375406851
+              "re": -0.00411722241594,
+              "im": -0.0385523092371
             },
             {
-              "re": -1.61582694789,
-              "im": -7.22988693659
+              "re": -1.57177094469,
+              "im": -6.43372302056
             },
             {
-              "re": 0.00353145437217,
-              "im": -0.436347849852
+              "re": 0.00986351047584,
+              "im": -0.404754348171
             }
           ]
         },
@@ -965,24 +965,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "v_to_pu": {
-            "re": 0.00353145437217,
-            "im": -0.436347849852
+            "re": 0.00986351047584,
+            "im": -0.404754348171
           },
           "y_series_pu": {
-            "re": 1.06146539885,
-            "im": -1.17940599872
+            "re": 1.01244502275,
+            "im": -0.880926429105
           },
-          "ik_thevenin_a": 20457.5242806
+          "ik_thevenin_a": 22883.2785993
         },
-        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0243954-j0.440763 - 0.00986351-j0.404754) * 1.01245-j0.880926| * 22883.3",
+        "substitution_latex": "\\left| \\left(\\left(-0.0243954 - j 0.440763\\right) - \\left(0.00986351 - j 0.404754\\right)\\right) \\cdot \\left(1.01245 - j 0.880926\\right)\\right| \\cdot 22883.3",
         "result": {
-          "fraction": 0.0718899534254,
-          "i_contrib_a": 1470.69046773,
+          "fraction": 0.0667024180304,
+          "i_contrib_a": 1526.37001503,
           "direction": "to_from"
         },
         "notes": null
@@ -996,24 +996,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406748265563,
-            "im": -0.0383375406851
+            "re": -0.00411722241594,
+            "im": -0.0385523092371
           },
           "v_to_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "y_series_pu": {
-            "re": 0.085481848241,
-            "im": -2.13533588466
+            "re": 0.10116054889,
+            "im": -2.3160543878
           },
-          "ik_thevenin_a": 20457.5242806
+          "ik_thevenin_a": 22883.2785993
         },
-        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.00411722-j0.0385523 - -0.0243954-j0.440763) * 0.101161-j2.31605| * 22883.3",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411722 - j 0.0385523\\right) - \\left(-0.0243954 - j 0.440763\\right)\\right) \\cdot \\left(0.101161 - j 2.31605\\right)\\right| \\cdot 22883.3",
         "result": {
-          "fraction": 0.928345399333,
-          "i_contrib_a": 18991.6485476,
+          "fraction": 0.933614729763,
+          "i_contrib_a": 21364.1659655,
           "direction": "from_to"
         },
         "notes": null
@@ -1027,24 +1027,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "v_from_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "v_to_pu": {
-            "re": -1.61582694789,
-            "im": -7.22988693659
+            "re": -1.57177094469,
+            "im": -6.43372302056
           },
           "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
+            "re": 0.0403909697399,
+            "im": -0.15643355314
           },
-          "ik_thevenin_a": 20457.5242806
+          "ik_thevenin_a": 22883.2785993
         },
-        "substitution": "|(-0.0240619-j0.472283 - -1.61583-j7.22989) * 0.0330249-j0.140202| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(-1.61583 - j 7.22989\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0243954-j0.440763 - -1.57177-j6.43372) * 0.040391-j0.156434| * 22883.3",
+        "substitution_latex": "\\left| \\left(\\left(-0.0243954 - j 0.440763\\right) - \\left(-1.57177 - j 6.43372\\right)\\right) \\cdot \\left(0.040391 - j 0.156434\\right)\\right| \\cdot 22883.3",
         "result": {
           "fraction": 1.0,
-          "i_contrib_a": 20457.5242806,
+          "i_contrib_a": 22883.2785993,
           "direction": "from_to"
         },
         "notes": null
@@ -1055,12 +1055,12 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "ik_thevenin_a": 20457.5242806
+          "ik_thevenin_a": 22883.2785993
         },
-        "substitution": "Σ = 20457.5 ≈ 20457.5",
-        "substitution_latex": "\\sum = 20457.5 \\approx 20457.5",
+        "substitution": "Σ = 22883.3 ≈ 22883.3",
+        "substitution_latex": "\\sum = 22883.3 \\approx 22883.3",
         "result": {
-          "sum_into_fault_a": 20457.5242806,
+          "sum_into_fault_a": 22883.2785993,
           "fraction_sum": 1.0
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
@@ -1076,10 +1076,10 @@
         "node_id": "bus_sn_c",
         "node_name": "Stacja C SN",
         "klasa": "WKLAD",
-        "i_ka": 1.47069046773,
-        "i_zaciski_ka": 0.0392184124728,
-        "kat_deg": 4.46786953875,
-        "udzial": 0.0697253918432,
+        "i_ka": 1.52637001503,
+        "i_zaciski_ka": 0.0407032004009,
+        "kat_deg": 5.40014482846,
+        "udzial": 0.0642505703025,
         "przyczyna": null
       },
       {
@@ -1089,10 +1089,10 @@
         "node_id": "bus_hv",
         "node_name": "GPZ 110 kV",
         "klasa": "WKLAD",
-        "i_ka": 18.9916485476,
-        "i_zaciski_ka": 0.0690605401733,
-        "kat_deg": -0.34563801554,
-        "udzial": 0.900393499371,
+        "i_ka": 21.3641659655,
+        "i_zaciski_ka": 0.0776878762383,
+        "kat_deg": -0.385247110917,
+        "udzial": 0.899296916084,
         "przyczyna": null
       }
     ],
@@ -1110,23 +1110,23 @@
             "im": -23.9603960396
           },
           "z_kf_pu": {
-            "re": 0.00406748265563,
-            "im": 0.0383375406851
+            "re": 0.00411722241594,
+            "im": 0.0385523092371
           },
-          "ik_thevenin_a": 20457.5242806,
+          "ik_thevenin_a": 22883.2785993,
           "un_zwarcia_kv": 0.4,
           "un_zrodla_kv": 110.0
         },
-        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 20457.5 A = 18991.6 A",
-        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 18991.6\\,\\mathrm{A}",
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411722+j0.0385523)| * 22883.3 A = 21364.2 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411722 + j 0.0385523\\right) \\right| \\cdot 22883.3\\,\\mathrm{A} = 21364.2\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.92832850753,
-            "im": -0.00560022951317
+            "re": 0.933593625529,
+            "im": -0.00627741991274
           },
-          "i_a": 18991.6485476,
-          "i_zaciski_a": 69.0605401733,
-          "kat_deg": -0.34563801554,
+          "i_a": 21364.1659655,
+          "i_zaciski_a": 77.6878762383,
+          "kat_deg": -0.385247110917,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -1144,23 +1144,23 @@
             "im": -0.16434621868
           },
           "z_kf_pu": {
-            "re": -0.00353145437217,
-            "im": 0.436347849852
+            "re": -0.00986351047584,
+            "im": 0.404754348171
           },
-          "ik_thevenin_a": 20457.5242806,
+          "ik_thevenin_a": 22883.2785993,
           "un_zwarcia_kv": 0.4,
           "un_zrodla_kv": 15.0
         },
-        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 20457.5 A = 1470.69 A",
-        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 1470.69\\,\\mathrm{A}",
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00986351+j0.404754)| * 22883.3 A = 1526.37 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00986351 + j 0.404754\\right) \\right| \\cdot 22883.3\\,\\mathrm{A} = 1526.37\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.0716714924702,
-            "im": 0.00560022951317
+            "re": 0.0664063744707,
+            "im": 0.00627741991274
           },
-          "i_a": 1470.69046773,
-          "i_zaciski_a": 39.2184124728,
-          "kat_deg": 4.46786953875,
+          "i_a": 1526.37001503,
+          "i_zaciski_a": 40.7032004009,
+          "kat_deg": 5.40014482846,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -1172,31 +1172,31 @@
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "short_circuit_type": "3F",
-          "ik_thevenin_a": 20457.5242806,
-          "ik_inverters_a": 635.085296109,
-          "ik_total_a": 21092.6095767,
+          "ik_thevenin_a": 22883.2785993,
+          "ik_inverters_a": 873.242282149,
+          "ik_total_a": 23756.5208814,
           "liczba_zrodel": 2,
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 20457.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 20457.5+j0 A wobec I_k''(Th) = 20457.5 A; reszta ≤ dopuszczalnej 2.04575e-05 A.",
-        "substitution_latex": "\\left(20457.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(20457.5 + j 0\\right)\\,\\mathrm{A} \\approx 20457.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 2.04575e-05\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 22883.3+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 22883.3+j0 A wobec I_k''(Th) = 22883.3 A; reszta ≤ dopuszczalnej 2.28833e-05 A.",
+        "substitution_latex": "\\left(22883.3 + j 0\\right) + \\left(0 + j 0\\right) = \\left(22883.3 + j 0\\right)\\,\\mathrm{A} \\approx 22883.3\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 2.28833e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
-            "re": 20457.5242806,
-            "im": -2.01794136956e-12
+            "re": 22883.2785993,
+            "im": 1.5916157281e-12
           },
-          "suma_modulow_zrodel_a": 20462.3390154,
+          "suma_modulow_zrodel_a": 22890.5359806,
           "prad_czlonow_poprzecznych_a": {
-            "re": 7.36771603596e-13,
-            "im": 8.11244788661e-13
+            "re": 6.12464614406e-12,
+            "im": 3.95611765679e-13
           },
           "suma_bilansu_a": {
-            "re": 20457.5242806,
-            "im": -1.2066965809e-12
+            "re": 22883.2785993,
+            "im": 1.98722749378e-12
           },
-          "reszta_a": 7.375342422e-12,
-          "tolerancja_a": 2.04575242806e-05,
+          "reszta_a": 1.10933800674e-11,
+          "tolerancja_a": 2.28832785993e-05,
           "bilans_domkniety": true
         },
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
@@ -1236,7 +1236,7 @@
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
       "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "rewizja_modelu": 1,
       "variant_ref": null,
       "run_ref": "run-sc-scena-zwarcia",
@@ -1262,14 +1262,14 @@
         "project_ref": null,
         "run_ref": "run-sc-scena-zwarcia",
         "analysis_type": "short_circuit_sn",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
       },
       "reproducibility": {
         "case_ref": "case-demo",
         "analysis_case_ref": "case-demo",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
         "enm_projection_version": "v12xx.m1.1",
         "variant_ref": null,
         "operating_variant_ref": null,
@@ -1279,16 +1279,16 @@
         "method_version": "canonical_run_v1",
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
-        "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "ebb79573eb23a428cd2c9ee58b07f98317ed6850ec7a0e71c7b36170446bf1fb",
+        "input_hash": "0450bc5c6d14296d13de65909c6a24880000d2c11582db7d0b629f82a33e4515",
+        "result_hash": "3d2bd0728aae618917927c817c87cebb2a27b22b1d3d49db511f1d7caf38c5a5",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1",
-        "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_status": "not_materialized",
+        "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_status": "partial",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
         "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",
@@ -1315,7 +1315,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.64364107688,
+        "i_ka": 0.639753787144,
         "direction": "to_from"
       },
       {
@@ -1326,7 +1326,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 8.31160967663,
+        "i_ka": 8.95445137877,
         "direction": "from_to"
       },
       {
@@ -1337,7 +1337,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.0169356078962,
+        "i_ka": 0.0232864608573,
         "direction": "to_from"
       }
     ],
@@ -1349,7 +1349,7 @@
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -1357,20 +1357,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240618504502,
-              "im": -0.472283019087
+              "re": -0.0243953703315,
+              "im": -0.440763190753
             },
             {
-              "re": -0.00406748265563,
-              "im": -0.0383375406851
+              "re": -0.00411722241594,
+              "im": -0.0385523092371
             },
             {
-              "re": -0.0240618504502,
-              "im": -0.472283019087
+              "re": -0.0243953703315,
+              "im": -0.440763190753
             },
             {
-              "re": 0.00353145437217,
-              "im": -0.436347849852
+              "re": 0.00986351047584,
+              "im": -0.404754348171
             }
           ]
         },
@@ -1385,24 +1385,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "v_to_pu": {
-            "re": 0.00353145437217,
-            "im": -0.436347849852
+            "re": 0.00986351047584,
+            "im": -0.404754348171
           },
           "y_series_pu": {
-            "re": 1.06146539885,
-            "im": -1.17940599872
+            "re": 1.01244502275,
+            "im": -0.880926429105
           },
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
+        "substitution": "|(-0.0243954-j0.440763 - 0.00986351-j0.404754) * 1.01245-j0.880926| * 9591.16",
+        "substitution_latex": "\\left| \\left(\\left(-0.0243954 - j 0.440763\\right) - \\left(0.00986351 - j 0.404754\\right)\\right) \\cdot \\left(1.01245 - j 0.880926\\right)\\right| \\cdot 9591.16",
         "result": {
-          "fraction": 0.0718899534254,
-          "i_contrib_a": 643.64107688,
+          "fraction": 0.0667024180304,
+          "i_contrib_a": 639.753787144,
           "direction": "to_from"
         },
         "notes": null
@@ -1416,24 +1416,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406748265563,
-            "im": -0.0383375406851
+            "re": -0.00411722241594,
+            "im": -0.0385523092371
           },
           "v_to_pu": {
-            "re": -0.0240618504502,
-            "im": -0.472283019087
+            "re": -0.0243953703315,
+            "im": -0.440763190753
           },
           "y_series_pu": {
-            "re": 0.085481848241,
-            "im": -2.13533588466
+            "re": 0.10116054889,
+            "im": -2.3160543878
           },
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
+        "substitution": "|(-0.00411722-j0.0385523 - -0.0243954-j0.440763) * 0.101161-j2.31605| * 9591.16",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411722 - j 0.0385523\\right) - \\left(-0.0243954 - j 0.440763\\right)\\right) \\cdot \\left(0.101161 - j 2.31605\\right)\\right| \\cdot 9591.16",
         "result": {
-          "fraction": 0.928345399333,
-          "i_contrib_a": 8311.60967663,
+          "fraction": 0.933614729763,
+          "i_contrib_a": 8954.45137877,
           "direction": "from_to"
         },
         "notes": null
@@ -1444,13 +1444,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "ik_thevenin_a": 8953.14360646
+          "ik_thevenin_a": 9591.16334962
         },
-        "substitution": "Σ = 643.641 ≈ 8953.14",
-        "substitution_latex": "\\sum = 643.641 \\approx 8953.14",
+        "substitution": "Σ = 639.754 ≈ 9591.16",
+        "substitution_latex": "\\sum = 639.754 \\approx 9591.16",
         "result": {
-          "sum_into_fault_a": 643.64107688,
-          "fraction_sum": 0.0718899534254
+          "sum_into_fault_a": 639.753787144,
+          "fraction_sum": 0.0667024180304
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -1465,9 +1465,9 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "suma_modulow_pominietych_thevenin_a": 9.61e-14,
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 3.63e-15
+          "suma_modulow_pominietych_falownik_a": 0.0
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
@@ -1494,7 +1494,7 @@
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.63e-18,
+        "i_ka": 0.0,
         "kat_deg": null
       },
       {
@@ -1502,7 +1502,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 7.15e-17,
+        "i_ka": 9.61e-17,
         "kat_deg": null
       }
     ],
@@ -1515,10 +1515,10 @@
         "node_id": "bus_sn_c",
         "node_name": "Stacja C SN",
         "klasa": "WKLAD",
-        "i_ka": 0.64364107688,
-        "i_zaciski_ka": 0.64364107688,
-        "kat_deg": 4.46786953875,
-        "udzial": 0.0717542244052,
+        "i_ka": 0.639753787144,
+        "i_zaciski_ka": 0.639753787144,
+        "kat_deg": 5.40014482846,
+        "udzial": 0.0665408629464,
         "przyczyna": null
       },
       {
@@ -1528,10 +1528,10 @@
         "node_id": "bus_hv",
         "node_name": "GPZ 110 kV",
         "klasa": "WKLAD",
-        "i_ka": 8.31160967663,
-        "i_zaciski_ka": 1.13340131954,
-        "kat_deg": -0.34563801554,
-        "udzial": 0.926592673042,
+        "i_ka": 8.95445137877,
+        "i_zaciski_ka": 1.22106155165,
+        "kat_deg": -0.385247110917,
+        "udzial": 0.931353489308,
         "przyczyna": null
       }
     ],
@@ -1549,23 +1549,23 @@
             "im": -23.9603960396
           },
           "z_kf_pu": {
-            "re": 0.00406748265563,
-            "im": 0.0383375406851
+            "re": 0.00411722241594,
+            "im": 0.0385523092371
           },
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 110.0
         },
-        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
-        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411722+j0.0385523)| * 9591.16 A = 8954.45 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411722 + j 0.0385523\\right) \\right| \\cdot 9591.16\\,\\mathrm{A} = 8954.45\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.92832850753,
-            "im": -0.00560022951317
+            "re": 0.933593625529,
+            "im": -0.00627741991274
           },
-          "i_a": 8311.60967663,
-          "i_zaciski_a": 1133.40131954,
-          "kat_deg": -0.34563801554,
+          "i_a": 8954.45137877,
+          "i_zaciski_a": 1221.06155165,
+          "kat_deg": -0.385247110917,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -1583,23 +1583,23 @@
             "im": -0.16434621868
           },
           "z_kf_pu": {
-            "re": -0.00353145437217,
-            "im": 0.436347849852
+            "re": -0.00986351047584,
+            "im": 0.404754348171
           },
-          "ik_thevenin_a": 8953.14360646,
+          "ik_thevenin_a": 9591.16334962,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 15.0
         },
-        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
-        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00986351+j0.404754)| * 9591.16 A = 639.754 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00986351 + j 0.404754\\right) \\right| \\cdot 9591.16\\,\\mathrm{A} = 639.754\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.0716714924702,
-            "im": 0.00560022951317
+            "re": 0.0664063744707,
+            "im": 0.00627741991274
           },
-          "i_a": 643.64107688,
-          "i_zaciski_a": 643.64107688,
-          "kat_deg": 4.46786953875,
+          "i_a": 639.753787144,
+          "i_zaciski_a": 639.753787144,
+          "kat_deg": 5.40014482846,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -1611,31 +1611,31 @@
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "short_circuit_type": "3F",
-          "ik_thevenin_a": 8953.14360646,
-          "ik_inverters_a": 16.9356078962,
-          "ik_total_a": 8970.07921436,
+          "ik_thevenin_a": 9591.16334962,
+          "ik_inverters_a": 23.2864608573,
+          "ik_total_a": 9614.44981048,
           "liczba_zrodel": 2,
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
-        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 9591.16+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 9591.16+j0 A wobec I_k''(Th) = 9591.16 A; reszta ≤ dopuszczalnej 9.59116e-06 A.",
+        "substitution_latex": "\\left(9591.16 + j 0\\right) + \\left(0 + j 0\\right) = \\left(9591.16 + j 0\\right)\\,\\mathrm{A} \\approx 9591.16\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 9.59116e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
-            "re": 8953.14360646,
-            "im": -1.03739239421e-12
+            "re": 9591.16334962,
+            "im": 6.67910171614e-13
           },
-          "suma_modulow_zrodel_a": 8955.25075351,
+          "suma_modulow_zrodel_a": 9594.20516591,
           "prad_czlonow_poprzecznych_a": {
-            "re": 3.22444782745e-13,
-            "im": 3.55037637656e-13
+            "re": 2.56704830872e-12,
+            "im": 1.65814398108e-13
           },
           "suma_bilansu_a": {
-            "re": 8953.14360646,
-            "im": -6.82354756554e-13
+            "re": 9591.16334962,
+            "im": 8.33724569722e-13
           },
-          "reszta_a": 6.82354756554e-13,
-          "tolerancja_a": 8.95314360646e-06,
+          "reszta_a": 3.73228970727e-12,
+          "tolerancja_a": 9.59116334962e-06,
           "bilans_domkniety": true
         },
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
@@ -1675,7 +1675,7 @@
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
       "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "rewizja_modelu": 1,
       "variant_ref": null,
       "run_ref": "run-sc-scena-zwarcia",
@@ -1701,14 +1701,14 @@
         "project_ref": null,
         "run_ref": "run-sc-scena-zwarcia",
         "analysis_type": "short_circuit_sn",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
       },
       "reproducibility": {
         "case_ref": "case-demo",
         "analysis_case_ref": "case-demo",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
         "enm_projection_version": "v12xx.m1.1",
         "variant_ref": null,
         "operating_variant_ref": null,
@@ -1718,16 +1718,16 @@
         "method_version": "canonical_run_v1",
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
-        "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "ebb79573eb23a428cd2c9ee58b07f98317ed6850ec7a0e71c7b36170446bf1fb",
+        "input_hash": "0450bc5c6d14296d13de65909c6a24880000d2c11582db7d0b629f82a33e4515",
+        "result_hash": "3d2bd0728aae618917927c817c87cebb2a27b22b1d3d49db511f1d7caf38c5a5",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1",
-        "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_status": "not_materialized",
+        "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_status": "partial",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
         "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",
@@ -1754,7 +1754,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 3.9434983582,
+        "i_ka": 3.76204915027,
         "direction": "from_to"
       },
       {
@@ -1765,7 +1765,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.00746065778668,
+        "i_ka": 0.0090298056037,
         "direction": "to_from"
       },
       {
@@ -1776,7 +1776,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 3.9434983582,
+        "i_ka": 3.76204915027,
         "direction": "from_to"
       },
       {
@@ -1787,7 +1787,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.000714672774806,
+        "i_ka": 0.00102840144234,
         "direction": "to_from"
       },
       {
@@ -1798,7 +1798,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00803521153329,
+        "i_ka": 0.00978338108895,
         "direction": "to_from"
       }
     ],
@@ -1810,7 +1810,7 @@
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "fault_index": 3,
-          "ik_thevenin_a": 4603.52239368,
+          "ik_thevenin_a": 4393.45156319,
           "n_nodes": 4
         },
         "substitution": "i_inj[3] = -1 (pu); V = Z_bus @ i_inj",
@@ -1818,20 +1818,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": 0.00353145437217,
-              "im": -0.436347849852
+              "re": 0.00986351047584,
+              "im": -0.404754348171
             },
             {
-              "re": -0.00166086690814,
-              "im": -0.0355355378636
+              "re": -0.000950643971485,
+              "im": -0.0355474701668
             },
             {
-              "re": 0.00353145437217,
-              "im": -0.436347849852
+              "re": 0.00986351047584,
+              "im": -0.404754348171
             },
             {
-              "re": -0.335872018367,
-              "im": -0.856186329184
+              "re": -0.439685298337,
+              "im": -0.857534259028
             }
           ]
         },
@@ -1846,24 +1846,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": 0.00353145437217,
-            "im": -0.436347849852
+            "re": 0.00986351047584,
+            "im": -0.404754348171
           },
           "v_to_pu": {
-            "re": -0.335872018367,
-            "im": -0.856186329184
+            "re": -0.439685298337,
+            "im": -0.857534259028
           },
           "y_series_pu": {
-            "re": 1.06146539885,
-            "im": -1.17940599872
+            "re": 1.01244502275,
+            "im": -0.880926429105
           },
-          "ik_thevenin_a": 4603.52239368
+          "ik_thevenin_a": 4393.45156319
         },
-        "substitution": "|(0.00353145-j0.436348 - -0.335872-j0.856186) * 1.06147-j1.17941| * 4603.52",
-        "substitution_latex": "\\left| \\left(\\left(0.00353145 - j 0.436348\\right) - \\left(-0.335872 - j 0.856186\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 4603.52",
+        "substitution": "|(0.00986351-j0.404754 - -0.439685-j0.857534) * 1.01245-j0.880926| * 4393.45",
+        "substitution_latex": "\\left| \\left(\\left(0.00986351 - j 0.404754\\right) - \\left(-0.439685 - j 0.857534\\right)\\right) \\cdot \\left(1.01245 - j 0.880926\\right)\\right| \\cdot 4393.45",
         "result": {
-          "fraction": 0.85662630068,
-          "i_contrib_a": 3943.4983582,
+          "fraction": 0.856285564131,
+          "i_contrib_a": 3762.04915027,
           "direction": "from_to"
         },
         "notes": null
@@ -1877,24 +1877,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00166086690814,
-            "im": -0.0355355378636
+            "re": -0.000950643971485,
+            "im": -0.0355474701668
           },
           "v_to_pu": {
-            "re": 0.00353145437217,
-            "im": -0.436347849852
+            "re": 0.00986351047584,
+            "im": -0.404754348171
           },
           "y_series_pu": {
-            "re": 0.085481848241,
-            "im": -2.13533588466
+            "re": 0.10116054889,
+            "im": -2.3160543878
           },
-          "ik_thevenin_a": 4603.52239368
+          "ik_thevenin_a": 4393.45156319
         },
-        "substitution": "|(-0.00166087-j0.0355355 - 0.00353145-j0.436348) * 0.0854818-j2.13534| * 4603.52",
-        "substitution_latex": "\\left| \\left(\\left(-0.00166087 - j 0.0355355\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 4603.52",
+        "substitution": "|(-0.000950644-j0.0355475 - 0.00986351-j0.404754) * 0.101161-j2.31605| * 4393.45",
+        "substitution_latex": "\\left| \\left(\\left(-0.000950644 - j 0.0355475\\right) - \\left(0.00986351 - j 0.404754\\right)\\right) \\cdot \\left(0.101161 - j 2.31605\\right)\\right| \\cdot 4393.45",
         "result": {
-          "fraction": 0.85662630068,
-          "i_contrib_a": 3943.4983582,
+          "fraction": 0.856285564131,
+          "i_contrib_a": 3762.04915027,
           "direction": "from_to"
         },
         "notes": null
@@ -1905,13 +1905,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-          "ik_thevenin_a": 4603.52239368
+          "ik_thevenin_a": 4393.45156319
         },
-        "substitution": "Σ = 3943.5 ≈ 4603.52",
-        "substitution_latex": "\\sum = 3943.5 \\approx 4603.52",
+        "substitution": "Σ = 3762.05 ≈ 4393.45",
+        "substitution_latex": "\\sum = 3762.05 \\approx 4393.45",
         "result": {
-          "sum_into_fault_a": 3943.4983582,
-          "fraction_sum": 0.85662630068
+          "sum_into_fault_a": 3762.04915027,
+          "fraction_sum": 0.856285564131
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -1926,7 +1926,7 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 1.23e-13,
+          "suma_modulow_pominietych_thevenin_a": 6.89e-14,
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
@@ -1947,7 +1947,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 1.23e-16,
+        "i_ka": 6.89e-17,
         "kat_deg": null
       }
     ],
@@ -1962,8 +1962,8 @@
         "klasa": "WKLAD",
         "i_ka": 0.697528469612,
         "i_zaciski_ka": 0.697528469612,
-        "kat_deg": -17.4153313206,
-        "udzial": 0.151256588191,
+        "kat_deg": -23.1414954515,
+        "udzial": 0.158412730286,
         "przyczyna": null
       },
       {
@@ -1973,10 +1973,10 @@
         "node_id": "bus_hv",
         "node_name": "GPZ 110 kV",
         "klasa": "WKLAD",
-        "i_ka": 3.9434983582,
-        "i_zaciski_ka": 0.537749776118,
-        "kat_deg": 3.03463917581,
-        "udzial": 0.85513370878,
+        "i_ka": 3.76204915027,
+        "i_zaciski_ka": 0.513006702309,
+        "kat_deg": 4.1787004929,
+        "udzial": 0.854383015641,
         "przyczyna": null
       }
     ],
@@ -1994,23 +1994,23 @@
             "im": -23.9603960396
           },
           "z_kf_pu": {
-            "re": 0.00166086690814,
-            "im": 0.0355355378636
+            "re": 0.000950643971485,
+            "im": 0.0355474701668
           },
-          "ik_thevenin_a": 4603.52239368,
+          "ik_thevenin_a": 4393.45156319,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 110.0
         },
-        "substitution": "I = |(2.39604-j23.9604) * (0.00166087+j0.0355355)| * 4603.52 A = 3943.5 A",
-        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 3943.5\\,\\mathrm{A}",
+        "substitution": "I = |(2.39604-j23.9604) * (0.000950644+j0.0355475)| * 4393.45 A = 3762.05 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.000950644 + j 0.0355475\\right) \\right| \\cdot 4393.45\\,\\mathrm{A} = 3762.05\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.855425063581,
-            "im": 0.045349527181
+            "re": 0.854009244007,
+            "im": 0.0623953402908
           },
-          "i_a": 3943.4983582,
-          "i_zaciski_a": 537.749776118,
-          "kat_deg": 3.03463917581,
+          "i_a": 3762.04915027,
+          "i_zaciski_a": 513.006702309,
+          "kat_deg": 4.1787004929,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -2028,23 +2028,23 @@
             "im": -0.16434621868
           },
           "z_kf_pu": {
-            "re": 0.335872018367,
-            "im": 0.856186329184
+            "re": 0.439685298337,
+            "im": 0.857534259028
           },
-          "ik_thevenin_a": 4603.52239368,
+          "ik_thevenin_a": 4393.45156319,
           "un_zwarcia_kv": 15.0,
           "un_zrodla_kv": 15.0
         },
-        "substitution": "I = |(0.0115042-j0.164346) * (0.335872+j0.856186)| * 4603.52 A = 697.528 A",
-        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.335872 + j 0.856186\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 697.528\\,\\mathrm{A}",
+        "substitution": "I = |(0.0115042-j0.164346) * (0.439685+j0.857534)| * 4393.45 A = 697.528 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.439685 + j 0.857534\\right) \\right| \\cdot 4393.45\\,\\mathrm{A} = 697.528\\,\\mathrm{A}",
         "result": {
           "wspolczynnik_pu": {
-            "re": 0.144574936419,
-            "im": -0.045349527181
+            "re": 0.145990755993,
+            "im": -0.0623953402908
           },
           "i_a": 697.528469612,
           "i_zaciski_a": 697.528469612,
-          "kat_deg": -17.4153313206,
+          "kat_deg": -23.1414954515,
           "klasa": "WKLAD"
         },
         "notes": null
@@ -2056,31 +2056,31 @@
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "short_circuit_type": "3F",
-          "ik_thevenin_a": 4603.52239368,
-          "ik_inverters_a": 8.0352115333,
-          "ik_total_a": 4611.55760522,
+          "ik_thevenin_a": 4393.45156319,
+          "ik_inverters_a": 9.78338108895,
+          "ik_total_a": 4403.23494428,
           "liczba_zrodel": 2,
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 4603.52+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4603.52+j0 A wobec I_k''(Th) = 4603.52 A; reszta ≤ dopuszczalnej 4.60352e-06 A.",
-        "substitution_latex": "\\left(4603.52 + j 0\\right) + \\left(0 + j 0\\right) = \\left(4603.52 + j 0\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 4.60352e-06\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 4393.45+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4393.45+j0 A wobec I_k''(Th) = 4393.45 A; reszta ≤ dopuszczalnej 4.39345e-06 A.",
+        "substitution_latex": "\\left(4393.45 + j 0\\right) + \\left(0 + j 0\\right) = \\left(4393.45 + j 0\\right)\\,\\mathrm{A} \\approx 4393.45\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 4.39345e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
-            "re": 4603.52239368,
-            "im": -3.12638803734e-13
+            "re": 4393.45156319,
+            "im": -2.27373675443e-13
           },
-          "suma_modulow_zrodel_a": 4641.02682781,
+          "suma_modulow_zrodel_a": 4459.57761988,
           "prad_czlonow_poprzecznych_a": {
-            "re": 4.67668972495e-13,
-            "im": 2.26796469929e-13
+            "re": 1.43766765694e-12,
+            "im": 1.73787492879e-13
           },
           "suma_bilansu_a": {
-            "re": 4603.52239368,
-            "im": -8.58423338055e-14
+            "re": 4393.45156319,
+            "im": -5.35861825642e-14
           },
-          "reszta_a": 9.13536818539e-13,
-          "tolerancja_a": 4.60352239368e-06,
+          "reszta_a": 2.72901025867e-12,
+          "tolerancja_a": 4.39345156319e-06,
           "bilans_domkniety": true
         },
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
@@ -2120,7 +2120,7 @@
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
       "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
       "rewizja_modelu": 1,
       "variant_ref": null,
       "run_ref": "run-sc-scena-zwarcia",
@@ -2146,14 +2146,14 @@
         "project_ref": null,
         "run_ref": "run-sc-scena-zwarcia",
         "analysis_type": "short_circuit_sn",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690"
       },
       "reproducibility": {
         "case_ref": "case-demo",
         "analysis_case_ref": "case-demo",
-        "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+        "snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_hash": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "enm_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
         "enm_projection_version": "v12xx.m1.1",
         "variant_ref": null,
         "operating_variant_ref": null,
@@ -2163,16 +2163,16 @@
         "method_version": "canonical_run_v1",
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
-        "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "ebb79573eb23a428cd2c9ee58b07f98317ed6850ec7a0e71c7b36170446bf1fb",
+        "input_hash": "0450bc5c6d14296d13de65909c6a24880000d2c11582db7d0b629f82a33e4515",
+        "result_hash": "3d2bd0728aae618917927c817c87cebb2a27b22b1d3d49db511f1d7caf38c5a5",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1",
-        "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
-        "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
-        "catalog_materialization_status": "not_materialized",
+        "catalog_snapshot_ref": "56645fabdff3925ca47d1f867292f5967429a3eed0888ad91cb54161a8463690",
+        "catalog_materialization_ref": "catalog-materialization:638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_hash": "638e82460774f9841bb4c5d5728b08654e739c5612dbc30534c1e208539427f4",
+        "catalog_materialization_status": "partial",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
         "catalog_fingerprint": "2e83efaf85cb7f4145335de5edc8ebdb5fc9927c8a6628b63d8ffabe26548a2f",
