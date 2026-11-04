@@ -257,6 +257,7 @@ import { navigateToCaseConfig } from '../../../navigation/routes';
 // precedens w tym pliku (`useThemeModeStore`).
 import { przejdzDoPrzestrzeni } from '../../../../ui2/shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
+import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
 import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie" —
@@ -1965,7 +1966,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [kadrujCel, dopasujZakres, poprzedniWidok]);
   const stacjeNawigacji = useMemo(() => {
     const nazwy = new Map((snapshot?.substations ?? []).map((st) => [st.ref_id, st.name]));
-    return kadrowanie.stacjeObchodu.map((ref) => ({ ref, nazwa: nazwy.get(ref) ?? ref }));
+    // Stacja bez nazwy w modelu: polska etykieta rodzaju z referencji (most nazw wyników), nie
+    // identyfikator.
+    return kadrowanie.stacjeObchodu.map((ref) => ({ ref, nazwa: nazwy.get(ref) || etykietaZapasowaRefu(ref) }));
   }, [snapshot, kadrowanie.stacjeObchodu]);
   const sciezkaWidoczna = kadrowanie.sciezka.length >= 2;
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);

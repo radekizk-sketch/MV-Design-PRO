@@ -310,7 +310,7 @@ export function wyposazenieSzablonu(
       ref: instancja.device_template_ref,
       rodzaj: instancja.apparatus_kind,
       oznaczenie: instancja.label,
-      nazwa: NAZWY_APARATU_PL[instancja.apparatus_kind] ?? instancja.apparatus_kind,
+      nazwa: etykietaZeSlownika(NAZWY_APARATU_PL, instancja.apparatus_kind),
       status: instancja.status_wyposazenia,
       kluczWyposazenia: KLUCZ_WYPOSAZENIA_Z_APARATU[instancja.apparatus_kind] ?? null,
     }));

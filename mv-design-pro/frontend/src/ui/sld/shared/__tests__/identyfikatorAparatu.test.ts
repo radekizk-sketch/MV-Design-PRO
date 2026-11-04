@@ -5,11 +5,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import { SYMBOL_DEFS, type SymbolId } from '../../v3/symbols/defs';
 import {
   ROLA_SYMBOLU_PL,
   identyfikatorAparatu,
-  jestGlowicaKablowa,
+  jestPunktemWyprowadzeniaCiagu,
   jestSymbolem,
   nazwaAparatuPl,
   rozbierzIdentyfikatorAparatu,
@@ -70,9 +71,44 @@ describe('słownik aparatu — jedna nazwa, jedna rola', () => {
     expect(Object.keys(ROLA_SYMBOLU_PL).sort()).toEqual([...SYMBOLE].sort());
   });
 
-  it('głowica kablowa to wyłącznie cableHead', () => {
-    expect(SYMBOLE.filter((s) => jestGlowicaKablowa(s))).toEqual(['cableHead']);
-    expect(jestGlowicaKablowa(undefined)).toBe(false);
-    expect(jestGlowicaKablowa(null)).toBe(false);
+});
+
+/**
+ * Punkt wyprowadzenia ciągu: iloczyn CAŁEJ biblioteki symboli × rekord pola z głowicą /
+ * bez głowicy / pole nieznane w modelu × brak migawki. Punktem jest głowica (zawsze) i
+ * zakończenie pola `bayReserve` wyłącznie przy rekordzie głowicy (kanon pola wolnego nie
+ * rysuje głowicy, model ją ma). Żaden inny symbol nie jest punktem w żadnym stanie rekordu.
+ */
+describe('punkt wyprowadzenia ciągu głównego — symbol × rekord głowicy pola', () => {
+  const POLE = 'gpz/pole-L1';
+  const model = (urzadzenia: readonly string[]): EnergyNetworkModel =>
+    ({
+      bays: [
+        {
+          id: POLE,
+          ref_id: POLE,
+          primary_devices: urzadzenia.map((kind, i) => ({ device_ref: `${POLE}::${i}`, kind })),
+        },
+      ],
+    }) as unknown as EnergyNetworkModel;
+  const STANY = [
+    { nazwa: 'rekord z głowicą', snapshot: model(['DS', 'CB', 'CABLE_HEAD']), punkty: ['cableHead', 'bayReserve'] },
+    { nazwa: 'rekord bez głowicy', snapshot: model(['DS', 'CB', 'ES']), punkty: ['cableHead'] },
+    { nazwa: 'pole spoza modelu', snapshot: { bays: [] } as unknown as EnergyNetworkModel, punkty: ['cableHead'] },
+    { nazwa: 'brak migawki', snapshot: null, punkty: ['cableHead'] },
+  ] as const;
+
+  it.each(STANY)('$nazwa', ({ snapshot, punkty }) => {
+    const wynik = SYMBOLE.filter((s) =>
+      jestPunktemWyprowadzeniaCiagu(snapshot, { bayRef: POLE, symbolId: s }),
+    );
+    expect([...wynik].sort()).toEqual([...punkty].sort());
+  });
+
+  it('brak aparatu (ref spoza biblioteki symboli) nie jest punktem', () => {
+    expect(jestPunktemWyprowadzeniaCiagu(model(['CABLE_HEAD']), null)).toBe(false);
+    expect(
+      jestPunktemWyprowadzeniaCiagu(model(['CABLE_HEAD']), rozbierzIdentyfikatorAparatu(`${POLE}#cable_head`)),
+    ).toBe(false);
   });
 });

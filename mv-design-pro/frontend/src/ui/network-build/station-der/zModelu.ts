@@ -89,6 +89,27 @@ export const DER_MATERIALIZED_PROFILE_KEYS = [
   'pf_curve_ref',
 ] as const;
 
+/**
+ * Wiązania katalogowe i profile zgodności wytwórcy — odczyt PĘTLĄ po kanonicznych listach
+ * kluczy z JEDYNEGO miejsca zapisu backendu (`materialized_params` płasko i
+ * `materialized_params.profiles`). Czytają: odwzorowanie wytwórcy (`derZGeneratora`) i karta
+ * techniczna źródła inspektora (`sld/shared/kartaTechnicznaElementu.ts`).
+ */
+export function wiazaniaDerZGeneratora(generator: EnmGenerator): {
+  readonly wiazania: Record<(typeof DER_MATERIALIZED_BINDING_KEYS)[number], string | null>;
+  readonly profile: Record<(typeof DER_MATERIALIZED_PROFILE_KEYS)[number], string | null>;
+} {
+  const materialized = asRecord(generator.materialized_params);
+  return {
+    wiazania: Object.fromEntries(
+      DER_MATERIALIZED_BINDING_KEYS.map((key) => [key, readString(materialized[key])]),
+    ) as Record<(typeof DER_MATERIALIZED_BINDING_KEYS)[number], string | null>,
+    profile: Object.fromEntries(
+      DER_MATERIALIZED_PROFILE_KEYS.map((key) => [key, readString(asRecord(materialized.profiles)[key])]),
+    ) as Record<(typeof DER_MATERIALIZED_PROFILE_KEYS)[number], string | null>,
+  };
+}
+
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -286,12 +307,7 @@ function derZGeneratora(
   // były eksportowane, ale WYŁĄCZNIE dekoracyjne — nikt tu ich nie odczytywał,
   // więc dopisanie klucza do listy bez dopisania osobnej linii niżej cicho
   // gubiło dane. Teraz brak takiej osobnej linii nie jest już możliwy.
-  const materializedBindings = Object.fromEntries(
-    DER_MATERIALIZED_BINDING_KEYS.map((key) => [key, readString(materialized[key])]),
-  ) as Record<(typeof DER_MATERIALIZED_BINDING_KEYS)[number], string | null>;
-  const materializedProfiles = Object.fromEntries(
-    DER_MATERIALIZED_PROFILE_KEYS.map((key) => [key, readString(asRecord(materialized.profiles)[key])]),
-  ) as Record<(typeof DER_MATERIALIZED_PROFILE_KEYS)[number], string | null>;
+  const { wiazania: materializedBindings, profile: materializedProfiles } = wiazaniaDerZGeneratora(generator);
   // Karta FAB-L: `bess_operation_mode_refs` — lista, tego samego podsłownika
   // `materialized_params.profiles`, poza pętlą skalarów wyżej (patrz komentarz
   // przy `DER_MATERIALIZED_PROFILE_KEYS`).

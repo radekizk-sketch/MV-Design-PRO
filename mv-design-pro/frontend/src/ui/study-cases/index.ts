@@ -14,7 +14,6 @@ export {
   useHasActiveCase,
   useActiveCaseResultStatus,
   useIsLoading,
-  useActiveCaseStatusLabel,
   useSortedCases,
 } from './store';
 

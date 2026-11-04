@@ -13,25 +13,22 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { stationRefOfTransformer } from '../../shared/transformatoryStacji';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
+const GROUNDING_LABEL_PL: Readonly<Record<string, string>> = {
+  isolated: 'Izolowany',
+  petersen_coil: 'Cewka Petersena',
+  directly_grounded: 'Bezpośrednie',
+  resistor_grounded: 'Rezystancyjne',
+};
+
 function groundingLabel(type: string | null | undefined): string {
   if (!type) return '—';
-  switch (type) {
-    case 'isolated':
-      return 'Izolowany';
-    case 'petersen_coil':
-      return 'Cewka Petersena';
-    case 'directly_grounded':
-      return 'Bezpośrednie';
-    case 'resistor_grounded':
-      return 'Rezystancyjne';
-    default:
-      return type;
-  }
+  return etykietaZeSlownika(GROUNDING_LABEL_PL, type);
 }
 
 function statusDotFromReadiness(

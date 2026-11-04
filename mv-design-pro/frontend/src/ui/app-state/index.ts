@@ -12,8 +12,6 @@ export {
   useActiveCaseKind,
   useActiveMode,
   useActiveModeLabel,
-  useCaseKindLabel,
-  useResultStatusLabel,
   useHasActiveCase,
   useCanCalculate,
   useIssuePanelOpen,

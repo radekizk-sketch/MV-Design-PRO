@@ -93,6 +93,7 @@ import type {
 import type { TrafienieNn } from './operacjeNn';
 import { nazwaElementuWidokuNn, opisyBrakowDanychNn } from './opisyBrakowDanychNn';
 import { nazwaElementuMigawki, useSnapshotStore } from '../../../topology/snapshotStore';
+import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
 const HEADER_ALLOWANCE_PX = 96;
@@ -337,7 +338,7 @@ function etykietaZdolnosci(capability: unknown): string {
  *  „niedopuszczalna" z domysłu). */
 function etykietaWyspy(island: LvDomainIsland, nameByRef: ReadonlyMap<string, string>): readonly string[] | null {
   if (!island.is_islanded) return null;
-  const nazwy = island.energizing_source_ids.map((ref) => nameByRef.get(ref) ?? ref);
+  const nazwy = island.energizing_source_ids.map((ref) => nameByRef.get(ref) || etykietaZapasowaRefu(ref));
   const zrodla = nazwy.length ? ` z: ${nazwy.join(', ')}` : '';
   const npe = island.neutral_reference.status === 'ustalone'
     ? `N/PE: ${island.neutral_reference.system ?? '—'} (${nameByRef.get(island.neutral_reference.source_ref ?? '') ?? island.neutral_reference.source_ref ?? '—'})`
@@ -942,7 +943,7 @@ function BusBarNode({ node, ctx, activeOverlay, resultOverlayPayload, voltagePro
   const labelPx = isMain ? SLD_LABEL.PRIMARY : SLD_LABEL.SECONDARY + 1;
   const labelX = typeof node.meta?.labelX === 'number' ? node.meta.labelX : left;
   const stanLinia = stanLabel
-    ? `${stanLabel}${energization === 'MULTISOURCE' && supplyRefs.length ? ` (${supplyRefs.map((ref) => ctx.nameByRef.get(ref) ?? ref).join(', ')})` : ''}`
+    ? `${stanLabel}${energization === 'MULTISOURCE' && supplyRefs.length ? ` (${supplyRefs.map((ref) => ctx.nameByRef.get(ref) || etykietaZapasowaRefu(ref)).join(', ')})` : ''}`
     : null;
   // Nazwa sekcji zawijana do długości kreski (§30; wąski ekran §43): długa
   // nazwa rozdzielnicy nie wychodzi poza kreskę ani poza kadr.

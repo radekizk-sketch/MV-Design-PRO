@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { KreatorInfo, KreatorSekcja } from '../rama';
 import { OZE_STRINGS as T } from './strings';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 /** Powód blokady osi — treść i miejsce naprawy nazwane przez model. */
 export interface BlokadaOsiDer {
@@ -93,7 +94,7 @@ export function GotowoscDer({
             <li key={os.axis} data-testid={`${testid}-os-${os.axis}`} data-status={os.status}>
               <span>{os.label_pl}</span>
               {' — '}
-              <strong>{T.gotowoscDerStatus[os.status] ?? os.status}</strong>
+              <strong>{etykietaZeSlownika(T.gotowoscDerStatus, os.status)}</strong>
               {os.blockers.length > 0 ? (
                 <ul>
                   {os.blockers.map((powod) => (

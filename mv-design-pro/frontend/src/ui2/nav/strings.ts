@@ -9,6 +9,9 @@ export const NAV_STRINGS = {
   brakElementow: 'Brak elementów',
   brakWynikowFiltra: 'Brak elementów spełniających filtr',
   ladowanie: 'Wczytywanie…',
+  // Przebieg przypadku, którego nie ma na liście przypadków projektu (usunięty albo lista
+  // jeszcze nie wczytana) — opis zamiast identyfikatora przypadku.
+  przypadekSpozaListy: 'przypadek obliczeniowy spoza listy przypadków projektu',
 
   // K6 / H-5: akcje pustego drzewa per przestrzeń (slot `akcjaPusty` był martwy).
   pustyModelAkcja: 'Przejdź do schematu',

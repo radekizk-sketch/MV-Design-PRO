@@ -284,20 +284,6 @@ export function useModeLabel(): string {
   return getOperatingModeLabel(mode);
 }
 
-export function useResultStatusLabel(): string {
-  const status = useSelectionStore((state) => state.resultStatus);
-  switch (status) {
-    case 'NONE':
-      return 'Wyniki nieuruchomione';
-    case 'FRESH':
-      return 'Wyniki aktualne';
-    case 'OUTDATED':
-      return 'Wyniki nieaktualne';
-    default:
-      return status;
-  }
-}
-
 export function useIsResultViewMode(): boolean {
   return useSelectionStore((state) => state.mode === 'RESULT_VIEW');
 }

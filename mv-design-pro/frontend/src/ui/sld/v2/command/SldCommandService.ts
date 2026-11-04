@@ -7,8 +7,6 @@
  *   - publish toast events (Polish messages)
  *   - integrację z BuildSequence (8 komend) + HistoryStore (undo/redo)
  */
-import { jestGlowicaKablowa } from '../../shared/identyfikatorAparatu';
-import type { SymbolId } from '../../v3/symbols/defs';
 
 export type SldElementKindForMenu =
   | 'background'
@@ -385,8 +383,10 @@ export function getMenuActions(
      *  martwe `stationHasFreeBay` (S9-5: bramka bez żadnego pisarza). */
     readonly branchStartAvailable?: boolean;
     readonly hasResults?: boolean;
-    /** Rodzaj trafionego aparatu pola (`SymbolId` sceny v3, `shared/identyfikatorAparatu.ts`). */
-    readonly symbolAparatu?: SymbolId;
+    /** Trafiony aparat pola jest punktem wyprowadzenia ciągu głównego SN — wartość liczy
+     *  `shared/identyfikatorAparatu.ts::jestPunktemWyprowadzeniaCiagu` (ten sam predykat, którym
+     *  wykonawca buduje operację); brak klucza = aparat nie jest punktem (pozycja zablokowana). */
+    readonly aparatWyprowadzaCiag?: boolean;
     /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
      *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
     readonly stationHasNnBus?: boolean;
@@ -418,7 +418,7 @@ export function getMenuActions(
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;
     }
-    if (kind === 'apparatus' && a.id === 'extend-trunk' && !jestGlowicaKablowa(ctx.symbolAparatu)) {
+    if (kind === 'apparatus' && a.id === 'extend-trunk' && ctx.aparatWyprowadzaCiag !== true) {
       return {
         ...a,
         disabled: true,

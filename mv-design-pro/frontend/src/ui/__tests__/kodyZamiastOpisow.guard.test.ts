@@ -14,9 +14,14 @@ import { describe, expect, it } from 'vitest';
  *     tekst. Opis braku idzie przez słownik (np. `opisyBrakowDanychNn`, `opisBrakuSsci`) albo
  *     wprost z listy opisów backendu (`missing_data_pl` łuku elektrycznego). Lista o nazwie
  *     z przyrostkiem `_pl` / `Pl` niesie zdania backendu i regule nie podlega.
- *  R2 „powrót do kodu” — `MAPA[kod] ?? kod` (także `|| kod`): kod spoza słownika wraca na ekran
- *     jako tekst. Jedno miejsce „etykieta albo uczciwe zdanie”: `etykietaZeSlownika`
- *     (`ui2/wyniki/wzorzec/slownikWyliczen.ts`).
+ *  R2 „powrót do kodu” — `MAPA[kod] ?? kod` (także `|| kod`, `?? String(kod)` i klucz będący
+ *     wyrażeniem składowym: `MAPA[x.typ] ?? x.typ`, `MAPA[a?.b] ?? a?.b`): kod spoza słownika
+ *     wraca na ekran jako tekst. Jedno miejsce „etykieta albo uczciwe zdanie”:
+ *     `etykietaZeSlownika` (`ui2/wyniki/wzorzec/slownikWyliczen.ts`). Ta sama reguła dla `Map`:
+ *     `nazwy.get(ref) ?? ref` wypisywał identyfikator z odciskiem zamiast nazwy — zapas to
+ *     `etykietaZapasowaRefu` (`ui2/wyniki/wzorzec/useNazwaObiektu.ts`) albo jawne zdanie.
+ *  R3 „przełącznik zwraca kod” — `switch (kod) { case …: return 'opis'; default: return kod; }`:
+ *     ta sama klasa co R2 zapisana instrukcją `switch` (pomiar 2026-11: 16 miejsc w `src`).
  *
  * Wyjątki są jawne (`DOZWOLONE`), każdy z uzasadnieniem merytorycznym i testem żywotności —
  * martwy wpis byłby furtką.
@@ -25,14 +30,28 @@ import { describe, expect, it } from 'vitest';
 const FRONTEND_SRC = join(__dirname, '..', '..');
 
 interface Naruszenie {
-  readonly regula: 'R1' | 'R2';
+  readonly regula: 'R1' | 'R2' | 'R3';
   readonly plik: string;
   readonly linia: number;
   readonly fragment: string;
 }
 
 const R1 = /\b(?:missing\w*|\w*[mM]issing\w*|brak\w*)\b\s*(?:\?\?\s*\[\]\s*\))?\s*\.join\(/g;
-const R2 = /\[\s*([A-Za-z_$][\w$]*)\s*\]\s*(?:\?\?|\|\|)\s*\1\b/g;
+const KLUCZ = String.raw`[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*`;
+const R2 = new RegExp(
+  String.raw`\[\s*(${KLUCZ})\s*\]\s*(?:\?\?|\|\|)\s*(?:String\(\s*)?\1(?![\w$?.])`,
+  'g',
+);
+/** Ta sama klasa dla słownika `Map`: `mapa.get(kod) ?? kod` (nazwa/etykieta albo identyfikator). */
+const R2_MAPA = new RegExp(
+  String.raw`\.get\(\s*(${KLUCZ})\s*\)\s*(?:\?\?|\|\|)\s*(?:String\(\s*)?\1(?![\w$?.])`,
+  'g',
+);
+/** `switch (x) { … default: return x; }` — bez przechodzenia przez kolejny `switch`. */
+const R3 = new RegExp(
+  String.raw`switch\s*\(\s*(${KLUCZ})\s*\)\s*\{(?:(?!switch\s*\()[\s\S])*?default:\s*return\s+\1\s*;`,
+  'g',
+);
 const PRZYROSTEK_ZDAN = /(?:_pl|Pl)\b\s*(?:\?\?\s*\[\]\s*\))?\s*\.join\($/;
 
 /** Komentarze zastąpione spacjami (z zachowaniem końców linii), żeby opis wzorca w
@@ -48,10 +67,12 @@ function naruszeniaKodowNaEkranie(plik: string, tekst: string): Naruszenie[] {
   const zrodlo = bezKomentarzy(tekst);
   const linie = tekst.split('\n');
   const wynik: Naruszenie[] = [];
-  for (const [regula, wzor] of [['R1', R1], ['R2', R2]] as const) {
+  for (const [regula, wzor] of [['R1', R1], ['R2', R2], ['R2', R2_MAPA], ['R3', R3]] as const) {
     for (const m of zrodlo.matchAll(wzor)) {
       if (regula === 'R1' && PRZYROSTEK_ZDAN.test(m[0])) continue;
-      const linia = zrodlo.slice(0, m.index).split('\n').length;
+      // R3 wskazuje linię `default: return kod;` (koniec dopasowania), nie początek `switch`.
+      const koniec = regula === 'R3' ? m.index + m[0].length : m.index;
+      const linia = zrodlo.slice(0, koniec).split('\n').length;
       wynik.push({ regula, plik, linia, fragment: linie[linia - 1].trim() });
     }
   }
@@ -66,6 +87,15 @@ const DOZWOLONE: Readonly<Record<string, string>> = {
   'oze-source-harness-main.tsx|NAMES[archetype] ?? archetype':
     'Strona-uprząż zrzutów e2e (`oze-source-harness.html`), nie ekran produktu — archetyp jest '
     + 'tu kluczem scenariusza zrzutu.',
+  'ui/sld/v3/compose/gpz.ts|return symbolId;':
+    'Przyrostek identyfikatora testowego (`data-testid`) aparatu toru transformatora GPZ, nie '
+    + 'tekst ekranu — symbol spoza skrótów jest tu kluczem technicznym DOM.',
+  'ui/sld/v3/export/exportPalette.ts|map.get(hit) ?? hit':
+    'Podmiana kolorów w znacznikach SVG eksportu: dopasowany kolor spoza mapy palety zostaje '
+    + 'sam sobą (wartość atrybutu SVG, nie tekst ekranu).',
+  'ui/sld/v3/export/pdfFont.ts|SPECIAL_WIDTH_CHAR.get(char) ?? char':
+    'Metryka szerokości znaku czcionki PDF: znak spoza mapy znaków specjalnych jest sam sobą '
+    + '(pomiar szerokości glifu, nie tekst ekranu).',
   'ui/shared/fileNamingConvention.ts|POLISH_CHAR_MAP[c] ?? c':
     'Transliteracja znaków nazwy pliku: znak spoza mapy polskich liter jest SAM SOBĄ (litera '
     + 'łacińska, cyfra) — to nie kod, tylko znak tekstu.',
@@ -127,7 +157,7 @@ function dozwolone(n: Naruszenie): string | null {
   return null;
 }
 
-describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2 powrót do kodu)', () => {
+describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2 powrót do kodu, R3 przełącznik zwraca kod)', () => {
   const naruszenia = wszystkieNaruszenia();
 
   it('produkt frontu: RAZEM 0 poza jawnymi wyjątkami', () => {
@@ -146,13 +176,25 @@ describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2
   });
 
   it('iniekcje: każda reguła czerwienieje na swoim wzorcu, poprawna postać — nie', () => {
-    const iniekcje: Array<[string, Array<'R1' | 'R2'>]> = [
+    const iniekcje: Array<[string, Array<'R1' | 'R2' | 'R3'>]> = [
       ['const t = `Brak: ${(view.missing_data ?? []).join(", ")}`;', ['R1']],
       ['const t = wynik.missing_fields.join("; ");', ['R1']],
       ['const t = brakujace.join(", ");', ['R1']],
       ['return MAPA[kod] ?? kod;', ['R2']],
       ['return (MAPA as Record<string, string>)[typ]\n    ?? typ;', ['R2']],
       ['return MAPA[kod] || kod;', ['R2']],
+      ['const t = SLOWNIK[wynik.status] ?? wynik.status;', ['R2']],
+      ['const t = SLOWNIK[os?.status] || os?.status;', ['R2']],
+      ['const t = SLOWNIK[e.typ] ?? String(e.typ);', ['R2']],
+      ['const t = SLOWNIK[e.typ] ?? e.typPl;', []],
+      ['const t = nazwy.get(ref) ?? ref;', ['R2']],
+      ['const t = nazwy.get(run.case_id) || run.case_id;', ['R2']],
+      ['const t = nazwy.get(ref) || etykietaZapasowaRefu(ref);', []],
+      ['const t = SLOWNIK[e.typ] ?? e.typ.opis;', []],
+      ["switch (rodzaj) {\n  case 'a':\n    return 'Opis A';\n  default:\n    return rodzaj;\n}", ['R3']],
+      ["switch (x.tryb) {\n  case 'a':\n    return 'A';\n  default:\n    return x.tryb;\n}", ['R3']],
+      ["switch (rodzaj) {\n  case 'a':\n    return 'Opis A';\n  default:\n    return 'rodzaj spoza słownika';\n}", []],
+      ["switch (a) {\n  default:\n    return null;\n}\nswitch (b) {\n  default:\n    return a;\n}", []],
       ['const t = wynik.missing_fields_pl.join(" ");', []],
       ['const t = opisyBrakowDanychNn(view.missing_data);', []],
       ['return etykietaZeSlownika(MAPA, kod);', []],

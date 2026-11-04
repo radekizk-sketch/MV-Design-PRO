@@ -1337,6 +1337,39 @@ twardym błędem). Parytet backendu
 słowników statusów katalogu przepięty na `ui/catalog/wartosciKodoweKarty.ts`. Punkt 4
 („—” kontra „brak danych”) wstrzymany decyzją właściciela, nietknięty.
 
+
+**Commit 12 (2026-11-04) — decyzje architekta: punkt wyprowadzenia ciągu, karta źródła K6,
+jeden słownik statusów źródła szablonu, klasa „kod → etykieta z własnym zapasem”.**
+(1) Wariant (B): „Wyprowadź ciąg główny z głowicy” wpięte w zakończenie `bayReserve` pola
+wolnego z rekordem `CABLE_HEAD`; jeden predykat `jestPunktemWyprowadzeniaCiagu`
+(`ui/sld/shared/identyfikatorAparatu.ts`) czyta menu (`akcjeElementu.ts` →
+`aparatWyprowadzaCiag`) i wykonawca (`sldActionExecutor.ts`); rysunek bez zmian. Testy
+`punktStartuCiagu.test.tsx` (prawy i lewy klik natywny) i e2e s95:389 zielone na nowym punkcie.
+(2) Karta źródła K6 niesie sekcje „Zgodność przyłączeniowa (NC RfG, FRT)” (profil operatora,
+zakres Q, cos φ min, P(f), LVRT, HVRT, model dynamiczny) i „Zabezpieczenie źródła”
+(`protection_intent`) oraz typ i producenta przekształtnika z katalogu — wyłącznie z pól
+modelu; katalog, który nie zna wiązania, daje opis jawny, nie identyfikator. Martwe
+budowniczowie sekcji generatora/źródła/GPZ w `InspectorEngineeringView.tsx` skasowane (zostały
+działania). (3) `SOURCE_STATUS_LABEL_PL` grupowy wyprowadzony z jednego słownika
+`STATUS_ZRODLA` (status → etykieta, grupa) w `ui/catalog/BayTemplatePicker.tsx`; test parytetu
+po całej unii. (4) Inwentarz klasy zmierzony w całym `frontend/src` i przypięty strażnikiem
+`ui/__tests__/kodyZamiastOpisow.guard.test.ts`: R2 rozszerzona o klucz-wyrażenie składowe
+(28 miejsc w 15 plikach → `etykietaZeSlownika`) i o słownik `Map` (`nazwy.get(ref) ?? ref`,
+12 trafień: 10 naprawionych etykietą zapasową `etykietaZapasowaRefu` albo zdaniem, 2 wyjątki
+— znak czcionki PDF i kolor SVG eksportu), nowa R3 „przełącznik zwraca kod” (16 miejsc:
+4 martwe haki etykiet bez konsumenta skasowane, 11 przepisanych na słowniki, 1 wyjątek —
+przyrostek `data-testid` GPZ). Przy okazji: trzy rozbieżne słowniki wariantu przyłączenia
+(nagłówek inspektora znał 2 z 5 kodów, karta zbiorcza opisywała `block_transformer` jako
+„po stronie nN”) zastąpione jednym `wariantPrzylaczeniaPl`; identyfikator elementu w miejscu
+zwarcia scenariusza i serii zastąpiony mostem nazw; `katalogiKarty.ts` nie rzuca przy odpowiedzi
+spoza kontraktu (15 nieobsłużonych odrzuceń w `ui2/__tests__/integracja.test.tsx`).
+Zgłoszone architektowi, niewdrożone: klasa sąsiednia `name || ref_id` (pole nazwy z zapasem
+identyfikatora, około 30 miejsc ekranowych, zapas zależny od rodzaju obiektu) oraz katalog
+`ui/network-build/cards/` — 8 kart bez konsumenta produkcyjnego (tylko testy), w tym jedyny
+edytor sekcji GPZ (`add/update/delete_gpz_section` bez ścieżki UI). Czerwone e2e
+`kanon-menu-sld`, `menu-schematu-nn` (commit `d320685fe`) i `zwarcie-przez-impedancje-przejscia`
+(commit `88de3b242`) są naprawione na gałęzi `fix-e2e-a`, nie duplikowane. Punkt 4 („—”
+kontra „brak danych”) nadal wstrzymany.
 ---
 
 ## LICZBY-PL

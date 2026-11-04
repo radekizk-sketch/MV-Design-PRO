@@ -47,6 +47,7 @@ import { useTopologyStore, type TopologyState } from '../../../ui/topology/store
 import type { TopologyStructure } from '../../../ui/topology/api';
 import { useProblemyGotowosci } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { LICZNIKI_ZERO, type LicznikiWezla, type TrybDrzewaTopologii, type WezelDrzewa } from '../treeModel';
+import { etykietaZapasowaRefu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
 /**
  * JEDYNY odczyt kolekcji pochodzącej z odpowiedzi serwera w tym module
@@ -295,7 +296,9 @@ function budujGrupowanieAdministracyjne(
     if (pole.substation_ref) stacjaSzyny.set(pole.bus_ref, pole.substation_ref);
   }
   const nazwaStacji = new Map<string, string>();
-  for (const stacja of struktura.substations) nazwaStacji.set(stacja.ref_id, stacja.name || stacja.ref_id);
+  for (const stacja of struktura.substations) if (stacja.name) nazwaStacji.set(stacja.ref_id, stacja.name);
+  // Stacja bez nazwy (albo spoza struktury): polska etykieta rodzaju z referencji, nie identyfikator.
+  const nazwaGrupyStacji = (ref: string): string => nazwaStacji.get(ref) ?? etykietaZapasowaRefu(ref);
 
   const wszystkieSzyny = new Set<string>();
   for (const wpis of topologia.adjacency) {
@@ -319,9 +322,9 @@ function budujGrupowanieAdministracyjne(
   }
 
   const grupy: WezelDrzewa[] = [...szynyWgStacji.entries()]
-    .sort((a, b) => (nazwaStacji.get(a[0]) ?? a[0]).localeCompare(nazwaStacji.get(b[0]) ?? b[0], 'pl'))
+    .sort((a, b) => nazwaGrupyStacji(a[0]).localeCompare(nazwaGrupyStacji(b[0]), 'pl'))
     .map(([stacjaRef, szyny]) =>
-      grupa(stacjaRef, nazwaStacji.get(stacjaRef) ?? stacjaRef, szyny.sort().map((r) => szynaLisc(r, liczniki))),
+      grupa(stacjaRef, nazwaGrupyStacji(stacjaRef), szyny.sort().map((r) => szynaLisc(r, liczniki))),
     );
   if (bezStacji.length > 0) {
     grupy.push(grupa('poza-stacja', 'Poza stacją', bezStacji.sort().map((r) => szynaLisc(r, liczniki))));

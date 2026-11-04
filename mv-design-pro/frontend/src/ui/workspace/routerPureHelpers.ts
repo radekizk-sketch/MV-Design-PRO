@@ -10,6 +10,7 @@ import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
 import type { Audit2ProofPackResponse } from '../network-build/station-der';
 import { calculationScopeDisplayName } from '../shell/publicNames';
 import { formatDateTime } from './routerDisplayHelpers';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export function displayScopeLabel(
   value: string | null | undefined,
@@ -25,7 +26,7 @@ export function resolveRunLabel(
   if (!runId) return 'Nie wybrano obliczenia';
   const run = runs.find((item) => item.id === runId);
   if (!run) return 'Aktywne obliczenie';
-  const typeLabel = ANALYSIS_TYPE_LABELS[run.analysis_type] ?? run.analysis_type;
+  const typeLabel = etykietaZeSlownika(ANALYSIS_TYPE_LABELS, run.analysis_type);
   const dateLabel = formatDateTime(run.finished_at ?? run.started_at);
   return `${typeLabel} · ${dateLabel}`;
 }

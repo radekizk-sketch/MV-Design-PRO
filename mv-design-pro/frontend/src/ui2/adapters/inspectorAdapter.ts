@@ -178,7 +178,7 @@ function wlasciwosciGaleziWspolne(el: { from_bus_ref: string; to_bus_ref: string
   return bezNulli([
     wr('Szyna początkowa', el.from_bus_ref),
     wr('Szyna końcowa', el.to_bus_ref),
-    wr('Stan', ETYKIETA_STANU_LACZNIKA[el.status] ?? el.status),
+    wr('Stan', etykietaZeSlownika(ETYKIETA_STANU_LACZNIKA, el.status)),
   ]);
 }
 
@@ -356,7 +356,7 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   return bezNulli([
     wr('Moc znamionowa', el.rated_mvar, 'Mvar'),
     wr('Napięcie znamionowe', el.rated_kv, 'kV'),
-    w('Stan', el.status ? (ETYKIETA_STANU_LACZNIKA[el.status] ?? el.status) : null),
+    w('Stan', el.status ? (etykietaZeSlownika(ETYKIETA_STANU_LACZNIKA, el.status)) : null),
   ]);
 }
 
@@ -411,7 +411,7 @@ const ETYKIETA_TYPU_WEZLA: Readonly<Record<string, string>> = {
 
 function wlasciwosciWezla(el: Junction): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj węzła', ETYKIETA_TYPU_WEZLA[el.junction_type] ?? el.junction_type),
+    wr('Rodzaj węzła', etykietaZeSlownika(ETYKIETA_TYPU_WEZLA, el.junction_type)),
     wr('Liczba dołączonych gałęzi', el.connected_branch_refs.length),
   ]);
 }
@@ -428,7 +428,7 @@ function wlasciwosciPunktuRozgalezienia(
   return bezNulli([
     wr(
       'Rodzaj punktu',
-      ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA[el.branch_point_type] ?? el.branch_point_type,
+      etykietaZeSlownika(ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA, el.branch_point_type),
     ),
     wr('Szyna', el.bus_ref),
     // W5-C: stan łączników portów z ICH gałęzi — nigdy z kopii przy punkcie.
@@ -445,7 +445,7 @@ const ETYKIETA_TYPU_MAGISTRALI: Readonly<Record<string, string>> = {
 
 function wlasciwosciMagistrali(el: Corridor): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj magistrali', ETYKIETA_TYPU_MAGISTRALI[el.corridor_type] ?? el.corridor_type),
+    wr('Rodzaj magistrali', etykietaZeSlownika(ETYKIETA_TYPU_MAGISTRALI, el.corridor_type)),
     wr('Liczba segmentów', el.ordered_segment_refs.length),
     w('Liczba stacji na trasie', el.station_refs && el.station_refs.length > 0 ? el.station_refs.length : null),
   ]);
@@ -462,7 +462,7 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
     wr('Rodzaj przekładnika', el.measurement_type === 'CT' ? 'Prądowy (CT)' : 'Napięciowy (VT)'),
     wr('Szyna', el.bus_ref),
     wr('Układ połączenia', el.connection),
-    wr('Przeznaczenie', ETYKIETA_PRZEZNACZENIA_POMIARU[el.purpose] ?? el.purpose),
+    wr('Przeznaczenie', etykietaZeSlownika(ETYKIETA_PRZEZNACZENIA_POMIARU, el.purpose)),
     w('Układ CT', el.ct_arrangement ?? null),
     w('Liczba rdzeni CT', el.ct_cores ?? null),
     w('Układ VT', el.vt_arrangement ?? null),
@@ -472,7 +472,7 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj zabezpieczenia', ETYKIETA_RODZAJU_ZABEZPIECZENIA[el.device_type] ?? el.device_type),
+    wr('Rodzaj zabezpieczenia', etykietaZeSlownika(ETYKIETA_RODZAJU_ZABEZPIECZENIA, el.device_type)),
     wr('Wyłącznik', el.breaker_ref),
     wr('Aktywne', el.is_enabled ? 'Tak' : 'Nie'),
     wr('Liczba nastaw', el.settings.length),
@@ -488,7 +488,7 @@ const ETYKIETA_RODZAJU_CIAGU: Readonly<Record<string, string>> = {
 
 function wlasciwosciCiaguLiniowego(el: LineRunV1): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj ciągu', ETYKIETA_RODZAJU_CIAGU[el.run_kind] ?? el.run_kind),
+    wr('Rodzaj ciągu', etykietaZeSlownika(ETYKIETA_RODZAJU_CIAGU, el.run_kind)),
     wr('Pole startowe', el.starting_bay_ref),
     wr('Liczba segmentów', el.segments.length),
     wr('Liczba stacji na trasie', el.stations.length),
@@ -504,7 +504,7 @@ const ETYKIETA_LOKALIZACJI_WEZLA: Readonly<Record<string, string>> = {
 
 function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Lokalizacja', ETYKIETA_LOKALIZACJI_WEZLA[el.location] ?? el.location),
+    wr('Lokalizacja', etykietaZeSlownika(ETYKIETA_LOKALIZACJI_WEZLA, el.location)),
     wr('Napięcie', el.voltage_kv, 'kV'),
     wr('Element nadrzędny', el.parent_ref),
   ]);

@@ -25,6 +25,7 @@ import {
   lacznikTematu,
 } from '../../shared/stanLacznika';
 import { refOperacjiTematu, type CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
+import { jestPunktemWyprowadzeniaCiagu, rozbierzIdentyfikatorAparatu } from './identyfikatorAparatu';
 import {
   resolveBranchStartAvailability,
   resolveTrunkStartAvailability,
@@ -37,9 +38,10 @@ import {
  *  - „Pokaż wyniki" — aktywny przypadek ma wynik (świeży albo nieaktualny); bez wyniku
  *    pozycja jest nieaktywna z przyczyną;
  *  - agregat/UPS stacji — stacja ma szynę nN (FK `substation.bus_refs`, pasmo nN);
- *  - rodzaj trafionego aparatu pola (`temat.symbolAparatu`, `SymbolId` sceny), a ref
- *    operacji aparatu to `${bayRef}#${SymbolId}` (`refOperacjiTematu`) — TEN SAM, który
- *    dostaje wykonawca, więc dostępność pozycji i operacja liczą się z jednego refu;
+ *  - aparat pola jako punkt wyprowadzenia ciągu (`jestPunktemWyprowadzeniaCiagu` — TEN SAM
+ *    predykat, którym wykonawca buduje operację), liczony z refu operacji aparatu
+ *    `${bayRef}#${SymbolId}` (`refOperacjiTematu`) — TEGO SAMEGO, który dostaje wykonawca,
+ *    więc dostępność pozycji i operacja liczą się z jednego refu;
  *  - stan łącznika pola/aparatu (W5-C) — TEN SAM resolver `lacznikTematu`, którym
  *    wykonawca wybiera łącznik operacji `open_switch`/`close_switch`/`set_normal_open_point`.
  */
@@ -70,7 +72,14 @@ export function kontekstDostepnosciAkcji(
     trunkStartAvailable,
     branchStartAvailable,
     hasResults,
-    ...(temat.symbolAparatu === undefined ? {} : { symbolAparatu: temat.symbolAparatu }),
+    ...(temat.menuKind === 'apparatus'
+      ? {
+          aparatWyprowadzaCiag: jestPunktemWyprowadzeniaCiagu(
+            snapshot,
+            rozbierzIdentyfikatorAparatu(refOperacji),
+          ),
+        }
+      : {}),
     ...(lacznik === undefined ? {} : { lacznik }),
   };
   if (temat.kotwica !== 'stacja') return wspolne;

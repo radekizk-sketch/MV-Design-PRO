@@ -21,7 +21,9 @@ import {
   opisKlasyfikacjiNcRfg,
   selectDerDynamicProfilesForKind,
   type DerDynamicProfileItem,
+  type DerDynamicProfileProweniencja,
 } from '../derRemoteCatalogs';
+import { WZORZEC_STRINGS } from '../../../../ui2/wyniki/wzorzec/strings';
 import { klasyfikacjaWgKatalogu } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 
 const PV_GFL: DerDynamicProfileItem = {
@@ -167,6 +169,16 @@ describe('formatDerDynamicProfileLabelPl', () => {
     expect(formatProweniencjaZrodloLabelPl('certyfikat_jednostki')).toBe('certyfikat jednostki');
     expect(formatProweniencjaZrodloLabelPl('profil_typowy_normy')).toBe('profil typowy normy');
     expect(formatProweniencjaZrodloLabelPl('deklaracja_uzytkownika')).toBe('deklaracja użytkownika');
+  });
+
+  it('proweniencja spoza słownika (nowy kod katalogu backendu): uczciwe zdanie, nie kod', () => {
+    for (const kod of ['raport_badania_typu', 'toString']) {
+      const etykieta = formatProweniencjaZrodloLabelPl(
+        kod as DerDynamicProfileProweniencja['zrodlo'],
+      );
+      expect(etykieta).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
+      expect(etykieta).not.toContain(kod);
+    }
   });
 
   it('etykieta profilu z karty producenta odzwierciedla proweniencję w nawiasie', () => {

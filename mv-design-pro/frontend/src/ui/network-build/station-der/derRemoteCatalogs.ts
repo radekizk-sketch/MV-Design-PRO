@@ -44,6 +44,7 @@ import { fetchDerConverterTypes, fetchTransformerTypes } from '../../catalog/api
 import type { TransformerType } from '../../catalog/types';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { bladZapytania } from '../../../ui2/shared/bladZapytania';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -343,22 +344,19 @@ export function selectDerDynamicProfilesForKind(
   return profiles.filter((p) => p.der_kind === kind);
 }
 
+const PROWENIENCJA_ZRODLO_PL: Readonly<Record<DerDynamicProfileProweniencja['zrodlo'], string>> = {
+  karta_producenta: 'karta producenta',
+  certyfikat_jednostki: 'certyfikat jednostki',
+  profil_typowy_normy: 'profil typowy normy',
+  deklaracja_uzytkownika: 'deklaracja użytkownika',
+};
+
 /** Etykieta PL krótkiego źródła proweniencji (karta W6-1 SS0 p.2) — dla listy wyboru. */
 export function formatProweniencjaZrodloLabelPl(
   zrodlo: DerDynamicProfileProweniencja['zrodlo'],
 ): string {
-  switch (zrodlo) {
-    case 'karta_producenta':
-      return 'karta producenta';
-    case 'certyfikat_jednostki':
-      return 'certyfikat jednostki';
-    case 'profil_typowy_normy':
-      return 'profil typowy normy';
-    case 'deklaracja_uzytkownika':
-      return 'deklaracja użytkownika';
-    default:
-      return zrodlo;
-  }
+  // Pozycja katalogu przychodzi z backendu — kod spoza unii daje uczciwe zdanie, nie kod.
+  return etykietaZeSlownika(PROWENIENCJA_ZRODLO_PL, zrodlo);
 }
 
 /**

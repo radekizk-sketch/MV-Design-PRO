@@ -11,6 +11,8 @@
 
 import {
   bayKindLabelPl,
+  grupaZrodlaSzablonu,
+  grupaZrodlaSzablonuPl,
   type BayKind,
   type CompleteMvBayTemplateSummary,
 } from '../../catalog/BayTemplatePicker';
@@ -29,25 +31,6 @@ export const SWITCHGEAR_MANUFACTURER_ORDER = [
   'SIEMENS',
   'ABB',
 ];
-
-export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
-  official_catalog: 'pakiet katalogowy',
-  repo_verified: 'pakiet katalogowy',
-  user_defined: 'pakiet użytkownika',
-  canonical_fallback: 'poza konfiguracją projektową',
-  requires_catalog: 'poza konfiguracją projektową',
-  incomplete_requires_review: 'poza konfiguracją projektową',
-};
-
-/**
- * Grupa statusu źródła szablonu pola (`SOURCE_STATUS_LABEL_PL`) — status spoza słownika
- * (wartość z sieci spoza unii kontraktu) dostaje opis jawny, nigdy `undefined` ani kod.
- */
-export function grupaZrodlaSzablonuPl(status: string): string {
-  return Object.prototype.hasOwnProperty.call(SOURCE_STATUS_LABEL_PL, status)
-    ? SOURCE_STATUS_LABEL_PL[status as CompleteMvBayTemplateSummary['source_status']]
-    : 'status źródła spoza słownika aplikacji';
-}
 
 // Pure helpers - station
 export function stationRef(station: Substation): string {
@@ -77,12 +60,11 @@ export function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_st
   }
 }
 
+/** Pakiet kompletny ⇔ grupa statusu źródła inna niż „poza konfiguracją projektową”
+ *  (jedno źródło podziału: `STATUS_ZRODLA` w `ui/catalog/BayTemplatePicker.tsx`). */
 export function isCompleteSourceStatus(status: CompleteMvBayTemplateSummary['source_status']): boolean {
-  return (
-    status === 'official_catalog'
-    || status === 'repo_verified'
-    || status === 'user_defined'
-  );
+  const grupa = grupaZrodlaSzablonu(status);
+  return grupa !== null && grupa !== 'POZA_KONFIGURACJA';
 }
 
 export function isCompleteBayTemplate(template: CompleteMvBayTemplateSummary): boolean {

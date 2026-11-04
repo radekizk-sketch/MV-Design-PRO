@@ -416,7 +416,7 @@ export function PrzegladarkaPrzebiegow({
                 <WykresPrzebiegow
                   key={jednostka}
                   jednostka={jednostka}
-                  serie={klucze.map((klucz) => ({ klucz, etykieta: etykiety.get(klucz) ?? klucz }))}
+                  serie={klucze.map((klucz) => ({ klucz, etykieta: etykiety.get(klucz) ?? T.kanalSpozaOpisu }))}
                   wiersze={wierszeWykresu(probki.przebiegi, klucze)}
                   chwileZdarzen={chwile}
                 />

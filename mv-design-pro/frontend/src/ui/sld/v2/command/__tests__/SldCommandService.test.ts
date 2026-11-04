@@ -52,12 +52,12 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     const actions = SLD_MENU_REGISTRY.apparatus;
     expect(actions.some((a) => a.id === 'extend-trunk')).toBe(true);
 
-    const breakerActions = getMenuActions('apparatus', { symbolAparatu: 'breaker' });
+    const breakerActions = getMenuActions('apparatus', { aparatWyprowadzaCiag: false });
     const breakerExtend = breakerActions.find((a) => a.id === 'extend-trunk');
     expect(breakerExtend?.disabled).toBe(true);
     expect(breakerExtend?.disabledReasonPl).toContain('głowicy kablowej');
 
-    const cableHeadActions = getMenuActions('apparatus', { symbolAparatu: 'cableHead' });
+    const cableHeadActions = getMenuActions('apparatus', { aparatWyprowadzaCiag: true });
     const cableHeadExtend = cableHeadActions.find((a) => a.id === 'extend-trunk');
     expect(cableHeadExtend?.disabled).toBeUndefined();
   });
@@ -113,7 +113,7 @@ describe('SldCommandService — getMenuActions z context', () => {
   // rozstrzygnięcia, które buduje kontekst operacji (`buildSldOperationContext`).
   it('extend-trunk disabled na głowicy, gdy pole ma już wyprowadzony kabel', () => {
     const actions = getMenuActions('apparatus', {
-      symbolAparatu: 'cableHead',
+      aparatWyprowadzaCiag: true,
       trunkStartAvailable: { 'extend-trunk': false },
     });
     const extendAction = actions.find((a) => a.id === 'extend-trunk');

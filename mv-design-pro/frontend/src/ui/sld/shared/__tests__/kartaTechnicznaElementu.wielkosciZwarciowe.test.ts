@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
-import { buildKartaTechniczna, type KatalogiKarty, type WierszKarty } from '../kartaTechnicznaElementu';
+import { KATALOGI_PUSTE, buildKartaTechniczna, type KatalogiKarty, type WierszKarty } from '../kartaTechnicznaElementu';
 
 type RodzajUrzadzenia = 'CB' | 'LOAD_SWITCH' | 'DS' | 'ES' | 'FUSE';
 
@@ -82,6 +82,7 @@ function model(rodzaj: RodzajUrzadzenia, zKatalogiem: boolean): EnergyNetworkMod
 
 function katalogi(rodzaj: RodzajUrzadzenia, ik: number | null, ith: number | null): KatalogiKarty {
   return {
+    ...KATALOGI_PUSTE,
     aparatySn: new Map([
       [
         'poz-1',

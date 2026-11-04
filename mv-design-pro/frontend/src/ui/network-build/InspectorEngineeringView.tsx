@@ -47,7 +47,6 @@ import {
   publicTechnicalLabel,
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
-import { stationReadModelSnFields } from './stationSnFields';
 import type { ReadinessIssue, SelectedElement } from '../types';
 import type {
   EnergyNetworkModel,
@@ -55,8 +54,6 @@ import type {
   Generator,
   LogicalViewsV1,
   Port,
-  ProtectionAssignment,
-  Transformer,
 } from '../../types/enm';
 import { isApparatusBranch } from '../../types/enm';
 import { RODZAJ_GALEZI_PL } from '../shared/rodzajGalezi';
@@ -72,18 +69,8 @@ import { findOperationalBus } from '../shared/enmVisibility';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
-import { useAudit2CatalogSnapshot } from './station-der/audit2-hooks';
-import type { PfCurveItem } from './station-der/audit2-api';
-import {
-  formatDerDynamicProfileLabelPl,
-  getDerDynamicProfile,
-  getNcRfgOperator,
-  useDerDynamicProfiles,
-  useNcRfgOperatorCatalog,
-  type DerDynamicProfileItem,
-  type NcRfgOperatorItem,
-} from './station-der/derRemoteCatalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
+import { wariantPrzylaczeniaPl } from './der-configurator/wariantPrzylaczeniaPl';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
@@ -266,7 +253,7 @@ function buildBayPortsSection(ports: readonly Port[] | null): PropertySection {
     label: 'Zaciski pola',
     fields: ports.map((port, index) => ({
       key: `port_${index}`,
-      label: `${PORT_KIND_LABELS_PL[port.kind] ?? port.kind} · ${port.nominal_voltage_kv.toLocaleString('pl-PL')} kV`,
+      label: `${etykietaZeSlownika(PORT_KIND_LABELS_PL, port.kind)} · ${port.nominal_voltage_kv.toLocaleString('pl-PL')} kV`,
       value: port.occupied_by ? 'Przyłączony' : 'Wolny',
     })),
   };
@@ -610,61 +597,17 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   LV_LOAD_NODE: 'Odbiór nN',
 };
 
-function connectionVariantLabel(variant: string | null | undefined): string {
-  if (!variant) return '—';
-  switch (variant) {
-    case 'nn_side':
-      return 'Po stronie nN stacji';
-    case 'block_transformer':
-      return 'Blokowo przez transformator do SN';
-    default:
-      return variant;
-  }
-}
 
 function formatElementTypeLabel(elementType: string): string {
   return etykietaZeSlownika(ELEMENT_TYPE_LABELS, elementType);
-}
-
-function connectionVariantLabelPl(variant: string | null | undefined): string {
-  if (!variant) return 'nie wyznaczono';
-  switch (variant) {
-    case 'nn_side':
-    case 'LV_BEHIND_STATION_TRANSFORMER':
-      return 'po stronie nN stacji, za transformatorem SN/nN';
-    case 'block_transformer':
-      return 'przez transformator blokowy do SN';
-    case 'DEDICATED_MV_CONNECTION':
-      return 'dedykowane pole SN';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'osobna stacja przyłączeniowa';
-    default:
-      return 'nie wyznaczono';
-  }
 }
 
 function generatorMeta(generator: Generator | null | undefined): Record<string, unknown> {
   return generator?.meta && typeof generator.meta === 'object' ? generator.meta : {};
 }
 
-function generatorMaterializedParams(generator: Generator | null | undefined): Record<string, unknown> {
-  return generator?.materialized_params && typeof generator.materialized_params === 'object'
-    ? generator.materialized_params
-    : {};
-}
-
 function valueAsString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function valueAsNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function valueAsRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
 }
 
 function generatorStationRef(generator: Generator | null | undefined): string | null {
@@ -672,132 +615,30 @@ function generatorStationRef(generator: Generator | null | undefined): string | 
   return generator?.station_ref ?? valueAsString(meta.station_ref);
 }
 
-function findStationName(snapshot: EnergyNetworkModel, stationRef: string | null): string | null {
-  if (!stationRef) return null;
-  const station = snapshot.substations?.find((entry) => (
-    entry.ref_id === stationRef || entry.id === stationRef
-  ));
-  return station?.name ?? null;
-}
-
-function findTransformer(snapshot: EnergyNetworkModel, transformerRef: string | null): Transformer | null {
-  if (!transformerRef) return null;
-  return snapshot.transformers?.find((entry) => (
-    entry.ref_id === transformerRef || entry.id === transformerRef
-  )) ?? null;
-}
-
-function generatorStationTransformerRef(generator: Generator | null | undefined): string | null {
-  const meta = generatorMeta(generator);
-  const params = generatorMaterializedParams(generator);
-  return valueAsString(params.station_transformer_ref) ?? valueAsString(meta.station_transformer_ref);
-}
-
-function generatorConnectionPointRef(generator: Generator | null | undefined): string | null {
-  const meta = generatorMeta(generator);
-  return valueAsString(meta.connection_point_ref) ?? generator?.bus_ref ?? null;
-}
-
-function generatorProtectionIntent(generator: Generator | null | undefined): Record<string, unknown> | null {
-  const metaIntent = generatorMeta(generator).protection_intent;
-  if (metaIntent && typeof metaIntent === 'object') return metaIntent as Record<string, unknown>;
-  const paramsIntent = generatorMaterializedParams(generator).protection_intent;
-  if (paramsIntent && typeof paramsIntent === 'object') return paramsIntent as Record<string, unknown>;
-  return null;
-}
-
-function findGeneratorProtection(
-  snapshot: EnergyNetworkModel,
-  generatorRef: string | null | undefined,
-): ProtectionAssignment | null {
-  if (!generatorRef) return null;
-  return snapshot.protection_assignments?.find((entry) => {
-    const meta = entry.meta && typeof entry.meta === 'object' ? entry.meta : {};
-    return valueAsString(meta.protected_object_ref) === generatorRef;
-  }) ?? null;
-}
-
-function transformerLabel(transformer: Transformer | null): string | null {
-  if (!transformer) return null;
-  const power = Number.isFinite(transformer.sn_mva) ? `${transformer.sn_mva} MVA` : 'moc do konfiguracji';
-  const voltage = Number.isFinite(transformer.uhv_kv) && Number.isFinite(transformer.ulv_kv)
-    ? `${transformer.uhv_kv}/${transformer.ulv_kv} kV`
-    : 'napięcie do konfiguracji';
-  const vectorGroup = transformer.vector_group ? ` ${transformer.vector_group}` : '';
-  return `${transformer.name} · ${voltage} · ${power}${vectorGroup}`;
-}
-
-function sourceSideLabel(generator: Generator | null | undefined): string {
-  const connectionVariant = generator?.connection_variant;
-  if (connectionVariant === 'nn_side' || connectionVariant === 'LV_BEHIND_STATION_TRANSFORMER') {
-    return 'nN stacji';
-  }
-  if (connectionVariant === 'DEDICATED_MV_CONNECTION' || connectionVariant === 'block_transformer') {
-    return 'SN';
-  }
-  return 'nie wyznaczono';
-}
-
-function protectionScopeLabel(scope: unknown): string | null {
-  const value = valueAsString(scope);
-  if (!value) return null;
-  return value;
-}
-
+/**
+ * Generator modelu wskazany selekcją — WYŁĄCZNIE dopasowanie identyfikatora (`ref_id` / `id`).
+ * Dawne dopasowanie po podciągach identyfikatora („pv_inverter", „/fw/", „bess", ref stacji
+ * zawarty w identyfikatorze) i „jedyny kandydat danego rodzaju" było domysłem: wskazanie
+ * spoza modelu dostawało cudzy generator, a z nim cudze operacje.
+ */
 function findGeneratorForSelectedConverter(
   selectedElement: SelectedElement,
   snapshot: EnergyNetworkModel,
 ): Generator | null {
-  const direct = snapshot.generators?.find((generator) =>
+  return snapshot.generators?.find((generator) =>
     generator.ref_id === selectedElement.id || generator.id === selectedElement.id,
-  );
-  if (direct) return direct;
-
-  const selectedLooksLikePv = selectedElement.type === 'PVInverter'
-    || selectedElement.semanticEngineeringRole === 'PV_INVERTER'
-    || selectedElement.id.includes('pv_inverter')
-    || selectedElement.id.includes('/pv/inverter/')
-    || selectedElement.id.includes('/nn_source/pv');
-  const selectedLooksLikeBess = selectedElement.type === 'BESSInverter'
-    || selectedElement.semanticEngineeringRole === 'BESS_CONVERTER'
-    || selectedElement.id.includes('bess');
-  const selectedLooksLikeWind = selectedElement.semanticEngineeringRole === 'WIND_SOURCE'
-    || selectedElement.id.includes('wind')
-    || selectedElement.id.includes('/fw/');
-
-  const byEmbeddedRef = snapshot.generators?.find((generator) => {
-    const stationRef = generatorStationRef(generator);
-    return selectedElement.id.includes(generator.ref_id)
-      || Boolean(stationRef && selectedElement.id.includes(stationRef));
-  });
-  if (byEmbeddedRef) return byEmbeddedRef;
-
-  const candidates = (snapshot.generators ?? []).filter((generator) => {
-    if (selectedLooksLikePv) return generator.gen_type === 'pv_inverter' || generator.gen_type === null;
-    if (selectedLooksLikeBess) return generator.gen_type === 'bess';
-    if (selectedLooksLikeWind) {
-      return generator.gen_type === 'wind_inverter'
-        || generator.gen_type === 'fw_pmsg'
-        || generator.gen_type === 'fw_dfig'
-        || generator.gen_type === 'fw_scig';
-    }
-    return false;
-  });
-  return candidates.length === 1 ? candidates[0] : null;
+  ) ?? null;
 }
 
-function converterRoleForGenerator(
-  selectedElement: SelectedElement,
-  generator: Generator | null,
-): 'PV_INVERTER' | 'BESS_CONVERTER' | 'WIND_SOURCE' {
-  if (selectedElement.semanticEngineeringRole === 'BESS_CONVERTER') return 'BESS_CONVERTER';
-  if (selectedElement.semanticEngineeringRole === 'WIND_SOURCE') return 'WIND_SOURCE';
-  if (generator?.gen_type === 'bess') return 'BESS_CONVERTER';
+/** Rola źródła przekształtnikowego z rodzaju generatora w modelu (`gen_type`) — model
+ *  rozstrzyga, nie rola semantyczna selekcji. */
+function converterRoleForGenerator(generator: Generator): 'PV_INVERTER' | 'BESS_CONVERTER' | 'WIND_SOURCE' {
+  if (generator.gen_type === 'bess') return 'BESS_CONVERTER';
   if (
-    generator?.gen_type === 'wind_inverter'
-    || generator?.gen_type === 'fw_pmsg'
-    || generator?.gen_type === 'fw_dfig'
-    || generator?.gen_type === 'fw_scig'
+    generator.gen_type === 'wind_inverter'
+    || generator.gen_type === 'fw_pmsg'
+    || generator.gen_type === 'fw_dfig'
+    || generator.gen_type === 'fw_scig'
   ) {
     return 'WIND_SOURCE';
   }
@@ -814,83 +655,6 @@ function converterSurfaceTitle(role: string): string {
   if (role === 'BESS_CONVERTER') return 'Konfiguracja magazynu BESS';
   if (role === 'WIND_SOURCE') return 'Konfiguracja farmy wiatrowej';
   return 'Konfiguracja falownika PV';
-}
-
-function generatorProfileRef(generator: Generator | null | undefined, key: string): string | null {
-  const meta = generatorMeta(generator);
-  const params = generatorMaterializedParams(generator);
-  const metaProfiles = valueAsRecord(meta.profiles);
-  const paramsProfiles = valueAsRecord(params.profiles);
-  return valueAsString(paramsProfiles?.[key])
-    ?? valueAsString(metaProfiles?.[key])
-    ?? valueAsString(params[key])
-    ?? valueAsString(meta[key]);
-}
-
-function pvCatalogLabel(generator: Generator | null | undefined): string | null {
-  const catalogRef = generator?.catalog_ref ?? null;
-  if (!catalogRef) return null;
-  // Karta FAB-J: katalog falowników PV (PV_INVERTER_CATALOG) usunięty z frontu
-  // (karta FAB-I) — jedyne źródło etykiety/producenta/napięcia/mocy to dane
-  // zmaterializowane przez backend przy tworzeniu generatora, nie drugi lokalny
-  // mirror katalogu.
-  return valueAsString(generatorMaterializedParams(generator).catalog_label)
-    ?? valueAsString(generatorMeta(generator).catalog_label)
-    ?? 'Falownik PV z katalogu projektu';
-}
-
-function pvCatalogManufacturer(generator: Generator | null | undefined): string | null {
-  const catalogRef = generator?.catalog_ref ?? null;
-  if (!catalogRef) return null;
-  return valueAsString(generatorMaterializedParams(generator).manufacturer)
-    ?? valueAsString(generatorMeta(generator).manufacturer);
-}
-
-function pvCatalogVoltage(generator: Generator | null | undefined): number | null {
-  return valueAsNumber(generatorMaterializedParams(generator).nominal_voltage_kv)
-    ?? valueAsNumber(generatorMeta(generator).nominal_voltage_kv);
-}
-
-function pvCatalogPower(generator: Generator | null | undefined): number | null {
-  return valueAsNumber(generatorMaterializedParams(generator).nominal_power_kw)
-    ?? valueAsNumber(generatorMeta(generator).nominal_power_kw)
-    ?? (typeof generator?.p_mw === 'number' ? generator.p_mw * 1000 : null);
-}
-
-function pvCatalogFaultContribution(generator: Generator | null | undefined): number | null {
-  // Karta K-Q: katalog mirrorowy NIE jest już źródłem granicznego prądu
-  // zwarciowego — niósł liczbę wpisaną z ręki, bez karty producenta. Zostają
-  // dwa tory z pokryciem w modelu: sparametryzowane pole generatora i jego
-  // metadane. Brak obu = brak wartości (null), a nie podstawiona liczba.
-  return valueAsNumber(generatorMaterializedParams(generator).fault_current_capability_pu)
-    ?? valueAsNumber(generatorMeta(generator).fault_current_capability_pu);
-}
-
-function catalogLabelById<T extends { id: string; label_pl: string }>(
-  catalog: readonly T[],
-  id: string | null,
-): string | null {
-  if (!id) return null;
-  return catalog.find((entry) => entry.id === id)?.label_pl ?? null;
-}
-
-function dynamicModelLabel(
-  generator: Generator | null | undefined,
-  dynamicProfiles: readonly DerDynamicProfileItem[],
-): string | null {
-  // Karta FAB-L: profil dynamiczny WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
-  // (resolver `network_model/catalog/der_dynamic`, realny dostawca RMS/FRT-HVRT).
-  // Auto-dobór „po urządzeniu" (dawne `applicable_device_ids`) usunięty — backend
-  // nie wyraża takiej operacji, więc wybór jest jawny (`dynamic_model_ref`) albo
-  // brak (do konfiguracji), nigdy cichy domyślny.
-  const explicit = generatorProfileRef(generator, 'dynamic_model_ref');
-  if (!explicit) return null;
-  const profile = getDerDynamicProfile(dynamicProfiles, explicit);
-  return profile ? formatDerDynamicProfileLabelPl(profile) : explicit;
-}
-
-function readinessText(ready: boolean, pendingText = 'do konfiguracji'): string {
-  return ready ? 'skonfigurowane' : pendingText;
 }
 
 // =============================================================================
@@ -1010,18 +774,6 @@ function isSemanticConverterSource(selectedElement: SelectedElement): boolean {
       || selectedElement.semanticEngineeringRole === 'BESS_CONVERTER'
       || selectedElement.semanticEngineeringRole === 'WIND_SOURCE'
     );
-}
-
-function isConverterSourceSelection(selectedElement: SelectedElement): boolean {
-  return isSemanticConverterSource(selectedElement)
-    || selectedElement.type === 'PVInverter'
-    || selectedElement.type === 'BESSInverter'
-    || selectedElement.type === 'Generator'
-    || selectedElement.id.includes('pv_inverter')
-    || selectedElement.id.includes('/pv/inverter/')
-    || selectedElement.id.includes('/nn_source/pv')
-    || selectedElement.id.includes('bess')
-    || selectedElement.id.includes('/fw/');
 }
 
 function isSemanticGpzSource(selectedElement: SelectedElement): boolean {
@@ -1207,432 +959,32 @@ function appendReadinessSection(
   if (sekcja) sections.push(sekcja);
 }
 
-function buildSemanticConverterSections(
+/**
+ * Źródło przekształtnikowe (PV/BESS/FW): dane obiektu pokazuje WYŁĄCZNIE karta techniczna
+ * panelu z kanwy (`kartaTechnicznaElementu.ts::kartaZrodla` — identyfikacja, typ i producent
+ * przekształtnika z katalogu, tor przyłączenia, zgodność przyłączeniowa NC RfG/FRT,
+ * zabezpieczenie źródła). Ten widok dokłada tylko operacje modelu, których pasek działań nie
+ * ma. Dawne sekcje „Falownik z katalogu", „NC RfG i regulacja", „FRT / LVRT / HVRT",
+ * „Obliczenia i uzasadnienie", „Zabezpieczenia falownika" były drugą ścieżką tych samych
+ * danych — przy karcie nie renderowały się nigdy, a bez obiektu w modelu pokazywały szablon
+ * „do konfiguracji" dla obiektu, którego nie ma (atrapa).
+ */
+function dzialaniaZrodlaPrzeksztaltnikowego(
   selectedElement: SelectedElement,
   snapshot: EnergyNetworkModel,
-  readinessIssues: ReadinessIssue[],
-): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
-  const generator = snapshot.generators?.find((g) => g.ref_id === selectedElement.id) ?? null;
-  const elementName = generator?.name ?? selectedElement.name;
-  const stationRef = generatorStationRef(generator);
-  const stationName = findStationName(snapshot, stationRef);
-  const transformer = findTransformer(snapshot, generatorStationTransformerRef(generator));
-  const connectionPointRef = generatorConnectionPointRef(generator);
-  const protectionIntent = generatorProtectionIntent(generator);
-  const protectionAssignment = findGeneratorProtection(snapshot, generator?.ref_id ?? selectedElement.id);
-  const protectionMeta = protectionAssignment?.meta && typeof protectionAssignment.meta === 'object'
-    ? protectionAssignment.meta
-    : {};
-  const sectionsForEngineer: PropertySection[] = [
-    {
-      id: 'ident',
-      label: 'Źródło w stacji',
-      fields: [
-        { key: 'name', label: 'Urządzenie', value: elementName },
-        { key: 'type', label: 'Rodzaj', value: semanticTypeLabel(selectedElement) },
-        { key: 'station', label: 'Stacja', value: stationName ?? 'do konfiguracji' },
-        {
-          key: 'connection_variant',
-          label: 'Punkt przyłączenia',
-          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'do konfiguracji',
-        },
-        { key: 'voltage_side', label: 'Strona napięciowa', value: sourceSideLabel(generator) },
-      ],
-    },
-  ];
-
-  if (generator) {
-    sectionsForEngineer.push(
-      {
-        id: 'electrical',
-        label: 'Parametry elektryczne',
-        fields: [
-          { key: 'p_mw', label: 'Moc czynna', value: generator.p_mw, unit: 'MW' },
-          { key: 'q_mvar', label: 'Moc bierna', value: generator.q_mvar ?? null, unit: 'Mvar' },
-          {
-            key: 'connection_point',
-            label: 'PCC',
-            value: connectionPointRef ? 'szyna nN stacji' : 'do konfiguracji',
-          },
-        ],
-      },
-      {
-        id: 'station_link',
-        label: 'Powiązanie ze stacją',
-        fields: [
-          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
-          {
-            key: 'converter_catalog',
-            label: 'Katalog falownika',
-            value: generator.catalog_ref ? elementName : 'do konfiguracji',
-            source: generator.catalog_ref ? 'catalog' : undefined,
-          },
-        ],
-      },
-      {
-        id: 'protection',
-        label: 'Zabezpieczenia przyłączeniowe nN',
-        fields: [
-          {
-            key: 'protection_device',
-            label: 'Urządzenie zabezpieczeniowe',
-            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'do konfiguracji',
-            source: protectionAssignment?.catalog_ref ? 'catalog' : undefined,
-          },
-          {
-            key: 'breaker_role',
-            label: 'Wyłącznik nN źródła',
-            value: valueAsString(protectionIntent?.breaker_role) ?? 'do konfiguracji',
-          },
-          {
-            key: 'protected_object',
-            label: 'Chroniony obiekt',
-            value: valueAsString(protectionIntent?.protected_object)
-              ?? valueAsString(protectionMeta.protected_object)
-              ?? 'do konfiguracji',
-          },
-          {
-            key: 'analysis_scope',
-            label: 'Zakres analizy zabezpieczeniowej',
-            value: protectionScopeLabel(protectionIntent?.analysis_scope)
-              ?? protectionScopeLabel(protectionMeta.analysis_scope)
-              ?? 'do konfiguracji',
-          },
-        ],
-      },
-    );
-  }
-
-  appendReadinessSection(sectionsForEngineer, readinessIssues, selectedElement.id);
-
-  return {
-    sections: sectionsForEngineer,
-    elementType: semanticTypeKey(selectedElement),
-    elementName,
-    actions: [
-      {
-        id: 'assign_catalog',
-        label: 'Zmień katalog falownika',
-        op: 'assign_catalog_to_element',
-        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
-      },
-      {
-        id: 'edit',
-        label: 'Skonfiguruj układ PV/BESS/FW',
-        op: 'update_element_parameters',
-        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
-      },
-    ],
-  };
-  const sections: PropertySection[] = [
-    {
-      id: 'ident',
-      label: 'Identyfikacja',
-      fields: [
-        { key: 'ref_id', label: 'Oznaczenie układu', value: publicTechnicalLabel(selectedElement.id, elementName) },
-        { key: 'name', label: 'Nazwa', value: elementName },
-        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
-        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-      ],
-    },
-  ];
-
-  if (generator) {
-    const generatorForLegacyPanel = generator;
-    sections.push({
-      id: 'electrical',
-      label: 'Parametry elektryczne',
-      fields: [
-        { key: 'p_mw', label: 'Moc czynna', value: generator!.p_mw, unit: 'MW' },
-        { key: 'q_mvar', label: 'Moc bierna', value: generator!.q_mvar ?? null, unit: 'Mvar' },
-        { key: 'connection_variant', label: 'Wariant przyłączenia', value: connectionVariantLabel(generatorForLegacyPanel!.connection_variant) },
-      ],
-    });
-    sections.push({
-      id: 'catalog',
-      label: 'Katalog',
-      fields: [
-        { key: 'catalog_ref', label: 'Pozycja katalogowa', value: generatorForLegacyPanel!.catalog_ref ?? '?' },
-      ],
-    });
-  }
-
-  appendReadinessSection(sections, readinessIssues, selectedElement.id);
-
-  return {
-    sections,
-    elementType: semanticTypeKey(selectedElement),
-    elementName,
-    actions: [
-      {
-        id: 'assign_catalog',
-        label: 'Przypisz katalog',
-        op: 'assign_catalog_to_element',
-        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
-      },
-      {
-        id: 'edit',
-        label: 'Edytuj parametry',
-        op: 'update_element_parameters',
-        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
-      },
-    ],
-  };
-}
-
-function buildAdvancedConverterSections(
-  selectedElement: SelectedElement,
-  snapshot: EnergyNetworkModel,
-  readinessIssues: ReadinessIssue[],
-  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
-  pfCurves: readonly PfCurveItem[] = [],
-  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   const generator = findGeneratorForSelectedConverter(selectedElement, snapshot);
-  const role = converterRoleForGenerator(selectedElement, generator);
-  const generatorRef = generator?.ref_id ?? selectedElement.id;
-  const elementName = generator?.name ?? selectedElement.name;
-  const stationRef = generatorStationRef(generator);
-  const stationName = findStationName(snapshot, stationRef);
-  const transformer = findTransformer(snapshot, generatorStationTransformerRef(generator));
-  const connectionPointRef = generatorConnectionPointRef(generator);
-  const protectionIntent = generatorProtectionIntent(generator);
-  const protectionAssignment = findGeneratorProtection(snapshot, generatorRef);
-  const protectionMeta = valueAsRecord(protectionAssignment?.meta) ?? {};
-  const ncRfgRef = generatorProfileRef(generator, 'nc_rfg_profile_ref');
-  const lvrtRef = generatorProfileRef(generator, 'lvrt_curve_ref');
-  const hvrtRef = generatorProfileRef(generator, 'hvrt_curve_ref');
-  const pfCurveRef = generatorProfileRef(generator, 'pf_curve_ref');
-  const ncRfgProfile = ncRfgRef ? getNcRfgOperator(ncRfgOperators, ncRfgRef) : null;
-  const dynamicModel = dynamicModelLabel(generator, dynamicProfiles);
-  const catalogPowerKw = pvCatalogPower(generator);
-  const catalogVoltageKv = pvCatalogVoltage(generator);
-  const faultContributionPu = pvCatalogFaultContribution(generator);
-  const hasPcc = Boolean(connectionPointRef);
-  const hasCatalog = Boolean(generator?.catalog_ref);
-  const hasTransformerOrMv = Boolean(transformer) || sourceSideLabel(generator) === 'SN';
-  const hasProfiles = Boolean(ncRfgRef && lvrtRef && hvrtRef);
-  const hasProtection = Boolean(protectionAssignment || protectionIntent);
+  // Wskazanie bez generatora w modelu nie ma operacji źródła (zero atrapy).
+  if (!generator) return { sections: [], elementType: '', elementName: selectedElement.name, actions: [] };
+  const role = converterRoleForGenerator(generator);
+  const generatorRef = generator.ref_id;
   const actionContext = hasSemanticSelection(selectedElement)
     ? semanticActionContext(selectedElement, { element_ref: generatorRef, generator_ref: generatorRef })
     : { element_ref: generatorRef, generator_ref: generatorRef };
-
-  const sections: PropertySection[] = [
-    {
-      id: 'ident',
-      label: role === 'PV_INVERTER' ? 'Falownik PV w stacji' : 'Źródło w stacji',
-      fields: [
-        { key: 'name', label: 'Urządzenie', value: elementName },
-        {
-          key: 'type',
-          label: 'Rodzaj',
-          value: role === 'PV_INVERTER'
-            ? 'falownik PV'
-            : role === 'BESS_CONVERTER'
-              ? 'przekształtnik BESS'
-              : 'źródło wiatrowe',
-        },
-        { key: 'station', label: 'Stacja', value: stationName ?? 'do konfiguracji' },
-        {
-          key: 'connection_variant',
-          label: 'Punkt przyłączenia',
-          value: generator ? connectionVariantLabelPl(generator.connection_variant) : 'do konfiguracji',
-        },
-        { key: 'voltage_side', label: 'Strona napięciowa', value: sourceSideLabel(generator) },
-      ],
-    },
-  ];
-
-  sections.push(
-    {
-        id: 'inverter_catalog',
-        label: role === 'PV_INVERTER' ? 'Falownik z katalogu' : 'Urządzenie z katalogu',
-        fields: [
-          {
-            key: 'catalog_label',
-            label: role === 'PV_INVERTER' ? 'Typ falownika' : 'Typ urządzenia',
-            value: role === 'PV_INVERTER'
-              ? pvCatalogLabel(generator)
-              : generator?.catalog_ref
-                ? 'pozycja katalogowa projektu'
-                : null,
-            source: generator?.catalog_ref ? 'catalog' : undefined,
-          },
-          {
-            key: 'manufacturer',
-            label: 'Producent',
-            value: role === 'PV_INVERTER' ? pvCatalogManufacturer(generator) : null,
-            source: generator?.catalog_ref ? 'catalog' : undefined,
-          },
-          {
-            key: 'pn_kw',
-            label: 'Moc znamionowa Pn',
-            value: catalogPowerKw,
-            unit: 'kW',
-            source: hasCatalog ? 'catalog' : undefined,
-          },
-          {
-            key: 'un_kv',
-            label: 'Napięcie strony nN',
-            value: catalogVoltageKv,
-            unit: 'kV',
-            source: hasCatalog ? 'catalog' : undefined,
-          },
-          {
-            key: 'fault_current',
-            label: 'Wkład zwarciowy falownika',
-            value: faultContributionPu,
-            unit: 'pu',
-            source: hasCatalog ? 'catalog' : undefined,
-          },
-          {
-            key: 'parallel_count',
-            label: 'Liczba falowników równoległych',
-            value: generator?.n_parallel ?? generator?.quantity ?? null,
-          },
-        ],
-      },
-      {
-        id: 'connection_path',
-        label: 'Punkt przyłączenia i tor mocy',
-        fields: [
-          { key: 'connection_point', label: 'PCC', value: hasPcc ? 'szyna nN stacji' : 'do konfiguracji' },
-          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
-          {
-            key: 'power_path',
-            label: 'Tor od strony SN do falownika',
-            value: hasTransformerOrMv
-              ? 'pole SN -> transformator SN/nN -> rozdzielnica nN -> wyłącznik nN -> falownik'
-              : 'do konfiguracji',
-          },
-          { key: 'side', label: 'Strona przyłączenia', value: sourceSideLabel(generator) },
-        ],
-      },
-      {
-        id: 'ncrfg',
-        label: 'NC RfG i regulacja',
-        fields: [
-          {
-            key: 'nc_rfg',
-            label: 'Profil zgodności przyłączeniowej',
-            value: ncRfgProfile?.operator_name_pl ?? 'do konfiguracji',
-            source: ncRfgProfile ? 'catalog' : undefined,
-          },
-          {
-            // Karta FAB-J: pola `q_u_deadzone_percent`/`q_u_min_pu`/`q_u_max_pu` nie
-            // miały pokrycia w żadnym backendowym profilu operatora (usunięte razem
-            // z `NC_RFG_PROFILE_CATALOG`) — jedyne realne dane to zakres mocy biernej
-            // wg % Pn i minimalny cos φ z `NcRfgOperatorItem.reactive_power`.
-            key: 'qu',
-            label: 'Regulacja Q(U)',
-            value: ncRfgProfile
-              ? `Q ${ncRfgProfile.reactive_power.q_range_pct_pn_min * 100}...`
-                + `${ncRfgProfile.reactive_power.q_range_pct_pn_max * 100}% Pn`
-              : 'do konfiguracji',
-            source: ncRfgProfile ? 'catalog' : undefined,
-          },
-          {
-            key: 'pf',
-            label: 'Regulacja P(f)',
-            value: catalogLabelById(pfCurves, pfCurveRef)
-              ?? (ncRfgProfile ? 'profil operatora' : 'do konfiguracji'),
-            source: pfCurveRef || ncRfgProfile ? 'catalog' : undefined,
-          },
-          {
-            key: 'cos_phi',
-            label: 'Minimalny cos φ',
-            value: ncRfgProfile?.reactive_power.cos_phi_min ?? null,
-            source: ncRfgProfile ? 'catalog' : undefined,
-          },
-        ],
-      },
-      {
-        id: 'frt',
-        label: 'FRT / LVRT / HVRT',
-        fields: [
-          {
-            // Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora (nie
-            // katalog wariantów) — `lvrtRef`/`hvrtRef` to ten sam `operator_id` co
-            // profil NC RfG (patrz `wizard-validation.ts`), więc wyświetlamy liczbę
-            // punktów t-U/Un profilu operatora, nie etykietę z usuniętego katalogu.
-            key: 'lvrt',
-            label: 'Krzywa LVRT',
-            value: ncRfgProfile ? `${ncRfgProfile.ride_through.lvrt.length} punktów t-U/Un` : 'do konfiguracji',
-            source: lvrtRef ? 'catalog' : undefined,
-          },
-          {
-            key: 'hvrt',
-            label: 'Krzywa HVRT',
-            value: ncRfgProfile ? `${ncRfgProfile.ride_through.hvrt.length} punktów t-U/Un` : 'do konfiguracji',
-            source: hvrtRef ? 'catalog' : undefined,
-          },
-          {
-            key: 'dynamic_model',
-            label: 'Model dynamiczny FRT',
-            value: dynamicModel ?? 'do konfiguracji',
-            source: dynamicModel ? 'catalog' : undefined,
-          },
-          {
-            key: 'frt_status',
-            label: 'Kontrola testu FRT/HVRT',
-            value: readinessText(Boolean(lvrtRef && hvrtRef && dynamicModel)),
-          },
-        ],
-      },
-      {
-        id: 'analysis',
-        label: 'Obliczenia i uzasadnienie',
-        fields: [
-          { key: 'load_flow', label: 'Rozpływ mocy P/Q', value: readinessText(hasCatalog && hasPcc && hasProfiles) },
-          { key: 'short_circuit', label: 'Wkład do zwarć', value: readinessText(Boolean(faultContributionPu), 'do konfiguracji') },
-          { key: 'ncrfg_test', label: 'Test NC RfG', value: readinessText(hasProfiles) },
-          {
-            key: 'proof_trace',
-            label: 'Uzasadnienie inżynierskie',
-            value: readinessText(hasCatalog && hasPcc && hasProfiles && hasProtection, 'do konfiguracji'),
-          },
-        ],
-      },
-      {
-        id: 'protection',
-        label: 'Zabezpieczenia falownika i strony nN',
-        fields: [
-          {
-            key: 'protection_device',
-            label: 'Urządzenie zabezpieczeniowe',
-            value: valueAsString(protectionIntent?.device_label) ?? protectionAssignment?.name ?? 'do konfiguracji',
-            source: protectionAssignment?.catalog_ref ? 'catalog' : undefined,
-          },
-          {
-            key: 'breaker_role',
-            label: 'Wyłącznik nN źródła',
-            value: valueAsString(protectionIntent?.breaker_role) ?? 'do konfiguracji',
-          },
-          {
-            key: 'protected_object',
-            label: 'Chroniony obiekt',
-            value: valueAsString(protectionIntent?.protected_object)
-              ?? valueAsString(protectionMeta.protected_object)
-              ?? 'do konfiguracji',
-          },
-          {
-            key: 'analysis_scope',
-            label: 'Zakres analizy zabezpieczeniowej',
-            value: protectionScopeLabel(protectionIntent?.analysis_scope)
-              ?? protectionScopeLabel(protectionMeta.analysis_scope)
-              ?? 'do konfiguracji',
-          },
-          { key: 'protection_readiness', label: 'Kontrola zabezpieczeń', value: readinessText(hasProtection) },
-        ],
-      },
-  );
-
-  appendReadinessSection(sections, readinessIssues, generatorRef);
-
   return {
-    sections,
+    sections: [],
     elementType: role,
-    elementName,
+    elementName: generator.name,
     actions: [
       {
         id: 'assign_catalog',
@@ -1650,87 +1002,25 @@ function buildAdvancedConverterSections(
   };
 }
 
-function buildSemanticGpzSections(
+/**
+ * Sieć zasilająca GPZ: dane (parametry zwarciowe MAX/MIN, napięcie zadane, model zastępczy,
+ * impedancja Thevenina, sekcja rozdzielni) pokazuje WYŁĄCZNIE karta techniczna
+ * (`kartaTechnicznaElementu.ts::kartaSieci`); dawne sekcje „Parametry sieci"/„Sekcje GPZ"
+ * tego widoku były drugą ścieżką tych samych danych. Zostaje operacja edycji parametrów.
+ */
+function dzialaniaSieciZasilajacej(
   selectedElement: SelectedElement,
   snapshot: EnergyNetworkModel,
-  readinessIssues: ReadinessIssue[],
-  fieldItems: readonly FieldReadModelItem[],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   const source = snapshot.sources?.find((s) =>
     s.ref_id === selectedElement.id
     || s.id === selectedElement.id
     || s.substation_ref === selectedElement.id
   );
-  const elementName = source?.name ?? selectedElement.name;
-  const sourceBus = source ? findOperationalBus(snapshot, source.bus_ref) : null;
-  const sourceSubstation = source?.substation_ref
-    ? snapshot.substations?.find((station) => station.ref_id === source.substation_ref)
-    : null;
-  const sourceGpzSection = sourceSubstation && source
-    ? sourceSubstation.gpz_sections?.find((section) => section.section_id === source.gpz_section_id)
-      ?? sourceSubstation.gpz_sections?.[0]
-      ?? null
-    : null;
-  const sourceGpzField = source
-    ? findFieldForGpzSection(
-      fieldItems,
-      sourceSubstation?.id,
-      sourceSubstation?.ref_id,
-      sourceGpzSection?.section_id ?? source.gpz_section_id,
-    )
-    : null;
-  const sections: PropertySection[] = [
-    {
-      id: 'ident',
-      label: 'Identyfikacja',
-      fields: [
-        { key: 'ref_id', label: 'Oznaczenie układu', value: publicTechnicalLabel(selectedElement.id, elementName) },
-        { key: 'name', label: 'Nazwa', value: elementName },
-        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
-        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
-        ...(source?.model ? [{ key: 'model', label: 'Model zastępczy', value: source.model }] : []),
-      ],
-    },
-  ];
-
-  if (source) {
-    sections.push({
-      id: 'electrical',
-      label: 'Parametry sieci',
-      fields: [
-        { key: 'bus_voltage_kv', label: 'Napięcie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
-        { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
-        { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'ohm' },
-        { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'ohm' },
-        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
-        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
-        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
-        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
-        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
-        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
-        // (1,0 p.u.), zero fabrykacji.
-        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
-      ],
-    });
-    sections.push({
-      id: 'gpz',
-      label: 'Sekcje GPZ',
-      fields: [
-        { key: 'substation_ref', label: 'Stacja GPZ', value: sourceSubstation?.name ?? source.substation_ref ?? '-' },
-        { key: 'section_id', label: 'Sekcja źródła', value: sourceGpzSection?.section_id ?? source.gpz_section_id ?? '-' },
-        { key: 'section_name', label: 'Nazwa sekcji', value: sourceGpzSection?.name ?? '-' },
-        { key: 'line_field', label: 'Pole liniowe GPZ', value: sourceGpzField?.bay_name ?? sourceGpzSection?.line_field_name ?? '-' },
-      ],
-    });
-  }
-
-  appendReadinessSection(sections, readinessIssues, selectedElement.id);
-
   return {
-    sections,
+    sections: [],
     elementType: semanticTypeKey(selectedElement),
-    elementName,
+    elementName: source?.name ?? selectedElement.name,
     actions: [
       {
         id: 'edit',
@@ -1746,10 +1036,6 @@ function buildSemanticSectionsForElement(
   selectedElement: SelectedElement,
   snapshot: EnergyNetworkModel,
   readinessIssues: ReadinessIssue[],
-  fieldItems: readonly FieldReadModelItem[],
-  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
-  pfCurves: readonly PfCurveItem[] = [],
-  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (isSemanticMvSegment(selectedElement)) {
     return buildSemanticSegmentSections(
@@ -1761,13 +1047,11 @@ function buildSemanticSectionsForElement(
   }
 
   if (isSemanticConverterSource(selectedElement)) {
-    return buildAdvancedConverterSections(
-      selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
-    );
+    return dzialaniaZrodlaPrzeksztaltnikowego(selectedElement, snapshot);
   }
 
   if (isSemanticGpzSource(selectedElement)) {
-    return buildSemanticGpzSections(selectedElement, snapshot, readinessIssues, fieldItems);
+    return dzialaniaSieciZasilajacej(selectedElement, snapshot);
   }
 
   const sections: PropertySection[] = [
@@ -1832,63 +1116,23 @@ function findParentStation(
   return null;
 }
 
-function findFieldsForStation(
-  items: readonly FieldReadModelItem[],
-  stationId: string | null | undefined,
-  stationRef: string | null | undefined,
-): FieldReadModelItem[] {
-  return stationReadModelSnFields(items, stationId, stationRef);
-}
-
-function findFieldForGpzSection(
-  items: readonly FieldReadModelItem[],
-  stationId: string | null | undefined,
-  stationRef: string | null | undefined,
-  gpzSectionId: string | null | undefined,
-): FieldReadModelItem | null {
-  const stationFields = findFieldsForStation(items, stationId, stationRef);
-  if (!gpzSectionId) {
-    return stationFields[0] ?? null;
-  }
-  return stationFields.find(
-    (item) => item.canonical_model.base_model.gpz_section_id === gpzSectionId,
-  ) ?? null;
-}
-
 function buildSectionsForElement(
   elementId: string,
   snapshot: EnergyNetworkModel | null,
   readinessIssues: ReadinessIssue[],
-  fieldItems: readonly FieldReadModelItem[],
   logicalViews?: LogicalViewsV1 | null,
   selectedElement?: SelectedElement | null,
-  ncRfgOperators: readonly NcRfgOperatorItem[] = [],
-  pfCurves: readonly PfCurveItem[] = [],
-  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (!snapshot) return { sections: [], elementType: '', elementName: '', actions: [] };
 
-  if (selectedElement) {
-    if (isConverterSourceSelection(selectedElement)) {
-      const converter = findGeneratorForSelectedConverter(selectedElement, snapshot);
-      if (converter || selectedElement.type === 'PVInverter' || selectedElement.type === 'BESSInverter') {
-        return buildAdvancedConverterSections(
-          selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
-        );
-      }
-    }
+  // Źródło przekształtnikowe: generator modelu o identyfikatorze selekcji (bez domysłu z
+  // podciągów identyfikatora albo z rodzaju selekcji).
+  if (selectedElement && findGeneratorForSelectedConverter(selectedElement, snapshot)) {
+    return dzialaniaZrodlaPrzeksztaltnikowego(selectedElement, snapshot);
   }
 
   if (hasSemanticSelection(selectedElement)) {
-    return buildSemanticSectionsForElement(
-      selectedElement,
-      snapshot,
-      readinessIssues,
-      fieldItems,
-      ncRfgOperators,
-      pfCurves,
-      dynamicProfiles,
-    );
+    return buildSemanticSectionsForElement(selectedElement, snapshot, readinessIssues);
   }
 
   const sections: PropertySection[] = [];
@@ -2097,7 +1341,7 @@ function buildSectionsForElement(
     actions.push({ id: 'edit', label: 'Edytuj parametry', op: 'update_element_parameters', context: { element_ref: transformer.ref_id } });
   }
 
-  // Try sources
+  // Sieć zasilająca: dane — karta techniczna (`kartaSieci`); tu wyłącznie operacja edycji.
   const source = snapshot.sources?.find((s) =>
     s.ref_id === elementId
     || s.id === elementId
@@ -2106,52 +1350,6 @@ function buildSectionsForElement(
   if (source) {
     elementType = 'source';
     elementName = source.name;
-    const sourceBus = findOperationalBus(snapshot, source.bus_ref);
-    const sourceSubstation = source.substation_ref
-      ? snapshot.substations?.find((station) => station.ref_id === source.substation_ref)
-      : null;
-    const sourceGpzSection = sourceSubstation?.gpz_sections?.find(
-      (section) => section.section_id === source.gpz_section_id,
-    ) ?? sourceSubstation?.gpz_sections?.[0] ?? null;
-    const sourceGpzField = findFieldForGpzSection(
-      fieldItems,
-      sourceSubstation?.id,
-      sourceSubstation?.ref_id,
-      sourceGpzSection?.section_id ?? source.gpz_section_id,
-    );
-    sections.push({
-      id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie GPZ', value: publicTechnicalLabel(source.ref_id, source.name) },
-        { key: 'name', label: 'Nazwa', value: source.name },
-        { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS.source },
-        { key: 'model', label: 'Model zastępczy', value: source.model },
-      ],
-    });
-    sections.push({
-      id: 'electrical', label: 'Parametry sieci', fields: [
-        { key: 'bus_voltage_kv', label: 'Napięcie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
-        { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
-        { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'Ω' },
-        { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'Ω' },
-        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
-        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
-        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
-        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
-        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
-        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
-        // (1,0 p.u.), zero fabrykacji.
-        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
-      ],
-    });
-    sections.push({
-      id: 'gpz', label: 'Sekcje GPZ', fields: [
-        { key: 'substation_ref', label: 'Stacja GPZ', value: sourceSubstation?.name ?? source.substation_ref ?? '?' },
-        { key: 'section_id', label: 'Sekcja źródła', value: sourceGpzSection?.section_id ?? source.gpz_section_id ?? '?' },
-        { key: 'section_name', label: 'Nazwa sekcji', value: sourceGpzSection?.name ?? '?' },
-        { key: 'line_field', label: 'Pole liniowe GPZ', value: sourceGpzField?.bay_name ?? sourceGpzSection?.line_field_name ?? '?' },
-      ],
-    });
     actions.push({ id: 'edit', label: 'Edytuj parametry', op: 'update_element_parameters', context: { element_ref: source.ref_id } });
   }
 
@@ -2178,7 +1376,7 @@ function buildSectionsForElement(
     actions.push({ id: 'create_converter_source_fw', label: 'Dodaj układ farmy wiatrowej z katalogu', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'FW' } });
   }
 
-  // Try generators (PV/BESS)
+  // Generator (PV/BESS/FW): dane — karta techniczna źródła; tu wyłącznie operacje modelu.
   const generator = snapshot.generators?.find((g) => g.ref_id === elementId);
   if (generator) {
     const semanticRole = generator.gen_type === 'bess'
@@ -2189,7 +1387,7 @@ function buildSectionsForElement(
         || generator.gen_type === 'fw_scig'
           ? 'WIND_SOURCE'
           : 'PV_INVERTER';
-    return buildSemanticConverterSections(
+    return dzialaniaZrodlaPrzeksztaltnikowego(
       {
         ...(selectedElement ?? {}),
         id: generator.ref_id,
@@ -2200,31 +1398,7 @@ function buildSectionsForElement(
         semanticEngineeringRole: semanticRole,
       } as SelectedElement,
       snapshot,
-      readinessIssues,
     );
-    elementType = generator!.gen_type ?? 'generator';
-    elementName = generator!.name;
-    sections.push({
-      id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie układu PV/BESS/FW', value: publicTechnicalLabel(generator!.ref_id, generator!.name) },
-        { key: 'name', label: 'Nazwa', value: generator!.name },
-        { key: 'gen_type', label: 'Typ', value: formatElementTypeLabel(generator!.gen_type ?? '') },
-      ],
-    });
-    sections.push({
-      id: 'electrical', label: 'Parametry elektryczne', fields: [
-        { key: 'p_mw', label: 'Moc czynna', value: generator!.p_mw, unit: 'MW' },
-        { key: 'q_mvar', label: 'Moc bierna', value: generator!.q_mvar ?? null, unit: 'Mvar' },
-        { key: 'connection_variant', label: 'Wariant przyłączenia', value: connectionVariantLabel(generator!.connection_variant) },
-      ],
-    });
-    sections.push({
-      id: 'catalog', label: 'Katalog', fields: [
-        { key: 'catalog_ref', label: 'Pozycja katalogowa', value: generator!.catalog_ref ?? '?' },
-      ],
-    });
-    actions.push({ id: 'assign_catalog', label: 'Przypisz katalog', op: 'assign_catalog_to_element', context: { element_ref: generator!.ref_id } });
-    actions.push({ id: 'edit', label: 'Edytuj parametry', op: 'update_element_parameters', context: { element_ref: generator!.ref_id } });
   }
 
   // Try loads
@@ -2279,19 +1453,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const {
     itemsByBayId,
     itemsByBayRef,
-    data: fieldReadModelData,
     isLoading: isFieldLoading,
     error: fieldReadModelError,
   } = useFieldReadModel();
-  // Karta FAB-J: profil NC RfG (operator + ride-through LVRT/HVRT) i krzywe P(f)
-  // WYŁĄCZNIE z backendu — zero drugiej kopii katalogu w tym module (patrz
-  // `pvCatalogLabel`/`buildAdvancedConverterSections` niżej).
-  const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
-  const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
-  // Karta FAB-L: profil dynamiczny DER WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
-  // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
-  // katalogu statycznego w tym module.
-  const dynamicProfiles = useDerDynamicProfiles().data ?? [];
   // UI-02b JEDEN-INSPEKTOR: sekcje przejęte z dawnej szuflady kanwy (działania z rejestru
   // menu, wyniki elementu, węzeł SN, stan aparatu, szkic DER) — dla TEJ SAMEJ selekcji.
   const stanPanelu = useStanPaneluElementu();
@@ -2347,12 +1511,10 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       : null,
     [selectedElement, snapshot],
   );
-  const selectedConverterRole = selectedElement && isConverterSourceSelection(selectedElement)
-    ? converterRoleForGenerator(selectedElement, selectedConverterGenerator)
+  const selectedConverterRole = selectedConverterGenerator
+    ? converterRoleForGenerator(selectedConverterGenerator)
     : null;
-  const selectedConverterRef = selectedConverterGenerator?.ref_id ?? (
-    selectedConverterRole ? elementId : null
-  );
+  const selectedConverterRef = selectedConverterRole ? selectedConverterGenerator?.ref_id ?? null : null;
   const calculationProofRefs = useMemo(
     () => buildCalculationProofCandidateRefs(elementId, selectedElement, snapshot),
     [elementId, selectedElement, snapshot],
@@ -2387,25 +1549,17 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         elementId ?? '',
         snapshot,
         readinessIssues,
-        fieldReadModelData.fields,
         logicalViews,
         selectedElement,
-        ncRfgOperators,
-        pfCurves,
-        dynamicProfiles,
       );
     },
     [
       aparatZaznaczenia,
       elementId,
       fieldReadModelError,
-      fieldReadModelData.fields,
       isSelectedBay,
       isFieldLoading,
       logicalViews,
-      ncRfgOperators,
-      pfCurves,
-      dynamicProfiles,
       readinessIssues,
       selectedBayField,
       selectedBayKatalog,
@@ -2619,14 +1773,14 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   );
   const publicElementId = publicTechnicalLabel(elementId, elementName);
   // Podtytuł źródła przekształtnikowego: REALNY wariant przyłączenia z ENM
-  // (`connection_variant` generatora → `connectionVariantLabel`), nie stała.
+  // (`connection_variant` generatora → `wariantPrzylaczeniaPl`), nie stała.
   // Poprzedni hardkod „PV za transformatorem SN/nN" kłamał podwójnie: rola
   // (farma wiatrowa/BESS dostawały „PV") i wariant (nn_side ≠ blokowo przez
   // transformator) — dokładnie ta regresja, której pilnował test
   // InspectorEngineeringView „pokazuje kanoniczne etykiety…", wykluczony
   // w vite.config zamiast naprawiony (dług zlikwidowany 2026-07-17).
   const headerSubtitle = headerIsConverterSource
-    ? `${formatElementTypeLabel(elementType)} - ${connectionVariantLabel(selectedConverterGenerator?.connection_variant)}`
+    ? `${formatElementTypeLabel(elementType)} - ${wariantPrzylaczeniaPl(selectedConverterGenerator?.connection_variant) ?? '—'}`
     : `${formatElementTypeLabel(elementType)} - Oznaczenie: ${publicElementId}`;
 
   return (

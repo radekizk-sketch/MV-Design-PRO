@@ -7,6 +7,7 @@ import type { TopologyStructure } from '../../../ui/topology/api';
 import type { ReadinessIssue } from '../../../ui/types';
 import type { StudyCaseListItem } from '../../../ui/study-cases/types';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
+import { NAV_STRINGS } from '../strings';
 
 // ---------------------------------------------------------------------------
 // topologyTreeAdapter — fixture o kształcie GET /enm/topology/summary
@@ -170,12 +171,30 @@ describe('topologyTreeAdapter — mapowanieTopologiiDoDrzewa', () => {
     );
     const gpz = wynik.find((g) => g.id === 'SUB-GPZ')!;
     expect(gpz).toBeDefined();
-    expect(gpz.etykietaPL).toBe('SUB-GPZ'); // brak `name` w fixture -> fallback do ref
+    // Brak `name` w fixture → polska etykieta z referencji (`etykietaZapasowaRefu`); referencja
+    // fixture nie ma segmentu maszynowego, więc zostaje czytelnym członem.
+    expect(gpz.etykietaPL).toBe('SUB-GPZ');
     expect(gpz.dzieci.map((d) => d.id)).toEqual(['GPZ']);
 
     const st1 = wynik.find((g) => g.id === 'SUB-ST1')!;
     expect(st1.etykietaPL).toBe('Stacja Kowalska');
     expect(st1.dzieci.map((d) => d.id)).toEqual(['ST-1']);
+  });
+
+  it('tryb "administracyjny": stacja bez nazwy z referencją modelu — etykieta bez odcisku referencji', () => {
+    const struktura = topologyStructureFixture();
+    const ref = 'stn/0123456789abcdef';
+    const zmieniona: TopologyStructure = {
+      ...struktura,
+      substations: struktura.substations.map((st) => (st.ref_id === 'SUB-GPZ' ? { ...st, ref_id: ref } : st)),
+      bays: struktura.bays.map((b) => (b.substation_ref === 'SUB-GPZ' ? { ...b, substation_ref: ref } : b)),
+    };
+    const wynik = mapowanieTopologiiDoDrzewa(topologySummaryFixture(), [], 'administracyjny', zmieniona);
+    const grupa = wynik.find((g) => g.id === ref)!;
+    expect(grupa).toBeDefined();
+    expect(grupa.etykietaPL).not.toContain('0123456789abcdef');
+    expect(grupa.etykietaPL).not.toContain('stn/');
+    expect(grupa.etykietaPL.length).toBeGreaterThan(0);
   });
 
   it('tryb "administracyjny": szyna bez pola (ST-2, LAT-1, ISO-1/2) trafia do grupy „Poza stacją" (zero gubienia)', () => {
@@ -300,9 +319,17 @@ describe('runsTreeAdapter — mapowaniePrzebiegowDoDrzewa', () => {
     expect(grupaA.dzieci.map((d) => d.id)).toEqual(['run-1', 'run-2']); // posortowane wg started_at
   });
 
-  it('grupa bez rozpoznanej nazwy przypadku pokazuje surowe id (fallback udokumentowany)', () => {
-    const wynik = mapowaniePrzebiegowDoDrzewa([runFixture({ study_case_id: 'case-x' })], new Map());
-    expect(wynik[0].etykietaPL).toBe('case-x');
+  // Przepisany (2026-11): dawniej test przypinał surowy identyfikator przypadku jako etykietę
+  // grupy — kod na ekranie. Przypadek spoza listy (usunięty albo lista niewczytana) i przypadek
+  // bez nazwy dostają jawny opis; identyfikator zostaje tylko kluczem węzła.
+  it.each([
+    ['spoza listy przypadków', new Map<string, string>()],
+    ['z pustą nazwą', new Map([['case-x', '']])],
+  ])('grupa przypadku %s: opis zamiast identyfikatora', (_opis, nazwy) => {
+    const wynik = mapowaniePrzebiegowDoDrzewa([runFixture({ study_case_id: 'case-x' })], nazwy);
+    expect(wynik[0].etykietaPL).toBe(NAV_STRINGS.przypadekSpozaListy);
+    expect(wynik[0].etykietaPL).not.toContain('case-x');
+    expect(wynik[0].id).toBe('case-x');
   });
 
   it('przebieg FAILED ustawia liczniki.blokady = 1 (jedyny jednoznaczny sygnał problemu)', () => {

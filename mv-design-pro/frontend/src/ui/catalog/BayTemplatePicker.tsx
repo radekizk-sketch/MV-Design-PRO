@@ -168,20 +168,67 @@ export interface CompleteMvBayTemplateSummary {
   readonly device_instances?: readonly BayDeviceInstanceWire[];
 }
 
-const ETYKIETA_STATUSU_ZRODLA: Record<BayTemplateSourceStatus, string> = {
-  official_catalog: 'Oficjalny katalog producenta',
-  repo_verified: 'Zweryfikowany w repozytorium',
-  user_defined: 'Definicja użytkownika',
-  canonical_fallback: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
-  requires_catalog: 'Wymaga uzupełnienia katalogu',
-  incomplete_requires_review: 'Niekompletny — wymaga przeglądu',
+/**
+ * Grupa statusu źródła szablonu pola — poziom, na którym kreatory opisują pakiet
+ * („pakiet katalogowy", „pakiet użytkownika", „poza konfiguracją projektową") i którym
+ * rozstrzyga się kompletność pakietu (`isCompleteSourceStatus`).
+ */
+export type GrupaZrodlaSzablonu = 'PAKIET_KATALOGOWY' | 'PAKIET_UZYTKOWNIKA' | 'POZA_KONFIGURACJA';
+
+/**
+ * JEDNO źródło prawdy statusu źródła szablonu pola: nazwa szczegółowa (inspektor) i grupa
+ * (kreatory, podgląd rozdzielnicy, kompletność). Dawniej dwie niezależne tablice —
+ * szczegółowa tu i grupująca `SOURCE_STATUS_LABEL_PL` w `InsertStationFormHelpers.ts`
+ * — plus trzecia kopia podziału w `isCompleteSourceStatus`; nowy status mógł trafić do
+ * jednej z nich. Rekord jest totalny względem unii (sprawdzenie kompilatora).
+ */
+const STATUS_ZRODLA: Readonly<
+  Record<BayTemplateSourceStatus, { readonly etykieta: string; readonly grupa: GrupaZrodlaSzablonu }>
+> = {
+  official_catalog: { etykieta: 'Oficjalny katalog producenta', grupa: 'PAKIET_KATALOGOWY' },
+  repo_verified: { etykieta: 'Zweryfikowany w repozytorium', grupa: 'PAKIET_KATALOGOWY' },
+  user_defined: { etykieta: 'Definicja użytkownika', grupa: 'PAKIET_UZYTKOWNIKA' },
+  canonical_fallback: {
+    etykieta: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
+    grupa: 'POZA_KONFIGURACJA',
+  },
+  requires_catalog: { etykieta: 'Wymaga uzupełnienia katalogu', grupa: 'POZA_KONFIGURACJA' },
+  incomplete_requires_review: {
+    etykieta: 'Niekompletny — wymaga przeglądu',
+    grupa: 'POZA_KONFIGURACJA',
+  },
 };
+
+/** Nazwy grup statusu źródła (teksty kreatorów). */
+export const NAZWA_GRUPY_ZRODLA_PL: Readonly<Record<GrupaZrodlaSzablonu, string>> = {
+  PAKIET_KATALOGOWY: 'pakiet katalogowy',
+  PAKIET_UZYTKOWNIKA: 'pakiet użytkownika',
+  POZA_KONFIGURACJA: 'poza konfiguracją projektową',
+};
+
+function wpisStatusuZrodla(status: string): (typeof STATUS_ZRODLA)[BayTemplateSourceStatus] | null {
+  return Object.prototype.hasOwnProperty.call(STATUS_ZRODLA, status)
+    ? STATUS_ZRODLA[status as BayTemplateSourceStatus]
+    : null;
+}
 
 /** Nazwa statusu źródła szablonu pola. */
 export function etykietaStatusuZrodlaSzablonuPl(status: BayTemplateSourceStatus): string {
-  return Object.prototype.hasOwnProperty.call(ETYKIETA_STATUSU_ZRODLA, status)
-    ? ETYKIETA_STATUSU_ZRODLA[status]
-    : 'Nieznany status źródła';
+  return wpisStatusuZrodla(status)?.etykieta ?? 'Nieznany status źródła';
+}
+
+/** Grupa statusu źródła (`null` — status spoza unii kontraktu). */
+export function grupaZrodlaSzablonu(status: string): GrupaZrodlaSzablonu | null {
+  return wpisStatusuZrodla(status)?.grupa ?? null;
+}
+
+/**
+ * Nazwa grupy statusu źródła — status spoza słownika (wartość z sieci spoza unii kontraktu)
+ * dostaje opis jawny, nigdy `undefined` ani kod.
+ */
+export function grupaZrodlaSzablonuPl(status: string): string {
+  const grupa = grupaZrodlaSzablonu(status);
+  return grupa ? NAZWA_GRUPY_ZRODLA_PL[grupa] : 'status źródła spoza słownika aplikacji';
 }
 
 /**

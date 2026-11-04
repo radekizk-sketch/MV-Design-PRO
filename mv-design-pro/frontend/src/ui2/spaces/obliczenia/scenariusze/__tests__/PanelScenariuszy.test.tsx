@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStateStore } from '../../../../../ui/app-state';
 import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../../../wyniki/kontekst/kontekstWyniku';
 import { useFaultScenariosStore } from '../../../../../ui/fault-scenarios/store';
+import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 import { PanelScenariuszy } from '../PanelScenariuszy';
 import { SCENARIUSZE_STRINGS as T } from '../strings';
 import { useZadanieCzasuTb } from '../zadanieCzasuTb';
@@ -206,6 +207,29 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
     expect(await screen.findByTestId('mvd-scenariusze-wiersz-s1')).toBeTruthy();
     expect(screen.getByTestId('mvd-scenariusze-wiersz-s1').textContent).toContain('Zwarcie w GPZ');
     expect(screen.getByTestId('mvd-scenariusze-wiersz-s1').textContent).toContain('Szyna: bus-1');
+  });
+
+  // Miejsce zwarcia: nazwa obiektu z migawki modelu (to samo źródło co schemat), a gdy migawka
+  // obiektu nie zna — polska etykieta rodzaju bez odcisku. Identyfikator nie trafia na ekran.
+  it.each([
+    ['z migawką modelu', 'bus-1', true, 'Szyna: Szyna SN GPZ Północ', 'bus-1'],
+    ['bez migawki, referencja modelu z odciskiem', 'stn/0123456789abcdef/sn_bus', false, 'Szyna: ', '0123456789abcdef'],
+  ] as const)('LISTA: miejsce zwarcia po nazwie — %s', async (_opis, ref, zMigawka, oczekiwane, zakazane) => {
+    useSnapshotStore.setState({
+      snapshot: zMigawka
+        ? ({ buses: [{ id: 'bus-1', ref_id: 'bus-1', name: 'Szyna SN GPZ Północ', voltage_kv: 15 }] } as never)
+        : null,
+    } as never);
+    const sc = scenariusz('s1', 'Zwarcie w GPZ');
+    zamontujBackend([{ ...sc, location: { ...sc.location, element_ref: ref } }]);
+    try {
+      render(<PanelScenariuszy />);
+      const wiersz = await screen.findByTestId('mvd-scenariusze-wiersz-s1');
+      expect(wiersz.textContent).toContain(oczekiwane);
+      expect(wiersz.textContent).not.toContain(zakazane);
+    } finally {
+      useSnapshotStore.setState({ snapshot: null } as never);
+    }
   });
 
   it('DODANIE: pola formularza jadą do żądania 1:1 z kontraktem', async () => {

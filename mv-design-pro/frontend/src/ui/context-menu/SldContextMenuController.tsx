@@ -23,7 +23,6 @@ import {
   type SldMenuAction,
   type StanLacznikaMenu,
 } from '../sld/v2/command/SldCommandService';
-import type { SymbolId } from '../sld/v3/symbols/defs';
 import type { ContextMenuAction, OperatingMode } from '../types';
 import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
 import { ContextMenu } from './ContextMenu';
@@ -48,8 +47,10 @@ export interface SldMenuContext {
    *  wołający jej nie zasilał). */
   readonly branchStartAvailable?: boolean;
   readonly hasResults?: boolean;
-  /** Rodzaj trafionego aparatu pola (`SymbolId` sceny v3, `shared/identyfikatorAparatu.ts`). */
-  readonly symbolAparatu?: SymbolId;
+  /** Trafiony aparat pola jest punktem wyprowadzenia ciągu głównego SN
+   *  (`shared/identyfikatorAparatu.ts::jestPunktemWyprowadzeniaCiagu`, ten sam predykat co
+   *  wykonawca akcji); brak klucza = nie jest punktem. */
+  readonly aparatWyprowadzaCiag?: boolean;
   /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */
   readonly stationHasNnBus?: boolean;
   /** Karta S9-5 → S95-START: dostępność punktu startu ciągu SN per pozycja kontynuacji

@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useSnapshotStore, type SnapshotOperationHistoryEntry } from '../topology/snapshotStore';
 import type { CanonicalOpName } from '../../types/domainOps';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 type StatusFilter = 'all' | 'success' | 'error' | 'pending';
 
@@ -83,8 +84,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
 function operationLabel(entry: SnapshotOperationHistoryEntry): string {
   return (
     entry.operationLabel
-    ?? (OPERATION_LABELS_PL as Readonly<Record<string, string>>)[entry.operation]
-    ?? entry.operation
+    ?? etykietaZeSlownika(OPERATION_LABELS_PL, entry.operation)
   );
 }
 

@@ -49,11 +49,11 @@ import {
   type SwitchgearFamily,
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import {
+  grupaZrodlaSzablonuPl,
   nazwaSzablonuPolaPl,
   type CompleteMvBayTemplateSummary,
 } from '../../../ui/catalog/BayTemplatePicker';
 import {
-  grupaZrodlaSzablonuPl,
   type SnFieldRole,
   type StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';

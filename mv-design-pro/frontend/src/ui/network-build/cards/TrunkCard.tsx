@@ -12,35 +12,30 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import type { OverheadLine, Cable } from '../../../types/enm';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
+const CORRIDOR_TYPE_LABEL_PL: Readonly<Record<string, string>> = {
+  radial: 'Promieniowy',
+  ring: 'Pierścieniowy',
+  mixed: 'Mieszany',
+};
+
 function corridorTypeLabel(type: string): string {
-  switch (type) {
-    case 'radial':
-      return 'Promieniowy';
-    case 'ring':
-      return 'Pierścieniowy';
-    case 'mixed':
-      return 'Mieszany';
-    default:
-      return type;
-  }
+  return etykietaZeSlownika(CORRIDOR_TYPE_LABEL_PL, type);
 }
 
+const TERMINAL_STATUS_LABEL_PL: Readonly<Record<string, string>> = {
+  OTWARTY: 'Wolny',
+  ZAJETY: 'Zajęty',
+  ZAREZERWOWANY_DLA_RINGU: 'Zarezerwowany dla pierścienia',
+};
+
 function terminalStatusLabel(status: string): string {
-  switch (status) {
-    case 'OTWARTY':
-      return 'Wolny';
-    case 'ZAJETY':
-      return 'Zajęty';
-    case 'ZAREZERWOWANY_DLA_RINGU':
-      return 'Zarezerwowany dla pierścienia';
-    default:
-      return status;
-  }
+  return etykietaZeSlownika(TERMINAL_STATUS_LABEL_PL, status);
 }
 
 function terminalStatusSeverity(status: string): 'ok' | 'warning' | 'error' | undefined {
@@ -56,15 +51,13 @@ function terminalStatusSeverity(status: string): 'ok' | 'warning' | 'error' | un
   }
 }
 
+const BRANCH_TYPE_LABEL_PL: Readonly<Record<string, string>> = {
+  line_overhead: 'linia napowietrzna',
+  cable: 'kabel',
+};
+
 function branchTypeLabel(type: string): string {
-  switch (type) {
-    case 'line_overhead':
-      return 'linia napowietrzna';
-    case 'cable':
-      return 'kabel';
-    default:
-      return type;
-  }
+  return etykietaZeSlownika(BRANCH_TYPE_LABEL_PL, type);
 }
 
 function portRoleLabel(portId: string): string {

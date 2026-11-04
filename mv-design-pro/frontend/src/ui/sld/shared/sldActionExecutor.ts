@@ -63,7 +63,7 @@ import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
 import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
-import { jestGlowicaKablowa, rozbierzIdentyfikatorAparatu } from './identyfikatorAparatu';
+import { jestPunktemWyprowadzeniaCiagu, rozbierzIdentyfikatorAparatu } from './identyfikatorAparatu';
 import type { OperacjaNn } from '../v3/lv-domain/operacjeNn';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
@@ -607,12 +607,13 @@ export function buildSldOperationContext(
   let operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
   let operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
   // „Wyprowadź ciąg główny z głowicy": punktem startu jest WYŁĄCZNIE pole tej głowicy —
-  // głowica innego aparatu nie istnieje, a pole już niosące kabel (zajętość z modelu
+  // aparat musi być punktem wyprowadzenia (głowica albo zakończenie pola wolnego z głowicą
+  // w rekordzie, `jestPunktemWyprowadzeniaCiagu`), a pole już niosące kabel (zajętość z modelu
   // odczytu backendu, `line_fields`) nie wyprowadza drugiego ciągu (kanon POLA-W-TORZE).
   // Resolver dostępności menu woła TĘ funkcję, więc pozycja menu i operacja mają jeden
   // predykat; dawna bramka `bayHasOutgoingRun` nie miała żadnego pisarza.
   if (kind === 'apparatus' && actionId === 'extend-trunk') {
-    if (!apparatusSelection || !jestGlowicaKablowa(apparatusSelection.symbolId)) return null;
+    if (!apparatusSelection || !jestPunktemWyprowadzeniaCiagu(snapshot, apparatusSelection)) return null;
     if (!poleLinioweWolne(logicalViews, apparatusSelection.bayRef)) return null;
   }
   // K5-A: ogranicznik z aparatu BEZ kompozytu `bayRef#kind` (scena v3 niesie

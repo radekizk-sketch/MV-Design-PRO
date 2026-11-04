@@ -19,6 +19,8 @@
  * nakładki aparatury kanwy v2 i do skasowanego widoku wewnętrznego stacji — nic na kanwie
  * v3 ich nie emitowało, więc gałęzie, które na nie czekały, były martwe.
  */
+import type { EnergyNetworkModel } from '../../../types/enm';
+import { pole } from '../../shared/polaStacji';
 import { SYMBOL_DEFS, type SymbolId } from '../v3/symbols/defs';
 
 /** Rola techniczna elementu przedstawianego symbolem — tabela ZAMKNIĘTA (`Record<SymbolId>`):
@@ -104,7 +106,28 @@ export function nazwaAparatuPl(symbolId: SymbolId): string {
   return SYMBOL_DEFS[symbolId].labelPl;
 }
 
-/** Głowica kablowa — jedyny aparat, z którego wyprowadza się ciąg główny SN. */
-export function jestGlowicaKablowa(symbolId: SymbolId | null | undefined): boolean {
-  return symbolId === 'cableHead';
+/** Rekord pola niesie głowicę kablową (`primary_devices` z rodzajem `CABLE_HEAD`). */
+export function poleMaGlowiceKablowa(snapshot: EnergyNetworkModel | null, bayRef: string): boolean {
+  return (pole(snapshot, bayRef)?.primary_devices ?? []).some((u) => u.kind === 'CABLE_HEAD');
+}
+
+/**
+ * Punkt wyprowadzenia ciągu głównego SN na kanwie — JEDEN predykat rodzaju aparatu dla menu
+ * kanwy, paska działań inspektora (`akcjeElementu.kontekstDostepnosciAkcji` →
+ * `SldCommandService.getMenuActions`) i wykonawcy (`sldActionExecutor.buildSldOperationContext`).
+ * Ciąg wychodzi z głowicy kablowej pola. Kanon rysunku pola wolnego/rezerwowego
+ * (`v3/compose/apparatusSequence.ts::czyGlowicaRezerwy`) nie rysuje głowicy, lecz kończy pole
+ * symbolem `bayReserve` — wtedy punktem wyprowadzenia jest to zakończenie, o ile rekord pola
+ * ma głowicę kablową (głowica istnieje w modelu, rysunek jej nie pokazuje). Zakończenie pola
+ * bez rekordu głowicy nie jest punktem (brak głowicy = brak odejścia kablowego). Zajętość pola
+ * (`zajetoscPol.poleLinioweWolne`) rozstrzyga wykonawca osobno, tym samym warunkiem dla głowicy
+ * pola zajętego i zakończenia pola wolnego.
+ */
+export function jestPunktemWyprowadzeniaCiagu(
+  snapshot: EnergyNetworkModel | null,
+  aparat: IdentyfikatorAparatu | null,
+): boolean {
+  if (!aparat) return false;
+  if (aparat.symbolId === 'cableHead') return true;
+  return aparat.symbolId === 'bayReserve' && poleMaGlowiceKablowa(snapshot, aparat.bayRef);
 }

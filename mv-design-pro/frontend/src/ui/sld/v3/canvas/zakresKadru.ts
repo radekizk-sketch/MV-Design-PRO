@@ -38,6 +38,7 @@ import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildS
 import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
@@ -280,8 +281,10 @@ function unikalnePosortowane(refy: Iterable<string>): string[] {
   return [...new Set(refy)].sort();
 }
 
+/** Nazwa celu ścieżki kadru; obiekt bez nazwy w modelu dostaje polską etykietę rodzaju z
+ *  referencji (`etykietaZapasowaRefu`, ten sam most co ekrany wyników), nie identyfikator. */
 function nazwa(ix: IndeksModelu, ref: string): string {
-  return ix.nazwy.get(ref) ?? ref;
+  return ix.nazwy.get(ref) || etykietaZapasowaRefu(ref);
 }
 
 // ---------------------------------------------------------------------------

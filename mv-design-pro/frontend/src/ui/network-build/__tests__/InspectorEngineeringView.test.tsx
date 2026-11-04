@@ -277,17 +277,13 @@ describe('InspectorEngineeringView', () => {
     );
   });
 
-  it('opisuje zrodlo przeksztaltnikowe po roli semantycznej, gdy ENM nie rozstrzyga (gen_type nieznany)', () => {
-    // Odbudowa 2026-07-17 — ROZSTRZYGNIĘCIE kontraktu (ENM-first): gdy rekord
-    // `Generator` w ENM NIESIE `gen_type`, wygrywa ENM (źródło prawdy modelu),
-    // nie rola semantyczna selekcji — stary wariant tego testu żądał odwrotnie
-    // (selekcja PV_INVERTER miała przykryć gen_type=wind_inverter), co
-    // przeczyło hierarchii prawdy V12K. Rola semantyczna selekcji rozstrzyga
-    // WYŁĄCZNIE, gdy selekcja nie rozwiązuje się do rekordu generatora ENM —
-    // wtedy komponent NIE zgaduje po gen_type (bo go nie ma), tylko honoruje
-    // semantykę (tu: PV zamiast domysłu „farma wiatrowa" z jedynego rekordu).
-    // Id celowo BEZ członu `/pv/` (gramatyka ścieżek źródeł przekształtnikowych) —
-    // selekcja ma reprezentować źródło NIEROZWIĄZYWALNE do rekordu ENM.
+  it('selekcja źródła bez rekordu ENM: bez atrapy sekcji z roli semantycznej i bez cudzego generatora', () => {
+    // Przepisany do kanonu karty K6 (2026-11): opis źródła pochodzi WYŁĄCZNIE z pól rekordu
+    // `Generator` modelu. Dawniej, gdy selekcja nie rozwiązywała się do rekordu ENM, widok
+    // rysował sekcje „Układ PV … do konfiguracji” z samej roli semantycznej selekcji — opis
+    // obiektu, którego model nie zna (fantom). Intencja poprzedniej wersji zostaje: widok nie
+    // zgaduje roli z jedynego rekordu modelu (tu farma wiatrowa) i nie wypisuje kodu `gen_type`.
+    // Id celowo BEZ członu `/pv/` — selekcja reprezentuje źródło NIEROZWIĄZYWALNE do rekordu ENM.
     mockSelectedElements = [{
       id: 'zrodlo_pv_inverter_001',
       type: 'PVInverter',
@@ -298,13 +294,13 @@ describe('InspectorEngineeringView', () => {
     }];
     mockReadinessIssues = [];
 
-    render(<InspectorEngineeringView />);
+    const { container } = render(<InspectorEngineeringView />);
 
-    expect(screen.getAllByText((content) => content.includes('Układ PV')).length).toBeGreaterThan(0);
-    expect(
-      screen.queryByText((content) => content.includes('farmy wiatrowej')),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('wind_inverter')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('inspektor-karta')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('Układ PV');
+    expect(container.textContent ?? '').not.toContain('farmy wiatrowej');
+    expect(container.textContent ?? '').not.toContain('wind_inverter');
+    expect(screen.getByText('Zaznacz element na SLD')).toBeInTheDocument();
   });
 
   it('renderuje pole SN z kanonicznego field read-modelu zamiast z lokalnych heurystyk', () => {

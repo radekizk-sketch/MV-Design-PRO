@@ -195,6 +195,8 @@ export const DYNAMIKA_STRINGS = {
   kanalyZaznaczonegoBrak: 'Zaznaczony element nie ma kanałów w tym biegu.',
   kanalyWyczysc: 'Wyczyść wybór',
   przebiegiBrakWyboru: 'Wybierz kanały z listy, żeby narysować przebiegi.',
+  // Kanał wybrany, którego opis wyniku nie zna (np. wybór sprzed przeliczenia) — opis zamiast klucza.
+  kanalSpozaOpisu: 'kanał spoza opisu wyniku',
   przebiegiLadowanie: 'Wczytywanie próbek…',
   przebiegiBlad: 'Nie udało się wczytać próbek przebiegu.',
   osCzasu: 'Czas',

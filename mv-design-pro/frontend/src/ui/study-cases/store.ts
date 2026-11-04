@@ -310,25 +310,6 @@ export function useIsLoading(): boolean {
 }
 
 /**
- * Hook: Get result status label in Polish.
- */
-export function useActiveCaseStatusLabel(): string {
-  const status = useActiveCaseResultStatus();
-  if (!status) return 'Nie wybrano zakresu obliczeń';
-
-  switch (status) {
-    case 'NONE':
-      return 'Wyniki do obliczenia';
-    case 'FRESH':
-      return 'Wyniki aktualne';
-    case 'OUTDATED':
-      return 'Wyniki nieaktualne — wymagane przeliczenie';
-    default:
-      return status;
-  }
-}
-
-/**
  * PR-4: Hook — Are active case results valid for use/export?
  *
  * Returns true ONLY when result_status === 'FRESH'.

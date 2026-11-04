@@ -36,6 +36,16 @@ import type {
 import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
+import { nazwaSzablonuPoReferencjiPl, type CompleteMvBayTemplateSummary } from '../../catalog/BayTemplatePicker';
+import {
+  formatDerDynamicProfileLabelPl,
+  getDerDynamicProfile,
+  getNcRfgOperator,
+  type DerDynamicProfileItem,
+  type NcRfgOperatorItem,
+} from '../../network-build/station-der/derRemoteCatalogs';
+import { wariantPrzylaczeniaPl } from '../../network-build/der-configurator/wariantPrzylaczeniaPl';
+import { wiazaniaDerZGeneratora } from '../../network-build/station-der/zModelu';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import { nazwaWartosciKodowej, zWielkiejLitery } from '../../catalog/wartosciKodoweKarty';
 import {
@@ -61,6 +71,7 @@ import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/st
 import { symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import { ROLA_SYMBOLU_PL } from './identyfikatorAparatu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Kontrakt karty
@@ -155,9 +166,45 @@ export interface KartaTechniczna {
 export interface KatalogiKarty {
   readonly aparatySn: ReadonlyMap<string, MVApparatusType>;
   readonly transformatory: ReadonlyMap<string, { readonly name: string }>;
+  /** Przekształtniki źródeł OZE (`/api/catalog/converter-types`): nazwa i producent typu. */
+  readonly przeksztaltniki: ReadonlyMap<string, { readonly name: string; readonly manufacturer?: string }>;
+  /** Typy sieci zasilającej (`/api/catalog/source-system-types`): nazwa typu. */
+  readonly systemyZasilajace: ReadonlyMap<string, { readonly name: string }>;
+  /** Rodziny rozdzielnic SN (`/api/catalog/switchgear-families`): ref → nazwa rodziny. */
+  readonly rodzinyRozdzielnic: ReadonlyMap<string, string>;
+  /** Szablony pól SN (`/api/catalog/complete-bay-templates`). */
+  readonly szablonyPol: readonly CompleteMvBayTemplateSummary[];
+  /** Profile operatorów NC RfG (zakres Q, cos φ, obwiednie LVRT/HVRT). */
+  readonly operatorzyNcRfg: readonly NcRfgOperatorItem[];
+  /** Charakterystyki P(f) (`/api/v1/catalog/audit2`): id → nazwa. */
+  readonly krzywePf: ReadonlyMap<string, string>;
+  /** Profile modeli dynamicznych DER (`/api/catalog/der-dynamic-profiles`). */
+  readonly profileDynamiki: readonly DerDynamicProfileItem[];
 }
 
-export const KATALOGI_PUSTE: KatalogiKarty = { aparatySn: new Map(), transformatory: new Map() };
+export const KATALOGI_PUSTE: KatalogiKarty = {
+  aparatySn: new Map(),
+  transformatory: new Map(),
+  przeksztaltniki: new Map(),
+  systemyZasilajace: new Map(),
+  rodzinyRozdzielnic: new Map(),
+  szablonyPol: [],
+  operatorzyNcRfg: [],
+  krzywePf: new Map(),
+  profileDynamiki: [],
+};
+
+/**
+ * Pozycja katalogu przypisana w modelu, której nazwy karta nie zna (katalog jeszcze
+ * niewczytany albo pozycja spoza katalogu aplikacji) — opis jawny zamiast identyfikatora
+ * pozycji. Jedno źródło dla wszystkich wierszy „Typ katalogowy” i źródeł danych karty.
+ */
+export const POZYCJA_KATALOGU_BEZ_NAZWY_PL = 'pozycja katalogu bez nazwy w katalogu aplikacji';
+
+/** Nazwa typu katalogowego: nazwa z katalogu, opis jawny dla nieznanej pozycji, `null` bez pozycji. */
+function typKatalogowy(nazwa: string | null | undefined, ref: unknown): string | null {
+  return napis(nazwa) ?? (napis(ref) ? POZYCJA_KATALOGU_BEZ_NAZWY_PL : null);
+}
 
 /**
  * Pola WYMAGANE karty per rodzaj (klucze wierszy i tabel). Przypięte testem parytetu
@@ -225,6 +272,7 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'moc',
     'jednostki',
     'typ',
+    'producent',
     'tryb_regulacji',
     'modul_ncrfg',
     'wariant',
@@ -232,8 +280,19 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'pole_zrodlowe',
     'tr_blokowy',
     'kabel_sn',
+    'profil_ncrfg',
+    'zakres_q',
+    'cos_phi_min',
+    'krzywa_pf',
+    'lvrt',
+    'hvrt',
+    'model_dynamiczny',
+    'zab_urzadzenie',
+    'zab_wylacznik',
+    'zab_obiekt',
+    'zab_zakres',
   ],
-  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min', 'u_set'],
+  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'model', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min', 'u_set'],
   szyna: ['nazwa', 'napiecie', 'stacja', 'pola', 'galezie'],
 };
 
@@ -331,13 +390,6 @@ const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_typ
   custom: 'inne (definicja użytkownika)',
 };
 
-const WARIANT_PRZYLACZENIA_PL: Readonly<Record<string, string>> = {
-  nn_side: 'po stronie nN stacji',
-  LV_BEHIND_STATION_TRANSFORMER: 'po stronie nN stacji',
-  block_transformer: 'po stronie SN przez transformator blokowy',
-  DEDICATED_MV_CONNECTION: 'po stronie SN przez transformator blokowy',
-  SOURCE_CONNECTION_STATION: 'stacja przyłączeniowa źródła',
-};
 
 /** Etykieta trybu regulacji — słownik nastawy modelu, potem jeden słownik wartości kodowych
  *  karty katalogowej (`ConverterType.control_mode`); kod spoza obu — jawne zdanie, nie kod. */
@@ -369,7 +421,7 @@ export function zrodloDanychElementuPl(element: ElementZeZrodlem, nazwaKatalogu:
   const ref = napis(element.catalog_ref);
   if ((tryb === 'KATALOG' || (!tryb && element.parameter_source === 'CATALOG')) && ref) {
     const wersja = wersjaKatalogu(element);
-    return `katalog: ${nazwaKatalogu ?? ref}${wersja && wersja !== 'legacy' ? ` (wersja ${wersja})` : ''}`;
+    return `katalog: ${nazwaKatalogu ?? POZYCJA_KATALOGU_BEZ_NAZWY_PL}${wersja && wersja !== 'legacy' ? ` (wersja ${wersja})` : ''}`;
   }
   if (tryb === 'MIGRACJA') return 'dane przeniesione z poprzedniego modelu (bez pozycji katalogu)';
   if (tryb === 'EKSPERCKI_RECZNY' || element.parameter_source === 'OVERRIDE') return 'dane wpisane ręcznie przez projektanta';
@@ -585,11 +637,11 @@ function znamionaAparatu(aparat: AparatPola, katalogi: KatalogiKarty): ZnamionaA
     ithLiczba !== null
       ? `${zapisLiczby(ithLiczba, 'kA')}${czasIth !== null ? ` / ${zapisLiczby(czasIth, 's')}` : ''}`
       : wielkoscZwarciowaAparatu(null, rodzaj, 'i_th_ka');
-  const typ = kat?.name ?? (catalogRef ? `pozycja katalogu ${catalogRef}` : null);
+  const typ = typKatalogowy(kat?.name, catalogRef);
   const zrodloPl = galaz
     ? zrodloDanychElementuPl(galaz, kat?.name ?? null)
     : catalogRef
-      ? `katalog: ${kat?.name ?? catalogRef}`
+      ? `katalog: ${typ}`
       : null;
   return {
     typ,
@@ -617,7 +669,7 @@ function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly Aparat
   );
   if (przypisane.length > 0) {
     return przypisane
-      .map((pa) => `${publicTechnicalLabel(pa.name, 'Zabezpieczenie')} (${RODZAJ_ZABEZPIECZENIA_PL[pa.device_type] ?? pa.device_type})`)
+      .map((pa) => `${publicTechnicalLabel(pa.name, 'Zabezpieczenie')} (${etykietaZeSlownika(RODZAJ_ZABEZPIECZENIA_PL, pa.device_type)})`)
       .join(', ');
   }
   return null;
@@ -673,7 +725,7 @@ function odcinkiPrzySzynach(ix: IndeksModelu, szyny: ReadonlySet<string>): { gal
 
 function typOdcinka(galaz: Branch): string | null {
   const mp = galaz.materialized_params ?? null;
-  return napis(mp?.trade_name) ?? napis(mp?.name) ?? (napis(galaz.catalog_ref) ? `pozycja katalogu ${galaz.catalog_ref}` : null);
+  return typKatalogowy(napis(mp?.trade_name) ?? napis(mp?.name), galaz.catalog_ref);
 }
 
 function dlugoscOdcinka(galaz: Branch): string | null {
@@ -709,7 +761,7 @@ function wierszeTabliczki(tr: Transformer, katalogi: KatalogiKarty, edytowalne: 
     ? `${zapisLiczby(tr.uhv_kv, 'kV') ?? BRAK_DANYCH_PL} / ${zapisLiczby(tr.ulv_kv, 'kV') ?? BRAK_DANYCH_PL}`
     : null;
   return [
-    wiersz('tr_typ', 'Typ katalogowy', nazwaKat ?? (napis(tr.catalog_ref) ? `pozycja katalogu ${tr.catalog_ref}` : null)),
+    wiersz('tr_typ', 'Typ katalogowy', typKatalogowy(nazwaKat, tr.catalog_ref)),
     wiersz('tr_sn', 'Moc znamionowa Sₙ', zapisLiczby(tr.sn_mva, 'MVA'), { zrodloPl: z('sn_mva') }),
     wiersz('tr_napiecia', 'Napięcia Uₙ GN / DN', napiecia, { zrodloPl: z('uhv_kv') ?? z('ulv_kv') }),
     wiersz('tr_uk', 'Napięcie zwarcia uₖ', zapisLiczby(tr.uk_percent, '%'), { zrodloPl: z('uk_percent') }),
@@ -928,8 +980,27 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
       id: 'aparatura',
       tytul: 'Aparatura',
       wiersze: [
-        ...(napis(bay.switchgear_family_ref) ? [wiersz('rodzina', 'Rodzina rozdzielnicy', napis(bay.switchgear_family_ref))] : []),
-        ...(napis(bay.config_id) ? [wiersz('konfiguracja', 'Konfiguracja pola', napis(bay.config_id))] : []),
+        // Rodzina i szablon pola NAZWĄ z katalogu (identyfikator rodziny ani nieprzezroczysty
+        // `config_id` wyprowadzony z szablonu nie trafiają na ekran); pozycja, której katalog
+        // nie zna — opis jawny.
+        ...(napis(bay.switchgear_family_ref)
+          ? [
+              wiersz(
+                'rodzina',
+                'Rodzina rozdzielnicy',
+                katalogi.rodzinyRozdzielnic.get(bay.switchgear_family_ref!) ?? 'rodzina rozdzielnicy spoza katalogu rodzin',
+              ),
+            ]
+          : []),
+        ...(napis(bay.bay_template_ref)
+          ? [
+              wiersz(
+                'szablon',
+                'Szablon pola',
+                nazwaSzablonuPoReferencjiPl(bay.bay_template_ref!, katalogi.szablonyPol, katalogi.rodzinyRozdzielnic),
+              ),
+            ]
+          : []),
       ],
       tabele: [
         {
@@ -1154,7 +1225,91 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
   };
 }
 
-function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
+/** Zakres mocy biernej profilu operatora — udziały mocy znamionowej zapisane w procentach. */
+function zakresMocyBiernejPl(profil: NcRfgOperatorItem): string {
+  const { q_range_pct_pn_min: min, q_range_pct_pn_max: max } = profil.reactive_power;
+  return `od ${zapisLiczby(min * 100, '%', 1)} do ${zapisLiczby(max * 100, '%', 1)} Pₙ`;
+}
+
+/** Obwiednia FRT wskazana w modelu (`lvrt_curve_ref`/`hvrt_curve_ref` = profil operatora). */
+function obwiedniaFrtPl(
+  katalogi: KatalogiKarty,
+  ref: string | null,
+  rodzaj: 'lvrt' | 'hvrt',
+): string | null {
+  if (!ref) return null;
+  const profil = getNcRfgOperator(katalogi.operatorzyNcRfg, ref);
+  if (!profil) return 'obwiednia spoza katalogu profili operatorów';
+  return `${profil.operator_name_pl} · liczba punktów obwiedni: ${profil.ride_through[rodzaj].length}`;
+}
+
+/**
+ * Zgodność przyłączeniowa źródła: profil operatora NC RfG, charakterystyka P(f), obwiednie
+ * LVRT/HVRT i model dynamiczny FRT — wiązania z modelu źródła (`wiazaniaDerZGeneratora`,
+ * jedyne miejsce zapisu `set_der_catalog_bindings`), treść z katalogów. Wiązanie, którego
+ * katalog nie zna, dostaje opis jawny (nigdy identyfikator); brak wiązania = „brak danych".
+ */
+function sekcjaZgodnosciNcRfg(g: Generator, katalogi: KatalogiKarty): SekcjaKarty {
+  const { wiazania, profile } = wiazaniaDerZGeneratora(g);
+  const ncRfgRef = profile.nc_rfg_profile_ref;
+  const profil = getNcRfgOperator(katalogi.operatorzyNcRfg, ncRfgRef);
+  const pfRef = profile.pf_curve_ref;
+  const dynRef = wiazania.dynamic_model_ref;
+  const dynamika = getDerDynamicProfile(katalogi.profileDynamiki, dynRef);
+  return {
+    id: 'zgodnosc_ncrfg',
+    tytul: 'Zgodność przyłączeniowa (NC RfG, FRT)',
+    wiersze: [
+      wiersz(
+        'profil_ncrfg',
+        'Profil wymagań operatora',
+        profil ? profil.operator_name_pl : ncRfgRef ? 'profil spoza katalogu profili operatorów' : null,
+      ),
+      wiersz('zakres_q', 'Zakres mocy biernej', profil ? zakresMocyBiernejPl(profil) : null),
+      wiersz('cos_phi_min', 'Minimalny cos φ', profil ? zapisLiczby(profil.reactive_power.cos_phi_min, '') : null),
+      wiersz(
+        'krzywa_pf',
+        'Charakterystyka P(f)',
+        pfRef ? katalogi.krzywePf.get(pfRef) ?? 'charakterystyka spoza katalogu charakterystyk P(f)' : null,
+      ),
+      wiersz('lvrt', 'Obwiednia LVRT', obwiedniaFrtPl(katalogi, profile.lvrt_curve_ref, 'lvrt')),
+      wiersz('hvrt', 'Obwiednia HVRT', obwiedniaFrtPl(katalogi, profile.hvrt_curve_ref, 'hvrt')),
+      wiersz(
+        'model_dynamiczny',
+        'Model dynamiczny FRT',
+        dynamika ? formatDerDynamicProfileLabelPl(dynamika) : dynRef ? 'profil spoza katalogu modeli dynamicznych' : null,
+      ),
+    ],
+    zrodloPl: 'Wiązania profili z modelu źródła; treść z katalogów profili operatorów NC RfG, charakterystyk P(f) i modeli dynamicznych.',
+  };
+}
+
+/**
+ * Zabezpieczenie źródła: zamiar ochrony zapisany w modelu przy budowie źródła
+ * (`protection_intent` — pola kontraktu `_zamiar_ochrony_zrodla_nn`) i przypisanie
+ * zabezpieczenia chroniące to źródło (`protection_assignments[].meta.protected_object_ref`).
+ */
+function sekcjaZabezpieczeniaZrodla(ix: IndeksModelu, g: Generator): SekcjaKarty {
+  const zamiar =
+    rekord(rekord(g.materialized_params)?.protection_intent) ?? rekord(rekord(g.meta)?.protection_intent) ?? {};
+  const przypisanie =
+    (ix.model.protection_assignments ?? []).find(
+      (p) => napis(rekord(p.meta)?.protected_object_ref) === g.ref_id,
+    ) ?? null;
+  const metaPrzypisania = rekord(przypisanie?.meta) ?? {};
+  return {
+    id: 'zabezpieczenie_zrodla',
+    tytul: 'Zabezpieczenie źródła',
+    wiersze: [
+      wiersz('zab_urzadzenie', 'Urządzenie zabezpieczeniowe', napis(zamiar.device_label) ?? napis(przypisanie?.name)),
+      wiersz('zab_wylacznik', 'Wyłącznik źródła', napis(zamiar.breaker_role)),
+      wiersz('zab_obiekt', 'Chroniony obiekt', napis(zamiar.protected_object) ?? napis(metaPrzypisania.protected_object)),
+      wiersz('zab_zakres', 'Zakres analizy zabezpieczeniowej', napis(zamiar.analysis_scope) ?? napis(metaPrzypisania.analysis_scope)),
+    ],
+  };
+}
+
+function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): KartaTechniczna {
   const meta = rekord(g.meta) ?? {};
   const mp = g.materialized_params ?? null;
   const blokowy = g.connection_variant === 'block_transformer' || g.connection_variant === 'DEDICATED_MV_CONNECTION';
@@ -1175,6 +1330,7 @@ function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
       ? 'katalog przekształtnika (bez nastawy w modelu)'
       : null;
   const jednostki = liczba(g.n_parallel) ?? liczba(g.quantity);
+  const przeksztaltnik = napis(g.catalog_ref) ? katalogi.przeksztaltniki.get(g.catalog_ref!) ?? null : null;
   return {
     rodzaj: 'zrodlo',
     rodzajPl: formatGeneratorTypeLabelPl(g.gen_type ?? null),
@@ -1190,17 +1346,18 @@ function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
           wiersz('stacja', 'Stacja', nazwaStacji(ix, g.station_ref ?? null)),
           wiersz('moc', 'Moc czynna P', zapisLiczby(g.p_mw, 'MW')),
           wiersz('jednostki', 'Jednostki', jednostki !== null ? String(jednostki) : null),
-          wiersz('typ', 'Typ katalogowy przekształtnika', napis(mp?.name) ?? (napis(g.catalog_ref) ? `pozycja katalogu ${g.catalog_ref}` : null)),
+          wiersz('typ', 'Typ katalogowy przekształtnika', typKatalogowy(przeksztaltnik?.name, g.catalog_ref)),
+          wiersz('producent', 'Producent', napis(przeksztaltnik?.manufacturer)),
           wiersz('tryb_regulacji', 'Tryb regulacji', trybPl, { zrodloPl: zrodloTrybu }),
           wiersz('modul_ncrfg', 'Moduł NC RfG', g.nc_rfg_module ? `typ ${g.nc_rfg_module}` : null),
         ],
-        zrodloPl: zrodloDanychElementuPl(g, napis(mp?.name)),
+        zrodloPl: zrodloDanychElementuPl(g, przeksztaltnik?.name ?? null),
       },
       {
         id: 'tor_przylaczenia',
         tytul: 'Tor przyłączenia',
         wiersze: [
-          wiersz('wariant', 'Przyłączenie', g.connection_variant ? WARIANT_PRZYLACZENIA_PL[g.connection_variant] ?? null : null),
+          wiersz('wariant', 'Przyłączenie', wariantPrzylaczeniaPl(g.connection_variant)),
           wiersz('szyna_przylaczenia', 'Szyna falownika', opisSzyny(ix, g.bus_ref)),
           wiersz('pole_zrodlowe', blokowy ? FIELD_SOURCE_LABEL_PL : 'Pole źródłowe nN', nazwaPola(pole)),
           wiersz(
@@ -1223,12 +1380,33 @@ function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
           ),
         ],
       },
+      sekcjaZgodnosciNcRfg(g, katalogi),
+      sekcjaZabezpieczeniaZrodla(ix, g),
     ],
   };
 }
 
-function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
+/** Model zastępczy sieci zasilającej (`Source.model`) — słownik zamknięty unii kontraktu. */
+const MODEL_ZASTEPCZY_SIECI_PL: Readonly<Record<Source['model'], string>> = {
+  thevenin: 'impedancja Thevenina (R, X)',
+  short_circuit_power: 'moc zwarciowa Sₖ″ i stosunek R/X',
+  external_grid: 'sieć zewnętrzna',
+};
+
+function modelZastepczyPl(model: unknown): string | null {
+  if (typeof model !== 'string' || !model) return null;
+  return Object.prototype.hasOwnProperty.call(MODEL_ZASTEPCZY_SIECI_PL, model)
+    ? MODEL_ZASTEPCZY_SIECI_PL[model as Source['model']]
+    : 'model zastępczy spoza słownika aplikacji';
+}
+
+function kartaSieci(ix: IndeksModelu, s: Source, katalogi: KatalogiKarty): KartaTechniczna {
   const z = (k: string) => nadpisanie(s, k);
+  const stacja = s.substation_ref ? ix.stacje.get(s.substation_ref) ?? null : null;
+  const sekcjaGpz = stacja
+    ? (stacja.gpz_sections ?? []).find((sekcja) => sekcja.section_id === s.gpz_section_id) ?? null
+    : null;
+  const nazwaTypu = napis(s.catalog_ref) ? katalogi.systemyZasilajace.get(s.catalog_ref!)?.name ?? null : null;
   return {
     rodzaj: 'siec_zasilajaca',
     rodzajPl: 'Sieć zasilająca',
@@ -1242,7 +1420,11 @@ function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
           wiersz('nazwa', 'Nazwa', napis(s.name)),
           wiersz('stacja', 'Stacja', nazwaStacji(ix, s.substation_ref ?? null)),
           wiersz('szyna', 'Szyna przyłączenia', opisSzyny(ix, s.bus_ref)),
-          wiersz('typ', 'Typ katalogowy', napis(s.catalog_ref) ? `pozycja katalogu ${s.catalog_ref}` : null),
+          wiersz('typ', 'Typ katalogowy', typKatalogowy(nazwaTypu, s.catalog_ref)),
+          wiersz('model', 'Model zastępczy', modelZastepczyPl(s.model)),
+          ...(s.gpz_section_id
+            ? [wiersz('sekcja_gpz', 'Sekcja rozdzielni zasilającej', napis(sekcjaGpz?.name) ?? 'sekcja spoza listy sekcji stacji')]
+            : []),
         ],
       },
       {
@@ -1255,8 +1437,12 @@ function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
           wiersz('sk_min', 'Moc zwarciowa Sₖ″ min.', zapisLiczby(s.sk3_min_mva, 'MVA'), { zrodloPl: z('sk3_min_mva') }),
           wiersz('ik_min', 'Prąd zwarciowy Iₖ″ min.', zapisLiczby(s.ik3_min_ka, 'kA'), { zrodloPl: z('ik3_min_ka') }),
           wiersz('rx_min', 'Stosunek R/X (min.)', zapisLiczby(s.rx_ratio_min, ''), { zrodloPl: z('rx_ratio_min') }),
+          // Impedancja zastępcza modelu Thevenina (`Source.r_ohm`/`x_ohm`) — wiersze tylko,
+          // gdy model ją niesie (dla modelu mocy zwarciowej impedancję wyznacza solver).
+          ...(liczba(s.r_ohm) !== null ? [wiersz('r_zast', 'Rezystancja zastępcza R', zapisLiczby(s.r_ohm, 'Ω'), { zrodloPl: z('r_ohm') })] : []),
+          ...(liczba(s.x_ohm) !== null ? [wiersz('x_zast', 'Reaktancja zastępcza X', zapisLiczby(s.x_ohm, 'Ω'), { zrodloPl: z('x_ohm') })] : []),
         ],
-        zrodloPl: zrodloDanychElementuPl(s, null),
+        zrodloPl: zrodloDanychElementuPl(s, nazwaTypu),
       },
       {
         // CV-4.3 K7c: napięcie zadane szyny bilansującej (`Source.u_set_pu`) — parametr
@@ -1352,11 +1538,11 @@ export function buildKartaTechniczna(
     }
     case 'generator': {
       const g = (snapshot.generators ?? []).find((x) => x.ref_id === ref || x.id === ref);
-      return g ? kartaZrodla(ix, g) : null;
+      return g ? kartaZrodla(ix, g, katalogi) : null;
     }
     case 'grid_source': {
       const s = (snapshot.sources ?? []).find((x) => x.ref_id === ref || x.id === ref);
-      return s ? kartaSieci(ix, s) : null;
+      return s ? kartaSieci(ix, s, katalogi) : null;
     }
     case 'bus': {
       const bus = ix.szyny.get(ref);

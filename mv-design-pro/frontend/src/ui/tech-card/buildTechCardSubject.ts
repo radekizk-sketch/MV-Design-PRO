@@ -28,6 +28,7 @@ import {
 import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
+import { wariantPrzylaczeniaPl } from '../network-build/der-configurator/wariantPrzylaczeniaPl';
 import { stationSnBays } from '../network-build/stationSnFields';
 import { rolaKanonicznaPola } from '../shared/polaStacji';
 import { opisLacznikowPortow } from '../shared/stanLacznika';
@@ -569,7 +570,7 @@ function buildDerSubject(
         {
           key: 'wariant',
           label: 'Wariant przyłączenia',
-          value: connectionVariantLabel(generator.connection_variant ?? null),
+          value: wariantPrzylaczeniaPl(generator.connection_variant) ?? 'Do konfiguracji',
         },
         {
           key: 'modul_nc_rfg',
@@ -685,19 +686,6 @@ function derTypeLabel(genType: Generator['gen_type'] | null | undefined): string
   }
 }
 
-function connectionVariantLabel(variant: string | null): string {
-  switch (variant) {
-    case 'nn_side':
-    case 'block_transformer':
-      return 'Po stronie nN stacji (przez TR SN/nN)';
-    case 'DEDICATED_MV_CONNECTION':
-      return 'Dedykowane pole SN i transformator przyłączeniowy';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'Osobna stacja przyłączeniowa źródła';
-    default:
-      return 'Do konfiguracji';
-  }
-}
 
 function diagnosticsForRef(
   ref: string,

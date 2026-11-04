@@ -15,7 +15,6 @@ export {
   useCanEdit,
   useIsMutationBlocked,
   useModeLabel,
-  useResultStatusLabel,
 } from './selection';
 
 // Property Grid

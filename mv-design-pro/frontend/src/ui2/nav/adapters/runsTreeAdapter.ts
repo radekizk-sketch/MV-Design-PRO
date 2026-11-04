@@ -32,6 +32,7 @@ import { ANALYSIS_TYPE_LABELS, RUN_STATUS_LABELS } from '../../../ui/study-cases
 import { useSortedCases } from '../../../ui/study-cases/store';
 import { useWszystkiePrzebiegiProjektu } from '../../adapters/wszystkiePrzebiegiProjektu';
 import { LICZNIKI_ZERO, type WezelDrzewa } from '../treeModel';
+import { NAV_STRINGS } from '../strings';
 
 function etykietaPrzebiegu(run: ExecutionRun): string {
   return `${ANALYSIS_TYPE_LABELS[run.analysis_type]} — ${RUN_STATUS_LABELS[run.status]}`;
@@ -68,7 +69,7 @@ export function mapowaniePrzebiegowDoDrzewa(
     });
     grupy.push({
       id: caseId,
-      etykietaPL: nazwyPrzypadkow.get(caseId) ?? caseId,
+      etykietaPL: nazwyPrzypadkow.get(caseId) || NAV_STRINGS.przypadekSpozaListy,
       ikona: 'folder',
       liczniki: LICZNIKI_ZERO,
       dzieci: posortowane.map(przebiegLisc),

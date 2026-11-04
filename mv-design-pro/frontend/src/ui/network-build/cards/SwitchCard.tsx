@@ -26,6 +26,7 @@ import {
   etykietaPozycjiNormalnej,
   pozycjaNormalna,
 } from '../../shared/stanLacznika';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // =============================================================================
 // Helpers
@@ -42,38 +43,28 @@ const PARAMETER_SOURCE_LABELS_PL: Record<NonNullable<SwitchBranch['parameter_sou
   MANUAL_EQUIVALENT: 'Zastępczy ręczny',
 };
 
+const SWITCH_TYPE_LABEL_PL: Readonly<Record<string, string>> = {
+  switch: 'Łącznik SN',
+  breaker: 'Wyłącznik SN',
+  bus_coupler: 'Sprzęgło szyn SN',
+  disconnector: 'Odłącznik SN',
+  fuse: 'Bezpiecznik SN',
+};
+
 function switchTypeLabel(type: string): string {
-  switch (type) {
-    case 'switch':
-      return 'Łącznik SN';
-    case 'breaker':
-      return 'Wyłącznik SN';
-    case 'bus_coupler':
-      return 'Sprzęgło szyn SN';
-    case 'disconnector':
-      return 'Odłącznik SN';
-    case 'fuse':
-      return 'Bezpiecznik SN';
-    default:
-      return type;
-  }
+  return etykietaZeSlownika(SWITCH_TYPE_LABEL_PL, type);
 }
 
+const SWITCH_TYPE_SHORT_PL: Readonly<Record<string, string>> = {
+  switch: 'Łącznik',
+  breaker: 'Wyłącznik',
+  bus_coupler: 'Sprzęgło',
+  disconnector: 'Odłącznik',
+  fuse: 'Bezpiecznik',
+};
+
 function switchTypeShort(type: string): string {
-  switch (type) {
-    case 'switch':
-      return 'Łącznik';
-    case 'breaker':
-      return 'Wyłącznik';
-    case 'bus_coupler':
-      return 'Sprzęgło';
-    case 'disconnector':
-      return 'Odłącznik';
-    case 'fuse':
-      return 'Bezpiecznik';
-    default:
-      return type;
-  }
+  return etykietaZeSlownika(SWITCH_TYPE_SHORT_PL, type);
 }
 
 function statusLabel(status: string): string {

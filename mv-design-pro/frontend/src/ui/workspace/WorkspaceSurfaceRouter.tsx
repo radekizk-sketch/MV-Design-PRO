@@ -146,6 +146,7 @@ import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -1770,7 +1771,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       : 'Nie wykonano obliczeń do prezentacji';
 
   const lastCalculationLabel = lastCompleted
-    ? `${ANALYSIS_TYPE_LABELS[lastCompleted.analysis_type] ?? lastCompleted.analysis_type} · ${formatDateTime(lastCompleted.finished_at ?? lastCompleted.started_at)}`
+    ? `${etykietaZeSlownika(ANALYSIS_TYPE_LABELS, lastCompleted.analysis_type)} · ${formatDateTime(lastCompleted.finished_at ?? lastCompleted.started_at)}`
     : 'Nie wykonano obliczeń';
 
   const nextStepLabel = !activeCaseName
