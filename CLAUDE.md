@@ -844,6 +844,13 @@ Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16
    text. Production metadata (`run_id`, hashes, solver version) stays out of
    the first-plan view via the shared `ui2/wyniki/wzorzec/InformacjeAudytowe`
    component. See `mv-design-pro/docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md`.
+7. Every modified screen follows the owner's workshop standard (decision 2026-11-04, reference
+   screen KD6 „Wytrzymałość aparatury”): maximum engineering information in minimum space,
+   tables instead of repeated cards, one fact in one place, details on demand, colour only
+   with meaning, both themes identical. A change that adds clicks, scrolling or text without
+   real benefit to the engineer is rejected; report height/clicks before and after. Applied
+   gradually within planned module work — never as a separate rebuild programme.
+   See §10 of the same contract.
 
 ### Working with Study Cases
 - Cases store config only, not model data
