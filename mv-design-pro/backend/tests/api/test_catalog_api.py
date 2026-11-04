@@ -308,9 +308,7 @@ def test_etango_model_identifier_is_not_relay_rated_current(
 ) -> None:
     """Numer e2TANGO 400/450/600 nie stanowi pradu znamionowego wejscia IED."""
     for device_id in ("EM_ETANGO_400_V0", "EM_E2TANGO_450", "EM_E2TANGO_600"):
-        analytical_response = client.get(
-            f"/api/catalog/protection/device-types/{device_id}"
-        )
+        analytical_response = client.get(f"/api/catalog/protection/device-types/{device_id}")
         assert analytical_response.status_code == 200
         analytical = analytical_response.json()
         assert analytical["params"]["rated_current_a"] is None
@@ -319,7 +317,8 @@ def test_etango_model_identifier_is_not_relay_rated_current(
     canonical_response = client.get("/api/catalog/mv-protection-device-types")
     assert canonical_response.status_code == 200
     legacy_relays = [
-        entry for entry in canonical_response.json()
+        entry
+        for entry in canonical_response.json()
         if entry["id"].startswith("EM_ETANGO_") and entry["id"].endswith("_V0")
     ]
     assert len(legacy_relays) == 7
@@ -349,3 +348,17 @@ def test_protection_export_never_serializes_model_number_as_rated_current(
 
     for device in list_devices():
         assert "rated" not in (device.meta or {}), device.device_id
+
+
+def test_new_etango_250_450_are_selectable_as_real_catalog_types(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/catalog/mv-protection-device-types")
+    assert response.status_code == 200
+    devices = {item["id"]: item for item in response.json()}
+    for device_id in ("EM_E2TANGO_250", "EM_E2TANGO_450"):
+        entry = devices[device_id]
+        assert entry["rated_current_a"] is None
+        assert entry["analytical_library_ref"] is None
+        assert entry["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
+        assert entry["source_reference"].startswith("Elektrometal Energetyka")

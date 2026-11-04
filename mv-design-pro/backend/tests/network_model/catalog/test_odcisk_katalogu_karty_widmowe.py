@@ -200,6 +200,12 @@ ODCISK_PO_ETANGO_NUMER_MODELU = "96c3becb1de2769ca1e78dcfd1dc8d6464cfdfa2a551fdb
 PRAD_Z_NUMERU_MODELU_ETANGO: dict[str, float] = {
     f"EM_ETANGO_{numer}_V0": float(numer) for numer in (400, 600, 800, 1000, 1250, 1600, 2000)
 }
+#: Karta KATALOG-PRZEJECIE-PR, poz. 2 (2026-11-04): dwie rodziny e²TANGO-250/-450 z kart
+#: katalogowych producenta K-42.1.8 i K-43.1.7 (wejście 1 A/5 A, bez prądu z numeru modelu).
+#: Dowód: wycięcie DOKŁADNIE tych 2 nowych identyfikatorów daje
+#: ``ODCISK_PO_ETANGO_NUMER_MODELU``; 0 zmienionych pozycji istniejących.
+ODCISK_PO_ETANGO_250_450 = "4e04f36cecf4a1e06c55b6c6e38023f28f44dee606fbd4302d1ec561b79c11ed"
+POZYCJE_ETANGO_250_450 = ("EM_E2TANGO_250", "EM_E2TANGO_450")
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -285,6 +291,9 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ETANGO_250_450
+    for identyfikator in POZYCJE_ETANGO_250_450:
+        zrzut["protection_device_types"].pop(identyfikator)  # type: ignore[attr-defined]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ETANGO_NUMER_MODELU
     _przywroc_prad_z_numeru_modelu_etango(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
