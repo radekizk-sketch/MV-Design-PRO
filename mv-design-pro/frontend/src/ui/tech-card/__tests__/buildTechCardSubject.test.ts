@@ -13,6 +13,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { buildTechCardSubject } from '../buildTechCardSubject';
+import { REGULACJA_OPCJE } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import type {
   Bay,
   BranchPointSN,
@@ -324,7 +325,10 @@ describe('buildTechCardSubject', () => {
       const snapshot = snapshotWith({ generators: [pv] });
       const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
       const fields = subject!.sections.flatMap((section) => section.fields);
-      expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBeTruthy();
+      // Nazwa trybu = jeden słownik nastawy modelu (ten sam co kreator źródła OZE).
+      expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBe(
+        REGULACJA_OPCJE.find((o) => o.value === meta.control_mode)!.label,
+      );
       expect(fields.find((field) => field.key === pomocniczyKlucz)?.value).toBe(pomocniczaWartosc);
     },
   );
@@ -343,7 +347,7 @@ describe('buildTechCardSubject', () => {
     const snapshot = snapshotWith({ generators: [pv] });
     const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
     const fields = subject!.sections.flatMap((section) => section.fields);
-    expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBe('Bez regulacji');
+    expect(fields.find((field) => field.key === 'tryb_regulacji_q')?.value).toBe('Bez regulacji (źródło pasywne)');
     expect(fields.find((field) => field.key === 'cos_phi_nastawa')).toBeUndefined();
     expect(fields.find((field) => field.key === 'nachylenie_regulacji')).toBeUndefined();
     expect(fields.find((field) => field.key === 'u_set_pu')).toBeUndefined();

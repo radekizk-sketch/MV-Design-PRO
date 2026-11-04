@@ -35,7 +35,7 @@ const BEZ_LICZB: Record<RodzajUrzadzenia, [string | null, string | null]> = {
   LOAD_SWITCH: ['nie dotyczy (rozłącznik)', null],
   DS: ['nie dotyczy (odłącznik)', null],
   ES: ['nie dotyczy (uziemnik)', null],
-  FUSE: [null, 'nie dotyczy (bezpiecznik)'],
+  FUSE: [null, 'nie dotyczy (rozłącznik z bezpiecznikami)'],
 };
 
 function model(rodzaj: RodzajUrzadzenia, zKatalogiem: boolean): EnergyNetworkModel {

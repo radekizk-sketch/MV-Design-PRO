@@ -54,7 +54,7 @@ import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, toSamoNapiecieZnamionowe, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
-import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -999,19 +999,10 @@ export function aparatyDlaPola(
     .sort((a, b) => a.u_n_kv - b.u_n_kv || a.i_n_a - b.i_n_a || a.id.localeCompare(b.id));
 }
 
-/** Etykiety PL rodzajów aparatu (`device_kind` katalogu APARAT_SN) — bez kodenames. */
-export const ETYKIETY_RODZAJU_APARATU: Readonly<Record<string, string>> = {
-  WYLACZNIK: 'wyłącznik',
-  ROZLACZNIK: 'rozłącznik',
-  ROZLACZNIK_BEZPIECZNIKOWY: 'rozłącznik bezpiecznikowy',
-  ODLACZNIK: 'odłącznik',
-  REKLOZER: 'reklozer',
-  UZIEMNIK: 'uziemnik',
-};
-
-/** Nazwa rodzaju aparatu po polsku (nieznany rodzaj = jego kod z katalogu). */
+/** Nazwa rodzaju aparatu po polsku — jeden słownik wartości kodowych kart katalogu
+ *  (`ui/catalog/wartosciKodoweKarty.ts`); rodzaj spoza słownika — jawne zdanie, nie kod. */
 export function etykietaRodzajuAparatu(deviceKind: string): string {
-  return etykietaZeSlownika(ETYKIETY_RODZAJU_APARATU, deviceKind);
+  return nazwaWartosciKodowej('device_kind', deviceKind);
 }
 
 /**

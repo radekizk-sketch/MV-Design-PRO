@@ -56,6 +56,7 @@ import {
 } from '../rama';
 import { ODCINEK_NN_STRINGS as T } from './strings';
 import { SekcjaUlozeniaKablaNn, useUlozenieKablaNn } from './ulozenieKablaNn';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 interface Zbudowany {
   nazwa: string;
@@ -330,7 +331,11 @@ export function KreatorOdcinkaNn() {
               <RzadWartosci etykieta={T.paramR} wartosc={fmt(wybranyKabel.r_ohm_per_km, 'Ω/km', 4)} />
               <RzadWartosci etykieta={T.paramX} wartosc={fmt(wybranyKabel.x_ohm_per_km, 'Ω/km', 4)} />
               <RzadWartosci etykieta={T.paramIzNominalne} wartosc={fmt(wybranyKabel.i_max_a, 'A', 0)} />
-              <RzadWartosci etykieta={T.paramMaterial} wartosc={wybranyKabel.conductor_material ?? '—'} />
+              <RzadWartosci etykieta={T.paramMaterial} wartosc={
+                  wybranyKabel.conductor_material
+                    ? nazwaWartosciKodowej('conductor_material', wybranyKabel.conductor_material)
+                    : '—'
+                } />
               <RzadWartosci etykieta={T.paramLiczbaZyl} wartosc={String(wybranyKabel.number_of_cores ?? '—')} />
             </KreatorSiatka>
           </>

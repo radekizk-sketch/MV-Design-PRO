@@ -3,12 +3,8 @@
  * kategorie z dedykowaną kartą (linia, kabel, transformator, łącznik, minimum źródła
  * systemowego) zamieniają rekord z serwera na etykietę, wartość i jednostkę.
  */
-import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
-import {
-  BRAK_DANYCH_PL,
-  NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL,
-  pradLacznikaKatalogu,
-} from './pradZwarciowyKatalogu';
+import { BRAK_DANYCH_PL, pradLacznikaKatalogu } from './pradZwarciowyKatalogu';
+import { nazwaWartosciKodowej } from './wartosciKodoweKarty';
 import type {
   CableType,
   LineType,
@@ -53,6 +49,13 @@ export function tekstKatalogu(label: string, wartosc: string | null | undefined)
     : { label, value: BRAK_DANYCH_PL };
 }
 
+/** Wiersz pola kodowego karty: nazwa z jednego słownika wartości kodowych, nie kod. */
+export function kodKatalogu(label: string, pole: string, wartosc: string | null | undefined): WierszKatalogu {
+  return typeof wartosc === 'string' && wartosc.trim() !== ''
+    ? { label, value: nazwaWartosciKodowej(pole, wartosc) }
+    : { label, value: BRAK_DANYCH_PL };
+}
+
 export function wierszeLinii(type: LineType): WierszKatalogu[] {
   return [
     liczbaKatalogu('Rezystancja R', type.r_ohm_per_km, 3, 'Ohm/km'),
@@ -60,7 +63,7 @@ export function wierszeLinii(type: LineType): WierszKatalogu[] {
     liczbaKatalogu('Susceptancja B', type.b_us_per_km, 3, 'uS/km'),
     liczbaKatalogu('Prąd znamionowy', type.rated_current_a, 0, 'A'),
     liczbaKatalogu('Napięcie znamionowe', type.voltage_rating_kv, 1, 'kV'),
-    tekstKatalogu('Materiał przewodu', type.conductor_material),
+    kodKatalogu('Materiał przewodu', 'conductor_material', type.conductor_material),
     liczbaKatalogu('Przekrój', type.cross_section_mm2, 0, 'mm2'),
     liczbaKatalogu('Maks. temperatura', type.max_temperature_c, 0, 'C'),
   ];
@@ -90,8 +93,8 @@ export function wierszeKabla(type: CableType): WierszKatalogu[] {
     liczbaKatalogu('Pojemność C', type.c_nf_per_km, 0, 'nF/km'),
     liczbaKatalogu('Prąd znamionowy', type.rated_current_a, 0, 'A'),
     liczbaKatalogu('Napięcie znamionowe', type.voltage_rating_kv, 1, 'kV'),
-    tekstKatalogu('Izolacja', type.insulation_type),
-    tekstKatalogu('Materiał przewodu', type.conductor_material),
+    kodKatalogu('Izolacja', 'insulation_type', type.insulation_type),
+    kodKatalogu('Materiał przewodu', 'conductor_material', type.conductor_material),
     liczbaKatalogu('Przekrój', type.cross_section_mm2, 0, 'mm2'),
   ];
 }
@@ -109,7 +112,7 @@ export function wierszeTransformatora(type: TransformerType): WierszKatalogu[] {
     liczbaKatalogu('Straty zwarcia Pk', type.pk_kw, 1, 'kW'),
     liczbaKatalogu('Prąd jałowy i0', type.i0_percent, 2, '%'),
     liczbaKatalogu('Straty jałowe P0', type.p0_kw, 1, 'kW'),
-    tekstKatalogu('Grupa połączeń', type.vector_group),
+    kodKatalogu('Grupa połączeń', 'vector_group', type.vector_group),
     tekstKatalogu('Chłodzenie', type.cooling_class),
     zaczepy,
     liczbaKatalogu('Krok zaczepu', type.tap_step_percent, 2, '%'),
@@ -127,13 +130,7 @@ export function wierszeLacznika(type: SwitchEquipmentType): WierszKatalogu[] {
       : { label, value: pradLacznikaKatalogu(rekord, pole) };
   };
   return [
-    {
-      label: 'Rodzaj aparatu',
-      value:
-        typeof type.equipment_kind === 'string' && type.equipment_kind !== ''
-          ? etykietaZeSlownika(NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL, type.equipment_kind)
-          : BRAK_DANYCH_PL,
-    },
+    kodKatalogu('Rodzaj aparatu', 'equipment_kind', type.equipment_kind),
     liczbaKatalogu('Napięcie znamionowe', type.un_kv, 1, 'kV'),
     liczbaKatalogu('Prąd znamionowy', type.in_a, 0, 'A'),
     prad('Prąd wyłączalny Ik', 'ik_ka'),

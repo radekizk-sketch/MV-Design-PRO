@@ -25,6 +25,7 @@ import { segmentPublicIdentity, stationPublicIdentity } from '../../shared/publi
 import { szynyStacji } from '../../shared/szynyStacji';
 import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 import type { Branch, Bus, EnergyNetworkModel, Substation } from '../../../types/enm';
+import { symbolMaterialuPrzewodu } from '../../catalog/wartosciKodoweKarty';
 
 type SegmentCardId = 'identification' | 'catalog' | 'route' | 'rating';
 
@@ -321,7 +322,7 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
       ? branch.cross_section_mm2
       : readMaterializedNumber(branch, ['cross_section_mm2', 'section_mm2', 'conductor_cross_section_mm2'])
         ?? readOverheadSectionFromRef(catalogRef);
-    const material = materializedMaterial?.replace(/^AL$/i, 'Al')
+    const material = (materializedMaterial ? symbolMaterialuPrzewodu(materializedMaterial) : null)
       ?? readOverheadMaterialFromRef(catalogRef);
     if (sectionValue) {
       const section = `${SEGMENT_NUMBER_FORMAT_PL.format(sectionValue)} mm²`;
@@ -340,7 +341,7 @@ function conductorLabel(branch: Branch | null, draft: SegmentData): string {
     const section = workingSection
       ? `${workingSection}${returnSection ? `/${returnSection}` : ''} mm²`
       : null;
-    const material = branch.conductor_material?.trim().replace(/^AL$/i, 'Al') || null;
+    const material = branch.conductor_material?.trim() ? symbolMaterialuPrzewodu(branch.conductor_material) : null;
     return [material, section].filter(Boolean).join(' ') || selectedCatalogLabel(draft.catalogItemId, draft.family);
   }
   return selectedCatalogLabel(draft.catalogItemId, draft.family);

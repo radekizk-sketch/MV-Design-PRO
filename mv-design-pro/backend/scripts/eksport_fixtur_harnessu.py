@@ -261,7 +261,10 @@ from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
     wielkosc_zwarciowa_lacznika_dotyczy,
 )
-from network_model.catalog.types import SynchronousGeneratorType  # noqa: E402
+from network_model.catalog.types import CatalogStatus, SynchronousGeneratorType  # noqa: E402
+from network_model.core.bateria_kondensatorow import (  # noqa: E402
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+)
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
@@ -1320,13 +1323,39 @@ def pola_kart_katalogu() -> dict[str, Any]:
                 [a for x in parametry_punktow for a in x.get("apparatus_specs", [])]
             ),
         },
+        # Krzywe zabezpieczeń (`GET /api/catalog/protection/curves` przy pustej bazie biblioteki —
+        # ta sama lista katalogu domyślnego): przeglądarka biblioteki zabezpieczeń pokazuje rodzaj
+        # krzywej (`curve_kind`) tym samym słownikiem wartości kodowych.
         "wartosci_kodowe": wartosci_kodowe_kart(
-            [*rekordy_kategorii.values(), *(rekordy_typow[k] for k in _TYPY_Z_WARTOSCIAMI_KODOWYMI)]
+            [
+                *rekordy_kategorii.values(),
+                *(rekordy_typow[k] for k in _TYPY_Z_WARTOSCIAMI_KODOWYMI),
+                [c.to_dict() for c in get_default_mv_catalog().list_protection_curves()],
+            ]
         ),
         "klucze_wartosci_zlozonych": sorted(zagniezdzone),
         # Jakość danej w `card_field_status` (`quality`) = `werdykt.proweniencja.FieldQuality`;
         # panel pokazuje nazwę polską z tej samej enumeracji.
         "nazwy_jakosci_danej": {q.value: q.label_pl for q in FieldQuality},
+        # Słowniki nazw wartości kodowych, których źródłem jest backend — wyrocznia odbić
+        # frontu w `ui/catalog/wartosciKodoweKarty.ts`: rodzaj aparatu SN (projekcja łączników),
+        # układ połączeń baterii kondensatorów i pełna dziedzina statusu katalogu.
+        "nazwy_z_backendu": {
+            "device_kind": {
+                rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
+                for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
+            },
+            "uklad_polaczen": dict(sorted(NAZWY_UKLADOW_POLACZEN_BATERII_PL.items())),
+            "catalog_status": sorted(s.value for s in CatalogStatus),
+            # Izolacja kabla w MODELU (`Cable.insulation`) — dziedzina szersza niż katalog
+            # (izolacja papierowa kabli istniejących); karta elementu nazywa ją tym samym
+            # słownikiem co kartę katalogu (`insulation_type`).
+            "insulation": sorted(
+                str(v)
+                for arg in get_args(Cable.model_fields["insulation"].annotation)
+                for v in get_args(arg)
+            ),
+        },
     }
 
 

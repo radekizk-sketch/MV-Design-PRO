@@ -37,6 +37,7 @@ import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../ty
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
+import { nazwaWartosciKodowej, zWielkiejLitery } from '../../catalog/wartosciKodoweKarty';
 import {
   nazwaStacjiJakWDrzewie,
   publicTechnicalLabel,
@@ -58,7 +59,6 @@ import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
-import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Kontrakt karty
@@ -243,6 +243,11 @@ function liczba(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+/** Wartość kodowa pola (materiał, izolacja…) jako nazwa z jednego słownika; brak = `null`. */
+function nazwaKodowaLubBrak(pole: string, kod: string | null): string | null {
+  return kod === null ? null : nazwaWartosciKodowej(pole, kod);
+}
+
 function napis(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -324,15 +329,6 @@ const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_typ
   custom: 'inne (definicja użytkownika)',
 };
 
-/** Tryb regulacji z karty katalogowej przekształtnika (`ConverterType.control_mode`) — słownik
- *  katalogu różni się od nastawy modelu (`meta.control_mode`, `REGULACJA_OPCJE`). */
-const TRYB_REGULACJI_KATALOGU_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
-  Q_U_DROOP: 'Regulacja Q(U) — charakterystyka opadająca',
-  Q_OF_U: 'Regulacja Q(U)',
-  GRID_FORMING: 'Praca formująca sieć (grid forming)',
-};
-
 const WARIANT_PRZYLACZENIA_PL: Readonly<Record<string, string>> = {
   nn_side: 'po stronie nN stacji',
   LV_BEHIND_STATION_TRANSFORMER: 'po stronie nN stacji',
@@ -341,9 +337,12 @@ const WARIANT_PRZYLACZENIA_PL: Readonly<Record<string, string>> = {
   SOURCE_CONNECTION_STATION: 'stacja przyłączeniowa źródła',
 };
 
-/** Etykieta trybu regulacji — słownik nastawy modelu, potem słownik karty katalogowej. */
+/** Etykieta trybu regulacji — słownik nastawy modelu, potem jeden słownik wartości kodowych
+ *  karty katalogowej (`ConverterType.control_mode`); kod spoza obu — jawne zdanie, nie kod. */
 export function trybRegulacjiPl(kod: string): string {
-  return regulacjaLabel(kod as TrybRegulacji) || TRYB_REGULACJI_KATALOGU_PL[kod] || `tryb ${kod}`;
+  return (
+    regulacjaLabel(kod as TrybRegulacji) || zWielkiejLitery(nazwaWartosciKodowej('control_mode', kod))
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -470,15 +469,6 @@ const RODZAJ_APARATU_SN_Z_GALEZI: Readonly<Partial<Record<Branch['type'], string
   disconnector: 'ODLACZNIK',
   fuse: 'ROZLACZNIK_BEZPIECZNIKOWY',
 };
-/** Nazwa rodzaju aparatu SN w dopisku „nie dotyczy (…)”. */
-const NAZWA_RODZAJU_APARATU_SN_PL: Readonly<Record<string, string>> = {
-  WYLACZNIK: 'wyłącznik',
-  ROZLACZNIK: 'rozłącznik',
-  ODLACZNIK: 'odłącznik',
-  UZIEMNIK: 'uziemnik',
-  ROZLACZNIK_BEZPIECZNIKOWY: 'bezpiecznik',
-  REKLOZER: 'reklozer',
-};
 
 /**
  * Wielkość zwarciowa aparatu: liczba z jednostką; bez liczby — „nie dotyczy (rodzaj)”, gdy
@@ -493,7 +483,7 @@ function wielkoscZwarciowaAparatu(
 ): string | null {
   if (wartosc !== null) return zapisLiczby(wartosc, 'kA');
   if (rodzaj !== null && !wielkoscAparatuSnDotyczy(rodzaj, pole)) {
-    return `nie dotyczy (${etykietaZeSlownika(NAZWA_RODZAJU_APARATU_SN_PL, rodzaj)})`;
+    return `nie dotyczy (${nazwaWartosciKodowej('device_kind', rodzaj)})`;
   }
   return null;
 }
@@ -1109,7 +1099,10 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
     if (!szyna) return null;
     return stacja ? `${stacja} · ${szyna}` : szyna;
   };
-  const izolacja = galaz.type === 'cable' ? napis(galaz.insulation) ?? napis(mp?.insulation_type) : 'nie dotyczy (linia napowietrzna)';
+  const izolacja =
+    galaz.type === 'cable'
+      ? nazwaKodowaLubBrak('insulation_type', napis(galaz.insulation) ?? napis(mp?.insulation_type))
+      : 'nie dotyczy (linia napowietrzna)';
   return {
     rodzaj: 'odcinek',
     rodzajPl: galaz.type === 'line_overhead' ? 'Linia napowietrzna' : 'Odcinek kablowy',
@@ -1134,7 +1127,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('typ', 'Typ', typOdcinka(galaz)),
           wiersz('dlugosc', 'Długość', dlugoscOdcinka(galaz), odcinek ? { edycja: edycja(galaz.ref_id, 'length_km', odcinek.length_km) } : {}),
           wiersz('przekroj', 'Przekrój', zapisLiczby(odcinek?.cross_section_mm2 ?? mp?.cross_section_mm2, 'mm²')),
-          wiersz('material', 'Materiał żyły', napis(odcinek?.conductor_material) ?? napis(mp?.conductor_material)),
+          wiersz('material', 'Materiał żyły', nazwaKodowaLubBrak('conductor_material', napis(odcinek?.conductor_material) ?? napis(mp?.conductor_material))),
           wiersz('izolacja', 'Izolacja', izolacja),
           wiersz('i_dop', 'Obciążalność długotrwała', zapisLiczby(odcinek?.rating?.in_a ?? mp?.rated_current_a, 'A', 0)),
           wiersz('r1', 'Rezystancja R′', zapisLiczby(odcinek?.r_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'r_ohm_per_km') }),

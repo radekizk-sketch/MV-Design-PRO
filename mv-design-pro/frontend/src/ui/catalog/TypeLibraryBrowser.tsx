@@ -12,6 +12,8 @@ import {
   type FieldQuality,
 } from '../../ui2/wyniki/wzorzec/werdykt';
 import { ETYKIETY_POL_KARTY, KOLEJNOSC_POL_KARTY } from './etykietyPolKarty';
+import { nazwaWartosciKodowej } from './wartosciKodoweKarty';
+import { skrotParametrowTypu } from './skrotTypuKatalogu';
 import {
   maBudowniczegoWierszy,
   POLA_KARTY_KATEGORII,
@@ -21,8 +23,6 @@ import {
 import {
   BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
-  pradKaLubBrakDanych,
-  pradLacznikaKatalogu,
 } from './pradZwarciowyKatalogu';
 import {
   formatNumber,
@@ -88,22 +88,6 @@ function getCatalogManufacturer(type: CatalogListItem): string | null {
   return null;
 }
 
-function formatDetailValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.map((entry) => formatDetailValue(entry)).join(', ');
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'Tak' : 'Nie';
-  }
-  if (typeof value === 'number') {
-    return formatNumber(value);
-  }
-  if (value == null || value === '') {
-    return '—';
-  }
-  return String(value);
-}
-
 function humanizeKey(key: string): string {
   const etykieta = ETYKIETY_POL_KARTY[key];
   if (etykieta) {
@@ -121,70 +105,21 @@ function humanizeKey(key: string): string {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
-function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
-  const record = type as unknown as Record<string, unknown>;
-
-  switch (category) {
-    case 'LINE':
-      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · In=${formatDetailValue(record.rated_current_a)} A`;
-    case 'HV_OVERHEAD_CONDUCTOR':
-      return `${formatDetailValue(record.oznaczenie)} · ${record.przeznaczenie === 'ODGROMOWY' ? 'przewód odgromowy' : 'przewód fazowy'} · R20=${formatDetailValue(record.r20_dc_ohm_per_km)} Ohm/km · d=${formatDetailValue(record.srednica_mm)} mm`;
-    case 'CABLE':
-      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · C=${formatDetailValue(record.c_nf_per_km)} nF/km`;
-    case 'TRANSFORMER':
-      return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · uk=${formatDetailValue(record.uk_percent)}%`;
-    case 'SWITCH_EQUIPMENT':
-      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
-    case 'SYSTEM_SOURCE':
-      return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
-    case 'MV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
-    case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
-    case 'LV_RCD':
-      return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
-    case 'LV_CABLE':
-      return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
-    case 'LOAD':
-      return `P=${formatDetailValue(record.p_kw)} kW · cos phi=${formatDetailValue(record.cos_phi)} · model=${formatDetailValue(record.model)}`;
-    case 'CT':
-      return `${formatDetailValue(record.ratio_primary_a)}/${formatDetailValue(record.ratio_secondary_a)} A · klasa=${formatDetailValue(record.accuracy_class)}`;
-    case 'VT':
-      return `${formatDetailValue(record.ratio_primary_v)}/${formatDetailValue(record.ratio_secondary_v)} V · klasa=${formatDetailValue(record.accuracy_class)}`;
-    case 'MEASUREMENT_TRANSFORMER':
-      // Kategoria złożona = CT ∪ VT (`fetchTypesByCategory`); serwer wysyła przekładnię
-      // prądową wyłącznie w pozycji przekładnika prądowego (wyrocznia `pola_kart_katalogu`).
-      return 'ratio_primary_a' in record
-        ? `Przekładnik prądowy · ${getTypeSummary(type, 'CT')}`
-        : `Przekładnik napięciowy · ${getTypeSummary(type, 'VT')}`;
-    case 'PV_INVERTER':
-      return `S=${formatDetailValue(record.s_n_kva)} kVA · Pmax=${formatDetailValue(record.p_max_kw)} kW · sterowanie=${formatDetailValue(record.control_mode)}`;
-    case 'BESS_INVERTER':
-      return `Pdis=${formatDetailValue(record.p_discharge_kw)} kW · Pchg=${formatDetailValue(record.p_charge_kw)} kW · E=${formatDetailValue(record.e_kwh)} kWh`;
-    case 'CONVERTER':
-      // Kategoria złożona = PV ∪ BESS (`fetchTypesByCategory`); pojemność energii serwer
-      // wysyła wyłącznie w pozycji magazynu (wyrocznia `pola_kart_katalogu`).
-      return 'e_kwh' in record
-        ? `Falownik magazynu energii · ${getTypeSummary(type, 'BESS_INVERTER')}`
-        : `Falownik PV · ${getTypeSummary(type, 'PV_INVERTER')}`;
-    case 'PROTECTION_DEVICE':
-      return `${formatDetailValue(record.series)} · funkcje=${Array.isArray(record.functions_supported) ? record.functions_supported.length : 0} · krzywe=${Array.isArray(record.curves_supported) ? record.curves_supported.length : 0}`;
-    default:
-      return 'Brak zdefiniowanego skrótu parametrów.';
-  }
-}
-
 /**
  * Wielkości zwarciowe pozycji aparatu SN: brak liczby niesie dwie różne informacje —
  * „nie dotyczy” (rodzaj aparatu jej nie ma) albo „brak danych” (karta jej nie podaje).
  */
 const WIELKOSCI_ZWARCIOWE_APARATU_SN = ['breaking_capacity_ka', 'i_th_ka'] as const;
 
-/** Wartość pola karty w panelu ogólnym: brak wartości = jawne „brak danych” (zasada nr 4). */
-function wartoscPolaKarty(value: unknown): string {
+/**
+ * Wartość pola karty w panelu ogólnym: brak wartości = jawne „brak danych” (zasada nr 4);
+ * wartość pola kodowego (`kind`, `medium`, `device_kind`… także wewnątrz `params` i list) —
+ * nazwa z jednego słownika wartości kodowych (`wartosciKodoweKarty.ts`), nigdy kod.
+ */
+function wartoscPolaKarty(value: unknown, klucz: string): string {
   if (value == null || value === '') return BRAK_DANYCH_PL;
   if (Array.isArray(value)) {
-    return value.length === 0 ? 'brak pozycji' : value.map((v) => wartoscPolaKarty(v)).join(', ');
+    return value.length === 0 ? 'brak pozycji' : value.map((v) => wartoscPolaKarty(v, klucz)).join(', ');
   }
   if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
   if (typeof value === 'number') return Number.isFinite(value) ? formatNumber(value) : BRAK_DANYCH_PL;
@@ -192,9 +127,9 @@ function wartoscPolaKarty(value: unknown): string {
     const wpisy = Object.entries(value as Record<string, unknown>);
     return wpisy.length === 0
       ? BRAK_DANYCH_PL
-      : wpisy.map(([klucz, v]) => `${humanizeKey(klucz)}: ${wartoscPolaKarty(v)}`).join('; ');
+      : wpisy.map(([k, v]) => `${humanizeKey(k)}: ${wartoscPolaKarty(v, k)}`).join('; ');
   }
-  return String(value);
+  return nazwaWartosciKodowej(klucz, String(value));
 }
 
 /**
@@ -204,7 +139,7 @@ function wartoscPolaKarty(value: unknown): string {
  */
 function opisJakosciPolKarty(value: unknown): string {
   if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-    return wartoscPolaKarty(value);
+    return wartoscPolaKarty(value, 'card_field_status');
   }
   const wpisy = Object.entries(value as Record<string, unknown>);
   if (wpisy.length === 0) return BRAK_DANYCH_PL;
@@ -254,7 +189,7 @@ function getGenericDetailEntries(
         ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN)[number])
         : key === 'card_field_status'
           ? opisJakosciPolKarty(record[key])
-          : wartoscPolaKarty(record[key]),
+          : wartoscPolaKarty(record[key], key),
   }));
 }
 
@@ -499,7 +434,7 @@ export function TypeLibraryBrowser({
                         className="px-4 py-3 text-sm text-gray-600"
                         data-testid={`type-library-skrot-${type.id}`}
                       >
-                        {getTypeSummary(type, activeTab)}
+                        {skrotParametrowTypu(type, activeTab)}
                       </td>
                     </tr>
                   );

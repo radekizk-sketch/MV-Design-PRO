@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchCtTypes, fetchDerConverterTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
 import type { ConverterType, CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
+import { nazwaWartosciKodowej } from '../../catalog/wartosciKodoweKarty';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
@@ -644,23 +645,6 @@ function PtpireeCertificateRowFromRegistry({ certificateRef }: { readonly certif
   );
 }
 
-/**
- * Wiersz pola: etykieta NAD wartością na wąskim ekranie, obok wartości od `sm` w górę
- * (karta E21-5, audyt E-21 pkt P12). Sztywna kolumna 170 px na telefonie zostawiała
- * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
- * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
- */
-const RODZAJ_GENERATORA_PL: Record<NonNullable<ConverterType['generator_machine_type']>, string> = {
-  PMSG: 'synchroniczny z magnesami trwałymi (PMSG)',
-  SCIG: 'asynchroniczny klatkowy (SCIG)',
-  DFIG: 'asynchroniczny dwustronnie zasilany (DFIG)',
-};
-
-const TOPOLOGIA_PRZEKSZTALTNIKA_PL: Record<NonNullable<ConverterType['converter_topology']>, string> = {
-  FULL_CONVERTER: 'pełnej mocy (generator odsprzężony od sieci)',
-  DFIG_ROTOR_CONVERTER: 'w obwodzie wirnika (DFIG)',
-};
-
 /** Brak pola w karcie turbiny = dokument producenta tej wartości nie podaje (nigdy domyślka). */
 const BRAK_W_KARCIE_TURBINY_PL = 'karta producenta nie podaje';
 
@@ -680,7 +664,7 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
   const topologia = turbina.converter_topology;
   return (
     <>
-      <FieldRow label="Generator" value={rodzaj ? RODZAJ_GENERATORA_PL[rodzaj] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow label="Generator" value={rodzaj ? nazwaWartosciKodowej('generator_machine_type', rodzaj) : BRAK_W_KARCIE_TURBINY_PL} />
       <FieldRow label="Napięcie stojana generatora" value={wartoscToruPl(turbina.generator_stator_voltage_kv, 'kV')} />
       <FieldRow
         label="Częstotliwość stojana (maks.)"
@@ -688,7 +672,7 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
       />
       <FieldRow label="Moc generatora" value={wartoscToruPl(turbina.generator_rated_power_mw, 'MW')} />
       <FieldRow label="Moc turbiny" value={`${turbina.pmax_mw} MW`} />
-      <FieldRow label="Przekształtnik" value={topologia ? TOPOLOGIA_PRZEKSZTALTNIKA_PL[topologia] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow label="Przekształtnik" value={topologia ? nazwaWartosciKodowej('converter_topology', topologia) : BRAK_W_KARCIE_TURBINY_PL} />
       <FieldRow
         label="Przekształtnik — strona maszynowa"
         value={wartoscToruPl(turbina.converter_machine_side_voltage_kv, 'kV')}
@@ -697,6 +681,12 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
   );
 }
 
+/**
+ * Wiersz pola: etykieta NAD wartością na wąskim ekranie, obok wartości od `sm` w górę
+ * (karta E21-5, audyt E-21 pkt P12). Sztywna kolumna 170 px na telefonie zostawiała
+ * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
+ * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
+ */
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="grid grid-cols-1 gap-0.5 border-b border-scada-border/60 py-1.5 last:border-b-0 sm:grid-cols-[170px_1fr] sm:gap-3">

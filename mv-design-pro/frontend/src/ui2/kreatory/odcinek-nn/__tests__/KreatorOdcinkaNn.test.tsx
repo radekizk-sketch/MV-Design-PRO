@@ -51,7 +51,7 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
 }));
 
 const KATALOG_KABLI = [
-  { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'Al' },
+  { id: 'kabel-nn-1', name: 'YKY 4x25', u_n_kv: 0.4, r_ohm_per_km: 0.727, x_ohm_per_km: 0.08, i_max_a: 96, cross_section_mm2: 25, number_of_cores: 4, conductor_material: 'AL' },
 ];
 let katalogKabli: unknown[] = KATALOG_KABLI;
 vi.mock('../../../../ui/catalog/api', () => ({

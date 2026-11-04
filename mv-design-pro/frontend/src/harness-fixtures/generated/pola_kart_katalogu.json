@@ -726,6 +726,13 @@
     "cos_phi_mode": [
       "IND"
     ],
+    "curve_kind": [
+      "extremely_inverse",
+      "inverse",
+      "long_time_inverse",
+      "moderately_inverse",
+      "very_inverse"
+    ],
     "device_kind": [
       "ODLACZNIK",
       "REKLOZER",
@@ -900,5 +907,34 @@
     "DATASHEET": "karta techniczna",
     "ESTIMATED": "oszacowane",
     "SYSTEM_DEFAULT": "domyślne techniczne"
+  },
+  "nazwy_z_backendu": {
+    "device_kind": {
+      "ODLACZNIK": "odłącznik",
+      "REKLOZER": "reklozer",
+      "ROZLACZNIK": "rozłącznik",
+      "ROZLACZNIK_BEZPIECZNIKOWY": "rozłącznik z bezpiecznikami",
+      "UZIEMNIK": "uziemnik",
+      "WYLACZNIK": "wyłącznik"
+    },
+    "uklad_polaczen": {
+      "GWIAZDA_IZOLOWANA": "gwiazda z izolowanym punktem gwiazdy",
+      "GWIAZDA_UZIEMIONA": "gwiazda z uziemionym punktem gwiazdy",
+      "PODWOJNA_GWIAZDA_IZOLOWANA": "podwójna gwiazda z izolowanymi punktami gwiazd",
+      "TROJKAT": "trójkąt"
+    },
+    "catalog_status": [
+      "ANALITYCZNY_V1",
+      "PRODUKCYJNY_V1",
+      "PROJEKTOWY_V1",
+      "REFERENCYJNY_V1",
+      "TESTOWY"
+    ],
+    "insulation": [
+      "EPR",
+      "PAPER",
+      "PVC",
+      "XLPE"
+    ]
   }
 }

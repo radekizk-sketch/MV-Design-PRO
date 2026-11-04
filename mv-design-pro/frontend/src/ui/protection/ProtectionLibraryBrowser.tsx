@@ -20,6 +20,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import {
+  nazwaWartosciKodowej,
+  STAN_WERYFIKACJI_PL,
+  zWielkiejLitery,
+} from '../catalog/wartosciKodoweKarty';
+import {
   fetchProtectionTypesByCategory,
   exportProtectionLibrary,
   importProtectionLibrary,
@@ -331,7 +336,7 @@ export function ProtectionLibraryBrowser({
                     )}
                     {(type as any).unverified && (
                       <div className="mt-1 text-xs font-medium text-amber-700">
-                        Dane analityczne - wymagaja weryfikacji
+                        Dane analityczne — wymagają weryfikacji
                       </div>
                     )}
                   </button>
@@ -428,14 +433,16 @@ function DeviceTypeDetails({ type }: { type: ProtectionDeviceType }) {
         value={type.rated_current_a}
         unit="A"
       />
-      <DetailField label="Zrodlo danych" value={type.source_catalog} />
+      <DetailField label="Źródło danych" value={type.source_catalog} />
       <DetailField
         label="Status weryfikacji"
-        value={type.unverified ? 'NIEZWERYFIKOWANY' : 'Zweryfikowany'}
+        value={zWielkiejLitery(
+          STAN_WERYFIKACJI_PL[type.unverified ? 'NIEWERYFIKOWANY' : 'ZWERYFIKOWANY'],
+        )}
       />
       <DetailField
         label="Zakresy nastaw"
-        value={type.unverified_ranges ? 'Wymagaja weryfikacji' : 'Zweryfikowane'}
+        value={type.unverified_ranges ? 'Wymagają weryfikacji' : 'Zweryfikowane'}
       />
       <DetailField label="Notatki (PL)" value={type.notes_pl} multiline />
       {type.functions_supported && type.functions_supported.length > 0 && (
@@ -480,7 +487,10 @@ function CurveDetails({ type }: { type: ProtectionCurve }) {
     <>
       <DetailField label="Nazwa (PL)" value={type.name_pl} />
       <DetailField label="Standard" value={type.standard} />
-      <DetailField label="Typ krzywej" value={type.curve_kind} />
+      <DetailField
+        label="Typ krzywej"
+        value={type.curve_kind ? nazwaWartosciKodowej('curve_kind', type.curve_kind) : undefined}
+      />
       {type.parameters && Object.keys(type.parameters).length > 0 && (
         <div className="border-t border-gray-200 pt-3">
           <div className="text-xs font-medium text-gray-600 mb-2">Parametry:</div>

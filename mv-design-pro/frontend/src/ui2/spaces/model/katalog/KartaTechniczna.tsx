@@ -15,16 +15,9 @@
 
 import { definicjaParametru } from './parametryDefinicje';
 import { ParametrRow } from './ParametrRow';
-import {
-  ETYKIETY_KATEGORII,
-  ETYKIETY_RODZAJU_APARATU,
-  ETYKIETY_RODZAJU_FALOWNIKA,
-  ETYKIETY_STATUSU_KATALOGU,
-  ETYKIETY_WERYFIKACJI,
-  STRINGS,
-} from './strings';
+import { ETYKIETY_KATEGORII, STRINGS } from './strings';
 import type { KatalogPozycja, KategoriaId } from './types';
-import { etykietaZeSlownika } from '../../../wyniki/wzorzec/slownikWyliczen';
+import { nazwaWartosciKodowej, zWielkiejLitery } from '../../../../ui/catalog/wartosciKodoweKarty';
 
 export interface KartaTechnicznaProps {
   pozycja: KatalogPozycja;
@@ -44,11 +37,11 @@ function czytajTekst(pozycja: KatalogPozycja, klucz: string): string | null {
 function rodzajBadge(pozycja: KatalogPozycja, kategoria: KategoriaId): string | null {
   if (kategoria === 'APARAT') {
     const kind = czytajTekst(pozycja, 'equipment_kind');
-    return kind ? etykietaZeSlownika(ETYKIETY_RODZAJU_APARATU, kind) : null;
+    return kind ? zWielkiejLitery(nazwaWartosciKodowej('equipment_kind', kind)) : null;
   }
   if (kategoria === 'FALOWNIK') {
     const kind = czytajTekst(pozycja, 'kind');
-    return kind ? etykietaZeSlownika(ETYKIETY_RODZAJU_FALOWNIKA, kind) : null;
+    return kind ? zWielkiejLitery(nazwaWartosciKodowej('kind', kind)) : null;
   }
   return null;
 }
@@ -70,7 +63,7 @@ function zbudujPochodzenie(pozycja: KatalogPozycja): WierszPochodzenia[] {
   if (weryfikacja) {
     wiersze.push({
       etykieta: STRINGS.pochodzenieWeryfikacja,
-      wartosc: etykietaZeSlownika(ETYKIETY_WERYFIKACJI, weryfikacja),
+      wartosc: zWielkiejLitery(nazwaWartosciKodowej('verification_status', weryfikacja)),
     });
   }
 
@@ -78,7 +71,7 @@ function zbudujPochodzenie(pozycja: KatalogPozycja): WierszPochodzenia[] {
   if (status) {
     wiersze.push({
       etykieta: STRINGS.pochodzenieStatus,
-      wartosc: etykietaZeSlownika(ETYKIETY_STATUSU_KATALOGU, status),
+      wartosc: zWielkiejLitery(nazwaWartosciKodowej('catalog_status', status)),
     });
   }
 

@@ -10,6 +10,8 @@ import katalogPunktow from '../../../../harness-fixtures/generated/katalog_punkt
 import type { BranchPointCatalogType } from '../../../../ui/catalog/types';
 
 import { KreatorZksn } from '../KreatorZksn';
+import { nazwaWartosciKodowej } from '../../../../ui/catalog/wartosciKodoweKarty';
+import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec/strings';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -132,6 +134,11 @@ describe('KreatorZksn — realna ścieżka', () => {
       `${wariant.params.branch_ports_count}`,
     );
     expect(screen.getByTestId('mvd-kreator-zksn-param-porty').textContent).not.toMatch(/undefined/);
+    // Rodzaj łącznika: nazwa z jednego słownika wartości kodowych, nie kod serwera.
+    const lacznik = screen.getByTestId('mvd-kreator-zksn-param-lacznik').textContent ?? '';
+    expect(lacznik).toContain(nazwaWartosciKodowej('switch_device_kind', wariant.params.switch_device_kind));
+    expect(lacznik).not.toContain(wariant.params.switch_device_kind);
+    expect(lacznik).not.toContain(WZORZEC_STRINGS.wartoscSpozaSlownika);
   });
 
   it('panel teorii renderuje wzory przez KaTeX (math-rendered)', async () => {

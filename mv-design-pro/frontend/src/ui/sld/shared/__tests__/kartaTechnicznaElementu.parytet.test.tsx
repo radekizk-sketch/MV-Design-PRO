@@ -457,6 +457,13 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     expect(w.get('tryb_regulacji')!.zrodloPl).toBe('katalog przekształtnika');
   });
 
+  it('odcinek kablowy: materiał żyły i izolacja nazwą z jednego słownika wartości kodowych, nie kodem', () => {
+    const w = wiersze(karta('odcinek', 'pelne'));
+    expect(w.get('material')!.wartosc).toBe('aluminium (Al)');
+    expect(w.get('izolacja')!.wartosc).toBe('polietylen usieciowany (XLPE)');
+    expect(wiersze(karta('odcinek', 'brak')).get('material')!.wartosc).toBeNull();
+  });
+
   it('stacja bez transformatora w modelu: jawny stan pusty sekcji, nie tabliczka zastępcza', () => {
     const snapshot = model('pelne');
     const bezTr = { ...snapshot, transformers: [], substations: snapshot.substations.map((s) => ({ ...s, transformer_refs: [] })) };

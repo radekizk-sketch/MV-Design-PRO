@@ -46,7 +46,13 @@ type Snapshot = {
     station_type?: string | null;
   }>;
   // Karta POLA-W-TORZE + W5-B: zaciski pól stacji (`bays[].terminal_bus_ref`).
-  bays?: Array<{ ref_id: string; substation_ref?: string | null; terminal_bus_ref?: string | null }>;
+  bays?: Array<{
+    ref_id: string;
+    substation_ref?: string | null;
+    terminal_bus_ref?: string | null;
+    bay_role?: string | null;
+    primary_devices?: Array<{ kind?: string | null }> | null;
+  }>;
   branches?: Array<{ ref_id: string; type?: string; from_bus_ref?: string; to_bus_ref?: string }>;
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   // CV-4.3 K7 (karta K7-FE): źródła sieciowe niosą dane scenariusza MIN.
@@ -368,6 +374,89 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
     );
     expect(stacjeSnNn.length).toBeGreaterThanOrEqual(1);
     expect((enm.branches ?? []).some((b) => b.type === 'cable' || b.type === 'line_overhead')).toBe(true);
+  });
+
+  /**
+   * GŁOWICA KABLOWA → CIĄG GŁÓWNY (karta komunikatów, klasa „martwa ścieżka aparatu pola”):
+   * aparat pola na kanwie v3 ma tożsamość `${bayRef}#${SymbolId}`, a pozycja menu
+   * „Wyprowadź ciąg główny z głowicy” czekała dawniej na identyfikator, którego scena nie
+   * emitowała. Ścieżka wyłącznie z kanwy: GPZ z menu tła → prawy klik w aparat pola GPZ →
+   * „Skonfiguruj aparat” → karta pola, wyposażenie szablonem pola liniowego (głowica kablowa
+   * jest rysowana z rekordu aparatu pierwotnego pola) → prawy klik w GŁOWICĘ → „Wyprowadź ciąg
+   * główny z głowicy” → kreator magistrali → zapis. Sprawdzenie przez API: nowy odcinek
+   * wychodzi z zacisku tego pola.
+   */
+  test('głowica kablowa pola GPZ: prawy klik → „Wyprowadź ciąg główny z głowicy” → odcinek z zacisku pola', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(480_000);
+    const { caseId } = await otworzAplikacje(page, request);
+
+    const kanwa = page.getByTestId('sld-canvas-v3');
+    await expect(kanwa).toBeVisible({ timeout: 30000 });
+    await kanwa.click({ button: 'right', position: { x: 40, y: 40 } });
+    await page.getByRole('menu').getByTestId('sld-menu-insert-gpz').click();
+    await zapiszZrodlo(page);
+    await expect
+      .poll(async () => (await pobierzEnm(request, caseId)).bays?.length ?? 0, { timeout: 60000 })
+      .toBeGreaterThanOrEqual(1);
+
+    // Pole liniowe odpływowe GPZ — bez aparatów pierwotnych po samym wstawieniu GPZ.
+    const enmPoGpz = await pobierzEnm(request, caseId);
+    const pole = (enmPoGpz.bays ?? []).find((b) => String(b.bay_role ?? '').toUpperCase() === 'OUT');
+    expect(pole?.ref_id, 'GPZ ma pole liniowe odpływowe').toBeTruthy();
+    const poleRef = pole!.ref_id;
+
+    // (1) Wyposażenie pola z kanwy: prawy klik w aparat tego pola → „Skonfiguruj aparat”.
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
+    const uchwytPola = page.locator(
+      `[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"]`,
+    ).first();
+    const menuPola = await prawyKlikWUchwyt(page, uchwytPola);
+    await menuPola.getByTestId('sld-menu-configure-equipment').click();
+    await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 30000 });
+    await page.getByTestId('wyposazenie-pola-edytuj').click();
+    await page.getByTestId('wyposazenie-pola-tryb').selectOption('szablon');
+    await page.getByTestId('wyposazenie-pola-szablon').selectOption('bay_template_line_out');
+    await expect(page.getByTestId('wyposazenie-pola-zapisz')).toBeEnabled({ timeout: 30000 });
+    await page.getByTestId('wyposazenie-pola-zapisz').click();
+    await expect
+      .poll(
+        async () =>
+          ((await pobierzEnm(request, caseId)).bays ?? [])
+            .find((b) => b.ref_id === poleRef)
+            ?.primary_devices?.some((d) => String(d.kind ?? '').toUpperCase() === 'CABLE_HEAD') ?? false,
+        { timeout: 60000 },
+      )
+      .toBe(true);
+
+    // (2) Prawy klik w GŁOWICĘ tego pola → „Wyprowadź ciąg główny z głowicy”.
+    await wrocNaSchemat(page);
+    await czekajNaWarstweTrafien(page);
+    const galezieprzed = (await pobierzEnm(request, caseId)).branches?.length ?? 0;
+    const uchwytGlowicy = page.locator(
+      `[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"][data-hit-for*="cableHead"]`,
+    ).first();
+    const menuGlowicy = await prawyKlikWUchwyt(page, uchwytGlowicy);
+    const wyprowadz = menuGlowicy.getByTestId('sld-menu-extend-trunk');
+    await expect(wyprowadz).toBeEnabled();
+    await wyprowadz.click();
+    await zapiszMagistrale(page);
+    await expect
+      .poll(async () => (await pobierzEnm(request, caseId)).branches?.length ?? 0, { timeout: 60000 })
+      .toBeGreaterThan(galezieprzed);
+
+    // (3) Model: nowy odcinek terenowy wychodzi z zacisku pola, którego głowicę kliknięto.
+    const enm = await pobierzEnm(request, caseId);
+    const zacisk = (enm.bays ?? []).find((b) => b.ref_id === poleRef)?.terminal_bus_ref;
+    expect(zacisk, 'pole ma zacisk w modelu').toBeTruthy();
+    expect(
+      (enm.branches ?? []).some(
+        (b) => (b.type === 'cable' || b.type === 'line_overhead') && b.from_bus_ref === zacisk,
+      ),
+    ).toBe(true);
   });
 
   /**

@@ -32,6 +32,7 @@ import {
   PROTECTION_STATUS_COLORS,
 } from '../protection';
 import { formatProtectionFunction, formatNumberPl } from './formatProtection';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 import { ItCurvePanel } from '../protection-curves';
 
 // =============================================================================
@@ -142,8 +143,9 @@ interface ProtectionAssignmentCardProps {
 }
 
 function ProtectionAssignmentCard({ assignment }: ProtectionAssignmentCardProps) {
-  const kindLabel = PROTECTION_DEVICE_KIND_LABELS[assignment.device_kind] ?? assignment.device_kind;
-  const statusLabel = PROTECTION_STATUS_LABELS[assignment.status] ?? assignment.status;
+  // Kod spoza słownika (nowy rodzaj/status serwera) — jawne zdanie, nigdy surowy kod.
+  const kindLabel = etykietaZeSlownika(PROTECTION_DEVICE_KIND_LABELS, assignment.device_kind);
+  const statusLabel = etykietaZeSlownika(PROTECTION_STATUS_LABELS, assignment.status);
   const statusColors = PROTECTION_STATUS_COLORS[assignment.status] ?? 'text-gray-600 bg-gray-50';
 
   return (

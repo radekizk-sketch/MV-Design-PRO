@@ -76,6 +76,7 @@ import {
   wPasmieNn,
 } from '../../../ui2/model/pasmaNapieciowe';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
+import { nazwaWartosciKodowej, zWielkiejLitery } from '../../catalog/wartosciKodoweKarty';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -2048,7 +2049,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       <span className="truncate">{device.manufacturer || '-'}</span>
                       <span className="text-scada-text">{formatKw(device.nominal_power_kw)}</span>
                       <span>{formatKv(getDeviceNominalVoltageKv(device))}</span>
-                      <span>{device.grid_code ?? 'NC RfG'}</span>
+                      <span>{device.grid_code ? nazwaWartosciKodowej('grid_code', device.grid_code) : '-'}</span>
                       <span className="flex flex-wrap gap-1">
                         <span className={`rounded border px-1.5 py-0.5 text-[10px] ${eligibilityClass}`}>
                           {eligibilityText}
@@ -2102,15 +2103,29 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                           : 'brak — wprowadź z karty producenta'
                       }
                     />
-                    <CatalogMetric label="Sterowanie" value={selectedDevice.control_mode ?? '-'} />
-                    <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? '-'} />
+                    <CatalogMetric
+                      label="Sterowanie"
+                      value={selectedDevice.control_mode ? nazwaWartosciKodowej('control_mode', selectedDevice.control_mode) : '-'}
+                    />
+                    <CatalogMetric
+                      label="NC RfG"
+                      value={selectedDevice.grid_code ? nazwaWartosciKodowej('grid_code', selectedDevice.grid_code) : '-'}
+                    />
                     <CatalogMetric
                       label="PTPiREE"
                       value={resolvePtpireeDocument(selectedDevice)}
                     />
                     <CatalogMetric label="Model EMT/RMS" value={selectedDevice.dynamic_profile_id ?? '-'} />
                     <CatalogMetric label="WOS/WiPWC" value={[selectedDevice.ptpiree_wos_version, selectedDevice.ptpiree_wipwc_version].filter(Boolean).join(' / ') || '-'} />
-                    <CatalogMetric label="Źródło" value={selectedDevice.source_reference ?? selectedDevice.verification_status ?? '-'} />
+                    <CatalogMetric
+                      label="Źródło"
+                      value={
+                        selectedDevice.source_reference
+                        ?? (selectedDevice.verification_status
+                          ? zWielkiejLitery(nazwaWartosciKodowej('verification_status', selectedDevice.verification_status))
+                          : '-')
+                      }
+                    />
                   </div>
                 </div>
               )}

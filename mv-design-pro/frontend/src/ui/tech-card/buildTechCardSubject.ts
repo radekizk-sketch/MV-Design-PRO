@@ -50,6 +50,7 @@ import {
 import type { SelectedElement } from '../types';
 import type { TechCardKind, TechCardSubject } from './types';
 import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
+import { REGULACJA_OPCJE } from '../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 
 type SnapshotLike = EnergyNetworkModel | null | undefined;
 
@@ -507,18 +508,13 @@ function buildBranchPointSubject(
   };
 }
 
-/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
- *  świadomy wobec `ui/sld/shared/daneElementuKanwy.ts::CONTROL_MODE_LABEL_PL` (ten sam
- *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
- *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
- *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
-const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
-  Q_OD_U: 'Regulacja Q(U)',
-  P_OD_U: 'Regulacja P(U)',
-  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
-  WYLACZONE: 'Bez regulacji',
-};
+/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — JEDEN słownik
+ *  nastawy modelu (`ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`, ten sam, którym
+ *  kreator źródła OZE i karta techniczna kanwy nazywają tryb). Dawna kopia tej tabeli miała
+ *  inne nazwy niż kreator („Regulacja Q(U)” zamiast „Regulacja Q(U) — napięciowo-jałowa”). */
+const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = Object.fromEntries(
+  REGULACJA_OPCJE.map((o) => [o.value, o.label]),
+);
 
 /** Karta CV-4.1b (A3-04): pola regulacji Q wynikające z `control_mode` — generyczne dla
  *  WSZYSTKICH trybów (nie tylko REGULACJA_NAPIECIA), żeby karta techniczna nie miała tej

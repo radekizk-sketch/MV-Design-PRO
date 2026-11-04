@@ -2,12 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import type { CatalogListItem } from './api';
 import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
-import type { BranchPointCatalogType, TypeCategory } from './types';
-import {
-  pradAparatuSnKatalogu,
-  pradKaLubBrakDanych,
-  pradLacznikaKatalogu,
-} from './pradZwarciowyKatalogu';
+import type { TypeCategory } from './types';
+import { skrotParametrowTypu } from './skrotTypuKatalogu';
 import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 
 interface TypePickerProps {
@@ -16,54 +12,6 @@ interface TypePickerProps {
   onSelectType: (typeId: string, typeName: string) => void;
   onClose: () => void;
   isOpen: boolean;
-}
-
-function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
-  const record = type as unknown as Record<string, unknown>;
-
-  switch (category) {
-    case 'LINE':
-    case 'CABLE':
-      return `R=${record.r_ohm_per_km ?? '-'} Ohm/km, X=${record.x_ohm_per_km ?? '-'} Ohm/km, I=${record.rated_current_a ?? '-'} A`;
-    case 'HV_OVERHEAD_CONDUCTOR':
-      return `${record.oznaczenie ?? '-'}, ${record.przeznaczenie === 'ODGROMOWY' ? 'odgromowy' : 'fazowy'}, R20=${record.r20_dc_ohm_per_km ?? '-'} Ohm/km, d=${record.srednica_mm ?? '-'} mm`;
-    case 'TRANSFORMER':
-      return `${record.rated_power_mva ?? '-'} MVA, ${record.voltage_hv_kv ?? '-'} / ${record.voltage_lv_kv ?? '-'} kV, uk=${record.uk_percent ?? '-'}%`;
-    case 'SWITCH_EQUIPMENT':
-      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
-    case 'MV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
-    case 'LV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
-    case 'LV_RCD':
-      return `IΔn=${record.i_delta_n_a ?? '-'} A, typ ${record.rcd_type ?? '-'}, In=${record.in_a ?? '-'} A, ta=${record.t_a_s ?? '-'} s`;
-    case 'LV_CABLE':
-      return `${record.u_n_kv ?? '-'} kV, ${record.cross_section_mm2 ?? '-'} mm2, ${record.i_max_a ?? '-'} A`;
-    case 'LOAD':
-      return `P=${record.p_kw ?? '-'} kW, cos fi=${record.cos_phi ?? '-'}, model=${record.model ?? '-'}`;
-    case 'CT':
-      return `${record.ratio_primary_a ?? '-'} / ${record.ratio_secondary_a ?? '-'} A, klasa=${record.accuracy_class ?? '-'}`;
-    case 'VT':
-      return `${record.ratio_primary_v ?? '-'} / ${record.ratio_secondary_v ?? '-'} V, klasa=${record.accuracy_class ?? '-'}`;
-    case 'PV_INVERTER':
-      return `${record.s_n_kva ?? '-'} kVA, Pmax=${record.p_max_kw ?? '-'} kW`;
-    case 'BESS_INVERTER':
-      return `P=${record.p_discharge_kw ?? '-'} kW, E=${record.e_kwh ?? '-'} kWh`;
-    case 'PROTECTION_DEVICE':
-      return `${record.vendor ?? record.manufacturer ?? '-'}, ${record.series ?? '-'}, In=${record.rated_current_a ?? '-'} A`;
-    case 'SYSTEM_SOURCE':
-      return `${record.voltage_rating_kv ?? '-'} kV, Sk3=${record.sk3_mva ?? '-'} MVA, R/X=${record.rx_ratio ?? '-'}`;
-    case 'BRANCH_POLE':
-    case 'ZKSN': {
-      // Parametry punktu serwer wysyła w `params` pozycji (`{id, name, params}`).
-      const params = (type as BranchPointCatalogType).params;
-      return `${params.switch_device_kind ?? '-'}, ${params.switch_rated_current_a ?? '-'} A, porty odgałęzienia=${params.branch_ports_count ?? '-'}`;
-    }
-    case 'MEASUREMENT_TRANSFORMER':
-    case 'CONVERTER':
-    default:
-      return '-';
-  }
 }
 
 export function TypePicker({
@@ -227,7 +175,7 @@ export function TypePicker({
                       </td>
                       <td className="px-4 py-3 text-sm text-scada-text">{manufacturer}</td>
                       <td className="px-4 py-3 text-sm text-scada-muted">
-                        {getTypeParams(type, category)}
+                        {skrotParametrowTypu(type, category)}
                       </td>
                     </tr>
                   );

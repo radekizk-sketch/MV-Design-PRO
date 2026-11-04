@@ -146,7 +146,14 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm, openRouteSurface }),
 }));
 
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna, kontekst
+// aparatu) — wprost ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
 vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../selection/store', () => ({
   useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({ selectedElements: mockSelectedElements }),
 }));

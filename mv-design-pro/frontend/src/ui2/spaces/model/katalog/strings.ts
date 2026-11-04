@@ -57,37 +57,3 @@ export const ETYKIETY_KATEGORII: Readonly<Record<KategoriaId, string>> = {
   APARAT_NN: 'Aparaty nN',
   APARAT_NN_RCD: 'Wyłączniki różnicowoprądowe nN',
 };
-
-/** Etykiety PL rodzajów aparatu łączeniowego (pole `equipment_kind`). */
-export const ETYKIETY_RODZAJU_APARATU: Readonly<Record<string, string>> = {
-  CIRCUIT_BREAKER: 'Wyłącznik',
-  DISCONNECTOR: 'Odłącznik',
-  EARTH_SWITCH: 'Uziemnik',
-  LOAD_BREAK_SWITCH: 'Rozłącznik',
-  SWITCH_DISCONNECTOR: 'Rozłącznik izolacyjny',
-};
-
-/** Etykiety PL rodzaju falownika/źródła (pole `kind`). */
-export const ETYKIETY_RODZAJU_FALOWNIKA: Readonly<Record<string, string>> = {
-  PV: 'Fotowoltaika',
-  WIND: 'Farma wiatrowa',
-  BESS: 'Magazyn energii',
-  INVERTER: 'Przekształtnik',
-};
-
-/** Etykiety PL statusu weryfikacji katalogu (pole `verification_status`). */
-export const ETYKIETY_WERYFIKACJI: Readonly<Record<string, string>> = {
-  ZWERYFIKOWANY: 'Zweryfikowany',
-  CZESCIOWO_ZWERYFIKOWANY: 'Częściowo zweryfikowany',
-  NIEWERYFIKOWANY: 'Niezweryfikowany',
-  REFERENCYJNY: 'Referencyjny',
-};
-
-/** Etykiety PL statusu katalogu (pole `catalog_status`). */
-export const ETYKIETY_STATUSU_KATALOGU: Readonly<Record<string, string>> = {
-  PRODUKCYJNY_V1: 'Produkcyjny',
-  REFERENCYJNY_V1: 'Referencyjny',
-  ANALITYCZNY_V1: 'Analityczny',
-  TESTOWY: 'Testowy',
-  PROJEKTOWY_V1: 'Projektowy (dane z arkusza)',
-};

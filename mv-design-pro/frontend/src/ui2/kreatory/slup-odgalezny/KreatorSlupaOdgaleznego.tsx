@@ -43,6 +43,7 @@ import {
   type SlupOdgaleznyFormData,
 } from './slupOdgaleznyModel';
 import { SLUP_STRINGS as T } from './strings';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'slup', tytul: T.krokKatalog },
@@ -238,7 +239,11 @@ export function KreatorSlupaOdgaleznego() {
     <KreatorSiatka kolumny={3}>
       <RzadWartosci
         etykieta={T.paramLacznik}
-        wartosc={params.switch_device_kind ?? '—'}
+        wartosc={
+          params.switch_device_kind
+            ? nazwaWartosciKodowej('switch_device_kind', params.switch_device_kind)
+            : '—'
+        }
         testid="mvd-kreator-slup-param-lacznik"
       />
       <RzadWartosci

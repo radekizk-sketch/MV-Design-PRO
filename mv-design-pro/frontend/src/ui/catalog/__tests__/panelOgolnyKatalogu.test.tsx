@@ -14,6 +14,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import wyrocznia from '../../../harness-fixtures/generated/pola_kart_katalogu.json';
 import { ETYKIETY_POL_KARTY } from '../etykietyPolKarty';
 import { BRAK_DANYCH_PL } from '../pradZwarciowyKatalogu';
 import {
@@ -22,6 +23,8 @@ import {
   type KategoriaPaneluOgolnego,
 } from '../polaKartyKatalogu';
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
+import { jestPolemKodowym, nazwaWartosciKodowej, POLA_KODOWE_KARTY } from '../wartosciKodoweKarty';
+import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 
 const fetchTypesByCategoryMock = vi.fn();
 const fetchPtpireeMock = vi.fn();
@@ -42,7 +45,12 @@ const WARTOSC = 'Wartość wzorcowa karty';
  *  (te mają własne rozróżnienie „nie dotyczy” / „brak danych”). */
 function poleBadane(kategoria: KategoriaPaneluOgolnego): string {
   const pole = POLA_KARTY_KATEGORII[kategoria].find(
-    (k) => !POLA_POZA_PANELEM_OGOLNYM.has(k) && k !== 'breaking_capacity_ka' && k !== 'i_th_ka',
+    (k) =>
+      !POLA_POZA_PANELEM_OGOLNYM.has(k)
+      && k !== 'breaking_capacity_ka'
+      && k !== 'i_th_ka'
+      // Pole kodowe pokazuje nazwę ze słownika, nie wartość wzorcową — iloczyn niżej.
+      && !jestPolemKodowym(k),
   );
   if (!pole) throw new Error(`Kategoria ${kategoria} bez pola panelu ogólnego.`);
   return pole;
@@ -132,6 +140,13 @@ describe('Panel ogólny karty katalogu — każde pole schematu, brak jawny', ()
     for (const pole of POLA_KARTY_KATEGORII[skladowa]) {
       if (!(pole in rekord)) rekord[pole] = 1;
     }
+    // Punkt rozgałęzienia: serwer wysyła parametry w `params` (wyrocznia
+    // `parametry_punktu_rozgalezienia.params`) — każdy z nich podany.
+    if (skladowa === 'BRANCH_POLE' || skladowa === 'ZKSN') {
+      rekord.params = Object.fromEntries(
+        wyrocznia.parametry_punktu_rozgalezienia.params.map((pole) => [pole, 1]),
+      );
+    }
     fetchTypesByCategoryMock.mockResolvedValue([rekord]);
     fetchPtpireeMock.mockResolvedValue({ items: [rekord], total: 1 });
     render(<TypeLibraryBrowser initialTab={kategoria} />);
@@ -139,3 +154,63 @@ describe('Panel ogólny karty katalogu — każde pole schematu, brak jawny', ()
     expect(skrot.textContent ?? '').not.toMatch(/—|undefined|NaN/);
   });
 });
+
+/**
+ * Wartości kodowe w panelu ogólnym — iloczyn: {każda kategoria panelu} × {każde pole kodowe jej
+ * schematu (wyrocznia serwera)} × {każda wartość tego pola wysyłana przez serwer}. Pozycja wykazu
+ * na każdą wartość; klik natywny w każdą. Panel pokazuje nazwę z jednego słownika
+ * (`wartosciKodoweKarty.ts`), nigdy kod ani zdanie „spoza słownika”. Punkt rozgałęzienia niesie
+ * pola kodowe w `params` — każde z nich w osobnej pozycji.
+ */
+describe('Panel ogólny karty katalogu — wartości kodowe nazwą, nie kodem', () => {
+  const WARTOSCI = wyrocznia.wartosci_kodowe as Record<string, string[]>;
+  const PARAMS_PUNKTU = new Set(wyrocznia.parametry_punktu_rozgalezienia.params);
+  const PRZYPADKI_KODOWE = KATEGORIE.flatMap((kategoria) => {
+    const plaskie = POLA_KARTY_KATEGORII[kategoria]
+      .filter((pole) => pole in WARTOSCI && !POLA_POZA_PANELEM_OGOLNYM.has(pole))
+      .map((pole) => [kategoria, pole, false] as const);
+    const wParams =
+      kategoria === 'BRANCH_POLE' || kategoria === 'ZKSN'
+        ? Object.keys(WARTOSCI)
+            .filter((pole) => PARAMS_PUNKTU.has(pole))
+            .map((pole) => [kategoria, pole, true] as const)
+        : [];
+    return [...plaskie, ...wParams];
+  });
+
+  it('iloczyn niepusty i obejmuje pola w `params` punktu rozgałęzienia', () => {
+    expect(PRZYPADKI_KODOWE.length).toBeGreaterThan(40);
+    expect(PRZYPADKI_KODOWE.some(([, pole, wParams]) => wParams && pole === 'switch_device_kind')).toBe(true);
+  });
+
+  beforeEach(() => {
+    fetchTypesByCategoryMock.mockReset();
+    fetchPtpireeMock.mockReset();
+  });
+
+  it.each(PRZYPADKI_KODOWE)('%s × pole %s (w params: %s)', async (kategoria, pole, wParams) => {
+    const wartosci = WARTOSCI[pole];
+    const rekordy = wartosci.map((wartosc, i) => ({
+      id: `typ-${i}`,
+      name: `Pozycja ${wartosc}`,
+      ...(wParams ? { params: { [pole]: wartosc } } : { [pole]: wartosc }),
+    }));
+    fetchTypesByCategoryMock.mockResolvedValue(rekordy);
+    fetchPtpireeMock.mockResolvedValue({ items: rekordy, total: rekordy.length });
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser initialTab={kategoria} />);
+    for (const wartosc of wartosci) {
+      // Pierwsze trafienie = wiersz wykazu (nagłówek karty powtarza nazwę wybranej pozycji).
+      await user.click((await screen.findAllByText(`Pozycja ${wartosc}`))[0]);
+      const siatka = await screen.findByTestId('type-library-details-grid');
+      const wiersz = within(siatka).getByTestId(`type-library-pole-${wParams ? 'params' : pole}`);
+      const tekst = wiersz.textContent ?? '';
+      expect(tekst).toContain(nazwaWartosciKodowej(pole, wartosc));
+      expect(tekst).not.toContain(WZORZEC_STRINGS.wartoscSpozaSlownika);
+      if (POLA_KODOWE_KARTY[pole].rodzaj === 'nazwy') {
+        expect(tekst.split(/[:;,]\s*/).map((t) => t.trim())).not.toContain(wartosc);
+      }
+    }
+  });
+});
+

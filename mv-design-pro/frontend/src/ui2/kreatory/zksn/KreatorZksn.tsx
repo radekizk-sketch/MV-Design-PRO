@@ -44,6 +44,7 @@ import {
   type ZksnFormData,
 } from './zksnModel';
 import { ZKSN_STRINGS as T } from './strings';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'zksn', tytul: T.krokKatalog },
@@ -259,7 +260,11 @@ export function KreatorZksn() {
     <KreatorSiatka kolumny={2}>
       <RzadWartosci
         etykieta={T.paramLacznik}
-        wartosc={params.switch_device_kind ?? '—'}
+        wartosc={
+          params.switch_device_kind
+            ? nazwaWartosciKodowej('switch_device_kind', params.switch_device_kind)
+            : '—'
+        }
         testid="mvd-kreator-zksn-param-lacznik"
       />
       <RzadWartosci
