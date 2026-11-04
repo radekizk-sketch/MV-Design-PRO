@@ -181,24 +181,14 @@ FUNKCJE_OCENIANE: tuple[str, ...] = tuple(
 )
 
 #: Funkcje, których ta ścieżka NIE ocenia — z nazwanym powodem (jawnie, nie cicho).
-#: Funkcja ziemnozwarciowa widzi 3·I0 w torze składowej zerowej, a rozpływ biegu SC niesie
-#: rozkład składowej zgodnej; kierunkowa wymaga kierunku mocy zwarciowej, którego bieg nie
-#: wyznacza. Pozostałe funkcje rejestru bez ewaluatora — zdanie ogólne `powod_nieoceniania`.
+#: Kierunkowa fazowa wymaga kierunku mocy zwarciowej, którego bieg nie wyznacza. Funkcje
+#: ziemnozwarciowe (``ocena="ZIEMNOZWARCIOWA"`` w rejestrze) ocenia ścieżka
+#: `ocena_ziemnozwarciowa` (rozpływ składowej zerowej przy zwarciu doziemnym), funkcje LoM —
+#: analiza pracy wyspowej; pozostałe bez ewaluatora — zdanie ogólne `powod_nieoceniania`.
 _POWODY_NIEOCENIANIA: dict[str, str] = {
-    "50N": (
-        "Funkcja ziemnozwarciowa 50N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu "
-        "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
-    ),
-    "51N": (
-        "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu "
-        "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
-    ),
     "67": (
         "Funkcja kierunkowa 67 wymaga kierunku mocy zwarciowej w miejscu przekaźnika, którego "
         "bieg zwarciowy nie wyznacza — ta ocena jej nie obejmuje."
-    ),
-    "67N": (
-        "Funkcja kierunkowa 67N wymaga kierunku i składowej zerowej — ta ocena jej nie obejmuje."
     ),
 }
 
@@ -209,6 +199,12 @@ def powod_nieoceniania(kod: str) -> str:
         return _POWODY_NIEOCENIANIA[kod]
     wpis = FUNKCJE_EAZ.get(kod)
     etykieta = etykieta_funkcji_eaz(kod)
+    if wpis is not None and wpis.ocena == "ZIEMNOZWARCIOWA":
+        return (
+            f"Funkcję {etykieta} ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej "
+            "zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji "
+            "ocen ziemnozwarciowych tego biegu."
+        )
     if wpis is not None and wpis.ocena == "LOM":
         return (
             f"Funkcję {etykieta} ocenia analiza ochrony od pracy wyspowej (LoM), nie ocena "
@@ -220,8 +216,10 @@ def powod_nieoceniania(kod: str) -> str:
     )
 
 
-#: Etykieta ocenianego stopnia z rejestru funkcji (jedna etykieta w produkcie).
-ETYKIETY_FUNKCJI_PL: dict[str, str] = {kod: etykieta_funkcji_eaz(kod) for kod in FUNKCJE_OCENIANE}
+#: Etykieta stopnia z rejestru funkcji (jedna etykieta w produkcie) — dla KAŻDEGO kodu rejestru:
+#: ``StopienNastaw`` i rdzeń czasu (`czas_stopnia`) służą także stopniom prądowym funkcji
+#: ziemnozwarciowych 51N/50N/67N (`ocena_ziemnozwarciowa`).
+ETYKIETY_FUNKCJI_PL: dict[str, str] = {kod: etykieta_funkcji_eaz(kod) for kod in FUNKCJE_EAZ}
 
 
 #: Krzywa modelu → typ rdzenia IEC 60255. Literał modelu (``KrzywaNastawy``) JEST kodem krzywej

@@ -78,6 +78,12 @@ class GroundingConfig(BaseModel):
     type: TypPunktuNeutralnego
     r_ohm: float | None = None
     x_ohm: float | None = None
+    #: Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd czynny wymuszenia automatyki AWSC (rezystor
+    #: wymuszający równoległy do dławika, strona pierwotna, A) — wyłącznie przy dławiku
+    #: (``petersen_coil``); predykat ``enm.uziemienie.blad_konfiguracji_uziemienia``. Rezystor
+    #: R_W = U_n/(√3·I_W) dołączany po zwłoce automatyki ZAWSC (nastawa funkcji w sterowniku).
+    #: ``None`` = punkt neutralny bez AWSC.
+    awsc_prad_wymuszenia_a: float | None = None
 
 
 #: Zbiór faz przyłączenia elementu (karta W5-D, decyzja F-1 `CANONICAL_TWIN_ARCHITECTURE.md`):

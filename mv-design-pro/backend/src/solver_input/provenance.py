@@ -314,6 +314,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta BIEG-ZABEZPIECZEN-Z-MODELU (P0, 2026-09)",
         ),
         CapabilityEvidence(
+            capability_id="zabezpieczenia.ocena_ziemnozwarciowa",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Ocena zabezpieczeń ziemnozwarciowych z modelu: prąd 3I0 i napięcie U0 pola "
+                "z rozpływu składowej zerowej solvera doziemień SN (network_model/solvers/"
+                "doziemienie_sn.py — metoda węzłowa ze składowymi symetrycznymi, pojemności "
+                "doziemne linii i kabli, punkty neutralne z dławikiem, rezystorem i AWSC), czas "
+                "z charakterystyki normowej rdzenia IEC 60255 albo zwłoki nastawy. Zgodności "
+                "z pomiarem sieci rzeczywistej ani z niezależnym programem na sieci referencyjnej "
+                "nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta EWALUATORY-ZIEMNOZWARCIOWE (2026-11)",
+        ),
+        CapabilityEvidence(
             capability_id="aparatura.wytrzymalosc_zwarciowa_pola",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

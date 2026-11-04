@@ -1221,7 +1221,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "grounding": KsztaltObiektu(
-            pola=frozenset({"r_ohm", "type", "x_ohm"}),
+            pola=frozenset({"awsc_prad_wymuszenia_a", "r_ohm", "type", "x_ohm"}),
         ),
         "manual_equivalent": KsztaltObiektu(
             pola=frozenset(
@@ -1401,6 +1401,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1448,6 +1449,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }
@@ -1594,6 +1596,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1642,6 +1645,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }

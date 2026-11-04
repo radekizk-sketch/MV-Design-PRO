@@ -71,7 +71,16 @@ _RODZAJ_Z_FUNKCJI: tuple[tuple[frozenset[str], str], ...] = (
     (frozenset({"87T", "87L"}), "RELAY_DIFFERENTIAL"),
     (frozenset({"21"}), "RELAY_DISTANCE"),
     (frozenset({"50", "51", "67"}), "RELAY_OVERCURRENT"),
-    (frozenset({"50N", "51N", "67N", "Yo>", "Go>"}), "RELAY_EARTH_FAULT"),
+    # Ziemnozwarciowe = funkcje ZABEZPIECZENIE z ewaluatorem ziemnozwarciowym w rejestrze, bez
+    # napięciowego 59N (sygnalizacja/rezerwa sekcji) — jedno źródło z oceną ziemnozwarciową.
+    (
+        frozenset(
+            kod
+            for kod, f in FUNKCJE_EAZ.items()
+            if f.ocena == "ZIEMNOZWARCIOWA" and f.rodzaj == "ZABEZPIECZENIE" and kod != "59N"
+        ),
+        "RELAY_EARTH_FAULT",
+    ),
 )
 
 

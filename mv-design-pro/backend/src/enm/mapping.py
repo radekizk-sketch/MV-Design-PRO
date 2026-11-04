@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -39,6 +40,7 @@ from network_model.catalog.wartosci_robocze import (
     WIELKOSC_TYLKO_IB,
     WIELKOSCI_ZWARCIOWE,
     WartoscRozstrzygnieta,
+    b0_robocze_galezi,
     moc_pozorna_tabliczki_maszyny_mva,
     moc_znamionowa_z_mocy_pozornej,
     rozstrzygnij_parametry_maszyny,
@@ -80,6 +82,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
 from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
+    impedancja_punktu_neutralnego_ohm,
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
     kv_na_v,
@@ -89,6 +92,7 @@ from network_model.pochodne import (
     simens_na_mikrosimens,
 )
 from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.solvers.doziemienie_sn import BocznikZerowy, PunktNeutralnyDoziemienia
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     aggregate_zip,
@@ -101,6 +105,7 @@ from .models import (
     EnergyNetworkModel,
     FuseBranch,
     Generator,
+    GroundingConfig,
     OverheadLine,
     Source,
     SwitchBranch,
@@ -485,7 +490,13 @@ def _add_series_admittance(
 
 
 def _assemble_zero_sequence_y0(
-    enm: EnergyNetworkModel, graph: NetworkGraph, scenario: Scenario = "MAX"
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    scenario: Scenario = "MAX",
+    *,
+    boczniki: list[BocznikZerowy] | None = None,
+    b0_robocze: Mapping[str, float] | None = None,
+    odniesienie_numeryczne: bool = True,
 ) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
     """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
@@ -494,6 +505,19 @@ def _assemble_zero_sequence_y0(
     stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
     grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
     przerwie / boczniku do ziemi prądu zerowego.
+
+    ``boczniki`` (karta EWALUATORY-ZIEMNOZWARCIOWE): lista, do której budowniczy dopisuje
+    KAŻDY stempel do ziemi (pojemność linii/kabla na każdym końcu, bateria z uziemioną
+    gwiazdą, bocznik punktu neutralnego źródła i transformatora) z węzłem grafu PRZED
+    scaleniem łącznikami — z niej obliczenie doziemne składa prąd zerowy pola z prawa
+    Kirchhoffa dla strefy. Ta sama pętla stempluje macierz i dopisuje bocznik, więc suma
+    boczników indeksu jest częścią diagonali Y0 (test spójności); macierz bez zmian.
+    ``b0_robocze`` — propozycje B′0 [S/km] gałęzi bez susceptancji zerowej w danych
+    (``wartosci_robocze.b0_robocze_galezi``); podaje je WYŁĄCZNIE obliczenie doziemne, sieć
+    zerowa zwarć IEC 60909 składa się bez nich.
+    ``odniesienie_numeryczne=False`` — bez lokalnego odniesienia 1e6 p.u. węzłów odciętych od
+    sieci zerowej: obliczenie doziemne rozpoznaje je samo (składowa bez bocznika do ziemi) i
+    nazywa, zamiast liczyć je jak węzły uziemione bezpośrednio.
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
 
@@ -583,12 +607,28 @@ def _assemble_zero_sequence_y0(
         # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
         # Zero fabrykacji: gdy b0 brak, bocznik pomijany (bez zmiany, jak dla
         # r0/x0 wyżej) — NIE podstawiamy zera znaczącego fizycznie.
-        if branch.b0_siemens_per_km is not None:
-            y0_shunt_total_s = branch.b0_siemens_per_km * branch.length_km
+        b0_galezi = branch.b0_siemens_per_km
+        if b0_galezi is None and b0_robocze is not None:
+            b0_galezi = b0_robocze.get(branch.ref_id)
+        if b0_galezi is not None:
+            y0_shunt_total_s = b0_galezi * branch.length_km
             y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
             y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
             y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
             y0_bus[to_idx, to_idx] += y0_shunt_per_end_pu
+            if boczniki is not None:
+                for wezel, indeks in ((from_id, from_idx), (to_id, to_idx)):
+                    boczniki.append(
+                        BocznikZerowy(
+                            element_ref=branch.ref_id,
+                            nazwa_pl=nazwa_elementu(branch, "branches"),
+                            rodzaj="POJEMNOSC_LINII",
+                            wezel=wezel,
+                            indeks=indeks,
+                            y_pu=y0_shunt_per_end_pu,
+                            i_base_a=_prad_bazy_a(graph, wezel),
+                        )
+                    )
             tracer.add(
                 key=f"z0_line_shunt[{branch.ref_id}]",
                 title=(
@@ -598,12 +638,12 @@ def _assemble_zero_sequence_y0(
                 formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
                 inputs={
                     "ref_id": branch.ref_id,
-                    "b0_siemens_per_km": branch.b0_siemens_per_km,
+                    "b0_siemens_per_km": b0_galezi,
                     "length_km": branch.length_km,
                     "z_base_ohm": z_base_ohm,
                 },
                 substitution=(
-                    f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
+                    f"B0={b0_galezi:.6g} S/km · {branch.length_km:.6g} km = "
                     f"{y0_shunt_total_s:.6g} S; Y0_sh,end(pu) = "
                     f"j{y0_shunt_per_end_pu.imag:.6g} (na {nazwa_szyny[branch.from_bus_ref]} "
                     f"i {nazwa_szyny[branch.to_bus_ref]})"
@@ -655,6 +695,23 @@ def _assemble_zero_sequence_y0(
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
+        if boczniki is not None:
+            boczniki.append(
+                BocznikZerowy(
+                    element_ref=source.ref_id,
+                    nazwa_pl=nazwa_elementu(source, "sources"),
+                    rodzaj="PUNKT_NEUTRALNY",
+                    wezel=bus_id,
+                    indeks=idx,
+                    y_pu=1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id)),
+                    i_base_a=_prad_bazy_a(graph, bus_id),
+                    punkt_neutralny=_punkt_neutralny_doziemienia(
+                        source.neutral_grounding,
+                        z_base_ohm=builder.get_zbase_ohm(bus_id),
+                        u_n_kv=float(graph.nodes[bus_id].voltage_level),
+                    ),
+                )
+            )
         tracer.add(
             key=f"z0_source[{source.ref_id}]",
             title=(
@@ -710,6 +767,18 @@ def _assemble_zero_sequence_y0(
         )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += admitancja.y_pu
+        if boczniki is not None:
+            boczniki.append(
+                BocznikZerowy(
+                    element_ref=bateria.ref_id,
+                    nazwa_pl=nazwa_baterii,
+                    rodzaj="BATERIA",
+                    wezel=bus_id,
+                    indeks=idx,
+                    y_pu=admitancja.y_pu,
+                    i_base_a=_prad_bazy_a(graph, bus_id),
+                )
+            )
         tracer.add(
             key=f"z0_shunt_capacitor[{bateria.ref_id}]",
             title=f"Bateria {nazwa_baterii}: admitancja zerowa (bocznik do ziemi)",
@@ -762,16 +831,104 @@ def _assemble_zero_sequence_y0(
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
+        if boczniki is not None and model.connection in (
+            ZeroSeqConnection.HV_SHUNT_GROUND,
+            ZeroSeqConnection.LV_SHUNT_GROUND,
+        ):
+            gorna = model.connection == ZeroSeqConnection.HV_SHUNT_GROUND
+            wezel_bocznika = hv_id if gorna else lv_id
+            boczniki.append(
+                BocznikZerowy(
+                    element_ref=trafo.ref_id,
+                    nazwa_pl=nazwa_elementu(trafo, "transformers"),
+                    rodzaj="PUNKT_NEUTRALNY",
+                    wezel=wezel_bocznika,
+                    indeks=node_index[wezel_bocznika],
+                    y_pu=y_pu,
+                    i_base_a=_prad_bazy_a(graph, wezel_bocznika),
+                    punkt_neutralny=_punkt_neutralny_doziemienia(
+                        trafo.hv_neutral if gorna else trafo.lv_neutral,
+                        z_base_ohm=impedancja_z_napiecia_i_mocy_ohm(
+                            trafo.uhv_kv if gorna else trafo.ulv_kv, S_BASE_MVA
+                        ),
+                        u_n_kv=float(graph.nodes[wezel_bocznika].voltage_level),
+                        zn3_pu=model.zn3_hv_pu if gorna else model.zn3_lv_pu,
+                    ),
+                )
+            )
 
     # Zero-sequence paths can be intentionally blocked by transformer vector
     # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
     # calculations singular; adding a local numerical reference keeps them
     # isolated from the solved SN network.
-    for idx in range(size):
+    for idx in range(size if odniesienie_numeryczne else 0):
         if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
             y0_bus[idx, idx] += complex(1e6, 0.0)
 
     return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
+
+
+def _prad_bazy_a(graph: NetworkGraph, wezel: str) -> float:
+    """Prąd bazowy węzła I_b = S_base/(√3·U_n) [A] — ta sama baza co stempel Y0 węzła."""
+    return prad_znamionowy_a(S_BASE_MVA, float(graph.nodes[wezel].voltage_level))
+
+
+def _punkt_neutralny_doziemienia(
+    uziemienie: GroundingConfig | None,
+    *,
+    z_base_ohm: float,
+    u_n_kv: float,
+    zn3_pu: complex | None = None,
+) -> PunktNeutralnyDoziemienia:
+    """Opis punktu neutralnego bocznika zerowego dla obliczenia doziemnego.
+
+    Brak konfiguracji przy boczniku = uziemienie bezpośrednie (litera N/n grupy albo jawne
+    R0/X0 równoważnika). ``zn3_pu`` podaje model transformatora (składnik zawarty w jego
+    Z0); dla źródła 3·Z_N liczy się z konfiguracji na bazie stempla węzła."""
+    typ = uziemienie.type if uziemienie is not None else "directly_grounded"
+    zn_ohm = (
+        impedancja_punktu_neutralnego_ohm(uziemienie.r_ohm, uziemienie.x_ohm)
+        if uziemienie is not None and typ in ("resistor_grounded", "petersen_coil")
+        else 0j
+    )
+    return PunktNeutralnyDoziemienia(
+        typ=typ,
+        zn_ohm=zn_ohm,
+        zn3_pu=zn3_pu if zn3_pu is not None else 3.0 * zn_ohm / z_base_ohm,
+        z_base_ohm=z_base_ohm,
+        u_n_kv=u_n_kv,
+        awsc_prad_a=uziemienie.awsc_prad_wymuszenia_a if uziemienie is not None else None,
+    )
+
+
+def sklad_sieci_doziemnej(
+    enm: EnergyNetworkModel, graph: NetworkGraph
+) -> tuple[
+    dict[str, int], np.ndarray, tuple[BocznikZerowy, ...], list[dict], dict[str, tuple[float, str]]
+]:
+    """Macierz Y0 + jej boczniki do ziemi z węzłami grafu (karta EWALUATORY-ZIEMNOZWARCIOWE) —
+    wejście obliczenia doziemnego SN. Ta sama pętla stempli co ``build_zero_sequence_zbus``
+    (scenariusz MAX) z JEDNĄ różnicą: gałąź bez B′0 w danych dostaje propozycję
+    ``b0_robocze_galezi`` (zwracaną jako ``ref → (B′0, założenie)`` do danych przyjętych)."""
+    czestotliwosc = float(enm.header.defaults.frequency_hz)
+    propozycje: dict[str, tuple[float, str]] = {}
+    for galaz in sorted(enm.branches, key=lambda b: b.ref_id):
+        if not isinstance(galaz, OverheadLine | Cable) or galaz.status != "closed":
+            continue
+        propozycja = b0_robocze_galezi(
+            galaz.model_dump(mode="json"), czestotliwosc_hz=czestotliwosc
+        )
+        if propozycja is not None:
+            propozycje[galaz.ref_id] = propozycja
+    boczniki: list[BocznikZerowy] = []
+    _, node_index, _, y0_bus, trace = _assemble_zero_sequence_y0(
+        enm,
+        graph,
+        boczniki=boczniki,
+        b0_robocze={ref: wartosc for ref, (wartosc, _) in propozycje.items()},
+        odniesienie_numeryczne=False,
+    )
+    return dict(node_index), y0_bus, tuple(boczniki), trace, propozycje
 
 
 def build_zero_sequence_zbus(
