@@ -52,11 +52,13 @@ def _liczba(tmp_path: Path, wzgledna: str, tresc: str) -> int:
         ("Czas t_b wyłączenia", True),
         ("Prąd \\(I_{th}\\) jest za duży", False),  # LaTeX — ukośnik
         ("Prąd $I_{th}$ jest za duży", False),  # segment wzoru
-        ("I_th > limit", False),  # bez słowa polskiego
+        ("I_th > lim", False),  # bez słowa
         ("Prąd_I_th", False),  # bez spacji — identyfikator
         ("Pole `i_th_a` jest puste", False),  # identyfikator w odwrotnych apostrofach
         ("Kod NIE_DOTYCZY dla pola", False),  # kod statusu
         ("Zakaz interpolacji, §0.2 karty P0.7", False),  # numer karty, nie symbol P0
+        ("Moc bierna generatora (kod 'generator.q_missing')", False),  # kod błędu
+        ("Moc bierna Q_g generatora (kod 'generator.q_missing')", True),
         ("Straty jałowe P0 transformatora", True),  # symbol P0 w prozie
         ("Prąd znamionowy jest za duży", False),  # proza słowami
         # Proza bez znaków diakrytycznych i bez słów funkcyjnych — rdzeń słownictwa
@@ -66,7 +68,15 @@ def _liczba(tmp_path: Path, wzgledna: str, tresc: str) -> int:
         ("Granica dopuszczalna I2", True),
         ("Rachunek pomija zaleznosc Pk od temperatury", True),
         ("Rezystancja jednostkowa (20 °C)", False),  # rdzeń bez symbolu
-        ("Ratio I_th check", False),  # angielski identyfikator bez rdzenia polskiego
+        ("Susceptancja B′1", True),  # proza spoza dawnej listy rdzeni
+        ("Equivalent impedance is zero; cannot compute Ik''", True),  # proza angielska
+        ("Q_inj [MW]", False),  # etykieta bez słowa
+        ("Q_inj [Mvar]", True),  # nagłówek eksportu z symbolem — jednostka jest słowem
+        ('<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>', False),  # znacznik
+        (
+            "kod osd_enea.station.transformer_power_limit",
+            False,
+        ),  # kod w przestrzeni nazw
         # Indeks w klamrach to zapis LaTeX, nie symbol spłaszczony.
         ("S_{2obl} = S_{aparatow} + I_{2n}^2 R_p", False),
         ("Moc S^{2} sieci", False),
@@ -80,13 +90,27 @@ def test_wykrycie_prozy_z_symbolem(tekst: str, trafienie: bool) -> None:
     ("tresc", "oczekiwane"),
     [
         (f'X = "{PROZA_Z_SYMBOLEM}"\n', 1),
-        (f'def f(a):\n    return f"{PROZA_Z_SYMBOLEM} o {{a}} A"\n', 1),  # f-string w całości
+        (
+            f'def f(a):\n    return f"{PROZA_Z_SYMBOLEM} o {{a}} A"\n',
+            1,
+        ),  # f-string w całości
         (f'"""{PROZA_Z_SYMBOLEM}"""\n', 0),  # docstring modułu
         (f'def f():\n    """{PROZA_Z_SYMBOLEM}"""\n', 0),  # docstring funkcji
+        (
+            f'class K:\n    a: int = 1\n    """{PROZA_Z_SYMBOLEM}"""\n',
+            0,
+        ),  # docstring atrybutu
+        (f'class K:\n    a: str = "{PROZA_Z_SYMBOLEM}"\n', 1),  # wartość pola liczona
         (f'def f(a):\n    assert a, "{PROZA_Z_SYMBOLEM}"\n', 0),
-        (f'import logging\nlog = logging.getLogger()\nlog.warning("{PROZA_Z_SYMBOLEM}")\n', 0),
+        (
+            f'import logging\nlog = logging.getLogger()\nlog.warning("{PROZA_Z_SYMBOLEM}")\n',
+            0,
+        ),
         (f'raise AssertionError("{PROZA_Z_SYMBOLEM}")\n', 0),
-        (f'raise ValueError("{PROZA_Z_SYMBOLEM}")\n', 1),  # komunikat błędu trafia do UI
+        (
+            f'raise ValueError("{PROZA_Z_SYMBOLEM}")\n',
+            1,
+        ),  # komunikat błędu trafia do UI
     ],
 )
 def test_rodzaj_tekstu(tmp_path: Path, tresc: str, oczekiwane: int) -> None:
@@ -117,7 +141,9 @@ def _v126(tmp_path: Path, klucz: str) -> list[tuple[int, str]]:
         f'    trace.add("{klucz}", "Wzór I_th dla węzła", {{}}, "Podstawienie I_th = 5 w węźle")\n'
         '    formula = "Wzór U_n dla sieci"\n'
     )
-    src = _drzewo(tmp_path, {guard.PLIK_V126: tresc, guard.PLIK_REJESTRU_V126: _REJESTR_V126})
+    src = _drzewo(
+        tmp_path, {guard.PLIK_V126: tresc, guard.PLIK_REJESTRU_V126: _REJESTR_V126}
+    )
     return guard.zmierz(src).get(guard.PLIK_V126, [])
 
 
@@ -144,15 +170,24 @@ def test_slad_ncrfg_wzor_wolny_pozostale_argumenty_liczone(tmp_path: Path) -> No
         '    trace.add("id", "Nazwa kroku I_th w węźle", "Wzór I_th dla węzła", {})\n'
     )
     teksty = [
-        t for _, t in guard.zmierz(_drzewo(tmp_path, {guard.PLIK_NCRFG: tresc}))[guard.PLIK_NCRFG]
+        t
+        for _, t in guard.zmierz(_drzewo(tmp_path, {guard.PLIK_NCRFG: tresc}))[
+            guard.PLIK_NCRFG
+        ]
     ]
     assert teksty == ["Nazwa kroku I_th w węźle"]
     assert _liczba(tmp_path / "b", "network_model/solvers/inny.py", tresc) == 2
 
 
 def test_porownaj_przekroczenie_nieswiezy_i_nowy_plik() -> None:
-    zmierzone = {"a.py": [(1, "x"), (2, "y")], "nowy.py": [(1, "z")], "c.py": [(1, "w")]}
-    przekroczenia, nieswieze = guard.porownaj(zmierzone, {"a.py": 1, "b.py": 3, "c.py": 1})
+    zmierzone = {
+        "a.py": [(1, "x"), (2, "y")],
+        "nowy.py": [(1, "z")],
+        "c.py": [(1, "w")],
+    }
+    przekroczenia, nieswieze = guard.porownaj(
+        zmierzone, {"a.py": 1, "b.py": 3, "c.py": 1}
+    )
     assert przekroczenia == ["a.py", "nowy.py"]
     assert nieswieze == ["b.py"]
     assert guard.porownaj({"a.py": [(1, "x")]}, {"a.py": 1}) == ([], [])
@@ -176,10 +211,47 @@ def test_main_wstrzyknieta_proza_czerwieni_a_aktualizuj_odmawia(
     assert guard.main(["--aktualizuj"]) == 1
     assert json.loads(pin.read_text(encoding="utf-8")) == {}
     # Naprawa słowami → pin nieświeży aż do obniżenia, potem zielono.
-    (src / "modul/a.py").write_text('X = "Prąd cieplny jest za duży"\n', encoding="utf-8")
+    (src / "modul/a.py").write_text(
+        'X = "Prąd cieplny jest za duży"\n', encoding="utf-8"
+    )
     pin.write_text(json.dumps({"modul/a.py": 1}), encoding="utf-8")
     assert guard.main([]) == 1
     assert guard.main(["--aktualizuj"]) == 0
     assert json.loads(pin.read_text(encoding="utf-8")) == {}
     assert guard.main([]) == 0
     assert guard.main(["--inicjuj"]) == 1  # pin już istnieje
+
+
+def test_rejestr_wzorow_ncrfg_klucz_wolny_tylko_w_rejestrze(tmp_path: Path) -> None:
+    """Klucz rejestru LaTeX NC RfG to zapis rdzenia; ten sam słownik w innym pliku liczony."""
+    tresc = f'W = {{"{PROZA_Z_SYMBOLEM}": "x", "a": "{PROZA_Z_SYMBOLEM} b"}}\n'
+    assert _liczba(tmp_path, guard.PLIK_WZOROW_NCRFG, tresc) == 1  # tylko wartość
+    assert _liczba(tmp_path / "inny", "application/inny.py", tresc) == 2
+
+
+@pytest.mark.parametrize(
+    ("tresc", "oczekiwane"),
+    [
+        ('E(latex="Z_s razem z Z_m", name_pl="x")\n', 0),
+        ('E(formula_latex="Z_s razem z Z_m")\n', 0),
+        ('W = {"wzor_latex": "Z_s razem z Z_m"}\n', 0),
+        ('E(formula="Z_s razem z Z_m")\n', 1),  # pole tekstowe — liczone
+        ('W = {"opis_pl": "Z_s razem z Z_m"}\n', 1),
+    ],
+)
+def test_pole_latex_wolne_inne_pole_liczone(
+    tmp_path: Path, tresc: str, oczekiwane: int
+) -> None:
+    assert _liczba(tmp_path, "application/x.py", tresc) == oczekiwane
+
+
+def test_opis_pola_kontraktu_resultset_wolny_tylko_w_kontrakcie(tmp_path: Path) -> None:
+    """Opis pola schematu FROZEN ResultSet v1 wolny (reguła 9); inne teksty i pliki liczone."""
+    tresc = (
+        f'a: str = Field(..., description="{PROZA_Z_SYMBOLEM}")\n'
+        f'b: str = Field(..., title="{PROZA_Z_SYMBOLEM}")\n'
+    )
+    assert (
+        _liczba(tmp_path, guard.PLIK_KONTRAKTU_RESULTSET, tresc) == 1
+    )  # tylko `title`
+    assert _liczba(tmp_path / "inny", "domain/inny_kontrakt.py", tresc) == 2

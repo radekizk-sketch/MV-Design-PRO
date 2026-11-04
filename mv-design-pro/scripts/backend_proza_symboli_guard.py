@@ -15,17 +15,20 @@ CO JEST TRAFIENIEM. Stała tekstowa albo cały f-string (części stałe sklejon
 `{}`), która jednocześnie: ma spację (zdanie, nie identyfikator), ma słowo polskie i ma
 symbol z indeksem albo symbol spłaszczony (`SYMBOL_RE`). Tekst z ukośnikiem, z `$` albo
 z indeksem w klamrach (`_{`, `^{`) jest już LaTeX-em (polecenie, segment wzoru, zapis indeksu
-LaTeX) i nie jest prozą spłaszczoną. Słowo polskie to znak diakrytyczny, słowo funkcyjne albo
-rdzeń słownictwa elektroenergetycznego pisany bez diakrytyków (`POLSKI_RE`).
+LaTeX) i nie jest prozą spłaszczoną; tekst zaczynający się znacznikiem (`<`) jest znakowaniem
+(XML pakietu XLSX), nie prozą. Tekst dla człowieka rozpoznaje znak diakrytyczny albo słowo
+z co najmniej czterech małych liter (`POLSKI_RE`) — proza angielska też trafia na ekran.
 
 CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uzasadnieniem):
-  1. Docstring (pierwsza instrukcja modułu/klasy/funkcji) — komentarz dla programisty.
+  1. Docstring (pierwsza instrukcja modułu/klasy/funkcji) i docstring atrybutu (gołe
+     wyrażenie tekstowe w dowolnym miejscu, np. po polu klasy) — komentarz dla programisty;
+     goła stała tekstowa nie ma wartości, więc nie trafia do żadnego wyjścia.
   2. Komunikat `assert` i argumenty `AssertionError` — niezmiennik kodu, nie tekst UI.
   3. Argumenty wywołań loggera (`*.debug/info/warning/error/exception/critical/log` na
      obiekcie, którego nazwa zawiera „log") — dziennik serwera, nie ekran.
   4. Identyfikatory i kody wewnątrz tekstu: fragmenty w odwrotnych apostrofach, identyfikatory
      snake_case z co najmniej dwoma podkreślnikami, kody statusów WIELKIMI_LITERAMI, numery
-     kart programu (`P0.7`) i adresy URL (ścieżka dokumentu źródłowego to odsyłacz, nie
+     kart programu (`P0.7`), kody błędów w przestrzeni nazw (`generator.q_missing`) i adresy URL (ścieżka dokumentu źródłowego to odsyłacz, nie
      symbol — `…/legislation.gov.uk/…`, `…-pdf_Original…`).
   5. `EquationDefinition(notes=...)` w `application/proof_engine/equation_registry.py` —
      pole idzie wyłącznie do `proof.json` (`EquationDefinition.to_dict`); eksport LaTeX/PDF,
@@ -41,6 +44,18 @@ CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uz
      argument wzoru `trace.add(id, nazwa, WZÓR, …)` — każdy zapis ma wpis LaTeX w
      `application/ncrfg_compliance/wzory_sladu.py` (test kompletności z AST rdzenia, obie
      gałęzie wyrażeń warunkowych), widok śladu renderuje go przez `MathBlock`.
+     Klucze słownika rejestru `wzory_sladu.py` są tym samym zapisem rdzenia (klucz wyszukania,
+     nie tekst ekranu) — skan ich nie liczy; wartości (LaTeX) i każdy inny tekst rejestru tak.
+
+  8. Wartość pola LaTeX: argument nazwany `latex`/`*_latex` i wartość klucza słownika
+     `latex`/`*_latex` — zapis wzoru dla `MathRenderer`, nie proza (`Z'_1 = Z_s - Z_m` bez
+     ukośnika też jest LaTeX-em). Ten sam tekst pod inną nazwą pola jest liczony.
+
+  9. `Field(description=...)` w `domain/result_contract_v1.py` — opis pola jest częścią
+     zamrożonego schematu `backend/schemas/resultset_v1_schema.json` (kontrakt FROZEN,
+     `resultset_v1_schema_guard.py`); zmiana tekstu to zmiana kontraktu z podniesieniem
+     wersji. Opis służy integratorowi API (identyfikator `ref_id`, kody metryk), ekran go nie
+     pokazuje. Każdy inny tekst tego pliku jest liczony.
 
 ZAPADKA PER PLIK (pin z pomiaru, w obie strony): `guard_references/backend_proza_symboli_pin.json`
 trzyma zmierzoną liczbę trafień każdego pliku. Plik spoza mapy ma pin 0 — nowy moduł startuje
@@ -85,23 +100,14 @@ SYMBOL_RE = re.compile(
     )(?!\w)
     """
 )
-#: Słowo polskie (tekst dla człowieka): znak diakrytyczny, częste słowo funkcyjne albo rdzeń
-#: słownictwa elektroenergetycznego pisany bez znaków diakrytycznych. Rdzenie domykają lukę
-#: zmierzoną 2026-11-04: etykieta albo zdanie bez diakrytyków i bez słów funkcyjnych
-#: („Rezystancja R′1 (20 °C)", „Zasilanie GPZ 15 kV Sk3 200 MVA", „Granica dopuszczalna I2")
-#: były przedtem niewidoczne dla skanu (108 tekstów w drzewie).
+#: Tekst dla człowieka: znak diakrytyczny albo słowo z co najmniej czterech liter
+#: (wielka litera tylko na początku słowa).
+#: Kryterium strukturalne, nie słownik: lista słów funkcyjnych i rdzeni (pomiar 2026-11-04)
+#: przepuszczała prozę spoza listy („Susceptancja B′1", „Stosunek X′0/X′1") i każdą prozę
+#: angielską („Equivalent impedance is zero; cannot compute Ik''"), a ekran i raport pokazują
+#: oba rodzaje tak samo.
 POLSKI_RE = re.compile(
-    r"""(?xi)
-    [ąćęłńóśźż]
-    | \b(?:i|lub|albo|nie|dla|jest|brak|z|w|na|do|od|po|przy|bez|oraz|wg|ze|czy|przez|jako
-         |gdy|tylko|musi|wobec|otrzymano|pomija|definicja|granica|sprawdzenie|rachunek
-         |pasmo|wynik|topologia|strony|cieplna|zasilanie|naruszenie)\b
-    | \b(?:moc|prad|czas|punkt|zwarci|wymag|warun|aparat|siec|wartos|energi|uziom|okn
-         |nastaw|kontrakt|kart|odbior|temperatur|transformator|katalog|krzyw|napieci
-         |impedancj|rezystancj|reaktancj|szyn|kabl|lini|granic|dopuszczaln|znamionow
-         |zastepcz|przekladni|zabezpiecz|wyłącz|wylacz|rozlacz|obciaz|stacj|uzwojen
-         |falownik|generator|zrodl|polaczen|pomiar|sprawdz|ocen|okres|rodzin)\w*
-    """
+    r"[ąćęłńóśźż]|\b(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{3,}|[a-ząćęłńóśźż]{4,})\b"
 )
 _LOGGER = frozenset(
     {"debug", "info", "warning", "warn", "error", "exception", "critical", "log"}
@@ -111,6 +117,8 @@ PLIK_REJESTRU_ROWNAN = "application/proof_engine/equation_registry.py"
 PLIK_V126 = "network_model/solvers/v126_academic.py"
 PLIK_REJESTRU_V126 = "application/analyses/v126_wzory.py"
 PLIK_NCRFG = "network_model/solvers/ncrfg_ptpiree/engine.py"
+PLIK_WZOROW_NCRFG = "application/ncrfg_compliance/wzory_sladu.py"
+PLIK_KONTRAKTU_RESULTSET = "domain/result_contract_v1.py"
 
 
 def oczysc(tekst: str) -> str:
@@ -118,6 +126,8 @@ def oczysc(tekst: str) -> str:
     tekst = re.sub(r"`[^`]*`", " ", tekst)
     tekst = re.sub(r"https?://\S+", " ", tekst)
     tekst = re.sub(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+){2,}\b", " ", tekst)
+    # Kod błędu w przestrzeni nazw („kod 'generator.q_missing'") — identyfikator, nie symbol.
+    tekst = re.sub(r"\b[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\b", " ", tekst)
     # Numer karty albo punktu programu („karty P0.7", „P0.6") — odwołanie, nie symbol P0.
     tekst = re.sub(r"\b[A-Z]\d+\.\d+\b", " ", tekst)
     return re.sub(r"\b[A-ZĄĆĘŁŃÓŚŹŻ]{2,}(?:_[A-ZĄĆĘŁŃÓŚŹŻ0-9]{2,})+\b", " ", tekst)
@@ -126,6 +136,8 @@ def oczysc(tekst: str) -> str:
 def jest_proza_z_symbolem(tekst: str | None) -> bool:
     if tekst is None or "\\" in tekst or "$" in tekst or re.search(r"[_^]\{", tekst):
         return False
+    if tekst.lstrip().startswith("<"):
+        return False  # znaczniki (XML pakietu XLSX, HTML) — nie proza
     czysty = oczysc(tekst)
     return (
         " " in czysty
@@ -147,6 +159,11 @@ def _tekst(wezel: ast.AST) -> str | None:
             for c in wezel.values
         )
     return None
+
+
+def _pole_latex(nazwa: str) -> bool:
+    """Pole zapisu LaTeX (`latex`, `*_latex`) — wartość renderuje KaTeX (reguła 8)."""
+    return nazwa == "latex" or nazwa.endswith("_latex")
 
 
 def _oznacz(wezel: ast.AST, pomin: set[int]) -> None:
@@ -201,11 +218,35 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
             and isinstance(cialo[0].value, ast.Constant)
         ):
             pomin.add(id(cialo[0].value))
+        if (
+            isinstance(w, ast.Expr)
+            and isinstance(w.value, ast.Constant)
+            and isinstance(w.value.value, str)
+        ):
+            # Docstring atrybutu (gołe wyrażenie tekstowe po polu klasy) — reguła 1.
+            pomin.add(id(w.value))
         if isinstance(w, ast.Assert) and w.msg is not None:
             _oznacz(w.msg, pomin)
         if isinstance(w, ast.JoinedStr):
             for czesc in w.values:
                 pomin.add(id(czesc))
+        if wzgledna == PLIK_WZOROW_NCRFG and isinstance(w, ast.Dict):
+            # Klucz rejestru = zapis wzoru rdzenia NC RfG (reguła 7), wartość = LaTeX ekranu.
+            for klucz in w.keys:
+                if klucz is not None:
+                    _oznacz(klucz, pomin)
+        if isinstance(w, ast.Dict):
+            for klucz, wartosc in zip(w.keys, w.values, strict=True):
+                if (
+                    isinstance(klucz, ast.Constant)
+                    and isinstance(klucz.value, str)
+                    and _pole_latex(klucz.value)
+                ):
+                    _oznacz(wartosc, pomin)
+        if isinstance(w, ast.Call):
+            for k in w.keywords:
+                if k.arg is not None and _pole_latex(k.arg):
+                    _oznacz(k.value, pomin)
         if not isinstance(w, ast.Call):
             continue
         f = w.func
@@ -219,6 +260,11 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
         ) or nazwa == "AssertionError":
             for argument in [*w.args, *(k.value for k in w.keywords)]:
                 _oznacz(argument, pomin)
+        if wzgledna == PLIK_KONTRAKTU_RESULTSET and nazwa == "Field":
+            # Opis pola kontraktu ResultSet v1 (reguła 9) — tekst schematu FROZEN.
+            for k in w.keywords:
+                if k.arg == "description":
+                    _oznacz(k.value, pomin)
         if wzgledna == PLIK_REJESTRU_ROWNAN and nazwa == "EquationDefinition":
             for k in w.keywords:
                 if k.arg == "notes":
