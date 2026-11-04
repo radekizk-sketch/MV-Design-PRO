@@ -707,7 +707,21 @@ def _uwagi_czasu_tk(required: dict[str, Any]) -> tuple[str, ...]:
     if not isinstance(zrodlo, dict):
         return ()
     opis = str(zrodlo.get("opis_pl") or "").strip()
-    return (f"Czas trwania zwarcia t_k — czas wyłączenia pola: {opis}",) if opis else ()
+    uwagi = [f"Czas trwania zwarcia t_k — czas wyłączenia pola: {opis}"] if opis else []
+    cieplny = required.get("ith_zrodlo")
+    if isinstance(cieplny, dict):
+        if cieplny.get("ith_ka") is not None:
+            uwagi.append(
+                "Prąd cieplny I_th przy czasie wyłączenia pola (IEC 60909-0 §4.7, "
+                f"I_th = I″k·√(m + n)): I″k = {cieplny['ikss_ka']:.4g} kA, "
+                f"κ = {cieplny['kappa']:.4g}, T_k = {cieplny['tk_pola_s']:.4g} s, "
+                f"m = {cieplny['m']:.4g}, n = {cieplny['n']:.4g} → "
+                f"I_th = {cieplny['ith_ka']:.4g} kA (I_th biegu przy T_k = "
+                f"{cieplny['tk_biegu_s']:.4g} s: {cieplny['ith_biegu_ka']:.4g} kA)"
+            )
+        elif cieplny.get("powod_pl"):
+            uwagi.append(f"Prąd cieplny I_th przy czasie wyłączenia pola: {cieplny['powod_pl']}")
+    return tuple(uwagi)
 
 
 def _wielkosc_wylaczania(

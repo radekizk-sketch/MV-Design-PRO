@@ -17,6 +17,10 @@
  * z akcją naprawczą pochodzą z read modelu `protection-view` (pole `nastawy`, ta sama funkcja
  * backendu co ocena). Reguła rodziny czasu (TMS przy charakterystyce zależnej, zwłoka przy DT)
  * jest lustrem walidacji zapisu backendu (`enm.nastawy_zabezpieczen.bledy_sterownika`).
+ *
+ * Edytor pisze nastawy BAZOWE modelu. Przypadki obliczeniowe, które wybierają inną grupę albo
+ * nadpisują nastawy (ADR-022, sekcja „Zabezpieczenia w tym przypadku" karty przypadku), są
+ * oznaczone przy funkcji i pod tabelą (`ZnacznikiPrzypadkow`).
  */
 
 import './edytorNastaw.css';
@@ -30,10 +34,8 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ProtectionAssignment } from '../../../types/enm';
 import {
   etykietaFunkcjiEaz,
-  etykietaWartosciNastawy,
   funkcjaEaz,
   RODZAJ_FUNKCJI_EAZ_PL,
-  type SchematNastawyEaz,
   wszystkieFunkcjeEaz,
 } from '../../../ui/shared/funkcjeEaz';
 import { aparatyWyzwalaneFunkcji, czyNastawaCzasu, liczbaNastawy } from '../../../ui/shared/opisNastawSterownika';
@@ -43,13 +45,18 @@ import {
   numerGrupyEfektywnej,
 } from '../../../ui/shared/sterownikZabezpieczen';
 import { NASTAWY_STRINGS as T } from './stringsNastaw';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
+import { ZABEZPIECZENIA_PRZYPADKU_STRINGS as TP } from '../../spaces/obliczenia/zabezpieczenia/stringsZabezpieczenPrzypadku';
+import {
+  useZnacznikiPrzypadkow,
+  ZnacznikiPrzypadkow,
+} from '../../spaces/obliczenia/zabezpieczenia/ZnacznikiPrzypadkow';
+import { czyNastawaWidoczna, PoleNastawy, wartoscZTekstu, type WartosciFunkcji } from './PoleNastawy';
 import { ObwodWtornyPrzekladnika } from './ObwodWtornyPrzekladnika';
 
 /** Numery grup nastaw sterownika (lustro `NUMERY_GRUP_NASTAW` backendu). */
 export const NUMERY_GRUP_NASTAW = [1, 2, 3, 4] as const;
 
-/** Wartości formularza jednej funkcji: klucz nastawy → tekst pola (pusty = brak, nie zero). */
-export type WartosciFunkcji = Readonly<Record<string, string>>;
 
 /** Stan formularza: nastawy funkcji wybranej grupy i stan włączenia funkcji. */
 export interface FormularzSterownika {
@@ -72,29 +79,6 @@ export function formularzZeSterownika(sterownik: ProtectionAssignment, numerGrup
     nastawy[f.ref] = Object.fromEntries(Object.entries(zModelu).map(([k, v]) => [k, tekstWartosci(v)]));
   }
   return { nastawy, wlaczone };
-}
-
-/**
- * Nastawy widoczne w formularzu wg reguły rodziny czasu (lustro walidacji zapisu backendu):
- * funkcja z charakterystyką czasową ma mnożnik TMS tylko przy charakterystyce zależnej, a zwłokę
- * tylko przy czasie niezależnym (DT); bez wybranej charakterystyki — żadnej z nich.
- */
-export function czyNastawaWidoczna(schemat: SchematNastawyEaz, wartosci: WartosciFunkcji, zKrzywa: boolean): boolean {
-  if (!zKrzywa) return true;
-  const krzywa = wartosci.krzywa ?? '';
-  if (schemat.klucz === 'tms') return krzywa !== '' && krzywa !== 'DT';
-  if (schemat.klucz === 'zwloka_s') return krzywa === 'DT';
-  return true;
-}
-
-/** Tekst pola → wartość nastawy wg schematu (`null` — pole puste albo nieczytelne). */
-export function wartoscZTekstu(schemat: SchematNastawyEaz, tekst: string): number | string | boolean | null {
-  const t = tekst.trim();
-  if (t === '') return null;
-  if (schemat.typ === 'LOGICZNA') return t === 'true';
-  if (schemat.typ === 'WYBOR') return t;
-  const liczba = Number(t.replace(',', '.'));
-  return Number.isFinite(liczba) ? liczba : null;
 }
 
 /** Nastawy jednej funkcji do zapisu: tylko pola widoczne i wypełnione (brak, nie zero). */
@@ -162,75 +146,6 @@ export function ladunekSkladuFunkcji(
   return { protection_ref: sterownik.ref_id, funkcje: kody.filter((k) => k !== zmiana.zdejmij) };
 }
 
-/** Jednostka pola nastawy w komórce tabeli (strona przekładnika progu idzie z wyboru obok). */
-function jednostkaPola(schemat: SchematNastawyEaz): string | null {
-  if (schemat.klucz === 'prog' || !schemat.jednostka || schemat.jednostka === '1') return null;
-  return schemat.jednostka;
-}
-
-function PoleNastawy({
-  schemat,
-  wartosc,
-  onZmiana,
-  testid,
-}: {
-  schemat: SchematNastawyEaz;
-  wartosc: string;
-  onZmiana: (tekst: string) => void;
-  testid: string;
-}) {
-  if (schemat.typ === 'LOGICZNA') {
-    return (
-      <label className="mvd-edytor-nastaw-pole" title={schemat.nazwaPl}>
-        <input
-          type="checkbox"
-          checked={wartosc === 'true'}
-          onChange={(e) => onZmiana(e.target.checked ? 'true' : 'false')}
-          aria-label={schemat.nazwaPl}
-          data-testid={testid}
-        />
-        <span>{schemat.nazwaPl}</span>
-      </label>
-    );
-  }
-  if (schemat.typ === 'WYBOR') {
-    return (
-      <select
-        className="mvd-edytor-nastaw-wybor"
-        value={wartosc}
-        onChange={(e) => onZmiana(e.target.value)}
-        aria-label={schemat.nazwaPl}
-        title={schemat.nazwaPl}
-        data-testid={testid}
-      >
-        <option value="">{schemat.klucz === 'jednostka_progu' ? T.stronaPusta : T.wybierz}</option>
-        {schemat.wartosci.map((w) => (
-          <option key={w} value={w}>
-            {schemat.klucz === 'jednostka_progu' ? T.stronaSkrot(w) : etykietaWartosciNastawy(w)}
-          </option>
-        ))}
-      </select>
-    );
-  }
-  const jednostka = jednostkaPola(schemat);
-  return (
-    <span className="mvd-edytor-nastaw-pole" title={schemat.nazwaPl}>
-      {schemat.klucz === 'tms' ? <span className="mvd-edytor-nastaw-prefiks">TMS</span> : null}
-      <input
-        type="number"
-        step="any"
-        min={0}
-        className="mvd-num"
-        value={wartosc}
-        onChange={(e) => onZmiana(e.target.value)}
-        aria-label={schemat.nazwaPl}
-        data-testid={testid}
-      />
-      {jednostka ? <span className="mvd-edytor-nastaw-jednostka">{jednostka}</span> : null}
-    </span>
-  );
-}
-
 function opisProfilu(nastawy: NastawyUrzadzeniaWidok | undefined): string {
   const ch = nastawy?.charakterystyki;
   if (!ch) return T.charakterystykiBrak;
@@ -274,6 +189,8 @@ export function EdytorNastawZabezpieczenia({
     sterownik?.bay_ref ? (s.snapshot?.bays?.find((b) => b.ref_id === sterownik.bay_ref) ?? null) : null,
   );
   const galezie = useSnapshotStore((s) => s.snapshot?.branches);
+  const znacznikiPrzypadkow = useZnacznikiPrzypadkow(caseId, sterownik);
+  const przypadki = useStudyCasesStore((s) => s.cases);
 
   const aktywna = sterownik ? numerGrupyEfektywnej(sterownik) : 1;
   const [grupa, setGrupa] = useState<number>(aktywna);
@@ -408,6 +325,9 @@ export function EdytorNastawZabezpieczenia({
             const widoczne = schemat.filter((s) => czyNastawaWidoczna(s, wartosci, zKrzywa));
             const wlaczona = formularz.wlaczone[f.ref] ?? true;
             const rozwiazany = pierwszyRefKodu.get(f.kod) === f.ref ? progiPierwotne.get(f.kod) : undefined;
+            const nadpisaneW = znacznikiPrzypadkow
+              .filter((z) => Object.keys(z.nastawy[f.ref] ?? {}).length > 0)
+              .map((z) => przypadki.find((p) => p.id === z.caseId)?.name ?? z.caseId);
             const komorka = (czas: boolean) =>
               widoczne
                 .filter((s) => czyNastawaCzasu(s) === czas)
@@ -434,7 +354,14 @@ export function EdytorNastawZabezpieczenia({
                   />
                 </td>
                 <td className="mvd-edytor-nastaw-kod">{etykietaFunkcjiEaz(f.kod)}</td>
-                <td>{wpis?.nazwaPl ?? T.spozaRejestru}</td>
+                <td>
+                  {wpis?.nazwaPl ?? T.spozaRejestru}
+                  {nadpisaneW.length > 0 ? (
+                    <span className="mvd-edytor-nastaw-w-przypadkach" data-testid={`${testid}-${f.ref}-w-przypadkach`}>
+                      {TP.nadpisaneW(nadpisaneW)}
+                    </span>
+                  ) : null}
+                </td>
                 <td>
                   <div className="mvd-edytor-nastaw-komorka">
                     {schemat.length === 0 ? <span className="mvd-edytor-nastaw-pusto">{T.bezNastaw}</span> : komorka(false)}
@@ -456,6 +383,8 @@ export function EdytorNastawZabezpieczenia({
           })}
         </tbody>
       </table>
+
+      <ZnacznikiPrzypadkow sterownik={sterownik} znaczniki={znacznikiPrzypadkow} testid={`${testid}-przypadki`} />
 
       <div className="mvd-edytor-nastaw-stopka">
         <button

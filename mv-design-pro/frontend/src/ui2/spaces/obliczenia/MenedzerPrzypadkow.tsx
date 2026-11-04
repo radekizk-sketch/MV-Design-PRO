@@ -11,7 +11,7 @@
  * Zero fizyki, zero mutacji NetworkModelu.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useAktywujPrzypadek,
   usePelnePrzypadki,
@@ -29,6 +29,8 @@ import {
 } from './strings';
 import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
 import { useShellStore } from '../../shell/useShellStore';
+import { useAppStateStore } from '../../../ui/app-state/store';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import './przypadki.css';
 
 const WARIANT_STATUSU: Record<StudyCaseResultStatus, string> = {
@@ -72,6 +74,19 @@ export function MenedzerPrzypadkow() {
   const idsPorownania = useMemo(() => [...zbiorPorownania], [zbiorPorownania]);
   const szczegoly = usePelnePrzypadki(zaznaczonyId ? [zaznaczonyId] : []);
   const porownanie = usePelnePrzypadki(widok === 'porownanie' ? idsPorownania : []);
+  const projectId = useAppStateStore((s) => s.activeProjectId);
+  const odswiezPrzypadki = useStudyCasesStore((s) => s.odswiezPrzypadki);
+  const loadActiveCase = useStudyCasesStore((s) => s.loadActiveCase);
+  const odswiezSzczegoly = szczegoly.odswiez;
+  // Zmiana przypadku (wybór zabezpieczeń) unieważnia jego wyniki — karta, lista i chrom powłoki
+  // (znacznik wyników aktywnego przypadku) czytają nowy status z backendu.
+  const odswiezPoZmianie = useCallback(() => {
+    odswiezSzczegoly();
+    if (projectId) {
+      void odswiezPrzypadki(projectId);
+      void loadActiveCase(projectId);
+    }
+  }, [odswiezSzczegoly, projectId, odswiezPrzypadki, loadActiveCase]);
 
   function przelaczPorownanie(id: string) {
     setZbiorPorownania((poprz) => {
@@ -220,6 +235,7 @@ export function MenedzerPrzypadkow() {
               przypadek={szczegoly.przypadki[0] ?? null}
               ladowanie={szczegoly.ladowanie}
               blad={szczegoly.blad}
+              onZmianaPrzypadku={odswiezPoZmianie}
             />
           )}
         </section>

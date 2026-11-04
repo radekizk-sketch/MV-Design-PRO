@@ -450,6 +450,15 @@ def _wezel_punktu(run_id: str, punkt_ref: str) -> str:
     raise AssertionError("bieg bez wiersza punktu zabudowy pola")
 
 
+def _wartosc_dowodu(dowod: dict[str, Any], klucz: str, symbol: str) -> float | None:
+    """Wartość wejściowa kroku dowodu o kluczu źródła ``klucz`` i symbolu ``symbol``."""
+    for krok in dowod["steps"]:
+        for wartosc in krok.get("input_values", []):
+            if wartosc.get("source_key") == klucz and wartosc.get("symbol") == symbol:
+                return wartosc.get("value")
+    raise AssertionError(f"dowód bez {symbol} w danych kroków")
+
+
 def _tk_dowodu(dowod: dict[str, Any]) -> float | None:
     """t_k z danych wejściowych kroku sprawdzenia I_th dowodu."""
     for krok in dowod["steps"]:
@@ -487,6 +496,16 @@ def test_dowod_aparatury_pola_bierze_tk_z_czasu_wylaczenia_pola_przypadku(
     sc_b = _bieg_sc(klient, case_b)
     dowod = _dowod_aparatury(klient, case_b, s["station_ref"], sc_b, s["bay_ref"])
     assert _tk_dowodu(dowod) == pytest.approx(czlon_s + CZAS_WLASNY_S)
+    # Decyzja architekta (rozszerzenie (a)): I_th porównywany = prąd cieplny przy T_k POLA,
+    # ten sam w dowodzie i w ocenie cieplnej widoku wytrzymałości; większy niż I_th biegu (1 s).
+    widok = _scen._wytrzymalosc(klient, case_b, s["station_ref"], sc_b).json()
+    (pole,) = (p for p in widok["pola"] if p["pole_ref"] == s["bay_ref"])
+    cieplny = pole["prad_cieplny_pola"]
+    assert cieplny["tk_pola_s"] == pytest.approx(czlon_s + CZAS_WLASNY_S)
+    assert cieplny["ith_ka"] > pole["prady_pola"]["ith_ka"]
+    (ocena,) = (o for o in pole["oceny"] if o["kryterium_id"].endswith(".cieplna"))
+    assert ocena["wynik"]["wartosc"]["wartosc"] == cieplny["ith_ka"]
+    assert _wartosc_dowodu(dowod, "ith_ka", "I_{th,req}") == pytest.approx(cieplny["ith_ka"])
     assert dowod["header"] is not None
     wymagane = json_tk_zrodlo(dowod)
     assert wymagane["zrodlo"] == "czas_wylaczenia_pola"

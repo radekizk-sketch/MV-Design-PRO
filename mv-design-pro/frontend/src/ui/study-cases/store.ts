@@ -62,6 +62,11 @@ interface StudyCasesState {
   // Actions
   setProjectId: (projectId: string) => void;
   loadCases: (projectId: string) => Promise<void>;
+  /**
+   * Ciche odświeżenie listy (status wyników po zmianie przypadku) — bez `isLoading`, żeby widoki
+   * listy nie przechodziły w stan ładowania i nie odmontowywały otwartej karty przypadku.
+   */
+  odswiezPrzypadki: (projectId: string) => Promise<void>;
   createCase: (request: CreateStudyCaseRequest) => Promise<StudyCase>;
   updateCase: (caseId: string, request: UpdateStudyCaseRequest) => Promise<StudyCase>;
   deleteCase: (caseId: string) => Promise<boolean>;
@@ -113,6 +118,15 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd ładowania zakresów obliczeń';
       set({ error: message, isLoading: false });
+    }
+  },
+
+  odswiezPrzypadki: async (projectId) => {
+    try {
+      const cases = await api.listStudyCases(projectId);
+      if (get().projectId === null || get().projectId === projectId) set({ cases });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Błąd ładowania zakresów obliczeń' });
     }
   },
 

@@ -278,3 +278,18 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Znaczniki przypadków obliczeniowych z inną grupą albo nadpisanymi nastawami (ADR-022). */
+.mvd-edytor-nastaw-w-przypadkach {
+  display: block;
+  font-size: 10.5px;
+  color: var(--mvd-warn);
+}
+.mvd-edytor-nastaw-przypadki {
+  margin: 6px 0;
+  font-size: 11.5px;
+}
+.mvd-edytor-nastaw-przypadki ul {
+  margin: 2px 0 0;
+  padding-left: 16px;
+}

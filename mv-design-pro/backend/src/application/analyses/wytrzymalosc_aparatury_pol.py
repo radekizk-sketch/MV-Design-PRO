@@ -99,6 +99,7 @@ from network_model.catalog.wartosci_robocze import (
 )
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
+from network_model.solvers.wytrzymalosc_cieplna_pola import PradCieplnyPola, prad_cieplny_pola
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     DanaPrzyjeta,
@@ -200,6 +201,10 @@ class PradyPola:
     #: wyspy punktu (wpisy `wartosci_robocze.wpis_parametru_maszyny` z wiersza biegu) — dane
     #: przyjęte kryteriów, których porównywana wielkość od nich zależy.
     parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
+    #: Współczynnik udaru κ i czas cieplny biegu T_k z TEGO SAMEGO wiersza biegu — wejście
+    #: prądu cieplnego przy czasie wyłączenia pola (``solvers.wytrzymalosc_cieplna_pola``).
+    kappa: float | None = None
+    tk_biegu_s: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -310,6 +315,8 @@ def prady_pol_z_biegu(
             ),
             tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
             dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+            kappa=_liczba(wiersz.get("kappa")),
+            tk_biegu_s=_liczba(wiersz.get("tk_s")),
             zalozenia_zaniku=tuple(
                 dict(w) for w in (wiersz.get("zalozenia_zaniku") or ()) if isinstance(w, Mapping)
             ),
@@ -327,6 +334,25 @@ def _liczba(wartosc: object) -> float | None:
     if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
         return None
     return float(wartosc)
+
+
+def prad_cieplny_przy_czasie_pola(prady: PradyPola, czas: Mapping[str, Any]) -> PradCieplnyPola:
+    """I_th punktu zabudowy pola przy czasie wyłączenia TEGO pola (solver, ślad WHITE BOX).
+
+    JEDNO złożenie dla widoku wytrzymałości i dowodu doboru aparatury pola: prąd, κ i czas
+    cieplny biegu z wiersza biegu punktu pola, T_k = ``t_clearing_s`` czasu pola. Czas pola
+    nieustalony — wynik bez I_th z powodem czasu (nigdy I_th biegu w zastępstwie).
+    """
+    return prad_cieplny_pola(
+        ikss_ka=prady.ik_ka,
+        kappa=prady.kappa,
+        ith_biegu_ka=prady.ith_ka,
+        tk_biegu_s=prady.tk_biegu_s,
+        tk_pola_s=_liczba(czas.get("t_clearing_s")),
+        powod_braku_czasu_pl=(
+            str(czas.get("powod_pl")) if czas.get("powod_pl") else prady.powod_pl
+        ),
+    )
 
 
 def _oznaczenia_pola(bay: Bay) -> list[str]:
@@ -785,6 +811,7 @@ def _ocena_cieplna(
     czas: dict[str, Any],
     limit_ka: float | None,
     run_id: str,
+    cieplny: PradCieplnyPola,
 ) -> OcenaKryterium:
     t_k = czas.get("t_clearing_s")
     zapis_i_th = _zapis_roboczy(znamiona, PARAMETR_I_TH)
@@ -813,6 +840,8 @@ def _ocena_cieplna(
         )
     if t_k is None and not nie_dotyczy:
         braki.append(str(czas.get("powod_pl") or "czas wyłączenia zwarcia nie jest ustalony"))
+    elif cieplny.ith_ka is None and prady.ith_ka is not None and cieplny.powod_pl:
+        braki.append(cieplny.powod_pl)
     limit: LimitKryterium | None = None
     if limit_ka is not None and podstawa_limitu is not None and t_k is not None:
         limit = LimitKryterium(
@@ -823,15 +852,20 @@ def _ocena_cieplna(
                 f"przeliczony na czas wyłączenia T_k = {t_k} s"
             ),
         )
+    # I_th przy czasie wyłączenia POLA (T_k pola), nie przy czasie cieplnym biegu — limit
+    # i prąd porównywany stoją na tym samym T_k (``solvers.wytrzymalosc_cieplna_pola``).
     wynik = (
         WynikKryterium(
-            wielkosc_pl="prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola",
+            wielkosc_pl=(
+                "prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola "
+                f"przy czasie wyłączenia pola T_k = {cieplny.tk_pola_s} s"
+            ),
             symbol_latex=r"I_{th}",
-            wartosc=Wielkosc(wartosc=prady.ith_ka, jednostka="kA"),
+            wartosc=Wielkosc(wartosc=cieplny.ith_ka, jednostka="kA"),
             punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
-        if prady.ith_ka is not None
+        if cieplny.ith_ka is not None
         else None
     )
     return ocen_kryterium(
@@ -1113,6 +1147,7 @@ def _wiersz(
     run_id: str,
 ) -> dict[str, Any]:
     kody: list[str] = list(prady.kody_gotowosci)
+    cieplny = prad_cieplny_przy_czasie_pola(prady, czas)
     werdykt: dict[str, Any] | None = None
     oceny: list[dict[str, Any]] = []
     komunikat: str
@@ -1146,7 +1181,7 @@ def _wiersz(
                 i_th_ka=znamiona["i_th_ka"],
                 i_th_duration_s=znamiona["i_th_duration_s"],
                 i_peak_calculated_ka=prady.ip_ka,
-                i_thermal_calculated_ka=prady.ith_ka,
+                i_thermal_calculated_ka=cieplny.ith_ka,
                 t_clearing_s=czas.get("t_clearing_s"),
             )
             limit_cieplny_ka = werdykt["i_th_effective_ka"]
@@ -1178,6 +1213,7 @@ def _wiersz(
                 czas=czas,
                 limit_ka=limit_cieplny_ka,
                 run_id=run_id,
+                cieplny=cieplny,
             ).model_dump(mode="json"),
             _ocena_wylaczania(
                 kryterium_id=kryterium_id,
@@ -1204,6 +1240,9 @@ def _wiersz(
         "znamiona": znamiona,
         "prady_pola": prady.to_dict(),
         "czas_wylaczenia": czas,
+        # Ślad WHITE BOX prądu cieplnego pola (κ, T_k pola, m, n, I_th) — wielkość porównywana
+        # w kryterium cieplnym; ``ith_ka`` = None z ``powod_pl`` przy czasie nieustalonym.
+        "prad_cieplny_pola": cieplny.to_dict(),
         "werdykt": werdykt,
         "oceny": oceny,
         "komunikat_pl": komunikat,
@@ -1451,5 +1490,15 @@ def czas_wylaczenia_pola_aparatu(
                 ik_pol_ka={ref: p.ik_ka for ref, p in prady.items()},
             )
             czas = czasy.get(bay_ref)
-            return None if czas is None else {**czas, "pole_ref": bay_ref}
+            if czas is None:
+                return None
+            prady_pola = prady.get(bay_ref)
+            cieplny = (
+                prad_cieplny_przy_czasie_pola(prady_pola, czas) if prady_pola is not None else None
+            )
+            return {
+                **czas,
+                "pole_ref": bay_ref,
+                "prad_cieplny_pola": None if cieplny is None else cieplny.to_dict(),
+            }
     return None

@@ -52,7 +52,7 @@
  *    „nowy pusty" (`createCase.set_active`), co `NowyPrzypadek.tsx` już wymusza.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   StudyCase,
   StudyCaseConfig,
@@ -87,6 +87,11 @@ export interface StanPelnychPrzypadkow {
   przypadki: StudyCase[];
   ladowanie: boolean;
   blad: string | null;
+}
+
+/** Pełne rekordy + ciche odświeżenie (status wyników po zmianie przypadku, bez stanu ładowania). */
+export interface PelnePrzypadki extends StanPelnychPrzypadkow {
+  odswiez: () => void;
 }
 
 /** Wiersz tabeli porównania konfiguracji (jedno pole × wszystkie przypadki). */
@@ -160,22 +165,28 @@ export function useWiersze(): PrzypadekWiersz[] {
  * `api.getStudyCase` per id (odczyt). Klucz zależności = złączone id (stabilny),
  * co eliminuje pętle re-fetchu przy nowej referencji tablicy.
  */
-export function usePelnePrzypadki(ids: string[]): StanPelnychPrzypadkow {
+export function usePelnePrzypadki(ids: string[]): PelnePrzypadki {
   const klucz = ids.join('|');
   const [stan, setStan] = useState<StanPelnychPrzypadkow>({
     przypadki: [],
     ladowanie: false,
     blad: null,
   });
+  const [wersja, setWersja] = useState(0);
+  // Nowy zestaw id → stan ładowania; odświeżenie tego samego zestawu (`odswiez`) → po cichu,
+  // żeby karta nie znikała na czas odczytu statusu wyników.
+  const ostatniKlucz = useRef<string | null>(null);
 
   useEffect(() => {
     const lista = klucz ? klucz.split('|') : [];
+    const cicho = ostatniKlucz.current === klucz;
+    ostatniKlucz.current = klucz;
     if (lista.length === 0) {
       setStan({ przypadki: [], ladowanie: false, blad: null });
       return;
     }
     let anulowane = false;
-    setStan((poprz) => ({ ...poprz, ladowanie: true, blad: null }));
+    if (!cicho) setStan((poprz) => ({ ...poprz, ladowanie: true, blad: null }));
     Promise.all(lista.map((id) => getStudyCase(id)))
       .then((przypadki) => {
         if (!anulowane) setStan({ przypadki, ladowanie: false, blad: null });
@@ -189,9 +200,10 @@ export function usePelnePrzypadki(ids: string[]): StanPelnychPrzypadkow {
     return () => {
       anulowane = true;
     };
-  }, [klucz]);
+  }, [klucz, wersja]);
 
-  return stan;
+  const odswiez = useCallback(() => setWersja((w) => w + 1), []);
+  return { ...stan, odswiez };
 }
 
 // ---------------------------------------------------------------------------
