@@ -658,7 +658,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -689,7 +690,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -818,7 +821,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -849,7 +853,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -943,7 +949,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
         },
         {
           "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -974,7 +981,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -1118,7 +1127,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "designation": "Q5",
@@ -1252,7 +1262,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -1405,7 +1417,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "designation": "Q5",
@@ -1522,7 +1535,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -1640,7 +1655,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
         },
         {
           "designation": "Q5",
@@ -1774,7 +1790,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -1927,7 +1945,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "designation": "Q5",
@@ -2080,7 +2099,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -2233,7 +2254,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
         },
         {
           "designation": "Q5",
@@ -2369,7 +2391,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",
@@ -2487,7 +2511,8 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:cb"
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
         },
         {
           "designation": "Q5",
@@ -2640,7 +2665,9 @@
             }
           ],
           "render_variant": "qet_en60617",
-          "symbol_ref": "symbol:ct"
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
         },
         {
           "designation": "PF1",

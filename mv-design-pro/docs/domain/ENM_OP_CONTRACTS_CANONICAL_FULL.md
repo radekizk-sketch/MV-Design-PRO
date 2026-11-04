@@ -293,7 +293,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `insert_zksn_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `insert_zksn_on_segment_sn` | `insert_at` | `mode`, `value` |
-| `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `odgalezienie`, `placement`, `przekladnia`, `stan_obiektu` |
+| `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `odgalezienie`, `placement`, `przekladnia`, `stan_obiektu`, `wykonanie`, `zaczep_pierwotny_a` |
 | `set_nn_cable_laying_conditions` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
 | `start_branch_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `start_branch_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |

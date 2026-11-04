@@ -2080,7 +2080,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (naped kazdego lacznika pola z rysunku: Q0 silnikowy, Q1 zasobnikowy z obsluga reczna)
     # zamiast pary `naped_wylacznika` + `naped_weryfikacja` (naped tylko wylacznika). PASS
     # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4468." in wyjscie, wyjscie
+    # Rozstrzygniecie architekta 2026-10-30 pkt 3 (`ea8404b02`, czlon wysuwny: pole
+    # `BayPrimaryDevice.wykonanie`) podnioslo zbior do 4469 bez podniesienia pinu — POMIAR
+    # `contract_fields()` na drzewie `git archive 85bd2aadf`: 4469. Zaczep przekladnika
+    # wieloprzekladniowego karty UX-04/POLE-LINIOWE-WZORZEC (§11.15): 4469 -> 4472, roznica
+    # zbiorow +3, -0: rekord aparatu pola (`enm/models.py`: `zaczep_pierwotny_a`,
+    # `zrodlo_zaczepu`) i rozstrzygniecie zaczepu (`wartosci_robocze.py::ZaczepRozstrzygniety`:
+    # `zaczepy`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4472." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

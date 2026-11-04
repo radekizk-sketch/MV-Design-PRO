@@ -106,7 +106,7 @@ export const SZABLON_SAFERING_TRANSFORMER: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'transformatorowe',
   bay_role: 'TR',
-  hash: '3b912740e58389f0500a3643f581fcbf97028fcd2accd5c65ae7af398e53a393',
+  hash: 'b93917b14e903659530a7bae509d414c1e792a7ec4405ffa7ab3163879cec0ba',
 };
 
 export const SZABLON_UNIGEAR_LINE_OUT: CompleteMvBayTemplateSummary = {
@@ -166,7 +166,7 @@ export const SZABLON_UNIGEAR_TRANSFORMER: CompleteMvBayTemplateSummary = {
   },
   bay_kind: 'transformatorowe',
   bay_role: 'TR',
-  hash: 'f55c50881d4180a39103828b7a6495f16991764ff81c25bcdd9e756df89a8f07',
+  hash: '6d91a35ecdcd7b35e8e8d75a5d46bd8426e8037abc9e51f325f66374f2e5f6ed',
 };
 
 export const SZABLON_UNIGEAR_MEASUREMENT: CompleteMvBayTemplateSummary = {

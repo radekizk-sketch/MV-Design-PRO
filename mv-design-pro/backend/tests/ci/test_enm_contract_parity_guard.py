@@ -129,15 +129,21 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     Decyzja architekta 2026-10-30 (napęd jest atrybutem łącznika) rozszerza zbiór wartości
     tego SAMEGO pola do `RodzajNapedu` = SILNIKOWY | ZASOBNIKOWY_RECZNY (lustro
     `RodzajNapeduLacznika`, parytet zbioru wartości zachowany) — bez nowego pola. Pomiar
-    guardem na drzewie karty: 132, lista sprawdzonych pól identyczna z `e41837b4e`."""
+    guardem na drzewie karty: 132, lista sprawdzonych pól identyczna z `e41837b4e`.
+    Rozstrzygnięcie architekta 2026-10-30 pkt 3 (`ea8404b02`, człon wysuwny) dodało pole Literal
+    `BayPrimaryDevice.wykonanie` (STALE | WYSUWNE, lustro w `types/enm.ts`) bez podniesienia pinu
+    — pomiar guardem na drzewie `git archive 85bd2aadf`: 133. Zaczep przekładnika
+    wieloprzekładniowego (§11.15) dodaje `BayPrimaryDevice.zrodlo_zaczepu` (PROJEKTANT |
+    WARTOSC_ROBOCZA, lustro `ZrodloZaczepu` w `types/enm.ts`, parytet zbioru wartości
+    zachowany): 133 -> 134 (pomiar guardem na drzewie karty)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 132, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 132 — "
+    assert int(dopasowanie.group(1)) == 134, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 134 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."
