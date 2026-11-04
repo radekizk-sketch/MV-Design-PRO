@@ -1828,3 +1828,146 @@ def usun_wszystkie_scenariusze() -> None:
     for sciezka in katalog.glob(f"*{SUFIKS_KATALOGU_SCENARIUSZY}"):
         if sciezka.is_dir():
             shutil.rmtree(sciezka, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Wybór zabezpieczeń PRZYPADKU obliczeniowego (ADR-022, karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN)
+# ---------------------------------------------------------------------------
+#
+# Przypadek obliczeniowy WYBIERA grupę nastaw sterownika albo nakłada nadpisanie nastaw jako
+# deltę scenariusza (Core Rule #4 doprecyzowana przez ADR-022). Nośnikiem jest scenariusz
+# nazwany o identyfikatorze WYPROWADZONYM z przypadku (`id_scenariusza_przypadku`) — jeden na
+# przypadek, w magazynie scenariuszy projektu (rewizje, nagrobek przy zdjęciu wszystkich delt).
+# Scenariusz przypadku niesie WYŁĄCZNIE `protection_groups`/`protection_overrides` i jest
+# nakładany na KAŻDY bieg tego przypadku (`naloz_wybor_przypadku`): na stan normalny (bieg bez
+# scenariusza — wtedy koperta biegu niesie referencję scenariusza przypadku) i na scenariusz
+# nazwany biegu (zwarciowy, łączeniowy, dynamiczny, warianty w pamięci). Bieg zapisuje wybór
+# w opcjach (`KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU` — treść i rewizja), a świeżość wyniku
+# porównuje zapis z bieżącą rewizją wyboru TEGO przypadku — zmiana w przypadku B unieważnia
+# wyłącznie biegi przypadku B; model bazowy nie zmienia się nigdy.
+
+#: Prefiks identyfikatora scenariusza przypadku (`przypadek-<case_id>`).
+PREFIKS_SCENARIUSZA_PRZYPADKU = "przypadek-"
+#: Klucz opcji biegu z wyborem zabezpieczeń przypadku (obecny WYŁĄCZNIE, gdy przypadek ma
+#: wybór — opcje i `input_hash` biegów przypadków bez wyboru bajtowo bez zmian).
+KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU = "zabezpieczenia_przypadku"
+
+
+def id_scenariusza_przypadku(case_id: str) -> str:
+    """JEDYNA reguła identyfikatora scenariusza wyboru zabezpieczeń przypadku."""
+    return f"{PREFIKS_SCENARIUSZA_PRZYPADKU}{case_id}"
+
+
+def czy_scenariusz_przypadku(scenario_id: str) -> bool:
+    """Predykat „scenariusz jest wyborem zabezpieczeń przypadku" — dla list scenariuszy
+    nazwanych (nie pokazują go), zapisu nazwanego (odmowa) i biegu (nie jest scenariuszem
+    nazwanym do wyboru)."""
+    return scenario_id.startswith(PREFIKS_SCENARIUSZA_PRZYPADKU)
+
+
+def scenariusz_przypadku(klucz: str, case_id: str) -> OperatingScenario | None:
+    """Bieżący wybór zabezpieczeń przypadku; `None` — przypadek nie ma wyboru (nigdy albo
+    zdjęty nagrobkiem)."""
+    scenario_id = id_scenariusza_przypadku(case_id)
+    stan = stan_scenariusza(klucz, scenario_id)
+    if stan is None or stan.usuniety:
+        return None
+    return wczytaj_scenariusz(klucz, scenario_id)
+
+
+def rewizja_wyboru_przypadku(klucz: str, case_id: str) -> int | None:
+    """Rewizja bieżącego wyboru przypadku (`None` — brak wyboru); wejście oceny świeżości."""
+    stan = stan_scenariusza(klucz, id_scenariusza_przypadku(case_id))
+    if stan is None or stan.usuniety:
+        return None
+    return stan.rewizja
+
+
+def wybor_przypadku(
+    case_id: str,
+    protection_groups: dict[str, int],
+    protection_overrides: dict[str, dict[str, dict[str, float | str | bool | None]]],
+) -> OperatingScenario:
+    """Scenariusz wyboru zabezpieczeń przypadku z delt (bez zapisu; rewizję nada magazyn)."""
+    return OperatingScenario(
+        scenario_id=id_scenariusza_przypadku(case_id),
+        name="Zabezpieczenia przypadku",
+        kind=RodzajScenariusza.CUSTOM,
+        protection_groups=protection_groups,
+        protection_overrides=protection_overrides,
+    )
+
+
+def zapis_wyboru_w_opcjach(wybor: OperatingScenario) -> dict[str, Any]:
+    """Treść wyboru zapisywana w opcjach biegu — z niej świeżość czyta rewizję, a wariant
+    w pamięci odtwarza deltę bez sięgania do magazynu (`wybor_z_opcji`)."""
+    tresc = wybor.tresc()
+    return {
+        "scenario_id": wybor.scenario_id,
+        "revision": wybor.revision,
+        "protection_groups": tresc.get("protection_groups", {}),
+        "protection_overrides": tresc.get("protection_overrides", {}),
+    }
+
+
+def wybor_z_opcji(opcje: dict[str, Any] | None) -> OperatingScenario | None:
+    """Wybór zabezpieczeń przypadku zapisany w opcjach biegu (`None` — bieg bez wyboru)."""
+    zapis = (opcje or {}).get(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU)
+    if not isinstance(zapis, dict):
+        return None
+    return OperatingScenario(
+        scenario_id=str(zapis["scenario_id"]),
+        name="Zabezpieczenia przypadku",
+        kind=RodzajScenariusza.CUSTOM,
+        revision=int(zapis["revision"]),
+        protection_groups=dict(zapis.get("protection_groups") or {}),
+        protection_overrides=dict(zapis.get("protection_overrides") or {}),
+    )
+
+
+def rewizja_wyboru_z_opcji(opcje: dict[str, Any] | None) -> int | None:
+    """Rewizja wyboru przypadku, na której policzono bieg (`None` — bez wyboru)."""
+    zapis = (opcje or {}).get(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU)
+    return int(zapis["revision"]) if isinstance(zapis, dict) else None
+
+
+def naloz_wybor_przypadku(
+    migawka: EffectiveNetworkSnapshot, wybor: OperatingScenario
+) -> EffectiveNetworkSnapshot:
+    """Wybór zabezpieczeń przypadku NA migawce efektywnej biegu — JEDYNE składanie.
+
+    Delta trafia na kopię migawki tą samą funkcją co delta scenariusza nazwanego
+    (`_naloz_delte_zabezpieczen` — sterownik, grupa, funkcja i nastawy sprawdzane regułą
+    zapisu modelu `bledy_sterownika`). Migawka stanu normalnego staje się migawką scenariusza
+    przypadku (koperta biegu niesie jego referencję); migawka scenariusza nazwanego zachowuje
+    jego referencję. Scenariusz nazwany zmieniający TEN SAM sterownik co wybór przypadku =
+    `ScenariuszNieprzystajeError` — dwa wybory jednego sterownika w jednym biegu nie mają
+    pierwszeństwa do zgadnięcia.
+    """
+    if not wybor.protection_groups and not wybor.protection_overrides:
+        return migawka
+    sterowniki_nazwanego = {
+        n.ref_id for n in migawka.nadpisania if n.kolekcja == "protection_assignments"
+    }
+    for ref_id in sorted(sterowniki_nazwanego):
+        if ref_id in wybor.protection_groups or ref_id in wybor.protection_overrides:
+            raise ScenariuszNieprzystajeError(
+                migawka.scenario_id,
+                ref_id,
+                "scenariusz biegu i wybór zabezpieczeń przypadku zmieniają ten sam sterownik — "
+                "zostaw zmianę sterownika w jednym z nich",
+            )
+    snapshot = copy.deepcopy(migawka.snapshot)
+    nadpisania = list(migawka.nadpisania)
+    _naloz_delte_zabezpieczen(snapshot, wybor, nadpisania)
+    normalny = czy_stan_normalny(migawka.scenario_id)
+    return EffectiveNetworkSnapshot(
+        snapshot=snapshot,
+        snapshot_hash=migawka.base_hash if not nadpisania else hash_migawki_enm(snapshot),
+        base_hash=migawka.base_hash,
+        base_revision=migawka.base_revision,
+        scenario_id=wybor.scenario_id if normalny else migawka.scenario_id,
+        scenario_revision=wybor.revision if normalny else migawka.scenario_revision,
+        scenario_hash=wybor.hash if normalny else migawka.scenario_hash,
+        nadpisania=tuple(nadpisania),
+    )

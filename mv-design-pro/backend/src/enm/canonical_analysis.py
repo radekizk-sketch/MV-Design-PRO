@@ -96,12 +96,18 @@ from enm.rozplyw_niesymetryczny_wynik import (
 )
 from enm.rozplyw_wysp import opis_wysp, scal_rozwiazania_wysp, scal_slady_oltc
 from enm.scenariusze import (
+    KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU,
     SCENARIUSZ_NORMALNY,
     EffectiveNetworkSnapshot,
     OperatingScenario,
     apply_scenario,
+    czy_scenariusz_przypadku,
+    naloz_wybor_przypadku,
     opcje_biegu_ze_scenariusza,
     referencja_koperty,
+    scenariusz_przypadku,
+    wybor_z_opcji,
+    zapis_wyboru_w_opcjach,
 )
 from enm.store import get_enm
 from enm.tolerancja_nn import dobierz_c_wezla
@@ -1125,6 +1131,7 @@ def ocen_model_biegu(
     analysis_type: str,
     options: dict[str, Any] | None = None,
     scenariusz: OperatingScenario | None = None,
+    case_id: str | None = None,
 ) -> OcenaModeluBiegu:
     """JEDNA ocena modelu liczonego dla biegu — bramy `create_run` i kwalifikowalności.
 
@@ -1144,13 +1151,33 @@ def ocen_model_biegu(
     """
     enm = get_enm(klucz_twin)
     scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
+    if czy_scenariusz_przypadku(scenariusz_biegu.scenario_id):
+        # Wybór zabezpieczeń przypadku nakłada się sam na każdy bieg swojego przypadku —
+        # wskazany jako scenariusz biegu byłby wyborem jednego przypadku w biegu innego.
+        raise OdmowaNazwana(
+            "Wybór zabezpieczeń przypadku nie jest scenariuszem do wskazania w biegu — "
+            "obowiązuje automatycznie w każdym biegu swojego przypadku.",
+            kod="bieg.scenariusz_przypadku_wskazany",
+            dane={"scenario_id": scenariusz_biegu.scenario_id},
+        )
     efektywna = apply_scenario(enm, scenariusz_biegu)
+    # ADR-022 (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): wybór grupy nastaw i nadpisania
+    # nastaw przypadku na KAŻDYM biegu przypadku — ta sama ocena dla `create_run`
+    # i kwalifikowalności scenariusza zwarciowego (predykaty parami).
+    wybor = scenariusz_przypadku(klucz_twin, case_id) if case_id is not None else None
+    if wybor is not None:
+        efektywna = naloz_wybor_przypadku(efektywna, wybor)
     enm_liczony = (
         enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
     )
     validator = ENMValidator()
     walidacja = validator.validate(enm_liczony)
     opcje = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    opcje.pop(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU, None)
+    if wybor is not None:
+        # Zapis wyboru w opcjach (treść + rewizja): `input_hash`, świeżość wyniku i wariant
+        # w pamięci czytają go stąd. Klucz wyłącznie, gdy przypadek ma wybór.
+        opcje[KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU] = zapis_wyboru_w_opcjach(wybor)
     blokady: list[BlokadaModeluBiegu] = []
     # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
     # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
@@ -1244,7 +1271,11 @@ def create_run(
     ktory jawne `options` wolajacego nakladaja sie z pierwszenstwem.
     """
     ocena = ocen_model_biegu(
-        klucz_twin=klucz_twin, analysis_type=analysis_type, options=options, scenariusz=scenariusz
+        klucz_twin=klucz_twin,
+        analysis_type=analysis_type,
+        options=options,
+        scenariusz=scenariusz,
+        case_id=case_id,
     )
     if ocena.blokady:
         raise ocena.odmowa()
@@ -1473,6 +1504,16 @@ def bieg_wariantu(
     `options=None` = opcje biegu bazowego.
     """
     opcje = dict(bazowy.options if options is None else options)
+    # ADR-022: wariant dziedziczy wybór zabezpieczeń przypadku biegu bazowego (ta sama treść
+    # i rewizja, zapisane w opcjach bazy) — nałożony na migawkę wariantu tą samą funkcją co
+    # w `create_run`; świeżość wariantu czyta go z tych samych opcji.
+    opcje.pop(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU, None)
+    wybor = wybor_z_opcji(bazowy.options)
+    if wybor is not None:
+        migawka = naloz_wybor_przypadku(migawka, wybor)
+        opcje[KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU] = bazowy.options[
+            KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU
+        ]
     input_hash = _compute_input_hash(
         case_id=bazowy.case_id,
         analysis_type=analysis_type,
@@ -1482,7 +1523,13 @@ def bieg_wariantu(
     koperta_bazy = bazowy.koperta
     envelope: dict[str, Any] | None = None
     if koperta_bazy is not None:
-        if koperta_bazy.snapshot_hash != bazowy.snapshot_hash:
+        # Baza policzona WYŁĄCZNIE na wyborze zabezpieczeń przypadku (stan normalny ⊕ wybór —
+        # koperta niesie referencję scenariusza przypadku) nie jest składaniem scenariuszy:
+        # wybór nałożono na wariant wyżej.
+        baza_na_wyborze = koperta_bazy.scenario_ref is not None and czy_scenariusz_przypadku(
+            koperta_bazy.scenario_ref[0]
+        )
+        if koperta_bazy.snapshot_hash != bazowy.snapshot_hash and not baza_na_wyborze:
             # Bieg bazowy sam policzono na migawce z nadpisaniami scenariusza —
             # wariant wariantu (skladanie scenariuszy) nie jest modelowany
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,

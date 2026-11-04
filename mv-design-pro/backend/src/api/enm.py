@@ -598,7 +598,6 @@ def get_nn_circuit_sheet(
     kolumny zależne od biegu dostają uczciwy trzeci stan „brak danych" z
     akcją naprawczą po stronie UI („uruchom bieg"), nie fabrykowaną liczbę.
     """
-    enm = _get_enm(klucz)
     load_flow_run = _resolve_run_for_sheet(
         case_id=case_id,
         run_id=load_flow_run_id,
@@ -611,6 +610,7 @@ def get_nn_circuit_sheet(
         param_name="short_circuit_run_id",
         expected_analysis_type="short_circuit_sn",
     )
+    enm = _model_arkusza(klucz, case_id, (load_flow_run, short_circuit_run))
     return build_nn_circuit_sheet(
         enm=enm,
         station_ref=station_ref,
@@ -665,7 +665,7 @@ def post_wytrzymalosc_aparatury(
                 "prądzie zwarciowym maksymalnym (scenariusz MAX)."
             ),
         )
-    enm = _model_biegu(klucz, run)
+    enm = _model_biegu(run)
     project_id = _resolve_project_id(case_id, request)
     return widok_wytrzymalosci_z_biegu(
         enm=enm,
@@ -677,37 +677,51 @@ def post_wytrzymalosc_aparatury(
     )
 
 
-def _model_biegu(klucz: str, run: Any) -> EnergyNetworkModel:
-    """Model, na którym policzono bieg: migawka efektywna scenariusza z koperty biegu.
+def _model_biegu(run: Any) -> EnergyNetworkModel:
+    """Model, na którym policzono bieg — JEGO migawka (`CanonicalRun.snapshot`).
 
-    Bieg ze scenariuszem (np. wybór grupy nastaw albo delta nastaw przypadku — ADR-022) ma
-    prądy i czas t_b z migawki efektywnej; czas wyłączenia pól w ocenie wytrzymałości musi
-    pochodzić z TEJ SAMEJ migawki, inaczej ocena łączyłaby prąd scenariusza z nastawami
-    modelu bazowego. Bieg bez scenariusza — model bieżący (dotychczasowa ścieżka).
-    Scenariusz biegu usunięty z magazynu — 409 z nazwaną przyczyną, nigdy cichy powrót
-    do modelu bazowego.
+    Migawka biegu jest migawką efektywną: model w rewizji biegu ⊕ scenariusz biegu ⊕ wybór
+    zabezpieczeń przypadku (ADR-022). Prądy, t_b i czas wyłączenia pól muszą pochodzić z TEJ
+    SAMEJ migawki — model bieżący (HEAD) albo HEAD ⊕ scenariusz łączyłby prąd biegu
+    z nastawami innego stanu (edycja po biegu, inny wybór grupy, scenariusz usunięty
+    z magazynu po biegu). Świeżość wyniku wobec modelu bieżącego mówi osobno nakładka statusu.
     """
-    from enm.envelope import RevisionEnvelope
-    from enm.scenariusze import ScenariuszNieistniejeError, apply_scenario, wczytaj_scenariusz
+    return EnergyNetworkModel.model_validate(run.snapshot)
 
+
+def _model_arkusza(klucz: str, case_id: str, biegi: tuple[Any, ...]) -> EnergyNetworkModel:
+    """Model arkusza obwodów nN — migawka PRZYPADKU, jedna dla wszystkich kolumn.
+
+    Podane biegi: migawka biegu (`_model_biegu`) — biegi rozpływu i zwarcia muszą być
+    policzone na tej samej migawce (inaczej Ib i Ik″ opisywałyby dwa różne stany sieci:
+    422 z nazwaną przyczyną). Bez biegów: model przypadku = model bieżący ⊕ wybór
+    zabezpieczeń przypadku (ADR-022) — ten sam, który policzy najbliższy bieg przypadku.
+    """
+    from enm.scenariusze import (
+        SCENARIUSZ_NORMALNY,
+        apply_scenario,
+        naloz_wybor_przypadku,
+        scenariusz_przypadku,
+    )
+
+    podane = [b for b in biegi if b is not None]
+    if podane:
+        odciski = {b.snapshot_hash for b in podane}
+        if len(odciski) > 1:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Bieg rozpływu i bieg zwarciowy policzono na różnych stanach sieci "
+                    "(inna rewizja modelu albo inny scenariusz) — wskaż biegi tego samego stanu "
+                    "albo przelicz jeden z nich."
+                ),
+            )
+        return _model_biegu(podane[0])
     enm = _get_enm(klucz)
-    koperta = RevisionEnvelope.from_dict(getattr(run, "envelope", None))
-    if koperta is None or koperta.scenario_ref is None:
+    wybor = scenariusz_przypadku(klucz, case_id)
+    if wybor is None:
         return enm
-    scenario_id, rewizja = koperta.scenario_ref
-    try:
-        scenariusz = wczytaj_scenariusz(klucz, scenario_id, rewizja)
-    except ScenariuszNieistniejeError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "Scenariusz, na którym policzono bieg zwarciowy, nie istnieje już w projekcie — "
-                "wytrzymałości aparatury nie można ocenić na migawce tego biegu."
-            ),
-        ) from exc
-    efektywna = apply_scenario(enm, scenariusz)
-    if efektywna.tozsama_z_baza:
-        return enm
+    efektywna = naloz_wybor_przypadku(apply_scenario(enm, SCENARIUSZ_NORMALNY), wybor)
     return EnergyNetworkModel.model_validate(efektywna.snapshot)
 
 

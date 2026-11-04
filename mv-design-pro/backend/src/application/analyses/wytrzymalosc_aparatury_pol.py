@@ -1422,3 +1422,34 @@ def widok_wytrzymalosci_z_biegu(
         bay_device_withstand=bay_device_withstand,
         czasy_pol=czasy,
     )
+
+
+def czas_wylaczenia_pola_aparatu(
+    *,
+    enm: EnergyNetworkModel,
+    aparat_ref: str,
+    wiersze_biegu: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Czas wyłączenia POLA, w którym leży aparat — to samo złożenie co widok wytrzymałości.
+
+    Dowód doboru aparatury (``api/equipment_proof_pack.py``) bierze t_k aparatu pola stąd:
+    prąd pola z wiersza biegu dla jego punktu zabudowy (``prady_pol_z_biegu``), czas z nastaw
+    sterownika TEGO pola przy tym prądzie + czas własny wyłącznika
+    (``czasy_wylaczenia_pol_stacji`` → ``_czas_wylaczenia_pola``). ``None`` — aparat nie leży
+    w żadnym polu stacji modelu (wtedy t_k pola nie istnieje).
+    """
+    for stacja in sorted(enm.substations, key=lambda s: s.ref_id):
+        for bay_ref, aparaty in aparaty_pol_stacji(enm, stacja).items():
+            if not any(a.aparat_ref == aparat_ref for a in aparaty):
+                continue
+            prady = prady_pol_z_biegu(
+                enm=enm, station_ref=stacja.ref_id, wiersze_biegu=wiersze_biegu
+            )
+            czasy = czasy_wylaczenia_pol_stacji(
+                enm=enm,
+                station_ref=stacja.ref_id,
+                ik_pol_ka={ref: p.ik_ka for ref, p in prady.items()},
+            )
+            czas = czasy.get(bay_ref)
+            return None if czas is None else {**czas, "pole_ref": bay_ref}
+    return None

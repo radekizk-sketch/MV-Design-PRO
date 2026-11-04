@@ -274,6 +274,7 @@ class EquipmentProofGenerator:
         device_time = device.t_th_s
         required_val = _as_float(required.get("ith_ka"))
         required_time = _as_float(required.get("tk_s"))
+        uwagi_tk = _uwagi_czasu_tk(required)
         if (
             device_val is None
             or device_time is None
@@ -288,6 +289,7 @@ class EquipmentProofGenerator:
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
                 message_pl="Brak podstawy: nie podano I_th/t_th aparatu albo I_th/t_k wymaganego.",
+                notes=uwagi_tk,
             )
         if _porownanie_energii_i2t(device_time=device_time, required_time=required_time):
             # Karta S-C (2026-07-22, zgoda właściciela): przy czasie zwarcia DŁUŻSZYM od
@@ -317,6 +319,7 @@ class EquipmentProofGenerator:
                     f"t_th_s={device_time} s, tk_s={required_time} s",
                     f"I²t wymagane = Ith_req²·tk = {required_i2t:.4f} kA²s",
                     f"I²t aparatu = Ith²·t_th = {device_i2t:.4f} kA²s",
+                    *uwagi_tk,
                 ),
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
@@ -328,7 +331,7 @@ class EquipmentProofGenerator:
             required_source_key="ith_ka",
             device_source_key="device.i_th_ka",
             message_pl=_compare_message("I_th", "kA", device_val, required_val),
-            notes=(f"t_th_s={device_time} s",),
+            notes=(f"t_th_s={device_time} s", *uwagi_tk),
         )
 
     @classmethod
@@ -400,6 +403,8 @@ class EquipmentProofGenerator:
                 f"Wielkości wymagane liczone z daną przyjętą: {d.nazwa_pl} — {d.powod_pl}"
                 for d in result.dane_przyjete
             )
+            # Pochodzenie t_k aparatu pola (czas wyłączenia pola z nastaw jego sterownika).
+            + _uwagi_czasu_tk(proof_input.required_fault_results)
             + tuple(
                 uwaga
                 for uwaga in (
@@ -693,6 +698,16 @@ class EquipmentProofGenerator:
             result_symbol="I_{th,ok}",
             result_key="ith_ok",
         )
+
+
+def _uwagi_czasu_tk(required: dict[str, Any]) -> tuple[str, ...]:
+    """Pochodzenie t_k aparatu pola (``wymagania_pola.wymagania_z_czasem_pola``) jako uwaga
+    sprawdzenia I_th — pusta krotka, gdy t_k jest czasem cieplnym biegu (wymagania bez wpisu)."""
+    zrodlo = required.get("tk_zrodlo")
+    if not isinstance(zrodlo, dict):
+        return ()
+    opis = str(zrodlo.get("opis_pl") or "").strip()
+    return (f"Czas trwania zwarcia t_k — czas wyłączenia pola: {opis}",) if opis else ()
 
 
 def _wielkosc_wylaczania(

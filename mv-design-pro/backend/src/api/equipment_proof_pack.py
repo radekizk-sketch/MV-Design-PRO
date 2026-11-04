@@ -5,6 +5,7 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.schemas.equipment_proof import DeviceRatingPayload, EquipmentProofRequest
+from application.analyses.wytrzymalosc_aparatury_pol import czas_wylaczenia_pola_aparatu
 from application.autorytet_biegu_zwarciowego import (
     BiegNiemiarodajnyError,
     wejscie_zwarciowe_z_biegu,
@@ -13,8 +14,10 @@ from application.autorytet_biegu_zwarciowego import (
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 from application.equipment_proof.types import DeviceRating, EquipmentProofInput
+from application.equipment_proof.wymagania_pola import wymagania_z_czasem_pola
 from application.nazwy_biegu import nazwa_projektu_z_migawki, nazwa_przypadku_z_bazy
-from enm.canonical_analysis import get_run
+from enm.canonical_analysis import build_short_circuit_results, get_run
+from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku
@@ -113,13 +116,25 @@ def download_equipment_proof_pack(
     # Nagłówek dowodu: nazwa modelu z migawki biegu i nazwa przypadku z bazy — nigdy
     # identyfikatory z żądania (karta #144). Bieg istnieje: bramka wyżej go wczytała.
     bieg = get_run(UUID(str(payload.run_id)))
+    wymagane = wielkosci_kontraktu_klienta(wejscie.wielkosci)
+    if bieg is not None and bieg.snapshot:
+        # Czas trwania zwarcia t_k aparatu POLA = czas wyłączenia tego pola (nastawy sterownika
+        # pola z migawki biegu + czas własny wyłącznika) — to samo rozstrzygnięcie co widok
+        # wytrzymałości aparatury, nie t_k całego biegu. Aparat spoza pól stacji: t_k biegu.
+        czas_pola = czas_wylaczenia_pola_aparatu(
+            enm=EnergyNetworkModel.model_validate(bieg.snapshot),
+            aparat_ref=payload.device.device_id,
+            wiersze_biegu=build_short_circuit_results(bieg)["rows"],
+        )
+        if czas_pola is not None:
+            wymagane = wymagania_z_czasem_pola(wymagane, czas_pola)
     proof_input = EquipmentProofInput(
         project_id=payload.project_id,
         case_id=payload.case_id,
         run_id=payload.run_id,
         connection_node_id=payload.connection_node_id,
         device=_device_rating_from_payload(payload.device),
-        required_fault_results=wielkosci_kontraktu_klienta(wejscie.wielkosci),
+        required_fault_results=wymagane,
         proweniencja=wejscie.proweniencja,
         tolerancja_nn_robocza=wejscie.tolerancja_nn_robocza,
         dane_galezi=wejscie.dane_galezi,

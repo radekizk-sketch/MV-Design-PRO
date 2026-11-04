@@ -224,17 +224,45 @@ def test_scenariusz_bez_zadnej_delty_jest_odmowa_kontraktu(
     assert odp.status_code == 422, odp.text
 
 
-def test_bieg_ze_scenariuszem_usunietym_z_magazynu_jest_409_nie_model_bazowy(
+def test_bieg_ze_scenariuszem_usunietym_z_magazynu_czyta_migawke_biegu_nie_model_bazowy(
     klient: TestClient, stacja_z_grupa_2: dict[str, Any]
 ) -> None:
+    """Intencja (zachowana od karty OCHRONA-JEDNO-ZRODLO): wytrzymałość biegu nigdy nie wraca
+    po cichu do modelu bazowego. Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: źródłem jest
+    MIGAWKA BIEGU (`CanonicalRun.snapshot`), nie HEAD ⊕ scenariusz z magazynu — po usunięciu
+    scenariusza ocena biegu nadal stoi na grupie 2 (0,5 s), na której bieg policzono."""
     s = stacja_z_grupa_2
     odp = _zapisz_scenariusz(klient, s["case_id"], protection_groups={s["ref"]: 2})
     assert odp.status_code == 201, odp.text
     run_id = _bieg_ze_scenariuszem(klient, s["case_id"], odp.json()["scenario_id"])
     usun_wszystkie_scenariusze()
-    odp = _wytrzymalosc(klient, s["case_id"], s["station_ref"], run_id)
-    assert odp.status_code == 409, odp.text
-    assert "nie istnieje już w projekcie" in odp.json()["detail"]
+    czas = _czas_pola(klient, s["case_id"], s["station_ref"], run_id, s["bay_ref"])
+    assert czas["czlon_nastawczy_s"] == pytest.approx(0.5)
+    assert czas["t_clearing_s"] == pytest.approx(0.5 + CZAS_WLASNY_S)
+
+
+def test_wytrzymalosc_biegu_po_edycji_modelu_czyta_migawke_biegu(
+    klient: TestClient, stacja_z_grupa_2: dict[str, Any]
+) -> None:
+    """Edycja nastaw modelu PO biegu nie przepisuje oceny tego biegu (migawka biegu)."""
+    s = stacja_z_grupa_2
+    run_id = _bieg_ze_scenariuszem(klient, s["case_id"], None)
+    sterownik = next(
+        p for p in _model(klient, s["case_id"])["protection_assignments"] if p["ref_id"] == s["ref"]
+    )
+    nastawy = _nastawy_51(sterownik, s["funkcja_ref"])
+    _operacja(
+        klient,
+        s["case_id"],
+        "update_protection_settings",
+        {
+            "protection_ref": s["ref"],
+            "grupa": sterownik["aktywna_grupa"],
+            "nastawy": {s["funkcja_ref"]: {**nastawy, "zwloka_s": 0.8}},
+        },
+    )
+    czas = _czas_pola(klient, s["case_id"], s["station_ref"], run_id, s["bay_ref"])
+    assert czas["czlon_nastawczy_s"] == pytest.approx(0.3)
 
 
 def test_tresc_scenariusza_bez_delty_zabezpieczen_nie_ma_jej_kluczy() -> None:

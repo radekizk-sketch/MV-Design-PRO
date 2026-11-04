@@ -13,7 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../app-state/store';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
@@ -84,7 +85,7 @@ describe('wybór biegów wejściowych', () => {
     expect(await screen.findByTestId('coordination-runs-missing')).toHaveTextContent(
       LABELS.biegi.brakMaxMin,
     );
-    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await userEvent.click(screen.getByTestId('run-analysis-button'));
     expect(await screen.findByTestId('coordination-status')).toHaveTextContent(
       LABELS.biegi.brakMaxMin,
     );
@@ -99,7 +100,7 @@ describe('wybór biegów wejściowych', () => {
     await waitFor(() => expect(fetchSC).toHaveBeenCalledWith('run-max'));
     expect(screen.getByTestId('coordination-run-max')).toHaveTextContent('✓');
     expect(screen.getByTestId('coordination-run-min')).toHaveTextContent(LABELS.biegi.brak);
-    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await userEvent.click(screen.getByTestId('run-analysis-button'));
     await screen.findByTestId('coordination-status');
     expect(runAnalysis).not.toHaveBeenCalled();
   });
@@ -133,7 +134,7 @@ describe('wybór biegów wejściowych', () => {
     // Bieg jednofazowy nie jest kandydatem koordynacji fazowej — nie jest nawet czytany.
     expect(fetchSC).not.toHaveBeenCalledWith('run-1f');
 
-    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await userEvent.click(screen.getByTestId('run-analysis-button'));
     await waitFor(() => expect(runAnalysis).toHaveBeenCalledTimes(1));
     expect(runAnalysis).toHaveBeenCalledWith('proj-1', {
       sc_run_id: 'run-max',
@@ -151,7 +152,7 @@ describe('wybór biegów wejściowych', () => {
     } as never);
     render(<ProtectionCoordinationPage />);
     expect(await screen.findByText(LABELS.biegi.brakPf)).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await userEvent.click(screen.getByTestId('run-analysis-button'));
     await waitFor(() =>
       expect(runAnalysis).toHaveBeenCalledWith('proj-1', {
         sc_run_id: 'run-max',
@@ -174,7 +175,7 @@ describe('wynik i odmowy', () => {
   async function uruchom(): Promise<void> {
     render(<ProtectionCoordinationPage />);
     await waitFor(() => expect(screen.getByTestId('coordination-run-min')).toHaveTextContent('✓'));
-    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await userEvent.click(screen.getByTestId('run-analysis-button'));
   }
 
   it('odmowa backendu widoczna w treści (sieć zmieniona od biegu)', async () => {
@@ -262,19 +263,19 @@ describe('wynik i odmowy', () => {
   it('droga do edycji nastaw w modelu — przycisk panelu otwiera ekran zabezpieczeń', async () => {
     zBiegami();
     await uruchom();
-    fireEvent.click(await screen.findByTestId('coordination-edit-settings'));
+    await userEvent.click(await screen.findByTestId('coordination-edit-settings'));
     expect(openRouteSurface).toHaveBeenCalledWith('E-27');
   });
 
   it('zakładki czułości i selektywności pokazują sprawdzenia z uzasadnieniem backendu', async () => {
     zBiegami();
     await uruchom();
-    fireEvent.click(await screen.findByTestId('tab-selectivity'));
+    await userEvent.click(await screen.findByTestId('tab-selectivity'));
     const tabela = screen.getByTestId('selectivity-table');
     for (const c of WYNIK.selectivity_checks) {
       expect(tabela).toHaveTextContent(c.notes_pl);
     }
-    fireEvent.click(screen.getByTestId('tab-sensitivity'));
+    await userEvent.click(screen.getByTestId('tab-sensitivity'));
     const czulosc = screen.getByTestId('sensitivity-table');
     for (const c of WYNIK.sensitivity_checks) {
       expect(czulosc).toHaveTextContent(c.notes_pl);

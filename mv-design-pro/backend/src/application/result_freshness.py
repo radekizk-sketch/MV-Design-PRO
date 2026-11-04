@@ -59,7 +59,13 @@ from enm.dziennik_zmian import WpisDziennika, wpisy_od
 from enm.envelope import RevisionEnvelope
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
-from enm.scenariusze import StanScenariusza, czy_scenariusz_przejsciowy
+from enm.scenariusze import (
+    StanScenariusza,
+    czy_scenariusz_przejsciowy,
+    czy_scenariusz_przypadku,
+    rewizja_wyboru_przypadku,
+    rewizja_wyboru_z_opcji,
+)
 from enm.scenariusze import stan_scenariusza as stan_scenariusza_z_magazynu
 from enm.store import get_enm, has_enm
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
@@ -86,6 +92,7 @@ class FreshnessReason(StrEnum):
     SCENARIUSZ_ZMIENIONY = "scenariusz-zmieniony"
     SCENARIUSZ_USUNIETY = "scenariusz-usuniety"
     ZRODLO_NIEAKTUALNE = "zrodlo-biegu-nieaktualne"
+    ZABEZPIECZENIA_PRZYPADKU_ZMIENIONE = "zabezpieczenia-przypadku-zmienione"
 
 
 # Zdanie dla projektanta — po polsku, JEDNO na kod przyczyny. Kazdy kod ma tu
@@ -127,6 +134,10 @@ REASON_TEXTS_PL: dict[FreshnessReason, str] = {
         "Przebieg źródłowy (np. zwarciowy), z którego pochodzi ten wynik, jest "
         "nieaktualny wobec bieżącego modelu — interpretacja opiera się na "
         "wartościach sprzed zmiany."
+    ),
+    FreshnessReason.ZABEZPIECZENIA_PRZYPADKU_ZMIENIONE: (
+        "Wybór grupy nastaw albo nadpisania nastaw zabezpieczeń w tym przypadku zmieniły się "
+        "po obliczeniu — wynik opisuje poprzedni wybór zabezpieczeń przypadku."
     ),
 }
 
@@ -304,8 +315,13 @@ def evaluate_envelope_freshness(
             rewizja_biegu=envelope.model_revision,
             rewizja_biezaca=rewizja_biezaca,
         )
-    if envelope.scenario_ref is not None and not czy_scenariusz_przejsciowy(
-        envelope.scenario_ref[0]
+    # Referencja wyboru zabezpieczeń przypadku (bieg bez scenariusza nazwanego) nie jest
+    # scenariuszem roboczym: jego rewizję ocenia osobne sprawdzenie wyboru przypadku
+    # (`swiezosc_biegu_kanonicznego`) z przyczyną nazywającą wybór, nie „scenariusz usunięty".
+    if (
+        envelope.scenario_ref is not None
+        and not czy_scenariusz_przejsciowy(envelope.scenario_ref[0])
+        and not czy_scenariusz_przypadku(envelope.scenario_ref[0])
     ):
         if stan_scenariusza is None or stan_scenariusza.usuniety:
             return FreshnessVerdict(
@@ -337,6 +353,19 @@ class StanBiezacyModelu:
     rewizja: int | None
     hash_sha256: str | None
     odcisk_katalogu: str
+    wybory_przypadkow: dict[str, int | None] = field(
+        default_factory=dict, compare=False, repr=False
+    )
+    """Pamięć podręczna rewizji wyboru zabezpieczeń przypadków (ADR-022) w obrębie JEDNEGO
+    zapytania — lista biegów projektu czyta stan wyboru każdego przypadku raz."""
+
+    def rewizja_wyboru(self, case_id: str) -> int | None:
+        """Bieżąca rewizja wyboru zabezpieczeń przypadku (`None` — przypadek bez wyboru)."""
+        if self.klucz is None:
+            return None
+        if case_id not in self.wybory_przypadkow:
+            self.wybory_przypadkow[case_id] = rewizja_wyboru_przypadku(self.klucz, case_id)
+        return self.wybory_przypadkow[case_id]
 
     @staticmethod
     def dla_przypadku(
@@ -385,8 +414,10 @@ def swiezosc_biegu_kanonicznego(
     if koperta is not None and stan.klucz is not None and stan.rewizja is not None:
         if koperta.model_revision != stan.rewizja:
             zmiany = wpisy_od(stan.klucz, koperta.model_revision)
-        if koperta.scenario_ref is not None and not czy_scenariusz_przejsciowy(
-            koperta.scenario_ref[0]
+        if (
+            koperta.scenario_ref is not None
+            and not czy_scenariusz_przejsciowy(koperta.scenario_ref[0])
+            and not czy_scenariusz_przypadku(koperta.scenario_ref[0])
         ):
             stan_scenariusza = stan_scenariusza_z_magazynu(stan.klucz, koperta.scenario_ref[0])
     werdykt = evaluate_envelope_freshness(
@@ -401,6 +432,21 @@ def swiezosc_biegu_kanonicznego(
     )
     if werdykt.status != ResultFreshness.FRESH:
         return werdykt
+    # ADR-022 (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): wybór zabezpieczeń przypadku jest
+    # wejściem biegu — rewizja zapisana w opcjach biegu porównana z bieżącą rewizją wyboru
+    # TEGO przypadku (wybór dodany, zmieniony albo zdjęty po biegu → nieaktualny). Biegi
+    # innych przypadków czytają własny wybór — zmiana w przypadku B nie dotyka wyników A.
+    if koperta is not None and stan.klucz is not None and stan.rewizja is not None:
+        case_id = str(getattr(run, "case_id", "") or "")
+        if case_id and rewizja_wyboru_z_opcji(getattr(run, "options", None)) != (
+            stan.rewizja_wyboru(case_id)
+        ):
+            return FreshnessVerdict(
+                ResultFreshness.OUTDATED,
+                FreshnessReason.ZABEZPIECZENIA_PRZYPADKU_ZMIENIONE,
+                rewizja_biegu=werdykt.rewizja_biegu,
+                rewizja_biezaca=werdykt.rewizja_biezaca,
+            )
     for zrodlo in biegi_zrodlowe:
         werdykt_zrodla = swiezosc_biegu_kanonicznego(zrodlo, stan)
         if werdykt_zrodla.status != ResultFreshness.FRESH:

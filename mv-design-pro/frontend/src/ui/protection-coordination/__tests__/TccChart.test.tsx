@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeAll } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { TccChart, TccChartFromResult, nazwaCharakterystykiPL } from '../TccChart';
 import type { CoordinationResult } from '../types';
@@ -53,7 +54,7 @@ describe('wynik sieci złotej na wykresie', () => {
     expect(screen.getByText(LABELS.tcc.faultCurrent + ':')).toBeInTheDocument();
   });
 
-  it('klik w legendę zgłasza urządzenie', () => {
+  it('klik w legendę zgłasza urządzenie', async () => {
     const onDeviceClick = vi.fn();
     render(
       <TccChartFromResult result={WYNIK} devices={WYNIK.devices} onDeviceClick={onDeviceClick} />,
@@ -61,7 +62,8 @@ describe('wynik sieci złotej na wykresie', () => {
     // Legenda niesie urządzenia z krzywą (sterownik bez nastaw nie ma krzywej na wykresie).
     const [krzywa] = WYNIK.tcc_curves;
     const urzadzenie = WYNIK.devices.find((d) => d.id === krzywa.device_id)!;
-    fireEvent.click(screen.getByText(urzadzenie.name));
+    // Natywny klik (pointerdown → mouseup → click), nie syntetyczne zdarzenie (Zero-Debt pkt 5).
+    await userEvent.click(screen.getByText(urzadzenie.name));
     expect(onDeviceClick).toHaveBeenCalledWith(urzadzenie.id);
   });
 

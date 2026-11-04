@@ -507,10 +507,13 @@ class FaultScenarioService:
         # z modelu sieci, więc kwalifikowalność mówiła „blokada", gdy bieg by się policzył,
         # i „kwalifikuje się", gdy `create_run` odrzucał model. Odtąd obie ścieżki czytają
         # `ocen_model_biegu` (kody i komunikaty odmowy biegu są kodami blokad tutaj).
+        # Wybór zabezpieczeń przypadku scenariusza (ADR-022) wchodzi do oceny tak samo jak
+        # do biegu — `create_run` dostaje ten sam `case_id` (predykaty parami).
         ocena = ocen_model_biegu(
             klucz_twin=klucz,
             analysis_type="short_circuit_sn",
             scenariusz=self.get_scenario_ze_wpisem(klucz, scenario_id),
+            case_id=str(scenario.study_case_id),
         )
         for blokada in ocena.blokady:
             blockers.append(

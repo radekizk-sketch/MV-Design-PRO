@@ -230,11 +230,35 @@ class StudyCaseService:
         Returns:
             True if deleted, False if not found
         """
+        # Wybór zabezpieczeń przypadku (ADR-022) żyje w magazynie scenariuszy PROJEKTU — klucz
+        # projektu tłumaczy się, póki przypadek jest w bazie; po usunięciu przypadku wybór
+        # dostaje nagrobek (nie zostaje sierotą do podjęcia przez inny przypadek).
+        klucz = self._klucz_projektu(case_id)
         with self._uow_factory() as uow:
             repo = uow.cases
             if repo is None:
                 raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-            return repo.delete_study_case(case_id)
+            usuniety = repo.delete_study_case(case_id)
+        if usuniety and klucz is not None:
+            from enm.scenariusze import (
+                id_scenariusza_przypadku,
+                scenariusz_przypadku,
+                usun_scenariusz,
+            )
+
+            if scenariusz_przypadku(klucz, str(case_id)) is not None:
+                usun_scenariusz(klucz, id_scenariusza_przypadku(str(case_id)))
+        return usuniety
+
+    def _klucz_projektu(self, case_id: UUID) -> str | None:
+        """Klucz magazynu projektu przypadku (`None` — przypadek spoza bazy)."""
+        from application.twin_key import klucz_twin_dla_przypadku
+        from enm.klucz_twin import PrzypadekBezProjektuError
+
+        try:
+            return klucz_twin_dla_przypadku(str(case_id), self._uow_factory)
+        except PrzypadekBezProjektuError:
+            return None
 
     # =========================================================================
     # Clone Operation
@@ -274,7 +298,22 @@ class StudyCaseService:
 
             cloned = source.clone(new_name)
             repo.add_study_case(cloned)
-            return cloned
+        # Klon kopiuje konfigurację przypadku — w tym wybór zabezpieczeń (grupa nastaw
+        # i nadpisania, ADR-022) jako WŁASNY wybór klonu: zmiana w jednym przypadku nie
+        # dotyka drugiego. Wyniki nie są kopiowane.
+        klucz = self._klucz_projektu(case_id)
+        if klucz is not None:
+            from enm.scenariusze import scenariusz_przypadku, wybor_przypadku, zapisz_scenariusz
+
+            wybor = scenariusz_przypadku(klucz, str(case_id))
+            if wybor is not None:
+                zapisz_scenariusz(
+                    klucz,
+                    wybor_przypadku(
+                        str(cloned.id), dict(wybor.protection_groups), wybor.protection_overrides
+                    ),
+                )
+        return cloned
 
     # =========================================================================
     # Active Case Management
