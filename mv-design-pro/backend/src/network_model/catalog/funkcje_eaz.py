@@ -36,10 +36,14 @@ from dataclasses import dataclass
 from typing import Literal, get_args
 
 __all__ = [
+    "ETYKIETY_WARTOSCI_WYBORU",
     "FUNKCJE_EAZ",
+    "KIERUNKI_DZIALANIA",
+
     "JEDNOSTKI_PROGU_PRADOWEGO",
     "KRZYWE_CZASOWE",
     "WEJSCIA_FUNKCJI",
+    "ZESTAWY_FUNKCJI_RODZAJU",
     "FunkcjaEaz",
     "OcenaFunkcji",
     "RodzajFunkcjiEaz",
@@ -91,6 +95,25 @@ KRZYWE_CZASOWE: tuple[str, ...] = (
 )
 #: Strona przekładnika, po której podany jest próg prądowy (decyzja właściciela PZ-09).
 JEDNOSTKI_PROGU_PRADOWEGO: tuple[str, ...] = ("A_WTORNY", "A_PIERWOTNY")
+#: Kierunek działania funkcji kierunkowej (67, 67N) względem pola.
+KIERUNKI_DZIALANIA: tuple[str, ...] = ("DO_LINII", "DO_SZYN")
+
+#: Etykieta KAŻDEJ wartości wyboru nastaw (krzywe, strona progu, kierunek) — jedno źródło dla
+#: oceny (komunikaty, ślad), karty pola i edytora nastaw (lustro `slownikFunkcjiEaz.json`).
+ETYKIETY_WARTOSCI_WYBORU: dict[str, str] = {
+    "DT": "czas niezależny (DT)",
+    "IEC_SI": "IEC normalnie odwrotna (SI)",
+    "IEC_VI": "IEC bardzo odwrotna (VI)",
+    "IEC_EI": "IEC skrajnie odwrotna (EI)",
+    "IEC_LTI": "IEC odwrotna długoczasowa (LTI, 120)",
+    "IEEE_MI": "IEEE umiarkowanie odwrotna (MI)",
+    "IEEE_VI": "IEEE bardzo odwrotna (VI)",
+    "IEEE_EI": "IEEE skrajnie odwrotna (EI)",
+    "A_WTORNY": "A po stronie wtórnej przekładnika",
+    "A_PIERWOTNY": "A po stronie pierwotnej przekładnika",
+    "DO_LINII": "w stronę linii",
+    "DO_SZYN": "w stronę szyn",
+}
 
 #: Identyfikator ewaluatora funkcji w warstwie analiz. ``NADPRADOWA_IEC_60255`` — ocena
 #: i czas zadziałania z rdzenia IEC 60255 (`application.analyses.protection.ocena_nadpradowa`);
@@ -158,7 +181,7 @@ _NASTAWY_STOPNIA_PRADOWEGO: tuple[SchematNastawy, ...] = (
     _ZWLOKA,
 )
 _NASTAWY_KIERUNKU: tuple[SchematNastawy, ...] = (
-    _wybor("kierunek", "kierunek działania", ("DO_LINII", "DO_SZYN")),
+    _wybor("kierunek", "kierunek działania", KIERUNKI_DZIALANIA),
     _liczba("kat_charakterystyczny_deg", "kąt charakterystyczny", "°", dodatnia=False),
 )
 _NASTAWY_NAPIECIOWE: tuple[SchematNastawy, ...] = (
@@ -671,6 +694,21 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
 
 #: Słownik funkcji EAZ — kod → wpis (kolejność stała, jak w `_WPISY`).
 FUNKCJE_EAZ: dict[str, FunkcjaEaz] = {w.kod: w for w in _WPISY}
+
+
+#: Typowe zestawy funkcji sterownika wg rodzaju zabezpieczenia — podpowiedź kreatora
+#: przekaźnika (``add_relay.relay_type``); projektant zmienia zestaw w karcie pola. Jedno
+#: źródło dla backendu i lustra UI (`slownikFunkcjiEaz.json`). ``NIESTANDARDOWY`` — zestaw
+#: wskazuje projektant (lista ``funkcje`` operacji).
+ZESTAWY_FUNKCJI_RODZAJU: dict[str, tuple[str, ...]] = {
+    "NADPRADOWY": ("50", "51"),
+    "ZIEMNOZWARCIOWY": ("50N", "51N"),
+    "KIERUNKOWY_NADPRADOWY": ("67", "67N"),
+    "ODLEGLOSCIOWY": ("21",),
+    "ROZNICOWY_TRANSFORMATORA": ("87T",),
+    "ROZNICOWY_LINII": ("87L",),
+    "NIESTANDARDOWY": (),
+}
 
 
 def funkcja_eaz(kod: str) -> FunkcjaEaz:

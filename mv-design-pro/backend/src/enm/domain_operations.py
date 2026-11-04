@@ -116,6 +116,7 @@ from .parametry_linii_wn import (
     zastosuj_parametry_z_geometrii,
 )
 from .pola import (
+    KLUCZ_STEROWNIKA_POLA,
     BladPola,
     aparaty_ze_stanem_pola,
     czy_pole_nn,
@@ -134,6 +135,8 @@ from .pola import (
     zmien_pole,
 )
 from .pola import pole as pole_modelu
+from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola, sterownik_pola
+from network_model.catalog.funkcje_eaz import ZESTAWY_FUNKCJI_RODZAJU
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -745,7 +748,8 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
 
         # Kompozycja pól z szablonów producenta (opcjonalna, addytywna): jeżeli
         # payload niesie `bays[]` per sekcja, każde pole ma własną rolę, szablon
-        # (bay_template_ref) i referencję zabezpieczenia (protection_ref). Bez
+        # (bay_template_ref) i pozycję katalogu urządzenia zabezpieczeniowego
+        # (protection_catalog_ref). Bez
         # `bays[]` zachowane jest dotychczasowe zachowanie (kompatybilność wsteczna).
         bays: list[dict[str, Any]] = []
         raw_bays = entry.get("bays")
@@ -767,10 +771,10 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                             and bay["bay_template_ref"].strip()
                             else None
                         ),
-                        "protection_ref": (
-                            str(bay["protection_ref"]).strip()
-                            if isinstance(bay.get("protection_ref"), str)
-                            and bay["protection_ref"].strip()
+                        "protection_catalog_ref": (
+                            str(bay["protection_catalog_ref"]).strip()
+                            if isinstance(bay.get("protection_catalog_ref"), str)
+                            and bay["protection_catalog_ref"].strip()
                             else None
                         ),
                     }
@@ -1858,9 +1862,15 @@ def _wyposaz_nowe_pole_gpz_jak_wzorzec(
     # (`_resolve_bay_template_protection_codes`: producent → szablon → rola).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
-    nowe_pole["protection_codes"] = _resolve_bay_template_protection_codes(
-        wzorzec.get("manufacturer_ref"), szablon, nowe_pole["bay_role"]
-    )
+    # Sterownik nowego pola: funkcje szablonu i — jak wzorzec — ta sama pozycja katalogu
+    # urządzenia (nastawy nie są kopiowane: pole nowe ma własną selektywność).
+    sterownik_wzorca = sterownik_pola(enm, wzorzec.get("ref_id"))
+    nowe_pole[KLUCZ_STEROWNIKA_POLA] = {
+        "kody": _resolve_bay_template_protection_codes(
+            wzorzec.get("manufacturer_ref"), szablon, nowe_pole["bay_role"]
+        ),
+        "katalog_ref": (sterownik_wzorca or {}).get("catalog_ref"),
+    }
     nowe_pole.setdefault("meta", {}).update(
         {
             "apparatus_kind": meta_wzorca.get("apparatus_kind"),
@@ -5123,7 +5133,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             bay_name = nazwa_nadana(bay_spec.get("name")) or section_field_names[field_index]
             # Szablon pola producenta: preferuj per-pole, potem sekcyjny.
             bay_template_ref = bay_spec.get("bay_template_ref") or section.get("bay_template_ref")
-            bay_protection_ref = bay_spec.get("protection_ref")
+            bay_protection_ref = bay_spec.get("protection_catalog_ref")
             section["line_field_refs"].append(bay_ref)
             equipment_refs: list[str] = []
             galaz_aparatu_pola: dict[str, Any] | None = None
@@ -5280,13 +5290,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         terminal_bus_ref=zacisk_pola_gpz,
                         gpz_section_id=section["section_id"],
                         equipment_refs=equipment_refs,
-                        protection_ref=bay_protection_ref,
+                        katalog_sterownika_ref=bay_protection_ref,
                         # Funkcje EAZ pola z jego szablonu — TEN SAM resolver co operacje
                         # dodające pole (producent → szablon → rola). Pole GPZ bez szablonu
                         # i bez aparatu (brak pozycji katalogowej aparatu pola) nie ma czym
                         # wyłączyć — funkcje EAZ byłyby fabrykacją (kanon resolvera: pole bez
                         # wyłącznika = puste).
-                        protection_codes=(
+                        funkcje_eaz=(
                             _resolve_bay_template_protection_codes(
                                 gpz_manufacturer_ref, bay_template_ref, bay_role_pola
                             )
@@ -6931,20 +6941,23 @@ def _materialize_nn_source(
     created.append(generator_ref)
     if isinstance(source_protection, dict):
         protection_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/protection")
-        breaker_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/breaker")
+        # Sterownik zabezpieczenia źródła nN (karta OCHRONA-JEDNO-ZRODLO): funkcje nadprądowe
+        # bez nastaw i bez macierzy wyzwoleń — model nie ma jeszcze wyłącznika źródła, więc
+        # wiersz macierzy wskazywałby aparat, którego nie ma (dawniej `breaker_ref` na
+        # nieistniejący wyłącznik). Brak nazywa ocena („funkcja nie działa na wyłącznik").
         new_enm.setdefault("protection_assignments", []).append(
             {
                 "ref_id": protection_ref,
                 "name": source_protection.get("device_label")
                 or f"Zabezpieczenie źródła {pasmo_napieciowe(float(nn_voltage_kv))}",
-                "breaker_ref": breaker_ref,
-                "ct_ref": None,
-                "vt_ref": None,
-                "device_type": "overcurrent",
+                "funkcje": [
+                    {"ref": kod, "kod": kod, "wlaczona": True}
+                    for kod in ZESTAWY_FUNKCJI_RODZAJU["NADPRADOWY"]
+                ],
                 # Ref przeszedł bramę katalogową ZABEZPIECZENIE powyżej — do modelu
                 # trafia DOKŁADNIE ta pozycja, która została rozstrzygnięta.
                 "catalog_ref": protection_catalog_ref,
-                "settings": [],
+                "catalog_namespace": "ZABEZPIECZENIE",
                 "is_enabled": True,
                 "tags": ["station_nn_source_protection", "requires_ct_vt"],
                 "meta": {
@@ -7816,7 +7829,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         # ani jednego z nich — model nie wiedział, czy pole stoi na karcie
         # producenta, czy na układzie zastępczym pakietu.
         field_metadane = metadane_pochodzenia_pola(field_spec)
-        field_protection_ref = field_spec.get("protection_ref")
+        field_protection_ref = field_spec.get("protection_catalog_ref")
         field_protection_codes = _resolve_bay_template_protection_codes(
             field_manufacturer_ref, field_bay_template_ref, bay_role
         )
@@ -7874,8 +7887,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     bus_ref=sn_bus_b_id,
                     substation_ref=stn_id,
                     equipment_refs=[coupler_id],
-                    protection_ref=field_protection_ref,
-                    protection_codes=field_protection_codes,
+                    katalog_sterownika_ref=field_protection_ref,
+                    funkcje_eaz=field_protection_codes,
                     bay_template_ref=field_bay_template_ref,
                     switchgear_family_ref=field_family_ref,
                     manufacturer_ref=field_manufacturer_ref,
@@ -7988,8 +8001,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 substation_ref=stn_id,
                 terminal_bus_ref=terminal_bus_ref,
                 equipment_refs=[breaker_ref],
-                protection_ref=field_protection_ref,
-                protection_codes=field_protection_codes,
+                katalog_sterownika_ref=field_protection_ref,
+                funkcje_eaz=field_protection_codes,
                 bay_template_ref=field_bay_template_ref,
                 switchgear_family_ref=field_family_ref,
                 manufacturer_ref=field_manufacturer_ref,
@@ -10604,17 +10617,17 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
 
 #: Parametry POLA zmieniane operacją ogólną — opis pola bez skutku topologicznego (nazwa,
-#: numer dyspozytorski, krótka nazwa i cel odpływu, kody funkcji zabezpieczeniowych do SLD,
-#: adnotacje `meta`). Rola, szyna, zacisk, aparaty i pomiar pola zmieniają się WYŁĄCZNIE
-#: operacjami pola (`add_sn_bay` rekonfiguracją, kreator stacji) — tam stoją bramy toru,
-#: pomiaru w torze tranzytu i katalogu; ta droga ich nie omija.
+#: numer dyspozytorski, krótka nazwa i cel odpływu, adnotacje `meta`). Rola, szyna, zacisk,
+#: aparaty i pomiar pola zmieniają się WYŁĄCZNIE operacjami pola (`add_sn_bay` rekonfiguracją,
+#: kreator stacji) — tam stoją bramy toru, pomiaru w torze tranzytu i katalogu; ta droga ich nie
+#: omija. Funkcje zabezpieczeń pola należą do sterownika pola — JEDYNY pisarz
+#: `update_protection_settings` (karta OCHRONA-JEDNO-ZRODLO).
 _PARAMETRY_POLA_EDYTOWALNE: frozenset[str] = frozenset(
     {
         "name",
         "bay_number",
         "feeder_short_name",
         "outgoing_destination_ref",
-        "protection_codes",
         "meta",
     }
 )
@@ -11534,8 +11547,8 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         return blad_mocy
 
     # Karta W5-B (kaskada KLASY odwołań, nie instancji): przekładnik stoi na szynie i wskazuje
-    # pole (`Measurement.bus_ref`/`bay_ref`), zabezpieczenie działa na wyłącznik
-    # (`ProtectionAssignment.breaker_ref`) — usunięcie szyny, pola albo wyłącznika usuwa
+    # pole (`Measurement.bus_ref`/`bay_ref`), sterownik zabezpieczeń stoi w polu i działa na
+    # wyłączniki macierzy wyzwoleń — usunięcie szyny, pola albo wyłącznika usuwa
     # elementy, które bez nich nie istnieją fizycznie. Dawniej zostawały z odwołaniem do
     # elementu, którego nie ma (przekładnik „w polu" usuniętej stacji).
     if deleted_set:
@@ -11553,11 +11566,36 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 if str(m.get("ref_id")) not in refy_przekladnikow
             ]
             deleted_set.update(refy_przekladnikow)
-        zabezpieczenia = {
-            str(pa.get("ref_id"))
-            for pa in new_enm.get("protection_assignments", [])
-            if pa.get("breaker_ref") in deleted_branch_refs
-        }
+        # Sterownik zabezpieczeń: znika z polem albo — sterownik wyłącznika liniowego bez pola —
+        # z ostatnim wyłącznikiem swojej macierzy wyzwoleń. Sterownik, który zostaje, traci
+        # wiersze i wejścia wskazujące usunięte aparaty (zero odwołań do elementu, którego nie
+        # ma; brak nazywa ocena).
+        usuniete_aparaty = set(deleted_branch_refs) | refy_przekladnikow
+        zabezpieczenia: set[str] = set()
+        for pa in new_enm.get("protection_assignments", []):
+            aparaty_pa = set(aparaty_sterownika(pa))
+            if pa.get("bay_ref") in usuniete_pola or (
+                not pa.get("bay_ref") and aparaty_pa and aparaty_pa <= set(deleted_branch_refs)
+            ):
+                zabezpieczenia.add(str(pa.get("ref_id")))
+                continue
+            pa["macierz_wyzwolen"] = [
+                {**w, "aparat_refs": [a for a in w.get("aparat_refs") or [] if a not in usuniete_aparaty]}
+                for w in pa.get("macierz_wyzwolen") or []
+                if [a for a in w.get("aparat_refs") or [] if a not in usuniete_aparaty]
+            ]
+            wejscia = dict(pa.get("wejscia") or {})
+            for klucz in ("ct_ref", "vt_ref", "i0_ct_ref", "u0_vt_ref"):
+                if wejscia.get(klucz) in usuniete_aparaty:
+                    wejscia.pop(klucz)
+            if wejscia.get("i0_uklad") == "FERRANTI" and not wejscia.get("i0_ct_ref"):
+                wejscia.pop("i0_uklad")
+            if wejscia.get("u0_uklad") == "OTWARTY_TROJKAT" and not wejscia.get("u0_vt_ref"):
+                wejscia.pop("u0_uklad")
+            wejscia["ct_strony_2_refs"] = [
+                r for r in wejscia.get("ct_strony_2_refs") or [] if r not in usuniete_aparaty
+            ]
+            pa["wejscia"] = wejscia
         if zabezpieczenia:
             new_enm["protection_assignments"] = [
                 pa
@@ -12243,12 +12281,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 bay_template_ref=field_bay_template_ref,
                 primary_devices=aparaty_pola,
                 config_id=konfiguracja_pola,
-                protection_codes=_resolve_bay_template_protection_codes(
+                funkcje_eaz=_resolve_bay_template_protection_codes(
                     field_manufacturer_ref, field_bay_template_ref, bay_role
                 ),
                 # Zabezpieczenie WSKAZANE na wpisie pola — ten sam klucz kontraktu payloadu,
                 # który honoruje wcięcie stacji w odcinek.
-                protection_ref=field.get("protection_ref"),
+                katalog_sterownika_ref=field.get("protection_catalog_ref"),
                 apparatus_catalog_ref=(
                     field_apparatus_ref.strip()
                     if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip()
@@ -12673,7 +12711,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             new_enm,
             ref_pola_tr,
             equipment_refs=[*(rekord_tr.get("equipment_refs") or []), transformer_ref],
-            protection_codes=list(rekord_tr.get("protection_codes") or [])
+            funkcje_eaz=kody_funkcji_pola(new_enm, ref_pola_tr)
             or list(funkcje_eaz_szablonu(BAY_TEMPLATE_TRANSFORMER.template_id) or []),
             meta=meta_tr,
         )

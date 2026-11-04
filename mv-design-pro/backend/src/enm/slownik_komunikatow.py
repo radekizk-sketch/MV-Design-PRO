@@ -574,19 +574,6 @@ def w_cudzyslowie(nazwy: Iterable[str]) -> list[str]:
     return [f"„{nazwa}”" for nazwa in nazwy]
 
 
-#: Rodzaj zabezpieczenia (``ProtectionAssignment.device_type``) → nazwa przymiotnikowa
-#: („zabezpieczenie nadprądowe"). Słowa = inspektor frontu
-#: (``ui2/adapters/inspectorAdapter.ts::ETYKIETA_RODZAJU_ZABEZPIECZENIA``, małą literą).
-NAZWY_RODZAJOW_ZABEZPIECZENIA_PL: dict[str, str] = {
-    "overcurrent": "nadprądowe",
-    "earth_fault": "ziemnozwarciowe",
-    "directional_overcurrent": "nadprądowe kierunkowe",
-    "distance": "odległościowe",
-    "differential": "różnicowe",
-    "custom": "niestandardowe",
-}
-
-
 #: Rodzaj generatora (``Generator.gen_type``) → nazwa. Słowa = formularz źródła frontu
 #: (``ui/topology/modals/LoadDERModal.tsx::GEN_TYPE_LABELS``).
 NAZWY_RODZAJOW_GENERATORA_PL: dict[str, str] = {

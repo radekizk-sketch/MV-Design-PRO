@@ -3,7 +3,9 @@ blok przekaźnika na schemacie i wiersze „Zabezpieczenia i automatyka" karty p
 
 PO CO. Schemat (blok przekaźnika: co najwyżej cztery kody funkcji ZABEZPIECZENIE i „+N", automatyka
 poza kanwą) i karta pola w inspektorze (wiersz na funkcję: kod IEEE C37.2, zapis z rysunku, nazwa
-polska, rodzaj) potrzebują klasyfikacji i nazwy KAŻDEGO kodu `Bay.protection_codes`. Jedynym
+polska, rodzaj) potrzebują klasyfikacji i nazwy KAŻDEGO kodu funkcji sterownika pola; edytor
+nastaw karty pola (karta OCHRONA-JEDNO-ZRODLO) buduje formularz z SCHEMATU nastaw funkcji (klucz,
+typ, jednostka, lista wyboru), wymaganych wejść i rodzaju oceny. Jedynym
 źródłem jest `network_model.catalog.funkcje_eaz.FUNKCJE_EAZ`; front czyta wygenerowany plik
 `frontend/src/ui/shared/slownikFunkcjiEaz.json`. Test przypina równość pliku z tabelą backendu —
 ręcznie pisane lustro albo wpis dodany tylko po jednej stronie czerwieni test (reguła KLASA §3).
@@ -19,7 +21,14 @@ import json
 from pathlib import Path
 from typing import get_args
 
-from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, RodzajFunkcjiEaz
+from network_model.catalog.funkcje_eaz import (
+    ETYKIETY_WARTOSCI_WYBORU,
+    FUNKCJE_EAZ,
+
+    WEJSCIA_FUNKCJI,
+    ZESTAWY_FUNKCJI_RODZAJU,
+    RodzajFunkcjiEaz,
+)
 
 LUSTRO = (
     Path(__file__).resolve().parents[3]
@@ -34,12 +43,29 @@ LUSTRO = (
 def _slownik() -> dict[str, object]:
     return {
         "rodzaje": list(get_args(RodzajFunkcjiEaz)),
+        "wejscia": list(WEJSCIA_FUNKCJI),
+        "etykiety_wartosci": dict(ETYKIETY_WARTOSCI_WYBORU),
+        "zestawy_rodzaju": {k: list(v) for k, v in ZESTAWY_FUNKCJI_RODZAJU.items()},
         "funkcje": {
             kod: {
                 "oznaczenie_pl": f.oznaczenie_pl,
                 "ansi": f.ansi,
                 "nazwa_pl": f.nazwa_pl,
                 "rodzaj": f.rodzaj,
+                "wejscia_wymagane": list(f.wejscia_wymagane),
+                "wejscia_opcjonalne": list(f.wejscia_opcjonalne),
+                "ocena": f.ocena,
+                "nastawy": [
+                    {
+                        "klucz": n.klucz,
+                        "nazwa_pl": n.nazwa_pl,
+                        "typ": n.typ,
+                        "jednostka": n.jednostka,
+                        "wartosci": list(n.wartosci),
+                        "dodatnia": n.dodatnia,
+                    }
+                    for n in f.nastawy
+                ],
             }
             for kod, f in sorted(FUNKCJE_EAZ.items())
         },

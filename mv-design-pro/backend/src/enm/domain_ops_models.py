@@ -424,7 +424,7 @@ class SNFieldSpec(_FrozenBase):
     """Adresy kart katalogowych, z których pochodzą dane szablonu pola. Bez nich
     status źródła jest gołym słowem — proweniencja ma prowadzić do dokumentu."""
 
-    protection_ref: str | None = None
+    protection_catalog_ref: str | None = None
     """Referencja zabezpieczenia przypisanego do pola (czytana przez wcięcie
     stacji w odcinek). Wymagane FUNKCJE zabezpieczeniowe pola to osobna dana —
     wyprowadza je z szablonu producenta wspólny resolver operacji."""
@@ -1128,7 +1128,7 @@ class AddSnBayPayload(_FrozenBase):
     manufacturer_ref: str | None = None
     """Producent (metadana szablonu/rodziny)."""
 
-    protection_ref: str | None = None
+    protection_catalog_ref: str | None = None
     """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
     # Pole z KATALOGU rozdzielnic (kanon `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md`

@@ -34,6 +34,7 @@ from domain.generator_validation import (
     sprawdz_moc_generatora,
     technologia_generatora,
 )
+from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, ZESTAWY_FUNKCJI_RODZAJU
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.switchgear import (
@@ -136,7 +137,7 @@ from .katalog_projektu_karty import (
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
 from .models import TRYBY_PRACY_ZRODLA, liczba_torow
-from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
+from .nastawy_zabezpieczen import NUMERY_GRUP_NASTAW, bledy_sterownika
 from .nazwy_elementow import (
     nazwa_elementu,
     nazwa_nadana_pozycji_katalogu,
@@ -195,11 +196,19 @@ from .topology_ops import (
     create_node,
     delete_branch,
     delete_node,
+    update_protection,
 )
 from .tor_pola import szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
+from .zabezpieczenie import (
+    ref_aparatu_wyzwalanego,
+    referencja_sterownika_pola,
+    sterownik_pola,
+    ustaw_zestaw_funkcji,
+    zapisz_nastawy_funkcji,
+)
 from .zrodlo_napiecia_zerowego import warunki_funkcji_eaz_pola
 
 
@@ -574,48 +583,6 @@ def _relay_catalog_binding(payload: dict[str, Any], namespace: str) -> dict[str,
                 "catalog_item_version": protection.get("catalog_item_version") or "2024.1",
             }
     return _catalog_binding_from_payload(payload, namespace)
-
-
-def _relay_device_type(relay_type: str) -> str:
-    normalized = relay_type.upper()
-    if normalized == "ZIEMNOZWARCIOWY":
-        return "earth_fault"
-    if normalized == "KIERUNKOWY_NADPRADOWY":
-        return "directional_overcurrent"
-    if normalized == "ODLEGLOSCIOWY":
-        return "distance"
-    if normalized == "ROZNICOWY":
-        return "differential"
-    if normalized == "NADPRADOWY":
-        return "overcurrent"
-    return "custom"
-
-
-def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
-    """Stopnie funkcji rodziny przekaźnika BEZ wartości — nazwany brak nastaw.
-
-    Karta BIEG-ZABEZPIECZEN-Z-MODELU: przypisanie bez nastaw w ładunku dostaje stopnie
-    swojej rodziny z pustym progiem, jednostką, charakterystyką i zwłoką — ocena nazywa
-    każdy brak kodem gotowości z akcją naprawczą. Dawniej stopnie dostawały domyślną
-    charakterystykę (DT/IEC_SI), której nikt nie wybrał.
-    """
-    device_type = _relay_device_type(relay_type)
-    funkcje = {
-        "earth_fault": ("earth_fault_50N", "earth_fault_51N"),
-        "directional_overcurrent": ("directional_67", "directional_67N"),
-        "overcurrent": ("overcurrent_50", "overcurrent_51"),
-    }.get(device_type, ())
-    return [
-        {
-            "function_type": funkcja,
-            "threshold_a": None,
-            "threshold_unit": None,
-            "time_delay_s": None,
-            "curve_type": None,
-            "is_directional": device_type == "directional_overcurrent",
-        }
-        for funkcja in funkcje
-    ]
 
 
 def _resolve_station_for_field_write(
@@ -1120,16 +1087,73 @@ def set_measurement_secondary_circuit(
 # ---------------------------------------------------------------------------
 
 
-def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj zabezpieczenie do pola stacji albo do wyłącznika liniowego.
+def _wylacznik_pola_sterownika(enm: dict[str, Any], field_ref: str) -> str | None:
+    """Wyłącznik pola dla macierzy wyzwoleń — ta sama reguła identyfikatora co pisarz
+    z szablonu (`enm.zabezpieczenie.ref_aparatu_wyzwalanego`): wyłącznik pola wskazujący
+    gałąź → gałąź; inaczej pierwsza gałąź ``breaker`` wyposażenia pola."""
+    rekord = pole_modelu(enm, field_ref) or {}
+    for aparat in rekord.get("primary_devices") or []:
+        if aparat.get("kind") == "CB" and ref_aparatu_wyzwalanego(aparat):
+            return ref_aparatu_wyzwalanego(aparat)
+    return _first_field_breaker_ref(enm, field_ref)
 
-    Kotwica: pole rozdzielnicy (``bay_ref``, wyłącznik wykonawczy z pola albo wskazany) ALBO
-    wyłącznik liniowy bez pola (``breaker_ref`` bez ``bay_ref`` — wyłącznik sekcyjny wstawiony
-    w odcinek). Nastawy: ``settings`` z ładunku (reguła zapisu ``bledy_nastaw``) albo — gdy
-    klucza nie ma — stopnie rodziny BEZ wartości (nazwany brak nastaw, D-21).
+
+def _przekladnik_pola(enm: dict[str, Any], field_ref: str, rodzaj: str) -> str | None:
+    """Przekładnik pola (``CT``/``VT``): przekładnik pomiarowy pola (`add_ct`, `add_vt`)
+    albo aparat pola tego rodzaju (szablon pola) — kolejność: pomiar, aparat."""
+    pomiar = _first_measurement_ref(enm, field_ref, rodzaj)
+    if pomiar:
+        return pomiar
+    rekord = pole_modelu(enm, field_ref) or {}
+    return next(
+        (
+            str(a["device_ref"])
+            for a in rekord.get("primary_devices") or []
+            if a.get("kind") == rodzaj and a.get("device_ref")
+        ),
+        None,
+    )
+
+
+def _kody_z_ladunku(payload: dict[str, Any]) -> tuple[list[str] | None, dict[str, Any] | None]:
+    """Zestaw funkcji z ładunku: jawna lista ``funkcje`` (kody rejestru) albo typowy zestaw
+    rodzaju ``relay_type`` (`ZESTAWY_FUNKCJI_RODZAJU`). ``None`` — ładunek zestawu nie podaje."""
+    if "funkcje" in payload:
+        kody = payload.get("funkcje")
+        if not isinstance(kody, list) or not all(isinstance(k, str) for k in kody):
+            return None, _error_response(
+                "Funkcje zabezpieczenia podaje się listą kodów funkcji z rejestru.",
+                "relay.settings_invalid",
+            )
+        return list(kody), None
+    rodzaj = payload.get("relay_type")
+    if rodzaj is None:
+        return None, None
+    zestaw = ZESTAWY_FUNKCJI_RODZAJU.get(str(rodzaj))
+    if zestaw is None:
+        return None, _error_response(
+            f"Rodzaj zabezpieczenia „{rodzaj}” nie ma typowego zestawu funkcji — wskaż funkcje.",
+            "relay.settings_invalid",
+        )
+    return list(zestaw), None
+
+
+def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj sterownik zabezpieczeń do pola stacji albo do wyłącznika liniowego.
+
+    Karta OCHRONA-JEDNO-ZRODLO: pole ma JEDEN sterownik (`enm.models.ProtectionAssignment`).
+    Pole zbudowane z szablonu ma już sterownik z zestawem funkcji szablonu — operacja
+    uzupełnia w nim pozycję katalogu urządzenia, wariant wejścia prądowego, brakujące
+    wiązania wejść i wiersze macierzy wyzwoleń (nastawy i stan funkcji zostają). Pole bez
+    sterownika i wyłącznik liniowy bez pola (``breaker_ref`` bez ``bay_ref``) dostają nowy
+    sterownik o deterministycznym identyfikatorze (`referencja_sterownika_pola`).
+
+    Funkcje: jawna lista ``funkcje`` (kody rejestru `funkcje_eaz`) albo typowy zestaw rodzaju
+    ``relay_type``; bez obu — funkcje istniejącego sterownika. Nastawy: brak (nazwany brak
+    nastaw — ocena nazywa każdy brak kodem gotowości z akcją naprawczą); zapis nastaw robi
+    `update_protection_settings`. Funkcje zabezpieczeniowe działają na wyłącznik kotwicy.
     """
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
-    relay_type = payload.get("relay_type", "NADPRADOWY")
     kotwica_wylacznika = payload.get("breaker_ref") if not field_ref else None
 
     if not field_ref and not kotwica_wylacznika:
@@ -1176,95 +1200,122 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     breaker_ref = payload.get("breaker_ref")
     if field_ref and (not isinstance(breaker_ref, str) or not breaker_ref.strip()):
-        breaker_ref = _first_field_breaker_ref(enm, field_ref)
+        breaker_ref = _wylacznik_pola_sterownika(enm, field_ref)
     if not isinstance(breaker_ref, str) or not breaker_ref.strip():
         return _error_response(
             "Pole SN nie ma wyłącznika wykonawczego. Najpierw skonfiguruj aparat pola.",
             "relay.breaker_missing",
         )
 
-    relay_type_text = str(relay_type)
-    device_type = _relay_device_type(relay_type_text)
-    # JEDNA reguła zapisu nastaw i JEDEN kod odmowy dla obu pisarzy V2 (``add_relay``,
-    # ``update_protection_settings``) — sprzeczność nazwana w całości, zanim powstanie przypisanie.
-    if "settings" in payload:
-        bledy = bledy_nastaw(payload["settings"])
-        if bledy:
-            return _error_response(
-                "Nastawy nowego zabezpieczenia są sprzeczne: " + " ".join(bledy),
-                "relay.settings_invalid",
-            )
-    ct_ref = payload.get("ct_ref")
-    if not isinstance(ct_ref, str) or not ct_ref.strip():
-        ct_ref = (
-            _first_measurement_ref(enm, field_ref, "CT")
+    kody, blad_kodow = _kody_z_ladunku(payload)
+    if blad_kodow is not None:
+        return blad_kodow
+    istniejacy = sterownik_pola(enm, field_ref) if field_ref else None
+    if kody is None:
+        kody = [str(f.get("kod")) for f in (istniejacy or {}).get("funkcje") or []]
+    if not kody:
+        return _error_response(
+            "Wskaż funkcje zabezpieczenia (rodzaj zabezpieczenia albo listę funkcji).",
+            "relay.settings_invalid",
+        )
+
+    wejscia_ladunku = payload.get("wejscia")
+    if wejscia_ladunku is not None and not isinstance(wejscia_ladunku, dict):
+        return _error_response(
+            "Wiązania wejść sterownika podaje się słownikiem pól.", "relay.settings_invalid"
+        )
+    wejscia: dict[str, Any] = dict((istniejacy or {}).get("wejscia") or {})
+    wejscia.update(wejscia_ladunku or {})
+    if not wejscia.get("ct_ref"):
+        ct = (
+            _przekladnik_pola(enm, field_ref, "CT")
             if field_ref
             else _przekladnik_wylacznika(enm, breaker_ref)
         )
-    vt_ref = payload.get("vt_ref")
-    if field_ref and (not isinstance(vt_ref, str) or not vt_ref.strip()):
-        vt_ref = _first_measurement_ref(enm, field_ref, "VT")
-
-    if device_type in {"overcurrent", "earth_fault", "directional_overcurrent"} and not ct_ref:
+        if ct:
+            wejscia["ct_ref"] = ct
+    if field_ref and not wejscia.get("vt_ref"):
+        vt = _przekladnik_pola(enm, field_ref, "VT")
+        if vt:
+            wejscia["vt_ref"] = vt
+    if any(
+        "3I0" in FUNKCJE_EAZ[k].wejscia_wymagane for k in kody if k in FUNKCJE_EAZ
+    ) and wejscia.get("ct_ref") and not wejscia.get("i0_uklad"):
+        wejscia["i0_uklad"] = "HOLMGREEN"
+    if (
+        any("I" in FUNKCJE_EAZ[k].wejscia_wymagane for k in kody if k in FUNKCJE_EAZ)
+        and not wejscia.get("ct_ref")
+    ):
         return _error_response(
             "Dobór zabezpieczenia wymaga przekładnika prądowego CT w tym samym polu (albo "
             "przy tym samym wyłączniku liniowym).",
             "relay.ct_missing",
         )
 
-    protection_ref = _make_id(
-        "relay",
-        _compute_seed(
-            {
-                "field_ref": field_ref,
-                "breaker_ref": breaker_ref,
-                "ct_ref": ct_ref,
-                "vt_ref": vt_ref,
-                "catalog_ref": catalog_ref,
-                "relay_type": relay_type_text,
-            }
-        ),
-        "assignment",
+    protection_ref = (
+        str(istniejacy["ref_id"])
+        if istniejacy is not None
+        else referencja_sterownika_pola(str(field_ref or breaker_ref))
     )
-    # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
-    roboczy = kopia_graniczna_enm(enm)
-    result = attach_protection(
-        roboczy,
-        {
-            "ref_id": protection_ref,
-            "name": nazwa_nadana(payload.get("name"))
-            or (
-                f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}"
-                if field_ref
-                else f"Zabezpieczenie {opis_elementu(enm, breaker_ref, 'wyłącznika')}"
-            ),
-            "breaker_ref": breaker_ref,
-            "ct_ref": ct_ref,
-            "vt_ref": vt_ref,
-            "device_type": device_type,
-            "catalog_ref": catalog_ref,
-            "settings": (
-                payload["settings"]
-                if "settings" in payload
-                else _default_relay_settings(relay_type_text)
-            ),
-            "is_enabled": True,
-            "tags": ["field_protection", "catalog_bound"],
-            "meta": (
-                {
-                    "field_ref": field_ref,
-                    "relay_type": relay_type_text,
-                    "catalog_binding": binding,
-                }
-                if field_ref
-                else {
-                    "breaker_ref": breaker_ref,
-                    "relay_type": relay_type_text,
-                    "catalog_binding": binding,
-                }
-            ),
+    nazwa = nazwa_nadana(payload.get("name")) or (
+        (istniejacy or {}).get("name")
+        or (
+            f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}"
+            if field_ref
+            else f"Zabezpieczenie {opis_elementu(enm, breaker_ref, 'wyłącznika')}"
+        )
+    )
+    sterownik: dict[str, Any] = copy.deepcopy(istniejacy) if istniejacy is not None else {
+        "ref_id": protection_ref,
+        "bay_ref": field_ref or None,
+        "funkcje": [],
+        "grupy_nastaw": [],
+        "aktywna_grupa": 1,
+        "macierz_wyzwolen": [],
+        "is_enabled": True,
+        "tags": ["field_protection", "catalog_bound"],
+        "meta": {"field_ref": field_ref} if field_ref else {"breaker_ref": breaker_ref},
+    }
+    ustaw_zestaw_funkcji(
+        sterownik,
+        kody,
+        wyzwolenia={
+            k: [breaker_ref]
+            for k in kody
+            if k in FUNKCJE_EAZ and FUNKCJE_EAZ[k].rodzaj == "ZABEZPIECZENIE"
         },
     )
+    prad_wejscia = payload.get("prad_znamionowy_wejscia_a")
+    sterownik.update(
+        {
+            "name": nazwa,
+            "wejscia": wejscia,
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": przestrzen_katalogu,
+            "parameter_source": "CATALOG",
+            "source_mode": "KATALOG",
+            "materialized_params": {
+                "catalog_item_id": catalog_ref,
+                # Tożsamość urządzenia Z KATALOGU (kontrakt ZABEZPIECZENIE): bez niej migawka
+                # deklarowała `source_mode: KATALOG`, nie niosąc ani jednej wartości
+                # pochodzącej z rekordu katalogu.
+                "name_pl": z_katalogu.get("name_pl"),
+                "vendor": z_katalogu.get("vendor"),
+                "series": z_katalogu.get("series"),
+                "catalog_binding": binding,
+            },
+            "overrides": [],
+        }
+    )
+    if prad_wejscia is not None:
+        sterownik["prad_znamionowy_wejscia_a"] = prad_wejscia
+
+    # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
+    roboczy = kopia_graniczna_enm(enm)
+    if istniejacy is not None:
+        result = update_protection(roboczy, sterownik)
+    else:
+        result = attach_protection(roboczy, sterownik)
     if not result.success:
         issue = result.issues[0].message_pl if result.issues else "nieznany błąd"
         return _error_response(
@@ -1272,37 +1323,10 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "relay.creation_failed",
         )
 
-    new_enm = result.enm
-    for assignment in new_enm.get("protection_assignments", []):
-        if assignment.get("ref_id") == protection_ref:
-            assignment.update(
-                {
-                    "catalog_ref": catalog_ref,
-                    "catalog_namespace": przestrzen_katalogu,
-                    "parameter_source": "CATALOG",
-                    "source_mode": "KATALOG",
-                    "materialized_params": {
-                        "catalog_item_id": catalog_ref,
-                        "relay_type": relay_type_text,
-                        "device_type": device_type,
-                        # Tożsamość urządzenia Z KATALOGU (kontrakt ZABEZPIECZENIE):
-                        # bez niej migawka deklarowała `source_mode: KATALOG`, nie
-                        # niosąc ani jednej wartości pochodzącej z rekordu katalogu.
-                        "name_pl": z_katalogu.get("name_pl"),
-                        "vendor": z_katalogu.get("vendor"),
-                        "series": z_katalogu.get("series"),
-                    },
-                    "overrides": [],
-                }
-            )
-            break
-    if field_ref:
-        zmien_pole(new_enm, field_ref, protection_ref=protection_ref)
-
     return _response(
-        new_enm,
-        created=[protection_ref],
-        updated=[field_ref] if field_ref else [],
+        result.enm,
+        created=[] if istniejacy is not None else [protection_ref],
+        updated=[protection_ref] if istniejacy is not None else ([field_ref] if field_ref else []),
         selection_id=protection_ref,
         selection_type="protection",
         events=[
@@ -1317,23 +1341,39 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 4. OCHRONA — update_protection_settings (pisarz nastaw, D-21)
+# 4. OCHRONA — update_protection_settings (JEDYNY pisarz konfiguracji sterownika)
 # ---------------------------------------------------------------------------
 
 
-def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Zapisz nastawy zabezpieczenia w modelu — JEDYNY pisarz nastaw ścieżki projektanta.
+def _numer_grupy(wartosc: object) -> int | None:
+    if isinstance(wartosc, int) and not isinstance(wartosc, bool) and wartosc in NUMERY_GRUP_NASTAW:
+        return wartosc
+    return None
 
-    Karta BIEG-ZABEZPIECZEN-Z-MODELU (decyzja D-21): nastawy bazowe żyją przy urządzeniu w
-    modelu, więc ocena zabezpieczeń czyta je stąd. Operacja zastępuje CAŁĄ listę stopni
-    przypisania (``settings``); stopnia wyłączonego nie ma na liście. Ta sama reguła zapisu
-    co przy tworzeniu (``enm.nastawy_zabezpieczen.bledy_nastaw``): niekompletne nastawy
-    przechodzą — brak gotowości nazywa ocena — sprzeczne są odrzucane kodem
-    ``relay.settings_invalid``. Następca skasowanej operacji ``update_relay_settings``
-    (zaślepka z odmową ``relay.legacy_write_disabled``, kanon V11).
+
+def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Zapisz konfigurację sterownika zabezpieczeń — JEDYNY pisarz ścieżki projektanta.
+
+    Karta OCHRONA-JEDNO-ZRODLO (ADR-022): nastawy, grupy, macierz wyzwoleń i wiązania wejść
+    żyją w sterowniku w modelu; karta pola, obliczenia (czas wyłączenia, ocena nadprądowa,
+    wytrzymałość cieplna), schemat i raport czytają je stąd, więc zapis unieważnia wyniki
+    (zmiana migawki) i każdy konsument widzi tę samą wartość. Ładunek (każda sekcja
+    opcjonalna, podana — zastępuje swój zakres):
+
+    * ``nastawy`` — ``{funkcja_ref: {klucz: wartość | null}}``: komplet nastaw wskazanych
+      funkcji w grupie ``grupa`` (domyślnie aktywnej); ``null`` zdejmuje nastawę;
+      ``pochodzenie`` (PROJEKTANT domyślnie, DOBOR — dobór nastaw);
+    * ``aktywna_grupa`` — grupa bazowa 1–4 (przypadek obliczeniowy wybiera inną deltą
+      scenariusza, nie zmienia modelu);
+    * ``funkcje`` — zestaw kodów funkcji (funkcja, która zostaje, zachowuje nastawy);
+    * ``wlaczone`` — ``{funkcja_ref: bool}``;
+    * ``macierz_wyzwolen``, ``wejscia``, ``prad_znamionowy_wejscia_a``.
+
+    Niekompletne nastawy przechodzą (brak gotowości nazywa ocena), sprzeczne są odrzucane
+    kodem ``relay.settings_invalid`` — reguła `enm.nastawy_zabezpieczen.bledy_sterownika`,
+    ta sama, którą sprawdza każde wczytanie modelu.
     """
     protection_ref = payload.get("protection_ref")
-    settings = payload.get("settings")
     if not isinstance(protection_ref, str) or not protection_ref.strip():
         return _error_response(
             "Nie wskazano zabezpieczenia, którego nastawy mają zostać zapisane.",
@@ -1351,21 +1391,72 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
         return _error_response(
             "Wskazane zabezpieczenie nie istnieje w modelu sieci.", "relay.not_found"
         )
-    bledy = bledy_nastaw(settings)
-    if bledy:
-        return _error_response(
-            f"Nastawy {opis_elementu(enm, protection_ref, 'zabezpieczenia')} są sprzeczne: "
-            + " ".join(bledy),
-            "relay.settings_invalid",
+    opis = opis_elementu(enm, protection_ref, "zabezpieczenia")
+
+    def _odmowa(powod: str) -> dict[str, Any]:
+        return _error_response(f"Nastawy {opis} są sprzeczne: {powod}", "relay.settings_invalid")
+
+    sterownik = copy.deepcopy(przypisanie)
+    if "funkcje" in payload:
+        kody = payload["funkcje"]
+        if not isinstance(kody, list) or not all(isinstance(k, str) for k in kody):
+            return _odmowa("funkcje podaje się listą kodów funkcji z rejestru.")
+        ustaw_zestaw_funkcji(sterownik, kody)
+    wlaczone = payload.get("wlaczone")
+    if wlaczone is not None:
+        if not isinstance(wlaczone, dict):
+            return _odmowa("stan funkcji podaje się słownikiem funkcja → włączona.")
+        refy = {str(f.get("ref")) for f in sterownik.get("funkcje") or []}
+        for ref, stan in wlaczone.items():
+            if ref not in refy or not isinstance(stan, bool):
+                return _odmowa(f"funkcja „{ref}” nie istnieje albo stan nie jest logiczny.")
+        for funkcja in sterownik.get("funkcje") or []:
+            if funkcja.get("ref") in wlaczone:
+                funkcja["wlaczona"] = wlaczone[funkcja["ref"]]
+    if "aktywna_grupa" in payload:
+        numer = _numer_grupy(payload["aktywna_grupa"])
+        if numer is None:
+            return _odmowa("aktywna grupa nastaw spoza grup 1–4.")
+        sterownik["aktywna_grupa"] = numer
+    nastawy = payload.get("nastawy")
+    if nastawy is not None:
+        if not isinstance(nastawy, dict) or not all(isinstance(v, dict) for v in nastawy.values()):
+            return _odmowa("nastawy podaje się słownikiem funkcja → {nastawa: wartość}.")
+        grupa = payload.get("grupa", sterownik.get("aktywna_grupa", 1))
+        numer_grupy = _numer_grupy(grupa)
+        if numer_grupy is None:
+            return _odmowa(f"grupa nastaw {grupa!r} spoza grup 1–4.")
+        pochodzenie = payload.get("pochodzenie", "PROJEKTANT")
+        if pochodzenie not in ("PROJEKTANT", "DOBOR", "WARTOSC_ROBOCZA"):
+            return _odmowa(f"pochodzenie nastaw {pochodzenie!r} spoza słownika.")
+        for funkcja_ref, wartosci in sorted(nastawy.items()):
+            zapisz_nastawy_funkcji(
+                sterownik,
+                numer_grupy=numer_grupy,
+                funkcja_ref=str(funkcja_ref),
+                nastawy=wartosci,
+                pochodzenie=str(pochodzenie),
+            )
+    for klucz in ("macierz_wyzwolen", "wejscia", "prad_znamionowy_wejscia_a"):
+        if klucz in payload:
+            sterownik[klucz] = payload[klucz]
+    aktywna = sterownik.get("aktywna_grupa", 1)
+    grupy = sterownik.get("grupy_nastaw") or []
+    if grupy and not any(g.get("numer") == aktywna for g in grupy):
+        # Grupa bazowa istnieje zawsze, gdy sterownik ma jakąkolwiek grupę — pusta grupa to
+        # nazwany brak nastaw w grupie, nie sprzeczność zapisu.
+        sterownik["grupy_nastaw"] = sorted(
+            [*grupy, {"numer": aktywna, "funkcje": []}], key=lambda g: int(g.get("numer") or 0)
         )
-    assert isinstance(settings, list)
+    bledy = bledy_sterownika(sterownik)
+    if bledy:
+        return _odmowa(" ".join(bledy))
     roboczy = kopia_graniczna_enm(enm)
-    for wpis in roboczy.get("protection_assignments", []):
-        if wpis.get("ref_id") == protection_ref:
-            wpis["settings"] = normalizuj_nastawy(settings)
-            break
+    wynik = update_protection(roboczy, sterownik)
+    if not wynik.success:
+        return _odmowa(" ".join(i.message_pl for i in wynik.issues))
     return _response(
-        roboczy,
+        wynik.enm,
         updated=[protection_ref],
         selection_id=protection_ref,
         selection_type="protection",
@@ -2032,7 +2123,7 @@ def _resolve_bay_template_protection_codes(
     klasa_pola: str | None = None,
     warunki: Collection[str] = frozenset(),
 ) -> list[str]:
-    """Wymagane funkcje EAZ pola (kody słownika `funkcje_eaz`) → Bay.protection_codes.
+    """Wymagane funkcje EAZ pola (kody słownika `funkcje_eaz`) → funkcje sterownika pola.
 
     Zestaw należy do SZABLONU pola (karta UX-04/POLE-LINIOWE-WZORZEC). Kolejność (zero
     fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
@@ -2306,7 +2397,7 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     switchgear_family_ref = _clean_ref(payload.get("switchgear_family_ref"))
     bay_template_ref = _clean_ref(payload.get("bay_template_ref"))
     manufacturer_ref = _clean_ref(payload.get("manufacturer_ref"))
-    protection_ref = _clean_ref(payload.get("protection_ref"))
+    protection_catalog_ref = _clean_ref(payload.get("protection_catalog_ref"))
     # Wybór BLOKU FABRYCZNEGO RMU (`factory_configuration_ref` + numer jednostki)
     # — TA SAMA droga odczytu i TE SAME nazwy kluczy, co w operacjach stacyjnych.
     # Do domknięcia tego długu operacja katalogowa pola rozstrzygała blok, ale go
@@ -2324,7 +2415,7 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     producer_refs: dict[str, Any] = {
         key: value
         for key, value in {
-            "protection_ref": protection_ref,
+            "katalog_sterownika_ref": protection_catalog_ref,
             "bay_template_ref": bay_template_ref,
             "switchgear_family_ref": switchgear_family_ref,
             "manufacturer_ref": manufacturer_ref,
@@ -2343,7 +2434,8 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     if pochodzenie_pola:
         producer_refs["metadane_pochodzenia"] = pochodzenie_pola
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
-    # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
+    # wybranego szablonu producenta (protection_requirements) → sterownik pola
+    # (`enm.zabezpieczenie.ustaw_funkcje_pola`, karta OCHRONA-JEDNO-ZRODLO).
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
     # refy danych). Bez szablonu: brak kodów (wsteczna zgodność). Pole rekonfigurowane
     # zachowuje zadeklarowaną klasę pola liniowego — zestaw funkcji wg klasy (IRiESD II.4.5.4.2)
@@ -2361,7 +2453,7 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         ),
     )
     if protection_codes:
-        producer_refs["protection_codes"] = protection_codes
+        producer_refs["funkcje_eaz"] = protection_codes
     # W1 (RECENZJA_L2 §1/§12.1, V12K-145): materializacja aparatów PIERWOTNYCH
     # pola z szablonu kreatora (BayTemplate.devices) → rekord pola `primary_devices`.
     # Domyka łańcuch „kreator → ENM → adapter SLD → scena": tor pierwotny pola
@@ -2643,8 +2735,8 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
                 terminal_bus_ref=terminal_bus_ref,
                 gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
                 equipment_refs=[apparatus_ref],
-                protection_ref=protection_ref,
-                protection_codes=protection_codes,
+                katalog_sterownika_ref=protection_catalog_ref,
+                funkcje_eaz=protection_codes,
                 bay_template_ref=bay_template_ref,
                 switchgear_family_ref=switchgear_family_ref,
                 manufacturer_ref=manufacturer_ref,
@@ -2706,7 +2798,7 @@ def _podglad_planu_pola(plan: PlanPolaKatalogowego, protection_codes: list[str])
         "factory_configuration_ref": plan.factory_configuration_ref,
         "factory_unit_index": plan.factory_unit_index,
         "zrodlo_opis_pl": plan.zrodlo_opis_pl,
-        "protection_codes": list(protection_codes),
+        "funkcje_eaz": list(protection_codes),
         "aparaty": [copy.deepcopy(aparat) for aparat in plan.aparaty],
     }
 
@@ -6317,7 +6409,7 @@ def _add_converter_source_der_sn(
             terminal_bus_ref=terminal_bus_ref,
             equipment_refs=[apparatus_ref],
             apparatus_catalog_ref=apparatus_catalog_ref,
-            protection_codes=protection_codes,
+            funkcje_eaz=protection_codes,
             bay_template_ref=szablon_pola_der,
             primary_devices=aparaty_pola,
             config_id=konfiguracja_pola,

@@ -955,10 +955,6 @@ def _stala_ts(plik: Path, nazwa: str) -> dict[str, str]:
     return dict(re.findall(r"^\s*'?([\w-]+)'?: '([^']*)',", blok.group(1), re.M))
 
 
-def _male_pierwsze(tekst: str) -> str:
-    return tekst[:1].lower() + tekst[1:]
-
-
 @pytest.mark.parametrize(
     ("mapa", "plik", "stala", "przeksztalcenie"),
     [
@@ -988,12 +984,6 @@ def _male_pierwsze(tekst: str) -> str:
             "ui2/spaces/model/katalog/strings.ts",
             "ETYKIETY_STATUSU_KATALOGU",
             None,
-        ),
-        (
-            slownik.NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
-            "ui/shared/etykietyZabezpieczen.ts",
-            "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
-            _male_pierwsze,
         ),
         # `POWODY_BLOKADY_RODZINY_PL` był tu porównywany z kopią `POWOD_BLOKADY_PL` w pickerze
         # rodzin. Karta UX-04/POLE-LINIOWE-WZORZEC skasowała kopię: front pokazuje zdanie

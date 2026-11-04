@@ -40,15 +40,14 @@ from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_w
 from network_model.nazwy import jest_nazwa
 
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
-from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
-    NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
     opis_elementu,
     opis_obiektu,
 )
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu
+from .zabezpieczenie import aparaty_sterownika, sterowniki, wejscia_funkcji_w_aparacie
 
 # ---------------------------------------------------------------------------
 # Operation Result
@@ -505,8 +504,8 @@ def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     # Sprawdź czy wyłącznik ma przypisane zabezpieczenie
     branch = branches[idx]
     if branch.get("type") == "breaker":
-        for pa in enm.get("protection_assignments", []):
-            if pa.get("breaker_ref") == ref_id:
+        for pa in sterowniki(enm):
+            if ref_id in aparaty_sterownika(pa):
                 issues.append(
                     OpIssue(
                         "OP_HAS_PROTECTION",
@@ -1004,9 +1003,10 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
         )
         return TopologyOpResult(False, enm, "delete_measurement", issues)
 
-    # Sprawdź czy CT jest używany w protection_assignment
-    for pa in enm.get("protection_assignments", []):
-        if pa.get("ct_ref") == ref_id:
+    # Sprawdź, czy przekładnik zasila wejście sterownika zabezpieczeń
+    for pa in sterowniki(enm):
+        uzyte = {r for refy in wejscia_funkcji_w_aparacie(pa.get("wejscia") or {}).values() for r in refy}
+        if ref_id in uzyte:
             issues.append(
                 OpIssue(
                     "OP_CT_IN_USE",
@@ -1030,8 +1030,87 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 # ---------------------------------------------------------------------------
 
 
+def _bledy_sterownika_w_modelu(
+    enm: dict[str, Any], rekord: dict[str, Any], *, ref_id: str
+) -> list[OpIssue]:
+    """Sterownik wobec MODELU (kontrakt rekordu sprawdza `ProtectionAssignment`): pole
+    istnieje i nie ma drugiego sterownika, wejścia i macierz wyzwoleń wskazują istniejące
+    aparaty. Jedna reguła dla `attach_protection` i `update_protection`."""
+    from .models import ProtectionAssignment
+
+    issues: list[OpIssue] = []
+    try:
+        ProtectionAssignment.model_validate(rekord)
+    except ValueError as blad:
+        return [OpIssue("OP_SETTINGS_INVALID", "BLOCKER", str(blad), ref_id)]
+    bay_ref = rekord.get("bay_ref")
+    if bay_ref:
+        if not any(b.get("ref_id") == bay_ref for b in enm.get("bays", [])):
+            issues.append(
+                OpIssue(
+                    "OP_BAY_NOT_FOUND",
+                    "BLOCKER",
+                    "Wskazane pole rozdzielnicy nie istnieje w modelu sieci.",
+                    ref_id,
+                )
+            )
+        drugi = next(
+            (
+                pa
+                for pa in sterowniki(enm)
+                if pa.get("bay_ref") == bay_ref and pa.get("ref_id") != ref_id
+            ),
+            None,
+        )
+        if drugi is not None:
+            issues.append(
+                OpIssue(
+                    "OP_BAY_HAS_PROTECTION",
+                    "BLOCKER",
+                    f"{opis_elementu(enm, bay_ref, 'Pole')} ma już "
+                    f"{opis_elementu(enm, drugi.get('ref_id'), 'sterownik zabezpieczeń')} — "
+                    "pole ma jeden sterownik; funkcje dodaje się w nim.",
+                    ref_id,
+                )
+            )
+    aparaty = {
+        str(a.get(k))
+        for pole in enm.get("bays", [])
+        for a in pole.get("primary_devices") or []
+        for k in ("device_ref", "linked_ref")
+        if a.get(k)
+    }
+    wylaczniki = _find_breaker_refs(enm) | aparaty
+    for wiersz in rekord.get("macierz_wyzwolen") or []:
+        for aparat in wiersz.get("aparat_refs") or []:
+            if aparat not in wylaczniki:
+                issues.append(
+                    OpIssue(
+                        "OP_BREAKER_NOT_FOUND",
+                        "BLOCKER",
+                        "Macierz wyzwoleń wskazuje aparat, którego nie ma w modelu sieci "
+                        "albo który nie jest wyłącznikiem.",
+                        ref_id,
+                    )
+                )
+    przekladniki = aparaty | {str(m.get("ref_id")) for m in enm.get("measurements", [])}
+    for refy in wejscia_funkcji_w_aparacie(rekord.get("wejscia") or {}).values():
+        for ref in refy:
+            if ref not in przekladniki:
+                issues.append(
+                    OpIssue(
+                        "OP_CT_NOT_FOUND",
+                        "BLOCKER",
+                        "Wejście sterownika wskazuje przekładnik, którego nie ma w modelu sieci.",
+                        ref_id,
+                    )
+                )
+    return issues
+
+
 def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Przypisz zabezpieczenie do wyłącznika. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
+    """Dodaj sterownik zabezpieczeń (rekord w kształcie `ProtectionAssignment`). MUTUJE `enm`
+    W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
 
@@ -1041,86 +1120,28 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
                 "OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowemu zabezpieczeniu."
             )
         )
-    elif not _ref_id_unique(enm, ref_id):
+        return TopologyOpResult(False, enm, "attach_protection", issues)
+    if not _ref_id_unique(enm, ref_id):
         issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
-
-    breaker_ref = data.get("breaker_ref", "")
-    breaker_refs = _find_breaker_refs(enm)
-    if breaker_ref not in breaker_refs:
-        issues.append(
-            OpIssue(
-                "OP_BREAKER_NOT_FOUND",
-                "BLOCKER",
-                "Wskazany aparat nie istnieje w modelu sieci albo nie jest wyłącznikiem.",
-            )
-        )
-
-    # Sprawdź czy wyłącznik nie ma już przypisanego zabezpieczenia
-    for pa in enm.get("protection_assignments", []):
-        if pa.get("breaker_ref") == breaker_ref:
-            issues.append(
-                OpIssue(
-                    "OP_BREAKER_HAS_PROTECTION",
-                    "BLOCKER",
-                    f"{opis_elementu(enm, breaker_ref, 'Wyłącznik')} ma już "
-                    f"{opis_elementu(enm, pa.get('ref_id'), 'zabezpieczenie')}.",
-                )
-            )
-
-    # Walidacja CT — jeśli podano ct_ref, musi istnieć
-    ct_ref = data.get("ct_ref")
-    if ct_ref:
-        ct_refs = _find_ct_refs(enm)
-        if ct_ref not in ct_refs:
-            issues.append(
-                OpIssue(
-                    "OP_CT_NOT_FOUND",
-                    "BLOCKER",
-                    "Wskazany przekładnik prądowy (CT) nie istnieje w modelu sieci.",
-                )
-            )
-
-    # Jeśli typ wymaga CT a nie podano
-    device_type = data.get("device_type", "overcurrent")
-    ct_required_types = {"overcurrent", "earth_fault", "directional_overcurrent"}
-    if device_type in ct_required_types and not ct_ref:
-        issues.append(
-            OpIssue(
-                "OP_CT_REQUIRED",
-                "BLOCKER",
-                f"Zabezpieczenie {NAZWY_RODZAJOW_ZABEZPIECZENIA_PL[device_type]} wymaga "
-                "przekładnika prądowego (CT) — wskaż przekładnik pola.",
-            )
-        )
-
-    # Nastawy przez JEDNĄ regułę zapisu (karta BIEG-ZABEZPIECZEN-Z-MODELU): niekompletne
-    # przechodzą (brak gotowości nazywa ocena), sprzeczne są odrzucane.
-    ustawienia = data.get("settings", [])
-    for blad in bledy_nastaw(ustawienia):
-        issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
-
-    if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "attach_protection", issues)
 
-    pa_data = {
-        "ref_id": ref_id,
+    rekord = {
+        **data,
         "name": _nazwa_z_ladunku(data, opis_bez_nazwy("protection_assignments")),
-        "breaker_ref": breaker_ref,
-        "ct_ref": ct_ref,
-        "vt_ref": data.get("vt_ref"),
-        "device_type": device_type,
-        "catalog_ref": data.get("catalog_ref"),
-        "settings": normalizuj_nastawy(ustawienia),
         "is_enabled": data.get("is_enabled", True),
         "tags": data.get("tags", []),
         "meta": data.get("meta", {}),
     }
-    enm.setdefault("protection_assignments", []).append(pa_data)
+    issues.extend(_bledy_sterownika_w_modelu(enm, rekord, ref_id=ref_id))
+    if any(i.severity == "BLOCKER" for i in issues):
+        return TopologyOpResult(False, enm, "attach_protection", issues)
+    enm.setdefault("protection_assignments", []).append(rekord)
     return TopologyOpResult(True, enm, "attach_protection", issues, ref_id)
 
 
 def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Zaktualizuj zabezpieczenie. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
+    """Zaktualizuj pola sterownika zabezpieczeń (podane klucze zastępują wartości). MUTUJE
+    `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
     pas = enm.get("protection_assignments", [])
@@ -1137,30 +1158,11 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         )
         return TopologyOpResult(False, enm, "update_protection", issues)
 
-    # Validate CT if changing ct_ref
-    if "ct_ref" in data and data["ct_ref"]:
-        ct_refs = _find_ct_refs(enm)
-        if data["ct_ref"] not in ct_refs:
-            issues.append(
-                OpIssue(
-                    "OP_CT_NOT_FOUND",
-                    "BLOCKER",
-                    "Wskazany przekładnik prądowy (CT) nie istnieje w modelu sieci.",
-                )
-            )
-
-    if "settings" in data:
-        for blad in bledy_nastaw(data["settings"]):
-            issues.append(OpIssue("OP_SETTINGS_INVALID", "BLOCKER", blad))
-
+    rekord = {**pas[idx], **{k: v for k, v in data.items() if k != "ref_id"}}
+    issues.extend(_bledy_sterownika_w_modelu(enm, rekord, ref_id=ref_id))
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "update_protection", issues)
-
-    for key, val in data.items():
-        if key == "settings":
-            enm["protection_assignments"][idx][key] = normalizuj_nastawy(val)
-        elif key not in ("ref_id",):
-            enm["protection_assignments"][idx][key] = val
+    enm["protection_assignments"][idx] = rekord
     return TopologyOpResult(True, enm, "update_protection", issues, ref_id)
 
 

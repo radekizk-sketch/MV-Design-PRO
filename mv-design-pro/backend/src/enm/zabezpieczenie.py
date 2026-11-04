@@ -54,10 +54,17 @@ __all__ = [
     "nastawy_funkcji",
     "numer_grupy_efektywnej",
     "przekladnik_pradowy",
+    "ref_aparatu_wyzwalanego",
     "referencja_sterownika_pola",
     "sterownik_pola",
     "sterowniki",
     "ustaw_funkcje_pola",
+    "ustaw_zestaw_funkcji",
+    "zapisz_nastawy_funkcji",
+    "pochodzenie_nastaw_funkcji",
+    "funkcja_rejestru",
+    "ref_zrodla_u0_pola",
+    "ZACHOWAJ_ZRODLO_U0",
     "wejscia_dostepne",
     "wejscia_funkcji_w_aparacie",
 ]
@@ -235,8 +242,11 @@ def funkcje_zasilane_z_aparatu(sterownik: Any, device_ref: str) -> list[str]:
     return kody
 
 
-def funkcje_wylaczajace_aparat(sterownik: Any, device_ref: str) -> list[str]:
-    """Kody włączonych funkcji, które działają na aparat (macierz wyzwoleń)."""
+def funkcje_wylaczajace_aparat(sterownik: Any, device_ref: str | None) -> list[str]:
+    """Kody włączonych funkcji, które działają na aparat (macierz wyzwoleń; ``device_ref`` —
+    wynik `ref_aparatu_wyzwalanego` aparatu pola albo identyfikator gałęzi wyłącznika)."""
+    if not device_ref:
+        return []
     wlaczone = {
         str(_pole(f, "ref")): str(_pole(f, "kod"))
         for f in _funkcje(sterownik)
@@ -351,7 +361,23 @@ def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
 # ---------------------------------------------------------------------------
 
 
+def ref_aparatu_wyzwalanego(aparat: Any) -> str | None:
+    """Identyfikator wyłącznika w macierzy wyzwoleń — JEDNA reguła dla pisarzy i odczytu.
+
+    Wyłącznik pola wskazujący gałąź modelu (``linked_ref`` — gałąź ``breaker``, której stan
+    i pozycję katalogu czytają rozpływ, zwarcia i czas własny) wchodzi do macierzy
+    identyfikatorem tej gałęzi; wyłącznik pola bez gałęzi — identyfikatorem aparatu pola.
+    Wyłącznik liniowy bez pola jest gałęzią, więc jego identyfikator jest tym samym kluczem."""
+    return _napis(_pole(aparat, "linked_ref")) or _napis(_pole(aparat, "device_ref"))
+
+
 def _aparaty_rodzaju(aparaty: Sequence[Mapping[str, Any]], rodzaj: str) -> list[str]:
+    if rodzaj == "CB":
+        return [
+            str(ref_aparatu_wyzwalanego(a))
+            for a in aparaty
+            if a.get("kind") == "CB" and ref_aparatu_wyzwalanego(a)
+        ]
     return [str(a["device_ref"]) for a in aparaty if a.get("kind") == rodzaj and a.get("device_ref")]
 
 
@@ -370,7 +396,8 @@ def _wiazania_z_obwodow(
     po_oznaczeniu: dict[tuple[str, str], str] = {}
     for a in aparaty:
         if a.get("designation") and a.get("device_ref"):
-            po_oznaczeniu[(str(a["designation"]), str(a.get("kind")))] = str(a["device_ref"])
+            ref = ref_aparatu_wyzwalanego(a) if a.get("kind") == "CB" else a["device_ref"]
+            po_oznaczeniu[(str(a["designation"]), str(a.get("kind")))] = str(ref)
     wejscia: dict[str, Any] = {}
     wyzwolenia: dict[str, list[str]] = {}
     obecne = set(kody)
@@ -420,14 +447,107 @@ def _wiazania_z_obwodow(
     return wejscia, wyzwolenia
 
 
+# ---------------------------------------------------------------------------
+# Pisarze struktury sterownika — JEDNA reguła dla operacji domenowych i pisarza z szablonu
+# ---------------------------------------------------------------------------
+
+
+def ustaw_zestaw_funkcji(
+    sterownik: dict[str, Any],
+    kody: Iterable[str],
+    *,
+    wyzwolenia: Mapping[str, Sequence[str]] | None = None,
+) -> None:
+    """Zestaw funkcji sterownika = ``kody`` (kolejność podana, bez powtórzeń).
+
+    Funkcja, która zostaje, zachowuje identyfikator, stan włączenia, nastawy we wszystkich
+    grupach i wiersz macierzy wyzwoleń; funkcja usunięta znika razem z nastawami i wierszem
+    (predykat parami: zbiór funkcji, zbiór nastaw i zbiór wierszy macierzy wyznacza JEDNA
+    lista ``funkcje``). ``wyzwolenia`` (kod → aparaty) dopisuje wiersz funkcji, która go
+    jeszcze nie ma — wiersz zapisany wcześniej ma pierwszeństwo."""
+    lista: list[str] = []
+    for kod in kody:
+        if str(kod) not in lista:
+            lista.append(str(kod))
+    stare = {str(f["kod"]): f for f in sterownik.get("funkcje") or []}
+    funkcje = [
+        dict(stare[kod]) if kod in stare else {"ref": kod, "kod": kod, "wlaczona": True}
+        for kod in lista
+    ]
+    refy = {f["ref"] for f in funkcje}
+    sterownik["funkcje"] = funkcje
+    sterownik["grupy_nastaw"] = [
+        {**g, "funkcje": [n for n in g.get("funkcje") or [] if n.get("funkcja_ref") in refy]}
+        for g in sterownik.get("grupy_nastaw") or []
+    ]
+    macierz = [w for w in sterownik.get("macierz_wyzwolen") or [] if w.get("funkcja_ref") in refy]
+    zapisane = {w["funkcja_ref"] for w in macierz}
+    for funkcja in funkcje:
+        aparaty_kodu = (wyzwolenia or {}).get(funkcja["kod"])
+        if aparaty_kodu and funkcja["ref"] not in zapisane:
+            macierz.append({"funkcja_ref": funkcja["ref"], "aparat_refs": list(aparaty_kodu)})
+    sterownik["macierz_wyzwolen"] = macierz
+
+
+def zapisz_nastawy_funkcji(
+    sterownik: dict[str, Any],
+    *,
+    numer_grupy: int,
+    funkcja_ref: str,
+    nastawy: Mapping[str, Any],
+    pochodzenie: str = "PROJEKTANT",
+) -> None:
+    """Zastąp nastawy funkcji w grupie (``None`` = nastawa zdjęta — nazwany brak).
+
+    Grupy nieistniejącej przybywa (numer 1–4 sprawdza reguła `bledy_sterownika`); grupy
+    trzymane w kolejności numerów (determinizm migawki)."""
+    grupy = [dict(g) for g in sterownik.get("grupy_nastaw") or []]
+    grupa = next((g for g in grupy if g.get("numer") == numer_grupy), None)
+    if grupa is None:
+        grupa = {"numer": numer_grupy, "funkcje": []}
+        grupy.append(grupa)
+    wpisy = [dict(w) for w in grupa.get("funkcje") or [] if w.get("funkcja_ref") != funkcja_ref]
+    lista = [
+        {"klucz": str(k), "wartosc": v, "pochodzenie": pochodzenie}
+        for k, v in sorted(nastawy.items())
+        if v is not None
+    ]
+    if lista:
+        wpisy.append({"funkcja_ref": funkcja_ref, "nastawy": lista})
+    porzadek = {str(f.get("ref")): i for i, f in enumerate(sterownik.get("funkcje") or [])}
+    grupa["funkcje"] = sorted(wpisy, key=lambda w: porzadek.get(str(w["funkcja_ref"]), 10**6))
+    sterownik["grupy_nastaw"] = sorted(grupy, key=lambda g: int(g.get("numer") or 0))
+
+
+def _istniejace_aparaty(enm: Mapping[str, Any], aparaty: Sequence[Mapping[str, Any]]) -> set[str]:
+    """Identyfikatory aparatów, na które mogą wskazywać wejścia i macierz sterownika: aparaty
+    pól (i ich gałęzie), gałęzie modelu i przekładniki pomiarowe."""
+    wynik: set[str] = set()
+    for aparat in list(aparaty) + [
+        a for pole in enm.get("bays") or [] for a in pole.get("primary_devices") or []
+    ]:
+        for klucz in ("device_ref", "linked_ref"):
+            if aparat.get(klucz):
+                wynik.add(str(aparat[klucz]))
+    wynik.update(str(g.get("ref_id")) for g in enm.get("branches") or [] if g.get("ref_id"))
+    wynik.update(str(m.get("ref_id")) for m in enm.get("measurements") or [] if m.get("ref_id"))
+    return wynik
+
+
+#: Znacznik „źródło 3U₀ bez zmian" pisarza `ustaw_funkcje_pola` (zmiana szablonu albo aparatów
+#: nie dotyka deklaracji projektanta).
+ZACHOWAJ_ZRODLO_U0: Any = object()
+
+
 def ustaw_funkcje_pola(
     enm: dict[str, Any],
     *,
     bay_ref: str,
-    kody: Iterable[str],
+    kody: Iterable[str] | None,
     aparaty: Sequence[Mapping[str, Any]],
     obwody: ObwodyWtornePola | None,
-    zrodlo_u0_ref: str | None = None,
+    zrodlo_u0_ref: Any = ZACHOWAJ_ZRODLO_U0,
+    katalog_ref: str | None = None,
     nazwa_pola: str | None = None,
 ) -> dict[str, Any] | None:
     """Załóż albo zaktualizuj sterownik pola z zestawu funkcji szablonu — JEDYNY pisarz.
@@ -440,17 +560,28 @@ def ustaw_funkcje_pola(
     wiązaniem z szablonu. ``zrodlo_u0_ref`` — przekładnik napięciowy z otwartym trójkątem
     (źródło 3U₀ potwierdzone przez projektanta, `enm.zrodlo_napiecia_zerowego`).
 
-    Pusty zestaw i brak sterownika — nic (pole bez funkcji nie dostaje pustego sterownika);
-    pusty zestaw przy istniejącym sterowniku — sterownik zostaje bez funkcji (urządzenie
-    z katalogu nie znika przez zmianę szablonu). Zwraca rekord sterownika albo ``None``.
+    ``kody=None`` — zestaw bez zmian (zmiana aparatów albo szablonu przelicza wyłącznie
+    wiązania); ``katalog_ref`` — pozycja katalogu urządzenia wskazana przy budowie pola.
+
+    Pusty zestaw bez katalogu i brak sterownika — nic (pole bez funkcji nie dostaje pustego
+    sterownika); pusty zestaw przy istniejącym sterowniku — sterownik zostaje bez funkcji
+    (urządzenie z katalogu nie znika przez zmianę szablonu). Zwraca rekord sterownika albo
+    ``None``.
     """
-    lista_kodow: list[str] = []
-    for kod in kody:
-        if kod not in lista_kodow:
-            lista_kodow.append(str(kod))
     lista = enm.setdefault("protection_assignments", [])
     sterownik = next((s for s in lista if s.get("bay_ref") == bay_ref), None)
-    if sterownik is None and not lista_kodow:
+    lista_kodow: list[str] = []
+    zrodlo_kodow = (
+        kody
+        if kody is not None
+        else [str(f.get("kod")) for f in (sterownik or {}).get("funkcje") or []]
+    )
+    for kod in zrodlo_kodow:
+        if str(kod) not in lista_kodow:
+            lista_kodow.append(str(kod))
+    if zrodlo_u0_ref is ZACHOWAJ_ZRODLO_U0:
+        zrodlo_u0_ref = ref_zrodla_u0_pola(enm, bay_ref)
+    if sterownik is None and not lista_kodow and not katalog_ref and not zrodlo_u0_ref:
         return None
     wejscia_szablonu, wyzwolenia = _wiazania_z_obwodow(aparaty, obwody, lista_kodow)
     if zrodlo_u0_ref:
@@ -469,31 +600,19 @@ def ustaw_funkcje_pola(
             "is_enabled": True,
         }
         lista.append(sterownik)
-    stare = {str(f["kod"]): f for f in sterownik.get("funkcje") or []}
-    funkcje = [
-        dict(stare[kod]) if kod in stare else {"ref": kod, "kod": kod, "wlaczona": True}
-        for kod in lista_kodow
-    ]
-    refy = {f["ref"] for f in funkcje}
-    sterownik["funkcje"] = funkcje
-    sterownik["grupy_nastaw"] = [
-        {**g, "funkcje": [n for n in g.get("funkcje") or [] if n.get("funkcja_ref") in refy]}
-        for g in sterownik.get("grupy_nastaw") or []
-    ]
-    macierz = [w for w in sterownik.get("macierz_wyzwolen") or [] if w.get("funkcja_ref") in refy]
-    zapisane = {w["funkcja_ref"] for w in macierz}
-    for funkcja in funkcje:
-        aparaty_kodu = wyzwolenia.get(funkcja["kod"])
-        if aparaty_kodu and funkcja["ref"] not in zapisane:
-            macierz.append({"funkcja_ref": funkcja["ref"], "aparat_refs": list(aparaty_kodu)})
+    if katalog_ref:
+        sterownik["catalog_ref"] = katalog_ref
+        sterownik["catalog_namespace"] = "ZABEZPIECZENIE"
+    istniejace = _istniejace_aparaty(enm, aparaty)
+    # Wiersz macierzy wskazujący aparat, którego już nie ma (wymiana wyposażenia pola), traci
+    # ten aparat; pusty wiersz znika i — gdy wzorzec wiąże funkcję — wraca z aparatem wzorca.
+    macierz: list[dict[str, Any]] = []
+    for wiersz in sterownik.get("macierz_wyzwolen") or []:
+        refy = [r for r in wiersz.get("aparat_refs") or [] if r in istniejace]
+        if refy:
+            macierz.append({**wiersz, "aparat_refs": refy})
     sterownik["macierz_wyzwolen"] = macierz
-    istniejace = {str(a.get("device_ref")) for a in aparaty} | {
-        str(m.get("ref_id")) for m in enm.get("measurements") or []
-    } | {
-        str(a.get("device_ref"))
-        for pole in enm.get("bays") or []
-        for a in pole.get("primary_devices") or []
-    }
+    ustaw_zestaw_funkcji(sterownik, lista_kodow, wyzwolenia=wyzwolenia)
     wejscia = {
         k: v
         for k, v in dict(sterownik.get("wejscia") or {}).items()
@@ -506,6 +625,11 @@ def ustaw_funkcje_pola(
     for klucz, wartosc in wejscia_szablonu.items():
         if not wejscia.get(klucz):
             wejscia[klucz] = wartosc
+    if zrodlo_u0_ref:
+        # Deklaracja projektanta (albo bieżąca, gdy bez zmian) wygrywa z wcześniejszym
+        # wiązaniem — zmiana źródła 3U₀ przepina wejście.
+        wejscia["u0_uklad"] = "OTWARTY_TROJKAT"
+        wejscia["u0_vt_ref"] = zrodlo_u0_ref
     if zrodlo_u0_ref is None and wejscia.get("u0_uklad") == "OTWARTY_TROJKAT":
         # Źródło 3U₀ zdjęte przez projektanta — wiązanie znika razem z deklaracją.
         wejscia.pop("u0_uklad", None)
@@ -514,7 +638,7 @@ def ustaw_funkcje_pola(
     return sterownik
 
 
-def zrodlo_u0_pola(enm: Any, bay_ref: str | None) -> str | None:
+def ref_zrodla_u0_pola(enm: Any, bay_ref: str | None) -> str | None:
     """Przekładnik napięciowy otwartego trójkąta przypięty do wejścia 3U₀ sterownika pola."""
     sterownik = sterownik_pola(enm, bay_ref)
     if sterownik is None:

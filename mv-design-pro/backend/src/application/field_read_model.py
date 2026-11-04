@@ -26,7 +26,6 @@ from enm.models import (
     BayPrimaryDevice,
     BayProjectResults,
     BayProofBinding,
-    BayProtectionControlUnit,
     BayRuntimeState,
     BaySecondaryArchitecture,
     BaySecondaryUnitRef,
@@ -39,21 +38,15 @@ from enm.models import (
     InterlockEntry,
     Measurement,
     ProtectionAssignment,
-    ProtectionFunctionState,
-    ProtectionSetting,
-    ProtectionSettingValue,
     Source,
     SwitchBranch,
     Transformer,
-)
-from enm.nastawy_zabezpieczen import (
-    ETYKIETY_JEDNOSTEK_PROGU_PL,
-    JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
+from enm.zabezpieczenie import kody_funkcji_pola, ref_zrodla_u0_pola, sterownik_pola
 from enm.zrodlo_napiecia_zerowego import (
     funkcje_bez_zrodla_u0,
     funkcje_warunkowe_szablonu_pola,
@@ -78,61 +71,6 @@ BRANCH_KIND_MAP: dict[str, tuple[str, str, bool]] = {
     "cable": ("CABLE_HEAD", "DOWNSTREAM", False),
 }
 
-FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
-    "overcurrent_50": {
-        "code": "50",
-        "required_inputs": ["ct"],
-        "execution_mode": "wyzwolenie",
-    },
-    "overcurrent_51": {
-        "code": "51",
-        "required_inputs": ["ct"],
-        "execution_mode": "wyzwolenie",
-    },
-    "earth_fault_50N": {
-        "code": "50N",
-        "required_inputs": ["3i0"],
-        "execution_mode": "wyzwolenie",
-    },
-    "earth_fault_51N": {
-        "code": "51N",
-        "required_inputs": ["3i0"],
-        "execution_mode": "wyzwolenie",
-    },
-    "directional_67": {
-        "code": "67",
-        "required_inputs": ["ct", "vt"],
-        "execution_mode": "wyzwolenie",
-    },
-    "directional_67N": {
-        "code": "67N",
-        "required_inputs": ["3i0", "3u0"],
-        "execution_mode": "wyzwolenie",
-    },
-    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM).
-    "rocof_81R": {
-        "code": "81R",
-        "required_inputs": ["vt"],
-        "execution_mode": "wyzwolenie",
-    },
-    "vector_shift_78": {
-        "code": "78",
-        "required_inputs": ["vt"],
-        "execution_mode": "wyzwolenie",
-    },
-    "underfrequency_81U": {
-        "code": "81U",
-        "required_inputs": ["vt"],
-        "execution_mode": "wyzwolenie",
-    },
-    "overfrequency_81O": {
-        "code": "81O",
-        "required_inputs": ["vt"],
-        "execution_mode": "wyzwolenie",
-    },
-}
-
-
 def _slownik_json(pary: list[tuple[str, Any]]) -> dict[str, Any]:
     """`dict_factory` dla `dataclasses.asdict` — rekord kontraktu werdyktu (pydantic: etykieta,
     wyjaśnienie) zagnieżdżony w dataclass oceny trafia do odpowiedzi jako słownik JSON."""
@@ -150,7 +88,6 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     )
     measurements = {measurement.ref_id: measurement for measurement in enm.measurements}
     measurements_by_bay = _group_measurements_by_bay(enm.measurements)
-    protection_by_ref = {assignment.ref_id: assignment for assignment in enm.protection_assignments}
     {transformer.ref_id: transformer for transformer in enm.transformers}
     transformers_by_bus = _group_transformers_by_bus(enm.transformers)
     sources_by_bus = _group_sources_by_bus(enm.sources)
@@ -190,8 +127,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     for rekord_pola in enm_json.get("bays") or []:
         if (
             funkcje_warunkowe_szablonu_pola(rekord_pola)
-            or rekord_pola.get("zrodlo_u0_ref")
-            or funkcje_bez_zrodla_u0(rekord_pola.get("protection_codes") or [])
+            or ref_zrodla_u0_pola(enm_json, rekord_pola.get("ref_id"))
+            or funkcje_bez_zrodla_u0(kody_funkcji_pola(enm_json, rekord_pola.get("ref_id")))
         ):
             zrodla_u0[str(rekord_pola.get("ref_id"))] = asdict(
                 zrodlo_u0_pola(enm_json, rekord_pola), dict_factory=_slownik_json
@@ -220,10 +157,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
         )
         measurement_chain = _build_measurement_chain(bay, measurements_by_bay)
         source_endpoint = _build_source_endpoint(bay, generators_by_bus)
-        protection_config = _build_protection_config(
-            bay=bay,
-            protection_by_ref=protection_by_ref,
-        )
+        # Sterownik zabezpieczeń pola — TA SAMA struktura co w modelu (karta
+        # OCHRONA-JEDNO-ZRODLO): karta pola nie dostaje odczytu przepisanego na drugi kształt.
+        protection_config = sterownik_pola(enm, bay.ref_id)
         secondary_units = _build_secondary_units(
             measurement_chain=measurement_chain,
             protection_config=protection_config,
@@ -252,7 +188,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             measurement_chain=measurement_chain,
             secondary_units=secondary_units,
             secondary_architecture=secondary_architecture,
-            protection_config=protection_config,
+            zabezpieczenie=protection_config,
             control_surface=control_surface,
             interlocks=interlocks,
             source_endpoint=source_endpoint,
@@ -280,7 +216,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             zrodlo_u0_potwierdzone=bool(
                 (zrodla_u0.get(bay.ref_id) or {}).get("potwierdzone", False)
             ),
+            sterownik_ref=protection_config.ref_id if protection_config is not None else None,
         )
+
 
         canonical_model = BayCanonicalModel(
             created_from="migracja",
@@ -756,13 +694,13 @@ def _build_measurement_chain(
 def _build_secondary_units(
     *,
     measurement_chain: BayMeasurementChain | None,
-    protection_config: BayProtectionControlUnit | None,
+    protection_config: ProtectionAssignment | None,
 ) -> list[BaySecondaryUnitRef]:
     units: list[BaySecondaryUnitRef] = []
     if protection_config is not None:
         units.append(
             BaySecondaryUnitRef(
-                unit_ref=protection_config.unit_ref,
+                unit_ref=protection_config.ref_id,
                 unit_kind="zabezpieczenie",
                 shared_with_bay_refs=[],
             )
@@ -781,7 +719,7 @@ def _build_secondary_units(
 def _build_secondary_architecture(
     *,
     measurement_chain: BayMeasurementChain | None,
-    protection_config: BayProtectionControlUnit | None,
+    protection_config: ProtectionAssignment | None,
 ) -> BaySecondaryArchitecture:
     if protection_config is not None and measurement_chain is not None:
         return BaySecondaryArchitecture(
@@ -801,133 +739,6 @@ def _build_secondary_architecture(
     return BaySecondaryArchitecture(
         type="brak_urzadzenia_wtornego",
         measurement_provider="brak",
-    )
-
-
-def _build_protection_config(
-    *,
-    bay: Bay,
-    protection_by_ref: dict[str, ProtectionAssignment],
-) -> BayProtectionControlUnit | None:
-    if not bay.protection_ref:
-        return None
-    assignment = protection_by_ref.get(bay.protection_ref)
-    if assignment is None:
-        return None
-    functions = [
-        _setting_to_function_state(setting, assignment.breaker_ref)
-        for setting in assignment.settings
-    ]
-    return BayProtectionControlUnit(
-        unit_ref=assignment.ref_id,
-        manufacturer=None,
-        model=assignment.device_type,
-        functions=functions,
-        measurement_inputs={
-            "uses_ct": assignment.ct_ref is not None,
-            "uses_vt": assignment.vt_ref is not None,
-            "uses_3i0": assignment.ct_ref is not None,
-            "uses_3u0": assignment.vt_ref is not None,
-        },
-        automation_features={
-            "synchrocheck_enabled": any(function.code == "25" for function in functions),
-            "arc_protection_enabled": False,
-            "breaker_failure_enabled": any(function.code == "50BF" for function in functions),
-        },
-        spz=None,
-        alarms=[],
-        events=[],
-        settings_mode="reczne",
-        settings_ref=f"settings:{assignment.ref_id}",
-    )
-
-
-def _setting_to_function_state(
-    setting: ProtectionSetting,
-    breaker_ref: str,
-) -> ProtectionFunctionState:
-    meta = FUNCTION_TYPE_MAP.get(setting.function_type, {})
-    threshold_value = setting.threshold_a
-    time_delay_value = setting.time_delay_s
-    settings: list[ProtectionSettingValue] = []
-    if threshold_value is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="prog",
-                value=threshold_value,
-                # Strona przekładnika zadeklarowana w nastawie (PZ-09) — „A" bez strony byłoby
-                # dwuznaczne (1,5 A wtórne ≠ 1,5 A pierwotne).
-                unit=(
-                    ETYKIETY_JEDNOSTEK_PROGU_PL[setting.threshold_unit]
-                    if setting.threshold_unit is not None
-                    else JEDNOSTKA_PROGU_NIEUSTALONA_PL
-                ),
-                quality="reczne",
-            )
-        )
-    if time_delay_value is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="zwloka",
-                value=time_delay_value,
-                unit="s",
-                quality="reczne",
-            )
-        )
-    if setting.curve_type is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="krzywa",
-                value=setting.curve_type,
-                unit=None,
-                quality="reczne",
-            )
-        )
-    # D10 (addytywnie): nastawy funkcji LoM (df/dt, przesunięcie wektora, próg f).
-    if setting.threshold_hz_s is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="df_dt",
-                value=setting.threshold_hz_s,
-                unit="Hz/s",
-                quality="reczne",
-            )
-        )
-    if setting.threshold_deg is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="przesuniecie_wektora",
-                value=setting.threshold_deg,
-                unit="deg",
-                quality="reczne",
-            )
-        )
-    if setting.threshold_hz is not None:
-        settings.append(
-            ProtectionSettingValue(
-                key="prog_czestotliwosci",
-                value=setting.threshold_hz,
-                unit="Hz",
-                quality="reczne",
-            )
-        )
-    return ProtectionFunctionState(
-        code=meta.get("code", setting.function_type),
-        available=True,
-        enabled=True,
-        picked_up=False,
-        tripped=False,
-        blocked=False,
-        required_inputs=list(meta.get("required_inputs", [])),
-        optional_inputs=[],
-        missing_input_policy="ostrzezenie",
-        settings_ref=f"setting:{setting.function_type}",
-        settings=settings,
-        execution_mode=meta.get("execution_mode", "tylko_alarm"),
-        execution_device_ref=breaker_ref,
-        starts_spz=False,
-        blocks_reclose=False,
-        operator_ack_required_after_trip=False,
     )
 
 
@@ -1081,6 +892,7 @@ def _build_project_results(
     latest_pf_run_id: str | None,
     measurement_chain: BayMeasurementChain | None,
     zrodlo_u0_potwierdzone: bool = False,
+    sterownik_ref: str | None = None,
 ) -> BayProjectResults | None:
     run_ref = latest_pf_run_id or latest_sc_run_id
     if run_ref is None:
@@ -1123,7 +935,7 @@ def _build_project_results(
         input_data_refs=sorted(
             bay.equipment_refs
             + [measurement.ref_id for measurement in measurements_by_bay.get(bay.ref_id, [])]
-            + ([bay.protection_ref] if bay.protection_ref else [])
+            + ([sterownik_ref] if sterownik_ref else [])
         ),
     )
     return BayProjectResults(
