@@ -75,14 +75,12 @@ BICC _Medium Voltage Cables Catalogue_ 2024, s. 9–10: https://www.bicccables.c
 
 `mv-design-pro/backend/src/network_model/solvers/cable_ampacity_derating.py`:
 - `WspolczynnikiObciazalnosci(f_grunt, f_wiazka, f_grupa, podstawa)`, agregat jednego scenariusza, nie niezależne tablice IEC.
-- `ZIEMIA_3_KABLE_200MM`: opis „3 kable jednożyłowe, 200 mm, 1,5 K·m/W, 20 °C”; współczynniki **0,90 × 1,01 × 0,82 = 0,749?** Uwaga: należy używać dokładnego iloczynu z kodu i nie ufać temu opisowi jako wartości normowej. Obecny test/regresja powołuje się na 0,74538; wykonać rachunek i rozstrzygnąć ewentualną rozbieżność.
+- `ZIEMIA_3_KABLE_200MM`: opis „3 kable jednożyłowe, 200 mm, 1,5 K·m/W, 20 °C”; współczynniki **0,90 × 1,01 × 0,82 = 0,74538** (poprawne arytmetycznie). Jest to jednak tylko dowód mnożenia, nie poprawności doborowej wartości składowych.
 - `podstawa`: „MT880 v3; ENEA Dobór kabli SN 2021-06-30” — nieudokumentowana w tym przeglądzie proweniencja każdej liczby osobno.
 - `WARUNKI_KATALOGOWE`: wszystkie korekty 1,0, zachowuje dotychczasowe wyniki tylko pod warunkiem faktycznej zgodności warunków katalogowych.
 - `wspolczynniki_wlasne`: liczby projektanta + opis (pozostawić).
 - `obciazalnosc_skorygowana(Iz, wspolczynniki)`: **jedyna** wspólna funkcja mnożenia SN/nN — NIE tworzyć drugiej ścieżki.
 - nN: osobne tablice `lv_ampacity_iec60364_5_52` i `wspolczynniki_nn` — NIE MIESZAĆ z SN.
-
-**Korekta arytmetyczna do ręcznej kontroli:** 0,90 × 1,01 × 0,82 = **0,74538**. W powyższej linii znak `0,749?` jest celowym znacznikiem wychwycenia potencjalnej literówki i **nie może trafić do danych ani raportu**. Prawidłowe jest **0,74538**.
 
 Istnieją testy w:
 - `mv-design-pro/backend/tests/network_model/solvers/test_cable_ampacity_derating.py`;
