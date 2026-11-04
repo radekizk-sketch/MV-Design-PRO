@@ -322,7 +322,7 @@ describe('znacznik rodzaju aparatu — tabela właściciela pokrywa każdy łąc
 
 describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', () => {
   const sygnatury = new Map<RodzajZnacznika, Set<string>>();
-  const rozmiary = new Map<RodzajZnacznika, Set<string>>();
+  const rozmiary = new Map<string, Set<string>>();
   for (const [wiersz, id] of SYMBOLE) {
     for (const state of STANY) {
       for (const [motyw, kafle] of MOTYWY) {

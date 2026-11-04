@@ -67,7 +67,7 @@ from network_model.catalog.bay_templates import (
     NAZWY_KLASY_POLA_PL,
 )
 from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU
-from network_model.catalog.przekladniki import zaczepy_przekladnika
+from network_model.catalog.przekladniki import RdzenPrzekladnikaPradowego, zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import (
     KLUCZ_ODGALEZIENIA,
     OPIS_WYKONANIA_APARATU_PL,
@@ -550,7 +550,7 @@ def _sprawdz_aparat(
     # Tabliczka przekładnika z POZYCJI KATALOGU (jedno źródło): rdzenie typu CT, uzwojenia typu
     # VT (`CTType.lista_rdzeni`, `VTType.lista_uzwojen`) — ta sama lista, którą niesie szablon
     # pola wskazujący tę pozycję.
-    rdzenie = ()
+    rdzenie: tuple[RdzenPrzekladnikaPradowego, ...] = ()
     if rodzaj == "CT" and isinstance(catalog_ref, str):
         typ_ct = katalog_biezacy().ct_types.get(catalog_ref)
         rdzenie = typ_ct.lista_rdzeni() if typ_ct is not None else ()

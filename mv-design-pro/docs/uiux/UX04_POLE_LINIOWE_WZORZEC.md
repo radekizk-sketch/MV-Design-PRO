@@ -1555,13 +1555,14 @@ tabliczki przekładników prądowych, napięciowych i Ferrantiego przy symbolach
 (§11.17). Zgłoszenia do architekta: dwie prawdy przekładnika i funkcji zabezpieczeń (§11.15), pkt 4
 rodzina kanoniczna (pomiar w §11.14).
 
-**W toku.** Tablica łączników z wierszami wysuwnymi (`frontend/scripts/tablica_lacznikow_kafla.tsx`),
-zrzuty e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts` z `ZRZUTY_DO_DOKUMENTACJI=1`, bramki końcowe.
+Tablica łączników ma wiersze wysuwne (`qetBreakerWysuwny`, `qetBreakerWysuwnyZNapedem`,
+`frontend/scripts/tablica_lacznikow_kafla.tsx`, kolumna opisów 220 px), zrzuty e2e odświeżone
+(`ux04-pole-liniowe-zrzuty-screenshot.spec.ts`, oba testy zielone, oba motywy). Znaleziska biegu
+zrzutów naprawione u źródła w §11.18.
 
-**Pierwszy krok następcy.** Jeśli bramki i zrzuty nie są w historii gałęzi: vitest `src/ui/sld`,
-`src/ui/field`, `src/ui/shared`, `src/ui/network-build/inspektor-elementu`, `src/harness-fixtures`;
-`npm run type-check`, `npm run lint`, `npm run accept:sld-v3`, `python ../scripts/guardy_z_ci.py`;
-potem spec zrzutowy pod `flock`.
+**Pierwszy krok następcy.** Brak pracy w toku tej karty; otwarte są zgłoszenia do architekta
+(§11.15 dwie prawdy przekładnika i funkcji zabezpieczeń, §11.14 pkt 4 rodzina kanoniczna) i werdykt
+wizualny B-02.
 
 ### 11.13. Kafel łącznika: stan → kolor → geometria (jedno źródło)
 
@@ -1882,7 +1883,7 @@ przeszkodzie (wcześniej silnik etykiet ją odrzucał i tabliczka znikała). Prz
 za RZECZYWISTĄ prawą krawędzią tabliczek (`polozenieOkreguPrzekaznika`, `prawaKrawedzTabliczek`)
 z prześwitem 2·GRID.
 
-**Testy.** `scene/__tests__/tabliczkiPrzekladnikow.test.ts` (31): iloczyn fikstura {Z.10 w sekcji 1,
+**Testy.** `scene/__tests__/tabliczkiPrzekladnikow.test.ts` (29): iloczyn fikstura {Z.10 w sekcji 1,
 Z.10 w sekcji 2, Z.11.1 i Z.11, Z.11 z przekładnikiem prądowym bez portów} × rodzaj {prądowy,
 napięciowy, Ferrantiego} × przeszkoda {symbol, etykieta, przewód i linie przekaźnika, ramka bloku
 przekaźnika} oraz plan etykiet kanwy przy skalach {1,0; 1,5; 2,5}; wyrocznia treści z surowych danych
@@ -1904,3 +1905,29 @@ odstępy pól (B-02). W wariancie zdegenerowanym (przekładnik prądowy bez port
 odrzuca podpis „koniec toru" głowicy kablowej, która ląduje tuż nad przekładnikiem Ferrantiego —
 zachowanie identyczne na `HEAD` sprzed zmiany (zmierzone w osobnym drzewie), odrzucenie jest
 policzone w `stopNotes`, a model z przekładnikiem bez portów jest zgłaszany przez gotowość.
+
+### 11.18. Bieg zrzutów 2026-11-04 — znaleziska naprawione u źródła
+
+**Dokument szerszy niż okno.** Nagłówek kolumny akcji tabel karty elementu (`<span class="sr-only">`,
+pozycjonowany absolutnie — dodany z wierszami „przejdź do nastaw" w §11.16) liczył się od okna, a nie
+od przewijanego obszaru tabeli, i stał przy prawej krawędzi tabeli `max-content`: dokument miał
+2626 px przy oknie 1600 px, a zrzut elementu przewijał całą aplikację w poziomie (`scrollX` 627–732
+px; kanwa wyjeżdżała poza okno i natywny klik w aparat nie miał gdzie trafić). Naprawa:
+`.mvd-kt-tabela-przewijanie { position: relative }` (`ui2/theme/komponenty.css`). Pin w specu
+zrzutowym: szerokość przewijanego obszaru dokumentu = okno po otwarciu karty pola; iniekcja (bez
+`position: relative`) — czerwony, nadmiar 1026 px.
+
+**Komórka „wielkie litery" iloczynu §11.7 pkt 7.** Po karcie bloku LOD2 wiersze bloku przekaźnika
+niosą wyłącznie kody zabezpieczeń (przewaga cyfr), więc w kadrze Z.11.1 komórka „wielkie litery"
+nie miała pomiaru. Szerokość podpisów aparatów (Q1, PF0, GK1) jest teraz mierzona tą samą tabelą
+posuwów kroju (± 1 px ekranu) w `zmierzPodpisyPola`.
+
+**Oznaczenia P1/P2 wobec tuszu T1.** Asercja „P1 na prawo od T1" porównywała napis z ramką całej
+grupy symbolu, w której kreski doprowadzenia rdzenia wychodzą o ułamek jednostki poza obrys (1,66 px
+ekranu w kadrze Z.10). Asercja porównuje teraz położenie z pierścieniem rdzenia i sprawdza, że
+prostokąt napisu nie przecina żadnego prymitywu rysunku T1 (zielone w obu testach i motywach).
+Próba przesunięcia P1 o ćwierć oczka w kompozytorze nie działa (prostokąty napisów są przyciągane
+do siatki) — wycofana.
+
+**Sonda punktu trafienia.** Porażka `punktAparatu` melduje teraz, co przykrywa środek uchwytu,
+położenie uchwytu, wymiary okna i przewinięte elementy — to ona wskazała przyczynę wyżej.

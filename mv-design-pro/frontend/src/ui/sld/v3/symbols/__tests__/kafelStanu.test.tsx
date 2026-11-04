@@ -486,7 +486,7 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
     for (const [polozenie, kat] of Object.entries(s.noz!.katy)) {
       it(`${id} · położenie ${polozenie}: wysokość glifu (nóż + znaczniki) w [0,55; 0,70] boku kafla`, () => {
         const [a, b] = obwiedniaY([...s.stale, ...s.znaczniki.flatMap((z) => z.prymitywy)]);
-        const zasieg = s.noz!.zasiegi[polozenie as keyof typeof s.noz.zasiegi] ?? 1;
+        const zasieg = s.noz!.zasiegi[polozenie as keyof NonNullable<typeof s.noz>['zasiegi']] ?? 1;
         const [c, d] = obwiedniaY(s.noz!.prymitywy, kat ?? 0, s.noz!.cx, s.noz!.cy, zasieg);
         const udzial = (Math.max(b, d) - Math.min(a, c)) / QET_BOK_KAFLA_STANU;
         expect(udzial).toBeGreaterThanOrEqual(0.55);

@@ -327,13 +327,31 @@ async function punktAparatu(page: Page, deviceRef: string): Promise<{ x: number;
         const x = Math.round(r.x + r.width * fx);
         const y = Math.round(r.y + r.height * fy);
         const top = document.elementFromPoint(x, y);
-        if (top?.getAttribute('data-hit-klasa') === 'aparat' && top.getAttribute('data-hit-device-ref') === ref) return { x, y };
+        if (top?.getAttribute('data-hit-klasa') === 'aparat' && top.getAttribute('data-hit-device-ref') === ref) return { x, y, przeszkoda: '' };
       }
     }
-    return null;
+    // Diagnostyka porażki: co przykrywa środek uchwytu (klasa, właściciel, znacznik).
+    const top = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+    const opis = top
+      ? `${top.tagName}[klasa=${top.getAttribute('data-hit-klasa')}, for=${top.getAttribute('data-hit-for')}, owner=${top.closest('[data-owner-ref]')?.getAttribute('data-owner-ref')}, testid=${top.closest('[data-testid]')?.getAttribute('data-testid')}]`
+      : 'brak elementu';
+    // Przewinięty dokument (np. w poziomie) wyprowadza uchwyt poza okno — pomiar w meldunku.
+    const przewiniecia = [...document.querySelectorAll('*')]
+      .filter((el) => el.scrollLeft > 0 || el.scrollTop > 0)
+      .map((el) => `${el.tagName}.${(el.getAttribute('class') ?? '').split(' ')[0]}[testid=${el.getAttribute('data-testid')}] scroll=${el.scrollLeft},${el.scrollTop} sw=${el.scrollWidth} cw=${el.clientWidth}`)
+      .slice(0, 6);
+    const szerokie = [...document.querySelectorAll('body *')]
+      .filter((el) => el.getBoundingClientRect().right + window.scrollX > window.innerWidth + 4 && el.children.length === 0)
+      .slice(0, 6)
+      .map((el) => `${el.tagName}[testid=${el.closest('[data-testid]')?.getAttribute('data-testid')}] right=${Math.round(el.getBoundingClientRect().right + window.scrollX)} „${(el.textContent ?? '').slice(0, 30)}"`);
+    return {
+      x: NaN,
+      y: NaN,
+      przeszkoda: `${opis}; uchwyt ${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}×${Math.round(r.height)}; okno ${window.innerWidth}×${window.innerHeight} scrollX=${window.scrollX}; przewinięte: ${przewiniecia.join(' | ')}; poza oknem: ${szerokie.join(' | ')}`,
+    };
   }, deviceRef);
-  expect(punkt, `brak punktu trafienia aparatu ${deviceRef}`).not.toBeNull();
-  return punkt!;
+  expect(punkt.przeszkoda, `brak punktu trafienia aparatu ${deviceRef} — środek uchwytu przykrywa: ${punkt.przeszkoda}`).toBe('');
+  return { x: punkt.x, y: punkt.y };
 }
 
 /** Natywny klik w punkt policzony sondą, z WERYFIKACJĄ skutku — jedna reguła dla każdego
@@ -651,12 +669,39 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
     await expect(tekst, `${kadr}: zacisk ${oznaczenie} przekładnika T1`).toHaveCount(1);
     await expect(tekst).toHaveText(oznaczenie);
     zaciski[oznaczenie] = (await tekst.boundingBox())!;
-    // Po stronie przeciwnej do podpisu T1 (tusz nie wchodzi na kafel aparatu).
+    // Po stronie przeciwnej do podpisu T1 — względem PIERŚCIENIA przekładnika (rdzeń), a tusz
+    // oznaczenia nie przecina żadnego prymitywu rysunku T1. Ramka całej grupy T1 nie jest tu
+    // miarą: kreski doprowadzenia rdzenia na prawej krawędzi kafla wychodzą o ułamek jednostki
+    // poza obrys, ale leżą na wysokości zacisku wtórnego, nie przy P1/P2 (pomiar 2026-11-04:
+    // ramka grupy 1,66 px za lewą krawędzią P1, przecięcie tuszu — zero).
+    const r = zaciski[oznaczenie];
+    const tusz = await page.locator(`${KANWA} g[data-device-ref="${t1.device_ref}"]`).first().evaluate((g) =>
+      [...g.querySelectorAll('path, line, polyline, polygon, circle, ellipse')]
+        .filter((el) => (el.getAttribute('stroke') ?? '') !== 'none' || (el.getAttribute('fill') ?? 'none') !== 'none')
+        .map((el) => {
+          const b = el.getBoundingClientRect();
+          return { cad: el.getAttribute('data-cad') ?? el.tagName, x: b.x, y: b.y, width: b.width, height: b.height };
+        }),
+    );
+    // Pierścień rdzenia = największy okrąg albo łuk rysunku T1 (prymityw CAD `circle`/`arc`).
+    const okregi = tusz.filter((t) => t.cad === 'circle' || t.cad === 'arc');
+    expect(okregi.length, `${kadr}: pierścień rdzenia T1 w rysunku`).toBeGreaterThan(0);
+    const pierscien = okregi.reduce((a, b) => (b.width > a.width ? b : a));
+    const pierscienPrawa = pierscien.x + pierscien.width;
+    const pierscienLewa = pierscien.x;
     if (stronaPodpisu === 'left') {
-      expect(zaciski[oznaczenie].x, `${kadr}: ${oznaczenie} na prawo od T1`).toBeGreaterThanOrEqual(ramkaT1.x + ramkaT1.width - TOLERANCJA_EKRANU_PX);
+      expect(r.x, `${kadr}: ${oznaczenie} na prawo od pierścienia T1`).toBeGreaterThanOrEqual(pierscienPrawa - TOLERANCJA_EKRANU_PX);
     } else {
-      expect(zaciski[oznaczenie].x + zaciski[oznaczenie].width, `${kadr}: ${oznaczenie} na lewo od T1`).toBeLessThanOrEqual(ramkaT1.x + TOLERANCJA_EKRANU_PX);
+      expect(r.x + r.width, `${kadr}: ${oznaczenie} na lewo od pierścienia T1`).toBeLessThanOrEqual(pierscienLewa + TOLERANCJA_EKRANU_PX);
     }
+    const przeciete = tusz.filter(
+      (t) =>
+        r.x < t.x + t.width - TOLERANCJA_EKRANU_PX &&
+        t.x < r.x + r.width - TOLERANCJA_EKRANU_PX &&
+        r.y < t.y + t.height - TOLERANCJA_EKRANU_PX &&
+        t.y < r.y + r.height - TOLERANCJA_EKRANU_PX,
+    );
+    expect(przeciete, `${kadr}: ${oznaczenie} nie przecina tuszu T1`).toEqual([]);
   }
   const srodek = (r: { y: number; height: number }) => r.y + r.height / 2;
   expect(srodek(zaciski[odSzyny]), `${kadr}: ${odSzyny} nad pierścieniem T1 (strona szyny)`).toBeLessThan(srodekT1);
@@ -687,7 +732,7 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
 type PomiarSzerokosci = {
   kadr: string;
   motyw: string;
-  rodzaj: 'wiersz bloku' | 'tabliczka T1';
+  rodzaj: 'wiersz bloku' | 'tabliczka T1' | 'podpis aparatu';
   tekst: string;
   klasa: 'cyfry' | 'wielkie litery';
   /** Pismo [j.św.] z atrybutu węzła (po podłodze opisów celu kadru). */
@@ -726,7 +771,15 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
         .filter((t) => !t.hasAttribute('transform'))
         .map((t) => {
           const r = t.getBoundingClientRect();
-          return { tekst: t.textContent ?? '', prawa: r.x + r.width, anchor: t.getAttribute('text-anchor') ?? '' };
+          return {
+            tekst: t.textContent ?? '',
+            prawa: r.x + r.width,
+            anchor: t.getAttribute('text-anchor') ?? '',
+            szerokosc: r.width,
+            fontSize: Number(t.getAttribute('font-size')),
+            fontWeight: Number(t.getAttribute('font-weight')),
+            skala: (t as SVGTextElement).getScreenCTM()!.a,
+          };
         }),
     [KANWA, `${pole.ref_id}#etykieta-aparatu-`] as const,
   );
@@ -735,6 +788,15 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
   const prawe = podpisy.map((p) => p.prawa);
   const rozrzut = Math.max(...prawe) - Math.min(...prawe);
   expect(rozrzut, `${kadr} · ${motyw}: wspólna prawa krawędź podpisów (${podpisy.map((p) => `${p.tekst}@${p.prawa.toFixed(1)}`).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+  // Decyzja architekta §11.7 pkt 7 na podpisach aparatów (Q1, PF0, GK1 — przewaga wielkich
+  // liter): szerokość na ekranie = tabela posuwów kroju × pismo × skala kamery, ± 1 px. Blok
+  // przekaźnika niesie po karcie bloku LOD2 wyłącznie kody zabezpieczeń (przewaga cyfr), więc
+  // komórkę „wielkie litery" iloczynu pkt 7 mierzą podpisy aparatów tego samego kadru.
+  for (const p of podpisy) {
+    const zTabeli = szerokoscZTabeliEm(p.tekst, p.fontWeight) * p.fontSize * p.skala;
+    expect(Math.abs(p.szerokosc - zTabeli), `${kadr} · ${motyw}: podpis „${p.tekst}" szerokość ${p.szerokosc.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    zapiszPomiarSzerokosci({ kadr, motyw, rodzaj: 'podpis aparatu', tekst: p.tekst, klasa: klasaTresci(p.tekst), fontSize: p.fontSize, szerokoscPx: p.szerokosc, zTabeliPx: zTabeli });
+  }
   POMIARY_PODPISOW.push({ kadr, motyw, pole: pole.ref_id, prawe, rozrzut, podpisy: podpisy.map((p) => p.tekst) });
   mkdirSync(dirname(POMIARY_PODPISOW_PLIK), { recursive: true });
   writeFileSync(POMIARY_PODPISOW_PLIK, `${JSON.stringify(POMIARY_PODPISOW, null, 2)}\n`);
@@ -744,9 +806,9 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
  *  prostokąt liczy tabela posuwów kroju (wiersze bloku przekaźnika, tabliczka przekładnika T1),
  *  z przewagą {cyfr, wielkich liter} × motyw {ciemny, jasny} — każda komórka zmierzona
  *  (asercja szerokości ± 1 px w `zmierzBlokPrzekaznika` i `sprawdzPrzekladnikPradowy`), więc
- *  test nie jest pusty. Po usunięciu duplikatów funkcji EAZ u źródła blok pola Z.10 ma jeden
- *  wiersz poza okręgiem („51N · ZS · 50BF · 79 · SCO", przewaga wielkich liter) — komórkę cyfr
- *  pola Z.10 niesie tabliczka T1 („200-400/5 A · 5P20"), tekst z tego samego pisma t4. */
+ *  test nie jest pusty. Po karcie bloku LOD2 (≤ 4 kody zabezpieczeń + „+N", automatyka poza
+ *  kanwą) wiersze bloku i tabliczka T1 („200-400/5 A · zaczep 400 A · 5P20") niosą przewagę cyfr;
+ *  komórkę wielkich liter niosą podpisy aparatów pola (Q1, PF0, GK1 — `zmierzPodpisyPola`). */
 function oczekujPokryciaKlasSzerokosci(prefiksKadru: string): void {
   const komorki = new Set(POMIARY_SZEROKOSCI.filter((p) => p.kadr.startsWith(prefiksKadru)).map((p) => `${p.klasa}|${p.motyw}`));
   expect([...komorki].sort(), `${prefiksKadru}: iloczyn klasa treści × motyw`).toEqual([
@@ -1427,6 +1489,13 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
   await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 30000 });
   // Karta pola i inspektor o TYM SAMYM obiekcie: akcja z menu aparatu zaznacza jego pole.
   await expect(page.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', poleZ11.ref_id, { timeout: 15000 });
+  // Karta pola (tabele z kolumną akcji, nagłówek `.sr-only`) nie poszerza dokumentu: przewijany
+  // obszar okna = okno. Wcześniej element pozycjonowany absolutnie w tabeli liczył się od okna
+  // i dokument miał 2626 px przy oknie 1600 px — zrzut elementu przesuwał aplikację w poziomie.
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    'karta pola nie poszerza dokumentu w poziomie',
+  ).toBeLessThanOrEqual(0);
   await page.getByTestId('wyposazenie-pola-edytuj').click();
   const szablon = page.getByTestId('wyposazenie-pola-szablon');
   await page.getByTestId('wyposazenie-pola-tryb').selectOption('szablon');

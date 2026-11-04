@@ -331,6 +331,12 @@
    zawijania komórek; kolumny poza szerokością inspektora przewija się w poziomie (klawiatura:
    fokus na obszarze tabeli), a pierwsza kolumna — nazwa obiektu — zostaje przy krawędzi. */
 .mvd-kt-tabela-przewijanie {
+  /* Blok zawierający dla elementów pozycjonowanych absolutnie w tabeli (nagłówek kolumny akcji
+     `.sr-only`): bez niego taki element liczy się od okna, stoi przy prawej krawędzi
+     tabeli max-content i rozszerza przewijany obszar DOKUMENTU — cała aplikacja przesuwała
+     się w poziomie przy zrzucie elementu (pomiar e2e 2026-11-04: `scrollWidth` 2626 px przy
+     oknie 1600 px, `scrollX` 627–732 px). */
+  position: relative;
   overflow-x: auto;
 }
 .mvd-kt-tabela {
