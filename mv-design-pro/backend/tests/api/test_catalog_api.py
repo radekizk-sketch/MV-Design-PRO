@@ -350,13 +350,15 @@ def test_protection_export_never_serializes_model_number_as_rated_current(
         assert "rated" not in (device.meta or {}), device.device_id
 
 
-def test_new_etango_250_450_are_selectable_as_real_catalog_types(
+def test_etango_family_is_selectable_as_real_catalog_types(
     client: TestClient,
 ) -> None:
+    """Rodzina e²TANGO pola SN (10 modeli z kartą producenta) w kanonicznym pickerze MV."""
     response = client.get("/api/catalog/mv-protection-device-types")
     assert response.status_code == 200
     devices = {item["id"]: item for item in response.json()}
-    for device_id in ("EM_E2TANGO_250", "EM_E2TANGO_450"):
+    for model in ("100", "150", "200", "250", "400", "450", "600", "800", "1000", "1200"):
+        device_id = f"EM_E2TANGO_{model}"
         entry = devices[device_id]
         assert entry["rated_current_a"] is None
         assert entry["analytical_library_ref"] is None

@@ -1879,6 +1879,230 @@ def get_all_vt_types() -> list[dict]:
     ]
 
 
+# =============================================================================
+# Rodzina Elektrometal e²TANGO — urządzenia zabezpieczeniowe pola SN/nN z kart producenta
+# =============================================================================
+# Karta KATALOG-PRZEJECIE-PR (przejęcie #517–#519, 2026-11-04). Każda pozycja to WYRÓB
+# z karty katalogowej producenta (numer karty, wydanie i adres w `source_reference`), nie
+# konfiguracja konkretnej sztuki: numer modelu NIE jest prądem znamionowym (wejście
+# prądowe 5 A albo 1 A wybiera się przy zamówieniu pod przekładnik), funkcje EAZ z karty
+# to oferta rodziny, nie wyposażenie instancji, i nie są wiązane z biblioteką analityczną
+# (`analytical_library_ref=None`), dopóki zakresy nastaw wariantu nie mają potwierdzonej
+# jednostki. Treść karty jest daną z karty technicznej (jakość DATASHEET); rozbieżności
+# znalezione w samej karcie producenta są opisane w nocie weryfikacji.
+#
+# Poza tym katalogiem (świadomie, nie są urządzeniami zabezpieczeniowymi pola SN):
+# detektor zwarć e²TANGO-50, zespoły WN e²TANGO-2000 (ODL/TRR/STP/ARN/LRR — 110 kV leży
+# poza zakresem pola SN), automatyka SZR/PPZ oraz peryferia (e²ECHO, e²TANGO-FER, czujniki,
+# panele, okablowanie) — żadne z nich nie jest typem przekaźnika wybieranym w polu SN.
+_ETANGO_STRONA = "https://elektrometal-energetyka.pl/wp-content/uploads/"
+_ETANGO_KARTA_600_1200 = (
+    "Elektrometal Energetyka, e²TANGO-600/-800/-1000/-1200, karta katalogowa K-3.2.25, "
+    "04/2026: " + _ETANGO_STRONA + "2026/04/Karta-katalogowa-e2TANGO-600-1200-K-3.2.25-1.pdf"
+)
+_ETANGO_FUNKCJE_600_1200 = (
+    "13, 21NY, 23/26, 25, 27/27P, 27/ARC, 27ROC/59ROC, 32P, 32Q, 37, 41N, 46, 48, 49, 50, "
+    "50BF, 50G, 50HS/SOTF, 50LR/51LR, 50N, 50NC/51NC, 50Ns, 51, 51G, 51N, 51N/59N, 51Ns, "
+    "59/59P, 59/Ufr, 59N, 62, 66, 67, 67G, 67N, 67Ns, 74TCS, 79, 79VF, 80, 81O, 81R, 81U, "
+    "83, 87L/87LG, 87M, 87T, 90C"
+)
+_ETANGO_KARTY_250_450 = (
+    "8IN, 12IN, 8IN24, 12IN24, 8IN220, 12IN220 (wejścia dwustanowe 110/24/220 V DC), 8OUT, "
+    "AI10/AI20 (najwyżej jedna), AO10/AO20 (najwyżej jedna), PT1 (6 × PT100, najwyżej jedna)"
+)
+_ETANGO_KARTY_600_1200 = (
+    "8IN, 12IN, 8IN24, 12IN24, 8IN220, 12IN220, 8OUT (najwyżej 4), 4OUTH, AI10/AI20 "
+    "(najwyżej jedna), AO10/AO20 (najwyżej jedna), PT1, 3TMP/6TMP (najwyżej jedna), ARC, "
+    "ARP (wymaga ARC), PSU2 (zasilacz redundantny 110–220 V AC/DC, zajmuje 2 sąsiednie "
+    "sloty), TV, TVZ, TRR (tylko J10/J14, zajmuje 2 sloty)"
+)
+_ETANGO_POMIAROWE_600_1200 = (
+    "TR (5I+4U), TRS (4I+5U, synchronizacja), TRSG (5I+5U), TRU (9U, SZR), "
+    "TRP (5I+3Ip+4U), TRC (cewki Rogowskiego), TRCZ (cewki Rogowskiego i sensory napięcia)"
+)
+_ETANGO_NOTA_INSTANCJI = (
+    " Wariant sprzętowy, czynne funkcje, przekładniki i nastawy wymagają kodu zamówienia, "
+    "DTR i konfiguracji konkretnej sztuki."
+)
+
+
+def _rekord_etango(
+    *,
+    model: str,
+    rola: str,
+    karta: str,
+    wejscie_pradowe: str,
+    opis: str,
+    nota_weryfikacji: str,
+) -> dict:
+    """Pozycja e²TANGO z karty producenta — jedno miejsce wspólnej treści rekordu."""
+    return {
+        "id": f"EM_E2TANGO_{model}",
+        "name_pl": f"{rola} Elektrometal e²TANGO-{model}",
+        "params": {
+            "vendor": "ELEKTROMETAL",
+            "series": "e2TANGO",
+            "revision": None,
+            "rated_current_a": None,
+            "analytical_library_ref": None,
+            "notes_pl": (
+                f"Wejście prądowe: {wejscie_pradowe} (karta techniczna; numer modelu nie "
+                f"jest prądem znamionowym). {opis}"
+            ),
+            "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+            "source_reference": karta,
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "verification_note": nota_weryfikacji + _ETANGO_NOTA_INSTANCJI,
+        },
+    }
+
+
+def _rekordy_rodziny_etango() -> list[dict]:
+    """Rodzina e²TANGO pola SN/nN — wyłącznie modele z kartą katalogową producenta."""
+    rekordy = [
+        _rekord_etango(
+            model="100",
+            rola="Zespół zabezpieczeń",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-100, karta katalogowa K-34.1.9, 01/2026: "
+                + _ETANGO_STRONA
+                + "2026/01/Karta-katalogowa-e2TANGO-100-K-34.1.9.pdf"
+            ),
+            wejscie_pradowe="5 A, 1 A opcjonalnie",
+            opis="Kompaktowy zespół zabezpieczeń SN/nN (karta K-34.1.9, dane techniczne).",
+            nota_weryfikacji="Potwierdzono model i wejście prądowe z karty producenta.",
+        ),
+        _rekord_etango(
+            model="150",
+            rola="Zespół zabezpieczeń",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-150, karta katalogowa K-40.1.8, 08/2025: "
+                + _ETANGO_STRONA
+                + "2025/08/karta-katalogowa-e2TANGO-150-K-40.1.8.pdf"
+            ),
+            wejscie_pradowe="5 A, 1 A opcjonalnie",
+            opis=(
+                "Wykonania 150-M, 150-L, 150-G i 150-LG (karta K-40.1.8, tabela wykonań) — "
+                "różnią się obwodami I0 i U0, nie są wymienne."
+            ),
+            nota_weryfikacji="Potwierdzono model, wykonania i wejście prądowe z karty producenta.",
+        ),
+        _rekord_etango(
+            model="200",
+            rola="Zespół zabezpieczeń",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-200, karta katalogowa K-32.2.12, 09/2026: "
+                + _ETANGO_STRONA
+                + "2026/09/Karta-katalogowa-e2TANGO-200-K-32.2.12.pdf"
+            ),
+            wejscie_pradowe="5 A, 1 A opcjonalnie",
+            opis=(
+                "Poprzednia generacja (następca: e²TANGO-250); producent oferuje ją wyłącznie "
+                "w wykonaniu autonomicznym (strona produktu „e²TANGO-200 – tylko wersja "
+                "autonomiczna”, karta K-32.2.12 „Wykonanie autonomiczne”)."
+            ),
+            nota_weryfikacji=(
+                "Potwierdzono model, wejście prądowe i ograniczenie oferty z karty i strony "
+                "producenta."
+            ),
+        ),
+        _rekord_etango(
+            model="250",
+            rola="Zespół zabezpieczeń",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-250, karta katalogowa K-42.1.8, 10/2025: "
+                + _ETANGO_STRONA
+                + "2025/10/Karta-katalogowa-e2TANGO-250-K-42.1.8.pdf"
+            ),
+            wejscie_pradowe="5 A albo 1 A (konfigurowalne)",
+            opis=(
+                "Wykonanie S: 4I+1U, wykonanie U: 1I+4U. Slot A zajmuje karta podstawowa "
+                "6O3I (6 wyjść przekaźnikowych, 3 wejścia dwustanowe), sloty B–D: karty "
+                f"rozszerzeń {_ETANGO_KARTY_250_450}. Karty pomiarowe przy zamówieniu: TR "
+                "(4I+1U), TRU (4U), TRC1/TRC2/TRC3 (cewki Rogowskiego). Funkcje w ofercie "
+                "rodziny: 21NY, 27/27P, 50, 50BF, 50N, 51, 51N, 59/59P, 59N, 67, 67N, 79, "
+                "81O, 81U."
+            ),
+            nota_weryfikacji=(
+                "Potwierdzono model, wejście 1/5 A, karty i funkcje z karty producenta. "
+                "Rozbieżność w karcie: tabela cech wymienia karty wejść czujników błysku, a "
+                "lista kart rozszerzeń nie zawiera karty ARC — zamawialność ochrony "
+                "łukowej dla 250 wymaga potwierdzenia producenta."
+            ),
+        ),
+        _rekord_etango(
+            model="400",
+            rola="Zespół zabezpieczeń",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-400, karta katalogowa K-33.2.2, 04/2021: "
+                "https://www.elektrometal-energetyka.pl/wp-content/uploads/2021/04/"
+                "Karta-katalogowa-e2TANGO-400-33.2.2.pdf"
+            ),
+            wejscie_pradowe="5 A, 1 A opcjonalnie",
+            opis=(
+                "Poprzednia generacja (następca: e²TANGO-450); producent zakończył rozwój "
+                "nowych funkcji (strona „Nowa generacja e²TANGO”)."
+            ),
+            nota_weryfikacji="Potwierdzono model i wejście prądowe z karty producenta.",
+        ),
+        _rekord_etango(
+            model="450",
+            rola="Sterownik polowy",
+            karta=(
+                "Elektrometal Energetyka, e²TANGO-450, karta katalogowa K-43.1.7, 07/2025: "
+                + _ETANGO_STRONA
+                + "2025/07/Karta-katalogowa-e2TANGO-450-K-43.1.7.pdf"
+            ),
+            wejscie_pradowe="5 A albo 1 A (konfigurowalne)",
+            opis=(
+                "Ekran kolorowy 4,3 cala; 4 wejścia prądowe i 1 napięciowe w karcie TR. "
+                "Slot A zajmuje karta podstawowa 6O3I, sloty B–D: karty rozszerzeń "
+                f"{_ETANGO_KARTY_250_450}, ARC (6 wejść czujników łuku). Karty pomiarowe "
+                "przy zamówieniu: TR (4I+1U), TU (3U z przekładników), TRC1/TRC2/TRC3 "
+                "(cewki Rogowskiego 3–3000, 9–9000, 30–30000 mV), TZ1 (sensory 200 kΩ, "
+                "300 pF), TZ2 (sensory 2 MΩ, 50 pF). Funkcje w ofercie rodziny: 21NY, "
+                "27/27P, 50, 50BF, 50N, 51, 51N, 59/59P, 59N, 67, 67N, 74TCS, 79, 81O, 81U."
+            ),
+            nota_weryfikacji=(
+                "Potwierdzono model, wejście 1/5 A, karty i funkcje z karty producenta. "
+                "Profil analityczny EM_E2TANGO_450 istnieje, ale zakresy nastaw nie mają "
+                "potwierdzonej jednostki, więc nie jest tu łączony."
+            ),
+        ),
+    ]
+    for model, ekran in (
+        ("600", "6 cali"),
+        ("800", "6 cali"),
+        ("1000", "7 cali, dotykowy"),
+        ("1200", "7 cali, dotykowy"),
+    ):
+        rekordy.append(
+            _rekord_etango(
+                model=model,
+                rola="Sterownik polowy",
+                karta=_ETANGO_KARTA_600_1200,
+                wejscie_pradowe="5 A albo 1 A (konfigurowalne)",
+                opis=(
+                    f"Panel operatorski oddzielny od jednostki centralnej, ekran {ekran}. "
+                    "Jednostka centralna J6/J10/J14 (6/10/14 slotów), karty fabryczne CPU "
+                    f"i PSU; karty rozszerzeń: {_ETANGO_KARTY_600_1200}. Karty pomiarowe "
+                    f"przy zamówieniu: {_ETANGO_POMIAROWE_600_1200}. Funkcje w ofercie "
+                    f"rodziny: {_ETANGO_FUNKCJE_600_1200}."
+                ),
+                nota_weryfikacji=(
+                    "Potwierdzono model, wejście 1/5 A, karty i funkcje z karty producenta "
+                    "K-3.2.25. Sprzeczność w karcie: przypis 7) opisuje kartę TRR w slocie "
+                    "E (sloty C+E, strona SN1) i w slocie F (sloty D+F), a zasady "
+                    "rozmieszczenia — „karta TRR może być zainstalowana tylko w slocie F”; "
+                    "obsadę slotów TRR/TV potwierdza producent przy zamówieniu. Opcja "
+                    "IEC 61850 wyklucza podgląd kamer (K-3.2.25)."
+                ),
+            )
+        )
+    return rekordy
+
+
 def get_all_protection_device_types() -> list[dict]:
     def _device_meta(
         *,
@@ -1997,69 +2221,7 @@ def get_all_protection_device_types() -> list[dict]:
                 ),
             },
         },
-        # e²TANGO nowej generacji: pozycje katalogowe WYROBU, bez imputowania
-        # funkcji/nastaw konkretnej konfiguracji. Karta producenta podaje
-        # konfigurowalne wejście prądowe 1 A / 5 A, a NIE „250 A”/„450 A”.
-        # Bez łączenia z biblioteką analityczną, dopóki profil funkcji i jednostki
-        # zakresów nastaw wariantu nie są potwierdzone kartą producenta.
-        {
-            "id": "EM_E2TANGO_250",
-            "name_pl": "Sterownik polowy Elektrometal e²TANGO-250",
-            "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": None,
-                "analytical_library_ref": None,
-                "notes_pl": (
-                    "Rodzina producenta. Wejścia prądowe 1 A lub 5 A (konfigurowalne, karta "
-                    "K-42.1.8, tabela danych technicznych); wariant S/U, karty rozszerzeń, "
-                    "funkcje EAZ i nastawy wymagają konfiguracji instancji i potwierdzenia DTR."
-                ),
-                **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=(
-                        "Elektrometal Energetyka, e²TANGO-250, K-42.1.8, 10/2025: "
-                        "https://elektrometal-energetyka.pl/wp-content/uploads/2025/10/"
-                        "Karta-katalogowa-e2TANGO-250-K-42.1.8.pdf"
-                    ),
-                    catalog_status="REFERENCYJNY_V1",
-                    verification_note=(
-                        "Potwierdzono model i wejście 1/5 A na podstawie karty producenta. "
-                        "Funkcje, nastawy i konfiguracja kart konkretnej sztuki niezweryfikowane."
-                    ),
-                ),
-            },
-        },
-        {
-            "id": "EM_E2TANGO_450",
-            "name_pl": "Sterownik polowy Elektrometal e²TANGO-450",
-            "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": None,
-                "analytical_library_ref": None,
-                "notes_pl": (
-                    "Rodzina producenta. Wejścia prądowe 1 A lub 5 A (konfigurowalne, karta "
-                    "K-43.1.7, tabela danych technicznych); zestaw kart, funkcje EAZ i nastawy "
-                    "wymagają konfiguracji instancji. Profil analityczny EM_E2TANGO_450 "
-                    "istnieje, ale zakresy nastaw nie mają potwierdzonej jednostki, więc nie "
-                    "jest tu łączony."
-                ),
-                **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=(
-                        "Elektrometal Energetyka, e²TANGO-450, K-43.1.7, 07/2025: "
-                        "https://elektrometal-energetyka.pl/wp-content/uploads/2025/07/"
-                        "Karta-katalogowa-e2TANGO-450-K-43.1.7.pdf"
-                    ),
-                    catalog_status="REFERENCYJNY_V1",
-                    verification_note=(
-                        "Potwierdzono model i wejście 1/5 A na podstawie karty producenta. "
-                        "Katalog analityczny nie stanowi dowodu aktywnych funkcji urządzenia."
-                    ),
-                ),
-            },
-        },
+        *_rekordy_rodziny_etango(),
         {
             "id": "EM_ETANGO_400_V0",
             "name_pl": "Przekaźnik Elektrometal e2TANGO-400",

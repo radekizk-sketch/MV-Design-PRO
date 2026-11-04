@@ -232,6 +232,26 @@ _DAWNE_POZYCJE_ENEA: dict[str, str] = {
     "cable-enea-operator-xruhakxs-1x120": "XRUHAKXS 1x120/25",
     "cable-enea-operator-xruhakxs-1x240": "XRUHAKXS 1x240/25",
 }
+#: Karta KATALOG-PRZEJECIE-PR, poz. 5 (2026-11-04): rodzina e²TANGO pola SN z kart producenta
+#: (przejęcie #518/#519) — 8 nowych modeli (100, 150, 200, 400, 600, 800, 1000, 1200) i treść
+#: kart (wykonania, karty rozszerzeń, karty pomiarowe, funkcje, rozbieżności karty) w notach
+#: pozycji 250/450. Dowód w teście niżej: wycięcie 8 identyfikatorów i przywrócenie 7 dawnych
+#: liści tekstowych 250/450 daje ``ODCISK_PO_KABLACH_PRODUCENTOW``.
+ODCISK_PO_RODZINIE_ETANGO = "fda8417e7fea08a67f26af697ff2cec005718e9b8e9b8d0edde2bd288522b7c2"
+NOWE_MODELE_ETANGO = ("100", "150", "200", "400", "600", "800", "1000", "1200")
+_ETANGO_250_450_PRZED_RODZINA: dict[str, dict[str, str]] = {
+    "EM_E2TANGO_250": {
+        "name_pl": "Sterownik polowy Elektrometal e²TANGO-250",
+        "notes_pl": "Rodzina producenta. Wejścia prądowe 1 A lub 5 A (konfigurowalne, karta K-42.1.8, tabela danych technicznych); wariant S/U, karty rozszerzeń, funkcje EAZ i nastawy wymagają konfiguracji instancji i potwierdzenia DTR.",
+        "source_reference": "Elektrometal Energetyka, e²TANGO-250, K-42.1.8, 10/2025: https://elektrometal-energetyka.pl/wp-content/uploads/2025/10/Karta-katalogowa-e2TANGO-250-K-42.1.8.pdf",
+        "verification_note": "Potwierdzono model i wejście 1/5 A na podstawie karty producenta. Funkcje, nastawy i konfiguracja kart konkretnej sztuki niezweryfikowane.",
+    },
+    "EM_E2TANGO_450": {
+        "notes_pl": "Rodzina producenta. Wejścia prądowe 1 A lub 5 A (konfigurowalne, karta K-43.1.7, tabela danych technicznych); zestaw kart, funkcje EAZ i nastawy wymagają konfiguracji instancji. Profil analityczny EM_E2TANGO_450 istnieje, ale zakresy nastaw nie mają potwierdzonej jednostki, więc nie jest tu łączony.",
+        "source_reference": "Elektrometal Energetyka, e²TANGO-450, K-43.1.7, 07/2025: https://elektrometal-energetyka.pl/wp-content/uploads/2025/07/Karta-katalogowa-e2TANGO-450-K-43.1.7.pdf",
+        "verification_note": "Potwierdzono model i wejście 1/5 A na podstawie karty producenta. Katalog analityczny nie stanowi dowodu aktywnych funkcji urządzenia.",
+    },
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -315,6 +335,15 @@ def _cofnij_kable_producentow(zrzut: dict[str, object]) -> tuple[int, int]:
     return len(nowe_sn), len(nowe_nn)
 
 
+def _cofnij_rodzine_etango(zrzut: dict[str, object]) -> None:
+    """Cofa poz. 5 karty KATALOG-PRZEJECIE-PR (rodzina e²TANGO z kart producenta)."""
+    urzadzenia = zrzut["protection_device_types"]  # type: ignore[index]
+    for model in NOWE_MODELE_ETANGO:
+        urzadzenia.pop(f"EM_E2TANGO_{model}")
+    for identyfikator, liscie in _ETANGO_250_450_PRZED_RODZINA.items():
+        urzadzenia[identyfikator].update(liscie)
+
+
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
     tekst = json.dumps(
         zrzut, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=_kanon
@@ -377,6 +406,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_RODZINIE_ETANGO
+    _cofnij_rodzine_etango(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KABLACH_PRODUCENTOW
     assert _cofnij_kable_producentow(zrzut) == (97, 79)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_I0_OLEJOWYCH

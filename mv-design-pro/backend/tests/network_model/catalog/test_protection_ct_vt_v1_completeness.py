@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+
+import pytest
 from application.analyses.protection.catalog.vendors.abb_v0 import build_adapter
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogStatus, CatalogVerificationStatus
@@ -108,23 +111,41 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "EM_ETANGO_1250_V0",
         "EM_ETANGO_1600_V0",
         "EM_ETANGO_2000_V0",
-        "EM_E2TANGO_250",
-        "EM_E2TANGO_450",
+        *(f"EM_E2TANGO_{model}" for model in MODELE_ETANGO_POLA_SN),
     }
 
 
-def test_new_etango_families_are_catalogued_without_guessed_functions() -> None:
-    repo = get_default_mv_catalog()
-    for identyfikator in ("EM_E2TANGO_250", "EM_E2TANGO_450"):
-        pozycja = repo.get_protection_device_type(identyfikator)
-        assert pozycja is not None
-        assert pozycja.vendor == "ELEKTROMETAL"
-        assert pozycja.rated_current_a is None
-        assert pozycja.analytical_library_ref is None
-        assert pozycja.verification_status == "CZESCIOWO_ZWERYFIKOWANY"
-        assert pozycja.catalog_status == "REFERENCYJNY_V1"
-        assert "elektrometal-energetyka.pl" in pozycja.source_reference
-        assert "1 A lub 5 A" in (pozycja.notes_pl or "")
+#: Modele rodziny e²TANGO dla pola SN/nN, dla których producent publikuje kartę katalogową
+#: (strona producenta, 2026-11-04). Lista ZAMKNIĘTA: detektor e²TANGO-50, zespoły WN
+#: e²TANGO-2000 i automatyka SZR/PPZ nie są urządzeniami zabezpieczeniowymi pola SN.
+MODELE_ETANGO_POLA_SN = ("100", "150", "200", "250", "400", "450", "600", "800", "1000", "1200")
+
+
+@pytest.mark.parametrize("model", MODELE_ETANGO_POLA_SN)
+def test_rodzina_etango_z_karty_producenta_bez_zgadywania(model: str) -> None:
+    """Każda pozycja rodziny: karta producenta w źródle, wejście 5 A/1 A w notach, numer
+    modelu NIE jest prądem znamionowym, brak domyślnego podpięcia do biblioteki analitycznej
+    i brak obcego słownika statusów (POTWIERDZONE, ROZBIEZNOSC_*, SPRZECZNOSC_*,
+    DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY)."""
+    pozycja = get_default_mv_catalog().get_protection_device_type(f"EM_E2TANGO_{model}")
+    assert pozycja is not None
+    assert pozycja.vendor == "ELEKTROMETAL"
+    assert pozycja.series == "e2TANGO"
+    assert f"e²TANGO-{model}" in pozycja.name_pl
+    assert pozycja.rated_current_a is None
+    assert pozycja.analytical_library_ref is None
+    assert pozycja.verification_status == "CZESCIOWO_ZWERYFIKOWANY"
+    assert pozycja.catalog_status == "REFERENCYJNY_V1"
+    assert re.search(
+        r"karta katalogowa K-[0-9.]+, [0-9]{2}/20[0-9]{2}: https://", pozycja.source_reference
+    )
+    assert "elektrometal-energetyka.pl/wp-content/uploads/" in pozycja.source_reference
+    notes = pozycja.notes_pl or ""
+    assert notes.startswith("Wejście prądowe: 5 A")
+    assert "1 A" in notes
+    assert "numer modelu nie jest prądem znamionowym" in notes
+    for obcy in ("POTWIERDZONE", "ROZBIEZNOSC", "SPRZECZNOSC", "NIE_ZAINSTALOWANY"):
+        assert obcy not in notes and obcy not in (pozycja.verification_note or "")
 
 
 def test_abb_vendor_adapter_covers_reference_devices() -> None:
