@@ -29,6 +29,7 @@ drugie to werdykt.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -468,9 +469,32 @@ _RODZAJ_Z_TYPU: dict[str, RodzajDer] = {
 }
 
 
+def ref_katalogu_transformatora_dedykowanego(
+    generator: dict[str, Any], transformatory: Sequence[dict[str, Any]]
+) -> str | None:
+    """Pozycja katalogu transformatora dedykowanego wytworcy — TOZSAMOSC z modelu.
+
+    Transformator dedykowany jest elementem modelu wskazanym przez
+    `blocking_transformer_ref`; pozycje katalogu niesie JEGO `catalog_ref` (zapisuje go
+    materializacja w `add_converter_source`). Wytworca nie niesie kopii tej referencji —
+    dawny odczyt `block_transformer_catalog_ref` z `materialized_params`/`meta` wytworcy
+    czytal klucz, ktorego zadna operacja nie zapisuje, wiec kazdy transformator dedykowany
+    byl „brakiem". Brak wskazania, brak elementu albo element bez pozycji katalogu = brak.
+    """
+
+    ref = generator.get("blocking_transformer_ref")
+    if not isinstance(ref, str) or not ref.strip():
+        return None
+    for transformator in transformatory:
+        if transformator.get("ref_id") == ref:
+            return _tekst((transformator,), ("catalog_ref",))
+    return None
+
+
 def wejscie_z_generatora(
     generator: dict[str, Any],
     *,
+    transformatory: Sequence[dict[str, Any]] = (),
     other_ders_in_station: int = 0,
     ct_accuracy_class: str | None = None,
     ct_application: Literal["protection", "metering", "dual"] | None = None,
@@ -513,7 +537,9 @@ def wejscie_z_generatora(
         device_catalog_ref=(
             generator.get("catalog_ref") or _tekst(zrodla, ("device_catalog_ref",))
         ),
-        block_transformer_catalog_ref=_tekst(zrodla, ("block_transformer_catalog_ref",)),
+        block_transformer_catalog_ref=ref_katalogu_transformatora_dedykowanego(
+            generator, transformatory
+        ),
         protection_catalog_ref=_tekst(zrodla, ("protection_catalog_ref",)),
         ct_catalog_ref=_tekst(zrodla, ("ct_catalog_ref",)),
         vt_catalog_ref=_tekst(zrodla, ("vt_catalog_ref",)),

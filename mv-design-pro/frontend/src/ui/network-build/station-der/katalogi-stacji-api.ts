@@ -38,7 +38,10 @@ export interface PfCurveItem {
 
 /**
  * Transformator dedykowany DER (B.5) — kształt 1:1 z backendu
- * (`network_model/catalog/katalogi_stacji.py::BlockTransformerItem.to_dict`).
+ * (`network_model/catalog/katalogi_stacji.py::BlockTransformerItem.to_dict`). Karta
+ * JEDNA-SCIEZKA-EDYCJI: `id` JEST identyfikatorem typu katalogu TRAFO_SN_NN
+ * (`catalog_namespace` = `TRAFO_SN_NN`) — tę samą referencję operacja `add_converter_source`
+ * materializuje i zapisuje w modelu; dawne `btr_*` i `transformer_type_ref` zdjęte.
  * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii
  * (`BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts`).
  */
@@ -47,7 +50,6 @@ export interface BlockTransformerItem {
   readonly catalog_namespace: string;
   readonly catalog_version: string;
   readonly label_pl: string;
-  readonly transformer_type_ref: string;
   readonly sn_kva: number;
   readonly hv_kv: number;
   readonly lv_kv: number;

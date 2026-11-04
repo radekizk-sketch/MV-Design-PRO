@@ -135,7 +135,7 @@
         "bus_przylaczenia_ref": "BUS-SN-1",
         "nominal_power_kw": 1000.0,
         "device_catalog_ref": "pv_inv_sma_2500",
-        "block_transformer_catalog_ref": "btr_pv_15_04_1000",
+        "block_transformer_catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         "other_ders_in_station": 1
       },
       "oczekiwane": { "equipment": "ready" },
@@ -165,7 +165,7 @@
         "bus_przylaczenia_ref": "BUS-SN-1",
         "nominal_power_kw": 2500.0,
         "device_catalog_ref": "pv_inv_sma_2500",
-        "block_transformer_catalog_ref": "btr_pv_15_04_1000",
+        "block_transformer_catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         "protection_catalog_ref": "ABB_REB670",
         "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
         "vt_catalog_ref": "vt_10kv_100v_05_abb",

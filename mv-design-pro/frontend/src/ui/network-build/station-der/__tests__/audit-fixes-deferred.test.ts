@@ -24,10 +24,9 @@ function blockTransformerFixture(
 ): BlockTransformerItem {
   return {
     id,
-    catalog_namespace: 'block_transformer',
+    catalog_namespace: 'TRAFO_SN_NN',
     catalog_version: '1.0',
     label_pl: `Transformator dedykowany ${overrides.hv_kv ?? 15}/${overrides.lv_kv ?? 0.69} kV`,
-    transformer_type_ref: `tr-test-${id}`,
     sn_kva: 1000,
     hv_kv: 15,
     lv_kv: 0.69,
@@ -46,19 +45,19 @@ function blockTransformerFixture(
 }
 
 const BLOCK_TRANSFORMER_FIXTURES: readonly BlockTransformerItem[] = [
-  blockTransformerFixture('btr_pv_15_069_800', {
+  blockTransformerFixture('tr-sn-nn-15-0p69-0p8mva-dyn11-inverter', {
     sn_kva: 800, hv_kv: 15, lv_kv: 0.69, applicable_der_kinds: ['PV', 'BESS'],
   }),
-  blockTransformerFixture('btr_pv_15_069_1250', {
+  blockTransformerFixture('tr-sn-nn-15-0p69-1p25mva-dyn11-inverter', {
     sn_kva: 1250, hv_kv: 15, lv_kv: 0.69, applicable_der_kinds: ['PV', 'BESS', 'FW'],
   }),
-  blockTransformerFixture('btr_bess_15_04_1000', {
+  blockTransformerFixture('tr-test-bess-15-04-1000kva', {
     sn_kva: 1000, hv_kv: 15, lv_kv: 0.4, applicable_der_kinds: ['BESS'], galvanic_isolation: true,
   }),
-  blockTransformerFixture('btr_bess_15_04_500_no_iso', {
+  blockTransformerFixture('tr-test-bess-15-04-500kva-bez-izolacji', {
     sn_kva: 500, hv_kv: 15, lv_kv: 0.4, applicable_der_kinds: ['BESS'], galvanic_isolation: false,
   }),
-  blockTransformerFixture('btr_fw_15_3', {
+  blockTransformerFixture('tr-test-fw-15-3kv', {
     sn_kva: 5000, hv_kv: 15, lv_kv: 3, applicable_der_kinds: ['FW'], is_mv_to_mv: true, vector_group: 'YNd11',
   }),
 ];

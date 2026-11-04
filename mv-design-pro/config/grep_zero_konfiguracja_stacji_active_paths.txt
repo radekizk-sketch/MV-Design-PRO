@@ -1,0 +1,13 @@
+# JEDNA-SCIEZKA-EDYCJI: aktywne sciezki KODU produktu, testow, schematu bazy, migawki
+# kontraktu i aktywnych kontraktow dokumentacji (grupa `konfiguracja_stacji_`). Skrypty
+# guardow (`scripts/`) sa poza zbiorem: niosa wylacznie historie pomiarow zapadek
+# (komentarze `wpis ... zdjety`), nie kod, ktory moglby zapisac do skasowanego magazynu.
+backend/src
+backend/tests
+backend/schemas
+frontend/src
+frontend/e2e
+frontend/scripts
+docs/system
+docs/domain
+docs/ui

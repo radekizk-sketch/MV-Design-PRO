@@ -25,7 +25,6 @@ from datetime import date
 from typing import Any
 
 import pytest
-from api.generators import DerGeneratorCreateRequest
 from application.ncrfg_compliance import bieg_ncrfg, model_bridge, zgodnosc_ncrfg_przypadku
 from application.ncrfg_compliance.model_bridge import build_ncrfg_module_input_from_generator
 from enm.deklaracje_modulu import (
@@ -290,11 +289,14 @@ _STATUSY: tuple[tuple[Any, bool], ...] = (
     (True, True),
     (False, True),
 )
+# Karta JEDNA-SCIEZKA-EDYCJI: dawny nośnik „zadanie_http" (model żądania
+# `POST …/generators`, `DerGeneratorCreateRequest`) skasowano razem z tą końcówką. Jedyna
+# droga HTTP zapisu źródła OZE to `domain-ops` → `add_converter_source`, która przekazuje
+# ładunek WPROST pisarzowi operacji — ten nośnik jest więc tym samym co „pisarz_operacji".
 _NOSNIKI = (
     "pisarz_operacji",
     "model_python",
     "model_json",
-    "zadanie_http",
     "wejscie_solvera",
 )
 
@@ -313,16 +315,6 @@ def _przyjete(nosnik: str, pole: str, wartosc: Any) -> bool:
                 json.dumps(
                     {"ref_id": "g-1", "name": "G", "bus_ref": "b-1", "p_mw": 1.0, pole: wartosc}
                 )
-            )
-        elif nosnik == "zadanie_http":
-            DerGeneratorCreateRequest.model_validate(
-                {
-                    "station_ref": "st-1",
-                    "der_kind": "PV",
-                    "power_mw": 1.0,
-                    "catalog_ref": REF_PV,
-                    pole: wartosc,
-                }
             )
         else:
             NcRfgPtpireeModuleInput.model_validate({**f.KOMPLET, pole: wartosc})
@@ -433,7 +425,7 @@ def test_pisarz_odrzuca_wartosc_innego_rodzaju_bez_skutku(operacja: str, pole: s
 
 
 @pytest.mark.parametrize("pole", list(_INNEGO_RODZAJU))
-@pytest.mark.parametrize("nosnik", ["model_python", "model_json", "zadanie_http"])
+@pytest.mark.parametrize("nosnik", ["model_python", "model_json", "pisarz_operacji"])
 def test_blok_modulu_innego_rodzaju_odrzucany_na_kazdym_nosniku(nosnik: str, pole: str) -> None:
     assert _przyjete(nosnik, pole, _INNEGO_RODZAJU[pole][0]) is False
     poprawna = _WARTOSCI[pole][0]

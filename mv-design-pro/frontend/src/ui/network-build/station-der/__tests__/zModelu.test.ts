@@ -23,9 +23,12 @@ import type { StationDerConnection } from '../types';
 import {
   DER_MATERIALIZED_BINDING_KEYS,
   DER_MATERIALIZED_PROFILE_KEYS,
+  derZGeneratoraModelu,
   deryStacjiZModelu,
   deryZModelu,
+  refKataloguTransformatoraDedykowanego,
 } from '../zModelu';
+import type { BlockTransformerItem } from '../katalogi-stacji-api';
 
 const STACJA = 'stn/aaa/station';
 const SZYNA_NN = 'stn/aaa/nn_bus';
@@ -498,5 +501,123 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
       );
       expect(wynik[0].profiles.bess_operation_mode_refs).toEqual(['mode_peak_shaving']);
     });
+  });
+});
+
+describe('refKataloguTransformatoraDedykowanego — tożsamość z modelu, nie dopasowanie po danych', () => {
+  // Dwie pozycje listy o TYCH SAMYCH danych elektrycznych (np. olejowa i sucha): dawna
+  // inferencja po (moc, napięcia, grupa) brała pierwszą z listy, czyli mogła podstawić
+  // cudzą pozycję. Iloczyn: catalog_ref transformatora {pozycja A, pozycja B, spoza listy,
+  // brak} × wskazanie wytwórcy {istniejący transformator, nieistniejący, brak}.
+  const pozycja = (id: string): BlockTransformerItem => ({
+    id,
+    catalog_namespace: 'TRAFO_SN_NN',
+    catalog_version: 'legacy',
+    label_pl: id,
+    sn_kva: 1250,
+    hv_kv: 15,
+    lv_kv: 0.69,
+    uk_percent: 6,
+    pk_kw: 12,
+    p0_kw: 2,
+    i0_percent: 0.5,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
+    galvanic_isolation: true,
+    source_reference: 'fikstura',
+    verification_status: 'VERIFIED',
+  });
+  const LISTA = [pozycja('tr-a'), pozycja('tr-b')];
+  const zTransformatorem = (catalogRef: string | null) =>
+    migawka({
+      transformers: [
+        {
+          ref_id: 'tr-1',
+          id: 'tr-1',
+          sn_mva: 1.25,
+          uhv_kv: 15,
+          ulv_kv: 0.69,
+          vector_group: 'Dyn11',
+          catalog_ref: catalogRef,
+        },
+      ],
+    } as unknown as Partial<EnergyNetworkModel>);
+
+  it.each([
+    ['tr-a', 'tr-a'],
+    ['tr-b', 'tr-b'],
+    ['tr-spoza-listy', null],
+    [null, null],
+  ])('catalog_ref %s → pozycja %s', (catalogRef, oczekiwana) => {
+    expect(refKataloguTransformatoraDedykowanego(zTransformatorem(catalogRef), 'tr-1', LISTA)).toBe(
+      oczekiwana,
+    );
+  });
+
+  it.each([['tr-nieistniejacy'], [null]])('wskazanie %s → brak pozycji', (wskazanie) => {
+    expect(refKataloguTransformatoraDedykowanego(zTransformatorem('tr-a'), wskazanie, LISTA)).toBeNull();
+  });
+});
+
+describe('derZGeneratoraModelu — JEDEN czytnik generatora dla magazynu i widoku źródła', () => {
+  // Karta JEDNA-SCIEZKA-EDYCJI: widok źródła miał drugie odwzorowanie, które rozjeżdżało się
+  // z magazynem (nieznany wariant → nN, liczba jednostek z innego słownika, zmyślone
+  // `tr_${ref}`). Iloczyn cech: wariant {nn_side, block_transformer, alias zastany} ×
+  // transformator dedykowany {wskazany, niewskazany} × liczba jednostek {w meta, brak}.
+  // Kryterium: rekord pojedynczego odczytu === rekord z `deryZModelu` (ten sam czytnik)
+  // i nigdy referencja transformatora, którego w modelu nie ma.
+  const TRANSFORMATOR = {
+    ref_id: 'tr-ded-1',
+    id: 'tr-ded-1',
+    hv_bus_ref: 'bus-sn-1',
+    lv_bus_ref: SZYNA_NN,
+    sn_mva: 1.25,
+    catalog_ref: 'tr-a',
+  };
+  const przypadki = ['nn_side', 'block_transformer', 'DEDICATED_MV_CONNECTION'].flatMap((wariant) =>
+    [true, false].flatMap((zTransformatorem) =>
+      [true, false].map((zLiczba) => [wariant, zTransformatorem, zLiczba] as const),
+    ),
+  );
+
+  it.each(przypadki)('wariant %s × transformator %s × liczba jednostek %s', (wariant, zTr, zLiczba) => {
+    const generator = generatorPv({
+      connection_variant: wariant,
+      ...(zTr ? { blocking_transformer_ref: 'tr-ded-1' } : {}),
+      meta: zLiczba ? { quantity: 4 } : {},
+    });
+    const snapshot = migawka({
+      generators: [generator],
+      transformers: [TRANSFORMATOR],
+      buses: [
+        { ref_id: SZYNA_NN, id: SZYNA_NN, voltage_kv: 0.8 },
+        { ref_id: 'bus-sn-1', id: 'bus-sn-1', voltage_kv: 15 },
+      ],
+    } as unknown as Partial<EnergyNetworkModel>);
+    const pojedynczy = derZGeneratoraModelu(snapshot, 'pv/111/converter');
+    const zListy = deryZModelu(snapshot, null).find((der) => der.id === 'pv/111/converter');
+    expect(pojedynczy).not.toBeNull();
+    expect(pojedynczy).toEqual(zListy);
+    expect(pojedynczy?.transformer_ref).toBe(zTr ? 'tr-ded-1' : null);
+    expect(pojedynczy?.connection_side).toBe(wariant === 'nn_side' ? 'nN' : 'dedicated_transformer');
+    expect(pojedynczy?.unit_count).toBe(zLiczba ? 4 : null);
+    expect(pojedynczy?.sn_connection_bus_ref).toBe(
+      zTr && wariant !== 'nn_side' ? 'bus-sn-1' : null,
+    );
+  });
+
+  it.each([
+    ['generator spoza modelu', 'pv/nieistniejacy', {}],
+    ['rodzaj nierozpoznany', 'pv/111/converter', { gen_type: 'synchronous', catalog_namespace: null, catalog_ref: null, ref_id: 'gen/111', id: 'gen/111' }],
+    ['brak stacji', 'pv/111/converter', { station_ref: null, bus_ref: 'inna/szyna' }],
+  ])('%s → null (bez domysłu)', (_opis, ref, zmiana) => {
+    const snapshot = migawka({ generators: [generatorPv(zmiana)] } as unknown as Partial<EnergyNetworkModel>);
+    expect(derZGeneratoraModelu(snapshot, ref)).toBeNull();
+  });
+
+  it('brak migawki albo wskazania → null', () => {
+    expect(derZGeneratoraModelu(null, 'pv/111/converter')).toBeNull();
+    expect(derZGeneratoraModelu(migawka(), null)).toBeNull();
   });
 });

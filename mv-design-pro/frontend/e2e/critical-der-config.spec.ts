@@ -231,14 +231,19 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   await expect(inverterSelect).toHaveValue('conv-pv-nn-0p5mw-0p4kv');
   await formularz.getByTestId('inspektor-der-moc').fill('0.5');
 
+  // Jedyna droga zapisu źródła OZE: operacja `add_converter_source` przez domain-ops
+  // (karta JEDNA-SCIEZKA-EDYCJI). Odmowa operacji to HTTP 200 z `error`, więc sukces
+  // sprawdzamy w ciele odpowiedzi, nie tylko w statusie.
   const saveResponse = page.waitForResponse(
-    (response) => response.url().includes(`/api/projects/${seed.projectId}/cases/${seed.caseId}/generators`)
-      && response.request().method() === 'POST',
+    (response) => response.url().endsWith(`/api/cases/${seed.caseId}/enm/domain-ops`)
+      && response.request().method() === 'POST'
+      && response.request().postDataJSON()?.operation?.name === 'add_converter_source',
     { timeout: 15000 },
   );
   await formularz.getByTestId('inspektor-der-zapisz').click();
   const response = await saveResponse;
-  expect(response.status()).toBe(201);
+  expect(response.status()).toBe(200);
+  expect((await response.json()).error ?? null).toBeNull();
   await expect(page.getByTestId('inspektor-der-formularz')).toHaveCount(0);
 
   const persistedResponse = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`);

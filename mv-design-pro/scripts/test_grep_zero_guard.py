@@ -173,7 +173,7 @@ def test_kazde_dopasowanie_wzorca_zawiera_jego_literal() -> None:
             continue
         trafienia = [
             m.group(0)
-            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU)
+            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU, *INIEKCJE_KONFIGURACJA_STACJI)
             for m in re.finditer(wzorzec, tekst)
         ]
         if not trafienia and not re.search(wzorzec, literal):
@@ -236,6 +236,54 @@ def test_czerwona_iniekcja_zu() -> None:
             plik.unlink()
 
 
+INIEKCJE_KONFIGURACJA_STACJI: tuple[tuple[str, str], ...] = (
+    # Karta JEDNA-SCIEZKA-EDYCJI: każda postać wskrzeszenia osobnego magazynu konfiguracji
+    # stacji obok modelu (tabela ORM, klasa ORM/repozytorium, moduł końcówek, pole jednostki
+    # pracy, ścieżka końcówki w backendzie, froncie i e2e) jest czerwona.
+    (
+        "backend/src/infrastructure/persistence/models.py",
+        '    __tablename__ = "station_audit2_configs"\n',
+    ),
+    (
+        "backend/src/infrastructure/persistence/repositories/repo.py",
+        "class StationAudit2ConfigRepository:\n    pass\n",
+    ),
+    ("backend/src/api/main.py", "from api.audit2_station_config import router\n"),
+    ("backend/src/infrastructure/persistence/unit_of_work.py", "uow.audit2_station_configs\n"),
+    ("backend/tests/api/test_x.py", 'URL = "/api/v1/projects/p/audit2-station-config/s"\n'),
+    ("frontend/src/ui/a.ts", "const u = `${base}/audit2-station-config/${id}`;\n"),
+    ("frontend/e2e/b.spec.ts", "await page.request.put('/audit2-station-config/x');\n"),
+)
+
+
+def test_czerwona_iniekcja_konfiguracja_stacji() -> None:
+    grupa = "konfiguracja_stacji_"
+    with tempfile.TemporaryDirectory() as katalog:
+        tmp = Path(katalog)
+        _drzewo_z_konfiguracja(tmp)
+        for rel in load_config_lines(ROOT / "config" / f"grep_zero_{grupa}active_paths.txt"):
+            (tmp / rel).mkdir(parents=True, exist_ok=True)
+        assert sprawdz(tmp, grupa) == [], "czyste drzewo ma być zielone"
+        for rel, tresc in INIEKCJE_KONFIGURACJA_STACJI:
+            plik = tmp / rel
+            plik.parent.mkdir(parents=True, exist_ok=True)
+            plik.write_text(tresc, encoding="utf-8")
+            naruszenia = sprawdz(tmp, grupa)
+            assert any(
+                rel in n for n in naruszenia
+            ), f"iniekcja {rel!r} nie została wykryta: {naruszenia}"
+            plik.unlink()
+        # Wyjątek jest NAZWANY plikiem, nie katalogiem: ta sama nazwa tabeli w innym pliku
+        # warstwy trwałości jest wskrzeszeniem.
+        dozwolony = tmp / "backend/src/infrastructure/persistence/migracja_legacy_db.py"
+        dozwolony.parent.mkdir(parents=True, exist_ok=True)
+        dozwolony.write_text('TABELE = ("station_audit2_configs",)\n', encoding="utf-8")
+        assert sprawdz(tmp, grupa) == []
+        sasiad = dozwolony.with_name("migracja_inna.py")
+        sasiad.write_text('TABELE = ("station_audit2_configs",)\n', encoding="utf-8")
+        assert any("migracja_inna.py" in n for n in sprawdz(tmp, grupa))
+
+
 def test_realne_drzewo_jest_zielone() -> None:
     for grupa in GRUPY:
         naruszenia = sprawdz(ROOT, grupa)
@@ -246,5 +294,6 @@ if __name__ == "__main__":
     test_czerwona_iniekcja_kazdego_wzorca()
     test_czerwona_iniekcja_w61()
     test_czerwona_iniekcja_zu()
+    test_czerwona_iniekcja_konfiguracja_stacji()
     test_realne_drzewo_jest_zielone()
     print("test_grep_zero_guard: OK")

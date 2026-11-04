@@ -22,6 +22,12 @@ Grupy konfiguracji (katalog `config/`), każda z trzema plikami
   wariantu uziemienia, katalog wariantów audytu 2, końcówka katalogu, pole kontraktu zapisu
   i konfigurator we froncie. Sposób uziemienia sekcji SN wynika wyłącznie z elementów
   modelu (`enm/uziemienie_sekcji.py`); allowlista to tylko ten guard i jego self-test.
+* ``"konfiguracja_stacji_"`` (karta JEDNA-SCIEZKA-EDYCJI) — bramka wskrzeszenia osobnego
+  magazynu konfiguracji stacji obok modelu: tabela ORM `station_audit2_configs`, klasy
+  ORM/repozytorium, moduł końcówek i pole jednostki pracy, ścieżka końcówki. Konfiguracja
+  stacji żyje wyłącznie w modelu ENM. Allowlista: migracja zastanej bazy (jedyne
+  wystąpienie nazwy tabeli w `backend/src` — musi ją znać, żeby ją usunąć) i jej test,
+  regresja 404 dawnych końcówek, zapis pomiaru czasów testów, ten guard i jego self-test.
 
 Self-test z czerwoną iniekcją: `scripts/test_grep_zero_guard.py`.
 """
@@ -37,7 +43,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
-GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_", "zu_")
+GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_", "zu_", "konfiguracja_stacji_")
 TEXT_SUFFIXES = {
     ".css",
     ".html",

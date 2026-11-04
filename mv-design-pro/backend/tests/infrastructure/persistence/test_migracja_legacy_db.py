@@ -260,6 +260,44 @@ def test_init_db_uruchamia_migracje_na_bazie_sprzed_w1(silnik):
     assert has_enm(klucz_twin_projektu(pid))
 
 
+@pytest.mark.parametrize("z_modelem_legacy", [False, True], ids=["sama_sierota", "z_modelem"])
+def test_sierota_konfiguracji_stacji_jest_zrzucana_i_usuwana_przy_starcie(silnik, z_modelem_legacy):
+    """Karta JEDNA-SCIEZKA-EDYCJI: osobny magazyn konfiguracji stacji obok modelu skasowany;
+    baza sprzed kasacji niesie tabelę z FK do `projects`. Start aplikacji (`init_db`) zrzuca
+    jej wiersze do JSON (zero utraty danych) i usuwa ją — sama albo razem z modelem legacy;
+    projekt zostaje, a sama sierota nie tworzy modelu ENM (konfiguracja nie jest siecią)."""
+    init_db(silnik)
+    pid = _projekt(silnik, "Ze starą konfiguracją stacji")
+    if z_modelem_legacy:
+        _wstaw_model_legacy(silnik, pid)
+    with silnik.begin() as c:
+        c.execute(
+            text(
+                "CREATE TABLE station_audit2_configs (id CHAR(32) PRIMARY KEY, "
+                "project_id CHAR(32) NOT NULL REFERENCES projects(id) ON DELETE CASCADE, "
+                "station_id VARCHAR(255) NOT NULL, config_jsonb JSON)"
+            )
+        )
+        c.execute(
+            text("INSERT INTO station_audit2_configs VALUES (:id, :pid, :sid, :cfg)"),
+            {"id": uuid4().hex, "pid": pid.hex, "sid": "stn/1", "cfg": '{"bays": []}'},
+        )
+
+    raport = migruj_i_usun_tabele_legacy(silnik)
+
+    assert "station_audit2_configs" in raport.tabele
+    assert "station_audit2_configs" not in _tabele(silnik)
+    assert "projects" in _tabele(silnik)
+    zrzut = json.loads(
+        (Path(raport.katalog_zrzutu or "") / "station_audit2_configs.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert [w["station_id"] for w in zrzut] == ["stn/1"]
+    assert has_enm(klucz_twin_projektu(pid)) is z_modelem_legacy
+    assert migruj_i_usun_tabele_legacy(silnik).nic_do_zrobienia, "drugi start: nic do zrobienia"
+
+
 def test_kasacja_tabel_legacy_dziala_na_dialekcie_produkcyjnym(postgres_url: str) -> None:
     """Gałąź `CASCADE` kasacji — jedyny fragment tego modułu zależny od dialektu.
 

@@ -169,7 +169,7 @@ describe('Pakiet dowodów walidacji rozszerzeń — ekrany (karta PROOFPACK-KONT
     expect(zapytania.some((z) => z.url.includes('generate-proof-pack'))).toBe(false);
 
     const [lakowa, polna] = screen.getAllByTestId('rozszerzenia-pakiet-stacji');
-    expect(within(lakowa).getAllByTestId('rozszerzenia-proof')).toHaveLength(5);
+    expect(within(lakowa).getAllByTestId('rozszerzenia-proof')).toHaveLength(4);
     expect(within(lakowa).getByTestId('rozszerzenia-pakiet-status').textContent).toBe('Weryfikacja pozytywna');
     expect(within(polna).queryAllByTestId('rozszerzenia-proof')).toHaveLength(0);
     const braki = within(polna).getAllByTestId('rozszerzenia-brak-danych');

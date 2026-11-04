@@ -18,7 +18,7 @@
  * zapisuje WYŁĄCZNIE do `generator.materialized_params` (płasko) i
  * `materialized_params.profiles` — NIGDY do `generator.meta`. Ten moduł czytał
  * do tej pory WYŁĄCZNIE `generator.meta`, więc każde wiązanie zapisane przez
- * `PATCH …/generators/{ref}/bindings` znikało z tego odwzorowania (a więc
+ * tę operację znikało z tego odwzorowania (a więc
  * z całego frontu) natychmiast po odświeżeniu strony — sześć osi gotowości
  * (zabezpieczenia, selektywność, SC1F, SC2FG, FRT, HVRT) liczyło werdykt
  * z danych, których store nigdy nie widział.
@@ -39,7 +39,6 @@ import type {
   EnergyNetworkModel,
   Generator as EnmGenerator,
 } from '../../../types/enm';
-import { toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import type { BlockTransformerItem } from './katalogi-stacji-api';
 import {
@@ -210,13 +209,18 @@ export function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnifi
 }
 
 /**
- * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu katalogów stacji
- * (`useKatalogiStacjiSnapshot`) — bez niego (lista pusta, jeszcze nie
- * pobrana) inferencja uczciwie zwraca `null` zamiast zgadywać z pustego
- * katalogu. JEDNA implementacja — czyta ją także widok źródła (`DerSurfaces.tsx`),
- * który miał własną kopię tej funkcji.
+ * Pozycja katalogu transformatora dedykowanego wytwórcy — TOŻSAMOŚĆ z modelu, nie domysł.
+ *
+ * Karta JEDNA-SCIEZKA-EDYCJI: transformator dedykowany w modelu niesie `catalog_ref`
+ * pozycji TRAFO_SN_NN, z której operacja `add_converter_source` go zmaterializowała, a lista
+ * transformatorów dedykowanych (`useKatalogiStacjiSnapshot`) ma te same identyfikatory.
+ * Dawna inferencja dopasowywała rekord modelu do pozycji listy po danych (moc, napięcia,
+ * grupa połączeń) — przy dwóch pozycjach o tych samych danych (np. olejowa i sucha) wybierała
+ * pierwszą z listy, czyli podstawiała cudzą pozycję. Teraz: referencja z modelu, a gdy lista
+ * jej nie zna albo transformator jej nie ma — uczciwe `null`. JEDNA implementacja — czyta ją
+ * także widok źródła (`DerSurfaces.tsx`).
  */
-export function inferBlockTransformerCatalogRef(
+export function refKataloguTransformatoraDedykowanego(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string | null | undefined,
   blockTransformers: readonly BlockTransformerItem[] = [],
@@ -225,18 +229,9 @@ export function inferBlockTransformerCatalogRef(
   const transformer = (snapshot.transformers ?? []).find(
     (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
   );
-  if (!transformer) return null;
-  const snKva = Math.round(transformer.sn_mva * 1000);
-  const vectorGroup = transformer.vector_group ?? null;
-  const match = blockTransformers.find((candidate) =>
-    candidate.sn_kva === snKva
-    // Tożsamość rekordu modelu z pozycją katalogu (materializacja kopiuje napięcia 1:1):
-    // równość danych, jedna dla produktu (`toSamoNapiecieZnamionowe`).
-    && toSamoNapiecieZnamionowe(candidate.hv_kv, transformer.uhv_kv)
-    && toSamoNapiecieZnamionowe(candidate.lv_kv, transformer.ulv_kv)
-    && (!vectorGroup || candidate.vector_group === vectorGroup),
-  );
-  return match?.id ?? null;
+  const catalogRef = transformer?.catalog_ref ?? null;
+  if (!catalogRef) return null;
+  return blockTransformers.some((candidate) => candidate.id === catalogRef) ? catalogRef : null;
 }
 
 /**
@@ -277,8 +272,13 @@ function derZGeneratora(
   const meta = asRecord(generator.meta);
   const connectionSide = connectionSideFromGenerator(generator);
   const transformerRef = generator.blocking_transformer_ref ?? null;
-  const blockTransformerCatalogRef = readString(meta.block_transformer_catalog_ref)
-    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef, blockTransformers);
+  // Pozycja transformatora dedykowanego — WYŁĄCZNIE z jego rekordu w modelu (wytwórca nie
+  // niesie kopii; ta sama reguła co backendowe `ref_katalogu_transformatora_dedykowanego`).
+  const blockTransformerCatalogRef = refKataloguTransformatoraDedykowanego(
+    snapshot,
+    transformerRef,
+    blockTransformers,
+  );
 
   // Karta FAB-K (parytet FE/BE, reguła KLASA NIE INSTANCJA): odczyt PĘTLĄ po
   // kanonicznych listach kluczy (`DER_MATERIALIZED_BINDING_KEYS`/`_PROFILE_KEYS`)
@@ -389,7 +389,7 @@ export function deryZModelu(
   blockTransformers: readonly BlockTransformerItem[] = [],
 ): readonly StationDerConnection[] {
   if (!snapshot) return [];
-  const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
+  const timestamp = znacznikCzasuModelu(snapshot);
   return (snapshot.generators ?? [])
     .map((generator) => {
       const stationRef = stationRefForGenerator(snapshot, generator);
@@ -400,6 +400,41 @@ export function deryZModelu(
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
+/**
+ * Wytwórca DER JEDNEGO generatora modelu — TO SAMO odwzorowanie co `deryZModelu` (stacja
+ * z modelu, rodzaj z generatora; brak rodzaju albo stacji ⇒ `null`, bez domysłu).
+ *
+ * Karta JEDNA-SCIEZKA-EDYCJI: widok źródła (`DerSurfaces.tsx`) miał DRUGIE, niezależne
+ * odwzorowanie generator → rekord, które rozjeżdżało się z tym na danych brzegowych —
+ * nieznany `connection_variant` dawał tam przyłączenie nN (tu: transformator dedykowany),
+ * liczbę jednostek czytało z `materialized_params` (operacja zapisuje ją w `meta`),
+ * a bez `blocking_transformer_ref` zmyślało referencję `tr_${ref}` transformatora, którego
+ * w modelu nie ma. Teraz jeden czytnik dla magazynu i widoku.
+ */
+export function derZGeneratoraModelu(
+  snapshot: EnergyNetworkModel | null,
+  generatorRef: string | null | undefined,
+  blockTransformers: readonly BlockTransformerItem[] = [],
+): StationDerConnection | null {
+  if (!snapshot || !generatorRef) return null;
+  const generator = (snapshot.generators ?? []).find((candidate) => candidate.ref_id === generatorRef);
+  if (!generator) return null;
+  const stationRef = stationRefForGenerator(snapshot, generator);
+  if (!stationRef) return null;
+  return derZGeneratora(
+    snapshot,
+    generator,
+    stationRef,
+    null,
+    znacznikCzasuModelu(snapshot),
+    blockTransformers,
+  );
+}
+
+function znacznikCzasuModelu(snapshot: EnergyNetworkModel): string {
+  return snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
+}
+
 /** Wytwórcy DER JEDNEJ stacji — to samo odwzorowanie zawężone do stacji. */
 export function deryStacjiZModelu(
   snapshot: EnergyNetworkModel | null,
@@ -408,7 +443,7 @@ export function deryStacjiZModelu(
   blockTransformers: readonly BlockTransformerItem[] = [],
 ): readonly StationDerConnection[] {
   if (!snapshot || !stationRef) return [];
-  const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
+  const timestamp = znacznikCzasuModelu(snapshot);
   return (snapshot.generators ?? [])
     .filter((generator) => isGeneratorAttachedToStation(generator, stationRef))
     .map((generator) => derZGeneratora(snapshot, generator, stationRef, projectId, timestamp, blockTransformers))

@@ -723,6 +723,9 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "pozycji katalogu, której istnienia można by osobno dowieść.",
     ),
     PozycjaBramyApi("add_converter_source", "source_field.catalog_binding", "APARAT_NN", True),
+    # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany z katalogu TRAFO_SN_NN
+    # (ten sam katalog i ten sam materializator co tor DER-SN).
+    PozycjaBramyApi("add_converter_source", "block_transformer_catalog_ref", "TRAFO_SN_NN", True),
     PozycjaBramyApi(
         "add_converter_source", "der_topology.block_transformer.catalog_ref", "TRAFO_SN_NN", True
     ),
@@ -868,6 +871,8 @@ API_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
         "catalog_ref",
         "apparatus_catalog_ref",
         "battery_catalog_ref",
+        # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany źródła OZE (TRAFO_SN_NN).
+        "block_transformer_catalog_ref",
         "cable_catalog_ref",
         "ct_catalog_ref",
         "device_catalog_ref",
@@ -1047,6 +1052,14 @@ def _referencje_dodatkowe(
                 "APARAT_NN",
                 None,
                 source_field.get("catalog_binding"),
+            )
+        from enm.domain_operations_v2 import tor_z_transformatorem_dedykowanym_z_katalogu
+
+        if tor_z_transformatorem_dedykowanym_z_katalogu(payload):
+            _dodaj(
+                "Transformator dedykowany źródła",
+                "TRAFO_SN_NN",
+                payload.get("block_transformer_catalog_ref"),
             )
         der_topology = payload.get("der_topology")
         if isinstance(der_topology, dict):
@@ -1229,14 +1242,21 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
         DER_PROFILE_KEYS,
         KLUCZ_KART_WIDMOWYCH,
         _nieznane_referencje_katalogowe,
+        _referencja_wiazania_bez_bialych_znakow,
         opis_nieznanych_wiazan,
     )
 
     # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — ten sam predykat istnienia karty co
     # operacja domenowa, w katalogu MODELU (statyczny + karty projektu): końcówka
     # `domain-ops` woła bramę w kontekście katalogu modelu (`kontekst_katalogu`).
+    # Ta sama normalizacja białych znaków co operacja (predykaty parami): referencja
+    # z samych spacji jest brakiem wyboru, nie pozycją spoza katalogu.
     wiazania = {
-        klucz: payload[klucz]
+        klucz: (
+            payload[klucz]
+            if klucz == KLUCZ_KART_WIDMOWYCH
+            else _referencja_wiazania_bez_bialych_znakow(payload[klucz])
+        )
         for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS, KLUCZ_KART_WIDMOWYCH)
         if klucz in payload
     }

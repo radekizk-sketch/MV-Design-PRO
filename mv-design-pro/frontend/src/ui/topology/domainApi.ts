@@ -14,7 +14,7 @@ import { normalizeEnmFixAction } from '../shared/fixActionSurfaceNormalizer';
 
 const API_BASE = '/api/cases';
 
-class DomainApiError extends Error {
+export class DomainApiError extends Error {
   constructor(
     public status: number,
     public statusText: string,

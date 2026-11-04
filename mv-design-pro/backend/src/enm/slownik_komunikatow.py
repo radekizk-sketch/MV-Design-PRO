@@ -63,6 +63,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "black_start_capable": "Zdolność rozruchu autonomicznego",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "black_start_required": "Wymagany rozruch autonomiczny",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "blocking_transformer_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts transformator
+    "block_transformer_catalog_ref": "Transformator dedykowany z katalogu",  # station-der/AddDerWizard.tsx etykieta pola
     "burden_va": "Moc obciążeniowa",  # pomiar/strings.ts burden
     "bus_nn_ref": "Szyna nN",  # pole-nn/strings.ts szyna
     "c_p": "Udział stałomocowy P (c_P)",  # odbior/strings.ts zipCP
@@ -166,6 +167,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "modul_istniejacy": "Moduł istniejący (art. 4 ust. 1 rozporządzenia 2016/631)",  # ui2/oze/ncrfg/strings.ts art4
     "n_parallel": "Liczba torów równoległych",  # odcinek-nn/strings.ts nParallel
     "nastawy_zabezpieczen": "Nastawy zabezpieczeń modułu (koordynacja statyczna)",  # ui2/oze/ncrfg/strings.ts nastawyTytul
+    "nc_rfg_module": "Typ modułu NC RfG",  # station-der/AddDerWizard.tsx klasyfikacja modułu
     "nc_rfg_profile_ref": "Profil wymagań operatora",  # zrodlo-oze/strings.ts zgodnoscProfil
     "p_min_kw": "Moc minimalna [kW]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "p_recovery_time_s": "Czas odbudowy mocy czynnej po zwarciu [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA

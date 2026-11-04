@@ -1252,7 +1252,18 @@ class AddConverterSourcePayload(_FrozenBase):
     source_technology: Literal["PV", "BESS", "FW"]
     connection_variant: Literal["nn_side", "block_transformer"]
     station_ref: str
-    bus_nn_ref: str
+    # Brak = szyna rozdzielnicy nN wskazanej stacji ustalona z modelu (`nn_side`) albo szyna
+    # urządzenia nowego transformatora dedykowanego (`block_transformer_catalog_ref`).
+    bus_nn_ref: str | None = None
+    # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany z katalogu TRAFO_SN_NN
+    # (strona górna wprost na istniejącej szynie SN `sn_connection_bus_ref`, strona dolna na
+    # nowej szynie urządzenia) i tolerancja napięcia sieci nN jego strony wtórnej.
+    block_transformer_catalog_ref: str | None = None
+    block_transformer_lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    sn_connection_bus_ref: str | None = None
+    # Deklaracja modułu NC RfG — sprawdzana wobec klasyfikacji (moc × napięcie punktu
+    # przyłączenia), niezapisywana; niezgodność = `generator.nc_rfg_module_mismatch`.
+    nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
     placement: Literal["NEW_FIELD", "EXISTING_FIELD"] | None = None
     existing_field_ref: str | None = None
     source_field: ConverterSourceFieldPayload | None = None

@@ -81,15 +81,13 @@ const NC_RFG_OPERATOR_FIXTURES = [
 
 /**
  * Karta FAB-J: transformator dedykowany PV S02 (test „pokazuje transformator
- * blokowy...") pochodzi ze snapshotu ENM (sn_mva=1,25 / 15/0,69 kV / Dyn11) —
- * `inferBlockTransformerCatalogRef` dopasowuje go do pozycji snapshotu katalogów stacji
- * po tych samych parametrach, więc fikstura musi się z nimi zgadzać.
+ * blokowy...") pochodzi ze snapshotu ENM — `refKataloguTransformatoraDedykowanego` rozpoznaje
+ * jego `catalog_ref` na liście transformatorów dedykowanych (ta sama tożsamość).
  */
 const BLOCK_TRANSFORMER_FIXTURES = [
   {
-    id: 'btr_pv_15_069_1250', catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    id: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter', catalog_namespace: 'TRAFO_SN_NN', catalog_version: '1.0',
     label_pl: 'Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11',
-    transformer_type_ref: 'tr-test-btr_pv_15_069_1250',
     sn_kva: 1250, hv_kv: 15, lv_kv: 0.69,
     uk_percent: 6, pk_kw: 12.5, p0_kw: 2.5, i0_percent: 0.5,
     vector_group: 'Dyn11', is_mv_to_mv: false,
@@ -372,9 +370,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
           {
             id: 'gen_pv_snapshot',
             ref_id: 'gen_pv_snapshot',
-            name: 'Blok PV ze snapshotu',
+            // Nazwa nadana przez projektanta. Nazwa „Blok …” to nazwa AUTOMATYCZNA operacji —
+            // widok pokazuje wtedy opis rodzaju (`generatorDisplayName`, jeden czytnik generatora
+            // dla magazynu i widoku, karta JEDNA-SCIEZKA-EDYCJI).
+            name: 'Instalacja PV ze snapshotu',
             tags: [],
-            meta: {},
+            // Liczba jednostek — tam, gdzie zapisuje ją operacja `add_converter_source`.
+            meta: { quantity: 4 },
             bus_ref: 'bus_lv_1',
             p_mw: 0.5,
             gen_type: 'pv_inverter',
@@ -413,7 +415,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
 
     render(<PvSourceSurface surface={makeSurface('gen_pv_snapshot')} />);
 
-    expect(screen.getAllByText('Blok PV ze snapshotu').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Instalacja PV ze snapshotu').length).toBeGreaterThan(0);
+    // Jeden czytnik generatora (karta JEDNA-SCIEZKA-EDYCJI): widok czyta liczbę jednostek
+    // z tego samego miejsca co magazyn stacji — dawne drugie odwzorowanie szukało jej
+    // w `materialized_params` i pokazywało brak danej mimo zapisu w modelu.
+    for (const etykieta of screen.getAllByText('Liczba jednostek')) {
+      expect(etykieta.nextElementSibling?.textContent).toBe('4');
+    }
     expect(screen.queryByText(/Brak referencji/)).not.toBeInTheDocument();
     expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
     expect(screen.queryByText('0.5 MW')).not.toBeInTheDocument();
@@ -458,11 +466,12 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
             ulv_kv: 0.69,
             uk_percent: 6,
             pk_kw: 12,
-            // Karta K-Q: grupa polaczen musi istniec w katalogu transformatorow,
-            // inaczej `inferBlockTransformerCatalogRef` slusznie nie znajduje
-            // pozycji (i ekran melduje sam przypisany transformator zamiast
-            // podstawiac cudza pozycje). Typoszereg blokowy to Dyn11.
             vector_group: 'Dyn11',
+            // Karta JEDNA-SCIEZKA-EDYCJI: pozycja transformatora dedykowanego to JEGO
+            // `catalog_ref` w modelu (materializacja `add_converter_source`), rozpoznany na
+            // liście transformatorów dedykowanych — nie dopasowanie po danych.
+            catalog_ref: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter',
+            catalog_namespace: 'TRAFO_SN_NN',
           },
         ],
         sources: [],
@@ -530,6 +539,71 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(text).not.toMatch(/\b250 kVA[\s\S]{0,140}1000 kW|1000 kW[\s\S]{0,140}\b250 kVA/);
   });
 
+  it('PvSourceSurface: przyłączenie dedykowane BEZ wskazanego transformatora nie dostaje zmyślonego transformatora', () => {
+    // Karta JEDNA-SCIEZKA-EDYCJI: dawne drugie odwzorowanie generatora w tym widoku
+    // podstawiało referencję `tr_${ref}` transformatora, którego w modelu nie ma, i ekran
+    // meldował „transformator blokowy przypisany". Jeden czytnik (`derZGeneratoraModelu`):
+    // brak wskazania w modelu = brak transformatora, nazwany wprost.
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model testowy',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_pv_bez_tr',
+            ref_id: 'gen_pv_bez_tr',
+            name: 'PV S03',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_pv_069',
+            p_mw: 1,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'pv_inv_system_1000',
+            station_ref: 'station_snapshot',
+            connection_variant: 'block_transformer',
+          },
+        ],
+        substations: [
+          {
+            id: 'station_snapshot',
+            ref_id: 'station_snapshot',
+            name: 'Stacja SN/nN 3',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_sn_pcc'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_pv_bez_tr')} />);
+
+    const etykiety = screen.getAllByText('Transformator blokowy');
+    expect(etykiety.length).toBeGreaterThan(0);
+    for (const etykieta of etykiety) {
+      expect(etykieta.nextElementSibling?.textContent).toBe('do konfiguracji w wariancie katalogowym');
+    }
+  });
+
   it('PvSourceSurface pokazuje SUROWĄ referencję katalogową, gdy urządzenie jest nieznane lokalnie — zero fabrykacji zastępczego urządzenia (naprawa FAB-I)', () => {
     useSnapshotStore.setState({
       snapshot: {
@@ -551,7 +625,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
           {
             id: 'gen_pv_legacy',
             ref_id: 'gen_pv_legacy',
-            name: 'Blok PV legacy',
+            // Nazwa nadana przez projektanta. Nazwa „Blok …” to nazwa AUTOMATYCZNA operacji —
+            // widok pokazuje wtedy opis rodzaju (`generatorDisplayName`, jeden czytnik generatora
+            // dla magazynu i widoku, karta JEDNA-SCIEZKA-EDYCJI).
+            name: 'Instalacja PV legacy',
             tags: [],
             meta: {},
             bus_ref: 'bus_lv_1',
@@ -598,7 +675,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // DER). INTENCJA ZACHOWANA (ekran ma pokazać COŚ sensownego dla starego
     // rekordu), ale „sensowne" znaczy dziś UCZCIWE: surowa referencja z modelu,
     // nie fabrykowana nazwa producenta/modelu, której w stacji nie ma.
-    expect(screen.getAllByText('Blok PV legacy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Instalacja PV legacy').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/legacy_unknown_catalog_ref/).length).toBeGreaterThan(0);
     // Karta AB-1a Pakiet D1: brak powiązania z wykazem nazwany wprost — dawny tekst
     // „certyfikat PTPiREE z pakietu katalogowego" sugerował certyfikat, którego model nie niesie.
@@ -991,8 +1068,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
-        if ((init?.method ?? 'GET') === 'PATCH') {
-          zadaniaPatch.push({ url: String(url), body: JSON.parse(String(init?.body ?? '{}')) });
+        // Jedyna droga zapisu wiązań: operacja `set_der_catalog_bindings` przez domain-ops.
+        if ((init?.method ?? 'GET') === 'POST' && String(url).endsWith('/enm/domain-ops')) {
+          const koperta = JSON.parse(String(init?.body ?? '{}'));
+          zadaniaPatch.push({ url: String(url), body: koperta.operation.payload });
           return {
             ok: true,
             status: 200,
@@ -1027,7 +1106,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       name: 'PV do wyboru CT',
       // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
       // 2500 kW nie uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
-      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie zapis PATCH).
+      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie zapis wiązania).
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
@@ -1043,10 +1122,11 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     await uzytkownik.click(await screen.findByText('CT 200/5 A kl. 5P10 10 VA'));
 
     await waitFor(() => expect(zadaniaPatch).toHaveLength(1));
-    expect(zadaniaPatch[0].url).toBe(
-      '/api/projects/PRJ-1/cases/CASE-1/generators/der_wybor_ct/bindings',
-    );
-    expect(zadaniaPatch[0].body).toEqual({ ct_catalog_ref: 'ct_200_5_5p10_10va_abb' });
+    expect(zadaniaPatch[0].url).toBe('/api/cases/CASE-1/enm/domain-ops');
+    expect(zadaniaPatch[0].body).toEqual({
+      generator_ref: 'der_wybor_ct',
+      ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
+    });
     // OBIE strony prawdy: rekord warsztatu i snapshot modelu.
     await waitFor(() =>
       expect(useStationDerStore.getState().ders.der_wybor_ct.catalogs.ct_catalog_ref).toBe(
@@ -1069,7 +1149,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
-        if ((init?.method ?? 'GET') === 'PATCH') {
+        if ((init?.method ?? 'GET') === 'POST' && String(url).endsWith('/enm/domain-ops')) {
           return {
             ok: true,
             status: 200,

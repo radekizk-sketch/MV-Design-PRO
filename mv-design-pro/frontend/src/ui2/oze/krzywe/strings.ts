@@ -99,7 +99,7 @@ export const KRZYWE_STRINGS = {
   wiazaniaZapisz: 'Zapisz krzywe w wiązaniach modułu',
   wiazaniaZadnaZmiana: 'Wybierz krzywą P(f) do zapisania.',
   wiazaniaBrakKontekstu:
-    'Wybierz projekt i przypadek obliczeniowy, aby zapisać wiązania w modelu.',
+    'Wybierz przypadek obliczeniowy, aby zapisać wiązania w modelu.',
   wiazaniaZapisano: 'Krzywe zapisane w wiązaniach modułu wytwórczego',
   wiazaniaBladZapisu: 'Nie udało się zapisać wiązań modułu w modelu sieci',
 

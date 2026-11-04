@@ -121,7 +121,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
+        block_transformer_catalog_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
       },
       ct_accuracy_class: '5P20',
       ct_application: 'protection', // rdzen POJEDYNCZY zabezpieczeniowy
@@ -142,7 +142,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_dwurdzeniowy_z_karty_producenta',
-        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
+        block_transformer_catalog_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
       },
       ct_accuracy_class: '5P20',
       // Rdzen PODWOJNY jako DANA producenta. Katalog referencyjny nie ma dzis takiego
@@ -162,7 +162,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        block_transformer_catalog_ref: 'btr_pv_15_04_1000',
+        block_transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy',
       },
       ct_accuracy_class: '5P20',
       ct_application: 'protection', // rdzen pojedynczy

@@ -33,7 +33,7 @@ import {
 } from '../../../ui/network-build/station-der';
 import {
   DerPersistenceApiError,
-  patchDerCatalogBindings,
+  zapiszWiazaniaDer,
   type DerCatalogBindingsRequest,
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import {
@@ -233,7 +233,6 @@ function WynikPokrycia({
 function SekcjaWiazanKrzywych() {
   const ders = useStationDerStore((s) => selectAllDers(s));
   const updateDerProfiles = useStationDerStore((s) => s.updateDerProfiles);
-  const projectId = useAppStateStore((s) => s.activeProjectId);
   const caseId = useAppStateStore((s) => s.activeCaseId);
 
   const [wybranyModul, setWybranyModul] = useState('');
@@ -296,10 +295,10 @@ function SekcjaWiazanKrzywych() {
     if (stanKrzywejRT === 'spoza_katalogu') return KRZYWE_STRINGS.wiazaniaProfilSpozaKatalogu;
     return KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora;
   };
-  const kontekstKompletny = Boolean(projectId && caseId);
+  const kontekstKompletny = Boolean(caseId);
 
   const zapisz = async () => {
-    if (!modul || !projectId || !caseId) return;
+    if (!modul || !caseId) return;
     const zmiany: DerCatalogBindingsRequest = {
       ...(pfRef ? { pf_curve_ref: pfRef } : {}),
     };
@@ -310,7 +309,7 @@ function SekcjaWiazanKrzywych() {
     setZapisywanie(true);
     setBlad(null);
     try {
-      await patchDerCatalogBindings(projectId, caseId, modul.id, zmiany);
+      await zapiszWiazaniaDer(caseId, modul.id, zmiany);
       // Synchronizacja rekordu warsztatu — reguła gotowości i macierz NC RfG
       // widzą nowe krzywe bez odświeżania strony (wzorzec DerSurfaces.poZapisie).
       updateDerProfiles(modul.id, {

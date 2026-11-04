@@ -568,6 +568,21 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
+    # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany z katalogu TRAFO_SN_NN
+    # (dawniej tłumaczony przez końcówkę `POST …/generators`, teraz pole operacji).
+    IniekcjaBramy(
+        "add_converter_source",
+        "block_transformer_catalog_ref",
+        lambda: {
+            "station_ref": "st-1",
+            "source_technology": "PV",
+            "connection_variant": "block_transformer",
+            "catalog_ref": REF_FALOWNIK_PV,
+            "block_transformer_catalog_ref": REF_TRAFO_BLOKOWY,
+            "sn_connection_bus_ref": "bus-sn-1",
+        },
+        lambda p: _zepsuj_klucz(p, "block_transformer_catalog_ref"),
+    ),
     IniekcjaBramy(
         "add_converter_source",
         "source_field.catalog_binding",

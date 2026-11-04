@@ -32,9 +32,9 @@ export function useSynchronizacjaDerZModelu(): void {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const synchronizuj = useStationDerStore((s) => s.synchronizujZModelu);
-  // Karta FAB-J: snapshot katalogów stacji dla inferencji transformatora dedykowanego
-  // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
-  // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
+  // Karta FAB-J: snapshot katalogów stacji dla pozycji transformatora dedykowanego
+  // (`refKataloguTransformatoraDedykowanego` — `catalog_ref` transformatora z modelu,
+  // rozpoznany na liście transformatorów dedykowanych).
   const blockTransformers = useKatalogiStacjiSnapshot().data?.block_transformers ?? [];
 
   useEffect(() => {

@@ -227,7 +227,7 @@ export function zbudujPolaNcRfgGeneratora(f: FormularzDanychModulu): WynikDanych
 }
 
 /**
- * Pola NC RfG do ładunku ZAPISU NOWEGO wytwórcy (`add_converter_source`, `POST …/generators`):
+ * Pola NC RfG do ładunku ZAPISU NOWEGO wytwórcy (operacja domenowa `add_converter_source`):
  * wyłącznie podane wartości — brak danej = pole nieobecne (backend zapisuje stan
  * „nieustalone", nigdy wartość typową). Formularz z błędem nie daje pól (zapis blokuje
  * wołający na podstawie `zbudujPolaNcRfgGeneratora`).

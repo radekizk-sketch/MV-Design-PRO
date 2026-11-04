@@ -145,13 +145,17 @@ test('UI-02b — klik stacji otwiera prawy inspektor, kanwa odsłonięta, zapis 
       });
 
       if (!zapisano) {
+        // Jedyna droga zapisu źródła OZE: `add_converter_source` przez domain-ops.
         const odpowiedz = page.waitForResponse(
-          (r) => r.url().includes(`/api/projects/${seed.projectId}/cases/${seed.caseId}/generators`)
-            && r.request().method() === 'POST',
+          (r) => r.url().endsWith(`/api/cases/${seed.caseId}/enm/domain-ops`)
+            && r.request().method() === 'POST'
+            && r.request().postDataJSON()?.operation?.name === 'add_converter_source',
           { timeout: 15000 },
         );
         await formularz.getByTestId('inspektor-der-zapisz').click();
-        expect((await odpowiedz).status()).toBe(201);
+        const zapis = await odpowiedz;
+        expect(zapis.status()).toBe(200);
+        expect((await zapis.json()).error ?? null).toBeNull();
         await expect(inspektor.getByTestId('inspektor-der-formularz')).toHaveCount(0);
         const model = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`);
         expect(model.ok()).toBeTruthy();

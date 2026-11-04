@@ -23,7 +23,7 @@ import type { ConverterType, TransformerType } from '../../catalog/types';
 import { notify } from '../../notifications/store';
 import {
   DerPersistenceApiError,
-  postDerGeneratorConfig,
+  zapiszZrodloOze,
   type DerConnectionVariant,
   type DerGeneratorConfigRequest,
 } from '../../sld/v2/canvas/derPersistenceApi';
@@ -626,17 +626,17 @@ function zbudujZadanieDer(args: {
   const liczbaJednostek = Math.max(1, Math.round(selections.unitCount || 1));
   return {
     station_ref: stationId,
-    der_kind: derKind,
+    source_technology: derKind,
     // Model trzyma moc CAŁEJ pozycji (backend mnoży moc katalogową przez liczbę sztuk,
     // gdy nie dostanie mocy jawnej) — wysyłamy iloczyn, żeby obie strony mówiły to samo.
-    power_mw: (device.nominal_power_kw * liczbaJednostek) / 1000,
+    power_setpoint_mw: (device.nominal_power_kw * liczbaJednostek) / 1000,
     connection_variant: toBackendConnectionVariant(selections.connectionSide),
     catalog_ref: selections.deviceCatalogRef,
     block_transformer_catalog_ref: dedykowany ? args.blockTransformerCatalogRef : null,
     // Karta FAB-K (§0 R3): punkt przyłączenia SN — element ISTNIEJĄCY w modelu (szyna
     // stacji / `BranchPointSN` / `Junction`), WYMAGANY przez backend dla `block_transformer`
-    // bez zapisanego `blocking_transformer_ref` (`_resolve_sn_connection_bus`). Pomijany dla
-    // `nn_side` — backend go tam nie czyta.
+    // bez zapisanego `blocking_transformer_ref` (operacja `add_converter_source`, tor
+    // transformatora dedykowanego). Pomijany dla `nn_side` — operacja go tam nie czyta.
     sn_connection_bus_ref: dedykowany ? selections.snConnectionBusRef ?? undefined : undefined,
     // Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS` — WYŁĄCZNIE dla BESS
     // (backend odrzuca go na innej technologii: `converter.battery_catalog_not_applicable`).
@@ -645,7 +645,7 @@ function zbudujZadanieDer(args: {
     quantity: liczbaJednostek,
     // Karta FAB-J (decyzja #5): moduł wyliczony PRZEZ BACKEND dla (moc, napięcie
     // przyłączenia). Brak napięcia = pole pominięte: backend weryfikuje `nc_rfg_module`
-    // tylko zadeklarowany (`_weryfikuj_modul_ncrfg`), a zgadywanie modułu byłoby fabrykacją.
+    // tylko zadeklarowany (`add_converter_source`), a zgadywanie modułu byłoby fabrykacją.
     nc_rfg_module: args.ncRfgModule ?? undefined,
     // Dane modułu NC RfG (art. 4, data umowy, nastawy, deklaracje) — wyłącznie podane.
     ...polaNcRfgDoPayloadu(args.daneModulu),
@@ -664,7 +664,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [selections, setSelections] = useState<WizardSelections>(EMPTY_SELECTIONS);
   const [isCreating, setIsCreating] = useState(false);
   // Plan AB O-50 pkt 5–6 (karta AB-1a Pakiet D2 §0 pkt 8): dane modułu NC RfG zapisywane
-  // RAZEM z wytwórcą (`POST …/generators` → `add_converter_source`, jeden walidator
+  // RAZEM z wytwórcą (operacja `add_converter_source`, jeden walidator
   // backendu). Pusty formularz = stan „nieustalone" (pola nieobecne w ładunku).
   const [daneModulu, setDaneModulu] = useState<FormularzDanychModulu>(PUSTE_DANE_MODULU);
   const wynikDanychModulu = useMemo(() => zbudujPolaNcRfgGeneratora(daneModulu), [daneModulu]);
@@ -929,8 +929,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     return `${hash}#${licznikMigawekRef.current}`;
   }, [snapshot]);
   const kontekstProby = useMemo(
-    () => ({ projectId, caseId: effectiveCaseId, wersjaModelu }),
-    [effectiveCaseId, projectId, wersjaModelu],
+    () => ({ caseId: effectiveCaseId, wersjaModelu }),
+    [effectiveCaseId, wersjaModelu],
   );
 
   const selectedDeviceKv = getDeviceNominalVoltageKv(selectedDevice);
@@ -1399,7 +1399,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
     setIsCreating(true);
     try {
-      const response = await postDerGeneratorConfig(projectId, effectiveCaseId, zadanie);
+      const response = await zapiszZrodloOze(effectiveCaseId, zadanie);
 
       if (response.snapshot) {
         setSnapshot(response);

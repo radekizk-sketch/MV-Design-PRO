@@ -54,6 +54,12 @@ TABELE_LEGACY: tuple[str, ...] = (
     "transformer_types",
     "switch_equipment_types",
     "inverter_types",
+    # Osobny magazyn konfiguracji stacji obok modelu (dawny `StationAudit2ConfigORM`, FK do
+    # `projects`) skasowany kartą JEDNA-SCIEZKA-EDYCJI (2026-11-04): konfiguracja stacji żyje
+    # wyłącznie w modelu ENM. Bazy sprzed kasacji niosą tabelę-sierotę — start zrzuca ją do
+    # JSON i usuwa. JEDYNE dopuszczone wystąpienie tej nazwy w `backend/src` (wyjątek grupy
+    # `konfiguracja_stacji_` strażnika `scripts/grep_zero_guard.py`).
+    "station_audit2_configs",
 )
 KATALOG_ZRZUTU = "legacy_baza"
 ZRODLO_MIGRACJI = "migracja_legacy"

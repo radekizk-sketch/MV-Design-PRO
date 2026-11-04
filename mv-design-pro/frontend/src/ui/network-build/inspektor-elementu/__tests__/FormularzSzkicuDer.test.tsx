@@ -2,7 +2,8 @@
  * UI-02b JEDEN-INSPEKTOR — formularz szkicu PV/BESS/FW w prawym inspektorze (`FormularzSzkicuDer`).
  *
  * Intencje przeniesione z testów dawnego panelu szczegółów kanwy (skasowanego tą kartą), teraz
- * na formularzu inspektora i na REALNYM zapisie (`postDerGeneratorConfig` → `fetch` →
+ * na formularzu inspektora i na REALNYM zapisie (`zapiszZrodloOze` → operacja domenowa
+ * `add_converter_source` przez `POST /api/cases/{c}/enm/domain-ops` → `fetch` →
  * `useSnapshotStore.setSnapshot`), nie na wywołaniu zwrotnym:
  *  - typ przekształtnika WYŁĄCZNIE z katalogu backendu, per technologia, wybór jawny (pusta
  *    pozycja na starcie), brak pozycji nN = uczciwy stan zerowy bez listy zastępczej;
@@ -48,7 +49,8 @@ const KATALOG: Readonly<Record<'PV' | 'BESS' | 'WIND', readonly unknown[]>> = {
 interface Zadanie {
   readonly url: string;
   readonly metoda: string;
-  readonly cialo: unknown;
+  /** Koperta operacji domenowej (`operation.name`, `operation.payload`) albo `null` (GET). */
+  readonly cialo: { readonly operation: { readonly name: string; readonly payload: Record<string, unknown> } } | null;
 }
 
 const zadania: Zadanie[] = [];
@@ -76,7 +78,7 @@ function atrapaFetch(opoznienieKlasyfikacji?: Promise<void>): void {
         ? new Response('błąd', { status: 500 })
         : new Response(JSON.stringify(katalogBaterii), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
-    if (metoda === 'POST' && /\/api\/projects\/[^/]+\/cases\/[^/]+\/generators$/.test(url)) {
+    if (metoda === 'POST' && /\/api\/cases\/[^/]+\/enm\/domain-ops$/.test(url)) {
       return new Response(JSON.stringify(ODPOWIEDZ_ZAPISU), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('nieobsłużone w atrapie', { status: 500 });
@@ -192,18 +194,23 @@ describe('formularz szkicu DER w inspektorze — zapis', () => {
 
     await waitFor(() => expect(postyZapisu()).toHaveLength(1));
     const [post] = postyZapisu();
-    expect(post.url).toBe('/api/projects/proj-1/cases/case-1/generators');
-    expect(post.cialo).toEqual({
+    expect(post.url).toBe('/api/cases/case-1/enm/domain-ops');
+    expect(post.cialo?.operation.name).toBe('add_converter_source');
+    expect(post.cialo?.operation.payload).toEqual({
       station_ref: 'station/1',
-      der_kind: 'PV',
-      power_mw: 1.2,
+      source_technology: 'PV',
+      power_setpoint_mw: 1.2,
       connection_variant: 'nn_side',
       catalog_ref: 'conv-pv-nn-1mw-0p4kv',
       source_name: 'PV Stacja 1',
       quantity: 1,
       nc_rfg_module: 'B',
     });
-    await waitFor(() => expect(setSnapshot).toHaveBeenCalledWith(ODPOWIEDZ_ZAPISU));
+    await waitFor(() =>
+      expect(setSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ snapshot: ODPOWIEDZ_ZAPISU.snapshot }),
+      ),
+    );
     expect(useKontekstElementuKanwy.getState().szkicDer).toBeNull();
   });
 
@@ -233,7 +240,7 @@ describe('formularz szkicu DER w inspektorze — zapis', () => {
     await uzytkownik.click(screen.getByTestId('inspektor-der-zapisz'));
     await waitFor(() =>
       expect(useNotificationStore.getState().notifications.map((n) => n.message)).toContain(
-        'Nie można zapisać układu PV/BESS/FW: wybierz aktywny projekt i przypadek.',
+        'Nie można zapisać układu PV/BESS/FW: wybierz aktywny przypadek.',
       ),
     );
     expect(postyZapisu()).toHaveLength(0);
@@ -353,7 +360,10 @@ describe('formularz szkicu DER w inspektorze — K6 strona przyłączenia, BESS,
     await uzytkownik.selectOptions(bateria, 'bat-lfp-2mwh');
     await uzytkownik.click(screen.getByTestId('inspektor-der-zapisz'));
     await waitFor(() => expect(postyZapisu()).toHaveLength(1));
-    expect(postyZapisu()[0].cialo).toMatchObject({ der_kind: 'BESS', battery_catalog_ref: 'bat-lfp-2mwh' });
+    expect(postyZapisu()[0].cialo?.operation.payload).toMatchObject({
+      source_technology: 'BESS',
+      battery_catalog_ref: 'bat-lfp-2mwh',
+    });
   });
 
   it.each([

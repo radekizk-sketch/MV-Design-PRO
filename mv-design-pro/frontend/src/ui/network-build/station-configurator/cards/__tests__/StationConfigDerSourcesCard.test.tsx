@@ -22,11 +22,10 @@ const FROZEN_NOW = '2026-05-06T10:00:00Z';
  * fikstury jawnie zamiast liczyć na usunięty `BLOCK_TRANSFORMER_CATALOG`.
  */
 const BLOCK_TRANSFORMER_FIXTURE: BlockTransformerItem = {
-  id: 'btr_pv_15_069_1250',
-  catalog_namespace: 'block_transformer',
+  id: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter',
+  catalog_namespace: 'TRAFO_SN_NN',
   catalog_version: '1.0',
   label_pl: 'Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11',
-  transformer_type_ref: 'tr-test-btr_pv_15_069_1250',
   sn_kva: 1250,
   hv_kv: 15,
   lv_kv: 0.69,
@@ -122,7 +121,7 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
             catalogs: {
               ...EMPTY_DER_CATALOGS,
               device_catalog_ref: 'pv_inv_huawei_1000',
-              block_transformer_catalog_ref: 'btr_pv_15_069_1250',
+              block_transformer_catalog_ref: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter',
             },
             nominal_power_kw: 1000,
           }),

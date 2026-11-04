@@ -478,7 +478,9 @@ export interface DerTopologyPayload {
 export interface AddConverterSourcePayload {
   source_technology: ConverterSourceTechnology;
   connection_variant: ConverterConnectionVariant;
-  bus_nn_ref: string;
+  /** Brak = szyna rozdzielnicy nN stacji ustalona z modelu (`nn_side`) albo szyna urządzenia
+   * nowego transformatora dedykowanego (`block_transformer_catalog_ref`). */
+  bus_nn_ref?: string | null;
   station_ref: string;
   placement: SourcePlacement | null;
   existing_field_ref: string | null;
@@ -508,6 +510,15 @@ export interface AddConverterSourcePayload {
   data_umowy_przylaczeniowej?: string | null;
   nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
   deklaracje_modulu?: DeklaracjeModulu | null;
+  /** Nowy transformator dedykowany z katalogu TRAFO_SN_NN — strona górna wprost na istniejącej
+   * szynie SN `sn_connection_bus_ref` (szyna SN stacji, ZK SN, słup rozgałęźny, odgałęzienie). */
+  block_transformer_catalog_ref?: string | null;
+  block_transformer_lv_voltage_tolerance?: 'PLUS_6' | 'PLUS_10' | null;
+  sn_connection_bus_ref?: string | null;
+  /** Deklaracja modułu NC RfG — backend sprawdza ją wobec klasyfikacji, nie zapisuje. */
+  nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
+  /** Próba: te same reguły i odmowy co zapis, odpowiedź bez migawki. */
+  dry_run?: boolean;
 }
 
 export type NNConnectionType = 'JEDNOFAZOWY' | 'TROJFAZOWY';

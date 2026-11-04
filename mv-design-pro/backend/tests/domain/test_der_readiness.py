@@ -157,7 +157,7 @@ class TestTransformatorDedykowany:
             we(
                 connection_side="dedicated_transformer",
                 nominal_power_kw=1000.0,
-                block_transformer_catalog_ref="btr_pv_15_04_1000",
+                block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             )
         )
         assert macierz["equipment"] == "ready"
@@ -172,7 +172,7 @@ class TestTransformatorDedykowany:
         wejscie = we(
             connection_side="dedicated_transformer",
             nominal_power_kw=PROG_87T_KW,
-            block_transformer_catalog_ref="btr_pv_15_04_1000",
+            block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="protection",
         )
         assert macierz_gotowosci_der(wejscie)["protection"] == "partial"
@@ -182,7 +182,7 @@ class TestTransformatorDedykowany:
         wejscie = we(
             connection_side="dedicated_transformer",
             nominal_power_kw=PROG_87T_KW - 1,
-            block_transformer_catalog_ref="btr_pv_15_04_1000",
+            block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="protection",
         )
         assert macierz_gotowosci_der(wejscie)["protection"] == "ready"
@@ -191,7 +191,7 @@ class TestTransformatorDedykowany:
         wejscie = we(
             connection_side="dedicated_transformer",
             nominal_power_kw=2500.0,
-            block_transformer_catalog_ref="btr_pv_15_04_1000",
+            block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="dual",
         )
         assert macierz_gotowosci_der(wejscie)["protection"] == "ready"
@@ -246,24 +246,59 @@ class TestMapowanieZGeneratora:
             "bus_ref": "bus-nn-1",
             "catalog_ref": "pv_inv_sma_2500",
             "connection_variant": "block_transformer",
+            # Pozycja transformatora dedykowanego to `catalog_ref` JEGO rekordu w modelu
+            # (karta JEDNA-SCIEZKA-EDYCJI) — wytwórca wskazuje element, nie kopiuje referencji.
+            "blocking_transformer_ref": "tr-ded-1",
             "materialized_params": {
                 "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                 "vt_catalog_ref": "vt_10kv_100v_05_abb",
                 "protection_catalog_ref": "ABB_REB670",
-                "block_transformer_catalog_ref": "btr_pv_15_04_1000",
                 "profiles": {"nc_rfg_profile_ref": "pse", "lvrt_curve_ref": "lvrt_pse"},
             },
         }
         wejscie = wejscie_z_generatora(
-            generator, ct_accuracy_class="5P10", ct_application="protection"
+            generator,
+            transformatory=[
+                {"ref_id": "tr-ded-1", "catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy"}
+            ],
+            ct_accuracy_class="5P10",
+            ct_application="protection",
         )
         assert wejscie.der_kind == "PV"
         assert wejscie.connection_side == "dedicated_transformer"
         assert wejscie.nominal_power_kw == 2500.0
         assert wejscie.ct_catalog_ref == "ct_200_5_5p10_10va_abb"
-        assert wejscie.block_transformer_catalog_ref == "btr_pv_15_04_1000"
+        assert wejscie.block_transformer_catalog_ref == "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy"
         assert wejscie.nc_rfg_profile_ref == "pse"
         assert wejscie.hvrt_curve_ref is None  # brak danej zostaje brakiem
+
+    @pytest.mark.parametrize(
+        ("generator", "transformatory"),
+        [
+            # Kopia referencji w wytwórcy (klucz, którego żadna operacja nie zapisuje) NIE
+            # jest pozycją transformatora — bez wskazanego elementu brak zostaje brakiem.
+            (
+                {
+                    "connection_variant": "block_transformer",
+                    "materialized_params": {"block_transformer_catalog_ref": "tr-x"},
+                },
+                [{"ref_id": "tr-x", "catalog_ref": "tr-x"}],
+            ),
+            # Wskazanie elementu, którego nie ma w modelu.
+            ({"blocking_transformer_ref": "tr-brak"}, [{"ref_id": "tr-1", "catalog_ref": "x"}]),
+            # Element bez pozycji katalogu (wpisany ręcznie) albo z pustą referencją.
+            ({"blocking_transformer_ref": "tr-1"}, [{"ref_id": "tr-1", "catalog_ref": None}]),
+            ({"blocking_transformer_ref": "tr-1"}, [{"ref_id": "tr-1", "catalog_ref": "  "}]),
+        ],
+    )
+    def test_pozycja_transformatora_dedykowanego_tylko_z_elementu_modelu(
+        self, generator: dict, transformatory: list
+    ) -> None:
+        wejscie = wejscie_z_generatora(
+            {"ref_id": "g", "gen_type": "pv_inverter", **generator},
+            transformatory=transformatory,
+        )
+        assert wejscie.block_transformer_catalog_ref is None
 
     def test_pusty_lancuch_to_BRAK_a_nie_wartosc(self) -> None:
         wejscie = wejscie_z_generatora(

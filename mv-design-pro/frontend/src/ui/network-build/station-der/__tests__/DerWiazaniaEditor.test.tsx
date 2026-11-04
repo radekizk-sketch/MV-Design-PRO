@@ -67,16 +67,18 @@ function stubFetch(): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : String(input);
     const metoda = init?.method ?? 'GET';
-    if (metoda === 'PATCH') {
-      zadania.push({
-        url,
-        metoda,
-        body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
-      });
+    // Jedyna droga zapisu wiązań: operacja `set_der_catalog_bindings` przez domain-ops
+    // (karta JEDNA-SCIEZKA-EDYCJI) — `body` to ładunek operacji z koperty.
+    if (metoda === 'POST' && url.endsWith('/enm/domain-ops')) {
+      const koperta = JSON.parse(String(init?.body ?? '{}')) as {
+        operation: { name: string; payload: Record<string, unknown> };
+      };
+      expect(koperta.operation.name).toBe('set_der_catalog_bindings');
+      zadania.push({ url, metoda, body: koperta.operation.payload });
       return {
         ok: odpowiedzPatch.ok,
         status: odpowiedzPatch.status,
-        statusText: 'PATCH',
+        statusText: 'POST',
         json: async () => odpowiedzPatch.payload ?? odpowiedzOperacji(),
       } as unknown as Response;
     }
@@ -94,7 +96,6 @@ function renderEditor(
   render(
     <DerWiazaniaEditor
       derId="DER-1"
-      projectId="PRJ-1"
       caseId="CASE-1"
       wartosci={{
         protection_catalog_ref: 'REF-OC-200',
@@ -130,10 +131,11 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     await uzytkownik.click(wiersz);
 
     await waitFor(() => expect(zadania).toHaveLength(1));
-    expect(zadania[0].url).toBe('/api/projects/PRJ-1/cases/CASE-1/generators/DER-1/bindings');
-    // Dokładnie JEDEN klucz: gdyby żądanie niosło komplet wiązań, wybór przekładnika
-    // nadpisywałby zabezpieczenie i VT wartościami z ekranu (cicha utrata danych).
-    expect(Object.keys(zadania[0].body)).toEqual(['ct_catalog_ref']);
+    expect(zadania[0].url).toBe('/api/cases/CASE-1/enm/domain-ops');
+    // Dokładnie JEDNO wiązanie (plus wskazanie wytwórcy): gdyby żądanie niosło komplet
+    // wiązań, wybór przekładnika nadpisywałby zabezpieczenie i VT wartościami z ekranu.
+    expect(Object.keys(zadania[0].body).sort()).toEqual(['ct_catalog_ref', 'generator_ref']);
+    expect(zadania[0].body.generator_ref).toBe('DER-1');
     expect(zadania[0].body.ct_catalog_ref).toBe(CT_REALNY.id);
     expect(poZapisie).toHaveBeenCalledWith(
       'ct_catalog_ref',
@@ -152,7 +154,7 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     await uzytkownik.click(screen.getByTestId('der-wiazanie-wyczysc-ct_catalog_ref'));
 
     await waitFor(() => expect(zadania).toHaveLength(1));
-    expect(zadania[0].body).toEqual({ ct_catalog_ref: null });
+    expect(zadania[0].body).toEqual({ generator_ref: 'DER-1', ct_catalog_ref: null });
     // Kontrola odwrotna: pominięcie NIE kasuje — gdyby „Wyczyść" wysyłało `{}` albo
     // pomijało pole, backend zostawiłby stare wiązanie i ekran kłamałby o usunięciu.
     expect('ct_catalog_ref' in zadania[0].body).toBe(true);
@@ -185,9 +187,9 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     expect(poZapisie).not.toHaveBeenCalled();
   });
 
-  it('bez projektu i przypadku obliczeniowego zapis jest zablokowany, a powód nazwany', async () => {
+  it('bez przypadku obliczeniowego zapis jest zablokowany, a powód nazwany', async () => {
     const uzytkownik = userEvent.setup();
-    renderEditor({ projectId: null, caseId: null });
+    renderEditor({ caseId: null });
 
     expect(screen.getByTestId('der-wiazania-brak-kontekstu')).toBeTruthy();
     const przycisk = screen.getByTestId('der-wiazanie-wybierz-ct_catalog_ref') as HTMLButtonElement;

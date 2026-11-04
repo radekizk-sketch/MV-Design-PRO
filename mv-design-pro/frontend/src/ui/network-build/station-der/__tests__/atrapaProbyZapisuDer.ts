@@ -1,13 +1,15 @@
 /**
- * Atrapa werdyktu backendu dla PRÓBY zapisu DER (`dry_run` końcówki `POST …/generators`).
+ * Atrapa werdyktu backendu dla PRÓBY zapisu DER (`dry_run` operacji `add_converter_source`
+ * przez `POST …/enm/domain-ops` — jedyna droga zapisu źródła OZE).
  *
  * Kreator DER nie liczy progu mocy transformatora — pyta backend próbą zapisu tej samej
  * konfiguracji (`probaZapisuDer.ts`). Testy interfejsu potrzebują więc atrapy, która odpowiada
  * jak backend: kontrola mocy O-53 (`domain.generator_validation.sprawdz_moc_transformatora`)
  * dla JEDNEJ pozycji przy k_j = k_obc = 1 — S_n,TR ≥ S_n,jedn · n, gdzie transformatorem jest
  * transformator dedykowany wskazany w zadaniu albo (wariant nN) transformatory stacji zasilające
- * jej szynę nN. Odmowa: 422 z kodem `converter.transformer_capacity_exceeded` i zdaniem
- * nazywającym moc transformatora i moc źródła. Zapis właściwy (bez `dry_run`) zwraca `null` —
+ * jej szynę nN. Odmowa: jak operacja — HTTP 200 z `error_code`
+ * `converter.transformer_capacity_exceeded` i zdaniem nazywającym moc transformatora i moc
+ * źródła. Zapis właściwy (bez `dry_run`) zwraca `null` —
  * obsługuje go dalsza część atrapy pliku testowego.
  *
  * Pełny iloczyn reguły (grupa źródeł, k_j, k_obc, tory tworzenia i przypisania) ma backend:
@@ -58,8 +60,12 @@ export function odpowiedzProbyZapisuDer(
   init: RequestInit | undefined,
   dane: DaneAtrapyProby,
 ): Response | null {
-  if (!url.includes('/generators') || init?.method !== 'POST') return null;
-  const cialo = JSON.parse(String(init.body)) as Record<string, unknown>;
+  if (!url.endsWith('/enm/domain-ops') || init?.method !== 'POST') return null;
+  const koperta = JSON.parse(String(init.body)) as {
+    operation?: { name?: string; payload?: Record<string, unknown> };
+  };
+  if (koperta.operation?.name !== 'add_converter_source') return null;
+  const cialo = koperta.operation.payload ?? {};
   if (cialo.dry_run !== true) return null;
   const urzadzenie = dane.urzadzenia.find((u) => u.id === cialo.catalog_ref);
   const wymaganaMva = (urzadzenie?.sn_mva ?? 0) * Number(cialo.quantity ?? 1);
@@ -74,18 +80,38 @@ export function odpowiedzProbyZapisuDer(
   if (mocTransformatoraMva !== null && mocTransformatoraMva + 1e-9 < wymaganaMva) {
     return new Response(
       JSON.stringify({
-        detail: {
-          code: KOD_ODMOWY_MOCY,
-          message_pl:
-            `Moc transformatora ${Math.round(mocTransformatoraMva * 1000)} kVA jest mniejsza `
-            + `od mocy źródeł ${Math.round(wymaganaMva * 1000)} kVA.`,
-        },
+        dry_run: true,
+        error_code: KOD_ODMOWY_MOCY,
+        error:
+          `Moc transformatora ${Math.round(mocTransformatoraMva * 1000)} kVA jest mniejsza `
+          + `od mocy źródeł ${Math.round(wymaganaMva * 1000)} kVA.`,
       }),
-      { status: 422, headers: { 'Content-Type': 'application/json' } },
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
   return new Response(JSON.stringify({ dry_run: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Zadania zapisu źródła OZE (operacja `add_converter_source`, próby i zapisy właściwe)
+ * wysłane przez kreator — adres i ŁADUNEK operacji z koperty `domain-ops`.
+ */
+export function zadaniaZrodlaOze(
+  fetchMock: unknown,
+): Array<{ readonly url: string; readonly body: Record<string, unknown> }> {
+  const wywolania = (fetchMock as { mock: { calls: Array<[unknown, RequestInit | undefined]> } })
+    .mock.calls;
+  return wywolania
+    .filter(([url, init]) => String(url).endsWith('/enm/domain-ops') && init?.method === 'POST')
+    .map(([url, init]) => ({
+      url: String(url),
+      koperta: JSON.parse(String(init?.body)) as {
+        operation: { name: string; payload: Record<string, unknown> };
+      },
+    }))
+    .filter(({ koperta }) => koperta.operation.name === 'add_converter_source')
+    .map(({ url, koperta }) => ({ url, body: koperta.operation.payload }));
 }

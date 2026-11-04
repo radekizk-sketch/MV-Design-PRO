@@ -826,25 +826,26 @@ def test_transformator_zasilajacy_gpz_nie_jest_transformatorem_blokowym(
 def test_szyna_nn_stacji_gpz_nie_jest_strona_dolna_transformatora_zasilajacego(
     klient: TestClient, liczba_tr: int
 ) -> None:
-    """`POST …/generators`, wariant po stronie nN, bez wskazanej szyny: końcówka szuka szyny
-    nN po stronie dolnej transformatora STACJI. Transformator zasilający GPZ nie jest
-    transformatorem stacji SN/nN — jego strona dolna to sekcja SN 15 kV, więc stacja GPZ
-    bez rozdzielnicy nN dostaje nazwaną odmowę „brak szyny nN", a nie sekcję SN udającą
-    szynę nN (dawniej tak trafiała do operacji)."""
+    """`add_converter_source`, wariant po stronie nN, bez wskazanej szyny: operacja szuka
+    szyny nN po stronie dolnej transformatora STACJI (karta JEDNA-SCIEZKA-EDYCJI przeniosła
+    to ustalenie z dawnej końcówki `POST …/generators` do operacji). Transformator
+    zasilający GPZ nie jest transformatorem stacji SN/nN — jego strona dolna to sekcja SN
+    15 kV, więc stacja GPZ bez rozdzielnicy nN dostaje nazwaną odmowę „brak szyny nN", a nie
+    sekcję SN udającą szynę nN."""
     budowa, migawka = _zbuduj(klient, "110kV", 1, liczba_tr, "closed")
-    projekt = klient.get(f"/api/study-cases/{budowa.case_id}").json()["project_id"]
-    odpowiedz = klient.post(
-        f"/api/projects/{projekt}/cases/{budowa.case_id}/generators",
-        json={
+    wynik = _surowa_operacja(
+        klient,
+        budowa.case_id,
+        "add_converter_source",
+        {
             "station_ref": _gpz(migawka)["ref_id"],
-            "der_kind": "PV",
-            "power_mw": 0.5,
+            "source_technology": "PV",
+            "power_setpoint_mw": 0.5,
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
         },
     )
-    assert odpowiedz.status_code == 422, odpowiedz.text
-    assert odpowiedz.json()["detail"]["code"] == "station.nn_bus_missing", odpowiedz.text
+    assert wynik.get("error_code") == "station.nn_bus_missing", wynik
     assert not budowa.migawka()["generators"]
 
 

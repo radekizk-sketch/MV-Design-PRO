@@ -10,7 +10,7 @@
  */
 
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
-import { odpowiedzProbyZapisuDer } from './atrapaProbyZapisuDer';
+import { odpowiedzProbyZapisuDer, zadaniaZrodlaOze } from './atrapaProbyZapisuDer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -67,9 +67,8 @@ function blockTransformerFixture(
   id: string, snKva: number, hvKv: number, lvKv: number,
 ): Record<string, unknown> {
   return {
-    id, catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    id, catalog_namespace: 'TRAFO_SN_NN', catalog_version: '1.0',
     label_pl: `Transformator dedykowany ${hvKv}/${lvKv} kV · ${snKva} kVA · Dyn11`,
-    transformer_type_ref: `tr-test-${id}`,
     sn_kva: snKva, hv_kv: hvKv, lv_kv: lvKv,
     uk_percent: 6, pk_kw: snKva * 0.01, p0_kw: snKva * 0.002, i0_percent: 0.5,
     vector_group: 'Dyn11', is_mv_to_mv: lvKv > 1,
@@ -80,11 +79,11 @@ function blockTransformerFixture(
 // Karta FAB-J: 3150 kVA jest tu CELOWO — falownik 2500 kW wymaga ≥2778 kVA
 // (cos φ 0,90), więc auto-dobór wybiera najmniejszy typoszereg, który to
 // przenosi. Bez pozycji 3150 kVA test 1 nie miałby czego dobrać. Identyfikator
-// odpowiada istniejącej pozycji katalogu (`btr_der_15_069_3150`); dawna pozycja
+// odpowiada istniejącej pozycji katalogu (`tr-sn-nn-15-0p69-3p15mva-dyn11-inverter`); dawna pozycja
 // 4000 kVA została usunięta z katalogu (powyżej 3150 kVA brak źródła strat Tier 2).
 const BLOCK_TRANSFORMER_FIXTURES = [
-  blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
-  blockTransformerFixture('btr_der_15_069_3150', 3150, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-2p5mva-dyn11-inverter', 2500, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-3p15mva-dyn11-inverter', 3150, 15, 0.69),
 ];
 
 // Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
@@ -133,15 +132,9 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
   WIND: [],
 };
 
-/** Zapisy właściwe DER (bez prób `dry_run`) wysłane do `POST …/generators`. */
+/** Zapisy właściwe DER (bez prób `dry_run`) — operacja `add_converter_source` (domain-ops). */
 function zapisyDer(): Array<{ readonly url: string; readonly body: Record<string, unknown> }> {
-  return (global.fetch as ReturnType<typeof vi.fn>).mock.calls
-    .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
-    .map(([url, init]) => ({
-      url: String(url),
-      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
-    }))
-    .filter((zapis) => zapis.body.dry_run !== true);
+  return zadaniaZrodlaOze(global.fetch).filter((zapis) => zapis.body.dry_run !== true);
 }
 
 /** Mockuje granicę `fetch` (wzorzec atrapy katalogu z `inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`). */
@@ -277,7 +270,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       target: { value: 'station-001/sn' },
     });
     fireEvent.change(screen.getByTestId('add-der-block-transformer'), {
-      target: { value: 'btr_pv_15_069_2500' },
+      target: { value: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter' },
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -312,16 +305,15 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     // regułą backendu (kontrola mocy O-53: S_n,TR ≥ max(S_n,jedn · n; P/cos φ) · k_j / k_obc),
     // która falownik o S_n = 2,5 MVA pod transformatorem 2500 kVA PRZYJMUJE. Teraz dobór pyta
     // backend próbą zapisu (`dry_run`) każdego kandydata i bierze najmniejszego przyjętego.
-    expect(der.catalogs.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
-    const probyDoboru = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
-      .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
-      .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>)
+    expect(der.catalogs.block_transformer_catalog_ref).toBe('tr-sn-nn-15-0p69-2p5mva-dyn11-inverter');
+    const probyDoboru = zadaniaZrodlaOze(global.fetch)
+      .map((zadanie) => zadanie.body)
       .filter((cialo) => cialo.dry_run === true);
     expect(new Set(probyDoboru.map((cialo) => cialo.block_transformer_catalog_ref))).toEqual(
-      new Set(['btr_pv_15_069_2500', 'btr_der_15_069_3150']),
+      new Set(['tr-sn-nn-15-0p69-2p5mva-dyn11-inverter', 'tr-sn-nn-15-0p69-3p15mva-dyn11-inverter']),
     );
     const [zapis] = zapisyDer();
-    expect(zapis?.body.block_transformer_catalog_ref).toBe('btr_pv_15_069_2500');
+    expect(zapis?.body.block_transformer_catalog_ref).toBe('tr-sn-nn-15-0p69-2p5mva-dyn11-inverter');
     expect(der.profiles.pf_curve_ref).toBe('pf_droop_5');
     // BESS modes nie powinny byc dla PV.
     expect(der.profiles.bess_operation_mode_refs).toEqual([]);
@@ -430,15 +422,15 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     await waitFor(() => {
       const [zapis] = zapisyDer();
-      expect(zapis?.url).toContain('/cases/case-snapshot-001/generators');
+      expect(zapis?.url).toBe('/api/cases/case-snapshot-001/enm/domain-ops');
       expect(zapis?.body).toMatchObject({
         catalog_ref: 'pv_inv_huawei_185',
-        power_mw: 0.185,
+        power_setpoint_mw: 0.185,
       });
     });
   });
 
-  it('dane modułu NC RfG z kroku „Profil" (art. 4, data, nastawy, deklaracje) trafiają do POST …/generators', async () => {
+  it('dane modułu NC RfG z kroku „Profil" (art. 4, data, nastawy, deklaracje) trafiają do operacji add_converter_source', async () => {
     // Karta AB-1a Pakiet D2 §0 pkt 8: tabliczka DER zbiera KAŻDE pole danych modułu, jeden
     // walidator kontraktu (`ui2/oze/ncrfg/daneModulu.ts` ↔ backend `pola_nc_rfg_generatora`).
     useSnapshotStore.setState({ caseId: 'case-snapshot-001', snapshot: station001Snapshot() } as never);
@@ -541,7 +533,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       const [zapis] = zapisyDer();
       expect(zapis?.body).toMatchObject({
         catalog_ref: 'pv_inv_catalog_50',
-        power_mw: 0.05,
+        power_setpoint_mw: 0.05,
       });
     });
     // Karta AB-1a Pakiet D2: klasyfikacja modułu pytana w kW (klucze zapytania = parametry
@@ -598,7 +590,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       const body = zapis?.body ?? {};
       expect(body.quantity).toBe(8);
       // 8 × 50 kW = 400 kW = 0,4 MW — moc CALEJ pozycji, nie jednostki.
-      expect(body.power_mw).toBeCloseTo(0.4, 6);
+      expect(body.power_setpoint_mw).toBeCloseTo(0.4, 6);
     });
   });
 
@@ -665,9 +657,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     await waitFor(() => {
       // Ani zapis, ani próba: konfiguracja bez mocy nie jest zadaniem (`zbudujZadanieDer`).
-      const zadania = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-        ([url, init]) => String(url).includes('/generators') && init?.method === 'POST',
-      );
+      const zadania = zadaniaZrodlaOze(global.fetch);
       expect(zadania, 'wytworca bez mocy katalogowej nie moze trafic do modelu').toHaveLength(0);
     });
   });

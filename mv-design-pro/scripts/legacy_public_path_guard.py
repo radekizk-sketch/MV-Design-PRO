@@ -178,9 +178,13 @@ FORBIDDEN_CV42_FUNCTION_NAMES = {
 # `DATABASE_URL` w torze biegow. `enm/assembler.py::_uow_factory_biezacy` budowal
 # druga, niezalezna baze w tym samym procesie (inna niz `app.state.uow_factory`),
 # a `_maybe_load_audit2_extensions` czytal nia konfiguracje audytu 2 — zapisana
-# przez API bywala dla biegu niewidoczna. Po karcie: stan bazy czyta wykonawca
-# fabryka `UnitOfWork` WOLAJACEGO (`canonical_analysis.rozszerzenia_audit2_dla_opcji`
-# + repozytorium `UnitOfWork.audit2_station_configs`), assembler dostaje dane.
+# przez API bywala dla biegu niewidoczna. Karta JEDNA-SCIEZKA-EDYCJI (2026-11-04)
+# skasowala sam osobny magazyn konfiguracji stacji (tabela, repozytorium, koncowki,
+# rozszerzenia wejscia solvera) — konfiguracja stacji zyje wylacznie w modelu ENM.
+# Bramka wskrzeszenia tego magazynu: grupa `konfiguracja_stacji_` w
+# `scripts/grep_zero_guard.py`; jej JEDYNY wyjatek w `backend/src` to migracja zastanej
+# bazy (`infrastructure/persistence/migracja_legacy_db.py::TABELE_LEGACY`), ktora musi
+# znac nazwe tabeli-sieroty, zeby ja zrzucic i usunac przy starcie.
 # Sprawdzane jako DEFINICJE (ast.FunctionDef) gdziekolwiek w `backend/src`.
 FORBIDDEN_CV42B_FUNCTION_NAMES = {
     "_uow_factory_biezacy",

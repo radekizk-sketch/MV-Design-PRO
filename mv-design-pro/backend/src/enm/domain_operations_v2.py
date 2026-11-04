@@ -19,11 +19,13 @@ w tej samej funkcji pojechała do materializacji.
 from __future__ import annotations
 
 import copy
+import hashlib
 import math
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
+from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from domain.generator_validation import (
     KLUCZ_META_KONTROLI_MOCY,
     TECHNOLOGIA_WG_RODZAJU_GENERATORA,
@@ -53,6 +55,7 @@ from network_model.catalog.wartosci_robocze import (
 )
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import (
     km_na_m,
     kvar_na_mvar,
@@ -60,6 +63,7 @@ from network_model.pochodne import (
     m_na_km,
     moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
+    mva_na_kva,
     mvar_na_kvar,
     mw_na_kw,
 )
@@ -75,6 +79,7 @@ from network_model.pochodne.pasma_napieciowe import (
     w_pasmie_nn,
 )
 from network_model.solvers import cable_ampacity_derating as cable_derating
+from werdykt import opis_podstawy
 
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
@@ -83,6 +88,7 @@ from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
+    KOD_TYPU_POLA_LADUNKU,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_RODZAJU_POLA,
@@ -192,7 +198,7 @@ from .topology_ops import (
     delete_branch,
     delete_node,
 )
-from .tor_pola import szyny_stacji
+from .tor_pola import szyna_glowna_stacji, szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
@@ -6067,6 +6073,11 @@ def _add_converter_source_der_sn(
             "albo wskaż pozycję katalogu z mocą znamionową.",
             "generator.power_missing",
         )
+    # Punkt przyłączenia toru DER-SN do sieci = szyna SN stacji (pole źródłowe SN) — ta sama
+    # weryfikacja deklarowanego modułu NC RfG co w torze nN i blokowym.
+    odmowa_modulu = _odmowa_deklaracji_modulu_ncrfg(payload, p_mw, mv_bus_voltage_kv)
+    if odmowa_modulu is not None:
+        return odmowa_modulu
     # Karta FAB-D1 (D3 cleanup): brak `q_min_mvar` w payloadzie NIE jest 0 Mvar —
     # `Generator.q_mvar` jest OPCJONALNE w kontrakcie (enm/models.py), więc
     # nieobecność zostaje `None` (brak jawnego celu Q), zamiast twierdzenia
@@ -6433,8 +6444,270 @@ def _add_converter_source_der_sn(
     return response
 
 
+#: Moduły NC RfG, które projektant może zadeklarować w ładunku (`nc_rfg_module`). Deklaracja
+#: NIE jest zapisywana — moduł wynika z klasyfikacji (moc × napięcie przyłączenia); operacja
+#: sprawdza ją wobec klasyfikacji i odmawia przy niezgodności (nigdy cicha korekta).
+_MODULY_NC_RFG: tuple[str, ...] = ("A", "B", "C", "D")
+
+
+def _odmowa_deklaracji_modulu_ncrfg(
+    payload: dict[str, Any], p_mw: float | None, napiecie_przylaczenia_kv: float | None
+) -> dict[str, Any] | None:
+    """Odmowa, gdy zadeklarowany `nc_rfg_module` nie zgadza się z klasyfikacją modułu.
+
+    Brak deklaracji nie jest błędem (pole opcjonalne). Brak mocy albo napięcia punktu
+    przyłączenia też nie blokuje zapisu — nie ma z czym porównać deklaracji, a domysł
+    napięcia byłby fabrykacją. Klasyfikacja jest rdzeniem B-01: wartość spoza jej dziedziny
+    to jego odmowa gołym `ValueError`, tłumaczona tu na nazwaną odmowę operacji.
+    """
+    modul = payload.get("nc_rfg_module")
+    if modul is None or p_mw is None or napiecie_przylaczenia_kv is None:
+        return None
+    try:
+        with odmowa_rdzenia_b01():
+            klasyfikacja = klasyfikacja_modulu(mw_na_kw(p_mw), napiecie_przylaczenia_kv)
+    except OdmowaDanychError as blad:
+        return _error_response(
+            f"Nie da się sprawdzić zadeklarowanego modułu NC RfG „{modul}”: {blad}",
+            "generator.nc_rfg_module_unclassifiable",
+        )
+    if klasyfikacja.modul == modul:
+        return None
+    return _error_response(
+        f"Moduł NC RfG „{modul}” nie zgadza się z klasyfikacją: {klasyfikacja.powod_pl}. "
+        f"Podstawa klasyfikacji — {opis_podstawy(klasyfikacja.podstawa)}.",
+        "generator.nc_rfg_module_mismatch",
+    )
+
+
+def _transformatory_stacji_sn_nn(
+    enm: dict[str, Any], station: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Transformatory stacji SN/nN (wskazane w stacji albo leżące na jej szynach) — bez
+    transformatora zasilającego GPZ (110/SN), którego strona dolna jest sekcją SN GPZ, nie
+    szyną nN (jedno źródło predykatu `transformatory_zasilajace_gpz`, wspólne z E066)."""
+    refy = {ref for ref in station.get("transformer_refs") or [] if isinstance(ref, str)}
+    szyny = set(szyny_stacji(enm, station))
+    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
+    return [
+        tr
+        for tr in enm.get("transformers", [])
+        if (
+            tr.get("ref_id") in refy
+            or tr.get("id") in refy
+            or tr.get("hv_bus_ref") in szyny
+            or tr.get("lv_bus_ref") in szyny
+        )
+        and tr.get("ref_id") not in zasilajace_gpz
+    ]
+
+
+def _szyna_nn_stacji_dla_zrodla(enm: dict[str, Any], station: dict[str, Any]) -> str | None:
+    """Szyna rozdzielnicy nN stacji dla źródła po stronie nN, gdy ładunek jej nie wskazał.
+
+    Strona dolna transformatora stacji leży na zacisku wyłącznika głównego nN, a źródło
+    przyłącza się do SZYNY ROZDZIELNICY nN za tym wyłącznikiem (`szyna_glowna_stacji`), nie
+    między transformator a wyłącznik główny. Stacja bez transformatora: pierwsza szyna
+    stacji w paśmie nN. `None` — stacja nie ma rozpoznanej szyny nN (odmowa wołającego).
+    """
+    for transformer in _transformatory_stacji_sn_nn(enm, station):
+        lv_bus_ref = transformer.get("lv_bus_ref")
+        if isinstance(lv_bus_ref, str) and lv_bus_ref.strip():
+            return szyna_glowna_stacji(enm, station, lv_bus_ref.strip()) or lv_bus_ref.strip()
+    for bus_ref in station.get("bus_refs") or []:
+        if isinstance(bus_ref, str) and w_pasmie_nn(_bus_voltage_kv(enm, bus_ref)):
+            return bus_ref
+    return None
+
+
+_VARIANT_ALIASES: dict[str, str] = {
+    "LV_BEHIND_STATION_TRANSFORMER": "nn_side",
+    "SOURCE_CONNECTION_STATION": "block_transformer",
+    "DEDICATED_MV_CONNECTION": "block_transformer",
+}
+
+
+def _wariant_przylaczenia_zrodla(payload: dict[str, Any]) -> object:
+    """Wariant przyłączenia z ładunku po rozwinięciu aliasów (V12K-023) — jedno źródło dla
+    operacji i bramy katalogowej."""
+    surowy = payload.get("connection_variant")
+    return _VARIANT_ALIASES.get(surowy, surowy) if isinstance(surowy, str) else surowy
+
+
+def tor_z_transformatorem_dedykowanym_z_katalogu(payload: dict[str, Any]) -> bool:
+    """Czy ładunek `add_converter_source` materializuje NOWY transformator dedykowany z
+    katalogu TRAFO_SN_NN — JEDEN predykat dla operacji i bramy katalogowej API (predykaty
+    parami): wariant blokowy bez wskazania istniejącego transformatora, z pozycją katalogu
+    albo punktem przyłączenia SN. Tor DER-SN (`der_topology`) ma własną gałąź operacji."""
+    blocking = payload.get("blocking_transformer_ref")
+    der_topology = payload.get("der_topology")
+    return (
+        _wariant_przylaczenia_zrodla(payload) == "block_transformer"
+        and not (isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn")
+        and not (isinstance(blocking, str) and blocking.strip())
+        and bool(
+            payload.get("block_transformer_catalog_ref") or payload.get("sn_connection_bus_ref")
+        )
+    )
+
+
+def _liczba_pl(wartosc: float) -> str:
+    """Liczba w nazwie elementu: zapis `:g` z przecinkiem dziesiętnym (15 → „15”, 0,69)."""
+    return f"{wartosc:g}".replace(".", ",")
+
+
+def _token_toru_transformatora_dedykowanego(*czesci: object) -> str:
+    """Stały token identyfikatorów szyny i transformatora dedykowanego źródła (determinizm:
+    te same dane wejściowe → te same identyfikatory)."""
+    zrodlo = "|".join(c.strip() for c in czesci if isinstance(c, str) and c.strip())
+    return hashlib.sha1(zrodlo.encode("utf-8")).hexdigest()[:12]
+
+
+def _transformator_dedykowany_z_katalogu(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    technology: str,
+    catalog_ref: str,
+) -> tuple[dict[str, Any], str, str, list[str]] | dict[str, Any]:
+    """Nowy transformator dedykowany źródła z katalogu TRAFO_SN_NN, strona górna wprost na
+    wskazanej szynie SN (`sn_connection_bus_ref`: szyna SN stacji, szyna ZK SN/słupa
+    rozgałęźnego albo odgałęzienia), strona dolna na nowej szynie urządzenia.
+
+    Ten sam materializator TRAFO_SN_NN co tor DER-SN (`_materialize_der_block_transformer`):
+    jeden katalog transformatorów, jedna reguła tolerancji napięcia nN strony wtórnej
+    (`block_transformer_lv_voltage_tolerance`). Punkt przyłączenia SN wskazuje projektant —
+    nigdy dopasowanie „najbliższej szyny po napięciu".
+
+    Zwraca (kopia modelu z szyną i transformatorem, ref transformatora, ref szyny urządzenia,
+    utworzone refy) albo odpowiedź błędu.
+    """
+    btr_catalog_ref = payload.get("block_transformer_catalog_ref")
+    if not isinstance(btr_catalog_ref, str) or not btr_catalog_ref.strip():
+        return _error_response(
+            "Wariant z transformatorem dedykowanym wymaga pozycji katalogowej transformatora "
+            f"w polu {pole('block_transformer_catalog_ref')}.",
+            "generator.block_transformer_catalog_missing",
+        )
+    btr_catalog_ref = btr_catalog_ref.strip()
+    sn_bus_ref = payload.get("sn_connection_bus_ref")
+    if not isinstance(sn_bus_ref, str) or not sn_bus_ref.strip():
+        return _error_response(
+            "Wariant z transformatorem dedykowanym wymaga wskazania punktu przyłączenia SN — "
+            "istniejącej szyny SN stacji, ZK SN, słupa rozgałęźnego albo odgałęzienia.",
+            "generator.sn_connection_bus_missing",
+        )
+    sn_bus_ref = sn_bus_ref.strip()
+    napiecie_sn_kv = _bus_voltage_kv(enm, sn_bus_ref)
+    if napiecie_sn_kv is None:
+        return _error_response(
+            "Wskazany punkt przyłączenia SN nie istnieje w modelu sieci.",
+            "generator.sn_connection_bus_unknown",
+        )
+    station_ref = str(payload.get("station_ref") or "").strip()
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref)
+    if station is None:
+        return _error_response(
+            "Nie znaleziono stacji dla źródła z transformatorem dedykowanym.",
+            "converter.station_missing",
+        )
+    station_ref = str(station.get("ref_id") or station.get("id") or station_ref)
+    token = _token_toru_transformatora_dedykowanego(
+        station_ref, technology, catalog_ref, btr_catalog_ref, payload.get("source_name")
+    )
+    transformer_ref = f"{station_ref}/der/{token}/tr-block"
+    # Napięcia z TYPU katalogu (materializacja kopiuje je 1:1); szyna urządzenia powstaje
+    # dopiero, gdy pozycja i napięcia są potwierdzone.
+    tr_data, blad_tr = _materialize_der_block_transformer(
+        spec={
+            "catalog_ref": btr_catalog_ref,
+            "lv_voltage_tolerance": payload.get("block_transformer_lv_voltage_tolerance"),
+        },
+        ref_id=transformer_ref,
+        name="Transformator dedykowany",
+        hv_bus_ref=sn_bus_ref,
+        lv_bus_ref="",
+        hv_voltage_kv=napiecie_sn_kv,
+        lv_voltage_kv=0.0,
+    )
+    if blad_tr is not None:
+        return blad_tr
+    assert tr_data is not None
+    uhv_kv = _as_float(tr_data.get("uhv_kv"))
+    ulv_kv = _as_float(tr_data.get("ulv_kv"))
+    if uhv_kv is None or ulv_kv is None or ulv_kv <= 0:
+        return _error_response(
+            "Pozycja katalogowa transformatora dedykowanego nie niesie napięć znamionowych.",
+            "transformer.field_missing",
+        )
+    if not to_samo_napiecie_znamionowe(napiecie_sn_kv, uhv_kv):
+        return _error_response(
+            f"Napięcie punktu przyłączenia SN ({napiecie_sn_kv:g} kV) nie zgadza się "
+            f"z napięciem górnym transformatora dedykowanego ({uhv_kv:g} kV).",
+            "generator.sn_bus_voltage_mismatch",
+        )
+    lv_bus_ref = f"{station_ref}/der/{token}/bus-{ulv_kv:g}kv"
+    tr_data["lv_bus_ref"] = lv_bus_ref
+    sn_mva = _as_float(tr_data.get("sn_mva"))
+    tr_data["name"] = (
+        f"Transformator dedykowany {_liczba_pl(uhv_kv)}/{_liczba_pl(ulv_kv)} kV · "
+        f"{_liczba_pl(mva_na_kva(sn_mva) if sn_mva is not None else 0.0)} kVA · "
+        f"{tr_data.get('vector_group') or ''}"
+    ).rstrip(" ·")
+    # Transformator dedykowany wprost na szynie SN to NIE jest tor DER-SN (szyna producenta,
+    # kabel i pole źródłowe SN): role toru DER-SN (`catalog_role`, `der_role`, `visual_role`)
+    # zdjęte, żeby rysunek i reguły toru DER-SN nie szukały elementów, których ten wariant nie
+    # tworzy. Rozpoznanie transformatora blokowego daje `Generator.blocking_transformer_ref`
+    # (`enm.pole_transformatorowe.transformator_blokowy_der`).
+    meta_tr = {
+        k: v
+        for k, v in (tr_data.get("meta") or {}).items()
+        if k not in {"catalog_role", "der_role", "visual_role"}
+    }
+    tr_data["meta"] = {**meta_tr, "station_ref": station_ref}
+    tr_data["tags"] = ["DER", technology, "transformator_blokowy"]
+
+    new_enm = kopia_graniczna_enm(enm)
+    utworzone: list[str] = []
+    if not any(bus.get("ref_id") == lv_bus_ref for bus in new_enm.get("buses", [])):
+        new_enm.setdefault("buses", []).append(
+            {
+                "ref_id": lv_bus_ref,
+                "name": f"Szyna DER {ulv_kv:g} kV",
+                "voltage_kv": ulv_kv,
+                "tags": ["DER", technology, "transformator_blokowy"],
+                "meta": {
+                    "station_ref": station_ref,
+                    "block_transformer_catalog_ref": btr_catalog_ref,
+                },
+            }
+        )
+        utworzone.append(lv_bus_ref)
+    if not any(tr.get("ref_id") == transformer_ref for tr in new_enm.get("transformers", [])):
+        new_enm.setdefault("transformers", []).append(tr_data)
+        utworzone.append(transformer_ref)
+    stacja_kopii = _resolve_station_for_field_write(new_enm, station_ref=station_ref)
+    assert stacja_kopii is not None
+    bus_refs = stacja_kopii.setdefault("bus_refs", [])
+    if lv_bus_ref not in bus_refs:
+        bus_refs.append(lv_bus_ref)
+    transformer_refs = stacja_kopii.setdefault("transformer_refs", [])
+    if transformer_ref not in transformer_refs:
+        transformer_refs.append(transformer_ref)
+    return new_enm, transformer_ref, lv_bus_ref, utworzone
+
+
 def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW."""
+    """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW.
+
+    JEDYNA droga zapisu źródła przekształtnikowego (karta JEDNA-SCIEZKA-EDYCJI): kreator
+    źródła OZE, kreator DER stacji i formularz szkicu DER wysyłają ten ładunek przez
+    `POST …/enm/domain-ops` (dziennik zmian, cofanie, brama katalogowa). Ładunek obejmuje
+    też to, co dawniej tłumaczyła osobna końcówka DER: szynę nN stacji ustalaną, gdy ładunek
+    jej nie wskazał; nowy transformator dedykowany z katalogu TRAFO_SN_NN
+    (`block_transformer_catalog_ref` + punkt przyłączenia SN `sn_connection_bus_ref`);
+    weryfikację deklarowanego modułu NC RfG (`nc_rfg_module`); próbę `dry_run`.
+    """
     # Próba (`dry_run`): ta sama walidacja co zapis, odpowiedź bez migawki (`_jako_proba`) —
     # kreator DER pyta backend o odmowę (np. moc transformatora O-53) PRZED zapisem.
     dry_run = bool(payload.get("dry_run", False))
@@ -6451,6 +6724,13 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     pola_nc_rfg, blad_nc_rfg = pola_nc_rfg_generatora(payload)
     if blad_nc_rfg is not None:
         return _error_response(*blad_nc_rfg)
+    modul_ncrfg = payload.get("nc_rfg_module")
+    if modul_ncrfg is not None and modul_ncrfg not in _MODULY_NC_RFG:
+        return _error_response(
+            f"Pole {pole('nc_rfg_module')} przyjmuje moduł NC RfG "
+            f"{lista_pl(_MODULY_NC_RFG, 'albo')}.",
+            KOD_TYPU_POLA_LADUNKU,
+        )
 
     # V12K-023: Backwards-compatible aliases for FE-canonical variants.
     # FE DerRenderer.connectionVariant deklaruje 5 wartosci:
@@ -6458,17 +6738,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     #   - LV_BEHIND_STATION_TRANSFORMER -> alias nn_side (PV za trafo stacji nN)
     #   - SOURCE_CONNECTION_STATION -> alias block_transformer (stacja przylaczeniowa)
     #   - DEDICATED_MV_CONNECTION -> alias block_transformer (dedicated MV via block tr)
-    _VARIANT_ALIASES = {
-        "LV_BEHIND_STATION_TRANSFORMER": "nn_side",
-        "SOURCE_CONNECTION_STATION": "block_transformer",
-        "DEDICATED_MV_CONNECTION": "block_transformer",
-    }
-    connection_variant_raw = payload.get("connection_variant")
-    connection_variant = (
-        _VARIANT_ALIASES.get(connection_variant_raw, connection_variant_raw)
-        if isinstance(connection_variant_raw, str)
-        else connection_variant_raw
-    )
+    connection_variant = _wariant_przylaczenia_zrodla(payload)
     if not isinstance(connection_variant, str) or connection_variant not in {
         "nn_side",
         "block_transformer",
@@ -6532,6 +6802,16 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
 
     bus_nn_ref = payload.get("bus_nn_ref")
     blocking_transformer_ref = payload.get("blocking_transformer_ref")
+    #: Elementy toru utworzone przed źródłem (transformator dedykowany z katalogu i szyna
+    #: urządzenia) — trafiają do `created_element_ids` i do dziennika zmian.
+    utworzone_tor: list[str] = []
+    if tor_z_transformatorem_dedykowanym_z_katalogu(payload):
+        tor_dedykowany = _transformator_dedykowany_z_katalogu(
+            enm, payload, technology=technology, catalog_ref=catalog_ref
+        )
+        if isinstance(tor_dedykowany, dict):
+            return tor_dedykowany
+        enm, blocking_transformer_ref, bus_nn_ref, utworzone_tor = tor_dedykowany
     if connection_variant == "block_transformer":
         # V12K-022: Auto-resolve block_transformer per station if not provided.
         # Polityka:
@@ -6634,6 +6914,23 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 bus_nn_ref = transformer.get("hv_bus_ref")
             else:
                 bus_nn_ref = transformer.get("lv_bus_ref")
+    if connection_variant == "nn_side" and (
+        not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip()
+    ):
+        # Ładunek bez szyny nN: szyna rozdzielnicy nN wskazanej stacji — z modelu, nigdy
+        # z domysłu; stacja bez rozpoznanej szyny nN to jawna odmowa.
+        stacja_nn = _resolve_station_for_field_write(
+            enm, station_ref=str(payload.get("station_ref") or "").strip() or None
+        )
+        if stacja_nn is not None:
+            bus_nn_ref = _szyna_nn_stacji_dla_zrodla(enm, stacja_nn)
+            if bus_nn_ref is None:
+                return _error_response(
+                    f"{opis_obiektu(stacja_nn, 'Stacja')} nie ma rozpoznanej szyny nN dla "
+                    "przyłączenia źródła — wskaż szynę nN w polu "
+                    f"{pole('bus_nn_ref')}.",
+                    "station.nn_bus_missing",
+                )
     if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
         return _error_response(
             "Nie wskazano szyny nN, do której ma zostać przyłączone źródło przekształtnikowe.",
@@ -6710,6 +7007,20 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "albo wskaż pozycję katalogu z mocą znamionową.",
             "generator.power_missing",
         )
+    # Napięcie PUNKTU PRZYŁĄCZENIA do sieci OSD/OSP (wejście klasyfikacji NC RfG): przez
+    # transformator blokowy — jego strona górna (szyna urządzenia leży WEWNĄTRZ toru źródła);
+    # po stronie nN — szyna źródła.
+    if connection_variant == "block_transformer":
+        tr_blokowy = next(
+            (t for t in enm.get("transformers", []) if t.get("ref_id") == blocking_transformer_ref),
+            None,
+        )
+        napiecie_przylaczenia_kv = _as_float((tr_blokowy or {}).get("uhv_kv"))
+    else:
+        napiecie_przylaczenia_kv = bus_voltage_kv
+    odmowa_modulu = _odmowa_deklaracji_modulu_ncrfg(payload, p_mw, napiecie_przylaczenia_kv)
+    if odmowa_modulu is not None:
+        return odmowa_modulu
     # Decyzja O-53: nastawa ≤ moc znamionowa instalacji i moc transformatora — TA SAMA
     # kontrola co przypisanie typu i aktualizacja parametrów, na rekordzie generatora,
     # który operacja zapisze (jawne wejścia trafiają do `meta.kontrola_mocy_zrodla`).
@@ -6825,11 +7136,20 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         }
     )
 
-    created_ids = list(created_field_ids or [])
+    created_ids = [*utworzone_tor, *(created_field_ids or [])]
     created_ids.append(generator_ref)
     events: list[dict[str, Any]] = []
     event_seq = 0
-    for raw_event in field_events or []:
+    zdarzenia_toru = [
+        {
+            "event_type": (
+                "TRANSFORMER_CREATED" if ref == blocking_transformer_ref else "BUS_CREATED"
+            ),
+            "element_id": ref,
+        }
+        for ref in utworzone_tor
+    ]
+    for raw_event in [*zdarzenia_toru, *(field_events or [])]:
         event_seq += 1
         events.append(
             {
@@ -8443,6 +8763,20 @@ def dodaj_karte_widmowa_projektu(enm: dict[str, Any], payload: dict[str, Any]) -
     )
 
 
+def _referencja_wiazania_bez_bialych_znakow(wartosc: object) -> object:
+    """Napis bez otaczających białych znaków (pusty → ``None``); lista napisów bez pustych
+    elementów; inna wartość bez zmian (typ sprawdza dalej operacja)."""
+    if isinstance(wartosc, str):
+        return wartosc.strip() or None
+    if isinstance(wartosc, list):
+        return [
+            element.strip() if isinstance(element, str) else element
+            for element in wartosc
+            if not (isinstance(element, str) and not element.strip())
+        ]
+    return wartosc
+
+
 def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Zapisz wiązania katalogowe i profile zgodności wytwórcy (DER) w modelu.
 
@@ -8468,6 +8802,17 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "Nie wskazano wytwórcy, którego wiązania katalogowe mają zostać zapisane.",
             "der_bindings.generator_missing",
         )
+    # Referencja z samych białych znaków jest BRAKIEM wyboru (= jawne usunięcie wiązania),
+    # nie wartością; elementy listy trybów — bez pustych (karta JEDNA-SCIEZKA-EDYCJI: ta
+    # normalizacja żyła dotąd wyłącznie w osobnej końcówce API wiązań).
+    payload = {
+        **payload,
+        **{
+            klucz: _referencja_wiazania_bez_bialych_znakow(payload[klucz])
+            for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS)
+            if klucz in payload
+        },
+    }
 
     obecne_wiazania = {k: payload[k] for k in DER_BINDING_KEYS if k in payload}
     obecne_profile = {k: payload[k] for k in DER_PROFILE_KEYS if k in payload}

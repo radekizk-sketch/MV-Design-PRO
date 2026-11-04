@@ -1,0 +1,12 @@
+# version: JEDNA-SCIEZKA-EDYCJI (2026-11-04) — kasacja osobnego magazynu konfiguracji stacji
+# obok modelu (tabela ORM, repozytorium, koncowki zapisu/odczytu/zastosowania, rozszerzenia
+# wejscia solvera czytane z tego magazynu). Pomiar PRZED kasacja: 1 tabela ORM
+# (`models.py`), 1 repozytorium + pole `UnitOfWork`, 1 modul koncowek API (6 koncowek),
+# 1 migracja SQL, 17 plikow testow backendu, 3 skrypty zasiewu frontu. Konfiguracja stacji
+# zyje WYLACZNIE w modelu ENM (operacje domenowe przez `POST …/enm/domain-ops`).
+# Postaci UZYCIA: nazwa tabeli, klasy ORM/repozytorium, modul koncowek i pole jednostki
+# pracy, sciezka koncowki — nowe miejsce = wskrzeszenie drugiej prawdy.
+\bstation_audit2_configs?\b
+StationAudit2Config
+\baudit2_station_config
+audit2-station-config

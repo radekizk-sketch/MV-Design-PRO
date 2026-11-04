@@ -26,7 +26,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import {
   DerPersistenceApiError,
-  patchDerCatalogBindings,
+  zapiszWiazaniaDer,
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import { useSelectionStore } from '../../../ui/selection/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -92,7 +92,6 @@ export interface EkranDynamikiProps {
 
 export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = null }: EkranDynamikiProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
-  const projektId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const hashModelu = snapshot?.header?.hash_sha256 ?? null;
   const setSnapshot = useSnapshotStore((s) => s.setSnapshot);
@@ -237,11 +236,11 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
   // kopię profilu bez przeładowania). Wyłącznie zmienione pole — pozostałe wiązania nietknięte.
   const powiaz = useCallback(
     async (generatorRef: string, profileId: string | null) => {
-      if (!caseId || !projektId) return;
+      if (!caseId) return;
       setZapisywanyRef(generatorRef);
       setBladWiazania(null);
       try {
-        const odpowiedz = await patchDerCatalogBindings(projektId, caseId, generatorRef, {
+        const odpowiedz = await zapiszWiazaniaDer(caseId, generatorRef, {
           dynamic_model_ref: profileId,
         });
         // Pusta odpowiedź nie może skasować migawki z ekranu (wzorzec konfiguratora DER).
@@ -254,7 +253,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
       }
       await odswiezGotowosc();
     },
-    [caseId, odswiezGotowosc, projektId, setSnapshot],
+    [caseId, odswiezGotowosc, setSnapshot],
   );
 
   // Wiązanie modelu dynamicznego ODBIORU: kanoniczna operacja `set_load_dynamic_binding`

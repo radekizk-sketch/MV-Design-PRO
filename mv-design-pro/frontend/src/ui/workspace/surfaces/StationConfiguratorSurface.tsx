@@ -648,9 +648,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const runIdOgladany = useRunIdOgladany();
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
-  // Karta FAB-J: snapshot katalogów stacji dla inferencji transformatora dedykowanego
-  // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
-  // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
+  // Karta FAB-J: snapshot katalogów stacji dla pozycji transformatora dedykowanego
+  // (`refKataloguTransformatoraDedykowanego` — `catalog_ref` transformatora z modelu,
+  // rozpoznany na liście transformatorów dedykowanych).
   // Karta FAB-L: TEN SAM snapshot niesie też `tap_changers` — zero drugiego
   // zapytania sieciowego dla katalogów, które konfigurator już potrzebuje (Karta 5
   // transformatora). Uziemienie punktu neutralnego SN nie jest pozycją katalogu

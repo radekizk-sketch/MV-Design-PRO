@@ -22,7 +22,7 @@ import {
 } from '../../../ui/network-build/forms/enmResolvers';
 import {
   DerPersistenceApiError,
-  patchDerCatalogBindings,
+  zapiszWiazaniaDer,
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -518,16 +518,16 @@ export function KreatorZrodlaOze() {
       const wiazania = zbudujWiazaniaDer(dane);
       if (!wiazania) {
         etapy.push({ id: 'wiazania', etykieta: T.sekwencjaKrokWiazania, stan: 'pominiete' });
-      } else if (!nowyRef || !activeProjectId) {
+      } else if (!nowyRef) {
         etapy.push({
           id: 'wiazania',
           etykieta: T.sekwencjaKrokWiazania,
           stan: 'blad',
-          komunikat: activeProjectId ? T.walidacjaStopka : T.brakProjektu,
+          komunikat: T.walidacjaStopka,
         });
       } else {
         try {
-          await patchDerCatalogBindings(activeProjectId, activeCaseId, nowyRef, wiazania);
+          await zapiszWiazaniaDer(activeCaseId, nowyRef, wiazania);
           etapy.push({ id: 'wiazania', etykieta: T.sekwencjaKrokWiazania, stan: 'zapisane' });
         } catch (bladWiazan) {
           etapy.push({

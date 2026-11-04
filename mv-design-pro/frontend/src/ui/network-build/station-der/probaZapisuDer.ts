@@ -1,6 +1,7 @@
 /**
- * Werdykt backendu dla konfiguracji DER PRZED zapisem — próba (`dry_run`) tej samej końcówki
- * `POST …/generators`, którą kreator zapisuje źródło.
+ * Werdykt backendu dla konfiguracji DER PRZED zapisem — próba (`dry_run`) tej samej operacji
+ * domenowej `add_converter_source`, którą kreator zapisuje źródło (jedna droga zapisu,
+ * `POST /api/cases/{caseId}/enm/domain-ops`).
  *
  * PO CO. Kreator liczył własny próg mocy transformatora (P/0,9, czyli założone cos φ = 0,9),
  * sprzeczny z JEDYNĄ regułą backendu — kontrolą mocy O-53
@@ -28,23 +29,13 @@ import type { BlockTransformerItem } from './katalogi-stacji-api';
 export const KOD_ODMOWY_MOCY_TRANSFORMATORA = 'converter.transformer_capacity_exceeded';
 
 export interface KontekstProby {
-  readonly projectId: string | null;
   readonly caseId: string | null;
   /** Identyfikator stanu modelu (skrót migawki) — zmiana modelu = nowa próba. */
   readonly wersjaModelu: string | null;
 }
 
-function aktywny(kontekst: KontekstProby): kontekst is KontekstProby & {
-  projectId: string;
-  caseId: string;
-} {
-  return (
-    typeof kontekst.projectId === 'string'
-    && kontekst.projectId.length > 0
-    && kontekst.projectId !== 'no-project'
-    && typeof kontekst.caseId === 'string'
-    && kontekst.caseId.length > 0
-  );
+function aktywny(kontekst: KontekstProby): kontekst is KontekstProby & { caseId: string } {
+  return typeof kontekst.caseId === 'string' && kontekst.caseId.length > 0;
 }
 
 /** Werdykt backendu dla JEDNEJ konfiguracji (`null` zadania = brak próby). */
@@ -53,12 +44,12 @@ export function useProbaZapisuDer(
   zadanie: DerGeneratorConfigRequest | null,
 ): UseQueryResult<WerdyktProbyDer, Error> {
   return useQuery({
-    queryKey: ['der-proba-zapisu', kontekst.projectId, kontekst.caseId, kontekst.wersjaModelu, zadanie],
+    queryKey: ['der-proba-zapisu', kontekst.caseId, kontekst.wersjaModelu, zadanie],
     queryFn: ({ signal }) => {
       if (!aktywny(kontekst) || zadanie === null) {
-        throw new Error('Próba zapisu DER bez projektu, zakresu obliczeń albo konfiguracji.');
+        throw new Error('Próba zapisu DER bez zakresu obliczeń albo konfiguracji.');
       }
-      return probaZapisuDer(kontekst.projectId, kontekst.caseId, zadanie, { signal });
+      return probaZapisuDer(kontekst.caseId, zadanie, { signal });
     },
     enabled: aktywny(kontekst) && zadanie !== null,
     retry: false,
@@ -86,7 +77,6 @@ export function useDoborTransformatoraDedykowanego(
   return useQuery({
     queryKey: [
       'der-dobor-transformatora-dedykowanego',
-      kontekst.projectId,
       kontekst.caseId,
       kontekst.wersjaModelu,
       zadanieBazowe,
@@ -94,12 +84,11 @@ export function useDoborTransformatoraDedykowanego(
     ],
     queryFn: async ({ signal }) => {
       if (!aktywny(kontekst) || zadanieBazowe === null) {
-        throw new Error('Dobór transformatora dedykowanego bez projektu albo konfiguracji.');
+        throw new Error('Dobór transformatora dedykowanego bez zakresu obliczeń albo konfiguracji.');
       }
       const werdykty = await Promise.all(
         kandydaci.map((kandydat) =>
           probaZapisuDer(
-            kontekst.projectId,
             kontekst.caseId,
             { ...zadanieBazowe, block_transformer_catalog_ref: kandydat.id },
             { signal },

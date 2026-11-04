@@ -8,8 +8,14 @@ stacji. Trzy inne koncowki mutuja ten sam model tym samym cyklem
 odczyt → operacja domenowa → zapis, kazda BEZ blokady calego cyklu:
 
 * `POST /api/cases/{case_id}/enm/domain-ops`      (`api/enm.py`),
-* `POST /api/projects/{p}/cases/{c}/generators`   (`api/generators.py`),
-* `PATCH /api/projects/{p}/cases/{c}/generators/{ref}/bindings` (`api/generators.py`).
+* dawne `POST /api/projects/{p}/cases/{c}/generators` i
+  `PATCH /api/projects/{p}/cases/{c}/generators/{ref}/bindings` (`api/generators.py`).
+
+Karta JEDNA-SCIEZKA-EDYCJI skasowala obie dawne koncowki zapisu wytworcy: zrodlo OZE
+tworzy wylacznie operacja `add_converter_source`, a wiazania katalogowe —
+`set_der_catalog_bindings`, obie przez `domain-ops`. Testy wyscigu wytworcy i wiazan
+zostaja (ta sama intencja: zero utraty pracy przy rownoleglym zapisie), ale ida JEDYNA
+droga zapisu.
 
 Zmierzony skutek na HEAD przed naprawa: zatwierdzenie szablonu i operacja domenowa
 biegnace rownolegle na jednym przypadku konczyly sie OBIE `HTTP 200`, a w modelu
@@ -42,7 +48,7 @@ miedzyprocesowa (uvicorn z wieloma pracownikami) to osobna decyzja wdrozeniowa �
 patrz `docs/audit/AUDYT_SZCZYTU_2026-08-01.md`, sekcja 4 pkt 7.
 
 REWIZJE PONIZEJ FORMULY „+N" (P0.1 nN, LV-INV-12). Kazde zastosowanie szablonu
-`tpl_sn_nn_2000kva` i kazde `POST /generators` (zrodlo nn_side) zostawia po sobie
+`tpl_sn_nn_2000kva` i kazde `add_converter_source` (zrodlo nn_side) zostawia po sobie
 NIEPROMOWANE pole nN (rekord `bays`) (odpowiednio: pole glowne +
 odplywy nN; pole zrodlowe DER). `get_enm` promuje WSZYSTKIE oczekujace wpisy
 JEDNEGO przypadku w JEDNYM przebiegu automigracji
@@ -208,25 +214,43 @@ def _zastosuj_szablon(app_client, case_id: str, segment_ref: str) -> Any:
     )
 
 
-def _utworz_wytworce(
-    app_client, project_id: str, case_id: str, station_ref: str, nazwa: str
-) -> Any:
+def _utworz_wytworce(app_client, case_id: str, station_ref: str, nazwa: str) -> Any:
     # Intencja zachowana (karta AB-1a Pakiet C): deklarowany moduł musi zgadzać się z
-    # klasyfikacją backendu, bo `POST .../generators` odrzuca niezgodność 422 — test dotyczy
+    # klasyfikacją backendu, bo `add_converter_source` odrzuca niezgodność — test dotyczy
     # współbieżności, nie klasyfikacji. Klasyfikacja jest JEDNA (`klasyfikacja_modulu`, progi
-    # warstwy WOS: typ B od 200 kW), więc 500 kW przy 0,4 kV to moduł „B".
-    return app_client.post(
-        f"/api/projects/{project_id}/cases/{case_id}/generators",
-        json={
+    # warstwy WOS: typ B od 200 kW), więc 500 kW przy 0,4 kV to moduł „B". Jedyna droga
+    # zapisu źródła OZE to operacja domenowa (karta JEDNA-SCIEZKA-EDYCJI) — szynę nN
+    # stacji ustala operacja z modelu.
+    return _operacja_domenowa(
+        app_client,
+        case_id,
+        "add_converter_source",
+        {
             "station_ref": station_ref,
-            "der_kind": "PV",
-            "power_mw": 0.5,
+            "source_technology": "PV",
+            "power_setpoint_mw": 0.5,
             "connection_variant": "nn_side",
             "catalog_ref": KATALOG_PV_NN,
             "source_name": nazwa,
             "nc_rfg_module": "B",
         },
     )
+
+
+def _ustaw_wiazanie(app_client, case_id: str, generator_ref: str, pola: dict[str, Any]) -> Any:
+    return _operacja_domenowa(
+        app_client,
+        case_id,
+        "set_der_catalog_bindings",
+        {"generator_ref": generator_ref, **pola},
+    )
+
+
+def _bez_odmowy(odpowiedz: Any) -> dict[str, Any]:
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    tresc = odpowiedz.json()
+    assert tresc.get("error") is None, tresc.get("error")
+    return tresc
 
 
 # ---------------------------------------------------------------------------
@@ -528,7 +552,7 @@ class TestWyscigOperacjiDomenowych:
 
 
 # ---------------------------------------------------------------------------
-# POST /api/projects/{p}/cases/{c}/generators
+# add_converter_source przez POST /api/cases/{case_id}/enm/domain-ops
 # ---------------------------------------------------------------------------
 
 
@@ -547,7 +571,7 @@ def _przypadek_ze_stacja(app_client) -> tuple[str, str, str, list[str]]:
 
 class TestWyscigTworzeniaWytworcy:
     def test_trzy_rownolegle_zadania_daja_trzech_wytworcow(self, app_client) -> None:
-        """3 rownolegle `POST /generators` na jednej stacji: rewizja +6, zero utraty.
+        """3 rownolegle `add_converter_source` na jednej stacji: rewizja +6, zero utraty.
 
         P0.1 nN: kazde zadanie DER (`add_converter_source`, nn_side) zostawia WLASNE
         pole zrodlowe nN jako nowy niepromowany rekord `bays`
@@ -557,9 +581,9 @@ class TestWyscigTworzeniaWytworcy:
         ostatnie zadanie zostawia WLASNE pole do promocji przy koncowym odczycie
         ponizej (patrz nota na gorze pliku) — stad +6, nie +3.
         """
-        import api.generators as generators_api
+        import enm.domain_operations as domain_operations
 
-        project_id, case_id, station_ref, _ = _przypadek_ze_stacja(app_client)
+        _, case_id, station_ref, _ = _przypadek_ze_stacja(app_client)
 
         model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
@@ -570,16 +594,15 @@ class TestWyscigTworzeniaWytworcy:
 
         def zadanie(numer: int) -> Callable[[], None]:
             def wykonaj() -> None:
-                odpowiedz = _utworz_wytworce(
-                    app_client, project_id, case_id, station_ref, f"PV rownolegle {numer}"
+                tresc = _bez_odmowy(
+                    _utworz_wytworce(app_client, case_id, station_ref, f"PV rownolegle {numer}")
                 )
-                assert odpowiedz.status_code == 201, odpowiedz.text
                 with zamek:
-                    odpowiedzi.append(odpowiedz.json())
+                    odpowiedzi.append(tresc)
 
             return wykonaj
 
-        with _okno_z_bariera(generators_api, "execute_domain_operation", 3):
+        with _okno_z_bariera(domain_operations, "execute_domain_operation", 3):
             bledy = _rownolegle([zadanie(numer) for numer in range(3)])
 
         assert bledy == [], f"Rownolegle zadania DER zglosily blad: {bledy}"
@@ -609,9 +632,9 @@ class TestWyscigTworzeniaWytworcy:
         wyscigu, gdy drugie zadanie startuje po pierwszym; jedna przy koncowym
         odczycie dla ostatniego) = +4, niezaleznie od kolejnosci wykonania.
         """
-        import api.generators as generators_api
+        import enm.domain_operations as domain_operations
 
-        project_id, case_id, station_ref, wolne = _przypadek_ze_stacja(app_client)
+        _, case_id, station_ref, wolne = _przypadek_ze_stacja(app_client)
 
         model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
@@ -621,11 +644,9 @@ class TestWyscigTworzeniaWytworcy:
         wyniki: dict[str, dict[str, Any]] = {}
 
         def wytworca() -> None:
-            odpowiedz = _utworz_wytworce(
-                app_client, project_id, case_id, station_ref, "PV w wyscigu"
+            wyniki["wytworca"] = _bez_odmowy(
+                _utworz_wytworce(app_client, case_id, station_ref, "PV w wyscigu")
             )
-            assert odpowiedz.status_code == 201, odpowiedz.text
-            wyniki["wytworca"] = odpowiedz.json()
 
         def szablon() -> None:
             odpowiedz = _zastosuj_szablon(app_client, case_id, wolne[0])
@@ -633,7 +654,7 @@ class TestWyscigTworzeniaWytworcy:
             wyniki["szablon"] = odpowiedz.json()
 
         _wyscig_z_szablonem(
-            generators_api,
+            domain_operations,
             "execute_domain_operation",
             zadanie_koncowki=wytworca,
             zadanie_szablonu=szablon,
@@ -649,7 +670,7 @@ class TestWyscigTworzeniaWytworcy:
             f"{len(model_po.substations)} zamiast {stacji_przed + 1}"
         )
         assert len(model_po.generators) == wytworcow_przed + 1, (
-            "Konfiguracja DER przepadla mimo HTTP 201 — wytworcow "
+            "Konfiguracja DER przepadla mimo HTTP 200 — wytworcow "
             f"{len(model_po.generators)} zamiast {wytworcow_przed + 1}"
         )
 
@@ -662,15 +683,14 @@ class TestWyscigTworzeniaWytworcy:
 
 
 # ---------------------------------------------------------------------------
-# PATCH /api/projects/{p}/cases/{c}/generators/{ref}/bindings
+# set_der_catalog_bindings przez POST /api/cases/{case_id}/enm/domain-ops
 # ---------------------------------------------------------------------------
 
 
 def _wytworca_do_wiazan(app_client) -> tuple[str, str, str, list[str]]:
     project_id, case_id, station_ref, wolne = _przypadek_ze_stacja(app_client)
-    odpowiedz = _utworz_wytworce(app_client, project_id, case_id, station_ref, "PV wiazania")
-    assert odpowiedz.status_code == 201, odpowiedz.text
-    generator_ref = odpowiedz.json()["snapshot"]["generators"][-1]["ref_id"]
+    tresc = _bez_odmowy(_utworz_wytworce(app_client, case_id, station_ref, "PV wiazania"))
+    generator_ref = tresc["snapshot"]["generators"][-1]["ref_id"]
     return project_id, case_id, generator_ref, wolne
 
 
@@ -683,17 +703,16 @@ def _wiazania_z_modelu(app_client, case_id: str, generator_ref: str) -> dict[str
 
 class TestWyscigWiazanWytworcy:
     def test_trzy_rownolegle_zadania_nie_kasuja_wzajemnie_wiazan(self, app_client) -> None:
-        """3 rownolegle `PATCH /bindings`, kazde na INNYM polu: wszystkie trzy przezywaja.
+        """3 rownolegle `set_der_catalog_bindings`, kazde na INNYM polu: wszystkie trzy przezywaja.
 
         Sekwencyjnie to zachowanie jest juz bramkowane („pominiecie != null"), ale
-        rozstrzyga o nim `model_fields_set` w koncowce — a przy wyscigu calego
+        rozstrzyga o nim obecnosc klucza w ladunku operacji — a przy wyscigu calego
         cyklu kasowanie brало sie ze STAREGO modelu odczytanego przed zapisem
         sasiada, nie z ksztaltu zadania.
         """
-        import api.generators as generators_api
+        import enm.domain_operations as domain_operations
 
-        project_id, case_id, generator_ref, _ = _wytworca_do_wiazan(app_client)
-        baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings"
+        _, case_id, generator_ref, _ = _wytworca_do_wiazan(app_client)
 
         rewizja_przed = _model(app_client, case_id).header.revision
         pola = {
@@ -704,12 +723,11 @@ class TestWyscigWiazanWytworcy:
 
         def zadanie(pole: str, wartosc: str) -> Callable[[], None]:
             def wykonaj() -> None:
-                odpowiedz = app_client.patch(baza, json={pole: wartosc})
-                assert odpowiedz.status_code == 200, odpowiedz.text
+                _bez_odmowy(_ustaw_wiazanie(app_client, case_id, generator_ref, {pole: wartosc}))
 
             return wykonaj
 
-        with _okno_z_bariera(generators_api, "execute_domain_operation", len(pola)):
+        with _okno_z_bariera(domain_operations, "execute_domain_operation", len(pola)):
             bledy = _rownolegle([zadanie(pole, wartosc) for pole, wartosc in pola.items()])
 
         assert bledy == [], f"Rownolegle zadania wiazan zglosily blad: {bledy}"
@@ -730,15 +748,14 @@ class TestWyscigWiazanWytworcy:
         )
 
     def test_wiazania_rownolegle_z_szablonem_nie_gubia_pracy(self, app_client) -> None:
-        """P0.1 nN: PATCH /bindings sam nie tworzy pola nN (tylko
+        """P0.1 nN: `set_der_catalog_bindings` sam nie tworzy pola nN (tylko
         szablon zostawia WLASNE pole nN do promocji, patrz nota na gorze pliku) —
         2 wlasne zapisy + 1 promocja pola szablonu (wewnatrz wyscigu albo przy
         koncowym odczycie, zaleznie od kolejnosci — zawsze dokladnie jedna) = +3.
         """
-        import api.generators as generators_api
+        import enm.domain_operations as domain_operations
 
-        project_id, case_id, generator_ref, wolne = _wytworca_do_wiazan(app_client)
-        baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings"
+        _, case_id, generator_ref, wolne = _wytworca_do_wiazan(app_client)
 
         model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
@@ -747,8 +764,11 @@ class TestWyscigWiazanWytworcy:
         wynik_szablonu: dict[str, dict[str, Any]] = {}
 
         def wiazania() -> None:
-            odpowiedz = app_client.patch(baza, json={"protection_catalog_ref": "REF-OC-200"})
-            assert odpowiedz.status_code == 200, odpowiedz.text
+            _bez_odmowy(
+                _ustaw_wiazanie(
+                    app_client, case_id, generator_ref, {"protection_catalog_ref": "REF-OC-200"}
+                )
+            )
 
         def szablon() -> None:
             odpowiedz = _zastosuj_szablon(app_client, case_id, wolne[0])
@@ -756,7 +776,7 @@ class TestWyscigWiazanWytworcy:
             wynik_szablonu["szablon"] = odpowiedz.json()
 
         _wyscig_z_szablonem(
-            generators_api,
+            domain_operations,
             "execute_domain_operation",
             zadanie_koncowki=wiazania,
             zadanie_szablonu=szablon,

@@ -287,8 +287,6 @@ export const OZE_STRINGS = {
   zapisz: 'Zapisz źródło OZE',
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
-  brakProjektu:
-    'Wiązania aparaturowe i profile wymagają aktywnego projektu — wybierz projekt przed zapisem.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło OZE.',
 
   // Sekwencja zapisu (K9-A §0.4): każdy etap raportowany uczciwie — bez udawania

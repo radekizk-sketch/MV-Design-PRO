@@ -44,7 +44,7 @@ import {
   pobierzZgodnoscPrzypadkuNcRfg,
   uruchomBiegNcRfg,
 } from '../api';
-import { postDerGeneratorConfig } from '../../../../ui/sld/v2/canvas/derPersistenceApi';
+import { zapiszZrodloOze } from '../../../../ui/sld/v2/canvas/derPersistenceApi';
 import {
   PUSTE_DANE_MODULU,
   polaNcRfgDoPayloadu,
@@ -320,7 +320,7 @@ const ZADANIE_WNIOSKU = zbudujZadanieWniosku({
 /**
  * Dane modułu NC RfG z KAŻDYM polem wypełnionym (art. 4, data umowy, 11 nastaw ze źródłem,
  * 11 flag deklaracji we wszystkich trzech stanach, 6 liczb deklaracji ze źródłem) — ładunek
- * pisarzy wytwórcy (`POST …/generators`, `add_converter_source`, `update_element_parameters`).
+ * pisarzy wytwórcy (operacje domenowe `add_converter_source` i `update_element_parameters`).
  */
 const DANE_MODULU_PELNE: FormularzDanychModulu = {
   ...PUSTE_DANE_MODULU,
@@ -407,18 +407,21 @@ const PRZYPADKI: readonly {
     schematCiala: 'WniosekOsdRequest',
   },
   {
-    nazwa: 'wytwórca DER z danymi modułu NC RfG (POST …/generators)',
+    // Jedyna droga zapisu źródła OZE: operacja `add_converter_source` w kopercie domain-ops
+    // (karta JEDNA-SCIEZKA-EDYCJI). Koperta ma schemat w migawce; pola NC RfG ładunku —
+    // test niżej, względem schematów modelu i wejścia solvera.
+    nazwa: 'wytwórca DER z danymi modułu NC RfG (add_converter_source przez domain-ops)',
     wywolaj: () =>
-      postDerGeneratorConfig('projekt-demo', 'case-demo', {
+      zapiszZrodloOze('case-demo', {
         station_ref: 'stacja-1',
-        der_kind: 'PV',
-        power_mw: 1,
+        source_technology: 'PV',
+        power_setpoint_mw: 1,
         connection_variant: 'nn_side',
         catalog_ref: 'conv-pv-1mw-15kv',
         nc_rfg_module: null,
         ...polaNcRfgDoPayloadu(DANE_MODULU_PELNE),
       }),
-    schematCiala: 'DerGeneratorCreateRequest',
+    schematCiala: 'DomainOpEnvelopeModel',
   },
   {
     nazwa: 'klasyfikacja modułu (/modul)',
@@ -471,10 +474,11 @@ describe('żądania zgodności NC RfG ⊆ migawka OpenAPI backendu', () => {
   });
 
   it('bloki NC RfG pisarzy operacji domenowych (add_converter_source, update_element_parameters) ⊆ schematy modelu', () => {
-    // Koperta operacji domenowej ma `payload` bez schematu pól — bloki danych modułu
-    // sprawdzane wprost względem schematów modelu (`DeklaracjeModulu`,
-    // `NastawyZabezpieczenModulu`), a skalary względem pól `DerGeneratorCreateRequest`
-    // (ten sam walidator backendu dla wszystkich nośników).
+    // Koperta operacji domenowej ma `payload` bez schematu pól — każde pole danych modułu
+    // sprawdzane wprost względem pola o tej samej nazwie w schemacie wejścia solvera
+    // `NcRfgPtpireeModuleInput` (bloki → `DeklaracjeModulu`/`NastawyZabezpieczenModulu`).
+    // Ten sam typ na każdym nośniku (pisarz operacji, model, wejście solvera) przypina
+    // backend: `tests/enm/test_deklaracje_modulu.py::test_*_jeden_typ_na_kazdym_nosniku`.
     const wynik = zbudujPolaNcRfgGeneratora(DANE_MODULU_PELNE);
     expect(wynik.stan).toBe('ok');
     if (wynik.stan !== 'ok') return;
@@ -485,7 +489,11 @@ describe('żądania zgodności NC RfG ⊆ migawka OpenAPI backendu', () => {
       nastawy_zabezpieczen: null,
       deklaracje_modulu: null,
     });
-    const zadanieGeneratora = OPENAPI.components.schemas.DerGeneratorCreateRequest as Schemat;
+    const zadanieGeneratora = OPENAPI.components.schemas.NcRfgPtpireeModuleInput as Schemat;
+    // Pole modelu → pole wejścia solvera o innej nazwie (ten sam blok nastaw).
+    const POLE_WEJSCIA_SOLVERA: Readonly<Record<string, string>> = {
+      nastawy_zabezpieczen: 'nastawy_zabezpieczen_modulu',
+    };
     for (const pola of [nowy, edycja]) {
       expect(Object.keys(pola).sort()).toEqual([
         'data_umowy_przylaczeniowej',
@@ -494,7 +502,24 @@ describe('żądania zgodności NC RfG ⊆ migawka OpenAPI backendu', () => {
         'nastawy_zabezpieczen',
       ]);
       for (const [pole, wartosc] of Object.entries(pola)) {
-        const schemat = zadanieGeneratora.properties?.[pole];
+        if (pole === 'deklaracje_modulu') {
+          // Blok deklaracji: nazwy i dziedziny 1:1 z polami wejścia solvera (parytet
+          // `DeklaracjeModulu` ↔ `NcRfgPtpireeModuleInput` przypina backend), plus źródło.
+          for (const [klucz, deklaracja] of Object.entries(wartosc ?? {})) {
+            if (klucz === 'zrodlo_pl') {
+              expect(typeof deklaracja, klucz).toBe('string');
+              continue;
+            }
+            const schematDeklaracji = zadanieGeneratora.properties?.[klucz];
+            expect(schematDeklaracji, klucz).toBeDefined();
+            if (deklaracja === null) continue; // „nie zadeklarowano" — brak danej, nie wartość
+            expect(
+              bledySchematu(deklaracja, schematDeklaracji as Schemat, `$.${pole}.${klucz}`),
+            ).toEqual([]);
+          }
+          continue;
+        }
+        const schemat = zadanieGeneratora.properties?.[POLE_WEJSCIA_SOLVERA[pole] ?? pole];
         expect(schemat, pole).toBeDefined();
         expect(bledySchematu(wartosc, schemat as Schemat, `$.${pole}`)).toEqual([]);
       }

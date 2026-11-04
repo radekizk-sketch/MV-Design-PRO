@@ -90,8 +90,13 @@ function ustawFetch(): void {
       const metoda = init?.method ?? 'GET';
       const cialo = init?.body ? JSON.parse(String(init.body)) : null;
       atrapa.zadania.push({ url: adres, metoda, cialo });
-      if (adres.endsWith(`/api/projects/${PROJEKT}/cases/${CASE}/generators/${encodeURIComponent(PV)}/bindings`)) {
-        // Kanoniczny kanał wiązań wytwórcy (PATCH, operacja `set_der_catalog_bindings`).
+      if (
+        adres.endsWith(domainOpsEndpoint(CASE))
+        && cialo?.operation?.name === 'set_der_catalog_bindings'
+        && cialo.operation.payload?.generator_ref === PV
+      ) {
+        // Jedyna droga zapisu wiązań wytwórcy: operacja `set_der_catalog_bindings`
+        // (domain-ops, karta JEDNA-SCIEZKA-EDYCJI); odmowa bramy katalogowej = HTTP 422.
         if (atrapa.odmowaWiazania) {
           return odpowiedz(
             { detail: { code: 'der_bindings.dynamic_profile_incompatible', message_pl: atrapa.odmowaWiazania } },
@@ -258,11 +263,15 @@ describe('EkranDynamiki — brak modelu → wiązanie z katalogiem', () => {
       expect(screen.getByTestId(`mvd-dynamika-zrodlo-${PV}`)).toHaveAttribute('data-stan', 'z_katalogu'),
     );
     // Żądanie niesie WYŁĄCZNIE zmienione wiązanie (pozostałe wiązania wytwórcy nietknięte).
-    const wiazanie = atrapa.zadania.find((z) => z.metoda === 'PATCH');
-    expect(wiazanie?.url).toBe(
-      `/api/projects/${PROJEKT}/cases/${CASE}/generators/${encodeURIComponent(PV)}/bindings`,
+    const wiazanie = atrapa.zadania.find(
+      (z) => (z.cialo as { operation?: { name?: string } } | null)?.operation?.name
+        === 'set_der_catalog_bindings',
     );
-    expect(wiazanie?.cialo).toEqual({ dynamic_model_ref: 'default_pv_gfl' });
+    expect(wiazanie?.url).toBe(domainOpsEndpoint(CASE));
+    expect((wiazanie?.cialo as { operation: { payload: unknown } }).operation.payload).toEqual({
+      generator_ref: PV,
+      dynamic_model_ref: 'default_pv_gfl',
+    });
     // Migawka z odpowiedzi trafia do magazynu (schemat i warsztat wytwórców widzą kopię).
     const pv = (useSnapshotStore.getState().snapshot?.generators ?? []).find((g) => g.ref_id === PV);
     expect((pv as { dynamika?: { rodzina?: string } } | undefined)?.dynamika?.rodzina).toBe(

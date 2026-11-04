@@ -16,7 +16,7 @@
  */
 
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
-import { odpowiedzProbyZapisuDer } from './atrapaProbyZapisuDer';
+import { odpowiedzProbyZapisuDer, zadaniaZrodlaOze } from './atrapaProbyZapisuDer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
@@ -90,9 +90,8 @@ function blockTransformerFixture(
   id: string, snKva: number, hvKv: number, lvKv: number,
 ): Record<string, unknown> {
   return {
-    id, catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    id, catalog_namespace: 'TRAFO_SN_NN', catalog_version: '1.0',
     label_pl: `Transformator dedykowany ${hvKv}/${lvKv} kV · ${snKva} kVA · Dyn11`,
-    transformer_type_ref: `tr-test-${id}`,
     sn_kva: snKva, hv_kv: hvKv, lv_kv: lvKv,
     uk_percent: 6, pk_kw: snKva * 0.01, p0_kw: snKva * 0.002, i0_percent: 0.5,
     vector_group: 'Dyn11', is_mv_to_mv: lvKv > 1,
@@ -101,10 +100,10 @@ function blockTransformerFixture(
   };
 }
 const BLOCK_TRANSFORMER_FIXTURES = [
-  blockTransformerFixture('btr_pv_15_069_800', 800, 15, 0.69),
-  blockTransformerFixture('btr_pv_15_069_1000', 1000, 15, 0.69),
-  blockTransformerFixture('btr_pv_15_069_1250', 1250, 15, 0.69),
-  blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-0p8mva-dyn11-inverter', 800, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-1mva-dyn11-inverter', 1000, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-1p25mva-dyn11-inverter', 1250, 15, 0.69),
+  blockTransformerFixture('tr-sn-nn-15-0p69-2p5mva-dyn11-inverter', 2500, 15, 0.69),
 ];
 
 // Katalog transformatorów SN/nN backendu (`GET /api/catalog/transformer-types`) — warianty
@@ -229,7 +228,7 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
  * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; bez `kind`
  * (poziomy napięcia nN) — unią WSZYSTKICH technologii. `/api/ncrfg-tests/*`,
  * `/api/catalog/bess-battery-types` odpowiadają realnym kształtem backendu;
- * próba zapisu (`POST …/generators` z `dry_run`) — werdykt atrapy backendu
+ * próba zapisu (`add_converter_source` z `dry_run` przez domain-ops) — werdykt atrapy backendu
  * (`atrapaProbyZapisuDer.ts`, kontrola mocy O-53); `/api/catalog/transformer-types` — katalog
  * transformatorów SN/nN; wszystko inne (snapshot katalogów stacji, zapis właściwy,
  * `assign_catalog_to_element`) dostaje neutralny kształt snapshotu katalogów stacji.
@@ -628,9 +627,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
         'Moc transformatora 63 kVA jest mniejsza od mocy źródeł 185 kVA',
       ));
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
-    const proby = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
-      .filter(([url, init]) => String(url).includes('/generators') && init?.method === 'POST')
-      .map(([, init]) => JSON.parse(String(init?.body)) as Record<string, unknown>);
+    const proby = zadaniaZrodlaOze(global.fetch).map((zadanie) => zadanie.body);
     expect(proby.length).toBeGreaterThan(0);
     expect(proby.every((cialo) => cialo.dry_run === true)).toBe(true);
   });
@@ -666,8 +663,8 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
             uhv_kv: 15,
             ulv_kv: 0.69,
             catalog_binding: {
-              catalog_namespace: 'block_transformer',
-              catalog_item_id: 'btr_pv_15_069_1250',
+              catalog_namespace: 'TRAFO_SN_NN',
+              catalog_item_id: 'tr-sn-nn-15-0p69-1p25mva-dyn11-inverter',
             },
           },
         ],

@@ -86,7 +86,6 @@ class FaktyPolaWytworcy:
     #: identyfikator — `der_id` zostaje wyłącznie tożsamością rekordu.
     der_nazwa: str
     nominal_power_kw: float | None = None
-    block_transformer_catalog_ref: str | None = None
     neutral_grounding_mode: TrybUziemienia = None
     zero_sequence_current_source: ZrodloPraduZerowego = "brak"
     zero_sequence_voltage_source: ZrodloNapieciaZerowego = "brak"

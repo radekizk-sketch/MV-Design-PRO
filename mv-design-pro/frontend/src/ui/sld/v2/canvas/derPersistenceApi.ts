@@ -1,32 +1,53 @@
+/**
+ * Zapis źródła OZE i jego wiązań katalogowych — JEDNA droga zapisu (karta
+ * JEDNA-SCIEZKA-EDYCJI): operacje domenowe `add_converter_source` i
+ * `set_der_catalog_bindings` przez `POST /api/cases/{caseId}/enm/domain-ops`
+ * (`ui/topology/domainApi.ts`, jedyne miejsce budowy adresu). Dawne końcówki
+ * `POST …/generators` i `PATCH …/generators/{ref}/bindings` z własnym tłumaczem ładunku
+ * skasowano: ustalenie szyny nN stacji, transformator dedykowany z katalogu TRAFO_SN_NN,
+ * weryfikacja deklarowanego modułu NC RfG i bateria BESS są cechami operacji.
+ *
+ * Moduł jest cienkim, typowanym adapterem: nazwy pól to nazwy pól operacji (sprawdzane
+ * statycznie wobec `AddConverterSourcePayload`), a odmowa operacji (HTTP 200 z `error`)
+ * i odmowa bramy katalogowej (HTTP 422) wracają jako `DerPersistenceApiError` z kodem
+ * i zdaniem backendu.
+ */
 import type {
   DeklaracjeModulu,
   DomainOpResponseV1,
   NastawyZabezpieczenModulu,
 } from '../../../../types/enm';
+import type { AddConverterSourcePayload } from '../../../../types/domainOps';
+import {
+  DomainApiError,
+  domainOpsEndpoint,
+  executeDomainOp,
+  executeDomainOpPreview,
+} from '../../../topology/domainApi';
 
 export type DerKind = 'PV' | 'BESS' | 'FW';
 /**
- * Karta FAB-K (§0 R3): DOKŁADNIE dwa warianty backendu (`api/generators.py::
- * DerConnectionVariant`) — `sn_side`/`dedicated` USUNIĘTE bez kompatybilności
- * wstecznej (backendowa `_canonical_variant` też usunięta). Wybór POZIOMU
- * przyłączenia (nN vs SN przez transformator dedykowany); dla `block_transformer`
+ * Karta FAB-K (§0 R3): DOKŁADNIE dwa warianty operacji `add_converter_source` — wybór
+ * POZIOMU przyłączenia (nN vs SN przez transformator dedykowany); dla `block_transformer`
  * PUNKT przyłączenia SN to osobne pole `sn_connection_bus_ref`.
  */
 export type DerConnectionVariant = 'nn_side' | 'block_transformer';
 export type NcRfgModule = 'A' | 'B' | 'C' | 'D';
 
+/** Ładunek operacji `add_converter_source` wysyłany przez kreatory źródła OZE. */
 export interface DerGeneratorConfigRequest {
   readonly station_ref: string;
-  readonly der_kind: DerKind;
-  readonly power_mw: number;
+  readonly source_technology: DerKind;
+  readonly power_setpoint_mw: number;
   readonly connection_variant: DerConnectionVariant;
   readonly catalog_ref: string;
+  /** Brak = szyna rozdzielnicy nN stacji ustalona przez operację z modelu. */
+  readonly bus_nn_ref?: string | null;
+  /** Nowy transformator dedykowany: identyfikator typu z katalogu TRAFO_SN_NN. */
   readonly block_transformer_catalog_ref?: string | null;
   /**
    * Karta FAB-K (§0 R3): punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu,
-   * WYMAGANA gdy `connection_variant==='block_transformer'` i backend nie ma
-   * jeszcze zapisanego `blocking_transformer_ref` (422 `generator.
-   * sn_connection_bus_missing` bez tego pola).
+   * WYMAGANA dla nowego transformatora dedykowanego (`generator.sn_connection_bus_missing`).
    */
   readonly sn_connection_bus_ref?: string | null;
   /** Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS`. */
@@ -36,9 +57,9 @@ export interface DerGeneratorConfigRequest {
   /** Klasyfikacja backendu (`/api/ncrfg-tests/modul`); `null` = poniżej progu istotności. */
   readonly nc_rfg_module?: NcRfgModule | null;
   /**
-   * Plan AB O-50 pkt 5: pola NC RfG modułu zapisywane razem z wytwórcą
-   * (`api/generators.py::DerGeneratorCreateRequest`, ten sam pisarz `add_converter_source`).
-   * Typy ścisłe backendu: status art. 4 wyłącznie logiczny, data wyłącznie `RRRR-MM-DD`.
+   * Plan AB O-50 pkt 5: pola NC RfG modułu zapisywane razem z wytwórcą (ten sam pisarz
+   * `add_converter_source`). Typy ścisłe backendu: status art. 4 wyłącznie logiczny,
+   * data wyłącznie `RRRR-MM-DD`.
    */
   readonly modul_istniejacy?: boolean | null;
   readonly data_umowy_przylaczeniowej?: string | null;
@@ -46,8 +67,14 @@ export interface DerGeneratorConfigRequest {
   readonly deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
+/** Każde pole ładunku kreatora jest polem operacji — literówka nie skompiluje się. */
+type ZgodnoscZOperacja = DerGeneratorConfigRequest extends Partial<AddConverterSourcePayload>
+  ? true
+  : never;
+export const LADUNEK_KREATORA_TO_POLA_OPERACJI: ZgodnoscZOperacja = true;
+
 /**
- * Werdykt PRÓBY zapisu DER (`dry_run: true` na tej samej końcówce co zapis). `przyjeta` —
+ * Werdykt PRÓBY zapisu DER (`dry_run: true` tej samej operacji co zapis). `przyjeta` —
  * backend zapisałby konfigurację; `odmowa` — kod i zdanie backendu (te same co przy zapisie,
  * np. `converter.transformer_capacity_exceeded` z kontroli mocy O-53). Front nie liczy progu.
  */
@@ -82,11 +109,6 @@ function sanitizeDerApiMessage(message: string, status: number): string {
     .replace(/\b(?:stn|gpz|seg)\/[^\s)]+/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
-
-  if (/przypadek obliczeniowy nie nale[żz]y do wskazanego projektu/i.test(withoutEndpoint)) {
-    return 'Aktywny zakres obliczeń nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo zakres obliczeń.';
-  }
-
   return withoutEndpoint || `Nie udało się zapisać konfiguracji DER. Kod odpowiedzi: ${status}.`;
 }
 
@@ -105,31 +127,48 @@ function extractApiError(detail: unknown, status: number): { message: string; co
   };
 }
 
-export async function postDerGeneratorConfig(
-  projectId: string,
+function bladDer(caseId: string, error: unknown): unknown {
+  if (!(error instanceof DomainApiError)) return error;
+  const extracted = extractApiError(error.detail, error.status);
+  return new DerPersistenceApiError(
+    error.status,
+    error.detail,
+    domainOpsEndpoint(caseId),
+    extracted.message,
+    extracted.code ?? error.code ?? null,
+  );
+}
+
+async function wykonajOperacjeDer(
+  caseId: string,
+  operacja: 'add_converter_source' | 'set_der_catalog_bindings',
+  ladunek: Record<string, unknown>,
+): Promise<DomainOpResponseV1> {
+  let odpowiedz: DomainOpResponseV1;
+  try {
+    odpowiedz = await executeDomainOp(caseId, operacja, ladunek);
+  } catch (error) {
+    throw bladDer(caseId, error);
+  }
+  if (odpowiedz.error) {
+    // Odmowa operacji: HTTP 200 z kodem i zdaniem backendu, model bez zmian.
+    throw new DerPersistenceApiError(
+      200,
+      odpowiedz,
+      domainOpsEndpoint(caseId),
+      sanitizeDerApiMessage(odpowiedz.error, 200),
+      odpowiedz.error_code ?? null,
+    );
+  }
+  return odpowiedz;
+}
+
+/** Zapisz źródło OZE w modelu (operacja `add_converter_source`). */
+export async function zapiszZrodloOze(
   caseId: string,
   body: DerGeneratorConfigRequest,
 ): Promise<DomainOpResponseV1> {
-  const endpoint = `/api/projects/${projectId}/cases/${caseId}/generators`;
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const detail = await response.json().catch(() => response.statusText);
-    const extracted = extractApiError(detail, response.status);
-    throw new DerPersistenceApiError(
-      response.status,
-      detail,
-      endpoint,
-      extracted.message,
-      extracted.code,
-    );
-  }
-
-  return (await response.json()) as DomainOpResponseV1;
+  return wykonajOperacjeDer(caseId, 'add_converter_source', { ...body });
 }
 
 /**
@@ -141,12 +180,8 @@ export async function postDerGeneratorConfig(
  * wysyłać tu pełnego obiektu z `null`-ami dla pól, których użytkownik nie dotknął —
  * skasowałoby to jego wcześniejsze wybory.
  *
- * Karta FAB-L: `fault_current_data_ref` USUNIĘTE z tego kontraktu (mirror 1:1 backendowego
- * `DerCatalogBindingsRequest`, `api/generators.py`) — pole nie miało ŻADNEGO konsumenta
- * solvera (κ i składowe symetryczne liczy WYŁĄCZNIE IEC 60909; front duplikował ten sam
- * wzór κ bez wpięcia do solvera). Wysłanie tego pola dziś jest po prostu ignorowane przez
- * backend (Pydantic `extra="ignore"`) — usunięte tutaj, żeby TS nie pozwalał budować
- * atrapy, którą backend i tak odrzuca po cichu.
+ * Karta FAB-L: `fault_current_data_ref` USUNIĘTE z tego kontraktu — pole nie miało
+ * ŻADNEGO konsumenta solvera (κ i składowe symetryczne liczy WYŁĄCZNIE IEC 60909).
  */
 export interface DerCatalogBindingsRequest {
   readonly protection_catalog_ref?: string | null;
@@ -161,66 +196,47 @@ export interface DerCatalogBindingsRequest {
   readonly bess_operation_mode_refs?: readonly string[] | null;
 }
 
-/** Zapisz wiązania wytwórcy w modelu (kanoniczna operacja `set_der_catalog_bindings`). */
-export async function patchDerCatalogBindings(
-  projectId: string,
+/** Zapisz wiązania wytwórcy w modelu (operacja `set_der_catalog_bindings`). */
+export async function zapiszWiazaniaDer(
   caseId: string,
   generatorRef: string,
   body: DerCatalogBindingsRequest,
 ): Promise<DomainOpResponseV1> {
-  const endpoint =
-    `/api/projects/${projectId}/cases/${caseId}/generators/`
-    + `${encodeURIComponent(generatorRef)}/bindings`;
-  const response = await fetch(endpoint, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  return wykonajOperacjeDer(caseId, 'set_der_catalog_bindings', {
+    ...body,
+    generator_ref: generatorRef,
   });
-
-  if (!response.ok) {
-    const detail = await response.json().catch(() => response.statusText);
-    const extracted = extractApiError(detail, response.status);
-    throw new DerPersistenceApiError(
-      response.status,
-      detail,
-      endpoint,
-      extracted.message,
-      extracted.code,
-    );
-  }
-
-  return (await response.json()) as DomainOpResponseV1;
 }
 
 /**
- * Próba zapisu DER — ta sama końcówka, te same reguły i odmowy co `postDerGeneratorConfig`,
- * a model zostaje bez zmian (`DerGeneratorCreateRequest.dry_run`, HTTP 200 bez migawki).
- * Odmowa reguły (422) wraca jako werdykt; błąd transportu i inne kody HTTP — wyjątkiem.
+ * Próba zapisu DER — ta sama operacja, te same reguły i odmowy co `zapiszZrodloOze`,
+ * a model zostaje bez zmian (`dry_run`, odpowiedź bez migawki). Odmowa operacji
+ * (HTTP 200 z `error`) i odmowa bramy katalogowej (HTTP 422) wracają jako werdykt; błąd
+ * transportu i inne kody HTTP — wyjątkiem.
  */
 export async function probaZapisuDer(
-  projectId: string,
   caseId: string,
   body: DerGeneratorConfigRequest,
   options: { signal?: AbortSignal } = {},
 ): Promise<WerdyktProbyDer> {
-  const endpoint = `/api/projects/${projectId}/cases/${caseId}/generators`;
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, dry_run: true }),
-    signal: options.signal,
-  });
-  if (response.ok) return { stan: 'przyjeta' };
-  const detail = await response.json().catch(() => response.statusText);
-  const extracted = extractApiError(detail, response.status);
-  if (response.status === 422) {
-    return { stan: 'odmowa', kod: extracted.code, komunikat: extracted.message };
+  let odpowiedz;
+  try {
+    odpowiedz = await executeDomainOpPreview(caseId, 'add_converter_source', { ...body }, {
+      signal: options.signal,
+    });
+  } catch (error) {
+    const blad = bladDer(caseId, error);
+    if (blad instanceof DerPersistenceApiError && blad.status === 422) {
+      return { stan: 'odmowa', kod: blad.code ?? null, komunikat: blad.message };
+    }
+    throw blad;
   }
-  throw new DerPersistenceApiError(
-    response.status,
-    detail,
-    endpoint,
-    extracted.message,
-    extracted.code,
-  );
+  if (odpowiedz.error) {
+    return {
+      stan: 'odmowa',
+      kod: odpowiedz.error_code ?? null,
+      komunikat: sanitizeDerApiMessage(odpowiedz.error, 200),
+    };
+  }
+  return { stan: 'przyjeta' };
 }

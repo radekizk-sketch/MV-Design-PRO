@@ -126,7 +126,7 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
         catalogs: {
           ...EMPTY_DER_CATALOGS,
           device_catalog_ref: 'pv_inv_sma_2500',
-          block_transformer_catalog_ref: 'btr_pv_15_04_1000',
+          block_transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy',
         },
       }),
     );
@@ -137,7 +137,7 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
         catalogs: {
           ...EMPTY_DER_CATALOGS,
           device_catalog_ref: 'pv_inv_sma_2500',
-          block_transformer_catalog_ref: 'btr_pv_15_04_1000',
+          block_transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy',
         },
       }),
     );

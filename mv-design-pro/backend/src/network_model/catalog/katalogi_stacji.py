@@ -787,10 +787,9 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
 # (`source_reference`, `verification_status`, `catalog_status`).
 #
 # Rozstrzygniecie: transformator dedykowany DER przestaje byc osobna dana i staje
-# sie WYBOREM POZYCJI z katalogu transformatorow. `BlockTransformerItem` niesie
-# `transformer_type_ref`, a wszystkie liczby czyta z tej pozycji — jedno zrodlo
-# prawdy, zero miejsca na rozjazd. Identyfikatory pozycji zostaly bez zmian, wiec
-# zapisane konfiguracje stacji wskazuja dalej to samo.
+# sie WYBOREM POZYCJI z katalogu transformatorow; wszystkie liczby czyta z tej pozycji.
+# Karta JEDNA-SCIEZKA-EDYCJI domknela to samo dla IDENTYFIKATORA: pozycja listy nosi
+# identyfikator typu TRAFO_SN_NN (dawne `btr_*` ponizej to nazwy historyczne).
 #
 # USUNIETE POZYCJE (nie mialy odpowiednika z proweniencja):
 #   * `btr_fw_15_069_3450` — 3450 kVA; katalog transformatorow ma 3,15 MVA i
@@ -812,30 +811,32 @@ PF_CURVE_CATALOG: tuple[PfCurveItem, ...] = (
 
 @dataclass(frozen=True)
 class BlockTransformerItem:
-    """Transformator dedykowany DER = WYBOR POZYCJI z katalogu transformatorow.
+    """Transformator dedykowany DER = WYBOR POZYCJI z katalogu transformatorow TRAFO_SN_NN.
 
-    Ta klasa nie przechowuje ANI JEDNEJ liczby elektrycznej — wszystkie czyta z
-    typu wskazanego przez `transformer_type_ref` (`mv_transformer_catalog.py`).
-    Dzieki temu para (katalog konfiguracji stacji, katalog transformatorow) nie moze sie
-    rozjechac: nie ma czego rozjezdzac.
+    Karta JEDNA-SCIEZKA-EDYCJI: to NIE jest drugi katalog transformatorow. `id` JEST
+    identyfikatorem typu w `mv_transformer_catalog` (przestrzen TRAFO_SN_NN) — ta sama
+    referencja, ktora operacja `add_converter_source` materializuje i zapisuje w modelu
+    (`block_transformer_catalog_ref`, `der_topology.block_transformer.catalog_ref`). Dawne
+    wlasne identyfikatory `btr_*` z osobna przestrzenia `block_transformer` byly druga prawda
+    o tych samych transformatorach (model niosl referencje, ktorej katalog TRAFO_SN_NN nie
+    znal). Klasa nie przechowuje ANI JEDNEJ liczby elektrycznej — czyta je z typu.
     """
 
+    #: Identyfikator typu w `mv_transformer_catalog` — JEDYNE zrodlo danych.
     id: str
-    catalog_namespace: str
     catalog_version: str
     label_pl: str
-    #: Identyfikator typu w `mv_transformer_catalog` — JEDYNE zrodlo danych.
-    transformer_type_ref: str
     applicable_der_kinds: tuple[str, ...]
+    catalog_namespace: str = "TRAFO_SN_NN"
 
     def _typ(self) -> dict:
         from network_model.catalog.mv_transformer_catalog import get_all_transformer_types
 
         for record in get_all_transformer_types():
-            if record["id"] == self.transformer_type_ref:
+            if record["id"] == self.id:
                 return record
         raise KeyError(
-            f"{self.id}: typ '{self.transformer_type_ref}' nie istnieje w katalogu "
+            f"Typ '{self.id}' nie istnieje w katalogu "
             "transformatorów — pozycja transformatora dedykowanego bez pokrycia."
         )
 
@@ -905,7 +906,6 @@ class BlockTransformerItem:
             "catalog_namespace": self.catalog_namespace,
             "catalog_version": self.catalog_version,
             "label_pl": self.label_pl,
-            "transformer_type_ref": self.transformer_type_ref,
             "sn_kva": self.sn_kva,
             "hv_kv": self.hv_kv,
             "lv_kv": self.lv_kv,
@@ -929,74 +929,54 @@ _DER_WSZYSTKIE: tuple[str, ...] = ("PV", "BESS", "FW")
 
 BLOCK_TRANSFORMER_CATALOG: tuple[BlockTransformerItem, ...] = (
     BlockTransformerItem(
-        id="btr_pv_15_069_800",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-0p8mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 800 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-0p8mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_pv_15_069_1000",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-1mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1000 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-1mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_pv_15_069_1250",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-1p25mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-1p25mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_pv_15_069_1600",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-1p6mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 1600 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-1p6mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_pv_15_069_2500",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-2p5mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 2500 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-2p5mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_pv_15_04_1000",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,4 kV · 1000 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_bess_15_04_1600",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-04-1600kva-dyn11-tier2-suchy",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,4 kV · 1600 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-04-1600kva-dyn11-tier2-suchy",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
     BlockTransformerItem(
-        id="btr_der_15_069_3150",
-        catalog_namespace="block_transformer",
+        id="tr-sn-nn-15-0p69-3p15mva-dyn11-inverter",
         catalog_version=WERSJA_KATALOGOW_STACJI,
         label_pl="Transformator dedykowany 15/0,69 kV · 3150 kVA · Dyn11",
-        transformer_type_ref="tr-sn-nn-15-0p69-3p15mva-dyn11-inverter",
         applicable_der_kinds=_DER_WSZYSTKIE,
     ),
 )
-
-
-def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
-    return next((b for b in BLOCK_TRANSFORMER_CATALOG if b.id == btr_id), None)
 
 
 # =============================================================================

@@ -241,7 +241,7 @@ describe('EkranKrzywych — tryb ekspercki (identyfikatory)', () => {
   });
 });
 
-// Granica modułu klienta persystencji DER (K5-B) — PATCH mockowany, klasa błędu
+// Granica modułu klienta persystencji DER (K5-B) — zapis wiązań (operacja set_der_catalog_bindings) mockowany, klasa błędu
 // zachowana (komponent robi `instanceof` przy uczciwym komunikacie). `vi.mock`
 // jest hoistowany na szczyt modułu, więc rejestracja MUSI żyć na poziomie pliku.
 const patchBindings = vi.fn();
@@ -249,7 +249,7 @@ vi.mock('../../../../ui/sld/v2/canvas/derPersistenceApi', () => {
   class DerPersistenceApiError extends Error {}
   return {
     DerPersistenceApiError,
-    patchDerCatalogBindings: (...args: unknown[]) => patchBindings(...args),
+    zapiszWiazaniaDer: (...args: unknown[]) => patchBindings(...args),
   };
 });
 
@@ -313,12 +313,12 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
     await userEvent.click(screen.getByTestId('mvd-krzywe-wiazania-zapisz'));
 
     await vi.waitFor(() =>
-      expect(patchBindings).toHaveBeenCalledWith('proj-1', 'case-1', 'der-1', {
+      expect(patchBindings).toHaveBeenCalledWith('case-1', 'der-1', {
         pf_curve_ref: 'pf_droop_5',
       }),
     );
     // Rekord warsztatu zsynchronizowany — reguła gotowości widzi krzywą od razu.
-    // (waitFor: synchronizacja następuje PO rozstrzygnięciu promisa PATCH.)
+    // (waitFor: synchronizacja następuje PO rozstrzygnięciu promisa zapisu wiązań.)
     await vi.waitFor(() =>
       expect(
         useStationDerStore.getState().ders['der-1'].profiles.pf_curve_ref,
@@ -413,7 +413,7 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
     useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);
   });
 
-  it('zapis bez żadnej wybranej krzywej jest odmową z powodem (bez pustego PATCH)', async () => {
+  it('zapis bez żadnej wybranej krzywej jest odmową z powodem (bez pustego zapisu wiązań)', async () => {
     const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
 
     await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-wiazania-modul'), 'der-1');

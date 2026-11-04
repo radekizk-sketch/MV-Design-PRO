@@ -26,10 +26,10 @@ vi.mock('../podsumowanieApi', () => ({
 // K9-A: sekwencja zapisu — wiązania aparaturowe i profile idą kanałem wiązań
 // wytwórcy (żądanie zmiany wiązań). Mock pozwala asertować payload i symulować
 // częściowe niepowodzenie sekwencji.
-const patchDerCatalogBindingsMock = vi.fn();
+const zapiszWiazaniaDerMock = vi.fn();
 vi.mock('../../../../ui/sld/v2/canvas/derPersistenceApi', () => ({
   DerPersistenceApiError: class DerPersistenceApiError extends Error {},
-  patchDerCatalogBindings: (...args: unknown[]) => patchDerCatalogBindingsMock(...args),
+  zapiszWiazaniaDer: (...args: unknown[]) => zapiszWiazaniaDerMock(...args),
 }));
 
 const appState: { activeCaseId: string | null; activeProjectId: string | null } = {
@@ -219,8 +219,8 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     uruchomAutoBiegMock.mockReset();
     fetchRaportMock.mockReset();
     fetchBomMock.mockReset();
-    patchDerCatalogBindingsMock.mockReset();
-    patchDerCatalogBindingsMock.mockResolvedValue({ error: null });
+    zapiszWiazaniaDerMock.mockReset();
+    zapiszWiazaniaDerMock.mockResolvedValue({ error: null });
     uruchomAutoBiegMock.mockResolvedValue('DONE');
     fetchRaportMock.mockResolvedValue(null);
     fetchBomMock.mockResolvedValue(null);
@@ -893,7 +893,7 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
 
     // Wiązania + profile jednym żądaniem zmiany wiązań wytwórcy.
     await waitFor(() => {
-      expect(patchDerCatalogBindingsMock).toHaveBeenCalledWith('proj-1', 'case-1', 'gen-1', {
+      expect(zapiszWiazaniaDerMock).toHaveBeenCalledWith('case-1', 'gen-1', {
         ct_catalog_ref: 'ct-1',
         vt_catalog_ref: 'vt-1',
         protection_catalog_ref: 'zab-1',
@@ -941,7 +941,7 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
       error: null,
       changes: { created_element_ids: ['gen-1'] },
     });
-    patchDerCatalogBindingsMock.mockRejectedValue(
+    zapiszWiazaniaDerMock.mockRejectedValue(
       new Error('Referencje katalogowe nie istnieja w katalogu: ct_catalog_ref=ct-1.'),
     );
     render(<KreatorZrodlaOze />);

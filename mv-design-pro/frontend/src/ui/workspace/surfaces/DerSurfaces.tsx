@@ -32,7 +32,6 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
-  computeDerCompleteness,
   computeDerReadinessMatrix,
   formatDerDynamicProfileLabelPl,
   getBlockTransformer,
@@ -41,7 +40,6 @@ import {
   getSnConnectionPointKindLabelPl,
   selectAllDers,
   selectDerById,
-  snPointKindForBus,
   useKatalogiStacjiSnapshot,
   useBessBatteryTypes,
   useDerDynamicProfiles,
@@ -57,7 +55,7 @@ import {
   type SnConnectionPointKind,
 } from '../../network-build/station-der';
 import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
-import { inferBlockTransformerCatalogRef } from '../../network-build/station-der/zModelu';
+import { derZGeneratoraModelu } from '../../network-build/station-der/zModelu';
 import {
   identyfikacjaMocy,
   stanKonfiguracji,
@@ -82,7 +80,7 @@ import type {
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import type { EnergyNetworkModel, Generator, Substation } from '../../../types/enm';
+import type { EnergyNetworkModel, Substation } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 interface DerSurfaceProps {
@@ -170,227 +168,6 @@ function nazwaTypuZKatalogu(
   if (!ref) return null;
   const typ = katalog.find((entry) => entry.id === ref);
   return typ?.name ? cleanCatalogText(typ.name) : null;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
-function numberFromRecord(
-  record: Record<string, unknown>,
-  keys: readonly string[],
-): number | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
-  }
-  return null;
-}
-
-function stringFromRecord(
-  record: Record<string, unknown>,
-  keys: readonly string[],
-): string | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim()) return value;
-  }
-  return null;
-}
-
-/**
- * Referencja katalogowa urządzenia z modelu — BEZ podstawiania (naprawa FAB-I,
- * ta sama klasa co fallback `AddDerWizard`/`wizard-validation`).
- *
- * POMIAR PRZED NAPRAWĄ: gdy `explicitRef` (zapisany przez kreator, dziś zawsze
- * identyfikator z backendu) nie pasował do ŻADNEJ pozycji lokalnych katalogów
- * `PV_INVERTER_CATALOG`/`BESS_PCS_CATALOG`/`WIND_TURBINE_CATALOG` — co jest
- * ścieżką NORMALNĄ, nie brzegową, odkąd kreator DER wybiera urządzenie z
- * backendu — funkcja podstawiała inne urządzenie z lokalnej listy, dobrane
- * WYŁĄCZNIE po najbliższej mocy znamionowej. Karta inżynierska pokazywała więc
- * producenta, model i napięcie urządzenia, którego w stacji NIE MA. Dokładnie
- * ten sam mechanizm, jaki `nazwaTypuZKatalogu` miał dla CT/VT przed V12K-239/242
- * (patrz komentarz przy `KatalogiWiazan` niżej) — tam już naprawiony,
- * tu nie. Naprawa: referencja z modelu wraca 1:1, `null` zostaje `null`.
- * Brak dopasowania w katalogu jest teraz widoczny WPROST — `findDeviceLabel`
- * (karta FAB-J: szuka w `fetchDerConverterTypes`, to samo pobranie co kreator)
- * zwraca `„<ref> (pozycja spoza katalogu)"` zamiast fabrykować nazwę/producenta.
- */
-function resolveDeviceCatalogRef(explicitRef: string | null): string | null {
-  return explicitRef && explicitRef.trim().length > 0 ? explicitRef : null;
-}
-
-/**
- * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `ConnectionSide` niesie WYŁĄCZNIE
- * poziom przyłączenia — nN, albo SN przez transformator dedykowany (żadne
- * urządzenie z katalogu przekształtników nie łączy się z siecią SN bez
- * pośredniczącego transformatora). Dawny wynik `'SN'` (dla legacy
- * `SOURCE_CONNECTION_STATION`) nie istnieje już jako wariant — grupowany z
- * pozostałymi „dedicated" tak jak w drugim niezależnym czytniku tej samej
- * wartości backendu (`enmToSldAdapter.ts::mapGeneratorConnectionSide`), żeby
- * oba czytniki zgadzały się co do tych samych legacy stringów.
- */
-function connectionSideFromGenerator(generator: Generator): ConnectionSide {
-  switch (generator.connection_variant) {
-    case 'DEDICATED_MV_CONNECTION':
-    case 'SOURCE_CONNECTION_STATION':
-    case 'block_transformer':
-      return 'dedicated_transformer';
-    default:
-      return 'nN';
-  }
-}
-
-function profileRecordFromGenerator(generator: Generator): Record<string, unknown> {
-  const materialized = asRecord(generator.materialized_params);
-  const meta = asRecord(generator.meta);
-  return {
-    ...asRecord(meta.profiles),
-    ...asRecord(materialized.profiles),
-  };
-}
-
-function buildDerFromGenerator(
-  generator: Generator | null | undefined,
-  fallbackKind: DerKind,
-  snapshot: EnergyNetworkModel | null,
-  blockTransformers: readonly BlockTransformerItem[] = [],
-): StationDerConnection | null {
-  if (!generator) return null;
-  const connectionSide = connectionSideFromGenerator(generator);
-  const materialized = asRecord(generator.materialized_params);
-  const meta = asRecord(generator.meta);
-  const profiles = profileRecordFromGenerator(generator);
-  const stationRef = generator.station_ref
-    ?? stringFromRecord(meta, ['station_ref', 'station_id'])
-    ?? stringFromRecord(materialized, ['station_ref', 'station_id'])
-    ?? '';
-  // V12K-268: nazwa kanoniczna PIERWSZA, zastane nazwy jako awaryjny odczyt.
-  // Automigracja przy wczytaniu modelu (`enm/migrations/punkt_przylaczenia_der.py`)
-  // przenosi klucz raz i na stale, ale rekord moze tu trafic takze sciezka, ktora
-  // magazynu nie dotyka (np. podglad importu) — wtedy stara nazwa musi byc nadal
-  // czytelna, inaczej gotowy projekt pokazalby brak przylaczenia.
-  const busPrzylaczeniaRef = stringFromRecord(materialized, ['bus_przylaczenia_ref', 'pcc_ref', 'pcc'])
-    ?? stringFromRecord(meta, ['bus_przylaczenia_ref', 'pcc_ref', 'pcc'])
-    ?? generator.bus_ref
-    ?? null;
-  const transformerRef = generator.blocking_transformer_ref
-    ?? stringFromRecord(materialized, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
-    ?? stringFromRecord(meta, ['transformer_ref', 'station_transformer_ref', 'blocking_transformer_ref'])
-    ?? (connectionSide === 'dedicated_transformer' ? `tr_${generator.ref_id}` : null);
-  const blockTransformerCatalogRef = stringFromRecord(materialized, ['block_transformer_catalog_ref'])
-    ?? stringFromRecord(meta, ['block_transformer_catalog_ref'])
-    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef, blockTransformers);
-  const lvBusbarRef = stringFromRecord(materialized, ['lv_busbar_ref', 'lv_bus_ref'])
-    ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
-    ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
-  const ncRfgRef = stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']);
-  // Moc z modelu to moc CAŁEJ pozycji (operacja zapisuje moc katalogową × liczba sztuk).
-  const nominalPowerKw = typeof generator.p_mw === 'number' ? Math.round(generator.p_mw * 1000) : null;
-  // Liczba jednostek — dana modelu (`quantity`), do tej pory na ekran NIE DOCHODZILA,
-  // wiec moc jednostkowa i grupowa byly nierozroznialne (audyt E-21 pkt P2).
-  const unitCount = numberFromRecord(materialized, ['quantity', 'n_parallel'])
-    ?? numberFromRecord(meta, ['quantity', 'n_parallel']);
-  const catalogRef = resolveDeviceCatalogRef(
-    generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
-  );
-  // Karta FAB-K (§0 R1/R4): napięcie punktu przyłączenia WPROST z modelu (szyna
-  // wytwórcy) — JEDYNE źródło (ten sam mechanizm, co `zModelu.ts::derZGeneratora`,
-  // KLASA NIE INSTANCJA: dwa niezależne czytniki tego samego generatora muszą
-  // wyprowadzać napięcie tą samą regułą, inaczej rozjadą się na danych brzegowych).
-  const szynaPrzylaczenia = (snapshot?.buses ?? []).find(
-    (bus) => bus.ref_id === generator.bus_ref || bus.id === generator.bus_ref,
-  );
-  const connectionVoltageKv = typeof szynaPrzylaczenia?.voltage_kv === 'number'
-    ? szynaPrzylaczenia.voltage_kv
-    : null;
-  // Karta FAB-K (§0 R3): punkt przyłączenia SN — szyna GÓRNA transformatora
-  // dedykowanego, rodzaj wyprowadzony z typu elementu modelu, do którego ta
-  // szyna należy (`snPointKindForBus`, ta sama funkcja co kreator DER i
-  // `zModelu.ts`). Zero osobnego pola trzymanego jako wybór.
-  let snConnectionBusRef: string | null = null;
-  let snConnectionPointKind: SnConnectionPointKind | null = null;
-  if (connectionSide === 'dedicated_transformer' && transformerRef && snapshot) {
-    const transformator = (snapshot.transformers ?? []).find(
-      (t) => t.ref_id === transformerRef || t.id === transformerRef,
-    );
-    snConnectionBusRef = transformator?.hv_bus_ref ?? null;
-    if (snConnectionBusRef) {
-      snConnectionPointKind = snPointKindForBus(snapshot, snConnectionBusRef);
-    }
-  }
-
-  const rekord: StationDerConnection = {
-    id: generator.ref_id,
-    project_id: 'snapshot',
-    station_id: stationRef,
-    der_kind: fallbackKind,
-    name: generator.name || generator.ref_id,
-    connection_side: connectionSide,
-    bus_przylaczenia_ref: busPrzylaczeniaRef,
-    bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
-    transformer_ref: transformerRef,
-    lv_busbar_ref: lvBusbarRef,
-    sn_connection_bus_ref: snConnectionBusRef,
-    sn_connection_point_kind: snConnectionPointKind,
-    connection_voltage_kv: connectionVoltageKv,
-    catalogs: {
-      ...EMPTY_DER_CATALOGS,
-      device_catalog_ref: catalogRef,
-      ptpiree_certificate_ref: stringFromRecord(materialized, ['ptpiree_certificate_ref'])
-        ?? stringFromRecord(meta, ['ptpiree_certificate_ref']),
-      battery_catalog_ref: stringFromRecord(materialized, ['battery_catalog_ref'])
-        ?? stringFromRecord(meta, ['battery_catalog_ref']),
-      protection_catalog_ref: stringFromRecord(materialized, ['protection_catalog_ref'])
-        ?? stringFromRecord(meta, ['protection_catalog_ref']),
-      ct_catalog_ref: stringFromRecord(materialized, ['ct_catalog_ref']) ?? stringFromRecord(meta, ['ct_catalog_ref']),
-      vt_catalog_ref: stringFromRecord(materialized, ['vt_catalog_ref']) ?? stringFromRecord(meta, ['vt_catalog_ref']),
-      dynamic_model_ref: stringFromRecord(materialized, ['dynamic_model_ref'])
-        ?? stringFromRecord(meta, ['dynamic_model_ref']),
-      block_transformer_catalog_ref: blockTransformerCatalogRef,
-    },
-    profiles: {
-      ...EMPTY_DER_PROFILES,
-      nc_rfg_profile_ref: ncRfgRef,
-      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
-      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
-      pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
-    },
-    nominal_power_kw: nominalPowerKw,
-    unit_count: unitCount,
-    // Karta FAB-K (§0 R1, KLASA NIE INSTANCJA): JEDNA funkcja kompletności
-    // (`types.ts::computeDerCompleteness`) — wczesniejszy lokalny duplikat
-    // (`!busPrzylaczeniaRef ? 'no_pcc' : ...`) IGNOROWAL napiecie przylaczenia
-    // i punkt SN, wiec ten ekran i `zModelu.ts` mogly wystawic RÓŻNY werdykt
-    // kompletnosci dla tego samego wytworcy — dokladnie defekt, ktory ta
-    // reguła zakazuje (dwa niezalezne predykaty, ktore "dzis sie zgadzaja").
-    completeness: computeDerCompleteness({
-      connection_side: connectionSide,
-      bus_przylaczenia_ref: busPrzylaczeniaRef,
-      catalogs: {
-        ...EMPTY_DER_CATALOGS,
-        device_catalog_ref: catalogRef,
-      },
-      profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: ncRfgRef },
-      connection_voltage_kv: connectionVoltageKv,
-      sn_connection_bus_ref: snConnectionBusRef,
-    }),
-    // JEDNA regula gotowosci na tym ekranie (V12K-243). Wczesniej stal tu lokalny,
-    // slabszy duplikat (`buildReadinessForGenerator`): patrzyl wylacznie na obecnosc
-    // urzadzenia katalogowego i profili, wiec IGNOROWAL klase przekladnika, dane pradu
-    // zwarciowego, model dynamiczny, punkt przylaczenia i transformator blokowy —
-    // trzecia ocena tego samego wytworcy, rozjezdzajaca sie z kanoniczna.
-    // Ocena liczona na GOTOWYM rekordzie (nizej), zeby patrzyla na te sama, SUROWA
-    // mape profili i katalogow, ktora widzi reszta ekranu — dwie oceny tego samego
-    // wytworcy nie moga sie rozjezdzac (przed V12K-236 rekord dostawal profile
-    // domyslne, a ocena surowe, wiec jedna mowila „gotowe", druga „zablokowane").
-    readiness: EMPTY_DER_READINESS,
-    created_at: '',
-    updated_at: '',
-  };
-  return { ...rekord, readiness: computeDerReadinessMatrix(rekord) };
 }
 
 function buildDerFromSurfaceContext(
@@ -1128,15 +905,13 @@ function DerSurfaceShell({
   // `snapshotDer` niżej) — transformatory dedykowane WYŁĄCZNIE z backendu,
   // zero statyku modułowego usuniętego z `catalogs.ts`.
   const blockTransformers = useKatalogiStacjiSnapshot().data?.block_transformers ?? [];
-  const snapshotDer = useMemo(
-    () => buildDerFromGenerator(
-      derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
-      derKind,
-      snapshot ?? null,
-      blockTransformers,
-    ),
-    [derId, derKind, snapshot, blockTransformers],
-  );
+  // JEDEN czytnik generatora modelu (`zModelu.ts::derZGeneratoraModelu`) — ten sam, którym
+  // magazyn stacji odwzorowuje model (karta JEDNA-SCIEZKA-EDYCJI: drugie odwzorowanie tu
+  // rozjeżdżało się z nim na danych brzegowych).
+  const snapshotDer = useMemo(() => {
+    const zModelu = derZGeneratoraModelu(snapshot ?? null, derId, blockTransformers);
+    return zModelu ? { ...zModelu, readiness: computeDerReadinessMatrix(zModelu) } : null;
+  }, [derId, snapshot, blockTransformers]);
   const surfaceContextDer = useMemo(
     () => buildDerFromSurfaceContext(surface, derKind),
     [derKind, surface],
@@ -1266,7 +1041,6 @@ function DerSurfaceShell({
     return (
       <DerWiazaniaEditor
         derId={der.id}
-        projectId={activeProjectId}
         caseId={activeCaseId}
         wartosci={{
           protection_catalog_ref: der.catalogs.protection_catalog_ref,
@@ -1303,7 +1077,6 @@ function DerSurfaceShell({
     );
   }, [
     activeCaseId,
-    activeProjectId,
     der,
     katalogiWiazan,
     setSnapshotPoZapisie,

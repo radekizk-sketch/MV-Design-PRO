@@ -33,7 +33,7 @@ import type { TypeCategory } from '../../catalog/types';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import {
   DerPersistenceApiError,
-  patchDerCatalogBindings,
+  zapiszWiazaniaDer,
   type DerCatalogBindingsRequest,
 } from '../../sld/v2/canvas/derPersistenceApi';
 
@@ -94,7 +94,6 @@ export const WIAZANIA_BEZ_KATALOGU: readonly {
 
 export interface DerWiazaniaEditorProps {
   readonly derId: string;
-  readonly projectId: string | null;
   readonly caseId: string | null;
   /** Bieżące wartości wiązań z rekordu wytwórcy (odczyt z modelu). */
   readonly wartosci: Partial<Record<keyof DerCatalogBindingsRequest, string | null | undefined>>;
@@ -115,7 +114,6 @@ export interface DerWiazaniaEditorProps {
 
 export function DerWiazaniaEditor({
   derId,
-  projectId,
   caseId,
   wartosci,
   etykietaTypu,
@@ -125,17 +123,17 @@ export function DerWiazaniaEditor({
   const [zapisywane, setZapisywane] = useState<keyof DerCatalogBindingsRequest | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
 
-  const kontekstKompletny = Boolean(projectId && caseId);
+  const kontekstKompletny = Boolean(caseId);
 
   const zapisz = useCallback(
     async (pole: keyof DerCatalogBindingsRequest, ref: string | null) => {
-      if (!projectId || !caseId) return;
+      if (!caseId) return;
       setZapisywane(pole);
       setBlad(null);
       try {
         // WYŁĄCZNIE zmienione pole — pozostałe wiązania zostają w modelu nietknięte
         // (kontrakt „pominięcie ≠ null", V12K-238).
-        const odpowiedz = await patchDerCatalogBindings(projectId, caseId, derId, { [pole]: ref });
+        const odpowiedz = await zapiszWiazaniaDer(caseId, derId, { [pole]: ref });
         poZapisie(pole, ref, odpowiedz);
       } catch (error) {
         setBlad(
@@ -147,7 +145,7 @@ export function DerWiazaniaEditor({
         setZapisywane(null);
       }
     },
-    [caseId, derId, poZapisie, projectId],
+    [caseId, derId, poZapisie],
   );
 
   const wiersze = useMemo(
@@ -172,7 +170,7 @@ export function DerWiazaniaEditor({
 
       {!kontekstKompletny && (
         <p className="text-xs text-scada-grounded" data-testid="der-wiazania-brak-kontekstu">
-          Wybierz projekt i przypadek obliczeniowy, żeby zapisać wiązania w modelu.
+          Wybierz przypadek obliczeniowy, żeby zapisać wiązania w modelu.
         </p>
       )}
 

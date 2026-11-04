@@ -2,8 +2,9 @@
  * UI-02b JEDEN-INSPEKTOR — formularz układu PV/BESS/FW w prawym inspektorze.
  *
  * Otwiera go upuszczenie układu z palety kanwy na stację (`useDerDragDrop` →
- * `useKontekstElementuKanwy.ustawSzkicDer`). Zapis: `POST /api/projects/{p}/cases/{c}/generators`
- * przez współdzielony klient `postDerGeneratorConfig`; migawka z odpowiedzi trafia wprost
+ * `useKontekstElementuKanwy.ustawSzkicDer`). Zapis: operacja domenowa `add_converter_source`
+ * (jedna droga zapisu źródła OZE) przez współdzielony klient `zapiszZrodloOze`; szynę nN
+ * stacji ustala operacja z modelu; migawka z odpowiedzi trafia wprost
  * do `useSnapshotStore` (jedna prawda modelu), szkic znika po sukcesie.
  *
  * Przeniesione z dawnej szuflady szczegółów kanwy razem z jej regułami danych:
@@ -45,7 +46,7 @@ import { OPIS_PASMA_NN, powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pas
 import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { DerPersistenceApiError, postDerGeneratorConfig } from '../../sld/v2/canvas/derPersistenceApi';
+import { DerPersistenceApiError, zapiszZrodloOze } from '../../sld/v2/canvas/derPersistenceApi';
 import type { DaneElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { useKontekstElementuKanwy, type RodzajSzkicuDer } from '../../sld/shared/kontekstElementuKanwy';
 
@@ -313,7 +314,6 @@ export interface FormularzSzkicuDerProps {
 }
 
 export function FormularzSzkicuDer({ dane, derKind }: FormularzSzkicuDerProps): JSX.Element {
-  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
   const wyczyscSzkicDer = useKontekstElementuKanwy((state) => state.wyczyscSzkicDer);
@@ -371,8 +371,8 @@ export function FormularzSzkicuDer({ dane, derKind }: FormularzSzkicuDerProps): 
   const etykietaStacji = dane.label ?? dane.stationCode ?? 'stacja';
 
   const zapisz = useCallback(async (values: WartosciFormularzaDer) => {
-    if (!activeProjectId || !activeCaseId) {
-      notify('Nie można zapisać układu PV/BESS/FW: wybierz aktywny projekt i przypadek.', 'error');
+    if (!activeCaseId) {
+      notify('Nie można zapisać układu PV/BESS/FW: wybierz aktywny przypadek.', 'error');
       return;
     }
     if (!dane.elementId) {
@@ -386,10 +386,10 @@ export function FormularzSzkicuDer({ dane, derKind }: FormularzSzkicuDerProps): 
       .then((wynik) => ({ ok: true as const, modul: wynik.modul }))
       .catch(() => ({ ok: false as const }));
     try {
-      const odpowiedz = await postDerGeneratorConfig(activeProjectId, activeCaseId, {
+      const odpowiedz = await zapiszZrodloOze(activeCaseId, {
         station_ref: dane.elementId,
-        der_kind: values.derKind,
-        power_mw: values.powerMw,
+        source_technology: values.derKind,
+        power_setpoint_mw: values.powerMw,
         connection_variant: values.connectionVariant,
         catalog_ref: values.inverterCatalogRef,
         ...(values.derKind === 'BESS' ? { battery_catalog_ref: values.batteryCatalogRef } : {}),
@@ -406,7 +406,7 @@ export function FormularzSzkicuDer({ dane, derKind }: FormularzSzkicuDerProps): 
         : 'Nie udało się zapisać układu PV/BESS/FW.';
       notify(komunikat, 'error');
     }
-  }, [activeCaseId, activeProjectId, dane.elementId, etykietaStacji, setSnapshot, wyczyscSzkicDer]);
+  }, [activeCaseId, dane.elementId, etykietaStacji, setSnapshot, wyczyscSzkicDer]);
 
   const naBledach = useCallback((errors: FieldErrors<WartosciFormularzaDer>) => {
     const pole = KOLEJNOSC_POL.find((nazwa) => errors[nazwa] && ID_POLA[nazwa]);
