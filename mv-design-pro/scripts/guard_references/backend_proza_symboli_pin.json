@@ -1,5 +1,4 @@
 {
- "analysis/arc_flash/builder.py": 18,
  "analysis/energy_validation/builder.py": 11,
  "analysis/grid_strength/builder.py": 2,
  "analysis/normative/evaluator.py": 1,
@@ -8,7 +7,6 @@
  "analysis/obciazenie_galezi.py": 1,
  "analysis/reactive_adequacy/builder.py": 9,
  "analysis/recommendations/builder.py": 2,
- "analysis/reporting/arc_flash_report.py": 1,
  "analysis/sanity_bounds/power_flow_bounds.py": 5,
  "analysis/sanity_bounds/short_circuit_bounds.py": 4,
  "analysis/ssci_stability/builder.py": 3,

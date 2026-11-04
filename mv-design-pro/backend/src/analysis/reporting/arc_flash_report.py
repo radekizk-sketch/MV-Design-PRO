@@ -126,11 +126,11 @@ def _text_rows(results: list[dict[str, Any]]) -> list[str]:
         lines.append(
             f"  [{r.get('status_label_pl', r.get('status', ''))}] "
             f"{_nazwa_szyny(r)} — "
-            f"E={_fmt(r.get('incident_energy_cal_cm2'))} cal/cm², "
-            f"AFB={_fmt(r.get('arc_flash_boundary_mm'), 0)} mm, "
-            f"ŚOI={r.get('ppe_category') or '—'}, "
-            f"t_łuku={_fmt(r.get('arc_time_s'), 3)} s, "
-            f"U={_fmt(r.get('voltage_kv'), 2)} kV"
+            f"energia incydentu {_fmt(r.get('incident_energy_cal_cm2'))} cal/cm², "
+            f"granica łuku {_fmt(r.get('arc_flash_boundary_mm'), 0)} mm, "
+            f"ŚOI {r.get('ppe_category') or '—'}, "
+            f"czas łuku {_fmt(r.get('arc_time_s'), 3)} s, "
+            f"napięcie {_fmt(r.get('voltage_kv'), 2)} kV"
         )
     return lines
 

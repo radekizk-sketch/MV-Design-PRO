@@ -216,8 +216,8 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
                   <td>
                     <MathInline latex={k.formula_latex} />
                   </td>
-                  <td>{k.substitution_pl}</td>
-                  <td>{k.result_pl}</td>
+                  <td><TekstZWzorami tekst={k.substitution_pl} /></td>
+                  <td><TekstZWzorami tekst={k.result_pl} /></td>
                   <td>{k.unit_check_pl}</td>
                 </tr>
               ))}

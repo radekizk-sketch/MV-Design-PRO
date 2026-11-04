@@ -1340,6 +1340,29 @@ jest dowodem regulacyjnym.
 
 Sekcja aktualizowana przy każdym commicie. Niczego nie wypchnięto (gałąź wypycha architekt).
 
+**Wznowienie 2026-11-04 (nowy wykonawca).** Bieg `begm6qkqe` przepadł z restartem; bieg końcowy
+idzie od nowa na zacommitowanym SHA. Zrobione: (a) test śladu `szczegolWerdyktu` (20 testów sceny
+× pełny montaż karty i natywny klik) — pomiar: KaTeX wszystkich 14 wzorów 39 ms, test 2,2 s bez
+KaTeX, 3,6 s z KaTeX; przyczyna to brak pamięci renderu między instancjami `MathRenderer`
+(`useMemo` per instancja). Naprawa u źródła: współdzielona pamięć `renderLatexToHtml` (klucz:
+tryb + wzór, limit 2000 wpisów) → 2,8 s; limit testu 15 s z uzasadnieniem pomiarowym; test
+pamięci (iniekcja klucza bez trybu czerwieni). (b) „Nieświeże fikstury” — przyczyna ustalona:
+NIE regresja i NIE zmiana solvera. Kotwica w szumie była „wszystko albo nic”: gdy szkielet pliku
+się zmienia (tu: teksty `dane_przyjete` ENM → nowy `enm_hash`; tytuły kroków śladu
+w towarzyszach), cały plik szedł ze świeżej treści razem z szumem ostatniej cyfry TEJ maszyny
+(`p_from_mw` 0.180288 → 0.180287, R/X 0.500002 → 0.500003; ten sam kod bazowy 01c5def16 daje tu
+0.180287, a plik bazowy powstał na innej maszynie — test świeżości bazy przechodził przez
+kotwicę). Naprawa: kotwica per liść JSON (`tests/golden/zapis_fikstur.tresc_z_kotwica`, ścieżka
+liścia + `roznice_z_tolerancja`) i per linia TS (`station_archetype_substrate.zakotwicz_linie`,
+`difflib` na liniach kanonicznych); testy iloczynu cech (iniekcja czerwieni 3 z 16); fikstury
+przegenerowane od plików bazowych — wróciły cyfry bazy, różnica tylko w `enm_hash` i tekstach.
+Przy okazji: `sldNetwork53.ts` był nieświeży (`source_hash` po zmianie tekstów ENM) —
+przegenerowany `scripts/emit_sld_network_fixture.py`. (c) Punkt 4: `arc_flash/builder.py` 18 → 0
+i `reporting/arc_flash_report.py` 1 → 0 (symbole jako segmenty `$…$`, proza słowami); ekran
+jakości (ślad Arc Flash, migotania, walidacji, uzasadnienia) i tabela śladu SSCI renderują
+podstawienie, wynik i uzasadnienie przez `TekstZWzorami` (test KaTeX, iniekcja czerwieni).
+Pin: 644 w 162 plikach.
+
 **Parytet assemblera SC_1F_max — ZAMKNIĘTY.** Przyczyna ustalona pomiarem: commit b1e677ced
 zmienił ślad solvera doziemienia (`doziemienie_sn.py`), a poddrzewo
 `results[*].doziemienie_sieci.slad` nie jest na liście `KLUCZE_SLADU_LICZBOWEGO` harnessu, więc

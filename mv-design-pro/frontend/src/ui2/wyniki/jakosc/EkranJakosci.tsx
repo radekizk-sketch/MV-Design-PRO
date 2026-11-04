@@ -366,7 +366,7 @@ function SzczegolWiarygodnosci({
           <dd>{blokada}</dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={item.why_pl} /></p>
     </section>
   );
 }
@@ -551,7 +551,7 @@ function SzczegolWalidacji({
           </dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={item.why_pl} /></p>
       {szczegolyAudytowe && (item.white_box?.length ?? 0) > 0 && (
         <div className="mvd-jakosc-slad-blok">
           <button
@@ -574,7 +574,7 @@ function SzczegolWalidacji({
                     {krok.latex ? (
                       <MathBlock latex={krok.latex} />
                     ) : (
-                      <code className="mvd-num">{krok.tekst}</code>
+                      <span className="mvd-num"><TekstZWzorami tekst={krok.tekst} /></span>
                     )}
                   </li>
                 ))}
@@ -603,11 +603,11 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <span className="mvd-num"><TekstZWzorami tekst={krok.substitution_pl} /></span>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <span className="mvd-num"><TekstZWzorami tekst={krok.result_pl} /></span>
         </li>
       ))}
     </ol>
@@ -842,11 +842,11 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <span className="mvd-num"><TekstZWzorami tekst={krok.substitution_pl} /></span>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <span className="mvd-num"><TekstZWzorami tekst={krok.result_pl} /></span>
         </li>
       ))}
     </ol>
@@ -909,7 +909,7 @@ function SzczegolArcFlash({
           </dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={wynik.why_pl} /></p>
       {wynik.missing_data.length > 0 && (
         <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
           {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}

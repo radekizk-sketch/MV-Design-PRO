@@ -58,8 +58,9 @@ const AF_FIXTURE: ArcFlashResponse = {
         {
           symbol: 'E',
           formula_latex: 'E = 1.2 \\cdot ...',
-          substitution_pl: 'E = 1.2 · …',
-          result_pl: 'E = 8,42 cal/cm²',
+          // Postać backendu (`analysis/arc_flash/builder.py`): symbole jako segmenty `$…$`.
+          substitution_pl: '$I_{bf}$ = 12,5 kA, $t$ = 100 ms',
+          result_pl: '$E$ = 8,42 cal/cm²',
           unit_check_pl: '[cal/cm²]',
           table_ref: 'IEEE_1584_VCB',
         },
@@ -207,6 +208,12 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const wzory = within(slad).getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThan(0);
     expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
+    // Podstawienie i wynik: segmenty `$…$` prozy backendu składa KaTeX (bez surowego `$`).
+    const latexy = wzory.map((w) => w.getAttribute('data-latex'));
+    expect(latexy).toContain('$I_{bf}$');
+    expect(latexy).toContain('$E$');
+    expect(slad.textContent).not.toContain('$');
+    expect(slad.textContent).toContain('= 12,5 kA');
     // Etykieta kroku to „Wzór” — identyfikator `symbol` backendu nie jest dopisywany prozą.
     expect(slad.textContent).not.toContain('(E)');
   });

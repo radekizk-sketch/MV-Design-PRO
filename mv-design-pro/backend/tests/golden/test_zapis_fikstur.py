@@ -148,9 +148,9 @@ def test_kotwica_per_lisc_metryka_bezwymiarowa_wg_kodu(tmp_path: Path) -> None:
 
 def test_kotwica_per_lisc_lancuch_z_cudzyslowem_i_liczba_w_kluczu(tmp_path: Path) -> None:
     """Żetony łańcuchów z sekwencjami ucieczki i kluczami-liczbami nie przesuwają liści."""
-    dane = {"a \"1.5\" b": 0.1234561, "12.5": "x \\ 3.0", "w": 1.0}
+    dane = {'a "1.5" b': 0.1234561, "12.5": "x \\ 3.0", "w": 1.0}
     plik = _plik(tmp_path, dane)
-    swieze = {"a \"1.5\" b": 0.1234562, "12.5": "x \\ 3.0", "w": 1.0, "nowy": 2}
+    swieze = {'a "1.5" b': 0.1234562, "12.5": "x \\ 3.0", "w": 1.0, "nowy": 2}
     assert tresc_z_kotwica(plik, json_fikstury(swieze)) == json_fikstury(
-        {**swieze, "a \"1.5\" b": 0.1234561}
+        {**swieze, 'a "1.5" b': 0.1234561}
     )
