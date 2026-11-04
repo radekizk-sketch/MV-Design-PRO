@@ -48,6 +48,10 @@ type PradyPola = {
   ip_ka: number | null;
   ith_ka: number | null;
   ib_ka: number | null;
+  wyprowadzenie?: {
+    kappa?: number;
+    wzory?: Partial<Record<'ip' | 'ith' | 'ib', string>>;
+  };
 };
 
 type WidokWytrzymalosci = {
@@ -509,6 +513,26 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
       'data-punkt-ref',
       pole.prady_pola.punkt_ref ?? '',
     );
+    // Wyprowadzenie z realnego biegu (karta KD6-SZCZEGOLY): wzory i_p / I_th / I_b z kroków
+    // śladu solvera i κ z wiersza biegu — widok tylko je pokazuje.
+    const wyprowadzenie = pole.prady_pola.wyprowadzenie;
+    expect(Object.keys(wyprowadzenie?.wzory ?? {}).sort()).toEqual(['ib', 'ip', 'ith']);
+    for (const klucz of ['ip', 'ith', 'ib']) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-wzor-${pole.pole}-${klucz}`).locator('.katex'),
+      ).toBeVisible();
+    }
+    expect(wyprowadzenie?.kappa).toBeDefined();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-posrednia-${pole.pole}-kappa`)).toHaveText(
+      formatujWielkosc(wyprowadzenie?.kappa ?? Number.NaN, 'wspolczynnik'),
+    );
+    // I_th biegu przy nieustalonym czasie TEGO pola nie jest prądem kryterium (pkt 7).
+    const cieplna = pole.oceny.find((o) => o.kryterium_id.endsWith('.cieplna'));
+    if (pole.czas_wylaczenia.t_clearing_s === null && cieplna?.stosowalnosc.dotyczy === true) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-obliczony-${pole.pole}-cieplna`),
+      ).toHaveText('— czas wyłączenia pola nieustalony');
+    }
     // Źródło czasu wyłączenia jako dana maszynowa komórki Tk (rozbicie w szczegółach).
     const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
     await expect(czas).toHaveAttribute(

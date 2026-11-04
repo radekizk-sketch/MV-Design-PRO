@@ -78,6 +78,25 @@ export interface CzasWylaczeniaPola {
   readonly czas_wlasny: WartoscParametruAparatu | null;
   readonly zalozenia_pl: readonly string[];
   readonly kody_gotowosci: readonly string[];
+  /**
+   * Jedno zdanie o członie nastawczym (stopień, charakterystyka, zabezpieczenie, prąd) i o czasie
+   * własnym wyłącznika (pochodzenie, dla wartości roboczej profil i podstawa) — karta
+   * KD6-SZCZEGOLY; obecne wyłącznie przy czasie złożonym z nastaw pola.
+   */
+  readonly opis_czlonu_pl?: string;
+  readonly opis_czasu_wlasnego_pl?: string;
+}
+
+/**
+ * Wyprowadzenie prądów punktu z wiersza biegu (karta KD6-SZCZEGOLY): κ, m, n, T_k biegu, dla
+ * którego solver policzył I_th, oraz wzory i_p / I_th / I_b z kroków śladu solvera.
+ */
+export interface WyprowadzeniePradow {
+  readonly kappa?: number;
+  readonly m_factor?: number;
+  readonly n_factor?: number;
+  readonly tk_biegu_s?: number;
+  readonly wzory?: Readonly<Partial<Record<'ip' | 'ith' | 'ib', string>>>;
 }
 
 /** Prądy zwarcia w punkcie zabudowy pola — wiersz zapisanego biegu (`null` = brak, z powodem). */
@@ -105,6 +124,8 @@ export interface PradyPola {
    * pola T_k z oceny cieplnej.
    */
   readonly tb_zrodlo?: { readonly opis_pl?: string | null } | null;
+  /** Karta KD6-SZCZEGOLY (addytywnie; brak = wiersz biegu bez wyprowadzenia). */
+  readonly wyprowadzenie?: WyprowadzeniePradow;
 }
 
 /** Werdykt jądra K7-B. `null` w kryterium = brak podstawy, NIE ocena negatywna. */
@@ -139,6 +160,8 @@ export interface PoleWytrzymalosci {
    * katalogu). Rekord wyłączania nazywa porównaną wielkość (Ib albo I″k) i jej normę.
    */
   readonly oceny: readonly OcenaKryterium[];
+  /** Wzór dopuszczalnego prądu cieplnego przy T_k (jądro K7-B) — gdy kryterium cieplne istnieje. */
+  readonly wzor_limitu_cieplnego_latex?: string;
   readonly komunikat_pl: string;
   readonly kody_gotowosci: readonly string[];
 }

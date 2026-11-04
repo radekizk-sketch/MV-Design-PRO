@@ -267,6 +267,24 @@ const CZAS_WLASNY_PROPOZYCJA = parametr(
   },
 );
 
+/** Wyprowadzenie prądów w kształcie backendu (`PradyPola.wyprowadzenie`, karta KD6-SZCZEGOLY). */
+const WYPROWADZENIE = {
+  kappa: 1.556,
+  m_factor: 0.0123,
+  n_factor: 1,
+  tk_biegu_s: 0.36,
+  wzory: {
+    ip: "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+    ith: "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
+    ib: "I_b = I_{k}''",
+  },
+};
+const WZOR_LIMITU =
+  'I_{th,\\mathrm{dop}} = I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}';
+const OPIS_CZLONU = '0,3 s — stopień I> (51) (DT) zabezpieczenia Z-1 przy prądzie zwarciowym 9,09 kA';
+const OPIS_CZASU_WLASNEGO =
+  '0,06 s — wartość robocza: profil typowy wyłącznika próżniowego SN (IEC 62271-100: czas wyłączania deklaruje producent)';
+
 interface ZadanieWytrzymalosci {
   readonly station_ref: string;
   readonly short_circuit_run_id: string;
@@ -732,6 +750,8 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
     const uzasadnienie = CZAS_WLASNY_PROPOZYCJA.opis_zrodla_pl;
     zamontujBackend([
       poleOdpowiedzi({
+        prady_pola: { ...poleOdpowiedzi({}).prady_pola, wyprowadzenie: WYPROWADZENIE },
+        wzor_limitu_cieplnego_latex: WZOR_LIMITU,
         czas_wylaczenia: {
           t_clearing_s: 0.36,
           zrodlo: 'nastawy_pola',
@@ -742,6 +762,8 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
           // Kształt backendu (`_zalozenie_czasu_wlasnego`): założenie cytuje opis źródła.
           zalozenia_pl: [`Czas własny wyłącznika 0,06 s — ${uzasadnienie}`],
           kody_gotowosci: [],
+          opis_czlonu_pl: OPIS_CZLONU,
+          opis_czasu_wlasnego_pl: OPIS_CZASU_WLASNEGO,
         },
       }),
     ]);
@@ -758,14 +780,37 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
       'Wyniki pośrednie',
       'Wynik końcowy',
     ]);
-    // Uzasadnienie czasu własnego wyłącznika — dokładnie raz w całej sekcji.
+    // Czas jednym zdaniem (pkt 4 uwag z oględzin): skąd t_zab i skąd t_wył — zdania backendu;
+    // długie uzasadnienie czasu własnego tylko w podpowiedzi (raz), nie w tekście.
     const sekcja = screen.getByTestId('mvd-zwarcia-aparatura').textContent ?? '';
-    expect(sekcja.split(uzasadnienie).length - 1).toBe(1);
-    // Podstawa normowa — jedna, z rekordu limitu (2007), nie z rekordu kryterium (2017).
-    expect(sekcja).toContain('IEC 62271-1, 2007, § 4.6');
+    const opisCzasu = screen.getByTestId('mvd-zwarcia-aparatura-czas-opis-P-1');
+    expect(opisCzasu.textContent).toContain(OPIS_CZLONU);
+    expect(opisCzasu.textContent).toContain(OPIS_CZASU_WLASNEGO);
+    expect(opisCzasu.querySelectorAll('.katex')).toHaveLength(2);
+    expect(sekcja.split(uzasadnienie).length - 1).toBe(0);
+    expect(opisCzasu.getAttribute('title')?.split(uzasadnienie).length).toBe(2);
+    // Podstawa normowa — jedna, z rekordu limitu (2007), nie z rekordu kryterium (2017), przy
+    // danych katalogowych (dane wejściowe), nie w wynikach pośrednich.
+    expect(sekcja.split('IEC 62271-1, 2007, § 4.6').length - 1).toBe(1);
+    expect(tekst('mvd-zwarcia-aparatura-podstawy-P-1')).toContain('IEC 62271-1, 2007, § 4.6');
     expect(sekcja).not.toContain('2017');
-    // Wzór zapasu raz (wspólny dla trzech kryteriów), podstawienia liczb backendu jako wzory.
-    expect(screen.getByTestId('mvd-zwarcia-aparatura-wzory-P-1').querySelectorAll('.katex')).toHaveLength(1);
+    expect(tekst('mvd-zwarcia-aparatura-posrednie-P-1')).not.toContain('IEC');
+    // Wzory z backendu: i_p, I_th, I_b (ślad solvera), limit cieplny (jądro K7-B) i zapas raz.
+    const wzory = screen.getByTestId('mvd-zwarcia-aparatura-wzory-P-1');
+    expect(wzory.querySelectorAll('.katex')).toHaveLength(5);
+    for (const klucz of ['ip', 'ith', 'ib', 'limit-cieplny', 'zapas-0']) {
+      expect(screen.getByTestId(`mvd-zwarcia-aparatura-wzor-P-1-${klucz}`)).not.toBeNull();
+    }
+    // Wyniki pośrednie — liczby z jednostkami z backendu (κ, m, n, T_k biegu, I_th,dop, człony).
+    const posrednia = (k: string) => tekst(`mvd-zwarcia-aparatura-posrednia-P-1-${k}`);
+    expect(posrednia('kappa')).toBe('1,556');
+    expect(posrednia('m')).toBe('0,012');
+    expect(posrednia('n')).toBe('1');
+    expect(posrednia('tk-biegu')).toContain('0,360 s');
+    expect(posrednia('ith-dop')).toBe('20 kA');
+    expect(posrednia('tzab')).toBe('0,300 s');
+    expect(posrednia('twyl')).toBe('0,060 s');
+    expect(posrednia('tk')).toBe('0,360 s');
     for (const rodzaj of ['dynamiczna', 'cieplna', 'wylaczanie']) {
       const podstawienie = screen.getByTestId(`mvd-zwarcia-aparatura-podstawienie-P-1-${rodzaj}`);
       expect(podstawienie.querySelector('.katex')).not.toBeNull();
@@ -786,6 +831,88 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
     // o kompletności dowodu widok pomija (pkt 1 i 4, V12K-353).
     expect(screen.queryByTestId('mvd-zwarcia-aparatura-komunikat-P-1')).toBeNull();
     expect(szczegoly.textContent).not.toContain('OK: aparatura wytrzymała.');
+  });
+
+  // Uwaga 1 z oględzin (pkt 7 dyrektywy): I_th wiersza biegu jest liczony dla T_k biegu, nie dla
+  // czasu TEGO pola — przy nieustalonym czasie pola kolumna „Prąd obliczony” wiersza cieplnego
+  // ma „—” z jednym krótkim powodem. Iloczyn: czas pola × wiersz kryterium × motyw.
+  const OBLICZONY = { dynamiczna: '20,02', cieplna: '9,17', wylaczanie: '9,09' } as const;
+  const ILOCZYN_OBLICZONEGO = (['ustalony', 'nieustalony'] as const).flatMap((czas) =>
+    (['dynamiczna', 'cieplna', 'wylaczanie'] as const).flatMap((rodzaj) =>
+      (['light', 'dark'] as const).map((motyw) => ({ czas, rodzaj, motyw })),
+    ),
+  );
+  it.each(ILOCZYN_OBLICZONEGO)(
+    'PRĄD OBLICZONY: czas pola $czas × kryterium $rodzaj × motyw $motyw',
+    async ({ czas, rodzaj, motyw }) => {
+      document.documentElement.setAttribute('data-theme', motyw);
+      const user = userEvent.setup();
+      const nieustalony = czas === 'nieustalony';
+      zamontujBackend([
+        poleOdpowiedzi({
+          prady_pola: { ...poleOdpowiedzi({}).prady_pola, wyprowadzenie: WYPROWADZENIE },
+          wzor_limitu_cieplnego_latex: WZOR_LIMITU,
+          // Kształt backendu przy czasie nieustalonym: rekord cieplny niesie I_th biegu, ale bez
+          // limitu i zapasu (limit wymaga czasu pola).
+          oceny: nieustalony
+            ? [
+                ocenyPola1()[0],
+                ocenaK('cieplna', 'NIE_OCENIONO', { wynik: 9.17, limit: null, margines: null }),
+                ocenyPola1()[2],
+              ]
+            : ocenyPola1(),
+          ...(nieustalony
+            ? {
+                czas_wylaczenia: {
+                  t_clearing_s: null,
+                  zrodlo: null,
+                  powod_pl: 'Aparat tego pola nie ma przypisanego czynnego zabezpieczenia.',
+                  czlon_nastawczy_s: null,
+                  czas_wlasny_wylacznika_s: null,
+                  czas_wlasny: null,
+                  zalozenia_pl: [],
+                  kody_gotowosci: ['aparatura.brak_nastaw_pola'],
+                },
+              }
+            : {}),
+        }),
+      ]);
+      await sprawdz(user);
+      await pokazSzczegoly(user, 'P-1');
+      const komorka = screen.getByTestId(`mvd-zwarcia-aparatura-obliczony-P-1-${rodzaj}`);
+      const bezLiczby = nieustalony && rodzaj === 'cieplna';
+      if (bezLiczby) {
+        expect(komorka.textContent).toBe('— czas wyłączenia pola nieustalony');
+        expect(komorka.getAttribute('data-uwaga')).toBe('brak');
+        expect(komorka.textContent).not.toMatch(/\d/);
+        // Podstawienie i wyniki pośrednie też bez liczby I_th,dop / T_k.
+        expect(tekst('mvd-zwarcia-aparatura-podstawienie-P-1-cieplna')).not.toMatch(/\d/);
+        expect(tekst('mvd-zwarcia-aparatura-posrednia-P-1-ith-dop')).toBe('nieustalony');
+        expect(tekst('mvd-zwarcia-aparatura-posrednia-P-1-tk')).toBe('nieustalony');
+        // Zdanie o czasie: powód braku z backendu, nie zdania o członach.
+        expect(tekst('mvd-zwarcia-aparatura-czas-opis-P-1')).toContain('nie ma przypisanego');
+      } else {
+        expect(komorka.textContent).toBe(OBLICZONY[rodzaj]);
+        expect(komorka.getAttribute('data-uwaga')).toBeNull();
+      }
+      // T_k biegu (czas, dla którego bieg policzył I_th) zostaje nazwany — niezależnie od pola.
+      expect(tekst('mvd-zwarcia-aparatura-posrednia-P-1-tk-biegu')).toContain('0,360 s');
+      document.documentElement.removeAttribute('data-theme');
+    },
+  );
+
+  it('WZORY bez danych backendu nie są dopisywane przez widok (zero fizyki w UI)', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([poleOdpowiedzi({})]);
+    await sprawdz(user);
+    await pokazSzczegoly(user, 'P-1');
+    // Wiersz biegu bez wyprowadzenia: zostaje wyłącznie definicja zapasu z rekordów.
+    const wzory = screen.getByTestId('mvd-zwarcia-aparatura-wzory-P-1');
+    expect(wzory.querySelectorAll('.katex')).toHaveLength(1);
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-wzor-P-1-ip')).toBeNull();
+    for (const k of ['kappa', 'm', 'n', 'tk-biegu']) {
+      expect(tekst(`mvd-zwarcia-aparatura-posrednia-P-1-${k}`)).toBe('—');
+    }
   });
 
   it('WYNIK NIEOBLICZONY nie dostaje liczby (pkt 7): podstawienie bez liczb, wynik „brak” z powodem', async () => {
@@ -829,8 +956,12 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
     expect(czasWlasny.getAttribute('data-pochodzenie')).toBe('PROPOZYCJA');
     expect(czasWlasny.getAttribute('data-wartosc-robocza')).toBe('true');
     expect(czasWlasny.textContent).toContain('0,060 s');
-    expect(czasWlasny.textContent).toContain('profil typowy urządzenia');
-    expect(czasWlasny.textContent).toContain('Wpływ:');
+    // Intencja przepisana (KD6-SZCZEGOLY pkt 4): pełny opis źródła wartości roboczej (profil,
+    // wpływ) jest podpowiedzią znacznika „wartość robocza”, nie akapitem.
+    const znacznik = screen.getByTestId('mvd-zwarcia-aparatura-robocza-P-1-break_time_s');
+    expect(znacznik.getAttribute('title')).toContain('profil typowy urządzenia');
+    expect(znacznik.getAttribute('title')).toContain('Wpływ:');
+    expect(czasWlasny.textContent).not.toContain('Wpływ:');
 
     const ith = screen.getByTestId('mvd-zwarcia-aparatura-parametr-P-1-i_th_ka');
     expect(ith.getAttribute('data-pochodzenie')).toBe('KATALOG');

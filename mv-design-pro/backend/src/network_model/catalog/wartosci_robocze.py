@@ -101,6 +101,10 @@ _ODNIESIENIE_PROFILU_CZASU = (
     "(np. ABB VD4 12 kV, karta 1VCP000267: łączny czas wyłączania 30–65 ms); IEC 62271-100 "
     "definiuje czas wyłączania, ale nie przypisuje mu wartości — deklaruje go producent"
 )
+#: Krótka nazwa profilu czasu własnego i jego podstawa — jedno zdanie o źródle czasu własnego
+#: w szczegółach pola (karta KD6-SZCZEGOLY pkt 4); pełne odniesienie niesie propozycja.
+NAZWA_PROFILU_CZASU_PL = "profil typowy wyłącznika próżniowego SN"
+PODSTAWA_PROFILU_CZASU_PL = "IEC 62271-100: czas wyłączania deklaruje producent"
 _ODNIESIENIE_T_TH = "IEC 62271-1:2017 p. 5.8 (wartość zalecana)"
 _ODNIESIENIE_I_DYN = "IEC 62271-1:2017 p. 5.7"
 _ODNIESIENIE_I_TH_Z_ICU = (

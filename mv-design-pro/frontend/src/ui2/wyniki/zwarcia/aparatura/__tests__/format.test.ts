@@ -23,6 +23,10 @@ describe('formatujWielkosc', () => {
     [0.065, 'czas', '0,065'],
     [1, 'czas', '1'],
     [0, 'czas', '0'],
+    // Współczynniki wyprowadzenia (κ, m, n; karta KD6-SZCZEGOLY) — 3 miejsca, bez znaku.
+    [1.5563, 'wspolczynnik', '1,556'],
+    [0.0123, 'wspolczynnik', '0,012'],
+    [1, 'wspolczynnik', '1'],
   ] as const)('%s jako %s → %s', (wartosc, rodzaj, oczekiwany) => {
     expect(formatujWielkosc(wartosc, rodzaj)).toBe(oczekiwany);
   });

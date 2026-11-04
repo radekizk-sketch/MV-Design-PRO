@@ -4428,8 +4428,32 @@ def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
     return item.get(KLUCZ_ROZPLYWU) is not None or bool(item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU))
 
 
+#: Kroki śladu solvera IEC 60909, których wzór (``formula_latex``) idzie do wyprowadzenia
+#: prądów punktu (karta KD6-SZCZEGOLY): klucz kroku → klucz wielkości.
+_KROKI_WZOROW_PRADOW: dict[str, str] = {"Ip": "ip", "Ith": "ith", "Ib": "ib"}
+
+
+def _sc_wyprowadzenie_pradow(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Współczynniki m, n i wzory i_p / I_th / I_b punktu z wiersza solvera (WHITE BOX).
+
+    Wzory pochodzą z kroków śladu TEGO wiersza (przypadek I_b — z maszynami albo odległy od
+    generatora — wybiera solver), liczby m, n z jego wyniku; ``None`` = solver ich nie podał.
+    """
+    wzory: dict[str, str] = {}
+    for krok in item.get("white_box_trace") or ():
+        klucz = _KROKI_WZOROW_PRADOW.get(str(krok.get("key")))
+        wzor = krok.get("formula_latex")
+        if klucz is not None and isinstance(wzor, str) and wzor and klucz not in wzory:
+            wzory[klucz] = wzor
+    return {
+        "m_factor": item.get("m_factor"),
+        "n_factor": item.get("n_factor"),
+        "wzory_pradow": wzory,
+    }
+
+
 def build_short_circuit_results(
-    run: CanonicalRun, *, include_rozplyw: bool = False
+    run: CanonicalRun, *, include_rozplyw: bool = False, include_wyprowadzenie: bool = False
 ) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
@@ -4449,6 +4473,9 @@ def build_short_circuit_results(
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
                 **_sc_pelny_bilans(item),
+                # Karta KD6-SZCZEGOLY: m, n i wzory prądów punktu — wyłącznie na żądanie
+                # konsumenta wyprowadzenia (wytrzymałość aparatury), lista bez zmian.
+                **(_sc_wyprowadzenie_pradow(item) if include_wyprowadzenie else {}),
                 # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
                 # (pole addytywne — starsze wyniki bez pola → None).
                 # V12K-281 (K13): lista wierszy zbiorczych domyślnie BEZ rozpływu —

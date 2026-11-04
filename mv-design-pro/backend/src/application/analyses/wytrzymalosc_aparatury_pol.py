@@ -203,6 +203,27 @@ class PradyPola:
     #: wyspy punktu (wpisy `wartosci_robocze.wpis_parametru_maszyny` z wiersza biegu) — dane
     #: przyjęte kryteriów, których porównywana wielkość od nich zależy.
     parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
+    #: Karta KD6-SZCZEGOLY: wyprowadzenie prądów punktu z TEGO SAMEGO wiersza biegu —
+    #: współczynnik udaru κ, współczynniki cieplne m i n, czas T_k biegu, dla którego solver
+    #: policzył I_th, oraz wzory i_p / I_th / I_b z kroków śladu solvera. ``None`` / pusty
+    #: słownik = wiersz ich nie niesie (starszy zapis albo wiersz bez śladu).
+    kappa: float | None = None
+    m_factor: float | None = None
+    n_factor: float | None = None
+    tk_biegu_s: float | None = None
+    wzory_pradow: tuple[tuple[str, str], ...] = ()
+
+    def _wyprowadzenie(self) -> dict[str, Any]:
+        wartosci = {
+            "kappa": self.kappa,
+            "m_factor": self.m_factor,
+            "n_factor": self.n_factor,
+            "tk_biegu_s": self.tk_biegu_s,
+        }
+        wynik: dict[str, Any] = {k: v for k, v in wartosci.items() if v is not None}
+        if self.wzory_pradow:
+            wynik["wzory"] = dict(self.wzory_pradow)
+        return wynik
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -236,7 +257,16 @@ class PradyPola:
                 if self.parametry_robocze_maszyn
                 else {}
             ),
+            # Karta KD6-SZCZEGOLY (addytywnie, exclude-empty).
+            **({"wyprowadzenie": self._wyprowadzenie()} if self._wyprowadzenie() else {}),
         }
+
+
+#: Dopuszczalny prąd cieplny aparatu przy czasie wyłączenia pola (jądro K7-B,
+#: ``ocen_wytrzymalosc_aparatu``: przeliczenie wyłącznie w dół) — jedno źródło warunku kryterium
+#: cieplnego i wzoru limitu w wyprowadzeniu pola (karta KD6-SZCZEGOLY).
+_LIMIT_CIEPLNY_LATEX = r"I_{thr}\sqrt{\min\left(1,\ \frac{T_{kr}}{T_k}\right)}"
+WZOR_LIMITU_CIEPLNEGO_LATEX = rf"I_{{th,\mathrm{{dop}}}} = {_LIMIT_CIEPLNY_LATEX}"
 
 
 def _brak_pradow(punkt_ref: str | None, powod_pl: str) -> PradyPola:
@@ -321,8 +351,22 @@ def prady_pol_z_biegu(
                 for w in (wiersz.get("parametry_robocze_maszyn") or ())
                 if isinstance(w, Mapping)
             ),
+            kappa=_liczba(wiersz.get("kappa")),
+            m_factor=_liczba(wiersz.get("m_factor")),
+            n_factor=_liczba(wiersz.get("n_factor")),
+            tk_biegu_s=_liczba(wiersz.get("tk_s")),
+            wzory_pradow=_wzory_pradow(wiersz.get("wzory_pradow")),
         )
     return wynik
+
+
+def _wzory_pradow(wzory: object) -> tuple[tuple[str, str], ...]:
+    """Wzory prądów punktu z wiersza biegu (klucz wielkości → LaTeX), w porządku kluczy."""
+    if not isinstance(wzory, Mapping):
+        return ()
+    return tuple(
+        (str(k), str(v)) for k, v in sorted(wzory.items()) if isinstance(v, str) and v.strip()
+    )
 
 
 def _liczba(wartosc: object) -> float | None:
@@ -849,7 +893,7 @@ def _ocena_cieplna(
                 "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu "
                 "krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia"
             ),
-            warunek_latex=(r"I_{th} \le I_{thr}\sqrt{\min\left(1,\ \frac{T_{kr}}{T_k}\right)}"),
+            warunek_latex=rf"I_{{th}} \le {_LIMIT_CIEPLNY_LATEX}",
             relacja="NIE_WIECEJ",
         ),
         podstawa=_PODSTAWA_CIEPLNA,
@@ -1228,6 +1272,13 @@ def _wiersz(
         "czas_wylaczenia": czas,
         "werdykt": werdykt,
         "oceny": oceny,
+        # Karta KD6-SZCZEGOLY: wzór limitu cieplnego wyprowadzenia — tylko gdy kryterium
+        # cieplne istnieje (aparat z katalogu, wytrzymałość dotyczy).
+        **(
+            {"wzor_limitu_cieplnego_latex": WZOR_LIMITU_CIEPLNEGO_LATEX}
+            if znamiona is not None and not znamiona.get("i_th_nie_dotyczy")
+            else {}
+        ),
         "komunikat_pl": komunikat,
         "kody_gotowosci": kody,
     }

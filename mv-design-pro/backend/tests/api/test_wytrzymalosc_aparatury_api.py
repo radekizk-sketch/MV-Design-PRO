@@ -631,3 +631,81 @@ def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient:
         assert pole["werdykt"]["i_dyn_ok"] is True
         assert pole["werdykt"]["i_th_ok"] is None
         assert _ocena(pole, "cieplna")["status_maszynowy"] == "BRAK_PODSTAWY"
+
+
+# --- Karta KD6-SZCZEGOLY: wyprowadzenie prądów i czasu pola z danych backendu ----------------
+
+
+def test_wyprowadzenie_pradow_pola_z_wiersza_biegu_i_sladu_solvera(klient: TestClient):
+    """Każde pole dostaje κ, m, n, T_k biegu i wzory i_p / I_th / I_b z TEGO SAMEGO wiersza
+    biegu (kroki śladu solvera), a wiersz z czasem pola — wzór limitu cieplnego. Lista wierszy
+    zwarciowych bez żądania wyprowadzenia pozostaje bez tych pól (kontrakt listy bez zmian)."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
+    assert odp.status_code == 200, odp.text
+    widok = odp.json()
+
+    from enm.canonical_analysis import get_run
+
+    run = get_run(UUID(run_id))
+    lista = build_short_circuit_results(run)["rows"]
+    assert all("wzory_pradow" not in w and "m_factor" not in w for w in lista)
+    wiersze = {
+        w["element_id"]: w
+        for w in build_short_circuit_results(run, include_wyprowadzenie=True)["rows"]
+        if w["fault_type"] == "3F"
+    }
+    for pole in widok["pola"]:
+        prady = pole["prady_pola"]
+        wiersz = wiersze[prady["punkt_ref"]]
+        wyprowadzenie = prady["wyprowadzenie"]
+        assert wyprowadzenie["kappa"] == wiersz["kappa"]
+        assert wyprowadzenie["m_factor"] == wiersz["m_factor"]
+        assert wyprowadzenie["n_factor"] == wiersz["n_factor"]
+        assert wyprowadzenie["tk_biegu_s"] == wiersz["tk_s"]
+        assert set(wyprowadzenie["wzory"]) == {"ip", "ith", "ib"}
+        assert wyprowadzenie["wzory"]["ith"] == r"I_{th} = I_{k}'' \cdot \sqrt{m + n}"
+        assert r"\kappa" in wyprowadzenie["wzory"]["ip"]
+        # Limit cieplny: wzór z tego samego źródła co warunek kryterium cieplnego.
+        warunek = _ocena(pole, "cieplna")["kryterium"]["warunek_latex"]
+        wzor = pole["wzor_limitu_cieplnego_latex"]
+        assert warunek.split(r"\le ", 1)[1] == wzor.split("= ", 1)[1]
+
+
+def test_zdania_o_czasie_pola_sa_krotkie_i_z_tych_samych_danych(klient: TestClient):
+    """Jedno zdanie o członie nastawczym (stopień, charakterystyka, zabezpieczenie, prąd) i jedno
+    o czasie własnym (wartość robocza: profil i podstawa) — pełne uzasadnienie zostaje
+    w założeniach czasu, nie jest powtarzane."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+
+    pole = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())
+    czas = pole["czas_wylaczenia"]
+    assert czas["opis_czlonu_pl"].startswith("0,3 s — stopień ")
+    assert "(DT)" in czas["opis_czlonu_pl"]
+    ik_ka = round(pole["prady_pola"]["ik_ka"], 2)
+    assert czas["opis_czlonu_pl"].endswith(f"{str(ik_ka).replace('.', ',')} kA")
+    assert czas["opis_czasu_wlasnego_pl"] == (
+        "0,06 s — wartość robocza: profil typowy wyłącznika próżniowego SN "
+        "(IEC 62271-100: czas wyłączania deklaruje producent)"
+    )
+    assert len(czas["opis_czasu_wlasnego_pl"]) < len(czas["zalozenia_pl"][-1])
+
+
+def test_pole_bez_nastaw_nie_ma_zdan_o_czasie(klient: TestClient):
+    """Czas nieustalony: brak zdań o członach (nie ma czego opisać) — zostaje powód braku."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
+    run_id = _bieg(klient, case_id)
+
+    widok = _wytrzymalosc(klient, case_id, station_ref, run_id).json()
+    for pole in widok["pola"]:
+        czas = pole["czas_wylaczenia"]
+        assert czas["t_clearing_s"] is None
+        assert "opis_czlonu_pl" not in czas
+        assert "opis_czasu_wlasnego_pl" not in czas
+        assert czas["powod_pl"]

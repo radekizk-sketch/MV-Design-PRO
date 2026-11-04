@@ -392,3 +392,10 @@
   color: var(--mvd-muted);
 }
 
+
+/* Powód braku liczby w komórce tabeli kryteriów (np. I_th bez czasu pola) — krótko, pod liczbą. */
+.mvd-apar-powod-komorki {
+  display: block;
+  font-size: 11px;
+  font-family: inherit;
+}

@@ -71,7 +71,9 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog.wartosci_robocze import (
+    NAZWA_PROFILU_CZASU_PL,
     PARAMETR_CZAS_WLASNY,
+    PODSTAWA_PROFILU_CZASU_PL,
     WartoscRozstrzygnieta,
     liczba_pl,
 )
@@ -80,7 +82,7 @@ from network_model.core.czas_wylaczenia import (
     CzasWylaczeniaTb,
     czas_tb_roboczy,
 )
-from network_model.pochodne import ka_na_a
+from network_model.pochodne import a_na_ka, ka_na_a
 
 # ---------------------------------------------------------------------------
 # Kody gotowości i źródła — brak nazwany wprost
@@ -149,6 +151,20 @@ def _zalozenie_czasu_wlasnego(czas_wlasny: WartoscRozstrzygnieta) -> str:
         f"Czas własny wyłącznika {liczba_pl(czas_wlasny.wartosc)} s — "
         f"{czas_wlasny.opis_zrodla_pl()}"
     )
+
+
+def _opis_czasu_wlasnego(czas_wlasny: WartoscRozstrzygnieta) -> str:
+    """Jedno zdanie: skąd czas własny wyłącznika (pełny opis zostaje w ``zalozenia_pl``)."""
+    assert czas_wlasny.wartosc is not None
+    wartosc = f"{liczba_pl(czas_wlasny.wartosc)} s"
+    if czas_wlasny.pochodzenie == "PROPOZYCJA":
+        return (
+            f"{wartosc} — wartość robocza: {NAZWA_PROFILU_CZASU_PL} "
+            f"({PODSTAWA_PROFILU_CZASU_PL})"
+        )
+    if czas_wlasny.pochodzenie == "PROJEKTANT":
+        return f"{wartosc} — wartość nadana przez projektanta"
+    return f"{wartosc} — karta katalogowa"
 
 
 def czasy_wylaczenia_pol_stacji(
@@ -273,6 +289,12 @@ def _czas_wylaczenia_pola(
         f"Czas stopnia {decydujacy['etykieta_pl']} ({krzywa_txt}) zabezpieczenia "
         f"{nazwa_zabezpieczenia} przy prądzie {prad_a:.1f} A"
     )
+    # Jedno zdanie o członie nastawczym (karta KD6-SZCZEGOLY pkt 4): funkcja, stopień, prąd.
+    opis_czlonu_krotki = (
+        f"{liczba_pl(czas_nastawy)} s — stopień {decydujacy['etykieta_pl']} ({krzywa_txt}) "
+        f"zabezpieczenia {nazwa_zabezpieczenia} przy prądzie zwarciowym "
+        f"{liczba_pl(round(a_na_ka(prad_a), 2))} kA"
+    )
     if czas_wlasny is None or czas_wlasny.wartosc is None:
         # Brak MODELU (nie parametru urządzenia): wyłącznik poza polem, aparat spoza
         # katalogu albo aparat, który nie przerywa zwarcia. Czas wyłączenia = człon
@@ -303,6 +325,7 @@ def _czas_wylaczenia_pola(
             ),
             "zrodlo": ZRODLO_NASTAWY_POLA,
             "czlon_nastawczy_s": czas_nastawy,
+            "opis_czlonu_pl": opis_czlonu_krotki,
             "czas_wlasny_pozycja_ref": pozycja_ref,
             "czas_wlasny": czas_wlasny.to_dict() if czas_wlasny is not None else None,
             "zalozenia_pl": [_ZALOZENIE_PRADU_POLA],
@@ -320,6 +343,8 @@ def _czas_wylaczenia_pola(
         ),
         "czlon_nastawczy_s": czas_nastawy,
         "czas_wlasny_wylacznika_s": czas_wlasny.wartosc,
+        "opis_czlonu_pl": opis_czlonu_krotki,
+        "opis_czasu_wlasnego_pl": _opis_czasu_wlasnego(czas_wlasny),
         "czas_wlasny_pozycja_ref": pozycja_ref,
         "czas_wlasny": czas_wlasny.to_dict(),
         "zalozenia_pl": zalozenia,

@@ -671,7 +671,7 @@ def post_wytrzymalosc_aparatury(
     return widok_wytrzymalosci_z_biegu(
         enm=enm,
         station_ref=body.station_ref,
-        wiersze_biegu=build_short_circuit_results(run)["rows"],
+        wiersze_biegu=build_short_circuit_results(run, include_wyprowadzenie=True)["rows"],
         run_id=str(run.id),
         # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
         bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),

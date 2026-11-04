@@ -208,6 +208,11 @@ function KomorkaCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
   );
 }
 
+/** Kryterium cieplne pola, którego czas wyłączenia jest nieustalony (wiersz dotyczy). */
+function ithBezCzasuPola(pole: PoleWytrzymalosci, rodzaj: RodzajKryteriumAparatu, dotyczy: boolean): boolean {
+  return rodzaj === 'cieplna' && dotyczy && pole.czas_wylaczenia.t_clearing_s === null;
+}
+
 /** Tabela kryteriów pola — każda liczba z rekordu K TEGO pola. */
 function TabelaKryteriow({ pole }: { readonly pole: PoleWytrzymalosci }) {
   return (
@@ -240,9 +245,18 @@ function TabelaKryteriow({ pole }: { readonly pole: PoleWytrzymalosci }) {
                   </span>
                 )}
               </th>
-              <Komorka testId={`mvd-zwarcia-aparatura-obliczony-${id}`}>
-                {liczba(rekord?.wynik?.wartosc.wartosc, 'prad')}
-              </Komorka>
+              {ithBezCzasuPola(pole, rodzaj, dotyczy) ? (
+                // I_th wiersza biegu jest liczony dla T_k biegu, nie dla czasu TEGO pola — bez
+                // czasu pola nie ma poprawnie obliczonej wielkości kryterium (pkt 7 dyrektywy).
+                <Komorka testId={`mvd-zwarcia-aparatura-obliczony-${id}`} uwaga="brak">
+                  {T.kreska}
+                  <span className="mvd-apar-powod-komorki"> {T.ithBezCzasu}</span>
+                </Komorka>
+              ) : (
+                <Komorka testId={`mvd-zwarcia-aparatura-obliczony-${id}`}>
+                  {liczba(rekord?.wynik?.wartosc.wartosc, 'prad')}
+                </Komorka>
+              )}
               <Komorka
                 testId={`mvd-zwarcia-aparatura-aparat-${id}`}
                 uwaga={dotyczy && limit === null ? 'brak' : null}
@@ -322,16 +336,12 @@ function parametryPola(pole: PoleWytrzymalosci): WartoscParametruAparatu[] {
   ].filter((w): w is WartoscParametruAparatu => w !== null && w !== undefined);
 }
 
-/** Parametr aparatu: wartość, pochodzenie, znacznik wartości roboczej; opis źródła raz. */
-function Parametr({
-  pole,
-  w,
-  opisWZalozeniach,
-}: {
-  readonly pole: PoleWytrzymalosci;
-  readonly w: WartoscParametruAparatu;
-  readonly opisWZalozeniach: boolean;
-}) {
+/**
+ * Parametr aparatu: wartość, pochodzenie, znacznik wartości roboczej. Pełny opis źródła
+ * wartości roboczej jest podpowiedzią znacznika (karta KD6-SZCZEGOLY pkt 4: prosto, każda
+ * informacja raz — podstawy znamion stoją raz pod listą parametrów).
+ */
+function Parametr({ pole, w }: { readonly pole: PoleWytrzymalosci; readonly w: WartoscParametruAparatu }) {
   return (
     <li
       className="mvd-apar-parametr"
@@ -350,11 +360,11 @@ function Parametr({
         <span
           className="mvd-apar-parametr-robocza"
           data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
+          title={w.opis_zrodla_pl}
         >
           {T.etykietaRobocza}
         </span>
       )}
-      {w.wartosc_robocza && !opisWZalozeniach && <p className="mvd-apar-opis">{w.opis_zrodla_pl}</p>}
       {w.wartosc === null && w.powod_braku_pl !== null && (
         <p className="mvd-apar-opis">{w.powod_braku_pl}</p>
       )}
@@ -380,6 +390,135 @@ function Krok({
 }
 
 /**
+ * Czas wyłączenia pola jednym zdaniem (karta KD6-SZCZEGOLY pkt 4): skąd t_zab i skąd t_wył —
+ * zdania backendu (`opis_czlonu_pl`, `opis_czasu_wlasnego_pl`); pełny powód i założenia są
+ * podpowiedzią. Czas nieustalony: powód braku z backendu (jedyna informacja, jaka jest).
+ */
+function OpisCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const czas = pole.czas_wylaczenia;
+  const testId = `mvd-zwarcia-aparatura-czas-opis-${pole.pole}`;
+  if (czas.t_clearing_s === null || !czas.opis_czlonu_pl || !czas.opis_czasu_wlasnego_pl) {
+    return (
+      <p className="mvd-apar-opis" data-testid={testId}>
+        {T.zrodloCzasu}: {czas.powod_pl}
+      </p>
+    );
+  }
+  return (
+    <p className="mvd-apar-opis" data-testid={testId} title={[czas.powod_pl, ...czas.zalozenia_pl].join(' ')}>
+      <MathInline latex={LATEX.tzab_latex} /> {czas.opis_czlonu_pl}; <MathInline latex={LATEX.twyl_latex} />{' '}
+      {czas.opis_czasu_wlasnego_pl}.
+    </p>
+  );
+}
+
+/**
+ * Podstawy znamion raz, krótko: z rekordu limitu każdego kryterium (dokument, wydanie, jednostka),
+ * kryteria o tej samej podstawie zebrane w jeden wpis (każda informacja raz).
+ */
+function PodstawyZnamion({
+  pole,
+  rekordy,
+}: {
+  readonly pole: PoleWytrzymalosci;
+  readonly rekordy: readonly { rodzaj: RodzajKryteriumAparatu; rekord: OcenaKryterium | null }[];
+}) {
+  const grupy = new Map<string, RodzajKryteriumAparatu[]>();
+  for (const { rodzaj, rekord } of rekordy) {
+    if (!rekord?.limit) continue;
+    const opis = opisPodstawy(rekord.limit.podstawa);
+    grupy.set(opis, [...(grupy.get(opis) ?? []), rodzaj]);
+  }
+  if (grupy.size === 0) return null;
+  return (
+    <p className="mvd-apar-opis" data-testid={`mvd-zwarcia-aparatura-podstawy-${pole.pole}`}>
+      {T.podstawy}:{' '}
+      {[...grupy].map(([opis, rodzaje], i) => (
+        <span key={opis} data-testid={`mvd-zwarcia-aparatura-podstawa-${pole.pole}-${i}`} data-kryteria={rodzaje.join(' ')}>
+          {i > 0 ? '; ' : ''}
+          {rodzaje.map((r) => NAZWA_KRYTERIUM[r].toLowerCase()).join(', ')} — {opis}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** Jedna wartość pośrednia: symbol = liczba jednostka, albo „nieustalony”. */
+function Posrednia({
+  latex,
+  wartosc,
+  rodzaj,
+  jednostka,
+  testId,
+  dopisek,
+  brak = T.nieustalony,
+}: {
+  readonly brak?: string;
+  readonly latex: string;
+  readonly wartosc: number | null | undefined;
+  readonly rodzaj: RodzajWielkosci;
+  readonly jednostka: string;
+  readonly testId: string;
+  readonly dopisek?: ReactNode;
+}) {
+  const bezLiczby = wartosc === null || wartosc === undefined;
+  return (
+    <div>
+      <dt>
+        <MathInline latex={latex} />
+      </dt>
+      <dd className="mvd-num" data-testid={testId} data-uwaga={bezLiczby ? 'brak' : undefined}>
+        {wartosc === null || wartosc === undefined ? brak : `${formatujWielkosc(wartosc, rodzaj)}${jednostka ? ` ${jednostka}` : ''}`}
+        {bezLiczby ? null : dopisek}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Wyniki pośrednie wyłącznie z liczb backendu: κ, m, n i T_k biegu (wiersz biegu), dopuszczalny
+ * prąd cieplny przy T_k pola (limit rekordu cieplnego, jądro K7-B) oraz człony czasu wyłączenia.
+ */
+function WynikiPosrednie({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const w = pole.prady_pola.wyprowadzenie;
+  const czas = pole.czas_wylaczenia;
+  const cieplna = ocenaRodzaju(pole, 'cieplna');
+  const id = (k: string) => `mvd-zwarcia-aparatura-posrednia-${pole.pole}-${k}`;
+  return (
+    <dl className="mvd-apar-dane">
+      <Posrednia latex={LATEX.kappa_latex} wartosc={w?.kappa} rodzaj="wspolczynnik" jednostka="" testId={id('kappa')} brak={T.kreska} />
+      <Posrednia latex={LATEX.m_latex} wartosc={w?.m_factor} rodzaj="wspolczynnik" jednostka="" testId={id('m')} brak={T.kreska} />
+      <Posrednia latex={LATEX.n_latex} wartosc={w?.n_factor} rodzaj="wspolczynnik" jednostka="" testId={id('n')} brak={T.kreska} />
+      <Posrednia
+        latex={LATEX.tkBiegu_latex}
+        wartosc={w?.tk_biegu_s}
+        rodzaj="czas"
+        jednostka="s"
+        testId={id('tk-biegu')} brak={T.kreska}
+        dopisek={
+          <span className="mvd-apar-opis-inline">
+            {' '}
+            ({T.tkBiegu} <MathInline latex={LATEX.ith_latex} />)
+          </span>
+        }
+      />
+      {cieplna?.stosowalnosc.dotyczy !== false && (
+        <Posrednia
+          latex={LATEX.ithDop_latex}
+          wartosc={cieplna?.limit?.wartosc?.wartosc}
+          rodzaj="prad"
+          jednostka="kA"
+          testId={id('ith-dop')}
+        />
+      )}
+      <Posrednia latex={LATEX.tzab_latex} wartosc={czas.czlon_nastawczy_s} rodzaj="czas" jednostka="s" testId={id('tzab')} />
+      <Posrednia latex={LATEX.twyl_latex} wartosc={czas.czas_wlasny_wylacznika_s} rodzaj="czas" jednostka="s" testId={id('twyl')} />
+      <Posrednia latex={LATEX.tk_latex} wartosc={czas.t_clearing_s} rodzaj="czas" jednostka="s" testId={id('tk')} />
+    </dl>
+  );
+}
+
+/**
  * Szczegóły obliczeń pola (domyślnie zwinięte): dane wejściowe → wzory → podstawienia →
  * wyniki pośrednie → wynik końcowy. Wyłącznie istniejące dane rekordu i widoku pola. Bez
  * komunikatu słownego backendu (`komunikat_pl`): powtarza liczby tabeli i niesie zdanie
@@ -387,7 +526,6 @@ function Krok({
  */
 function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; readonly id: string }) {
   const prady = pole.prady_pola;
-  const czas = pole.czas_wylaczenia;
   const parametry = parametryPola(pole);
   const rekordy = RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => ({
     rodzaj,
@@ -401,6 +539,17 @@ function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; rea
     ),
   ];
   const opisTb = prady.tb_zrodlo?.opis_pl ?? null;
+  const zPradow = prady.wyprowadzenie?.wzory ?? {};
+  const wzory: { klucz: string; nazwa: string; latex: string | undefined }[] = [
+    { klucz: 'ip', nazwa: T.wzorIp, latex: zPradow.ip },
+    { klucz: 'ith', nazwa: T.wzorIth, latex: zPradow.ith },
+    { klucz: 'ib', nazwa: T.wzorIb, latex: zPradow.ib },
+    { klucz: 'limit-cieplny', nazwa: T.wzorLimitu, latex: pole.wzor_limitu_cieplnego_latex },
+    ...definicjeZapasu.map((latex, i) => ({ klucz: `zapas-${i}`, nazwa: T.zapasDefinicja, latex })),
+  ];
+  const wzoryZBackendu = wzory.flatMap((w) =>
+    w.latex !== undefined && w.latex.trim() !== '' ? [{ ...w, latex: w.latex }] : [],
+  );
   return (
     <div
       className="mvd-apar-szczegoly"
@@ -456,34 +605,21 @@ function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; rea
           </div>
         </dl>
         {prady.powod_pl !== null && <p className="mvd-apar-opis">{prady.powod_pl}</p>}
-        <p className="mvd-apar-opis" data-testid={`mvd-zwarcia-aparatura-czas-opis-${pole.pole}`}>
-          {T.zrodloCzasu}: {czas.powod_pl}
-        </p>
-        {czas.zalozenia_pl.map((zalozenie) => (
-          <p className="mvd-apar-opis" key={zalozenie}>
-            {zalozenie}
-          </p>
-        ))}
+        <OpisCzasu pole={pole} />
         {parametry.length > 0 && (
           <ul className="mvd-apar-parametry" data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
             {parametry.map((w) => (
-              <Parametr
-                key={w.parametr}
-                pole={pole}
-                w={w}
-                // Uzasadnienie wartości roboczej raz: jeśli niesie je już założenie czasu
-                // wyłączenia (czas własny), parametr go nie powtarza.
-                opisWZalozeniach={czas.zalozenia_pl.some((z) => z.includes(w.opis_zrodla_pl))}
-              />
+              <Parametr key={w.parametr} pole={pole} w={w} />
             ))}
           </ul>
         )}
+        <PodstawyZnamion pole={pole} rekordy={rekordy} />
       </Krok>
 
       <Krok tytul={T.krokWzory} testId={`mvd-zwarcia-aparatura-wzory-${pole.pole}`}>
-        {definicjeZapasu.map((definicja) => (
-          <p className="mvd-apar-wzor" key={definicja}>
-            {T.zapasDefinicja}: <MathInline latex={definicja} />
+        {wzoryZBackendu.map(({ klucz, nazwa, latex }) => (
+          <p className="mvd-apar-wzor" key={klucz} data-testid={`mvd-zwarcia-aparatura-wzor-${pole.pole}-${klucz}`}>
+            <span className="mvd-apar-wzor-nazwa">{nazwa}:</span> <MathInline latex={latex} />
           </p>
         ))}
       </Krok>
@@ -498,15 +634,7 @@ function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; rea
       </Krok>
 
       <Krok tytul={T.krokPosrednie} testId={`mvd-zwarcia-aparatura-posrednie-${pole.pole}`}>
-        {rekordy.map(({ rodzaj, rekord }) =>
-          rekord?.limit ? (
-            <p className="mvd-apar-opis" key={rodzaj} data-testid={`mvd-zwarcia-aparatura-limit-${pole.pole}-${rodzaj}`}>
-              <span className="mvd-apar-wzor-nazwa">{NAZWA_KRYTERIUM[rodzaj]}:</span>{' '}
-              {rekord.limit.zakres_stosowalnosci_pl ? `${rekord.limit.zakres_stosowalnosci_pl}; ` : ''}
-              {T.podstawa} {opisPodstawy(rekord.limit.podstawa)}
-            </p>
-          ) : null,
-        )}
+        <WynikiPosrednie pole={pole} />
       </Krok>
 
       <Krok tytul={T.krokWynik} testId={`mvd-zwarcia-aparatura-wynik-${pole.pole}`}>

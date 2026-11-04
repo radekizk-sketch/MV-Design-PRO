@@ -69,6 +69,17 @@ export const APARATURA_STRINGS = {
   zrodloCzasu: 'Czas wyłączenia',
   zapasDefinicja: 'Zapas',
   podstawa: 'podstawa',
+  podstawy: 'Podstawy znamion',
+  // Kolumna „Prąd obliczony” kryterium cieplnego przy nieustalonym czasie pola: I_th wiersza biegu
+  // jest liczony dla T_k biegu, nie dla czasu TEGO pola (pkt 7 dyrektywy 2026-11-04).
+  ithBezCzasu: 'czas wyłączenia pola nieustalony',
+  // Wzory wyprowadzenia (LaTeX z backendu; tu tylko nazwy).
+  wzorIp: 'Prąd udarowy',
+  wzorIth: 'Prąd zastępczy cieplny',
+  wzorIb: 'Prąd wyłączeniowy',
+  wzorLimitu: 'Dopuszczalny prąd cieplny',
+  // Wartości pośrednie.
+  tkBiegu: 'czas, dla którego bieg policzył',
   pochodzenieKatalog: 'karta katalogowa',
   pochodzeniePropozycja: 'propozycja obliczenia',
   pochodzenieProjektant: 'nadana przez projektanta',
@@ -100,4 +111,9 @@ export const LATEX = {
   tzab_latex: 't_{\\mathrm{zab}}',
   twyl_latex: 't_{\\text{wył}}',
   tk_latex: 'T_k',
+  kappa_latex: '\\kappa',
+  m_latex: 'm',
+  n_latex: 'n',
+  tkBiegu_latex: 'T_{k,\\mathrm{bieg}}',
+  ithDop_latex: 'I_{th,\\mathrm{dop}}',
 } as const;

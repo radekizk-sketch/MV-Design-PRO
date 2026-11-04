@@ -119,5 +119,14 @@ z rekordu limitu, uzasadnienie czasu własnego raz (w założeniach czasu), ip/I
 opis pochodzenia t_b (backend `tb_zrodlo.opis_pl`, powtarza rozkład czasu) jest podpowiedzią komórki t_b, a słowny
 komunikat pola (`komunikat_pl`, powtarza liczby tabeli i niesie zdanie o dowodzie zgodności) nie jest wyświetlany.
 Symbole prądów nad tabelą i w nagłówkach jako wzory; zdanie o wybranym punkcie usunięte (nagłówek nazywa stację).
+Uwagi z oględzin (koordynator, po `f782a4844`): (1) I_th pola z nieustalonym T_k — w kolumnie „Prąd obliczony”
+wiersza cieplnego „—” z powodem „czas wyłączenia pola nieustalony” (I_th biegu jest liczony dla T_k biegu);
+(2) „Wzory” z backendu: i_p, I_th, I_b z kroków śladu solvera wiersza biegu (`build_short_circuit_results(...,
+include_wyprowadzenie=True)` → `PradyPola.wyprowadzenie`), wzór limitu cieplnego z jednego źródła z warunkiem kryterium
+(`WZOR_LIMITU_CIEPLNEGO_LATEX`), definicja zapasu z rekordów; (3) „Wyniki pośrednie” = liczby: κ, m, n, T_k biegu,
+I_th,dop przy T_k pola (limit rekordu cieplnego), t_zab, t_wył, T_k; podstawy znamion raz przy danych wejściowych
+(kryteria o tej samej podstawie zebrane); (4) czas jednym zdaniem z backendu (`opis_czlonu_pl`,
+`opis_czasu_wlasnego_pl`), pełny powód i założenia w podpowiedzi, opis wartości roboczej parametru w podpowiedzi
+znacznika. Lista wierszy zwarciowych bez żądania wyprowadzenia bez zmian.
 Zrzuty: `docs/audit/visual/flow-ekspert/kd6-szczegoly-pole{1,2,3}-{light,dark}.png`; pomiar przed/po
 i zgodność liczb DOM — w meldunku karty.
