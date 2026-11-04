@@ -417,7 +417,10 @@
               "last_state_change_at": null
             },
             "symbol_ref": "symbol:three_position_switch",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -457,7 +460,10 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cb",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": "STALE",
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -505,7 +511,10 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": 400.0,
+            "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
           },
           {
             "catalog_ref": null,
@@ -534,7 +543,10 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -567,7 +579,10 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -598,7 +613,10 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           }
         ],
         "protection_codes": [
@@ -1605,7 +1623,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "8d7e31f7dd4bca3babb6dc6e920cacbc11d7e2da4f00a677a8a9183a5e0cb8c5",
+      "hash_sha256": "61c402d379189fe0b197a639b2b1aaee2fd6a29316fa4a208c8df67171e54cd4",
       "name": "Drogi operacji budowy",
       "revision": 9,
       "updated_at": "2026-09-25T00:00:00Z"

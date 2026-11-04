@@ -291,7 +291,9 @@
             },
             "symbol_ref": "symbol:three_position_switch",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -332,7 +334,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:cb",
             "uzwojenia": [],
-            "wykonanie": "STALE"
+            "wykonanie": "STALE",
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -381,7 +385,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:ct",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": 400.0,
+            "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
           },
           {
             "catalog_ref": null,
@@ -411,7 +417,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -445,7 +453,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -477,7 +487,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           }
         ],
         "protection_codes": [
@@ -588,7 +600,9 @@
             },
             "symbol_ref": "symbol:three_position_switch",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -629,7 +643,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:cb",
             "uzwojenia": [],
-            "wykonanie": "STALE"
+            "wykonanie": "STALE",
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -678,7 +694,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:ct",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": 400.0,
+            "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
           },
           {
             "catalog_ref": null,
@@ -708,7 +726,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -742,7 +762,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           },
           {
             "catalog_ref": null,
@@ -774,7 +796,9 @@
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
             "uzwojenia": [],
-            "wykonanie": null
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
           }
         ],
         "protection_codes": [

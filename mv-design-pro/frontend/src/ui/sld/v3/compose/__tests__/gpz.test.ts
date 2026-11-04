@@ -1740,18 +1740,32 @@ describe('polozenieOkreguPrzekaznika — przekaźnik obok pola', () => {
     rightX: 640,
     textAnchorX: 200,
     rezerwaPrawa: 24,
-    pasmoCtVt: 40,
+    pasmoMontazuVt: 40,
+    prawaKrawedzTabliczek: null as number | null,
     listaPoPrawej: 136,
     circleTopY: 560,
     oznaczenieDolY: 495 as number | null,
   };
   const prawe = Math.round((baza.rightX - baza.listaPoPrawej - PROTECTION_ANNOTATION_DIAMETER) / GRID) * GRID;
-  const lewe = Math.ceil((baza.textAnchorX + baza.rezerwaPrawa + baza.pasmoCtVt + 2 * GRID) / GRID) * GRID;
+  const lewe = Math.ceil((baza.textAnchorX + baza.rezerwaPrawa + baza.pasmoMontazuVt + 2 * GRID) / GRID) * GRID;
 
   it('z powiązaniami i oznacznikiem nad blokiem — tuż za planem pola (pasmo podpisów + CT/VT + 2·GRID)', () => {
     expect(lewe).toBeLessThan(prawe);
     expect(polozenieOkreguPrzekaznika(baza)).toBe(lewe);
     expect(polozenieOkreguPrzekaznika({ ...baza, oznaczenieDolY: null })).toBe(lewe);
+  });
+
+  // Iloczyn: tabliczki przekładników {brak, w obrębie pasma podpisów i montażu VT, poza nim
+  // (prawa krawędź tabliczki za pasmem)} — okrąg za tym, co sięga dalej.
+  it('tabliczki przekładników: okrąg za dalszą z krawędzi (pasmo podpisów albo tabliczki) + 2·GRID', () => {
+    const pasmo = baza.textAnchorX + baza.rezerwaPrawa + baza.pasmoMontazuVt;
+    expect(polozenieOkreguPrzekaznika({ ...baza, prawaKrawedzTabliczek: pasmo - 30 })).toBe(lewe);
+    const dalej = pasmo + 21;
+    const oczekiwane = Math.ceil((dalej + 2 * GRID) / GRID) * GRID;
+    expect(oczekiwane).toBeLessThan(prawe);
+    expect(polozenieOkreguPrzekaznika({ ...baza, prawaKrawedzTabliczek: dalej })).toBe(oczekiwane);
+    // Iniekcja: tabliczki pominięte w planie — okrąg wszedłby na tabliczkę.
+    expect(lewe).toBeLessThan(dalej);
   });
 
   it('bez powiązań — prawo-wyrównany do rezerwacji kolumny (położenie dotychczasowe)', () => {

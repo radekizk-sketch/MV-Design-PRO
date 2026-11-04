@@ -626,6 +626,48 @@ describe('EdytorWyposazeniaPola — szablony kanoniczne z oceną backendu i klas
   });
 });
 
+describe('EdytorWyposazeniaPola — zaczep przekładnika wieloprzekładniowego', () => {
+  it('iloczyn pozycja {200-400/5, 200/5} × rekord {wybór projektanta, wartość robocza} × akcja {bez zmiany, wybór, zmiana pozycji}', async () => {
+    // Uwaga właściciela 2026-10-30: „przekładnik 200–400 — jednoznacznie wyróżniony wybrany
+    // zaczep". Zaczepy z rdzeni WYBRANEJ pozycji katalogu; wartość robocza z rekordu nie wraca
+    // do ładunku jako wybór projektanta; zmiana pozycji zdejmuje wybór (zaczepy innej tabliczki).
+    katalogApi.fetchCtTypes.mockResolvedValue([
+      { id: 'ct-1', name: 'Przekładnik 200/5', rdzenie: [{ przekladnia: '200/5', moc_va: 15, klasa: '5P20', fs: null, przeznaczenie: ['ZABEZPIECZENIA'] }] },
+      {
+        id: 'ct-w',
+        name: 'Przekładnik 200-400/5',
+        rdzenie: [{ przekladnia: '200-400/5', moc_va: 15, klasa: '5P20', fs: null, przeznaczenie: ['ZABEZPIECZENIA'] }],
+      },
+    ]);
+    const rdzenie = [{ przekladnia: '200-400/5', moc_va: 15, klasa: '5P20', fs: null, przeznaczenie: ['ZABEZPIECZENIA'] }];
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('MODEL'));
+    renderuj(
+      polePola('OUT', [
+        { device_ref: 'd1', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-w', rdzenie, zaczep_pierwotny_a: 200, zrodlo_zaczepu: 'PROJEKTANT' },
+        { device_ref: 'd2', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-w', rdzenie, zaczep_pierwotny_a: 400, zrodlo_zaczepu: 'WARTOSC_ROBOCZA' },
+        { device_ref: 'd3', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-w', rdzenie, zaczep_pierwotny_a: 400, zrodlo_zaczepu: 'WARTOSC_ROBOCZA' },
+        { device_ref: 'd4', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-w', rdzenie, zaczep_pierwotny_a: 200, zrodlo_zaczepu: 'PROJEKTANT' },
+        { device_ref: 'd5', symbol_ref: 's', kind: 'CT', placement: 'MIDSTREAM', catalog_ref: 'ct-1' },
+      ] as never),
+      wykonaj,
+    );
+    await otworz(user);
+    const zaczep = (i: number) => screen.getByTestId(`wyposazenie-pola-aparat-${i}-zaczep`) as HTMLSelectElement;
+    expect(zaczep(0).value).toBe('200');
+    expect(zaczep(1).value).toBe('');
+    expect(zaczep(1).selectedOptions[0].textContent).toContain('wartość robocza 400 A');
+    expect(Array.from(zaczep(1).options).map((o) => o.value)).toEqual(['', '200', '400']);
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-4-zaczep')).toBeNull();
+    await user.selectOptions(zaczep(2), '200');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-3-katalog'), 'ct-1');
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-3-zaczep')).toBeNull();
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
+    expect(urzadzenia.map((d) => d.zaczep_pierwotny_a ?? null)).toEqual([200, null, 200, null, null]);
+  });
+});
+
 describe('EdytorWyposazeniaPola — profil funkcjonalny EAZ wzorca', () => {
   it('profil z backendu: wymagalność każdej funkcji, funkcja spoza rysunku nazwana, wymogi klas w podpowiedzi', async () => {
     const user = userEvent.setup();

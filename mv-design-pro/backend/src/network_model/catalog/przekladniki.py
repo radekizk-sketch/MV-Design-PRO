@@ -25,6 +25,8 @@ Moduł jest LIŚCIEM (stdlib + pydantic): czytają go katalog, model sieci i sza
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -39,6 +41,8 @@ __all__ = [
     "alf_ct_z_klasy",
     "rdzen_ct_z_klasy",
     "rodzaj_vt_z_klasy",
+    "zaczepy_pierwotne_a",
+    "zaczepy_przekladnika",
 ]
 
 
@@ -138,6 +142,57 @@ NAZWY_PRZEZNACZENIA_PL: dict[str, str] = {
 #: Przeznaczenia wymagające klasy pomiarowej / zabezpieczeniowej (definicja klasy, IEC 61869).
 PRZEZNACZENIA_POMIAROWE: frozenset[str] = frozenset({"ROZLICZENIE", "POMIAR", "JAKOSC_ENERGII"})
 PRZEZNACZENIA_ZABEZPIECZENIOWE: frozenset[str] = frozenset({"ZABEZPIECZENIA", "ROZNICOWE"})
+
+
+#: Zapis przekładni rdzenia przekładnika prądowego: zaczepy pierwotne rozdzielone „-" (przekładnik
+#: wieloprzekładniowy, np. „200-400/5" — ENEA Zeszyt 1 Z.10/Z.11/Z.11.1) albo jeden prąd
+#: pierwotny („400/5"), ukośnik i prąd wtórny; liczby z kropką albo przecinkiem, opcjonalne „A".
+_ZAPIS_PRZEKLADNI_CT = re.compile(
+    r"^\s*(?P<pierwotne>\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)*)\s*/\s*"
+    r"(?P<wtorny>\d+(?:[.,]\d+)?)\s*(?:A)?\s*$"
+)
+
+
+def _liczba_zapisu(tekst: str) -> float:
+    return float(tekst.strip().replace(",", "."))
+
+
+def zaczepy_pierwotne_a(przekladnia: str) -> tuple[float, ...]:
+    """Zaczepy pierwotne [A] z zapisu przekładni JEDNEGO rdzenia, rosnąco.
+
+    „200-400/5" → (200, 400); „400/5" → (400,). Zapis nierozpoznany, zaczep niedodatni albo
+    zaczepy nie ściśle rosnące (zapis tabliczki IEC 61869-2 podaje je od najniższego) → ``()``
+    — brak danej, nie domysł.
+    """
+    dopasowanie = _ZAPIS_PRZEKLADNI_CT.match(przekladnia)
+    if dopasowanie is None:
+        return ()
+    zaczepy = tuple(_liczba_zapisu(z) for z in dopasowanie.group("pierwotne").split("-"))
+    if any(z <= 0 for z in zaczepy) or any(
+        a >= b for a, b in zip(zaczepy, zaczepy[1:], strict=False)
+    ):
+        return ()
+    if _liczba_zapisu(dopasowanie.group("wtorny")) <= 0:
+        return ()
+    return zaczepy
+
+
+def zaczepy_przekladnika(przekladnie: Iterable[str]) -> tuple[float, ...]:
+    """Zaczepy pierwotne PRZEKŁADNIKA [A] — wspólne dla wszystkich jego rdzeni, rosnąco.
+
+    Przełączenie zaczepu pierwotnego zmienia przekładnię wszystkich rdzeni naraz, więc wybrany
+    zaczep musi być zaczepem każdego rdzenia. Brak rdzeni, rdzeń o zapisie nierozpoznanym albo
+    rdzenie bez wspólnego zaczepu → ``()``. JEDNO źródło zbioru zaczepów: walidator aparatu pola
+    (`enm.models.BayPrimaryDevice`), rozstrzygnięcie wartości roboczej
+    (`wartosci_robocze.rozstrzygnij_zaczep_przekladnika`) i opis na schemacie czytają tę funkcję.
+    """
+    wspolne: set[float] | None = None
+    for przekladnia in przekladnie:
+        zaczepy = zaczepy_pierwotne_a(przekladnia)
+        if not zaczepy:
+            return ()
+        wspolne = set(zaczepy) if wspolne is None else wspolne & set(zaczepy)
+    return tuple(sorted(wspolne)) if wspolne else ()
 
 
 class RdzenPrzekladnikaPradowego(BaseModel):

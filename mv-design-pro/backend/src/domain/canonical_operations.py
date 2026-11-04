@@ -1697,6 +1697,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "przekladnia",
                     "stan_obiektu",
                     "wykonanie",
+                    "zaczep_pierwotny_a",
                 }
             ),
         ),

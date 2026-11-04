@@ -159,7 +159,9 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
     rezystorze 57,7 Ω — k = 7,5 ≥ 1,5). Pola GPZ z aparatami pierwotnymi, przekładniki i
     przypisania zabezpieczeń są dopisane W MODELU (walidacja Pydantic w
     ``normalizuj_migawke``) — żadna operacja domenowa nie buduje pola GPZ z listą aparatów
-    pierwotnych, a tę ścieżkę danych kontrakty SLD muszą mieć na czym sprawdzić.
+    pierwotnych, a tę ścieżkę danych kontrakty SLD muszą mieć na czym sprawdzić. Wynik to
+    zrzut modelu (pełny kształt kontraktu), przypięty testem
+    ``tests/ci/test_fikstury_enm_sld_ksztalt.py``.
     """
     enm = _gpz_feeder(b)
     gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
@@ -338,7 +340,13 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                     ],
                 }
             )
-    return enm
+    # Rekordy dopisane powyżej przechodzą przez model (zrzut Pydantic), żeby fikstura niosła
+    # PEŁNY kształt kontraktu jak migawka z API (m.in. wymagane `Bay.equipment_refs`) — sama
+    # walidacja w ``normalizuj_migawke`` przepuszczała rekordy bez pól domyślnych, a konsumenci
+    # frontu (inspektor pola) czytają je jako obecne.
+    from enm.models import EnergyNetworkModel
+
+    return EnergyNetworkModel.model_validate(enm).model_dump(mode="json")
 
 
 def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:

@@ -200,6 +200,8 @@ import { odsunStykiCzlonow } from './stykiCzlonow';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
+  PRZYROSTEK_TABLICZKI_PRZEKLADNIKA,
+  SYMBOL_TABLICZKI_PRZEKLADNIKA,
 } from '../compose/protectionMarking';
 import {
   brakiTopologiiFunkcjiPola,
@@ -9132,17 +9134,26 @@ export interface CtAnnotationGap {
  */
 export function ctAnnotationGaps(scene: SceneV3): readonly CtAnnotationGap[] {
   const gaps: CtAnnotationGap[] = [];
-  const ctSymbolOwners = new Set(
-    scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'currentTransformer').map((s) => s.meta?.ownerRef),
-  );
-  scene.labels
-    .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes('#ct-rating-'))
-    .forEach((l) => {
-      const bayRef = l.ownerRef?.split('#ct-rating-')[0];
-      if (!bayRef || !ctSymbolOwners.has(bayRef)) {
-        gaps.push({ reason: 'label-without-ct-symbol', ownerRef: l.ownerRef });
-      }
-    });
+  // Karta UX-04 (klasa „opis przekładnika przy symbolu"): ta sama sonda dla tabliczki KAŻDEGO
+  // rodzaju przekładnika — prądowego (`#ct-rating-`), napięciowego (`#vt-rating-`)
+  // i Ferrantiego (`#cbct-rating-`); kotwica na symbolu rodzaju z jednej tabeli
+  // (`SYMBOL_TABLICZKI_PRZEKLADNIKA`), ten sam rodzaj co rozstrzygnięcie w compose.
+  for (const rodzaj of Object.keys(PRZYROSTEK_TABLICZKI_PRZEKLADNIKA) as (keyof typeof PRZYROSTEK_TABLICZKI_PRZEKLADNIKA)[]) {
+    const znacznik = `#${PRZYROSTEK_TABLICZKI_PRZEKLADNIKA[rodzaj]}-`;
+    const wlasciciele = new Set(
+      scene.symbols
+        .filter((s) => rodzajSymbolu(s.symbolId) === SYMBOL_TABLICZKI_PRZEKLADNIKA[rodzaj])
+        .map((s) => s.meta?.ownerRef),
+    );
+    scene.labels
+      .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes(znacznik))
+      .forEach((l) => {
+        const bayRef = l.ownerRef?.split(znacznik)[0];
+        if (!bayRef || !wlasciciele.has(bayRef)) {
+          gaps.push({ reason: 'label-without-ct-symbol', ownerRef: l.ownerRef });
+        }
+      });
+  }
   return gaps;
 }
 

@@ -1549,13 +1549,19 @@ i romb sprzęgła z jednej funkcji (`26a7bcc6c`), przekładnik Ferrantiego bez k
 kreskowane ze strzałką w dół (`d04f67373`). Znany wcześniej czerwony
 `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` jest zielony (41).
 
-**W toku.** Zaczep przekładnika wieloprzekładniowego (pole ENM, inspektor, wartość robocza
-`ESTIMATED`, opis na kanwie, konsumenci); opisy przekładników przy symbolach z testem kolizji;
-blok przekaźnika LOD2 (≤4 kody ANSI + „+N", natywny klik → panel zabezpieczeń pola); pkt 4 rodzina
-kanoniczna (pomiar w §11.14); tablica łączników z wierszami wysuwnymi; zrzuty e2e; bramki końcowe.
+**Wykonane w tej sesji (2026-10-30).** Zaczep przekładnika wieloprzekładniowego end-to-end (§11.15),
+blok przekaźnika LOD2 z natywnym klikiem do sekcji „Zabezpieczenia i automatyka" karty pola (§11.16),
+tabliczki przekładników prądowych, napięciowych i Ferrantiego przy symbolach z testami kolizji
+(§11.17). Zgłoszenia do architekta: dwie prawdy przekładnika i funkcji zabezpieczeń (§11.15), pkt 4
+rodzina kanoniczna (pomiar w §11.14).
 
-**Pierwszy krok następcy.** Zaczep przekładnika: `BayPrimaryDevice` (CT), parser zaczepów
-z `rdzenie[].przekladnia`, operacja `set_bay_equipment`, `dane_przyjete_wyposazenia`.
+**W toku.** Tablica łączników z wierszami wysuwnymi (`frontend/scripts/tablica_lacznikow_kafla.tsx`),
+zrzuty e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts` z `ZRZUTY_DO_DOKUMENTACJI=1`, bramki końcowe.
+
+**Pierwszy krok następcy.** Jeśli bramki i zrzuty nie są w historii gałęzi: vitest `src/ui/sld`,
+`src/ui/field`, `src/ui/shared`, `src/ui/network-build/inspektor-elementu`, `src/harness-fixtures`;
+`npm run type-check`, `npm run lint`, `npm run accept:sld-v3`, `python ../scripts/guardy_z_ci.py`;
+potem spec zrzutowy pod `flock`.
 
 ### 11.13. Kafel łącznika: stan → kolor → geometria (jedno źródło)
 
@@ -1766,3 +1772,135 @@ iniekcje: dawny znak z łukiem, strzałka w górę).
   (`prostokatKaflaStanu`), nie kwadrat 48, i znaczniki IEC w gramatyce 16 j.; reguła rozmiaru właściciela
   dotyczy kafla 48 × 48, więc rodzina kanoniczna nie została przerysowana. Na kanwie pola Z.10 występuje
   z niej `lineSwitch`. Ujednolicenie (wszystkie łączniki w układzie kafla 48) to decyzja architekta.
+
+### 11.15. Zaczep przekładnika wieloprzekładniowego (uwaga właściciela 2026-10-30)
+
+**Wymaganie.** Przekładnik 200–400/5 A ma jednoznacznie wyróżniony wybrany zaczep — w modelu,
+w inspektorze pola i na schemacie.
+
+**Wykonanie.** Zbiór zaczepów ma jedno źródło: `network_model/catalog/przekladniki.py::zaczepy_przekladnika`
+(zaczepy wspólne wszystkich rdzeni, z zapisu „200-400/5"; zapis nierozpoznany albo zaczepy nie
+ściśle rosnące → brak danej, nie domysł). Czytają go: walidator rekordu
+`enm/models.py::BayPrimaryDevice` (pola `zaczep_pierwotny_a` + `zrodlo_zaczepu` zawsze razem,
+wyłącznie CT wieloprzekładniowy, wartość z tabliczki), operacja `set_bay_equipment`
+(`domain/canonical_operations.py`, kody `bay_equipment.tap_not_applicable` i
+`bay_equipment.tap_invalid`), rejestr wartości roboczych
+(`wartosci_robocze.rozstrzygnij_zaczep_przekladnika`: wybór projektanta > wartość robocza = zaczep
+najwyższy; zasada nr 4 — dana przyjęta `ESTIMATED` w `dane_przyjete_wyposazenia`), pisarze rekordu
+(szablon pola `bay_templates.py`, wyposażenie z katalogu `wyposazenie_pola.py` — jedna funkcja
+`pola_zaczepu_rekordu`), opis funkcji EAZ w ocenie pola (`pole_liniowe_gpz.py` — „zaczep 400 A
+(wartość robocza)") i odcisk modelu (`enm/hash.py`). Frontend: lustro parsera
+(`sld/v2/model/tabliczkaPrzekladnika.ts::zaczepyPrzekladnika`, parytet z backendem przez wspólny plik
+przypadków `zaczepy_przekladnika_przypadki.json`), lista wyboru zaczepu w edytorze wyposażenia pola
+(`ui/field/EdytorWyposazeniaPola.tsx`, tylko gdy wybrana pozycja katalogu ma ≥ 2 zaczepy; wartość
+robocza opisana „do potwierdzenia") i człon „zaczep N A" na tabliczce przekładnika na kanwie.
+
+**Testy.** `backend/tests/network_model/catalog/test_zaczepy_przekladnika.py` (parser, iloczyn zapis
+× zaczep × źródło, walidator, rejestr, operacja), `tests/enm/test_wyposazenie_pola.py`,
+`test_pole_liniowe_gpz_szablony.py`, `test_pole_liniowe_gpz_ocena.py`;
+`ui/field/__tests__/EdytorWyposazeniaPola.test.tsx`, `sld/v2/model/__tests__/tabliczkaPrzekladnika.test.ts`,
+`sld/v3/scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (wariant „zaczep niewybrany — tabliczka bez
+członu zaczepu").
+
+**Do decyzji architekta (zgłoszenie z pomiarem, nie odłożenie).** Zaczep nie ma jeszcze konsumenta
+obliczeniowego, bo przekładnik prądowy ma w repo DWIE prawdy: rekord aparatu pola
+(`Bay.primary_devices`, kind CT — tu żyje zaczep) i encja `Measurement`, z której czytają
+zabezpieczenia (przekładnia do nastaw strony wtórnej); pole liniowe GPZ z szablonu nie ma ani
+`measurements`, ani `protection_assignments`, operacja `add_ct` wymusza przekładnię pozycji katalogu,
+a dobór przekładnika (`sprawdz_dobor_ct`) obejmuje wyłącznie przyłącza wytwórców. Podobnie funkcje
+zabezpieczeń mają dwie prawdy: `Bay.protection_codes` (schemat, blok przekaźnika) i
+`ProtectionAssignment` (nastawy). Scalenie to decyzja architektoniczna (która encja jest źródłem,
+kierunek migracji) — wymaga rozstrzygnięcia sesji głównej przed wpięciem zaczepu w nastawy.
+
+### 11.16. Blok przekaźnika na LOD2 i klik do zabezpieczeń pola
+
+**Wymaganie.** Blok przekaźnika: ≤ 4 kody funkcji zabezpieczeń (ANSI) + „+N", automatyka poza
+kanwą; natywny klik otwiera zakładkę inspektora „Zabezpieczenia i automatyka" z wierszami
+„ANSI + nazwa polska" prowadzącymi do nastaw; zero phantomów.
+
+**Wykonanie.** Słownik funkcji EAZ ma lustro frontendu `ui/shared/slownikFunkcjiEaz.json`
+(parytet z `backend/src/network_model/catalog/funkcje_eaz.py` — `backend/tests/ci/test_parytet_slownika_funkcji_eaz.py`).
+Podział kodów pola na blok i „+N" ma jedno źródło `ui/shared/funkcjeEaz.ts::podzialFunkcjiNaSchemacie`
+(na schemacie wyłącznie rodzaj ZABEZPIECZENIE, najwyżej 4; automatyka, blokady i funkcje
+technologiczne liczone w „+N"), czytane przez `compose/protectionMarking.ts::kodyBlokuPrzekaznika`
+i `kodyWOkreguBlokuPrzekaznika` (GPZ i stacje). Klik w dowolny obiekt warstwy adnotacji
+zabezpieczeń (okrąg, wiersze kodów, odniesienie 3U₀, linie) rozwiązuje pole
+(`canvas/poleAdnotacjiZabezpieczen.ts` — jedna reguła dla klasy obiektów), zaznacza je i otwiera
+kartę pola z wyróżnioną sekcją `zabezpieczenia` (`SldCanvasV3Workspace.handleElementClick`,
+`stanPaneluElementu.ts`, `PanelElementuKanwy.tsx`). Sekcja karty
+(`sld/shared/kartaTechnicznaElementu.ts::sekcjaZabezpieczenIAutomatyki`) ma wiersz na każdą funkcję
+pola z `Bay.protection_codes` („ANSI 51 — zabezpieczenie nadprądowe zwłoczne"), akcja wiersza:
+aparat zabezpieczeniowy w polu → powierzchnia nastaw E-27; brak aparatu → operacja `add_relay`
+z `bay_ref` (wyłącznie w trybie edycji modelu i bez trybu tylko-do-odczytu).
+
+Znalezisko po drodze naprawione u źródła: fikstura `gpzProtectionDataPath.enm.json` nie była zrzutem
+modelu (brak `equipment_refs` w trzech polach → wyjątek w `daneElementuKanwy.ts`); generator
+`tests/reference_networks/fikstury_enm_sld.py` zapisuje teraz zrzut `EnergyNetworkModel`, a
+`backend/tests/ci/test_fikstury_enm_sld_ksztalt.py` pilnuje, że żadna fikstura nie gubi kluczy zrzutu
+(stara fikstura: 643 braki).
+
+**Testy.** `ui/shared/__tests__/funkcjeEaz.test.ts` (iloczyn liczba zabezpieczeń {0,1,2,4,5,6} ×
+inne {brak, automatyka, blokada, technologiczne, wszystkie} × położenie × kod spoza słownika,
+wyrocznia z jawnej tabeli rodzajów); `canvas/__tests__/klikBlokuPrzekaznika.test.tsx` (18; natywny
+`fireEvent.click` na uchwycie warstwy trafień po przybliżeniu kółkiem; fikstura {Z.11 bez urządzeń,
+ścieżka danych z urządzeniami} × obiekt {okrąg, wiersz kodów, wiersz 3U₀, linia wyłączania, inna
+adnotacja} × tryb {edycja modelu, przegląd wyników}; iniekcja — gałąź kliku wyłączona: 9 czerwonych);
+`canvas/__tests__/poleAdnotacjiZabezpieczen.test.ts`.
+
+**Świadomie poza zmianą.** Stacje SN poza GPZ nie rzutują bloku przekaźnika na kanwę
+(`enmToSldAdapter.ts::buildExplicitStationMiniBays`); włączenie dodałoby 171 okręgów na rysunkach
+stacji — to zmiana wyglądu wymagająca werdyktu B-02, nie defekt. Inspektor inżynierski E-11
+(`InspectorEngineeringView.buildBaySections`, „Funkcje aktywne" z `protection_config`) jest
+osobnym widokiem nastaw, nie listą funkcji pola — klik prowadzi do karty pola, która czyta
+`Bay.protection_codes`, to samo źródło co blok na kanwie.
+
+### 11.17. Tabliczki przekładników przy symbolach
+
+**Wymaganie.** Opisy przekładników (przekładnia, klasa) bezpośrednio przy symbolach, z testami
+kolizji bounding-box.
+
+**Inwentarz klasy.** Tabliczkę ma każdy przekładnik pola z danymi tabliczki w rekordzie: prądowy
+(`rdzenie`), napięciowy (`uzwojenia`), Ferrantiego (`przekladnia`). Przed zmianą rysowany był
+wyłącznie przekładnik prądowy, w paśmie za całym planem pola. Adapter
+(`v2/canvas/enmToSldAdapter.ts::resolveBayCtRatingAnnotations`) daje teraz adnotację każdego z trzech
+rodzajów (`rodzajPrzekladnika`), tekst z `tabliczkaPrzekladnika.ts` (`tekstPrzekladniUzwojen`,
+`tekstKlasUzwojen` — wspólna strona pierwotna VT raz), dopasowanie do symbolu i przyrostek właściciela
+z jednej tabeli (`protectionMarking.ts::SYMBOL_TABLICZKI_PRZEKLADNIKA`,
+`PRZYROSTEK_TABLICZKI_PRZEKLADNIKA`: `ct-rating`, `vt-rating`, `cbct-rating`), czytanej przez
+kompozytor GPZ, kompozytor stacji i przerwy przewodów sceny (`buildScene.ts::ctAnnotationGaps`).
+
+**Rozmieszczenie (GPZ, `compose/gpz.ts`).** Tabliczki są rozmieszczane PRZED przekaźnikiem. Kotwica:
+tuż za prawą krawędzią obrysu symbolu, w pasie jego wysokości ± oczko, wysokość wyjściowa nad linią
+pomiarową z zacisku wtórnego (§11.7 pkt 6). Przeszkody: obrysy aparatów pola, oznaczenia aparatów
+i zacisków, tory pola, wcześniejsze tabliczki oraz linie przekaźnika jako poziome promienie od
+zaczepów (linia wyłączania, linie pomiarowe — `odejsciaLiniiPomiarowych`, `zaczepLiniiWylaczania`,
+`zaczepPomiaruCt`: te same funkcje rysują linie, więc przeszkoda i linia nie mogą się rozjechać).
+Kolejność prób: pas ± oczko w kolumnach od symbolu do granicy przekaźnika w położeniu prawym
+(`granicaTabliczek`), potem pas poszerzany do ± 4 oczek wyłącznie w górę od własnej linii
+pomiarowej, na końcu kolejne kolumny w prawo aż do wolnej — tabliczka nigdy nie zostaje na
+przeszkodzie (wcześniej silnik etykiet ją odrzucał i tabliczka znikała). Przekaźnik powiązań staje
+za RZECZYWISTĄ prawą krawędzią tabliczek (`polozenieOkreguPrzekaznika`, `prawaKrawedzTabliczek`)
+z prześwitem 2·GRID.
+
+**Testy.** `scene/__tests__/tabliczkiPrzekladnikow.test.ts` (31): iloczyn fikstura {Z.10 w sekcji 1,
+Z.10 w sekcji 2, Z.11.1 i Z.11, Z.11 z przekładnikiem prądowym bez portów} × rodzaj {prądowy,
+napięciowy, Ferrantiego} × przeszkoda {symbol, etykieta, przewód i linie przekaźnika, ramka bloku
+przekaźnika} oraz plan etykiet kanwy przy skalach {1,0; 1,5; 2,5}; wyrocznia treści z surowych danych
+fikstury; „przy symbolu" = po prawej, odstęp pionowy ≤ oczko, poziomy ≤ 12 oczek, w korytarzu do
+tabliczki brak innego aparatu i napisu (w modelu zdegenerowanym — tylko kolizje, bo miejsca przy
+symbolu nie ma); iniekcje: tabliczka na symbolu, odsunięta, na linii pomiarowej, w ramce bloku,
+brak tabliczki. Iniekcje w kompozytorze: bez promieni linii przekaźnika — 19 czerwonych
+(`tabliczkiPrzekladnikow`, `zaciskiPrzekladnikaGpz`, `poleLinioweGpz`); bez granicy tabliczek — 4
+czerwone. `compose/__tests__/gpz.test.ts` — iloczyn tabliczek {brak, w paśmie, poza pasmem} dla
+położenia okręgu.
+
+**Świadomie poza zmianą.** Kompozytor stacji (`compose/station.ts`) rozmieszcza tabliczki nadal
+w kolumnie adnotacji mini-pola (wspólne pasmo, przyrostki i dopasowanie z tej samej tabeli) —
+przeniesienie ich do symboli zmienia gabaryty kolumn stacji, czyli wygląd wymagający werdyktu B-02.
+Rezerwacja szerokości kolumny pola GPZ (`gpzBayAnnotationWidth`) liczy pasmo tabliczek jak dotąd —
+jest górną granicą zajętości, a okrąg przekaźnika stoi za rzeczywistymi tabliczkami; zawężenie
+rezerwacji do rzeczywistego rozmieszczenia wymaga pomiaru stosu w fazie pomiaru kolumn i zmienia
+odstępy pól (B-02). W wariancie zdegenerowanym (przekładnik prądowy bez portów) silnik etykiet
+odrzuca podpis „koniec toru" głowicy kablowej, która ląduje tuż nad przekładnikiem Ferrantiego —
+zachowanie identyczne na `HEAD` sprzed zmiany (zmierzone w osobnym drzewie), odrzucenie jest
+policzone w `stopNotes`, a model z przekładnikiem bez portów jest zgłaszany przez gotowość.

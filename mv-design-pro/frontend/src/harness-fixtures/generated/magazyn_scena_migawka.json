@@ -118,7 +118,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:ds",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -152,7 +154,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:cb",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -186,7 +190,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:ct",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -216,7 +222,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:vt",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -250,7 +258,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:ds",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -280,7 +290,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:es",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -310,7 +322,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:surge_arrester",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         },
         {
           "catalog_ref": null,
@@ -344,7 +358,9 @@
           "switch_state": null,
           "symbol_ref": "symbol:cable_head",
           "uzwojenia": [],
-          "wykonanie": null
+          "wykonanie": null,
+          "zaczep_pierwotny_a": null,
+          "zrodlo_zaczepu": null
         }
       ],
       "protection_codes": [

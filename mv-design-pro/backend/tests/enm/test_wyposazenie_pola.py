@@ -893,3 +893,173 @@ def test_brak_wykonania_nie_zostawia_pola_w_rekordzie(siec: Any) -> None:
     assert wynik.get("error") is None, wynik.get("error")
     (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
     assert zapisany.get("wykonanie") is None
+
+
+# ---------------------------------------------------------------------------
+# Zaczep przekładnika wieloprzekładniowego (uwaga właściciela 2026-10-30, karta UX-04)
+# ---------------------------------------------------------------------------
+
+#: Pozycja katalogu CT o przekładni przełączalnej 200-400/5 A (typ ogólny OSD, ENEA Z.10/Z.11.1).
+CT_WIELOPRZEKLADNIOWY = "ct_typ_ogolny_osd_200_400_5_5p20_15va"
+
+
+def _ct_jednoprzekladniowy() -> str:
+    """Pierwsza pozycja CT, której rdzenie mają jeden zaczep (albo brak rdzeni wieloprzekładniowych)."""
+    from network_model.catalog.przekladniki import zaczepy_przekladnika
+
+    return _pierwsza(
+        katalog_biezacy().ct_types,
+        lambda t: len(zaczepy_przekladnika(r.przekladnia for r in t.lista_rdzeni())) < 2,
+    )
+
+
+#: Postać zaczepu w ładunku → (wartość, czy poprawna dla 200-400/5, zapis w rekordzie).
+POSTACI_ZACZEPU: dict[str, tuple[Any, bool, float | None]] = {
+    "brak": (None, True, None),
+    "200": (200, True, 200.0),
+    "400_float": (400.0, True, 400.0),
+    "spoza_tabliczki": (300, False, None),
+    "napis": ("400", False, None),
+    "logiczna": (True, False, None),
+}
+#: Pozycja aparatu (rodzaj, katalog) — CT wieloprzekładniowy, CT jednoprzekładniowy, VT.
+POZYCJE_ZACZEPU: dict[str, tuple[str, Any]] = {
+    "ct_wieloprzekladniowy": ("CT", lambda: CT_WIELOPRZEKLADNIOWY),
+    "ct_jednoprzekladniowy": ("CT", _ct_jednoprzekladniowy),
+    "vt": ("VT", lambda: _ref_przestrzeni("VT")),
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_ZACZEPU))
+@pytest.mark.parametrize("pozycja", sorted(POZYCJE_ZACZEPU))
+def test_zaczep_przekladnika_iloczyn(siec: Any, pozycja: str, postac: str) -> None:
+    """Iloczyn pozycja aparatu × postać zaczepu: wybór projektanta zapisuje się WYŁĄCZNIE
+    przekładnikowi wieloprzekładniowemu i wyłącznie ze zbioru zaczepów tabliczki; brak wyboru
+    przy przekładniku wieloprzekładniowym daje wartość roboczą (zaczep najwyższy, źródło
+    WARTOSC_ROBOCZA) jako daną przyjętą ESTIMATED; przekładnik o jednej przekładni i VT nie
+    niosą zaczepu. Odmowy atomowe (model wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    rodzaj, ref = POZYCJE_ZACZEPU[pozycja]
+    wartosc, poprawna, zapisana = POSTACI_ZACZEPU[postac]
+    aparat: dict[str, Any] = {
+        "kind": rodzaj,
+        "placement": "MIDSTREAM",
+        "catalog_ref": ref(),
+        "designation": "T1",
+    }
+    if wartosc is not None:
+        aparat["zaczep_pierwotny_a"] = wartosc
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    wieloprzekladniowy = pozycja == "ct_wieloprzekladniowy"
+    if wartosc is not None and not wieloprzekladniowy:
+        _odmowa(enm, ladunek, "bay_equipment.tap_not_applicable")
+        return
+    if not poprawna:
+        _odmowa(enm, ladunek, "bay_equipment.tap_invalid")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    EnergyNetworkModel.model_validate(wynik["snapshot"])
+    przyjete = wynik["wyposazenie_pola"]["dane_przyjete"]
+    zaczepowe = [d for d in przyjete if d["nazwa_pl"].startswith("zaczep pierwotny")]
+    if not wieloprzekladniowy:
+        assert zapisany.get("zaczep_pierwotny_a") is None
+        assert zapisany.get("zrodlo_zaczepu") is None
+        assert zaczepowe == []
+        return
+    if zapisana is None:
+        assert (zapisany["zaczep_pierwotny_a"], zapisany["zrodlo_zaczepu"]) == (
+            400.0,
+            "WARTOSC_ROBOCZA",
+        )
+        (dana,) = zaczepowe
+        assert dana["jakosc"] == "ESTIMATED"
+        assert dana["wartosc"] == {"wartosc": 400.0, "jednostka": "A"}
+        assert dana["nazwa_pl"] == "zaczep pierwotny przekładnika T1"
+        assert "200 A / 400 A" in dana["powod_pl"]
+    else:
+        assert (zapisany["zaczep_pierwotny_a"], zapisany["zrodlo_zaczepu"]) == (
+            zapisana,
+            "PROJEKTANT",
+        )
+        # Wybór projektanta jest daną projektu, nie daną przyjętą.
+        assert zaczepowe == []
+
+
+def test_zaczep_w_odczycie_pola_i_determinizm(siec: Any) -> None:
+    """Dana przyjęta zaczepu roboczego płynie do odczytu pola (`equipment_assumed_data`) —
+    ten sam rekord, ta sama reguła; dwa wykonania dają identyczny wynik."""
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    pierwszy = _wykonaj(copy.deepcopy(enm), ladunek)
+    assert pierwszy == _wykonaj(copy.deepcopy(enm), ladunek)
+    odczyt = _odczyt_pola(pierwszy["snapshot"], pola["IN"])
+    zaczepowe = [
+        d for d in odczyt["equipment_assumed_data"] if d["nazwa_pl"].startswith("zaczep pierwotny")
+    ]
+    assert [d["wartosc"]["wartosc"] for d in zaczepowe] == [400.0]
+
+
+@pytest.mark.parametrize(
+    ("zmiana", "fragment"),
+    [
+        ({"zaczep_pierwotny_a": 200.0}, "razem z jego"),
+        ({"zrodlo_zaczepu": "PROJEKTANT"}, "razem z jego"),
+        ({"zaczep_pierwotny_a": 300.0, "zrodlo_zaczepu": "PROJEKTANT"}, "spoza"),
+        ({"zaczep_pierwotny_a": 200.0, "zrodlo_zaczepu": "INNE"}, "zrodlo_zaczepu"),
+    ],
+)
+def test_walidator_rekordu_zaczepu(siec: Any, zmiana: dict[str, Any], fragment: str) -> None:
+    """Walidator rekordu aparatu: zaczep i źródło razem, zaczep ze zbioru tabliczki, źródło ze
+    słownika (ten sam zbiór zaczepów co operacja — `przekladniki.zaczepy_przekladnika`)."""
+    from pydantic import ValidationError
+
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
+    migawka = copy.deepcopy(wynik["snapshot"])
+    (zapisany,) = _pole(migawka, pola["IN"])["primary_devices"]
+    for klucz in ("zaczep_pierwotny_a", "zrodlo_zaczepu"):
+        zapisany.pop(klucz)
+    zapisany.update(zmiana)
+    with pytest.raises(ValidationError, match=fragment):
+        EnergyNetworkModel.model_validate(migawka)
+
+
+@pytest.mark.parametrize("rodzaj", ["VT", "CB"])
+def test_walidator_zaczepu_tylko_przekladnika_pradowego(rodzaj: str) -> None:
+    """Zaczep na aparacie innym niż przekładnik prądowy — odmowa walidatora rekordu."""
+    from enm.models import BayPrimaryDevice
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="wieloprzekładniowy"):
+        BayPrimaryDevice(
+            device_ref="d",
+            symbol_ref="s",
+            kind=rodzaj,
+            placement="MIDSTREAM",
+            zaczep_pierwotny_a=400.0,
+            zrodlo_zaczepu="PROJEKTANT",
+        )
+
+
+def test_rekord_bez_zaczepu_haszuje_jak_przed_atrybutem(siec: Any) -> None:
+    """Pole addytywne: zaczep `None` jest poza odciskiem (`hash.py`), a zaczep zapisany zmienia
+    odcisk (to dana projektu)."""
+    from enm.hash import compute_enm_hash
+
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
+    migawka = copy.deepcopy(wynik["snapshot"])
+    (zapisany,) = _pole(migawka, pola["IN"])["primary_devices"]
+    z_zaczepem = compute_enm_hash(EnergyNetworkModel.model_validate(migawka))
+    zapisany["zaczep_pierwotny_a"] = None
+    zapisany["zrodlo_zaczepu"] = None
+    bez = compute_enm_hash(EnergyNetworkModel.model_validate(migawka))
+    zapisany.pop("zaczep_pierwotny_a")
+    zapisany.pop("zrodlo_zaczepu")
+    assert compute_enm_hash(EnergyNetworkModel.model_validate(migawka)) == bez
+    assert z_zaczepem != bez

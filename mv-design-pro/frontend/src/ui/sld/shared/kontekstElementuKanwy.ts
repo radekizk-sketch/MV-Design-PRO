@@ -32,6 +32,9 @@ export interface KontekstElementuKanwy {
   readonly temat: CanvasMenuSubject | null;
   /** Kanwa w trybie podglądu — wykonawca akcji blokuje wtedy wstawianie i usuwanie. */
   readonly tylkoOdczyt: boolean;
+  /** Sekcja karty obiektu, do której prowadzi kliknięty obiekt rysunku (np. blok przekaźnika
+   *  → „zabezpieczenia" karty pola); brak — karta od początku. */
+  readonly sekcja?: string;
 }
 
 export type RodzajSzkicuDer = 'PV' | 'BESS' | 'FW';

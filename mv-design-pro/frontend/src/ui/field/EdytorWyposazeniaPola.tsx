@@ -36,7 +36,8 @@ import {
 } from '../catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../catalog/BayTemplatePicker';
 import { nazwaMediumPl, notaPozycjiUkrytych, pozycjeDoWyboru } from '../catalog/dopuszczenieNowychPol';
-import type { CatalogType, MVApparatusType } from '../catalog/types';
+import type { CatalogType, CTCatalogType, MVApparatusType } from '../catalog/types';
+import { zaczepyPrzekladnika } from '../sld/v2/model/tabliczkaPrzekladnika';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
   BEZ_ZMIANY_KLASY,
@@ -50,6 +51,7 @@ import {
   RODZAJE_KATALOGOWE_APARATU,
   RODZAJ_Z_PRZEKLADNIA,
   RODZAJ_Z_WYKONANIEM,
+  RODZAJ_Z_ZACZEPEM,
   RODZAJE_Z_GALEZIA,
   RODZAJE_Z_ROLA_UZIEMIENIA,
   STAN_DANYCH_WYPOSAZENIA_PL,
@@ -58,6 +60,7 @@ import {
   WIERSZ_PUSTY,
   wierszeZAparatow,
   zbudujPayloadWyposazenia,
+  zmienPozycje,
   zmienRodzaj,
   type PrzestrzenKatalogu,
   type RodzajAparatuPolaSn,
@@ -71,7 +74,7 @@ import { OPIS_WYKONANIA_APARATU_PL, WYKONANIA_APARATU, type DomainOpResponseV1, 
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
-  readonly CT: readonly CatalogType[];
+  readonly CT: readonly CTCatalogType[];
   readonly VT: readonly CatalogType[];
   readonly OGRANICZNIK_SN: readonly CatalogType[];
 }
@@ -379,6 +382,12 @@ export function EdytorWyposazeniaPola({
               {wiersze.map((w, i) => {
                 const pozycje = w.kind ? pozycjeDlaWiersza(katalog, w.kind, w) : [];
                 const maKatalog = w.kind !== '' && PRZESTRZEN_KATALOGU_APARATU[w.kind] !== null;
+                // Zaczepy przekładnika z tabliczki WYBRANEJ pozycji katalogu (rdzenie pozycji) —
+                // lista wyboru tylko dla przekładnika wieloprzekładniowego (≥ 2 zaczepy).
+                const zaczepy =
+                  w.kind === RODZAJ_Z_ZACZEPEM
+                    ? zaczepyPrzekladnika((katalog.CT.find((p) => p.id === w.catalog_ref)?.rdzenie ?? []).map((r) => r.przekladnia))
+                    : [];
                 return (
                   <div key={i} data-testid={`wyposazenie-pola-aparat-${i}`} className="flex flex-wrap items-center gap-1.5">
                     <select
@@ -415,7 +424,7 @@ export function EdytorWyposazeniaPola({
                         data-testid={`wyposazenie-pola-aparat-${i}-katalog`}
                         className={pole}
                         value={w.catalog_ref}
-                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, catalog_ref: e.target.value }))}
+                        onChange={(e) => zmienWiersz(i, (x) => zmienPozycje(x, e.target.value))}
                       >
                         <option value="">— pozycja katalogowa —</option>
                         {pozycje.map((p) => (
@@ -516,6 +525,27 @@ export function EdytorWyposazeniaPola({
                         {WYKONANIA_APARATU.map((wyk) => (
                           <option key={wyk} value={wyk}>
                             wykonanie {OPIS_WYKONANIA_APARATU_PL[wyk]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    {zaczepy.length >= 2 ? (
+                      <select
+                        aria-label={`Zaczep przekładnika aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-zaczep`}
+                        className={pole}
+                        title="Zaczep pierwotny przekładnika wieloprzekładniowego — przekładnia, z którą liczone są nastawy po stronie wtórnej i dobór przekładnika; schemat opisuje wybrany zaczep przy tabliczce przekładnika"
+                        value={w.zaczep}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, zaczep: e.target.value }))}
+                      >
+                        <option value="">
+                          {w.zaczepRoboczy != null
+                            ? `zaczep: wartość robocza ${String(w.zaczepRoboczy).replace('.', ',')} A (do potwierdzenia)`
+                            : 'zaczep: wartość robocza (do potwierdzenia)'}
+                        </option>
+                        {zaczepy.map((z) => (
+                          <option key={z} value={String(z)}>
+                            zaczep {String(z).replace('.', ',')} A
                           </option>
                         ))}
                       </select>

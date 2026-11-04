@@ -257,6 +257,9 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
             "przekladnia",
             "naped",
             "wykonanie",
+            # Karta UX-04 (zaczep przekładnika wieloprzekładniowego): wybrany zaczep i źródło.
+            "zaczep_pierwotny_a",
+            "zrodlo_zaczepu",
         )
     },
 }

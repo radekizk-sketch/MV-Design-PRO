@@ -127,6 +127,9 @@ export interface BayProtectionMarkingView {
  * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
  * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
  */
+/** Rodzaj przekładnika, którego tabliczkę opisuje adnotacja aparatu pola (`BayPrimaryDevice.kind`). */
+export type RodzajPrzekladnikaTabliczki = 'CT' | 'VT' | 'CORE_BALANCE_CT';
+
 export interface CtRatingAnnotationView {
   /** Pomiar CT (`Measurement.ref_id`), z którego pochodzi adnotacja; `null` — adnotacja
    *  z tabliczki aparatu pola (`deviceRef`). Dokładnie jedno z dwóch źródeł. */
@@ -136,6 +139,11 @@ export interface CtRatingAnnotationView {
    *  adnotacja — gdy pole nie ma pomiaru CT wskazanego przez ten aparat (`linked_ref`).
    *  Dopasowanie na aparat NARYSOWANEGO stosu po `deviceRef`. */
   readonly deviceRef?: string;
+  /** Rodzaj przekładnika adnotacji z tabliczki aparatu: `'CT'` — prądowy (`rdzenie`), `'VT'` —
+   *  napięciowy (`uzwojenia`), `'CORE_BALANCE_CT'` — Ferrantiego (`przekladnia`). Rozstrzyga,
+   *  na jakim symbolu stosu kotwiczy adnotacja (`resolveCtRatingAnnotations`) i przyrostek refu
+   *  etykiety (`przyrostekTabliczkiPrzekladnika`). Brak — adnotacja z pomiaru CT. */
+  readonly rodzajPrzekladnika?: RodzajPrzekladnikaTabliczki;
   /** `Measurement.name`; `null` dla adnotacji z tabliczki aparatu — tożsamość niesie sam
    *  narysowany aparat (podpis aparatu pola), a tekst adnotacji to tabliczka. */
   readonly identifier: string | null;
@@ -144,6 +152,11 @@ export interface CtRatingAnnotationView {
    *  z FS rdzenia pomiarowego, np. „5P20", „0,2S FS5 / 0,2 FS5 / 5P20"); `undefined` dla
    *  adnotacji z pomiaru. */
   readonly klasy?: string;
+  /** Wybrany zaczep pierwotny [A] przekładnika wieloprzekładniowego z rekordu aparatu
+   *  (`BayPrimaryDevice.zaczep_pierwotny_a`, uwaga właściciela 2026-10-30: „przekładnik 200–400 —
+   *  jednoznacznie wyróżniony wybrany zaczep"); `undefined` — przekładnik o jednej przekładni
+   *  albo adnotacja z pomiaru (pomiar niesie przekładnię wybraną w `ratioText`). */
+  readonly zaczepA?: number;
   /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
    *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
    *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,

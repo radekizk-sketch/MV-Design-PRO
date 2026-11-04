@@ -22,6 +22,7 @@ from network_model.catalog.obwody_wtorne_pola import (
 from network_model.catalog.przekladniki import (
     RdzenPrzekladnikaPradowego,
     UzwojeniePrzekladnikaNapieciowego,
+    zaczepy_przekladnika,
 )
 from network_model.catalog.rodzaje_aparatury import (
     PORTY_APARATU_POLA,
@@ -30,6 +31,7 @@ from network_model.catalog.rodzaje_aparatury import (
     STAN_UZIEMIONY,
     WykonanieAparatu,
 )
+from network_model.catalog.wartosci_robocze import ZrodloZaczepu
 from network_model.core.bateria_kondensatorow import (
     UkladPolaczenBaterii,
     sprzecznosc_parametrow_baterii,
@@ -1676,6 +1678,42 @@ class BayPrimaryDevice(BaseModel):
     # nieokreślone (rekord sprzed atrybutu albo pole bez szablonu) — rysunek bez znacznika
     # członu wysuwnego, ocena bez funkcji odłączenia wysunięciem; poza odciskiem.
     wykonanie: WykonanieAparatu | None = None
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (uwaga właściciela 2026-10-30: „przekładnik 200–400 —
+    # jednoznacznie wyróżniony wybrany zaczep"): WYBRANY ZACZEP PIERWOTNY [A] przekładnika
+    # wieloprzekładniowego, WYŁĄCZNIE `kind == "CT"`, wartość ze zbioru zaczepów wspólnych
+    # rdzeni (`przekladniki.zaczepy_przekladnika`, np. 200 albo 400 dla „200-400/5").
+    # `zrodlo_zaczepu` — PROJEKTANT (wybór w inspektorze pola, `set_bay_equipment`) albo
+    # WARTOSC_ROBOCZA (propozycja rejestru `wartosci_robocze.rozstrzygnij_zaczep_przekladnika`,
+    # zasada nr 4 — dana przyjęta `ESTIMATED` w `dane_przyjete_wyposazenia`). Pisarze rekordu
+    # (szablon pola, wyposażenie z katalogu) zapisują oba pola razem dla każdego przekładnika
+    # wieloprzekładniowego; `None` = przekładnik o jednej przekładni albo rekord sprzed
+    # atrybutu — poza odciskiem.
+    zaczep_pierwotny_a: float | None = Field(default=None, gt=0)
+    zrodlo_zaczepu: ZrodloZaczepu | None = None
+
+    @model_validator(mode="after")
+    def _zaczep_przekladnika(self) -> BayPrimaryDevice:
+        """Zaczep i jego źródło razem, tylko przekładnikowi prądowemu wieloprzekładniowemu
+        i tylko ze zbioru zaczepów tabliczki (ten sam zbiór co operacja i rejestr)."""
+        if (self.zaczep_pierwotny_a is None) != (self.zrodlo_zaczepu is None):
+            raise ValueError(
+                f"aparat {self.device_ref!r}: zaczep przekładnika zapisuje się razem z jego "
+                "źródłem (wybór projektanta albo wartość robocza)"
+            )
+        if self.zaczep_pierwotny_a is None:
+            return self
+        zaczepy = zaczepy_przekladnika(r.przekladnia for r in self.rdzenie)
+        if self.kind != "CT" or len(zaczepy) < 2:
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): zaczep pierwotny ma wyłącznie "
+                "przekładnik prądowy wieloprzekładniowy (np. 200-400/5 A)"
+            )
+        if self.zaczep_pierwotny_a not in zaczepy:
+            raise ValueError(
+                f"aparat {self.device_ref!r}: zaczep {self.zaczep_pierwotny_a:g} A spoza "
+                f"zaczepów tabliczki ({', '.join(f'{z:g}' for z in zaczepy)} A)"
+            )
+        return self
 
     @model_validator(mode="after")
     def _powiazania_obwodow_wtornych(self) -> BayPrimaryDevice:

@@ -42,6 +42,8 @@ const KATALOG = resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'ux04-pole-l
 const WIERSZE: ReadonlyArray<readonly [string, SymbolId]> = [
   ['wyłącznik', 'qetBreaker'],
   ['wyłącznik z napędem M', 'qetBreakerZNapedem'],
+  ['wyłącznik wysuwny', 'qetBreakerWysuwny'],
+  ['wyłącznik wysuwny z napędem M', 'qetBreakerWysuwnyZNapedem'],
   ['odłącznik', 'qetDisconnector'],
   ['rozłącznik', 'qetLoadBreakSwitch'],
   ['rozłącznik z bezpiecznikami', 'qetFuseSwitch'],
@@ -68,7 +70,7 @@ const MOTYWY = [
   ['jasny', LIGHT_TECHNICAL_SLD_PALETTE],
 ] as const;
 
-const OPIS_W = 190;
+const OPIS_W = 220;
 /** Najmniejszy krok kolumny [px] — nagłówki stanów nie nachodzą na siebie w bloku LOD1. */
 const KOLUMNA_MIN = 84;
 const NAGLOWEK_H = 22;

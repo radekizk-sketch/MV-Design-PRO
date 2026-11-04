@@ -64,6 +64,7 @@ from network_model.catalog.obwody_wtorne_pola import (
     ObwodyWtornePola,
     WejscieFunkcjiEaz,
 )
+from network_model.catalog.wartosci_robocze import liczba_pl, zaczep_rekordu_aparatu
 from network_model.pochodne.jednostki import kw_na_mw, mw_na_kw
 from werdykt.etykiety import etykieta
 from werdykt.kontrakt import Etykieta, StatusWerdyktu, WyjasnienieWerdyktu
@@ -604,7 +605,16 @@ def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str,
     t = tabliczki[wejscie.numer - 1]
     moc_va = _liczba(t.get("moc_va"))
     moc = "moc nieopisana" if moc_va is None else f"{moc_va:g} VA".replace(".", ",")
-    return f"{poczatek}: {t.get('przekladnia')}, {moc}, klasa {t.get('klasa')}"
+    # Przekładnik wieloprzekładniowy: przekładnia, z którą funkcja pracuje = wybrany zaczep
+    # (`wartosci_robocze.zaczep_rekordu_aparatu` — ta sama reguła co dane przyjęte wyposażenia).
+    zaczep = zaczep_rekordu_aparatu(aparat) if oczekiwany == "CT" else None
+    opis_zaczepu = (
+        ""
+        if zaczep is None
+        else f", zaczep {liczba_pl(zaczep.wartosc)} A"
+        + (" (wartość robocza)" if zaczep.robocza else "")
+    )
+    return f"{poczatek}: {t.get('przekladnia')}{opis_zaczepu}, {moc}, klasa {t.get('klasa')}"
 
 
 def _obwody_funkcji(

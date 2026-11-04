@@ -1409,6 +1409,9 @@ export type KlasaPolaLiniowego = 'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY
 
 /** Rodzaj napędu łącznika pola — lustro backendu `obwody_wtorne_pola.RodzajNapedu` (parytet
  *  przypina `ui/sld/v3/compose/__tests__/symbolNapeduLacznika.test.ts`). */
+/** Pochodzenie wybranego zaczepu przekładnika (lustro `wartosci_robocze.ZRODLA_ZACZEPU`). */
+export type ZrodloZaczepu = 'PROJEKTANT' | 'WARTOSC_ROBOCZA';
+
 /** Wykonanie aparatu — lustro `rodzaje_aparatury.WykonanieAparatu` (backend). */
 export type WykonanieAparatu = 'STALE' | 'WYSUWNE';
 
@@ -1470,6 +1473,13 @@ export interface BayPrimaryDevice {
    *  Domyślnie z szablonu pola, edytowalne w inspektorze; rysunek SLD: znacznik „○” członu
    *  wysuwnego obok „×” wyłącznika. `null`/brak = wykonanie nieokreślone. */
   wykonanie?: WykonanieAparatu | null;
+  /** Wybrany zaczep pierwotny [A] przekładnika prądowego wieloprzekładniowego kind='CT' (np. 200
+   *  albo 400 dla „200-400/5") — lustro `BayPrimaryDevice.zaczep_pierwotny_a`; razem
+   *  z `zrodlo_zaczepu`. `null`/brak = przekładnik o jednej przekładni (nic do wyboru). */
+  zaczep_pierwotny_a?: number | null;
+  /** Pochodzenie zaczepu: wybór projektanta w inspektorze pola albo wartość robocza rejestru
+   *  (zaczep najwyższy, zasada nr 4 — dana przyjęta `ESTIMATED`). */
+  zrodlo_zaczepu?: ZrodloZaczepu | null;
   /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
    *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
    *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */

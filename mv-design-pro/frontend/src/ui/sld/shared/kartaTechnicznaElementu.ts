@@ -56,6 +56,7 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
+import { czyFunkcjaNaSchemacie, funkcjaEaz, podzialFunkcjiNaSchemacie, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
 import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
@@ -114,9 +115,23 @@ export interface KolumnaTabeli {
   readonly etykieta: string;
 }
 
+/** Cel akcji wiersza tabeli karty — wyłącznie istniejące drogi aplikacji: ekran przestrzeni
+ *  roboczej (np. E-27 „Zabezpieczenia i automatyka" z edytorem nastaw) albo formularz operacji
+ *  domenowej z kontekstem (np. `add_relay` dla pola bez urządzenia zabezpieczeniowego). */
+export type CelAkcjiKarty =
+  | { readonly rodzaj: 'ekran'; readonly kodEkranu: 'E-27' }
+  | { readonly rodzaj: 'operacja'; readonly operacja: 'add_relay'; readonly kontekst: Readonly<Record<string, string>> };
+
+export interface AkcjaWierszaKarty {
+  readonly etykietaPl: string;
+  readonly cel: CelAkcjiKarty;
+}
+
 export interface WierszTabeli {
   readonly klucz: string;
   readonly komorki: Readonly<Record<string, string | null>>;
+  /** Przejście z wiersza (np. do nastaw funkcji zabezpieczenia). */
+  readonly akcja?: AkcjaWierszaKarty;
 }
 
 export interface TabelaKarty {
@@ -211,7 +226,7 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'szyna',
     'tabela:aparaty',
     'zabezpieczenie',
-    'funkcje_zabezpieczen',
+    'tabela:funkcje_eaz',
     'przekladniki',
     'przylaczenie',
     'stan_obiektu',
@@ -655,12 +670,19 @@ function stanObiektuAparatu(ix: IndeksModelu, aparat: AparatPola): string | null
   return null;
 }
 
-function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
+/** Urządzenia zabezpieczeniowe pola — przypisania z wyłącznikiem pola albo wskazane
+ *  `Bay.protection_ref`. JEDNO źródło dla wiersza „Zabezpieczenie" i celu akcji wierszy
+ *  funkcji (nastawy istniejącego urządzenia albo dodanie urządzenia). */
+function przypisaniaZabezpieczenPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): ProtectionAssignment[] {
   const refy = new Set(aparaty.map((a) => a.ref));
   for (const a of aparaty) if (a.galaz) refy.add(a.galaz.ref_id);
-  const przypisane = (ix.model.protection_assignments ?? []).filter(
+  return (ix.model.protection_assignments ?? []).filter(
     (pa) => refy.has(pa.breaker_ref) || (bay.protection_ref && pa.ref_id === bay.protection_ref),
   );
+}
+
+function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
+  const przypisane = przypisaniaZabezpieczenPola(ix, bay, aparaty);
   if (przypisane.length > 0) {
     return przypisane
       .map((pa) => `${publicTechnicalLabel(pa.name, 'Zabezpieczenie')} (${RODZAJ_ZABEZPIECZENIA_PL[pa.device_type] ?? pa.device_type})`)
@@ -950,6 +972,70 @@ function opisGeneratora(g: Generator): string {
   return `${publicTechnicalLabel(g.name, 'Źródło')} · ${formatGeneratorTypeLabelPl(g.gen_type ?? null)} · ${zapisLiczby(g.p_mw, 'MW') ?? BRAK_DANYCH_PL}`;
 }
 
+/**
+ * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
+ * KAŻDĄ funkcję `Bay.protection_codes` — kod (numer IEEE C37.2 albo skrót krajowy), zapis
+ * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`),
+ * miejsce na schemacie (blok przekaźnika niesie ≤ 4 kody zabezpieczeń, reszta to „+N" — ten sam
+ * podział `podzialFunkcjiNaSchemacie`) i przejście do nastaw: pole z urządzeniem
+ * zabezpieczeniowym → ekran E-27 (edytor nastaw), pole bez urządzenia → kreator przekaźnika
+ * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
+ * „brak w słowniku funkcji", nie zmyśloną nazwę.
+ */
+function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): SekcjaKarty {
+  const kody = bay.protection_codes ?? [];
+  const { naSchemacie } = podzialFunkcjiNaSchemacie(kody);
+  const rysowane = new Set(naSchemacie);
+  const maUrzadzenie = przypisaniaZabezpieczenPola(ix, bay, aparaty).length > 0;
+  const akcja: AkcjaWierszaKarty = maUrzadzenie
+    ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
+    : {
+        etykietaPl: 'Dodaj urządzenie (nastawy)',
+        cel: { rodzaj: 'operacja', operacja: 'add_relay', kontekst: { bay_ref: bay.ref_id } },
+      };
+  return {
+    id: 'zabezpieczenia',
+    tytul: 'Zabezpieczenia i automatyka',
+    wiersze: [
+      wiersz('zabezpieczenie', 'Zabezpieczenie', zabezpieczeniaPola(ix, bay, aparaty)),
+      lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
+    ],
+    tabele: [
+      {
+        klucz: 'funkcje_eaz',
+        podpis: 'Funkcje zabezpieczeń i automatyki pola',
+        kolumny: [
+          { klucz: 'kod', etykieta: 'Kod (ANSI)' },
+          { klucz: 'oznaczenie', etykieta: 'Oznaczenie' },
+          { klucz: 'funkcja', etykieta: 'Funkcja' },
+          { klucz: 'rodzaj', etykieta: 'Rodzaj' },
+          { klucz: 'schemat', etykieta: 'Na schemacie' },
+        ],
+        wiersze: kody.map((kod) => {
+          const f = funkcjaEaz(kod);
+          return {
+            klucz: kod,
+            komorki: {
+              kod: f?.ansi ? `${kod} (ANSI ${f.ansi})` : kod,
+              oznaczenie: f?.oznaczeniePl ?? null,
+              funkcja: f?.nazwaPl ?? 'brak w słowniku funkcji',
+              rodzaj: f ? RODZAJ_FUNKCJI_EAZ_PL[f.rodzaj] : null,
+              schemat: rysowane.has(kod)
+                ? 'w bloku przekaźnika'
+                : czyFunkcjaNaSchemacie(kod)
+                  ? 'poza schematem (ponad 4 kody, „+N")'
+                  : 'poza schematem (automatyka)',
+            },
+            akcja,
+          };
+        }),
+        pustaPl: 'Pole nie ma funkcji zabezpieczeń ani automatyki w modelu.',
+        zrodloPl: 'Funkcje: model pola (Bay.protection_codes); nazwy: słownik funkcji EAZ.',
+      },
+    ],
+  };
+}
+
 function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTechniczna {
   const aparaty = aparatyPola(ix, bay);
   const zacisk = zaciskPola(bay);
@@ -1020,19 +1106,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         },
       ],
     },
-    {
-      id: 'zabezpieczenia',
-      tytul: 'Zabezpieczenie i pomiary',
-      wiersze: [
-        wiersz('zabezpieczenie', 'Zabezpieczenie', zabezpieczeniaPola(ix, bay, aparaty)),
-        wiersz(
-          'funkcje_zabezpieczen',
-          'Funkcje zabezpieczeniowe',
-          (bay.protection_codes ?? []).length > 0 ? (bay.protection_codes ?? []).join(', ') : null,
-        ),
-        lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
-      ],
-    },
+    sekcjaZabezpieczenIAutomatyki(ix, bay, aparaty),
     {
       id: 'przylaczenie',
       tytul: 'Przyłączenie',

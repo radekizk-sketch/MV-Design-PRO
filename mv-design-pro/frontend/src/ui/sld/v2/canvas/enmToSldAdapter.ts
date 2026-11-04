@@ -36,7 +36,13 @@ import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { bateriaWidokuPola } from '../model/bateriaPola';
-import { przeznaczeniePrzekladnika, tekstKlasRdzeni, tekstPrzekladniRdzeni } from '../model/tabliczkaPrzekladnika';
+import {
+  przeznaczeniePrzekladnika,
+  tekstKlasRdzeni,
+  tekstKlasUzwojen,
+  tekstPrzekladniRdzeni,
+  tekstPrzekladniUzwojen,
+} from '../model/tabliczkaPrzekladnika';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
 import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
 import type { GpzViewModel } from '../model/widokSld';
@@ -2377,16 +2383,44 @@ export function resolveBayCtRatingAnnotations(
   // który nie wskazuje pomiar CT tego pola (jeden aparat — jedna adnotacja; pomiar ma
   // pierwszeństwo, bo niesie tożsamość pomiaru). Brak rdzeni w rekordzie = brak tabliczki.
   const pomiaryPola = new Set(measurements.map((m) => m.ref_id));
-  const zTabliczek = (bay.primary_devices ?? [])
-    .filter((d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0 && !(d.linked_ref && pomiaryPola.has(d.linked_ref)))
-    .map((d): CtRatingAnnotationView => ({
-      measurementRef: null,
-      deviceRef: d.device_ref,
-      identifier: null,
-      ratioText: tekstPrzekladniRdzeni(d.rdzenie)!,
-      klasy: tekstKlasRdzeni(d.rdzenie)!,
-      purpose: przeznaczeniePrzekladnika(d.rdzenie),
-    }));
+  // Ta sama reguła dla KAŻDEGO przekładnika pola z tabliczką w rekordzie aparatu (klasa „opis
+  // przekładnika przy symbolu", karta UX-04): prądowy — rdzenie, napięciowy — uzwojenia
+  // (przekładnia i klasy, PN-EN 61869-3), Ferrantiego — przekładnia. Kolejność aparatów z modelu.
+  const zTabliczek = (bay.primary_devices ?? []).flatMap((d): CtRatingAnnotationView[] => {
+    if (d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0 && !(d.linked_ref && pomiaryPola.has(d.linked_ref))) {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'CT',
+        identifier: null,
+        ratioText: tekstPrzekladniRdzeni(d.rdzenie)!,
+        klasy: tekstKlasRdzeni(d.rdzenie)!,
+        ...(d.zaczep_pierwotny_a != null ? { zaczepA: d.zaczep_pierwotny_a } : {}),
+        purpose: przeznaczeniePrzekladnika(d.rdzenie),
+      }];
+    }
+    if (d.kind === 'VT' && (d.uzwojenia?.length ?? 0) > 0) {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'VT',
+        identifier: null,
+        ratioText: tekstPrzekladniUzwojen(d.uzwojenia)!,
+        klasy: tekstKlasUzwojen(d.uzwojenia)!,
+        purpose: przeznaczeniePrzekladnika(d.uzwojenia),
+      }];
+    }
+    if (d.kind === 'CORE_BALANCE_CT' && d.przekladnia != null && d.przekladnia.trim() !== '') {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'CORE_BALANCE_CT',
+        identifier: null,
+        ratioText: d.przekladnia.trim(),
+      }];
+    }
+    return [];
+  });
   const adnotacje = [...zPomiarow, ...zTabliczek];
   return adnotacje.length > 0 ? adnotacje : undefined;
 }

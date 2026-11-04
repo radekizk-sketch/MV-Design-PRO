@@ -1622,7 +1622,8 @@
             "placement",
             "przekladnia",
             "stan_obiektu",
-            "wykonanie"
+            "wykonanie",
+            "zaczep_pierwotny_a"
           ],
           "zagniezdzone": {}
         }

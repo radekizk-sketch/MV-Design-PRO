@@ -66,7 +66,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import type { RdzenPrzekladnikaPradowego } from '../src/types/przekladniki';
-import { tekstKlasRdzeni, tekstPrzekladniRdzeni } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
+import { tekstKlasRdzeni, tekstPrzekladniRdzeni, tekstZaczepu } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
 import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../src/ui/sld/v3/compose/zaciskiPrzekladnika';
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
@@ -144,6 +144,8 @@ type Aparat = {
   uzwojenia?: unknown[] | null;
   ports?: Array<{ port_id: string; wezel?: string | null }> | null;
   rdzenie?: RdzenPrzekladnikaPradowego[] | null;
+  zaczep_pierwotny_a?: number | null;
+  zrodlo_zaczepu?: string | null;
 };
 type Pole = {
   ref_id: string;
@@ -622,31 +624,48 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
 }
 
 /** Zaciski strony pierwotnej i tabliczka przekładnika prądowego T1 na kanwie (decyzja architekta
- *  §11.7 pkt 6; PN-EN 61869-2): P1 po stronie szyny (nad pierścieniem), P2 po stronie odpływu
- *  (pod pierścieniem), oba na lewo od symbolu; tabliczka = przekładnia i klasy rdzeni z rekordu
- *  modelu (`BayPrimaryDevice.rdzenie`) w zapisie rysunku ENEA („200-400/5 A · 5P20") — wyrocznia
- *  z czystego formatowania tabliczki (`tabliczkaPrzekladnika.ts`), tekst z DOM. */
+ *  §11.7 pkt 6; PN-EN 61869-2): P1 po stronie szyny (nad środkiem pierścienia), P2 po stronie
+ *  odpływu (pod środkiem), oba po stronie PRZECIWNEJ do podpisu aparatu T1 (korekta po oględzinach
+ *  zrzutów 2026-10-30, §11.12 — wyrocznia jednostkowa `scene/__tests__/oznaczeniaZaciskow.ts`);
+ *  tabliczka = przekładnia, wybrany zaczep przekładnika wieloprzekładniowego i klasy rdzeni
+ *  z rekordu modelu (`BayPrimaryDevice.rdzenie`, `zaczep_pierwotny_a`) w zapisie rysunku ENEA
+ *  („200-400/5 A · zaczep 400 A · 5P20") — wyrocznia z czystego formatowania tabliczki
+ *  (`tabliczkaPrzekladnika.ts`), tekst z DOM. */
 async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): Promise<void> {
   const t1 = aparat(pole, 'T1');
   expect(t1.rdzenie?.length ?? 0, `${kadr}: T1 z rdzeniami w modelu`).toBeGreaterThan(0);
   const ramkaT1 = (await page.locator(`${KANWA} g[data-device-ref="${t1.device_ref}"]`).first().boundingBox())!;
   const srodekT1 = ramkaT1.y + ramkaT1.height / 2;
   const [odSzyny, odOdplywu] = ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne;
+  // Strona podpisu aparatu T1 (`data-label-strona` grupy podpisu) — oznaczenia zacisków po
+  // stronie przeciwnej.
+  const stronaPodpisu = await page
+    .locator(`${KANWA} g[data-owner-ref^="${pole.ref_id}#etykieta-aparatu-"][data-label-strona]`)
+    .filter({ has: page.locator('text', { hasText: /^T1$/ }) })
+    .first()
+    .getAttribute('data-label-strona');
+  expect(stronaPodpisu, `${kadr}: podpis T1 z deklarowaną stroną`).toMatch(/^(left|right)$/);
   const zaciski: Record<string, { x: number; y: number; width: number; height: number }> = {};
   for (const oznaczenie of [odSzyny, odOdplywu]) {
     const tekst = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${t1.device_ref}-${oznaczenie}"] > text`);
     await expect(tekst, `${kadr}: zacisk ${oznaczenie} przekładnika T1`).toHaveCount(1);
     await expect(tekst).toHaveText(oznaczenie);
     zaciski[oznaczenie] = (await tekst.boundingBox())!;
-    // Na lewo od symbolu (tusz nie wchodzi na kafel aparatu).
-    expect(zaciski[oznaczenie].x + zaciski[oznaczenie].width, `${kadr}: ${oznaczenie} na lewo od T1`).toBeLessThanOrEqual(ramkaT1.x + TOLERANCJA_EKRANU_PX);
+    // Po stronie przeciwnej do podpisu T1 (tusz nie wchodzi na kafel aparatu).
+    if (stronaPodpisu === 'left') {
+      expect(zaciski[oznaczenie].x, `${kadr}: ${oznaczenie} na prawo od T1`).toBeGreaterThanOrEqual(ramkaT1.x + ramkaT1.width - TOLERANCJA_EKRANU_PX);
+    } else {
+      expect(zaciski[oznaczenie].x + zaciski[oznaczenie].width, `${kadr}: ${oznaczenie} na lewo od T1`).toBeLessThanOrEqual(ramkaT1.x + TOLERANCJA_EKRANU_PX);
+    }
   }
   const srodek = (r: { y: number; height: number }) => r.y + r.height / 2;
   expect(srodek(zaciski[odSzyny]), `${kadr}: ${odSzyny} nad pierścieniem T1 (strona szyny)`).toBeLessThan(srodekT1);
   expect(srodek(zaciski[odOdplywu]), `${kadr}: ${odOdplywu} pod pierścieniem T1 (strona odpływu)`).toBeGreaterThan(srodekT1);
   const tabliczka = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}#ct-rating-${t1.device_ref}"] > text`);
   await expect(tabliczka, `${kadr}: tabliczka T1`).toHaveCount(1);
-  await expect(tabliczka).toHaveText(`${tekstPrzekladniRdzeni(t1.rdzenie)} · ${tekstKlasRdzeni(t1.rdzenie)}`);
+  const zaczep = tekstZaczepu(t1.zaczep_pierwotny_a);
+  expect(zaczep, `${kadr}: T1 200-400/5 A z zaczepem w modelu`).not.toBeNull();
+  await expect(tabliczka).toHaveText(`${tekstPrzekladniRdzeni(t1.rdzenie)} · ${zaczep} · ${tekstKlasRdzeni(t1.rdzenie)}`);
   // Decyzja architekta §11.7 pkt 7: tabliczka (przewaga cyfr) — szerokość tuszu w przeglądarce
   // = tabela posuwów kroju × pismo × skala kamery (macierz ekranowa tekstu), w granicy 1 px.
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';

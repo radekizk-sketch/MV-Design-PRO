@@ -1,0 +1,264 @@
+/**
+ * Opisy przekładników bezpośrednio przy symbolach (karta UX-04/POLE-LINIOWE-WZORZEC: „opisy
+ * przekładników (przekładnia, klasa) bezpośrednio przy symbolach, z testami kolizji
+ * bounding-box").
+ *
+ * Klasa: KAŻDY przekładnik pola z tabliczką w rekordzie aparatu — prądowy (`rdzenie`), napięciowy
+ * (`uzwojenia`), Ferrantiego (`przekladnia`) — ma na scenie dokładnie jedną tabliczkę, przy SWOIM
+ * symbolu, bez kolizji z rysunkiem i innymi napisami.
+ *
+ * Wyrocznia niezależna od kompozytora: treść z SUROWYCH danych fikstury (zapis tabliczki wg
+ * rysunków Z.10/Z.11.1), kolizje z obrysów symboli sceny i prostokątów etykiet (scena oraz plan
+ * etykiet kanwy przy skalach roboczych).
+ *
+ * Iloczyn cech: fikstura {Z.10 w sekcji 1, Z.10 w sekcji 2, Z.11.1 i Z.11, Z.11 z przekładnikiem
+ * prądowym bez portów (aparat poza torem — model zdegenerowany)} × rodzaj przekładnika {prądowy,
+ * napięciowy, Ferrantiego} × skala planu {1,0; 1,5; 2,5} (LOD2 — warstwa adnotacji) × przeszkoda
+ * {symbol, etykieta, przewód i linie przekaźnika (pomiarowe, wyłączania), ramka bloku
+ * przekaźnika}.
+ */
+import { describe, expect, it } from 'vitest';
+
+import type { BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
+import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
+import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
+import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
+import { planSceneLabels } from '../../canvas/labelLegibility';
+import { GRID, type V3Rect } from '../../core/grid';
+import { obrysSymbolu, rodzajSymbolu } from '../../symbols/defs';
+import { sheetSizeFor } from '../../sheet/outline';
+import { buildSceneV3, labelWireCollisions, sceneObstacleRects, type SceneV3 } from '../buildScene';
+
+const snapshot = (fx: unknown): EnergyNetworkModel => (fx as { snapshot: EnergyNetworkModel }).snapshot;
+/** Z.11 z przekładnikiem prądowym bez portów: kompozytor stawia go poza torem, a przekładnik
+ *  napięciowy odgałęzienia obok niego — pas wysokości przy symbolu jest zajęty (wariant, w którym
+ *  tabliczka znikała z rysunku albo wchodziła na przekaźnik). */
+function bezPortowCt(enm: EnergyNetworkModel): EnergyNetworkModel {
+  const kopia = structuredClone(enm);
+  for (const b of kopia.bays ?? []) {
+    b.primary_devices = (b.primary_devices ?? []).map((d) => (d.kind === 'CT' ? { ...d, ports: [] } : d));
+  }
+  return kopia;
+}
+const NAZWA_ZDEGENEROWANEJ = 'Z.11, przekładnik prądowy bez portów';
+const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
+  ['Z.10, stałe w sekcji 1', snapshot(fxStaly1)],
+  ['Z.10, stałe w sekcji 2', snapshot(fxStaly2)],
+  ['Z.11.1 i Z.11', snapshot(fxZ11)],
+  [NAZWA_ZDEGENEROWANEJ, bezPortowCt(snapshot(fxZ11))],
+];
+/** Model zdegenerowany: przy symbolu przekładnika nie ma wolnego miejsca (aparaty odgałęzienia
+ *  i ich napisy stoją tuż obok), więc wymaganie „bezpośrednio przy symbolu" nie jest w nim
+ *  osiągalne — sprawdzane jest to, co osiągalne zawsze: tabliczka istnieje, ma treść z rekordu
+ *  i nie koliduje z niczym na rysunku (stan przed poprawką: tabliczka znikała z rysunku albo
+ *  wchodziła na linię pomiarową przy przekaźniku). */
+const TYLKO_KOLIZJE: ReadonlySet<string> = new Set([NAZWA_ZDEGENEROWANEJ]);
+const SKALE = [1.0, 1.5, 2.5] as const;
+
+type Rodzaj = 'prądowy' | 'napięciowy' | 'Ferrantiego';
+interface Wzorzec {
+  readonly przyrostek: string;
+  readonly symbol: string;
+  readonly maTabliczke: (d: BayPrimaryDevice) => boolean;
+  readonly tresc: (d: BayPrimaryDevice) => string;
+}
+
+/** Zapis tabliczki z surowych danych — wg rysunków standardu (Z.10 s.89, Z.11.1 s.91). */
+const WZORCE: Readonly<Record<Rodzaj, Wzorzec>> = {
+  prądowy: {
+    przyrostek: 'ct-rating',
+    symbol: 'currentTransformer',
+    maTabliczke: (d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0,
+    tresc: (d) => {
+      const r = d.rdzenie!;
+      const pierwotna = r[0].przekladnia.split('/')[0];
+      const wspolna = r.every((x) => x.przekladnia.split('/')[0] === pierwotna);
+      const przekladnia = wspolna ? `${pierwotna}/${r.map((x) => x.przekladnia.split('/')[1]).join('/')} A` : `${r.map((x) => x.przekladnia).join(', ')} A`;
+      const klasy = r.map((x) => (x.fs != null ? `${x.klasa} FS${String(x.fs).replace('.', ',')}` : x.klasa)).join(' / ');
+      const zaczep = d.zaczep_pierwotny_a != null ? [`zaczep ${d.zaczep_pierwotny_a} A`] : [];
+      return [przekladnia, ...zaczep, klasy].join(' · ');
+    },
+  },
+  napięciowy: {
+    przyrostek: 'vt-rating',
+    symbol: 'voltageTransformer',
+    maTabliczke: (d) => d.kind === 'VT' && (d.uzwojenia?.length ?? 0) > 0,
+    tresc: (d) => {
+      const u = d.uzwojenia!;
+      const strony = u.map((x) => x.przekladnia.split(' / '));
+      const przekladnia = [strony[0][0], ...strony.map((s) => s[1])].join(' / ');
+      return `${przekladnia} · ${u.map((x) => x.klasa).join(' / ')}`;
+    },
+  },
+  Ferrantiego: {
+    przyrostek: 'cbct-rating',
+    symbol: 'qetCoreBalanceCt',
+    maTabliczke: (d) => d.kind === 'CORE_BALANCE_CT' && !!d.przekladnia,
+    tresc: (d) => d.przekladnia!,
+  },
+};
+const RODZAJE = Object.keys(WZORCE) as Rodzaj[];
+
+const zachodzi = (a: V3Rect, b: V3Rect): boolean =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+function obrysNaScenie(s: SceneV3['symbols'][number]): V3Rect {
+  const o = obrysSymbolu(s.symbolId);
+  return { x: s.x + o.x, y: s.y + o.y, width: o.width, height: o.height };
+}
+
+/** Odstęp dwóch prostokątów w poziomie i w pionie (0, gdy rzuty się nakładają). */
+function odstep(a: V3Rect, b: V3Rect): { readonly dx: number; readonly dy: number } {
+  const dx = Math.max(0, b.x - (a.x + a.width), a.x - (b.x + b.width));
+  const dy = Math.max(0, b.y - (a.y + a.height), a.y - (b.y + b.height));
+  return { dx, dy };
+}
+
+/** Naruszenia klasy „tabliczka przy symbolu" dla jednej sceny i rodzaju (pusta lista = zgodna). */
+function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Rodzaj, przySymbolu = true): string[] {
+  const w = WZORCE[rodzaj];
+  const n: string[] = [];
+  const aparaty = (enm.bays ?? []).flatMap((b) => (b.primary_devices ?? []).filter(w.maTabliczke).map((d) => ({ bay: b, d })));
+  for (const { bay, d } of aparaty) {
+    const ref = `${bay.ref_id}#${w.przyrostek}-${d.device_ref}`;
+    const etykiety = scena.labels.filter((l) => l.ownerRef === ref);
+    if (etykiety.length !== 1) {
+      n.push(`${ref}: ${etykiety.length} tabliczek (oczekiwano 1)`);
+      continue;
+    }
+    const l = etykiety[0];
+    if (l.text !== w.tresc(d)) n.push(`${ref}: treść „${l.text}" ≠ „${w.tresc(d)}"`);
+    const symbol = scena.symbols.find((s) => s.meta?.ownerRef === bay.ref_id && s.meta?.deviceRef === d.device_ref);
+    if (!symbol || rodzajSymbolu(symbol.symbolId) !== w.symbol) {
+      n.push(`${ref}: brak symbolu ${w.symbol} aparatu na scenie`);
+      continue;
+    }
+    // „Bezpośrednio przy symbolu": tabliczka po prawej obrysu symbolu, w pasie jego wysokości
+    // (± oczko), a w korytarzu między symbolem a tabliczką nie stoi żaden INNY aparat ani
+    // napis — dopuszczalne są tylko oznaczenia TEGO aparatu (podpis, zaciski P1/P2).
+    const o = obrysNaScenie(symbol);
+    const { dx, dy } = odstep(l.rect, o);
+    const korytarz: V3Rect = { x: o.x + o.width, y: l.rect.y, width: Math.max(0, l.rect.x - (o.x + o.width)), height: l.rect.height };
+    // Model zdegenerowany (`przySymbolu = false`) — tylko kolizje (niżej).
+    if (przySymbolu && dy > GRID) n.push(`${ref}: tabliczka ${dy} j.św. nad/pod symbolem`);
+    if (przySymbolu && l.rect.x < o.x + o.width) n.push(`${ref}: tabliczka nie stoi po prawej symbolu`);
+    if (przySymbolu && dx > 12 * GRID) n.push(`${ref}: tabliczka ${dx} j.św. od symbolu w poziomie`);
+    if (przySymbolu && korytarz.width > 0) {
+      for (const s of scena.symbols) {
+        if (s !== symbol && zachodzi(korytarz, obrysNaScenie(s))) n.push(`${ref}: między symbolem a tabliczką stoi ${s.symbolId}`);
+      }
+      for (const inna of scena.labels) {
+        if (inna === l || inna.ownerRef.includes(d.device_ref)) continue;
+        if (zachodzi(korytarz, inna.rect)) n.push(`${ref}: między symbolem a tabliczką stoi napis ${inna.ownerRef}`);
+      }
+    }
+    for (const s of scena.symbols) {
+      if (zachodzi(l.rect, obrysNaScenie(s))) n.push(`${ref}: kolizja z symbolem ${s.symbolId} (${s.meta?.ownerRef ?? '—'})`);
+    }
+    for (const inna of scena.labels) {
+      if (inna !== l && zachodzi(l.rect, inna.rect)) n.push(`${ref}: kolizja z etykietą ${inna.ownerRef}`);
+    }
+    // Przewody sceny, w tym linie przekaźnika (pomiarowe, wyłączania) — ta sama sonda co
+    // wyrocznia sceny (`labelWireCollisions`).
+    for (const k of labelWireCollisions(scena)) {
+      if (k.ownerRef === ref) n.push(`${ref}: kolizja z przewodem ${scena.segments[k.segmentIndex].meta?.ownerRef ?? '—'}`);
+    }
+    // Ramka bloku przekaźnika (okrąg, wiersze kodów, odniesienie 3U₀).
+    for (const s of scena.symbols) {
+      const r = s.meta?.ramkaBlokuPrzekaznika;
+      if (r && zachodzi(l.rect, { x: s.x + r.x, y: s.y + r.y, width: r.width, height: r.height })) {
+        n.push(`${ref}: kolizja z ramką bloku przekaźnika ${s.meta?.ownerRef ?? '—'}`);
+      }
+    }
+  }
+  return n;
+}
+
+const SCENY = new Map(FIKSTURY.map(([nazwa, enm]) => [nazwa, buildSceneV3(enm, 2)] as const));
+
+describe('tabliczki przekładników przy symbolach — scena LOD2 (iloczyn fikstura × rodzaj)', () => {
+  for (const [nazwa, enm] of FIKSTURY) {
+    for (const rodzaj of RODZAJE) {
+      it(`${nazwa} × przekładnik ${rodzaj}`, () => {
+        const liczba = (enm.bays ?? []).flatMap((b) => (b.primary_devices ?? []).filter(WZORCE[rodzaj].maTabliczke)).length;
+        expect(liczba, 'fikstura niesie przekładnik tego rodzaju z tabliczką').toBeGreaterThan(0);
+        expect(naruszeniaTabliczek(enm, SCENY.get(nazwa)!, rodzaj, !TYLKO_KOLIZJE.has(nazwa))).toEqual([]);
+      });
+    }
+  }
+});
+
+describe('tabliczki przekładników — plan etykiet kanwy bez kolizji (iloczyn × skala)', () => {
+  for (const [nazwa] of FIKSTURY) {
+    const scena = SCENY.get(nazwa)!;
+    const przeszkody = sceneObstacleRects(scena);
+    const arkusz = sheetSizeFor(scena);
+    const symbole = scena.symbols.map(obrysNaScenie);
+    for (const skala of SKALE) {
+      it(`${nazwa} · skala ${skala}`, () => {
+        const plan = planSceneLabels(scena.labels, przeszkody, skala, arkusz);
+        const tabliczki = plan.drawn.filter((p) => /#(ct|vt|cbct)-rating-/.test(p.label.ownerRef));
+        const n: string[] = [];
+        for (const t of tabliczki) {
+          symbole.forEach((o, i) => {
+            if (zachodzi(t.rect, o)) n.push(`${t.label.ownerRef}: kolizja z symbolem ${scena.symbols[i].symbolId}`);
+          });
+          for (const inna of plan.drawn) {
+            if (inna !== t && zachodzi(t.rect, inna.rect)) n.push(`${t.label.ownerRef}: kolizja z etykietą ${inna.label.ownerRef}`);
+          }
+        }
+        expect(n).toEqual([]);
+      });
+    }
+  }
+});
+
+describe('wyrocznia tabliczek — iniekcje', () => {
+  const [nazwa, enm] = FIKSTURY[2];
+  const scena = SCENY.get(nazwa)!;
+
+  it('tabliczka VT przesunięta na symbol — kolizja wykryta', () => {
+    const vt = scena.labels.find((l) => l.ownerRef.includes('#vt-rating-'))!;
+    const symbol = scena.symbols.find((s) => rodzajSymbolu(s.symbolId) === 'voltageTransformer' && vt.ownerRef.endsWith(s.meta?.deviceRef ?? '∅'))!;
+    const o = obrysNaScenie(symbol);
+    const zepsuta = { ...scena, labels: scena.labels.map((l) => (l === vt ? { ...l, rect: { ...l.rect, x: o.x, y: o.y } } : l)) };
+    expect(naruszeniaTabliczek(enm, zepsuta, 'napięciowy').join('\n')).toContain('kolizja z symbolem');
+  });
+
+  it('tabliczka Ferrantiego odsunięta od symbolu — wykryte', () => {
+    const cb = scena.labels.find((l) => l.ownerRef.includes('#cbct-rating-'))!;
+    const zepsuta = { ...scena, labels: scena.labels.map((l) => (l === cb ? { ...l, rect: { ...l.rect, y: l.rect.y + 10 * GRID } } : l)) };
+    expect(naruszeniaTabliczek(enm, zepsuta, 'Ferrantiego').join('\n')).toMatch(/nad\/pod symbolem/);
+  });
+
+  it('tabliczka CT na linii pomiarowej przekaźnika — kolizja z przewodem wykryta', () => {
+    const ct = scena.labels.find((l) => l.ownerRef.includes('#ct-rating-'))!;
+    const pole = ct.ownerRef.split('#')[0];
+    const linia = scena.segments.find((g) => (g.meta?.ownerRef ?? '').startsWith(`${pole}#measurement-link`))!;
+    // Pierwszy odcinek poziomy linii (od zacisku wtórnego ku przekaźnikowi).
+    const i = linia.points.findIndex((p, k) => k > 0 && p.y === linia.points[k - 1].y && p.x !== linia.points[k - 1].x);
+    const a = linia.points[i - 1];
+    const zepsuta = {
+      ...scena,
+      labels: scena.labels.map((l) => (l === ct ? { ...l, rect: { ...l.rect, x: Math.min(a.x, linia.points[i].x) + 1, y: a.y - 4 } } : l)),
+    };
+    expect(naruszeniaTabliczek(enm, zepsuta, 'prądowy').join('\n')).toContain('kolizja z przewodem');
+  });
+
+  it('tabliczka CT w ramce bloku przekaźnika — wykryte', () => {
+    const ct = scena.labels.find((l) => l.ownerRef.includes('#ct-rating-'))!;
+    const pole = ct.ownerRef.split('#')[0];
+    const przekaznik = scena.symbols.find((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === pole)!;
+    const r = przekaznik.meta!.ramkaBlokuPrzekaznika!;
+    const zepsuta = {
+      ...scena,
+      labels: scena.labels.map((l) => (l === ct ? { ...l, rect: { ...l.rect, x: przekaznik.x + r.x + 1, y: przekaznik.y + r.y + 1 } } : l)),
+    };
+    expect(naruszeniaTabliczek(enm, zepsuta, 'prądowy').join('\n')).toContain('ramką bloku przekaźnika');
+  });
+
+  it('brak tabliczki VT (stan przed kartą) — wykryty', () => {
+    const bez = { ...scena, labels: scena.labels.filter((l) => !l.ownerRef.includes('#vt-rating-')) };
+    expect(naruszeniaTabliczek(enm, bez, 'napięciowy').join('\n')).toContain('0 tabliczek');
+  });
+});

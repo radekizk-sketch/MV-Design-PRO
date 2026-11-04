@@ -46,8 +46,15 @@ import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import { kodyPozaOkregiemPrzekaznika, kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
-import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
+import type {
+  CtRatingAnnotationView,
+  MiniBlockBayDescriptor,
+  RodzajPrzekladnikaTabliczki,
+  VtMountingAnnotationView,
+} from '../../v2/model/widokPolStacji';
+import { tekstZaczepu } from '../../v2/model/tabliczkaPrzekladnika';
 import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
+import { podzialFunkcjiNaSchemacie } from '../../../shared/funkcjeEaz';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
@@ -83,6 +90,32 @@ export function fullCodesListText(codes: readonly string[]): string | null {
   return wiersze.length > 0 ? wiersze.join(' · ') : null;
 }
 
+/** Znacznik funkcji pola poza kanwą w bloku przekaźnika — „+N" (N > 0). */
+export function znacznikFunkcjiPozaSchematem(liczba: number): string {
+  return `+${liczba}`;
+}
+
+/**
+ * Kody RYSOWANE w bloku przekaźnika (karta UX-04/POLE-LINIOWE-WZORZEC): co najwyżej
+ * `MAKS_KODOW_ZABEZPIECZEN_NA_SCHEMACIE` kodów funkcji rodzaju ZABEZPIECZENIE w kolejności danych
+ * i — gdy pole ma więcej funkcji — znacznik „+N" wszystkich pozostałych (nadmiar zabezpieczeń,
+ * automatyka, blokady, zabezpieczenia technologiczne); pełna lista stoi w karcie pola
+ * inspektora („Zabezpieczenia i automatyka"). Podział z jednego źródła
+ * (`ui/shared/funkcjeEaz.ts::podzialFunkcjiNaSchemacie`). JEDYNE wejście rysunku i rezerwacji
+ * kolumny: okrąg (`kodyWOkreguBlokuPrzekaznika`), wiersze (`fullCodesListLines`,
+ * `wierszeKodowPozaOkregiem`) i szerokość (`szerokoscWierszyAdnotacjiPrzekaznika`) czytają tę
+ * listę, a logika pola (cel linii wyłączania, źródła pomiaru, braki topologii) — pełne `codes`.
+ */
+export function kodyBlokuPrzekaznika(codes: readonly string[]): readonly string[] {
+  const { naSchemacie, pozaSchematem } = podzialFunkcjiNaSchemacie(codes);
+  return pozaSchematem.length > 0 ? [...naSchemacie, znacznikFunkcjiPozaSchematem(pozaSchematem.length)] : naSchemacie;
+}
+
+/** Kody w okręgu przekaźnika — prefiks `kodyBlokuPrzekaznika` mieszczący się pismem 8 px. */
+export function kodyWOkreguBlokuPrzekaznika(codes: readonly string[]): readonly string[] {
+  return kodyWOkreguPrzekaznika(kodyBlokuPrzekaznika(codes));
+}
+
 /** Liczba kodów w jednym wierszu pełnej listy funkcji EAZ. */
 export const KODY_EAZ_W_WIERSZU = 5;
 
@@ -106,8 +139,9 @@ function wierszeKodow(codes: readonly string[]): readonly string[] {
  * (stacja, GPZ).
  */
 export function fullCodesListLines(codes: readonly string[]): readonly string[] {
-  if (kodyWOkreguPrzekaznika(codes).length === codes.length) return [];
-  return wierszeKodow(codes);
+  const blok = kodyBlokuPrzekaznika(codes);
+  if (kodyWOkreguPrzekaznika(blok).length === blok.length) return [];
+  return wierszeKodow(blok);
 }
 
 /** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
@@ -145,7 +179,7 @@ export function odniesieniaPrzekaznikaPola(
  * (`fullCodesListLines`).
  */
 export function wierszeKodowPozaOkregiem(codes: readonly string[]): readonly string[] {
-  return wierszeKodow(kodyPozaOkregiemPrzekaznika(codes));
+  return wierszeKodow(kodyPozaOkregiemPrzekaznika(kodyBlokuPrzekaznika(codes)));
 }
 
 /** Wiersze tekstu w bloku przekaźnika układu powiązań: kody poza okręgiem i po nich
@@ -226,12 +260,15 @@ export function ctCoresLabelText(cores: number | null | undefined): string | nul
  * niżej) — zero rozjazdu tekst↔szerokość.
  */
 export function ctRatingLabelText(
-  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores' | 'klasy'>,
+  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores' | 'klasy' | 'zaczepA'>,
 ): string {
   // Karta UX-04/POLE-LINIOWE-WZORZEC (§11.7 pkt 6): adnotacja z tabliczki aparatu nie ma
   // identyfikatora (tożsamość niesie narysowany aparat) — tekst to przekładnia i klasy rdzeni
-  // („200-400/5 A · 5P20", zapis rysunku ENEA Z.10).
+  // („200-400/5 A · 5P20", zapis rysunku ENEA Z.10). Przekładnik wieloprzekładniowy: wybrany
+  // zaczep tuż po przekładni („200-400/5 A · zaczep 400 A · 5P20").
   const members = [entry.identifier ? `${entry.identifier} · ${entry.ratioText}` : entry.ratioText];
+  const zaczep = tekstZaczepu(entry.zaczepA);
+  if (zaczep) members.push(zaczep);
   const arrangementLabel = ctArrangementLabelText(entry.arrangement);
   if (arrangementLabel) members.push(arrangementLabel);
   const coresLabel = ctCoresLabelText(entry.cores);
@@ -520,7 +557,25 @@ export interface ResolvedCtRatingAnnotation {
    *  przenoszony na `OwnedLabel.ctPurpose` → `data-ct-purpose`. `undefined`
    *  gdy dana niedostarczona (uczciwy brak). */
   readonly purpose?: 'protection' | 'metering' | 'combined';
+  /** Przyrostek refu etykiety (`#<przyrostek>-<deviceRef>`) — `przyrostekTabliczkiPrzekladnika`. */
+  readonly przyrostek: string;
 }
+
+/** Symbol stosu (rodzaj semantyczny), na którym kotwiczy tabliczka przekładnika danego rodzaju —
+ *  jedno źródło dla rozstrzygnięcia kotwicy i sondy sceny (`ctAnnotationGaps`). */
+export const SYMBOL_TABLICZKI_PRZEKLADNIKA: Readonly<Record<RodzajPrzekladnikaTabliczki, SymbolId>> = {
+  CT: 'currentTransformer',
+  VT: 'voltageTransformer',
+  CORE_BALANCE_CT: 'qetCoreBalanceCt',
+};
+
+/** Przyrostek refu etykiety tabliczki przekładnika: `ct-rating` (prądowy i pomiar CT),
+ *  `vt-rating` (napięciowy), `cbct-rating` (Ferrantiego). */
+export const PRZYROSTEK_TABLICZKI_PRZEKLADNIKA: Readonly<Record<RodzajPrzekladnikaTabliczki, string>> = {
+  CT: 'ct-rating',
+  VT: 'vt-rating',
+  CORE_BALANCE_CT: 'cbct-rating',
+};
 
 /**
  * Rozstrzyga adnotacje przekładni CT (§18.3, F10.4) na już zbudowanym stosie —
@@ -542,15 +597,21 @@ export function resolveCtRatingAnnotations(
   for (const entry of ctRatingAnnotations) {
     // Adnotacja z tabliczki aparatu (§11.7 pkt 6) kotwiczy na TYM aparacie (`deviceRef`),
     // adnotacja z pomiaru — na aparacie wskazującym pomiar (`linked_ref`).
+    const rodzaj = entry.rodzajPrzekladnika ?? 'CT';
     const device = stack.find(
       (d) =>
-        rodzajSymbolu(d.symbolId) === 'currentTransformer' &&
+        rodzajSymbolu(d.symbolId) === SYMBOL_TABLICZKI_PRZEKLADNIKA[rodzaj] &&
         (entry.deviceRef !== undefined
           ? d.deviceRef === entry.deviceRef
           : entry.measurementRef !== null && d.linkedRef === entry.measurementRef),
     );
     if (!device) continue;
-    result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });
+    result.push({
+      device,
+      text: ctRatingLabelText(entry),
+      purpose: entry.purpose,
+      przyrostek: PRZYROSTEK_TABLICZKI_PRZEKLADNIKA[rodzaj],
+    });
   }
   return result;
 }

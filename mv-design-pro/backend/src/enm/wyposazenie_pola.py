@@ -67,6 +67,7 @@ from network_model.catalog.bay_templates import (
     NAZWY_KLASY_POLA_PL,
 )
 from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU
+from network_model.catalog.przekladniki import zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import (
     KLUCZ_ODGALEZIENIA,
     OPIS_WYKONANIA_APARATU_PL,
@@ -80,6 +81,13 @@ from network_model.catalog.switchgear.apparatus_vocabulary import (
     FAMILY_APPARATUS_FOR_ENM_KIND,
 )
 from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
+from network_model.catalog.wartosci_robocze import (
+    ZaczepRozstrzygniety,
+    dana_przyjeta_zaczepu,
+    liczba_pl,
+    pola_zaczepu_rekordu,
+    zaczep_rekordu_aparatu,
+)
 from werdykt.kontrakt import DanaPrzyjeta
 from werdykt.proweniencja import FieldQuality
 
@@ -198,15 +206,18 @@ def stan_danych_wyposazenia(
 
 
 def dane_przyjete_wyposazenia(aparaty: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Aparaty w stanie ``PROPOZYCJA`` jako dane przyjęte (kontrakt werdyktu, jakość
-    ``ESTIMATED``) — w kolejności aparatów pola."""
+    """Aparaty w stanie ``PROPOZYCJA`` i zaczepy robocze przekładników wieloprzekładniowych
+    jako dane przyjęte (kontrakt werdyktu, jakość ``ESTIMATED``) — w kolejności aparatów pola."""
     wynik: list[dict[str, Any]] = []
     for aparat in aparaty:
-        if stan_danych_aparatu(aparat) != "PROPOZYCJA":
-            continue
         rodzaj = NAZWY_RODZAJOW_APARATU_POLA_PL.get(str(aparat.get("kind")), "aparat")
         oznaczenie = aparat.get("designation")
         nazwa = f"{rodzaj} {oznaczenie}" if oznaczenie else rodzaj
+        zaczep = zaczep_rekordu_aparatu(aparat)
+        if stan_danych_aparatu(aparat) != "PROPOZYCJA":
+            if zaczep is not None and zaczep.robocza:
+                wynik.append(_dana_zaczepu(aparat, zaczep))
+            continue
         powod = (
             "rodzaj aparatu bez katalogu SN — przyjęty z szablonu pola jako wartość robocza"
             if aparat.get("kind") in RODZAJE_BEZ_KATALOGU_SN
@@ -221,7 +232,16 @@ def dane_przyjete_wyposazenia(aparaty: list[dict[str, Any]]) -> list[dict[str, A
                 jakosc=FieldQuality.ESTIMATED,
             ).model_dump(mode="json")
         )
+        if zaczep is not None and zaczep.robocza:
+            wynik.append(_dana_zaczepu(aparat, zaczep))
     return wynik
+
+
+def _dana_zaczepu(aparat: Mapping[str, Any], zaczep: ZaczepRozstrzygniety) -> dict[str, Any]:
+    oznaczenie = aparat.get("designation")
+    return dana_przyjeta_zaczepu(
+        nazwa_aparatu_pl=str(oznaczenie) if oznaczenie else "prądowego pola", zaczep=zaczep
+    ).model_dump(mode="json")
 
 
 def napiecie_najwyzsze_aparatu_kv(rodzaj: object, catalog_ref: object) -> float | None:
@@ -530,11 +550,41 @@ def _sprawdz_aparat(
     # Tabliczka przekładnika z POZYCJI KATALOGU (jedno źródło): rdzenie typu CT, uzwojenia typu
     # VT (`CTType.lista_rdzeni`, `VTType.lista_uzwojen`) — ta sama lista, którą niesie szablon
     # pola wskazujący tę pozycję.
+    rdzenie = ()
     if rodzaj == "CT" and isinstance(catalog_ref, str):
         typ_ct = katalog_biezacy().ct_types.get(catalog_ref)
         rdzenie = typ_ct.lista_rdzeni() if typ_ct is not None else ()
         if rdzenie:
             aparat["rdzenie"] = [r.model_dump(mode="json") for r in rdzenie]
+    # Zaczep przekładnika wieloprzekładniowego: wybór projektanta albo wartość robocza — ten sam
+    # zbiór zaczepów co walidator rekordu (`przekladniki.zaczepy_przekladnika`).
+    zaczep = wpis.get("zaczep_pierwotny_a")
+    zaczepy = zaczepy_przekladnika(r.przekladnia for r in rdzenie)
+    if zaczep is not None:
+        if len(zaczepy) < 2:
+            return _error_response(
+                f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) "
+                "ma zaczep pierwotny, a zaczep wybiera się wyłącznie przekładnikowi prądowemu "
+                "wieloprzekładniowemu z pozycji katalogu (np. 200-400/5 A).",
+                "bay_equipment.tap_not_applicable",
+            )
+        if (
+            isinstance(zaczep, bool)
+            or not isinstance(zaczep, int | float)
+            or (float(zaczep) not in zaczepy)
+        ):
+            return _error_response(
+                f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) "
+                "— zaczep spoza tabliczki przekładnika; wybierz jeden z zaczepów: "
+                + ", ".join(f"{liczba_pl(z)} A" for z in zaczepy)
+                + ".",
+                "bay_equipment.tap_invalid",
+            )
+    aparat.update(
+        pola_zaczepu_rekordu(
+            (r.przekladnia for r in rdzenie), float(zaczep) if zaczep is not None else None
+        )
+    )
     if rodzaj == "VT" and isinstance(catalog_ref, str):
         typ_vt = katalog_biezacy().vt_types.get(catalog_ref)
         uzwojenia = typ_vt.lista_uzwojen() if typ_vt is not None else ()

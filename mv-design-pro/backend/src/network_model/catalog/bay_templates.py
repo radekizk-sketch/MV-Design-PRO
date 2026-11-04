@@ -42,6 +42,7 @@ from network_model.catalog.rodzaje_aparatury import (
     WykonanieAparatu,
     porty_toru_pola,
 )
+from network_model.catalog.wartosci_robocze import pola_zaczepu_rekordu
 from pydantic import BaseModel, Field, model_validator
 
 #: Osie szablonu pola liniowego GPZ (opis przy szablonach `BAY_TEMPLATES_GPZ_LINE`).
@@ -1669,6 +1670,9 @@ def template_primary_devices(
             entry["catalog_ref"] = device.catalog_ref
         if device.rdzenie:
             entry["rdzenie"] = [r.model_dump(mode="json") for r in device.rdzenie]
+            # Przekładnik wieloprzekładniowy: zaczep z rejestru wartości roboczych (szablon nie
+            # wybiera zaczepu — wybiera projektant w inspektorze pola).
+            entry.update(pola_zaczepu_rekordu((r.przekladnia for r in device.rdzenie), None))
         if device.uzwojenia:
             entry["uzwojenia"] = [u.model_dump(mode="json") for u in device.uzwojenia]
         if device.przekladnia is not None:

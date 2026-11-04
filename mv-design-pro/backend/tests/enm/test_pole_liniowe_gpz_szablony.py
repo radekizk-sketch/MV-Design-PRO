@@ -664,7 +664,13 @@ def test_set_bay_equipment_szablon_w_kazdej_sekcji(pole_rys: str, laczniki: str,
     przyjete = wynik["wyposazenie_pola"]["dane_przyjete"]
     assert przyjete and {d["jakosc"] for d in przyjete} == {"ESTIMATED"}
     bez_katalogu = [a for a in rekord["primary_devices"] if not a.get("catalog_ref")]
-    assert len(przyjete) == len(bez_katalogu)
+    # Zaczep przekładnika 200-400/5 A z szablonu jest wartością roboczą (zaczep najwyższy) —
+    # osobna dana przyjęta obok aparatów bez pozycji katalogowej.
+    zaczepy_robocze = [
+        a for a in rekord["primary_devices"] if a.get("zrodlo_zaczepu") == "WARTOSC_ROBOCZA"
+    ]
+    assert [a["zaczep_pierwotny_a"] for a in zaczepy_robocze] == [400.0]
+    assert len(przyjete) == len(bez_katalogu) + len(zaczepy_robocze)
     # Drugie pole w tej samej sekcji nietknięte.
     for inne in _pola_liniowe(nowy):
         if inne["ref_id"] != pole["ref_id"]:

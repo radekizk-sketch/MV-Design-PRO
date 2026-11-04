@@ -526,7 +526,9 @@ def test_obwody_funkcji_pola_z_wzorca(wykonanie, klasa):
     )
     rdzen = "III" if wykonanie == "Z11" else "I"
     assert po_kodzie["51"].wejscia_pl == (
-        f"rdzeń {rdzen} przekładnika prądowego T1: 200-400/5, 15 VA, klasa 5P20",
+        # Przekładnik 200-400/5 A z szablonu: zaczep roboczy (zaczep najwyższy) jawnie nazwany.
+        f"rdzeń {rdzen} przekładnika prądowego T1: 200-400/5, zaczep 400 A (wartość robocza), "
+        "15 VA, klasa 5P20",
     )
     if wykonanie == "Z10":
         assert ocena.napiecie_zwrotne is None

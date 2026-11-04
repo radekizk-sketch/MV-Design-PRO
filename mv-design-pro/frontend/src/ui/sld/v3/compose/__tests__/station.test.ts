@@ -1102,10 +1102,15 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
 
   // Karta UX-04/POLE-LINIOWE-WZORZEC (zrzut pola Z.10 2026-10-29): tekst wyśrodkowany
   // w prostokącie SZACOWANEJ szerokości (`measureTextWidth`) rozjeżdżał wiersze kolumny.
-  // Iloczyn: rodzaj etykiety (wiersz listy × adnotacja CT × „52") × liczba wierszy (1, 2) —
-  // wiersze listy pod okręgiem kończą się przy prawej krawędzi rezerwacji (zaczep „koniec"),
-  // etykiety z prawej kotwicy zaczynają się w lewej krawędzi (zaczep „poczatek").
-  for (const kody of [['51', '50', '51N', '67N'], ['51', '50', '51N', '67N', 'ZS', '50BF', '79']] as const) {
+  // Iloczyn: rodzaj etykiety (wiersz listy × adnotacja CT × „52") × treść listy (same
+  // zabezpieczenia, nadmiar zabezpieczeń i automatyka → „+N") — wiersze listy pod okręgiem
+  // kończą się przy prawej krawędzi rezerwacji (zaczep „koniec"), etykiety z prawej kotwicy
+  // zaczynają się w lewej krawędzi (zaczep „poczatek"). Blok przekaźnika niesie co najwyżej
+  // cztery kody zabezpieczeń i „+N" (karta UX-04), więc lista ma zawsze jeden wiersz.
+  for (const [kody, tekstListy] of [
+    [['51', '50', '51N', '67N'], '51 · 50 · 51N · 67N'],
+    [['51', '50', '51N', '67N', 'ZS', '50BF', '79'], '51 · 50 · 51N · 67N · +3'],
+  ] as const) {
     it(`R-2 × zaczep tekstu: lista z ${kody.length} kodami — wiersze listy „koniec", adnotacja CT i „52" „poczatek"`, () => {
       const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
         primaryDevices: makeLineBayPrimaryDevices(),
@@ -1116,7 +1121,7 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
       const composition = composeStation(buildComposeInput(station));
       const etykiety = composition.labels.protection;
       const wiersze = etykiety.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef));
-      expect(wiersze).toHaveLength(kody.length > 5 ? 2 : 1);
+      expect(wiersze.map((l) => l.text)).toEqual([tekstListy]);
       for (const l of wiersze) {
         expect(l.placement, l.ownerRef).toBe('below');
         expect(l.wyrownanieTekstu, l.ownerRef).toBe('koniec');

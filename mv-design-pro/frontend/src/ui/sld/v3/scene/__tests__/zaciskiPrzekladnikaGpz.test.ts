@@ -129,7 +129,9 @@ function sprawdzPole(
     expect(tab, `${bay.ref_id}: bez tabliczki`).toEqual([]);
     return;
   }
-  expect(tab.map((l) => l.text)).toEqual([`${tekstPrzekladniRdzeni(ct.rdzenie)} · ${tekstKlasRdzeni(ct.rdzenie)}`]);
+  // Wybrany zaczep przekładnika wieloprzekładniowego (rekord aparatu) tuż po przekładni.
+  const zaczep = ct.zaczep_pierwotny_a != null ? [`zaczep ${ct.zaczep_pierwotny_a} A`] : [];
+  expect(tab.map((l) => l.text)).toEqual([[tekstPrzekladniRdzeni(ct.rdzenie), ...zaczep, tekstKlasRdzeni(ct.rdzenie)].join(' · ')]);
   // Linia pomiarowa z zacisku wtórnego (wschód) — tabliczka w wierszu nad nią.
   const wtorny = def.secondaryPorts.find((p) => p.name === 'wtorny');
   if (wtorny?.dir === 'E') {
@@ -165,7 +167,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
       const scena = buildSceneV3(enm, 2);
       for (const bay of trojrdzeniowe) {
         expect(tabliczka(scena, bay.ref_id, przekladnik(bay).device_ref).map((l) => l.text)).toEqual([
-          '200-400/5/5/5 A · 0,2S FS5 / 0,2 FS5 / 5P20',
+          '200-400/5/5/5 A · zaczep 400 A · 0,2S FS5 / 0,2 FS5 / 5P20',
         ]);
       }
     });
@@ -186,6 +188,7 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         true,
       ],
       ['pole rdzeni nieobecne — bez tabliczki, zaciski zostają', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: undefined })), true, false],
+      ['zaczep niewybrany — tabliczka bez członu zaczepu', (e) => zmienCt(e, (d) => ({ ...d, zaczep_pierwotny_a: null })), true, true],
       ['pusta lista rdzeni', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: [] })), true, false],
       [
         'bez przekładnika Ferrantiego — kafel przekładnika na krawędzi toru, oznaczenia po prawej kafla',

@@ -42,6 +42,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Final, Literal, Protocol
 
+from network_model.catalog.przekladniki import zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.core.bateria_kondensatorow import NAZWY_UKLADOW_POLACZEN_BATERII_PL
 from network_model.core.voltage_factor import (
@@ -2311,3 +2312,135 @@ def _wartosc_baterii_pl(parametr: str, wartosc: Any) -> str:
     if isinstance(wartosc, bool):
         return "tak" if wartosc else "nie"
     return str(wartosc)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: przekładnik prądowy wieloprzekładniowy — wybrany zaczep pierwotny (karta UX-04)
+# ---------------------------------------------------------------------------
+#
+# Przekładnik pola liniowego GPZ wg ENEA Zeszyt 1 (Z.10/Z.11/Z.11.1) ma przekładnię przełączalną
+# 200-400/5 A. Wybór zaczepu jest DECYZJĄ PROJEKTU (`BayPrimaryDevice.zaczep_pierwotny_a`), nie
+# daną katalogu: pozycja katalogu opisuje cały przekładnik ze wszystkimi zaczepami. Gdy projekt
+# zaczepu nie wybrał, pole biegnie z wartością roboczą tego rejestru (zasada nr 4) — wybór
+# projektanta jest daną projektu, wartością roboczą jest WYŁĄCZNIE propozycja.
+
+#: Klucz parametru i nośnik wyboru projektanta na aparacie pola.
+PARAMETR_ZACZEP_PRZEKLADNIKA = "zaczep_pierwotny_a"
+
+#: Pochodzenie wybranego zaczepu zapisane w rekordzie aparatu (`BayPrimaryDevice.zrodlo_zaczepu`).
+ZrodloZaczepu = Literal["PROJEKTANT", "WARTOSC_ROBOCZA"]
+ZRODLA_ZACZEPU: tuple[ZrodloZaczepu, ...] = ("PROJEKTANT", "WARTOSC_ROBOCZA")
+
+PROPOZYCJA_ZACZEPU = PropozycjaWartosci(
+    parametr=PARAMETR_ZACZEP_PRZEKLADNIKA,
+    wartosc=None,
+    jednostka="A",
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie="zaczep najwyższy z tabliczki przekładnika (IEC 61869-2, przekładnia przełączalna)",
+    uzasadnienie_pl=(
+        "Zaczep najwyższy nie przeciąża przekładnika prądem roboczym toru do prądu znamionowego "
+        "najwyższego i daje największy zapas do nasycenia rdzenia przy zwarciu; zaczep niższy "
+        "(większa czułość zabezpieczeń przy małych prądach) wybiera projektant"
+    ),
+    wplyw_pl=(
+        "przekładnia przyjęta do opisu pola, nastaw zabezpieczeń po stronie wtórnej i doboru "
+        "przekładnika jest wartością roboczą — wynik na niej nie jest potwierdzonym dowodem"
+    ),
+)
+
+
+@dataclass(frozen=True)
+class ZaczepRozstrzygniety:
+    """Wybrany zaczep pierwotny przekładnika [A] + pochodzenie (+ zaczepy tabliczki)."""
+
+    wartosc: float
+    zrodlo: ZrodloZaczepu
+    zaczepy: tuple[float, ...]
+
+    @property
+    def robocza(self) -> bool:
+        return self.zrodlo == "WARTOSC_ROBOCZA"
+
+    def opis_zrodla_pl(self) -> str:
+        """Źródło + odniesienie + wpływ jednym zdaniem (``DanaPrzyjeta.powod_pl``)."""
+        zaczepy = " / ".join(f"{liczba_pl(z)} A" for z in self.zaczepy)
+        if not self.robocza:
+            return f"zaczep wybrany przez projektanta (zaczepy tabliczki: {zaczepy})"
+        p = PROPOZYCJA_ZACZEPU
+        return (
+            f"wartość robocza ({_RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]}: {p.odniesienie}; zaczepy "
+            f"tabliczki: {zaczepy}). {_zdanie(p.uzasadnienie_pl)} Wpływ: {_zdanie(p.wplyw_pl)}"
+        )
+
+
+def rozstrzygnij_zaczep_przekladnika(
+    zaczepy: Sequence[float], zaczep_projektanta: float | None
+) -> ZaczepRozstrzygniety | None:
+    """Zaczep przekładnika — JEDNO miejsce pierwszeństwa: wybór projektanta > wartość robocza.
+
+    ``None`` — przekładnik nie jest wieloprzekładniowy (mniej niż dwa zaczepy: przekładnia jest
+    jedna i nie ma czego wybierać). Wybór spoza zaczepów tabliczki jest błędem PROGRAMU wołającego
+    (operacja i walidator modelu odrzucają go wcześniej tym samym zbiorem zaczepów).
+    """
+    if len(zaczepy) < 2:
+        return None
+    if zaczep_projektanta is not None:
+        if zaczep_projektanta not in zaczepy:
+            raise ValueError(
+                f"Zaczep {liczba_pl(zaczep_projektanta)} A spoza zaczepów tabliczki "
+                f"{', '.join(liczba_pl(z) for z in zaczepy)} A."
+            )
+        return ZaczepRozstrzygniety(float(zaczep_projektanta), "PROJEKTANT", tuple(zaczepy))
+    return ZaczepRozstrzygniety(float(max(zaczepy)), "WARTOSC_ROBOCZA", tuple(zaczepy))
+
+
+def dana_przyjeta_zaczepu(*, nazwa_aparatu_pl: str, zaczep: ZaczepRozstrzygniety) -> DanaPrzyjeta:
+    """Wartość robocza zaczepu jako dana przyjęta (jakość ``ESTIMATED``, §3c pkt 4).
+
+    Wybór projektanta nie jest daną przyjętą — wywołanie dla niego to błąd PROGRAMU wołającego.
+    """
+    if not zaczep.robocza:
+        raise AssertionError(
+            "Zaczep wybrany przez projektanta nie jest daną przyjętą — wołający dokłada daną "
+            "przyjętą wyłącznie dla wartości roboczej."
+        )
+    return DanaPrzyjeta(
+        nazwa_pl=f"zaczep pierwotny przekładnika {nazwa_aparatu_pl}",
+        wartosc=Wielkosc(wartosc=zaczep.wartosc, jednostka="A"),
+        powod_pl=zaczep.opis_zrodla_pl(),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+def pola_zaczepu_rekordu(
+    przekladnie_rdzeni: Iterable[str], zaczep_projektanta: float | None
+) -> dict[str, Any]:
+    """Pola `zaczep_pierwotny_a` + `zrodlo_zaczepu` rekordu aparatu pola — JEDNA reguła dla
+    każdego pisarza rekordu przekładnika (szablon pola, wyposażenie z katalogu). Pusty słownik —
+    przekładnik o jednej przekładni (nic do wyboru)."""
+    zaczep = rozstrzygnij_zaczep_przekladnika(
+        zaczepy_przekladnika(przekladnie_rdzeni), zaczep_projektanta
+    )
+    if zaczep is None:
+        return {}
+    return {"zaczep_pierwotny_a": zaczep.wartosc, "zrodlo_zaczepu": zaczep.zrodlo}
+
+
+def zaczep_rekordu_aparatu(aparat: Mapping[str, Any]) -> ZaczepRozstrzygniety | None:
+    """Wybrany zaczep przekładnika wieloprzekładniowego z rekordu aparatu pola (migawka
+    `BayPrimaryDevice`); ``None`` — aparat nie jest takim przekładnikiem. Wybór projektanta
+    z rekordu, w pozostałych przypadkach (wartość robocza zapisana albo rekord sprzed atrybutu)
+    — wartość robocza rejestru. JEDNO odczytanie dla danych przyjętych wyposażenia
+    (`enm.wyposazenie_pola`) i opisu obwodów funkcji karty pola (`enm.pole_liniowe_gpz`)."""
+    if aparat.get("kind") != "CT":
+        return None
+    przekladnie = [
+        str(r.get("przekladnia", "")) for r in aparat.get("rdzenie") or [] if isinstance(r, Mapping)
+    ]
+    projektant = (
+        aparat.get("zaczep_pierwotny_a") if aparat.get("zrodlo_zaczepu") == "PROJEKTANT" else None
+    )
+    return rozstrzygnij_zaczep_przekladnika(
+        zaczepy_przekladnika(przekladnie),
+        float(projektant) if projektant is not None else None,
+    )

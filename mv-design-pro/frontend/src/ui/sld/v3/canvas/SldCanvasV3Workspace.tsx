@@ -120,6 +120,7 @@ import {
 } from './canvasMenuSubject';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import { resolveTransformerRefForOwnerRef } from '../../shared/daneElementuKanwy';
+import { poleAdnotacjiZabezpieczen, SEKCJA_ZABEZPIECZEN_KARTY_POLA } from './poleAdnotacjiZabezpieczen';
 import { kontekstDostepnosciAkcji } from '../../shared/akcjeElementu';
 import { useKontekstElementuKanwy } from '../../shared/kontekstElementuKanwy';
 import { useSldActionExecutor, wykonawcaAkcjiMenu } from '../../shared/sldActionExecutor';
@@ -2490,6 +2491,32 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // obiektem modelu: zero selekcji, zero kontekstu inspektora, zero menu.
       if (elementKind === 'lvPortal') {
         if (meta?.lvPortalStationRef) setLvDomainStationRef(meta.lvPortalStationRef);
+        return;
+      }
+
+      // Karta UX-04/POLE-LINIOWE-WZORZEC: blok przekaźnika (okrąg, wiersze kodów, odniesienie
+      // źródła 3U₀), linia wyłączania i linie pomiarowe pola nie są obiektami modelu, ale należą
+      // do POLA — natywny klik zaznacza pole (ta sama selekcja co klik w aparat pola) i otwiera
+      // w inspektorze kartę pola na sekcji „Zabezpieczenia i automatyka" (wiersze funkcji
+      // z przejściem do nastaw). Rozstrzyga `poleAdnotacjiZabezpieczen` — jedna reguła klasy.
+      const poleZabezpieczen = poleAdnotacjiZabezpieczen(meta, snapshot);
+      if (poleZabezpieczen) {
+        const typPola = elementTypeForKind('apparatus');
+        selectElement(
+          typPola
+            ? { id: poleZabezpieczen, type: typPola, name: poleZabezpieczen }
+            : { id: poleZabezpieczen, type: 'DescriptiveElement', name: poleZabezpieczen },
+        );
+        const tematPola = resolveCanvasMenuSubject({ ownerRef: poleZabezpieczen, elementKind: 'apparatus' }, modelIndex);
+        useKontekstElementuKanwy.getState().ustawKontekst({
+          selekcjaId: poleZabezpieczen,
+          elementKind: 'apparatus',
+          ref: poleZabezpieczen,
+          temat: tematPola.stan === 'temat' ? tematPola.temat : null,
+          tylkoOdczyt: props.readOnly ?? false,
+          sekcja: SEKCJA_ZABEZPIECZEN_KARTY_POLA,
+        });
+        odslonInspektor();
         return;
       }
 

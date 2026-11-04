@@ -46,6 +46,8 @@ import {
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
+import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
+import type { CelAkcjiKarty } from '../../sld/shared/kartaTechnicznaElementu';
 
 /** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
@@ -136,6 +138,11 @@ export interface StanPaneluElementu {
   /** Zmiana wartości karty operacją domenową; `null` poza trybem edycji modelu i dla
    *  obiektu tylko do odczytu (bez przycisku „Zmień" — bez atrapy). */
   readonly edytuj: ((edycja: EdycjaWiersza) => void) | null;
+  /** Akcja wiersza tabeli karty (przejście do nastaw): ekran E-27 zawsze, formularz operacji
+   *  modelu wyłącznie przy dozwolonej edycji — inaczej `null` i przycisku nie ma. */
+  readonly akcjaKarty: ObslugaAkcjiKarty;
+  /** Sekcja karty, do której prowadzi kliknięty obiekt rysunku (`KontekstElementuKanwy.sekcja`). */
+  readonly sekcjaWyrozniona: string | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -200,6 +207,14 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
         source: 'inspektor_karta',
       }),
     [openOperationForm],
+  );
+
+  const akcjaKarty = useCallback<ObslugaAkcjiKarty>(
+    (cel: CelAkcjiKarty) => {
+      if (cel.rodzaj === 'ekran') return () => openRouteSurface(cel.kodEkranu);
+      return edycjaDozwolona ? () => openOperationForm(cel.operacja, { ...cel.kontekst }) : null;
+    },
+    [edycjaDozwolona, openOperationForm, openRouteSurface],
   );
 
   const temat = kontekst?.temat ?? null;
@@ -270,5 +285,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     konfiguracja,
     karta,
     edytuj: edycjaDozwolona ? edytuj : null,
+    akcjaKarty,
+    sekcjaWyrozniona: kontekst?.sekcja ?? null,
   };
 }

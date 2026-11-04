@@ -350,7 +350,9 @@ export function PanelElementuKanwy({
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
-      {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} />}
+      {karta && (
+        <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} onAkcja={stan.akcjaKarty} sekcjaWyrozniona={stan.sekcjaWyrozniona} />
+      )}
       {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
       {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
       {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}

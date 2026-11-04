@@ -62,7 +62,6 @@
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
-import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -145,6 +144,7 @@ import {
   PROTECTION_FULL_LIST_LABEL_CLASS,
   bayHasProtectionAnnotation,
   fullCodesListLines,
+  kodyWOkreguBlokuPrzekaznika,
   odniesieniaPrzekaznikaPola,
   ODSTEP_WIERSZY_KODOW_EAZ,
   protectionDeviceCenter,
@@ -1359,7 +1359,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // łapie na fixturze referencyjnej (0 pól z OBOMA jednocześnie).
       let relayCircleTopY: number | null = null;
       // R-2 (§17.3 zd. 2): tekst pełnej listy kodów — pusta, gdy okrąg niesie wszystkie
-      // kody pola (`kodyWOkreguPrzekaznika`). Liczone RAZ (miernik niżej używa
+      // kody bloku (`kodyWOkreguBlokuPrzekaznika`: ≤ 4 kody zabezpieczeń i „+N"). Liczone RAZ (miernik niżej używa
       // do odsunięcia).
       const marking = resolveStationProtectionMarking(bay, stackDevices);
       const fullListLines =
@@ -1385,13 +1385,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           x: circleLeftX,
           y: circleTopY,
           ports: portsInWorld(SYMBOL_DEFS.protectionRelay, circleLeftX, circleTopY),
-          // spec §17.3: maks. 2 kody — prefiks listy z danych (zero sortowania/fabrykacji),
-          // który mieści się w okręgu pismem podłogi 8 px (`kodyWOkreguPrzekaznika`,
+          // spec §17.3: maks. 2 kody — prefiks kodów bloku (`kodyBlokuPrzekaznika`: ≤ 4 kody
+          // zabezpieczeń w kolejności danych i „+N"; zero sortowania/fabrykacji), który
+          // mieści się w okręgu pismem podłogi 8 px (`kodyWOkreguBlokuPrzekaznika`,
           // `symbols/okragPrzekaznika.ts`) — pełna lista w etykiecie slotu pola (R-2,
           // `#protection-codes-full` niżej), gdy okrąg nie niesie wszystkich.
           // §17.4 L1 (`'circle-only'`): okrąg BEZ kodów — `undefined`, glif
           // rysuje sam kontur.
-          protectionCodes: annotationDetail === 'full' ? kodyWOkreguPrzekaznika(marking.codes) : undefined,
+          protectionCodes: annotationDetail === 'full' ? kodyWOkreguBlokuPrzekaznika(marking.codes) : undefined,
           // F10.5 (spec §20.2): adnotacja „!" przy okręgu (glif czyta
           // WYŁĄCZNIE obecność/pustkę — treść ostrzeżenia żyje w
           // `missingData`/inspektorze, nie na scenie, spec §20.3 „zwarta,
@@ -1585,7 +1586,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ctAnnotations.forEach((ann, ctIndex) => {
           const center = protectionDeviceCenter(ann.device);
           protectionLabels.push({
-            ownerRef: `${bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
+            ownerRef: `${bay.bayRef}#${ann.przyrostek}-${ann.device.deviceRef ?? ctIndex}`,
             ownerKind: 'protection',
             text: ann.text,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,

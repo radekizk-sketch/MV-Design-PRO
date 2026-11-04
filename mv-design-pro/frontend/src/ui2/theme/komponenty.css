@@ -250,6 +250,12 @@
   padding: 8px 16px;
   border-bottom: 1px solid var(--mvd-line);
 }
+/* Sekcja, do której prowadzi kliknięty obiekt rysunku (blok przekaźnika → „Zabezpieczenia
+ * i automatyka" karty pola): pionowa kreska fokusu przy lewej krawędzi, bez zmiany układu. */
+.mvd-kt-sekcja[data-wyrozniona='true'] {
+  box-shadow: inset 3px 0 0 var(--mvd-focus);
+  outline: none;
+}
 .mvd-kt-tytul {
   margin: 0;
   font-size: var(--mvd-font-size-data);

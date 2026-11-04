@@ -9,8 +9,18 @@
  * z prądami wtórnymi kolejnych rdzeni („200-400/5/5/5 A"); rdzenie o różnej stronie pierwotnej
  * — przekładnie kolejnych rdzeni po przecinku. Klasy kolejnych rdzeni rozdziela „/" (kolejność
  * rdzeni z modelu), rdzeń pomiarowy z FS niesie go po klasie („0,2S FS5").
+ *
+ * Przekładnik napięciowy (`BayPrimaryDevice.uzwojenia`, tabliczka PN-EN 61869-3) — zapis
+ * rysunku Z.11.1 s.91 („SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3"): uzwojenia o wspólnej stronie
+ * pierwotnej dają jedną przekładnię z napięciami wtórnymi kolejnych uzwojeń; klasy kolejnych
+ * uzwojeń po „ / ". Przekładnik Ferrantiego (`BayPrimaryDevice.przekladnia`) — zapis z rekordu
+ * bez zmian („1/100").
  */
-import type { PrzeznaczenieRdzenia, RdzenPrzekladnikaPradowego } from '../../../../types/przekladniki';
+import type {
+  PrzeznaczenieRdzenia,
+  RdzenPrzekladnikaPradowego,
+  UzwojeniePrzekladnikaNapieciowego,
+} from '../../../../types/przekladniki';
 
 /** Liczba w zapisie polskim (przecinek dziesiętny) — bez zaokrąglania. */
 function liczbaPl(wartosc: number): string {
@@ -49,11 +59,12 @@ export function tekstKlasRdzeni(rdzenie: readonly RdzenPrzekladnikaPradowego[] |
 export const PRZEZNACZENIA_ZABEZPIECZENIOWE: ReadonlySet<PrzeznaczenieRdzenia> = new Set<PrzeznaczenieRdzenia>(['ZABEZPIECZENIA', 'ROZNICOWE']);
 export const PRZEZNACZENIA_POMIAROWE: ReadonlySet<PrzeznaczenieRdzenia> = new Set<PrzeznaczenieRdzenia>(['ROZLICZENIE', 'POMIAR', 'JAKOSC_ENERGII']);
 
-/** Przeznaczenie przekładnika z przeznaczeń jego rdzeni: same zabezpieczeniowe —
+/** Przeznaczenie przekładnika z przeznaczeń jego rdzeni (prądowy) albo uzwojeń (napięciowy —
+ *  ten sam słownik przeznaczeń): same zabezpieczeniowe —
  *  `protection`, same pomiarowe — `metering`, oba rodzaje — `combined`; `undefined` bez rdzeni
  *  albo bez przeznaczeń z tych dwóch zbiorów (uczciwy brak). */
 export function przeznaczeniePrzekladnika(
-  rdzenie: readonly RdzenPrzekladnikaPradowego[] | null | undefined,
+  rdzenie: readonly { readonly przeznaczenie?: readonly PrzeznaczenieRdzenia[] | null }[] | null | undefined,
 ): 'protection' | 'metering' | 'combined' | undefined {
   const wszystkie = (rdzenie ?? []).flatMap((r) => r.przeznaczenie ?? []);
   const zabezpieczeniowe = wszystkie.some((p) => PRZEZNACZENIA_ZABEZPIECZENIOWE.has(p));
@@ -61,4 +72,75 @@ export function przeznaczeniePrzekladnika(
   if (zabezpieczeniowe && pomiarowe) return 'combined';
   if (zabezpieczeniowe) return 'protection';
   return pomiarowe ? 'metering' : undefined;
+}
+
+/** Zapis przekładni rdzenia — lustro `przekladniki._ZAPIS_PRZEKLADNI_CT` (backend). */
+const ZAPIS_PRZEKLADNI_CT = /^\s*(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)*)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(?:A)?\s*$/;
+
+function liczbaZapisu(tekst: string): number {
+  return Number(tekst.trim().replace(',', '.'));
+}
+
+/** Zaczepy pierwotne [A] zapisu przekładni JEDNEGO rdzenia, rosnąco — lustro
+ *  `przekladniki.zaczepy_pierwotne_a` („200-400/5" → [200, 400]; zapis nierozpoznany → []).
+ *  Parytet z backendem przypina wspólna tabela przypadków
+ *  `__tests__/zaczepy_przekladnika_przypadki.json` (test frontu i test backendu). */
+export function zaczepyPierwotneA(przekladnia: string): readonly number[] {
+  const m = ZAPIS_PRZEKLADNI_CT.exec(przekladnia);
+  if (!m) return [];
+  const zaczepy = m[1].split('-').map(liczbaZapisu);
+  if (zaczepy.some((z) => z <= 0) || zaczepy.some((z, i) => i > 0 && zaczepy[i - 1] >= z)) return [];
+  if (liczbaZapisu(m[2]) <= 0) return [];
+  return zaczepy;
+}
+
+/** Zaczepy PRZEKŁADNIKA — wspólne dla wszystkich rdzeni, rosnąco (lustro
+ *  `przekladniki.zaczepy_przekladnika`); [] bez rdzeni albo bez wspólnego zaczepu. */
+export function zaczepyPrzekladnika(przekladnie: readonly string[]): readonly number[] {
+  let wspolne: Set<number> | null = null;
+  for (const p of przekladnie) {
+    const zaczepy = zaczepyPierwotneA(p);
+    if (zaczepy.length === 0) return [];
+    wspolne = wspolne === null ? new Set(zaczepy) : new Set(zaczepy.filter((z) => wspolne!.has(z)));
+  }
+  return wspolne ? [...wspolne].sort((a, b) => a - b) : [];
+}
+
+/** Opis wybranego zaczepu na schemacie („zaczep 400 A"); `null` bez zaczepu w rekordzie. */
+export function tekstZaczepu(zaczepA: number | null | undefined): string | null {
+  return zaczepA != null ? `zaczep ${liczbaPl(zaczepA)} A` : null;
+}
+
+/** Separator stron przekładni uzwojenia przekładnika napięciowego w zapisie tabliczki
+ *  („15/√3 / 0,1/√3") — ukośnik ze spacjami; ukośnik bez spacji należy do zapisu napięcia
+ *  fazowego („/√3"). */
+const SEPARATOR_STRON_VT = ' / ';
+
+function stronyPrzekladniUzwojenia(przekladnia: string): { readonly pierwotna: string; readonly wtorna: string } | null {
+  const i = przekladnia.indexOf(SEPARATOR_STRON_VT);
+  if (i <= 0) return null;
+  const wtorna = przekladnia.slice(i + SEPARATOR_STRON_VT.length).trim();
+  return wtorna === '' ? null : { pierwotna: przekladnia.slice(0, i).trim(), wtorna };
+}
+
+/** Przekładnia tabliczki przekładnika napięciowego (np. „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3");
+ *  uzwojenia o różnej stronie pierwotnej albo zapisie bez separatora stron — przekładnie
+ *  kolejnych uzwojeń po przecinku. `null` bez uzwojeń. */
+export function tekstPrzekladniUzwojen(
+  uzwojenia: readonly UzwojeniePrzekladnikaNapieciowego[] | null | undefined,
+): string | null {
+  if (!uzwojenia || uzwojenia.length === 0) return null;
+  const strony = uzwojenia.map((u) => stronyPrzekladniUzwojenia(u.przekladnia.trim()));
+  const pierwsza = strony[0];
+  const wspolnaPierwotna = pierwsza !== null && strony.every((s) => s !== null && s.pierwotna === pierwsza.pierwotna);
+  if (wspolnaPierwotna) return [pierwsza.pierwotna, ...strony.map((s) => s!.wtorna)].join(SEPARATOR_STRON_VT);
+  return uzwojenia.map((u) => u.przekladnia.trim()).join(', ');
+}
+
+/** Klasy dokładności uzwojeń w kolejności z modelu (np. „0,2 / 0,2 / 0,5/3P"); `null` bez uzwojeń. */
+export function tekstKlasUzwojen(
+  uzwojenia: readonly UzwojeniePrzekladnikaNapieciowego[] | null | undefined,
+): string | null {
+  if (!uzwojenia || uzwojenia.length === 0) return null;
+  return uzwojenia.map((u) => u.klasa.trim()).join(SEPARATOR_STRON_VT);
 }

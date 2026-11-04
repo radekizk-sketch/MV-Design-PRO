@@ -23,7 +23,17 @@ import {
   przeznaczeniePrzekladnika,
   tekstKlasRdzeni,
   tekstPrzekladniRdzeni,
+  tekstZaczepu,
+  zaczepyPierwotneA,
+  zaczepyPrzekladnika,
 } from '../tabliczkaPrzekladnika';
+import { ctRatingLabelText } from '../../../v3/compose/protectionMarking';
+import przypadkiJson from './zaczepy_przekladnika_przypadki.json';
+
+const przypadki = przypadkiJson as unknown as {
+  rdzen: Array<[string, number[]]>;
+  przekladnik: Array<[string[], number[]]>;
+};
 
 const ZRODLO_BACKENDU = readFileSync(
   resolve(__dirname, '../../../../../../../backend/src/network_model/catalog/przekladniki.py'),
@@ -141,6 +151,63 @@ describe('kanał adnotacji pola — pomiar CT ma pierwszeństwo, aparat bez pomi
           if (wynik.length === 0) expect(resolveBayCtRatingAnnotations(bay, snap(pomiary))).toBeUndefined();
         });
       }
+    }
+  }
+});
+
+describe('zaczepy przekładnika — lustro backendu (wspólna tabela przypadków)', () => {
+  // Ten sam plik czyta `backend/tests/network_model/catalog/test_zaczepy_przekladnika.py`.
+  for (const [zapis, oczekiwane] of przypadki.rdzen) {
+    it(`rdzeń „${zapis}" → [${oczekiwane.join(', ')}]`, () => {
+      expect(zaczepyPierwotneA(zapis)).toEqual(oczekiwane);
+    });
+  }
+  for (const [zapisy, oczekiwane] of przypadki.przekladnik) {
+    it(`przekładnik [${zapisy.join(' | ')}] → [${oczekiwane.join(', ')}]`, () => {
+      expect(zaczepyPrzekladnika(zapisy)).toEqual(oczekiwane);
+    });
+  }
+  it('opis zaczepu na schemacie: polski zapis liczby, brak zaczepu → brak opisu', () => {
+    expect(tekstZaczepu(400)).toBe('zaczep 400 A');
+    expect(tekstZaczepu(2.5)).toBe('zaczep 2,5 A');
+    expect(tekstZaczepu(null)).toBeNull();
+    expect(tekstZaczepu(undefined)).toBeNull();
+  });
+});
+
+describe('zaczep na schemacie — tabliczka aparatu CT (rekord × źródło zaczepu)', () => {
+  // Iloczyn: zaczep rekordu {brak, 200 projektanta, 400 roboczy} × rdzenie {1, 3}. Opis zaczepu
+  // stoi tuż po przekładni, przed klasami; ten sam tekst rezerwuje szerokość pasma
+  // (`ctRatingLabelText` — jedna funkcja dla rezerwacji i rysunku).
+  const r1 = [rdzen('200-400/5', '5P20', ['ZABEZPIECZENIA'])];
+  const r3 = [
+    rdzen('200-400/5', '0,2S', ['ROZLICZENIE'], 5),
+    rdzen('200-400/5', '0,2', ['POMIAR'], 5),
+    rdzen('200-400/5', '5P20', ['ZABEZPIECZENIA']),
+  ];
+  const przypadkiZaczepu: Array<[string, number | null, 'PROJEKTANT' | 'WARTOSC_ROBOCZA' | null]> = [
+    ['brak', null, null],
+    ['200 projektanta', 200, 'PROJEKTANT'],
+    ['400 roboczy', 400, 'WARTOSC_ROBOCZA'],
+  ];
+  for (const [nazwa, zaczepA, zrodlo] of przypadkiZaczepu) {
+    for (const [nazwaRdzeni, rdzenie] of [['1 rdzeń', r1], ['3 rdzenie', r3]] as const) {
+      it(`${nazwa} · ${nazwaRdzeni}`, () => {
+        const aparat = {
+          device_ref: 'T1',
+          symbol_ref: 's',
+          kind: 'CT',
+          placement: 'MIDSTREAM',
+          rdzenie,
+          ...(zaczepA !== null ? { zaczep_pierwotny_a: zaczepA, zrodlo_zaczepu: zrodlo } : {}),
+        } as BayPrimaryDevice;
+        const bay = { ref_id: 'pole', primary_devices: [aparat] } as unknown as Bay;
+        const [wpis] = resolveBayCtRatingAnnotations(bay, { measurements: [] } as unknown as EnergyNetworkModel) ?? [];
+        expect(wpis.zaczepA).toBe(zaczepA ?? undefined);
+        const tekst = ctRatingLabelText(wpis);
+        const oczekiwanyZaczep = zaczepA !== null ? ` · zaczep ${zaczepA} A` : '';
+        expect(tekst).toBe(`${tekstPrzekladniRdzeni(rdzenie)}${oczekiwanyZaczep} · ${tekstKlasRdzeni(rdzenie)}`);
+      });
     }
   }
 });

@@ -383,26 +383,49 @@ const NAME_ROW_SUFFIX = /#name-row-\d+$/;
  * jako blok, bez rozrywania wierszy. Kolizję z rysunkiem, jeśli powstanie w
  * nowym miejscu, rozstrzyga niżej ta sama maszyneria co zawsze.
  */
+/** Wiersz bloku przekaźnika (kody poza okręgiem i odniesienia obwodów spoza pola —
+ *  `compose/gpz.ts`, `compose/station.ts`); człon przed `#` to ref pola. */
+const WIERSZ_BLOKU_PRZEKAZNIKA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
+
+/** Klucz pasma etykiety: wiersze nazw stacji (`#name-row-N`) albo wiersze jednego bloku
+ *  przekaźnika; `null` — etykieta poza pasmem. */
+function kluczPasma(label: OwnedLabel): string | null {
+  if (label.ownerKind === 'station-name') return `nazwy:${label.ownerRef.replace(NAME_ROW_SUFFIX, '')}`;
+  if (label.ownerKind === 'protection' && WIERSZ_BLOKU_PRZEKAZNIKA.test(label.ownerRef)) {
+    return `blok:${label.ownerRef.replace(WIERSZ_BLOKU_PRZEKAZNIKA, '')}`;
+  }
+  return null;
+}
+
 function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map<number, V3Rect> {
   const pasma = new Map<string, Kandydat[]>();
   for (const k of kandydaci) {
-    if (k.label.ownerKind !== 'station-name') continue;
-    const klucz = k.label.ownerRef.replace(NAME_ROW_SUFFIX, '');
+    const klucz = kluczPasma(k.label);
+    if (klucz === null) continue;
     const lista = pasma.get(klucz);
     if (lista) lista.push(k);
     else pasma.set(klucz, [k]);
   }
   const wynik = new Map<number, V3Rect>();
-  for (const wiersze of pasma.values()) {
-    // Kolejność wierszy = kolejność sceny (indeks rośnie razem z `#name-row-N`).
-    const uporzadkowane = [...wiersze].sort((a, b) => a.index - b.index);
+  for (const [klucz, wiersze] of pasma) {
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (blok przekaźnika): wiersze bloku stoją w odstępie
+    // `ODSTEP_WIERSZY_KODOW_EAZ` od siebie; pismo podłogi celu kadru (13 px → wiersz 19 j.św.)
+    // jest wyższe od tego odstępu, więc powiększone wiersze nachodziły na siebie i plan
+    // przenosił kolejny wiersz na drugą stronę okręgu (wiersz poza blokiem i ramką). Blok to
+    // pasmo jak nazwy stacji, z jedną różnicą: wiersz NIE wchodzi wyżej niż w scenie (y =
+    // max(y sceny, dół poprzedniego)) — pismo naturalne zostaje bajtowo w miejscu sceny.
+    const blok = klucz.startsWith('blok:');
+    // Kolejność wierszy: nazwy — kolejność sceny (indeks rośnie razem z `#name-row-N`); blok —
+    // pozycja w scenie (odniesienia stoją pod kodami niezależnie od kolejności dopisania).
+    const uporzadkowane = [...wiersze].sort((a, b) => (blok ? a.slot.y - b.slot.y || a.index - b.index : a.index - b.index));
     const gora = Math.min(...uporzadkowane.map((k) => k.slot.y));
     let y = gora;
     const pas: { readonly index: number; readonly rect: V3Rect }[] = [];
     for (const k of uporzadkowane) {
       const height = k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height;
-      pas.push({ index: k.index, rect: { x: k.slot.x, y, width: k.slot.width, height } });
-      y += height;
+      const yWiersza = blok ? Math.max(k.slot.y, y) : y;
+      pas.push({ index: k.index, rect: { x: k.slot.x, y: yWiersza, width: k.slot.width, height } });
+      y = yWiersza + height;
     }
     // Przesunięcie pasma jako bloku: najpierw w górę o wystawanie pod arkusz,
     // potem (gdy pasmo jest wyższe od miejsca nad nim) z powrotem do y=0.

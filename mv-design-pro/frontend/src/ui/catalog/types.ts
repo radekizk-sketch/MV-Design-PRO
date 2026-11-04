@@ -1,3 +1,4 @@
+import type { RdzenPrzekladnikaPradowego } from '../../types/przekladniki';
 /**
  * Type Catalog Types
  *
@@ -564,6 +565,9 @@ export interface CTCatalogType extends CatalogType {
    * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
    */
   accuracy_limit_factor?: number | null;
+  /** Rdzenie z tabliczki pozycji (`CTType.to_dict()["rdzenie"]`, IEC 61869-2) — z nich formularz
+   *  wyposażenia pola wyprowadza zaczepy przekładnika wieloprzekładniowego. */
+  rdzenie?: RdzenPrzekladnikaPradowego[];
 }
 
 /**

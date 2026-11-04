@@ -40,6 +40,7 @@ import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 import fxStacjeZamkniete from '../../../../../harness-fixtures/generated/geometria_stacji_zamkniete.json';
 import fxGpz110 from '../../../../../harness-fixtures/generated/geometria_stacji_gpz_110kv.json';
+import slownikFunkcjiEaz from '../../../../shared/slownikFunkcjiEaz.json';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
 import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
@@ -747,7 +748,7 @@ describe('UX-04 — przekaźnik pola obok pola (wymaganie właściciela 2026-10-
         // z rdzeni modelu, decyzja architekta §11.7 pkt 6 — `polozenieOkreguPrzekaznika` stawia
         // okrąg ZA tym pasmem): przekaźnik stoi obok tak rozumianego planu.
         const podpisy = scena.labels
-          .filter((l) => /#(etykieta-aparatu-|ct-rating-|vt-mounting-)/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`))
+          .filter((l) => /#(etykieta-aparatu-|ct-rating-|vt-rating-|cbct-rating-|vt-mounting-)/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`))
           .map((l) => l.rect.x + l.rect.width);
         const prawaPlanu = Math.max(...aparaty, ...podpisy);
         const lewaPrzekaznika = przekaznik!.x + obrysSymbolu(przekaznik!.symbolId).x;
@@ -776,6 +777,19 @@ function prostokatBloku(przekaznik: PreviewSymbol): Rect | null {
   return r ? { x: przekaznik.x + r.x, y: przekaznik.y + r.y, width: r.width, height: r.height } : null;
 }
 
+/**
+ * Wyrocznia treści bloku przekaźnika (karta UX-04: „≤ 4 kody funkcji zabezpieczeń + »+N«,
+ * automatyka poza kanwą") — z SUROWEGO słownika backendu (`slownikFunkcjiEaz.json`, rodzaj
+ * ZABEZPIECZENIE), bez funkcji produkcyjnej podziału: cztery pierwsze kody zabezpieczeń
+ * w kolejności modelu i „+N" wszystkich pozostałych funkcji pola.
+ */
+function oczekiwanyBlokPrzekaznika(kodyModelu: readonly string[]): string[] {
+  const funkcje = slownikFunkcjiEaz.funkcje as Record<string, { rodzaj: string }>;
+  const zabezpieczenia = kodyModelu.filter((k) => funkcje[k]?.rodzaj === 'ZABEZPIECZENIE').slice(0, 4);
+  const reszta = kodyModelu.length - zabezpieczenia.length;
+  return reszta > 0 ? [...zabezpieczenia, `+${reszta}`] : zabezpieczenia;
+}
+
 function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): string[] {
   const bledy: string[] = [];
   const zawiera = (a: Rect, b: Rect): boolean =>
@@ -792,7 +806,8 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
     const odniesienia = scena.labels.filter((l) => /#zrodlo-u0(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`));
     const wBloku = [...(przekaznik.meta?.protectionCodes ?? []), ...wiersze.flatMap((l) => l.text.split(' · '))];
     if (new Set(wBloku).size !== wBloku.length) bledy.push(`${pole.ref}: funkcja powtórzona w bloku (${wBloku.join(', ')})`);
-    if ([...wBloku].sort().join() !== [...kodyModelu].sort().join()) bledy.push(`${pole.ref}: funkcje bloku ≠ model`);
+    const oczekiwany = oczekiwanyBlokPrzekaznika(kodyModelu);
+    if (wBloku.join() !== oczekiwany.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${oczekiwany.join(', ')} (≤ 4 zabezpieczenia i „+N")`);
     const rama = prostokatBloku(przekaznik);
     if (!rama) {
       bledy.push(`${pole.ref}: brak ramki bloku`);
@@ -887,6 +902,25 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain('funkcja powtórzona w bloku');
   });
 
+  // Iloczyn cech treści bloku: {automatyka na kanwie, piąty kod zabezpieczeń, brak „+N",
+  // pełna lista (stan przed kartą)} — każda odmiana czerwieni wyrocznię.
+  const wierszKodow = (k: SceneV3) => k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`) as { text: string };
+  it.each([
+    ['automatyka SPZ (79) na kanwie', (t: string) => `${t} · 79`],
+    ['piąty kod zabezpieczeń (50BF) na kanwie', (t: string) => t.replace(/ · \+\d+$/, ' · 50BF$&')],
+    ['brak znacznika „+N"', (t: string) => t.replace(/ · \+\d+$/, '')],
+    [
+      'pełna lista funkcji (stan przed kartą)',
+      () => (enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.slice(2).join(' · '),
+    ],
+  ] as const)('iniekcja: %s — blok ≠ wyrocznia', (_opis, zmiana) => {
+    const s = zmien((k) => {
+      const l = wierszKodow(k);
+      l.text = zmiana(l.text);
+    });
+    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: blok `);
+  });
+
   it('iniekcja: numer „52" w połowie linii wyłączania (stan przed naprawą) — numer bez związku', () => {
     const s = zmien((k) => {
       const wzor = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full`)!;
@@ -897,15 +931,15 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
 
   it('iniekcja: wiersz bloku wyśrodkowany w prostokącie (stan przed naprawą) — wiersz nie zaczepiony w lewej krawędzi', () => {
     const s = zmien((k) => {
-      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full-2`) as { wyrownanieTekstu?: string };
+      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#zrodlo-u0`) as { wyrownanieTekstu?: string };
       delete l.wyrownanieTekstu;
     });
-    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`wiersz bloku ${poleZ111.ref}#protection-codes-full-2 nie zaczepiony w lewej krawędzi (środek)`);
+    expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`wiersz bloku ${poleZ111.ref}#zrodlo-u0 nie zaczepiony w lewej krawędzi (środek)`);
   });
 
   it('iniekcja: wiersz bloku przesunięty o kratkę — wiersze bez wspólnej lewej krawędzi', () => {
     const s = zmien((k) => {
-      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#protection-codes-full-2`) as { rect: Rect };
+      const l = k.labels.find((x) => x.ownerRef === `${poleZ111.ref}#zrodlo-u0`) as { rect: Rect };
       l.rect = { ...l.rect, x: l.rect.x + GRID };
     });
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(`${poleZ111.ref}: wiersze bloku bez wspólnej lewej krawędzi`);
@@ -956,6 +990,8 @@ function rodzajAdnotacjiZabezpieczen(l: OwnedLabel): string {
   if (/^protection-codes-full(-\d+)?$/.test(sufiks)) return 'wiersz kodów';
   if (/^zrodlo-u0(-\d+)?$/.test(sufiks)) return 'odniesienie 3U₀';
   if (sufiks.startsWith('ct-rating-')) return 'adnotacja CT';
+  if (sufiks.startsWith('vt-rating-')) return 'tabliczka VT';
+  if (sufiks.startsWith('cbct-rating-')) return 'tabliczka przekładnika Ferrantiego';
   if (sufiks.startsWith('vt-mounting-')) return 'adnotacja VT';
   if (sufiks === 'device-number') return 'numer 52';
   return `nieznany (${sufiks})`;
@@ -1019,7 +1055,7 @@ describe('UX-04 — tło pola obejmuje podpis pola i opisy jego zabezpieczeń (p
     b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
   // Etykiety pola w tle: podpis pola, opisy zabezpieczeń i tabliczki przekładników z pasma
   // adnotacji CT/VT (pasmo leży między torem a przekaźnikiem — wewnątrz pola).
-  const ETYKIETY_POLA = /#(designation|protection-codes-full(-\d+)?|zrodlo-u0(-\d+)?|device-number|ct-rating-.+|vt-mounting-.+)$/;
+  const ETYKIETY_POLA = /#(designation|protection-codes-full(-\d+)?|zrodlo-u0(-\d+)?|device-number|ct-rating-.+|vt-rating-.+|cbct-rating-.+|vt-mounting-.+)$/;
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · L2: podpis pola i kody funkcji w całości w tle pola; tła rozłączne parami`, () => {
       const scena = buildSceneV3(enm, 2);

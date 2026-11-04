@@ -163,12 +163,24 @@ export interface WierszAparatu {
    * członu wysuwnego.
    */
   wykonanie: WykonanieAparatu | '';
+  /**
+   * Zaczep pierwotny [A] przekładnika wieloprzekładniowego WYBRANY przez projektanta
+   * (`BayPrimaryDevice.zaczep_pierwotny_a` ze źródłem PROJEKTANT) — WYŁĄCZNIE rodzaj CT; `''` =
+   * wartość robocza (backend: `wartosci_robocze.rozstrzygnij_zaczep_przekladnika`, dana
+   * przyjęta ESTIMATED). Zaczep roboczy z rekordu nie wraca do ładunku jako wybór projektanta.
+   */
+  zaczep: string;
+  /** Zaczep zapisany w rekordzie jako wartość robocza (`null` — brak) — wyłącznie do opisu
+   *  opcji „wartość robocza" w formularzu; nie trafia do ładunku. */
+  zaczepRoboczy: number | null;
 }
 
 /** Rodzaj aparatu, któremu zapisuje się przekładnię (lustro walidatora `BayPrimaryDevice`). */
 export const RODZAJ_Z_PRZEKLADNIA: RodzajAparatuPolaSn = 'CORE_BALANCE_CT';
 /** Rodzaj aparatu, któremu zapisuje się wykonanie (lustro `rodzaje_aparatury.RODZAJE_Z_WYKONANIEM`). */
 export const RODZAJ_Z_WYKONANIEM: RodzajAparatuPolaSn = 'CB';
+/** Rodzaj aparatu, któremu wybiera się zaczep (lustro walidatora `BayPrimaryDevice`). */
+export const RODZAJ_Z_ZACZEPEM: RodzajAparatuPolaSn = 'CT';
 
 export const WIERSZ_PUSTY: WierszAparatu = {
   kind: '',
@@ -181,6 +193,8 @@ export const WIERSZ_PUSTY: WierszAparatu = {
   odgalezienie: '',
   przekladnia: '',
   wykonanie: '',
+  zaczep: '',
+  zaczepRoboczy: null,
 };
 
 function czyRodzajPolaSn(kind: string): kind is RodzajAparatuPolaSn {
@@ -208,6 +222,8 @@ export function wierszeZAparatow(aparaty: readonly BayPrimaryDevice[] | null | u
       odgalezienie: a.odgalezienie ?? '',
       przekladnia: a.przekladnia ?? '',
       wykonanie: a.wykonanie ?? '',
+      zaczep: a.zrodlo_zaczepu === 'PROJEKTANT' && a.zaczep_pierwotny_a != null ? String(a.zaczep_pierwotny_a) : '',
+      zaczepRoboczy: a.zrodlo_zaczepu === 'WARTOSC_ROBOCZA' ? (a.zaczep_pierwotny_a ?? null) : null,
     }));
 }
 
@@ -222,7 +238,16 @@ export function zmienRodzaj(wiersz: WierszAparatu, kind: RodzajAparatuPolaSn | '
     earthing_role: kind && RODZAJE_Z_ROLA_UZIEMIENIA.includes(kind) ? wiersz.earthing_role : '',
     przekladnia: kind === RODZAJ_Z_PRZEKLADNIA ? wiersz.przekladnia : '',
     wykonanie: kind === RODZAJ_Z_WYKONANIEM ? wiersz.wykonanie : '',
+    zaczep: kind === wiersz.kind && kind === RODZAJ_Z_ZACZEPEM ? wiersz.zaczep : '',
+    zaczepRoboczy: kind === wiersz.kind ? wiersz.zaczepRoboczy : null,
   };
+}
+
+/** Zmiana pozycji katalogowej: zaczepy należą do tabliczki pozycji, więc wybór zaczepu i opis
+ *  zaczepu roboczego innej pozycji nie przechodzą (zero przeniesionych fantomów). */
+export function zmienPozycje(wiersz: WierszAparatu, catalogRef: string): WierszAparatu {
+  if (catalogRef === wiersz.catalog_ref) return wiersz;
+  return { ...wiersz, catalog_ref: catalogRef, zaczep: '', zaczepRoboczy: null };
 }
 
 /** Zmiana klasy pola liniowego w ładunku: `zmien=false` — klucz pominięty (klasa bez zmian). */
@@ -287,6 +312,7 @@ export function zbudujPayloadWyposazenia(
       if (w.odgalezienie.trim()) aparat.odgalezienie = w.odgalezienie.trim();
       if (w.kind === RODZAJ_Z_PRZEKLADNIA && w.przekladnia.trim()) aparat.przekladnia = w.przekladnia.trim();
       if (w.kind === RODZAJ_Z_WYKONANIEM && w.wykonanie) aparat.wykonanie = w.wykonanie;
+      if (w.kind === RODZAJ_Z_ZACZEPEM && w.zaczep.trim()) aparat.zaczep_pierwotny_a = Number(w.zaczep);
       return aparat;
     }),
   };
