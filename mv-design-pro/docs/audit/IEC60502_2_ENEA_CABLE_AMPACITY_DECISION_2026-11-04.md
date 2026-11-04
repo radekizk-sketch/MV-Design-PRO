@@ -32,7 +32,7 @@ Załącznik A-1 _Album linii kablowych średniego napięcia_, **pkt 4.2.3(b), dr
 - współczynnik obciążenia **0,7 w ziemi; 1,0 w powietrzu**;
 - temperaturę żyły przed zwarciem **90 °C**, po zwarciu **250 °C** (dotyczą oceny zwarciowej, nie są dodatkowym współczynnikiem obciążalności długotrwałej).
 
-**Pkt 4.2.3(c) i tablica 4.3** podają obciążalności określonych kabli ENEA w podanych warunkach; przyjęty jest układ trójkątny ze stykającymi się powłokami. Należy zweryfikować pełny zestaw warunków przy użyciu tabeli.  
+**Pkt 4.2.3(b) i tablica 4.3 (drukowana s. 8 załącznika / 33. strona PDF)** podają obciążalności określonych kabli ENEA w podanych warunkach; przyjęty jest układ trójkątny ze stykającymi się powłokami. Tabela 4.3 podaje m.in. dla kabla ułożonego w ziemi: 70 mm² → 260 A, 150 mm² → 398 A, 240 mm² → 523 A. To wartości odniesienia ENEA dla wskazanych warunków i profilu obciążenia, a nie wartości ciągłe IEC. Nie należy bez dowodu przypisywać ich innym konstrukcjom kabli.  
 **Współczynnik obciążenia 0,7 NIE oznacza automatycznie współczynnika derating `f = 0,7` mnożonego przez prąd znamionowy** — opisuje założony profil obciążania. Konieczne jest sprawdzenie zgodności metody, charakterystyki czasowej i źródłowej obciążalności.
 
 **Wersja ENEA „Dobór kabli SN” 2021-06-30** wymieniona w kodzie **nie została w tym przeglądzie pozyskana ani zweryfikowana**. Nie wolno przedstawiać jej jako potwierdzenia liczby 0,90, 1,01 lub 0,82. Dokument 2026 nie dowodzi pochodzenia tych historycznych wartości.
