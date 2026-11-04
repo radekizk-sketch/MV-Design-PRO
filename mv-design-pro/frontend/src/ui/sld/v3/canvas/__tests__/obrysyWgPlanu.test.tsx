@@ -26,6 +26,7 @@ import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gp
 import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES, PROTECTION_ANNOTATION_DIAMETER } from '../../compose/protectionMarking';
 import type { PanelPolaGpz } from '../../compose/gpzAdnotacje';
 import { GRID, type V3Rect } from '../../core/grid';
+import { kolumnyBlokuWPismie } from '../../core/kolumnyBloku';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../../core/text';
 import { buildSceneV3, sceneObstacleRects, type SceneV3 } from '../../scene/buildScene';
 import { sheetSizeFor } from '../../sheet/outline';
@@ -198,6 +199,48 @@ describe('obrysy etykiet wg planu — iloczyn fikstura × skala × kadr × obrys
     expect(bledy).toEqual([]);
   });
 
+  // Odbiór B-02 pkt 7: kody bloku w DWÓCH kolumnach także w piśmie powiększonym — komórka prawej
+  // kolumny w wierszu (górnej krawędzi) komórki lewej i na prawo od jej NARYSOWANEGO tuszu;
+  // iloczyn fikstura × skala × kadr (pismo naturalne, podłoga czytelności, podłoga celu kadru).
+  it.each(FIKSTURY.map(([n]) => n))('%s: kolumny kodów bloku w każdym piśmie planu (wiersze wspólne, kolumny rozłączne)', (fikstura) => {
+    const bledy: string[] = [];
+    let sprawdzone = 0;
+    for (const p of PRZYPADKI.filter((x) => x.fikstura === fikstura)) {
+      const pola = new Map<string, typeof p.plan.drawn[number][]>();
+      for (const d of p.plan.drawn) {
+        if (!/#protection-codes-full(-\d+)?$/.test(d.label.ownerRef)) continue;
+        const pole = d.label.ownerRef.replace(/#protection-codes-full(-\d+)?$/, '');
+        pola.set(pole, [...(pola.get(pole) ?? []), d]);
+      }
+      pola.forEach((komorki, pole) => {
+        const sceny = komorki.map((d) => p.scena.labels.find((l) => l.ownerRef === d.label.ownerRef)!.rect);
+        const xL = Math.min(...sceny.map((r) => r.x));
+        komorki.forEach((d, i) => {
+          if (sceny[i].x === xL) return;
+          sprawdzone += 1;
+          const lewa = komorki.find((_, j) => sceny[j].x === xL && sceny[j].y === sceny[i].y);
+          if (!lewa) return;
+          if (Math.abs(lewa.rect.y - d.rect.y) > 1e-6) bledy.push(`${fikstura} @${p.skala} ${p.kadr.slice(-7)} ${pole.slice(-7)}: „${d.text}" poza wierszem „${lewa.text}"`);
+          if (d.rect.x < lewa.rect.x + lewa.rect.width) bledy.push(`${fikstura} @${p.skala} ${p.kadr.slice(-7)} ${pole.slice(-7)}: „${d.text}" na tuszu „${lewa.text}"`);
+        });
+      });
+    }
+    expect(sprawdzone).toBeGreaterThan(0);
+    expect(bledy).toEqual([]);
+  });
+
+  it('kolumnyBlokuWPismie: pismo naturalne bez przesunięcia; powiększona lewa kolumna przesuwa prawą o przyrost (odstęp sceny zachowany)', () => {
+    const komorki = [
+      { x: 0, y: 0, width: 10, szerokoscPisma: 10 },
+      { x: 18, y: 0, width: 12, szerokoscPisma: 12 },
+      { x: 0, y: 16, width: 15, szerokoscPisma: 15 },
+    ];
+    expect(kolumnyBlokuWPismie(komorki)).toEqual([0, 18, 0]);
+    const wieksze = komorki.map((k) => ({ ...k, szerokoscPisma: k.width * 2 }));
+    // Wiersz 0: lewa 20 + odstęp 8 = 28; wiersz 1 nie ma prawej komórki — nie przesuwa.
+    expect(kolumnyBlokuWPismie(wieksze)).toEqual([0, 28, 0]);
+  });
+
   it('iloczyn nie jest pusty: pismo bloku powiększone, wiersze ukryte, tło poszerzone — każde występuje', () => {
     let powiekszoneWiersze = 0;
     let ramkiBezWierszy = 0;
@@ -251,8 +294,10 @@ describe('kanwa: ramka bloku i tło pola w kadrze pola obejmują powiększone wi
 
   it('wiersze bloku narysowane pismem podłogi celu, w ramce i w tle pola; ramka sceny ich nie obejmuje', () => {
     // Kanwa dobrana tak, by dopasowanie widoku dało skalę, przy której podłoga celu (13 px)
-    // podnosi pismo t4 (8 j.św.), a sufit proporcji klasy jeszcze go dopuszcza.
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={4200} height={1800} lodOverride={2} refyKadru={z.zakres.refy} />);
+    // podnosi pismo t4 (8 j.św.), a sufit proporcji klasy jeszcze go dopuszcza. Kanwa 3000 × 1300
+    // (odbiór B-02 pkt 7: kody w dwóch kolumnach — przy 4200 × 1800 powiększone wiersze mieściły się
+    // jeszcze w ramce sceny i iniekcja niżej przestała rozróżniać).
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={3000} height={1300} lodOverride={2} refyKadru={z.zakres.refy} />);
     const grupa = container.querySelector(`[data-testid="${CSS.escape(symbolTestId(przekaznik, indeks))}"]`)!;
     const rama = grupa.querySelector('[data-przekaznik="ramka-bloku"]');
     expect(rama, 'ramka bloku narysowana').not.toBeNull();

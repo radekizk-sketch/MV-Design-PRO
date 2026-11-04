@@ -592,12 +592,28 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
   }, KANWA);
   const pomiary: PomiarBloku[] = [];
   for (const b of bloki.filter((x) => x.wiersze.length > 0)) {
+    // Odbiór B-02 pkt 7: kody w DWÓCH kolumnach pionowych — lewa krawędź każdej komórki należy do
+    // jednej z co najwyżej dwóch kolumn; komórka prawej kolumny leży w wierszu lewej i na prawo
+    // od jej tuszu.
     const lewe = b.wiersze.map((w) => w.r.x);
-    const rozrzutLewych = Math.max(...lewe) - Math.min(...lewe);
+    const xLewej = Math.min(...lewe);
+    const kolumnaLewa = b.wiersze.filter((w) => w.r.x - xLewej <= TOLERANCJA_EKRANU_PX);
+    const kolumnaPrawa = b.wiersze.filter((w) => w.r.x - xLewej > TOLERANCJA_EKRANU_PX);
+    const prawe = kolumnaPrawa.map((w) => w.r.x);
+    const rozrzutLewych = prawe.length > 0 ? Math.max(...prawe) - Math.min(...prawe) : 0;
+    for (const w of kolumnaPrawa) {
+      expect(
+        kolumnaLewa.some((l) => Math.abs(l.r.y - w.r.y) <= TOLERANCJA_EKRANU_PX),
+        `${kadr} · ${motyw} · blok ${b.pole}: „${w.tekst}" prawej kolumny w wierszu lewej`,
+      ).toBe(true);
+      expect(w.r.x, `${kadr} · ${motyw} · blok ${b.pole}: „${w.tekst}" na prawo od lewej kolumny`).toBeGreaterThanOrEqual(
+        Math.max(...kolumnaLewa.filter((l) => Math.abs(l.r.y - w.r.y) <= TOLERANCJA_EKRANU_PX).map((l) => l.r.x + l.r.width)),
+      );
+    }
     const zapasPrawy = b.ramka.x + b.ramka.width - Math.max(...b.wiersze.map((w) => w.r.x + w.r.width));
     const zapasDolny = b.ramka.y + b.ramka.height - Math.max(...b.wiersze.map((w) => w.r.y + w.r.height));
     const opis = `${kadr} · ${motyw} · blok ${b.pole}`;
-    expect(rozrzutLewych, `${opis}: wiersze od jednej lewej krawędzi (${lewe.map((x) => x.toFixed(1)).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    expect(rozrzutLewych, `${opis}: co najwyżej dwie kolumny kodów (${lewe.map((x) => x.toFixed(1)).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
     for (const w of b.wiersze) {
       expect(w.r.x, `${opis}: „${w.tekst}" wewnątrz ramki (lewa)`).toBeGreaterThanOrEqual(b.ramka.x);
       expect(w.r.x + w.r.width, `${opis}: „${w.tekst}" wewnątrz ramki (prawa)`).toBeLessThanOrEqual(b.ramka.x + b.ramka.width);
@@ -1113,7 +1129,13 @@ async function zrzutLod(page: Page, nazwa: string, deviceRef: string, pole: Pole
     await page.waitForTimeout(200);
   }
   await expect(svg, `${nazwa}: poziom szczegółu LOD${lod}`).toHaveAttribute('data-scene-lod', String(lod));
-  await czekajNaStabilnaGeometrie(uchwyt);
+  // LOD0: GPZ zwinięty do widoku przeglądowego (pola reprezentowane kaflem, bez aparatów toru —
+  // `sld-gpz-zwiniety`), więc zrzut obejmuje kanwę, a pin opisów sprawdza brak przekładni i oznaczeń przekładników.
+  if (lod === 0) {
+    await czekajNaStabilnyWidok(page);
+  } else {
+    await czekajNaStabilnaGeometrie(uchwyt);
+  }
   const przekladnie = (pole.primary_devices ?? []).filter((d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0);
   for (const ct of przekladnie) {
     const tekst = ct.rdzenie![0].przekladnia.trim().replace(/\s*-\s*/g, '–').replace(/\s*\/\s*/g, '/').replace(/\s*A$/, '');
@@ -1125,7 +1147,8 @@ async function zrzutLod(page: Page, nazwa: string, deviceRef: string, pole: Pole
     if (lod === 1) await expect(napis.first(), `${nazwa}: oznaczenie ${ozn} na LOD1`).toBeVisible();
     else await expect(napis, `${nazwa}: bez oznaczenia ${ozn} na LOD0`).toHaveCount(0);
   }
-  zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip: await kadrPola(page, (pole.primary_devices ?? []).map((d) => d.device_ref)) }));
+  const clip = lod === 0 ? (await svg.boundingBox())! : await kadrPola(page, (pole.primary_devices ?? []).map((d) => d.device_ref));
+  zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip }));
   await widokCalejSieci(page);
 }
 

@@ -104,6 +104,7 @@
  */
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
+import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
   enlargedFontSizeWithinProportion,
@@ -383,9 +384,6 @@ const NAME_ROW_SUFFIX = /#name-row-\d+$/;
  * jako blok, bez rozrywania wierszy. Kolizję z rysunkiem, jeśli powstanie w
  * nowym miejscu, rozstrzyga niżej ta sama maszyneria co zawsze.
  */
-/** Wiersz bloku przekaźnika (kody poza okręgiem i odniesienia obwodów spoza pola —
- *  `compose/gpz.ts`, `compose/station.ts`); człon przed `#` to ref pola. */
-const WIERSZ_BLOKU_PRZEKAZNIKA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
 
 /** Klucz pasma etykiety: wiersze nazw stacji (`#name-row-N`) albo wiersze jednego bloku
  *  przekaźnika; `null` — etykieta poza pasmem. */
@@ -417,15 +415,35 @@ function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map
     const blok = klucz.startsWith('blok:');
     // Kolejność wierszy: nazwy — kolejność sceny (indeks rośnie razem z `#name-row-N`); blok —
     // pozycja w scenie (odniesienia stoją pod kodami niezależnie od kolejności dopisania).
-    const uporzadkowane = [...wiersze].sort((a, b) => (blok ? a.slot.y - b.slot.y || a.index - b.index : a.index - b.index));
+    const uporzadkowane = [...wiersze].sort((a, b) => (blok ? a.slot.y - b.slot.y || a.slot.x - b.slot.x || a.index - b.index : a.index - b.index));
     const gora = Math.min(...uporzadkowane.map((k) => k.slot.y));
     let y = gora;
     const pas: { readonly index: number; readonly rect: V3Rect }[] = [];
-    for (const k of uporzadkowane) {
-      const height = k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height;
-      const yWiersza = blok ? Math.max(k.slot.y, y) : y;
-      pas.push({ index: k.index, rect: { x: k.slot.x, y: yWiersza, width: k.slot.width, height } });
+    // Odbiór B-02 pkt 7: kody bloku w KOLUMNACH — komórki jednego wiersza sceny (wspólne `y`)
+    // dzielą wiersz pasma (jedno `y`, wysokość najwyższej), a kolumny przesuwają się w prawo
+    // o przyrost szerokości poprzedniej kolumny (`kolumnyBlokuWPismie` — to samo źródło co zapas
+    // szerokości kolumny pola GPZ). Dawniej każda komórka była osobnym wierszem pasma, więc
+    // powiększone pismo układało dwie kolumny w jedną (prawa komórka zjeżdżała między wiersze).
+    const xKomorek = blok
+      ? kolumnyBlokuWPismie(
+          uporzadkowane.map((k) => ({
+            x: k.slot.x,
+            y: k.slot.y,
+            width: k.slot.width,
+            szerokoscPisma: k.enlarged ? measureTextWidth(k.tekstBazowy, k.fontSize, wagaPisma(k.label)) : k.slot.width,
+          })),
+        )
+      : null;
+    for (let i = 0; i < uporzadkowane.length; ) {
+      const wiersz = blok ? uporzadkowane.filter((k, j) => j >= i && k.slot.y === uporzadkowane[i].slot.y) : [uporzadkowane[i]];
+      const height = Math.max(...wiersz.map((k) => (k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height)));
+      const yWiersza = blok ? Math.max(wiersz[0].slot.y, y) : y;
+      wiersz.forEach((k, j) => {
+        const x = xKomorek ? xKomorek[i + j] : k.slot.x;
+        pas.push({ index: k.index, rect: { x, y: yWiersza, width: k.slot.width, height: k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height } });
+      });
       y = yWiersza + height;
+      i += wiersz.length;
     }
     // Przesunięcie pasma jako bloku: najpierw w górę o wystawanie pod arkusz,
     // potem (gdy pasmo jest wyższe od miejsca nad nim) z powrotem do y=0.

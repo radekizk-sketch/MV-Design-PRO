@@ -42,6 +42,7 @@
  */
 
 import { GRID, rectsOverlap, snapDown, snapToGrid, snapUp, type V3Rect } from '../core/grid';
+import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import {
   LABEL_TYPOGRAPHY,
   MIN_OPIS_CELU_KADRU_PX,
@@ -1962,10 +1963,24 @@ function szerokosciRysunkuPol(kompozycja: GpzComposition, pomiar: PomiarKolumnPo
     const x0 = p.ramkaBloku ? p.x + Math.min(0, p.ramkaBloku.x) : p.x;
     dolicz(p.bayRef, x0, p.ramkaBloku ? p.x + p.ramkaBloku.x + p.ramkaBloku.width : p.x + PROTECTION_ANNOTATION_DIAMETER);
   }
+  // Komórki bloku przekaźnika — kolumny przesunięte o przyrost pisma poprzedniej kolumny (to samo
+  // źródło co plan czytelności, `kolumnyBlokuWPismie`); pozostałe etykiety — każda od kotwicy.
+  const bloki = new Map<string, SimpleAnchoredOwnerInput[]>();
   for (const e of [...kompozycja.labels.fieldDesignations, ...kompozycja.labels.protection]) {
+    if (WIERSZ_BLOKU_PRZEKAZNIKA.test(e.ownerRef)) {
+      const klucz = e.ownerRef.replace(WIERSZ_BLOKU_PRZEKAZNIKA, '');
+      bloki.set(klucz, [...(bloki.get(klucz) ?? []), e]);
+      continue;
+    }
     const r = prostokatEtykietyWKadrze(e);
     dolicz(polePrefiksu(e.ownerRef), r.x, r.x + r.width);
   }
+  bloki.forEach((komorki) => {
+    const sceny = komorki.map(prostokatEtykietyZakotwiczonej);
+    const wPismie = komorki.map(prostokatEtykietyWKadrze);
+    const xs = kolumnyBlokuWPismie(sceny.map((r, i) => ({ x: r.x, y: r.y, width: r.width, szerokoscPisma: wPismie[i].width })));
+    komorki.forEach((e, i) => dolicz(polePrefiksu(e.ownerRef), xs[i], xs[i] + wPismie[i].width));
+  });
   for (const g of [...kompozycja.protectionSegments, ...kompozycja.measurementSegments]) {
     for (const q of g.points) dolicz(polePrefiksu(g.ownerRef), q.x, q.x);
   }
