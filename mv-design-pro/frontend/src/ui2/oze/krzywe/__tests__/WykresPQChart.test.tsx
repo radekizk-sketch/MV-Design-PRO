@@ -11,6 +11,7 @@ import { WykresPQChart } from '../WykresPQChart';
 import { punktyWykresuPQ } from '../krzyweModel';
 import { KRZYWE_STRINGS } from '../strings';
 import { widokPokryciaFixture } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 function renderWykres() {
   const widok = widokPokryciaFixture();
@@ -32,8 +33,10 @@ describe('WykresPQChart', () => {
 
   it('legenda pokazuje polskie nazwy linii producenta (q max / q min)', () => {
     renderWykres();
-    expect(screen.getByText(KRZYWE_STRINGS.legendaQMax)).toBeInTheDocument();
-    expect(screen.getByText(KRZYWE_STRINGS.legendaQMin)).toBeInTheDocument();
+    // Legenda składa symbol przez KaTeX (`legendaZWzorami`): proza i wzór `$Q_{\max}$`
+    // osobno, bez surowych dolarów na ekranie.
+    expect(screen.getByText(poTekscieZWzorami(KRZYWE_STRINGS.legendaQMax))).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(KRZYWE_STRINGS.legendaQMin))).toBeInTheDocument();
   });
 
   it('jest deterministyczny — ten sam markup dla tych samych danych', () => {
