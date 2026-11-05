@@ -13,7 +13,7 @@
  *  (c) koniec odcinka toru leżący na kaflu jest portem symbolu tego kafla;
  *  (d) opis pola ∩ symbol, opis pola ∩ inny napis, opis pola ∩ przewód — zero.
  *
- * Iloczyn cech: fikstura (59 plików z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
+ * Iloczyn cech: fikstura (64 pliki z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
  * plus macierz W1c pól stacji) × LOD {0, 1, 2} × wyrocznia (a)–(d). Iniekcje: kropka i odczep
  * przesunięte na port wyłącznika, opis nałożony na symbol, napis i przewód.
  */
@@ -171,8 +171,10 @@ function naruszenia(scena: SceneV3): string[] {
 const SCENY = FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const));
 
 describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura × LOD', () => {
-  it('kontrola wejścia: 59 fikstur i macierz W1c', () => {
-    expect(FIKSTURY).toHaveLength(60);
+  it('kontrola wejścia: 64 fikstury i macierz W1c', () => {
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 60 → 64 — sceny generatora
+    // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
+    expect(FIKSTURY).toHaveLength(64);
   });
 
   it.each(SCENY)('%s L%i', (_nazwa, lod, enm) => {

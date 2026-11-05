@@ -104,8 +104,13 @@ Stan 2026-11-05 (następca 7) — rysunek pola ZU z nośnika i W041:
   ∥ gałąź rezystora, Z.15 — odłącznik → przekładnik prądowy T2 → rezystor (podpis R_N); strona
   dolna → odbiór „potrzeby własne 0,4 kV” (napięcie szyny potrzeb własnych z modelu). Źródło-dawca
   punktu neutralnego nie dostaje już glifu przy sekcji (sieć nie jest izolowana — uziemia ją
-  zespół). Test iloczynu `v2/model/__tests__/zespolUziemiajacyPola.test.ts`; zrzuty
-  `docs/uiux/zrzuty/pola-gpz/`.
+  zespół). Po oględzinach zrzutów: w Z.14 rezystor gałęzi równoległej niesie podpis AWSC (rezystor
+  wymuszający po stronie pierwotnej, §16 s.30), kolumna rezystora stoi za podpisem dławika
+  (`kolumnyGaleziZespolu` — jedna funkcja rysunku i rezerwacji kolumny), rozgałęzienia przewodu
+  punktu neutralnego mają kropki (`ODCZEP_WEZLA_POLA`). Transformator uziemiający należy do
+  stacji swojego pola (`transformatoryNalezaceDoStacji` przez `Bay.substation_ref`) — bez tego
+  blok stacji na L0 gubił go (reguła kompletności rysunku). Test iloczynu
+  `v2/model/__tests__/zespolUziemiajacyPola.test.ts`; zrzuty `docs/uiux/zrzuty/pola-gpz/`.
 - Różnice wobec stron 93–95, zostawione świadomie i nazwane: przekładnik T2 gałęzi rezystora stoi
   NAD rezystorem (glif `neutralEarthing` łączy aparat z uziomem, więc przekładnik pod rezystorem
   wymagałby osobnego glifu uziomu); w Z.13 AWSC i regulator dławika są podpisem przy dławiku, nie

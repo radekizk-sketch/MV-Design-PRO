@@ -71,9 +71,14 @@ async function otworzHarness(page: Page, fikstura: string, theme: 'dark' | 'ligh
 /** Ramka ekranowa wszystkich elementów pola (testId z refem pola) — sonda DOM, nie zgadywanie. */
 async function ramkaPola(page: Page, bayRef: string): Promise<{ x: number; y: number; width: number; height: number } | null> {
   return page.evaluate((ref) => {
-    const elementy = [...document.querySelectorAll('[data-testid]')].filter((el) =>
-      (el.getAttribute('data-testid') ?? '').includes(ref),
-    );
+    const kanwa = document.querySelector('[data-testid="sld-canvas-v3"]');
+    // Rysunek pola: prefiks `gpz-canonical-bay-⟨ref⟩` i tło pola `sld-v3-gpz-panel-⟨ref⟩` (tło
+    // obejmuje tusz pola razem z podpisami, które nie niosą `data-testid`; tabela pól na arkuszu
+    // też jest w kanwie, więc samo „zawiera ref” brało pół ekranu).
+    const elementy = [...(kanwa?.querySelectorAll('[data-testid]') ?? [])].filter((el) => {
+      const id = el.getAttribute('data-testid') ?? '';
+      return id.startsWith(`gpz-canonical-bay-${ref}`) || id === `sld-v3-gpz-panel-${ref}`;
+    });
     if (elementy.length === 0) return null;
     let x0 = Infinity;
     let y0 = Infinity;
@@ -119,6 +124,7 @@ test.describe('pola-gpz:screenshot — pola GPZ z szablonów ENEA Zeszyt 1', () 
           }
         }
 
+        await expect(page.locator(`[data-testid="sld-v3-gpz-panel-${pole!.ref_id}"]`)).toHaveCount(1);
         const ramka = await ramkaPola(page, pole!.ref_id);
         expect(ramka, `pole ${pole!.ref_id} bez elementów na rysunku`).not.toBeNull();
         const margines = 40;

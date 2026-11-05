@@ -22,7 +22,10 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Transformer } from '../../../../../types/enm';
 import fx from '../../../../../harness-fixtures/generated/pola_gpz_szablonow.json';
 import { buildCanonicalGpzProps } from '../../canvas/enmToCanonicalGpzAdapter';
-import { composeGpz } from '../../../v3/compose/gpz';
+import { composeGpz, KLASA_ETYKIETY_APARATU_GPZ } from '../../../v3/compose/gpz';
+import { measureLabelWidth } from '../../../v3/core/text';
+import { SYMBOL_DEFS } from '../../../v3/symbols/defs';
+import { buildSceneV3 } from '../../../v3/scene/buildScene';
 import { Transformer2WGlyph } from '../../../v3/symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen } from '../../../v3/symbols/uzwojenia';
 import {
@@ -108,6 +111,7 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
       expect(widok?.dlawik).toBe(wariant !== 'Z15');
       expect(widok?.rezystor).toBe(wariant !== 'Z13');
       expect(widok?.awsc).toBe(wariant === 'Z13');
+      expect(widok?.rezystorWymuszajacy).toBe(wariant === 'Z14');
       expect(widok?.napieciePotrzebWlasnychKv).toBe(0.4);
     });
 
@@ -115,7 +119,8 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
       it(`${wariant} × dawca ${bezDawcy ? 'brak' : 'źródło GPZ'} × deklaracja stacji ${zadeklarowany ? 'z transformatorem' : 'bez'}: transformator w stosie pola ZU, bez wieży, gałąź punktu neutralnego`, () => {
         const enm = wariantMigawki(wariant, { bezDawcy, zadeklarowany });
         expect(selectStationDistributionTransformers(enm, stacjaGpz(enm)).map((t) => t.ref_id)).not.toContain(TR_ZU.ref_id);
-        if (zadeklarowany) expect(transformatoryNalezaceDoStacji(enm, stacjaGpz(enm)).map((t) => t.ref_id)).toContain(TR_ZU.ref_id);
+        // Przynależność do stacji przez pole zespołu (`Bay.substation_ref`) — z deklaracją i bez.
+        expect(transformatoryNalezaceDoStacji(enm, stacjaGpz(enm)).map((t) => t.ref_id)).toContain(TR_ZU.ref_id);
         const c = kompozycja(enm);
         // Bez wieży transformatora uziemiającego — wieże to wyłącznie transformatory 110/15 kV.
         expect(c.transformers.map((t) => t.transformerRef)).not.toContain(TR_ZU.ref_id);
@@ -144,7 +149,26 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
         // Podpisy wartości z nośnika (zero domysłu).
         const teksty = c.labels.fieldDesignations.map((l) => l.text);
         if (wariant !== 'Z15') expect(teksty.some((t) => t.startsWith('X_N 150 Ω'))).toBe(true);
-        if (wariant !== 'Z13') expect(teksty).toContain('R_N 25 Ω');
+        // Z.13: AWSC po stronie wtórnej dławika; Z.14: rezystor gałęzi równoległej jest
+        // rezystorem wymuszającym AWSC po stronie pierwotnej (§16 s.30); Z.15: sam R_N.
+        if (wariant === 'Z13') expect(teksty).toContain('X_N 150 Ω · AWSC 40 A');
+        if (wariant === 'Z14') expect(teksty).toEqual(expect.arrayContaining(['X_N 150 Ω', 'R_N 25 Ω · AWSC 40 A']));
+        if (wariant === 'Z15') expect(teksty).toContain('R_N 25 Ω');
+        // Kolumna następnej gałęzi stoi za podpisem wartości poprzedniej (podpis nie nachodzi na
+        // aparat sąsiedniej gałęzi).
+        const kolumny = wPolu.filter((s) => s.symbolId === 'neutralEarthing').map((s) => s.x).sort((a, b) => a - b);
+        if (kolumny.length === 2) {
+          // Podpis dławika (na prawo od aparatu) kończy się przed lewą krawędzią aparatu rezystora.
+          const szer = SYMBOL_DEFS.neutralEarthing.width;
+          expect(kolumny[0] + szer + measureLabelWidth('X_N 150 Ω', KLASA_ETYKIETY_APARATU_GPZ)).toBeLessThan(kolumny[1]);
+        }
+        // Kropki węzłów punktu neutralnego: ogranicznik i każde zejście poza ostatnim (narożnik).
+        const scena = buildSceneV3(enm, 2);
+        const yPrzewodu = scena.segments.find((s) => s.meta?.ownerRef === `${ZU.ref_id}#zespol-punkt-neutralny`)!.points[0].y;
+        const kropki = scena.symbols.filter(
+          (s) => s.symbolId === 'junction' && String(s.meta?.testId ?? '').endsWith(`-${yPrzewodu}`),
+        );
+        expect(kropki).toHaveLength(wariant === 'Z14' ? 2 : 1);
         expect(teksty).toContain('ZNyn11 · 100 kVA');
       });
     }

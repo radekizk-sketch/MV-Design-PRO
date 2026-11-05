@@ -39,6 +39,9 @@ export interface ZespolUziemiajacyPolaView {
   readonly rezystor: boolean;
   /** AWSC po stronie wtórnej dławika (Z.13). */
   readonly awsc: boolean;
+  /** Rezystor gałęzi równoległej jest rezystorem wymuszającym AWSC po stronie pierwotnej (Z.14,
+   *  Zeszyt 1 §16 s.30). */
+  readonly rezystorWymuszajacy: boolean;
   readonly rOhm: number | null;
   readonly xOhm: number | null;
   readonly awscA: number | null;
@@ -81,6 +84,7 @@ export function zespolUziemiajacyPola(
     dlawik,
     rezystor,
     awsc: wariant === 'Z13',
+    rezystorWymuszajacy: wariant === 'Z14',
     rOhm: liczba(nosnik?.r_ohm),
     xOhm: liczba(nosnik?.x_ohm),
     awscA: liczba(nosnik?.awsc_prad_wymuszenia_a),

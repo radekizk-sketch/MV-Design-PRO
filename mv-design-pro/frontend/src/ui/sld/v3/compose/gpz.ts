@@ -657,11 +657,33 @@ function galezieZespolu(zespol: ZespolUziemiajacyPolaView): readonly ('dlawik' |
 /** Podpis wartości aparatu gałęzi punktu neutralnego — wartość z nośnika modelu, bez niej
  *  sama nazwa (zero domysłu). */
 function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: 'dlawik' | 'rezystor'): string {
+  const awsc = `AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}`;
   if (galaz === 'dlawik') {
     const x = zespol.xOhm != null ? `X_N ${liczbaPl(zespol.xOhm)} Ω` : 'dławik';
-    return zespol.awsc ? `${x} · AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}` : x;
+    return zespol.awsc ? `${x} · ${awsc}` : x;
   }
-  return zespol.rOhm != null ? `R_N ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
+  const r = zespol.rOhm != null ? `R_N ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
+  // Z.14: rezystor gałęzi równoległej JEST rezystorem wymuszającym AWSC po stronie pierwotnej
+  // (§16 s.30) — prąd wymuszenia z nośnika (`awsc_prad_wymuszenia_a`).
+  return zespol.rezystorWymuszajacy ? `${r} · ${awsc}` : r;
+}
+
+/** Kolumny gałęzi punktu neutralnego: przesunięcie osi kolumny od węzła punktu neutralnego.
+ *  Kolejna kolumna stoi za podpisem wartości poprzedniej (podpis na prawo od aparatu) — JEDNA
+ *  funkcja dla rysunku (`ogonZespoluUziemiajacego`) i rezerwacji kolumny pola
+ *  (`szerokoscOgonaZespolu`, predykaty parami). */
+function kolumnyGaleziZespolu(
+  zespol: ZespolUziemiajacyPolaView,
+): readonly { readonly galaz: 'dlawik' | 'rezystor'; readonly dx: number; readonly podpis: number }[] {
+  const polowa = SYMBOL_DEFS.neutralEarthing.width / 2;
+  const kolumny: { galaz: 'dlawik' | 'rezystor'; dx: number; podpis: number }[] = [];
+  let dx = ROZSTAW_GALEZI_ZESPOLU;
+  for (const galaz of galezieZespolu(zespol)) {
+    const podpis = measureLabelWidth(podpisGaleziZespolu(zespol, galaz), KLASA_ETYKIETY_APARATU_GPZ);
+    kolumny.push({ galaz, dx, podpis });
+    dx += Math.max(ROZSTAW_GALEZI_ZESPOLU, snapUp(2 * polowa + podpis + GRID));
+  }
+  return kolumny;
 }
 
 /** Tabliczka transformatora uziemiającego (grupa i moc z modelu). */
@@ -683,9 +705,10 @@ function podpisPotrzebWlasnych(zespol: ZespolUziemiajacyPolaView): string {
 function szerokoscOgonaZespolu(bay: CanonicalGpzBay): number {
   const zespol = bay.zespolUziemiajacy;
   if (!zespol) return 0;
-  const galezie = galezieZespolu(zespol);
-  const podpisy = galezie.map((g) => measureLabelWidth(podpisGaleziZespolu(zespol, g), KLASA_ETYKIETY_APARATU_GPZ));
-  return snapUp(ODSUNIECIE_WEZLA_ZESPOLU + galezie.length * ROZSTAW_GALEZI_ZESPOLU + GRID + Math.max(0, ...podpisy));
+  const kolumny = kolumnyGaleziZespolu(zespol);
+  const ostatnia = kolumny[kolumny.length - 1];
+  const prawa = ostatnia ? ostatnia.dx + SYMBOL_DEFS.neutralEarthing.width / 2 + ostatnia.podpis : 0;
+  return snapUp(ODSUNIECIE_WEZLA_ZESPOLU + prawa + GRID);
 }
 
 interface OgonZespolu {
@@ -724,8 +747,9 @@ function ogonZespoluUziemiajacego(
   const yN = transformator.y + zacisk.y;
   const xPrawa = transformator.x + zacisk.x;
   const xWezla = xPrawa + ODSUNIECIE_WEZLA_ZESPOLU;
-  const galezie = galezieZespolu(zespol);
-  const xGalezi = galezie.map((_, i) => xWezla + (i + 1) * ROZSTAW_GALEZI_ZESPOLU);
+  const kolumny = kolumnyGaleziZespolu(zespol);
+  const galezie = kolumny.map((k) => k.galaz);
+  const xGalezi = kolumny.map((k) => xWezla + k.dx);
   const xKonca = xGalezi.length > 0 ? xGalezi[xGalezi.length - 1] : xWezla;
   segments.push({
     ownerRef: `${bay.bayRef}#zespol-punkt-neutralny`,
@@ -797,8 +821,11 @@ function ogonZespoluUziemiajacego(
   const yDol = transformator.y + trDef.height;
   const odbior = { symbolId: 'loadArrow' as const, x: xTr - SYMBOL_DEFS.loadArrow.width / 2, y: yDol + 2 * GRID };
   symbols.push({ ...odbior, ports: portsInWorld(odbior.symbolId, odbior.x, odbior.y), meta: metaOgona('potrzeby-wlasne') });
+  // Przewód strony dolnej należy do TRANSFORMATORA (element modelu z zapisu pary): symbol
+  // transformatora w stosie pola niesie ref pola (`meta.bayRef` wygrywa w scenie), a reguła
+  // kompletności rysunku liczy transformator jako narysowany po refie właściciela prymitywu.
   segments.push({
-    ownerRef: `${bay.bayRef}#zespol-potrzeby-wlasne`,
+    ownerRef: `${zespol.transformatorRef}#potrzeby-wlasne`,
     points: [{ x: xTr, y: yDol }, { x: xTr, y: odbior.y }],
     meta: metaOgona('potrzeby-wlasne-przewod'),
   });
