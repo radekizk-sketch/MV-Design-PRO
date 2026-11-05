@@ -616,6 +616,7 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
       bateria: {
         uklad: bay.bateria.uklad,
         przekladnikNiezrownowazenia: bay.bateria.przekladnikNiezrownowazenia,
+        przekladnikiMiedzyfazowe: bay.bateria.przekladnikiMiedzyfazowe,
       },
     });
   }

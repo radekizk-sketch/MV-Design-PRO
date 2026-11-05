@@ -122,8 +122,10 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
 }
 
 describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze × LOD', () => {
-  it('kontrola wejścia: 58 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
-    expect(FIKSTURY).toHaveLength(58);
+  it('kontrola wejścia: 59 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura harnessu
+    // `pola_gpz_szablonow.json` (pola GPZ z szablonów Z.7, Z.12, Z.16, Z.17).
+    expect(FIKSTURY).toHaveLength(59);
     for (const katalog of KATALOGI) expect(FIKSTURY.some(([n]) => n.startsWith(`${katalog}/`))).toBe(true);
     // Migawki biegu (model pod `snapshot`) i fikstury kanwy (model pod `enm`) są w zbiorze.
     expect(FIKSTURY.some(([n]) => n.endsWith('pulpit_scena_migawka.json'))).toBe(true);
@@ -167,6 +169,9 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // z portu S odłącznika Q5 w kolumnie odgałęzienia (`…#odgalezienie-0-lateral-0`), dwa pola
     // Z.11 wykonania stałego × LOD1/LOD2; dawniej odczep kolumny nosił właściciela `…-wire-…`,
     // którego predykat kropki (`ODCZEP_WEZLA_POLA`) nie rozpoznawał — rozgałęzienie bez kropki.
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): fikstura `pola_gpz_szablonow` nie zmienia
+    // pinów, gdy przekładniki międzyfazowe T4/T5 pola Z.16 rysuje glif baterii (s. 96); rysowane
+    // dawniej jako odczep przekładnika napięciowego toru dokładały 8 fałszywych kropek (77).
     expect(przeciecia).toBe(113);
     expect(kropki).toBe(69);
   });

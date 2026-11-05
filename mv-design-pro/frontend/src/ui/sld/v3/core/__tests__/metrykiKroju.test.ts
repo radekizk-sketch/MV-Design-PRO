@@ -194,7 +194,8 @@ describe('pokrycie: każdy znak etykiet sceny na każdej fiksturze repozytorium 
   );
 
   it('liczba fikstur z modelem ENM (ta sama kolekcja co test mostków i węzłów)', () => {
-    expect(FIKSTURY.length).toBe(58);
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura `pola_gpz_szablonow.json`.
+    expect(FIKSTURY.length).toBe(59);
   });
 
   it('LOD 2 (pełna treść etykiet): zero znaków poza tabelą', () => {
