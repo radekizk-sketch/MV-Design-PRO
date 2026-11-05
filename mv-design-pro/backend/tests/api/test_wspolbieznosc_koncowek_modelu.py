@@ -69,6 +69,8 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from enm.domain_operations_v2 import DER_WIAZANIA_LADUNKU  # noqa: E402
+
 # Ile czasu koncowka czeka w rozciagnietym oknie miedzy odczytem a zapisem.
 # Przy DZIALAJACEJ blokadzie drugi uczestnik nie wejdzie w okno nigdy, wiec to
 # jest staly koszt kazdego testu wyscigowego — stad wartosc mala, ale z zapasem
@@ -728,8 +730,12 @@ class TestWyscigWiazanWytworcy:
         )
 
         zapisane = _wiazania_z_modelu(app_client, case_id, generator_ref)
+        # Ładunek niesie wiązanie roli, model — pozycję w polu `<rola>_catalog_ref`
+        # (`enm.domain_operations_v2.DER_WIAZANIA_LADUNKU`, jedno odwzorowanie).
         zgubione = {
-            pole: wartosc for pole, wartosc in pola.items() if zapisane.get(pole) != wartosc
+            pole: wartosc
+            for pole, wartosc in pola.items()
+            if zapisane.get(DER_WIAZANIA_LADUNKU[pole]) != wartosc["catalog_item_id"]
         }
         assert zgubione == {}, (
             "Rownolegle zadania wiazan skasowaly sie wzajemnie mimo HTTP 200 — "

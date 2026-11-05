@@ -961,7 +961,11 @@ def test_prog_87t_profil_spoza_katalogu_nazwany() -> None:
         {"materialized_params": {"profiles": {"nc_rfg_profile_ref": "operator_nieznany"}}}
     )
     assert prog is None
-    assert opis is not None and "operator_nieznany" in opis
+    # Intencja: brak profilu w katalogu jest NAZWANĄ przyczyną braku podstawy progu. Komunikat
+    # dla projektanta nie niesie identyfikatora profilu (karta #142,
+    # `tests/enm/test_komunikaty_operacji_bez_kodow.py`) — profil widać w karcie wytwórcy.
+    assert opis is not None and "nie ma w katalogu operatorów" in opis
+    assert "operator_nieznany" not in opis
     assert _prog_87t_operatora({"materialized_params": {}}) == (None, None)
     prog_pse, nazwa_pse = _prog_87t_operatora(
         {"materialized_params": {"profiles": {"nc_rfg_profile_ref": "pse"}}}

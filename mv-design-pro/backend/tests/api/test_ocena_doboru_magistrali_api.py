@@ -43,7 +43,7 @@ def podstawa_spadku_wskazana(monkeypatch: pytest.MonkeyPatch) -> None:
 def _odcinek(**zmiany: Any) -> dict[str, Any]:
     return {
         "rodzaj": "KABEL",
-        "catalog_binding": {"catalog_item_id": KABEL},
+        "catalog_ref": KABEL,
         "dlugosc_m": 500.0,
         "prad_roboczy_a": 100.0,
         "cos_phi": COS_PHI,

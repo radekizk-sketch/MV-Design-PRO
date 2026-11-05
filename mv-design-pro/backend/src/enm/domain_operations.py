@@ -172,6 +172,7 @@ from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
 from .wiazanie_katalogowe import (
+    KOD_PRZESTRZENI_NIEZGODNEJ,
     KOD_ZAMIENNIKA_KLUCZA,
     PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
     bledy_wiazan_w_ladunku,
@@ -179,6 +180,9 @@ from .wiazanie_katalogowe import (
     odczytaj_wiazanie,
     odmowa_przestrzeni,
     pozycja_wiazania,
+    przestrzen_wiazania,
+    przestrzenie_odcinka_sn,
+    przestrzenie_rodzaju,
     zamienniki_klucza_w_ladunku,
 )
 from .zajetosc_pol import (
@@ -1060,33 +1064,24 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
     return None
 
 
-#: Kategorie katalogu dopuszczalne dla danego RODZAJU gałęzi.
-#:
-#: KD-6 (Zero-Debt): `assign_catalog_to_element` przyjmował DOWOLNĄ kategorię dla
-#: dowolnej gałęzi, więc wyłącznik pola dawało się przepiąć na pozycję katalogu
-#: KABEL_SN. Skutek nie był kosmetyczny: wiązanie APARAT_SN, którego operacja
-#: stacyjna WYMAGA (B-12), znikało po cichu, a materializacja wpisywałaby
-#: parametry kabla (r/x na km, obciążalność) w aparat łączeniowy. Wykryte przy
-#: budowie ogniwa „wynik zwarciowy → wytrzymałość aparatury": stacja traciła
-#: aparaty pól po przypisaniu katalogów gałęziom.
-_NAMESPACE_DOZWOLONE_DLA_GALEZI: dict[str, frozenset[str]] = {
-    "cable": frozenset({"KABEL_SN", "KABEL_NN"}),
-    # Karta LINIA-110: przewód linii 110 kV (dane wyrobu) — parametry linii z geometrii.
-    "line_overhead": frozenset({"LINIA_SN", "PRZEWOD_LINII_WN"}),
-    "breaker": frozenset({"APARAT_SN", "APARAT_NN"}),
-    "switch": frozenset({"APARAT_SN", "APARAT_NN"}),
-    "bus_coupler": frozenset({"APARAT_SN", "APARAT_NN"}),
-    "disconnector": frozenset({"APARAT_SN", "APARAT_NN"}),
-    "fuse": frozenset({"APARAT_SN", "APARAT_NN"}),
-}
-
-
 def _namespace_pasuje_do_galezi(element: dict[str, Any], namespace: str | None) -> bool:
-    """Czy kategoria katalogu odpowiada RODZAJOWI gałęzi (kabel ≠ wyłącznik)."""
+    """Czy kategoria katalogu odpowiada RODZAJOWI gałęzi (kabel ≠ wyłącznik).
+
+    Zbiór dozwolonych kategorii typu gałęzi pochodzi z jednej mapy
+    ``enm.wiazanie_katalogowe.PRZESTRZENIE_RODZAJU`` (klucze ``galaz.<typ>``) — tej samej, którą
+    czytają operacje tworzące aparaty nN i brama API.
+
+    KD-6 (Zero-Debt): `assign_catalog_to_element` przyjmował DOWOLNĄ kategorię dla
+    dowolnej gałęzi, więc wyłącznik pola dawało się przepiąć na pozycję katalogu
+    KABEL_SN. Skutek nie był kosmetyczny: wiązanie APARAT_SN, którego operacja
+    stacyjna WYMAGA (B-12), znikało po cichu, a materializacja wpisywałaby
+    parametry kabla (r/x na km, obciążalność) w aparat łączeniowy.
+    """
     if not namespace:
         return True
-    dozwolone = _NAMESPACE_DOZWOLONE_DLA_GALEZI.get(str(element.get("type")))
-    if dozwolone is None:
+    try:
+        dozwolone = przestrzenie_rodzaju(f"galaz.{element.get('type')}")
+    except KeyError:
         return True
     return namespace in dozwolone
 
@@ -2859,17 +2854,21 @@ def _build_catalog_binding_payload(
     catalog_ref: str,
     catalog_binding: object,
     *,
-    default_namespace: str,
+    default_namespace: str | tuple[str, ...],
     default_version: str | None = None,
 ) -> dict[str, Any]:
     """Znormalizuj binding do jednego kanonicznego kontraktu.
 
-    Przestrzeń = przestrzeń RODZAJU elementu (``default_namespace``); niezgodną przestrzeń
-    wiązania odrzuca wcześniej ``odmowa_przestrzeni`` (karta JEDEN-KLUCZ-KATALOGU).
+    Przestrzeń = przestrzeń RODZAJU elementu (``default_namespace``: jedna albo zbiór
+    dozwolonych z ``PRZESTRZENIE_RODZAJU`` — zadeklarowana z tego zbioru albo pierwsza);
+    niezgodną przestrzeń wiązania odrzuca wcześniej ``odmowa_przestrzeni`` (karta
+    JEDEN-KLUCZ-KATALOGU).
     """
     binding = catalog_binding if isinstance(catalog_binding, dict) else {}
     return {
-        "catalog_namespace": default_namespace,
+        "catalog_namespace": przestrzen_wiazania(
+            _extract_catalog_binding_namespace(binding), default_namespace
+        ),
         "catalog_item_id": catalog_ref,
         "catalog_item_version": (
             _extract_catalog_binding_version(binding) or default_version or "legacy"
@@ -2883,7 +2882,7 @@ def _materialize_catalog_payload(
     *,
     catalog_ref: str,
     catalog_binding: object,
-    default_namespace: str,
+    default_namespace: str | tuple[str, ...],
     default_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
     """Zmaterializuj pozycję katalogową do trwałych pól snapshotu."""
@@ -2899,7 +2898,7 @@ def _materialize_catalog_payload(
         opis_pl="Pozycja katalogu",
     )
     if odmowa is not None:
-        return _error_response(odmowa.komunikat_pl or "", odmowa.kod_bledu or "")
+        return _error_response(odmowa.komunikat_pl or "", KOD_PRZESTRZENI_NIEZGODNEJ)
 
     binding_payload = _build_catalog_binding_payload(
         catalog_ref,
@@ -5493,7 +5492,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     materialization = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
         catalog_binding=segment_catalog_binding,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     if isinstance(materialization, dict):
         return materialization
@@ -5502,7 +5501,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     _apply_catalog_metadata(
         branch_data,
         binding_payload,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     _apply_materialized_branch_fields(
         branch_data, materialized_params, czestotliwosc_studium_hz(enm)
@@ -7816,7 +7815,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
             catalog_binding=None,
-            default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
+            default_namespace=przestrzenie_odcinka_sn(seg_type),
             default_version=segment_catalog_version,
         )
         if isinstance(materialization, dict):
@@ -7826,7 +7825,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         _apply_catalog_metadata(
             left_data,
             binding_payload,
-            default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
+            default_namespace=przestrzenie_odcinka_sn(seg_type),
         )
         _apply_materialized_branch_fields(
             left_data, materialized_params, czestotliwosc_studium_hz(enm)
@@ -7856,7 +7855,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
             catalog_binding=None,
-            default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
+            default_namespace=przestrzenie_odcinka_sn(seg_type),
             default_version=segment_catalog_version,
         )
         if isinstance(materialization, dict):
@@ -7866,7 +7865,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         _apply_catalog_metadata(
             right_data,
             binding_payload,
-            default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
+            default_namespace=przestrzenie_odcinka_sn(seg_type),
         )
         _apply_materialized_branch_fields(
             right_data, materialized_params, czestotliwosc_studium_hz(enm)
@@ -8924,7 +8923,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     materialization = _materialize_catalog_payload(
         catalog_ref=branch_catalog_ref,
         catalog_binding=branch_catalog_binding,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     if isinstance(materialization, dict):
         return materialization
@@ -8933,7 +8932,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     _apply_catalog_metadata(
         branch_data,
         binding_payload,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     _apply_materialized_branch_fields(
         branch_data, materialized_params, czestotliwosc_studium_hz(enm)
@@ -9402,7 +9401,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     materialization = _materialize_catalog_payload(
         catalog_ref=ring_catalog_ref,
         catalog_binding=ring_catalog_binding,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     if isinstance(materialization, dict):
         return materialization
@@ -9411,7 +9410,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     _apply_catalog_metadata(
         ring_data,
         binding_payload,
-        default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
+        default_namespace=przestrzenie_odcinka_sn(branch_type),
     )
     _apply_materialized_branch_fields(ring_data, materialized_params, czestotliwosc_studium_hz(enm))
     blad_ekranu = _apply_screen_bonding(ring_data, segment)
@@ -10053,7 +10052,7 @@ def _przypisz_katalog_pola(
     nazwana, nie ciche przypisanie."""
     rekord = pole_modelu(enm, field_ref)
     assert rekord is not None  # `_find_element` znalazł rekord w `bays`
-    oczekiwana = "APARAT_NN" if czy_pole_nn(enm, rekord) else "APARAT_SN"
+    (oczekiwana,) = przestrzenie_rodzaju("pole.nn" if czy_pole_nn(enm, rekord) else "pole.sn")
     przestrzen = _extract_catalog_binding_namespace(catalog_binding) or oczekiwana
     if przestrzen != oczekiwana:
         return _error_response(

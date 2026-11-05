@@ -1,5 +1,5 @@
 """
-Testy bramki katalogowej — weryfikacja wymuszania catalog_ref/catalog_binding.
+Testy bramki katalogowej — weryfikacja wymuszania wiązania catalog_binding.
 
 Faza 5: Testy potwierdzajace ze warstwa ENM odrzuca operacje tworzace
 segmenty i transformatory bez katalogu.
@@ -91,7 +91,7 @@ def _get_sn_bus_ref(snapshot: dict) -> str:
 
 class TestCatalogGateContinueTrunk:
     def test_reject_trunk_without_catalog(self):
-        """continue_trunk_segment_sn BEZ catalog_ref → error catalog.ref_required."""
+        """continue_trunk_segment_sn BEZ wiązania katalogowego → error catalog.ref_required."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
 
@@ -102,7 +102,7 @@ class TestCatalogGateContinueTrunk:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    # BRAK catalog_ref i catalog_binding
+                    # BRAK wiązania catalog_binding
                 },
             },
         )
@@ -110,7 +110,7 @@ class TestCatalogGateContinueTrunk:
         assert result["error_code"] == "catalog.ref_required"
 
     def test_accept_trunk_with_catalog_ref(self):
-        """continue_trunk_segment_sn Z catalog_ref → sukces."""
+        """continue_trunk_segment_sn Z wiązaniem katalogowym → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
 
@@ -159,7 +159,7 @@ class TestCatalogGateContinueTrunk:
 
 class TestCatalogGateStartBranch:
     def test_reject_branch_without_catalog(self):
-        """start_branch_segment_sn BEZ catalog_ref → error catalog.ref_required."""
+        """start_branch_segment_sn BEZ wiązania katalogowego → error catalog.ref_required."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -174,7 +174,7 @@ class TestCatalogGateStartBranch:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    # BRAK catalog_ref i catalog_binding
+                    # BRAK wiązania catalog_binding
                 },
             },
         )
@@ -182,7 +182,7 @@ class TestCatalogGateStartBranch:
         assert result["error_code"] == "catalog.ref_required"
 
     def test_accept_branch_with_catalog_ref(self):
-        """start_branch_segment_sn Z catalog_ref → sukces."""
+        """start_branch_segment_sn Z wiązaniem katalogowym → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -231,7 +231,7 @@ class TestCatalogGateInsertStation:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    # BRAK transformer_catalog_ref i catalog_binding
+                    # BRAK transformer_catalog_binding
                 },
             },
         )
@@ -239,7 +239,7 @@ class TestCatalogGateInsertStation:
         assert result["error_code"] == "catalog.ref_required"
 
     def test_accept_station_with_transformer_catalog(self):
-        """insert_station_on_segment_sn Z transformer_catalog_ref → sukces."""
+        """insert_station_on_segment_sn Z transformer_catalog_binding → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -348,7 +348,7 @@ class TestCatalogGateAddTransformer:
             payload={
                 "hv_bus_ref": hv_ref,
                 "lv_bus_ref": lv_ref,
-                # BRAK transformer_catalog_ref i catalog_binding
+                # BRAK transformer_catalog_binding
             },
         )
         assert result.get("error") is not None
@@ -385,7 +385,7 @@ class TestCatalogGateConnectRing:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 100,
-                    # BRAK catalog_ref
+                    # BRAK wiązania catalog_binding
                 },
             },
         )
@@ -507,7 +507,7 @@ def _get_first_overhead_line_ref(snapshot: dict) -> str:
 
 class TestCatalogGateInsertBranchPole:
     def test_reject_branch_pole_without_catalog(self):
-        """insert_branch_pole_on_segment_sn BEZ catalog_ref → error catalog.ref_required."""
+        """insert_branch_pole_on_segment_sn BEZ wiązania katalogowego → error catalog.ref_required."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_overhead_line_with_catalog(snapshot)
@@ -521,7 +521,7 @@ class TestCatalogGateInsertBranchPole:
                 "segment_id": seg_ref,
                 "name": "Słup testowy",
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                # BRAK catalog_ref i catalog_binding
+                # BRAK wiązania catalog_binding
             },
         )
         assert result.get("error") is not None, "Operacja powinna zwrócić błąd"
@@ -529,7 +529,7 @@ class TestCatalogGateInsertBranchPole:
         assert result.get("snapshot") is None
 
     def test_accept_branch_pole_with_catalog_ref(self):
-        """insert_branch_pole_on_segment_sn Z catalog_ref → sukces."""
+        """insert_branch_pole_on_segment_sn Z wiązaniem katalogowym → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_overhead_line_with_catalog(snapshot)
@@ -572,7 +572,7 @@ class TestCatalogGateInsertBranchPole:
         assert result.get("snapshot") is not None, f"Błąd: {result.get('error')}"
 
     def test_reject_branch_pole_with_invalid_catalog_binding_without_snapshot_mutation(self):
-        """Niepoprawny catalog_binding (bez item_id) → catalog.ref_required i brak nowego branch_point."""
+        """Niepoprawny catalog_binding (bez item_id) → catalog.binding_invalid i brak nowego branch_point."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_overhead_line_with_catalog(snapshot)
@@ -589,7 +589,7 @@ class TestCatalogGateInsertBranchPole:
             },
         )
 
-        assert result.get("error_code") == "catalog.ref_required"
+        assert result.get("error_code") == "catalog.binding_invalid"
         assert result.get("snapshot") is None
         assert len(snapshot.get("branch_points", [])) == branch_points_before
 
@@ -601,7 +601,7 @@ class TestCatalogGateInsertBranchPole:
 
 class TestCatalogGateInsertZKSN:
     def test_reject_zksn_without_catalog(self):
-        """insert_zksn_on_segment_sn BEZ catalog_ref → error catalog.ref_required."""
+        """insert_zksn_on_segment_sn BEZ wiązania katalogowego → error catalog.ref_required."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)  # kabel
@@ -615,7 +615,7 @@ class TestCatalogGateInsertZKSN:
                 "segment_id": seg_ref,
                 "name": "ZKSN testowy",
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                # BRAK catalog_ref i catalog_binding
+                # BRAK wiązania catalog_binding
             },
         )
         assert result.get("error") is not None, "Operacja powinna zwrócić błąd"
@@ -623,7 +623,7 @@ class TestCatalogGateInsertZKSN:
         assert result.get("snapshot") is None
 
     def test_accept_zksn_with_catalog_ref(self):
-        """insert_zksn_on_segment_sn Z catalog_ref → sukces."""
+        """insert_zksn_on_segment_sn Z wiązaniem katalogowym → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -653,7 +653,7 @@ class TestCatalogGateInsertZKSN:
 
 class TestCatalogGateInsertSectionSwitch:
     def test_reject_section_switch_without_catalog(self):
-        """insert_section_switch_sn BEZ catalog_ref → error catalog.ref_required."""
+        """insert_section_switch_sn BEZ wiązania katalogowego → error catalog.ref_required."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -667,7 +667,7 @@ class TestCatalogGateInsertSectionSwitch:
                 "segment_id": seg_ref,
                 "switch_type": "ROZLACZNIK",
                 "normal_state": "closed",
-                # BRAK catalog_ref i catalog_binding
+                # BRAK wiązania catalog_binding
             },
         )
         assert result.get("error") is not None, "Operacja powinna zwrócić błąd"
@@ -675,7 +675,7 @@ class TestCatalogGateInsertSectionSwitch:
         assert result.get("snapshot") is None
 
     def test_accept_section_switch_with_catalog_ref(self):
-        """insert_section_switch_sn Z catalog_ref → sukces."""
+        """insert_section_switch_sn Z wiązaniem katalogowym → sukces."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -739,7 +739,7 @@ class TestCatalogGateInsertSectionSwitch:
         assert len(snapshot.get("buses", [])) == buses_before
 
     def test_reject_section_switch_with_invalid_catalog_binding_without_snapshot_mutation(self):
-        """Niepoprawny catalog_binding (bez item_id) → catalog.ref_required i brak nowego łącznika."""
+        """Niepoprawny catalog_binding (bez item_id) → catalog.binding_invalid i brak nowego łącznika."""
         enm = _empty_enm()
         snapshot = _add_gpz(enm)
         snapshot = _add_segment_with_catalog(snapshot)
@@ -760,7 +760,7 @@ class TestCatalogGateInsertSectionSwitch:
             },
         )
 
-        assert result.get("error_code") == "catalog.ref_required"
+        assert result.get("error_code") == "catalog.binding_invalid"
         assert result.get("snapshot") is None
         switch_count_after = sum(
             1
@@ -771,10 +771,21 @@ class TestCatalogGateInsertSectionSwitch:
 
 
 @pytest.mark.parametrize(
-    "malformed_binding",
-    [None, {}, {"catalog_item_id": ""}, {"catalog_item_id": "   "}, "not-a-dict", 123, []],
+    ("malformed_binding", "kod"),
+    [
+        # Brak wiązania = brak pozycji (`catalog.ref_required`); wiązanie o złym kształcie
+        # albo bez identyfikatora pozycji = `catalog.binding_invalid` (karta
+        # JEDEN-KLUCZ-KATALOGU: `enm.wiazanie_katalogowe.odczytaj_wiazanie`).
+        (None, "catalog.ref_required"),
+        ({}, "catalog.binding_invalid"),
+        ({"catalog_item_id": ""}, "catalog.binding_invalid"),
+        ({"catalog_item_id": "   "}, "catalog.binding_invalid"),
+        ("not-a-dict", "catalog.binding_invalid"),
+        (123, "catalog.binding_invalid"),
+        ([], "catalog.binding_invalid"),
+    ],
 )
-def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
+def test_catalog_gate_rejects_malformed_bindings(malformed_binding, kod):
     """Wszystkie operacje z shared helperem odrzucają błędne catalog_binding."""
     enm = _empty_enm()
     snapshot = _add_gpz(enm)
@@ -793,7 +804,7 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
             },
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []
     # 2) insert_station_on_segment_sn (transformer branch)
     result = execute_domain_operation(
@@ -813,7 +824,7 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
             },
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []
     # 3) _insert_branch_point_on_segment_sn (via insert_zksn_on_segment_sn)
     result = execute_domain_operation(
@@ -825,7 +836,7 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
             "insert_at": {"mode": "RATIO", "value": 0.5},
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []
 
     # 4) start_branch_segment_sn
@@ -842,7 +853,7 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
             },
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []
 
     # 5) insert_section_switch_sn
@@ -854,7 +865,7 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
             "catalog_binding": malformed_binding,
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []
 
     # 6) add_transformer_sn_nn
@@ -869,8 +880,8 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
         payload={
             "hv_bus_ref": hv_ref,
             "lv_bus_ref": lv_ref,
-            "catalog_binding": malformed_binding,
+            "transformer_catalog_binding": malformed_binding,
         },
     )
-    assert result.get("error_code") == "catalog.ref_required"
+    assert result.get("error_code") == kod
     assert result.get("changes", {}).get("created_element_ids", []) == []

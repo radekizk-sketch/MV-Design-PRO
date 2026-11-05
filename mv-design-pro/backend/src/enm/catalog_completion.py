@@ -21,6 +21,7 @@ from enm.parametry_linii_wn import (
     zastosuj_parametry_z_geometrii,
 )
 from enm.pola import pola_nn_stacji, pola_zksn, pola_zksn_z_portow
+from enm.wiazanie_katalogowe import przestrzenie_odcinka_sn
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
@@ -290,7 +291,7 @@ def _odcinki_do_materializacji(enm: EnergyNetworkModel, catalog: CatalogReposito
         if not isinstance(branch, Cable | OverheadLine) or not branch.catalog_ref:
             continue
         namespace = branch.catalog_namespace or (
-            "KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN"
+            przestrzenie_odcinka_sn("cable" if isinstance(branch, Cable) else "line_overhead")[0]
         )
         binding = CatalogBinding(
             catalog_namespace=namespace,
@@ -351,7 +352,7 @@ def complete_branch_catalog_materialization(
         if not isinstance(branch, Cable | OverheadLine) or not branch.catalog_ref:
             continue
         namespace = branch.catalog_namespace or (
-            "KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN"
+            przestrzenie_odcinka_sn("cable" if isinstance(branch, Cable) else "line_overhead")[0]
         )
         binding = CatalogBinding(
             catalog_namespace=namespace,

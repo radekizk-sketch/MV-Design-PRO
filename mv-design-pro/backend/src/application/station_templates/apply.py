@@ -357,9 +357,14 @@ def _zastosuj_szablon_pod_blokada(
     # blokadą E063 (układ sieci nN transformatora), którą kontrola modelu nazywa wprost.
     if isinstance(overrides.get("nn_earthing"), dict):
         station_spec["nn_earthing"] = dict(overrides["nn_earthing"])
-    transformer_spec: dict[str, Any] = {
-        "transformer_catalog_binding": {"catalog_item_id": transformer_ref}
-    }
+    # Wiązanie transformatora tylko przy pozycji katalogu: wiązanie bez identyfikatora jest
+    # odmową kształtu (`catalog.binding_invalid`), a stacja bez transformatora (niżej
+    # `create=False`) nie wskazuje żadnej pozycji.
+    transformer_spec: dict[str, Any] = (
+        {"transformer_catalog_binding": {"catalog_item_id": transformer_ref}}
+        if transformer_ref
+        else {}
+    )
     if parametry.transformer_count >= 2:
         # Liczba transformatorów szablonu (`transformer_count`, np. „2×630 kVA") trafia do
         # modelu jako liczba identycznych jednostek pola transformatorowego (`n_parallel`,

@@ -353,7 +353,7 @@ def test_gpz_o_innym_napieciu_i_gpz_z_nazwa_jawna() -> None:
         snap,
         voltage_kv=20.0,
         source_id="GPZ-20",
-        catalog_ref="src-gpz-20kv-250mva-rx010",
+        catalog_binding={"catalog_item_id": "src-gpz-20kv-250mva-rx010"},
     )
     snap = _gpz(snap, source_id="GPZ-3", source_name="GPZ Północ")
     assert _nazwy_gpz(snap) == ["GPZ 15 kV", "GPZ 20 kV", "GPZ Północ"]

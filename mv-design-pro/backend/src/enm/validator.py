@@ -127,6 +127,7 @@ from .uziemienie_sekcji import (
     uziemienie_sieci,
 )
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu, rodzina_generatora
+from .wiazanie_katalogowe import przestrzenie_rodzaju
 from .zajetosc_pol import zajetosc_pol
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
@@ -3602,7 +3603,9 @@ class ENMValidator:
                             modal_type="BranchModal",
                             payload_hint={
                                 "required": "catalog_ref",
-                                "catalog_namespace": "APARAT_NN",
+                                # Aparat pola nN z promocji — przestrzeń z jednej mapy
+                                # rodzajów (`enm.wiazanie_katalogowe.PRZESTRZENIE_RODZAJU`).
+                                "catalog_namespace": przestrzenie_rodzaju("pole.nn")[0],
                                 "field_ref": field_ref,
                             },
                         ),

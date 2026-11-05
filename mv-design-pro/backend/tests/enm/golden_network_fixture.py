@@ -325,7 +325,7 @@ def build_golden_network() -> EnergyNetworkModel:
         "b_siemens_per_km": 0.000054,
         "r0_ohm_per_km": 0.824,
         "x0_ohm_per_km": 0.296,
-        "catalog_binding": {"catalog_item_id": "CAT-CAB-YAKY-240"},
+        "catalog_ref": "CAT-CAB-YAKY-240",
     }
 
     cable_defs = [

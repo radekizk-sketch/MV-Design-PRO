@@ -663,7 +663,7 @@ def _payload_turbiny_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
     transformatorze, czego suma kontroli O-53 (karta GPT-478) słusznie nie przyjmuje."""
     payload = h._payload_konwerter_der_sn(snapshot)
     payload.update(
-        catalog_ref=h.REF_FW,
+        catalog_binding={"catalog_item_id": h.REF_FW},
         source_technology="FW",
         source_name="Źródło FW",
         power_setpoint_mw=h.FW_PMAX_MW,
@@ -671,7 +671,6 @@ def _payload_turbiny_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
     blokowy = payload["der_topology"]["block_transformer"]
     blokowy.update(
         rated_power_mva=2.5,
-        catalog_ref=TRAFO_BLOKOWY_FW,
         catalog_binding={**blokowy["catalog_binding"], "catalog_item_id": TRAFO_BLOKOWY_FW},
     )
     return payload

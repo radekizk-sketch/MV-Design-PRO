@@ -37,7 +37,7 @@ def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, An
         payload = {
             **(
                 {"catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250}}
-                if "catalog_ref" not in payload
+                if "catalog_binding" not in payload
                 else {}
             ),
             "gpz_line_field_apparatus": {

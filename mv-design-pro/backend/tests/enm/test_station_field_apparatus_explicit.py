@@ -116,8 +116,8 @@ def test_insert_station_without_apparatus_ref_returns_validation_error() -> None
     # a kod maszynowy niesie `error_code`).
     assert "Pole SN nr 1 (pole liniowe wejściowe)" in message
     assert "LINIA_IN" not in message
-    assert slownik_komunikatow.pole("apparatus_catalog_ref") in message
-    assert "apparatus_catalog_ref" not in message
+    assert slownik_komunikatow.pole("apparatus_catalog_binding") in message
+    assert "apparatus_catalog_binding" not in message
     # Model nietknięty (walidacja przed jakąkolwiek zmianą).
     assert response.get("snapshot") is None
 
@@ -157,8 +157,8 @@ def test_append_station_without_apparatus_ref_returns_validation_error() -> None
     )
     assert response.get("error_code") == "station.append.field_apparatus_ref_missing"
     # Karta #142: nazwa pola formularza w treści, pole kontraktu wyłącznie w danych maszynowych.
-    assert slownik_komunikatow.pole("apparatus_catalog_ref") in (response.get("error") or "")
-    assert "apparatus_catalog_ref" not in (response.get("error") or "")
+    assert slownik_komunikatow.pole("apparatus_catalog_binding") in (response.get("error") or "")
+    assert "apparatus_catalog_binding" not in (response.get("error") or "")
 
 
 # ---------------------------------------------------------------------------

@@ -200,7 +200,12 @@ from .topology_ops import (
 )
 from .tor_pola import szyna_glowna_stacji, szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
-from .wiazanie_katalogowe import odczytaj_wiazanie, pozycja_wiazania
+from .wiazanie_katalogowe import (
+    odczytaj_wiazanie,
+    pozycja_wiazania,
+    przestrzen_wiazania,
+    przestrzenie_aparatu_nn,
+)
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
 
@@ -330,7 +335,7 @@ def _przekladnik_wylacznika(enm: dict[str, Any], breaker_ref: str) -> str | None
 
 def _catalog_binding_from_payload(
     payload: dict[str, Any],
-    namespace: str,
+    namespace: str | tuple[str, ...],
     opis_pl: str,
     klucz: str = "catalog_binding",
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
@@ -350,7 +355,7 @@ def _catalog_binding_from_payload(
         return None, _error_response(odczyt.komunikat_pl or opis_pl, odczyt.kod_bledu)
     if not odczyt.wskazuje:
         return None, None
-    return odczyt.wiazanie(namespace), None
+    return odczyt.wiazanie(przestrzen_wiazania(odczyt.przestrzen, namespace)), None
 
 
 def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
@@ -3505,10 +3510,13 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     if isinstance(catalog_ref, dict):
         return catalog_ref
 
+    # Przestrzeń z RODZAJU aparatu (klasa z ładunku): wyłącznik — APARAT_NN albo wyłącznik
+    # instalacyjny APARAT_NN_MCB; bezpiecznik — APARAT_NN albo wkładka WKLADKA_NN. Jedna mapa
+    # z bramą API (`przestrzenie_aparatu_nn`).
     materialization = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
         catalog_binding=payload.get("catalog_binding"),
-        default_namespace=_PRZESTRZEN_APARATU_POLA_NN,
+        default_namespace=przestrzenie_aparatu_nn(device_class),
     )
     if isinstance(materialization, dict):
         return _blad_pozycji_katalogu(materialization, "Aparat nN")
@@ -3547,9 +3555,7 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             branch_data["rated_voltage_kv"] = float(rated_voltage)
 
     branch_data["catalog_ref"] = catalog_ref
-    _apply_catalog_metadata(
-        branch_data, binding_payload, default_namespace=_PRZESTRZEN_APARATU_POLA_NN
-    )
+    _apply_catalog_metadata(branch_data, binding_payload)
     branch_data["materialized_params"] = copy.deepcopy(materialized_params) or None
 
     new_enm = kopia_graniczna_enm(enm)
@@ -9272,7 +9278,9 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     PozycjaBramyKatalogowejV2(
         "add_nn_switch_device",
         "catalog_binding",
-        _PRZESTRZEN_APARATU_POLA_NN,
+        "|".join(
+            dict.fromkeys(przestrzenie_aparatu_nn("switch") + przestrzenie_aparatu_nn("fuse"))
+        ),
         True,
     ),
     PozycjaBramyKatalogowejV2("add_nn_rcd", "catalog_binding", _PRZESTRZEN_RCD_NN, True),

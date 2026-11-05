@@ -262,8 +262,10 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
-                "catalog_namespace": "mv_branch_points",
+                "catalog_binding": {
+                    "catalog_item_id": "SLUP-ODG-12",
+                    "catalog_namespace": "mv_branch_points",
+                },
             },
         )
         assert result.get("error") in (None, "")

@@ -273,7 +273,7 @@ def _payloady(technologia_klucz: str) -> dict[str, tuple[str, dict[str, Any]]]:
                 "bus_nn_ref": "nn",
                 "station_ref": "stn",
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": "ZRODLO_NN_PV",
                     "catalog_item_id": technologia_klucz,
                     "catalog_item_version": "2024.1",
                 },

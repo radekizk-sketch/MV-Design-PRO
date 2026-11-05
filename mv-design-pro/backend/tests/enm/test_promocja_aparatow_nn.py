@@ -229,26 +229,27 @@ def test_model_bez_wpisow_nie_jest_ruszany() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_enm_promuje_automatycznie_i_podbija_rewizje_raz() -> None:
+def test_zapis_promuje_raz_a_odczyt_nie_podbija_rewizji() -> None:
+    """Promocja pól nN zachodzi dokładnie raz — przy zapisie modelu, w tej samej rewizji.
+
+    Kanon karty JEDNA-SCIEZKA-EDYCJI cz. 4 (`enm/store._set_enm_pod_blokada`): zapis stosuje
+    tę samą sekwencję przygotowania co odczyt (`przygotuj_model_po_odczycie`), więc zapisany
+    model jest jej punktem stałym. Dawniej promocja czekała na pierwszy odczyt, który
+    zapisywał DRUGĄ rewizję bez operacji w dzienniku (pin:
+    `tests/api/test_jedna_rewizja_na_operacje.py`). Intencja testu bez zmian: model z dawnymi
+    polami nN dostaje aparat i znacznik promocji, a kolejne odczyty nie zmieniają ani
+    rewizji, ani hasha.
+    """
     case_id = "case-promocja-1"
-    stary = _stary_model()
-    zapisany = set_enm(case_id, stary)
-    rewizja_przed = zapisany.header.revision
-    hash_przed = zapisany.header.hash_sha256
+    zapisany = set_enm(case_id, _stary_model())
+    assert len(zapisany.branches) == 1
+    assert zapisany.substations[0].meta[META_KLUCZ_STACJA_PROMOWANA] is True
 
-    odczytany = get_enm(case_id)
-
-    assert odczytany.header.revision == rewizja_przed + 1
-    assert odczytany.header.hash_sha256 != hash_przed
-    assert len(odczytany.branches) == 1
-    assert odczytany.substations[0].meta[META_KLUCZ_STACJA_PROMOWANA] is True
-
-    # Drugi odczyt: ŻADNEJ kolejnej zmiany rewizji (migracja per wpis, wpis już promowany).
-    rewizja_po_pierwszym = odczytany.header.revision
-    hash_po_pierwszym = odczytany.header.hash_sha256
-    odczytany_ponownie = get_enm(case_id)
-    assert odczytany_ponownie.header.revision == rewizja_po_pierwszym
-    assert odczytany_ponownie.header.hash_sha256 == hash_po_pierwszym
+    for _ in range(2):
+        odczytany = get_enm(case_id)
+        assert odczytany.header.revision == zapisany.header.revision
+        assert odczytany.header.hash_sha256 == zapisany.header.hash_sha256
+        assert len(odczytany.branches) == 1
 
 
 def test_get_enm_bez_pol_nn_nie_podbija_rewizji() -> None:

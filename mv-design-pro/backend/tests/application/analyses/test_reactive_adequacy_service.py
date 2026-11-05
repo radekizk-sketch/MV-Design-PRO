@@ -265,7 +265,7 @@ def test_real_power_flow_run_produces_view_with_provenance() -> None:
             "q_mvar": 0.5,
             "limits": GenLimits(q_min_mvar=-0.9, q_max_mvar=0.9),
             # Karta producenta (ZWERYFIKOWANY) — jedyne źródło jakości DATASHEET.
-            "catalog_binding": {"catalog_item_id": "conv-pv-nn-sma-sc2475-0p434kv"},
+            "catalog_ref": "conv-pv-nn-sma-sc2475-0p434kv",
         }
     )
     enm = enm.model_copy(update={"generators": gens})

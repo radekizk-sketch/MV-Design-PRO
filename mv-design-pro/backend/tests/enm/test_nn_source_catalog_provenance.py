@@ -133,7 +133,7 @@ def test_failed_materialization_leaves_snapshot_unchanged(
             technology,
             {
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": f"ZRODLO_NN_{technology}",
                     "catalog_item_id": catalog_item_id,
                     "catalog_item_version": "2024.1",
                 },
@@ -153,10 +153,10 @@ def test_failed_materialization_leaves_snapshot_unchanged(
 #: niesie komplet pól proweniencji.
 #:
 #: KANON PO V12K-316 (dług 4): znacznik pochodzenia to przestrzeń, w której
-#: materializacja NAPRAWDĘ znalazła pozycję, więc payload deklarujący „CONVERTER"
-#: nie zmienia tego, co niesie migawka. Dotąd test przypinał zapis kategorii
-#: Z PAYLOADU — czyli utrwalał ślad audytowy wskazujący przestrzeń, z której nie
-#: pochodziła ani jedna liczba tabliczki.
+#: materializacja NAPRAWDĘ znalazła pozycję — przestrzeń RODZAJU źródła. Karta
+#: JEDEN-KLUCZ-KATALOGU: wiązanie deklarujące inną przestrzeń (np. „CONVERTER" dla PV)
+#: jest odmową `catalog.namespace_mismatch`, nie cichą zamianą
+#: (`tests/enm/test_przestrzenie_rodzaju_iloczyn.py`).
 @pytest.mark.parametrize(
     ("technology", "catalog_key", "przestrzen_materializacji"),
     [
@@ -176,7 +176,7 @@ def test_successful_create_includes_provenance_fields(
             technology,
             {
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": f"ZRODLO_NN_{technology}",
                     "catalog_item_id": catalog_key,
                     "catalog_item_version": "2024.1",
                 },
@@ -207,7 +207,7 @@ def test_pv_uses_catalog_materialization_when_payload_does_not_supply_it() -> No
             "PV",
             {
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": "ZRODLO_NN_PV",
                     "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                 },
@@ -308,7 +308,7 @@ def test_bess_uses_catalog_materialization_when_payload_supplies_only_operation_
             "BESS",
             {
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": "ZRODLO_NN_BESS",
                     "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                 },

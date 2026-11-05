@@ -902,23 +902,24 @@ def test_ocena_nadpradowa_ma_punkt_na_zacisku_pola_z_wierszem_szyny_stacji(rola:
     "transformator",
     [
         {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
-        {"catalog_binding": {"catalog_item_id": TRAFO}},
         {
-            "catalog_binding": {
+            "transformer_catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",
                 "catalog_item_id": TRAFO,
                 "catalog_item_version": "2024.1",
             }
         },
     ],
-    ids=["transformer_catalog_ref", "catalog_ref", "catalog_binding"],
+    ids=["wiazanie_identyfikator", "wiazanie_pelne"],
 )
 def test_stacja_konca_ciagu_przyjmuje_kazdy_kanal_katalogu_transformatora(
     transformator: dict[str, Any],
 ) -> None:
-    """Każdy kanał wskazania transformatora (referencja albo wiązanie katalog-first) daje
-    transformator na zacisku pola TR — dawniej samo wiązanie było po cichu pomijane
-    i stacja końca ciągu powstawała bez transformatora."""
+    """Każdy kształt wiązania transformatora (`transformer_catalog_binding` z samym
+    identyfikatorem albo pełne) daje transformator na zacisku pola TR — dawniej samo
+    wiązanie było po cichu pomijane i stacja końca ciągu powstawała bez transformatora.
+    Karta JEDEN-KLUCZ-KATALOGU: dawne kanały (`catalog_ref`, `catalog_binding` w bloku
+    transformatora) są odmową `catalog.binding_key_alias`."""
     enm = _ciag_z_gpz(1)
     enm = ok(
         op(

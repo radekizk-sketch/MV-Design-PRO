@@ -27,13 +27,15 @@ z materializacji") siedział w całym module `domain_operations_v2`:
 
 KANON PO NAPRAWIE: przestrzeń katalogu wynika z RODZAJU elementu, który
 operacja tworzy. Ta sama wartość wybiera pozycję w katalogu i trafia do migawki
-jako znacznik pochodzenia; deklaracja payloadu nie ma wpływu na żadną z tych
-dwóch rzeczy. Element bez pozycji katalogowej NIE deklaruje kategorii.
+jako znacznik pochodzenia. Karta JEDEN-KLUCZ-KATALOGU: wiązanie deklarujące
+przestrzeń spoza przestrzeni rodzaju (`enm.wiazanie_katalogowe.odmowa_przestrzeni`)
+jest odmową nazwaną `catalog.namespace_mismatch` BEZ skutku w modelu — nie cichą
+zamianą na przestrzeń rodzaju. Element bez pozycji katalogowej NIE deklaruje kategorii.
 
 Pilnowane własności:
-(a) BRAMA — payload deklaruje kategorię X, materializacja znajduje pozycję w Y,
-    migawka niesie Y i tabliczkę z Y (iloczyn cech: technologia × wariant
-    przyłączenia × treść deklaracji);
+(a) BRAMA — payload deklaruje cudzą kategorię X ⇒ odmowa bez skutku; payload bez
+    deklaracji albo z kategorią rodzaju Y ⇒ migawka niesie Y i tabliczkę z Y (iloczyn
+    cech: technologia × wariant przyłączenia × treść deklaracji);
 (b) KLASA — każda funkcja modułu zapisująca znacznik ma pokrycie behawioralne
     albo jawne uzasadnienie (skan AST pilnuje kompletności listy);
 (c) STRUKTURA — żadne wyrażenie zapisujące znacznik nie czyta payloadu
@@ -92,8 +94,8 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
 )
 
 #: Kategoria CELOWO CUDZA wobec każdego badanego rodzaju elementu. Istnieje
-#: w katalogu (jest w `CatalogNamespace`), więc odrzucenie nie może wziąć się
-#: z „nieznanej kategorii" — musi wziąć się z tego, że payload nią nie rządzi.
+#: w katalogu (jest w `CatalogNamespace`), więc odmowa nie może wziąć się
+#: z „nieznanej kategorii" — bierze się z niezgodności z przestrzenią rodzaju.
 OBCA_KATEGORIA = "LINIA_SN"
 
 PRZESTRZENIE_KATALOGU = {czlon.value for czlon in CatalogNamespace}
@@ -451,7 +453,7 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_relay",
         "add_relay",
-        ("add_relay", "_relay_catalog_binding"),
+        ("add_relay",),
         _payload_relay_obca,
         _znaczniki_zabezpieczenia,
         {"element": "ZABEZPIECZENIE", "meta.catalog_binding": "ZABEZPIECZENIE"},
@@ -565,10 +567,6 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
 #: pośrednie (każdy przypadek wyżej przechodzi przez nie), a bezpośredniego nie
 #: da się zbudować — nie ma operacji, którą dałoby się wywołać „samym helperem".
 POMOCNICZE_BEZ_WLASNEJ_OPERACJI: dict[str, str] = {
-    "_catalog_binding_from_payload": (
-        "normalizator wiązania payloadu — sprowadza kategorię do przestrzeni rodzaju "
-        "elementu dla WSZYSTKICH operacji atomowych"
-    ),
     "_wiazanie_w_przestrzeni": (
         "ta sama normalizacja dla wiązań przekazywanych dalej (aparat pola, TR blokowy, "
         "kabel DER), gdzie payload nie przechodzi przez _catalog_binding_from_payload"
@@ -596,20 +594,34 @@ PRZYPADKI = [pytest.param(p, id=p.etykieta) for p in ZNACZNIKI]
 
 
 @pytest.mark.parametrize("przypadek", PRZYPADKI)
-def test_kategoria_z_zadania_nie_trafia_do_migawki(przypadek: ZnacznikPochodzenia) -> None:
-    """Payload deklaruje kategorię X, materializacja znajduje pozycję w Y ⇒ migawka niesie Y."""
+def test_cudza_kategoria_z_zadania_odmowa_bez_skutku(przypadek: ZnacznikPochodzenia) -> None:
+    """Payload deklaruje cudzą kategorię X ⇒ `catalog.namespace_mismatch`, model nietknięty."""
     snapshot = _migawka_dla(przypadek)
+    przed = copy.deepcopy(snapshot)
 
     wynik = execute_domain_operation(snapshot, przypadek.operacja, przypadek.zbuduj(snapshot))
-    assert not wynik.get("error"), (
-        f"{przypadek.etykieta}: {wynik.get('error')} ({wynik.get('error_code')}). "
-        "Kategoria z żądania nie może sterować wyszukiwaniem pozycji."
+    assert wynik.get("error_code") == "catalog.namespace_mismatch", (
+        f"{przypadek.etykieta}: {wynik.get('error_code')} — kategoria spoza przestrzeni "
+        "rodzaju elementu musi być odmową nazwaną, nie cichą zamianą."
     )
+    assert wynik.get("snapshot") is None
+    assert snapshot == przed
+
+
+@pytest.mark.parametrize("przypadek", PRZYPADKI)
+def test_migawka_niesie_przestrzen_rodzaju(przypadek: ZnacznikPochodzenia) -> None:
+    """Payload bez deklaracji kategorii ⇒ migawka niesie przestrzeń, w której materializacja
+    znalazła pozycję (przestrzeń RODZAJU elementu)."""
+    snapshot = _migawka_dla(przypadek)
+
+    wynik = execute_domain_operation(
+        snapshot, przypadek.operacja, _bez_deklaracji_kategorii(przypadek.zbuduj(snapshot))
+    )
+    assert not wynik.get("error"), f"{przypadek.etykieta}: {wynik.get('error')}"
 
     zapisane = przypadek.odczytaj(wynik["snapshot"])
     assert zapisane == przypadek.oczekiwane, (
-        f"{przypadek.etykieta}: migawka niesie kategorię z żądania "
-        f"('{OBCA_KATEGORIA}') zamiast przestrzeni, w której materializacja "
+        f"{przypadek.etykieta}: migawka nie niesie przestrzeni, w której materializacja "
         "znalazła pozycję"
     )
 
@@ -634,9 +646,42 @@ def _bez_deklaracji_kategorii(wartosc: Any) -> Any:
     return wartosc
 
 
+def _z_kategoria_rodzaju(wartosc: Any, odczyt: dict[str, Any]) -> Any:
+    """Ten sam payload z cudzą kategorią zastąpioną kategorią, którą operacja bez deklaracji
+    zapisała do migawki w tym samym wiązaniu (``odczyt``: identyfikator pozycji → przestrzeń)."""
+    if isinstance(wartosc, dict):
+        wynik = {k: _z_kategoria_rodzaju(v, odczyt) for k, v in wartosc.items()}
+        if wynik.get("catalog_namespace") == OBCA_KATEGORIA:
+            wynik["catalog_namespace"] = odczyt[str(wynik.get("catalog_item_id"))]
+        return wynik
+    if isinstance(wartosc, list):
+        return [_z_kategoria_rodzaju(element, odczyt) for element in wartosc]
+    return wartosc
+
+
+def _przestrzenie_pozycji(snapshot: dict[str, Any]) -> dict[str, str]:
+    """Identyfikator pozycji → przestrzeń zapisana w migawce (rekordy i ich wiązania)."""
+    wynik: dict[str, str] = {}
+
+    def _zbierz(wezel: Any) -> None:
+        if isinstance(wezel, dict):
+            pozycja = wezel.get("catalog_item_id") or wezel.get("catalog_ref")
+            przestrzen = wezel.get("catalog_namespace")
+            if isinstance(pozycja, str) and isinstance(przestrzen, str):
+                wynik.setdefault(pozycja, przestrzen)
+            for podwezel in wezel.values():
+                _zbierz(podwezel)
+        elif isinstance(wezel, list):
+            for podwezel in wezel:
+                _zbierz(podwezel)
+
+    _zbierz(snapshot)
+    return wynik
+
+
 @pytest.mark.parametrize("przypadek", PRZYPADKI)
-def test_deklaracja_kategorii_nie_zmienia_modelu(przypadek: ZnacznikPochodzenia) -> None:
-    """Mocniejsza wersja bramy: kategoria z żądania nie zmienia w migawce NICZEGO.
+def test_deklaracja_kategorii_rodzaju_nie_zmienia_modelu(przypadek: ZnacznikPochodzenia) -> None:
+    """Deklaracja WŁAŚCIWEJ kategorii nie zmienia w migawce NICZEGO względem braku deklaracji.
 
     Sam znacznik to za mało — kategoria z payloadu potrafiła wpłynąć na model
     bocznymi drogami (wiązanie zapisane w meta pola, materializacja prądu
@@ -646,19 +691,23 @@ def test_deklaracja_kategorii_nie_zmienia_modelu(przypadek: ZnacznikPochodzenia)
     snapshot = _migawka_dla(przypadek)
     payload = przypadek.zbuduj(snapshot)
 
-    z_obca = execute_domain_operation(snapshot, przypadek.operacja, payload)
     bez_deklaracji = execute_domain_operation(
         snapshot, przypadek.operacja, _bez_deklaracji_kategorii(payload)
     )
-
-    assert not z_obca.get("error"), f"{przypadek.etykieta}: {z_obca.get('error')}"
     assert not bez_deklaracji.get("error"), f"{przypadek.etykieta}: {bez_deklaracji.get('error')}"
-    assert z_obca["snapshot"] == bez_deklaracji["snapshot"], (
-        f"{przypadek.etykieta}: kategoria zadeklarowana w żądaniu zmienia model "
+    z_wlasciwa = execute_domain_operation(
+        snapshot,
+        przypadek.operacja,
+        _z_kategoria_rodzaju(payload, _przestrzenie_pozycji(bez_deklaracji["snapshot"])),
+    )
+
+    assert not z_wlasciwa.get("error"), f"{przypadek.etykieta}: {z_wlasciwa.get('error')}"
+    assert z_wlasciwa["snapshot"] == bez_deklaracji["snapshot"], (
+        f"{przypadek.etykieta}: deklaracja kategorii rodzaju zmienia model "
         "(znacznik nie jest jedyną drogą, którą deklaracja wchodzi do migawki)"
     )
-    assert z_obca["readiness"] == bez_deklaracji["readiness"], (
-        f"{przypadek.etykieta}: kategoria z żądania zmienia werdykt gotowości "
+    assert z_wlasciwa["readiness"] == bez_deklaracji["readiness"], (
+        f"{przypadek.etykieta}: deklaracja kategorii zmienia werdykt gotowości "
         "(np. ogniwo kaskady prądowej znika po cichu)"
     )
 
@@ -678,11 +727,15 @@ TECHNOLOGIE: tuple[tuple[str, str, str, str, float], ...] = (
     ("FW", REF_FW, "CONVERTER", "sn_mva", 2.2),
 )
 
-#: Trzy sposoby, na jakie kreator może (nie) zadeklarować kategorii. Żaden nie
-#: może zmienić tego, co trafi do migawki.
+#: Sposoby, na jakie kreator może (nie) zadeklarować kategorii. Deklaracja spoza
+#: przestrzeni rodzaju jest odmową bez skutku; brak deklaracji i kategoria rodzaju
+#: (`RODZAJ`) dają ten sam znacznik i tę samą tabliczkę. „kreator_oze" — dawny kreator
+#: OZE deklarował „CONVERTER" dla każdej technologii (właściwe wyłącznie dla FW).
+RODZAJ = "<przestrzeń rodzaju>"
 DEKLARACJE: tuple[tuple[str, str | None], ...] = (
     ("obca", OBCA_KATEGORIA),
     ("kreator_oze", "CONVERTER"),
+    ("rodzaj", RODZAJ),
     ("brak", None),
 )
 
@@ -704,17 +757,26 @@ def test_znacznik_i_tabliczka_z_tej_samej_pozycji(
     opis_deklaracji: str,
     deklarowana: str | None,
 ) -> None:
-    """Znacznik pochodzenia == przestrzeń, z której przyszła tabliczka — dla KAŻDEJ technologii."""
+    """Znacznik pochodzenia == przestrzeń, z której przyszła tabliczka — dla KAŻDEJ technologii;
+    deklaracja spoza przestrzeni rodzaju = odmowa bez skutku."""
     snapshot = _siec_ze_stacja()
     nadpisania: dict[str, Any] = {}
     if deklarowana is not None:
-        nadpisania["catalog_binding"] = _wiazanie(pozycja, deklarowana)
+        nadpisania["catalog_binding"] = _wiazanie(
+            pozycja, przestrzen if deklarowana == RODZAJ else deklarowana
+        )
 
     wynik = execute_domain_operation(
         snapshot,
         "add_converter_source",
         _payload_zrodla(snapshot, catalog_ref=pozycja, technologia=technologia, **nadpisania),
     )
+    if deklarowana not in (None, RODZAJ, przestrzen):
+        assert (
+            wynik.get("error_code") == "catalog.namespace_mismatch"
+        ), f"{technologia}/{opis_deklaracji}: {wynik.get('error_code')}"
+        assert wynik.get("snapshot") is None
+        return
     assert not wynik.get("error"), f"{technologia}/{opis_deklaracji}: {wynik.get('error')}"
 
     generator = _jedyny(wynik["snapshot"]["generators"], "generator")
@@ -730,18 +792,16 @@ def test_znacznik_i_tabliczka_z_tej_samej_pozycji(
     )
 
 
-def test_deklaracja_kategorii_nie_zmienia_niczego_w_modelu() -> None:
-    """Tor DER-SN: payload z cudzą kategorią daje BIT W BIT ten sam model.
+def test_cudza_kategoria_toru_der_sn_odmowa_bez_skutku() -> None:
+    """Tor DER-SN: payload z cudzą kategorią w KAŻDYM wiązaniu toru = odmowa bez skutku.
 
-    Nie wystarczy, że znacznik jest właściwy — deklaracja nie może zmieniać
-    NICZEGO. Ogniwo, które to łamało: prąd znamionowy aparatu pola
-    (`_resolve_apparatus_rated_current_a`) czytał katalog w kategorii z żądania,
-    więc przy cudzej deklaracji pozycji nie znajdował i kaskada prądowa
-    (In pola) znikała CICHO — operacja kończyła się sukcesem, a ostrzeżenia
-    liczyły się z niepełnego łańcucha. Docstring obiecywał coś odwrotnego,
-    więc obietnica dostaje tu przypięty test.
+    Dawniej cudza deklaracja była po cichu zamieniana — a ogniwo prądu znamionowego aparatu
+    pola (`_resolve_apparatus_rated_current_a`) czytało katalog w kategorii z żądania, więc
+    kaskada prądowa (In pola) znikała CICHO przy udanej operacji. Odmowa nazwana zamyka
+    obie drogi naraz.
     """
     snapshot = _siec_ze_stacja()
+    przed = copy.deepcopy(snapshot)
 
     kanoniczny = execute_domain_operation(
         snapshot, "add_converter_source", _payload_konwerter_der_sn(snapshot)
@@ -751,9 +811,9 @@ def test_deklaracja_kategorii_nie_zmienia_niczego_w_modelu() -> None:
     )
 
     assert not kanoniczny.get("error"), kanoniczny.get("error")
-    assert not z_obca.get("error"), z_obca.get("error")
-    assert z_obca["snapshot"] == kanoniczny["snapshot"]
-    assert z_obca["readiness"] == kanoniczny["readiness"]
+    assert z_obca.get("error_code") == "catalog.namespace_mismatch", z_obca.get("error")
+    assert z_obca.get("snapshot") is None
+    assert snapshot == przed
 
 
 def test_tor_der_sn_niesie_te_sama_przestrzen_co_tor_nn() -> None:
@@ -767,12 +827,14 @@ def test_tor_der_sn_niesie_te_sama_przestrzen_co_tor_nn() -> None:
             snapshot,
             catalog_ref=REF_PV,
             technologia="PV",
-            catalog_binding=_wiazanie(REF_PV),
+            catalog_binding=_wiazanie(REF_PV, "ZRODLO_NN_PV"),
         ),
     )
     assert not nn.get("error"), nn.get("error")
 
-    sn = execute_domain_operation(snapshot, "add_converter_source", _payload_der_sn_obca(snapshot))
+    sn = execute_domain_operation(
+        snapshot, "add_converter_source", _payload_konwerter_der_sn(snapshot)
+    )
     assert not sn.get("error"), sn.get("error")
 
     znacznik_nn = _jedyny(nn["snapshot"]["generators"], "generator")["catalog_namespace"]

@@ -14,6 +14,8 @@ from enm.wiazanie_katalogowe import (
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
     pozycja_wiazania,
+    przestrzenie_aparatu_nn,
+    przestrzenie_odcinka_sn,
     zamienniki_klucza_w_ladunku,
 )
 from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
@@ -98,7 +100,7 @@ def _binding_from_ref(namespace: str | None, catalog_ref: Any) -> dict[str, Any]
 def _extract_binding_from_container(
     container: Any,
     *,
-    namespace: str | None = None,
+    namespace: str | tuple[str, ...] | None = None,
     klucz: str = "catalog_binding",
 ) -> dict[str, Any] | None:
     """Wiązanie węzła ładunku — TEN SAM odczyt co operacja (`odczytaj_wiazanie`).
@@ -113,7 +115,7 @@ def _extract_binding_from_container(
         raise _OdmowaWiazania(odczyt.kod_bledu, odczyt.komunikat_pl or "")
     if not odczyt.wskazuje:
         return None
-    przestrzen = odczyt.przestrzen or namespace
+    przestrzen = odczyt.przestrzen
     if not przestrzen:
         return None
     return odczyt.wiazanie(przestrzen, DEFAULT_CATALOG_VERSION)
@@ -132,7 +134,7 @@ class _OdmowaWiazania(Exception):
         self.komunikat_pl = komunikat_pl
 
 
-def _segment_namespace(segment: Any) -> str | None:
+def _segment_namespace(segment: Any) -> tuple[str, ...] | None:
     if not isinstance(segment, dict):
         return None
     # Rodzaj odcinka czytany TYM SAMYM kluczem i słownikiem co handler (``segment.rodzaj``:
@@ -141,9 +143,9 @@ def _segment_namespace(segment: Any) -> str | None:
     # katalogu z klucza, którego operacja nie czyta.
     segment_kind = segment.get("rodzaj", "KABEL")  # domyślny rodzaj handlera
     if segment_kind == "KABEL":
-        return "KABEL_SN"
+        return przestrzenie_odcinka_sn("cable")
     if segment_kind == "LINIA_NAPOWIETRZNA":
-        return "LINIA_SN"
+        return przestrzenie_odcinka_sn("line_overhead")
     return None
 
 
@@ -356,7 +358,15 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         )
         return candidate
 
-    if operation in {"add_nn_switch_device", "add_nn_section_coupler"}:
+    if operation == "add_nn_switch_device":
+        # Przestrzeń z RODZAJU aparatu (klasa z ładunku) — ta sama mapa co operacja.
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace=przestrzenie_aparatu_nn(payload.get("device_class")),
+        )
+        return candidate
+
+    if operation == "add_nn_section_coupler":
         candidate = _extract_binding_from_container(
             payload,
             namespace="APARAT_NN",
@@ -474,6 +484,9 @@ STATION_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
         "source_converter_catalog_binding",
         "transformer_catalog_binding",
         "transformer_tap_changer_catalog_binding",
+        # Znacznik migawki rekordu pola SN („pole czeka na wskazanie aparatu”) zapisywany
+        # przez operację stacyjną — nie kanał wskazania pozycji.
+        "requires_catalog_binding",
     }
 )
 
@@ -519,6 +532,11 @@ PRZESTRZEN_ZACZEPY = "ZACZEPY_TRANSFORMATORA"
 #: może pytać samej materializacji — pyta predykatem operacji domenowej.
 PRZESTRZEN_WIAZANIA_DER = "WIAZANIA_DER"
 
+#: Przestrzenie odcinka SN w wierszu inwentarza — z tej samej mapy rodzajów co operacja.
+_PRZESTRZENIE_ODCINKA_SN = "|".join(
+    dict.fromkeys(przestrzenie_odcinka_sn("cable") + przestrzenie_odcinka_sn("line_overhead"))
+)
+
 #: PEŁNY INWENTARZ BRAMY API (reguła KLASA, NIE INSTANCJA). Każda referencja
 #: katalogowa czytana Z PAYLOADU przez operację, która przechodzi przez
 #: `validate_and_materialize_catalog_binding`.
@@ -550,13 +568,13 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     # --- Odcinki ciągu SN (V1) ---------------------------------------------
     PozycjaBramyApi(
-        "continue_trunk_segment_sn", "segment.catalog_binding", "KABEL_SN|LINIA_SN", True
+        "continue_trunk_segment_sn", "segment.catalog_binding", _PRZESTRZENIE_ODCINKA_SN, True
     ),
     PozycjaBramyApi(
-        "start_branch_segment_sn", "segment.catalog_binding", "KABEL_SN|LINIA_SN", True
+        "start_branch_segment_sn", "segment.catalog_binding", _PRZESTRZENIE_ODCINKA_SN, True
     ),
     PozycjaBramyApi(
-        "connect_secondary_ring_sn", "segment.catalog_binding", "KABEL_SN|LINIA_SN", True
+        "connect_secondary_ring_sn", "segment.catalog_binding", _PRZESTRZENIE_ODCINKA_SN, True
     ),
     # --- Punkty pośrednie i łącznik sekcyjny SN (V1) ------------------------
     PozycjaBramyApi(
@@ -631,9 +649,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.ct", "CT", True),
     PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.vt", "VT", True),
-    PozycjaBramyApi("append_station_on_endpoint", "field_apparatus_catalog_ref", "APARAT_SN", True),
-    PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.ct", "CT", True),
-    PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.vt", "VT", True),
     PozycjaBramyApi(
         "append_station_on_endpoint", "sn_fields[].equipment.relay", "ZABEZPIECZENIE", True
     ),
@@ -667,7 +682,14 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_outgoing_field", "catalog_binding", "APARAT_NN", True),
     # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
-    PozycjaBramyApi("add_nn_switch_device", "catalog_binding", "APARAT_NN", True),
+    PozycjaBramyApi(
+        "add_nn_switch_device",
+        "catalog_binding",
+        "|".join(
+            dict.fromkeys(przestrzenie_aparatu_nn("switch") + przestrzenie_aparatu_nn("fuse"))
+        ),
+        True,
+    ),
     PozycjaBramyApi("add_nn_rcd", "catalog_binding", "APARAT_NN_RCD", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
     # Zasilenie rozdzielnicy nN — LUSTRO `_add_nn_cable_segment_internal` (ta sama para
@@ -774,8 +796,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi(
         "set_der_catalog_bindings", "vt_catalog_binding", PRZESTRZEN_WIAZANIA_DER, True
     ),
-    PozycjaBramyApi("set_der_catalog_bindings", "ct_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
-    PozycjaBramyApi("set_der_catalog_bindings", "vt_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
     # Karta AB-H0 §0.7: karty widmowe — lista id kart (istnienie w katalogu MODELU,
     # ten sam predykat co operacja) i typ przekształtnika wskazany przez kartę projektu.
     PozycjaBramyApi("set_der_catalog_bindings", "karty_widmowe_ref", PRZESTRZEN_WIAZANIA_DER, True),

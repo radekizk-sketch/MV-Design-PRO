@@ -64,7 +64,6 @@ def _build_source_plus_segments(segment_lengths_m: list[int]) -> dict:
                     "name": f"Odcinek {idx + 1}",
                     "catalog_binding": CABLE_BINDING,
                 },
-                "catalog_binding": CABLE_BINDING,
             },
         )
     return snapshot
@@ -96,10 +95,8 @@ def test_sequence_continue_continue_insert_station_then_branch():
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "transformer": {
                 "create": True,
-                "transformer_catalog_binding": {"catalog_item_id": TRAFO_ID},
-                "catalog_binding": TRAFO_BINDING,
+                "transformer_catalog_binding": TRAFO_BINDING,
             },
-            "catalog_binding": TRAFO_BINDING,
         },
     )
 
@@ -127,7 +124,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
                 "dlugosc_m": 150,
                 "catalog_binding": CABLE_BINDING,
             },
-            "catalog_binding": CABLE_BINDING,
         },
     )
 
@@ -171,7 +167,6 @@ def test_sequence_edit_delete_continue_trunk():
                 "dlugosc_m": 190,
                 "catalog_binding": CABLE_BINDING,
             },
-            "catalog_binding": CABLE_BINDING,
         },
     )
 

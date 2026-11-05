@@ -1350,7 +1350,7 @@ def _przypadki(
                 "add_nn_cable_segment",
                 "brak katalogu",
                 "catalog.ref_required",
-                slownik.nazwa_pola("catalog_ref", "add_nn_cable_segment"),
+                slownik.nazwa_pola("catalog_binding", "add_nn_cable_segment"),
             ),
             stan_nn,
             {"from_bus_ref": szyna_nn, "length_m": 25.0},
@@ -1533,19 +1533,21 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
     (
         "add_transformer_sn_nn",
         {
-            "catalog_binding": {
+            # Grupa katalogu spoza rodzaju elementu (transformator: TRAFO_SN_NN) — odmowa
+            # nazwana `catalog.namespace_mismatch` (karta JEDEN-KLUCZ-KATALOGU).
+            "transformer_catalog_binding": {
                 "catalog_namespace": "NIE_MA_TAKIEJ_GRUPY",
                 "catalog_item_id": "x" + _LITEROWKA,
                 "catalog_item_version": "1",
             }
         },
-        "catalog.ref_required",
+        "catalog.namespace_mismatch",
         (),
     ),
     (
         "add_transformer_sn_nn",
         {
-            "catalog_binding": {"catalog_item_id": _TRAFO},
+            "transformer_catalog_binding": {"catalog_item_id": _TRAFO},
             "transformer_tap_changer_catalog_binding": {"catalog_item_id": "zaczep" + _LITEROWKA},
         },
         "catalog.item_not_found",
@@ -1575,7 +1577,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         {
             "segment_id": "odcinek",
             "catalog_binding": {
-                "catalog_namespace": "ZKSN",
+                "catalog_namespace": "mv_branch_points",
                 "catalog_item_id": "zksn" + _LITEROWKA,
                 "catalog_item_version": "1",
             },

@@ -82,9 +82,11 @@ ODMOWY: dict[str, Any] = {
     "zu.bus_not_found": lambda m: _ladunek_rezystora(m, bus_ref="szyna-spoza-modelu"),
     "zu.bus_not_sn": lambda m: _ladunek_rezystora(m, bus_ref=_szyna_wn(m)),
     "zu.catalog_required": lambda m: {
-        k: v for k, v in _ladunek_rezystora(m).items() if k != "catalog_ref"
+        k: v for k, v in _ladunek_rezystora(m).items() if k != "catalog_binding"
     },
-    "zu.voltage_mismatch.tu": lambda m: _ladunek_rezystora(m, catalog_ref="TU_ZNYN11_20KV_PW160"),
+    "zu.voltage_mismatch.tu": lambda m: _ladunek_rezystora(
+        m, catalog_binding={"catalog_item_id": "TU_ZNYN11_20KV_PW160"}
+    ),
     "zu.voltage_mismatch.rezystor": lambda m: _ladunek_rezystora(
         m, rezystor={"catalog_binding": {"catalog_item_id": "REZ_200A_20KV"}}
     ),

@@ -9,7 +9,7 @@ istniała, ale wybór ROZMIARU transformatora (moc, napięcie górne) nigdy nie
 wymagał jawnej decyzji projektanta.
 
 Operacja wymaga teraz jednego z:
-(a) `transformer_catalog_ref` / `transformer_catalog_binding` wskazanych wprost;
+(a) wiązania `transformer_catalog_binding` wskazanego wprost;
 (b) jawnej pary `hv_voltage_kv` + `transformer_sn_mva`, która JEDNOZNACZNIE
     wskazuje pozycję w mapie (napięcie SN pochodzi z już rozstrzygniętego
     `voltage_kv` operacji).
@@ -136,7 +136,7 @@ class TestParaSpozaMapyOdrzuconaTymSamymKodem:
             "add_grid_source_sn",
             _base_payload(
                 manual_equivalent=_rownowaznik_110(115.0),
-                transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11",
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"},
             ),
         )
         assert wynik.get("error_code") == "source.hv_voltage_mismatch", wynik
@@ -146,7 +146,7 @@ class TestParaSpozaMapyOdrzuconaTymSamymKodem:
 
 class TestNapiecieDolneTypuZgodneZSzynamiSn:
     """Iloczyn cech: napięcie szyn SN GPZ {15, 20} kV × napięcie dolne typu {15, 20} kV ×
-    droga wskazania typu {`transformer_catalog_ref`, `transformer_catalog_binding`}.
+    kształt wiązania `transformer_catalog_binding` {sam identyfikator, wiązanie pełne}.
 
     Klasa defektu (scalenie UI/UX z programem, 2026-10-28): kreator GPZ filtrował typy
     110/SN tolerancją ±6 kV (na sieci 15 kV pokazywał i dobierał 110/20 kV), a operacja
@@ -212,7 +212,9 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
         wynik = execute_domain_operation(
             _empty_enm(),
             "add_grid_source_sn",
-            _base_payload(transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11"),
+            _base_payload(
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"}
+            ),
         )
         tr = self._transformer(wynik)
         assert tr["sn_mva"] == 25.0
@@ -235,7 +237,7 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
             _base_payload(
                 voltage_kv=20.0,
                 manual_equivalent=_rownowaznik_110(110.0, sn_voltage_kv=20.0),
-                transformer_catalog_ref="tr-wn-sn-110-20-40mva-yd11",
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-20-40mva-yd11"},
             ),
         )
         tr = self._transformer(wynik)
@@ -251,7 +253,9 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
         wynik = execute_domain_operation(
             _empty_enm(),
             "add_grid_source_sn",
-            _base_payload(transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11"),
+            _base_payload(
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"}
+            ),
         )
         snapshot = wynik["snapshot"]
         tr = snapshot["transformers"][0]
@@ -268,7 +272,7 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
             _base_payload(
                 sections_count=2,
                 transformer_count=2,
-                transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11",
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"},
             ),
         )
         assert wynik.get("error") is None, wynik.get("error")
@@ -294,7 +298,9 @@ class TestParaZMapyDajeTenSamTypCoJawny:
         wynik_ref = execute_domain_operation(
             _empty_enm(),
             "add_grid_source_sn",
-            _base_payload(transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11"),
+            _base_payload(
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"}
+            ),
         )
         assert wynik_para.get("error") is None, wynik_para.get("error")
         assert wynik_ref.get("error") is None, wynik_ref.get("error")
@@ -331,7 +337,9 @@ class TestBrakMechanizmuOverrideDlaTransformatora:
         wynik = execute_domain_operation(
             _empty_enm(),
             "add_grid_source_sn",
-            _base_payload(transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11"),
+            _base_payload(
+                transformer_catalog_binding={"catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"}
+            ),
         )
         assert wynik.get("error") is None, wynik.get("error")
         tr = wynik["snapshot"]["transformers"][0]

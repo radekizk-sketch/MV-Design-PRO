@@ -25,7 +25,7 @@ def _enm_two_buses() -> dict:
 
 def _binding() -> dict:
     return {
-        "catalog_binding": {
+        "transformer_catalog_binding": {
             "catalog_namespace": "TRAFO_SN_NN",
             "catalog_item_id": "energen-tonr-1000-15-04",
             "catalog_item_version": "2024.1",

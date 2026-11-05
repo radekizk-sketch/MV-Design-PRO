@@ -25,6 +25,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.catalog.types import nazwa_kategorii_katalogu_pl
+
 #: Klucz kanoniczny wiązania w węźle ładunku.
 KLUCZ_WIAZANIA = "catalog_binding"
 
@@ -115,28 +117,122 @@ class OdczytWiazania:
         }
 
 
+#: RODZAJ elementu (i rodzaj aparatu) → dozwolone przestrzenie katalogu; PIERWSZA jest
+#: przestrzenią domyślną (wiązanie bez ``catalog_namespace``). JEDYNE źródło prawdy dla
+#: rodzajów, które biorą pozycję z więcej niż jednej przestrzeni — operacji domenowych
+#: (``add_nn_switch_device``, ``assign_catalog_to_element``), bramy API
+#: (``api/domain_ops_policy.py``) i walidatora wiązań gałęzi.
+#:
+#: Aparat nN ma ODRĘBNE przestrzenie katalogu (``network_model/catalog/types.py``
+#: ``CatalogNamespace``): ogólny aparat łączeniowy ``APARAT_NN`` (wyłącznik główny/odpływowy,
+#: rozłącznik bezpiecznikowy), wyłącznik instalacyjny ``APARAT_NN_MCB`` (IEC 60898-1),
+#: wkładka topikowa ``WKLADKA_NN`` (IEC 60269-1) i wyłącznik różnicowoprądowy
+#: ``APARAT_NN_RCD`` (IEC 61008-1/61009-1) — każda z własnym kontraktem materializacji.
+#: Dawniej odczyt przypisywał rodzajowi elementu JEDNĄ przestrzeń, więc wyłącznik
+#: instalacyjny z własnej przestrzeni był odmową ``catalog.namespace_mismatch``.
+#:
+#: Klucze ``aparat_nn.<klasa>`` — klasa aparatu z ładunku ``add_nn_switch_device``
+#: (``device_class``); ``galaz.<typ>`` — typ gałęzi modelu ENM (``assign_catalog_to_element``;
+#: wyłącznik różnicowoprądowy ``add_nn_rcd`` i wyłącznik instalacyjny to gałąź ``switch``);
+#: ``pole.sn``/``pole.nn`` — typ pola (aparat główny pola, ``czy_pole_nn``).
+PRZESTRZENIE_RODZAJU: Mapping[str, tuple[str, ...]] = {
+    "aparat_nn.switch": ("APARAT_NN", "APARAT_NN_MCB"),
+    "aparat_nn.fuse": ("APARAT_NN", "WKLADKA_NN"),
+    # Odcinek SN budowany operacją toru (magistrala, odgałęzienie, pierścień, import XLSX):
+    # przewód linii 110 kV ma własną grupę katalogu (karta LINIA-110), kabel — tylko SN.
+    "odcinek_sn.cable": ("KABEL_SN",),
+    "odcinek_sn.line_overhead": ("LINIA_SN", "PRZEWOD_LINII_WN"),
+    "galaz.cable": ("KABEL_SN", "KABEL_NN"),
+    # Karta LINIA-110: przewód linii 110 kV (dane wyrobu) — parametry linii z geometrii.
+    "galaz.line_overhead": ("LINIA_SN", "PRZEWOD_LINII_WN"),
+    "galaz.breaker": ("APARAT_SN", "APARAT_NN"),
+    "galaz.switch": ("APARAT_SN", "APARAT_NN", "APARAT_NN_MCB", "APARAT_NN_RCD"),
+    "galaz.bus_coupler": ("APARAT_SN", "APARAT_NN"),
+    "galaz.disconnector": ("APARAT_SN", "APARAT_NN"),
+    "galaz.fuse": ("APARAT_SN", "APARAT_NN", "WKLADKA_NN"),
+    "pole.sn": ("APARAT_SN",),
+    "pole.nn": ("APARAT_NN",),
+}
+
+
+def przestrzenie_rodzaju(rodzaj: str) -> tuple[str, ...]:
+    """Dozwolone przestrzenie rodzaju z :data:`PRZESTRZENIE_RODZAJU` (KeyError dla nieznanego
+    rodzaju — rodzaj spoza mapy to błąd programu, nie odmowa danych)."""
+    return PRZESTRZENIE_RODZAJU[rodzaj]
+
+
+def przestrzenie_aparatu_nn(device_class: object) -> tuple[str, ...]:
+    """Przestrzenie aparatu nN operacji ``add_nn_switch_device`` z klasy aparatu z ładunku
+    (``device_class``: ``switch`` domyślnie, ``fuse``) — ta sama funkcja w operacji i bramie
+    API. Klasa spoza kontraktu daje przestrzenie wyłącznika; operacja odrzuca ją osobnym
+    kodem ``nn.switch_device_class_invalid``."""
+    klasa = device_class.strip().lower() if isinstance(device_class, str) else "switch"
+    return PRZESTRZENIE_RODZAJU["aparat_nn.fuse" if klasa == "fuse" else "aparat_nn.switch"]
+
+
+def przestrzenie_odcinka_sn(typ: object) -> tuple[str, ...]:
+    """Przestrzenie odcinka SN z typu gałęzi (``cable`` / ``line_overhead``) — ta sama funkcja
+    w operacjach toru i w bramie API; typ inny niż kabel to linia napowietrzna (domyślny
+    rodzaj handlera ``segment.rodzaj``)."""
+    return PRZESTRZENIE_RODZAJU[
+        "odcinek_sn.cable" if typ == "cable" else "odcinek_sn.line_overhead"
+    ]
+
+
+def _jako_krotka(przestrzen_rodzaju: str | tuple[str, ...]) -> tuple[str, ...]:
+    return (przestrzen_rodzaju,) if isinstance(przestrzen_rodzaju, str) else przestrzen_rodzaju
+
+
+def przestrzen_wiazania(
+    przestrzen_zadeklarowana: str | None, przestrzen_rodzaju: str | tuple[str, ...]
+) -> str:
+    """Przestrzeń wiązania: zadeklarowana, gdy należy do dozwolonych rodzaju, inaczej
+    domyślna (pierwsza). Wołający sprawdza wcześniej :func:`odmowa_przestrzeni`."""
+    dozwolone = _jako_krotka(przestrzen_rodzaju)
+    if przestrzen_zadeklarowana in dozwolone:
+        return str(przestrzen_zadeklarowana)
+    return dozwolone[0]
+
+
 def odmowa_przestrzeni(
-    przestrzen_wiazania: str | None, przestrzen_rodzaju: str, *, opis_pl: str = "Element"
+    przestrzen_wiazania: str | None,
+    przestrzen_rodzaju: str | tuple[str, ...],
+    *,
+    opis_pl: str = "Element",
 ) -> OdczytWiazania | None:
-    """Odmowa :data:`KOD_PRZESTRZENI_NIEZGODNEJ`, gdy wiązanie deklaruje przestrzeń inną niż
-    przestrzeń rodzaju elementu; ``None`` — zgodna albo niezadeklarowana.
+    """Odmowa :data:`KOD_PRZESTRZENI_NIEZGODNEJ`, gdy wiązanie deklaruje przestrzeń spoza
+    przestrzeni rodzaju elementu; ``None`` — zgodna albo niezadeklarowana.
 
     JEDNO źródło prawdy przestrzeni (karta JEDEN-KLUCZ-KATALOGU, V12K-316 dług 4): kategoria
-    katalogu wynika z RODZAJU tworzonego elementu. Dawniej brama API przyjmowała przestrzeń
-    z wiązania, a operacja nadpisywała ją przestrzenią rodzaju — para predykatów sprawdzała
-    pozycję w jednej kategorii, a materializowała w drugiej. Woła ją :func:`odczytaj_wiazanie`
+    katalogu wynika z RODZAJU tworzonego elementu — jedna przestrzeń albo zbiór z
+    :data:`PRZESTRZENIE_RODZAJU`. Dawniej brama API przyjmowała przestrzeń z wiązania,
+    a operacja nadpisywała ją przestrzenią rodzaju — para predykatów sprawdzała pozycję
+    w jednej kategorii, a materializowała w drugiej. Woła ją :func:`odczytaj_wiazanie`
     (brama API i operacje V2) oraz materializacja operacji V1 (``_materialize_catalog_payload``).
     """
-    if przestrzen_wiazania is None or przestrzen_wiazania == przestrzen_rodzaju:
+    dozwolone = _jako_krotka(przestrzen_rodzaju)
+    if przestrzen_wiazania is None or przestrzen_wiazania in dozwolone:
         return None
+    grupy = " albo ".join(_nazwa_grupy(p) for p in dozwolone)
+    zadeklarowana = (
+        f"grupę katalogu {_nazwa_grupy(przestrzen_wiazania)}"
+        if nazwa_kategorii_katalogu_pl(przestrzen_wiazania)
+        else "grupę spoza katalogu"
+    )
     return OdczytWiazania(
         kod_bledu=KOD_PRZESTRZENI_NIEZGODNEJ,
         komunikat_pl=(
-            f"{opis_pl}: wiązanie deklaruje grupę katalogu „{przestrzen_wiazania}”, a element "
-            f"tego rodzaju bierze pozycję z grupy „{przestrzen_rodzaju}” — wskaż pozycję "
-            "z właściwej grupy albo pomiń grupę w wiązaniu."
+            f"{opis_pl}: wiązanie deklaruje {zadeklarowana}, a element tego rodzaju bierze "
+            f"pozycję z grupy {grupy} — wskaż pozycję z właściwej grupy albo pomiń grupę "
+            "w wiązaniu."
         ),
     )
+
+
+def _nazwa_grupy(przestrzen: str) -> str:
+    """Nazwa grupy katalogu dla projektanta (bez kodu przestrzeni)."""
+    nazwa = nazwa_kategorii_katalogu_pl(przestrzen)
+    return f"„{nazwa}”" if nazwa else "„właściwej grupy katalogu”"
 
 
 def _tekst(wartosc: object) -> str | None:
@@ -150,7 +246,7 @@ def odczytaj_wiazanie(
     klucz: str = KLUCZ_WIAZANIA,
     *,
     opis_pl: str = "Element",
-    przestrzen_rodzaju: str | None = None,
+    przestrzen_rodzaju: str | tuple[str, ...] | None = None,
 ) -> OdczytWiazania:
     """Odczytaj wiązanie ``wezel[klucz]`` — jedyny odczyt pozycji katalogu ładunku.
 
@@ -161,9 +257,10 @@ def odczytaj_wiazanie(
     wiązanie nie jest słownikiem albo nie niesie ``catalog_item_id``. Węzeł bez
     klucza wiązania (albo z wartością ``None``) nie wskazuje pozycji.
 
-    ``przestrzen_rodzaju`` (przestrzeń katalogu RODZAJU elementu): wynik niesie tę przestrzeń,
-    a wiązanie deklarujące inną daje odmowę :data:`KOD_PRZESTRZENI_NIEZGODNEJ`
-    (:func:`odmowa_przestrzeni`).
+    ``przestrzen_rodzaju`` (przestrzeń katalogu RODZAJU elementu albo zbiór dozwolonych
+    z :data:`PRZESTRZENIE_RODZAJU`, pierwsza domyślna): wynik niesie przestrzeń zadeklarowaną
+    z tego zbioru albo domyślną, a wiązanie deklarujące inną daje odmowę
+    :data:`KOD_PRZESTRZENI_NIEZGODNEJ` (:func:`odmowa_przestrzeni`).
     """
     if not isinstance(wezel, Mapping):
         return OdczytWiazania()
@@ -209,7 +306,7 @@ def odczytaj_wiazanie(
         odmowa = odmowa_przestrzeni(przestrzen, przestrzen_rodzaju, opis_pl=opis_pl)
         if odmowa is not None:
             return odmowa
-        przestrzen = przestrzen_rodzaju
+        przestrzen = przestrzen_wiazania(przestrzen, przestrzen_rodzaju)
     return OdczytWiazania(
         pozycja=pozycja,
         wersja=_tekst(surowe.get("catalog_item_version")),

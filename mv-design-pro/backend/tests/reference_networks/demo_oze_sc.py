@@ -296,7 +296,7 @@ def _attach_ders(
             {
                 "technology": tech,
                 "variant": variant,
-                "catalog_binding": {"catalog_item_id": cat},
+                "catalog_ref": cat,
                 "power_mw": power,
                 "source_name": name,
                 "generator_refs": generator_refs,
@@ -396,7 +396,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
                 "station_name": f"Stacja S{i + 1}",
                 "config_key": config["key"],
                 "config_label_pl": config["label_pl"],
-                "transformer_catalog_binding": {"catalog_item_id": config["trafo"]},
+                "transformer_catalog_ref": config["trafo"],
                 "sn_bus_ref": _sn_bus_ref(enm, station_ref),
                 "nn_bus_ref": _nn_bus_ref(enm, station_ref),
                 "der": der_records,

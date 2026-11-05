@@ -305,7 +305,7 @@ def test_kabel_koncowka_starzenie_z_temperatura_katalogowa(klient: TestClient) -
     odpowiedz = klient.post(
         "/api/solver/cable-thermal-aging",
         json={
-            "cable_catalog_binding": {"catalog_item_id": ref},
+            "cable_catalog_ref": ref,
             "temperatura_pracy_c": pozycja.max_temperature_c + 10.0,
         },
     )
@@ -321,9 +321,7 @@ def test_kabel_koncowka_starzenie_z_temperatura_katalogowa(klient: TestClient) -
 def test_kabel_koncowka_bez_temperatury_pracy_daje_kod(klient: TestClient) -> None:
     katalog = get_default_mv_catalog()
     ref = next(iter(sorted(katalog.cable_types)))
-    odpowiedz = klient.post(
-        "/api/solver/cable-thermal-aging", json={"cable_catalog_binding": {"catalog_item_id": ref}}
-    )
+    odpowiedz = klient.post("/api/solver/cable-thermal-aging", json={"cable_catalog_ref": ref})
     assert odpowiedz.status_code == 200
     dane = odpowiedz.json()
     assert dane["status"] == "UNAVAILABLE"
@@ -340,7 +338,7 @@ def test_trafo_koncowka_straty_z_katalogu(klient: TestClient) -> None:
     pozycja = katalog.transformer_types[ref]
     odpowiedz = klient.post(
         "/api/solver/transformer-losses",
-        json={"transformer_catalog_binding": {"catalog_item_id": ref}, "beta": 0.6},
+        json={"transformer_catalog_ref": ref, "beta": 0.6},
     )
     assert odpowiedz.status_code == 200
     dane = odpowiedz.json()
@@ -358,10 +356,7 @@ def test_trafo_koncowka_bez_bety_daje_kod(klient: TestClient) -> None:
         for ident, pozycja in sorted(katalog.transformer_types.items())
         if pozycja.p0_kw > 0 and pozycja.pk_kw > 0
     )
-    odpowiedz = klient.post(
-        "/api/solver/transformer-losses",
-        json={"transformer_catalog_binding": {"catalog_item_id": ref}},
-    )
+    odpowiedz = klient.post("/api/solver/transformer-losses", json={"transformer_catalog_ref": ref})
     assert odpowiedz.status_code == 200
     dane = odpowiedz.json()
     assert dane["status"] == "UNAVAILABLE"

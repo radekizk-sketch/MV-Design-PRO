@@ -192,7 +192,7 @@ def test_pole_falownika_na_szynie_nn_nazwa_z_klasy_szyny(technologia: str) -> No
             technologia,
             {
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": f"ZRODLO_NN_{technologia}",
                     "catalog_item_id": klucz,
                     "catalog_item_version": "2024.1",
                 }

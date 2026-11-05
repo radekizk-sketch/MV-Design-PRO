@@ -172,7 +172,9 @@ def _payload_gpz(
             "catalog_item_version": "2024.1",
         }
     else:
-        aparat["catalog_ref"] = apparatus_ref
+        # Wiązanie z samym identyfikatorem (karta JEDEN-KLUCZ-KATALOGU: `catalog_ref` obok
+        # wiązania to zamiennik klucza, odmowa `catalog.binding_key_alias`).
+        aparat["catalog_binding"] = {"catalog_item_id": apparatus_ref}
     payload["gpz_line_field_apparatus"] = aparat
     return payload
 
@@ -331,8 +333,10 @@ def test_dobra_pozycja_aparatu_pola_daje_tabliczke_z_katalogu(
 def test_aparat_pola_sprawdzany_w_kategorii_wskazanej_przez_wolajacego() -> None:
     """Brama sprawdza DOKŁADNIE tę pozycję, która trafi do migawki.
 
-    Aparat SN wskazany w kategorii APARAT_NN nie istnieje w TAMTEJ kategorii —
-    zgoda „bo w APARAT_SN taki jest" byłaby zgodą na inną pozycję niż zapisana.
+    Kategoria katalogu aparatu pola SN wynika z RODZAJU elementu (`APARAT_SN`, karta
+    JEDEN-KLUCZ-KATALOGU). Wiązanie deklarujące kategorię APARAT_NN to odmowa nazwana
+    `catalog.namespace_mismatch` — ani zgoda „bo w APARAT_SN taki jest”, ani cicha zamiana
+    kategorii na tę z rodzaju.
     """
     wynik = execute_domain_operation(
         _pusty_enm(),
@@ -340,7 +344,7 @@ def test_aparat_pola_sprawdzany_w_kategorii_wskazanej_przez_wolajacego() -> None
         _payload_gpz(apparatus_ref=REF_APARAT_SN, namespace="APARAT_NN"),
     )
 
-    assert wynik.get("error_code") == "catalog.item_not_found", wynik
+    assert wynik.get("error_code") == "catalog.namespace_mismatch", wynik
     assert wynik.get("snapshot") is None
 
 

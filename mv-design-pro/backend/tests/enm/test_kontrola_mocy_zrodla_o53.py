@@ -459,8 +459,7 @@ def test_tor_tworzenia_zapisuje_jawne_wejscia_i_nazwane_przyjecia() -> None:
             "assign_catalog_to_element",
             {
                 "element_ref": generator["ref_id"],
-                "catalog_item_id": U1,
-                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_binding": {"catalog_item_id": U1, "catalog_namespace": "ZRODLO_NN_PV"},
             },
         ).get("error_code")
         is None

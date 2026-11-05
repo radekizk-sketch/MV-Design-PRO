@@ -105,7 +105,6 @@ def _tor_der_sn(technologia: str) -> dict[str, Any]:
     blokowy = topologia["block_transformer"]
     katalog_trafo = get_default_mv_catalog().get_transformer_type(trafo_blokowe)
     assert katalog_trafo is not None
-    blokowy["catalog_ref"] = trafo_blokowe
     blokowy["catalog_binding"]["catalog_item_id"] = trafo_blokowe
     blokowy["secondary_voltage_kv"] = napiecie
     blokowy["rated_power_mva"] = katalog_trafo.rated_power_mva

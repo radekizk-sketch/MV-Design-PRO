@@ -206,7 +206,9 @@ def _prog_87t_operatora(generator: dict[str, Any]) -> tuple[LimitKryterium | Non
     try:
         profil = load_nc_rfg_profile(ref)
     except FileNotFoundError:
-        return None, f"„{ref}” (profilu nie ma w katalogu operatorów)"
+        # Komunikat bez identyfikatora profilu (`test_komunikaty_operacji_bez_kodow`): projektant
+        # widzi profil wytwórcy w jego karcie, tu — przyczynę braku podstawy progu.
+        return None, "profil NC RfG wytwórcy (profilu nie ma w katalogu operatorów)"
     return profil.prog_87t_sn_transformatora, profil.operator_name_pl
 
 

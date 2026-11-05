@@ -33,7 +33,7 @@ def test_extract_catalog_binding_supports_canonical_converter_binding_for_pv():
         {
             "source_technology": "PV",
             "catalog_binding": {
-                "catalog_namespace": "CONVERTER",
+                "catalog_namespace": "ZRODLO_NN_PV",
                 "catalog_item_id": "conv-pv-1mw-15kv",
                 "catalog_item_version": "2024.1",
                 "materialize": True,
@@ -43,7 +43,7 @@ def test_extract_catalog_binding_supports_canonical_converter_binding_for_pv():
     )
 
     assert binding is not None
-    assert binding["catalog_namespace"] == "CONVERTER"
+    assert binding["catalog_namespace"] == "ZRODLO_NN_PV"
     assert binding["catalog_item_id"] == "conv-pv-1mw-15kv"
 
 
@@ -160,8 +160,10 @@ def test_validate_catalog_binding_accepts_zksn_catalog_ref_from_branch_point_cat
         "insert_zksn_on_segment_sn",
         {
             "segment_id": "seg-1",
-            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
-            "catalog_namespace": "mv_branch_points",
+            "catalog_binding": {
+                "catalog_item_id": "ZKSN-2P-630A",
+                "catalog_namespace": "mv_branch_points",
+            },
         },
     )
 
@@ -174,8 +176,10 @@ def test_validate_catalog_binding_rejects_unknown_branch_point_catalog_ref():
         "insert_branch_pole_on_segment_sn",
         {
             "segment_id": "seg-1",
-            "catalog_binding": {"catalog_item_id": "BRAK-TAKIEGO-SLUPA"},
-            "catalog_namespace": "mv_branch_points",
+            "catalog_binding": {
+                "catalog_item_id": "BRAK-TAKIEGO-SLUPA",
+                "catalog_namespace": "mv_branch_points",
+            },
         },
     )
 

@@ -59,6 +59,7 @@ from typing import Any
 
 from enm.models import Bay, Bus, EnergyNetworkModel, Substation, SwitchBranch
 from enm.pola import czy_pole_nn, poziom_pol
+from enm.wiazanie_katalogowe import przestrzenie_rodzaju
 from network_model.nazwy import nazwa_nadana
 
 MIGRATION_VERSION = "promocja_aparatow_nn_002"
@@ -82,7 +83,8 @@ META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA = "nn_promocja_bez_wiazania_katalogowej"
 #: ale operacja go nie przyjęła — brak katalogu ma nazwaną przyczynę.
 META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA = "nn_promocja_odmowa_wiazania"
 
-_NAMESPACE_APARAT_NN = "APARAT_NN"
+#: Przestrzeń aparatu pola nN z jednej mapy rodzajów (`enm.wiazanie_katalogowe`).
+(_NAMESPACE_APARAT_NN,) = przestrzenie_rodzaju("pole.nn")
 
 #: Role odpływu nN (`Bay.meta.feeder_role`) pola ŹRÓDŁA → rodzaj generatora
 #: (`Generator.gen_type`) źródła stacyjnego, któremu pole służy.

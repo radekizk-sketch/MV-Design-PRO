@@ -220,6 +220,6 @@ def test_zdjecie_katalogu_odmowa() -> None:
     _odmowa(
         enm,
         "assign_catalog_to_element",
-        {"element_ref": ref, "catalog_item_id": None},
+        {"element_ref": ref, "catalog_binding": None},
         "catalog.clear_forbidden",
     )
