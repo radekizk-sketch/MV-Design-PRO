@@ -14,7 +14,7 @@
  *      (karta „Zabezpieczenia") → aparat FUSE pola z pozycją katalogu wkładek oraz
  *      `Measurement` typu VT w polu; rezygnacja z VT usuwa przekładnik z modelu.
  *
- * Konfigurator otwiera adres z zaznaczeniem stacji (`#?sel=<stacja>&type=Station`) — ta
+ * Konfigurator otwiera adres z zaznaczeniem stacji (`#?sel=<stacja>&type=Station&name=<nazwa>`) — ta
  * sama droga, którą odtwarza odświeżenie strony po kliknięciu stacji na schemacie.
  */
 
@@ -188,8 +188,15 @@ async function otworzKonfigurator(page: Page, k: Kontekst): Promise<void> {
       }),
     );
   }, { pid: k.pid, projektNazwa: k.projektNazwa, caseId: k.caseId });
+  // Ekran stanowiska projektanta (jak w specach zrzutowych). Przy 1280×720 konfigurator
+  // w wąskim inspektorze przycina wiersz źródła pod paskiem stanu — zgłoszone do oceny
+  // wizualnej (B-02) ze zrzutem, nie maskowane wymuszonym klikiem.
+  await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(
-    `${FRONTEND_BASE}/#?sel=${encodeURIComponent(k.stacja.ref_id)}&type=Station`,
+    // Zaznaczenie z adresu wymaga trzech parametrów (`sel`, `type`, `name`) — ten sam zapis,
+    // który aplikacja kładzie w adresie po kliknięciu stacji (`urlState.ts::
+    // decodeSelectionFromParams`); bez nazwy zaznaczenie jest odrzucane.
+    `${FRONTEND_BASE}/#?sel=${encodeURIComponent(k.stacja.ref_id)}&type=Station&name=${encodeURIComponent(k.stacja.name)}`,
     { waitUntil: 'commit' },
   );
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
