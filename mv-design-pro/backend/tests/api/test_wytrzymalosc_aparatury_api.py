@@ -734,13 +734,21 @@ def _straznik_matematyki_ui() -> Any:
     from pathlib import Path
 
     skrypty = Path(__file__).resolve().parents[3] / "scripts"
-    if str(skrypty) not in sys.path:
-        sys.path.insert(0, str(skrypty))
-    spec = importlib.util.spec_from_file_location("ui_math_guard", skrypty / "ui_math_guard.py")
-    assert spec is not None and spec.loader is not None
-    modul = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(modul)
-    return modul
+
+    def _zaladuj(nazwa: str) -> Any:
+        spec = importlib.util.spec_from_file_location(nazwa, skrypty / f"{nazwa}.py")
+        assert spec is not None and spec.loader is not None
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules[nazwa] = modul
+        spec.loader.exec_module(modul)
+        return modul
+
+    # Strażnik importuje `guard_parsowanie` z katalogu skryptów; moduł rejestrujemy wprost
+    # w `sys.modules`, bez dokładania `scripts/` do `sys.path` (to mogłoby przesłonić pakiet
+    # źródłowy — tests/ci/test_testy_nie_cieniuja_pakietow_zrodlowych.py).
+    if "guard_parsowanie" not in sys.modules:
+        _zaladuj("guard_parsowanie")
+    return _zaladuj("ui_math_guard")
 
 
 #: Pola tekstowe kontraktu, które NIE są prozą dla projektanta (identyfikatory, kody, statusy,

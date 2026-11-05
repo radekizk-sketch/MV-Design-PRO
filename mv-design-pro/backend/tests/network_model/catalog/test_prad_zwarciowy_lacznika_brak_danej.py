@@ -297,7 +297,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert dynamiczna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert dynamiczna["limit"] is None
         assert any(
-            "nie niesie prądu szczytowego I_p" in b
+            "nie niesie znamionowego prądu szczytowego" in b
             for b in dynamiczna["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.pozycja_bez_znamion_wytrzymalosci" in pole["kody_gotowosci"]
@@ -310,7 +310,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert cieplna["limit"] is None
         assert any(
-            "nie niesie prądu krótkotrwałego I_th" in b
+            "nie niesie znamionowego prądu krótkotrwałego" in b
             for b in cieplna["wyjasnienie"]["czego_brakuje"]
         )
     elif rodzaj == "CIRCUIT_BREAKER":
@@ -329,8 +329,11 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert wylaczanie["status_maszynowy"] == "NIE_OCENIONO"
         assert wylaczanie["limit"] is None
         assert any(
-            # Wyłącznik SN/WN: znamię I_sc wg IEC 62271-100 (karta APARATURA-TABELA), nie I_cu.
-            "nie niesie znamienia zdolności wyłączania" in b and "I_sc" in b
+            # Wyłącznik SN/WN: znamię I_sc wg IEC 62271-100 (karta APARATURA-TABELA), nie I_cu
+            # wyłącznika nN. Proza nazywa znamię słowami (karta KD6 — symbol wyłącznie z pól
+            # `*_latex`), więc rozróżnienie niesie nazwa znamienia IEC 62271-100.
+            "nie niesie znamienia zdolności wyłączania" in b
+            and "znamionowy prąd wyłączalny zwarciowy" in b
             for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.brak_zdolnosci_wylaczania" in pole["kody_gotowosci"]
