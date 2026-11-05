@@ -48,6 +48,8 @@ from network_model.solvers.fault_loop_iec60364 import (
     compute_fault_loop,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 
 def _wspolczynniki():
     return wspolczynniki_nn(
@@ -58,7 +60,7 @@ def _wspolczynniki():
 def _thermal(ith_a: float = 200.0) -> object:
     return check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=ith_a,
+            **prad_bez_skladowej_nieokresowej(ith_a),
             fault_duration_s=0.1,
             ith_1s_a=6000.0,
             cross_section_mm2=120.0,

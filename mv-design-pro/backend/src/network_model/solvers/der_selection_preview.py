@@ -45,8 +45,10 @@ from network_model.solvers.conductor_thermal_withstand import (
 )
 from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
+    ConductorThermalResult,
     check_conductor_thermal_withstand,
 )
+from network_model.solvers.wytrzymalosc_cieplna_pola import prad_cieplny_zastepczy
 
 # ---------------------------------------------------------------------------
 # Wspólny epsilon porównań doborowych mocy, prądu i spadku napięcia (reprezentacja binarna).
@@ -292,6 +294,21 @@ class CableCandidate:
         return None
 
 
+def _ith_a(thermal: ConductorThermalResult) -> float:
+    """I_th [A] przy czasie wyłączenia ze śladu kryterium cieplnego (policzony przez solver)."""
+    assert thermal.prad_cieplny is not None
+    return float(thermal.prad_cieplny["ith_a"])
+
+
+def _ith_kabla_a(data: CableSelectionInput) -> float:
+    """I_th [A] wejścia doboru przy jego czasie — ta sama funkcja co kryterium cieplne."""
+    wynik = prad_cieplny_zastepczy(ikss=data.ikss_a, kappa=data.kappa, tk_s=data.fault_duration_s)
+    if wynik.ith is None:
+        # Odrzucenie zwarciowe istnieje tylko po rachunku I_th — brak wyniku to błąd programu.
+        raise AssertionError(f"I_th doboru kabla nie wyznaczony: {wynik.powod_pl}")
+    return float(wynik.ith)
+
+
 @dataclass(frozen=True)
 class CableSelectionInput:
     """Wejście doboru kabla SN toru DER."""
@@ -317,9 +334,13 @@ class CableSelectionInput:
     # Oba pola sa OPCJONALNE: bez nich dobor zachowuje sie DOKLADNIE jak dotad
     # (kryterium pomijane, zero zmian wyniku), bo prad zwarciowy w miejscu zabudowy
     # znany jest dopiero po biegu SC, a czas wylaczenia po analizie zabezpieczen.
-    # ith_a          — prad zwarciowy ekwiwalentny cieplnie [A] (IEC 60909-0 §12)
+    # ikss_a         — prad zwarciowy poczatkowy I″k w miejscu zabudowy [A] (bieg SC)
+    # kappa          — wspolczynnik udaru κ tego punktu (bieg SC)
     # fault_duration_s — czas wylaczenia zabezpieczenia przy tym pradzie [s]
-    ith_a: float | None = None
+    # I_th = I″k·√(m(κ, t) + n) przy TYM czasie liczy jedna funkcja normy (aparatura
+    # i przewody — ``solvers.wytrzymalosc_cieplna_pola.prad_cieplny_zastepczy``).
+    ikss_a: float | None = None
+    kappa: float | None = None
     fault_duration_s: float | None = None
     # Karta F-K7 (znalezisko Z6): wspolczynniki korekcyjne obciazalnosci wg warunkow
     # ULOZENIA. `None` znaczy „warunki katalogowe" — wynik jest wtedy BIT-IDENTYCZNY
@@ -462,10 +483,11 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
         # cichym przepuszczeniem kandydata jako „spelniajacego", wiec nie jest wtedy
         # kryterium wcale (kandydat przechodzi na podstawie dwoch pozostalych, a brak
         # sprawdzenia zglasza wyzsza warstwa kodem gotowosci).
-        if data.ith_a is not None and data.fault_duration_s is not None:
+        if data.ikss_a is not None and data.kappa is not None and data.fault_duration_s is not None:
             thermal = check_conductor_thermal_withstand(
                 ConductorThermalInput(
-                    ith_a=data.ith_a,
+                    ikss_a=data.ikss_a,
+                    kappa=data.kappa,
                     fault_duration_s=data.fault_duration_s,
                     ith_1s_a=candidate.ith_1s(),
                     jth_1s_a_per_mm2=candidate.jth_1s_a_per_mm2,
@@ -489,7 +511,7 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                         candidate.catalog_ref,
                         candidate.name,
                         "wytrzymalosc_zwarciowa_niewystarczajaca",
-                        f"Prad cieplny {data.ith_a:g} A przekracza dopuszczalny "
+                        f"Prad cieplny {_ith_a(thermal):g} A przekracza dopuszczalny "
                         f"{thermal.admissible_current_a:g} A przy czasie "
                         f"{data.fault_duration_s:g} s.{uzupelnienie}",
                     )
@@ -515,7 +537,7 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             error_code = "converter.der_sn.dobor_kabel_wytrzymalosc_zwarciowa"
             error_pl = (
                 f"❌ Wytrzymałość zwarciowa — żaden kabel z katalogu nie wytrzyma prądu "
-                f"cieplnego {data.ith_a:g} A przez {data.fault_duration_s:g} s."
+                f"cieplnego {_ith_kabla_a(data):g} A przez {data.fault_duration_s:g} s."
             )
         elif rejected:
             error_code = "converter.der_sn.dobor_kabel_spadek_przekroczony"

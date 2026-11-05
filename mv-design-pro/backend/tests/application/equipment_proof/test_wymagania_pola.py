@@ -19,14 +19,24 @@ from application.equipment_proof.wymagania_pola import (
 )
 from network_model.solvers.wytrzymalosc_cieplna_pola import prad_cieplny_pola
 
-WYMAGANE_BIEGU = {"u_kv": 15.0, "ikss_ka": 8.0, "ip_ka": 20.0, "ith_ka": 8.2, "tk_s": 1.0}
+from tests.utils.prad_cieplny import ith_normy
+
+#: I_th biegu spójny z I″k i κ wiersza (realny wiersz: I_th = I″k·√(m(T_k,bieg) + 1)).
+ITH_BIEGU_KA = ith_normy(8.0, 1.557, 1.0)
+WYMAGANE_BIEGU = {
+    "u_kv": 15.0,
+    "ikss_ka": 8.0,
+    "ip_ka": 20.0,
+    "ith_ka": ITH_BIEGU_KA,
+    "tk_s": 1.0,
+}
 
 
 def _czas(t_clearing_s: float | None, powod: str) -> dict[str, object]:
     cieplny = prad_cieplny_pola(
         ikss_ka=8.0,
         kappa=1.557,
-        ith_biegu_ka=8.2,
+        ith_biegu_ka=ITH_BIEGU_KA,
         tk_biegu_s=1.0,
         tk_pola_s=t_clearing_s,
         powod_braku_czasu_pl=powod,

@@ -111,6 +111,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     STANDARD_REFS,
     ConductorThermalInput,
     check_conductor_thermal_withstand,
+    zalozenie_kappa_punktu_dla_galezi,
 )
 from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
@@ -161,6 +162,11 @@ class ConductorThermalWithstandItem:
     wrazliwosc: tuple[dict[str, Any], ...] = ()
     # Uzasadnienie wspolczynnika k (material, izolacja, temperatury, zrodlo).
     uzasadnienie_k: dict[str, Any] | None = None
+    # I_th galezi przy czasie trwania zwarcia (I″k galezi, κ, m, n) — wielkosc porownywana;
+    # ``i_fault_a`` pozostaje pradem poczatkowym I″k galezi z rozplywu biegu.
+    prad_cieplny: dict[str, Any] | None = None
+    # Dane przyjete rachunku (κ punktu zwarcia jako κ wkladu galezi).
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -183,6 +189,8 @@ class ConductorThermalWithstandItem:
             "zalecenia": [dict(z) for z in self.zalecenia],
             "wrazliwosc": [dict(w) for w in self.wrazliwosc],
             "uzasadnienie_k": self.uzasadnienie_k,
+            "prad_cieplny": self.prad_cieplny,
+            "dane_przyjete": [dict(d) for d in self.dane_przyjete],
         }
 
 
@@ -214,6 +222,13 @@ class ConductorThermalWithstandView:
             "items": [item.to_dict() for item in self.items],
             "summary": self.summary.to_dict(),
         }
+
+
+def _opis_punktu_zwarcia(graph: NetworkGraph, fault_node_id: str) -> str:
+    """Nazwa punktu zwarcia do opisu założenia κ (nazwa nadana węzła albo opis rodzaju)."""
+    wezel = graph.nodes.get(fault_node_id)
+    nazwa = nazwa_nadana(getattr(wezel, "name", None)) if wezel is not None else None
+    return f"punkt „{nazwa}”" if nazwa else "punkt zwarcia biegu"
 
 
 def _resolve_branch_thermal_catalog(
@@ -360,9 +375,15 @@ def build_conductor_thermal_withstand_view(
             )
             continue
 
+        # I_th gałęzi = I″k gałęzi·√(m + n), m(κ punktu zwarcia, T_k zabezpieczenia gałęzi) —
+        # ta sama funkcja co aparatura pól; κ punktu to jawne założenie (dana przyjęta).
         result = check_conductor_thermal_withstand(
             ConductorThermalInput(
-                ith_a=i_fault_a,
+                ikss_a=i_fault_a,
+                kappa=sc_result.kappa,
+                zalozenie_kappa=zalozenie_kappa_punktu_dla_galezi(
+                    sc_result.kappa, _opis_punktu_zwarcia(graph, sc_result.fault_node_id)
+                ),
                 fault_duration_s=tk_s,
                 ith_1s_a=ith_1s_a,
                 jth_1s_a_per_mm2=jth_1s_a_per_mm2,
@@ -392,6 +413,8 @@ def build_conductor_thermal_withstand_view(
                 zalecenia=result.recommendations,
                 wrazliwosc=result.sensitivity,
                 uzasadnienie_k=result.k_justification,
+                prad_cieplny=result.prad_cieplny,
+                dane_przyjete=tuple(d.model_dump(mode="json") for d in result.dane_przyjete),
             )
         )
 

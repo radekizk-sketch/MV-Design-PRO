@@ -53,6 +53,20 @@ export type WidokWytrzymalosci = {
     zrodlo: 'model' | 'konfiguracja';
     komunikat_pl: string;
     prady_pola: PradyPola;
+    /** Ślad I_th przy czasie wyłączenia pola (``solvers.wytrzymalosc_cieplna_pola``). */
+    prad_cieplny_pola: {
+      ith_ka: number | null;
+      ith_biegu_ka: number | null;
+      tk_pola_s: number | null;
+      tk_biegu_s: number | null;
+      kappa: number | null;
+      powod_pl: string | null;
+    };
+    oceny: Array<{
+      kryterium_id: string;
+      status_maszynowy: string;
+      wynik: { wartosc: { wartosc: number; jednostka: string } } | null;
+    }>;
     czas_wylaczenia: {
       zrodlo: string | null;
       t_clearing_s: number | null;
@@ -320,6 +334,17 @@ export function sprawdzPradyPolZBiegiem(widok: WidokWytrzymalosci, wiersze: Wier
     expect(wiersz, `Punkt ${punkt} pola ${pole.pole} musi być wierszem biegu`).toBeTruthy();
     expect(pole.prady_pola.ip_ka).toBe(wiersz!.ip_ka);
     expect(pole.prady_pola.ith_ka).toBe(wiersz!.ith_ka);
+    // Prąd cieplny przy T_k pola liczony z I_th TEGO wiersza biegu, a wielkość porównywana
+    // w ocenie cieplnej = ten prąd (czas pola nieustalony: brak porównania, „—" z powodem).
+    const cieplny = pole.prad_cieplny_pola;
+    expect(cieplny.ith_biegu_ka).toBe(wiersz!.ith_ka);
+    const cieplna = pole.oceny.find((o) => o.kryterium_id.endsWith('.cieplna'));
+    if (cieplny.ith_ka !== null) {
+      expect(cieplna?.wynik?.wartosc.wartosc).toBe(cieplny.ith_ka);
+    } else {
+      expect(cieplny.powod_pl, `Pole ${pole.pole}: brak I_th pola musi mieć powód`).toBeTruthy();
+      if (cieplna) expect(cieplna.status_maszynowy).not.toBe('SPELNIA');
+    }
     // Karta SC-IB-ITH-ZRODLA: wielkość kryterium wyłączania I_b — z TEGO SAMEGO wiersza biegu.
     expect(pole.prady_pola.ib_ka).toBe(wiersz!.ib_ka ?? null);
   }

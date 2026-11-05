@@ -45,6 +45,13 @@ from network_model.catalog.audit2_catalogs import (
 )
 from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
+from tests.utils.prad_cieplny import (
+    KAPPA_FIKSTURY,
+    TK_BIEGU_FIKSTURY_S,
+    ith_normy,
+    wiersz_biegu_3f,
+)
+
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
 # i bezpiecznik, któremu wytrzymałość krótkotrwała nie dotyczy (rodzaj).
 WYLACZNIK = "sw-cb-abb-vd4-12kv-630a"
@@ -98,7 +105,22 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
 
 
 def _prady(ik: float, ip: float, ith: float, punkt: str = "sn1") -> PradyPola:
-    return PradyPola(punkt_ref=punkt, punkt_nazwa=punkt, ik_ka=ik, ip_ka=ip, ith_ka=ith)
+    """Prądy pola w kształcie ``prady_pol_z_biegu`` z REALNEGO wiersza biegu.
+
+    Intencja przepisania (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): realny wiersz biegu niesie
+    κ i czas cieplny biegu T_k zawsze, gdy niesie I_th (przypięte testem końcówki
+    ``test_realny_wiersz_biegu_niesie_kappa_i_tk_a_ocena_porownuje_ith_pola``) — fikstura bez nich
+    była kształtem, którego produkcja nie wytwarza. Asercje werdyktu zostają bez zmian.
+    """
+    return PradyPola(
+        punkt_ref=punkt,
+        punkt_nazwa=punkt,
+        ik_ka=ik,
+        ip_ka=ip,
+        ith_ka=ith,
+        kappa=KAPPA_FIKSTURY,
+        tk_biegu_s=TK_BIEGU_FIKSTURY_S,
+    )
 
 
 def _widok(**kwargs: Any) -> dict[str, Any]:
@@ -365,15 +387,7 @@ def test_widok_jest_deterministyczny() -> None:
 
 
 def _wiersz(punkt: str, rodzaj: str, ik: float, ip: float, ith: float) -> dict[str, Any]:
-    return {
-        "target_id": punkt,
-        "element_id": punkt,
-        "target_name": f"Szyna {punkt}",
-        "fault_type": rodzaj,
-        "ikss_ka": ik,
-        "ip_ka": ip,
-        "ith_ka": ith,
-    }
+    return wiersz_biegu_3f(punkt, ik, ip, ith, rodzaj=rodzaj)
 
 
 def test_prady_pol_biora_wiersz_3f_szyny_pola() -> None:
@@ -389,7 +403,13 @@ def test_prady_pol_biora_wiersz_3f_szyny_pola() -> None:
     )
 
     assert prady["pole/in"] == PradyPola(
-        punkt_ref="sn1", punkt_nazwa="Szyna sn1", ik_ka=5.0, ip_ka=12.5, ith_ka=5.1
+        punkt_ref="sn1",
+        punkt_nazwa="Szyna sn1",
+        ik_ka=5.0,
+        ip_ka=12.5,
+        ith_ka=5.1,
+        kappa=KAPPA_FIKSTURY,
+        tk_biegu_s=TK_BIEGU_FIKSTURY_S,
     )
     assert prady["pole/tr"].ik_ka == 1.0
     assert prady["pole/tr"].punkt_ref == "sn2"
@@ -446,16 +466,21 @@ def test_status_cieplny_rekordu_jest_rozstrzygnieciem_jadra(t_k: float, ith: flo
         czasy_pol={"pole/in": czas},
     )
     pole = widok["pola"][0]
+    # Wielkość porównywana = I_th przy T_k POLA (wyrocznia normy niezależna od modułu), nie
+    # I_th biegu przy jego T_k — jądro dostaje TĘ SAMĄ wielkość co rekord (predykat parami).
+    ith_pola = ith_normy(ith, KAPPA_FIKSTURY, t_k)  # I″k fikstury = ith
+    assert pole["prad_cieplny_pola"]["ith_ka"] == pytest.approx(ith_pola, rel=1e-12)
     jadro = ocen_wytrzymalosc_aparatu(
         etykieta_pl="x",
         i_dyn_ka=50.0,
         i_th_ka=20.0,
         i_th_duration_s=1.0,
         i_peak_calculated_ka=12.0,
-        i_thermal_calculated_ka=ith,
+        i_thermal_calculated_ka=pole["prad_cieplny_pola"]["ith_ka"],
         t_clearing_s=t_k,
     )
     cieplna = _ocena(pole, "cieplna")
+    assert cieplna["wynik"]["wartosc"]["wartosc"] == pole["prad_cieplny_pola"]["ith_ka"]
 
     assert (cieplna["status_maszynowy"] == "SPELNIA") is (jadro["i_th_ok"] is True)
     assert cieplna["status_maszynowy"] in {"SPELNIA", "NIE_SPELNIA"}
@@ -805,3 +830,58 @@ def test_nazwa_punktu_z_jednego_predykatu_nazwy(
         # Ślad kroku nazywa punkt tą samą regułą (strażnik `nazwa_bez_identyfikatora`).
         assert any(opis in krok["opis_pl"] for krok in ocena["slad"])
         assert not any("punkt sn1" in krok["opis_pl"] for krok in ocena["slad"])
+
+
+# ---------------------------------------------------------------------------
+# Kolejność rozstrzygania kryterium cieplnego po wprowadzeniu I_th przy T_k pola
+#
+# Iloczyn cech: {czas pola: ustalony 0,5 s, nieustalony} × {wiersz biegu: z κ i T_k biegu,
+# bez κ (kształt spoza produkcji — obrona)} × {znamiona: wyłącznik z I_th, wyłącznik bez
+# znamion}. Reguła: brak podstawy limitu albo brak wspólnego T_k porównania → BRAK_PODSTAWY
+# (jak przed T_k pola); NIE_OCENIONO wyłącznie bez prądu pola (test wyżej); porównanie
+# wyłącznie I_th przy T_k pola z limitem przy T_k pola.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("aparat", [WYLACZNIK, WYLACZNIK_BEZ_ZNAMION])
+@pytest.mark.parametrize("z_kappa", [True, False], ids=["kappa", "bez_kappa"])
+@pytest.mark.parametrize("czas_ustalony", [True, False], ids=["czas", "bez_czasu"])
+def test_kolejnosc_rozstrzygania_cieplnego(aparat: str, z_kappa: bool, czas_ustalony: bool) -> None:
+    prady = _prady(5.0, 12.0, 5.1)
+    if not z_kappa:
+        prady = dataclasses.replace(prady, kappa=None)
+    widok = _widok(
+        enm=_enm(aparaty={"pole/in": aparat}),
+        prady_pol={"pole/in": prady},
+        czasy_pol={"pole/in": _CZAS_Z_NASTAW} if czas_ustalony else {},
+    )
+    pole = widok["pola"][0]
+    cieplna = _ocena(pole, "cieplna")
+    cieplny = pole["prad_cieplny_pola"]
+    porownanie = czas_ustalony and z_kappa and aparat == WYLACZNIK
+
+    if porownanie:
+        ith_pola = ith_normy(5.0, KAPPA_FIKSTURY, 0.5)
+        assert cieplny["ith_ka"] == pytest.approx(ith_pola, rel=1e-12)
+        assert cieplna["wynik"]["wartosc"]["wartosc"] == cieplny["ith_ka"]
+        assert cieplna["status_maszynowy"] == "SPELNIA"
+        assert pole["werdykt"]["i_th_ok"] is True
+        return
+    # Każda inna kombinacja: brak podstawy, nigdy „nie oceniono" ani porównanie mieszanych T_k.
+    assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY", cieplna["wyjasnienie"]
+    assert cieplna["limit"] is None
+    brakuje = cieplna["wyjasnienie"]["czego_brakuje"]
+    if not czas_ustalony or not z_kappa:
+        # „—" z powodem: prąd cieplny pola nie istnieje, wynik rekordu to I_th BIEGU jawnie
+        # opisany swoim T_k (nieporównywany).
+        assert cieplny["ith_ka"] is None and cieplny["powod_pl"]
+        assert cieplna["wynik"]["wartosc"]["wartosc"] == 5.1
+        assert cieplna["wynik"]["symbol_latex"] == r"I_{th,bieg}"
+        assert f"T_k,bieg = {TK_BIEGU_FIKSTURY_S} s" in cieplna["wynik"]["wielkosc_pl"]
+        assert pole["werdykt"] is None or pole["werdykt"]["i_th_ok"] is None
+    if not czas_ustalony:
+        assert any("test" == b or "Czas" in b or "czas" in b for b in brakuje), brakuje
+    elif not z_kappa:
+        assert any("współczynnika κ" in b for b in brakuje), brakuje
+    if aparat == WYLACZNIK_BEZ_ZNAMION:
+        assert any("nie niesie prądu krótkotrwałego I_th" in b for b in brakuje), brakuje

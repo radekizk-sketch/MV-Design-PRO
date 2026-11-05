@@ -35,7 +35,8 @@ interface FormularzWejscia {
   temperaturaC: string;
   liczbaObwodow: string;
   ikMaxKa: string;
-  ithA: string;
+  ikssA: string;
+  kappa: string;
   faultDurationS: string;
   ith1sA: string;
   jth1sAPerMm2: string;
@@ -58,7 +59,8 @@ const PUSTY_FORMULARZ: FormularzWejscia = {
   temperaturaC: '30',
   liczbaObwodow: '1',
   ikMaxKa: '',
-  ithA: '',
+  ikssA: '',
+  kappa: '',
   faultDurationS: '',
   ith1sA: '',
   jth1sAPerMm2: '',
@@ -139,7 +141,8 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
         temperatura_c: num(formularz.temperaturaC)!,
         liczba_obwodow: num(formularz.liczbaObwodow)!,
         ik_max_ka: num(formularz.ikMaxKa),
-        ith_a: num(formularz.ithA),
+        ikss_a: num(formularz.ikssA),
+        kappa: num(formularz.kappa),
         fault_duration_s: num(formularz.faultDurationS),
         ith_1s_a: num(formularz.ith1sA),
         jth_1s_a_per_mm2: num(formularz.jth1sAPerMm2),

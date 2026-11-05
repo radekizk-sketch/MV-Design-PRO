@@ -16,11 +16,13 @@ from network_model.solvers.conductor_thermal_withstand import (
     check_conductor_thermal_withstand,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 
 def _wejscie(**over) -> ConductorThermalInput:
     """Kabel Al/XLPE 70 mm², k = 115 A·√s/mm² => Ith(1s) = 8050 A."""
     dane = {
-        "ith_a": 9200.0,
+        **prad_bez_skladowej_nieokresowej(9200.0),
         "fault_duration_s": 1.0,
         "ith_1s_a": 8050.0,
         "jth_1s_a_per_mm2": 115.0,
@@ -68,7 +70,7 @@ def test_kryteria_czastkowe_maja_osobny_werdykt_i_nie_moga_sie_rozjechac() -> No
 
 def test_pozycja_spelniona_nie_dostaje_zalecen_naprawczych() -> None:
     """Zalecenie przy spelnionym kryterium bylo by szumem, a nie informacja."""
-    wynik = check_conductor_thermal_withstand(_wejscie(ith_a=6000.0))
+    wynik = check_conductor_thermal_withstand(_wejscie(**prad_bez_skladowej_nieokresowej(6000.0)))
 
     assert wynik.status == "PASS"
     assert wynik.recommendations == ()

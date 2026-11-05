@@ -36,6 +36,7 @@ from network_model.solvers.conductor_thermal_withstand import (
 )
 
 from tests.application.analyses.lv_domain.fixtury_stacji_nn import REF_STACJA, zbuduj_stacje_nn
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
 
 #: Susceptancja doziemna odcinka — DANA TESTOWA (nie wartość katalogowa ani normatywna).
 _B0_TESTOWE_S_PER_KM = 1.2e-4
@@ -44,7 +45,7 @@ _B0_TESTOWE_S_PER_KM = 1.2e-4
 def _thermal() -> object:
     return check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=200.0,
+            **prad_bez_skladowej_nieokresowej(200.0),
             fault_duration_s=0.1,
             ith_1s_a=6000.0,
             cross_section_mm2=120.0,

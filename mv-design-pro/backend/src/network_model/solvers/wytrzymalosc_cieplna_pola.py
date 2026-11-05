@@ -1,27 +1,24 @@
-"""Prąd cieplny zastępczy I_th przy czasie wyłączenia POLA — IEC 60909-0 §4.7 / rozdz. 12.
+"""Prąd cieplny zastępczy I_th przy czasie wyłączenia — IEC 60909-0 §4.7 / rozdz. 12.
 
 PO CO. Bieg zwarciowy liczy I_th = I″k·√(m + n) dla czasu cieplnego całego biegu T_k,bieg
-(scenariusz, domyślnie 1 s). Kryterium cieplne aparatury POLA porównuje prąd cieplny z prądem
-krótkotrwałym aparatu przeliczonym na czas wyłączenia TEGO pola T_k,pola (nastawy sterownika pola
-+ czas własny wyłącznika). Zestawienie I_th(T_k,bieg) z limitem przy T_k,pola mieszało dwa czasy:
-składowa nieokresowa (współczynnik m) maleje z czasem, więc dla T_k,pola < T_k,bieg prąd cieplny
-biegu jest ZANIŻONY wobec pola (dla κ = 1,557: m(1 s) = 0,017, m(0,36 s) = 0,047) — werdykt
-wychodził optymistyczny. Ten moduł liczy I_th pola tą samą formułą normy przy T_k,pola.
+(scenariusz, domyślnie 1 s). Kryteria cieplne porównują prąd cieplny z wytrzymałością
+przeliczoną na czas wyłączenia zwarcia TEGO elementu: aparatu pola (nastawy sterownika pola
++ czas własny wyłącznika) albo przewodu (czas zabezpieczenia wyłączającego gałąź). Zestawienie
+I_th(T_k,bieg) z limitem przy innym T_k mieszało dwa czasy: składowa nieokresowa (współczynnik
+m) maleje z czasem, więc dla krótszego T_k prąd cieplny biegu jest ZANIŻONY (dla κ = 1,557:
+m(1 s) = 0,017, m(0,36 s) = 0,047) — werdykt wychodził optymistyczny.
 
-JEDNO ŹRÓDŁO m i n. Współczynniki m (składowa nieokresowa) i n (okresowa, n = 1 — górne
-oszacowanie, rozstrzygnięcie karty SC-IB-ITH-ZRODLA) liczy WYŁĄCZNIE funkcja rdzenia
-``short_circuit_core._thermal_mn_factors`` — ta sama, którą bieg policzył I_th punktu (wywołanie
-bez częstotliwości jak w rdzeniu: 50 Hz). Rdzeń nie jest tu edytowany.
+JEDNA FUNKCJA I_th. ``prad_cieplny_zastepczy`` jest jedynym miejscem rachunku I_th przy zadanym
+czasie dla aparatury pól (``prad_cieplny_pola``) i przewodów
+(``conductor_thermal_withstand.check_conductor_thermal_withstand``). Współczynniki m
+(składowa nieokresowa) i n (okresowa, n = 1 — górne oszacowanie, rozstrzygnięcie karty
+SC-IB-ITH-ZRODLA) liczy WYŁĄCZNIE funkcja rdzenia ``short_circuit_core._thermal_mn_factors`` —
+ta sama, którą bieg policzył I_th punktu (wywołanie bez częstotliwości jak w rdzeniu: 50 Hz).
+Rdzeń nie jest tu edytowany. Przy T_k = T_k,bieg wynik równa się I_th biegu do zaokrąglenia
+ostatniego bitu (bieg mnoży w amperach przed przeliczeniem na kA).
 
-ZAPIS DETERMINISTYCZNY. I_th pola = I_th,bieg·√((m_pola + n_pola)/(m_bieg + n_bieg)). Rdzeń daje
-I_th,bieg = I″k·√(m_bieg + n_bieg), więc wynik jest tożsamościowo równy I″k·√(m_pola + n_pola)
-(wzór normy w śladzie), a przy T_k,pola = T_k,bieg iloraz jest dokładnie 1 i I_th pola jest
-bit w bit prądem cieplnym biegu (determinizm, wyniki złote). Bezpośredni iloczyn kA·√(m + n)
-różniłby się od zapisu biegu na ostatnim bicie mantysy (zmierzone: 34 % losowych prądów),
-bo bieg mnoży w amperach przed przeliczeniem na kA.
-
-BRAK DANEJ NIE JEST LICZBĄ: nieustalony czas wyłączenia pola, brak κ albo czasu cieplnego
-w wierszu biegu dają wynik bez I_th z nazwaną przyczyną — nigdy prąd biegu w zastępstwie.
+BRAK DANEJ NIE JEST LICZBĄ: nieustalony czas wyłączenia, brak κ albo prądu początkowego dają
+wynik bez I_th z nazwaną przyczyną — nigdy prąd biegu w zastępstwie.
 """
 
 from __future__ import annotations
@@ -34,10 +31,6 @@ from network_model.solvers.short_circuit_core import _thermal_mn_factors
 
 #: Wzór normy (IEC 60909-0, wzór (100)) — postać pokazywana w śladzie.
 WZOR_I_TH_LATEX = r"I_{th} = I''_{k}\sqrt{m + n}"
-#: Zapis obliczeniowy przez prąd cieplny biegu (tożsamy ze wzorem normy).
-WZOR_I_TH_Z_BIEGU_LATEX = (
-    r"I_{th,pola} = I_{th,bieg}\sqrt{\frac{m(T_{k,pola}) + n}{m(T_{k,bieg}) + n}}"
-)
 WZOR_M_LATEX = r"m = \frac{1}{2 f T_k \ln(\kappa - 1)}\left(e^{4 f T_k \ln(\kappa - 1)} - 1\right)"
 #: Częstotliwość, z którą rdzeń liczy m (wywołanie bez parametru f): ta sama tutaj.
 CZESTOTLIWOSC_RDZENIA_HZ = 50.0
@@ -82,7 +75,6 @@ class PradCieplnyPola:
                 "n": "—",
             },
             "wzor_latex": WZOR_I_TH_LATEX,
-            "wzor_obliczeniowy_latex": WZOR_I_TH_Z_BIEGU_LATEX,
             "wzor_m_latex": WZOR_M_LATEX,
             "podstawa_pl": (
                 "IEC 60909-0 §4.7 i rozdz. 12 (prąd cieplny zastępczy, wzór (100)); "
@@ -99,27 +91,87 @@ class PradCieplnyPola:
         return wynik
 
 
-def _brak(
-    powod_pl: str,
+@dataclass(frozen=True)
+class PradCieplny:
+    """I_th przy czasie ``tk_s`` (ślad WHITE BOX); ``ith is None`` — brak wyniku z ``powod_pl``.
+
+    Jednostka ``ith`` = jednostka ``ikss`` (funkcja nie przelicza jednostek).
+    """
+
+    ith: float | None
+    ikss: float | None
+    kappa: float | None
+    tk_s: float | None
+    m: float | None
+    n: float | None
+    powod_pl: str | None
+
+
+def prad_cieplny_zastepczy(
     *,
-    tk_pola_s: float | None,
-    ikss_ka: float | None,
+    ikss: float | None,
     kappa: float | None,
-    tk_biegu_s: float | None,
-    ith_biegu_ka: float | None,
-) -> PradCieplnyPola:
-    return PradCieplnyPola(
-        ith_ka=None,
-        tk_pola_s=tk_pola_s,
-        ikss_ka=ikss_ka,
-        kappa=kappa,
-        m=None,
-        n=None,
-        tk_biegu_s=tk_biegu_s,
-        ith_biegu_ka=ith_biegu_ka,
-        m_biegu=None,
-        n_biegu=None,
-        powod_pl=powod_pl,
+    tk_s: float | None,
+    powod_braku_czasu_pl: str | None = None,
+) -> PradCieplny:
+    """I_th = I″k·√(m(κ, T_k) + n) — JEDYNY rachunek I_th przy zadanym czasie wyłączenia.
+
+    ``ikss`` — prąd początkowy (punktu albo gałęzi), ``kappa`` — współczynnik udaru punktu
+    zwarcia, ``tk_s`` — czas trwania zwarcia (``None`` = nieustalony, przyczyna
+    w ``powod_braku_czasu_pl``).
+    """
+    if tk_s is None or tk_s <= 0.0:
+        return PradCieplny(
+            ith=None,
+            ikss=ikss,
+            kappa=kappa,
+            tk_s=tk_s,
+            m=None,
+            n=None,
+            powod_pl=powod_braku_czasu_pl or "czas wyłączenia zwarcia nie jest ustalony",
+        )
+    if ikss is None:
+        return PradCieplny(
+            ith=None,
+            ikss=None,
+            kappa=kappa,
+            tk_s=tk_s,
+            m=None,
+            n=None,
+            powod_pl="brak prądu zwarciowego początkowego I″k",
+        )
+    if kappa is None:
+        return PradCieplny(
+            ith=None,
+            ikss=ikss,
+            kappa=None,
+            tk_s=tk_s,
+            m=None,
+            n=None,
+            powod_pl=(
+                "wynik biegu nie niesie współczynnika κ — prądu cieplnego przy czasie "
+                "wyłączenia nie da się wyznaczyć; przelicz bieg"
+            ),
+        )
+    m, n = _thermal_mn_factors(float(kappa), float(tk_s))
+    if not math.isfinite(m):
+        return PradCieplny(
+            ith=None,
+            ikss=ikss,
+            kappa=kappa,
+            tk_s=tk_s,
+            m=None,
+            n=None,
+            powod_pl="współczynnik składowej nieokresowej m jest nieskończony dla κ i T_k",
+        )
+    return PradCieplny(
+        ith=float(ikss) * math.sqrt(m + n),
+        ikss=float(ikss),
+        kappa=float(kappa),
+        tk_s=float(tk_s),
+        m=m,
+        n=n,
+        powod_pl=None,
     )
 
 
@@ -136,44 +188,26 @@ def prad_cieplny_pola(
 
     ``ikss_ka``, ``kappa``, ``ith_biegu_ka`` i ``tk_biegu_s`` — z TEGO SAMEGO wiersza biegu
     (zwarcie trójfazowe w punkcie zabudowy pola); ``tk_pola_s`` — czas wyłączenia pola
-    (``None`` = nieustalony, przyczyna w ``powod_braku_czasu_pl``).
+    (``None`` = nieustalony, przyczyna w ``powod_braku_czasu_pl``). I_th liczy
+    ``prad_cieplny_zastepczy`` z I″k i κ punktu; I_th i T_k biegu (z m, n biegu) stoją
+    w śladzie wyłącznie dla porównania — do rachunku nie wchodzą.
     """
-    dane = {
-        "tk_pola_s": tk_pola_s,
-        "ikss_ka": ikss_ka,
-        "kappa": kappa,
-        "tk_biegu_s": tk_biegu_s,
-        "ith_biegu_ka": ith_biegu_ka,
-    }
-    if tk_pola_s is None or tk_pola_s <= 0.0:
-        return _brak(
-            powod_braku_czasu_pl or "czas wyłączenia zwarcia w polu nie jest ustalony", **dane
-        )
-    if ikss_ka is None or ith_biegu_ka is None:
-        return _brak("wiersz biegu nie niesie prądu zwarciowego punktu zabudowy pola", **dane)
-    if kappa is None or tk_biegu_s is None or tk_biegu_s <= 0.0:
-        return _brak(
-            "wiersz biegu nie niesie współczynnika κ albo czasu cieplnego biegu T_k — "
-            "prądu cieplnego przy czasie wyłączenia pola nie da się wyznaczyć; przelicz bieg",
-            **dane,
-        )
-    m_biegu, n_biegu = _thermal_mn_factors(float(kappa), float(tk_biegu_s))
-    m_pola, n_pola = _thermal_mn_factors(float(kappa), float(tk_pola_s))
-    if not (math.isfinite(m_pola) and math.isfinite(m_biegu)) or m_biegu + n_biegu <= 0.0:
-        return _brak(
-            "współczynnik składowej nieokresowej m jest nieskończony dla κ i T_k punktu", **dane
-        )
-    ith_ka = float(ith_biegu_ka) * math.sqrt((m_pola + n_pola) / (m_biegu + n_biegu))
+    wynik = prad_cieplny_zastepczy(
+        ikss=ikss_ka, kappa=kappa, tk_s=tk_pola_s, powod_braku_czasu_pl=powod_braku_czasu_pl
+    )
+    m_biegu = n_biegu = None
+    if kappa is not None and tk_biegu_s is not None and tk_biegu_s > 0.0:
+        m_biegu, n_biegu = _thermal_mn_factors(float(kappa), float(tk_biegu_s))
     return PradCieplnyPola(
-        ith_ka=ith_ka,
-        tk_pola_s=float(tk_pola_s),
-        ikss_ka=float(ikss_ka),
-        kappa=float(kappa),
-        m=m_pola,
-        n=n_pola,
-        tk_biegu_s=float(tk_biegu_s),
-        ith_biegu_ka=float(ith_biegu_ka),
+        ith_ka=wynik.ith,
+        tk_pola_s=None if tk_pola_s is None else float(tk_pola_s),
+        ikss_ka=None if ikss_ka is None else float(ikss_ka),
+        kappa=None if kappa is None else float(kappa),
+        m=wynik.m,
+        n=wynik.n,
+        tk_biegu_s=None if tk_biegu_s is None else float(tk_biegu_s),
+        ith_biegu_ka=None if ith_biegu_ka is None else float(ith_biegu_ka),
         m_biegu=m_biegu,
         n_biegu=n_biegu,
-        powod_pl=None,
+        powod_pl=wynik.powod_pl,
     )

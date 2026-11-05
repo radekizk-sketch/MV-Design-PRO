@@ -25,6 +25,8 @@ from network_model.solvers.der_selection_preview import (
     propose_mv_field_apparatus,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 
 def _tr_candidates() -> tuple[BlockTransformerCandidate, ...]:
     """Typoszereg 15/0.4 kV (część rzeczywistego katalogu) + wpis o niezgodnym napięciu."""
@@ -366,7 +368,7 @@ def test_kryterium_zwarciowe_jest_wiazace_i_podnosi_przekroj() -> None:
             cos_phi=0.95,
             candidates=_cable_candidates_z_danymi_cieplnymi(),
             max_delta_u_pct=2.0,
-            ith_a=12500.0,
+            **prad_bez_skladowej_nieokresowej(12500.0),
             fault_duration_s=0.5,
         )
     )
@@ -393,7 +395,7 @@ def test_brak_danych_cieplnych_w_katalogu_nie_odrzuca_kandydata() -> None:
             cos_phi=0.95,
             candidates=_cable_candidates(),  # bez danych cieplnych
             max_delta_u_pct=2.0,
-            ith_a=12500.0,
+            **prad_bez_skladowej_nieokresowej(12500.0),
             fault_duration_s=0.5,
         )
     )
@@ -415,7 +417,7 @@ def test_gdy_zaden_kabel_nie_wytrzyma_zwarcia_komunikat_wskazuje_wlasciwa_przycz
             cos_phi=0.95,
             candidates=_cable_candidates_z_danymi_cieplnymi(),
             max_delta_u_pct=5.0,
-            ith_a=60000.0,
+            **prad_bez_skladowej_nieokresowej(60000.0),
             fault_duration_s=1.0,
         )
     )

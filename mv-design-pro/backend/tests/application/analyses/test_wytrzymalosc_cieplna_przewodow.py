@@ -125,7 +125,15 @@ def _sc_result(
     *,
     tk_s: float,
     branch_contributions: list[ShortCircuitBranchContribution] | None,
+    kappa: float = 1.0,
 ) -> ShortCircuitResult:
+    """Wynik biegu do testów KRYTERIUM przewodu.
+
+    I_th gałęzi = I″k gałęzi·√(m(κ, T_k) + n) liczy jedna funkcja normy (karta
+    EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN). κ = 1 (R/X → ∞) daje m = 0 i I_th = I″k dokładnie —
+    niezależne wartości oczekiwane kryterium (I_dop, S_min, wykorzystanie) zostają bez zmian;
+    rachunek I_th przy κ > 1 przypina ``test_ith_galezi_iloczyn_kappa_i_czasu``.
+    """
     return ShortCircuitResult(
         short_circuit_type=ShortCircuitType.THREE_PHASE,
         fault_node_id="BUS3",
@@ -137,7 +145,7 @@ def _sc_result(
         ith_a=17000.0,
         sk_mva=100.0,
         rx_ratio=0.75,
-        kappa=1.3,
+        kappa=kappa,
         tk_s=tk_s,
         ib_a=17000.0,
         tb_s=0.1,
@@ -214,6 +222,7 @@ def test_kroki_dowodowe_niosa_te_same_liczby_co_pozycja_wyniku() -> None:
     # Karta F-K1 faza 6: dowod zaczyna sie od wspolczynnika k (bez niego liczby nie
     # da sie zweryfikowac) i niesie osobny krok bilansu energii.
     assert set(kroki) == {
+        "conductor_thermal_ith",
         "conductor_thermal_k_factor",
         "conductor_thermal_admissible",
         "conductor_thermal_criterion",
@@ -784,7 +793,9 @@ def test_galaz_nn_i2t_rowne_k2s2_daje_pass_na_granicy() -> None:
         ith_a=2350.0,
         sk_mva=1.6,
         rx_ratio=0.9,
-        kappa=1.2,
+        # κ = 1: granica KRYTERIUM I²t = k²S² przy I_th = I″k (m = 0) — rachunek I_th przy
+        # κ > 1 przypina ``test_ith_galezi_iloczyn_kappa_i_czasu``.
+        kappa=1.0,
         tk_s=1.0,
         ib_a=2350.0,
         tb_s=1.0,
@@ -845,7 +856,9 @@ def test_galaz_nn_i2t_powyzej_k2s2_daje_fail() -> None:
         ith_a=2351.0,
         sk_mva=1.6,
         rx_ratio=0.9,
-        kappa=1.2,
+        # κ = 1: granica KRYTERIUM I²t = k²S² przy I_th = I″k (m = 0) — rachunek I_th przy
+        # κ > 1 przypina ``test_ith_galezi_iloczyn_kappa_i_czasu``.
+        kappa=1.0,
         tk_s=1.0,
         ib_a=2351.0,
         tb_s=1.0,
@@ -933,3 +946,54 @@ def test_widok_podaje_podstawe_normowa_rdzenia_bez_przekladu_w_aplikacji() -> No
     assert not hasattr(modul, "normy_dla_projektanta")
     zrodlo = inspect.getsource(modul.build_wytrzymalosc_cieplna_view)
     assert '"normy": [dict(pozycja) for pozycja in STANDARD_REFS]' in zrodlo
+
+
+@pytest.mark.parametrize("kappa", [1.0, 1.3, 1.8])
+@pytest.mark.parametrize("tk_z_nastaw", [0.1, None], ids=["czas_nastawy", "czas_biegu"])
+def test_ith_galezi_iloczyn_kappa_i_czasu(kappa: float, tk_z_nastaw: float | None) -> None:
+    """I_th gałęzi = I″k gałęzi·√(m(κ punktu, T_k) + 1) — ta sama funkcja co aparatura.
+
+    Iloczyn: κ punktu {1,0; 1,3; 1,8} × czas {z nastaw zabezpieczenia gałęzi 0,1 s, czas
+    cieplny biegu 0,25 s}. Wyrocznia normy niezależna (``tests.utils.prad_cieplny``); κ punktu
+    stoi w danych przyjętych jako założenie z podstawą IEC 60909-0 i IEC 60865-1.
+    """
+    from tests.utils.prad_cieplny import m_normy
+
+    graph = _graph_with_two_cables()
+    catalog = _catalog_with_cable_type()
+    sc_result = _sc_result(
+        tk_s=0.25,
+        kappa=kappa,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=5000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+    mapa = {"cable_A": tk_z_nastaw} if tk_z_nastaw is not None else None
+    view = build_conductor_thermal_withstand_view(sc_result, graph, catalog, tk_s_by_branch=mapa)
+    pozycja = next(item for item in view.items if item.branch_id == "cable_A")
+    t_k = tk_z_nastaw if tk_z_nastaw is not None else 0.25
+    m = 0.0 if kappa == 1.0 else m_normy(kappa, t_k)
+    ith = 5000.0 * (m + 1.0) ** 0.5
+
+    assert pozycja.i_fault_a == 5000.0  # I″k gałęzi z rozpływu biegu
+    assert pozycja.prad_cieplny is not None
+    assert pozycja.prad_cieplny["ith_a"] == pytest.approx(ith, rel=1e-12)
+    assert pozycja.prad_cieplny["kappa"] == kappa and pozycja.prad_cieplny["tk_s"] == t_k
+    assert pozycja.i2t_a2s == pytest.approx(ith**2 * t_k, rel=1e-12)
+    assert pozycja.utilization == pytest.approx(ith / (8000.0 / t_k**0.5), rel=1e-12)
+    (dana,) = pozycja.dane_przyjete
+    assert dana["wartosc"] == {"wartosc": kappa, "jednostka": "1"}
+    assert dana["jakosc"] == "ESTIMATED"
+    assert "IEC 60909-0" in dana["powod_pl"] and "IEC 60865-1" in dana["powod_pl"]
+    krok = next(k for k in pozycja.kroki_dowodu if k["key"] == "conductor_thermal_ith")
+    assert krok["result"]["ith_a"]["value"] == round(ith, 6)  # zapis śladu: 6 miejsc
+    if kappa > 1.0:
+        # Składowa nieokresowa podnosi I_th ponad I″k — dawne porównanie I″k zaniżało wynik.
+        assert pozycja.prad_cieplny["ith_a"] > 5000.0

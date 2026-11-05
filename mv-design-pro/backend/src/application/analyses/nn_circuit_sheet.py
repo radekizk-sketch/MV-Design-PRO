@@ -473,19 +473,19 @@ def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do
 def _ik_z_biegu_zwarciowego(
     run: CanonicalRun, bus_ref: str
 ) -> tuple[float | None, float | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]]:
-    """(ikss_ka, ith_ka, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
+    """(ikss_ka, kappa, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
     w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE build_short_circuit_results).
     ``(None, None, False, (), [])`` gdy punkt nie występuje w wyniku tego biegu (uczciwy brak,
     nie 0). Trzeci element — znacznik wiersza: punkt w sieci nN liczonej z wartością roboczą
     tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA); czwarty — dane przyjęte gałęzi
     z wartością roboczą impedancji wchodzącej do prądu punktu (karta LINIA-110); piąty —
     wartości robocze parametrów maszyn wirujących wyspy punktu (karta PODSTAWA-Q, rozstrz. 3).
-    Wszystkie z TEGO SAMEGO wiersza."""
+    Wszystkie z TEGO SAMEGO wiersza; κ — wejście I_th przy czasie wyłączenia obwodu."""
     for row in build_short_circuit_results(run).get("rows", []):
         if row.get("element_id") == bus_ref:
             return (
                 row.get("ikss_ka"),
-                row.get("ith_ka"),
+                row.get("kappa"),
                 bool(row.get("tolerancja_nn_robocza")),
                 dane_przyjete_galezi_wiersza(row),
                 list(row.get("parametry_robocze_maszyn") or ()),
@@ -554,14 +554,15 @@ def _delta_u_dla_trasy(
 def _i2t_dla_kabla(
     cable: Cable,
     *,
-    ith_ka: float | None,
+    ikss_ka: float | None,
+    kappa: float | None,
     fault_duration_s: float | None,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
 ) -> dict[str, Any]:
-    if ith_ka is None:
+    if ikss_ka is None or kappa is None:
         return _brak(
-            "Brak Ith (prąd zwarciowy ekwiwalentny cieplnie) — wymaga biegu zwarciowego "
-            "IEC 60909 (parametr żądania short_circuit_run_id)."
+            "Brak I″k i κ punktu (wejście prądu cieplnego I_th przy czasie wyłączenia) — "
+            "wymaga biegu zwarciowego IEC 60909 (parametr żądania short_circuit_run_id)."
         )
     if fault_duration_s is None:
         return _brak(
@@ -569,8 +570,11 @@ def _i2t_dla_kabla(
             "zabezpieczeń (poza zakresem tej karty); podaj jako parametr żądania."
         )
     wynik = check_conductor_thermal_withstand(
+        # I_th = I″k·√(m(κ, t) + n) przy czasie wyłączenia TEGO obwodu (jedna funkcja I_th
+        # aparatury i przewodów), nie I_th biegu przy czasie cieplnym scenariusza.
         ConductorThermalInput(
-            ith_a=ka_na_a(ith_ka),
+            ikss_a=ka_na_a(ikss_ka),
+            kappa=kappa,
             fault_duration_s=fault_duration_s,
             ith_1s_a=cable.ith_1s_a,
             jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
@@ -596,6 +600,8 @@ def _i2t_dla_kabla(
             "i2t_dopuszczalne_a2s": wynik.i2t_admissible_a2s,
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
+            # I_th przy czasie wyłączenia obwodu (I″k, κ, t, m, n) — wielkość porównywana.
+            "prad_cieplny": wynik.prad_cieplny,
         },
         "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
         dane_przyjete,
@@ -822,12 +828,12 @@ def _build_row(
 
     # --- Ik″max/min ------------------------------------------------------
     ikss_ka: float | None = None
-    ith_ka: float | None = None
+    kappa: float | None = None
     zrodlo_ik_max_pl = ""
     dane_ik_max: tuple[DanaPrzyjeta, ...] = ()
     dane_ith: tuple[DanaPrzyjeta, ...] = ()
     if short_circuit_run is not None:
-        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
+        ikss_ka, kappa, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
             short_circuit_run, worst_bus_ref
         )
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
@@ -1054,7 +1060,8 @@ def _build_row(
     i2t_sekcja = (
         _i2t_dla_kabla(
             kabel_decydujacy,
-            ith_ka=ith_ka,
+            ikss_ka=ikss_ka,
+            kappa=kappa,
             fault_duration_s=fault_duration_s,
             dane_przyjete=dane_ith,
         )

@@ -82,8 +82,11 @@ class LVCircuitVerificationPackRequest(BaseModel):
     # (5) Ik″max w punkcie zabudowy (krok 6) — osobny bieg zwarciowy IEC 60909
     ik_max_ka: float | None = None
 
-    # (6) Dane cieplne I²t≤k²S² (krok 7, REUSE check_conductor_thermal_withstand)
-    ith_a: float | None = None
+    # (6) Dane cieplne I²t≤k²S² (krok 7, REUSE check_conductor_thermal_withstand):
+    # I″k i κ punktu z biegu zwarciowego oraz czas wyłączenia — I_th przy TYM czasie liczy
+    # jedna funkcja normy (I_th = I″k·√(m(κ, t) + n)), nie wpis I_th z innego czasu.
+    ikss_a: float | None = None
+    kappa: float | None = None
     fault_duration_s: float | None = None
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
@@ -120,7 +123,8 @@ def download_lv_circuit_verification_pack(
     )
     thermal = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=payload.ith_a,
+            ikss_a=payload.ikss_a,
+            kappa=payload.kappa,
             fault_duration_s=payload.fault_duration_s,
             ith_1s_a=payload.ith_1s_a,
             jth_1s_a_per_mm2=payload.jth_1s_a_per_mm2,
@@ -203,7 +207,8 @@ def preview_lv_circuit_verification_pack(
     )
     thermal = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=payload.ith_a,
+            ikss_a=payload.ikss_a,
+            kappa=payload.kappa,
             fault_duration_s=payload.fault_duration_s,
             ith_1s_a=payload.ith_1s_a,
             jth_1s_a_per_mm2=payload.jth_1s_a_per_mm2,

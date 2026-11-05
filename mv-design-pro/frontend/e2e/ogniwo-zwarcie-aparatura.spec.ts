@@ -92,14 +92,18 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   expect(czas.t_clearing_s).not.toBeCloseTo(CZAS_Z_KONFIGURACJI_S, 3);
 
   // Werdykt referencyjny: jądro wytrzymałości z prądami PUNKTU ZABUDOWY POLA
-  // (wiersz biegu) i czasem z konfiguracji.
+  // (wiersz biegu) i czasem z nastaw pola. Prąd cieplny = I_th przy T_k TEGO pola
+  // (ślad `prad_cieplny_pola`, liczony z I_th wiersza biegu — sprawdzone wyżej).
+  const pradCieplnyPola = wierszKonfiguracji!.prad_cieplny_pola;
+  expect(pradCieplnyPola.tk_pola_s).toBeCloseTo(czas.t_clearing_s ?? NaN, 9);
+  expect(pradCieplnyPola.ith_ka, 'czas pola ustalony — I_th pola istnieje').not.toBeNull();
   const werdyktResponse = await request.post(
     `${BACKEND_BASE}/api/v1/catalog/audit2/validate-device-withstand`,
     {
       data: {
         device_id: APARAT_ID,
         i_peak_calculated_ka: pradyPola.ip_ka,
-        i_thermal_calculated_ka: pradyPola.ith_ka,
+        i_thermal_calculated_ka: pradCieplnyPola.ith_ka,
         t_clearing_s: czas.t_clearing_s,
       },
     },

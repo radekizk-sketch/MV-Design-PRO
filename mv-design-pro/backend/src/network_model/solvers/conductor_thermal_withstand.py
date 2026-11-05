@@ -39,6 +39,15 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from network_model.solvers.wytrzymalosc_cieplna_pola import (
+    WZOR_I_TH_LATEX,
+    WZOR_M_LATEX,
+    PradCieplny,
+    prad_cieplny_zastepczy,
+)
+from werdykt import DanaPrzyjeta, Wielkosc
+from werdykt.proweniencja import FieldQuality
+
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
 READINESS_FAULT_DURATION_MISSING = "conductor.fault_duration_missing"
@@ -176,17 +185,24 @@ class ConductorThermalInput:
     Kazde pole moze byc None — brak danej daje wynik NIEDOSTEPNY z kodem gotowosci,
     a nie liczbe zastepcza.
 
-    ``ith_a``            — prad zwarciowy ekwiwalentny cieplnie [A] z biegu zwarciowego
-                           (IEC 60909-0 §12: I_th = I″k·√(m+n)).
+    ``ikss_a``           — prad zwarciowy poczatkowy I″k [A] przewodu (punktu albo galezi)
+                           z biegu zwarciowego.
+    ``kappa``            — wspolczynnik udaru κ punktu zwarcia z biegu (wejscie m).
     ``fault_duration_s`` — czas trwania zwarcia [s] = czas wylaczenia zabezpieczenia
                            przy TYM pradzie (z analizy zabezpieczen), nie wartosc umowna.
+    I_th = I″k·√(m(κ, t) + n) liczy JEDNA funkcja normy dla aparatury i przewodow
+    (``solvers.wytrzymalosc_cieplna_pola.prad_cieplny_zastepczy``) przy TYM czasie ``t`` —
+    nie I_th biegu przy czasie cieplnym scenariusza (para I_th, t opisuje jeden stan).
+    ``zalozenie_kappa`` — dana przyjeta, gdy κ nie jest wlasnym κ przewodu (np. κ punktu
+    zwarcia dla wkladu galezi); trafia do ``dane_przyjete`` wyniku.
     ``ith_1s_a``         — dopuszczalny prad cieplny przewodu dla 1 s [A] (katalog).
     ``jth_1s_a_per_mm2`` — gestosc pradu cieplnego dla 1 s [A/mm²] (katalog); potrzebna
                            wylacznie do wyznaczenia minimalnego przekroju.
     ``cross_section_mm2``— przekroj zastosowany [mm²]; do porownania z minimalnym.
     """
 
-    ith_a: float | None
+    ikss_a: float | None
+    kappa: float | None
     fault_duration_s: float | None
     ith_1s_a: float | None
     jth_1s_a_per_mm2: float | None = None
@@ -206,6 +222,7 @@ class ConductorThermalInput:
     # wyznacza utrata wytrzymalosci mechanicznej zyly i osprzet. Bez tego rozroznienia
     # dowod dla kazdej linii napowietrznej zglaszalby nieprawdziwy „brak izolacji".
     conductor_kind: str | None = None
+    zalozenie_kappa: DanaPrzyjeta | None = None
 
 
 @dataclass(frozen=True)
@@ -246,11 +263,17 @@ class ConductorThermalResult:
     # obliczen". Pusta krotka dla wyniku NIEDOSTEPNEGO (nie ma czego dowodzic)
     # oraz dla wynikow sprzed tej delty.
     white_box_trace: tuple[dict[str, Any], ...] = ()
+    # Prad cieplny I_th przy czasie trwania zwarcia (I″k, κ, t, m, n, I_th) — wielkosc
+    # porownywana; ``None`` = brak I″k (nie ma czego liczyc).
+    prad_cieplny: dict[str, Any] | None = None
+    # Dane przyjete rachunku (np. κ punktu zwarcia dla galezi) — wynik na zalozeniu jest
+    # odrozniony od potwierdzonego (kontrakt werdyktu §3).
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
             "Równoważna energia cieplna I²·t = const (IEC 60949).",
-            "I_th to prąd zastępczy cieplny z obliczeń zwarciowych, nie prąd początkowy.",
+            "I_th = I″k·√(m + n) przy czasie trwania zwarcia t (IEC 60909-0 §4.7), n = 1.",
             "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
             "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
         )
@@ -276,8 +299,10 @@ def check_conductor_thermal_withstand(
     Zwraca werdykt PASS/FAIL albo UNAVAILABLE + kody gotowosci, gdy ktoregokolwiek
     ze skladnikow rachunku brakuje. Nie zgaduje zadnej wielkosci.
     """
-    ith = _positive(data.ith_a)
     duration = _positive(data.fault_duration_s)
+    cieplny = prad_cieplny_zastepczy(ikss=_positive(data.ikss_a), kappa=data.kappa, tk_s=duration)
+    ith = _positive(cieplny.ith)
+    dane_przyjete = (data.zalozenie_kappa,) if data.zalozenie_kappa is not None else ()
     ith_1s = _positive(data.ith_1s_a)
     jth = _positive(data.jth_1s_a_per_mm2)
     section = _positive(data.cross_section_mm2)
@@ -297,7 +322,7 @@ def check_conductor_thermal_withstand(
             ith_1s = jth * section
 
     braki: list[str] = []
-    if ith is None:
+    if _positive(data.ikss_a) is None or data.kappa is None:
         braki.append(READINESS_FAULT_CURRENT_MISSING)
     if duration is None:
         braki.append(READINESS_FAULT_DURATION_MISSING)
@@ -312,6 +337,8 @@ def check_conductor_thermal_withstand(
             required_cross_section_mm2=None,
             margin_a=None,
             readiness_codes=tuple(dict.fromkeys(braki)),
+            prad_cieplny=_prad_cieplny_dict(cieplny, data.zalozenie_kappa),
+            dane_przyjete=dane_przyjete,
         )
 
     # mypy: po sprawdzeniu brakow wszystkie trzy sa float
@@ -341,6 +368,8 @@ def check_conductor_thermal_withstand(
         required_cross_section_mm2=required_section,
         margin_a=margin,
         readiness_codes=(),
+        prad_cieplny=_prad_cieplny_dict(cieplny, data.zalozenie_kappa),
+        dane_przyjete=dane_przyjete,
         i2t_a2s=i2t,
         i2t_admissible_a2s=i2t_admissible,
         margin_percent=margin_percent,
@@ -394,8 +423,58 @@ def check_conductor_thermal_withstand(
             i2t=i2t,
             i2t_admissible=i2t_admissible,
             k_justification=_build_k_justification(data, jth, k_derivation),
+            prad_cieplny=cieplny,
+            zalozenie_kappa=data.zalozenie_kappa,
         ),
     )
+
+
+def zalozenie_kappa_punktu_dla_galezi(kappa: float | None, punkt_pl: str) -> DanaPrzyjeta | None:
+    """Dana przyjęta: κ punktu zwarcia użyty jako κ wkładu prądu w gałęzi (przewód SN).
+
+    PODSTAWA. IEC 60909-0 §4.3.1 wyznacza κ dla PUNKTU zwarcia (stosunek R/X impedancji
+    zastępczej w miejscu zwarcia, metody B/C dla sieci oczkowych); IEC 60865-1 §5.8 liczy
+    skutki cieplne prądu zwarciowego z m(κ, T_k) tego punktu. Wkład gałęzi płynący drogą
+    o mniejszym R/X niż zastępcze może mieć wyższe κ niż punkt — wtedy m gałęzi jest większe,
+    a I_th z κ punktu zaniżony. Wynik biegu NIE niesie κ ani R/X dróg wkładu (wkład gałęziowy
+    rdzenia: tylko moduł prądu i kierunek, ``ShortCircuitBranchContribution``), więc κ = max
+    po drogach wkładu nie jest wyznaczalny bez nowego wyniku rdzenia — przyjęte κ punktu
+    jest jawnym założeniem, a ocena na nim ma kompletność dowodu NIEPEŁNĄ. κ nieskończony
+    albo brak κ — ``None`` (brak danej, nie założenie; rachunek I_th zgłasza przyczynę).
+    """
+    if kappa is None or not math.isfinite(kappa):
+        return None
+    return DanaPrzyjeta(
+        nazwa_pl="współczynnik udaru κ wkładu gałęzi",
+        wartosc=Wielkosc(wartosc=float(kappa), jednostka="1"),
+        powod_pl=(
+            f"przyjęto κ punktu zwarcia ({punkt_pl}) jako κ wkładu prądu w gałęzi — IEC "
+            "60909-0 §4.3.1 (κ punktu zwarcia) i IEC 60865-1 §5.8 (m z κ punktu); wynik biegu "
+            "nie niesie κ dróg wkładu, a droga o mniejszym R/X niż zastępcze dałaby wyższe κ "
+            "i większy prąd cieplny"
+        ),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+def _prad_cieplny_dict(
+    cieplny: PradCieplny, zalozenie_kappa: DanaPrzyjeta | None
+) -> dict[str, Any] | None:
+    """Ślad I_th przewodu (jednostki A); ``None`` bez prądu początkowego."""
+    if cieplny.ikss is None:
+        return None
+    return {
+        "ikss_a": cieplny.ikss,
+        "kappa": cieplny.kappa,
+        "tk_s": cieplny.tk_s,
+        "m": cieplny.m,
+        "n": cieplny.n,
+        "ith_a": cieplny.ith,
+        "wzor_latex": WZOR_I_TH_LATEX,
+        "wzor_m_latex": WZOR_M_LATEX,
+        "powod_pl": cieplny.powod_pl,
+        "zalozenie_kappa_pl": None if zalozenie_kappa is None else zalozenie_kappa.powod_pl,
+    }
 
 
 def _wartosc(value: float, unit: str, label: str) -> dict[str, Any]:
@@ -442,6 +521,8 @@ def _build_white_box_trace(
     i2t: float,
     i2t_admissible: float,
     k_justification: dict[str, Any],
+    prad_cieplny: PradCieplny,
+    zalozenie_kappa: DanaPrzyjeta | None,
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe rachunku cieplnego (WHITE BOX, kanon pieciu pol).
 
@@ -683,6 +764,44 @@ def _build_white_box_trace(
             }
         )
 
+    # Krok I_th przy czasie trwania zwarcia — PIERWSZY: z niego idzie wielkość porównywana.
+    assert prad_cieplny.m is not None and prad_cieplny.n is not None
+    assert prad_cieplny.ikss is not None and prad_cieplny.kappa is not None
+    kroki.insert(
+        0,
+        {
+            "step": 0,
+            "key": "conductor_thermal_ith",
+            "title": "Prąd zastępczy cieplny przy czasie trwania zwarcia",
+            "formula_latex": WZOR_I_TH_LATEX,
+            "inputs": {
+                "ikss_a": _wartosc(prad_cieplny.ikss, "A", "Prąd zwarciowy początkowy I″k"),
+                "kappa": {"value": prad_cieplny.kappa, "unit": "—", "label": "Współczynnik κ"},
+                "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
+                "m": {"value": prad_cieplny.m, "unit": "—", "label": "Współczynnik m"},
+                "n": {"value": prad_cieplny.n, "unit": "—", "label": "Współczynnik n"},
+            },
+            "substitution_latex": (
+                r"I_{th} = "
+                + _liczba_tex(prad_cieplny.ikss)
+                + r"\cdot\sqrt{"
+                + _liczba_tex(prad_cieplny.m)
+                + r" + "
+                + _liczba_tex(prad_cieplny.n)
+                + r"} = "
+                + _liczba_tex(ith_a)
+                + r"\ \mathrm{A}"
+            ),
+            "result": {"ith_a": _wartosc(ith_a, "A", "Prąd zastępczy cieplny I_th")},
+            "notes": (
+                "IEC 60909-0 §4.7: m z κ i czasu trwania zwarcia t (ta sama funkcja co "
+                "aparatura pól), n = 1 (górne oszacowanie)."
+                + (f" Założenie: {zalozenie_kappa.powod_pl}" if zalozenie_kappa else "")
+            ),
+        },
+    )
+    for numer, krok in enumerate(kroki, start=1):
+        krok["step"] = numer
     return tuple(kroki)
 
 

@@ -261,6 +261,10 @@ _WIERSZE_BIEGU = [
         "ikss_ka": 5.0,
         "ip_ka": 12.5,
         "ith_ka": 5.1,
+        # Realny wiersz biegu niesie κ i czas cieplny biegu T_k zawsze, gdy niesie I_th
+        # (``tests.utils.prad_cieplny``); bez nich fikstura nie odtwarzała produkcji.
+        "kappa": 1.8,
+        "tk_s": 1.0,
     }
 ]
 

@@ -842,8 +842,17 @@ def _ocena_cieplna(
         braki.append(str(czas.get("powod_pl") or "czas wyłączenia zwarcia nie jest ustalony"))
     elif cieplny.ith_ka is None and prady.ith_ka is not None and cieplny.powod_pl:
         braki.append(cieplny.powod_pl)
+    # Porównanie stoi na JEDNYM T_k: limit przeliczony na T_k pola zestawiany jest wyłącznie
+    # z I_th przy T_k pola. Gdy I_th pola nie da się wyznaczyć (czas pola nieustalony albo
+    # wiersz biegu bez κ / T_k biegu), limitu przy T_k pola nie ma z czym zestawić — brak
+    # podstawy porównania (BRAK_PODSTAWY), nigdy porównanie prądu biegu z limitem pola.
     limit: LimitKryterium | None = None
-    if limit_ka is not None and podstawa_limitu is not None and t_k is not None:
+    if (
+        limit_ka is not None
+        and podstawa_limitu is not None
+        and t_k is not None
+        and cieplny.ith_ka is not None
+    ):
         limit = LimitKryterium(
             wartosc=Wielkosc(wartosc=float(limit_ka), jednostka="kA"),
             podstawa=podstawa_limitu,
@@ -854,8 +863,13 @@ def _ocena_cieplna(
         )
     # I_th przy czasie wyłączenia POLA (T_k pola), nie przy czasie cieplnym biegu — limit
     # i prąd porównywany stoją na tym samym T_k (``solvers.wytrzymalosc_cieplna_pola``).
-    wynik = (
-        WynikKryterium(
+    # Gdy I_th pola nie istnieje, rekord pokazuje prąd cieplny BIEGU z jego własnym T_k
+    # w nazwie wielkości (wartość policzona przez solver, jawnie opisana) — porównania nie ma
+    # (limit wyżej jest ``None``), status rozstrzyga brak podstawy, jak przed wprowadzeniem
+    # T_k pola. ``prad_cieplny_pola.ith_ka`` w wierszu zostaje ``None`` („—" z powodem).
+    wynik: WynikKryterium | None = None
+    if cieplny.ith_ka is not None:
+        wynik = WynikKryterium(
             wielkosc_pl=(
                 "prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola "
                 f"przy czasie wyłączenia pola T_k = {cieplny.tk_pola_s} s"
@@ -865,9 +879,21 @@ def _ocena_cieplna(
             punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
         )
-        if cieplny.ith_ka is not None
-        else None
-    )
+    elif prady.ith_ka is not None:
+        tk_biegu = (
+            f"T_k,bieg = {prady.tk_biegu_s} s" if prady.tk_biegu_s is not None else "T_k biegu"
+        )
+        wynik = WynikKryterium(
+            wielkosc_pl=(
+                "prąd cieplny zastępczy zwarcia trójfazowego w punkcie zabudowy pola "
+                f"przy czasie cieplnym biegu {tk_biegu} — nie porównywany z limitem pola, "
+                "bo prądu przy czasie wyłączenia pola nie wyznaczono"
+            ),
+            symbol_latex=r"I_{th,bieg}",
+            wartosc=Wielkosc(wartosc=prady.ith_ka, jednostka="kA"),
+            punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
+            metoda="OBLICZENIE",
+        )
     return ocen_kryterium(
         kryterium_id=f"{kryterium_id}.cieplna",
         przedmiot=przedmiot,
@@ -893,8 +919,10 @@ def _ocena_cieplna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:cieplna",
                 opis_pl=(
-                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt: {_opis_punktu(prady)}); "
-                    f"T_k = {t_k} s (źródło: {czas.get('zrodlo')}); limit = {limit_ka} kA"
+                    f"I_th pola = {cieplny.ith_ka} kA przy T_k = {t_k} s (źródło czasu: "
+                    f"{czas.get('zrodlo')}); I_th biegu = {prady.ith_ka} kA przy "
+                    f"T_k,bieg = {prady.tk_biegu_s} s (wiersz biegu, punkt: "
+                    f"{_opis_punktu(prady)}); κ = {prady.kappa}; limit = {limit_ka} kA"
                 ),
             ),
         ),

@@ -29,7 +29,9 @@ export interface NnCircuitProofRequest {
   readonly liczba_obwodow: number;
   readonly rezystywnosc_gruntu_km_w?: number;
   readonly ik_max_ka?: number;
-  readonly ith_a?: number;
+  /** I″k [A] i κ punktu z biegu zwarciowego — I_th przy czasie wyłączenia liczy backend. */
+  readonly ikss_a?: number;
+  readonly kappa?: number;
   readonly fault_duration_s?: number;
   readonly ith_1s_a?: number;
   readonly jth_1s_a_per_mm2?: number;

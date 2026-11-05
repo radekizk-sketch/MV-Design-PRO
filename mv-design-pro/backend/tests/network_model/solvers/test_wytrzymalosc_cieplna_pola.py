@@ -63,8 +63,9 @@ def test_ith_pola_iloczyn_czasu_pola_i_kappa(kappa: float, tk_pola: float | None
     assert wynik.ith_ka == pytest.approx(w["ikss_ka"] * math.sqrt(wynik.m + wynik.n), rel=1e-12)
     assert wynik.m_biegu == w["m_biegu"]
     if tk_pola == TK_BIEGU_S:
-        # Determinizm / wyniki złote: T_k pola = T_k biegu → BIT W BIT I_th biegu.
-        assert wynik.ith_ka == w["ith_ka"]
+        # T_k pola = T_k biegu → I_th biegu (ta sama funkcja m, n rdzenia; bieg mnoży
+        # w amperach przed przeliczeniem na kA, więc zgodność do ostatniego bitu mantysy).
+        assert wynik.ith_ka == pytest.approx(w["ith_ka"], rel=1e-15)
     else:
         # Krótszy czas → większa składowa nieokresowa m → I_th pola > I_th biegu.
         assert wynik.ith_ka > w["ith_ka"]
@@ -96,8 +97,6 @@ def test_sonda_pola_036_s_kappa_1557() -> None:
     ("brak", "fragment"),
     [
         ({"kappa": None}, "współczynnika κ"),
-        ({"tk_biegu_s": None}, "czasu cieplnego biegu"),
-        ({"ith_biegu_ka": None}, "prądu zwarciowego"),
         ({"ikss_ka": None}, "prądu zwarciowego"),
     ],
 )
@@ -113,3 +112,38 @@ def test_brak_danej_wiersza_biegu_daje_brak_z_powodem(brak: dict[str, None], fra
     wynik = prad_cieplny_pola(**{**dane, **brak})
     assert wynik.ith_ka is None
     assert fragment in (wynik.powod_pl or "")
+
+
+def test_ith_biegu_i_tk_biegu_sa_tylko_sladem_porownania() -> None:
+    """I_th pola liczy jedna funkcja z I″k i κ punktu — I_th i T_k biegu nie wchodzą do
+    rachunku (brak ich nie wygasza wyniku, a podmiana nie zmienia liczby)."""
+    w = _wiersz_biegu(1.557)
+    pelny = prad_cieplny_pola(
+        ikss_ka=w["ikss_ka"],
+        kappa=w["kappa"],
+        ith_biegu_ka=w["ith_ka"],
+        tk_biegu_s=1.0,
+        tk_pola_s=0.36,
+    )
+    bez_biegu = prad_cieplny_pola(
+        ikss_ka=w["ikss_ka"],
+        kappa=w["kappa"],
+        ith_biegu_ka=None,
+        tk_biegu_s=None,
+        tk_pola_s=0.36,
+    )
+    assert pelny.ith_ka == bez_biegu.ith_ka is not None
+    assert bez_biegu.m_biegu is None and bez_biegu.ith_biegu_ka is None
+
+
+@pytest.mark.parametrize("kappa", [1.2, 1.557, 1.8])
+@pytest.mark.parametrize("tk_s", [0.1, 0.36, 1.0, 3.0])
+def test_jedna_funkcja_ith_zgodna_z_wyrocznia_normy(kappa: float, tk_s: float) -> None:
+    """``prad_cieplny_zastepczy`` (aparatura i przewody) = wzór normy wpisany niezależnie."""
+    from network_model.solvers.wytrzymalosc_cieplna_pola import prad_cieplny_zastepczy
+
+    from tests.utils.prad_cieplny import ith_normy
+
+    wynik = prad_cieplny_zastepczy(ikss=9.09, kappa=kappa, tk_s=tk_s)
+    assert wynik.ith == pytest.approx(ith_normy(9.09, kappa, tk_s), rel=1e-12)
+    assert wynik.n == 1.0

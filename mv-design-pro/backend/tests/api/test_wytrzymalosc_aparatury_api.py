@@ -439,6 +439,53 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     assert "czas własny" in dane[0]["nazwa_pl"]
 
 
+def test_realny_wiersz_biegu_niesie_kappa_i_tk_a_ocena_porownuje_ith_pola(klient: TestClient):
+    """Prąd cieplny przy czasie wyłączenia pola potrzebuje κ i T_k biegu z wiersza punktu.
+
+    Realny wiersz biegu (produkcyjny tor ``create_run`` + ``execute_run`` →
+    ``build_short_circuit_results``) niesie je ZAWSZE, gdy niesie I_th — to przypina, że fikstury
+    syntetyczne z κ i T_k odtwarzają kształt realnego wiersza, a nie go wymyślają. Wielkość
+    porównywana w ocenie cieplnej = ``prad_cieplny_pola.ith_ka`` = I_th biegu przeliczony na T_k
+    pola wzorem normy (wyrocznia niezależna), a prąd cieplny biegu nadal stoi w ``prady_pola``.
+    """
+    from enm.canonical_analysis import get_run
+
+    from tests.utils.prad_cieplny import ith_normy
+
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+    wiersze = build_short_circuit_results(get_run(UUID(run_id)))["rows"]
+    z_pradem = [w for w in wiersze if w.get("ith_ka") is not None]
+    assert z_pradem
+    for w in z_pradem:
+        assert isinstance(w["kappa"], float) and 1.0 < w["kappa"] < 2.0, w
+        assert isinstance(w["tk_s"], float) and w["tk_s"] > 0.0, w
+
+    pole = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())
+    cieplny = pole["prad_cieplny_pola"]
+    cieplna = _ocena(pole, "cieplna")
+    wiersz = next(
+        w
+        for w in wiersze
+        if w["fault_type"] == "3F" and w["element_id"] == pole["prady_pola"]["punkt_ref"]
+    )
+    assert cieplny["ith_biegu_ka"] == wiersz["ith_ka"] == pole["prady_pola"]["ith_ka"]
+    assert cieplny["kappa"] == wiersz["kappa"]
+    assert cieplny["tk_biegu_s"] == wiersz["tk_s"]
+    assert cieplny["tk_pola_s"] == pytest.approx(0.36)
+    assert cieplna["wynik"]["wartosc"]["wartosc"] == cieplny["ith_ka"]
+    assert cieplny["ith_ka"] == pytest.approx(
+        ith_normy(wiersz["ikss_ka"], wiersz["kappa"], 0.36), rel=1e-12
+    )
+    # Ta sama funkcja przy T_k biegu odtwarza I_th wiersza biegu (spójność z rdzeniem).
+    assert ith_normy(wiersz["ikss_ka"], wiersz["kappa"], wiersz["tk_s"]) == pytest.approx(
+        wiersz["ith_ka"], rel=1e-12
+    )
+    # T_k pola 0,36 s < T_k biegu 1 s: składowa nieokresowa większa — I_th pola > I_th biegu.
+    assert cieplny["ith_ka"] > wiersz["ith_ka"]
+
+
 def _nadaj_wartosci(
     klient: TestClient, case_id: str, aparat_ref: str, wpisy: list[dict[str, Any]]
 ) -> dict[str, Any]:
