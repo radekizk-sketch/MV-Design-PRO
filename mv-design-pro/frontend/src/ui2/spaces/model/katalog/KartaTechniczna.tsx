@@ -130,7 +130,7 @@ export function KartaTechniczna({
       {parametry.length > 0 ? (
         <div>
           {parametry.map(({ klucz, definicja }) => (
-            <ParametrRow key={klucz} definicja={definicja} wartosc={pozycja[klucz]} />
+            <ParametrRow key={klucz} klucz={klucz} definicja={definicja} wartosc={pozycja[klucz]} />
           ))}
         </div>
       ) : (

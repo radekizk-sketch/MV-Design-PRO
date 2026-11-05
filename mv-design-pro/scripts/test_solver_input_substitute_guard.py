@@ -2115,7 +2115,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # przekladnika), `result_latex` (`WhiteBoxStep` SSCI; `substitution_latex` byl juz w zbiorze,
     # `formula_latex` tez). Pola LaTeX to zapis wzoru obok prozy, nie dana wejsciowa solvera.
     # PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4507." in wyjscie, wyjscie
+    # Karta ZU punkt 4 (nastepca: algebra jednostek do pol LaTeX, 2026-11-04): 4507 -> 4504 —
+    # POMIAR `contract_fields()` na `c20ea5104` (`git archive` drzewa `backend/src`: 4507, pin
+    # zgodny) i na drzewie karty (4504). Roznica zbiorow +5, -8. +5: `derivation_latex`
+    # i `unit_derivation_latex` (pola wyprowadzenia jednostki kroku dowodu — dawne
+    # `derivation`/`unit_derivation` niosly algebre jednostek tekstem), `unit_check_latex`
+    # (`WhiteBoxStep` adekwatnosci mocy biernej), `JEDNOSTKA_WYNIKU` i `_ALIASY` (tablice
+    # weryfikatora jednostek dowodu). -8: `derivation`, `unit_derivation`, `DERIVATION_RULES`
+    # (tekstowe reguly wyprowadzen weryfikatora) oraz pola `V`, `W`, `m`, `ohm`, `s` dawnego
+    # wymiaru jednostki `UnitDimension` weryfikatora. Zadne z nich nie jest dana wejsciowa
+    # solvera. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4504." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2442,7 +2452,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/ncrfg_compliance/wzory_sladu.py` — wzory LaTeX krokow sladu zgodnosci
         # NC RfG). POMIAR guardem na `01c5def16` (`git archive`: 604) i na drzewie karty (605);
         # dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 605 plikow w zakresie: network_model, solver_input, enm, "
+        # Nastepca tej karty (algebra jednostek do pol LaTeX, 2026-11-04): 605 -> 606 (+1
+        # `application/proof_engine/zapis_jednostek.py` — zapis jednostki wartosci dowodu
+        # w LaTeX dla eksportu). POMIAR guardem na `c20ea5104` (605) i na drzewie karty (606);
+        # dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2869,7 +2883,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
         # Karta ZU, punkt 4 (2026-11-04): application 254 -> 255 (+1
         # `ncrfg_compliance/wzory_sladu.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Nastepca (2026-11-04): application 255 -> 256 (+1 `proof_engine/zapis_jednostek.py`);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

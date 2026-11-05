@@ -1315,7 +1315,13 @@ class TestUnitVerifier:
 
         assert result.passed
         assert result.expected_unit == "kA"
-        assert "✓" in result.derivation
+        # Wyprowadzenie jednostek to wzór LaTeX z rejestru równań (jedno źródło), proza obok
+        # słowami — bez znaku „✓” doklejanego do zapisu wzoru.
+        assert result.derivation_latex == r"\mathrm{kV}/\Omega = \mathrm{kA}"
+        assert result.opis_pl == (
+            "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa "
+            "jednostce wyniku (kA)."
+        )
 
     def test_vdrop_003_unit_derivation(self):
         """Weryfikacja jednostek dla ΔU_R = R·P/U²."""

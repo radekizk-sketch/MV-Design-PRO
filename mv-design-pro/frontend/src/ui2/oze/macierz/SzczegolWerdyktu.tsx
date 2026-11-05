@@ -14,7 +14,7 @@ import { ZapisTechniczny } from '../../wyniki/wzorzec/ZapisTechniczny';
 import { usePoprawWModelu } from '../../wyniki/wzorzec/usePoprawWModelu';
 import { akcjaNaprawcza } from '../../wyniki/wzorzec/akcjeNaprawcze';
 import type { ClaimKind } from '../../wyniki/wzorzec/werdykt';
-import type { DefinicjaTestuNcRfg, KrokSladuNcRfg } from '../ncrfg/typy';
+import type { DefinicjaTestuNcRfg, JednostkiKrokuSladu, KrokSladuNcRfg } from '../ncrfg/typy';
 import type { KomorkaMacierzy } from './macierzModel';
 import { SladTestu } from './SladTestu';
 import { ETYKIETY_BLOKADY, MACIERZ_STRINGS, OPISY_OCZEKIWANIA, opiszMetryke } from './strings';
@@ -39,6 +39,8 @@ export interface SzczegolWerdyktuProps {
   readonly slad: readonly KrokSladuNcRfg[];
   /** Zapis wzoru rdzenia → LaTeX z katalogu testów (ślad renderuje wzory przez KaTeX). */
   readonly wzoryLatex: Readonly<Record<string, string>>;
+  /** Weryfikacja jednostek rdzenia → zdanie + algebra jednostek LaTeX (katalog testów). */
+  readonly jednostkiSladu: Readonly<Record<string, JednostkiKrokuSladu>>;
   /**
    * Tryb ekspercki — identyfikator zdolności dowodowej (`zdolnosc_id`, metadana audytowa, nie
    * język inżynierski) tylko wtedy. Ten sam predykat co w wierszu macierzy (`MacierzNcRfg`
@@ -53,6 +55,7 @@ export function SzczegolWerdyktu({
   nazwaModulu,
   slad,
   wzoryLatex,
+  jednostkiSladu,
   szczegolyAudytowe,
 }: SzczegolWerdyktuProps): JSX.Element {
   const pokazElement = usePoprawWModelu();
@@ -172,6 +175,7 @@ export function SzczegolWerdyktu({
                   <SladTestu
                     kroki={slad.filter((krok) => krok.test_id === komorka.testId)}
                     wzoryLatex={wzoryLatex}
+                    jednostkiSladu={jednostkiSladu}
                   />
                 </ZapisTechniczny>
               </div>

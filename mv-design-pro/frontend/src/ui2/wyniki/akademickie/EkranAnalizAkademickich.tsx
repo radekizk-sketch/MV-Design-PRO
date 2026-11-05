@@ -238,6 +238,28 @@ function WzorLubTekst({ latex, tekst }: { latex: string | undefined; tekst: stri
   return <>{tekst ?? S.kreska}</>;
 }
 
+/**
+ * Weryfikacja jednostek kroku: gdy `unit_check` solvera jest algebrą jednostek, rejestr
+ * (`JEDNOSTKI_KROKOW_V126`) daje zdanie słowami (`unit_check_pl`) i algebrę jednostek
+ * w LaTeX (`unit_check_latex`, KaTeX inline); w przeciwnym razie tekst solvera jest zdaniem.
+ */
+function WeryfikacjaJednostek({
+  opis,
+  latex,
+  tekst,
+}: {
+  opis: string | undefined;
+  latex: string | undefined;
+  tekst: string | null;
+}) {
+  if (opis === undefined || latex === undefined) return <>{tekst ?? S.kreska}</>;
+  return (
+    <span data-testid="akademickie-jednostki-kroku">
+      {opis} <MathInline latex={latex} />
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Katalog kart
 // ---------------------------------------------------------------------------
@@ -1501,7 +1523,13 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
                   <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
                 </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                <td>{krok.unit_check}</td>
+                <td>
+                  <WeryfikacjaJednostek
+                    opis={krok.unit_check_pl}
+                    latex={krok.unit_check_latex}
+                    tekst={krok.unit_check}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1548,7 +1576,13 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
                   <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
                 </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                <td>{krok.unit_check ?? S.kreska}</td>
+                <td>
+                  <WeryfikacjaJednostek
+                    opis={krok.unit_check_pl}
+                    latex={krok.unit_check_latex}
+                    tekst={krok.unit_check}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

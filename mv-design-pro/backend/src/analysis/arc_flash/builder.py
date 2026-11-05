@@ -341,7 +341,10 @@ class ArcFlashBuilder:
                     f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
                 ),
                 result_pl=f"CF = {_round(cf)}",
-                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+                unit_check_pl=(
+                    "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy "
+                    "w calach; mnożnik energii dla obudowy."
+                ),
                 table_ref=(
                     f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
                     if cfg.is_boxed
@@ -387,7 +390,8 @@ class ArcFlashBuilder:
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U."
+                    "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); "
+                    "przeliczenie na cal/cm² dzieleniem przez 4,184; interpolacja po napięciu."
                 ),
                 table_ref=f"E[{cfg.value}, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584",
             )
@@ -430,7 +434,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
@@ -567,7 +574,10 @@ class ArcFlashBuilder:
                     f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
                 ),
                 result_pl=f"CF = {_round(cf)}",
-                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+                unit_check_pl=(
+                    "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy "
+                    "w calach; mnożnik energii dla obudowy."
+                ),
                 table_ref=(
                     f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
                     if cfg.is_boxed
@@ -610,8 +620,9 @@ class ArcFlashBuilder:
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji "
-                    "po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego)."
+                    "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); "
+                    "przeliczenie na cal/cm² dzieleniem przez 4,184; bez interpolacji po napięciu "
+                    "(ścieżka nN liczy bezpośrednio dla napięcia rzeczywistego)."
                 ),
                 table_ref=f"E[{cfg.value},V600] (Tab.3) = open_source_IEEE_1584",
             )
@@ -652,7 +663,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
@@ -777,7 +791,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty

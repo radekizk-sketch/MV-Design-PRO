@@ -28,6 +28,15 @@ i brak słowa. Naprawa: pole prozy słowami, wzór i podstawienie w addytywnym p
 (`substitution_latex`, `result_latex`, …) renderowanym przez `MathRenderer`; komórka raportu
 tekstowego — słowa i symbol w zapisie LaTeX (format wzoru raportu, jak linia „Wzór:").
 
+TRZECIA CZĘŚĆ KLASY — ALGEBRA JEDNOSTEK BEZ SYMBOLU WIELKOŚCI (karta ZU, punkt 4, 2026-11-04).
+Weryfikacja jednostek zapisana jako równanie jednostek (`kV / Ω = kA`, `% − % = pp`,
+`Mvar − Mvar = Mvar`, `A²·Ω·s = W·s = J`) nie ma symbolu wielkości, więc dwie pierwsze reguły
+jej nie widzą, a ekran i eksport LaTeX/PDF pokazywały ją jako tekst (w PDF znak `Ω` w trybie
+tekstowym T1 przerywał kompilację). Trafienie: segment `JEDNOSTKA (działanie JEDNOSTKA)* =
+JEDNOSTKA` (`ALGEBRA_JEDNOSTEK_RE`) z co najmniej jedną literą jednostki. Naprawa: algebra
+jednostek w LaTeX (`\mathrm{kV}/\Omega = \mathrm{kA}`) polem `*_latex` albo segmentem `$…$`,
+zdanie obok słowami („Zgodność jednostek: …").
+
 CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uzasadnieniem):
   1. Docstring (pierwsza instrukcja modułu/klasy/funkcji) i docstring atrybutu (gołe
      wyrażenie tekstowe w dowolnym miejscu, np. po polu klasy) — komentarz dla programisty;
@@ -48,13 +57,19 @@ CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uz
      (`REJESTR_WZOROW_V126`, test kompletności z AST rdzenia), ekran renderuje LaTeX;
      argument podstawienia `trace.add(klucz, wzór, wejścia, PODSTAWIENIE, …)` — tylko dla
      kluczy, które w rejestrze mają budowniczego podstawienia (`podstawienie=`), bo wtedy
-     ekran pokazuje `substitution_latex`.
+     ekran pokazuje `substitution_latex`; argument weryfikacji jednostek
+     `trace.add(klucz, wzór, wejścia, podstawienie, wynik, JEDNOSTKI, …)` — tylko gdy tekst jest
+     kluczem `JEDNOSTKI_KROKOW_V126` tego rejestru (zdanie `unit_check_pl` + `unit_check_latex`
+     w widoku API); klucze tego słownika są tym samym tekstem rdzenia (klucz wyszukania).
   7. Ślad testów NC RfG (`network_model/solvers/ncrfg_ptpiree/engine.py`, rdzeń B-01):
      argument wzoru `trace.add(id, nazwa, WZÓR, …)` — każdy zapis ma wpis LaTeX w
      `application/ncrfg_compliance/wzory_sladu.py` (test kompletności z AST rdzenia, obie
      gałęzie wyrażeń warunkowych), widok śladu renderuje go przez `MathBlock`.
      Klucze słownika rejestru `wzory_sladu.py` są tym samym zapisem rdzenia (klucz wyszukania,
      nie tekst ekranu) — skan ich nie liczy; wartości (LaTeX) i każdy inny tekst rejestru tak.
+     Argument weryfikacji jednostek `trace.add(id, nazwa, wzór, dane, podstawienie, wynik,
+     JEDNOSTKI)` — tylko gdy tekst jest kluczem `_JEDNOSTKI` tego rejestru (katalog testów
+     wydaje zdanie i LaTeX, widok śladu renderuje algebrę przez KaTeX).
 
   8. Wartość pola LaTeX: argument nazwany `latex`/`*_latex` i wartość klucza słownika
      `latex`/`*_latex` — zapis wzoru dla `MathRenderer`, nie proza (`Z'_1 = Z_s - Z_m` bez
@@ -182,9 +197,61 @@ def jest_wzorem_bez_slow(tekst: str | None) -> bool:
     )
 
 
+#: Jednostka w zapisie Unicode/ASCII (`kA`, `Ω/km`, `Mvar`, `%/min`, `p.u.`, `A²`, `kA²s`).
+_JEDNOSTKA = (
+    r"(?:p\.u\.|pp|%(?:/min)?|1/min|min|°C|cal/cm²|rad/s|mm²|—|\.\.\."
+    r"|(?:k|M|m|μ|G)?(?:Wh|VA|var|Ω|V|A|W|Hz|S|F|H|J|s|h|m|K)(?:/(?:km|m|mm²|s|min|h))?"
+    r"(?:²s|²|³|⁻¹)?|\d+)"
+)
+_DZIALANIE = r"\s*(?:[+\-−·*/×±]|<=|>=|<|>|≤|≥)\s*"
+#: Relacja zamykająca równanie jednostek: równość, przejście albo nierówność (`A ≤ A`).
+_RELACJA = r"\s*(?:=|→|->|<=|>=|≤|≥|<|>)\s*"
+#: Równanie jednostek: `JEDNOSTKA (działanie JEDNOSTKA)* RELACJA JEDNOSTKA`, z opcjonalnym
+#: nawiasem, pierwiastkiem i sumą przed członem (`√(A²+A²)=A`, `suma Mvar = Mvar`, `A ≤ A`).
+ALGEBRA_JEDNOSTEK_RE = re.compile(
+    r"(?<![\w$\\{])(?:Σ\s*|√\s*)?\(*\s*"
+    + _JEDNOSTKA
+    + r"\s*\)*(?:"
+    + _DZIALANIE
+    + r"\(*\s*"
+    + _JEDNOSTKA
+    + r"\s*\)*(?:²)?)*"
+    + _RELACJA
+    + r"\(*\s*"
+    + _JEDNOSTKA
+    + r"(?![\w{(])"
+)
+
+
+def jest_algebra_jednostek(tekst: str | None) -> bool:
+    """Tekst z równaniem jednostek bez symbolu wielkości (`kV / Ω = kA`, `% − % = pp`):
+    segment `ALGEBRA_JEDNOSTEK_RE` z co najmniej jedną literą jednostki (sama arytmetyka
+    `1 = 1` i przypisanie jednoliterowe `x = 1` nie są algebrą jednostek)."""
+    if tekst is None or _czysty_tekst(tekst) is None:
+        return False
+    # Reguła 4 bez czyszczenia kodów w przestrzeni nazw: `p.u.` wygląda jak `a.b` i zniknąłby.
+    czysty = re.sub(r"`[^`]*`|https?://\S+", " ", tekst)
+    for dopasowanie in ALGEBRA_JEDNOSTEK_RE.finditer(czysty):
+        segment = dopasowanie.group(0).strip(" (")
+        # Co najmniej DWIE jednostki literowe po obu stronach relacji: `A ≤ A`, `kV / Ω = kA`;
+        # porównanie liczby z jednostką (`> 0`, `≤ 0,03 A`) i przypisanie jednoliterowe
+        # (`W = 1`) nie są równaniem jednostek.
+        lewa, _, prawa = re.split(r"(=|→|->|<=|>=|≤|≥|<|>)", segment, maxsplit=1)
+        jednostka_po_prawej = bool(re.search(r"[A-Za-zΩ%°μ—]", prawa))
+        if re.search(r"[A-Za-zΩ%°μ—]", lewa) and (
+            jednostka_po_prawej
+            or (re.fullmatch(r"\s*1\s*", prawa) and not re.fullmatch(r"[A-Za-z]\s*", lewa))
+        ):
+            return True
+    return False
+
+
 def jest_trafieniem(tekst: str | None) -> bool:
-    """Klasa strażnika: proza z symbolem spłaszczonym albo wzór/podstawienie bez słów."""
-    return jest_proza_z_symbolem(tekst) or jest_wzorem_bez_slow(tekst)
+    """Klasa strażnika: proza z symbolem spłaszczonym, wzór/podstawienie bez słów albo algebra
+    jednostek bez symbolu wielkości."""
+    return (
+        jest_proza_z_symbolem(tekst) or jest_wzorem_bez_slow(tekst) or jest_algebra_jednostek(tekst)
+    )
 
 
 def _tekst(wezel: ast.AST) -> str | None:
@@ -229,6 +296,43 @@ def klucze_v126_z_podstawieniem(src: Path | None = None) -> frozenset[str]:
             ):
                 klucze.add(klucz.value)
     return frozenset(klucze)
+
+
+def klucze_slownika(plik: Path, nazwa: str) -> frozenset[str]:
+    """Klucze-literały słownika przypisanego w module zmiennej `nazwa` (rejestr tekstów rdzenia
+    → zdanie + LaTeX); brak pliku albo słownika = zbiór pusty (każdy tekst rdzenia liczony)."""
+    if not plik.exists():
+        return frozenset()
+    drzewo = ast.parse(plik.read_text(encoding="utf-8"))
+    for wezel in ast.walk(drzewo):
+        cel = (
+            wezel.targets[0]
+            if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1
+            else wezel.target if isinstance(wezel, ast.AnnAssign) else None
+        )
+        if isinstance(cel, ast.Name) and cel.id == nazwa and isinstance(wezel.value, ast.Dict):
+            klucze: set[str] = set()
+            for klucz in wezel.value.keys:
+                tekst = _tekst_stalej(klucz)
+                if tekst is not None:
+                    klucze.add(tekst)
+            return frozenset(klucze)
+    return frozenset()
+
+
+def _tekst_stalej(wezel: ast.AST | None) -> str | None:
+    """Tekst stałej albo sklejenia stałych w nawiasie (klucz słownika rozpisany na wiersze)."""
+    if isinstance(wezel, ast.Constant) and isinstance(wezel.value, str):
+        return wezel.value
+    if isinstance(wezel, ast.BinOp) and isinstance(wezel.op, ast.Add):
+        lewy, prawy = _tekst_stalej(wezel.left), _tekst_stalej(wezel.right)
+        return None if lewy is None or prawy is None else lewy + prawy
+    return None
+
+
+#: Rejestry weryfikacji jednostek śladów rdzeni B-01 (reguły 6 i 7): plik, nazwa słownika.
+REJESTR_JEDNOSTEK_V126 = (PLIK_REJESTRU_V126, "JEDNOSTKI_KROKOW_V126")
+REJESTR_JEDNOSTEK_NCRFG = (PLIK_WZOROW_NCRFG, "_JEDNOSTKI")
 
 
 def _wywolanie_trace_add(wezel: ast.AST) -> bool:
@@ -307,7 +411,13 @@ def _oznacz_przeplyw_do_latex(drzewo: ast.AST, pomin: set[int]) -> None:
                                     _oznacz(zwrot.value.elts[i], pomin)
 
 
-def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> set[int]:
+def _pominiete(
+    drzewo: ast.AST,
+    wzgledna: str,
+    klucze_v126: frozenset[str],
+    jednostki_v126: frozenset[str] = frozenset(),
+    jednostki_ncrfg: frozenset[str] = frozenset(),
+) -> set[int]:
     pomin: set[int] = set()
     _oznacz_przeplyw_do_latex(drzewo, pomin)
     for w in ast.walk(drzewo):
@@ -331,6 +441,15 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
         if isinstance(w, ast.JoinedStr):
             for czesc in w.values:
                 pomin.add(id(czesc))
+        if (
+            wzgledna == PLIK_REJESTRU_V126
+            and isinstance(w, ast.Dict)
+            and any(_tekst_stalej(klucz) in jednostki_v126 for klucz in w.keys)
+        ):
+            # Klucz `JEDNOSTKI_KROKOW_V126` = tekst `unit_check` rdzenia V12.6 (reguła 6).
+            for klucz in w.keys:
+                if klucz is not None:
+                    _oznacz(klucz, pomin)
         if wzgledna == PLIK_WZOROW_NCRFG and isinstance(w, ast.Dict):
             # Klucz rejestru = zapis wzoru rdzenia NC RfG (reguła 7), wartość = LaTeX ekranu.
             for klucz in w.keys:
@@ -371,8 +490,12 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
             klucz = w.args[0]
             if len(w.args) >= 4 and isinstance(klucz, ast.Constant) and klucz.value in klucze_v126:
                 _oznacz(w.args[3], pomin)
+            if len(w.args) >= 6 and _tekst_stalej(w.args[5]) in jednostki_v126:
+                _oznacz(w.args[5], pomin)
         if wzgledna == PLIK_NCRFG and _wywolanie_trace_add(w) and len(w.args) >= 3:
             _oznacz(w.args[2], pomin)
+            if len(w.args) >= 7 and _tekst_stalej(w.args[6]) in jednostki_ncrfg:
+                _oznacz(w.args[6], pomin)
     if wzgledna == PLIK_V126:
         # Zmienna `formula` podawana jako argument wzoru `trace.add` (reguła 6).
         for w in ast.walk(drzewo):
@@ -384,10 +507,14 @@ def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> s
 
 
 def trafienia_pliku(
-    sciezka: Path, wzgledna: str, klucze_v126: frozenset[str]
+    sciezka: Path,
+    wzgledna: str,
+    klucze_v126: frozenset[str],
+    jednostki_v126: frozenset[str] = frozenset(),
+    jednostki_ncrfg: frozenset[str] = frozenset(),
 ) -> Iterator[tuple[int, str]]:
     drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
-    pomin = _pominiete(drzewo, wzgledna, klucze_v126)
+    pomin = _pominiete(drzewo, wzgledna, klucze_v126, jednostki_v126, jednostki_ncrfg)
     for w in ast.walk(drzewo):
         if id(w) in pomin:
             continue
@@ -401,12 +528,16 @@ def zmierz(src: Path | None = None) -> dict[str, list[tuple[int, str]]]:
     klucze_v126 = (
         klucze_v126_z_podstawieniem(src) if (src / PLIK_REJESTRU_V126).exists() else (frozenset())
     )
+    jednostki_v126 = klucze_slownika(src / REJESTR_JEDNOSTEK_V126[0], REJESTR_JEDNOSTEK_V126[1])
+    jednostki_ncrfg = klucze_slownika(src / REJESTR_JEDNOSTEK_NCRFG[0], REJESTR_JEDNOSTEK_NCRFG[1])
     wynik: dict[str, list[tuple[int, str]]] = {}
     for sciezka in sorted(src.rglob("*.py")):
         if "__pycache__" in sciezka.parts:
             continue
         wzgledna = sciezka.relative_to(src).as_posix()
-        trafienia = sorted(trafienia_pliku(sciezka, wzgledna, klucze_v126))
+        trafienia = sorted(
+            trafienia_pliku(sciezka, wzgledna, klucze_v126, jednostki_v126, jednostki_ncrfg)
+        )
         if trafienia:
             wynik[wzgledna] = trafienia
     return wynik

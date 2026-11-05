@@ -108,13 +108,13 @@ export type ProtectionSetpointUnit = 'pu' | 'A' | 'V' | 'kV' | 'Hz' | 'Hz/s' | '
  * NIGDY nie przechowuje wartości A/V jako źródła prawdy dla nastaw ×In/×Un.
  *
  * @example
- * // I>> = 3×In
+ * // stopień zwarciowy: trzykrotność prądu znamionowego
  * const setpoint: ProtectionSetpoint = {
  *   basis: 'IN',
  *   operator: 'GT',
  *   multiplier: 3.0,
  *   unit: 'pu',
- *   display_pl: '3×In',
+ *   display_pl: '3-krotność prądu znamionowego',
  * };
  *
  * @example
@@ -346,7 +346,8 @@ export function createInMultiplierSetpoint(
     operator,
     multiplier,
     unit: 'pu',
-    display_pl: `${displayMultiplier}×In`,
+    // Ten sam zapis co backend (`application/protection_read_model.py`): krotność słowami.
+    display_pl: `${displayMultiplier}-krotność prądu znamionowego`,
   };
 }
 
@@ -366,7 +367,7 @@ export function createUnMultiplierSetpoint(
     operator,
     multiplier,
     unit: 'pu',
-    display_pl: `${displayMultiplier}×Un`,
+    display_pl: `${displayMultiplier}-krotność napięcia znamionowego`,
   };
 }
 

@@ -1085,5 +1085,47 @@
     "K_FRT ≥ K_min (wymaga przebiegu I_q(t) z biegu dynamiki)": "K_{\\mathrm{FRT}} \\ge K_{\\min} \\quad \\text{(wymaga przebiegu } I_{q}(t) \\text{ z biegu dynamiki)}",
     "każda wymagana zdolność dodatkowa realizowana (wymaga biegu dynamiki)": "\\forall\\ \\text{wymagana zdolność dodatkowa: realizowana} \\quad \\text{(wymaga biegu dynamiki)}",
     "THD_U ≤ THD_U,max": "THD_{U} \\le THD_{U,\\max}"
+  },
+  "jednostki_sladu": {
+    "% − % = pp.": {
+      "opis_pl": "Zgodność jednostek: różnica dwóch wartości w procentach daje punkty procentowe.",
+      "latex": "\\% - \\% = \\mathrm{pp}"
+    },
+    "% − % = pp; kW · Hz / Hz = kW.": {
+      "opis_pl": "Zgodność jednostek: różnica dwóch wartości w procentach daje punkty procentowe, a moc pomnożona przez iloraz częstotliwości pozostaje mocą w kilowatach.",
+      "latex": "\\% - \\% = \\mathrm{pp}, \\quad \\mathrm{kW} \\cdot \\mathrm{Hz}/\\mathrm{Hz} = \\mathrm{kW}"
+    },
+    "%/min · 1 = %/min.": {
+      "opis_pl": "Zgodność jednostek: szybkość zmiany mocy w procentach na minutę pomnożona przez współczynnik bezwymiarowy pozostaje szybkością w procentach na minutę.",
+      "latex": "\\%/\\mathrm{min} \\cdot 1 = \\%/\\mathrm{min}"
+    },
+    "1 / (1/min) = min.": {
+      "opis_pl": "Zgodność jednostek: wielkość bezwymiarowa podzielona przez szybkość na minutę daje czas w minutach.",
+      "latex": "1/(1/\\mathrm{min}) = \\mathrm{min}"
+    },
+    "Status maszynowy bez jednostek.": {
+      "opis_pl": "Status maszynowy bez jednostek.",
+      "latex": null
+    },
+    "Wartości logiczne bez jednostek.": {
+      "opis_pl": "Wartości logiczne bez jednostek.",
+      "latex": null
+    },
+    "Współczynnik mocy jest bezwymiarowy.": {
+      "opis_pl": "Współczynnik mocy jest bezwymiarowy.",
+      "latex": null
+    },
+    "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar.": {
+      "opis_pl": "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar.",
+      "latex": null
+    },
+    "p.u. / p.u. = 1.": {
+      "opis_pl": "Zgodność jednostek: iloraz dwóch wartości względnych jest wielkością bezwymiarową.",
+      "latex": "\\mathrm{p.u.}/\\mathrm{p.u.} = 1"
+    },
+    "s − s = s.": {
+      "opis_pl": "Zgodność jednostek: różnica dwóch czasów w sekundach jest czasem w sekundach.",
+      "latex": "\\mathrm{s} - \\mathrm{s} = \\mathrm{s}"
+    }
   }
 }

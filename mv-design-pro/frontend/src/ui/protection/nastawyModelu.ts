@@ -82,8 +82,12 @@ export interface SlownikNastaw {
   readonly jednostki_progu: readonly PozycjaSlownika[];
 }
 
-/** Etykieta jednostki zakresu w zdaniu dla projektanta (kody z backendu, zbiór zamknięty). */
+/**
+ * Etykieta jednostki zakresu w zdaniu dla projektanta (kody z backendu, zbiór zamknięty).
+ * Krotność prądu znamionowego słowami, symbol prądu znamionowego segmentem wzoru `$…$`
+ * (pole pomocy renderuje go `TekstZWzorami` przez KaTeX) — nie zapis spłaszczony „×In".
+ */
 export const JEDNOSTKA_ZAKRESU_PL: Record<'KROTNOSC_IN' | 'A_WTORNY', string> = {
-  KROTNOSC_IN: '×In',
+  KROTNOSC_IN: 'krotności prądu znamionowego $I_{n}$',
   A_WTORNY: 'A (strona wtórna)',
 };

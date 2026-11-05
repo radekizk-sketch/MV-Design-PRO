@@ -299,11 +299,24 @@ POWOD_SPLASZCZONEGO = (
 )
 
 
+#: Znak krotnosci przed symbolem (`×In`, `${x}×Un`, `5·IΔn`): literal z takim znakiem jest
+#: zapisem dla czlowieka takze jako jeden token poza kontekstem tekstu UI — identyfikator kodu
+#: znaku dzialania nie zawiera (pomiar 2026-11-04: `JEDNOSTKA_ZAKRESU_PL.KROTNOSC_IN = '×In'`
+#: trafial do pomocy pola progu edytora nastaw, a `display_pl` nastaw `${x}×In`/`${x}×Un`
+#: do inspektora zabezpieczen — oba omijaly skan jako „klucz kodu").
+ZNAK_KROTNOSCI_RE = re.compile(r"[×·]")
+
+
 def _splaszczone(wartosc: str, *, pojedynczy_token_jest_kodem: bool) -> bool:
     """Czy proza (poza segmentami `$…$`) niesie symbol splaszczony. Literal z jednym tokenem
-    poza kontekstem tekstu UI (`"key": "Ib"`, kod funkcji `'I0>'` w mapie) jest kluczem kodu.
+    poza kontekstem tekstu UI (`"key": "Ib"`, kod funkcji `'I0>'` w mapie) jest kluczem kodu —
+    chyba ze niesie znak krotnosci (`×In`, `ZNAK_KROTNOSCI_RE`), wtedy jest zapisem dla czlowieka.
     """
-    if pojedynczy_token_jest_kodem and len(wartosc.split()) <= 1:
+    if (
+        pojedynczy_token_jest_kodem
+        and len(wartosc.split()) <= 1
+        and not ZNAK_KROTNOSCI_RE.search(wartosc)
+    ):
         return False
     proza = SEGMENT_WZORU_RE.sub(" ", wartosc)
     return not _jest_juz_latex(proza) and bool(WZORZEC_SPLASZCZONY.search(proza))

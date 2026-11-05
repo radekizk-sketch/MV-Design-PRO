@@ -32,7 +32,7 @@ describe('formatujWartosc', () => {
 
 describe('ParametrRow', () => {
   it('renderuje symbol, etykietę, definicję z normą i wartość mono', () => {
-    const { container } = render(<ParametrRow definicja={DEF_UK} wartosc={6} />);
+    const { container } = render(<ParametrRow klucz="uk_percent" definicja={DEF_UK} wartosc={6} />);
     const text = container.textContent ?? '';
     // Symbol branżowy renderuje KaTeX (`ui_math_guard`, karta UX-04/ZU), nie tekst ASCII.
     const symbol = container.querySelector('.mvd-katalog__param-symbol [data-testid="math-rendered"]');
@@ -44,7 +44,7 @@ describe('ParametrRow', () => {
   });
 
   it('oznacza wartość klasą mono (tabular-nums)', () => {
-    const { container } = render(<ParametrRow definicja={DEF_UK} wartosc={6} />);
+    const { container } = render(<ParametrRow klucz="uk_percent" definicja={DEF_UK} wartosc={6} />);
     expect(container.querySelector('.mvd-katalog__param-wartosc')).not.toBeNull();
   });
 });

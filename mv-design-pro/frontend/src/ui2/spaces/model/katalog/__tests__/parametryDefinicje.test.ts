@@ -15,7 +15,7 @@ describe('parametryDefinicje — słownik definicji parametrów', () => {
 
   it('każda definicja ma symbol, etykietę, normę i definicję (bez pustych pól)', () => {
     for (const [klucz, def] of Object.entries(DEFINICJE_PARAMETROW)) {
-      expect(def.symbol.trim().length, klucz).toBeGreaterThan(0);
+      expect(def.symbolLatex.trim().length, klucz).toBeGreaterThan(0);
       expect(def.etykieta.trim().length, klucz).toBeGreaterThan(0);
       expect(def.norma.trim().length, klucz).toBeGreaterThan(0);
       expect(def.definicja.trim().length, klucz).toBeGreaterThan(0);
@@ -53,17 +53,17 @@ describe('parametryDefinicje — słownik definicji parametrów', () => {
     }
   });
 
-  it('uk_percent ma symbol „uk", jednostkę „%" i normę IEC 60076-1', () => {
+  it('uk_percent ma symbol $u_{k}$, jednostkę „%" i normę IEC 60076-1', () => {
     const def = definicjaParametru('uk_percent');
     expect(def).not.toBeNull();
-    expect(def?.symbol).toBe('uk');
+    expect(def?.symbolLatex).toBe('u_k');
     expect(def?.jednostka).toBe('%');
     expect(def?.norma).toContain('IEC 60076-1');
   });
 
-  it('rated_power_mva ma symbol „Sn" i jednostkę „MVA"', () => {
+  it('rated_power_mva ma symbol $S_{n}$ i jednostkę „MVA"', () => {
     const def = definicjaParametru('rated_power_mva');
-    expect(def?.symbol).toBe('Sn');
+    expect(def?.symbolLatex).toBe('S_n');
     expect(def?.jednostka).toBe('MVA');
   });
 

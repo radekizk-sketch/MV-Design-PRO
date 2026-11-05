@@ -329,3 +329,126 @@ def test_pin_zywego_drzewa_pusty() -> None:
     `backend/src` ma zero trafień, nowy tekst z symbolem albo wzór bez słów czerwieni."""
     assert guard.wczytaj_pin() == {}
     assert guard.zmierz() == {}
+
+
+# --- Trzecia część klasy: algebra jednostek bez symbolu wielkości (karta ZU, punkt 4) -------
+
+
+@pytest.mark.parametrize(
+    ("tekst", "trafienie"),
+    [
+        # Iloczyn cech: {iloraz, różnica, iloczyn, pierwiastek z sumy, suma, nierówność,
+        # przejście} × {jednostka z przedrostkiem, jednostka względna, procent, bezwymiarowa}.
+        ("kV / Ω = kA", True),
+        ("% − % = pp; kW · Hz / Hz = kW.", True),
+        ("Mvar − Mvar = Mvar; rezerwa nieujemna.", True),
+        ("√(A²+A²)=A; (A−A)/A — bezwymiarowe.", True),
+        ("A²·Ω·s = W·s = J; porównanie J z J.", True),
+        ("p.u. / p.u. = 1.", True),
+        ("kV / kV = p.u.", True),
+        ("A ≤ A", True),
+        ("p.u. ≤ p.u. ≤ p.u. → —", True),
+        ("suma Mvar = Mvar; (+) generacja.", True),
+        ("Ω/m · 1000 = Ω/km", True),
+        # Nie algebra jednostek: porównanie liczby z jednostką, przypisanie jednoliterowe,
+        # zakres procentowy, funkcja `min(`, zapis LaTeX, zdanie słowami.
+        ("Measurement.sigma musi być > 0 (W = 1/sigma^2).", False),
+        ("napięcie > 0 V", False),
+        ("0 < i0 % < 10 transformatora", False),
+        ("prąd {} A > min(a, b)", False),
+        (r"\mathrm{kV}/\Omega = \mathrm{kA}", False),
+        ("Zgodność jednostek: napięcie przez impedancję daje prąd w kiloamperach.", False),
+        (r"Zgodność jednostek: $\mathrm{Mvar} - \mathrm{Mvar} = \mathrm{Mvar}$.", False),
+    ],
+)
+def test_wykrycie_algebry_jednostek(tekst: str, trafienie: bool) -> None:
+    assert guard.jest_algebra_jednostek(tekst) is trafienie
+    assert guard.jest_trafieniem(tekst) is trafienie
+
+
+def test_algebra_jednostek_w_docstringu_i_polu_latex_wolna(tmp_path: Path) -> None:
+    tresc = (
+        'def f():\n    """Weryfikacja: kV / Ω = kA."""\n'
+        '    return {"unit_derivation_latex": "kV / Ω = kA", "unit_check": "kV / Ω = kA"}\n'
+    )
+    assert _liczba(tmp_path, "application/x.py", tresc) == 1  # tylko `unit_check`
+
+
+_REJESTR_JEDNOSTEK_V126 = (
+    'REJESTR = {}\nJEDNOSTKI_KROKOW_V126 = {\n    "V/Ω=A.": J("Zgodność jednostek: '
+    'napięcie przez rezystancję daje prąd.", r"\\\\mathrm{V}/\\\\Omega = \\\\mathrm{A}"),\n}\n'
+)
+
+
+def test_slad_v126_weryfikacja_jednostek_wolna_tylko_z_wpisem_rejestru(tmp_path: Path) -> None:
+    """Predykat parami: argument `unit_check` rdzenia V12.6 wolny ⇔ tekst jest kluczem
+    `JEDNOSTKI_KROKOW_V126`; tekst spoza rejestru liczony; klucz słownika rejestru wolny."""
+    rdzen = (
+        "def f(trace):\n"
+        '    trace.add("a", "w", {}, "p", {}, "V/Ω=A.", result_pl="x")\n'
+        '    trace.add("b", "w", {}, "p", {}, "A²·s = A²·s.", result_pl="x")\n'
+    )
+    src = _drzewo(
+        tmp_path, {guard.PLIK_REJESTRU_V126: _REJESTR_JEDNOSTEK_V126, guard.PLIK_V126: rdzen}
+    )
+    zmierzone = guard.zmierz(src)
+    assert [t for _, t in zmierzone[guard.PLIK_V126]] == ["A²·s = A²·s."]
+    assert guard.PLIK_REJESTRU_V126 not in zmierzone
+    # Ten sam rdzeń bez rejestru jednostek: oba teksty liczone.
+    src_bez = _drzewo(tmp_path / "bez", {guard.PLIK_V126: rdzen})
+    assert len(guard.zmierz(src_bez)[guard.PLIK_V126]) == 2
+
+
+def test_slad_ncrfg_weryfikacja_jednostek_wolna_tylko_z_wpisem_rejestru(tmp_path: Path) -> None:
+    rejestr = (
+        '_ZAPISY = {}\n_JEDNOSTKI = {\n    "s − s = s.": J("Zgodność jednostek: czas.", "x"),\n}\n'
+    )
+    rdzen = (
+        "def f(trace):\n"
+        '    trace.add("id", "nazwa", "wzór", {}, "p", {}, "s − s = s.")\n'
+        '    trace.add("id", "nazwa", "wzór", {}, "p", {}, "% − % = pp.")\n'
+    )
+    src = _drzewo(tmp_path, {guard.PLIK_WZOROW_NCRFG: rejestr, guard.PLIK_NCRFG: rdzen})
+    zmierzone = guard.zmierz(src)
+    assert [t for _, t in zmierzone[guard.PLIK_NCRFG]] == ["% − % = pp."]
+    assert guard.PLIK_WZOROW_NCRFG not in zmierzone
+
+
+def test_main_wstrzyknieta_algebra_jednostek_czerwieni(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Iniekcja trzeciej części klasy: weryfikacja jednostek zapisana algebrą w polu prozy
+    czerwieni przy pustym pinie; naprawa (zdanie słowami + LaTeX w `*_latex`) wraca do zieleni."""
+    src = _drzewo(tmp_path, {"modul/a.py": 'K = {"unit_check_pl": "Mvar − Mvar = Mvar."}\n'})
+    pin = tmp_path / "pin.json"
+    pin.write_text(json.dumps({}), encoding="utf-8")
+    monkeypatch.setattr(guard, "SRC", src)
+    monkeypatch.setattr(guard, "PIN_PLIK", pin)
+    assert guard.main([]) == 1
+    (src / "modul/a.py").write_text(
+        'K = {"unit_check_pl": "Zgodność jednostek: różnica mocy biernych.", '
+        '"unit_check_latex": "\\\\mathrm{Mvar} - \\\\mathrm{Mvar} = \\\\mathrm{Mvar}"}\n',
+        encoding="utf-8",
+    )
+    assert guard.main([]) == 0
+
+
+def test_rejestry_jednostek_zywego_drzewa_niepuste() -> None:
+    """Reguły 6 i 7 czytają klucze rejestrów żywego drzewa (pusty zbiór = rejestr przeniesiony
+    albo przemianowany i każdy tekst rdzenia liczony — czerwień zamiast cichego zwolnienia)."""
+    assert (
+        len(
+            guard.klucze_slownika(
+                guard.SRC / guard.REJESTR_JEDNOSTEK_V126[0], guard.REJESTR_JEDNOSTEK_V126[1]
+            )
+        )
+        == 5
+    )
+    assert (
+        len(
+            guard.klucze_slownika(
+                guard.SRC / guard.REJESTR_JEDNOSTEK_NCRFG[0], guard.REJESTR_JEDNOSTEK_NCRFG[1]
+            )
+        )
+        == 10
+    )

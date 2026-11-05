@@ -59,21 +59,24 @@ class UnitCheckView:
     Widok weryfikacji jednostek.
 
     Attributes:
-        passed: Czy weryfikacja przeszla
-        derivation: Sciezka derywacji (np. "kV / Ohm = kA")
+        passed: Czy jednostka wyprowadzona równa się jednostce wyniku
+        derivation_latex: Wyprowadzenie jednostek w zapisie LaTeX (blok wzoru)
+        opis_pl: Weryfikacja słowami (`UnitCheckResult.opis_pl`)
         expected_unit: Oczekiwana jednostka
         computed_unit: Obliczona jednostka
     """
 
     passed: bool
-    derivation: str
+    derivation_latex: str
+    opis_pl: str
     expected_unit: str
     computed_unit: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
-            "derivation": self.derivation,
+            "derivation_latex": self.derivation_latex,
+            "opis_pl": self.opis_pl,
             "expected_unit": self.expected_unit,
             "computed_unit": self.computed_unit,
         }

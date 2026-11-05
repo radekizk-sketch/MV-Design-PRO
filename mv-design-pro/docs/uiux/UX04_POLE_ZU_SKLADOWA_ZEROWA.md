@@ -1695,3 +1695,30 @@ nie liczba metodyki) i dobór przekładnika (asercje prozy słowami i pól `*_la
 49 passed. `guardy_z_ci.py`: 108/108 strażników, lint i type-check zielone; samotesty 4801
 passed, 1 failed — pin pól kontraktów `solver_input_substitute_guard` 4503 → 4507 z pomiarem
 (`git archive cd4ea97cb`: 4503; +4 pola LaTeX, −0).
+
+**Punkt 4, następca: algebra jednostek i zapis krotności (2026-11-04).** Dwie sąsiednie klasy
+zmierzone wyżej zamknięte. (1) Algebra jednostek w prozie (`kV / Ω = kA`, `Mvar − Mvar = Mvar`,
+`s − s = s.`): strażnik `backend_proza_symboli_guard.py` dostał trzecią część klasy
+(`jest_algebra_jednostek` — człon z jednostką, działanie, relacja, człon z jednostką albo „1”;
+zapis LaTeX i adresy pominięte), rejestry wyjątków parami z rdzeniami B-01 (`JEDNOSTKI_KROKOW_V126`
+w `application/analyses/v126_wzory.py`, `_JEDNOSTKI` w `application/ncrfg_compliance/wzory_sladu.py`
+— tekst rdzenia jest kluczem, wpis daje zdanie słowami i wzór; tekst spoza rejestru czerwieni),
+pin `{}`. Pomiar na `c20ea5104`: 191 tekstów (rejestr równań dowodu 80, weryfikator jednostek 53,
+pakiet obwodu nN 13, linia napowietrzna 11, silnik NC RfG 7, generator dowodów 6, adekwatność Q 5,
+V12.6 5, P16 5, P14 4, pakiet nastaw 2); na drzewie karty 0. Zapis: pola `derivation_latex`/
+`unit_derivation_latex` kroku dowodu (`application/proof_engine/types.py`, zdanie w `opis_pl`),
+`unit_check_latex` kroków V12.6 i adekwatności mocy biernej, `jednostki_sladu` katalogu NC RfG
+(`{opis_pl, latex}` po tekście silnika), jednostka wartości w eksporcie LaTeX
+(`proof_engine/zapis_jednostek.py`: `\Omega`, `\mathrm{kA}`, `^{2}` — wcześniej `\text{Ω}` łamał
+`pdflatex`). Pola prozy kroków śladu bez zapisu LaTeX (kontrakt `slad_proza_bez_latex_guard`).
+Złote pliki asymetrii zwarć (`tests/golden/sc_asymmetrical/{1f_z,2f,2f_z}`) przeliczone: 0 zmian
+liczb i typów, po 4 zmiany tekstu `substitution_latex` (`\text{Ω}` → `\Omega`) i nazwy pól
+wyprowadzenia. (2) Zapis krotności `{x}×In` w UI: `ui_math_guard.py` liczy znak `×`/`·` także
+w pojedynczym tokenie kodu; pomiar na `c20ea5104` 5 miejsc (nie ok. 138 — reszta to przycisk
+zamknięcia `×` i komentarze): `nastawyModelu.ts` (jednostka zakresu), `settings-model.ts` ×2
+(`display_pl` krotności prądu i napięcia), `parametryDefinicje.ts` ×2 (nieczytany atrybut `symbol`
+usunięty z 54 definicji); na drzewie 0, pin 0, lista wyjątków pusta. Iniekcje: samotest strażnika
+prozy 15 czerwonych, samotest `ui_math_guard` 5 czerwonych, adekwatność Q 2, ślad V12.6 (vitest) 1,
+ślad NC RfG (vitest) 1, ślad pulpitu OZE (vitest) 2. Nowa scena harnessu: adekwatność mocy biernej
+pulpitu OZE (`pulpit_oze_scena_adekwatnosc_q.json`, `build_reactive_adequacy_view` na biegu PF
+modelu sceny `macierz`) — ekran bez zrzutu do tej pory.

@@ -572,7 +572,7 @@
               "substitution_latex": "f = 1.0\\ \\mathrm{Hz},\\ |L| = 1.1426,\\ \\angle L = -114.738^\\circ",
               "substitution_pl": "częstotliwość 1.0 Hz, moduł wzmocnienia pętli 1.1426, kąt wzmocnienia pętli -114.738°",
               "symbol": "|L+1|_min",
-              "unit_check_pl": "bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1."
+              "unit_check_pl": "odległość jest bezwymiarowa (płaszczyzna wzmocnienia pętli); odległość malejąca do zera oznacza zbliżanie się przebiegu do punktu −1."
             },
             {
               "formula_latex": "N \\approx \\#\\{\\,\\mathrm{Im}\\,L = 0 \\wedge \\mathrm{Re}\\,L < -1\\,\\}",
@@ -581,7 +581,7 @@
               "substitution_latex": "\\mathrm{Im}\\,L = 0 \\wedge \\mathrm{Re}\\,L < -1",
               "substitution_pl": "zliczenie przejść przebiegu przez oś rzeczywistą na lewo od punktu −1 (skan jednostronny)",
               "symbol": "N(−1)",
-              "unit_check_pl": "liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność."
+              "unit_check_pl": "liczba okrążeń jest liczbą całkowitą; co najmniej jedno okrążenie punktu −1 oznacza niestabilność."
             }
           ],
           "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
@@ -7226,7 +7226,9 @@
             "result_pl": "Dławik gaszący dostrojony do rezonansu: 9,91717192 H, 3115,5714 Ω, prąd znamionowy 2,7797 A",
             "substitution": "L=1/(3·314.1593²·3.40558e-07); X_L=1/(3·314.1593·3.40558e-07)",
             "substitution_latex": "L = \\dfrac{1}{3\\cdot 314,1593^2 \\cdot 0,000000341\\ \\mathrm{F}}\\text{,}\\quad X_L = \\dfrac{1}{3\\cdot 314,1593\\cdot 0,000000341\\ \\mathrm{F}}\\text{,}\\quad I_L^{(\\mathrm{rezonans})} = I_C = 2,7797\\ \\mathrm{A}",
-            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
+            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
+            "unit_check_latex": "\\dfrac{1}{(\\mathrm{rad}/\\mathrm{s})^{2} \\cdot \\mathrm{F}} = \\mathrm{H},\\quad \\dfrac{1}{(\\mathrm{rad}/\\mathrm{s}) \\cdot \\mathrm{F}} = \\Omega,\\quad I_{L}\\,[\\mathrm{A}] = I_{C}\\,[\\mathrm{A}]",
+            "unit_check_pl": "Zgodność jednostek: odwrotność iloczynu kwadratu pulsacji i pojemności daje indukcyjność w henrach, odwrotność iloczynu pulsacji i pojemności daje reaktancję w omach, a prąd dławika w amperach równa się prądowi pojemnościowemu sieci w amperach."
           },
           {
             "data": {
@@ -7258,7 +7260,9 @@
             "result_pl": "Prąd resztkowy dławika modelu: 206,5682 A (rozstrojenie -7430,84 %)",
             "substitution": "I_res=√(2.5303²+(2.7797−209.3323)²); v=(2.7797−209.3323)/2.7797",
             "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{2,5303^2 + (2,7797 - 209,3323)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 209,3323}{2,7797}",
-            "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe."
+            "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
+            "unit_check_latex": "\\sqrt{\\mathrm{A}^{2} + \\mathrm{A}^{2}} = \\mathrm{A},\\quad (\\mathrm{A} - \\mathrm{A})/\\mathrm{A} = 1",
+            "unit_check_pl": "Zgodność jednostek: pierwiastek z sumy kwadratów prądów daje prąd w amperach, a odstrojenie (różnica prądów odniesiona do prądu) jest wielkością bezwymiarową."
           }
         ],
         "trace_step_count": 4
@@ -7395,7 +7399,9 @@
             "step": 3,
             "substitution": "L=1/(3·314.1593²·3.40558e-07); X_L=1/(3·314.1593·3.40558e-07)",
             "substitution_latex": "L = \\dfrac{1}{3\\cdot 314,1593^2 \\cdot 0,000000341\\ \\mathrm{F}}\\text{,}\\quad X_L = \\dfrac{1}{3\\cdot 314,1593\\cdot 0,000000341\\ \\mathrm{F}}\\text{,}\\quad I_L^{(\\mathrm{rezonans})} = I_C = 2,7797\\ \\mathrm{A}",
-            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A]."
+            "unit_check": "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
+            "unit_check_latex": "\\dfrac{1}{(\\mathrm{rad}/\\mathrm{s})^{2} \\cdot \\mathrm{F}} = \\mathrm{H},\\quad \\dfrac{1}{(\\mathrm{rad}/\\mathrm{s}) \\cdot \\mathrm{F}} = \\Omega,\\quad I_{L}\\,[\\mathrm{A}] = I_{C}\\,[\\mathrm{A}]",
+            "unit_check_pl": "Zgodność jednostek: odwrotność iloczynu kwadratu pulsacji i pojemności daje indukcyjność w henrach, odwrotność iloczynu pulsacji i pojemności daje reaktancję w omach, a prąd dławika w amperach równa się prądowi pojemnościowemu sieci w amperach."
           },
           {
             "data": {
@@ -7429,7 +7435,9 @@
             "step": 4,
             "substitution": "I_res=√(2.5303²+(2.7797−209.3323)²); v=(2.7797−209.3323)/2.7797",
             "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{2,5303^2 + (2,7797 - 209,3323)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 209,3323}{2,7797}",
-            "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe."
+            "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
+            "unit_check_latex": "\\sqrt{\\mathrm{A}^{2} + \\mathrm{A}^{2}} = \\mathrm{A},\\quad (\\mathrm{A} - \\mathrm{A})/\\mathrm{A} = 1",
+            "unit_check_pl": "Zgodność jednostek: pierwiastek z sumy kwadratów prądów daje prąd w amperach, a odstrojenie (różnica prądów odniesiona do prądu) jest wielkością bezwymiarową."
           }
         ],
         "trace_version": "AcademicWhiteBoxTraceV1"

@@ -122,6 +122,7 @@ from application.analyses.grid_strength import build_grid_strength_view  # noqa:
 from application.analyses.migotanie import build_migotanie_view  # noqa: E402
 from application.analyses.ochrona_lom import build_ochrona_lom_view  # noqa: E402
 from application.analyses.pq_coverage import build_pq_coverage_view  # noqa: E402
+from application.analyses.reactive_adequacy import build_reactive_adequacy_view  # noqa: E402
 from application.analyses.state_estimation.service import (  # noqa: E402
     build_state_estimation_requirements,
     build_state_estimation_view,
@@ -1029,6 +1030,17 @@ def wniosek_scena_macierz_przebiegi() -> list[dict[str, Any]]:
     """Wpisy rejestru przebiegów sceny `wniosek-braki` (`to_execution_dict`)."""
     with _biegi_sceny_wniosku(enm_sceny_macierz()) as (bieg_pf, bieg_sc):
         return [bieg_pf.to_execution_dict(), bieg_sc.to_execution_dict()]
+
+
+def pulpit_oze_scena_adekwatnosc_q() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/reactive-adequacy?run_id=` sceny `pulpit-oze` —
+    `build_reactive_adequacy_view` (TA SAMA funkcja co końcówka) na przebiegu rozpływu
+    modelu sceny `macierz` (ten sam bieg PF co wniosek sceny `wniosek-braki`). Ślad kroków
+    niesie weryfikację jednostek słowami z algebrą jednostek w segmencie wzoru — scena
+    pokazuje go projektantowi tak, jak policzył backend.
+    """
+    with _biegi_sceny_wniosku(enm_sceny_macierz()) as (bieg_pf, _bieg_sc):
+        return build_reactive_adequacy_view(bieg_pf)
 
 
 def studium_dokument_scena_macierz() -> dict[str, Any]:
@@ -5360,6 +5372,7 @@ FIXTURY: dict[str, Any] = {
     "wniosek_scena_macierz_zadanie": wniosek_scena_macierz_zadanie,
     "wniosek_scena_macierz_braki": wniosek_scena_macierz_braki,
     "wniosek_scena_macierz_przebiegi": wniosek_scena_macierz_przebiegi,
+    "pulpit_oze_scena_adekwatnosc_q": pulpit_oze_scena_adekwatnosc_q,
     "studium_dokument_scena_macierz": studium_dokument_scena_macierz,
     "oze_scena_migawka": oze_scena_migawka,
     "wiazania_scena_przekladniki": wiazania_scena_przekladniki,

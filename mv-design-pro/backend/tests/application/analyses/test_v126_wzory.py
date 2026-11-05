@@ -22,14 +22,20 @@ zmierzonego zbioru i musi mieć wpis w rejestrze na równi z pozostałymi.
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 from typing import Any
 
+import pytest
 from api.v126_academic import wejscie_solvera_v126
 from application.analyses.v126_gotowosc import uzupelnij_parametry_z_modelu
 from application.analyses.v126_katalog import KATALOG_ANALIZ_V126
-from application.analyses.v126_wzory import REJESTR_WZOROW_V126, wzbogac_kroki_latex
+from application.analyses.v126_wzory import (
+    JEDNOSTKI_KROKOW_V126,
+    REJESTR_WZOROW_V126,
+    wzbogac_kroki_latex,
+)
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import V126AnalysisType
 
@@ -268,3 +274,65 @@ def test_slowniki_detekcji_doziemnej_obejmuja_kazdy_kod_tabeli_solvera() -> None
     assert {f for s in SKLADNIKI_METODY_DETEKCJI.values() for f in s} <= set(
         METODY_DETEKCJI_KOMPLET
     )
+
+
+# --- Weryfikacja jednostek (`unit_check`): algebra jednostek → zdanie + KaTeX ----------------
+
+
+def _teksty_unit_check_solvera() -> set[str]:
+    """Szósty argument pozycyjny każdego `trace.add(` solvera (tekst `unit_check`)."""
+    drzewo = ast.parse(_ZRODLO_SOLVERA.read_text(encoding="utf-8"))
+    teksty: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if (
+            isinstance(wezel, ast.Call)
+            and isinstance(wezel.func, ast.Attribute)
+            and wezel.func.attr == "add"
+            and "trace" in ast.unparse(wezel.func.value)
+        ):
+            argument = wezel.args[5]
+            assert isinstance(argument, ast.Constant) and isinstance(
+                argument.value, str
+            ), ast.unparse(argument)
+            teksty.add(argument.value)
+    return teksty
+
+
+def test_kazda_algebra_jednostek_solvera_ma_wpis_i_rejestr_nie_ma_wpisow_martwych() -> None:
+    """Predykat parami: tekst `unit_check` z algebrą jednostek (znak `=`) ⇔ wpis rejestru."""
+    teksty = _teksty_unit_check_solvera()
+    algebra = {tekst for tekst in teksty if "=" in tekst}
+    assert len(algebra) == 5, sorted(algebra)
+    assert sorted(algebra - set(JEDNOSTKI_KROKOW_V126)) == []
+    assert sorted(set(JEDNOSTKI_KROKOW_V126) - algebra) == []
+
+
+@pytest.mark.parametrize("tekst", sorted(JEDNOSTKI_KROKOW_V126))
+def test_wpis_jednostek_ma_zdanie_slowami_i_latex_ascii(tekst: str) -> None:
+    wpis = JEDNOSTKI_KROKOW_V126[tekst]
+    assert wpis.opis_pl.startswith("Zgodność jednostek: ")
+    for znak in ("=", "/", "²", "√", "Ω", "·", "⇒"):
+        assert znak not in wpis.opis_pl, (znak, wpis.opis_pl)
+    assert wpis.latex.isascii(), wpis.latex
+    assert wpis.latex.count("{") == wpis.latex.count("}")
+
+
+def test_kroki_sceny_z_algebra_jednostek_dostaja_zdanie_i_latex_w_kopii() -> None:
+    """Iloczyn cech: {krok z algebrą jednostek, krok ze zdaniem} × {wszystkie rodzaje
+    prezentowane na scenie akademickiej}; kopia, nie mutacja kroku solvera."""
+    z_algebra = 0
+    ze_zdaniem = 0
+    for rodzaj in sorted(_RODZAJE_PREZENTOWANE):
+        kroki = _uruchom(rodzaj)
+        for oryginal, krok in zip(kroki, wzbogac_kroki_latex(kroki), strict=True):
+            assert "unit_check_pl" not in oryginal
+            wpis = JEDNOSTKI_KROKOW_V126.get(krok["unit_check"])
+            if wpis is None:
+                ze_zdaniem += 1
+                assert "unit_check_pl" not in krok and "unit_check_latex" not in krok
+                assert "=" not in krok["unit_check"], krok["unit_check"]
+            else:
+                z_algebra += 1
+                assert krok["unit_check_pl"] == wpis.opis_pl
+                assert krok["unit_check_latex"] == wpis.latex
+    assert z_algebra > 0 and ze_zdaniem > 0, (z_algebra, ze_zdaniem)

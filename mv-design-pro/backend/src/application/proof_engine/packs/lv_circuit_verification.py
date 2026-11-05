@@ -300,9 +300,32 @@ def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
     return SymbolDefinition(symbol=symbol, unit=unit, description_pl=desc, mapping_key=key)
 
 
-def _uc(expected: str, computed: str, derivation: str = "", passed: bool = True) -> UnitCheckResult:
+def _tekst_latex(tekst: str) -> str:
+    """Zdanie do polecenia `\\text{…}` wzoru: znaki specjalne LaTeX-a zapisane ucieczką
+    (`NIE_DOTYCZY` w `\\text{}` przerywał kompilację, `{`/`}` zamykały polecenie)."""
+    zamiany = {
+        "\\": r"\textbackslash{}",
+        "{": r"\{",
+        "}": r"\}",
+        "_": r"\_",
+        "%": r"\%",
+        "#": r"\#",
+        "&": r"\&",
+        "$": r"\$",
+        "^": r"\textasciicircum{}",
+        "~": r"\textasciitilde{}",
+    }
+    return "".join(zamiany.get(znak, znak) for znak in tekst)
+
+
+def _uc(
+    expected: str, computed: str, derivation_latex: str = "", passed: bool = True
+) -> UnitCheckResult:
     return UnitCheckResult(
-        passed=passed, expected_unit=expected, computed_unit=computed, derivation=derivation
+        passed=passed,
+        expected_unit=expected,
+        computed_unit=computed,
+        derivation_latex=derivation_latex,
     )
 
 
@@ -364,14 +387,14 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     # --- zdanie kombinacji ---
     if urzadzenie.kind != KIND_FUSE_SWITCH:
         zdanie_kombinacja = (
-            f"NIE_DOTYCZY — urządzenie {urzadzenie.kind} nie jest kombinacją "
+            f"Nie dotyczy — urządzenie {urzadzenie.kind} nie jest kombinacją "
             "rozłącznik+wkładka, nie ma prądu warunkowego kombinacji do oceny."
         )
         kombinacja_status = STATUS_NIE_DOTYCZY
         kombinacja_wartosc: float | None = None
     elif urzadzenie.conditional_sc_current_ka is None:
         zdanie_kombinacja = (
-            "NIEROZSTRZYGALNE — obwód bez wkładki zainstalowanej (albo katalog nie "
+            "Nierozstrzygalne — obwód bez wkładki zainstalowanej (albo katalog nie "
             "niesie prądu warunkowego kombinacji conditional_sc_current_ka) — brak "
             "podstawy do oceny zdolności wyłączania kombinacji (zero fabrykacji)."
         )
@@ -379,7 +402,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         kombinacja_wartosc = None
     elif ik_max_ka is None:
         zdanie_kombinacja = (
-            "NIEROZSTRZYGALNE — prąd warunkowy kombinacji "
+            "Nierozstrzygalne — prąd warunkowy kombinacji "
             f"{urzadzenie.conditional_sc_current_ka:g} kA jest znany, ale brak największego "
             "początkowego prądu zwarciowego "
             "w punkcie zabudowy (bieg zwarciowy nie dostarczony)."
@@ -401,7 +424,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     # --- zdanie gołego aparatu ---
     if urzadzenie.kind == KIND_FUSE_SWITCH:
         zdanie_goly = (
-            "NIE_DOTYCZY — rozłącznik bezpiecznikowy sam w sobie NIE MA własnej "
+            "Nie dotyczy — rozłącznik bezpiecznikowy sam w sobie NIE MA własnej "
             "zdolności wyłączania zwarć (zapadka strukturalna katalogu, wzorzec "
             "UM-ICU-KATALOG); jedyna wielkość dla tego aparatu to prąd warunkowy "
             "KOMBINACJI powyżej."
@@ -410,7 +433,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         goly_wartosc: float | None = None
     elif urzadzenie.wlasna_zdolnosc_ka is None:
         zdanie_goly = (
-            f"NIEROZSTRZYGALNE — katalog nie niesie własnej zdolności wyłączania "
+            f"Nierozstrzygalne — katalog nie niesie własnej zdolności wyłączania "
             f"({'Icn' if urzadzenie.kind == KIND_MCB else 'Icu'}) dla tego aparatu "
             f"{urzadzenie.kind} (zero fabrykacji)."
         )
@@ -419,7 +442,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     elif ik_max_ka is None:
         etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
         zdanie_goly = (
-            f"NIEROZSTRZYGALNE — własna zdolność {etykieta}="
+            f"Nierozstrzygalne — własna zdolność {etykieta}="
             f"{urzadzenie.wlasna_zdolnosc_ka:g} kA jest znana, ale brak największego "
             "początkowego prądu zwarciowego w "
             "punkcie zabudowy (bieg zwarciowy nie dostarczony)."
@@ -488,7 +511,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
                 f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
             ),
             result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-            unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+            unit_check=_uc("A", "A", r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}"),
             source_keys={
                 "trasa": ";".join(c.label for c in fl.components),
                 "network_type": fl.network_type.value,
@@ -540,10 +563,12 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
                     "t_wymagany_s",
                 ),
             ),
-            substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
+            substitution_latex=rf"$$\text{{{_tekst_latex(data.swz_przyczyna_pl)}}}$$",
             result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
             unit_check=_uc(
-                "A", "A", "A ≥ A (przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)"
+                "A",
+                "A",
+                r"\mathrm{A} \ge \mathrm{A} \quad \text{(przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)}",
             ),
             source_keys={
                 "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
@@ -609,7 +634,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_d", fl.ik_min_a, "A", "ik1_min_a"),
-                unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+                unit_check=_uc("A", "A", r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}"),
                 source_keys={
                     "trasa": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
@@ -662,15 +687,21 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
                 substitution_latex=(
-                    f"$$I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
-                    f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}}$$"
-                    "$$I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
+                    "$$\\begin{gathered}"
+                    f"I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
+                    f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}} \\\\ "
+                    "I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
                     f"\\frac{{{fl.c_min:g} \\cdot {u_ll_v:.2f}}}"
                     f"{{2 \\cdot {fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}"
-                    "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})$$"
+                    "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})"
+                    "\\end{gathered}$$"
                 ),
                 result=_pv("I_d", i_d1, "A", "i_d_pierwsze_zwarcie_a"),
-                unit_check=_uc("A", "A", "(1/s) · F · V = A; (—) · V / Ω = A"),
+                unit_check=_uc(
+                    "A",
+                    "A",
+                    r"\mathrm{s}^{-1} \cdot \mathrm{F} \cdot \mathrm{V} = \mathrm{A}, \quad 1 \cdot \mathrm{V}/\Omega = \mathrm{A}",
+                ),
                 source_keys={
                     "trasa_drugiego_zwarcia": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
@@ -750,12 +781,13 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                 ),
                 _pv("t_{wym}", _wartosc_lub_brak(data.swz_t_wymagany_s), "s", "t_wymagany_s"),
             ),
-            substitution_latex="".join(
-                "$$\\text{" + linia.replace("\\", "/").replace("{", "(").replace("}", ")") + "}$$"
-                for linia in linie
+            substitution_latex=(
+                "$$\\begin{gathered}"
+                + " \\\\ ".join(rf"\text{{{_tekst_latex(linia)}}}" for linia in linie)
+                + "\\end{gathered}$$"
             ),
             result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-            unit_check=_uc("V", "V", "Ω · A = V"),
+            unit_check=_uc("V", "V", r"\Omega \cdot \mathrm{A} = \mathrm{V}"),
             source_keys={
                 "kontrakt": str(data.swz_tt_it.get("kontrakt", "")),
                 "wymaganie_id": (
@@ -822,7 +854,11 @@ class LVCircuitVerificationProofPack:
                     r"\;\mathrm{MVA}$$"
                 ),
                 result=_pv("S", s_mva, "MVA", "s_mva"),
-                unit_check=_uc("MVA", "MVA", "MW² + Mvar² = MVA² → MVA"),
+                unit_check=_uc(
+                    "MVA",
+                    "MVA",
+                    r"\mathrm{MW}^{2} + \mathrm{Mvar}^{2} = \mathrm{MVA}^{2} \rightarrow \mathrm{MVA}",
+                ),
             )
         )
 
@@ -857,7 +893,11 @@ class LVCircuitVerificationProofPack:
                     f"= {ib_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_b", ib_a, "A", "ib_a"),
-                unit_check=_uc("A", "A", "MVA / kV = kA (MVA = kV·kA) → A"),
+                unit_check=_uc(
+                    "A",
+                    "A",
+                    r"\mathrm{MVA}/\mathrm{kV} = \mathrm{kA} \quad (\mathrm{MVA} = \mathrm{kV} \cdot \mathrm{kA}) \rightarrow \mathrm{A}",
+                ),
             )
         )
 
@@ -897,7 +937,7 @@ class LVCircuitVerificationProofPack:
                     f"{iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
-                unit_check=_uc("A", "A", "A · (—)·(—)·(—) = A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \cdot 1 \cdot 1 \cdot 1 = \mathrm{A}"),
                 source_keys={"srodowisko": w.srodowisko, "podstawa_iloczynu": w.zalozenie_pl()},
             )
         )
@@ -934,7 +974,7 @@ class LVCircuitVerificationProofPack:
                     f"\\Rightarrow \\text{{{'spełnia' if dobor_spelnia else 'nie spełnia'}}}$$"
                 ),
                 result=_pv("I_n", in_a, "A", "in_a"),
-                unit_check=_uc("A", "A", "A ≤ A ≤ A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \le \mathrm{A} \le \mathrm{A}"),
                 source_keys={"werdykt": "spełnia" if dobor_spelnia else "nie spełnia"},
             )
         )
@@ -999,7 +1039,7 @@ class LVCircuitVerificationProofPack:
                     "A",
                     "i2_a",
                 ),
-                unit_check=_uc("A", "A", "A ≤ A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \le \mathrm{A}"),
                 source_keys={
                     "werdykt": (
                         "nierozstrzygalne"
@@ -1068,8 +1108,10 @@ class LVCircuitVerificationProofPack:
                     ),
                 ),
                 substitution_latex=(
-                    f"$$\\text{{kombinacja: }} {zdolnosc.zdanie_kombinacja_pl}$$\n"
-                    f"$$\\text{{goły aparat: }} {zdolnosc.zdanie_goly_aparat_pl}$$"
+                    "$$\\begin{gathered}"
+                    rf"\text{{kombinacja: {_tekst_latex(zdolnosc.zdanie_kombinacja_pl)}}} \\ "
+                    rf"\text{{goły aparat: {_tekst_latex(zdolnosc.zdanie_goly_aparat_pl)}}}"
+                    "\\end{gathered}$$"
                 ),
                 result=_pv(
                     "\\text{werdykt}",
@@ -1077,7 +1119,7 @@ class LVCircuitVerificationProofPack:
                     "—",
                     "zdolnosc_wylaczania_werdykt",
                 ),
-                unit_check=_uc("kA", "kA", "kA ≥ kA"),
+                unit_check=_uc("kA", "kA", r"\mathrm{kA} \ge \mathrm{kA}"),
                 source_keys={
                     "zdanie_kombinacja_pl": zdolnosc.zdanie_kombinacja_pl,
                     "zdanie_goly_aparat_pl": zdolnosc.zdanie_goly_aparat_pl,
@@ -1126,10 +1168,14 @@ class LVCircuitVerificationProofPack:
                     f"$${i2t:.1f}\\;\\mathrm{{A^2s}} \\le {i2t_dop:.1f}\\;\\mathrm{{A^2s}} "
                     f"\\Rightarrow \\text{{{th.status}}}$$"
                     if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
-                    else rf"$$\text{{{th.status}}}$$"
+                    else rf"$$\text{{{_tekst_latex(th.status)}}}$$"
                 ),
                 result=_pv("\\text{status}", th.status, "—", "thermal_status"),
-                unit_check=_uc("A²s", "A²s", "A²·s ≤ (A·√s/mm²)² · mm² = A²·s"),
+                unit_check=_uc(
+                    "A²s",
+                    "A²s",
+                    r"\mathrm{A}^{2}\,\mathrm{s} \le \left(\mathrm{A}\,\sqrt{\mathrm{s}}/\mathrm{mm}^{2}\right)^{2} \cdot \left(\mathrm{mm}^{2}\right)^{2} = \mathrm{A}^{2}\,\mathrm{s}",
+                ),
                 source_keys={
                     "decision_reason_pl": th.decision_reason_pl or "",
                     "readiness_codes": ",".join(th.readiness_codes),
@@ -1174,7 +1220,7 @@ class LVCircuitVerificationProofPack:
                     f"= {u_target_kv:.4f}\\;\\mathrm{{kV}}$$"
                 ),
                 result=_pv("U", u_target_kv, "kV", "u_kv"),
-                unit_check=_uc("kV", "kV", "kV − kV = kV"),
+                unit_check=_uc("kV", "kV", r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}"),
                 source_keys={
                     "delta_u_total_percent": (
                         f"{data.vdrop_delta_u_total_percent:.4f}"

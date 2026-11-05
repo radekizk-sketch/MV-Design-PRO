@@ -50,11 +50,11 @@ export type TypWartosci = 'liczba' | 'tekst';
  * norma źródłowa. Klucz w słowniku = nazwa pola API (np. `uk_percent`).
  */
 export interface DefinicjaParametru {
-  /** Symbol branżowy, np. „uk", „Sn", „In" (nomenklatura dozwolona). */
-  symbol: string;
   /**
-   * Ten sam symbol jako LaTeX (`u_k`, `I_{\Delta n}`) — ekran renderuje go `MathInline`
-   * (`ui_math_guard`, karta UX-04/ZU); `symbol` zostaje identyfikatorem (`data-pole`).
+   * Symbol branżowy jako LaTeX (`u_k`, `I_{\Delta n}`) — JEDYNY zapis symbolu; ekran renderuje
+   * go `MathInline` (`ui_math_guard`, karta UX-04/ZU). Dawny drugi zapis spłaszczony (`symbol`:
+   * „uk", „ta(5·IΔn)") był wyłącznie atrybutem `data-pole` bez konsumenta — skasowany;
+   * identyfikatorem wiersza jest klucz pola API.
    */
   symbolLatex: string;
   /** Etykieta PL parametru (bez snake_case). */

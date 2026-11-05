@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from application.proof_engine.zapis_jednostek import jednostka_latex
+
 if TYPE_CHECKING:
     from application.proof_engine.types import ProofDocument, ProofStep, ProofValue
 
@@ -170,10 +172,13 @@ class LaTeXRenderer:
                 cls._math_block(f"{step.result.symbol} = {cls._format_value_latex(step.result)}"),
                 r"\end{center}",
                 "",
-                r"\textbf{Weryfikacja jednostek:}",
-                cls._math_block(step.unit_check.derivation),
+                rf"\textbf{{Weryfikacja jednostek:}} {cls._escape(step.unit_check.opis_pl)}",
             ]
         )
+        # Wyprowadzenie jednostek jest wzorem (blok matematyczny z pola LaTeX), proza obok —
+        # słowami; krok bez wielkości z jednostką nie dostaje pustego bloku `$$ $$`.
+        if step.unit_check.derivation_latex:
+            parts.append(cls._math_block(step.unit_check.derivation_latex))
 
         return "\n".join(parts)
 
@@ -213,7 +218,9 @@ class LaTeXRenderer:
                 val = doc.summary.key_results[key]
                 value_str = cls._format_numeric_value(val.value)
                 lines.append(r"  \item")
-                lines.append(cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}"))
+                lines.append(
+                    cls._math_block(f"{val.symbol} = {value_str}\\,{jednostka_latex(val.unit)}")
+                )
 
             lines.append(r"\end{itemize}")
         else:
@@ -225,7 +232,9 @@ class LaTeXRenderer:
                 val = doc.summary.key_results[key]
                 value_str = cls._format_numeric_value(val.value)
                 lines.append(r"  \item")
-                lines.append(cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}"))
+                lines.append(
+                    cls._math_block(f"{val.symbol} = {value_str}\\,{jednostka_latex(val.unit)}")
+                )
 
             lines.append(r"\end{itemize}")
 
@@ -423,7 +432,7 @@ class LaTeXRenderer:
 
         def _cell(value: float | str | None, unit: str) -> str:
             formatted = "—" if value is None else cls._format_numeric_value(value)
-            return rf"$$ {formatted}\,\text{{{unit}}} $$"
+            return rf"$$ {formatted}\,{jednostka_latex(unit)} $$"
 
         lines = [
             r"\section{Load Flow i spadki napięć}",
@@ -567,7 +576,7 @@ class LaTeXRenderer:
             lines.append(r"  \item")
             lines.append(
                 cls._math_block(
-                    f"{val.symbol} = {cls._format_numeric_value(val.value)}\\,\\text{{{val.unit}}}"
+                    f"{val.symbol} = {cls._format_numeric_value(val.value)}\\,{jednostka_latex(val.unit)}"
                 )
             )
 
@@ -617,8 +626,23 @@ class LaTeXRenderer:
 
     @staticmethod
     def _math_block(latex: str) -> str:
-        """Opakowuje LaTeX w blok $$...$$."""
-        return f"$$\n{latex}\n$$"
+        """Opakowuje LaTeX w blok $$...$$.
+
+        Pole LaTeX pakietu może już nieść ograniczniki (`$$…$$` albo `$…$` — ten sam kontrakt
+        co `MathRenderer` frontu, który je zdejmuje). Bez zdjęcia blok miał postać
+        `$$ $$…$$ $$`: dwa puste bloki, a wzór lądował w trybie TEKSTOWYM (indeks `_` przerywał
+        kompilację `pdflatex`).
+        """
+        tresc = latex.strip()
+        for ogranicznik in ("$$", "$"):
+            if (
+                len(tresc) > 2 * len(ogranicznik)
+                and tresc.startswith(ogranicznik)
+                and tresc.endswith(ogranicznik)
+            ):
+                tresc = tresc[len(ogranicznik) : -len(ogranicznik)].strip()
+                break
+        return f"$$\n{tresc}\n$$"
 
     @classmethod
     def _escape(cls, text: str) -> str:
@@ -645,11 +669,11 @@ class LaTeXRenderer:
             r = val.value.real
             i = val.value.imag
             sign = "+" if i >= 0 else "-"
-            return rf"{r:.4f} {sign} j{abs(i):.4f}\,\text{{{val.unit}}}"
+            return rf"{r:.4f} {sign} j{abs(i):.4f}\,{jednostka_latex(val.unit)}"
         elif isinstance(val.value, int | float):
-            return rf"{val.value:.4f}\,\text{{{val.unit}}}"
+            return rf"{val.value:.4f}\,{jednostka_latex(val.unit)}"
         else:
-            return rf"{val.value}\,\text{{{val.unit}}}"
+            return rf"{cls._format_numeric_value(val.value)}\,{jednostka_latex(val.unit)}"
 
     @classmethod
     def _format_numeric_value(cls, value: float | complex | str) -> str:
@@ -662,4 +686,6 @@ class LaTeXRenderer:
         elif isinstance(value, int | float):
             return f"{value:.4f}"
         else:
-            return str(value)
+            # Wartość tekstowa (stan oceny, zdanie) stoi we wzorze jako tekst — w trybie
+            # matematycznym litery polskie i `_` przerywały kompilację `pdflatex`.
+            return rf"\text{{{cls._escape(str(value))}}}"

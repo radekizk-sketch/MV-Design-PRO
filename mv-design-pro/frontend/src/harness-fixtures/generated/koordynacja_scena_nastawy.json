@@ -171,7 +171,7 @@
         }
       ],
       "validation_notes": [
-        "Brak dopuszczalnego zakresu nastaw I>>: I_min_sel = 10261 A > min(I_max_th, I_max_cz) = 6642 A"
+        "Brak dopuszczalnego zakresu nastaw stopnia I>>: najmniejsza nastawa selektywna 10261 A przekracza mniejszą z granic — cieplnej i czułościowej — równą 6642 A."
       ]
     },
     "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L",

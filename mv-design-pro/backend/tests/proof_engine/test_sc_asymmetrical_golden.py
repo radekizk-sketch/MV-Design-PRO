@@ -130,7 +130,7 @@ def test_mandatory_outputs_present_and_not_none(fault_type: str):
 
 def test_unit_rules_for_eq_sc1_008_012_are_active():
     for equation_id in ["EQ_SC1_008", "EQ_SC1_009", "EQ_SC1_010", "EQ_SC1_011", "EQ_SC1_012"]:
-        assert equation_id in UnitVerifier.DERIVATION_RULES
+        assert equation_id in UnitVerifier.JEDNOSTKA_WYNIKU
 
     good = UnitVerifier.verify_equation("EQ_SC1_010", {"κ": "—", "I_k''": "kA"}, "kA")
     bad = UnitVerifier.verify_equation("EQ_SC1_010", {"κ": "—", "I_k''": "kA"}, "Ω")

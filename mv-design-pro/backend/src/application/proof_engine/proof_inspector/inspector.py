@@ -308,7 +308,8 @@ class ProofInspector:
 
         unit_check_view = UnitCheckView(
             passed=step.unit_check.passed,
-            derivation=step.unit_check.derivation,
+            derivation_latex=step.unit_check.derivation_latex,
+            opis_pl=step.unit_check.opis_pl,
             expected_unit=step.unit_check.expected_unit,
             computed_unit=step.unit_check.computed_unit,
         )

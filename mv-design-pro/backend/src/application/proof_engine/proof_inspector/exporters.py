@@ -279,17 +279,21 @@ class InspectorExporter:
             result_label.bold = True
             result_para.add_run(f"{step.result.value} {step.result.unit}")
 
-            # Unit check — derywacja jednostek (ta sama treść co krok w LaTeX-u,
-            # `latex_renderer._render_step`), nie plakietka „OK/BŁĄD” (inwentarz
-            # werdyktów C44, plan AB §8 F2: flaga bywa zaszyta na `True`).
+            # Unit check — ta sama treść co krok w LaTeX-u (`latex_renderer._render_step`):
+            # weryfikacja słowami (`opis_pl`, co porównano i z jakim wynikiem), a wyprowadzenie
+            # jednostek jako wzór LaTeX w monospace, jak wzór i podstawienie kroku — nie
+            # plakietka „OK/BŁĄD” (inwentarz werdyktów C44, plan AB §8 F2).
             if step.unit_check:
                 uc_para = docx_obj.add_paragraph()
                 uc_label = uc_para.add_run("Weryfikacja jednostek: ")
                 uc_label.bold = True
-                uc_para.add_run(
-                    f"{step.unit_check.derivation} "
-                    f"(jednostka wyniku: {step.unit_check.expected_unit})"
-                )
+                uc_para.add_run(step.unit_check.opis_pl)
+                if step.unit_check.derivation_latex:
+                    uc_wzor = docx_obj.add_paragraph()
+                    uc_wzor_etykieta = uc_wzor.add_run("Wyprowadzenie jednostek: ")
+                    uc_wzor_etykieta.bold = True
+                    uc_wzor_run = uc_wzor.add_run(step.unit_check.derivation_latex)
+                    uc_wzor_run.font.name = "Consolas"
 
         # Summary
         docx_obj.add_paragraph()

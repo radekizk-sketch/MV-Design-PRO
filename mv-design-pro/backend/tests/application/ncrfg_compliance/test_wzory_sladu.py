@@ -16,7 +16,12 @@ from pathlib import Path
 
 import pytest
 from api.main import app
-from application.ncrfg_compliance.wzory_sladu import WZORY_SLADU_LATEX, wzor_sladu_latex
+from application.ncrfg_compliance.wzory_sladu import (
+    JEDNOSTKI_SLADU,
+    WZORY_SLADU_LATEX,
+    jednostki_sladu_dla_api,
+    wzor_sladu_latex,
+)
 from fastapi.testclient import TestClient
 
 RDZEN = (
@@ -40,7 +45,8 @@ def _warianty(wezel: ast.expr) -> list[str]:
     raise AssertionError(f"Wzór śladu nie jest wyrażeniem stałym: {ast.unparse(wezel)}")
 
 
-def _zapisy_wzorow_rdzenia() -> set[str]:
+def _argumenty_trace_add(indeks: int) -> set[str]:
+    """Wszystkie teksty argumentu pozycyjnego `indeks` każdego `trace.add(` rdzenia."""
     drzewo = ast.parse(RDZEN.read_text(encoding="utf-8"))
     zapisy: set[str] = set()
     for wezel in ast.walk(drzewo):
@@ -50,8 +56,12 @@ def _zapisy_wzorow_rdzenia() -> set[str]:
             and wezel.func.attr == "add"
             and "trace" in ast.unparse(wezel.func.value)
         ):
-            zapisy.update(_warianty(wezel.args[2]))
+            zapisy.update(_warianty(wezel.args[indeks]))
     return zapisy
+
+
+def _zapisy_wzorow_rdzenia() -> set[str]:
+    return _argumenty_trace_add(2)
 
 
 def test_kazdy_wzor_rdzenia_ma_latex_i_rejestr_nie_ma_wpisow_martwych() -> None:
@@ -79,3 +89,39 @@ def test_katalog_testow_wydaje_rejestr_wzorow() -> None:
     odpowiedz = TestClient(app).get("/api/ncrfg-tests/catalog")
     assert odpowiedz.status_code == 200
     assert odpowiedz.json()["wzory_sladu_latex"] == dict(WZORY_SLADU_LATEX)
+
+
+# --- Weryfikacja jednostek śladu (`NcRfgTraceStep.unit_check`, siódmy argument) ---------------
+
+#: Znaki algebry jednostek: tekst rdzenia z nimi jest równaniem jednostek, nie zdaniem.
+_ZNAKI_ALGEBRY = ("=", " / ", " · ", " − ")
+
+
+def test_kazda_weryfikacja_jednostek_rdzenia_ma_wpis_i_rejestr_nie_ma_wpisow_martwych() -> None:
+    teksty = _argumenty_trace_add(6)
+    assert len(teksty) >= 10
+    assert teksty - set(JEDNOSTKI_SLADU) == set()
+    assert set(JEDNOSTKI_SLADU) - teksty == set()
+
+
+@pytest.mark.parametrize("tekst", sorted(JEDNOSTKI_SLADU))
+def test_algebra_jednostek_ma_latex_a_zdanie_zostaje_zdaniem(tekst: str) -> None:
+    """Predykat parami: tekst z algebrą jednostek ⇔ wpis z LaTeX; zdanie ⇔ `latex is None`
+    i zdanie bez zmian. Opis słowami nigdy nie niesie algebry jednostek."""
+    wpis = JEDNOSTKI_SLADU[tekst]
+    jest_algebra = any(znak in tekst for znak in _ZNAKI_ALGEBRY)
+    assert (wpis.latex is not None) is jest_algebra, tekst
+    assert not any(znak in wpis.opis_pl for znak in _ZNAKI_ALGEBRY), wpis.opis_pl
+    if wpis.latex is None:
+        assert wpis.opis_pl == tekst
+    else:
+        assert wpis.opis_pl.startswith("Zgodność jednostek: ")
+        # LaTeX algebry: wyłącznie ASCII (symbole jednostek `\mathrm{}`, `\%`), nawiasy zrównoważone.
+        assert wpis.latex.isascii(), wpis.latex
+        assert wpis.latex.count("{") == wpis.latex.count("}")
+
+
+def test_katalog_testow_wydaje_rejestr_jednostek() -> None:
+    odpowiedz = TestClient(app).get("/api/ncrfg-tests/catalog")
+    assert odpowiedz.status_code == 200
+    assert odpowiedz.json()["jednostki_sladu"] == jednostki_sladu_dla_api()

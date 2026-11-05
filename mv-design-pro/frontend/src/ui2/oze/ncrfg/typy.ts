@@ -170,6 +170,18 @@ export interface KatalogNcRfg {
    * (`application/ncrfg_compliance/wzory_sladu.py`). Ślad renderuje wzór przez KaTeX.
    */
   readonly wzory_sladu_latex: Readonly<Record<string, string>>;
+  /**
+   * Tekst weryfikacji jednostek rdzenia (`KrokSladuNcRfg.unit_check`, dokładny tekst) → zdanie
+   * słowami i algebra jednostek w LaTeX (`null`, gdy tekst rdzenia jest zdaniem bez algebry);
+   * rejestr `application/ncrfg_compliance/wzory_sladu.py::JEDNOSTKI_SLADU`.
+   */
+  readonly jednostki_sladu: Readonly<Record<string, JednostkiKrokuSladu>>;
+}
+
+/** Weryfikacja jednostek kroku śladu: zdanie słowami + algebra jednostek (KaTeX). */
+export interface JednostkiKrokuSladu {
+  readonly opis_pl: string;
+  readonly latex: string | null;
 }
 
 // =============================================================================

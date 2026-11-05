@@ -16,10 +16,19 @@ tutaj zostawia krok bez LaTeX i czerwieni test kompletności
 (`tests/application/ncrfg_compliance/test_wzory_sladu.py`: zbiór zapisów wzorów
 wyprowadzony z AST rdzenia, z obiema gałęziami wyrażeń warunkowych, równa się zbiorowi
 kluczy tego rejestru — w obie strony).
+
+WERYFIKACJA JEDNOSTEK. Rdzeń pisze też `NcRfgTraceStep.unit_check`; część tych tekstów to
+algebra jednostek bez symbolu wielkości („% − % = pp; kW · Hz / Hz = kW."), której ekran nie
+może pokazać jako tekstu (kontrakt prezentacji: wzór przez KaTeX, proza słowami). Rejestr
+`JEDNOSTKI_SLADU` (tekst rdzenia → zdanie słowami + LaTeX algebry jednostek albo `None`, gdy
+tekst rdzenia jest już zdaniem bez algebry) wydaje katalog testów (pole
+`jednostki_sladu`); kompletność pilnuje ten sam test (AST siódmego argumentu `trace.add`,
+zbiory równe w obie strony).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final
 
@@ -89,3 +98,66 @@ def wzor_sladu_latex(zapis_rdzenia: str) -> str | None:
     """LaTeX wzoru kroku śladu albo ``None`` dla zapisu spoza rejestru (test kompletności
     pilnuje, że rdzeń nie stawia takiego zapisu)."""
     return WZORY_SLADU_LATEX.get(zapis_rdzenia)
+
+
+@dataclass(frozen=True)
+class JednostkiKroku:
+    """Weryfikacja jednostek kroku śladu: zdanie słowami i algebra jednostek w LaTeX."""
+
+    opis_pl: str
+    latex: str | None
+
+
+_JEDNOSTKI: dict[str, JednostkiKroku] = {
+    "% − % = pp; kW · Hz / Hz = kW.": JednostkiKroku(
+        "Zgodność jednostek: różnica dwóch wartości w procentach daje punkty procentowe, "
+        "a moc pomnożona przez iloraz częstotliwości pozostaje mocą w kilowatach.",
+        r"\% - \% = \mathrm{pp}, \quad \mathrm{kW} \cdot \mathrm{Hz}/\mathrm{Hz} = \mathrm{kW}",
+    ),
+    "%/min · 1 = %/min.": JednostkiKroku(
+        "Zgodność jednostek: szybkość zmiany mocy w procentach na minutę pomnożona przez "
+        "współczynnik bezwymiarowy pozostaje szybkością w procentach na minutę.",
+        r"\%/\mathrm{min} \cdot 1 = \%/\mathrm{min}",
+    ),
+    "1 / (1/min) = min.": JednostkiKroku(
+        "Zgodność jednostek: wielkość bezwymiarowa podzielona przez szybkość na minutę daje "
+        "czas w minutach.",
+        r"1/(1/\mathrm{min}) = \mathrm{min}",
+    ),
+    "s − s = s.": JednostkiKroku(
+        "Zgodność jednostek: różnica dwóch czasów w sekundach jest czasem w sekundach.",
+        r"\mathrm{s} - \mathrm{s} = \mathrm{s}",
+    ),
+    "p.u. / p.u. = 1.": JednostkiKroku(
+        "Zgodność jednostek: iloraz dwóch wartości względnych jest wielkością bezwymiarową.",
+        r"\mathrm{p.u.}/\mathrm{p.u.} = 1",
+    ),
+    "% − % = pp.": JednostkiKroku(
+        "Zgodność jednostek: różnica dwóch wartości w procentach daje punkty procentowe.",
+        r"\% - \% = \mathrm{pp}",
+    ),
+    "Wartości logiczne bez jednostek.": JednostkiKroku("Wartości logiczne bez jednostek.", None),
+    "Status maszynowy bez jednostek.": JednostkiKroku("Status maszynowy bez jednostek.", None),
+    "Współczynnik mocy jest bezwymiarowy.": JednostkiKroku(
+        "Współczynnik mocy jest bezwymiarowy.", None
+    ),
+    (
+        "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje "
+        "jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar."
+    ): JednostkiKroku(
+        "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje "
+        "jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar.",
+        None,
+    ),
+}
+
+#: Tekst weryfikacji jednostek rdzenia (dokładny `NcRfgTraceStep.unit_check`) → zdanie + LaTeX.
+JEDNOSTKI_SLADU: Final = MappingProxyType(_JEDNOSTKI)
+
+
+def jednostki_sladu_dla_api() -> dict[str, dict[str, str | None]]:
+    """Rejestr weryfikacji jednostek w postaci pola katalogu testów (`jednostki_sladu`)."""
+    return {
+        klucz: {"opis_pl": wpis.opis_pl, "latex": wpis.latex}
+        for klucz, wpis in sorted(JEDNOSTKI_SLADU.items())
+    }

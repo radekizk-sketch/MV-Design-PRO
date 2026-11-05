@@ -419,7 +419,10 @@ class SsciStabilityBuilder:
                 ),
                 result_pl=(f"Odległość przebiegu od punktu −1: {nearest.distance_to_minus_one}"),
                 result_latex=rf"d_{{-1}} = {nearest.distance_to_minus_one}",
-                unit_check_pl="bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1.",
+                unit_check_pl=(
+                    "odległość jest bezwymiarowa (płaszczyzna wzmocnienia pętli); odległość "
+                    "malejąca do zera oznacza zbliżanie się przebiegu do punktu −1."
+                ),
             )
         )
 
@@ -440,7 +443,10 @@ class SsciStabilityBuilder:
                     "skanu, wskaźnik wspierający)"
                 ),
                 result_latex=rf"N \approx {encirclements}",
-                unit_check_pl="liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność.",
+                unit_check_pl=(
+                    "liczba okrążeń jest liczbą całkowitą; co najmniej jedno okrążenie punktu −1 "
+                    "oznacza niestabilność."
+                ),
             )
         )
 

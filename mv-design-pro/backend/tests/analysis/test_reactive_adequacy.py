@@ -12,6 +12,7 @@ granice Q z karty/regulatora.
 from __future__ import annotations
 
 import dataclasses
+import re
 from datetime import UTC, datetime
 
 import pytest
@@ -593,3 +594,79 @@ class TestValidation:
         assert v.verdict == VERDICT_NO_DATA
         assert "bus_voltages" in v.missing_data
         assert "controllable_sources" in v.missing_data
+
+
+# ---------------------------------------------------------------------------
+# Zapis kroków White Box: proza słowami (bez LaTeX-u), algebra jednostek wzorem w
+# `unit_check_latex` (kontrakt `scripts/slad_proza_bez_latex_guard.py`)
+# ---------------------------------------------------------------------------
+
+#: Znaczniki zapisu LaTeX w polu prozy (ten sam zbiór co strażnik kontraktu kroku śladu).
+_ZNACZNIKI_LATEX = re.compile(r"\$|\\[A-Za-z]+|_\{|\^\{")
+
+#: Algebra jednostek zapisana tekstem (HEAD przed kartą ZU pkt 4: „Mvar − Mvar = Mvar",
+#: „p.u. − p.u. = p.u.", „suma Mvar = Mvar", „[Mvar]").
+_ALGEBRA_TEKSTEM = ("Mvar − Mvar", "p.u. − p.u.", "suma Mvar =", "[Mvar]", ">=")
+
+
+def _kroki_wszystkich_sekcji() -> list:
+    """Iloczyn cech: {źródło w obszarze regulacji, źródło nasycone na Q_max, źródło nasycone
+    na Q_min} × {Q_akt dodatnie, ujemne} × {węzeł powyżej pasma, węzeł poniżej pasma} ×
+    {bilans źródeł i odbiorów}."""
+    buses = [
+        BusVoltageInput("HOT", 1.08, 0.95, 1.05),
+        BusVoltageInput("LOW", 0.92, 0.95, 1.05),
+        BusVoltageInput("OK", 1.0, 0.95, 1.05),
+    ]
+    sources = [
+        SourceReactiveInput("INV1", "OK", q_actual_mvar=0.5, q_min_mvar=-2.0, q_max_mvar=2.0),
+        SourceReactiveInput("INV2", "HOT", q_actual_mvar=1.0, q_min_mvar=-1.0, q_max_mvar=1.0),
+        SourceReactiveInput("INV3", "LOW", q_actual_mvar=-1.0, q_min_mvar=-1.0, q_max_mvar=1.0),
+    ]
+    loads = [LoadReactiveInput("LOAD1", 0.8)]
+    nazwy = {**_NAZWY, "INV3": "Falownik PV trzeci", "LOAD1": "Odbiór pierwszy"}
+    widok = ReactiveAdequacyBuilder().build(buses, sources, loads, nazwy=nazwy)
+    kroki = [krok for zrodlo in widok.sources for krok in zrodlo.white_box]
+    kroki += [krok for naruszenie in widok.voltage_violations for krok in naruszenie.white_box]
+    kroki += list(widok.balance.white_box)
+    assert {zrodlo.is_saturated for zrodlo in widok.sources} == {True, False}
+    assert len(widok.voltage_violations) == 2
+    return kroki
+
+
+def test_pola_prozy_krokow_bez_latex_i_bez_algebry_jednostek_tekstem() -> None:
+    kroki = _kroki_wszystkich_sekcji()
+    assert len(kroki) == 3 * 3 + 2 + 2
+    for krok in kroki:
+        for pole in (krok.substitution_pl, krok.result_pl, krok.unit_check_pl):
+            assert not _ZNACZNIKI_LATEX.search(pole), (krok.symbol, pole)
+            for zapis in _ALGEBRA_TEKSTEM:
+                assert zapis not in pole, (krok.symbol, zapis, pole)
+        # Odjemnik ujemny w nawiasie — nie „0.5 − -2.0".
+        assert "− -" not in krok.substitution_pl, krok.substitution_pl
+
+
+def test_weryfikacja_jednostek_zdanie_i_wzor_parami() -> None:
+    """Predykat parami: każdy krok ma zdanie „Zgodność jednostek: …" bez znaku „=";
+    algebra jednostek (`unit_check_latex`) ⇔ krok rezerwy, odchyłki napięcia albo sumy
+    bilansu; krok nasycenia (porównanie wielkości tej samej jednostki) — samo zdanie."""
+    for krok in _kroki_wszystkich_sekcji():
+        assert krok.unit_check_pl.startswith("Zgodność jednostek: "), krok.unit_check_pl
+        assert "=" not in krok.unit_check_pl, krok.unit_check_pl
+        if krok.symbol == "nasycenie":
+            assert krok.unit_check_latex is None
+            continue
+        latex = krok.unit_check_latex
+        assert latex is not None, krok.symbol
+        assert latex.isascii() and "=" in latex and "\\mathrm{" in latex, latex
+        assert "$" not in latex, latex
+        assert latex.count("{") == latex.count("}"), latex
+
+
+def test_serializer_niesie_wzor_weryfikacji_jednostek() -> None:
+    from analysis.reactive_adequacy.serializer import white_box_to_dict
+
+    for krok in _kroki_wszystkich_sekcji():
+        slownik = white_box_to_dict(krok)
+        assert slownik["unit_check_latex"] == krok.unit_check_latex
+        assert slownik["unit_check_pl"] == krok.unit_check_pl

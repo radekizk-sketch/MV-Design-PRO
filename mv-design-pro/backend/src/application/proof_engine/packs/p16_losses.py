@@ -432,7 +432,7 @@ class P16LossesProof:
                 "p_from": "MW",
                 "p_to": "MW",
             },
-            derivation="MW + MW = MW",
+            derivation_latex=r"\mathrm{MW} + \mathrm{MW} = \mathrm{MW}",
         )
 
         return ProofStep(
@@ -498,7 +498,7 @@ class P16LossesProof:
                 "q_from": "Mvar",
                 "q_to": "Mvar",
             },
-            derivation="Mvar + Mvar = Mvar",
+            derivation_latex=r"\mathrm{Mvar} + \mathrm{Mvar} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -564,7 +564,7 @@ class P16LossesProof:
             expected_unit="MW",
             computed_unit="MW",
             input_units={"p_loss_i": "MW"},
-            derivation="SUM MW = MW",
+            derivation_latex=r"\sum \mathrm{MW} = \mathrm{MW}",
         )
 
         return ProofStep(
@@ -621,7 +621,7 @@ class P16LossesProof:
             expected_unit="Mvar",
             computed_unit="Mvar",
             input_units={"q_loss_i": "Mvar"},
-            derivation="SUM Mvar = Mvar",
+            derivation_latex=r"\sum \mathrm{Mvar} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -690,7 +690,7 @@ class P16LossesProof:
                 "p_losses": "MW",
                 "p_gen": "MW",
             },
-            derivation="100 * MW / MW = %",
+            derivation_latex=r"100 \cdot \mathrm{MW}/\mathrm{MW} = \%",
         )
 
         return ProofStep(

@@ -5,12 +5,13 @@
  * `application/ncrfg_compliance/wzory_sladu.py` z testem kompletności wyprowadzonym z AST
  * rdzenia). Wzór z wpisem renderuje się przez KaTeX (`MathBlock`) — kontrakt prezentacji
  * inżynierskiej; zapis rdzenia zostaje tylko jako stan awaryjny, gdy katalog nie dotarł.
- * Kanon kroku zachowany: Wzór → Dane → Podstawienie → Wynik → Weryfikacja jednostek.
+ * Weryfikację jednostek renderuje tak samo: zdanie słowami + algebra jednostek przez KaTeX
+ * (`jednostki_sladu` z katalogu). Kanon kroku zachowany: Wzór → Dane → Podstawienie → Wynik → Weryfikacja jednostek.
  * Zero ocen własnych.
  */
 
-import { MathBlock } from '../../../ui/proof/MathRenderer';
-import type { KrokSladuNcRfg } from '../ncrfg/typy';
+import { MathBlock, MathInline } from '../../../ui/proof/MathRenderer';
+import type { JednostkiKrokuSladu, KrokSladuNcRfg } from '../ncrfg/typy';
 import { MACIERZ_STRINGS, opiszMetryke } from './strings';
 
 type KrokSladu = KrokSladuNcRfg;
@@ -19,6 +20,28 @@ export interface SladTestuProps {
   readonly kroki: readonly KrokSladu[];
   /** Zapis wzoru rdzenia → LaTeX (`KatalogNcRfg.wzory_sladu_latex`). */
   readonly wzoryLatex: Readonly<Record<string, string>>;
+  /**
+   * Tekst weryfikacji jednostek rdzenia → zdanie słowami + algebra jednostek w LaTeX
+   * (`KatalogNcRfg.jednostki_sladu`). Algebra jednostek („% − % = pp") nie trafia na ekran
+   * jako tekst: zdanie stoi słowami, a równanie jednostek renderuje KaTeX.
+   */
+  readonly jednostkiSladu: Readonly<Record<string, JednostkiKrokuSladu>>;
+}
+
+function WeryfikacjaJednostek({ wpis, zapisRdzenia }: { wpis: JednostkiKrokuSladu | undefined; zapisRdzenia: string }) {
+  // Katalog nie dotarł (stan awaryjny) — zapis rdzenia jako zapis techniczny, jak przy wzorze.
+  if (wpis === undefined) return <code className="mvd-oze-num">{zapisRdzenia}</code>;
+  return (
+    <span data-testid="mvd-oze-slad-jednostki">
+      {wpis.opis_pl}
+      {wpis.latex !== null ? (
+        <>
+          {' '}
+          <MathInline latex={wpis.latex} />
+        </>
+      ) : null}
+    </span>
+  );
 }
 
 function Pole({ etykieta, dzieci }: { etykieta: string; dzieci: React.ReactNode }) {
@@ -45,7 +68,7 @@ function Wartosci({ dane }: { dane: Readonly<Record<string, unknown>> }) {
   );
 }
 
-export function SladTestu({ kroki, wzoryLatex }: SladTestuProps): JSX.Element {
+export function SladTestu({ kroki, wzoryLatex, jednostkiSladu }: SladTestuProps): JSX.Element {
   if (kroki.length === 0) {
     return (
       <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-slad-pusty">
@@ -78,7 +101,12 @@ export function SladTestu({ kroki, wzoryLatex }: SladTestuProps): JSX.Element {
           {krok.unit_check ? (
             <Pole
               etykieta={MACIERZ_STRINGS.sladJednostki}
-              dzieci={<span>{krok.unit_check}</span>}
+              dzieci={
+                <WeryfikacjaJednostek
+                  wpis={jednostkiSladu[krok.unit_check]}
+                  zapisRdzenia={krok.unit_check}
+                />
+              }
             />
           ) : null}
         </li>

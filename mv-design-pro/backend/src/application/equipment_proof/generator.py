@@ -27,6 +27,7 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from application.proof_engine.zapis_jednostek import jednostka_latex
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
@@ -871,7 +872,7 @@ def _unit_check() -> UnitCheckResult:
         expected_unit="—",
         computed_unit="—",
         input_units={},
-        derivation="—",
+        derivation_latex="",
     )
 
 
@@ -897,7 +898,7 @@ def _equation(
         name_pl=name_pl,
         standard_ref=standard_ref,
         symbols=symbols,
-        unit_derivation="—",
+        unit_derivation_latex="",
         notes=None,
     )
 
@@ -973,9 +974,9 @@ def _substitution_from_values(values: tuple[ProofValue, ...]) -> str:
     parts = []
     for val in values:
         if isinstance(val.value, int | float):
-            value_str = f"{val.value:.4f}\\,\\text{{{val.unit}}}"
+            value_str = f"{val.value:.4f}\\,{jednostka_latex(val.unit)}"
         else:
-            value_str = f"\\text{{{val.value}}}\\,\\text{{{val.unit}}}"
+            value_str = f"\\text{{{val.value}}}\\,{jednostka_latex(val.unit)}"
         parts.append(f"{val.symbol} = {value_str}")
     return r" \\ ".join(parts)
 

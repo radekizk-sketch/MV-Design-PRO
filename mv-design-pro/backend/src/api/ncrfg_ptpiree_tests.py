@@ -31,7 +31,7 @@ from application.ncrfg_compliance import (
     wejscia_ncrfg_przypadku,
     zgodnosc_ncrfg_przypadku,
 )
-from application.ncrfg_compliance.wzory_sladu import WZORY_SLADU_LATEX
+from application.ncrfg_compliance.wzory_sladu import WZORY_SLADU_LATEX, jednostki_sladu_dla_api
 from catalog.profiles.nc_rfg import (
     klasyfikacja_modulu,
     list_available_operators,
@@ -79,6 +79,7 @@ def get_ncrfg_test_catalog() -> dict[str, Any]:
         "operators": operators,
         "tests": [item.model_dump(mode="json") for item in TEST_CATALOG],
         "wzory_sladu_latex": dict(WZORY_SLADU_LATEX),
+        "jednostki_sladu": jednostki_sladu_dla_api(),
     }
 
 

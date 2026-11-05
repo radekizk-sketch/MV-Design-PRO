@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from application.ncrfg_compliance.wzory_sladu import WZORY_SLADU_LATEX
+from application.ncrfg_compliance.wzory_sladu import WZORY_SLADU_LATEX, jednostki_sladu_dla_api
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
 from enm.models import EnergyNetworkModel
@@ -1258,9 +1258,17 @@ def _operator_z_modelu(model: object) -> str:
 
 def test_katalog_ncrfg_zna_operatora_scen_i_testy_t01_t20() -> None:
     katalog = eksport.ncrfg_katalog()
-    assert set(katalog) == {"procedure_version", "operators", "tests", "wzory_sladu_latex"}
+    assert set(katalog) == {
+        "procedure_version",
+        "operators",
+        "tests",
+        "wzory_sladu_latex",
+        "jednostki_sladu",
+    }
     # Zapis LaTeX wzorów śladu (KaTeX w `SladTestu`) — ten sam rejestr co warstwa aplikacji.
     assert katalog["wzory_sladu_latex"] == dict(WZORY_SLADU_LATEX)
+    # Weryfikacja jednostek śladu: zdanie słowami + algebra jednostek w LaTeX (ten sam rejestr).
+    assert katalog["jednostki_sladu"] == jednostki_sladu_dla_api()
     assert set(katalog["procedure_version"]) == {
         "tytul",
         "wydanie",

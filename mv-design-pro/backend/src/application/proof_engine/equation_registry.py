@@ -100,7 +100,7 @@ EQ_SC3F_002 = EquationDefinition(
             mapping_key="sk_source_mva",
         ),
     ),
-    unit_derivation="kV² / MVA = Ω",
+    unit_derivation_latex=r"\mathrm{kV}^{2}/\mathrm{MVA} = \Omega",
     notes="POMOCNICZY: używany przez solver do przeliczenia mocy zwarciowej na impedancję. "
     "NIE używany bezpośrednio w dowodzie — c jest już uwzględnione w EQ_SC3F_004.",
 )
@@ -136,7 +136,7 @@ EQ_SC3F_002a = EquationDefinition(
             mapping_key="xr_ratio",
         ),
     ),
-    unit_derivation="Ω / — = Ω",
+    unit_derivation_latex=r"\Omega/1 = \Omega",
     notes="POMOCNICZY: rozkład impedancji na składowe.",
 )
 
@@ -171,7 +171,7 @@ EQ_SC3F_009 = EquationDefinition(
             mapping_key="s_rated_mva",
         ),
     ),
-    unit_derivation="(% · kV²) / (100 · MVA) = Ω",
+    unit_derivation_latex=r"\frac{\% \cdot \mathrm{kV}^{2}}{100 \cdot \mathrm{MVA}} = \Omega",
     notes="POMOCNICZY: przeliczenie parametrów transformatora.",
 )
 
@@ -206,7 +206,7 @@ EQ_SC3F_010 = EquationDefinition(
             mapping_key="length_km",
         ),
     ),
-    unit_derivation="Ω/km · km = Ω",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \cdot \mathrm{km} = \Omega",
     notes="POMOCNICZY: obliczenie impedancji linii/kabla.",
 )
 
@@ -245,7 +245,7 @@ EQ_SC3F_003 = EquationDefinition(
             mapping_key="z_line_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega + \Omega = \Omega",
     notes="Dla sieci promieniowych suma szeregowa. Dla sieci złożonych: redukcja metodą Thevenina. "
     "AUDIT: c NIE występuje w tym równaniu.",
 )
@@ -281,7 +281,7 @@ EQ_SC3F_004 = EquationDefinition(
             mapping_key="z_thevenin_ohm",
         ),
     ),
-    unit_derivation="kV / Ω = kA",
+    unit_derivation_latex=r"\mathrm{kV}/\Omega = \mathrm{kA}",
     notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu (Anti-Double-Counting: PASS).",
 )
 
@@ -310,7 +310,7 @@ EQ_SC3F_005 = EquationDefinition(
             mapping_key="x_thevenin_ohm",
         ),
     ),
-    unit_derivation="— (bezwymiarowy)",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="Wartość κ mieści się w zakresie 1.02 ≤ κ ≤ 2.00. AUDIT: c NIE występuje.",
 )
 
@@ -339,7 +339,7 @@ EQ_SC3F_006 = EquationDefinition(
             mapping_key="ikss_ka",
         ),
     ),
-    unit_derivation="— · — · kA = kA",
+    unit_derivation_latex=r"1 \cdot 1 \cdot \mathrm{kA} = \mathrm{kA}",
     notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
 )
 
@@ -368,7 +368,7 @@ EQ_SC3F_007 = EquationDefinition(
             mapping_key="ikss_ka",
         ),
     ),
-    unit_derivation="kV · kA = MVA",
+    unit_derivation_latex=r"\mathrm{kV} \cdot \mathrm{kA} = \mathrm{MVA}",
     notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
 )
 
@@ -403,7 +403,7 @@ EQ_SC3F_008 = EquationDefinition(
             mapping_key="n_factor",
         ),
     ),
-    unit_derivation="kA · — = kA",
+    unit_derivation_latex=r"\mathrm{kA} \cdot 1 = \mathrm{kA}",
     notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
 )
 
@@ -426,7 +426,7 @@ EQ_SC3F_008a = EquationDefinition(
             mapping_key="ip_ka",
         ),
     ),
-    unit_derivation="kA = kA",
+    unit_derivation_latex=r"\mathrm{kA} = \mathrm{kA}",
     notes="Prąd dynamiczny służy do wymiarowania aparatury na wytrzymałość elektrodynamiczną. "
     "AUDIT: c NIE występuje.",
 )
@@ -480,7 +480,7 @@ EQ_SC3F_011 = EquationDefinition(
             mapping_key="t_min_s",
         ),
     ),
-    unit_derivation="— (bezwymiarowy)",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Krzywe normy w węzłach t_min "
     "0.02 / 0.05 / 0.10 / ≥0.25 s (μ_i = a_i + b_i·e^(−c_i·I_k''/I_r), przycięte do [0; 1]); "
     "t_min w węźle → krzywa węzła, t_min pomiędzy węzłami t_1 < t_min < t_2 → interpolacja "
@@ -522,7 +522,7 @@ EQ_SC3F_012 = EquationDefinition(
             mapping_key="t_min_s",
         ),
     ),
-    unit_derivation="— (bezwymiarowy)",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="q ∈ [0; 1]; krzywe normy w węzłach t_min, ten sam algorytm węzeł / interpolacja "
     "liniowa / zakres co μ, ale inna podstawa interpolacji: "
     + podstawa_reguly("q", REGULA_INTERPOLACJA).opis_pl
@@ -562,7 +562,7 @@ EQ_SC3F_013 = EquationDefinition(
             mapping_key="ikss_partial_ka",
         ),
     ),
-    unit_derivation="— · — · kA = kA",
+    unit_derivation_latex=r"1 \cdot 1 \cdot \mathrm{kA} = \mathrm{kA}",
     notes="Prąd wyłączeniowy maszyny do doboru zdolności łączeniowej aparatury. "
     "AUDIT: c NIE występuje (I_k'' już zawiera c).",
 )
@@ -625,7 +625,7 @@ EQ_SC3F_014 = EquationDefinition(
             mapping_key="delta_u_wzgledne",
         ),
     ),
-    unit_derivation="kA − — · — · kA = kA",
+    unit_derivation_latex=r"\mathrm{kA} - 1 \cdot 1 \cdot \mathrm{kA} = \mathrm{kA}",
     notes="Bez maszyn wirujących (zwarcie odległe od generatora, także z udziałem źródeł "
     "przekształtnikowych — źródeł prądowych bez zaniku) suma jest pusta i I_b = I_k''. "
     "Dla maszyny na zaciskach zwarcia ΔU''/(c·U_n/√3) = 1 i wzór daje μ·q·I_k,m'' "
@@ -671,7 +671,7 @@ EQ_SC3F_020 = EquationDefinition(
             mapping_key="rx_ratio",
         ),
     ),
-    unit_derivation="kA · — = kA",
+    unit_derivation_latex=r"\mathrm{kA} \cdot 1 = \mathrm{kA}",
     notes="f = 50 Hz. Wielkości (wykładnik, współczynnik zaniku, i_DC) czytane ze śladu "
     "solvera (klucz iDC) — proof engine nie liczy fizyki. Niesymetryczny prąd wyłączeniowy "
     "I_b,asym = √(I_b² + i_DC²). AUDIT: c NIE występuje (I_k'' już zawiera c).",
@@ -704,7 +704,7 @@ EQ_SC3F_015 = EquationDefinition(
             mapping_key="tk_s",
         ),
     ),
-    unit_derivation="kA² · s = kA²s",
+    unit_derivation_latex=r"\mathrm{kA}^{2} \cdot \mathrm{s} = \mathrm{kA}^{2}\,\mathrm{s}",
     notes="Krok formatujący wielkości już obecne w dowodzie (I_th, t_k) — definicja prądu "
     "zastępczego cieplnego (IEC 60909-0 § 12). Spójny z projekcją kanoniczną wierszy "
     "wyników (i2t_ka2s w pełnym bilansie F1). AUDIT: c NIE występuje.",
@@ -743,7 +743,7 @@ EQ_SC3F_016 = EquationDefinition(
             mapping_key="z_f_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega = \Omega",
     notes="Z_f w każdej fazie zwarcia trójfazowego; R_f ≥ 0, X_f ≥ 0. Prąd przez Z_f jest "
     "poza zakresem IEC 60909 i nie jest podstawą doboru wytrzymałości zwarciowej. "
     "AUDIT: c NIE występuje.",
@@ -780,7 +780,7 @@ EQ_SC3F_017 = EquationDefinition(
             mapping_key="z_petli_ohm",
         ),
     ),
-    unit_derivation="kV / Ω = kA",
+    unit_derivation_latex=r"\mathrm{kV}/\Omega = \mathrm{kA}",
     notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu wariantu z impedancją przejścia "
     "(Anti-Double-Counting: wariant Z_f).",
 )
@@ -810,7 +810,7 @@ EQ_SC3F_018 = EquationDefinition(
             mapping_key="x_petli_ohm",
         ),
     ),
-    unit_derivation="— (bezwymiarowy)",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="R_k/X_k pełnej pętli z Z_f (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
 )
 
@@ -844,7 +844,7 @@ EQ_VDROP_001 = EquationDefinition(
             mapping_key="length_km",
         ),
     ),
-    unit_derivation="Ω/km · km = Ω",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \cdot \mathrm{km} = \Omega",
 )
 
 EQ_VDROP_002 = EquationDefinition(
@@ -872,7 +872,7 @@ EQ_VDROP_002 = EquationDefinition(
             mapping_key="length_km",
         ),
     ),
-    unit_derivation="Ω/km · km = Ω",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \cdot \mathrm{km} = \Omega",
 )
 
 EQ_VDROP_003 = EquationDefinition(
@@ -906,7 +906,7 @@ EQ_VDROP_003 = EquationDefinition(
             mapping_key="u_n_kv",
         ),
     ),
-    unit_derivation="(Ω · MW) / kV² = %",
+    unit_derivation_latex=r"\frac{\Omega \cdot \mathrm{MW}}{\mathrm{kV}^{2}} = \%",
     notes="Dla sieci trójfazowej: P to moc trójfazowa.",
 )
 
@@ -941,7 +941,7 @@ EQ_VDROP_004 = EquationDefinition(
             mapping_key="u_n_kv",
         ),
     ),
-    unit_derivation="(Ω · Mvar) / kV² = %",
+    unit_derivation_latex=r"\frac{\Omega \cdot \mathrm{Mvar}}{\mathrm{kV}^{2}} = \%",
     notes="Q dodatnie = indukcyjna (pobór), Q ujemne = pojemnościowa (generacja).",
 )
 
@@ -970,7 +970,7 @@ EQ_VDROP_005 = EquationDefinition(
             mapping_key="delta_u_x_percent",
         ),
     ),
-    unit_derivation="% + % = %",
+    unit_derivation_latex=r"\% + \% = \%",
     notes="Suma algebraiczna — ΔU_X może być ujemne (wzrost napięcia).",
 )
 
@@ -999,7 +999,7 @@ EQ_VDROP_006 = EquationDefinition(
             mapping_key="segment_count",
         ),
     ),
-    unit_derivation="Σ % = %",
+    unit_derivation_latex=r"\sum \% = \%",
     notes="Suma po wszystkich odcinkach od źródła do punktu.",
 )
 
@@ -1028,7 +1028,7 @@ EQ_VDROP_007 = EquationDefinition(
             mapping_key="delta_u_total_kv",
         ),
     ),
-    unit_derivation="kV − kV = kV",
+    unit_derivation_latex=r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}",
     notes=(
         "KARTA PODSTAWA-VDROP (2026-08-12). ΔU_total^{kV} to SUMA spadków "
         "odcinkowych w jednostkach bezwzględnych (łańcuch EQ_VDROP_001..006 "
@@ -1077,7 +1077,7 @@ EQ_VDROP_010 = EquationDefinition(
             mapping_key="u_secondary_kv",
         ),
     ),
-    unit_derivation="kV - kV = kV",
+    unit_derivation_latex=r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}",
     notes=(
         "KARTA P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST "
         "odcinkiem w sensie VDROP — RODZAJE_ODCINKA (`voltage_drop_binding.py`) "
@@ -1125,7 +1125,7 @@ EQ_LF_001 = EquationDefinition(
             mapping_key="q_mvar",
         ),
     ),
-    unit_derivation="MW² + Mvar² = MVA² → MVA",
+    unit_derivation_latex=r"\mathrm{MW}^{2} + \mathrm{Mvar}^{2} = \mathrm{MVA}^{2} \rightarrow \mathrm{MVA}",
     notes="Moc pozorna dla kroku post-hoc.",
 )
 
@@ -1154,7 +1154,7 @@ EQ_LF_002 = EquationDefinition(
             mapping_key="u_ll_kv",
         ),
     ),
-    unit_derivation="MVA / kV = kA (MVA = kV · kA)",
+    unit_derivation_latex=r"\mathrm{MVA}/\mathrm{kV} = \mathrm{kA} \quad (\mathrm{MVA} = \mathrm{kV} \cdot \mathrm{kA})",
     notes="Prąd roboczy liczony post-hoc.",
 )
 
@@ -1189,7 +1189,7 @@ EQ_LF_003 = EquationDefinition(
             mapping_key="u_nom_kv",
         ),
     ),
-    unit_derivation="Ω · MW / kV = kV",
+    unit_derivation_latex=r"\Omega \cdot \mathrm{MW}/\mathrm{kV} = \mathrm{kV}",
 )
 
 EQ_LF_004 = EquationDefinition(
@@ -1223,7 +1223,7 @@ EQ_LF_004 = EquationDefinition(
             mapping_key="u_nom_kv",
         ),
     ),
-    unit_derivation="Ω · Mvar / kV = kV",
+    unit_derivation_latex=r"\Omega \cdot \mathrm{Mvar}/\mathrm{kV} = \mathrm{kV}",
 )
 
 EQ_LF_005 = EquationDefinition(
@@ -1251,7 +1251,7 @@ EQ_LF_005 = EquationDefinition(
             mapping_key="delta_u_x_kv",
         ),
     ),
-    unit_derivation="kV + kV = kV",
+    unit_derivation_latex=r"\mathrm{kV} + \mathrm{kV} = \mathrm{kV}",
 )
 
 EQ_LF_006 = EquationDefinition(
@@ -1279,7 +1279,7 @@ EQ_LF_006 = EquationDefinition(
             mapping_key="u_nom_kv",
         ),
     ),
-    unit_derivation="kV / kV = p.u.",
+    unit_derivation_latex=r"\mathrm{kV}/\mathrm{kV} = \mathrm{p.u.}",
 )
 
 EQ_LF_007 = EquationDefinition(
@@ -1307,7 +1307,7 @@ EQ_LF_007 = EquationDefinition(
             mapping_key="u_nom_kv",
         ),
     ),
-    unit_derivation="kV / kV = %",
+    unit_derivation_latex=r"\mathrm{kV}/\mathrm{kV} = \%",
 )
 
 
@@ -1340,7 +1340,7 @@ EQ_LC_001 = EquationDefinition(
             mapping_key="q_mvar",
         ),
     ),
-    unit_derivation="MW² + Mvar² = MVA² → MVA",
+    unit_derivation_latex=r"\mathrm{MW}^{2} + \mathrm{Mvar}^{2} = \mathrm{MVA}^{2} \rightarrow \mathrm{MVA}",
     notes="Moc pozorna liczona z mocy czynnej i biernej.",
 )
 
@@ -1369,7 +1369,7 @@ EQ_LC_002 = EquationDefinition(
             mapping_key="u_ll_kv",
         ),
     ),
-    unit_derivation="MVA / kV = kA (MVA = kV · kA)",
+    unit_derivation_latex=r"\mathrm{MVA}/\mathrm{kV} = \mathrm{kA} \quad (\mathrm{MVA} = \mathrm{kV} \cdot \mathrm{kA})",
     notes="Uwaga jednostkowa: S w MVA, U w kV → wynik w kA.",
 )
 
@@ -1398,7 +1398,7 @@ EQ_LC_003 = EquationDefinition(
             mapping_key="in_a",
         ),
     ),
-    unit_derivation="100 · kA / kA = %",
+    unit_derivation_latex=r"100 \cdot \mathrm{kA}/\mathrm{kA} = \%",
     notes="I_n przeliczany z A na kA dla spójności jednostek.",
 )
 
@@ -1427,7 +1427,7 @@ EQ_LC_004 = EquationDefinition(
             mapping_key="i_ka",
         ),
     ),
-    unit_derivation="100 · (kA / kA - 1) = %",
+    unit_derivation_latex=r"100 \cdot \left(\mathrm{kA}/\mathrm{kA} - 1\right) = \%",
     notes="Dla I = 0 margines definiowany jako +∞ (deterministycznie).",
 )
 
@@ -1456,7 +1456,7 @@ EQ_LC_005 = EquationDefinition(
             mapping_key="sn_mva",
         ),
     ),
-    unit_derivation="100 · MVA / MVA = %",
+    unit_derivation_latex=r"100 \cdot \mathrm{MVA}/\mathrm{MVA} = \%",
     notes="Obciążenie transformatora względem mocy znamionowej.",
 )
 
@@ -1485,7 +1485,7 @@ EQ_LC_006 = EquationDefinition(
             mapping_key="s_mva",
         ),
     ),
-    unit_derivation="100 · (MVA / MVA - 1) = %",
+    unit_derivation_latex=r"100 \cdot \left(\mathrm{MVA}/\mathrm{MVA} - 1\right) = \%",
     notes="Dla S = 0 margines definiowany jako +∞ (deterministycznie).",
 )
 
@@ -1544,7 +1544,7 @@ EQ_LVCV_001 = EquationDefinition(
             mapping_key="f_grupowanie",
         ),
     ),
-    unit_derivation="A · (—) · (—) · (—) = A",
+    unit_derivation_latex=r"\mathrm{A} \cdot 1 \cdot 1 \cdot 1 = \mathrm{A}",
     notes=(
         "Iloczyn współczynników REUSE — jedyne miejsce mnożenia jest "
         "`network_model.solvers.cable_ampacity_derating.obciazalnosc_skorygowana` "
@@ -1579,7 +1579,7 @@ EQ_LVCV_002 = EquationDefinition(
             mapping_key="iz_prime_a",
         ),
     ),
-    unit_derivation="A ≤ A ≤ A",
+    unit_derivation_latex=r"\mathrm{A} \le \mathrm{A} \le \mathrm{A}",
     notes=(
         "REUSE `application.analyses.nn_device_selection._kryterium_ib_in_iz` "
         "(karta P0.7) — ten krok cytuje TEN SAM werdykt dla urządzenia już "
@@ -1613,7 +1613,7 @@ EQ_LVCV_003 = EquationDefinition(
             mapping_key="limit_a",
         ),
     ),
-    unit_derivation="A ≤ A",
+    unit_derivation_latex=r"\mathrm{A} \le \mathrm{A}",
     notes=(
         "REUSE `network_model.solvers.protection_lv_curves.compute_mcb_thermal_point` "
         "(MCB, I2=1,45×In, IEC 60898-1) albo `compute_fuse_gg_gate` (wkładka gG, "
@@ -1647,7 +1647,7 @@ EQ_LVCV_004 = EquationDefinition(
             mapping_key="ik_max_ka",
         ),
     ),
-    unit_derivation="kA ≥ kA",
+    unit_derivation_latex=r"\mathrm{kA} \ge \mathrm{kA}",
     notes=(
         "KARTA P0.10, rozstrzygnięcie rundy 5b (docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): "
         "DWA RÓŻNE zdania inżynierskie, NIGDY jedno pole. Kombinacja aparat+wkładka "
@@ -1691,7 +1691,7 @@ EQ_LVCV_005 = EquationDefinition(
             mapping_key="i2t_admissible_a2s",
         ),
     ),
-    unit_derivation="A²·s ≤ (A·√s/mm²)² · mm² = A²·s",
+    unit_derivation_latex=r"\mathrm{A}^{2}\,\mathrm{s} \le \left(\mathrm{A}\,\sqrt{\mathrm{s}}/\mathrm{mm}^{2}\right)^{2} \cdot \left(\mathrm{mm}^{2}\right)^{2} = \mathrm{A}^{2}\,\mathrm{s}",
     notes=(
         "REUSE `network_model.solvers.conductor_thermal_withstand."
         "check_conductor_thermal_withstand` (bilans I²t ≤ k²S², IEC 60949) — k "
@@ -1736,7 +1736,7 @@ EQ_LVCV_006 = EquationDefinition(
             mapping_key="z_loop_magnitude_ohm",
         ),
     ),
-    unit_derivation="(—) · V / Ω = A",
+    unit_derivation_latex=r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}",
     notes=(
         "REUSE `network_model.solvers.fault_loop_iec60364.compute_fault_loop` — "
         "trasa (żyła fazowa + powrotna) z `fault_loop_builder`, ekstrakcja z grafu "
@@ -1773,7 +1773,7 @@ EQ_LVCV_007 = EquationDefinition(
             mapping_key="t_wymagany_s",
         ),
     ),
-    unit_derivation="A ≥ A (przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)",
+    unit_derivation_latex=r"\mathrm{A} \ge \mathrm{A} \quad \text{(przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)}",
     notes=(
         "REUSE `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
         "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche PASS bez danych; "
@@ -1841,7 +1841,7 @@ EQ_LVCV_008 = EquationDefinition(
             mapping_key="r_b_ohm",
         ),
     ),
-    unit_derivation="(—) · V / Ω = A",
+    unit_derivation_latex=r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}",
     notes=(
         "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_tt` (jądro sumowania "
         "składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN”). "
@@ -1888,7 +1888,7 @@ EQ_LVCV_009 = EquationDefinition(
             mapping_key="limit_napiecia_dotykowego_v",
         ),
     ),
-    unit_derivation="Ω · A = V",
+    unit_derivation_latex=r"\Omega \cdot \mathrm{A} = \mathrm{V}",
     notes=(
         "Wartość U_dotyk liczy solver (`petla_zwarcia_tt_it`, krok `napiecie_dotykowe_rcd` / "
         "`napiecie_dotykowe_pierwszego_zwarcia_it`). Limit U_L NIE jest w repozytorium — "
@@ -1929,7 +1929,7 @@ EQ_LVCV_010 = EquationDefinition(
             mapping_key="u0_v",
         ),
     ),
-    unit_derivation="(1/s) · F · V = A",
+    unit_derivation_latex=r"\mathrm{s}^{-1} \cdot \mathrm{F} \cdot \mathrm{V} = \mathrm{A}",
     notes=(
         "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
         "`pojemnosc_doziemna_sieci_it`, `prad_pierwszego_zwarcia_it`). Susceptancja b_0 "
@@ -1971,7 +1971,7 @@ EQ_LVCV_011 = EquationDefinition(
             mapping_key="z_loop_magnitude_ohm",
         ),
     ),
-    unit_derivation="(—) · V / Ω = A",
+    unit_derivation_latex=r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}",
     notes=(
         "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
         "`sum_components_drugie_zwarcie_it`, `prad_drugiego_zwarcia_it`); impedancja "
@@ -2009,7 +2009,7 @@ EQ_LE_001 = EquationDefinition(
             mapping_key="t_h",
         ),
     ),
-    unit_derivation="h - h = h",
+    unit_derivation_latex=r"\mathrm{h} - \mathrm{h} = \mathrm{h}",
 )
 
 EQ_LE_002 = EquationDefinition(
@@ -2037,7 +2037,7 @@ EQ_LE_002 = EquationDefinition(
             mapping_key="delta_t_h",
         ),
     ),
-    unit_derivation="kW · h = kWh",
+    unit_derivation_latex=r"\mathrm{kW} \cdot \mathrm{h} = \mathrm{kWh}",
 )
 
 EQ_LE_003 = EquationDefinition(
@@ -2059,7 +2059,7 @@ EQ_LE_003 = EquationDefinition(
             mapping_key="e_i_kwh",
         ),
     ),
-    unit_derivation="kWh + ... = kWh",
+    unit_derivation_latex=r"\sum \mathrm{kWh} = \mathrm{kWh}",
 )
 
 EQ_LE_004 = EquationDefinition(
@@ -2087,7 +2087,7 @@ EQ_LE_004 = EquationDefinition(
             mapping_key="t_h",
         ),
     ),
-    unit_derivation="kW · h = kWh",
+    unit_derivation_latex=r"\mathrm{kW} \cdot \mathrm{h} = \mathrm{kWh}",
 )
 
 
@@ -2120,7 +2120,7 @@ EQ_PF_001 = EquationDefinition(
             mapping_key="tolerance",
         ),
     ),
-    unit_derivation="p.u. < p.u. → —",
+    unit_derivation_latex=r"\mathrm{p.u.} < \mathrm{p.u.} \rightarrow \text{bez jednostki}",
     notes="Solver osiąga zbieżność gdy maksymalny mismatch jest mniejszy od tolerancji.",
 )
 
@@ -2149,7 +2149,7 @@ EQ_PF_002 = EquationDefinition(
             mapping_key="p_losses_total_mw",
         ),
     ),
-    unit_derivation="MW = MW + MW",
+    unit_derivation_latex=r"\mathrm{MW} = \mathrm{MW} + \mathrm{MW}",
     notes="Weryfikacja bilansu mocy czynnej w sieci.",
 )
 
@@ -2178,7 +2178,7 @@ EQ_PF_003 = EquationDefinition(
             mapping_key="q_losses_total_mvar",
         ),
     ),
-    unit_derivation="Mvar = Mvar + Mvar",
+    unit_derivation_latex=r"\mathrm{Mvar} = \mathrm{Mvar} + \mathrm{Mvar}",
     notes="Weryfikacja bilansu mocy biernej w sieci.",
 )
 
@@ -2207,7 +2207,7 @@ EQ_PF_004 = EquationDefinition(
             mapping_key="v_pu",
         ),
     ),
-    unit_derivation="p.u. ≤ p.u. ≤ p.u. → —",
+    unit_derivation_latex=r"\mathrm{p.u.} \le \mathrm{p.u.} \le \mathrm{p.u.} \rightarrow \text{bez jednostki}",
     notes="Weryfikacja czy napięcia mieszczą się w dopuszczalnym zakresie.",
 )
 
@@ -2241,7 +2241,7 @@ EQ_LOSS_001 = EquationDefinition(
             mapping_key="p_to_mw",
         ),
     ),
-    unit_derivation="MW + MW = MW",
+    unit_derivation_latex=r"\mathrm{MW} + \mathrm{MW} = \mathrm{MW}",
     notes="Straty jako różnica mocy wchodzącej i wychodzącej.",
 )
 
@@ -2270,7 +2270,7 @@ EQ_LOSS_002 = EquationDefinition(
             mapping_key="q_to_mvar",
         ),
     ),
-    unit_derivation="Mvar + Mvar = Mvar",
+    unit_derivation_latex=r"\mathrm{Mvar} + \mathrm{Mvar} = \mathrm{Mvar}",
     notes="Straty mocy biernej na gałęzi.",
 )
 
@@ -2293,7 +2293,7 @@ EQ_LOSS_003 = EquationDefinition(
             mapping_key="p_loss_mw",
         ),
     ),
-    unit_derivation="Σ MW = MW",
+    unit_derivation_latex=r"\sum \mathrm{MW} = \mathrm{MW}",
     notes="Suma strat na wszystkich gałęziach.",
 )
 
@@ -2316,7 +2316,7 @@ EQ_LOSS_004 = EquationDefinition(
             mapping_key="q_loss_mvar",
         ),
     ),
-    unit_derivation="Σ Mvar = Mvar",
+    unit_derivation_latex=r"\sum \mathrm{Mvar} = \mathrm{Mvar}",
     notes="Suma strat mocy biernej na wszystkich gałęziach.",
 )
 
@@ -2345,7 +2345,7 @@ EQ_LOSS_005 = EquationDefinition(
             mapping_key="p_gen_total_mw",
         ),
     ),
-    unit_derivation="100 · MW / MW = %",
+    unit_derivation_latex=r"100 \cdot \mathrm{MW}/\mathrm{MW} = \%",
     notes="Procentowe straty względem mocy generowanej.",
 )
 
@@ -2379,7 +2379,7 @@ EQ_QU_001 = EquationDefinition(
             mapping_key="u_ref_kv",
         ),
     ),
-    unit_derivation="kV - kV = kV",
+    unit_derivation_latex=r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}",
 )
 
 EQ_QU_002 = EquationDefinition(
@@ -2413,7 +2413,7 @@ EQ_QU_002 = EquationDefinition(
             mapping_key="u_dead_kv",
         ),
     ),
-    unit_derivation="kV ± kV = kV",
+    unit_derivation_latex=r"\mathrm{kV} \pm \mathrm{kV} = \mathrm{kV}",
 )
 
 EQ_QU_003 = EquationDefinition(
@@ -2441,7 +2441,7 @@ EQ_QU_003 = EquationDefinition(
             mapping_key="s_u_kv",
         ),
     ),
-    unit_derivation="Mvar/kV · kV = Mvar",
+    unit_derivation_latex=r"\mathrm{Mvar}/\mathrm{kV} \cdot \mathrm{kV} = \mathrm{Mvar}",
 )
 
 EQ_QU_004 = EquationDefinition(
@@ -2475,7 +2475,7 @@ EQ_QU_004 = EquationDefinition(
             mapping_key="q_max_mvar",
         ),
     ),
-    unit_derivation="Mvar = Mvar",
+    unit_derivation_latex=r"\mathrm{Mvar} = \mathrm{Mvar}",
 )
 
 # =============================================================================
@@ -2522,7 +2522,7 @@ EQ_QU_005 = EquationDefinition(
             mapping_key="u_kv",
         ),
     ),
-    unit_derivation="Mvar → % → kV (VDROP link)",
+    unit_derivation_latex=r"\mathrm{Mvar} \rightarrow \% \rightarrow \mathrm{kV} \quad \text{(powiązanie ze spadkiem napięcia)}",
     notes=(
         "LINK-ONLY: Referencja do istniejących równań VDROP. "
         "Q_cmd wpływa na ΔU_X przez EQ_VDROP_004: ΔU_X = (X·Q)/U_n²·100%. "
@@ -2566,7 +2566,7 @@ EQ_SC1_001 = EquationDefinition(
             mapping_key="z0_ohm",
         ),
     ),
-    unit_derivation="Ω = Ω",
+    unit_derivation_latex=r"\Omega = \Omega",
     notes="Źródło danych: white_box_trace/result. Definicje składowych symetrycznych.",
 )
 
@@ -2624,7 +2624,7 @@ EQ_SC1_002 = EquationDefinition(
             mapping_key="i2_ka",
         ),
     ),
-    unit_derivation="—",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="Macierz Fortescue dla prądów (analogicznie dla napięć).",
 )
 
@@ -2659,7 +2659,7 @@ EQ_SC1_003 = EquationDefinition(
             mapping_key="z0_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega + \Omega = \Omega",
     notes="Stosować wyłącznie dla zwarcia jednofazowego doziemnego (1F–Z).",
 )
 
@@ -2688,7 +2688,7 @@ EQ_SC1_004 = EquationDefinition(
             mapping_key="z2_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega = \Omega",
     notes="Stosować wyłącznie dla zwarcia dwufazowego (2F).",
 )
 
@@ -2723,7 +2723,7 @@ EQ_SC1_005 = EquationDefinition(
             mapping_key="z0_ohm",
         ),
     ),
-    unit_derivation="Ω + (Ω·Ω)/(Ω+Ω) = Ω",
+    unit_derivation_latex=r"\Omega + \frac{\Omega \cdot \Omega}{\Omega + \Omega} = \Omega",
     notes="Stosować wyłącznie dla zwarcia dwufazowego doziemnego (2F–Z).",
 )
 
@@ -2784,7 +2784,7 @@ EQ_SC1_006 = EquationDefinition(
             mapping_key="z0_ohm",
         ),
     ),
-    unit_derivation="kV / Ω = kA",
+    unit_derivation_latex=r"\mathrm{kV}/\Omega = \mathrm{kA}",
     notes="Stosować zgodnie z typem zwarcia oraz impedancją Z_k z EQ_SC1_003/004/005.",
 )
 
@@ -2841,7 +2841,7 @@ EQ_SC1_007 = EquationDefinition(
             mapping_key="a_operator",
         ),
     ),
-    unit_derivation="kA = kA",
+    unit_derivation_latex=r"\mathrm{kA} = \mathrm{kA}",
     notes="Rekombinacja składowych symetrycznych do prądów fazowych.",
 )
 
@@ -2888,7 +2888,7 @@ EQ_SC1_008 = EquationDefinition(
             mapping_key="z_equiv_ohm",
         ),
     ),
-    unit_derivation="kV / Ω = kA",
+    unit_derivation_latex=r"\mathrm{kV}/\Omega = \mathrm{kA}",
     notes=(
         "Współczynnik napięciowy c występuje WYŁĄCZNIE w tym równaniu dla dowodu SC1. "
         "ANTI-DOUBLE-COUNTING: c NIE występuje w EQ_SC1_001–007 ani EQ_SC1_009–012."
@@ -2920,7 +2920,7 @@ EQ_SC1_009 = EquationDefinition(
             mapping_key="x_equiv_ohm",
         ),
     ),
-    unit_derivation="— (bezwymiarowy)",
+    unit_derivation_latex=r"1 \quad \text{(wielkość bezwymiarowa)}",
     notes="κ obliczane z R/X impedancji zastępczej Z_k. Identyczny wzór jak dla 3F.",
 )
 
@@ -2949,7 +2949,7 @@ EQ_SC1_010 = EquationDefinition(
             mapping_key="ikss_ka",
         ),
     ),
-    unit_derivation="— · — · kA = kA",
+    unit_derivation_latex=r"1 \cdot 1 \cdot \mathrm{kA} = \mathrm{kA}",
     notes="Prąd udarowy dla zwarcia asymetrycznego. Wzór identyczny jak dla 3F.",
 )
 
@@ -2984,7 +2984,7 @@ EQ_SC1_011 = EquationDefinition(
             mapping_key="n_factor",
         ),
     ),
-    unit_derivation="kA · — = kA",
+    unit_derivation_latex=r"\mathrm{kA} \cdot 1 = \mathrm{kA}",
     notes=(
         "Prąd cieplny równoważny I_th dla doboru aparatury. "
         "m = 1, n = 0 w uproszczeniu (zwarcie odległe od generatora)."
@@ -3010,7 +3010,7 @@ EQ_SC1_012 = EquationDefinition(
             mapping_key="ip_ka",
         ),
     ),
-    unit_derivation="kA = kA",
+    unit_derivation_latex=r"\mathrm{kA} = \mathrm{kA}",
     notes="I_dyn = i_p. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
 )
 
@@ -3058,7 +3058,7 @@ EQ_SC1_013 = EquationDefinition(
             mapping_key="z_f_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω + Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega + \Omega + \Omega = \Omega",
     notes="Zwarcie jednofazowe doziemne przez impedancję przejścia Z_f (w torze zerowym 3·Z_f).",
 )
 
@@ -3093,7 +3093,7 @@ EQ_SC1_014 = EquationDefinition(
             mapping_key="z_f_ohm",
         ),
     ),
-    unit_derivation="Ω + Ω + Ω = Ω",
+    unit_derivation_latex=r"\Omega + \Omega + \Omega = \Omega",
     notes="Zwarcie dwufazowe przez impedancję przejścia Z_f między fazami zwarcia.",
 )
 
@@ -3134,7 +3134,7 @@ EQ_SC1_015 = EquationDefinition(
             mapping_key="z_f_ohm",
         ),
     ),
-    unit_derivation="Ω + (Ω·Ω)/(Ω+Ω) = Ω",
+    unit_derivation_latex=r"\Omega + \frac{\Omega \cdot \Omega}{\Omega + \Omega} = \Omega",
     notes="Zwarcie dwufazowe doziemne przez impedancję przejścia Z_f w torze do ziemi. "
     "Warunek |I_k(Z_f)| ≤ |I_k(0)| NIE wynika tu z algebry (Z_f w gałęzi równoległej).",
 )
@@ -3202,7 +3202,7 @@ EQ_SC1_016 = EquationDefinition(
             mapping_key="z_f_ohm",
         ),
     ),
-    unit_derivation="kV / Ω = kA",
+    unit_derivation_latex=r"\mathrm{kV}/\Omega = \mathrm{kA}",
     notes="Stosować z impedancją Z_k z EQ_SC1_013/014/015 (pętla z impedancją przejścia).",
 )
 

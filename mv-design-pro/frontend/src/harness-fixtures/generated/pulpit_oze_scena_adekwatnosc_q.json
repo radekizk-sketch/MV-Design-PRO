@@ -1,0 +1,124 @@
+{
+  "analysis_id": "32e458e568aecc14c1ea845d547f1353c0a391f8c9017bdb360418fbc9964eae",
+  "context": {
+    "project_name": "Przyłączenie farmy PV 8 MW",
+    "case_name": null,
+    "case_id": "case-demo",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "3c340d5cb123db0a4d3788a12f16dc55e2ebadb7e9d88efe8b66a96e809fd8dc",
+    "run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a"
+  },
+  "saturation_tol_mvar": 0.001,
+  "default_u_min_pu": 0.95,
+  "default_u_max_pu": 1.05,
+  "verdict": "rezerwa Q wyczerpana",
+  "is_adequate": false,
+  "why_pl": "Rezerwa Q wyczerpana — źródła nasycone: Instalacja PV 1,9 MW. Rezerwa systemowa z nienasyconych źródeł: w górę = brak (wszystkie źródła nasycone w górę), w dół = brak (wszystkie źródła nasycone w dół). Uwaga proweniencji: werdykt oparty na oszacowanych granicach mocy biernej źródła.",
+  "sources": [
+    {
+      "ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
+      "bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
+      "q_actual_mvar": null,
+      "q_min_mvar": -0.18,
+      "q_max_mvar": 0.18,
+      "headroom_up_mvar": null,
+      "headroom_down_mvar": null,
+      "is_saturated": false,
+      "at_limit_pl": null,
+      "why_pl": "Dane niekompletne — brak: q_actual_mvar. Ocena rezerwy biernej wymaga aktualnej mocy biernej (z wyniku rozpływu mocy) oraz minimalnej i maksymalnej mocy biernej regulatora źródła.",
+      "missing_data": [
+        "q_actual_mvar"
+      ],
+      "white_box": []
+    },
+    {
+      "ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
+      "bus_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/producer_nn_bus",
+      "q_actual_mvar": -0.64,
+      "q_min_mvar": -0.129,
+      "q_max_mvar": 0.129,
+      "headroom_up_mvar": 0.769,
+      "headroom_down_mvar": -0.511,
+      "is_saturated": true,
+      "at_limit_pl": "Q_min",
+      "why_pl": "Źródło nasycone przy minimalnej mocy biernej -0.129 Mvar (aktualna moc bierna -0.64 Mvar; rezerwa w dół -0.511 Mvar <= tol 0.001). Brak dalszej rezerwy do absorpcji mocy biernej (obniżenia napięcia).",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "ΔQ↑",
+          "formula_latex": "\\Delta Q_{\\uparrow} = Q_{max} - Q_{akt}",
+          "substitution_pl": "ΔQ↑ = 0.129 − (−0.64)",
+          "result_pl": "ΔQ↑ = 0.769 Mvar (rezerwa do wstrzykiwania)",
+          "unit_check_pl": "Zgodność jednostek: różnica mocy biernych w megawarach jest mocą bierną w megawarach; w obszarze regulacji rezerwa jest nieujemna.",
+          "unit_check_latex": "\\mathrm{Mvar} - \\mathrm{Mvar} = \\mathrm{Mvar}"
+        },
+        {
+          "symbol": "ΔQ↓",
+          "formula_latex": "\\Delta Q_{\\downarrow} = Q_{akt} - Q_{min}",
+          "substitution_pl": "ΔQ↓ = -0.64 − (−0.129)",
+          "result_pl": "ΔQ↓ = -0.511 Mvar (rezerwa do absorpcji)",
+          "unit_check_pl": "Zgodność jednostek: różnica mocy biernych w megawarach jest mocą bierną w megawarach; w obszarze regulacji rezerwa jest nieujemna.",
+          "unit_check_latex": "\\mathrm{Mvar} - \\mathrm{Mvar} = \\mathrm{Mvar}"
+        },
+        {
+          "symbol": "nasycenie",
+          "formula_latex": "\\text{nasycenie} \\Leftarrow \\Delta Q_{\\uparrow} \\leq \\varepsilon \\vee \\Delta Q_{\\downarrow} \\leq \\varepsilon",
+          "substitution_pl": "ε = 0.001 Mvar; ΔQ↑ = 0.769, ΔQ↓ = -0.511",
+          "result_pl": "źródło nasycone przy Q_min",
+          "unit_check_pl": "Zgodność jednostek: rezerwa mocy biernej i tolerancja nasycenia są w megawarach — porównanie wielkości tej samej jednostki.",
+          "unit_check_latex": null
+        }
+      ]
+    }
+  ],
+  "voltage_violations": [],
+  "balance": {
+    "q_generated_mvar": 0.0,
+    "q_absorbed_by_sources_mvar": 0.64,
+    "q_load_mvar": 0.0,
+    "net_source_q_mvar": -0.64,
+    "source_q_actuals": [
+      {
+        "ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
+        "q_mvar": -0.64
+      }
+    ],
+    "white_box": [
+      {
+        "symbol": "ΣQ_zrodla",
+        "formula_latex": "\\sum Q_{źródła} = \\sum_i Q_{akt,i}",
+        "substitution_pl": "moc bierna generowana (+) = 0.0 Mvar; moc bierna pobierana (−) = 0.64 Mvar; netto = -0.64 Mvar",
+        "result_pl": "suma mocy biernej źródeł (netto) = -0.64 Mvar",
+        "unit_check_pl": "Zgodność jednostek: suma mocy biernych w megawarach jest mocą bierną w megawarach; wartość dodatnia oznacza generację, ujemna — absorpcję.",
+        "unit_check_latex": "\\sum \\mathrm{Mvar} = \\mathrm{Mvar}"
+      },
+      {
+        "symbol": "ΣQ_odbiory",
+        "formula_latex": "\\sum Q_{odbiory} = \\sum_j Q_{odb,j}",
+        "substitution_pl": "liczba odbiorów z mocą bierną: 0",
+        "result_pl": "suma mocy biernej odbiorów = 0.0 Mvar",
+        "unit_check_pl": "Zgodność jednostek: suma mocy biernych w megawarach jest mocą bierną w megawarach; wartość dodatnia oznacza pobór mocy biernej indukcyjnej.",
+        "unit_check_latex": "\\sum \\mathrm{Mvar} = \\mathrm{Mvar}"
+      }
+    ]
+  },
+  "summary": {
+    "total_sources": 2,
+    "saturated_source_count": 1,
+    "not_computed_source_count": 1,
+    "voltage_violation_count": 0,
+    "network_headroom_up_mvar": null,
+    "network_headroom_down_mvar": null,
+    "saturated_source_refs": [
+      "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter"
+    ],
+    "violated_bus_refs": []
+  },
+  "provenance": {
+    "worst_quality": "ESTIMATED",
+    "worst_quality_label_pl": "oszacowane",
+    "is_estimated": true,
+    "tag_pl": "werdykt oparty na oszacowanych granicach mocy biernej źródła"
+  },
+  "missing_data": []
+}

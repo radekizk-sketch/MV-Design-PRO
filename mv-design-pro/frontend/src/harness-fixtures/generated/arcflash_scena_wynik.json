@@ -759,7 +759,7 @@
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
           "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
           "result_pl": "CF = 0.9999",
-          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "unit_check_pl": "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
         },
         {
@@ -767,7 +767,7 @@
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
           "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
           "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
-          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "unit_check_pl": "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); przeliczenie na cal/cm² dzieleniem przez 4,184; interpolacja po napięciu.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
         {
@@ -783,7 +783,7 @@
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
           "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
-          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "unit_check_pl": "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
@@ -869,7 +869,7 @@
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
           "substitution_pl": "E = 3183.7026 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
-          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "unit_check_pl": "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
@@ -959,7 +959,7 @@
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
           "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
           "result_pl": "CF = 0.9999",
-          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "unit_check_pl": "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
         },
         {
@@ -967,7 +967,7 @@
           "formula_latex": "E = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_3 = k_3\\,I_{arc,600}/\\mathrm{denom}(I_{bf})\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;[\\mathrm{J/cm^2}]",
           "substitution_pl": "prąd zwarcia bolted 21.0926 kA, prąd łuku kotwy 600 V 15.5285 kA (nieskorygowany, trzeci człon wykładnika), prąd łuku 12.3832 kA (Eq.25, czwarty człon), odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999 [wiersz kotwy 600 V, napięcie rzeczywiste 0.4 kV]",
           "result_pl": "E = 39.4221 J/cm² = 9.4221 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
-          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego).",
+          "unit_check_pl": "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); przeliczenie na cal/cm² dzieleniem przez 4,184; bez interpolacji po napięciu (ścieżka nN liczy bezpośrednio dla napięcia rzeczywistego).",
           "table_ref": "E[VCB,V600] (Tab.3) = open_source_IEEE_1584"
         },
         {
@@ -983,7 +983,7 @@
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
           "substitution_pl": "E = 9.4221 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
-          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "unit_check_pl": "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
@@ -1075,7 +1075,7 @@
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
           "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
           "result_pl": "CF = 0.9999",
-          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "unit_check_pl": "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
         },
         {
@@ -1083,7 +1083,7 @@
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
           "substitution_pl": "prąd zwarcia bolted 8.9701 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 31.9611 J/cm², V2700 = 28.5188 J/cm², V600 = 19.8503 J/cm²",
           "result_pl": "E = 32.1689 J/cm² = 7.6885 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
-          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "unit_check_pl": "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); przeliczenie na cal/cm² dzieleniem przez 4,184; interpolacja po napięciu.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
         {
@@ -1099,7 +1099,7 @@
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
           "substitution_pl": "E = 7.6885 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
-          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "unit_check_pl": "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],
@@ -1191,7 +1191,7 @@
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
           "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
           "result_pl": "CF = 0.9999",
-          "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+          "unit_check_pl": "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
         },
         {
@@ -1199,7 +1199,7 @@
           "formula_latex": "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
           "substitution_pl": "prąd zwarcia bolted 4.6116 kA, odstęp elektrod 104.0 mm, czas łuku 200.0 ms, odległość robocza 455.0 mm, współczynnik obudowy 0.9999; kotwy: V14300 = 16.9365 J/cm², V2700 = 15.0216 J/cm², V600 = 9.6432 J/cm²",
           "result_pl": "E = 17.0521 J/cm² = 4.0755 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
-          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.",
+          "unit_check_pl": "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); przeliczenie na cal/cm² dzieleniem przez 4,184; interpolacja po napięciu.",
           "table_ref": "E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584"
         },
         {
@@ -1215,7 +1215,7 @@
           "formula_latex": "\\text{kategoria} = f_{NFPA\\,70E}(E)",
           "substitution_pl": "E = 4.0755 cal/cm²; tablica progów NFPA 70E: PUSTA (dane niekompletne)",
           "result_pl": "kategoria ŚOI = dane niekompletne — tablice NFPA 70E",
-          "unit_check_pl": "E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+          "unit_check_pl": "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa NFPA 70E).",
           "table_ref": "BRAK — wymaga tablic IEEE 1584-2018 od właściciela (tablice NFPA 70E)"
         }
       ],

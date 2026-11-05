@@ -282,7 +282,10 @@ def test_pack_krok6_niesie_oba_zdania_w_key_results() -> None:
     kombinacja = doc.summary.key_results["zdanie_kombinacja_pl"].value
     goly = doc.summary.key_results["zdanie_goly_aparat_pl"].value
     assert "kombinacja" in kombinacja.lower() or "Icond" in kombinacja
-    assert "NIE_DOTYCZY" in goly
+    # Zdanie dla inżyniera otwiera stan słowami („Nie dotyczy —"), nie kod maszynowy
+    # (kontrakt werdyktu wyjaśnialnego: status maszynowy służy agregacji, nie prozie).
+    assert goly.startswith("Nie dotyczy — ")
+    assert "NIE_DOTYCZY" not in goly
 
 
 def test_mcb_bez_wkladki_nigdy_nie_dostaje_zdania_kombinacji_pozytywnego() -> None:

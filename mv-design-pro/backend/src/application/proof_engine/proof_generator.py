@@ -94,6 +94,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from application.proof_engine.zapis_jednostek import jednostka_latex
 from network_model.catalog.wartosci_robocze import (
     WIELKOSCI_ZWARCIOWE,
     zdanie_parametru_maszyny_pl,
@@ -1469,7 +1470,7 @@ class ProofGenerator:
         real = value.real
         imag = value.imag
         sign = "+" if imag >= 0 else "-"
-        return f"{real:.4f} {sign} j{abs(imag):.4f}\\,\\text{{{unit}}}"
+        return f"{real:.4f} {sign} j{abs(imag):.4f}\\,{jednostka_latex(unit)}"
 
     @classmethod
     def _create_sc1_step_z_sequence(
@@ -1869,7 +1870,7 @@ class ProofGenerator:
             expected_unit="Ω",
             computed_unit="Ω",
             input_units={"Z_th": "Ω"},
-            derivation="Ω = Ω ✓",
+            derivation_latex=r"\Omega = \Omega",
         )
 
         return ProofStep(
@@ -3439,7 +3440,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"U_meas": "kV", "U_ref": "kV"},
-            derivation="kV - kV = kV ✓",
+            derivation_latex=r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}",
         )
 
         return ProofStep(
@@ -4854,7 +4855,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"ΔU": "kV", "U_dead": "kV"},
-            derivation="kV ± kV = kV ✓",
+            derivation_latex=r"\mathrm{kV} \pm \mathrm{kV} = \mathrm{kV}",
         )
 
         return ProofStep(
@@ -4901,7 +4902,7 @@ class ProofGenerator:
             expected_unit="Mvar",
             computed_unit="Mvar",
             input_units={"k_Q": "Mvar/kV", "s(U)": "kV"},
-            derivation="Mvar/kV · kV = Mvar ✓",
+            derivation_latex=r"\mathrm{Mvar}/\mathrm{kV} \cdot \mathrm{kV} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -4950,7 +4951,7 @@ class ProofGenerator:
             expected_unit="Mvar",
             computed_unit="Mvar",
             input_units={"Q_raw": "Mvar", "Q_min": "Mvar", "Q_max": "Mvar"},
-            derivation="Mvar = Mvar ✓",
+            derivation_latex=r"\mathrm{Mvar} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -5009,7 +5010,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"Q_cmd": "Mvar", "ΔU_X": "%", "ΔU": "%"},
-            derivation="Mvar → % → kV (VDROP link) ✓",
+            derivation_latex=r"\mathrm{Mvar} \rightarrow \% \rightarrow \mathrm{kV} \quad \text{(powiązanie ze spadkiem napięcia)}",
         )
 
         return ProofStep(

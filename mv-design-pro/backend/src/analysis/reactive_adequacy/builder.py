@@ -50,9 +50,26 @@ from analysis.reactive_adequacy.models import (
 )
 from enm.nazwy_elementow import nazwa_po_identyfikatorze
 
+# Weryfikacja jednostek kroku: zdanie słowami w ``unit_check_pl`` (pole prozy — bez zapisu
+# LaTeX, kontrakt ``scripts/slad_proza_bez_latex_guard.py``), algebra jednostek wzorem
+# w ``unit_check_latex`` (zapis goły, bez ograniczników; front renderuje KaTeX-em).
+_JEDNOSTKI_REZERWY_PL = (
+    "Zgodność jednostek: różnica mocy biernych w megawarach jest mocą bierną w megawarach; "
+    "w obszarze regulacji rezerwa jest nieujemna."
+)
+_JEDNOSTKI_REZERWY_LATEX = r"\mathrm{Mvar} - \mathrm{Mvar} = \mathrm{Mvar}"
+_JEDNOSTKI_SUMY_LATEX = r"\sum \mathrm{Mvar} = \mathrm{Mvar}"
+
 
 def _round(value: float, digits: int = 4) -> float:
     return round(float(value), digits)
+
+
+def _odjemnik(value: float) -> str:
+    """Liczba w roli odjemnika podstawienia: ujemna w nawiasie (``0.129 − (−0.64)``),
+    nie zapis ``0.129 − -0.64`` z dwoma znakami minus obok siebie."""
+    liczba = _round(value)
+    return f"(−{abs(liczba)})" if liczba < 0 else f"{liczba}"
 
 
 class ReactiveAdequacyBuilder:
@@ -278,16 +295,18 @@ class ReactiveAdequacyBuilder:
             WhiteBoxStep(
                 symbol="ΔQ↑",
                 formula_latex=r"\Delta Q_{\uparrow} = Q_{max} - Q_{akt}",
-                substitution_pl=f"ΔQ↑ = {_round(q_max)} − {_round(q)}",
+                substitution_pl=f"ΔQ↑ = {_round(q_max)} − {_odjemnik(q)}",
                 result_pl=f"ΔQ↑ = {headroom_up} Mvar (rezerwa do wstrzykiwania)",
-                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↑ >= 0 w obszarze regulacji.",
+                unit_check_pl=_JEDNOSTKI_REZERWY_PL,
+                unit_check_latex=_JEDNOSTKI_REZERWY_LATEX,
             ),
             WhiteBoxStep(
                 symbol="ΔQ↓",
                 formula_latex=r"\Delta Q_{\downarrow} = Q_{akt} - Q_{min}",
-                substitution_pl=f"ΔQ↓ = {_round(q)} − {_round(q_min)}",
+                substitution_pl=f"ΔQ↓ = {_round(q)} − {_odjemnik(q_min)}",
                 result_pl=f"ΔQ↓ = {headroom_down} Mvar (rezerwa do absorpcji)",
-                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↓ >= 0 w obszarze regulacji.",
+                unit_check_pl=_JEDNOSTKI_REZERWY_PL,
+                unit_check_latex=_JEDNOSTKI_REZERWY_LATEX,
             ),
             WhiteBoxStep(
                 symbol="nasycenie",
@@ -304,7 +323,10 @@ class ReactiveAdequacyBuilder:
                     if is_saturated
                     else "źródło w obszarze regulacji (nienasycone)"
                 ),
-                unit_check_pl="porównanie rezerwy [Mvar] z tolerancją [Mvar].",
+                unit_check_pl=(
+                    "Zgodność jednostek: rezerwa mocy biernej i tolerancja nasycenia są "
+                    "w megawarach — porównanie wielkości tej samej jednostki."
+                ),
             ),
         )
         return SourceReactiveEntry(
@@ -358,13 +380,16 @@ class ReactiveAdequacyBuilder:
                     symbol="ΔU",
                     formula_latex=(r"\Delta U = |V| - U_{max}\ (\text{lub}\ |V| - U_{min})"),
                     substitution_pl=(
-                        f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; " f"{_round(u_max)}] p.u."
+                        f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; {_round(u_max)}] p.u."
                     ),
                     result_pl=f"ΔU = {dev} p.u. ({kind})",
                     unit_check_pl=(
-                        "p.u. − p.u. = p.u.; znak + powyżej napięcia maksymalnego, − poniżej "
+                        "Zgodność jednostek: różnica napięć w jednostkach względnych jest "
+                        "napięciem w jednostkach względnych; wartość dodatnia oznacza "
+                        "przekroczenie napięcia maksymalnego, ujemna — zejście poniżej napięcia "
                         "minimalnego."
                     ),
+                    unit_check_latex=r"\mathrm{p.u.} - \mathrm{p.u.} = \mathrm{p.u.}",
                 ),
             )
             out.append(
@@ -418,14 +443,22 @@ class ReactiveAdequacyBuilder:
                     f"{q_abs} Mvar; netto = {net_source} Mvar"
                 ),
                 result_pl=f"suma mocy biernej źródeł (netto) = {net_source} Mvar",
-                unit_check_pl="suma Mvar = Mvar; (+) generacja, (−) absorpcja.",
+                unit_check_pl=(
+                    "Zgodność jednostek: suma mocy biernych w megawarach jest mocą bierną "
+                    "w megawarach; wartość dodatnia oznacza generację, ujemna — absorpcję."
+                ),
+                unit_check_latex=_JEDNOSTKI_SUMY_LATEX,
             ),
             WhiteBoxStep(
                 symbol="ΣQ_odbiory",
                 formula_latex=r"\sum Q_{odbiory} = \sum_j Q_{odb,j}",
-                substitution_pl=f"liczba odbiorów z Q = {len(q_loads)}",
+                substitution_pl=f"liczba odbiorów z mocą bierną: {len(q_loads)}",
                 result_pl=f"suma mocy biernej odbiorów = {q_load} Mvar",
-                unit_check_pl="suma Mvar = Mvar; (+) pobór Q indukcyjny.",
+                unit_check_pl=(
+                    "Zgodność jednostek: suma mocy biernych w megawarach jest mocą bierną "
+                    "w megawarach; wartość dodatnia oznacza pobór mocy biernej indukcyjnej."
+                ),
+                unit_check_latex=_JEDNOSTKI_SUMY_LATEX,
             ),
         )
         return ReactiveBalance(

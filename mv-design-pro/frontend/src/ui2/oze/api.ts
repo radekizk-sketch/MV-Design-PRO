@@ -151,7 +151,10 @@ export interface KrokSladuQ {
   readonly formula_latex: string;
   readonly substitution_pl: string;
   readonly result_pl: string;
+  /** Weryfikacja jednostek zdaniem (pole prozy — bez zapisu LaTeX). */
   readonly unit_check_pl: string;
+  /** Algebra jednostek kroku jako wzór (LaTeX goły) albo `null` — krok bez algebry. */
+  readonly unit_check_latex: string | null;
 }
 
 /** Rezerwa mocy biernej pojedynczego źródła. */

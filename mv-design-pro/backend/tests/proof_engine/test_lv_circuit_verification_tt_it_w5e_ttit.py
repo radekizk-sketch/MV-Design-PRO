@@ -131,7 +131,9 @@ class TestDowodTt:
         assert krok10.source_keys["kod_odmowy_limitu"] == KOD_LIMIT_BRAK_TEKSTU_NORMY
         assert krok10.source_keys["status_wymagania"] in {"BRAK_PODSTAWY", "NIE_SPELNIA"}
         assert "REFERENCYJNY" in krok10.source_keys["zrodlo_czasu"]
-        assert "BRAK_PODSTAWY" in krok10.substitution_latex
+        # Status składowy stoi w `\text{}` wzoru — podkreślnik zapisany `\_` (inaczej indeks
+        # dolny w trybie matematycznym i przerwana kompilacja `pdflatex`).
+        assert r"BRAK\_PODSTAWY" in krok10.substitution_latex
         assert doc.summary.overall_status in {"NIEROZSTRZYGALNE", "FAIL"}
         # Każda ocena składowa w kroku 10 nazwana OPISEM kryterium z kontraktu werdyktu,
         # nigdy identyfikatorem maszynowym (dawny zapas `kryterium_id` przy braku nazwy).

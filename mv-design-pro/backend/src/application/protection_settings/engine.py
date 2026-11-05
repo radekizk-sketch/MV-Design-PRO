@@ -556,10 +556,9 @@ class ProtectionSettingsEngine:
 
         if not range_valid:
             notes.append(
-                f"Brak dopuszczalnego zakresu nastaw I>>: "
-                f"I_min_sel = {i_min_sel:.0f} A > "
-                f"min(I_max_th, I_max_cz) = "
-                f"{min(i_max_thermal, i_max_sensitivity):.0f} A"
+                f"Brak dopuszczalnego zakresu nastaw stopnia I>>: najmniejsza nastawa "
+                f"selektywna {i_min_sel:.0f} A przekracza mniejszą z granic — cieplnej "
+                f"i czułościowej — równą {min(i_max_thermal, i_max_sensitivity):.0f} A."
             )
 
         return InstantaneousSettings(

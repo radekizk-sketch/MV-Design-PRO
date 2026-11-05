@@ -275,6 +275,7 @@ import wniosekScenyMagazynPrzebiegi from './harness-fixtures/generated/wniosek_s
 import wniosekScenyMacierzZadanie from './harness-fixtures/generated/wniosek_scena_macierz_zadanie.json';
 import wniosekScenyMacierzBraki from './harness-fixtures/generated/wniosek_scena_macierz_braki.json';
 import wniosekScenyMacierzPrzebiegi from './harness-fixtures/generated/wniosek_scena_macierz_przebiegi.json';
+import pulpitOzeScenyAdekwatnoscQ from './harness-fixtures/generated/pulpit_oze_scena_adekwatnosc_q.json';
 import wiazaniaScenyPrzekladniki from './harness-fixtures/generated/wiazania_scena_przekladniki.json';
 import wiazaniaScenyFunkcjeZabezpieczen from './harness-fixtures/generated/wiazania_scena_funkcje_zabezpieczen.json';
 // HARNESS-RESZTA-2: scena „porownanie" w trybie ZABEZPIECZENIA — lista biegów,
@@ -1094,6 +1095,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // innych liczb w atrapie; proweniencja obu biegow (`provenance_a/b`)
     // pochodzi z kopert rewizji tych biegow.
     return jsonOK(porownanieScenyWynikZabezpieczen);
+  }
+  if (new URL(url, window.location.origin).pathname === '/api/oze-analysis/reactive-adequacy') {
+    // Scena "pulpit-oze": REALNA adekwatność mocy biernej (eksport_fixtur_harnessu.py::
+    // pulpit_oze_scena_adekwatnosc_q — `build_reactive_adequacy_view`, TA SAMA funkcja co
+    // końcówka) na przebiegu rozpływu modelu sceny `macierz`; przebieg zasiany w rejestrze
+    // sceny (wpis PF z `wniosek_scena_macierz_przebiegi.json`, ten sam UUID).
+    return jsonOK(pulpitOzeScenyAdekwatnoscQ);
   }
   if (url.includes('/api/oze-analysis/grid-strength')) {
     // Karta HARNESS-RESZTA (kontynuacja): scena "sila-sieci" — REALNY bieg
@@ -1920,6 +1928,17 @@ if (creator === 'arcflash') {
   // Wcześniej scena niosła DRUGI opis tych samych modułów, pilnowany tylko
   // porównaniem 409 przy trasie zgodności.
   zasiejWytworcowZModelu(macierzScenyMigawka, 'proj-demo');
+  if (creator === 'pulpit-oze') {
+    // Pulpit instalacji OZE: przebieg ROZPŁYWU tego modelu (wpis PF z fixtury przebiegów
+    // sceny `wniosek-braki`) — sekcja adekwatności mocy biernej czyta wynik policzony
+    // backendem na TYM biegu. Bez wpisu zwarciowego: sekcja siły sieci zostaje w stanie
+    // „brak przebiegu" zamiast pokazać wynik innej sieci.
+    useExecutionRunsStore.setState({
+      runs: (wniosekScenyMacierzPrzebiegi as unknown as ExecutionRun[]).filter(
+        (run) => run.analysis_type === 'LOAD_FLOW',
+      ),
+    } as never);
+  }
   if (creator === 'wniosek-braki') {
     // Wniosek do OSD bez wykazanej zgodności NC RfG (karta AB-1a Pakiet D2): TEN SAM model
     // co macierz + biegi PF i SC tego modelu z rejestru (UUID z fixtury przebiegów).

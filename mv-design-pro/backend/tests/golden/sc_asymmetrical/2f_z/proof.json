@@ -44,7 +44,7 @@
             "unit": "Ω"
           }
         ],
-        "unit_derivation": "Ω = Ω"
+        "unit_derivation_latex": "\\Omega = \\Omega"
       },
       "input_values": [
         {
@@ -83,17 +83,18 @@
       },
       "step_id": "SC1_STEP_001",
       "step_number": 1,
-      "substitution_latex": "Z_1 = 0.5000 + j1.2000\\,\\text{Ω}, \\quad Z_2 = 0.6000 + j1.1000\\,\\text{Ω}, \\quad Z_0 = 0.8000 + j2.4000\\,\\text{Ω}",
+      "substitution_latex": "Z_1 = 0.5000 + j1.2000\\,\\Omega, \\quad Z_2 = 0.6000 + j1.1000\\,\\Omega, \\quad Z_0 = 0.8000 + j2.4000\\,\\Omega",
       "title_pl": "Impedancje składowych zgodna/przeciwna/zerowa",
       "unit_check": {
         "computed_unit": "Ω",
-        "derivation": "Ω = Ω ✓",
+        "derivation_latex": "\\Omega = \\Omega",
         "expected_unit": "Ω",
         "input_units": {
           "Z_0": "Ω",
           "Z_1": "Ω",
           "Z_2": "Ω"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (Ω) jest równa jednostce wyniku (Ω).",
         "passed": true
       }
     },
@@ -148,7 +149,7 @@
             "unit": "kA"
           }
         ],
-        "unit_derivation": "—"
+        "unit_derivation_latex": "1 \\quad \\text{(wielkość bezwymiarowa)}"
       },
       "input_values": [],
       "result": {
@@ -167,9 +168,10 @@
       "title_pl": "Operator a i macierz Fortescue (składowe → fazy)",
       "unit_check": {
         "computed_unit": "—",
-        "derivation": "— (bezwymiarowy) ✓",
+        "derivation_latex": "1 \\quad \\text{(wielkość bezwymiarowa)}",
         "expected_unit": "—",
         "input_units": {},
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (bez jednostki) jest równa jednostce wyniku (bez jednostki).",
         "passed": true
       }
     },
@@ -206,7 +208,7 @@
             "unit": "Ω"
           }
         ],
-        "unit_derivation": "Ω + (Ω·Ω)/(Ω+Ω) = Ω"
+        "unit_derivation_latex": "\\Omega + \\frac{\\Omega \\cdot \\Omega}{\\Omega + \\Omega} = \\Omega"
       },
       "input_values": [
         {
@@ -246,17 +248,18 @@
       },
       "step_id": "SC1_STEP_003",
       "step_number": 3,
-      "substitution_latex": "Z_k = 0.5000 + j1.2000\\,\\text{Ω} + (0.6000 + j1.1000\\,\\text{Ω} \\cdot 0.8000 + j2.4000\\,\\text{Ω}) / 1.4000 + j3.5000\\,\\text{Ω} = 0.8586 + j1.9606\\,\\text{Ω}",
+      "substitution_latex": "Z_k = 0.5000 + j1.2000\\,\\Omega + (0.6000 + j1.1000\\,\\Omega \\cdot 0.8000 + j2.4000\\,\\Omega) / 1.4000 + j3.5000\\,\\Omega = 0.8586 + j1.9606\\,\\Omega",
       "title_pl": "Sieć składowych dla zwarcia 2F–Z",
       "unit_check": {
         "computed_unit": "Ω",
-        "derivation": "Ω + (Ω·Ω)/(Ω+Ω) = Ω ✓",
+        "derivation_latex": "\\Omega + \\frac{\\Omega \\cdot \\Omega}{\\Omega + \\Omega} = \\Omega",
         "expected_unit": "Ω",
         "input_units": {
           "Z_0": "Ω",
           "Z_1": "Ω",
           "Z_2": "Ω"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (Ω) jest równa jednostce wyniku (Ω).",
         "passed": true
       }
     },
@@ -311,7 +314,7 @@
             "unit": "Ω"
           }
         ],
-        "unit_derivation": "kV / Ω = kA"
+        "unit_derivation_latex": "\\mathrm{kV}/\\Omega = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -361,16 +364,17 @@
       },
       "step_id": "SC1_STEP_004",
       "step_number": 4,
-      "substitution_latex": "I_1 = 9.5263 / 0.8586 + j1.9606\\,\\text{Ω} = 1.7855 - j4.0770\\,\\text{kA}, \\quad I_2 = -\\frac{Z_0}{Z_2 + Z_0} I_1 = -1.3568 + j2.6610\\,\\text{kA}, \\quad I_0 = -\\frac{Z_2}{Z_2 + Z_0} I_1 = -0.4286 + j1.4160\\,\\text{kA}, \\quad Z_2 + Z_0 = 1.4000 + j3.5000\\,\\text{Ω}",
+      "substitution_latex": "I_1 = 9.5263 / 0.8586 + j1.9606\\,\\Omega = 1.7855 - j4.0770\\,\\mathrm{kA}, \\quad I_2 = -\\frac{Z_0}{Z_2 + Z_0} I_1 = -1.3568 + j2.6610\\,\\mathrm{kA}, \\quad I_0 = -\\frac{Z_2}{Z_2 + Z_0} I_1 = -0.4286 + j1.4160\\,\\mathrm{kA}, \\quad Z_2 + Z_0 = 1.4000 + j3.5000\\,\\Omega",
       "title_pl": "Wyznaczenie prądów składowych symetrycznych",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "kV / Ω = kA ✓",
+        "derivation_latex": "\\mathrm{kV}/\\Omega = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "U_f": "kV",
           "Z_k": "Ω"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     },
@@ -425,7 +429,7 @@
             "unit": "—"
           }
         ],
-        "unit_derivation": "kA = kA"
+        "unit_derivation_latex": "\\mathrm{kA} = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -475,17 +479,18 @@
       },
       "step_id": "SC1_STEP_005",
       "step_number": 5,
-      "substitution_latex": "I_a = I_0 + I_1 + I_2 = 0.0000 + j0.0000\\,\\text{kA}, \\quad I_b = I_0 + a^2 I_1 + a I_2 = -6.4782 - j0.5974\\,\\text{kA}, \\quad I_c = I_0 + a I_1 + a^2 I_2 = 5.1923 + j4.8453\\,\\text{kA}",
+      "substitution_latex": "I_a = I_0 + I_1 + I_2 = 0.0000 + j0.0000\\,\\mathrm{kA}, \\quad I_b = I_0 + a^2 I_1 + a I_2 = -6.4782 - j0.5974\\,\\mathrm{kA}, \\quad I_c = I_0 + a I_1 + a^2 I_2 = 5.1923 + j4.8453\\,\\mathrm{kA}",
       "title_pl": "Rekonstrukcja prądów fazowych",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "kA = kA ✓",
+        "derivation_latex": "\\mathrm{kA} = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "I_0": "kA",
           "I_1": "kA",
           "I_2": "kA"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     },
@@ -522,7 +527,7 @@
             "unit": "Ω"
           }
         ],
-        "unit_derivation": "kV / Ω = kA"
+        "unit_derivation_latex": "\\mathrm{kV}/\\Omega = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -566,13 +571,14 @@
       "title_pl": "Początkowy prąd zwarciowy (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "kV / Ω = kA ✓",
+        "derivation_latex": "\\mathrm{kV}/\\Omega = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "U_n": "kV",
           "Z_k": "Ω",
           "c": "—"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     },
@@ -603,7 +609,7 @@
             "unit": "Ω"
           }
         ],
-        "unit_derivation": "— (bezwymiarowy)"
+        "unit_derivation_latex": "1 \\quad \\text{(wielkość bezwymiarowa)}"
       },
       "input_values": [
         {
@@ -639,12 +645,13 @@
       "title_pl": "Współczynnik udaru κ (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "—",
-        "derivation": "— (bezwymiarowy) ✓",
+        "derivation_latex": "1 \\quad \\text{(wielkość bezwymiarowa)}",
         "expected_unit": "—",
         "input_units": {
           "R_k": "Ω",
           "X_k": "Ω"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (bez jednostki) jest równa jednostce wyniku (bez jednostki).",
         "passed": true
       }
     },
@@ -675,7 +682,7 @@
             "unit": "kA"
           }
         ],
-        "unit_derivation": "— · — · kA = kA"
+        "unit_derivation_latex": "1 \\cdot 1 \\cdot \\mathrm{kA} = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -711,12 +718,13 @@
       "title_pl": "Prąd udarowy (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "— · — · kA = kA ✓",
+        "derivation_latex": "1 \\cdot 1 \\cdot \\mathrm{kA} = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "I_k''": "kA",
           "κ": "—"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     },
@@ -741,7 +749,7 @@
             "unit": "kA"
           }
         ],
-        "unit_derivation": "kA = kA"
+        "unit_derivation_latex": "\\mathrm{kA} = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -769,11 +777,12 @@
       "title_pl": "Prąd dynamiczny (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "kA = kA ✓",
+        "derivation_latex": "\\mathrm{kA} = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "i_p": "kA"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     },
@@ -810,7 +819,7 @@
             "unit": "—"
           }
         ],
-        "unit_derivation": "kA · — = kA"
+        "unit_derivation_latex": "\\mathrm{kA} \\cdot 1 = \\mathrm{kA}"
       },
       "input_values": [
         {
@@ -854,13 +863,14 @@
       "title_pl": "Prąd cieplny równoważny (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
-        "derivation": "kA · — = kA ✓",
+        "derivation_latex": "\\mathrm{kA} \\cdot 1 = \\mathrm{kA}",
         "expected_unit": "kA",
         "input_units": {
           "I_k''": "kA",
           "m": "—",
           "n": "—"
         },
+        "opis_pl": "Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).",
         "passed": true
       }
     }

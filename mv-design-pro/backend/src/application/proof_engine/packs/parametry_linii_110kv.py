@@ -116,7 +116,7 @@ class ParametryLinii110kVProof:
                 expected_unit=symbol_wyniku.unit,
                 computed_unit=krok.wynik.jednostka,
                 input_units={w.symbol: w.jednostka for w in krok.wejscia},
-                derivation=rownanie.unit_derivation,
+                derivation_latex=rownanie.unit_derivation_latex,
             ),
             source_keys={"kod_kroku": krok.kod, "podstawa": krok.podstawa_pl},
         )

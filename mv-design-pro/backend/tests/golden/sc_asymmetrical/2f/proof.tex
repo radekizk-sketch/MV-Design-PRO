@@ -70,33 +70,33 @@ $$
 \begin{itemize}
   \item
 $$
-Z_0 = 0.8000 + j2.4000\,\text{Ω}
+Z_0 = 0.8000 + j2.4000\,\Omega
 $$
   \item
 $$
-Z_1 = 0.5000 + j1.2000\,\text{Ω}
+Z_1 = 0.5000 + j1.2000\,\Omega
 $$
   \item
 $$
-Z_2 = 0.6000 + j1.1000\,\text{Ω}
+Z_2 = 0.6000 + j1.1000\,\Omega
 $$
 \end{itemize}
 
 \textbf{Podstawienie:}
 $$
-Z_1 = 0.5000 + j1.2000\,\text{Ω}, \quad Z_2 = 0.6000 + j1.1000\,\text{Ω}, \quad Z_0 = 0.8000 + j2.4000\,\text{Ω}
+Z_1 = 0.5000 + j1.2000\,\Omega, \quad Z_2 = 0.6000 + j1.1000\,\Omega, \quad Z_0 = 0.8000 + j2.4000\,\Omega
 $$
 
 \textbf{Wynik:}
 \begin{center}
 $$
-Z_1 = 0.5000 + j1.2000\,\text{Ω}
+Z_1 = 0.5000 + j1.2000\,\Omega
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (Ω) jest równa jednostce wyniku (Ω).
 $$
-Ω = Ω ✓
+\Omega = \Omega
 $$
 
 \subsection{Krok 2: Operator a i macierz Fortescue (składowe → fazy)}
@@ -122,9 +122,9 @@ a = -0.5000 + j0.8660\,\text{—}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (bez jednostki) jest równa jednostce wyniku (bez jednostki).
 $$
-— (bezwymiarowy) ✓
+1 \quad \text{(wielkość bezwymiarowa)}
 $$
 
 \subsection{Krok 3: Sieć składowych dla zwarcia 2F}
@@ -138,29 +138,29 @@ $$
 \begin{itemize}
   \item
 $$
-Z_1 = 0.5000 + j1.2000\,\text{Ω}
+Z_1 = 0.5000 + j1.2000\,\Omega
 $$
   \item
 $$
-Z_2 = 0.6000 + j1.1000\,\text{Ω}
+Z_2 = 0.6000 + j1.1000\,\Omega
 $$
 \end{itemize}
 
 \textbf{Podstawienie:}
 $$
-Z_k = 0.5000 + j1.2000\,\text{Ω} + 0.6000 + j1.1000\,\text{Ω} = 1.1000 + j2.3000\,\text{Ω}
+Z_k = 0.5000 + j1.2000\,\Omega + 0.6000 + j1.1000\,\Omega = 1.1000 + j2.3000\,\Omega
 $$
 
 \textbf{Wynik:}
 \begin{center}
 $$
-Z_k = 1.1000 + j2.3000\,\text{Ω}
+Z_k = 1.1000 + j2.3000\,\Omega
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (Ω) jest równa jednostce wyniku (Ω).
 $$
-Ω + Ω = Ω ✓
+\Omega + \Omega = \Omega
 $$
 
 \subsection{Krok 4: Wyznaczenie prądów składowych symetrycznych}
@@ -174,37 +174,37 @@ $$
 \begin{itemize}
   \item
 $$
-U_f = 9.5263\,\text{kV}
+U_f = 9.5263\,\mathrm{kV}
 $$
   \item
 $$
-Z_0 = 0.8000 + j2.4000\,\text{Ω}
+Z_0 = 0.8000 + j2.4000\,\Omega
 $$
   \item
 $$
-Z_2 = 0.6000 + j1.1000\,\text{Ω}
+Z_2 = 0.6000 + j1.1000\,\Omega
 $$
   \item
 $$
-Z_k = 1.1000 + j2.3000\,\text{Ω}
+Z_k = 1.1000 + j2.3000\,\Omega
 $$
 \end{itemize}
 
 \textbf{Podstawienie:}
 $$
-I_1 = 9.5263 / 1.1000 + j2.3000\,\text{Ω} = 1.6121 - j3.3708\,\text{kA}, \quad I_2 = -I_1 = -1.6121 + j3.3708\,\text{kA}, \quad I_0 = 0
+I_1 = 9.5263 / 1.1000 + j2.3000\,\Omega = 1.6121 - j3.3708\,\mathrm{kA}, \quad I_2 = -I_1 = -1.6121 + j3.3708\,\mathrm{kA}, \quad I_0 = 0
 $$
 
 \textbf{Wynik:}
 \begin{center}
 $$
-I_1 = 1.6121 - j3.3708\,\text{kA}
+I_1 = 1.6121 - j3.3708\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-kV / Ω = kA ✓
+\mathrm{kV}/\Omega = \mathrm{kA}
 $$
 
 \subsection{Krok 5: Rekonstrukcja prądów fazowych}
@@ -218,15 +218,15 @@ $$
 \begin{itemize}
   \item
 $$
-I_0 = 0.0000\,\text{kA}
+I_0 = 0.0000\,\mathrm{kA}
 $$
   \item
 $$
-I_1 = 1.6121 - j3.3708\,\text{kA}
+I_1 = 1.6121 - j3.3708\,\mathrm{kA}
 $$
   \item
 $$
-I_2 = -1.6121 + j3.3708\,\text{kA}
+I_2 = -1.6121 + j3.3708\,\mathrm{kA}
 $$
   \item
 $$
@@ -236,19 +236,19 @@ $$
 
 \textbf{Podstawienie:}
 $$
-I_a = I_0 + I_1 + I_2 = 0.0000 + j0.0000\,\text{kA}, \quad I_b = I_0 + a^2 I_1 + a I_2 = -5.8385 - j2.7923\,\text{kA}, \quad I_c = I_0 + a I_1 + a^2 I_2 = 5.8385 + j2.7923\,\text{kA}
+I_a = I_0 + I_1 + I_2 = 0.0000 + j0.0000\,\mathrm{kA}, \quad I_b = I_0 + a^2 I_1 + a I_2 = -5.8385 - j2.7923\,\mathrm{kA}, \quad I_c = I_0 + a I_1 + a^2 I_2 = 5.8385 + j2.7923\,\mathrm{kA}
 $$
 
 \textbf{Wynik:}
 \begin{center}
 $$
-I_a = 0.0000 + j0.0000\,\text{kA}
+I_a = 0.0000 + j0.0000\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-kA = kA ✓
+\mathrm{kA} = \mathrm{kA}
 $$
 
 \subsection{Krok 6: Początkowy prąd zwarciowy (zwarcie asymetryczne)}
@@ -262,11 +262,11 @@ $$
 \begin{itemize}
   \item
 $$
-U_n = 15.0000\,\text{kV}
+U_n = 15.0000\,\mathrm{kV}
 $$
   \item
 $$
-Z_k = 1.1000 + j2.3000\,\text{Ω}
+Z_k = 1.1000 + j2.3000\,\Omega
 $$
   \item
 $$
@@ -282,13 +282,13 @@ $$
 \textbf{Wynik:}
 \begin{center}
 $$
-I_k'' = 6.4718\,\text{kA}
+I_k'' = 6.4718\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-kV / Ω = kA ✓
+\mathrm{kV}/\Omega = \mathrm{kA}
 $$
 
 \subsection{Krok 7: Współczynnik udaru κ (zwarcie asymetryczne)}
@@ -302,11 +302,11 @@ $$
 \begin{itemize}
   \item
 $$
-R_k = 1.1000\,\text{Ω}
+R_k = 1.1000\,\Omega
 $$
   \item
 $$
-X_k = 2.3000\,\text{Ω}
+X_k = 2.3000\,\Omega
 $$
 \end{itemize}
 
@@ -322,9 +322,9 @@ $$
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (bez jednostki) jest równa jednostce wyniku (bez jednostki).
 $$
-— (bezwymiarowy) ✓
+1 \quad \text{(wielkość bezwymiarowa)}
 $$
 
 \subsection{Krok 8: Prąd udarowy (zwarcie asymetryczne)}
@@ -338,7 +338,7 @@ $$
 \begin{itemize}
   \item
 $$
-I_k'' = 6.4718\,\text{kA}
+I_k'' = 6.4718\,\mathrm{kA}
 $$
   \item
 $$
@@ -354,13 +354,13 @@ $$
 \textbf{Wynik:}
 \begin{center}
 $$
-i_p = 11.4718\,\text{kA}
+i_p = 11.4718\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-— · — · kA = kA ✓
+1 \cdot 1 \cdot \mathrm{kA} = \mathrm{kA}
 $$
 
 \subsection{Krok 9: Prąd dynamiczny (zwarcie asymetryczne)}
@@ -374,7 +374,7 @@ $$
 \begin{itemize}
   \item
 $$
-i_p = 11.4718\,\text{kA}
+i_p = 11.4718\,\mathrm{kA}
 $$
 \end{itemize}
 
@@ -386,13 +386,13 @@ $$
 \textbf{Wynik:}
 \begin{center}
 $$
-I_{dyn} = 11.4718\,\text{kA}
+I_{dyn} = 11.4718\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-kA = kA ✓
+\mathrm{kA} = \mathrm{kA}
 $$
 
 \subsection{Krok 10: Prąd cieplny równoważny (zwarcie asymetryczne)}
@@ -406,7 +406,7 @@ $$
 \begin{itemize}
   \item
 $$
-I_k'' = 6.4718\,\text{kA}
+I_k'' = 6.4718\,\mathrm{kA}
 $$
   \item
 $$
@@ -426,13 +426,13 @@ $$
 \textbf{Wynik:}
 \begin{center}
 $$
-I_{th} = 6.4954\,\text{kA}
+I_{th} = 6.4954\,\mathrm{kA}
 $$
 \end{center}
 
-\textbf{Weryfikacja jednostek:}
+\textbf{Weryfikacja jednostek:} Zgodność jednostek: jednostka wyprowadzona z jednostek danych (kA) jest równa jednostce wyniku (kA).
 $$
-kA · — = kA ✓
+\mathrm{kA} \cdot 1 = \mathrm{kA}
 $$
 
 \section{Podsumowanie wyników}
@@ -441,43 +441,43 @@ $$
 \begin{itemize}
   \item
 $$
-I_0 = 0.0000\,\text{kA}
+I_0 = 0.0000\,\mathrm{kA}
 $$
   \item
 $$
-I_1 = 1.6121 - j3.3708\,\text{kA}
+I_1 = 1.6121 - j3.3708\,\mathrm{kA}
 $$
   \item
 $$
-I_2 = -1.6121 + j3.3708\,\text{kA}
+I_2 = -1.6121 + j3.3708\,\mathrm{kA}
 $$
   \item
 $$
-I_a = 0.0000 + j0.0000\,\text{kA}
+I_a = 0.0000 + j0.0000\,\mathrm{kA}
 $$
   \item
 $$
-I_b = -5.8385 - j2.7923\,\text{kA}
+I_b = -5.8385 - j2.7923\,\mathrm{kA}
 $$
   \item
 $$
-I_c = 5.8385 + j2.7923\,\text{kA}
+I_c = 5.8385 + j2.7923\,\mathrm{kA}
 $$
   \item
 $$
-I_{dyn} = 11.4718\,\text{kA}
+I_{dyn} = 11.4718\,\mathrm{kA}
 $$
   \item
 $$
-I_k'' = 6.4718\,\text{kA}
+I_k'' = 6.4718\,\mathrm{kA}
 $$
   \item
 $$
-i_p = 11.4718\,\text{kA}
+i_p = 11.4718\,\mathrm{kA}
 $$
   \item
 $$
-I_{th} = 6.4954\,\text{kA}
+I_{th} = 6.4954\,\mathrm{kA}
 $$
   \item
 $$
@@ -485,7 +485,7 @@ $$
 $$
   \item
 $$
-Z_k = 1.1000 + j2.3000\,\text{Ω}
+Z_k = 1.1000 + j2.3000\,\Omega
 $$
 \end{itemize}
 

@@ -1233,3 +1233,69 @@ if __name__ == "__main__":
     import pytest
 
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+# ---------------------------------------------------------------------------
+# Krotnosc symbolu (`×In`, `${x}×Un`, `5·IΔn`) — iloczyn cech:
+# {znak krotnosci ×, ·, brak} × {literal jednotokenowy poza tekstem UI, literal szablonowy
+# z interpolacja, wartosc w module tekstow} × {symbol splaszczony, symbol w `$…$`, slowa}.
+# Literal jednotokenowy poza kontekstem tekstu UI jest kluczem kodu — chyba ze niesie znak
+# krotnosci: identyfikator kodu znaku dzialania nie zawiera (pomiar 2026-11-04: `'×In'`
+# w `JEDNOSTKA_ZAKRESU_PL` i `display_pl` `${x}×In` omijaly skan).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "zrodlo", "oczekiwane"),
+    [
+        ("model.ts", "export const J = { KROTNOSC_IN: '×In' };\n", True),
+        ("model.ts", "export const f = (x: string) => ({ display_pl: `${x}×In` });\n", True),
+        ("model.ts", "export const f = (x: string) => ({ display_pl: `${x}×Un` });\n", True),
+        ("model.ts", "export const D = { symbol: 'ta(5·IΔn)' };\n", True),
+        ("strings.ts", "export const T = { a: '×In' };\n", True),
+        # Bez znaku krotnosci literal jednotokenowy poza tekstem UI zostaje kluczem kodu.
+        ("model.ts", "export const J = { KLUCZ: 'In' };\n", False),
+        # Znak krotnosci przy symbolu zapisanym wzorem albo przy slowach — nie splaszczony.
+        ("model.ts", "export const J = { K: '×$I_{n}$' };\n", False),
+        ("model.ts", "export const J = { K: 'krotności prądu znamionowego $I_{n}$' };\n", False),
+        (
+            "model.ts",
+            "export const f = (x: string) => `${x}-krotność prądu znamionowego`;\n",
+            False,
+        ),
+        ("model.ts", "export const J = { K: '2×3' };\n", False),
+    ],
+)
+def test_skanuj_ts_krotnosc_symbolu(
+    tmp_path: Path, nazwa: str, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / nazwa
+    plik.write_text(zrodlo, encoding="utf-8")
+    trafione = any(SPLASZCZONY in powod for _n, _l, powod in guard.skanuj_ts(plik))
+    assert trafione is oczekiwane, zrodlo
+
+
+def test_main_iniekcja_krotnosci_w_warstwie_ui_czerwieni(monkeypatch, tmp_path: Path) -> None:
+    """Iniekcja: literal `'×In'` w `ui/**` (warstwa poza `ui2/**`) czerwieni straznik przy
+    PIN 0 i pustej liscie wyjatkow."""
+    frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
+    frontend_ui2.mkdir(parents=True)
+    frontend_ui = tmp_path / "frontend" / "src" / "ui"
+    (frontend_ui / "protection").mkdir(parents=True)
+    (frontend_ui / "protection" / "nastawy.ts").write_text(
+        "export const J = { KROTNOSC_IN: '×In' };\n", encoding="utf-8"
+    )
+    backend_plik = tmp_path / "backend.py"
+    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", frontend_ui)
+    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    assert guard.WYJATKI_ZNANE == frozenset()
+    assert guard.PIN == 0
+    assert guard.main() == 1
+
+
+def test_pin_zero_i_pusta_lista_wyjatkow() -> None:
+    assert guard.PIN == 0
+    assert guard.WYJATKI_ZNANE == frozenset()

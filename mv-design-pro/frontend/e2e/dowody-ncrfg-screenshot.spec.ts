@@ -197,7 +197,17 @@ test.describe('dowody-ncrfg:screenshot', () => {
       await page.getByTestId('mvd-oze-slad-przelacz').click();
       const kroki = page.getByTestId('mvd-oze-slad-kroki');
       await expect(kroki).toContainText('t_odb ≤ t_odb,wym');
-      await expect(kroki).toContainText('s − s = s.');
+      // Weryfikacja jednostek: zdanie słowami + algebra jednostek wzorem KaTeX
+      // (rejestr `jednostki_sladu` katalogu) — surowe „s − s = s." nie trafia na ekran.
+      const jednostki = kroki
+        .getByTestId('mvd-oze-slad-jednostki')
+        .filter({
+          hasText: 'Zgodność jednostek: różnica dwóch czasów w sekundach jest czasem w sekundach.',
+        })
+        .first();
+      await expect(jednostki).toBeVisible();
+      await expect(jednostki.locator('.katex')).toHaveCount(1);
+      await expect(kroki).not.toContainText('s − s = s.');
 
       await zrzut(page, errs, `dowody_macierz_${theme}`);
     });
@@ -365,6 +375,25 @@ test.describe('dowody-ncrfg:screenshot', () => {
       ).toContainText(DOWOD_PV.numer_dokumentu);
 
       await zrzut(page, errs, `dowody_ncrfg_pulpit_${theme}`);
+    });
+
+    test(`pulpit-oze — ślad adekwatności mocy biernej: jednostki słowami i wzorem — ${theme}`, async ({
+      page,
+    }) => {
+      const errs = zbierajBledy(page);
+      await otworzScene(page, 'pulpit-oze', theme);
+      await page.getByTestId(`mvd-oze-pulpit-poz-${MODUL_PV}`).click();
+      const sekcja = page.getByTestId('mvd-oze-pulpit-adekwatnosc');
+      await expect(sekcja.getByTestId('mvd-oze-adekw-wynik')).toBeVisible({ timeout: 15000 });
+      const otworz = sekcja.locator('[data-testid^="mvd-oze-adekw-slad-otworz-"]').first();
+      await otworz.click();
+      const kroki = sekcja.getByTestId('mvd-oze-slad-kroki').first();
+      await expect(kroki).toContainText('Zgodność jednostek: różnica mocy biernych w megawarach');
+      // Algebra jednostek („Mvar − Mvar = Mvar") renderuje się wzorem KaTeX, nie tekstem.
+      await expect(kroki.locator('.katex').first()).toBeVisible();
+      await expect(kroki).not.toContainText('[Mvar]');
+      await kroki.scrollIntoViewIfNeeded();
+      await zrzut(page, errs, `dowody_ncrfg_pulpit_adekwatnosc_q_${theme}`);
     });
   }
 });

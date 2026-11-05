@@ -183,7 +183,7 @@ class ProtectionSettingsProofPack:
             expected_unit="A",
             computed_unit="A",
             input_units={"k_b": "-", "I_obc_max": "A"},
-            derivation="- * A = A",
+            derivation_latex=r"1 \cdot \mathrm{A} = \mathrm{A}",
         )
         unit_checks_all.append(uc1)
         sensitivity_ratio = data.ik2_min_end_a / data.i_delayed_a if data.i_delayed_a > 0 else 0.0
@@ -232,7 +232,7 @@ class ProtectionSettingsProofPack:
             expected_unit="A",
             computed_unit="A",
             input_units={"k_b": "-", "I_k_max_next": "A"},
-            derivation="- * A = A",
+            derivation_latex=r"1 \cdot \mathrm{A} = \mathrm{A}",
         )
         unit_checks_all.append(uc2)
         steps.append(
@@ -282,7 +282,7 @@ class ProtectionSettingsProofPack:
             expected_unit="A",
             computed_unit="A",
             input_units={"s": "mm²", "j_thn": "A/mm²", "t_k": "s"},
-            derivation="mm² * (A/mm²) / s^0.5 = A",
+            derivation_latex=r"\mathrm{mm}^{2} \cdot \mathrm{A}/\mathrm{mm}^{2} \cdot \sqrt{\mathrm{s}/\mathrm{s}} = \mathrm{A}",
         )
         unit_checks_all.append(uc3)
         steps.append(
@@ -327,7 +327,7 @@ class ProtectionSettingsProofPack:
             expected_unit="A",
             computed_unit="A",
             input_units={"I_k_min_bus": "A", "k_b": "-"},
-            derivation="A / - = A",
+            derivation_latex=r"\mathrm{A}/1 = \mathrm{A}",
         )
         unit_checks_all.append(uc4)
         steps.append(

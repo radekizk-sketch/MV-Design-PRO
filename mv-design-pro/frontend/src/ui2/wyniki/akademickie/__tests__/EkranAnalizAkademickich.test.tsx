@@ -360,6 +360,35 @@ describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 
     expect(dowod.querySelectorAll('.katex').length).toBeGreaterThan(0);
   });
 
+  // Iloczyn cech: {krok z algebrą jednostek (wpis `JEDNOSTKI_KROKOW_V126`), krok ze zdaniem
+  // solvera} × {ślad, dowód}. Ślad i dowód z fixtury REALNYCH odpowiedzi API (projekt uziemienia
+  // punktu neutralnego z dławikiem — kroki strojenia i prądu resztkowego niosą algebrę jednostek).
+  it('weryfikacja jednostek: zdanie słowami + algebra jednostek KaTeX-em, nigdy algebra jako tekst', async () => {
+    ustawFetchV126({ potwierdzone: ['neutral_earthing_design'], sladZFixtury: true });
+    render(<EkranAnalizAkademickich szczegolyAudytowe />);
+    await otworzAnalize('neutral_earthing_design');
+    await uruchom();
+    for (const [sekcja, przelacz] of [
+      ['mvd-akad-slad', 'mvd-akad-slad-przelacz'],
+      ['mvd-akad-dowod', 'mvd-akad-dowod-przelacz'],
+    ] as const) {
+      const obszar = screen.getByTestId(sekcja);
+      fireEvent.click(within(obszar).getByTestId(przelacz));
+      const pola = within(obszar).getAllByTestId('akademickie-jednostki-kroku');
+      expect(pola.length).toBe(2);
+      for (const pole of pola) {
+        expect(pole.textContent).toMatch(/^Zgodność jednostek: /);
+        expect(pole.querySelectorAll('.katex')).toHaveLength(1);
+      }
+      // Algebra jednostek solvera („V/Ω=A", „√(A²+A²)=A") nie stoi w widoku jako tekst; zdanie
+      // solvera bez algebry zostaje (krok projektu z modelu, prąd pojemnościowy).
+      const tekst = obszar.textContent ?? '';
+      expect(tekst).not.toContain('√(A²+A²)=A');
+      expect(tekst).not.toContain('1/((rad/s)²·F)=H');
+      expect(tekst).toContain('Wybór projektu jest decyzją logiczną');
+    }
+  });
+
   it('cały widok analizy: zero surowego ASCII ("<=" / ">=" / "sqrt(") w tekście widocznym dla projektanta', async () => {
     ustawFetchV126({ potwierdzone: ['motor_starting'], krokowSladu: 2 });
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
