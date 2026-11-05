@@ -7,9 +7,15 @@
  * inspektora — bez zdarzeń syntetycznych):
  *  0. karta GPZ mówi każdą informację raz, bez sekcji i wierszy bez treści (decyzja architekta
  *     2026-11-04): kolejność toru energii — identyfikacja (bez „Podstawy rodzaju”), „Zasilanie”
- *     (sieć zasilająca z modelu: Sₖ″, R/X), „Sekcje szyn”, „Rozdzielnia SN” (bez listy sekcji,
- *     tabela pól bez przewijania w poziomie, bez pustej kolumny „Nr”), „Przyłączenia”; bez
- *     „Transformator: brak” i bez „Strona nN”; bez ogólnikowego „Źródło danych”;
+ *     (sieć zasilająca z modelu: Sₖ″ i R/X w stanie maksymalnym i minimalnym, kreska, gdy modelu
+ *     brak wartości), „Sekcje szyn”, „Rozdzielnia SN” (bez listy sekcji, tabela pól Pole · Rola
+ *     · Stan bez przewijania w poziomie, bez pustej kolumny „Nr”), „Przyłączenia” (odcinek
+ *     wyprowadzony z pola GPZ — z nazwą tego pola, liczba wierszy równa ENM); bez
+ *     „Transformator: brak” i bez „Strona nN”; bez ogólnikowego „Źródło danych”; podpis tabeli
+ *     tylko w sekcji z dwiema tabelami („Sekcje szyn”: SN i 110 kV);
+ *  0a. karta pola GPZ z drzewa projektu: tabela aparatów Aparat · Uᵣ · Iᵣ · Iₖ bez przewijania
+ *     w poziomie przy 420 px i przy najwęższym inspektorze; klik w wiersz otwiera kartę aparatu
+ *     z typem katalogowym;
  *  1. karta stacji GPZ ma sekcję „Sekcje szyn”: tabela SN z jednym
  *     wierszem na sekcję modelu w kolejności `order` (nazwa, szyna, Uₙ — zgodne z ENM z API),
  *     mieszcząca się w szerokości inspektora bez przewijania; strona 110 kV jawnie pusta;
@@ -28,7 +34,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
-import { APARAT, BACKEND_BASE, ZRODLO, katalog, operacja, otworzAplikacje, ustawMotyw } from './siecKadrowStacji';
+import { APARAT, BACKEND_BASE, ZRODLO, katalog, odcinek, operacja, otworzAplikacje, polaStacjiEnm, ustawMotyw } from './siecKadrowStacji';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'k6-inspektor'));
@@ -44,6 +50,8 @@ interface ZrodloEnm {
   readonly name?: string | null;
   readonly substation_ref?: string | null;
   readonly sk3_mva?: number | null;
+  readonly sk3_min_mva?: number | null;
+  readonly rx_ratio_min?: number | null;
 }
 interface EnmGpz {
   readonly sources?: readonly ZrodloEnm[];
@@ -60,7 +68,10 @@ interface EnmGpz {
     readonly substation_ref?: string | null;
     readonly gpz_section_id?: string | null;
     readonly bay_number?: string | null;
+    readonly name?: string | null;
+    readonly terminal_bus_ref?: string | null;
   }>;
+  readonly branches?: ReadonlyArray<{ readonly ref_id: string; readonly type?: string; readonly from_bus_ref?: string; readonly to_bus_ref?: string }>;
 }
 
 async function enmPrzypadku(request: APIRequestContext, caseId: string): Promise<EnmGpz> {
@@ -75,7 +86,8 @@ function gpzZModelu(enm: EnmGpz) {
   return gpz!;
 }
 
-/** GPZ z dwiema sekcjami SN (po jednym polu liniowym na sekcję). */
+/** GPZ z dwiema sekcjami SN (po jednym polu liniowym na sekcję) i odcinkiem kablowym
+ *  wyprowadzonym z pierwszego pola liniowego GPZ (ciąg główny z pola — `field_ref`). */
 async function siecGpz(request: APIRequestContext) {
   const sufiks = Date.now().toString(36);
   const projectName = `Sekcje szyn GPZ ${sufiks}`;
@@ -90,7 +102,7 @@ async function siecGpz(request: APIRequestContext) {
   });
   expect(przypadek.ok()).toBeTruthy();
   const caseId = ((await przypadek.json()) as { id: string }).id;
-  await operacja(request, caseId, 'add_grid_source_sn', {
+  const enm = await operacja(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
     catalog_binding: katalog('ZRODLO_SN', ZRODLO),
@@ -98,7 +110,11 @@ async function siecGpz(request: APIRequestContext) {
     line_fields_per_section: 1,
     gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },
   });
-  return { projectId, projectName, caseId, caseName };
+  const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz');
+  const poleGpz = polaStacjiEnm(enm, gpz?.ref_id)[0]?.ref_id;
+  expect(poleGpz, 'ziarno: pole liniowe GPZ').toBeTruthy();
+  await operacja(request, caseId, 'continue_trunk_segment_sn', { field_ref: poleGpz, segment: odcinek(500, 'Odcinek z pola GPZ') });
+  return { projectId, projectName, caseId, caseName, poleGpz: poleGpz! };
 }
 
 /**
@@ -153,7 +169,23 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   expect(zrodlaGpz, 'ziarno: sieć zasilająca GPZ').toHaveLength(1);
   const wierszZasilania = karta.getByTestId('inspektor-karta-wiersz-zasilanie');
   await expect(wierszZasilania).toHaveCount(1);
-  await expect(wierszZasilania.locator('td[data-kolumna="sk"]')).toHaveText(`${zrodlaGpz[0].sk3_mva} MVA`);
+  // Stan maksymalny i minimalny sieci (wejścia zwarć maks. i min.): liczby bez jednostek
+  // (jednostka w nagłówku); wartość, której model nie niesie — kreska.
+  await expect(wierszZasilania.locator('td[data-kolumna="sk_max"]')).toHaveText(String(zrodlaGpz[0].sk3_mva));
+  for (const [kolumna, wartosc] of [['sk_min', zrodlaGpz[0].sk3_min_mva], ['rx_min', zrodlaGpz[0].rx_ratio_min]] as const) {
+    const komorka = wierszZasilania.locator(`td[data-kolumna="${kolumna}"]`);
+    if (wartosc == null) await expect(komorka).toHaveText('—');
+    else await expect(komorka).toHaveText(/^\d/);
+  }
+  const naglowkiZasilania = await karta.getByTestId('inspektor-karta-tabela-zasilanie').locator('thead th').allTextContents();
+  expect(naglowkiZasilania).toEqual(['Sieć', 'Sₖ″ maks. [MVA]', 'R/X maks.', 'Sₖ″ min. [MVA]', 'R/X min.']);
+  // Podpis tabeli tylko w sekcji z dwiema tabelami — inaczej powtarzałby tytuł sekcji.
+  for (const klucz of ['zasilanie', 'pola_sn', 'przylaczenia']) {
+    await expect(karta.getByTestId(`inspektor-karta-tabela-${klucz}-podpis`), `bez podpisu: ${klucz}`).toHaveCount(0);
+  }
+  // „Sekcje szyn” ma dwie tabele (SN i 110 kV): tabela SN z podpisem; pusta tabela 110 kV mówi
+  // swój brak komunikatem, który ją nazywa („…sekcji szyn 110 kV…”, krok 1 niżej).
+  await expect(karta.getByTestId('inspektor-karta-tabela-sekcje_sn-podpis')).toHaveCount(1);
   const rozdzielnia = karta.getByTestId('inspektor-karta-rozdzielnica_sn');
   await expect(rozdzielnia.getByRole('heading', { name: 'Rozdzielnia SN' })).toBeVisible();
   await expect(rozdzielnia.getByTestId('inspektor-karta-wartosc-sekcje_sn')).toHaveCount(0);
@@ -161,7 +193,25 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   const polaGpz = (enm.bays ?? []).filter((b) => b.substation_ref === gpz.ref_id);
   await expect(tabelaPol.getByTestId('inspektor-karta-wiersz-pola_sn')).toHaveCount(polaGpz.length);
   const naglowkiPol = await tabelaPol.locator('thead th').allTextContents();
-  expect(naglowkiPol.includes('Nr'), 'kolumna „Nr” tylko, gdy pole ma numer w modelu').toBe(polaGpz.some((b) => (b.bay_number ?? '').trim() !== ''));
+  const zNumerem = polaGpz.some((b) => (b.bay_number ?? '').trim() !== '');
+  expect(naglowkiPol, 'kolumny tabeli pól; „Nr” tylko, gdy pole ma numer w modelu').toEqual(zNumerem ? ['Pole', 'Nr', 'Rola', 'Stan'] : ['Pole', 'Rola', 'Stan']);
+  for (const komorka of await tabelaPol.locator('td[data-kolumna="rola"]').all()) await expect(komorka).toHaveAttribute('data-brak', 'false');
+
+  // Przyłączenia: odcinki z jednym końcem w GPZ — na szynach GPZ albo na zaciskach jego pól SN
+  // (reguła szyn stacji z backendu); odcinek wyprowadzony z pola niesie nazwę tego pola.
+  const szynyGpz = new Set([...(gpz.bus_refs ?? []), ...polaGpz.map((b) => b.terminal_bus_ref).filter((r): r is string => Boolean(r))]);
+  const odcinkiGpz = (enm.branches ?? []).filter(
+    (g) => (g.type === 'cable' || g.type === 'line_overhead') && szynyGpz.has(g.from_bus_ref ?? '') !== szynyGpz.has(g.to_bus_ref ?? ''),
+  );
+  expect(odcinkiGpz.length, 'ziarno: odcinek z pola GPZ').toBeGreaterThanOrEqual(1);
+  const przylaczenia = karta.getByTestId('inspektor-karta-tabela-przylaczenia');
+  await expect(przylaczenia.getByTestId('inspektor-karta-wiersz-przylaczenia')).toHaveCount(odcinkiGpz.length);
+  const poleOdcinka = polaGpz.find((b) => b.ref_id === seed.poleGpz)!;
+  const odcinekZPola = odcinkiGpz.find((g) => [g.from_bus_ref, g.to_bus_ref].includes(poleOdcinka.terminal_bus_ref ?? undefined));
+  expect(odcinekZPola, 'odcinek na zacisku pola GPZ').toBeTruthy();
+  const komorkaPola = przylaczenia.locator(`tr[data-klucz="${odcinekZPola!.ref_id}"] td[data-kolumna="pole"]`);
+  await expect(komorkaPola).toHaveAttribute('data-brak', 'false');
+  if (poleOdcinka.name) await expect(komorkaPola).toHaveText(poleOdcinka.name);
   const szerokoscPol = await rozdzielnia
     .getByTestId('inspektor-karta-tabela-pola_sn-przewijanie')
     .evaluate((el) => ({ widoczna: el.clientWidth, tresc: el.scrollWidth }));
@@ -190,6 +240,7 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   pomiar.wysokosc_karty_px = Math.round((await karta.boundingBox())?.height ?? -1);
   pomiar.liczba_sekcji_karty = idSekcji.length;
   pomiar.kolumny_tabeli_pol = naglowkiPol.length;
+  pomiar.wiersze_przylaczen = odcinkiGpz.length;
 
   // Zrzuty inspektora z kartą GPZ — oba motywy (przełącznik powłoki).
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
@@ -200,6 +251,60 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
     await inspektor.screenshot({ path: resolve(KATALOG_ZRZUTOW, plik) });
   }
   await ustawMotyw(page, 'dark_scada');
+
+  // 0a. Karta pola GPZ (wskazanie z drzewa projektu) — tabela aparatów w szerokości inspektora.
+  const wierszDrzewa = page.getByTestId('project-tree').getByTestId(`model-tree-row-${seed.poleGpz}`);
+  await expect(wierszDrzewa).toBeVisible({ timeout: 30000 });
+  await wierszDrzewa.click();
+  await expect(karta).toHaveAttribute('data-rodzaj-karty', 'pole', { timeout: 30000 });
+  const tabelaAparatow = karta.getByTestId('inspektor-karta-tabela-aparaty');
+  await expect(tabelaAparatow.getByTestId('inspektor-karta-wiersz-aparaty').first()).toBeVisible();
+  expect(await tabelaAparatow.locator('thead th').allTextContents()).toEqual(['Aparat', 'Uᵣ [kV]', 'Iᵣ [A]', 'Iₖ [kA]']);
+  await expect(karta.getByTestId('inspektor-karta-tabela-aparaty-podpis')).toHaveCount(0);
+  const uchwyt = page.getByTestId('mvd-handle-right');
+  await uchwyt.focus();
+  const szerokoscInspektora = async () => Math.round((await inspektor.boundingBox())!.width);
+  // Szerokość 420 px (strzałka w lewo poszerza do granicy) i najwęższy inspektor (strzałka
+  // w prawo do granicy) — w obu tabela aparatów bez przewijania, liczby w jednej linii.
+  for (const [klawisz, nazwa] of [['ArrowLeft', 'szeroki'], ['ArrowRight', 'waski']] as const) {
+    for (let i = 0; i < 20; i += 1) {
+      const przed = await szerokoscInspektora();
+      await page.keyboard.press(klawisz);
+      if ((await szerokoscInspektora()) === przed) break;
+    }
+    const szer = await szerokoscInspektora();
+    if (nazwa === 'szeroki') expect(szer).toBe(420);
+    pomiar[`szerokosc_inspektora_${nazwa}_px`] = szer;
+    const obszar = karta.getByTestId('inspektor-karta-tabela-aparaty-przewijanie');
+    const wymiary = await obszar.evaluate((el) => ({ widoczna: el.clientWidth, tresc: el.scrollWidth }));
+    expect(wymiary.tresc, `tabela aparatów bez przewijania w poziomie (${szer} px)`).toBeLessThanOrEqual(wymiary.widoczna);
+    const liczbyWJednejLinii = await tabelaAparatow.locator('td.mvd-kt-liczba').evaluateAll((komorki) =>
+      komorki.every((td) => {
+        const tekst = td.querySelector('span');
+        if (!tekst) return true;
+        const linie = tekst.getClientRects().length;
+        return linie <= 1;
+      }),
+    );
+    expect(liczbyWJednejLinii, `liczby znamionowe w jednej linii (${szer} px)`).toBe(true);
+    pomiar[`wysokosc_tabeli_aparatow_${nazwa}_px`] = Math.round((await tabelaAparatow.boundingBox())?.height ?? -1);
+  }
+  for (const [motyw, plik] of [['dark_scada', 'gpz-pole-aparaty-ciemny.png'], ['light_technical', 'gpz-pole-aparaty-jasny.png']] as const) {
+    await ustawMotyw(page, motyw);
+    await page.waitForTimeout(300);
+    await inspektor.screenshot({ path: resolve(KATALOG_ZRZUTOW, plik) });
+  }
+  await ustawMotyw(page, 'dark_scada');
+  // Klik w wiersz wyłącznika → karta aparatu z typem katalogowym (szczegóły na żądanie).
+  const przyciskAparatu = tabelaAparatow.getByTestId('inspektor-karta-otworz-aparaty').filter({ hasText: 'Wyłącznik' }).first();
+  await przyciskAparatu.click();
+  pomiar.klikniecia_do_karty_aparatu = 1;
+  await expect(karta).toHaveAttribute('data-rodzaj-karty', 'aparat');
+  await expect(karta.getByTestId('inspektor-karta-wartosc-typ')).toHaveAttribute('data-brak', 'false');
+
+  // Powrót do karty GPZ tą samą drogą (wiersz GPZ w drzewie projektu).
+  await page.getByTestId('project-tree').getByTestId(`model-tree-row-${gpz.ref_id}`).click();
+  await expect(karta).toHaveAttribute('data-rodzaj-karty', 'stacja', { timeout: 30000 });
 
   // 2. „Konfiguruj GPZ” — jedno kliknięcie do karty „Sekcje SN” konfiguratora GPZ.
   await sekcjaKarty.getByTestId('inspektor-karta-konfiguruj-gpz').click();

@@ -348,6 +348,34 @@
 .mvd-kt-tabela-zwarta td:last-child {
   padding-right: 0;
 }
+/* Kolumna liczbowa (`KolumnaTabeli.liczbowa`): jednostka w nagłówku, liczby wyrównane do prawej
+   i nigdy niełamane między liniami (§10 kontraktu prezentacji, pkt 7). */
+.mvd-kt-tabela th.mvd-kt-liczba,
+.mvd-kt-tabela td.mvd-kt-liczba {
+  text-align: right;
+  white-space: nowrap;
+}
+.mvd-kt-tabela-zwarta th.mvd-kt-liczba {
+  white-space: normal;
+}
+/* Wiersz z celem: pierwsza komórka otwiera kartę obiektu (aparat pola) — przycisk o wyglądzie
+   tekstu komórki, z podkreśleniem przy wskazaniu i obrysem fokusu klawiatury. */
+.mvd-kt-odnosnik {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mvd-kt-odnosnik:hover {
+  text-decoration: underline;
+}
+.mvd-kt-odnosnik:focus-visible {
+  outline: 2px solid var(--mvd-accent);
+  outline-offset: 1px;
+}
 .mvd-kt-tabela th {
   color: var(--mvd-muted);
   font-weight: 600;

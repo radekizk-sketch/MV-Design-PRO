@@ -12,7 +12,7 @@
  *
  *  - selekcja (B): `onElementClick` teraz dostaje TAKŻE `meta.ownerRef`/
  *    `meta.elementKind` (`SldCanvasV3.tsx`, `PreviewSymbol.meta` z
- *    `scene/buildScene.ts`, F8b-1 A) — `elementTypeForKind` niżej mapuje
+ *    `scene/buildScene.ts`, F8b-1 A) — `elementTypeForKind` (`canvasMenuSubject.ts`) mapuje
  *    małą, zamkniętą unię `PreviewElementKind` na `ElementType` v2 (literały
  *    zweryfikowane względem `SldWorkspaceContainer.tsx`: 'Station'/
  *    'TransformerBranch'/'Bus'/'LineBranch'/'Switch'; DER generic → 'Generator',
@@ -76,7 +76,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import type { ElementType } from '../../../types';
 import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
 import { updateUrlWithSelection } from '../../../navigation/urlState';
@@ -113,6 +112,7 @@ import {
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import {
   buildCanvasModelIndex,
+  elementTypeForKind,
   refOperacjiTematu,
   resolveCanvasMenuSubject,
   ELEMENT_KIND_KOTWICY,
@@ -322,46 +322,6 @@ export interface SldCanvasV3WorkspaceProps {
 function elementIdFromTestId(testId: string): string {
   const hashIndex = testId.indexOf('#');
   return hashIndex >= 0 ? testId.slice(0, hashIndex) : testId;
-}
-
-/**
- * F8b-1 B: `PreviewElementKind` → `ElementType` v2 (literały zweryfikowane
- * względem `v2/canvas/SldWorkspaceContainer.tsx`: 'Station' (linia ~1732),
- * 'TransformerBranch' (~1797/1804), 'Bus' (~1818), 'LineBranch' (~1269/1789),
- * 'Switch' (mapa `apparatusKind`→{type:'Switch',...} dla breaker/disconnect_
- * bus/switch_disconnector/earthing_switch/fuse — większość bucketu 'apparatus';
- * CT/VT/cableHead w v2 mapują na 'Measurement'/'PortBranch', ale `elementKind`
- * v3 jest jedną, zamkniętą kategorią 'apparatus' — 'Switch' jest reprezentacją
- * większościową, udokumentowane uproszczenie, NIE regresja: v3 dziś dawał
- * 'DescriptiveElement' dla WSZYSTKICH). DER generic → 'Generator' (patrz
- * nagłówek pliku). F9.4 (runda korekcyjna po recenzji Opusa, F-3): `'source'`
- * (sieć zewnętrzna, glif `gridSource`, `compose/gpz.ts` — ODRĘBNA kategoria
- * od `'der'` od F9.4, patrz `compose/preview.tsx` `PreviewElementKind`
- * docstring) → `'Source'` (literał v2 ISTNIEJE, `ui/types.ts`: „A: GPZ /
- * Źródło SN") — BRAKOWAŁO tej gałęzi (spadała na `default`/`DescriptiveElement`,
- * klik w symbol sieci zewnętrznej nie selekcjonował poprawnego typu).
- * `undefined` dla nierozpoznanej kategorii → wołający spada na
- * `DescriptiveElement`.
- */
-export function elementTypeForKind(kind: PreviewElementKind | undefined): ElementType | undefined {
-  switch (kind) {
-    case 'station':
-      return 'Station';
-    case 'transformer':
-      return 'TransformerBranch';
-    case 'der':
-      return 'Generator';
-    case 'source':
-      return 'Source';
-    case 'bus':
-      return 'Bus';
-    case 'segment':
-      return 'LineBranch';
-    case 'apparatus':
-      return 'Switch';
-    default:
-      return undefined;
-  }
 }
 
 /**

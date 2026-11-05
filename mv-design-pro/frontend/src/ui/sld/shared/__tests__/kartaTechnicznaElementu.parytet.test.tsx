@@ -498,31 +498,33 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
   });
 
   // Tabela pól stacji jest ZWARTA (§10 kontraktu prezentacji, decyzja architekta 2026-11-04):
-  // jedno pole = jeden wiersz mieszczący się w szerokości inspektora — pole, nr, rodzaj aparatu
-  // głównego i stan. Rola, typ katalogowy i znamiona aparatów, zabezpieczenie i przekładniki mówi
-  // karta pola (jedna informacja w jednym miejscu) — przypięte niżej na karcie pola.
-  it('stacja, dane pełne: zwarta tabela pól — pole, nr, aparat główny, stan; reszta na karcie pola', () => {
+  // jedno pole = jeden wiersz mieszczący się w szerokości inspektora — pole, nr, rola i stan
+  // (rola ważniejsza dla inżyniera niż rodzaj aparatu głównego — decyzja architekta pkt 1).
+  // Aparaty i ich znamiona, zabezpieczenie i przekładniki mówi karta pola, typ katalogowy
+  // aparatu — karta aparatu (jedna informacja w jednym miejscu) — przypięte niżej.
+  it('stacja, dane pełne: zwarta tabela pól — pole, nr, rola, stan; reszta na karcie pola i aparatu', () => {
     const k = karta('stacja', 'pelne');
     const pola = tabele(k).get('tabela:pola_sn')!;
-    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Pole', 'Nr', 'Aparat główny', 'Stan']);
+    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Pole', 'Nr', 'Rola', 'Stan']);
     expect(pola.zrodloPl ?? null).toBeNull();
     const pole01 = pola.wiersze.find((r) => r.klucz === 'bay-in')!;
     expect(pole01.komorki).toEqual({
       nr: '01',
       pole: 'Pole liniowe 01',
-      aparat: 'Wyłącznik',
+      rola: 'Pole liniowe wejściowe',
       stan: 'zamknięty',
     });
-    // Pole bez aparatu w modelu: komórka aparatu „brak danych", nie aparat z konwencji.
+    // Rola słowami kanonu ról pól, także dla pola bez aparatu w modelu.
     const poleTr = pola.wiersze.find((r) => r.klucz === 'bay-tr')!;
-    expect(poleTr.komorki.aparat).toBeNull();
+    expect(poleTr.komorki.rola).toBe('Pole transformatorowe');
     // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
     const pole = wiersze(karta('pole', 'pelne'));
     expect(pole.get('rola')!.wartosc).toBeTruthy();
     expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01 (nadprądowe)');
     expect(pole.get('funkcje_zabezpieczen')!.wartosc).toBe('50, 51');
     const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
-    expect(aparaty.wiersze.find((r) => r.komorki.typ === 'VD4 24 kV 630 A 20 kA')!.komorki).toMatchObject({ ur: '24 kV', ir: '630 A', ik: '20 kA' });
+    expect(aparaty.wiersze.find((r) => r.klucz === 'cb-in')!.komorki).toMatchObject({ ur: '24', ir: '630', ik: '20' });
+    expect(wiersze(karta('aparat', 'pelne')).get('typ')?.wartosc).toBe('VD4 24 kV 630 A 20 kA');
     const tr = wiersze(k);
     expect(tr.get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
     expect(k.sekcje.find((s) => s.id === 'transformator')!.zrodloPl).toBe('katalog: TNOSCT 630 kVA 15/0,4 kV');

@@ -1432,6 +1432,33 @@ przy „Strona nN”; wysokości całej karty wtedy nie mierzono); po — 5 sekc
 szyn” 179 px, tabela pól 3 kolumny bez przewijania, 1 kliknięcie do karty „Sekcje SN”
 konfiguratora. Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed:
 te same ścieżki w `6e72f2502`); materiał B-02, bez werdyktu.
+
+**Commit 15 (2026-11-04) — decyzje architekta po oględzinach karty GPZ (6 punktów).** (1) Tabela
+pól stacji: Pole · (Nr — tylko gdy pole ma numer) · Rola · Stan; rola słowami kanonu ról pól
+(`FIELD_ROLE_LABEL_PL`, jedyne źródło etykiet ról — strażnik `test_etykiety_rol_pol_sn.py`
+zabrania drugiej listy i słów „liniowe odpływowe/dopływowe”, więc „Pole liniowe wejściowe /
+wyjściowe”, nie słowa z notatki architekta); rodzaj aparatu i reszta — karta pola. (2) Tabela
+aparatów karty pola zwarta: Aparat · Uᵣ [kV] · Iᵣ [A] · Iₖ [kA] — jednostka w nagłówku, liczby bez
+jednostek, wyrównane do prawej i niełamane (`KolumnaTabeli.liczbowa`); typ katalogowy, Iₜₕ, I_dyn
+i położenie — karta aparatu, którą otwiera klik w wiersz (`WierszTabeli.cel`, przycisk w pierwszej
+komórce); wskazanie z wiersza to TO SAMO, co klik w symbol aparatu na kanwie
+(`wskazanieAparatuPola`: selekcja pod refem pola z typem `elementTypeForKind('apparatus')` —
+funkcja przeniesiona z `SldCanvasV3Workspace.tsx` do `canvasMenuSubject.ts`, jedno źródło dla kanwy
+i inspektora — kontekst z refem urządzenia, temat z symbolem aparatu z sekwencji rysunku);
+test iloczynu sieć {gałęzie pola · rekordy aparatów} × rodzaj symbolu (8) × tryb {edycja, wyniki}
+porównuje kontekst, selekcję i treść karty po obu klikach. (3) Podpis tabeli tylko w sekcji z
+więcej niż jedną tabelą (renderer; tabela jedyna nazwana tytułem sekcji przez `aria-labelledby`):
+zdjęte „Sieć zasilająca”, „Pola rozdzielnicy SN”, „Odcinki przyłączone do stacji”, „Aparaty pola”;
+„Sekcje szyn” (SN i 110 kV) zachowuje podpisy. (4) Zasilanie GPZ: Sₖ″ i R/X w stanie maksymalnym
+i minimalnym (`sk3_mva`, `rx_ratio`, `sk3_min_mva`, `rx_ratio_min`) — wejścia zwarć maks. i min.;
+brak wartości w modelu — „—” w komórce liczbowej (wyjątek od wstrzymanego punktu 4 z polecenia
+architekta). (5) „Przyłączenia”: odczyt był poprawny — szyny stacji to szyny główne i zaciski pól
+SN (`szynyStacji`, lustro `enm.tor_pola.szyny_stacji`); scena z oględzin nie miała żadnego odcinka
+(`add_grid_source_sn` tworzy pola GPZ bez zacisku, jedyną gałęzią jest łącznik sprzęgła — sonda
+backendu). Spec GPZ dostał odcinek wyprowadzony z pola GPZ (`continue_trunk_segment_sn`
+z `field_ref`): liczba wierszy równa ENM, kolumna „Pole stacji” niesie nazwę pola; test jednostkowy
+iloczynu rodzaj stacji {GPZ, SN/nN} × odcinek {na zacisku pola · na szynie sekcji · wewnątrz
+stacji}. (6) „Strona nN” w GPZ przy potrzebach własnych — bez zmian (model niesie treść). POMIAR_15
 ---
 
 ## LICZBY-PL

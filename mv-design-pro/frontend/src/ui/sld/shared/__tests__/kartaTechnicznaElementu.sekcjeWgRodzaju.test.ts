@@ -8,8 +8,13 @@
  *     rozdzielnica SN, strona nN, przyłączenia) oraz wiersz „Podstawa rodzaju”;
  *
  *   GPZ × {sieć zasilająca przypisana do GPZ · sieć tylko na szynie GPZ · brak sieci}
- *       × {transformator 110 kV/SN w modelu · brak};
- *   tabela pól × numer pola {żadne pole nie ma numeru · jedno ma};
+ *       × {transformator 110 kV/SN w modelu · brak} × {stan minimalny sieci w modelu · brak};
+ *   tabela pól × numer pola {żadne pole nie ma numeru · jedno ma} (kolumna roli słowami kanonu);
+ *   tabela aparatów pola: cztery kolumny, liczby bez jednostek, wiersz z celem karty aparatu,
+ *       Iₖ × {wyłącznik z wartością · wyłącznik bez · odłącznik (bez zdolności z definicji) ·
+ *       aparat niełączeniowy};
+ *   przyłączenia × rodzaj stacji {GPZ · SN/nN} × odcinek {na zacisku pola · na szynie sekcji ·
+ *       wewnątrz stacji};
  *   wiersze „nie dotyczy” w kartach innych rodzajów: aparat {łącznik · przekładnik},
  *   odcinek {kabel · linia napowietrzna}, źródło {blokowe · po stronie nN},
  *   pole {z zaciskiem · bez zacisku}.
@@ -20,7 +25,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel, Substation } from '../../../../types/enm';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
-import { buildKartaTechniczna, kluczeKarty, type KartaTechniczna } from '../kartaTechnicznaElementu';
+import { buildKartaTechniczna, KATALOGI_PUSTE, kluczeKarty, type KartaTechniczna, type KatalogiKarty } from '../kartaTechnicznaElementu';
 
 type RodzajStacji = Substation['station_type'];
 type Tresc = 'szyny_sn' | 'transformator_nn' | 'odbior_sn';
@@ -177,27 +182,128 @@ describe('tabele zwarte (w szerokości inspektora) × rodzaj karty', () => {
     }
   });
 
-  it('tabela aparatów pola (liczby znamionowe z jednostką) NIE jest zwarta — wiersz w jednej linii', () => {
+  it('tabela aparatów pola też jest zwarta — jednostki w nagłówku, liczby w komórkach', () => {
     const k = buildKartaTechniczna(model('mv_lv', 'szyny_sn'), { kind: 'bay', elementId: 'bay/l1' } as DaneElementuKanwy)!;
     const aparaty = k.sekcje.flatMap((s) => s.tabele ?? []).find((t) => t.klucz === 'aparaty')!;
-    expect(aparaty.zwarta).toBeUndefined();
+    expect(aparaty.zwarta).toBe(true);
   });
+});
+
+describe('tabela aparatów pola: Aparat · Uᵣ · Iᵣ · Iₖ, szczegóły w karcie aparatu', () => {
+  /** Pole z wyłącznikiem z katalogu, wyłącznikiem bez katalogu, odłącznikiem i przekładnikiem. */
+  function kartaPolaZAparatami(): KartaTechniczna {
+    const m = model('mv_lv', 'szyny_sn') as unknown as Record<string, unknown[]>;
+    const pole = {
+      ...(m.bays[0] as Record<string, unknown>),
+      primary_devices: [
+        { device_ref: 'dev/cb', kind: 'CB', placement: 'MAIN', designation: 'Q1', catalog_ref: 'kat/cb' },
+        { device_ref: 'dev/cb2', kind: 'CB', placement: 'MAIN', designation: 'Q2' },
+        { device_ref: 'dev/ds', kind: 'DS', placement: 'BUS_SIDE', designation: 'Q0' },
+        { device_ref: 'dev/ct', kind: 'CT', placement: 'LINE_SIDE', designation: 'T1' },
+      ],
+    };
+    const katalogi: KatalogiKarty = {
+      ...KATALOGI_PUSTE,
+      aparatySn: new Map([
+        ['kat/cb', { id: 'kat/cb', name: 'VD4 24 kV 630 A 20 kA', device_kind: 'circuit_breaker', u_n_kv: 24, i_n_a: 630, breaking_capacity_ka: 20 } as never],
+      ]),
+    };
+    const k = buildKartaTechniczna(
+      { ...m, bays: [pole] } as unknown as EnergyNetworkModel,
+      { kind: 'bay', elementId: 'bay/l1' } as DaneElementuKanwy,
+      katalogi,
+    );
+    if (!k) throw new Error('brak karty pola');
+    return k;
+  }
+
+  it('kolumny: cztery, trzy liczbowe z jednostką w nagłówku', () => {
+    const t = kartaPolaZAparatami().sekcje.flatMap((s) => s.tabele ?? []).find((x) => x.klucz === 'aparaty')!;
+    expect(t.kolumny.map((c) => [c.etykieta, c.liczbowa ?? false])).toEqual([
+      ['Aparat', false],
+      ['Uᵣ [kV]', true],
+      ['Iᵣ [A]', true],
+      ['Iₖ [kA]', true],
+    ]);
+  });
+
+  it('komórki: liczby bez jednostek; Iₖ wyłącznika bez danych — brak, odłącznika i przekładnika — nie dotyczy; każdy wiersz ma cel', () => {
+    const t = kartaPolaZAparatami().sekcje.flatMap((s) => s.tabele ?? []).find((x) => x.klucz === 'aparaty')!;
+    const wgKlucza = new Map(t.wiersze.map((w) => [w.klucz, w]));
+    expect(wgKlucza.get('dev/cb')?.komorki).toEqual({ aparat: 'Wyłącznik Q1', ur: '24', ir: '630', ik: '20' });
+    expect(wgKlucza.get('dev/cb2')?.komorki).toEqual({ aparat: 'Wyłącznik Q2', ur: null, ir: null, ik: null });
+    expect(wgKlucza.get('dev/ds')?.komorki.ik).toBe('nie dotyczy');
+    expect(wgKlucza.get('dev/ct')?.komorki.ik).toBe('nie dotyczy');
+    for (const w of t.wiersze) {
+      expect(w.cel, w.klucz).toEqual({ rodzaj: 'aparat', poleRef: 'bay/l1', aparatRef: w.klucz });
+      for (const k of ['ur', 'ir', 'ik'] as const) expect(w.komorki[k] ?? '', `${w.klucz}/${k}`).not.toMatch(/kV|kA|\bA\b/);
+    }
+  });
+});
+
+describe('tabela aparatów pola × droga aparatu w modelu', () => {
+  it.each([
+    ['nazwa bez rodzaju', 'Q5', 'Wyłącznik · Q5'],
+    ['nazwa zaczyna się rodzajem', 'Wyłącznik pola SN 3', 'Wyłącznik pola SN 3'],
+    ['nazwa zaczyna się rodzajem małą literą', 'wyłącznik Q7', 'wyłącznik Q7'],
+  ] as const)('gałąź aparatu z `equipment_refs` (%s): wiersz z nazwą gałęzi i celem karty aparatu', (_opis, nazwa, oczekiwana) => {
+    const m = model('mv_lv', 'szyny_sn') as unknown as Record<string, unknown[]>;
+    const galaz = { ref_id: 'br/q5', id: 'br/q5', name: nazwa, type: 'breaker', from_bus_ref: 'bus/sn', to_bus_ref: 'bus/zacisk', status: 'closed' };
+    const k = buildKartaTechniczna(
+      { ...m, branches: [galaz], bays: [{ ...(m.bays[0] as Record<string, unknown>), equipment_refs: ['br/q5'] }] } as unknown as EnergyNetworkModel,
+      { kind: 'bay', elementId: 'bay/l1' } as DaneElementuKanwy,
+    )!;
+    const t = k.sekcje.flatMap((s) => s.tabele ?? []).find((x) => x.klucz === 'aparaty')!;
+    expect(t.wiersze.map((w) => [w.komorki.aparat, w.cel])).toEqual([
+      [oczekiwana, { rodzaj: 'aparat', poleRef: 'bay/l1', aparatRef: 'br/q5' }],
+    ]);
+  });
+});
+
+describe('przyłączenia × rodzaj stacji × położenie odcinka', () => {
+  function zOdcinkami(rodzaj: RodzajStacji): KartaTechniczna {
+    const m = model(rodzaj, 'szyny_sn') as unknown as Record<string, unknown[]>;
+    const kabel = (ref_id: string, from_bus_ref: string, to_bus_ref: string) => ({
+      ref_id, id: ref_id, name: ref_id, type: 'cable', from_bus_ref, to_bus_ref, length_km: 0.5,
+    });
+    return kartaStacji({
+      ...m,
+      buses: [...m.buses, szyna('bus/obca', 15, 'Szyna obca')],
+      branches: [
+        kabel('kabel/zacisk', 'bus/zacisk', 'bus/obca'),
+        kabel('kabel/sekcja', 'bus/obca', 'bus/sn'),
+        kabel('kabel/wewnatrz', 'bus/sn', 'bus/zacisk'),
+      ],
+    } as unknown as EnergyNetworkModel);
+  }
+
+  for (const rodzaj of ['gpz', 'mv_lv'] as const) {
+    it(`${rodzaj}: odcinek na zacisku pola niesie pole stacji, na szynie sekcji — bez pola, wewnętrzny — pominięty`, () => {
+      const t = zOdcinkami(rodzaj).sekcje.find((s) => s.id === 'przylaczenia')!.tabele![0];
+      expect(t.wiersze.map((w) => [w.klucz, w.komorki.pole])).toEqual([
+        ['kabel/zacisk', 'Pole liniowe L1'],
+        ['kabel/sekcja', null],
+      ]);
+    });
+  }
 });
 
 describe('tabela pól stacji × numer pola', () => {
   it.each([
-    ['żadne pole nie ma numeru', null, ['Pole', 'Aparat główny', 'Stan']],
-    ['pole ma numer', '07', ['Pole', 'Nr', 'Aparat główny', 'Stan']],
+    ['żadne pole nie ma numeru', null, ['Pole', 'Rola', 'Stan']],
+    ['pole ma numer', '07', ['Pole', 'Nr', 'Rola', 'Stan']],
   ] as const)('%s → kolumny %j', (_opis, numer, kolumny) => {
     const k = kartaStacji(model('mv_lv', 'szyny_sn', { numerPola: numer }));
     const tabela = k.sekcje.find((s) => s.id === 'rozdzielnica_sn')!.tabele!.find((t) => t.klucz === 'pola_sn')!;
     expect(tabela.kolumny.map((c) => c.etykieta)).toEqual(kolumny);
     expect(tabela.wiersze[0].komorki.nr).toBe(numer);
+    // Rola słowami kanonu ról pól (`FIELD_ROLE_LABEL_PL`), nie kodem modelu.
+    expect(tabela.wiersze[0].komorki.rola).toBe('Pole liniowe wyjściowe');
   });
 });
 
 describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
-  function gpz(siec: 'przypisana' | 'na_szynie' | 'brak', tr110: boolean): KartaTechniczna {
+  function gpz(siec: 'przypisana' | 'na_szynie' | 'brak', tr110: boolean, zMin = false): KartaTechniczna {
     const m = model('gpz', 'szyny_sn') as unknown as Record<string, unknown[]>;
     const zrodlo = {
       ref_id: 'src/siec',
@@ -206,6 +312,7 @@ describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
       bus_ref: tr110 ? 'bus/wn' : 'bus/sn',
       sk3_mva: 3000,
       rx_ratio: 0.1,
+      ...(zMin ? { sk3_min_mva: 1800, rx_ratio_min: 0.15 } : {}),
       ...(siec === 'przypisana' ? { substation_ref: ST } : {}),
     };
     const stacja = { ...(m.substations[0] as Substation), bus_refs: tr110 ? ['bus/wn', 'bus/sn'] : ['bus/sn'] };
@@ -220,15 +327,30 @@ describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
     } as unknown as EnergyNetworkModel);
   }
 
+  it('kolumny zasilania: stan maksymalny i minimalny sieci — wejścia zwarć maks. i min.', () => {
+    const zasilanie = gpz('przypisana', false).sekcje.find((s) => s.id === 'zasilanie')!.tabele![0];
+    expect(zasilanie.kolumny.map((c) => [c.etykieta, c.liczbowa ?? false])).toEqual([
+      ['Sieć', false],
+      ['Sₖ″ maks. [MVA]', true],
+      ['R/X maks.', true],
+      ['Sₖ″ min. [MVA]', true],
+      ['R/X min.', true],
+    ]);
+  });
+
   for (const siec of ['przypisana', 'na_szynie', 'brak'] as const) {
     for (const tr110 of [false, true]) {
-      it(`sieć ${siec} × transformator 110 kV/SN ${tr110 ? 'jest' : 'brak'}`, () => {
-        const k = gpz(siec, tr110);
+      for (const zMin of [false, true]) {
+      it(`sieć ${siec} × transformator 110 kV/SN ${tr110 ? 'jest' : 'brak'} × stan minimalny ${zMin ? 'w modelu' : 'brak'}`, () => {
+        const k = gpz(siec, tr110, zMin);
         const zasilanie = k.sekcje.find((s) => s.id === 'zasilanie')!.tabele![0];
         // Sieć tylko „na szynie” bez transformatora leży na szynie SN GPZ; z transformatorem —
-        // na szynie 110 kV, która jest szyną GPZ. Obie należą do GPZ.
+        // na szynie 110 kV, która jest szyną GPZ. Obie należą do GPZ. Brak wartości w modelu —
+        // kreska w komórce liczbowej (decyzja architekta 2026-11-04 pkt 4).
         expect(zasilanie.wiersze.map((w) => w.komorki)).toEqual(
-          siec === 'brak' ? [] : [{ siec: 'Sieć 110 kV', sk: '3000 MVA', rx: '0,1' }],
+          siec === 'brak'
+            ? []
+            : [{ siec: 'Sieć 110 kV', sk_max: '3000', rx_max: '0,1', sk_min: zMin ? '1800' : '—', rx_min: zMin ? '0,15' : '—' }],
         );
         if (siec === 'brak') expect(zasilanie.pustaPl).toBe('GPZ nie ma w modelu sieci zasilającej.');
         const tr = k.sekcje.find((s) => s.id === 'transformator');
@@ -243,6 +365,7 @@ describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
         expect(JSON.stringify(k)).not.toContain('nie ma transformatora');
         expect(k.sekcje.some((s) => s.id === 'strona_nn')).toBe(false);
       });
+      }
     }
   }
 });

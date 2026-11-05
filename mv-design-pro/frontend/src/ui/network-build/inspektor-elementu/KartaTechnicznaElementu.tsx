@@ -2,10 +2,11 @@
  * K6 (Z-12) — render karty technicznej obiektu (`ui/sld/shared/kartaTechnicznaElementu.ts`)
  * w prawym inspektorze. Sekcje w kolejności pracy projektanta; brak danej = „brak danych";
  * źródło danych przy danych tabliczki i znamionowych. Tabele (pola rozdzielnicy, przyłączenia,
- * aparaty pola) mają jeden zwarty wiersz na obiekt z nagłówkiem kolumn; kolumny poza szerokością
- * inspektora przewija się w poziomie (obszar tabeli przyjmuje fokus klawiatury), pierwsza kolumna
- * zostaje przy krawędzi (`ui2/theme/komponenty.css`). Dzięki temu karta stacji przy 1440×900
- * mieści identyfikację, tabelę pól i transformator na pierwszym ekranie inspektora.
+ * aparaty pola) mają jeden wiersz na obiekt z nagłówkiem kolumn; tabela zwarta mieści się
+ * w szerokości inspektora (komórki zawijają się, liczby nie — jednostka w nagłówku), inna przewija
+ * się w poziomie z pierwszą kolumną przy krawędzi (`ui2/theme/komponenty.css`). Podpis tabeli
+ * tylko wtedy, gdy sekcja ma więcej niż jedną tabelę — inaczej powtarzałby tytuł sekcji. Wiersz
+ * z celem (aparat pola) otwiera kartę tego obiektu (szczegóły na żądanie).
  * Zmiana wartości wyłącznie operacją domenową (kreator edycji parametrów),
  * a przycisk „Zmień" pojawia się tylko w trybie edycji modelu.
  */
@@ -13,6 +14,7 @@ import type { JSX } from 'react';
 
 import {
   BRAK_DANYCH_PL,
+  type CelWierszaTabeli,
   type EdycjaWiersza,
   type KartaTechniczna,
   type SekcjaKarty,
@@ -61,7 +63,18 @@ function WierszDanych({
   );
 }
 
-function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element {
+function TabelaDanych({
+  tabela,
+  idTytuluSekcji,
+  zPodpisem,
+  onOtworz,
+}: {
+  readonly tabela: TabelaKarty;
+  /** Tytuł sekcji nazywa tabelę, gdy podpisu nie ma (jedyna tabela sekcji). */
+  readonly idTytuluSekcji: string;
+  readonly zPodpisem: boolean;
+  readonly onOtworz: ((cel: CelWierszaTabeli) => void) | null;
+}): JSX.Element {
   if (tabela.wiersze.length === 0) {
     return (
       <p className="mvd-kt-brak" data-testid={`inspektor-karta-tabela-${tabela.klucz}-pusta`}>
@@ -69,12 +82,14 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
       </p>
     );
   }
-  const idPodpisu = `inspektor-karta-tabela-${tabela.klucz}-podpis`;
+  const idPodpisu = zPodpisem ? `inspektor-karta-tabela-${tabela.klucz}-podpis` : idTytuluSekcji;
   return (
     <div className="mvd-kt-tabela-ramka">
-      <p id={idPodpisu} className="mvd-kt-podpis-tabeli">
-        {tabela.podpis}
-      </p>
+      {zPodpisem && (
+        <p id={idPodpisu} className="mvd-kt-podpis-tabeli" data-testid={`inspektor-karta-tabela-${tabela.klucz}-podpis`}>
+          {tabela.podpis}
+        </p>
+      )}
       {/* Obszar przewijany w poziomie: fokus klawiatury (strzałki przewijają), nazwany podpisem.
           Tabela zwarta zawija komórki w szerokości inspektora — przewijanie zostaje zabezpieczeniem. */}
       <div
@@ -93,7 +108,7 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
           <thead>
             <tr>
               {tabela.kolumny.map((k) => (
-                <th key={k.klucz} scope="col">
+                <th key={k.klucz} scope="col" className={k.liczbowa ? 'mvd-kt-liczba' : undefined}>
                   {k.etykieta}
                 </th>
               ))}
@@ -101,12 +116,31 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
           </thead>
           <tbody>
             {tabela.wiersze.map((w) => (
-              <tr key={w.klucz} data-testid={`inspektor-karta-wiersz-${tabela.klucz}`}>
-                {tabela.kolumny.map((k) => {
+              <tr key={w.klucz} data-testid={`inspektor-karta-wiersz-${tabela.klucz}`} data-klucz={w.klucz}>
+                {tabela.kolumny.map((k, i) => {
                   const wartosc = w.komorki[k.klucz] ?? null;
+                  const tekst = <span className={wartosc === null ? 'mvd-kt-brak' : undefined}>{wartosc ?? BRAK_DANYCH_PL}</span>;
+                  const cel = i === 0 && onOtworz && w.cel ? w.cel : null;
                   return (
-                    <td key={k.klucz} data-kolumna={k.klucz} data-brak={wartosc === null ? 'true' : 'false'}>
-                      <span className={wartosc === null ? 'mvd-kt-brak' : undefined}>{wartosc ?? BRAK_DANYCH_PL}</span>
+                    <td
+                      key={k.klucz}
+                      data-kolumna={k.klucz}
+                      data-brak={wartosc === null ? 'true' : 'false'}
+                      className={k.liczbowa ? 'mvd-kt-liczba' : undefined}
+                    >
+                      {cel ? (
+                        <button
+                          type="button"
+                          className="mvd-kt-odnosnik"
+                          data-testid={`inspektor-karta-otworz-${tabela.klucz}`}
+                          title="Otwórz kartę aparatu"
+                          onClick={() => onOtworz?.(cel)}
+                        >
+                          {tekst}
+                        </button>
+                      ) : (
+                        tekst
+                      )}
                     </td>
                   );
                 })}
@@ -148,9 +182,11 @@ function PrzyciskKonfiguratoraGpz({ zrodloGpzRef }: { readonly zrodloGpzRef: str
 function Sekcja({
   sekcja,
   onEdytuj,
+  onOtworz,
 }: {
   readonly sekcja: SekcjaKarty;
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
+  readonly onOtworz: ((cel: CelWierszaTabeli) => void) | null;
 }): JSX.Element {
   const idNaglowka = `inspektor-karta-${sekcja.id}-tytul`;
   return (
@@ -180,8 +216,8 @@ function Sekcja({
               ))}
             </dl>
           )}
-          {(sekcja.tabele ?? []).map((t) => (
-            <TabelaDanych key={t.klucz} tabela={t} />
+          {(sekcja.tabele ?? []).map((t, _i, tabele) => (
+            <TabelaDanych key={t.klucz} tabela={t} idTytuluSekcji={idNaglowka} zPodpisem={tabele.length > 1} onOtworz={onOtworz} />
           ))}
           {sekcja.zrodloPl && (
             <p className="mvd-kt-zrodlo" data-testid={`inspektor-karta-${sekcja.id}-zrodlo`}>
@@ -197,15 +233,18 @@ function Sekcja({
 export function KartaTechnicznaElementu({
   karta,
   onEdytuj,
+  onOtworz,
 }: {
   readonly karta: KartaTechniczna;
   /** `null` — tryb bez edycji modelu (wyniki, tylko do odczytu): przyciski „Zmień" ukryte. */
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
+  /** Otwarcie karty obiektu z wiersza tabeli (aparat pola); brak — wiersze bez przejścia. */
+  readonly onOtworz?: ((cel: CelWierszaTabeli) => void) | null;
 }): JSX.Element {
   return (
     <div className="mvd-kt" data-testid="inspektor-karta" data-rodzaj-karty={karta.rodzaj}>
       {karta.sekcje.map((s) => (
-        <Sekcja key={s.id} sekcja={s} onEdytuj={onEdytuj} />
+        <Sekcja key={s.id} sekcja={s} onEdytuj={onEdytuj} onOtworz={onOtworz ?? null} />
       ))}
     </div>
   );

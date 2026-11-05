@@ -126,12 +126,27 @@ export interface WierszKarty {
 
 export interface KolumnaTabeli {
   readonly klucz: string;
+  /** Etykieta kolumny; kolumna liczbowa niesie jednostkę w nagłówku („Iᵣ [A]”). */
   readonly etykieta: string;
+  /** Kolumna liczb (bez jednostek w komórkach): wyrównanie do prawej, liczba nigdy nie jest
+   *  łamana między liniami (§10 kontraktu prezentacji — jednostki w nagłówkach kolumn). */
+  readonly liczbowa?: true;
+}
+
+/** Obiekt, którego kartę otwiera klik w wiersz tabeli (szczegóły na żądanie, §10). */
+export interface CelWierszaTabeli {
+  readonly rodzaj: 'aparat';
+  /** Pole, w którym leży aparat (właściciel symbolu na kanwie). */
+  readonly poleRef: string;
+  /** Aparat (urządzenie pola albo gałąź aparatu) — klucz karty aparatu. */
+  readonly aparatRef: string;
 }
 
 export interface WierszTabeli {
   readonly klucz: string;
   readonly komorki: Readonly<Record<string, string | null>>;
+  /** Karta otwierana klikiem w wiersz; brak = wiersz bez przejścia. */
+  readonly cel?: CelWierszaTabeli;
 }
 
 export interface TabelaKarty {
@@ -611,6 +626,15 @@ function aparatyPola(ix: IndeksModelu, bay: Bay): AparatPola[] {
   return wynik;
 }
 
+/** Identyfikacja aparatu w tabeli aparatów pola: rodzaj z oznaczeniem rekordu, a dla gałęzi
+ *  aparatu — jej nazwa, poprzedzona rodzajem tylko wtedy, gdy nazwa go nie zaczyna
+ *  („Wyłącznik · Q5”, ale „Wyłącznik pola SN 3”, nie „Wyłącznik · Wyłącznik pola SN 3”). */
+function identyfikacjaAparatuPola(a: AparatPola): string {
+  if (!a.galaz) return `${a.rodzajPl}${a.urzadzenie?.designation ? ` ${a.urzadzenie.designation}` : ''}`;
+  const nazwa = publicTechnicalLabel(a.galaz.name, a.rodzajPl);
+  return nazwa.toLocaleLowerCase('pl').startsWith(a.rodzajPl.toLocaleLowerCase('pl')) ? nazwa : `${a.rodzajPl} · ${nazwa}`;
+}
+
 function aparatGlowny(aparaty: readonly AparatPola[]): AparatPola | null {
   let najlepszy: AparatPola | null = null;
   for (const a of aparaty) {
@@ -622,6 +646,10 @@ function aparatGlowny(aparaty: readonly AparatPola[]): AparatPola | null {
 
 interface ZnamionaAparatu {
   readonly typ: string | null;
+  /** Liczby znamionowe bez jednostek (komórki tabeli z jednostką w nagłówku). */
+  readonly liczby: { readonly ur: number | null; readonly ir: number | null; readonly ik: number | null };
+  /** Zdolność wyłączalna nie dotyczy rodzaju aparatu (z definicji normy, `wielkoscAparatuSnDotyczy`). */
+  readonly ikNieDotyczy: boolean;
   readonly ur: string | null;
   readonly ir: string | null;
   readonly ik: string | null;
@@ -641,11 +669,8 @@ function znamionaAparatu(aparat: AparatPola, katalogi: KatalogiKarty): ZnamionaA
   // Rodzaj rozstrzygający „nie dotyczy”: pozycja katalogu (z niej pochodzą znamiona), a bez
   // niej — rodzaj aparatu w modelu.
   const rodzaj = napis(kat?.device_kind) ?? aparat.rodzajSnModelu;
-  const ik = wielkoscZwarciowaAparatu(
-    liczba(mp?.breaking_capacity_ka) ?? liczba(kat?.breaking_capacity_ka),
-    rodzaj,
-    'breaking_capacity_ka',
-  );
+  const ikLiczba = liczba(mp?.breaking_capacity_ka) ?? liczba(kat?.breaking_capacity_ka);
+  const ik = wielkoscZwarciowaAparatu(ikLiczba, rodzaj, 'breaking_capacity_ka');
   const ithLiczba = liczba(kat?.i_th_ka);
   const czasIth = liczba(kat?.i_th_duration_s);
   const ith =
@@ -660,6 +685,8 @@ function znamionaAparatu(aparat: AparatPola, katalogi: KatalogiKarty): ZnamionaA
       : null;
   return {
     typ,
+    liczby: { ur, ir, ik: ikLiczba },
+    ikNieDotyczy: ikLiczba === null && rodzaj !== null && !wielkoscAparatuSnDotyczy(rodzaj, 'breaking_capacity_ka'),
     ur: zapisLiczby(ur, 'kV'),
     ir: zapisLiczby(ir, 'A', 0),
     ik,
@@ -870,6 +897,9 @@ export const SEKCJE_Z_DEFINICJI_STACJI: Readonly<
 /** Rodzaj spoza słownika (dane z importu) — wszystkie sekcje jak dla stacji SN/nN (nic nie znika). */
 const SEKCJE_STACJI_SN_NN = SEKCJE_Z_DEFINICJI_STACJI.mv_lv;
 
+/** Komórka liczbowa tabeli zasilania GPZ bez wartości w modelu. */
+const KRESKA_BRAKU_LICZBY = '—';
+
 /** „Zasilanie” GPZ: sieć zasilająca przypisana do GPZ (`Source.substation_ref`) albo przyłączona
  *  do jego szyny — jedna sieć = jeden wiersz (nazwa, Sₖ″ maks., R/X) wprost z modelu. GPZ bez
  *  zasilania w modelu to luka modelu i karta mówi o niej wprost. */
@@ -885,17 +915,23 @@ function sekcjaZasilaniaGpz(ix: IndeksModelu, stacja: Substation, szynyWlasne: R
         klucz: 'zasilanie',
         podpis: 'Sieć zasilająca',
         zwarta: true,
+        // Stan maksymalny i minimalny — oba są wejściem zwarć maks./min. Brak wartości w modelu —
+        // kreska w komórce liczbowej (decyzja architekta 2026-11-04 dla tej tabeli).
         kolumny: [
           { klucz: 'siec', etykieta: 'Sieć' },
-          { klucz: 'sk', etykieta: 'Sₖ″ maks.' },
-          { klucz: 'rx', etykieta: 'R/X' },
+          { klucz: 'sk_max', etykieta: 'Sₖ″ maks. [MVA]', liczbowa: true },
+          { klucz: 'rx_max', etykieta: 'R/X maks.', liczbowa: true },
+          { klucz: 'sk_min', etykieta: 'Sₖ″ min. [MVA]', liczbowa: true },
+          { klucz: 'rx_min', etykieta: 'R/X min.', liczbowa: true },
         ],
         wiersze: sieci.map((z) => ({
           klucz: z.ref_id,
           komorki: {
             siec: nazwaObiektuPl(z.name, 'zrodlo', miejsceWKolekcji(zrodla, z)),
-            sk: zapisLiczby(z.sk3_mva, 'MVA'),
-            rx: zapisLiczby(z.rx_ratio, ''),
+            sk_max: zapisLiczby(z.sk3_mva, '') ?? KRESKA_BRAKU_LICZBY,
+            rx_max: zapisLiczby(z.rx_ratio, '') ?? KRESKA_BRAKU_LICZBY,
+            sk_min: zapisLiczby(z.sk3_min_mva, '') ?? KRESKA_BRAKU_LICZBY,
+            rx_min: zapisLiczby(z.rx_ratio_min, '') ?? KRESKA_BRAKU_LICZBY,
           },
         })),
         pustaPl: 'GPZ nie ma w modelu sieci zasilającej.',
@@ -934,9 +970,10 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
 
   // Rozdzielnica SN: szyny pól SN (GPZ — sekcje ma tabela „Sekcje szyn”, tu ich nie powtarzamy)
   // i zwarta tabela pól: jedno pole = jeden wiersz mieszczący się w szerokości inspektora
-  // (340–420 px, bez przewijania w poziomie): pole, numer, rodzaj aparatu głównego i stan. Rola
-  // pola, typ katalogowy i znamiona aparatów, zabezpieczenie i przekładniki mówi karta pola —
-  // jedna informacja w jednym miejscu (§10 kontraktu prezentacji; rola jest zwykle w nazwie pola).
+  // (340–420 px, bez przewijania w poziomie): pole, numer, rola (nazwa z kanonu ról pól SN,
+  // `fieldRoleLabelPl`) i stan aparatu głównego (decyzja architekta 2026-11-04: rola jest dla
+  // inżyniera ważniejsza niż rodzaj aparatu). Rodzaj i typ aparatów, znamiona, zabezpieczenie
+  // i przekładniki mówi karta pola — jedna informacja w jednym miejscu (§10 kontraktu prezentacji).
   const polaSn = polaSnStacji(model, stacja.ref_id);
   const sekcje = [...new Set(polaSn.map((b) => b.bus_ref))]
     .map((ref) => opisSzyny(ix, ref))
@@ -948,7 +985,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       komorki: {
         nr: napis(bay.bay_number),
         pole: nazwaPola(bay),
-        aparat: glowny ? glowny.rodzajPl : null,
+        rola: fieldRoleLabelPl(bay.field_role || bay.bay_role),
         stan: glowny ? stanAparatu(ix, glowny, bay) : null,
       },
     };
@@ -978,7 +1015,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
         kolumny: [
           { klucz: 'pole', etykieta: 'Pole' },
           ...(zNumerami ? [{ klucz: 'nr', etykieta: 'Nr' }] : []),
-          { klucz: 'aparat', etykieta: 'Aparat główny' },
+          { klucz: 'rola', etykieta: 'Rola' },
           { klucz: 'stan', etykieta: 'Stan' },
         ],
         wiersze: wierszePol,
@@ -1147,26 +1184,29 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         {
           klucz: 'aparaty',
           podpis: 'Aparaty pola',
+          // Zwarta (decyzja architekta 2026-11-04): aparat i trzy liczby znamionowe z jednostką
+          // w nagłówku — mieści się w inspektorze 340–420 px bez przewijania. Typ katalogowy,
+          // Iₜₕ, I_dyn i położenie łącznika — w karcie aparatu, którą otwiera klik w wiersz.
+          zwarta: true,
           kolumny: [
             { klucz: 'aparat', etykieta: 'Aparat' },
-            { klucz: 'typ', etykieta: 'Typ' },
-            { klucz: 'ur', etykieta: 'Uᵣ' },
-            { klucz: 'ir', etykieta: 'Iᵣ' },
-            { klucz: 'ik', etykieta: 'Zdolność wyłączalna' },
-            { klucz: 'stan', etykieta: 'Stan' },
+            { klucz: 'ur', etykieta: 'Uᵣ [kV]', liczbowa: true },
+            { klucz: 'ir', etykieta: 'Iᵣ [A]', liczbowa: true },
+            { klucz: 'ik', etykieta: 'Iₖ [kA]', liczbowa: true },
           ],
           wiersze: aparaty.map((a) => {
             const zn = znamionaAparatu(a, katalogi);
             return {
               klucz: a.ref,
               komorki: {
-                aparat: a.galaz ? `${a.rodzajPl} · ${publicTechnicalLabel(a.galaz.name, a.rodzajPl)}` : `${a.rodzajPl}${a.urzadzenie?.designation ? ` ${a.urzadzenie.designation}` : ''}`,
-                typ: zn.typ,
-                ur: zn.ur,
-                ir: zn.ir,
-                ik: a.lacznik ? zn.ik : 'nie dotyczy',
-                stan: a.lacznik ? stanAparatu(ix, a, bay) : 'nie dotyczy',
+                aparat: identyfikacjaAparatuPola(a),
+                ur: zapisLiczby(zn.liczby.ur, ''),
+                ir: zapisLiczby(zn.liczby.ir, '', 0),
+                // Aparat niełączeniowy albo rodzaj bez zdolności wyłączalnej (z definicji normy)
+                // — „nie dotyczy”; łącznik, któremu jej brakuje — brak danych (`null`).
+                ik: zn.liczby.ik !== null ? zapisLiczby(zn.liczby.ik, '') : !a.lacznik || zn.ikNieDotyczy ? 'nie dotyczy' : null,
               },
+              cel: { rodzaj: 'aparat', poleRef: bay.ref_id, aparatRef: a.ref },
             };
           }),
           pustaPl: 'Pole nie ma aparatów w modelu.',

@@ -57,7 +57,8 @@ export async function operacja(
   return body.snapshot ?? {};
 }
 
-function odcinek(dlugoscM: number, nazwa: string): Record<string, unknown> {
+/** Odcinek kablowy SN z katalogu (ładunek `segment` operacji ciągu głównego). */
+export function odcinek(dlugoscM: number, nazwa: string): Record<string, unknown> {
   return { rodzaj: 'KABEL', dlugosc_m: dlugoscM, catalog_binding: katalog('KABEL_SN', KABEL), name: nazwa };
 }
 
