@@ -1030,7 +1030,7 @@ EQ_VDROP_007 = EquationDefinition(
         "cyrkularnym. Do 2026-08-12 równanie mnożyło $U_{source}$ przez "
         "(1 − ΔU_total%/100): ΔU_total% jest odniesione do $U_n$, więc gdy "
         "$U_{source}$ ≠ $U_n$, krok mieszał dwie różne podstawy odniesienia. ZMIERZONE "
-        "na sieci 110/15 kV ($U_{początku} = 14{,}7984$ kV, ΔU_total = 6,3574 %): "
+        "na sieci 110/15 kV ($U_{\\text{początku}} = 14{,}7984$ kV, ΔU_total = 6,3574 %): "
         "stara forma dawała 13,8576 kV wobec 13,8452 kV z biegu — 12,44 V "
         "rozjazdu. Nowa forma daje 13,8448 kV — 0,375 V rozjazdu wobec biegu "
         "(REZYDUALNE — przybliżenie ΔU = (R·P+X·Q)/$U_n^2$ pomija składową "

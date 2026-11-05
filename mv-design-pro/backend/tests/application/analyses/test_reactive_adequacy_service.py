@@ -127,7 +127,7 @@ def test_saturated_source_exhausts_reserve() -> None:
     view = build_reactive_adequacy_view(run)
     assert view["verdict"] == "rezerwa Q wyczerpana"
     assert view["sources"][0]["is_saturated"] is True
-    assert view["sources"][0]["at_limit_pl"] == "Q_max"
+    assert view["sources"][0]["at_limit_pl"] == "górna granica mocy biernej"
 
 
 def test_source_without_limits_is_no_data() -> None:
@@ -156,7 +156,7 @@ def test_voltage_violation_detected() -> None:
     assert view["verdict"] == "rezerwa Q wyczerpana"
     assert len(view["voltage_violations"]) == 1
     assert view["voltage_violations"][0]["bus_ref"] == "b1"
-    assert view["voltage_violations"][0]["kind_pl"] == "przekroczenie U_max"
+    assert view["voltage_violations"][0]["kind_pl"] == "przekroczenie napięcia maksymalnego"
 
 
 @pytest.mark.parametrize(

@@ -475,7 +475,7 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
       expect(sekcja).toHaveTextContent(
         'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
-          + 'znamionowej P_rM',
+          + 'znamionowej, ani mocy pozornej znamionowej',
       );
       expect(tekstZrodlowy(sekcja)).toContain('Moc znamionowa (mechaniczna) jednej maszyny $P_{rM}$ [MW]');
       // Bez zmiany wartości maszyny nic do zapisu.
@@ -487,8 +487,8 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       render(<KreatorEdycjiParametrow />);
       const sekcja = await screen.findByTestId(M);
       expect(sekcja).toHaveTextContent(
-        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
-          + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
+        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej z tabliczki '
+          + 'elementu (iloczyn mocy pozornej, sprawności i współczynnika mocy), IEC 60909-0:2016 pkt 6.7.',
       );
     });
 

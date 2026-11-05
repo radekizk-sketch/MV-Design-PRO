@@ -28,6 +28,7 @@ import {
   usePoprawWModelu,
 } from '../wzorzec';
 import { PrzyciskAkcjiStanu } from '../wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
@@ -573,7 +574,9 @@ function SzczegolWalidacji({
                     {krok.latex ? (
                       <MathBlock latex={krok.latex} />
                     ) : (
-                      <code className="mvd-num">{krok.tekst}</code>
+                      <code className="mvd-num">
+                        <TekstZWzorami tekst={krok.tekst} />
+                      </code>
                     )}
                   </li>
                 ))}
@@ -602,11 +605,15 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <code className="mvd-num">
+                <TekstZWzorami tekst={krok.substitution_pl} />
+              </code>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <code className="mvd-num">
+            <TekstZWzorami tekst={krok.result_pl} />
+          </code>
         </li>
       ))}
     </ol>
@@ -841,11 +848,15 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <code className="mvd-num">
+                <TekstZWzorami tekst={krok.substitution_pl} />
+              </code>
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <code className="mvd-num">
+            <TekstZWzorami tekst={krok.result_pl} />
+          </code>
         </li>
       ))}
     </ol>

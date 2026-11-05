@@ -565,7 +565,12 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
         assert ocena["wynik"]["symbol_latex"] == symbol
         assert ocena["wynik"]["wartosc"] == {"wartosc": wartosc, "jednostka": "kA"}
         # Rekord nazywa porównaną wielkość i normę — ekran pokazuje, CO porównano.
-        assert symbol.replace("''", "″") in ocena["wynik"]["wielkosc_pl"].replace("I″k", "I_k″")
+        # Proza nazywa wielkość słowami (karta KD6, kontrakt prezentacji): symbol wyłącznie
+        # w `symbol_latex`, nazwa wielkości w `wielkosc_pl` bez zapisu ASCII symbolu.
+        assert ocena["wynik"]["wielkosc_pl"].endswith(
+            "zwarcia trójfazowego w punkcie zabudowy pola"
+        )
+        assert "_" not in ocena["wynik"]["wielkosc_pl"] and "″" not in ocena["wynik"]["wielkosc_pl"]
         # Znamię nazwane wg normy aparatu TEGO pasma (karta APARATURA-TABELA): wyłącznik
         # i reklozer SN — I_sc (IEC 62271-100 § 4.101), wyłącznik nN — I_cu (IEC 60947-2),
         # bezpiecznik — I_1 (IEC 60282-1). I_cu przy aparacie SN byłoby błędem normowym.
@@ -728,8 +733,10 @@ def test_slad_wylaczania_niesie_tb_i_skladowa_nieokresowa_informacyjnie() -> Non
     pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=18.0, ib=17.0, tb=0.1, un=15.0, i_dc=3.25))
     opis = _ocena(pole, "wylaczanie")["slad"][0]["opis_pl"]
 
-    assert "t_b = 0.1 s" in opis
-    assert "i_DC(t_b) = 3.25 kA" in opis
+    # Proza słowami, liczby w zapisie polskim (karta KD6 / PROZA-BEZ-SYMBOLI-ASCII).
+    assert "0,1 s" in opis
+    assert "3,25 kA" in opis
+    assert "t_b" not in opis and "i_DC" not in opis
     assert "informacyjnie" in opis
 
 

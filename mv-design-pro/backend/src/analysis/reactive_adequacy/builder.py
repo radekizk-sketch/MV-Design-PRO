@@ -203,7 +203,7 @@ class ReactiveAdequacyBuilder:
                 "Dane niekompletne — brak: "
                 + ", ".join(missing)
                 + ". Ocena rezerwy biernej wymaga aktualnego Q (z wyniku "
-                "power-flow) oraz granic regulatora Q_min/Q_max źródła."
+                "power-flow) oraz granic regulatora $Q_{min}/Q_{max}$ źródła."
             )
             return SourceReactiveEntry(
                 ref=item.ref,
@@ -225,9 +225,9 @@ class ReactiveAdequacyBuilder:
         q_max = float(item.q_max_mvar)  # type: ignore[arg-type]
         if q_min > q_max:
             why = (
-                f"Dane niespójne — Q_min = {_round(q_min)} Mvar > "
-                f"Q_max = {_round(q_max)} Mvar. Granice regulatora muszą spełniać "
-                "Q_min <= Q_max."
+                f"Dane niespójne — $Q_{{min}}$ = {_round(q_min)} Mvar > "
+                f"$Q_{{max}}$ = {_round(q_max)} Mvar. Granice regulatora muszą spełniać "
+                "$Q_{min}$ ≤ $Q_{max}$."
             )
             return SourceReactiveEntry(
                 ref=item.ref,
@@ -251,25 +251,29 @@ class ReactiveAdequacyBuilder:
         is_saturated = at_upper or at_lower
         # Przy zdegenerowanym zakresie (Q_min==Q_max) zrodlo nie reguluje Q —
         # oba kierunki przy granicy; raportujemy Q_max (gorny limit wstrzykiwania).
-        at_limit = "Q_max" if at_upper else ("Q_min" if at_lower else None)
+        at_limit = (
+            "górna granica mocy biernej"
+            if at_upper
+            else ("dolna granica mocy biernej" if at_lower else None)
+        )
 
         if is_saturated and at_limit == "Q_max":
             why = (
-                f"Źródło nasycone przy Q_max = {_round(q_max)} Mvar "
-                f"(Q_actual = {_round(q)} Mvar; rezerwa w górę = {headroom_up} Mvar "
-                f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
+                f"Źródło nasycone przy $Q_{{max}}$ = {_round(q_max)} Mvar "
+                f"($Q_{{actual}}$ = {_round(q)} Mvar; rezerwa w górę = {headroom_up} Mvar "
+                f"≤ tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
                 "wstrzykiwania mocy biernej (podtrzymania napięcia w górę)."
             )
         elif is_saturated and at_limit == "Q_min":
             why = (
-                f"Źródło nasycone przy Q_min = {_round(q_min)} Mvar "
-                f"(Q_actual = {_round(q)} Mvar; rezerwa w dół = {headroom_down} Mvar "
-                f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
+                f"Źródło nasycone przy $Q_{{min}}$ = {_round(q_min)} Mvar "
+                f"($Q_{{actual}}$ = {_round(q)} Mvar; rezerwa w dół = {headroom_down} Mvar "
+                f"≤ tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
                 "absorpcji mocy biernej (obniżenia napięcia)."
             )
         else:
             why = (
-                f"Źródło w obszarze regulacji: Q_actual = {_round(q)} Mvar w zakresie "
+                f"Źródło w obszarze regulacji: $Q_{{actual}}$ = {_round(q)} Mvar w zakresie "
                 f"[{_round(q_min)}; {_round(q_max)}] Mvar. Rezerwa w górę = "
                 f"{headroom_up} Mvar, w dół = {headroom_down} Mvar."
             )
@@ -280,14 +284,14 @@ class ReactiveAdequacyBuilder:
                 formula_latex=r"\Delta Q_{\uparrow} = Q_{max} - Q_{akt}",
                 substitution_pl=f"ΔQ↑ = {_round(q_max)} − {_round(q)}",
                 result_pl=f"ΔQ↑ = {headroom_up} Mvar (rezerwa do wstrzykiwania)",
-                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↑ >= 0 w obszarze regulacji.",
+                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↑ ≥ 0 w obszarze regulacji.",
             ),
             WhiteBoxStep(
                 symbol="ΔQ↓",
                 formula_latex=r"\Delta Q_{\downarrow} = Q_{akt} - Q_{min}",
                 substitution_pl=f"ΔQ↓ = {_round(q)} − {_round(q_min)}",
                 result_pl=f"ΔQ↓ = {headroom_down} Mvar (rezerwa do absorpcji)",
-                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↓ >= 0 w obszarze regulacji.",
+                unit_check_pl="Mvar − Mvar = Mvar; ΔQ↓ ≥ 0 w obszarze regulacji.",
             ),
             WhiteBoxStep(
                 symbol="nasycenie",
@@ -337,17 +341,17 @@ class ReactiveAdequacyBuilder:
             u_max = float(b.u_max_pu) if b.u_max_pu is not None else self.default_u_max_pu
             if v > u_max:
                 dev = _round(v - u_max)
-                kind = "przekroczenie U_max"
+                kind = "przekroczenie napięcia maksymalnego"
                 why = (
-                    f"|V| = {_round(v)} p.u. > U_max = {_round(u_max)} p.u. w węźle "
+                    f"|V| = {_round(v)} p.u. > $U_{{max}}$ = {_round(u_max)} p.u. w węźle "
                     f"{nazwa_wezla}; przekroczenie o {dev} p.u. Wskazuje na nadmiar "
                     "mocy biernej / potrzebę absorpcji Q."
                 )
             elif v < u_min:
                 dev = _round(v - u_min)  # ujemne
-                kind = "poniżej U_min"
+                kind = "napięcie poniżej minimalnego"
                 why = (
-                    f"|V| = {_round(v)} p.u. < U_min = {_round(u_min)} p.u. w węźle "
+                    f"|V| = {_round(v)} p.u. < $U_{{min}}$ = {_round(u_min)} p.u. w węźle "
                     f"{nazwa_wezla}; niedobór {dev} p.u. Wskazuje na niedobór mocy "
                     "biernej / potrzebę wstrzykiwania Q (podtrzymania napięcia)."
                 )
@@ -361,7 +365,7 @@ class ReactiveAdequacyBuilder:
                         f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; " f"{_round(u_max)}] p.u."
                     ),
                     result_pl=f"ΔU = {dev} p.u. ({kind})",
-                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyżej U_max, − poniżej U_min.",
+                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyżej $U_{max}$, − poniżej $U_{min}$.",
                 ),
             )
             out.append(
@@ -411,7 +415,7 @@ class ReactiveAdequacyBuilder:
                 symbol="ΣQ_zrodla",
                 formula_latex=r"\sum Q_{źródła} = \sum_i Q_{akt,i}",
                 substitution_pl=(
-                    f"Q_gen(+) = {q_gen} Mvar; Q_abs(−) = {q_abs} Mvar; "
+                    f"$Q_{{gen}}$(+) = {q_gen} Mvar; $Q_{{abs}}$(−) = {q_abs} Mvar; "
                     f"netto = {net_source} Mvar"
                 ),
                 result_pl=f"ΣQ_zrodla(netto) = {net_source} Mvar",

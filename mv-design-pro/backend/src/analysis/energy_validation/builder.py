@@ -178,7 +178,7 @@ class EnergyValidationBuilder:
         ir_od_ka = a_na_ka(wynik.prad_znamionowy_od_a)
         ir_do_ka = a_na_ka(wynik.prad_znamionowy_do_a)
         zrodlo_znamionowych = (
-            "S_n i U_n strony transformatora"
+            "$S_n$ i $U_n$ strony transformatora"
             if isinstance(branch, TransformerBranch)
             else "obciążalność gałęzi"
         )
@@ -197,11 +197,11 @@ class EnergyValidationBuilder:
             status=status,
             why_pl=why,
             white_box=_white_box_progowe(
-                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+                "obciążenie = max(|$I_{od}$| / $I_{r,od}$; |$I_{do}$| / $I_{r,do}$) · 100 %",
                 r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
                 r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
-                f"|I_od| = {_pl(i_od_ka, 4)} kA, |I_do| = {_pl(i_do_ka, 4)} kA (wynik rozpływu), "
-                f"I_r,od = {_pl(ir_od_ka, 4)} kA, I_r,do = {_pl(ir_do_ka, 4)} kA "
+                f"|$I_{{od}}$| = {_pl(i_od_ka, 4)} kA, |$I_{{do}}$| = {_pl(i_do_ka, 4)} kA (wynik rozpływu), "
+                f"$I_{{r,od}}$ = {_pl(ir_od_ka, 4)} kA, $I_{{r,do}}$ = {_pl(ir_do_ka, 4)} kA "
                 f"({zrodlo_znamionowych}); decyduje zacisk "
                 f"{_ZACISK_PL[wynik.zacisk_decydujacy]}",
                 rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
@@ -267,9 +267,9 @@ class EnergyValidationBuilder:
                     status=status,
                     why_pl=why,
                     white_box=_white_box_progowe(
-                        "odchylenie = |U − U_n| / U_n · 100 %",
+                        "odchylenie = |U − $U_n$| / $U_n$ · 100 %",
                         r"\delta U = \frac{|U - U_n|}{U_n} \cdot 100\%",
-                        f"U = {_pl(u_kv, 4)} kV (wynik rozpływu), U_n = {_pl(u_nom_kv, 4)} kV",
+                        f"U = {_pl(u_kv, 4)} kV (wynik rozpływu), $U_n$ = {_pl(u_nom_kv, 4)} kV",
                         rf"\delta U = \frac{{|{u_kv:.4f} - {u_nom_kv:.4f}|}}{{{u_nom_kv:.4f}}} \cdot 100\% = {delta_pct:.2f}\%",
                         f"odchylenie = {_pl(delta_pct, 2)} %",
                         config.voltage_warn_pct,
@@ -335,9 +335,9 @@ class EnergyValidationBuilder:
                 status=status,
                 why_pl=why,
                 white_box=_white_box_progowe(
-                    "straty = |P_strat / P_bil| · 100 %",
+                    "straty = |$P_{strat} / P_{bil}$| · 100 %",
                     r"\Delta P\% = \left|\frac{P_{\text{strat}}}{P_{\text{slack}}}\right| \cdot 100\%",
-                    f"P_strat = {_pl(p_loss_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                    f"$P_{{strat}}$ = {_pl(p_loss_pu, 6)} j.w., $P_{{bil}}$ = {_pl(p_slack_pu, 6)} j.w. "
                     "(wynik rozpływu, węzeł bilansujący)",
                     rf"\Delta P\% = \left|\frac{{{p_loss_pu:.6f}}}{{{p_slack_pu:.6f}}}\right| \cdot 100\% = {loss_pct:.2f}\%",
                     f"straty = {_pl(loss_pct, 2)} %",
@@ -406,11 +406,11 @@ class EnergyValidationBuilder:
                 why_pl=why,
                 white_box=(
                     _krok(
-                        "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
+                        "Wzór: tgφ = |$Q_{bil} / P_{bil}$|; cosφ = cos(arctg(tgφ))",
                         r"\cos\varphi = \cos\!\left(\arctan\left|\frac{Q_{\text{slack}}}{P_{\text{slack}}}\right|\right)",
                     ),
                     _krok(
-                        f"Dane: Q_bil = {_pl(q_slack_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                        f"Dane: $Q_{{bil}}$ = {_pl(q_slack_pu, 6)} j.w., $P_{{bil}}$ = {_pl(p_slack_pu, 6)} j.w. "
                         "(wynik rozpływu, węzeł bilansujący)"
                     ),
                     _krok(

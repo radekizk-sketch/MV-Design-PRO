@@ -99,8 +99,8 @@ class GridStrengthBuilder:
             why = (
                 "Dane niekompletne — brak: "
                 + ", ".join(missing)
-                + ". SCR wymaga dodatniej mocy zwarciowej S_sc'' (z solvera "
-                "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł S_n."
+                + ". SCR wymaga dodatniej mocy zwarciowej $S_{sc}''$ (z solvera "
+                "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł $S_n$."
             )
             return BusStrengthEntry(
                 bus_ref=item.bus_ref,
@@ -187,7 +187,7 @@ class GridStrengthBuilder:
             return (
                 None,
                 VERDICT_NO_DATA,
-                "WSCR niepoliczony — brak węzłów z kompletem danych (S_sc'' i S_n).",
+                "WSCR niepoliczony — brak węzłów z kompletem danych ($S_{sc}''$ i $S_n$).",
                 (),
             )
 
@@ -208,8 +208,8 @@ class GridStrengthBuilder:
                     r"{\left(\sum_i S_{n,i}\right)^2}"
                 ),
                 substitution_pl=(
-                    f"licznik Σ(S_sc·S_n) = {_round(numerator)} MVA²; "
-                    f"(Σ S_n)² = {_round(sum_sn**2)} MVA²"
+                    f"licznik Σ($S_{{sc}}\\cdot S_n$) = {_round(numerator)} MVA²; "
+                    f"(Σ $S_n$)² = {_round(sum_sn**2)} MVA²"
                 ),
                 result_pl=f"WSCR = {wscr} (–), n = {len(valid)}",
             ),

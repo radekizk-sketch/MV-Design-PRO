@@ -88,20 +88,16 @@ PIN = 0
 #: na zgodę architekta na edycję rdzenia — nie wolno ich obniżać bez tej zgody, nie wolno też
 #: ukrywać. Słownik zmierzony na drzewie karty PROZA-BEZ-SYMBOLI-ASCII.
 PINY_BACKENDU: dict[str, int] = {
-    "analysis/arc_flash/builder.py": 45,
+    "analysis/arc_flash/builder.py": 3,
     "analysis/arc_flash/models.py": 1,
     "analysis/boundary/identifier.py": 2,
-    "analysis/energy_validation/builder.py": 14,
-    "analysis/grid_strength/builder.py": 4,
     "analysis/lf_sensitivity/builder.py": 1,
     "analysis/normative/rule_registry.py": 3,
     "analysis/obciazenie_galezi.py": 1,
-    "analysis/reactive_adequacy/builder.py": 24,
     "analysis/recommendations/builder.py": 2,
     "analysis/reporting/arc_flash_report.py": 1,
     "analysis/sanity_bounds/power_flow_bounds.py": 2,
     "analysis/sensitivity/builder.py": 2,
-    "analysis/ssci_stability/builder.py": 1,
     "analysis/ssci_stability/models.py": 6,
     "api/analysis_run_exports.py": 11,
     "api/catalog.py": 2,
@@ -199,7 +195,6 @@ PINY_BACKENDU: dict[str, int] = {
     "network_model/catalog/resolver.py": 1,
     "network_model/catalog/switchgear/families.py": 1,
     "network_model/catalog/types.py": 25,
-    "network_model/catalog/wartosci_robocze.py": 29,
     "network_model/core/autorytet_wyniku_zwarciowego.py": 2,
     "network_model/core/bateria_kondensatorow.py": 1,
     "network_model/core/branch.py": 5,
@@ -652,12 +647,16 @@ def _literaly_symboli(drzewo: ast.Module) -> set[int]:
         elif isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef):
             argumenty = [*wezel.args.posonlyargs, *wezel.args.args]
             for argument, domyslna in zip(
-                argumenty[len(argumenty) - len(wezel.args.defaults) :], wezel.args.defaults, strict=False
+                argumenty[len(argumenty) - len(wezel.args.defaults) :],
+                wezel.args.defaults,
+                strict=False,
             ):
                 tryb = _tryb_pola(argument.arg, argument.annotation)
                 if tryb is not None:
                     _oznacz_wartosc(domyslna, tryb, pomin)
-            for argument, domyslna in zip(wezel.args.kwonlyargs, wezel.args.kw_defaults, strict=False):
+            for argument, domyslna in zip(
+                wezel.args.kwonlyargs, wezel.args.kw_defaults, strict=False
+            ):
                 tryb = _tryb_pola(argument.arg, argument.annotation)
                 if tryb is not None and domyslna is not None:
                     _oznacz_wartosc(domyslna, tryb, pomin)
@@ -781,9 +780,7 @@ def zmierz_backend() -> dict[str, list[tuple[int, str, str]]]:
     wynik: dict[str, list[tuple[int, str, str]]] = {}
     for plik in pliki_backendu():
         wzgledna_root = plik.relative_to(ROOT).as_posix()
-        trafienia = [
-            t for t in skanuj_py(plik) if (wzgledna_root, t[0]) not in WYJATKI_ZNANE
-        ]
+        trafienia = [t for t in skanuj_py(plik) if (wzgledna_root, t[0]) not in WYJATKI_ZNANE]
         if trafienia:
             wynik[plik.relative_to(BACKEND_SRC).as_posix()] = trafienia
     return wynik

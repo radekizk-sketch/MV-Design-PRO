@@ -412,8 +412,9 @@ def test_rejestr_dla_formularza_przez_http_i_ksztalt_kontraktu() -> None:
         for opis in parametry:
             assert set(opis) == KLUCZE_PARAMETRU_FORMULARZA
             assert opis["symbol_latex"].strip(), opis["parametr"]
-            # Jednostka z symbolami bazy (`p.u. (S_rG, U_rG)`) ma postać LaTeX; zwykła — pustą.
-            assert (opis["jednostka_latex"] != "") is ("_" in opis["jednostka"]), opis["parametr"]
+            # Jednostka z bazą (`p.u. (moc pozorna i napięcie znamionowe generatora)` — proza
+            # słowami) ma postać LaTeX z symbolami bazy; zwykła jednostka — pustą.
+            assert (opis["jednostka_latex"] != "") is ("(" in opis["jednostka"]), opis["parametr"]
             # Propozycja rejestru sama przechodzi bramę wartości (inaczej obliczenie
             # przyjęłoby wartość, której projektant nie mógłby nadać). Moc znamionowa nie ma
             # liczby w rejestrze — propozycja zależy od punktu pracy elementu.

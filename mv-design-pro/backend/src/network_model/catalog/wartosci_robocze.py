@@ -1614,7 +1614,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         nazwa_pl="reaktancja podprzejściowa nasycona",
         symbol="x″d",
         symbol_latex=r"x''_{d}",
-        jednostka="p.u. (S_rG, U_rG)",
+        jednostka="p.u. (moc pozorna i napięcie znamionowe generatora)",
         jednostka_latex=r"\mathrm{p.u.}\ (S_{rG},\ U_{rG})",
         dopuszczalne_od=0.05,
         dopuszczalne_do=0.5,
@@ -1695,15 +1695,17 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             PARAMETR_MOC_POZORNA_MASZYNY,
             None,
             odniesienie=(
-                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez cos φ_rG "
-                f"(S_rG = P/cos φ_rG); {_NORMA_MASZYN} pkt 6.3 wymaga S_rG z danych maszyny"
+                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez znamionowy współczynnik mocy "
+                f"generatora; {_NORMA_MASZYN} pkt 6.3 wymaga mocy pozornej znamionowej z danych "
+                "maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy "
+                "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy "
                 "czynnej punktu pracy elementu"
             ),
             wplyw_pl=(
-                "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej "
+                "impedancja zwarciowa generatora jest odwrotnie proporcjonalna do mocy pozornej "
+                "znamionowej — maszyna o większej "
                 "mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, "
                 "niż wykazuje obliczenie"
             ),
@@ -1720,7 +1722,7 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
                 "Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u."
             ),
             wplyw_pl=(
-                "impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna "
+                "impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna "
                 "o mniejszej reaktancji daje większy udział w prądach zwarciowych"
             ),
         ),
@@ -1729,14 +1731,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.8,
             odniesienie=(
                 "wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; "
-                f"{_NORMA_MASZYN} pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga "
+                "znamionowego współczynnika mocy z danych maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto "
-                "cos φ_rG 0,8"
+                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto " "0,8"
             ),
             wplyw_pl=(
-                "współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość "
+                "współczynnik korekcyjny impedancji generatora zależy od współczynnika mocy — inna "
+                "wartość "
                 "zmienia udział maszyny w prądach zwarciowych"
             ),
         ),
@@ -1747,16 +1750,16 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             None,
             odniesienie=(
                 f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}; {_NORMA_MASZYN} pkt 6.7 i 9.1.2 wymagają "
-                "mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), "
-                "m = P_rM/p)"
+                "mocy znamionowej z danych maszyny (z niej moc pozorna znamionowa i moc na parę "
+                "biegunów)"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej "
-                "znamionowej S_rM — przyjęto P_rM z mocy czynnej punktu pracy elementu"
+                "Tabliczka maszyny nie podaje ani mocy znamionowej, ani mocy pozornej "
+                "znamionowej — przyjęto moc znamionową z mocy czynnej punktu pracy elementu"
             ),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na "
-                "parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — "
+                "moc pozorna znamionowa, a z nią udział maszyny w prądach zwarciowych, oraz moc na "
+                "parę biegunów (zanik prądu wyłączeniowego) są proporcjonalne do mocy znamionowej — "
                 "maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
             ),
         ),
@@ -1766,16 +1769,18 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             odniesienie=(
                 "założenie zachowawcze: tabliczka nie podaje liczby par biegunów ani prędkości "
                 "znamionowej, z której liczbę par wyznacza się przy częstotliwości sieci; "
-                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów m = P_rM/p"
+                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów (moc znamionowa podzielona "
+                "przez liczbę par biegunów)"
             ),
             uzasadnienie_pl=(
-                "Przyjęto p = 1 — największą moc na parę biegunów, a więc najsłabszy zanik prądu "
+                "Przyjęto jedną parę biegunów — największą moc na parę biegunów, a więc najsłabszy "
+                "zanik prądu "
                 "maszyny (współczynnik q najbliższy 1) i dla maszyny SN o mocy co najmniej "
-                "1 MW najmniejszy stosunek R_M/X_M"
+                "1 MW najmniejszy stosunek rezystancji do reaktancji maszyny"
             ),
             wplyw_pl=(
-                "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony "
-                "zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
+                "prąd wyłączeniowy (i przy maszynie SN — współczynnik udaru) jest liczony "
+                "zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy prąd wyłączeniowy"
             ),
         ),
         PARAMETR_KROTNOSC_I_LR: _propozycja_maszyny(
@@ -1783,14 +1788,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             5.0,
             odniesienie=(
                 "wartość typowa maszyn indukcyjnych (zakres spotykany 4–7); "
-                f"{_NORMA_MASZYN} pkt 6.7 wymaga I_LR/I_rM z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wymaga krotności prądu zablokowanego wirnika z danych "
+                "maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto "
-                "I_LR/I_rM = 5"
+                "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto " "5"
             ),
             wplyw_pl=(
-                "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna "
+                "impedancja zwarciowa maszyny jest odwrotnie proporcjonalna do krotności prądu "
+                "zablokowanego wirnika — maszyna "
                 "o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
             ),
         ),
@@ -1799,15 +1805,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.85,
             odniesienie=(
                 "wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną znamionową z mocy znamionowej, "
+                "sprawności i współczynnika mocy maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto "
-                "cos φ_rM 0,85"
+                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto " "0,85"
             ),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
-                "zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
+                "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach "
+                "zwarciowych, są odwrotnie proporcjonalne do współczynnika mocy"
             ),
         ),
         PARAMETR_SPRAWNOSC: _propozycja_maszyny(
@@ -1815,13 +1821,12 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.95,
             odniesienie=(
                 "wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną znamionową z mocy znamionowej, "
+                "sprawności i współczynnika mocy maszyny"
             ),
-            uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95"
-            ),
+            uzasadnienie_pl=("Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95"),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
+                "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach "
                 "zwarciowych, są odwrotnie proporcjonalne do sprawności"
             ),
         ),
@@ -1907,8 +1912,8 @@ def blad_wartosci_maszyny(rodzina: RodzinaMaszyny, parametr: object, wartosc: ob
 
 #: Pochodzenie mocy znamionowej P_rM wyznaczonej z mocy pozornej znamionowej tabliczki (pkt 6.7).
 POCHODZENIE_MOCY_Z_MOCY_POZORNEJ = (
-    "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, "
-    "IEC 60909-0:2016 pkt 6.7"
+    "wyznaczona z mocy pozornej znamionowej z tabliczki elementu (iloczyn mocy pozornej, "
+    "sprawności i współczynnika mocy), IEC 60909-0:2016 pkt 6.7"
 )
 
 
