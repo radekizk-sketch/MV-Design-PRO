@@ -66,7 +66,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("voltage_kv",),
         optional_fields=(
             "catalog_binding",
-            "catalog_ref",
             "gpz_coupler_name",
             "gpz_line_field_apparatus",
             "gpz_line_field_name",
@@ -100,7 +99,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "source_name",
             "switchgear_family_ref",
             "transformer_catalog_binding",
-            "transformer_catalog_ref",
             "transformer_control_mode",
             "transformer_controlled_bus_ref",
             "transformer_count",
@@ -134,7 +132,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "catalog_binding",
             "dlugosc_m",
             "field_ref",
             "from_terminal_id",
@@ -175,7 +172,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "catalog_binding",
             "dlugosc_m",
             "from_bus_ref",
             "from_ref",
@@ -190,7 +186,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("segment_id",),
         optional_fields=(
             "catalog_binding",
-            "catalog_ref",
             "close_ref",
             "insert_at",
             "normal_state",
@@ -208,7 +203,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "to_bus_ref",
         ),
         optional_fields=(
-            "catalog_binding",
             "dlugosc_m",
             "ring_name",
             "segment",
@@ -286,9 +280,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "bay_template_ref",
             "bus_ref",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "complete_bay_template_ref",
             "dry_run",
             "earthing_role",
@@ -317,7 +308,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "catalog_binding",
             "hv_bus_ref",
             "hv_voltage_kv",
             "lv_bus_ref",
@@ -326,7 +316,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "pk_kw",
             "sn_mva",
             "station_ref",
-            "transformer_catalog_ref",
+            "transformer_catalog_binding",
             "transformer_control_mode",
             "transformer_controlled_bus_ref",
             "transformer_deadband_kv",
@@ -357,9 +347,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("bus_nn_ref",),
         optional_fields=(
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "feeder_role",
             "field_name",
             "field_role",
@@ -388,9 +375,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "c_p",
             "c_q",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "connection_type",
             "cos_phi",
             "earth_electrode_r_ohm",
@@ -446,7 +430,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "blocking_transformer_ref",
             "bus_nn_ref",
             "catalog_binding",
-            "catalog_ref",
             "control_mode",
             "cos_phi",
             "data_umowy_przylaczeniowej",
@@ -588,9 +571,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "breaker_ref",
             "burden_va",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "connection",
             "field_ref",
             "name",
@@ -610,9 +590,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "accuracy_class",
             "burden_va",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "connection",
             "name",
             "obwod_wtorny",
@@ -647,9 +624,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "bay_ref",
             "breaker_ref",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "ct_ref",
             "field_ref",
             "name",
@@ -727,7 +701,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "branch_ports_count",
             "catalog_binding",
             "catalog_namespace",
-            "catalog_ref",
             "catalog_version",
             "insert_at",
             "materialized_params",
@@ -747,7 +720,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "branch_ports_count",
             "catalog_binding",
             "catalog_namespace",
-            "catalog_ref",
             "catalog_version",
             "insert_at",
             "materialized_params",
@@ -804,9 +776,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "bay_ref",
             "bus_ref",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "dlawik",
             "dry_run",
             "name",
@@ -828,9 +797,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "bus_nn_ref",
             "bus_ref",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "dry_run",
             "name",
             "status",
@@ -852,9 +818,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "c_p",
             "c_q",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "connection_type",
             "cos_phi",
             "f0_hz",
@@ -883,9 +846,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         optional_fields=(
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "control_mode",
             "dry_run",
             "manual_params",
@@ -908,9 +868,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "bay_ref",
             "bus_ref",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "dry_run",
             "field_ref",
             "station_ref",
@@ -939,7 +896,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=(
             "cable_laying_conditions",
             "catalog_binding",
-            "catalog_ref",
             "n_parallel",
             "name",
             "ref_id",
@@ -1072,7 +1028,6 @@ _WIAZANIE_KATALOGOWE = KsztaltObiektu(
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version",
         }
@@ -1090,17 +1045,7 @@ _WIAZANIE_KATALOGOWE = KsztaltObiektu(
 #: (`add_zespol_uziemiajacy_sn`; wpisy `add_grid_source_sn.zespoly_uziemiajace` są ładunkami
 #: tej samej operacji).
 _KSZTALT_DLAWIKA_GASZACEGO = KsztaltObiektu(
-    pola=frozenset(
-        {
-            "awsc",
-            "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
-            "i_nastawy_a",
-            "stan_odlacznika",
-        }
-    ),
+    pola=frozenset({"awsc", "catalog_binding", "i_nastawy_a", "stan_odlacznika"}),
     zagniezdzone={
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "awsc": KsztaltObiektu(
@@ -1109,15 +1054,7 @@ _KSZTALT_DLAWIKA_GASZACEGO = KsztaltObiektu(
     },
 )
 _KSZTALT_REZYSTORA_UZIEMIAJACEGO = KsztaltObiektu(
-    pola=frozenset(
-        {
-            "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
-            "stan_odlacznika",
-        }
-    ),
+    pola=frozenset({"catalog_binding", "stan_odlacznika"}),
     zagniezdzone={"catalog_binding": _WIAZANIE_KATALOGOWE},
 )
 
@@ -1144,7 +1081,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     pola=frozenset(
                         {
                             "catalog_binding",
-                            "catalog_ref",
                             "loadability_pu",
                             "lv_voltage_tolerance",
                             "primary_voltage_kv",
@@ -1161,7 +1097,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "apparatus_catalog_binding",
                             "bay_template_ref",
                             "cable_catalog_binding",
-                            "cable_catalog_ref",
                             "cable_head",
                             "cable_laying_conditions",
                             "cable_length_km",
@@ -1229,7 +1164,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_grid_source_sn": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "gpz_line_field_apparatus": KsztaltObiektu(
-            pola=frozenset({"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}),
+            pola=frozenset({"apparatus_kind", "catalog_binding"}),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
             },
@@ -1289,7 +1224,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                 {
                     "cable_laying_conditions",
                     "catalog_binding",
-                    "catalog_ref",
                     "from_bus_ref",
                     "from_ref",
                     "length_m",
@@ -1482,11 +1416,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "transformer": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "catalog_binding",
-                    "catalog_ref",
                     "create",
                     "n_parallel",
-                    "transformer_catalog_ref",
+                    "transformer_catalog_binding",
                     "transformer_control_mode",
                     "transformer_controlled_bus_ref",
                     "transformer_deadband_kv",
@@ -1506,7 +1438,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                 }
             ),
             zagniezdzone={
-                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
             },
         ),
     },
@@ -1514,31 +1446,23 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "connect_secondary_ring_sn": {
-        "catalog_binding": _WIAZANIE_KATALOGOWE,
         "segment": KsztaltObiektu(
-            pola=frozenset(
-                {"catalog_binding", "catalog_ref", "dlugosc_m", "rodzaj", "screen_bonding"}
-            ),
+            pola=frozenset({"catalog_binding", "dlugosc_m", "rodzaj", "screen_bonding"}),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
             },
         ),
     },
     "continue_trunk_segment_sn": {
-        "catalog_binding": _WIAZANIE_KATALOGOWE,
         "segment": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "b0_siemens_per_km",
                     "bus_name",
                     "catalog_binding",
-                    "catalog_ref",
                     "dlugosc_m",
                     "name",
-                    "r0_ohm_per_km",
                     "rodzaj",
                     "screen_bonding",
-                    "x0_ohm_per_km",
                     "zero_sequence",
                 }
             ),
@@ -1671,10 +1595,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "transformer": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "catalog_binding",
                     "create",
                     "n_parallel",
-                    "transformer_catalog_ref",
+                    "transformer_catalog_binding",
                     "transformer_control_mode",
                     "transformer_controlled_bus_ref",
                     "transformer_deadband_kv",
@@ -1694,7 +1617,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                 }
             ),
             zagniezdzone={
-                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
             },
         ),
     },
@@ -1725,20 +1648,15 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
     },
     "start_branch_segment_sn": {
-        "catalog_binding": _WIAZANIE_KATALOGOWE,
         "segment": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "b0_siemens_per_km",
                     "bus_name",
                     "catalog_binding",
-                    "catalog_ref",
                     "dlugosc_m",
                     "name",
-                    "r0_ohm_per_km",
                     "rodzaj",
                     "screen_bonding",
-                    "x0_ohm_per_km",
                     "zero_sequence",
                 }
             ),

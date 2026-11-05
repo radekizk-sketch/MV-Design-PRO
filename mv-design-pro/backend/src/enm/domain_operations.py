@@ -171,6 +171,12 @@ from .uziemienie import blad_konfiguracji_uziemienia
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
+from .wiazanie_katalogowe import (
+    KOD_ZAMIENNIKA_KLUCZA,
+    komunikat_zamiennikow_pl,
+    odczytaj_wiazanie,
+    zamienniki_klucza_w_ladunku,
+)
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -308,12 +314,13 @@ def _branch_point_port_count(
     *,
     branch_point_type: str,
     payload: dict[str, Any],
+    catalog_ref: str,
     catalog_params: dict[str, Any],
 ) -> int:
     if branch_point_type == "branch_pole":
         return 1
     raw = payload.get("branch_ports_count", catalog_params.get("branch_ports_count"))
-    domyslne = 2 if "2P" in str(payload.get("catalog_ref") or "").upper() else 1
+    domyslne = 2 if "2P" in catalog_ref.upper() else 1
     if raw is None:
         return max(1, min(2, domyslne))
     try:
@@ -660,14 +667,12 @@ def _normalize_gpz_line_field_apparatus(payload: dict[str, Any]) -> dict[str, An
     if not isinstance(raw, dict):
         return None
 
+    # Karta JEDEN-KLUCZ-KATALOGU: jedyny odczyt wiązania; zamiennik klucza odrzuca
+    # kontrola zamienników kontraktu (`zamienniki_klucza_w_ladunku`) przed handlerem.
     binding = raw.get("catalog_binding")
-    catalog_ref = _extract_catalog_binding_item_id(binding) if isinstance(binding, dict) else None
+    catalog_ref = odczytaj_wiazanie(raw, opis_pl="Aparat pól liniowych GPZ").pozycja
     if catalog_ref is None:
-        catalog_ref = raw.get("catalog_ref") or raw.get("catalog_item_id")
-    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
         return None
-
-    catalog_ref = catalog_ref.strip()
     binding_payload = _build_catalog_binding_payload(
         catalog_ref,
         binding,
@@ -950,8 +955,8 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     już mocy znamionowej ani napięcia górnego, gdy ładunek milczy (dawne
     `transformer_sn_mva or 25.0` / `hv_voltage_kv or 110.0` wybierały GPZ
     110/15 kV 25 MVA, którego projektant nigdy nie zażądał). Dopuszczone są
-    WYŁĄCZNIE dwie jawne drogi: (a) `transformer_catalog_ref` albo
-    `transformer_catalog_binding`, wskazane wprost; (b) jawna para
+    WYŁĄCZNIE dwie jawne drogi: (a) wiązanie `transformer_catalog_binding`
+    wskazane wprost; (b) jawna para
     `hv_voltage_kv` + `transformer_sn_mva`, która JEDNOZNACZNIE wskazuje
     pozycję w `GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER` (napięcie
     SN pochodzi z już rozstrzygniętego `voltage_kv` operacji — ładunku/szyny).
@@ -959,14 +964,14 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     `catalog.ref_required` istniejącej bramy katalogowej (`_require_catalog_ref`),
     z listą dopuszczalnych par w komunikacie PL — nigdy cichym podstawieniem.
     """
-    explicit_ref = payload.get("transformer_catalog_ref")
-    if isinstance(explicit_ref, str) and explicit_ref.strip():
-        return explicit_ref.strip()
-
-    binding = payload.get("transformer_catalog_binding")
-    binding_ref = _extract_catalog_binding_item_id(binding)
-    if binding_ref:
-        return binding_ref
+    # Karta JEDEN-KLUCZ-KATALOGU: jedyny odczyt wiązania (ten sam co brama API).
+    odczyt = odczytaj_wiazanie(
+        payload, "transformer_catalog_binding", opis_pl="Transformator WN/SN GPZ"
+    )
+    if odczyt.kod_bledu is not None:
+        return _error_response(odczyt.komunikat_pl or "Transformator WN/SN GPZ", odczyt.kod_bledu)
+    if odczyt.pozycja is not None:
+        return odczyt.pozycja
 
     supported = ", ".join(
         f"110/{voltage} kV {power} MVA"
@@ -974,7 +979,7 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     )
     error_message = (
         "Transformator WN/SN GPZ wymaga pozycji katalogowej: wybierz "
-        f"{pole('transformer_catalog_ref', 'add_grid_source_sn')} albo podaj "
+        f"{pole('transformer_catalog_binding', 'add_grid_source_sn')} albo podaj "
         f"{pole('hv_voltage_kv', 'add_grid_source_sn')} i {pole('transformer_sn_mva')}, "
         f"które jednoznacznie wskazują pozycję katalogu. Dostępne pary: {supported}."
     )
@@ -1091,20 +1096,10 @@ def _namespace_pasuje_do_galezi(element: dict[str, Any], namespace: str | None) 
     return namespace in dozwolone
 
 
-def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | None:
-    """Rozwiąż catalog_ref z jawnego pola albo z catalog_binding.catalog_item_id.
-
-    Zwraca None, gdy referencja jest pusta/niepoprawna.
-    """
-    if isinstance(catalog_ref, str):
-        normalized = catalog_ref.strip()
-        if normalized:
-            return normalized
-
-    binding_item = _extract_catalog_binding_item_id(catalog_binding)
-    if binding_item:
-        return binding_item
-
+def _tekst_niepusty(wartosc: object) -> str | None:
+    """Tekst bez skrajnych białych znaków albo ``None`` dla pustego/nietekstowego."""
+    if isinstance(wartosc, str) and wartosc.strip():
+        return wartosc.strip()
     return None
 
 
@@ -3918,31 +3913,29 @@ def _odmowa_typu_ladunku(
 
 
 def _require_catalog_ref(
-    payload_ref: object,
-    payload_binding: object,
+    wezel: object,
     opis_pl: str,
     pole_pl: str,
+    klucz: str = "catalog_binding",
 ) -> str | dict[str, Any]:
-    """Zwróć kanoniczny catalog_ref albo odpowiedź błędu catalog.ref_required.
+    """Pozycja katalogu z wiązania ``wezel[klucz]`` albo odpowiedź błędu.
 
-    ``opis_pl`` nazywa element po polsku, ``pole_pl`` — pole formularza, w którym
-    projektant wybiera pozycję katalogu (``slownik_komunikatow.pole``).
+    Karta JEDEN-KLUCZ-KATALOGU: jedyny odczyt to ``enm.wiazanie_katalogowe.odczytaj_wiazanie``
+    (ta sama funkcja co brama API). Zamiennik klucza (``catalog_ref``/``catalog_item_id``
+    obok wiązania, ``<rola>_catalog_ref`` obok ``<rola>_catalog_binding``) = odmowa
+    ``catalog.binding_key_alias``; wiązanie bez pozycji = ``catalog.binding_invalid``;
+    brak wiązania = ``catalog.ref_required``. ``opis_pl`` nazywa element po polsku,
+    ``pole_pl`` — pole formularza, w którym projektant wybiera pozycję katalogu.
     """
-    error_message = f"{opis_pl} wymaga pozycji katalogowej — wybierz ją w polu {pole_pl}."
-    if isinstance(payload_ref, str):
-        normalized_ref = payload_ref.strip()
-        if normalized_ref:
-            return normalized_ref
-
-    if payload_binding is not None:
-        if not isinstance(payload_binding, dict):
-            return _error_response(error_message, "catalog.ref_required")
-        binding_item_id = _extract_catalog_binding_item_id(payload_binding)
-        if binding_item_id:
-            return binding_item_id
-        return _error_response(error_message, "catalog.ref_required")
-
-    return _error_response(error_message, "catalog.ref_required")
+    odczyt = odczytaj_wiazanie(wezel, klucz, opis_pl=opis_pl)
+    if odczyt.kod_bledu is not None:
+        return _error_response(odczyt.komunikat_pl or opis_pl, odczyt.kod_bledu)
+    if odczyt.pozycja is None:
+        return _error_response(
+            f"{opis_pl} wymaga pozycji katalogowej — wybierz ją w polu {pole_pl}.",
+            "catalog.ref_required",
+        )
+    return odczyt.pozycja
 
 
 def _resolve_manual_source_equivalent(
@@ -4346,10 +4339,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 materialized_params[key] = manual_equivalent[key]
     else:
         catalog_ref_required = _require_catalog_ref(
-            payload.get("catalog_ref"),
-            catalog_binding,
+            payload,
             "Źródło systemowe GPZ",
-            pole("catalog_ref", "add_grid_source_sn"),
+            pole("catalog_binding", "add_grid_source_sn"),
         )
         if isinstance(catalog_ref_required, dict):
             return catalog_ref_required
@@ -5344,12 +5336,11 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "trunk.dlugosc_missing",
         )
 
-    segment_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
+    segment_catalog_binding = segment.get("catalog_binding")
     catalog_ref = _require_catalog_ref(
-        payload_ref=segment.get("catalog_ref"),
-        payload_binding=segment_catalog_binding,
+        segment,
         opis_pl="Odcinek magistrali SN",
-        pole_pl=pole("catalog_ref", "continue_trunk_segment_sn"),
+        pole_pl=pole("catalog_binding", "continue_trunk_segment_sn"),
     )
     if isinstance(catalog_ref, dict):
         return catalog_ref
@@ -6062,23 +6053,15 @@ _KOLEJNOSC_WYPOSAZENIA_POLA = (
 
 
 def _ref_wyposazenia_pola(dane: dict[str, Any], klucz: str) -> str | None:
-    """Referencja katalogowa wyposażenia pola — LUSTRO odczytu operacji atomowej.
+    """Pozycja katalogowa wyposażenia pola — TEN SAM odczyt co operacja atomowa.
 
-    `add_relay` czyta najpierw zagnieżdżony blok `protection`
-    (`catalog_item_id`/`catalog_ref`), a dopiero potem korzeń payloadu — brama
-    domenowa musi sprawdzać DOKŁADNIE tę pozycję, która trafi do migawki.
-    Brak referencji ⇒ ``None``: operacja atomowa zwróci wtedy `catalog.ref_required`.
+    Karta JEDEN-KLUCZ-KATALOGU: `add_ct`/`add_vt`/`add_relay` czytają wyłącznie
+    `catalog_binding` przez `odczytaj_wiazanie`; ta funkcja woła TĘ SAMĄ funkcję. Brak
+    pozycji albo odmowa czytnika (zamiennik klucza) ⇒ ``None``: operacja atomowa zwróci
+    wtedy nazwaną odmowę (`catalog.ref_required` / `catalog.binding_key_alias`).
     """
-    if klucz == "relay":
-        protection = dane.get("protection")
-        if isinstance(protection, dict):
-            ref = _resolve_catalog_ref(
-                protection.get("catalog_item_id") or protection.get("catalog_ref"),
-                None,
-            )
-            if ref is not None:
-                return ref
-    return _resolve_catalog_ref(dane.get("catalog_ref"), dane.get("catalog_binding"))
+    del klucz  # rodzaj wyposażenia nie zmienia klucza wiązania
+    return odczytaj_wiazanie(dane).pozycja
 
 
 def _wyposazenie_pola_z_wpisu(field_spec: Any) -> dict[str, Any]:
@@ -7439,8 +7422,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     insert_value: float = (
         split_ratio if insert_mode == "RATIO" else cast(float, insert_at.get("value"))
     )
-    segment_catalog_binding = segment.get("catalog_binding")
-    catalog_ref = _resolve_catalog_ref(segment.get("catalog_ref"), segment_catalog_binding)
+    # Odcinek dzielony jest rekordem MODELU (`Branch.catalog_ref` — jedyne pole pozycji
+    # katalogu gałęzi w ENM); dawny odczyt `catalog_binding` z rekordu modelu czytał klucz,
+    # którego model nie ma (karta JEDEN-KLUCZ-KATALOGU).
+    catalog_ref = _tekst_niepusty(segment.get("catalog_ref"))
     segment_catalog_version = (
         segment.get("meta", {}).get("catalog_item_version")
         if isinstance(segment.get("meta"), dict)
@@ -7825,7 +7810,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     if catalog_ref:
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
-            catalog_binding=segment_catalog_binding,
+            catalog_binding=None,
             default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
             default_version=segment_catalog_version,
         )
@@ -7865,7 +7850,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     if catalog_ref:
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
-            catalog_binding=segment_catalog_binding,
+            catalog_binding=None,
             default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
             default_version=segment_catalog_version,
         )
@@ -7976,14 +7961,12 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     if transformer.get("create", True):
         # Skład pól z polem TR sprawdzony przed zmianą modelu (`odmowa_skladu_pol_toru`).
         assert idx_pola_tr is not None
-        transformer_catalog_binding = transformer.get("catalog_binding") or payload.get(
-            "catalog_binding"
-        )
+        transformer_catalog_binding = transformer.get("transformer_catalog_binding")
         tr_catalog = _require_catalog_ref(
-            payload_ref=transformer.get("transformer_catalog_ref"),
-            payload_binding=transformer_catalog_binding,
+            transformer,
             opis_pl="Transformator stacji",
-            pole_pl=pole("transformer_catalog_ref", "insert_station_on_segment_sn"),
+            pole_pl=pole("transformer_catalog_binding", "insert_station_on_segment_sn"),
+            klucz="transformer_catalog_binding",
         )
         if isinstance(tr_catalog, dict):
             return tr_catalog
@@ -8385,10 +8368,9 @@ def _insert_branch_point_on_segment_sn(
         )
 
     bp_catalog_ref = _require_catalog_ref(
-        payload_ref=payload.get("catalog_ref"),
-        payload_binding=payload.get("catalog_binding"),
+        payload,
         opis_pl="ZKSN" if branch_point_type == "zksn" else "Słup rozgałęźny SN",
-        pole_pl=pole("catalog_ref", f"insert_{branch_point_type}_on_segment_sn"),
+        pole_pl=pole("catalog_binding", f"insert_{branch_point_type}_on_segment_sn"),
     )
     if isinstance(bp_catalog_ref, dict):
         return bp_catalog_ref
@@ -8408,6 +8390,7 @@ def _insert_branch_point_on_segment_sn(
     branch_ports_count = _branch_point_port_count(
         branch_point_type=branch_point_type,
         payload=payload,
+        catalog_ref=bp_catalog_ref,
         catalog_params=catalog_params,
     )
     materialized_params = _branch_point_materialized_params(
@@ -8723,12 +8706,11 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             "branch.dlugosc_missing",
         )
 
-    branch_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
+    branch_catalog_binding = segment.get("catalog_binding")
     branch_catalog_ref = _require_catalog_ref(
-        payload_ref=segment.get("catalog_ref"),
-        payload_binding=branch_catalog_binding,
+        segment,
         opis_pl="Odcinek odgałęzienia SN",
-        pole_pl=pole("catalog_ref", "start_branch_segment_sn"),
+        pole_pl=pole("catalog_binding", "start_branch_segment_sn"),
     )
     if isinstance(branch_catalog_ref, dict):
         return branch_catalog_ref
@@ -9067,10 +9049,9 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         )
 
     switch_catalog_ref = _require_catalog_ref(
-        payload_ref=payload.get("catalog_ref"),
-        payload_binding=payload.get("catalog_binding"),
+        payload,
         opis_pl="Łącznik sekcyjny SN",
-        pole_pl=pole("catalog_ref", "insert_section_switch_sn"),
+        pole_pl=pole("catalog_binding", "insert_section_switch_sn"),
     )
     if isinstance(switch_catalog_ref, dict):
         return switch_catalog_ref
@@ -9351,14 +9332,14 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
 
     # Bramka katalogowa (ENM) — segment pierscienia WYMAGA catalog_ref
-    ring_catalog_binding = segment.get("catalog_binding") or payload.get("catalog_binding")
-    ring_catalog_ref = _resolve_catalog_ref(segment.get("catalog_ref"), ring_catalog_binding)
-    if not ring_catalog_ref:
-        return _error_response(
-            "Odcinek zamykający pierścień wymaga pozycji katalogowej — wybierz ją w polu "
-            f"{pole('catalog_ref', 'connect_secondary_ring_sn')}.",
-            "catalog.ref_required",
-        )
+    ring_catalog_binding = segment.get("catalog_binding")
+    ring_catalog_ref = _require_catalog_ref(
+        segment,
+        opis_pl="Odcinek zamykający pierścień",
+        pole_pl=pole("catalog_binding", "connect_secondary_ring_sn"),
+    )
+    if isinstance(ring_catalog_ref, dict):
+        return ring_catalog_ref
 
     # CV-4.3 K1 (KLASA NIE INSTANCJA — patrz identyczny komentarz w
     # continue_trunk_segment_sn/start_branch_segment_sn): catalog_ref dopisany
@@ -9666,10 +9647,10 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         )
 
     standalone_catalog = _require_catalog_ref(
-        payload_ref=payload.get("transformer_catalog_ref"),
-        payload_binding=payload.get("catalog_binding"),
+        payload,
         opis_pl="Transformator SN/nN",
-        pole_pl=pole("transformer_catalog_ref", "add_transformer_sn_nn"),
+        pole_pl=pole("transformer_catalog_binding", "add_transformer_sn_nn"),
+        klucz="transformer_catalog_binding",
     )
     if isinstance(standalone_catalog, dict):
         return standalone_catalog
@@ -12316,18 +12297,16 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     # transformatora także wtedy, gdy ładunek niesie pozycję katalogu. Dawniej koniec ciągu
     # flagi nie czytał — kreator i szablony wysyłają jeden ładunek obu drogom, więc
     # `create: false` przepadał po cichu i stacja dostawała transformator.
-    powiazanie_transformatora = transformer_payload.get("catalog_binding")
+    powiazanie_transformatora = transformer_payload.get("transformer_catalog_binding")
     transformer_catalog_ref = (
         None
         if transformer_payload.get("create", True) is False
         else (
-            transformer_payload.get("transformer_catalog_ref")
-            or transformer_payload.get("catalog_ref")
-            or (
-                _extract_catalog_binding_item_id(powiazanie_transformatora)
-                if isinstance(powiazanie_transformatora, dict)
-                else None
-            )
+            odczytaj_wiazanie(
+                transformer_payload,
+                "transformer_catalog_binding",
+                opis_pl="Transformator stacji",
+            ).pozycja
         )
     )
     if transformer_catalog_ref and ref_pola_tr is None:
@@ -12614,7 +12593,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # inaczej migawka deklarowałaby wiązanie katalogowe, którego nie ma.
         materialization = _materialize_catalog_payload(
             catalog_ref=transformer_catalog_ref,
-            catalog_binding=transformer_payload.get("catalog_binding"),
+            catalog_binding=powiazanie_transformatora,
             default_namespace="TRAFO_SN_NN",
         )
         if isinstance(materialization, dict):
@@ -12992,6 +12971,11 @@ def execute_domain_operation(
     # `_ladunek_operacji_w_kontrakcie`), więc każdy nadawca w backendzie i w testach
     # wysyła wyłącznie klucze kontraktu.
     if isinstance(payload, dict):
+        # Karta JEDEN-KLUCZ-KATALOGU: klucz wskazania pozycji katalogu spoza kontraktu
+        # (dawny zamiennik wiązania) to odmowa nazwana, nie wpis dziennika.
+        zamienniki = zamienniki_klucza_w_ladunku(canonical_name, payload)
+        if zamienniki:
+            return _error_response(komunikat_zamiennikow_pl(zamienniki), KOD_ZAMIENNIKA_KLUCZA)
         obce = klucze_spoza_kontraktu(canonical_name, payload)
         if obce:
             logger.warning(
