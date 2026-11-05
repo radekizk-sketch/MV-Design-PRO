@@ -13,6 +13,7 @@ from enm.models import (
     ENMHeader,
     Substation,
 )
+from enm.operator_sieci import BRAK_OPERATORA_SIECI_PL
 from enm.store import set_enm
 
 
@@ -123,9 +124,35 @@ class TestReferenceComplianceApi:
         assert response.status_code == 200
         report = response.json()
         by_id = {p["pack_id"]: p for p in report["packs"]}
-        assert len(by_id) == 8
+        # Model bez operatora sieci (warunki przyłączenia): pakiety norm i producentów, bez
+        # pakietu OSD — dawne domyślne „enea” przypadku było domysłem (dodatek karty
+        # GPZ-DANE-ANALIZ); zdanie o braku operatora w raporcie.
+        assert all(p["kind"] != "osd" for p in report["packs"])
+        assert len(by_id) == 7
+        assert report["operator_sieci"] is None
+        assert report["brak_operatora_sieci_pl"] == BRAK_OPERATORA_SIECI_PL
         assert by_id["iec62271"]["score_percent"] == 100
         assert by_id["iec62271"]["failed"] == 0
+
+    def test_compliance_report_operatora_sieci_modelu_ocenia_jego_pakiet(self, app_client) -> None:
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
+        zapis = app_client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "set_connection_conditions",
+                    "payload": {"operator_sieci": "enea"},
+                }
+            },
+        )
+        assert zapis.status_code == 200, zapis.text
+        report = app_client.get(f"/api/cases/{case_id}/reference/compliance").json()
+        by_id = {p["pack_id"]: p for p in report["packs"]}
+        assert len(by_id) == 8
+        assert [p for p in by_id if by_id[p]["kind"] == "osd"] == ["osd_enea"]
+        assert report["operator_sieci"] == "enea"
+        assert report["brak_operatora_sieci_pl"] is None
 
     def test_compliance_packs_filter(self, app_client) -> None:
         case_id = _nowy_przypadek(app_client)

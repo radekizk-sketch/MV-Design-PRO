@@ -1006,8 +1006,7 @@ class ENMValidator:
                     code="connection.operator_sieci_unknown",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Operator sieci {nazwa_operatora_pl(operator_sieci)} w warunkach "
-                        "przyłączenia nie występuje "
+                        "Operator sieci w warunkach przyłączenia nie występuje "
                         "w katalogu profili NC RfG — źródła dziedziczące profil operatora sieci "
                         "nie mają podstawy oceny."
                     ),

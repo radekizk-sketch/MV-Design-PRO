@@ -63,14 +63,18 @@ def operatorzy_katalogu() -> tuple[str, ...]:
     return tuple(list_available_operators())
 
 
-def nazwa_operatora_pl(operator_id: str) -> str:
-    """Nazwa operatora dla projektanta (``operator_name_pl`` warstwy OSD katalogu profili).
+OPERATOR_SPOZA_KATALOGU_PL = "spoza katalogu profili NC RfG"
 
-    Wartość spoza katalogu (model z importu z pominięciem pisarza) cytowana w cudzysłowie
-    jako dana wpisana — nigdy nie udaje nazwy operatora z katalogu."""
+
+def nazwa_operatora_pl(operator_id: str) -> str:
+    """Nazwa operatora dla projektanta (``operator_name_pl`` warstwy OSD katalogu profili) —
+    JEDYNA funkcja nazwy operatora (walidator, operacje modelu, rejestr pakietów referencyjnych).
+
+    Wartość spoza katalogu (model z importu z pominięciem pisarza) nie ma nazwy: zwrot mówi to
+    słowami — identyfikator nie udaje nazwy operatora (`nazwa_bez_identyfikatora_guard`)."""
     if operator_id in operatorzy_katalogu():
         return load_nc_rfg_profile(operator_id).operator_name_pl
-    return f"„{operator_id}”"
+    return OPERATOR_SPOZA_KATALOGU_PL
 
 
 def nazwy_operatorow_katalogu_pl() -> str:

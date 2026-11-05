@@ -472,6 +472,7 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
     assert set(odpowiedz) == {
         "case_id",
         "operator_id",
+        "zrodlo_operatora",
         "der_count",
         "pominiete",
         "certyfikaty_odrzucone",
@@ -480,6 +481,9 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
     }
     assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU
     assert odpowiedz["operator_id"] == eksport.OPERATOR_SCENY_MACIERZ
+    # Dodatek karty GPZ-DANE-ANALIZ: ekran pyta bez operatora, gdy model rozstrzyga profil —
+    # fixtura jest liczona ścieżką MODELU (profil efektywny każdego modułu).
+    assert odpowiedz["zrodlo_operatora"] == "MODEL"
     assert odpowiedz["pominiete"] == [] and odpowiedz["certyfikaty_odrzucone"] == []
     bieg = odpowiedz["bieg"]
     assert bieg is not None
@@ -1285,9 +1289,17 @@ def test_wejscia_sceny_macierz_z_mostu_modelu_z_pochodzeniem() -> None:
     wypełnione i nazwane „z modelu" (luka §5.3), a pola bez danej modelu — nie."""
     model = eksport.enm_sceny_macierz()
     wejscia = eksport.ncrfg_wejscia_scena_macierz()
-    assert set(wejscia) == {"case_id", "operator_id", "modules", "pola_z_modelu", "pominiete"}
+    assert set(wejscia) == {
+        "case_id",
+        "operator_id",
+        "zrodlo_operatora",
+        "modules",
+        "pola_z_modelu",
+        "pominiete",
+    }
     assert wejscia["case_id"] == eksport.CASE_ID_HARNESSU
     assert wejscia["operator_id"] == _operator_z_modelu(model)
+    assert wejscia["zrodlo_operatora"] == "MODEL"
     assert [m["der_ref"] for m in wejscia["modules"]] == [g.ref_id for g in model.generators]
     assert set(wejscia["pola_z_modelu"]) == {g.ref_id for g in model.generators}
     assert wejscia["pominiete"] == []

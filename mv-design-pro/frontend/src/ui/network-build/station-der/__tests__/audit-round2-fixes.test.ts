@@ -53,6 +53,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     },
     profiles: {
       nc_rfg_profile_ref: 'ncrfg_pse',
+      nc_rfg_profile_powod: null,
       lvrt_curve_ref: 'lvrt_pse_b',
       hvrt_curve_ref: 'hvrt_pse_b',
       pf_curve_ref: null,

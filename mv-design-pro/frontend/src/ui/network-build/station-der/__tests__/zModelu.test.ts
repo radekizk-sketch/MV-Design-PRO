@@ -108,7 +108,7 @@ describe('deryZModelu — operator sieci z warunków przyłączenia (dodatek kar
     ['warunki bez operatora', {}, null],
     ['operator sieci w modelu', { operator_sieci: 'enea' }, 'enea'],
   ] as const)('%s → rekord niesie operator_sieci=%s', (_opis, warunki, oczekiwany) => {
-    const snap = migawka({ generators: [generatorPv()] } as Partial<EnergyNetworkModel>);
+    const snap = migawka({ generators: [generatorPv()] } as unknown as Partial<EnergyNetworkModel>);
     const zWarunkami = warunki === undefined
       ? snap
       : ({ ...snap, header: { ...snap.header, connection_conditions: warunki } } as EnergyNetworkModel);

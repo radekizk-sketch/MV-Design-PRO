@@ -21,7 +21,8 @@ import json
 from collections.abc import Iterable
 from pathlib import Path
 
-from catalog.profiles.nc_rfg import list_available_operators, load_nc_rfg_profile
+from catalog.profiles.nc_rfg import list_available_operators
+from enm.operator_sieci import nazwa_operatora_pl
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY, SwitchgearFamily
 from network_model.odmowa_pakietu import brak_pakietu_osd
@@ -53,13 +54,6 @@ def operator_pakietu_osd(pack_id: str) -> str | None:
         return None
     operator = pack_id.removeprefix(PREFIKS_PAKIETU_OSD)
     return operator if operator in list_available_operators() else None
-
-
-def nazwa_operatora_pl(operator_id: str) -> str:
-    """Nazwa operatora dla projektanta — z warstwy operatorskiej profilu (jedno źródło)."""
-    if operator_id in list_available_operators():
-        return load_nc_rfg_profile(operator_id).operator_name_pl
-    return "wskazany w przypadku obliczeniowym, spoza listy operatorów produktu"
 
 
 def _load_packs() -> dict[str, ReferencePack]:

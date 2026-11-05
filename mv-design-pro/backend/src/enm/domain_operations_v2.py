@@ -8793,8 +8793,8 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
             operator = operator.strip() if isinstance(operator, str) else operator
             if operator not in operatorzy_katalogu():
                 return _error_response(
-                    f"Operator sieci {nazwa_operatora_pl(str(operator))} nie ma profilu w "
-                    "katalogu profili NC RfG — wybierz jednego z operatorów: "
+                    "Wskazany operator sieci nie ma profilu w katalogu profili NC RfG — "
+                    "wybierz jednego z operatorów: "
                     f"{nazwy_operatorow_katalogu_pl()}.",
                     "connection_conditions.operator_unknown",
                 )

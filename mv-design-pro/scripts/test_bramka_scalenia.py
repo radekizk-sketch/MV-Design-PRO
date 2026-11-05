@@ -435,8 +435,17 @@ def test_wybor_vitest_bez_zmian_frontu(tmp_path: Path) -> None:
 
 def _bramka_bez_biegow(drzewo: Path, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     """Bramka na drzewie syntetycznym: zero zmian, polecenia zapisywane zamiast uruchamiane;
-    „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg."""
+    „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg.
+
+    Wolne miejsce na dysku jest tu daną testu, nie stanem maszyny: bez atrapy wynik zależał od
+    zapełnienia współdzielonego dysku (przy < 5 GB testy sprzątania padały odmową startu).
+    Test odmowy nadpisuje atrapę własną wartością."""
     monkeypatch.setattr(bramka, "zmienione_pliki", lambda baza, glowa: [])
+
+    class _DuzoMiejsca:
+        free = int(100e9)
+
+    monkeypatch.setattr(bramka.shutil, "disk_usage", lambda _k: _DuzoMiejsca())
     polecenia: list[list[str]] = []
 
     def uruchom(nazwa: str, polecenie: list[str], cwd: Path) -> tuple[int, float]:

@@ -302,7 +302,8 @@ def test_pisarz_warunkow_odmawia_operatora_spoza_katalogu_i_czysci_nullem() -> N
         payload={"operator_sieci": "nieistnieje"},
     )
     assert odmowa.get("error_code") == "connection_conditions.operator_unknown"
-    assert "nieistnieje" in odmowa["error"]
+    # Identyfikator spoza katalogu nie jest nazwą — odmowa mówi słowami i wylicza katalog.
+    assert "nieistnieje" not in odmowa["error"]
     assert nazwa_operatora_pl(_SIEC) in odmowa["error"]
     wyczyszczone = execute_domain_operation(
         enm_dict=_enm_dict(_SIEC),

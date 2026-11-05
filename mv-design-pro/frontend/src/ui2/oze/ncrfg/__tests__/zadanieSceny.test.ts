@@ -29,7 +29,7 @@ import type { WejsciaPrzypadkuNcRfg } from '../typy';
 
 function operatorSceny(migawka: unknown): string {
   const zModelu = operatorZModelu(deryZModelu(migawka as EnergyNetworkModel, 'proj-demo'));
-  if (zModelu.rodzaj !== 'z_modelu') throw new Error(`scena bez operatora z modelu: ${zModelu.powod}`);
+  if (zModelu.rodzaj !== 'z_modelu') throw new Error(`scena bez jednego operatora z modelu: ${zModelu.rodzaj}`);
   return zModelu.operatorId;
 }
 

@@ -1,4 +1,3 @@
-// @vitest-environment node
 /*
  * Testy modelu prezentacji okna „Analizy akademickie" (ui2/wyniki/akademickie).
  *

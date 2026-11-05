@@ -2117,7 +2117,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `dokument_zrodlowy`), opis pol (`od`, `do`, `podstawa_zakresu_pl`), sekcja szyn
     # (`pola_refs`), geometria luku sekcji (`klasa_pl`, `odniesienia`, `zrodlo_konfiguracji`).
     # PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4527." in wyjscie, wyjscie
+    # Dodatek karty GPZ-DANE-ANALIZ — operator sieci (2026-11-05): 4527 -> 4531 — POMIAR
+    # `contract_fields()` na `0ca2c56f5` (`git archive`: 4527) i na drzewie karty (4531). Roznica
+    # zbiorow +5, -1. +5: operator sieci w warunkach przylaczenia (`operator_sieci`), powod
+    # nadpisania profilu zrodla (`nc_rfg_profile_powod`), profil efektywny NC RfG
+    # (`profil_zrodla`, `powod_nadpisania_pl`), zrodlo operatora oceny (`zrodlo_operatora`).
+    # -1: `operator_profile_id` przypadku (skasowany domysl „enea”). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4531." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2447,7 +2453,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta GPZ-DANE-ANALIZ (2026-11-04): 608 -> 610 (+2 `enm/rozdzielnica_gpz.py`,
         # `application/analyses/szyny_sekcji_gpz.py`). POMIAR guardem na drzewie karty; dlug
         # i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
+        # Dodatek karty GPZ-DANE-ANALIZ — operator sieci (2026-11-05): 610 -> 611 (+1
+        # `enm/operator_sieci.py`). POMIAR guardem na drzewie karty; dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 611 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2763,7 +2771,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
         # Karta GPZ-DANE-ANALIZ (2026-11-04): enm 79 -> 80 (+1 `enm/rozdzielnica_gpz.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=80, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Dodatek karty GPZ-DANE-ANALIZ (2026-11-05): enm 80 -> 81 (+1 `enm/operator_sieci.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=81, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

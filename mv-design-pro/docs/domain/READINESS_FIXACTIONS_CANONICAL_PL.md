@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **184** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -68,6 +68,7 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.sk_min_inconsistent` | SOURCES | 1 | BLOCKER | Minimalna moc zwarciowa źródła przekracza maksymalną (S''kQmin > S''kQmax albo I''kQmin > I''kQmax) — dane warunków przyłączenia są sprzeczne | panel: `inspector`, tab: `parametry`, focus: `sk3_min_mva` |
 | `source.u_set_pu_out_of_range` | SOURCES | 1 | BLOCKER | Napięcie zadane szyny bilansującej źródła leży poza pasmem 0,8–1,2 p.u. — podaj nastawę w p.u. napięcia znamionowego szyny albo ją usuń | panel: `inspector`, tab: `parametry`, focus: `u_set_pu` |
 | `source.voltage_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowe napięcie źródła zasilania | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
+| `connection.operator_sieci_unknown` | SOURCES | 2 | WARNING | Operator sieci w warunkach przyłączenia nie występuje w katalogu profili NC RfG — wybierz operatora z katalogu | panel: `projekt`, tab: `przylaczenie`, focus: `operator_sieci` |
 | `connection.power_flow_missing` | SOURCES | 2 | WARNING | Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić warunki przyłączenia | panel: `analizy`, tab: `rozplyw` |
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
@@ -194,6 +195,7 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `pv.control_mode_missing` | GENERATORS | 2 | BLOCKER | Falownik PV nie ma określonego trybu regulacji | panel: `inspector`, tab: `regulacja`, focus: `control_mode` |
 | `ups.backup_time_invalid` | GENERATORS | 2 | BLOCKER | Czas podtrzymania UPS jest nieprawidłowy (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `backup_time_min` |
 | `der.inverter_certificate_conditional` | GENERATORS | 3 | WARNING | Certyfikat PTPiREE przetwornicy DER jest powiązany warunkowo — rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić przed warunkami przyłączenia | panel: `inspector`, tab: `katalog` |
+| `generator.nc_rfg_operator_mismatch` | GENERATORS | 3 | WARNING | Profil NC RfG źródła różni się od operatora sieci w warunkach przyłączenia — źródło jest oceniane wg profilu innego operatora | panel: `inspector`, tab: `parametry`, focus: `nc_rfg_profile_powod` |
 | `generator.harmonic_spectrum_missing` | GENERATORS | 4 | WARNING | Brak widma prądu harmonicznych przekształtnika — wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj poprawne widmo ręcznie w oknie analizy; karta katalogowa typu nie niesie widma) | panel: `inspector`, tab: `katalog` |
 | `genset.fuel_type_missing` | GENERATORS | 4 | INFO | Agregat nie ma określonego rodzaju paliwa | panel: `inspector`, tab: `parametry`, focus: `fuel_type` |
 | `inverter.k_sc_default_forbidden` | GENERATORS | 4 | WARNING | Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo certyfikatu jednostki wytwórczej | panel: `inspector`, tab: `katalog` |
@@ -246,20 +248,20 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 65 |
+| WARNING | 67 |
 | INFO | 9 |
-| **Razem** | **182** |
+| **Razem** | **184** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 20 |
+| SOURCES | 21 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
 | STATIONS | 31 |
-| GENERATORS | 26 |
+| GENERATORS | 27 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **182** |
+| **Razem** | **184** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

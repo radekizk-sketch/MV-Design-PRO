@@ -166,7 +166,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `add_genset_nn` | Dodanie zespołu prądotwórczego na szynie nN | `bus_nn_ref`, `genset_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_genset_nn` |
 | `add_ups_nn` | Dodanie zasilacza UPS na szynie nN | `bus_nn_ref`, `ups_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_ups_nn` |
 | `dodaj_karte_widmowa_projektu` | Dodanie karty widmowej urządzenia do katalogu projektu | `karta` | — | nie | `enm/domain_operations_v2.py::dodaj_karte_widmowa_projektu` |
-| `set_der_catalog_bindings` | Wiązania katalogowe i profile zgodności wytwórcy (DER) | `generator_ref` (albo `source_ref`) | `bess_operation_mode_refs`, `ct_catalog_ref`, `dynamic_model_ref`, `hvrt_curve_ref`, `karty_widmowe_ref`, `lvrt_curve_ref`, `nc_rfg_profile_ref`, `pf_curve_ref`, `protection_catalog_ref`, `vt_catalog_ref` | nie | `enm/domain_operations_v2.py::set_der_catalog_bindings` |
+| `set_der_catalog_bindings` | Wiązania katalogowe i profile zgodności wytwórcy (DER) | `generator_ref` (albo `source_ref`) | `bess_operation_mode_refs`, `ct_catalog_ref`, `dynamic_model_ref`, `hvrt_curve_ref`, `karty_widmowe_ref`, `lvrt_curve_ref`, `nc_rfg_profile_powod`, `nc_rfg_profile_ref`, `pf_curve_ref`, `protection_catalog_ref`, `vt_catalog_ref` | nie | `enm/domain_operations_v2.py::set_der_catalog_bindings` |
 | `set_load_dynamic_binding` | Wiązanie odbioru z profilem modelu dynamicznego z katalogu | `load_ref`, `dynamic_model_ref` | — | nie | `enm/domain_operations_v2.py::set_load_dynamic_binding` |
 | `set_source_operating_mode` | Ustawienie trybu pracy źródła nN | `source_ref` (albo `element_ref`), `mode` | — | nie | `enm/domain_operations_v2.py::set_source_operating_mode` |
 
@@ -187,7 +187,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
 | `delete_element` | Usunięcie elementu z modelu sieci | `element_ref` | — | nie | `enm/domain_operations.py::delete_element` |
 | `refresh_snapshot` | Odświeżenie koperty odpowiedzi bez modyfikacji modelu | — | — | nie | `enm/domain_operations.py::refresh_snapshot` |
-| `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
+| `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy, operator sieci) | — | `moc_przylaczeniowa_mw`, `operator_sieci`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
 | `update_element_parameters` | Aktualizacja parametrów elementu | `element_ref`, `parameters` | — | nie | `enm/domain_operations.py::update_element_parameters` |
 
 ### Topologia sieci nN (`nn_network`, 9)
