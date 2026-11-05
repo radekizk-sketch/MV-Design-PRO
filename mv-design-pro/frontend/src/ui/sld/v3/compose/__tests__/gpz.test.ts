@@ -1419,8 +1419,9 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
 
 describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
   it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
-    // 7. rola: „kompensacyjne" — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
-    expect(ROLE_POL_GPZ).toHaveLength(7);
+    // 7. rola: „kompensacyjne" — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL);
+    // 8. rola: „uziemiajace" — pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY).
+    expect(ROLE_POL_GPZ).toHaveLength(8);
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 

@@ -28,7 +28,9 @@ from typing import Literal, get_args
 #: w `domain_operations_v2._normalize_sn_bay_role`); teraz każda z nich czyta ten typ. Nowe role
 #: (ZU, PW) dokładają karty pól GPZ ADDYTYWNIE — wyłącznie tutaj. `BKR` — pole baterii
 #: kondensatorów równoległych SN (ENEA Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
-RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "BKR"]
+#: `ZU` — pole zespołu uziemiającego SN (karta POLA-GPZ-SZABLONY; Zeszyt 1 §16 s.30, Z.13–Z.15
+#: s.93–95): transformator uziemiający ZNyn11 z dławikiem i/lub rezystorem w punkcie neutralnym.
+RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "BKR", "ZU"]
 ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
 
 #: Rola KANONICZNA pola SN (read-model pola `BayBaseModel.bay_role`, `field_role`) — klucze
@@ -44,6 +46,7 @@ RolaKanonicznaPolaSn = Literal[
     "BESS_SN",
     "FW_SN",
     "BATERIA_KONDENSATOROW",
+    "ZESPOL_UZIEMIAJACY",
 ]
 ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
 
@@ -61,6 +64,7 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
     "BKR": "BATERIA_KONDENSATOROW",
+    "ZU": "ZESPOL_UZIEMIAJACY",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
     "LINIA_ODG": "LINIA_ODG",
@@ -68,6 +72,7 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
     "BATERIA_KONDENSATOROW": "BATERIA_KONDENSATOROW",
+    "ZESPOL_UZIEMIAJACY": "ZESPOL_UZIEMIAJACY",
 }
 
 #: Rola kanoniczna pola SN → rola MODELU (`Bay.bay_role`) — wyprowadzona z aliasów (jedna tablica).
@@ -89,6 +94,7 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",
     "BATERIA_KONDENSATOROW": "Pole baterii kondensatorów",
+    "ZESPOL_UZIEMIAJACY": "Pole zespołu uziemiającego",
 }
 
 #: Pole źródłowe bez rozpoznanej technologii (rola modelu `OZE`).

@@ -1755,6 +1755,16 @@ def get_all_ct_types() -> list[dict]:
             "ziemnozwarciowego",
             verification_note,
         ),
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_100_5_z13",
+            "CT 100/5 A, 1 rdzeń (typ ogólny OSD, ENEA Z.13–Z.15)",
+            100.0,
+            16.0,
+            [("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"])],
+            "Z.13 s.93, Z.14 s.94, Z.15 s.95 (napis „100/5”, tabliczka „I 15 VA; kl. 5P20”): "
+            "rdzeń I (4 żyły) bloki I>, I>> sterownika pola zespołu uziemiającego",
+            verification_note,
+        ),
         {
             "id": "ct_2000_5_10p10_30va_arteche",
             "name": "CT 2000/5 A kl. 10P10 30 VA",

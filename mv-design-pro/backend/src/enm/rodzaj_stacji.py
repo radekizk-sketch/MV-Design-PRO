@@ -112,6 +112,9 @@ KATEGORIA_ROLI_POLA: dict[str, str] = {
     "BATERIA_KONDENSATOROW": KATEGORIA_INNE,
     "CAPACITOR_BANK": KATEGORIA_INNE,
     "BKR": KATEGORIA_INNE,
+    # Pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY, Zeszyt 1 Z.13–Z.15): pole
+    # transformatora uziemiającego rozdzielni, nie pole liniowe.
+    "ZU": KATEGORIA_INNE,
 }
 
 

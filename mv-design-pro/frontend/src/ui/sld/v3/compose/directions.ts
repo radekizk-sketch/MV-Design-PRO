@@ -105,6 +105,8 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
     case FIELD_ROLE.CAPACITOR_BANK:
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.BATERIA_KONDENSATOROW);
+    case FIELD_ROLE.EARTHING_UNIT:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.ZESPOL_UZIEMIAJACY);
     default:
       return 'pole';
   }
@@ -156,7 +158,9 @@ export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, n
             ? 'FG'
             : role === FIELD_ROLE.CAPACITOR_BANK
               ? 'FK'
-              : 'F';
+              : role === FIELD_ROLE.EARTHING_UNIT
+                ? 'FZ'
+                : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;

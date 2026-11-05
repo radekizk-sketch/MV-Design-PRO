@@ -850,9 +850,9 @@ describe('V3 compose/station — GEOMETRIA-STACJI §0 pkt 4c: rozróżnienie ró
     for (const sygnatura of sygnatury) expect(sygnatura.startsWith('bayNoEquipment,')).toBe(true);
   });
 
-  it('ALL_FIELD_ROLES niesie WSZYSTKIE 14 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
+  it('ALL_FIELD_ROLES niesie WSZYSTKIE 15 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
     // 14. rola: CAPACITOR_BANK — pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL).
-    expect(ALL_FIELD_ROLES.length).toBe(14);
+    expect(ALL_FIELD_ROLES.length).toBe(15);
   });
 });
 

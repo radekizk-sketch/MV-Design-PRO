@@ -81,6 +81,10 @@ export const KATEGORIA_ROLI_POLA: Readonly<Record<string, KategoriaRoli>> = {
   BATERIA_KONDENSATOROW: 'inne',
   CAPACITOR_BANK: 'inne',
   BKR: 'inne',
+  // Pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY) — pole transformatora uziemiającego.
+  ZESPOL_UZIEMIAJACY: 'inne',
+  EARTHING_UNIT: 'inne',
+  ZU: 'inne',
 };
 
 /** Rodzaj pola katalogowego, który przesądza przed rolą (lustro `KATEGORIA_RODZAJU_POLA`). */

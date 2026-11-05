@@ -90,12 +90,25 @@ def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralneg
                 )
             )
     for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
+        strony: list[tuple[str, str, GroundingConfig | None]] = []
         try:
             model = build_transformer_zero_seq_model(trafo)
         except (OdmowaDanychError, ValueError):
-            # Model zerowy niezbudowalny — własne kody E-W5-02/E-W5-03 walidatora.
+            # Model zerowy niezbudowalny (grupa spoza słownika — E-W5-02/E-W5-03; brak wartości
+            # nośnika, np. dławik bez X_N — E-W5-01). Nośnik ZADEKLAROWANY jako uziemiony jest
+            # nośnikiem wyspy także bez kompletu wartości: drugi zespół uziemiający z dławikiem
+            # bez X_N to wciąż drugi punkt uziemienia (karta POLA-GPZ-SZABLONY).
+            for bus_ref, pole, cfg in (
+                (trafo.hv_bus_ref, "hv_neutral", trafo.hv_neutral),
+                (trafo.lv_bus_ref, "lv_neutral", trafo.lv_neutral),
+            ):
+                if cfg is not None and uziemienie_grounded(cfg.type) and bus_ref in sn:
+                    wynik.append(
+                        NosnikPunktuNeutralnego(
+                            trafo.ref_id, "transformer", bus_ref, pole, cfg.type
+                        )
+                    )
             continue
-        strony: list[tuple[str, str, GroundingConfig | None]] = []
         if model.connection in (
             ZeroSeqConnection.HV_SHUNT_GROUND,
             ZeroSeqConnection.SERIES_THROUGH,

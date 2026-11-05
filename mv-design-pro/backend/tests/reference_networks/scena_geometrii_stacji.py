@@ -39,6 +39,7 @@ from typing import Any
 
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.catalog.bay_templates import (
+    SZABLON_WARIANTU_ZESPOLU,
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
     BAY_TEMPLATES_GPZ_POLA,
     BayTemplate,
@@ -367,6 +368,10 @@ def dodaj_pole_gpz_z_szablonu(
         zadanie.update({"apparatus_kind": "MEASUREMENT", "funkcja_pomiaru": "NAPIECIA_SZYN"})
     else:
         zadanie["apparatus_kind"] = "CB"
+    if szablon.bay_role == "ZU":
+        # Pole zespołu uziemiającego: wariant uziemienia wskazuje szablon już przy dodaniu pola —
+        # `add_sn_bay` tworzy transformator uziemiający i przenosi punkt neutralny.
+        zadanie["bay_template_ref"] = szablon.template_id
     enm = ok(op(enm, "add_sn_bay", zadanie))
     pole_ref = next(b["ref_id"] for b in enm["bays"] if b["ref_id"] not in przed)
     enm = ok(
@@ -386,5 +391,12 @@ def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
     enm = zbuduj_gpz_110kv()
     sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
     for szablon in BAY_TEMPLATES_GPZ_POLA:
+        if (
+            szablon.bay_role == "ZU"
+            and szablon.template_id != SZABLON_WARIANTU_ZESPOLU["Z13"].template_id
+        ):
+            # Jeden zespół uziemiający w wyspie galwanicznej SN (Zeszyt 1 §16, bloker E-W5-04):
+            # scena niesie wariant Z.13; Z.14 i Z.15 ćwiczą testy pola zespołu.
+            continue
         enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
     return enm

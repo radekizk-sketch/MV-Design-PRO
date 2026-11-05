@@ -68,7 +68,8 @@ export interface CanonicalGpzSection {
  * i legendy ról. Mapowanie 1:1, bez zlewania ról: `IN` → zasilające, `OUT`/`FEEDER` →
  * liniowe (odpływ magistrali i odgałęzienia), `TR` → transformatorowe, `COUPLER` → sprzęgło,
  * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy), `BKR` → kompensacyjne (pole
- * baterii kondensatorów, ENEA Zeszyt 1 §13 i Zał. 16). Roli „rezerwowe" model
+ * baterii kondensatorów, ENEA Zeszyt 1 §13 i Zał. 16), `ZU` → uziemiające (pole zespołu
+ * uziemiającego, Zeszyt 1 Z.13–Z.15). Roli „rezerwowe" model
  * nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola), więc nie istnieje.
  */
 export type RolaPolaGpz =
@@ -78,7 +79,8 @@ export type RolaPolaGpz =
   | 'sprzeglo'
   | 'pomiarowe'
   | 'zrodlowe'
-  | 'kompensacyjne';
+  | 'kompensacyjne'
+  | 'uziemiajace';
 
 /**
  * Plakietka funkcji automatyki pola — WYŁĄCZNIE z kodów funkcji pola w modelu
@@ -185,7 +187,10 @@ export type BayFieldRole =
   /** Pole baterii kondensatorów (`Bay.bay_role = 'BKR'`): stos aparatów z rekordów i glif
    *  baterii na końcu toru pola; NIE jest polem kablowym sieci (bateria stoi w rozdzielni,
    *  z pola nie wychodzi magistrala — `czyPoleKabloweGpz`). */
-  | 'CAPACITOR_BANK';
+  | 'CAPACITOR_BANK'
+  /** Pole zespołu uziemiającego (`Bay.bay_role = 'ZU'`, Zeszyt 1 Z.13–Z.15): stos aparatów
+   *  z rekordów, transformator uziemiający poza celą; NIE jest polem kablowym sieci. */
+  | 'EARTHING_UNIT';
 
 /**
  * Karta GPZ-PARYTET cz. 3: pole KABLOWE rozdzielnicy GPZ — pole, z którego wychodzi kabel

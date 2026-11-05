@@ -202,11 +202,11 @@
   "provenance_a": {
     "analysis_type": "PF",
     "envelope": {
-      "catalog_fingerprint": "24c3351f3b8cb7663acbd10eb5c73894a65108edc9a3d1dcdb42f6d69d9fa761",
+      "catalog_fingerprint": "f8b38918bb72b2fae5d19e123037fbed88d1c479102d9f8caa329af29448d96d",
       "model_revision": 1,
       "options_hash": "3db72fb9717086b35b9122f8e0dce7249ff29ee73ea9abbaf1cdefe8ca523f8b",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "a1f9885460ebdce5b6c217a867711c7b5797e4ac3af1a5130458c15d5e418671",
+      "semantic_fingerprint": "20bbc6cf05add92509debb326795c0db04ff9fc2f13b5a8c397041aed58896a3",
       "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "wersja": 1
     },
@@ -219,11 +219,11 @@
   "provenance_b": {
     "analysis_type": "PF",
     "envelope": {
-      "catalog_fingerprint": "24c3351f3b8cb7663acbd10eb5c73894a65108edc9a3d1dcdb42f6d69d9fa761",
+      "catalog_fingerprint": "f8b38918bb72b2fae5d19e123037fbed88d1c479102d9f8caa329af29448d96d",
       "model_revision": 2,
       "options_hash": "28249a8f9514bfa39805f0a0d3af9d24d8b2e44f43f530250776aa849207319d",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "0477294c13a22070d5350eef1abfa4dacc32f09ffac2d9b0c87ef2a113eeca73",
+      "semantic_fingerprint": "76bd9a5b448b386d0ce4e0ec83b83ca876c12ff2e90ecefe4fab7f9606adebe4",
       "snapshot_hash": "bcc26473defd28816348d25bc96f6f8c606b6e32216cf3d878bbd8e6aac1d88d",
       "wersja": 1
     },

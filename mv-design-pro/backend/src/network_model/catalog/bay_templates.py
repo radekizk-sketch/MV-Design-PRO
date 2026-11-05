@@ -29,6 +29,7 @@ from network_model.catalog.obwody_wtorne_pola import (
     OBWODY_WTORNE_POL_GPZ,
     OBWODY_WTORNE_WYKONANIA_POLA,
     RODZAJ_APARATU_WEJSCIA,
+    RODZAJE_WEJSCIA_POZA_POLEM,
     ObwodyWtornePola,
     StatusWeryfikacji,
 )
@@ -218,7 +219,7 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
         if p.wylacznik is not None and getattr(aparaty.get(p.wylacznik), "kind", None) != "CB":
             raise ValueError(f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem.")
         for w in p.wejscia:
-            if w.aparat is None:
+            if w.aparat is None or w.rodzaj in RODZAJE_WEJSCIA_POZA_POLEM:
                 continue
             _obwod(w.aparat, rodzaj_wejscia[w.rodzaj], w.numer, p.funkcja)
             if w.numer is not None:
@@ -1029,6 +1030,9 @@ BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE: dict[str, list[str]] = {
     # baterii i wyłączanie od zabezpieczeń TR wg IRiESD II.4.5.4.4.2 wymaga łącznika
     # zdolnego do wyłączania prądu pojemnościowego).
     "BKR": ["WYLACZNIK"],
+    # Pole zespołu uziemiającego: wyłącznik z napędem M (Zeszyt 1 Z.13–Z.15 s.93–95) —
+    # zabezpieczenia I>, I>>, Io>, Io>> transformatora uziemiającego działają na wyłącznik.
+    "ZU": ["WYLACZNIK"],
 }
 
 
@@ -1314,9 +1318,11 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
 # do transformatora: szablon wskazuje wariant 1000/5 jako WARTOŚĆ ROBOCZĄ (ZASADA NR 4), pozostałe
 # warianty są pozycjami katalogu CT do wyboru w wyposażeniu pola.
 #
-# Pola zespołu uziemiającego Z.13–Z.15 (s.93–95) — porównanie ze źródłem w raporcie; szablonów
-# tu jeszcze nie ma (decyzja architekta D1: transformator uziemiający jako element `Transformer`,
-# dławik/rezystor z nośnika `hv_neutral` — meldunek przekazania karty).
+# Pola zespołu uziemiającego Z.13–Z.15 (s.93–95): tor pola do zacisku transformatora
+# uziemiającego; transformator ZNyn11 jest elementem modelu `Transformer` (decyzja architekta
+# D1), a dławik, rezystor, stycznik AWSC, odłączniki gałęzi i przekładnik gałęzi rezystora —
+# nośnikiem punktu neutralnego `Transformer.hv_neutral` (`enm.zespol_uziemiajacy`), nie aparatami
+# pola.
 # ---------------------------------------------------------------------------
 
 _PODSTAWA_ZRODLA_Z1 = (
@@ -1575,10 +1581,82 @@ BAY_TEMPLATE_GPZ_BKR_Z16 = _szablon_pola_gpz_wg_rysunku(
     ports=[BayPortTemplate(kind="sn_output", suffix="bkr")],
 )
 
-#: Szablony pól GPZ spoza pola liniowego (kolejność stała: Z.7, Z.12, Z.16, Z.17).
+_OPIS_WARIANTU_ZESPOLU: dict[str, tuple[str, str, str]] = {
+    "Z13": (
+        "Z.13 (s.93)",
+        "dlawik",
+        "sieć uziemiona przez dławik z automatyczną regulacją dostrojenia (odłącznik dławika, "
+        "AWSC z rezystorem po stronie wtórnej przez stycznik, regulator dławika)",
+    ),
+    "Z14": (
+        "Z.14 (s.94)",
+        "dlawik_rezystor",
+        "sieć uziemiona przez układ równoległy dławik, rezystor (odłączniki obu gałęzi, "
+        "przekładnik prądowy w gałęzi rezystora)",
+    ),
+    "Z15": (
+        "Z.15 (s.95)",
+        "rezystor",
+        "sieć uziemiona przez rezystor (odłącznik gałęzi, przekładnik prądowy w gałęzi "
+        "rezystora, SPZ transformatora uziemiającego)",
+    ),
+}
+
+
+def _szablon_zespolu_uziemiajacego(wariant: str) -> BayTemplate:
+    rysunek, sufiks, opis = _OPIS_WARIANTU_ZESPOLU[wariant]
+    return _szablon_pola_gpz_wg_rysunku(
+        template_id=f"bay_template_gpz_zespol_uziemiajacy_{sufiks}_enea_{wariant.lower()}",
+        rola="ZU",
+        nazwa_roli="ZESPOL_UZIEMIAJACY",
+        rysunek=rysunek,
+        klucz_obwodow=wariant,
+        description=(
+            f"Pole zespołu uziemiającego SN rozdzielni GPZ (ENEA Zeszyt 1, {rysunek}) — łącznik "
+            "trójpołożeniowy, wyłącznik z napędem M, przekładnik prądowy 100/5 A, ogranicznik "
+            f"przepięć, transformator uziemiający ZNyn11 poza celą; {opis}."
+        ),
+        plan=[
+            _lacznik_trojpolozeniowy("Q1", "łącznik trójpołożeniowy szynowy"),
+            _wylacznik_z_napedem(),
+            _przekladnik_pradowy(
+                "ct_typ_ogolny_osd_100_5_z13",
+                "100/5 A, 1 rdzeń 15 VA 5P20 (tabliczka rysunku „100/5, I 15 VA; kl. 5P20”)",
+            ),
+            {
+                "kind": "SURGE_ARRESTER",
+                "designation_q": "F1",
+                "placement": "OFF_PATH",
+                "opis": "ogranicznik przepięć przy zaciskach transformatora uziemiającego",
+            },
+        ],
+        ports=[BayPortTemplate(kind="sn_transformer", suffix="tu")],
+    )
+
+
+BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z13 = _szablon_zespolu_uziemiajacego("Z13")
+BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z14 = _szablon_zespolu_uziemiajacego("Z14")
+BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z15 = _szablon_zespolu_uziemiajacego("Z15")
+
+#: Wariant zespołu uziemiającego (`enm.zespol_uziemiajacy.WariantZespolu`) → szablon pola ZU —
+#: JEDNA tablica w obie strony (wariant szablonu i szablon wariantu).
+SZABLON_WARIANTU_ZESPOLU: dict[str, BayTemplate] = {
+    "Z13": BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z13,
+    "Z14": BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z14,
+    "Z15": BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z15,
+}
+WARIANT_SZABLONU_ZESPOLU: dict[str, str] = {
+    szablon.template_id: wariant for wariant, szablon in SZABLON_WARIANTU_ZESPOLU.items()
+}
+
+#: Szablony pól GPZ spoza pola liniowego (kolejność stała: Z.7, Z.12, Z.13, Z.14, Z.15, Z.16,
+#: Z.17).
 BAY_TEMPLATES_GPZ_POLA: tuple[BayTemplate, ...] = (
     BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7,
     BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12,
+    BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z13,
+    BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z14,
+    BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z15,
     BAY_TEMPLATE_GPZ_BKR_Z16,
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
 )
@@ -1594,6 +1672,7 @@ BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
         BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7,
         BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12,
         BAY_TEMPLATE_GPZ_BKR_Z16,
+        *SZABLON_WARIANTU_ZESPOLU.values(),
         BAY_TEMPLATE_COUPLER,
         BAY_TEMPLATE_DER_PV,
         BAY_TEMPLATE_DER_BESS,
@@ -2096,6 +2175,7 @@ _FUNCTIONAL_GROUP_BY_ROLE: dict[str, str] = {
     "MEASUREMENT": "pomiarowe",
     "OZE": "OZE",
     "BKR": "kompensacyjne",
+    "ZU": "uziemiajace",
 }
 
 # Mapowanie roli pola → rola pola we frontendowym read-modelu (`field_role`,
@@ -2111,6 +2191,7 @@ _FIELD_ROLE_BY_BAY_ROLE: dict[str, str] = {
     "MEASUREMENT": "POMIAROWE",
     "OZE": "OZE",
     "BKR": "BATERIA_KONDENSATOROW",
+    "ZU": "ZESPOL_UZIEMIAJACY",
 }
 
 

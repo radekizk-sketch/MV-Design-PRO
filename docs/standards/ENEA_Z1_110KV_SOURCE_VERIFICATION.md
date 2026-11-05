@@ -84,9 +84,9 @@ odczytu Zeszytu 1; **NZ** = niezweryfikowane / niezaimplementowane.
 | Z.11 | 90 | `szablon_pola_liniowego_gpz("Z11", …)` | ZŹ kartą UX-04; kontrola tej karty: tabliczka T3 „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3”, I 0-10 VA kl. 0,2, II 7,5 VA kl. 0,2 — zgodne |
 | Z.11.1 | 91 | `szablon_pola_liniowego_gpz("Z11_1", …)` | ZŹ kartą UX-04 (bez ponownej kontroli w tej karcie) |
 | Z.12 | 92 | `BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12`, `_OBWODY_Z12` | dane: ZŹ; rysunek pionowy A/B i rekord pola związany z gałęzią łącznika (D3), port uziemiany Q2: NZ |
-| Z.13 | 93 | brak szablonu; `enm/zespol_uziemiajacy.py` wariant `Z13` | porównanie wykonane (§4.4); grupa ZNyn11 i para przeniesienia uziemienia: wykonane; szablon, rola ZU, operacja pola, rysunek: NZ |
-| Z.14 | 94 | brak szablonu; wariant `Z14` | j.w. |
-| Z.15 | 95 | brak szablonu; wariant `Z15` | j.w. |
+| Z.13 | 93 | `bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13`, `_OBWODY_Z13`; wariant `Z13` | tor pola, tabliczka CT, funkcje, sygnały: ZŹ (§4.4, Io> z rdzenia I — interpretacja); rola ZU i operacje pola: wykonane; rysunek SLD pola i gałęzi punktu neutralnego: NZ |
+| Z.14 | 94 | `…_dlawik_rezystor_enea_z14`, `_OBWODY_Z14`; wariant `Z14` | j.w.; Io>, Io>> z przekładnika gałęzi rezystora (linia rysunku) |
+| Z.15 | 95 | `…_rezystor_enea_z15`, `_OBWODY_Z15`; wariant `Z15` | j.w.; SPZ (79) → ZW |
 | Z.16 | 96 | `BAY_TEMPLATE_GPZ_BKR_Z16`, `_OBWODY_Z16` | dane: ZŹ; rysunek: przekładniki międzyfazowe T4/T5 na zaciskach baterii (glif `capacitorBank`) — poprawione 2026-11-05 (wcześniej odczep przekładnika napięciowego toru — rozbieżność z s.96); porównanie rysunku całego pola ze zrzutem: NZ |
 | Z.17 | 97 | `BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17` | sekwencja, tabliczka i zestaw funkcji: ZŹ (karta UX-04 2026-10-29, kontrola tej karty zgodna); relacje funkcja → uzwojenie zapisane w §4.5, w danych szablonu brak obwodów wtórnych (NZ) |
 
@@ -194,6 +194,26 @@ Stan po następcy 4 (2026-11-05):
   (`typy_punktu_neutralnego_szyn_sn`) — jedno źródło z E-W5-04.
 - NZ: rola pola „ZU” w słowniku ról i wszystkich miejscach roli BKR, szablony Z.13–Z.15
   z obwodami wtórnymi, wpięcie pary w `add_sn_bay` / `delete_element`, rysunek pola ZU.
+
+Stan po następcy 5 (2026-11-05), odczyt obrazów stron 93–95 w 200 dpi:
+
+| Pozycja | Z.13 (s.93) | Z.14 (s.94) | Z.15 (s.95) | Kod |
+|---|---|---|---|---|
+| Tor pola | szyna → łącznik trójpołożeniowy (Q1) z napędem → wyłącznik z napędem M (Q0) → P1, CT 100/5, P2 → węzeł z ogranicznikiem (F1) → transformator ZNyn11; brak wskaźnika napięcia i złącza kablowego | j.w. | j.w. | plan szablonu; `ct_typ_ogolny_osd_100_5_z13` |
+| I>, I>> | rdzeń I (4 żyły, czerwona linia) → OW1 | j.w. | j.w. | 51, 50 (ZŹ) |
+| Io>, Io>> | brak linii prądowej (CT w uziemieniu dławika → regulator dławika) | ← CT gałęzi rezystora (czerwona linia) | ← CT gałęzi rezystora | 51N, 50N: Z.13 interpretacja z rdzenia I; Z.14/Z.15 wejście `PRZEKLADNIK_PUNKTU_NEUTRALNEGO` T2 (przekładnik poza polem — nośnik punktu neutralnego, `RODZAJE_WEJSCIA_POZA_POLEM`) |
+| ZS, LRW | → „Blokowanie ZS”, „Pobudzenie LRW” (okrężne) | j.w. | j.w. | ZS, 50BF |
+| SPZ | — | — | blok SPZ → ZW | 79 (wejście z rdzenia I — interpretacja, §26.9.6) |
+| Okrężne | +AwUp, Up, Aw, Al, ZAWSC, Pobudzenie LRW, Blokowanie ZS, UL1,UL2,UL3,N (4 żyły), Z,Zz (2 żyły) | j.w. | bez ZAWSC | `_obwody_zespolu_uziemiajacego` |
+| BTI, BTII | blok przy transformatorze, linia do sterownika (kierunek nieopisany) | j.w. | j.w. | sygnał wejściowy — interpretacja |
+| Regulator dławika | blok poza sterownikiem, linie do sterownika, SSiN | — | — | sygnał „Regulator dławika” — interpretacja |
+| Gałąź punktu neutralnego | odłącznik → dławik z regulacją (BDI/BDII, 500 V, 100 V), AWSC: stycznik + rezystor (ramka), ogranicznik w punkcie neutralnym | odłącznik → dławik ∥ odłącznik → rezystor → CT → ziemia; ogranicznik; gwiazdka — opcjonalne miejsce CT | odłącznik → rezystor → CT → ziemia; ogranicznik | nośnik `Transformer.hv_neutral` (D1); rysunek: NZ |
+
+Napotkane i naprawione: nośnik punktu neutralnego zadeklarowany jako uziemiony bez kompletu
+wartości (dławik bez X_N przy nieznanej pojemności doziemnej) był niewidoczny dla blokera
+E-W5-04 — drugi zespół uziemiający w wyspie przechodził; `nosniki_uziemione_sn` liczy go teraz
+z deklaracji. Pakiet iec60617 (backend i kopia frontu) mapował `PHASE_TO_PHASE_VT` na symbol
+`voltageTransformer`, choć od poprawki Z.16 rysuje go glif baterii — parytet frontu był czerwony.
 
 ### 4.5. Z.17 (s.97) — relacje funkcja → uzwojenie (kontrola)
 

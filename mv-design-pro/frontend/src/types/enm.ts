@@ -1210,8 +1210,9 @@ export interface OgranicznikPrzepiecPola {
  * `enm.rola_pola_sn.ROLE_POLA_MODELU` (parytet: `backend/tests/enm/test_rola_pola_bkr.py`).
  * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
  * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
+ * `ZU` — pole zespołu uziemiającego SN (karta POLA-GPZ-SZABLONY; Zeszyt 1 §16, Z.13–Z.15).
  */
-export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'BKR'] as const;
+export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'BKR', 'ZU'] as const;
 export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
 
 /**
@@ -1320,7 +1321,8 @@ export type BayCanonicalRole =
   | 'PV_SN'
   | 'BESS_SN'
   | 'FW_SN'
-  | 'BATERIA_KONDENSATOROW';
+  | 'BATERIA_KONDENSATOROW'
+  | 'ZESPOL_UZIEMIAJACY';
 
 export type BayDeviceState =
   | 'zamkniety'

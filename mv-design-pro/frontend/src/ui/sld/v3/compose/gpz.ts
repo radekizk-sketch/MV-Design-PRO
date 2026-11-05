@@ -1589,7 +1589,9 @@ function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, nu
           ? 'FP'
           : role === 'CAPACITOR_BANK'
             ? 'FK'
-            : 'F';
+            : role === 'EARTHING_UNIT'
+              ? 'FZ'
+              : 'F';
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;

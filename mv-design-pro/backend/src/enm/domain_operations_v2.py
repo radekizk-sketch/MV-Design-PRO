@@ -34,8 +34,13 @@ from domain.generator_validation import (
     sprawdz_moc_generatora,
     technologia_generatora,
 )
+from network_model.catalog.bay_templates import (
+    SZABLON_WARIANTU_ZESPOLU,
+    WARIANT_SZABLONU_ZESPOLU,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
+from network_model.catalog.mv_transformer_catalog import transformator_uziemiajacy_dla_napiecia
 from network_model.catalog.switchgear import (
     NiezgodnoscKonfiguracjiError,
     family_supports_voltage,
@@ -50,6 +55,7 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_COS_PHI_MASZYNY,
     RODZINA_MASZYNA_SYNCHRONICZNA,
     blad_wartosci_maszyny,
+    liczba_pl,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import nazwa_nadana
@@ -200,6 +206,13 @@ from .tor_pola import szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
+from .zespol_uziemiajacy import (
+    NAPIECIE_POTRZEB_WLASNYCH_KV,
+    WariantZespolu,
+    przenies_uziemienie_na_zespol,
+    wariant_z_uziemienia_zrodla,
+    zmien_wariant_zespolu,
+)
 from .zrodlo_napiecia_zerowego import warunki_funkcji_eaz_pola
 
 
@@ -2168,6 +2181,20 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             "sn.field_bus_mismatch",
         )
 
+    # Karta POLA-GPZ-SZABLONY: pole zespołu uziemiającego (rola ZU) — wariant uziemienia z szablonu
+    # pola (Z.13 / Z.14 / Z.15) albo, bez szablonu, z opisu punktu neutralnego źródła wyspy,
+    # który pole przenosi na transformator uziemiający (`enm.zespol_uziemiajacy`).
+    wariant_zespolu, odmowa_zespolu = _wariant_pola_zespolu(
+        enm, payload, bay_role=bay_role, bus_ref=bus_ref, existing_field=existing_field
+    )
+    if odmowa_zespolu is not None:
+        return odmowa_zespolu
+    if wariant_zespolu is not None and not existing_field_ref:
+        payload = {
+            **payload,
+            "bay_template_ref": SZABLON_WARIANTU_ZESPOLU[wariant_zespolu].template_id,
+        }
+
     # POMIAR POLA (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, korekta V12K-336):
     # dokładanie pojedynczego pola NIE deklaruje przyłącza klienta — pole
     # POMIAROWE bez jawnej deklaracji jest polem pomiaru NAPIĘCIA SZYN
@@ -2666,6 +2693,30 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         )
         created.insert(0, field_ref)
 
+    zdarzenia_zespolu: list[dict[str, Any]] = []
+    if bay_role == "ZU" and existing_field_ref:
+        # Zmiana szablonu pola ZU na szablon innego wariantu — nośnik punktu neutralnego
+        # transformatora tym samym krokiem (ta sama funkcja co `set_bay_equipment`).
+        if wariant_zespolu is not None:
+            zmien_wariant_zespolu(new_enm, field_ref, wariant_zespolu)
+    elif bay_role == "ZU" and wariant_zespolu is not None:
+        utworzone, odmowa = _dodaj_transformator_zespolu(
+            new_enm,
+            field_ref=field_ref,
+            terminal_bus_ref=terminal_bus_ref,
+            station_ref=str(station["ref_id"]),
+            seed=seed,
+            wariant=wariant_zespolu,
+            field_name=field_name,
+        )
+        if odmowa is not None:
+            return odmowa
+        created.extend(utworzone)
+        zdarzenia_zespolu = [
+            {"event_seq": 4, "event_type": "BUS_CREATED", "element_id": utworzone[0]},
+            {"event_seq": 5, "event_type": "TRANSFORMER_CREATED", "element_id": utworzone[1]},
+        ]
+
     return _response(
         new_enm,
         created=created,
@@ -2679,8 +2730,135 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             },
             {"event_seq": 2, "event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
             {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
+            *zdarzenia_zespolu,
         ],
     )
+
+
+def _wariant_pola_zespolu(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    bay_role: str,
+    bus_ref: str,
+    existing_field: dict[str, Any] | None,
+) -> tuple[WariantZespolu | None, dict[str, Any] | None]:
+    """Wariant pola zespołu uziemiającego żądania ``add_sn_bay`` albo odmowa nazwana.
+
+    Rola ZU nie powstaje z rekonfiguracji pola innej roli (ani odwrotnie): transformator
+    uziemiający i przeniesienie punktu neutralnego tworzy wyłącznie dodanie pola, oddaje —
+    usunięcie transformatora (`delete_element`). Szablon wskazany musi być szablonem pola ZU."""
+    rola_przed = existing_field.get("bay_role") if isinstance(existing_field, dict) else None
+    if existing_field is not None and (bay_role == "ZU") != (rola_przed == "ZU"):
+        return None, _error_response(
+            "Pole zespołu uziemiającego nie powstaje ze zmiany funkcji innego pola i nie zmienia "
+            "funkcji — dodaj nowe pole zespołu uziemiającego albo usuń transformator "
+            "uziemiający i pole.",
+            "sn.zespol_uziemiajacy_zmiana_roli",
+        )
+    if bay_role != "ZU":
+        return None, None
+    ref = payload.get("bay_template_ref")
+    if isinstance(ref, str) and ref.strip():
+        wariant = WARIANT_SZABLONU_ZESPOLU.get(ref.strip())
+        if wariant is None:
+            return None, _error_response(
+                "Pole zespołu uziemiającego bierze szablon jednego z wariantów: "
+                + lista_pl(
+                    (f"{s.name} Z.{w[1:]}" for w, s in SZABLON_WARIANTU_ZESPOLU.items()), "albo"
+                )
+                + ".",
+                "sn.zespol_uziemiajacy_szablon",
+            )
+        return wariant, None  # type: ignore[return-value]
+    if existing_field is not None:
+        return None, None
+    wariant_zrodla = wariant_z_uziemienia_zrodla(enm, bus_ref)
+    if wariant_zrodla is None:
+        return None, _error_response(
+            "Pole zespołu uziemiającego wymaga wskazania wariantu — szablonu pola Z.13 (dławik "
+            "z automatyczną regulacją), Z.14 (dławik i rezystor równolegle) albo Z.15 (rezystor); "
+            "źródło sieci tej sekcji nie opisuje uziemienia przez dławik ani przez rezystor, "
+            "z którego wariant by wynikał.",
+            "sn.zespol_uziemiajacy_wariant",
+        )
+    return wariant_zrodla, None
+
+
+def _dodaj_transformator_zespolu(
+    enm: dict[str, Any],
+    *,
+    field_ref: str,
+    terminal_bus_ref: str,
+    station_ref: str,
+    seed: str,
+    wariant: WariantZespolu,
+    field_name: str,
+) -> tuple[list[str], dict[str, Any] | None]:
+    """Transformator uziemiający ZNyn11 pola ZU (zacisk SN = zacisk pola, strona 0,4 kV = nowa
+    szyna potrzeb własnych) z pozycji katalogu dla napięcia szyny i przeniesienie punktu
+    neutralnego wyspy na ten transformator — mutacja ``enm`` (kopii wołającego) w miejscu."""
+    napiecie_kv = _bus_voltage_kv(enm, terminal_bus_ref)
+    pozycja = transformator_uziemiajacy_dla_napiecia(float(napiecie_kv or 0.0))
+    if pozycja is None:
+        return [], _error_response(
+            "Katalog transformatorów uziemiających ZNyn11 ma pozycje dla sieci 15 kV i 20 kV — "
+            f"szyna pola ma {liczba_pl(float(napiecie_kv or 0.0))} kV. Dodaj pozycję transformatora "
+            "uziemiającego dla tego napięcia do katalogu.",
+            "sn.zespol_uziemiajacy_napiecie",
+        )
+    parametry, blad = _pozycja_katalogu(
+        namespace="TRAFO_SN_NN",
+        catalog_ref=str(pozycja["id"]),
+        opis_pl="Transformator uziemiający",
+    )
+    if blad is not None:
+        return [], blad
+    szyna_nn = _make_id("sn", seed, "zu_bus_nn")
+    transformator_ref = _make_id("sn", seed, "zu_transformer")
+    wynik = create_node(
+        enm,
+        {
+            "ref_id": szyna_nn,
+            "name": f"Szyna potrzeb własnych 0,4 kV — {field_name}",
+            "voltage_kv": NAPIECIE_POTRZEB_WLASNYCH_KV,
+            "tags": ["zespol_uziemiajacy"],
+            "meta": {"field_ref": field_ref, "station_ref": station_ref},
+        },
+    )
+    if not wynik.success:
+        return [], _error_response(
+            "Nie udało się utworzyć szyny potrzeb własnych zespołu uziemiającego.",
+            "sn.zespol_uziemiajacy_szyna",
+        )
+    if wynik.enm is not enm:
+        # `create_node` zwraca model z szyną — wołający trzyma referencję `enm` (kopię operacji).
+        nowy = dict(wynik.enm)
+        enm.clear()
+        enm.update(nowy)
+    transformator: dict[str, Any] = {
+        "ref_id": transformator_ref,
+        "name": f"Transformator uziemiający — {field_name}",
+        "hv_bus_ref": terminal_bus_ref,
+        "lv_bus_ref": szyna_nn,
+        "catalog_ref": pozycja["id"],
+        "overrides": [],
+        "tags": ["zespol_uziemiajacy"],
+        "meta": {"field_ref": field_ref, "station_ref": station_ref},
+    }
+    _apply_catalog_metadata(transformator, None, default_namespace="TRAFO_SN_NN")
+    _apply_materialized_transformer_fields(transformator, parametry)
+    enm.setdefault("transformers", []).append(transformator)
+    odmowa = przenies_uziemienie_na_zespol(
+        enm, transformator=transformator, bay_ref=field_ref, wariant=wariant
+    )
+    if odmowa is not None:
+        return [], _error_response(odmowa, "sn.zespol_uziemiajacy_przeniesienie")
+    rekord = pole_modelu(enm, field_ref) or {}
+    zmien_pole(
+        enm, field_ref, equipment_refs=[*(rekord.get("equipment_refs") or []), transformator_ref]
+    )
+    return [szyna_nn, transformator_ref], None
 
 
 #: Rodzaj aparatu głównego pola (`BayPrimaryDevice.kind`) → wariant aparatu

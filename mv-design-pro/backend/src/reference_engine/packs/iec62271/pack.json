@@ -103,6 +103,18 @@
       "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 16: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy → głowica kablowa; ogranicznik przepięć, dwa przekładniki napięciowe międzyfazowe L1-L2 i L2-L3 oraz przekładnik niezrównoważenia w połączeniu międzygwiazdowym stoją przy baterii, poza osią toru. Wymagalność przekładników baterii zależy od układu połączeń i od rezystorów rozładowczych jednostek — ocenia ją walidator modelu (W046, W047), nie profil. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Bateria kondensatorów (Z.16 s.96): łącznik trójpołożeniowy → wyłącznik → przekładnik prądowy → wskaźnik napięcia (bocznie) → złącze kablowe."
     },
     {
+      "profile_id": "earthing_unit",
+      "name_pl": "Pole zespołu uziemiającego SN (GPZ)",
+      "required": ["CB", "CT"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
+      "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "CABLE_HEAD"],
+      "lateral_only": ["ES", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), Z.13–Z.15 s.93–95 i §16 s.30: łącznik trójpołożeniowy → wyłącznik z napędem M → przekładnik prądowy 100/5 → węzeł z ogranicznikiem przepięć (bocznie) → transformator uziemiający ZNyn11 poza celą (element modelu `Transformer`). Dławik, rezystor, stycznik AWSC, odłączniki gałęzi i przekładnik gałęzi rezystora leżą w punkcie neutralnym transformatora — opisuje je nośnik punktu neutralnego transformatora, nie aparat pola."
+    },
+    {
       "profile_id": "der_source",
       "name_pl": "Pole źródłowe SN (PV / BESS / FW)",
       "required": ["DS", "CB", "CABLE_HEAD"],

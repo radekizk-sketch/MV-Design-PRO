@@ -1424,9 +1424,92 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
 # =============================================================================
 
 
+# =============================================================================
+# TRANSFORMATORY UZIEMIAJACE ZNyn11 (zespol uziemiajacy pola GPZ, karta POLA-GPZ-SZABLONY)
+# =============================================================================
+#
+# ENEA Operator, Stacje 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: uklad polaczen ZNyn 11,
+# trojstopniowa beznapieciowa regulacja +/-5 % po stronie SN (zaczepy -1/0/+1 po 5 %), chlodzenie
+# ONAN, napiecie uzwojenia dolnego 400 V, moc uzwojenia potrzeb wlasnych „nie mniejsza niz
+# 100 kVA”. Standard nie podaje u_k ani strat — pozycja przyjmuje u_k, P_k, P0, i0 pozycji
+# 100 kVA Dyn11 tego samego napiecia (ABB RESIBLOC, wyzej) jako WARTOSC ROBOCZA (ZASADA NR 4);
+# rozporzadzenie UE 548/2014 art. 1 ust. 2 wylacza transformatory uziemiajace z wymagan Tier 2.
+# Impedancja zerowa uzwojenia zygzak w modelu ENM = impedancja rozproszenia (u_k na S_n,
+# `enm.zero_sequence_transformer`) — producent podaje Z_0 osobno; pozycje producenta dopisuje sie
+# osobnym rekordem z karty.
+
+_ZRODLO_ZESZYTU_1_P16 = (
+    "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: "
+    "grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA"
+)
+
+
+def _transformator_uziemiajacy(hv_kv: float) -> dict[str, Any]:
+    wzor = next(
+        r
+        for r in TRANSFORMER_SN_NN_15_04_DYN11 + TRANSFORMER_SN_NN_20_04_DYN11
+        if r["id"] == f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11"
+    )["params"]
+    return {
+        "id": f"tu-sn-nn-{hv_kv:g}-04-100kva-znyn11",
+        "name": f"Transformator uziemiający {hv_kv:g}/0,4 kV ZNyn11 · 100 kVA",
+        "params": {
+            "rated_power_mva": 0.100,
+            "voltage_hv_kv": hv_kv,
+            "voltage_lv_kv": 0.4,
+            "uk_percent": wzor["uk_percent"],
+            "pk_kw": wzor["pk_kw"],
+            "i0_percent": wzor["i0_percent"],
+            "p0_kw": wzor["p0_kw"],
+            "vector_group": "ZNyn11",
+            "cooling_class": "ONAN",
+            "tap_min": -1,
+            "tap_max": 1,
+            "tap_step_percent": 5.0,
+            "standard": "ENEA Zeszyt 1 §16",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16} || u_k, P_k, P0, i0: pozycja "
+            f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11",
+            "contract_version": "2.0",
+            "verification_note": (
+                "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie "
+                "egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc "
+                "uzwojenia potrzeb własnych z §16 Zeszytu 1; u_k, P_k, P0, i0 — wartość robocza "
+                "z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje)."
+            ),
+        },
+    }
+
+
+#: Transformatory uziemiające ZNyn11 15/0,4 kV i 20/0,4 kV (zespół uziemiający GPZ).
+TRANSFORMATORY_UZIEMIAJACE_ZNYN11: list[dict[str, Any]] = [
+    _transformator_uziemiajacy(15.0),
+    _transformator_uziemiajacy(20.0),
+]
+
+
+def transformator_uziemiajacy_dla_napiecia(hv_kv: float) -> dict[str, Any] | None:
+    """Pozycja transformatora uziemiającego dla napięcia szyny SN (``None`` — napięcie spoza
+    pozycji; dobór najbliższej pozycji byłby domysłem)."""
+    return next(
+        (
+            r
+            for r in TRANSFORMATORY_UZIEMIAJACE_ZNYN11
+            if abs(float(r["params"]["voltage_hv_kv"]) - float(hv_kv)) < 1e-9
+        ),
+        None,
+    )
+
+
 def get_all_transformer_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy transformatorow w katalogu."""
-    return TRANSFORMER_WN_SN_110_15 + TRANSFORMER_WN_SN_110_20 + get_sn_nn_transformer_types()
+    return (
+        TRANSFORMER_WN_SN_110_15
+        + TRANSFORMER_WN_SN_110_20
+        + get_sn_nn_transformer_types()
+        + TRANSFORMATORY_UZIEMIAJACE_ZNYN11
+    )
 
 
 def get_wn_sn_transformer_types() -> list[dict[str, Any]]:

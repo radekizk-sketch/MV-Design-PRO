@@ -48,6 +48,15 @@
         "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
       },
       {
+        "attachment_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
+        "bay_role": "ZU",
+        "corridor_refs": [],
+        "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+        "occupied": false,
+        "segment_refs": [],
+        "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+      },
+      {
         "attachment_bus_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_terminal",
         "bay_role": "BKR",
         "corridor_refs": [],
@@ -2099,6 +2108,222 @@
       {
         "apparatus_catalog_ref": null,
         "bay_number": null,
+        "bay_role": "ZU",
+        "bay_template_ref": "bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+        "equipment_refs": [
+          "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
+          "sn/0bf78717aa7856b192940aa50a10c074/zu_transformer"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "id": "9c78fb5f-5b9f-56d5-86b7-cce1fd1e1e3d",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "CB",
+          "catalog_binding": null,
+          "default_device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
+          "field_status": "CONFIGURED_FOR_TRUNK"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole zespołu uziemiającego",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "Q0",
+            "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50N"
+            ],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": [],
+            "wykonanie": "STALE",
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_100_5_z13",
+            "designation": "T1",
+            "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "51N",
+              "50N",
+              "ZS",
+              "50BF"
+            ],
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "odplyw"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "100/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          },
+          {
+            "catalog_ref": null,
+            "designation": "F1",
+            "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::3",
+            "earthing_role": "surge_ground",
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "SURGE_ARRESTER",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "odplyw"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:surge_arrester",
+            "uzwojenia": [],
+            "wykonanie": null,
+            "zaczep_pierwotny_a": null,
+            "zrodlo_zaczepu": null
+          }
+        ],
+        "protection_codes": [
+          "51",
+          "50",
+          "51N",
+          "50N",
+          "ZS",
+          "50BF"
+        ],
+        "protection_ref": null,
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [],
+        "terminal_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
         "bay_role": "BKR",
         "bay_template_ref": "bay_template_gpz_bateria_kondensatorow_enea_z16",
         "branch_point_port_id": null,
@@ -2900,6 +3125,40 @@
         "catalog_namespace": null,
         "catalog_ref": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "id": "52221505-fc42-5e85-9f18-0522773d3229",
+        "materialized_params": null,
+        "meta": {
+          "apparatus_kind": "CB",
+          "bay_role": "ZU",
+          "catalog_binding": null,
+          "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+          "render_on_sld": false,
+          "requires_catalog_binding": true,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "terminal_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal"
+        },
+        "name": "Aparat Pole zespołu uziemiającego",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": 0.0,
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
+        "source_mode": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device",
+          "requires_catalog_binding"
+        ],
+        "to_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "629e1bfc-5a68-50b0-9dea-acc9469ca12d",
         "materialized_params": null,
         "meta": {
@@ -3254,6 +3513,45 @@
       },
       {
         "frequency_hz": null,
+        "id": "2b90b451-727d-50fc-b606-5c60c0e8a920",
+        "meta": {
+          "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole zespołu uziemiającego",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
+        "id": "41252659-e642-5fdb-b3af-b6eb32c6b2ab",
+        "meta": {
+          "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+        },
+        "name": "Szyna potrzeb własnych 0,4 kV — Pole zespołu uziemiającego",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/zu_bus_nn",
+        "tags": [
+          "zespol_uziemiajacy"
+        ],
+        "voltage_kv": 0.4,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
         "id": "6b1687f2-a908-5af6-84f3-829ceadab366",
         "meta": {
           "field_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay",
@@ -3558,6 +3856,75 @@
         "uk_percent": 11.0,
         "ulv_kv": 15.0,
         "vector_group": "Yd11"
+      },
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
+        "hv_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
+        "hv_neutral": {
+          "awsc_prad_wymuszenia_a": 40.0,
+          "r_ohm": null,
+          "type": "petersen_coil",
+          "x_ohm": null
+        },
+        "i0_percent": 2.5,
+        "id": "000b3d03-a987-55fc-8c52-4edc6f5e12fd",
+        "lv_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/zu_bus_nn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "lv_voltage_tolerance": null,
+        "materialized_params": {
+          "catalog_item_id": "tu-sn-nn-15-04-100kva-znyn11",
+          "catalog_item_version": "2024.1",
+          "i0_percent": 2.5,
+          "p0_kw": 0.3,
+          "pk_kw": 2.15,
+          "rated_power_mva": 0.1,
+          "uk_percent": 4.0,
+          "vector_group": "ZNyn11",
+          "voltage_hv_kv": 15.0,
+          "voltage_lv_kv": 0.4
+        },
+        "meta": {
+          "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "zespol_uziemiajacy": {
+            "bay_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+            "dane_przyjete": [
+              {
+                "jakosc": "ESTIMATED",
+                "jednostka": "A",
+                "nazwa_pl": "prąd wymuszenia AWSC",
+                "parametr": "awsc_prad_wymuszenia_a",
+                "podstawa_pl": "ENEA Operator, Stacje 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: AWSC z rezystorem po stronie wtórnej wymusza prąd pierwotny 20 A ÷ 40 A — przyjęto górną granicę zakresu (największa składowa czynna dla wybiórczości zabezpieczeń ziemnozwarciowych)",
+                "wartosc": 40.0
+              }
+            ],
+            "wariant": "Z13",
+            "zrodlo_ref": null
+          }
+        },
+        "n_parallel": null,
+        "name": "Transformator uziemiający — Pole zespołu uziemiającego",
+        "overrides": [],
+        "p0_kw": 0.3,
+        "parameter_source": "CATALOG",
+        "pk_kw": 2.15,
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/zu_transformer",
+        "sn_mva": 0.1,
+        "source_mode": "KATALOG",
+        "tags": [
+          "zespol_uziemiajacy"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 15.0,
+        "uk_percent": 4.0,
+        "ulv_kv": 0.4,
+        "vector_group": "ZNyn11"
       }
     ]
   }

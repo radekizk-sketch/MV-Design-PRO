@@ -736,6 +736,17 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # stan, aparat wymieniony albo dodany jest nową instancją — projektowaną.
     aparaty = aparaty_po_wymianie(rekord.get("primary_devices") or [], aparaty)
     zmien_pole(nowy, bay_ref, primary_devices=aparaty, **zmiany)
+    # Karta POLA-GPZ-SZABLONY: szablon pola zespołu uziemiającego wyznacza wariant uziemienia
+    # (Z.13 dławik, Z.14 dławik ∥ rezystor, Z.15 rezystor) — zmiana szablonu zmienia nośnik
+    # punktu neutralnego transformatora tym samym krokiem (jedna operacja = jedna rewizja).
+    if rekord.get("bay_role") == "ZU" and szablon_po != rekord.get("bay_template_ref"):
+        from network_model.catalog.bay_templates import WARIANT_SZABLONU_ZESPOLU
+
+        from .zespol_uziemiajacy import zmien_wariant_zespolu
+
+        wariant = WARIANT_SZABLONU_ZESPOLU.get(str(szablon_po))
+        if wariant is not None:
+            zmien_wariant_zespolu(nowy, bay_ref, wariant)  # type: ignore[arg-type]
     # Gałąź łącznika wskazana aparatem pola (`linked_ref`) to TEN SAM fizyczny aparat — jej stan
     # obiektu jest stanem aparatu (jedno źródło: `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
     stany_galezi = {

@@ -1097,6 +1097,7 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
     BKR: 'kompensacyjne',
+    ZU: 'uziemiajace',
   } as const;
 
   for (const rola of ROLE_ENM) {

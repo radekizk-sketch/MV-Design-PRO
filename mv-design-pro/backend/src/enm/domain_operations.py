@@ -11384,18 +11384,22 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 return True
         return False
 
+    #: Kolekcje elementów przyłączonych do szyny (pola szyny) — kaskada usuwania szyny i test
+    #: „szyna bez przyłączonych elementów" szyny potrzeb własnych zespołu uziemiającego.
+    dependent_collections_all: list[tuple[str, tuple[str, ...]]] = [
+        ("branches", ("from_bus_ref", "to_bus_ref")),
+        ("transformers", ("hv_bus_ref", "lv_bus_ref")),
+        ("sources", ("bus_ref",)),
+        ("loads", ("bus_ref",)),
+        ("generators", ("bus_ref",)),
+        ("shunt_capacitors", ("bus_ref",)),
+    ]
+
     # Cascade for bus deletion: remove dependent branches/transformers/sources/loads/generators.
     if coll == "buses":
-        dependent_collections = [
-            ("branches", ("from_bus_ref", "to_bus_ref")),
-            ("transformers", ("hv_bus_ref", "lv_bus_ref")),
-            ("sources", ("bus_ref",)),
-            ("loads", ("bus_ref",)),
-            ("generators", ("bus_ref",)),
-            # Bateria na usuwanej szynie zostawała z odwołaniem do szyny, której nie ma.
-            ("shunt_capacitors", ("bus_ref",)),
-        ]
-        for dep_collection, dep_fields in dependent_collections:
+        # Bateria na usuwanej szynie zostawała z odwołaniem do szyny, której nie ma
+        # (`shunt_capacitors` w `dependent_collections_all`).
+        for dep_collection, dep_fields in dependent_collections_all:
             refs_to_delete: list[str] = []
             for item in new_enm.get(dep_collection, []):
                 if any(item.get(field) == element_ref for field in dep_fields):
@@ -11419,6 +11423,31 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     deleted_transformer_refs = {
         ref for ref in deleted_set if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
     }
+
+    # Karta POLA-GPZ-SZABLONY (decyzja D1): transformator uziemiający usunięty wprost albo
+    # kaskadą (szyna SN zacisku pola, szyna potrzeb własnych) oddaje punkt neutralny sieci
+    # źródłu-dawcy z zapisu pary (`enm.zespol_uziemiajacy`) — para do przeniesienia w
+    # `add_sn_bay`. Szyna potrzeb własnych zespołu bez innych przyłączonych elementów znika
+    # razem z transformatorem (nie zostaje wyspą bez zasilania).
+    if deleted_transformer_refs:
+        from enm.zespol_uziemiajacy import oddaj_uziemienie_zrodlu, zapis_zespolu
+
+        for transformator in enm.get("transformers", []):
+            if transformator.get("ref_id") not in deleted_transformer_refs:
+                continue
+            if zapis_zespolu(transformator) is None:
+                continue
+            oddaj_uziemienie_zrodlu(new_enm, transformator)
+            szyna_nn = transformator.get("lv_bus_ref")
+            if szyna_nn in deleted_set or not any(
+                szyna_nn in (e.get(k) for k in klucze)
+                for kolekcja, klucze in dependent_collections_all
+                for e in new_enm.get(kolekcja, [])
+                if isinstance(e, dict)
+            ):
+                if szyna_nn not in deleted_set and _delete_in_collection("buses", str(szyna_nn)):
+                    deleted_set.add(str(szyna_nn))
+                    deleted_bus_refs.add(str(szyna_nn))
 
     # Magistrale i ciągi liniowe tracą usunięte odcinki (stacje — niżej, po kaskadzie stacji).
     if deleted_branch_refs:

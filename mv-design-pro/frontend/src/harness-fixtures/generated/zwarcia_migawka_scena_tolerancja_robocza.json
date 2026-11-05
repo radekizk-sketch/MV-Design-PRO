@@ -450,6 +450,7 @@
       "lv_bus_ref": "bus_nn",
       "lv_earthing_system": "TN-S",
       "lv_neutral": {
+        "awsc_prad_wymuszenia_a": null,
         "r_ohm": null,
         "type": "directly_grounded",
         "x_ohm": null

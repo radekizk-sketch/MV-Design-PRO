@@ -95,6 +95,9 @@ export const FIELD_ROLE = {
    *  Do karty UX-04/POLE-BKR-MODEL adapter stacji zamieniał `BKR` po cichu na pole
    *  odgałęźne, a adapter GPZ — na pole liniowe odpływowe (dobór feedera sieci). */
   CAPACITOR_BANK: 'CAPACITOR_BANK',
+  /** Pole zespołu uziemiającego SN (rola modelu `ZU`, kanoniczna `ZESPOL_UZIEMIAJACY`; ENEA
+   *  Operator, Stacje 110 kV, Zeszyt 1 §16 s.30, Z.13–Z.15 s.93–95) — karta POLA-GPZ-SZABLONY. */
+  EARTHING_UNIT: 'EARTHING_UNIT',
 } as const;
 
 export type FieldRole = (typeof FIELD_ROLE)[keyof typeof FIELD_ROLE];
@@ -117,6 +120,7 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.DER_BESS ||
     role === FIELD_ROLE.DER_FW ||
     role === FIELD_ROLE.DER_UNKNOWN ||
-    role === FIELD_ROLE.CAPACITOR_BANK
+    role === FIELD_ROLE.CAPACITOR_BANK ||
+    role === FIELD_ROLE.EARTHING_UNIT
   );
 }

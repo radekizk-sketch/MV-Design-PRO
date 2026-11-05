@@ -217,6 +217,9 @@ export const ROLA_Z_FUNKCJI_POLA: Readonly<Record<BayKind, SnFieldRole | null>> 
   // Pole baterii kondensatorów jest polem rozdzielni GPZ (Zeszyt 1 §13, Zał. 16) — powstaje
   // operacją pola SN (`add_sn_bay`, rola `BKR`), nie wpisem pól stacji SN/nN.
   bateria_kondensatorow: null,
+  // Pole zespołu uziemiającego — pole rozdzielni GPZ (Zeszyt 1 Z.13–Z.15), operacja `add_sn_bay`
+  // z rolą `ZU` (transformator uziemiający i przeniesienie punktu neutralnego).
+  zespol_uziemiajacy: null,
 };
 
 // ------------------------------------------------------- Wyposażenie pola

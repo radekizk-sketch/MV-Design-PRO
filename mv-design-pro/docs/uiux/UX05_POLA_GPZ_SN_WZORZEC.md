@@ -54,7 +54,7 @@ Porty: `rodzaje_aparatury.PORTY_APARATU_POLA`; symbol: `apparatusSequence.SYMBOL
 
 ## 4. Pola zespołu uziemiającego Z.13–Z.15
 
-Szablonów nie ma (niewykonane). Wykonane: bloker walidatora E-W5-04 „dwa uziemione nośniki
+Wykonane: bloker walidatora E-W5-04 „dwa uziemione nośniki
 punktu neutralnego w jednej wyspie galwanicznej SN” (`backend/src/enm/nosniki_punktu_neutralnego.py`,
 test iloczynu `backend/tests/enm/test_jeden_nosnik_punktu_neutralnego.py`) i pole AWSC
 `GroundingConfig.awsc_prad_wymuszenia_a` z predykatem `blad_konfiguracji_uziemienia`. Brak do
@@ -65,6 +65,23 @@ i oddania punktu neutralnego — `backend/src/enm/zespol_uziemiajacy.py` (test i
 `backend/tests/enm/test_zespol_uziemiajacy.py`), sonda składowej zerowej —
 `backend/tests/enm/test_sonda_transformatora_uziemiajacego.py`. Niewykonane: rola pola „ZU”,
 szablony Z.13–Z.15, wpięcie pary w operacje pola, rysunek pola ZU.
+Stan 2026-11-05 (następca 5): rola pola `ZU` („Pole zespołu uziemiającego”, kanon
+`enm/rola_pola_sn.py`) wpięta w słownik ról modelu i jego lustra (`types/enm.ts BAY_MODEL_ROLES`,
+`FIELD_ROLE.EARTHING_UNIT`, rola tła GPZ `uziemiajace` z kolorem w obu motywach i eksporcie,
+kategoria rodzaju stacji, rodzaj pola katalogowego `zespol_uziemiajacy`, profil pakietu
+iec62271 `earthing_unit`, mapa compliance, kreator pola SN); szablony
+`bay_template_gpz_zespol_uziemiajacy_{dlawik_enea_z13, dlawik_rezystor_enea_z14,
+rezystor_enea_z15}` z obwodami wtórnymi `OBWODY_WTORNE_POL_GPZ["Z13"|"Z14"|"Z15"]`; katalog CT
+`ct_typ_ogolny_osd_100_5_z13` (100/5 A, I 15 VA 5P20) i transformatorów uziemiających
+`tu-sn-nn-{15,20}-04-100kva-znyn11`. `add_sn_bay` z rolą ZU tworzy jedną operacją pole,
+transformator ZNyn11 (zacisk SN = zacisk pola, szyna potrzeb własnych 0,4 kV) i przenosi punkt
+neutralny; `set_bay_equipment` szablonem innego wariantu zmienia nośnik; `delete_element`
+transformatora (wprost albo kaskadą szyny) oddaje go źródłu i zabiera pustą szynę potrzeb
+własnych. Test iloczynu `backend/tests/enm/test_pole_zespolu_uziemiajacego.py`. Rysunek pola ZU
+(gałąź punktu neutralnego z nośnika) — niewykonany; wzorzec opisów po lewej (pas oznaczeń
+z kolumną przekładni, kolumna odgałęzienia przy torze, ramka zabezpieczeń zaraz za nią —
+wzór właściciela 2026-11-05) obowiązuje także pola Z.12–Z.16 i czeka na commit pasa oznaczeń
+z drzewa `wt-pole`.
 Rozstrzygnięcie architekta D1: transformator uziemiający (ZNyn11, uzwojenie
 potrzeb własnych 400/230 V AC) jest elementem `Transformer` pola; dławik i rezystor rysuje się
 z nośnika punktu neutralnego `hv_neutral` (`GroundingConfig`: `petersen_coil` z X_N,

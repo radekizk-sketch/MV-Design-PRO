@@ -215,6 +215,10 @@ def profile_id_for_bay(
         # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL, ENEA Zeszyt 1 Zał. 16) —
         # technologia wyłącznikowa w każdej stacji (bateria łączona wyłącznikiem).
         return "capacitor_bank"
+    if bay_role == "ZU":
+        # Pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY, ENEA Zeszyt 1 Z.13–Z.15) —
+        # pole wyłącznikowe GPZ z transformatorem uziemiającym poza celą.
+        return "earthing_unit"
     return None
 
 

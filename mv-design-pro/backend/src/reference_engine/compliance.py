@@ -82,6 +82,8 @@ _BAY_ROLE_TO_FAMILY_BAY_KIND: dict[str, str] = {
     # Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL) — rodzaj pola katalogowego
     # `bateria_kondensatorow` (`CompleteMvBayTemplate.bay_kind`).
     "BKR": "bateria_kondensatorow",
+    # Pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY, Zeszyt 1 Z.13–Z.15).
+    "ZU": "zespol_uziemiajacy",
 }
 
 # Placement aparatów z definicji bocznych (§18.1): poza osią toru.

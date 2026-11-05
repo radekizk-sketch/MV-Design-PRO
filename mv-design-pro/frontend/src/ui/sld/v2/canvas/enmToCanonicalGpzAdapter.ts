@@ -623,6 +623,7 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
     // liniowe odpływowe — kandydata na feeder magistrali sieci. Przełącznik jest teraz
     // wyczerpujący po `Bay.bay_role` (nowa rola bez gałęzi = błąd kompilacji).
     case 'BKR': return 'CAPACITOR_BANK';
+    case 'ZU': return 'EARTHING_UNIT';
   }
 }
 
@@ -647,6 +648,8 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
       return { dsBus: 'Q1', es: 'Q8' };
     case 'CAPACITOR_BANK':
       return { cb: 'Q0', dsBus: 'Q1', es: 'Q8', ct: 'T1' };
+    case 'EARTHING_UNIT':
+      return { cb: 'Q0', dsBus: 'Q1', ct: 'T1' };
   }
 }
 
@@ -673,6 +676,7 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'MEASUREMENT': return 'pomiarowe';
     case 'OZE': return 'zrodlowe';
     case 'BKR': return 'kompensacyjne';
+    case 'ZU': return 'uziemiajace';
   }
 }
 

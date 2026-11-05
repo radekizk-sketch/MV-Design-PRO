@@ -369,6 +369,8 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   // Pole baterii kondensatorów (karta UX-04/POLE-BKR-MODEL): odcień purpurowo-różowy,
   // wolny od pozostałych ról (bursztyn, błękit, fiolet, szarość, morski, zieleń).
   kompensacyjne: '#E07AA8',
+  // Pole zespołu uziemiającego (karta POLA-GPZ-SZABLONY): ochra-brąz, wolny od pozostałych ról.
+  uziemiajace: '#C8A26A',
 };
 
 export const DARK_SCADA_SLD_PALETTE: SldPalette = {

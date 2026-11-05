@@ -252,3 +252,62 @@ def oddaj_uziemienie_zrodlu(enm: dict[str, Any], transformator: dict[str, Any]) 
     cfg = copy.deepcopy(transformator.get(NOSNIK_TRANSFORMATORA))
     zrodlo[NOSNIK_ZRODLA] = cfg
     return str(zrodlo["ref_id"])
+
+
+#: Typ punktu neutralnego źródła → wariant rysunku, gdy pole ZU powstaje bez wskazanego
+#: szablonu: projektant zadeklarował sposób uziemienia sieci na źródle, a pole zespołu przenosi
+#: TEN sposób na transformator. Dławik → Z.13 (§16: sieć skompensowana z regulacją nadążną
+#: i AWSC), rezystor → Z.15. Inny opis (izolowany, brak) nie wyznacza wariantu — wołający odmawia.
+WARIANT_Z_TYPU_UZIEMIENIA_ZRODLA: dict[str, WariantZespolu] = {
+    "petersen_coil": "Z13",
+    "resistor_grounded": "Z15",
+}
+
+
+def wariant_z_uziemienia_zrodla(enm: dict[str, Any], bus_ref: str) -> WariantZespolu | None:
+    """Wariant zespołu z opisu punktu neutralnego źródła wyspy ``bus_ref`` (``None`` — opis nie
+    wyznacza wariantu)."""
+    zrodlo = zrodlo_wyspy(enm, bus_ref)
+    cfg = zrodlo.get(NOSNIK_ZRODLA) if zrodlo else None
+    typ = cfg.get("type") if isinstance(cfg, dict) else None
+    return WARIANT_Z_TYPU_UZIEMIENIA_ZRODLA.get(str(typ)) if typ else None
+
+
+def transformator_zespolu_pola(enm: dict[str, Any], bay_ref: str) -> dict[str, Any] | None:
+    """Transformator uziemiający pola ``bay_ref`` — po zapisie pary (jedno źródło powiązania)."""
+    return next(
+        (
+            t
+            for t in enm.get("transformers", [])
+            if isinstance(t, dict) and (zapis_zespolu(t) or {}).get("bay_ref") == bay_ref
+        ),
+        None,
+    )
+
+
+def zmien_wariant_zespolu(enm: dict[str, Any], bay_ref: str, wariant: WariantZespolu) -> bool:
+    """Zmiana szablonu pola ZU na szablon innego wariantu (mutacja w miejscu, wołający pracuje
+    na kopii): nośnik ``hv_neutral`` transformatora dostaje typ nowego wariantu — wartości
+    projektanta tego samego typu przechodzą bez zmian, brakujące dostają wartości robocze
+    ESTIMATED (``uziemienie_zespolu``); zapis pary zachowuje źródło-dawcę. Zwraca, czy zmieniono."""
+    transformator = transformator_zespolu_pola(enm, bay_ref)
+    zapis = zapis_zespolu(transformator) if transformator else None
+    if transformator is None or zapis is None or zapis.get("wariant") == wariant:
+        return False
+    cfg, przyjete = uziemienie_zespolu(
+        wariant,
+        copy.deepcopy(transformator.get(NOSNIK_TRANSFORMATORA)),
+        susceptancja_zerowa_wyspy_s(enm, str(transformator.get("hv_bus_ref"))),
+    )
+    # Wartość robocza poprzedniego wariantu, która przeszła bez zmian (ten sam typ), zostaje
+    # wartością roboczą — przejście nie może zamienić propozycji w daną projektanta.
+    nowe = {p["parametr"] for p in przyjete}
+    przyjete.extend(
+        p
+        for p in zapis.get("dane_przyjete") or []
+        if p.get("parametr") not in nowe and cfg.get(p.get("parametr")) == p.get("wartosc")
+    )
+    transformator[NOSNIK_TRANSFORMATORA] = cfg
+    zapis["wariant"] = wariant
+    zapis["dane_przyjete"] = sorted(przyjete, key=lambda p: str(p["parametr"]))
+    return True

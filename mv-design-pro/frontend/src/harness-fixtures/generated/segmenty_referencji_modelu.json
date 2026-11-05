@@ -111,7 +111,9 @@
     "vt",
     "wind_inverter",
     "wn_sn",
-    "zksn"
+    "zksn",
+    "zu_bus_nn",
+    "zu_transformer"
   ],
   "przyrostki_podzialu": [
     "_L",
