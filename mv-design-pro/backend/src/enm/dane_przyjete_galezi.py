@@ -345,7 +345,7 @@ def dane_przyjete_wezla(
     Ten sam zbiór gałęzi i te same predykaty (wyspa, składowa zerowa) co wiersze biegu
     zwarciowego (``dane_przyjete_galezi_punktow``). Model bez takich gałęzi nie buduje grafu.
     """
-    # Zespół uziemiający: Z0 sieci liczone wprost z modelu (``build_zero_sequence_zbus``) stoi
+    # Zespół uziemiający: Z0 sieci liczone wprost z modelu (``zbuduj_siec_zerowa``) stoi
     # na stanie normalnym AWSC (spoczynek) — ten sam stan dla danych przyjętych bocznika.
     napiecia = napiecia_szyn_kv(enm)
     b0_mozliwe = ze_skladowa_zerowa and any(
@@ -364,7 +364,7 @@ def dane_przyjete_wezla(
         graph = map_enm_to_network_graph(enm)
         skladowe = None
         if b0_mozliwe or any(z.get("code") in (KOD_Z0_ROBOCZE, KOD_ZU_ROBOCZE) for z in zalozenia):
-            # B′0 roboczy wchodzi do Z0 liczonego wprost z modelu (``build_zero_sequence_zbus``:
+            # B′0 roboczy wchodzi do Z0 liczonego wprost z modelu (``zbuduj_siec_zerowa``:
             # scenariusz MAX, AWSC w spoczynku) tylko pod warunkiem pkt 5.2 f) — gałęzie
             # i składowe z TEGO SAMEGO złożenia Y0.
             skladowe, b0_galezi = skladowe_i_b0_sieci_zerowej(enm, graph)

@@ -1090,7 +1090,7 @@ def zloz_wejscie_zwarcia(
 
     # Phase 43 / CV-4.2b: opt-in rozszerzenia audytu 2 dla SC (uziemienie Z0/Z1,
     # impedancja transformatora blokowego) od WOŁAJĄCEGO jako dane — assembler nie
-    # czyta bazy. Aplikowane przed build_zero_sequence_zbus.
+    # czyta bazy. Aplikowane przed zbuduj_siec_zerowa.
     audit2_extensions_sc = rozszerzenia_audit2
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 

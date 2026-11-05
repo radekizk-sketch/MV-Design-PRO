@@ -421,6 +421,13 @@ SANCTIONED_CHANGES = {
         "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
         "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
         "tests/network_model/test_modul_zespolony_platformy.py."
+        " Karta PRZERWA-ZEROWA (B-01 do przyjecia przez architekta): z0_ohm: complex | None - "
+        "punkt bez wyniku zerowego (przyczyna sieci zerowej enm.mapping.zbuduj_siec_zerowa) "
+        "liczy wylacznie 2F (petla Z_1 + Z_2 bez toru zerowego), 1F-Z i 2F-Z odmawiaja "
+        "OdmowaDanychError zamiast liczby z kotwicy Y0 = 1e6 pu; z kompletem Z_0 wynik bit w "
+        "bit jak przed karta (goldeny tests/golden/sc_asymmetrical/* bez zmian). Test: "
+        "tests/enm/test_przerwa_zerowa_sciezki.py::test_wielkosci_sc1_bez_z0_licza_tylko_2f. "
+        "Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/fault_loop_iec60364.py": (
         "W5-E-TTIT (O-59 OD-25, D-11-fault_loop-TT-IT): kasacja NotImplementedError dla "

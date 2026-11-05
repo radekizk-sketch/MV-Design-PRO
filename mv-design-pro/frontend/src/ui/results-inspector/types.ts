@@ -598,7 +598,7 @@ export interface ShortCircuitResults {
   zalozenia?: ZalozenieBieguSlad[];
   /**
    * Ślad WHITE BOX budowy sieci składowej zerowej biegu 1F/2F+G (`raw_result.siec_zerowa`,
-   * `enm/mapping.py::build_zero_sequence_zbus_with_trace`): Z0 źródeł, Z0 i B0 linii i kabli,
+   * `enm/mapping.py::zbuduj_siec_zerowa`): Z0 źródeł, Z0 i B0 linii i kabli,
    * decyzja grupy połączeń transformatora, droga zerowa baterii, odniesienie numeryczne
    * węzłów bez drogi prądu zerowego — z TEJ SAMEJ macierzy Y0, którą solver dostał jako
    * Z0-bus. Addytywne: obecne WYŁĄCZNIE w biegu zwarcia doziemnego z niepustym śladem;

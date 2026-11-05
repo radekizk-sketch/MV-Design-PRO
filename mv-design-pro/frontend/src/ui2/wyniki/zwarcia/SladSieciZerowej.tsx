@@ -4,7 +4,7 @@
  * i pojemność doziemna linii i kabli, połączenie transformatorów w składowej zerowej
  * (grupa połączeń + uziemienie punktów neutralnych), droga zerowa baterii kondensatorów,
  * odniesienie numeryczne węzłów bez drogi prądu zerowego. Dane WPROST
- * z `ShortCircuitResults.siec_zerowa` (`enm/mapping.py::build_zero_sequence_zbus_with_trace`
+ * z `ShortCircuitResults.siec_zerowa` (`enm/mapping.py::zbuduj_siec_zerowa`
  * — ta sama macierz, którą solver dostał jako Z0-bus). Właściwość CAŁEGO biegu, nie punktu.
  *
  * REUŻYCIE renderera kroku śladu (`KrokDowodu` + `mapujKroki`, `ui2/wyniki/dowod`) —

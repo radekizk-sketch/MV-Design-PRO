@@ -11,7 +11,7 @@ UI, WHITE BOX):
 - ``zwarcie_3f_ze_snapshotu`` (warstwa wiązania) → graf + FROZEN wynik
   I″k / ip / I_th / S_k. Mapowanie ENM i wejście w solver stoją TAM, nie tutaj:
   pakiet dowodowy OPISUJE wynik, nie produkuje go (dług PACK-SC3F-WIAZANIE
-  domknięty 2026-08-07; bliźniak `wynik_zwarcia_1f_ze_snapshotu` dla pakietu
+  domknięty 2026-08-07; bliźniak `zwarcie_niesymetryczne_ze_snapshotu` dla pakietu
   niesymetrycznego).
 - ``compute_machine_contributions`` → rozbicie per-maszyna (μ, q, i_b) — dołączane do
   dowodu WYŁĄCZNIE gdy sieć zawiera maszyny wirujące (brak → dowód bez sekcji

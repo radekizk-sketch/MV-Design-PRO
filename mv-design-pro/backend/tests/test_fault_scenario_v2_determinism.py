@@ -311,6 +311,6 @@ class TestSolverUntouched:
         Warstwa wiązania zwarć to dziś wejścia pakietów dowodowych SC1/SC3F."""
         import application.solvers.short_circuit_binding as wiazanie
 
-        assert callable(wiazanie.wynik_zwarcia_1f_ze_snapshotu)
+        assert callable(wiazanie.zwarcie_niesymetryczne_ze_snapshotu)
         assert callable(wiazanie.zwarcie_3f_ze_snapshotu)
         assert not hasattr(wiazanie, "execute_short_circuit")

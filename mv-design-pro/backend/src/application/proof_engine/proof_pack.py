@@ -5,6 +5,7 @@ import io
 import json
 import sys
 import zipfile
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -265,7 +266,10 @@ def dokument_deterministyczny(
     )
 
 
-def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
+def zbuduj_zip_zbiorczy(
+    pakiety: dict[str, bytes],
+    odmowy: Mapping[str, Mapping[str, object]] | None = None,
+) -> bytes:
     """Jeden ZIP zbiorczy z kilku pakietów dowodowych, deterministyczny.
 
     Kolejność wpisów i znacznik czasu stałe — ten sam zestaw daje bajt-w-bajt ten
@@ -273,7 +277,29 @@ def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
     generatorze: sięgają po nią pakiet zwarć niesymetrycznych (1F-Z / 2F / 2F-Z)
     ORAZ pakiet rozpływu (rozpływ / straty / spadek napięcia), a warstwie aplikacji
     nie wolno importować z warstwy API.
+
+    ``odmowy`` (karta PRZERWA-ZEROWA) — dowody, których pakiet NIE niesie, z odmową nazwaną
+    (status, kod, wyjaśnienie wg kontraktu werdyktu): wpis ``pakiet_dowodowy/<nazwa>.odmowa.json``
+    (JSON z posortowanymi kluczami — deterministyczny). Nazwa odmowy nie może powtarzać
+    nazwy dowodu (jeden wpis = albo dowód, albo odmowa).
     """
+    odmowy = odmowy or {}
+    wspolne = sorted(set(pakiety) & set(odmowy))
+    if wspolne:
+        raise ValueError(f"Wpis pakietu zbiorczego jest jednocześnie dowodem i odmową: {wspolne}")
+    # Kolejność: dowody po nazwie (bez zmian bajtów pakietów bez odmów), potem odmowy po nazwie.
+    wpisy: list[tuple[str, bytes]] = [
+        (f"pakiet_dowodowy/{nazwa}.zip", pakiety[nazwa]) for nazwa in sorted(pakiety)
+    ]
+    wpisy += [
+        (
+            f"pakiet_dowodowy/{nazwa}.odmowa.json",
+            (
+                json.dumps(dict(odmowy[nazwa]), ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+            ).encode("utf-8"),
+        )
+        for nazwa in sorted(odmowy)
+    ]
     buffer = io.BytesIO()
     with zipfile.ZipFile(
         buffer,
@@ -281,12 +307,11 @@ def zbuduj_zip_zbiorczy(pakiety: dict[str, bytes]) -> bytes:
         compression=zipfile.ZIP_DEFLATED,
         compresslevel=9,
     ) as bundle:
-        for nazwa in sorted(pakiety.keys()):
-            path = f"pakiet_dowodowy/{nazwa}.zip"
+        for path, tresc in wpisy:
             info = zipfile.ZipInfo(path, date_time=_FIXED_ZIP_TIMESTAMP)
             info.create_system = 0
             info.external_attr = 0o100644 << 16
-            bundle.writestr(info, pakiety[nazwa])
+            bundle.writestr(info, tresc)
     return buffer.getvalue()
 
 

@@ -217,8 +217,11 @@ def punkty_pakietu(run: CanonicalRun) -> list[PunktPakietu]:
     """Punkty wyboru biegu (deterministycznie posortowane po identyfikatorze).
 
     Źródło: artefakt wyniku biegu (te same wiersze, które widzi ekran wyników) —
-    a nie ponowne przeliczanie modelu. Punkt, którego bieg nie policzył, nie jest
-    ofertą pakietu.
+    a nie ponowne przeliczanie modelu. Punkt, którego bieg nie ma w wierszach, nie jest
+    ofertą pakietu. Karta PRZERWA-ZEROWA: wiersz zwarcia doziemnego bez liczby z nazwaną
+    przyczyną braku wyniku zerowego JEST ofertą pakietu zwarć niesymetrycznych — pakiet
+    niesie wtedy dowód 2F (zwarcie bez ziemi nie zależy od sieci zerowej) i odmowę nazwaną
+    1F-Z i 2F-Z (``SCAsymmetricalProofPack.odmowy_doziemne``), nigdy liczby z kotwicy.
 
     Czym jest punkt, rozstrzyga RODZAJ pakietu — z tych samych zbiorów, z których
     korzysta budowa (reguła predykatów parami): dla pakietów zwarciowych to punkt
@@ -358,6 +361,15 @@ _ZAWARTOSC_GLOWNEGO_DOWODU_PL: dict[str, str] = {
         "SC2F.zip, SC2FZ.zip)"
     ),
 }
+#: Karta PRZERWA-ZEROWA: zawartość pakietu zwarć niesymetrycznych w punkcie z nazwaną przyczyną
+#: braku wyniku zerowego (``SCAsymmetricalProofPack.odmowy_doziemne``) — opis warunkowy,
+#: prawdziwy dla każdego punktu biegu (lista punktów nie niesie przyczyn biegów 2F).
+_ZAWARTOSC_BEZ_DROGI_ZEROWEJ_PL = (
+    "W punkcie bez drogi prądu zerowego przez małą impedancję (sieć izolowana albo "
+    "skompensowana, brak danych składowej zerowej): dowód 2F oraz odmowa nazwana 1F-Z i 2F-Z "
+    "z przyczyną i odesłaniem do oceny doziemienia (SC1FZ.odmowa.json, SC2FZ.odmowa.json) "
+    "zamiast dowodów doziemnych"
+)
 _ZAWARTOSC_BEZ_ODCINKA_PL = (
     "Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla "
     "o znanej impedancji i długości."
@@ -381,11 +393,13 @@ def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu], linie: list[LiniaWNMo
     z którego budowa składa dokumenty linii).
     """
     dowody_linii = [_zawartosc_linii_pl(linia) for linia in linie]
+    odmowy_zerowe = [_ZAWARTOSC_BEZ_DROGI_ZEROWEJ_PL] if rodzaj == RODZAJ_SC_NIESYMETRYCZNE else []
     if rodzaj not in _RODZAJE_Z_ODCINKIEM:
         if not dowody_linii:
-            return list(_ZAWARTOSC_PL)
+            return list(_ZAWARTOSC_PL) + odmowy_zerowe
         return (
             [_ZAWARTOSC_GLOWNEGO_DOWODU_PL[rodzaj]]
+            + odmowy_zerowe
             + dowody_linii
             + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
         )
@@ -767,7 +781,10 @@ def _spakuj_niesymetryczne(
     dowody_linii: dict[str, bytes],
 ) -> bytes:
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
-    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy({**packs, **dowody_linii})
+    # Karta PRZERWA-ZEROWA: punkt bez wyniku zerowego — dowód 2F i odmowy nazwane 1F-Z, 2F-Z.
+    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy(
+        {**packs, **dowody_linii}, odmowy=SCAsymmetricalProofPack.odmowy_doziemne(pack_input)
+    )
 
 
 def _linie_wn_biegu(run: CanonicalRun) -> list[LiniaWNModelu]:

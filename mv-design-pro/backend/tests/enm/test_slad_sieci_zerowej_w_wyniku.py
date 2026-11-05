@@ -38,7 +38,7 @@ from enm.canonical_analysis import (
     canonical_run_repository_scope,
     reset_canonical_runs,
 )
-from enm.mapping import build_zero_sequence_zbus_with_trace
+from enm.mapping import zbuduj_siec_zerowa
 from enm.models import (
     Bus,
     Cable,
@@ -218,8 +218,8 @@ def test_slad_sieci_zerowej_wylacznie_w_zwarciu_doziemnym(
     # Jedna prawda: ślad biegu to ślad złożenia macierzy, którą solver dostał jako z0_bus —
     # dla grafu solvera i scenariusza biegu (MIN ma inne Z_Q, więc i inne Z0 źródła).
     wejscie = zloz_wejscie_zwarcia(enm.model_dump(mode="json"), _opcje(rodzaj, scenariusz))
-    _, slad_budowy = build_zero_sequence_zbus_with_trace(
-        enm, wejscie.solve_graph, scenario=wejscie.scenario_c
+    slad_budowy = list(
+        zbuduj_siec_zerowa(enm, wejscie.solve_graph, scenario=wejscie.scenario_c).slad
     )
     assert slad == json_bezpieczny(slad_budowy)
 
