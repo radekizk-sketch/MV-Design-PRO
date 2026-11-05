@@ -59,7 +59,7 @@ from enm.zrodlo_napiecia_zerowego import (
     funkcje_warunkowe_szablonu_pola,
     zrodlo_u0_pola,
 )
-from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU, TypPunktuNeutralnego
 from pydantic import BaseModel
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
@@ -498,7 +498,7 @@ def _build_primary_devices(
                     placement="GROUND_BRANCH",
                     is_controllable=False,
                     render_variant="kanoniczny",
-                    earthing_role="surge_ground",
+                    earthing_role=ROLA_UZIEMIENIA_RODZAJU_APARATU["SURGE_ARRESTER"],
                 )
             )
 

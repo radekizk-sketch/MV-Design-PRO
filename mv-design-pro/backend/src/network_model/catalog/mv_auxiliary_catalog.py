@@ -1318,6 +1318,18 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     return records
 
 
+#: Warianty przekładni z gwiazdką rysunków Z.7 (s.86) i Z.12 (s.92), ENEA Zeszyt 1 — tabela
+#: „Uwaga”: przekładnia toru transformatora i łącznika szyn zależy od napięcia i mocy
+#: transformatora 110 kV/SN. Kolejność jak w tabeli; pierwszy wariant jest wartością roboczą
+#: szablonu pola.
+_WARIANTY_PRZEKLADNI_TRANSFORMATORA: tuple[tuple[int, str], ...] = (
+    (1000, "transformator 110/15 kV o mocy do 25 MVA"),
+    (1600, "transformator 110/15 kV o mocy 40 MVA"),
+    (800, "transformator 110/20 kV o mocy do 25 MVA"),
+    (1200, "transformator 110/20 kV o mocy 40 MVA"),
+)
+
+
 def get_all_ct_types() -> list[dict]:
     def _quality_meta(
         *,
@@ -1343,8 +1355,9 @@ def get_all_ct_types() -> list[dict]:
         opis_rysunku: str,
         uwaga: str,
     ) -> dict:
-        """Typ ogólny OSD przekładnika pola GPZ wg odczytu rysunku Zeszytu 1 (karta
-        POLA-GPZ-SZABLONY). Pola skalarne opisują rdzeń I; Ith z szeregu IEC 62271-200."""
+        """Typ ogólny OSD przekładnika pola GPZ z rysunku Zeszytu 1 (karta POLA-GPZ-SZABLONY,
+        tabliczki zweryfikowane ze źródłem). Pola skalarne opisują rdzeń I; Ith z szeregu
+        IEC 62271-200."""
         pierwszy = rdzenie[0]
         return {
             "id": type_id,
@@ -1370,13 +1383,13 @@ def get_all_ct_types() -> list[dict]:
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
                     source_reference=(
-                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — wg odczytu "
-                        f"rysunku ({opis_rysunku}); IEC 61869-2; IEC 62271-200 (szereg "
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja "
+                        f"02.2023 – 2) — {opis_rysunku}; IEC 61869-2; IEC 62271-200 (szereg "
                         "wytrzymałości rozdzielnicy SN)"
                     ),
                     catalog_status="REFERENCYJNY_V1",
                     verification_note=(
-                        "Typ ogólny OSD z odczytu rysunku standardu (przekładnia, moc, klasa "
+                        "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa "
                         "rdzeni). Pola skalarne opisują rdzeń I. " + uwaga
                     ),
                 ),
@@ -1686,43 +1699,50 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
-        # Karta POLA-GPZ-SZABLONY: przekładniki pól GPZ spoza pola liniowego — wg odczytu
-        # rysunków Zeszytu 1 (`docs/zrodla/ODCZYT_ENEA_H5_SPECYFIKACJA.md` §10, §11, §14). Tor
-        # transformatora i łącznika szyn: przekładnia zależna od mocy transformatora (uwaga
-        # rysunku: 1000/5 — 110/15 kV ≤ 25 MVA, 1600/5 — 40 MVA, 800/5 — 110/20 kV ≤ 25 MVA,
-        # 1200/5 — 40 MVA); pozycja niesie wariant 1000/5, inny wybiera projektant.
-        _ct_typu_ogolnego_osd(
-            "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
-            "CT 1000/5/5/5/5 A, 4 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.7)",
-            1000.0,
-            20.0,
-            [
-                ("1000/5", 10.0, "0,2S", 5.0, ["ROZLICZENIE", "JAKOSC_ENERGII"]),
-                ("1000/5", 10.0, "0,2", 5.0, ["POMIAR", "REGULACJA"]),
-                ("1000/5", 15.0, "5P20", None, ["ROZNICOWE"]),
-                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
-            ],
-            "Z.7 s.86: rdzeń I pomiar bilansowy i analizator jakości energii, rdzeń II pomiary "
-            "lokalne i regulacja napięcia, rdzeń III zabezpieczenie różnicowe transformatora, "
-            "rdzeń IV zabezpieczenia nadprądowe",
-            verification_note,
+        # Karta POLA-GPZ-SZABLONY: przekładniki pól GPZ spoza pola liniowego — tabliczki
+        # zweryfikowane ze źródłem (Zeszyt 1, wersja 02.2023 – 2, obrazy stron s.86, s.92,
+        # s.96; `docs/standards/ENEA_Z1_110KV_SOURCE_VERIFICATION.md`). Tor transformatora
+        # i łącznika szyn: przekładnia z gwiazdką zależna od transformatora (tabela „Uwaga”
+        # rysunków Z.7 i Z.12) — po jednej pozycji na wariant; szablon pola wskazuje 1000/5 jako
+        # wartość roboczą, projektant wybiera wariant swojego transformatora.
+        *(
+            _ct_typu_ogolnego_osd(
+                f"ct_typ_ogolny_osd_{pierwotny}_5_5_5_5_z7",
+                f"CT {pierwotny}/5/5/5/5 A, 4 rdzenie (typ ogólny OSD, ENEA Z.7 — {wariant})",
+                float(pierwotny),
+                20.0,
+                [
+                    (f"{pierwotny}/5", 10.0, "0,2S", 5.0, ["POMIAR", "JAKOSC_ENERGII"]),
+                    (f"{pierwotny}/5", 10.0, "0,2", 5.0, ["POMIAR", "REGULACJA"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ROZNICOWE"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ],
+                "Z.7 s.86: rdzeń I układ pomiarowy bilansowo-kontrolny, rdzeń II pomiary "
+                "lokalne strony SN i ARN, rdzeń III zabezpieczenie różnicowe transformatora, "
+                f"rdzeń IV bloki I>, I>> sterownika pola; wariant tabeli „Uwaga”: {wariant}",
+                verification_note,
+            )
+            for pierwotny, wariant in _WARIANTY_PRZEKLADNI_TRANSFORMATORA
         ),
-        _ct_typu_ogolnego_osd(
-            "ct_typ_ogolny_osd_1000_5_5_z12",
-            "CT 1000/5/5 A, 2 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.12)",
-            1000.0,
-            20.0,
-            [
-                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
-                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
-            ],
-            "Z.12 s.92: rdzeń I zabezpieczenia nadprądowe I>, I>>, rdzeń II zabezpieczenie "
-            "ziemnozwarciowe",
-            verification_note,
+        *(
+            _ct_typu_ogolnego_osd(
+                f"ct_typ_ogolny_osd_{pierwotny}_5_5_z12",
+                f"CT {pierwotny}/5/5 A, 2 rdzenie (typ ogólny OSD, ENEA Z.12 — {wariant})",
+                float(pierwotny),
+                20.0,
+                [
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ],
+                "Z.12 s.92: rdzeń I bloki I>, I>>, rdzeń II blok zabezpieczenia "
+                f"ziemnozwarciowego; wariant tabeli „Uwaga”: {wariant}",
+                verification_note,
+            )
+            for pierwotny, wariant in _WARIANTY_PRZEKLADNI_TRANSFORMATORA
         ),
         _ct_typu_ogolnego_osd(
             "ct_typ_ogolny_osd_100_5_5_5_z16",
-            "CT 100/5/5/5 A, 3 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.16)",
+            "CT 100/5 A, 3 rdzenie (typ ogólny OSD, ENEA Z.16)",
             100.0,
             16.0,
             [
@@ -1730,7 +1750,9 @@ def get_all_ct_types() -> list[dict]:
                 ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
                 ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
             ],
-            "Z.16 s.96: rdzeń I pomiar bilansowy, rdzenie II i III zabezpieczenia",
+            "Z.16 s.96 (napis „100/5/5”, trzy rdzenie z tabliczkami): rdzeń I układ pomiarowy "
+            "bilansowo-kontrolny, rdzeń II bloki I>, I>>, rdzeń III blok zabezpieczenia "
+            "ziemnozwarciowego",
             verification_note,
         ),
         {

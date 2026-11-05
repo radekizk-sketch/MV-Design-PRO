@@ -317,6 +317,9 @@ export interface SygnalPolaWzorca {
   readonly kierunek: 'WEJSCIE' | 'WYJSCIE';
   readonly obwod: 'WYLACZNIK' | 'OKREZNY' | 'NADRZEDNY';
   readonly sterownik_pola: boolean;
+  /** Sygnały pola połączone na rysunku wprost z tym sygnałem (np. „OW2 od zabezpieczeń str.
+   *  110 kV” → OW2, ENEA Z.7 s.86) — lustro `SygnalPola.polaczony_z`. */
+  readonly polaczony_z: readonly string[];
   readonly znaczenie_pl: string | null;
   readonly weryfikacja: StatusWeryfikacjiWzorca;
   readonly uwaga: string | null;

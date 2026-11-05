@@ -36,7 +36,10 @@ from network_model.catalog.obwody_wtorne_pola import (
 )
 from pydantic import ValidationError
 
-from tests.reference_networks.scena_geometrii_stacji import dodaj_pole_pomiaru_napiecia_z17
+from tests.reference_networks.scena_geometrii_stacji import (
+    dodaj_pole_gpz_z_szablonu,
+    dodaj_pole_pomiaru_napiecia_z17,
+)
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, ZRODLO, ok, op
 
 SZABLONY = sorted(t for t, s in BAY_TEMPLATE_REGISTRY.items() if s.obwody_wtorne is not None)
@@ -98,15 +101,40 @@ def _wpisy_katalogu(rekord: dict[str, Any]) -> list[dict[str, Any]]:
             wpis["catalog_ref"] = "sw-ds-abb-ojs-17kv-630a"
         if a["kind"] == "ES":
             wpis["catalog_ref"] = "sw-es-generic-17kv"
+        if a["kind"] == "CB" and "catalog_ref" not in wpis:
+            # Pole Z.7/Z.12/Z.16 z szablonu: wyłącznik bez typu (wartość robocza szablonu);
+            # tryb katalogowy wymaga pozycji — ta sama co wyłącznik pola liniowego kreatora.
+            wpis["catalog_ref"] = APARAT
+        if a["kind"] == "SURGE_ARRESTER" and "catalog_ref" not in wpis:
+            wpis["catalog_ref"] = "arrester-abb-polim-d-17p5kv-10ka"
+        if a["kind"] == "PHASE_TO_PHASE_VT" and "catalog_ref" not in wpis:
+            # Z.16 s.96: przekładnik międzyfazowy SN/0,1 kl. 3P (rozładowanie baterii).
+            wpis["catalog_ref"] = "vt_15kv_100v_3p_abb"
+        if a["kind"] == "UNBALANCE_CT" and "catalog_ref" not in wpis:
+            # Z.16 s.96: przekładnik niezrównoważenia między punktami gwiazd (jeden rdzeń).
+            wpis["catalog_ref"] = "ct_50_1_0_5_5va_arteche"
         wpisy.append(wpis)
     return wpisy
 
 
-def _zapis(enm: dict[str, Any], szablon_id: str, droga: str) -> dict[str, Any]:
-    enm = _z_szablonu(enm, szablon_id)
+def _z_szablonu_wg_roli(enm: dict[str, Any], szablon_id: str) -> tuple[dict[str, Any], str]:
+    """Pole z szablonu ścieżką użytkownika: pole liniowe GPZ — wyposażenie pola liniowego
+    z kreatora; szablon innej roli (Z.7, Z.12, Z.16) — nowe pole tej roli w sekcji 1
+    (`add_sn_bay` + `set_bay_equipment`), bo szablon innej funkcji pola liniowego nie wyposaża
+    (`bay_equipment.template_role_mismatch`)."""
+    szablon = BAY_TEMPLATE_REGISTRY[szablon_id]
+    if szablon.wykonanie_pola is not None:
+        enm = _z_szablonu(enm, szablon_id)
+        return enm, _pole(enm)["ref_id"]
+    sekcja = _po_ref(enm, _pole(enm)["ref_id"])["gpz_section_id"]
+    return dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+
+
+def _zapis(enm: dict[str, Any], szablon_id: str, droga: str) -> tuple[dict[str, Any], str]:
+    enm, ref = _z_szablonu_wg_roli(enm, szablon_id)
     if droga == "szablon":
-        return enm
-    rekord = _pole(enm)
+        return enm, ref
+    rekord = _po_ref(enm, ref)
     wpisy = _wpisy_katalogu(rekord)
     if droga == "katalog_inne_oznaczenie_t1":
         for w in wpisy:
@@ -114,13 +142,14 @@ def _zapis(enm: dict[str, Any], szablon_id: str, droga: str) -> dict[str, Any]:
                 w["designation"] = "T11"
     elif droga == "katalog_bez_t2":
         wpisy = [w for w in wpisy if w.get("designation") != "T2"]
-    return ok(
+    enm = ok(
         op(
             enm,
             "set_bay_equipment",
             {"bay_ref": rekord["ref_id"], "mode": "katalog", "devices": wpisy},
         )
     )
+    return enm, ref
 
 
 def _oczekiwane(
@@ -163,8 +192,8 @@ def _powiazania(rekord: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 @pytest.mark.parametrize("szablon_id,droga", list(itertools.product(SZABLONY, DROGI)))
 def test_powiazania_aparatow_wg_wzorca_i_predykat_parami_z_odczytem(szablon_id: str, droga: str):
-    enm = _zapis(_gpz(szablon_id), szablon_id, droga)
-    rekord = _pole(enm)
+    enm, ref = _zapis(_gpz(szablon_id), szablon_id, droga)
+    rekord = _po_ref(enm, ref)
     obwody = BAY_TEMPLATE_REGISTRY[szablon_id].obwody_wtorne
     assert obwody is not None
     assert _powiazania(rekord) == _oczekiwane(

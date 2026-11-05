@@ -455,9 +455,12 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik). Pomiar
     2026-10-28: 7855 = 7853 + 2 rozłączniki próżniowe typu ogólnego karty
     UX-04/POLE-LINIOWE-WZORZEC. Pomiar 2026-10-29: 7857 = 7855 + 2 przekładniki prądowe typu
-    ogólnego OSD pól liniowych GPZ (ENEA Z.10/Z.11.1 i Z.11) tej samej karty."""
+    ogólnego OSD pól liniowych GPZ (ENEA Z.10/Z.11.1 i Z.11) tej samej karty. Pomiar
+    2026-11-05: 7866 = 7857 + 9 przekładników prądowych typu ogólnego OSD pól GPZ karty
+    POLA-GPZ-SZABLONY (Z.7 s.86 i Z.12 s.92 — po cztery warianty przekładni z gwiazdką tabeli
+    „Uwaga”: 1000, 1600, 800, 1200 A; Z.16 s.96 — 100/5 A, trzy rdzenie)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7857
+    assert len(rekordy) == 7866
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

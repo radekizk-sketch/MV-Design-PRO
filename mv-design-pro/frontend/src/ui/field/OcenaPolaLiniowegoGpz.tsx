@@ -280,6 +280,11 @@ function SygnalyPola({ obwody }: { readonly obwody: ObwodyWtornePola }): JSX.Ele
               <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[2].naglowek} className="pr-2">
                 {OBWOD_PL[s.obwod]}
                 {s.sterownik_pola ? <div className="text-scada-muted">sterownik pola</div> : null}
+                {s.polaczony_z.length > 0 ? (
+                  <div className="text-scada-muted" data-polaczony-z={s.polaczony_z.join(',')}>
+                    wprost do: {s.polaczony_z.join(', ')}
+                  </div>
+                ) : null}
               </td>
               <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[3].naglowek} className="pr-2">
                 {s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje'}

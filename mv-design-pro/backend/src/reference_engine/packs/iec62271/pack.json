@@ -58,13 +58,14 @@
     {
       "profile_id": "transformer_breaker",
       "name_pl": "Pole transformatorowe wyłącznikowe (GPZ)",
-      "required": ["DS", "CB", "TRANSFORMER_DEVICE"],
-      "one_of_groups": [],
-      "optional": ["CT", "ES", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
+      "required": ["CB"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
+      "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["CT", "ES", "VT", "SURGE_ARRESTER", "CABLE_HEAD", "TRANSFORMER_DEVICE", "VOLTAGE_INDICATOR"],
       "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
-      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
-      "notes_pl": "Kanoniczny szablon kreatora bay_template_transformer: DS → CB → CT → DS → (ES bocznie) → TR."
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "Kanoniczny szablon kreatora bay_template_transformer: DS → CB → CT → DS → (ES bocznie) → TR. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Pole transformatora 110 kV/SN po stronie SN (Z.7 s.86): transformator stoi POZA celą (kabel do transformatora, ogranicznik przepięć przy jego zaciskach) — aparat transformatora w polu nie jest wymagany."
     },
     {
       "profile_id": "measurement",
@@ -80,24 +81,26 @@
     {
       "profile_id": "coupler",
       "name_pl": "Pole sprzęgła (sprzęgło sekcyjne)",
-      "required": ["DS", "CB"],
-      "one_of_groups": [],
-      "optional": ["CT", "ES"],
+      "required": ["CB"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
+      "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["CT", "ES", "VOLTAGE_INDICATOR"],
       "forbidden": ["TRANSFORMER_DEVICE", "CABLE_HEAD", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "CB", "CT", "DS"],
-      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
-      "notes_pl": "Łącznik dwóch sekcji szyny SN."
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "THREE_POSITION_SWITCH", "DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "Łącznik dwóch sekcji szyny SN. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Łącznik szyn SN (Z.12 s.92): łącznik trójpołożeniowy od strony sekcji A → wyłącznik → przekładnik prądowy → łącznik trójpołożeniowy od strony sekcji B."
     },
     {
       "profile_id": "capacitor_bank",
       "name_pl": "Pole baterii kondensatorów równoległych (GPZ)",
-      "required": ["DS", "CB", "CT"],
-      "one_of_groups": [],
-      "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VT", "PHASE_TO_PHASE_VT", "UNBALANCE_CT"],
+      "required": ["CB", "CT"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
+      "grupy_spelniane_wysunieciem": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["ES", "CABLE_HEAD", "SURGE_ARRESTER", "VT", "PHASE_TO_PHASE_VT", "UNBALANCE_CT", "VOLTAGE_INDICATOR"],
       "forbidden": ["TRANSFORMER_DEVICE", "LOAD_SWITCH", "FUSE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS", "CB", "CT", "CABLE_HEAD"],
-      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "PHASE_TO_PHASE_VT", "UNBALANCE_CT"],
-      "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 16: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy → głowica kablowa; ogranicznik przepięć, dwa przekładniki napięciowe międzyfazowe L1-L2 i L2-L3 oraz przekładnik niezrównoważenia w połączeniu międzygwiazdowym stoją przy baterii, poza osią toru. Wymagalność przekładników baterii zależy od układu połączeń i od rezystorów rozładowczych jednostek — ocenia ją walidator modelu (W046, W047), nie profil."
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "PHASE_TO_PHASE_VT", "UNBALANCE_CT", "VOLTAGE_INDICATOR"],
+      "notes_pl": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Zał. 16: odłącznik szynowy (człon wysuwny) → wyłącznik → przekładnik prądowy → głowica kablowa; ogranicznik przepięć, dwa przekładniki napięciowe międzyfazowe L1-L2 i L2-L3 oraz przekładnik niezrównoważenia w połączeniu międzygwiazdowym stoją przy baterii, poza osią toru. Wymagalność przekładników baterii zależy od układu połączeń i od rezystorów rozładowczych jednostek — ocenia ją walidator modelu (W046, W047), nie profil. Karta POLA-GPZ-SZABLONY (ENEA Zeszyt 1, wersja 02.2023 – 2): odłączenie od szyny łącznikiem trójpołożeniowym albo odłącznikiem albo wysunięciem wyłącznika (§13); wskaźnik napięcia bocznie. Bateria kondensatorów (Z.16 s.96): łącznik trójpołożeniowy → wyłącznik → przekładnik prądowy → wskaźnik napięcia (bocznie) → złącze kablowe."
     },
     {
       "profile_id": "der_source",

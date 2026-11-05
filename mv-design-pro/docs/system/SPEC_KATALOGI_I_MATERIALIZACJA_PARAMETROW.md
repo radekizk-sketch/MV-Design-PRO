@@ -313,7 +313,7 @@ decyzje podejmuje czlowiek.
 | `bess-inverter` | 66 | 0 | 43 | 9,9 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `cable` | 63 | 54 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
 | `converter` | 192 | 9 | 56 | 19,2 | 192 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
-| `ct` | 14 | 0 | 7 | 59,2 | 14 | `idyn_ka_peak`, `rct_ohm` | brak |
+| `ct` | 23 | 0 | 7 | 55,9 | 23 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
 | `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | `curve_ref`, `ics_ka`, `poles`, `trip_unit` | brak |
@@ -337,7 +337,7 @@ decyzje podejmuje czlowiek.
 | `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 27. Pozycji łącznie: 8111, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8111.
+Rodzin objętych pomiarem: 27. Pozycji łącznie: 8120, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8120.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

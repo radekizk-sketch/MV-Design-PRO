@@ -30,6 +30,7 @@ from network_model.catalog.bay_templates import (
     enumerate_canonical_configurations,
 )
 from network_model.catalog.rodzaje_aparatury import porty_toru_pola
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU
 
 from .registry import list_reference_packs
 
@@ -184,10 +185,8 @@ def producer_cell_primary_devices(
             "render_variant": "kanoniczny",
             "designation": designation,
         }
-        if kind == "ES":
-            entry["earthing_role"] = "field_earth"
-        elif kind == "SURGE_ARRESTER":
-            entry["earthing_role"] = "surge_ground"
+        if kind in ROLA_UZIEMIENIA_RODZAJU_APARATU:
+            entry["earthing_role"] = ROLA_UZIEMIENIA_RODZAJU_APARATU[kind]
         devices.append(entry)
     # Porty aparatów z sekwencji celki (karta UX-04/POLE-LINIOWE-WZORZEC) — ta sama reguła co
     # każda droga budowy pola (`rodzaje_aparatury.porty_toru_pola`).

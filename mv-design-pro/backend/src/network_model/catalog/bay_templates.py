@@ -44,6 +44,7 @@ from network_model.catalog.rodzaje_aparatury import (
     porty_toru_pola,
 )
 from network_model.catalog.wartosci_robocze import pola_zaczepu_rekordu
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU
 from pydantic import BaseModel, Field, model_validator
 
 #: Osie szablonu pola liniowego GPZ (opis przy szablonach `BAY_TEMPLATES_GPZ_LINE`).
@@ -1297,35 +1298,40 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
 # ---------------------------------------------------------------------------
 # Karta POLA-GPZ-SZABLONY: pozostałe pola rozdzielni SN GPZ rysowane tą samą gramatyką co pole
 # liniowe (UX-04) — Z.7 pole transformatora 110 kV/SN po stronie SN, Z.12 łącznik szyn SN,
-# Z.16 bateria kondensatorów (BKR). Sekwencje WG ODCZYTU rysunków Zeszytu 1
-# (`docs/zrodla/ODCZYT_ENEA_H5_SPECYFIKACJA.md` §10, §11, §14, §15;
-# `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`) — pliki PDF nie są w środowisku pracy,
-# więc szablon nie deklaruje zgodności z rysunkiem, tylko odwzorowanie odczytu. Macierz aparat →
-# rodzaj ENM → porty → symbol QET: `docs/uiux/UX05_POLA_GPZ_SN_WZORZEC.md`. Oznaczenia
-# aparatów — wartość robocza z tego samego schematu co pole liniowe (Q0 wyłącznik, Q1/Q2
-# łączniki szynowe, Q5 łącznik odgałęzienia, T1 przekładnik prądowy toru, T3 przekładnik
-# napięciowy odgałęzienia, PF0/PF1/PF2 wskaźniki napięcia, GK/GK1 głowice), F1 ogranicznik
-# przepięć (klasa F — ochrona, IEC 81346-2), T4/T5 przekładniki międzyfazowe i T6 przekładnik
-# niezrównoważenia baterii — oznaczenia robocze bez podstawy normowej.
+# Z.16 bateria kondensatorów (BKR). Sekwencje ZWERYFIKOWANE ZE ŹRÓDŁEM — obraz strony PDF
+# ENEA Operator „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe
+# 110 kV/SN”, wersja 02.2023 – 2 (strona fizyczna = załącznik: s.86 = Z.7, s.92 = Z.12, s.96 =
+# Z.16), raport porównania `docs/standards/ENEA_Z1_110KV_SOURCE_VERIFICATION.md`; macierz
+# aparat → rodzaj ENM → porty → symbol QET: `docs/uiux/UX05_POLA_GPZ_SN_WZORZEC.md`. Rysunki
+# nie nadają aparatom oznaczeń literowych — oznaczenia to wartość robocza z tego samego
+# schematu co pole liniowe (Q0 wyłącznik, Q1/Q2 łączniki trójpołożeniowe szynowe, Q5 łącznik
+# odgałęzienia, T1 przekładnik prądowy toru, T3 przekładnik napięciowy odgałęzienia, PF0/PF1/PF2
+# wskaźniki napięcia, GK/GK1 złącza kablowe), F1 ogranicznik przepięć (klasa F — ochrona,
+# IEC 81346-2), T4/T5 przekładniki międzyfazowe i T6 przekładnik niezrównoważenia baterii.
 #
-# Pól zespołu uziemiającego Z.13–Z.15 tu NIE MA: ich aparaty (transformator uziemiający
-# z punktem neutralnym i uzwojeniem potrzeb własnych, dławik gaszący z regulacją, rezystor
-# uziemiający, stycznik rezystora wymuszającego) nie są rodzajami aparatu pola, a uziemienie
-# punktu neutralnego ma w modelu JEDNĄ reprezentację (`Source.neutral_grounding`, karta W5-A)
-# — rekord dławika/rezystora w polu byłby drugą prawdą tej samej fizyki. Rozstrzygnięcie
-# architekta: meldunek karty i `UX05_POLA_GPZ_SN_WZORZEC.md` §5.
+# Przekładnie z gwiazdką (Z.7, Z.12 — tabela „Uwaga” rysunku: 1000/5 dla 110/15 kV ≤ 25 MVA,
+# 1600/5 — 110/15 kV 40 MVA, 800/5 — 110/20 kV ≤ 25 MVA, 1200/5 — 110/20 kV 40 MVA) dobiera się
+# do transformatora: szablon wskazuje wariant 1000/5 jako WARTOŚĆ ROBOCZĄ (ZASADA NR 4), pozostałe
+# warianty są pozycjami katalogu CT do wyboru w wyposażeniu pola.
+#
+# Pola zespołu uziemiającego Z.13–Z.15 (s.93–95) — porównanie ze źródłem w raporcie; szablonów
+# tu jeszcze nie ma (decyzja architekta D1: transformator uziemiający jako element `Transformer`,
+# dławik/rezystor z nośnika `hv_neutral` — meldunek przekazania karty).
 # ---------------------------------------------------------------------------
 
-_PODSTAWA_ODCZYTU_Z1 = "wg odczytu Zeszytu 1 (`docs/zrodla/ODCZYT_ENEA_H5_SPECYFIKACJA.md`)"
+_PODSTAWA_ZRODLA_Z1 = (
+    "zweryfikowano ze źródłem ENEA (Zeszyt 1, wersja 02.2023 – 2, obraz strony PDF, "
+    "`docs/standards/ENEA_Z1_110KV_SOURCE_VERIFICATION.md`)"
+)
 
 
-def _aparaty_wg_odczytu(rysunek: str, plan: list[dict[str, Any]]) -> list[BayDeviceTemplate]:
-    """Aparaty szablonu z planu (kolejność od szyny), z podstawą „rysunek — opis (odczyt)"."""
+def _aparaty_wg_rysunku(rysunek: str, plan: list[dict[str, Any]]) -> list[BayDeviceTemplate]:
+    """Aparaty szablonu z planu (kolejność od szyny), z podstawą „rysunek — opis (źródło)"."""
     return [
         BayDeviceTemplate(
             position=i,
             **{k: v for k, v in pozycja.items() if k != "opis"},
-            podstawa=f"ENEA Zeszyt 1, {rysunek} — {pozycja['opis']}; {_PODSTAWA_ODCZYTU_Z1}",
+            podstawa=f"ENEA Zeszyt 1, {rysunek} — {pozycja['opis']}; {_PODSTAWA_ZRODLA_Z1}",
         )
         for i, pozycja in enumerate(plan)
     ]
@@ -1370,31 +1376,34 @@ def _przekladnik_pradowy(catalog_ref: str, opis: str) -> dict[str, Any]:
     }
 
 
-#: Uzwojenia przekładnika napięciowego odgałęzienia pola transformatora (odczyt Z.7 s.86:
-#: SN/√3 / 0,1/√3 ×3 — I 0-10 VA kl. 0,2; II 7,5 VA kl. 0,5; III 7,5 VA kl. 0,5/3P). Odczyt
-#: `ODCZYT_ENEA_H5_SPECYFIKACJA.md` §10 zapisuje czwarty ułamek „0,1/3", a odczyt
-#: `GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md` — „0,1/√3 ×3"; szablon przyjmuje uzwojenia
-#: fazowe BEZ otwartego trójkąta (jak zweryfikowane na rysunku pola liniowego Z.11/Z.11.1,
-#: a źródłem 3U₀ sekcji jest pole pomiaru napięcia Z.17) — rozbieżność odczytów w UX05 §6.
+#: Uzwojenia przekładnika napięciowego odgałęzienia pola transformatora — Z.7 s.86, tabliczka
+#: zweryfikowana ze źródłem: „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3”, I 0-10 VA kl. 0,2; II 7,5 VA
+#: kl. 0,5; III 7,5 VA kl. 0,5/3P — trzy uzwojenia fazowe, BEZ otwartego trójkąta (wtórny odczyt
+#: „0,1/3” był błędny). Przeznaczenie wg linii rysunku: uzwojenie I → blok „Układ pomiarowy
+#: bilansowo-kontrolny / Analizator jakości energii”, II → „Pomiary lokalne str. SN”, III → ARN
+#: i (odgałęzienie tej samej linii) „Sterownik pola”.
 UZWOJENIA_VT_POLA_TRANSFORMATORA_Z7: tuple[UzwojeniePrzekladnikaNapieciowego, ...] = (
     UzwojeniePrzekladnikaNapieciowego(
-        przekladnia="SN/√3 / 0,1/√3", moc_va=10.0, klasa="0,2", przeznaczenie=("POMIAR",)
+        przekladnia="SN/√3 / 0,1/√3",
+        moc_va=10.0,
+        klasa="0,2",
+        przeznaczenie=("POMIAR", "JAKOSC_ENERGII"),
     ),
     UzwojeniePrzekladnikaNapieciowego(
-        przekladnia="SN/√3 / 0,1/√3", moc_va=7.5, klasa="0,5", przeznaczenie=("REGULACJA",)
+        przekladnia="SN/√3 / 0,1/√3", moc_va=7.5, klasa="0,5", przeznaczenie=("POMIAR",)
     ),
     UzwojeniePrzekladnikaNapieciowego(
         przekladnia="SN/√3 / 0,1/√3",
         moc_va=7.5,
         klasa="0,5/3P",
-        przeznaczenie=("POMIAR", "ZABEZPIECZENIA"),
+        przeznaczenie=("REGULACJA", "POMIAR"),
     ),
 )
 
 _ODGALEZIENIE = ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO
 
 
-def _szablon_pola_gpz_wg_odczytu(
+def _szablon_pola_gpz_wg_rysunku(
     *,
     template_id: str,
     rola: RolaPolaModelu,
@@ -1411,25 +1420,25 @@ def _szablon_pola_gpz_wg_odczytu(
         name=nazwa_roli_pola_sn(nazwa_roli),
         bay_role=rola,
         description=description,
-        podstawa=f"ENEA Zeszyt 1, {rysunek}; {_PODSTAWA_P13}; {_PODSTAWA_ODCZYTU_Z1}",
+        podstawa=f"ENEA Zeszyt 1, {rysunek}; {_PODSTAWA_P13}; {_PODSTAWA_ZRODLA_Z1}",
         render_variant="qet_en60617",
         wykonanie_lacznikow="TROJPOLOZENIOWY",
         tylko_gpz=True,
         funkcje_eaz=[p.funkcja for p in obwody.powiazania],
         obwody_wtorne=obwody,
-        devices=_aparaty_wg_odczytu(rysunek, plan),
+        devices=_aparaty_wg_rysunku(rysunek, plan),
         ports=ports,
     )
 
 
-BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7 = _szablon_pola_gpz_wg_odczytu(
+BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7 = _szablon_pola_gpz_wg_rysunku(
     template_id="bay_template_gpz_transformator_sn_enea_z7",
     rola="TR",
     nazwa_roli="TRANSFORMATOROWE",
     rysunek="Z.7 (s.86)",
     klucz_obwodow="Z7",
     description=(
-        "Pole transformatora 110 kV/SN po stronie SN rozdzielni GPZ (wg odczytu ENEA Z.7) — "
+        "Pole transformatora 110 kV/SN po stronie SN rozdzielni GPZ (ENEA Zeszyt 1, Z.7 s.86) — "
         "łącznik trójpołożeniowy, wyłącznik z napędem M, odgałęzienie przekładnika napięciowego, "
         "przekładnik prądowy czterordzeniowy, kabel do transformatora z ogranicznikiem przepięć."
     ),
@@ -1461,7 +1470,9 @@ BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7 = _szablon_pola_gpz_wg_odczytu(
         },
         _przekladnik_pradowy(
             "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
-            "1000/5/5/5/5 A, 4 rdzenie (0,2S / 0,2 / 5P20 / 5P20)",
+            "1000/5/5/5/5* A, 4 rdzenie (0,2S FS5 / 0,2 FS5 / 5P20 / 5P20); przekładnia z "
+            "gwiazdką — wartość robocza 1000/5 (110/15 kV ≤ 25 MVA), dobór do transformatora wg "
+            "tabeli „Uwaga” rysunku",
         ),
         _wskaznik("PF1", "wskaźnik napięcia od strony kabla"),
         {
@@ -1480,14 +1491,14 @@ BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7 = _szablon_pola_gpz_wg_odczytu(
     ports=[BayPortTemplate(kind="sn_transformer", suffix="trafo")],
 )
 
-BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12 = _szablon_pola_gpz_wg_odczytu(
+BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12 = _szablon_pola_gpz_wg_rysunku(
     template_id="bay_template_gpz_lacznik_szyn_enea_z12",
     rola="COUPLER",
     nazwa_roli="SPRZEGLO",
     rysunek="Z.12 (s.92)",
     klucz_obwodow="Z12",
     description=(
-        "Pole łącznika szyn SN rozdzielni GPZ (wg odczytu ENEA Z.12) — łączniki trójpołożeniowe "
+        "Pole łącznika szyn SN rozdzielni GPZ (ENEA Zeszyt 1, Z.12 s.92) — łączniki trójpołożeniowe "
         "po obu stronach wyłącznika z napędem M, przekładnik prądowy dwurdzeniowy, wskaźniki "
         "napięcia obu sekcji; jeden tor od sekcji A do sekcji B."
     ),
@@ -1495,7 +1506,11 @@ BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12 = _szablon_pola_gpz_wg_odczytu(
         _wskaznik("PF0", "wskaźnik napięcia sekcji A"),
         _lacznik_trojpolozeniowy("Q1", "łącznik trójpołożeniowy od strony sekcji A"),
         _wylacznik_z_napedem(),
-        _przekladnik_pradowy("ct_typ_ogolny_osd_1000_5_5_z12", "1000/5/5 A, 2 rdzenie 5P20"),
+        _przekladnik_pradowy(
+            "ct_typ_ogolny_osd_1000_5_5_z12",
+            "1000/5/5* A, 2 rdzenie 15 VA 5P20; przekładnia z gwiazdką — wartość robocza 1000/5 "
+            "(110/15 kV ≤ 25 MVA), dobór do transformatora wg tabeli „Uwaga” rysunku",
+        ),
         _lacznik_trojpolozeniowy("Q2", "łącznik trójpołożeniowy od strony sekcji B (lustrzany)"),
         _wskaznik("PF2", "wskaźnik napięcia sekcji B"),
     ],
@@ -1505,14 +1520,14 @@ BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12 = _szablon_pola_gpz_wg_odczytu(
     ],
 )
 
-BAY_TEMPLATE_GPZ_BKR_Z16 = _szablon_pola_gpz_wg_odczytu(
+BAY_TEMPLATE_GPZ_BKR_Z16 = _szablon_pola_gpz_wg_rysunku(
     template_id="bay_template_gpz_bateria_kondensatorow_enea_z16",
     rola="BKR",
     nazwa_roli="BATERIA_KONDENSATOROW",
     rysunek="Z.16 (s.96)",
     klucz_obwodow="Z16",
     description=(
-        "Pole baterii kondensatorów równoległych SN rozdzielni GPZ (wg odczytu ENEA Z.16) — "
+        "Pole baterii kondensatorów równoległych SN rozdzielni GPZ (ENEA Zeszyt 1, Z.16 s.96) — "
         "łącznik trójpołożeniowy, wyłącznik z napędem M, przekładnik prądowy trójrdzeniowy, "
         "kabel do baterii w podwójnej gwieździe z przekładnikami rozładowczymi i przekładnikiem "
         "niezrównoważenia."
@@ -1520,7 +1535,11 @@ BAY_TEMPLATE_GPZ_BKR_Z16 = _szablon_pola_gpz_wg_odczytu(
     plan=[
         _lacznik_trojpolozeniowy("Q1", "łącznik trójpołożeniowy szynowy"),
         _wylacznik_z_napedem(),
-        _przekladnik_pradowy("ct_typ_ogolny_osd_100_5_5_5_z16", "100/5/5/5 A, 3 rdzenie"),
+        _przekladnik_pradowy(
+            "ct_typ_ogolny_osd_100_5_5_5_z16",
+            "trzy rdzenie 100/5 A (napis rysunku „100/5/5”, tabliczki rdzeni I–III: 10 VA 0,2S "
+            "FS5, 15 VA 5P20, 15 VA 5P20)",
+        ),
         _wskaznik("PF1", "wskaźnik napięcia od strony kabla"),
         {
             "kind": "CABLE_HEAD",
@@ -1957,10 +1976,10 @@ def template_primary_devices(
             entry["wykonanie"] = device.wykonanie
         if device.odgalezienie is not None:
             entry[KLUCZ_ODGALEZIENIA] = device.odgalezienie
-        if primary_kind == "ES":
-            # Uziemnik pola (typologia §12.5) — odróżnia go od uziemienia ekranów
-            # kabla/konstrukcji/punktu neutralnego. Szablon to uziemnik pola.
-            entry["earthing_role"] = "field_earth"
+        if primary_kind in ROLA_UZIEMIENIA_RODZAJU_APARATU:
+            # Uziemnik pola (typologia §12.5) i gałąź uziemiająca ogranicznika — rola z rodzaju,
+            # jedno źródło dla wszystkich dróg budowy pola.
+            entry["earthing_role"] = ROLA_UZIEMIENIA_RODZAJU_APARATU[primary_kind]
         devices.append(entry)
     # Porty aparatów z sekwencji szablonu (karta UX-04/POLE-LINIOWE-WZORZEC) — ta sama reguła
     # co każda droga budowy pola (`rodzaje_aparatury.porty_toru_pola`).
@@ -2030,12 +2049,10 @@ def mv_source_field_primary_devices(
             "render_variant": "kanoniczny",
             "designation": designation,
         }
-        if kind == "ES":
-            entry["earthing_role"] = "field_earth"
-        elif kind == "SURGE_ARRESTER":
-            # Ogranicznik przepięć to odgałęzienie DO ZIEMI (uwaga 6) — niesie
-            # `earthing_role` spójnie z mostem producenckim i macierzą W1b.
-            entry["earthing_role"] = "surge_ground"
+        if kind in ROLA_UZIEMIENIA_RODZAJU_APARATU:
+            # Ogranicznik przepięć to odgałęzienie DO ZIEMI (uwaga 6) — rola z rodzaju, spójnie
+            # z mostem producenckim i macierzą W1b.
+            entry["earthing_role"] = ROLA_UZIEMIENIA_RODZAJU_APARATU[kind]
         devices.append(entry)
     return porty_toru_pola(devices)
 
