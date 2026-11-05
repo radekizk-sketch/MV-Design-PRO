@@ -31,19 +31,22 @@ RULES: tuple[NormativeRule, ...] = (
         # Karta SC-IB-ITH-ZRODLA: kryterium zdolności wyłączania jak w dowodzie aparatury
         # (`equipment_proof._check_icu`): SN/WN — I_b ≤ I_sc (IEC 62271-100), nN — I_k'' ≤ I_cu
         # (IEC 60947-2, IEC 60364-4-43 p. 434.5.1).
-        title_pl="Wyłączalność (I_b ≤ I_sc w SN/WN, I_k'' ≤ I_cu w nN)",
+        title_pl=(
+            "Wyłączalność (prąd wyłączeniowy nie większy od zdolności wyłączania w SN/WN, "
+            "prąd zwarciowy początkowy nie większy od zdolności łączeniowej w nN)"
+        ),
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         key="breaking_ok",
     ),
     NormativeRule(
         rule_id="NR_P18_002",
-        title_pl="Warunek dynamiczny (i_p ≤ I_dyn)",
+        title_pl="Warunek dynamiczny (prąd udarowy nie większy od prądu szczytowego aparatu)",
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         key="dynamic_ok",
     ),
     NormativeRule(
         rule_id="NR_P18_003",
-        title_pl="Warunek cieplny (∫i²dt ≤ I_th)",
+        title_pl="Warunek cieplny (całka Joule'a nie większa od wytrzymałości cieplnej aparatu)",
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         key="thermal_ok",
     ),

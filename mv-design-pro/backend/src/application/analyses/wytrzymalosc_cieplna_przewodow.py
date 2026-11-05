@@ -119,6 +119,7 @@ from network_model.solvers.short_circuit_contributions import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+from werdykt.zapis_latex import ZapisLatex
 
 logger = logging.getLogger(__name__)
 
@@ -502,17 +503,17 @@ def _aktualnosc_wobec_modelu(
 #: Wielkości wiersza wyniku zwarciowego wymagane do oceny cieplnej — nazwy dla komunikatu
 #: o uszkodzonym zapisie (karta #145: komunikat nie niesie klucza zapisu).
 _WIELKOSCI_WIERSZA_PL: dict[str, str] = {
-    "c_factor": "współczynnik napięciowy c",
-    "un_v": "napięcie znamionowe sieci Un",
-    "ikss_a": "prąd zwarciowy początkowy I″k",
-    "ip_a": "prąd zwarciowy udarowy ip",
-    "ith_a": "prąd zastępczy cieplny I_th",
-    "sk_mva": "moc zwarciowa S″k",
+    "c_factor": "współczynnik napięciowy",
+    "un_v": "napięcie znamionowe sieci",
+    "ikss_a": "prąd zwarciowy początkowy",
+    "ip_a": "prąd zwarciowy udarowy",
+    "ith_a": "prąd zastępczy cieplny",
+    "sk_mva": "moc zwarciowa",
     "rx_ratio": "stosunek R/X",
-    "kappa": "współczynnik udaru κ",
-    "tk_s": "czas trwania zwarcia Tk",
-    "ib_a": "prąd wyłączeniowy symetryczny Ib",
-    "tb_s": "czas wyłączania tb",
+    "kappa": "współczynnik udaru",
+    "tk_s": "czas trwania zwarcia",
+    "ib_a": "prąd wyłączeniowy symetryczny",
+    "tb_s": "czas wyłączania",
 }
 
 
@@ -799,7 +800,7 @@ def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
     # ma opisu prozą ponad uwagi (`notes`), wiec pola prozy podstawienia nie niesie.
     czas_tex = _liczba_tex(float(wpis["tk_s"])) if wpis.get("tk_s") is not None else None
     wzor: str | None = None
-    podstawienie: str | None = None
+    podstawienie: ZapisLatex | None = None
     if czas_tex is None:
         # Czas nierozstrzygniety: nie ma liczby do podstawienia — brak pola, nie „?".
         pass

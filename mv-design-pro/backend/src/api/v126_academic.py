@@ -39,6 +39,15 @@ from solver_input.v126_contracts import (
     pominiete_zrodla_v126,
     wiersze_izolacji_projektanta,
 )
+from werdykt.zapis_latex import IdentyfikatorKontraktu
+
+#: Kody trybów przekształtnika słownika katalogu (kontrakt `solver_input/v126_contracts.py`).
+_TRYBY_PRZEKSZTALTNIKA: tuple[IdentyfikatorKontraktu, ...] = (
+    "GFL",
+    "GFM_droop",
+    "VSM",
+    "Grid_Supporting",
+)
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
 
@@ -110,7 +119,7 @@ _ANALIZY_WYCOFANE: dict[V126AnalysisType, dict[str, Any]] = {
             {
                 "trasa": (
                     "POST /api/execution/study-cases/{case_id}/runs "
-                    "(analysis_type=LOAD_FLOW, run_options.oltc_*)"
+                    "(rozpływ mocy z opcjami badania przełącznika zaczepów)"
                 ),
                 "ekran": "Wyniki › OLTC",
             },
@@ -566,7 +575,7 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             }
             for p in PROPOZYCJE_NIEZAWODNOSCI.values()
         ],
-        "converter-modes": ["GFL", "GFM_droop", "VSM", "Grid_Supporting"],
+        "converter-modes": list(_TRYBY_PRZEKSZTALTNIKA),
     }
     if namespace not in catalogs:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieznany katalog V12.6.")

@@ -25,6 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from werdykt.zapis_latex import IdentyfikatorKontraktu
+
 from .tozsamosc import TozsamoscBiegu, kwantyzuj
 
 
@@ -144,7 +146,8 @@ class Metryka:
     klucz: str
     wartosc: float
     jednostka: str
-    wzor_ref: str | None
+    #: Odsyłacz do definicji metryki (zapis maszynowy, ekran go nie pokazuje).
+    wzor_ref: IdentyfikatorKontraktu | None
     element_ref: str | None
 
 

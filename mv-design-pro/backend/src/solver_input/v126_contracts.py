@@ -67,6 +67,7 @@ from pydantic import (
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
 from werdykt.proweniencja import FieldQuality
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 
 class _WejscieV126(BaseModel):
@@ -1319,7 +1320,7 @@ def _oceb_karte_przeksztaltnika(
     # jako podążający za siecią), nie domysł z `gen_type`.
     control_mode = card.get("control_mode")
     control_mode = control_mode if isinstance(control_mode, str) else None
-    mode = "GFL" if control_mode != "GRID_FORMING" else "GFM_droop"
+    mode: IdentyfikatorKontraktu = "GFL" if control_mode != "GRID_FORMING" else "GFM_droop"
 
     # Droop: WYŁĄCZNIE z karty, WYŁĄCZNIE dla trybu grid-forming (statyzm P/f i
     # Q/U jest własnością regulatora GFM — dla GFL kontrakt niesie `None`, jak

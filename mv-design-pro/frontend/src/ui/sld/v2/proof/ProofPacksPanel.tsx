@@ -44,7 +44,7 @@ export const CANONICAL_PROOF_PACKS: readonly Omit<ProofPackInfo, 'status' | 'blo
   {
     id: 'equipment',
     labelPl: 'Wytrzymałość aparatury',
-    description: 'I_dyn, I_th — wytrzymałość cieplna i dynamiczna',
+    description: 'Wytrzymałość cieplna i dynamiczna aparatury na prąd zwarciowy',
   },
   {
     id: 'power_flow',

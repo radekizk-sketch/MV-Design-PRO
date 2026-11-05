@@ -90,6 +90,7 @@ from network_model.catalog.types import CatalogNamespace, OverheadConductorType
 from network_model.core.voltage_factor import TOLERANCJE_NAPIECIA_NN
 from network_model.pochodne import km_na_m
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 # Nazwy arkuszy i kolumn — jedyne zrodlo prawdy formatu (uzywane tez przez API/dokumentacje).
 ARKUSZ_SZYNY = "Szyny"
@@ -110,6 +111,13 @@ class XlsxValidationError(Exception):
         super().__init__(f"Błędy walidacji importu XLSX: {len(errors)} błędów")
 
 
+#: Nazwy kolumn arkusza źródeł cytowane w ostrzeżeniach — identyfikatory, które projektant
+#: widzi w nagłówku arkusza (nie symbole w prozie).
+_KOLUMNA_RX_MIN: IdentyfikatorKontraktu = "RX_min"
+_KOLUMNA_SK_MIN: IdentyfikatorKontraktu = "Sk_min_MVA"
+_KOLUMNA_IK_MIN: IdentyfikatorKontraktu = "Ik_min_kA"
+
+
 @dataclass(frozen=True)
 class BladArkusza:
     """Pojedyncze zastrzezenie do zawartosci arkusza.
@@ -121,7 +129,7 @@ class BladArkusza:
     arkusz: str
     komunikat: str
     wiersz: int | None = None
-    kolumna: str | None = None
+    kolumna: IdentyfikatorKontraktu | None = None
     #: Kod maszynowy zastrzeżenia (np. kod walidatora modelu) — w POLU, nigdy w `komunikat`
     #: (partia integracji 10). `None` dla zastrzeżeń parsera bez kodu; klucz pomijany.
     kod: str | None = None
@@ -215,8 +223,12 @@ class XlsxNetworkImporter:
     REQUIRED_SHEETS = set(ARKUSZE_WYMAGANE)
     OPTIONAL_SHEETS = set(ARKUSZE_OPCJONALNE)
 
-    BUS_COLUMNS: dict[str, type] = {"id": str, "nazwa": str, "napięcie_kV": float}
-    LINE_COLUMNS: dict[str, type] = {
+    BUS_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
+        "id": str,
+        "nazwa": str,
+        "napięcie_kV": float,
+    }
+    LINE_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "id": str,
         "szyna_pocz": str,
         "szyna_kon": str,
@@ -227,7 +239,7 @@ class XlsxNetworkImporter:
     # przewodu, z której powstaje pozycja katalogu PROJEKTU (`enm/katalog_projektu.py`).
     # Nie ma trzeciej drogi: parametr wpisany wprost do elementu byłby wstrzyknięciem
     # z pominięciem katalogu (reguła 10), a brakująca dana podstawiona zerem — fabrykacją.
-    LINE_OPTIONAL_COLUMNS: dict[str, type] = {
+    LINE_OPTIONAL_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "typ_katalogowy": str,
         "rodzaj": str,  # LINIA (napowietrzna) | KABEL — wymagane bez typu katalogowego
         "R_ohm_km": float,
@@ -240,8 +252,12 @@ class XlsxNetworkImporter:
         "przekroj_mm2": float,  # LINIA: może być puste; KABEL: wymagane
         "zyly": float,  # KABEL: liczba żył (1 albo 3)
     }
-    TRAFO_COLUMNS: dict[str, type] = {"id": str, "szyna_HV": str, "szyna_LV": str}
-    TRAFO_OPTIONAL_COLUMNS: dict[str, type] = {
+    TRAFO_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
+        "id": str,
+        "szyna_HV": str,
+        "szyna_LV": str,
+    }
+    TRAFO_OPTIONAL_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "typ_katalogowy": str,
         "Sn_MVA": float,
         "uk_pct": float,
@@ -256,7 +272,7 @@ class XlsxNetworkImporter:
         # — ten sam nośnik co w kreatorze (`Transformer.lv_voltage_tolerance`).
         "tolerancja_nN": str,
     }
-    SOURCE_COLUMNS: dict[str, type] = {
+    SOURCE_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "id": str,
         "szyna": str,
         "typ": str,
@@ -265,7 +281,7 @@ class XlsxNetworkImporter:
     # `Sk_MVA` opcjonalna (CV-4.3 K7): zrodlo wymaga co najmniej Sk_MVA albo Ik_kA
     # (tryb pradowy) — sprawdzane w `_waliduj_wartosci`, nie na poziomie kolumn
     # wymaganych (arkusz bez ZADNEJ z dwoch kolumn nadal ma czytelna strukture).
-    SOURCE_OPTIONAL_COLUMNS: dict[str, type] = {
+    SOURCE_OPTIONAL_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "Sk_MVA": float,
         "Ik_kA": float,
         "Sk_min_MVA": float,
@@ -277,7 +293,7 @@ class XlsxNetworkImporter:
         # tolerancji napięcia sieci nN (`Source.lv_voltage_tolerance`).
         "tolerancja_nN": str,
     }
-    LOAD_COLUMNS: dict[str, type] = {
+    LOAD_COLUMNS: dict[IdentyfikatorKontraktu, type] = {
         "id": str,
         "szyna": str,
         "P_MW": float,
@@ -795,7 +811,7 @@ class XlsxNetworkImporter:
                         kolumna="zaczep_min",
                         komunikat=(
                             "Zakres zaczepów musi obejmować położenie znamionowe 0 "
-                            "(zaczep_min <= 0 <= zaczep_max)"
+                            "(zaczep minimalny ≤ 0 ≤ zaczep maksymalny)"
                         ),
                     )
                 )
@@ -1388,12 +1404,14 @@ class XlsxNetworkImporter:
                 if u_hv is None:
                     u_hv = napiecia_szyn[transformator["szyna_HV"]]
                     przyjete.append(
-                        f"U_HV = napięcie szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
+                        "napięcie górne przyjęte z napięcia szyny "
+                        f"{transformator['szyna_HV']} ({u_hv:g} kV)"
                     )
                 if u_lv is None:
                     u_lv = napiecia_szyn[transformator["szyna_LV"]]
                     przyjete.append(
-                        f"U_LV = napięcie szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
+                        "napięcie dolne przyjęte z napięcia szyny "
+                        f"{transformator['szyna_LV']} ({u_lv:g} kV)"
                     )
                 if przyjete:
                     ostrzezenia.append(
@@ -1487,7 +1505,8 @@ class XlsxNetworkImporter:
                 )
             if zrodlo.get("RX_min") is not None and sk_min is None and ik_min is None:
                 ostrzezenia.append(
-                    f"Źródło '{zrodlo['id']}': RX_min podany bez Sk_min_MVA/Ik_min_kA — "
+                    f"Źródło '{zrodlo['id']}': kolumna „{_KOLUMNA_RX_MIN}” wypełniona bez "
+                    f"„{_KOLUMNA_SK_MIN}” albo „{_KOLUMNA_IK_MIN}” — "
                     "stosunek R/X scenariusza minimalnego nie ma zastosowania bez własnej "
                     "mocy zwarciowej minimalnej tego źródła."
                 )

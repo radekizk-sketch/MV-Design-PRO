@@ -36,6 +36,7 @@ from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult, FrtScenario
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import ClaimKind, PodstawaWymagania, Przedmiot, ZakresWaznosci
+from werdykt.zapis_latex import ZapisLatex
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność.
 _ROUND = 6
@@ -228,7 +229,7 @@ def nazwa_scenariusza_pl(scenario: FrtScenario) -> str:
     )
 
 
-def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
+def _krok(tekst: str, latex: ZapisLatex | None = None) -> dict[str, Any]:
     """Krok wywodu WHITE BOX: tekst dla projektanta (deterministyczny) + opcjonalny LaTeX.
 
     Kontrakt kanoniczny ``{tekst, latex}`` — wzorzec 1:1 z

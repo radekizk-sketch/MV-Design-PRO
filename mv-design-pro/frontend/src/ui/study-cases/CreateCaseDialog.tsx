@@ -311,7 +311,7 @@ export function CreateCaseDialog({
                 <div className="space-y-3">
                   <p className="text-xs text-gray-500" data-testid="case-config-c-nosnik">
                     Współczynnik napięciowy c (MAX/MIN wg IEC 60909-0 tab. 1) i czas
-                    zwarcia t_k ustawiasz w scenariuszu zwarciowym, nie w przypadku.
+                    trwania zwarcia ustawiasz w scenariuszu zwarciowym, nie w przypadku.
                   </p>
 
                   <ConfigField

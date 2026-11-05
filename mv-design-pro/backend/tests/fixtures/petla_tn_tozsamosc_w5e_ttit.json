@@ -3,7 +3,7 @@
  "przypadki": [
   {
    "fault_node_id": "bus-TN-S-noup-L",
-   "sha256": "2b12eb8940b82b922f2c99d43d57730759025697b3523172a131b0fac1627c35",
+   "sha256": "308c9a359992e7833a6c631b882b42a2e232271c009d11e79c488ce365fb0dec",
    "to_dict": {
     "components": [
      {
@@ -50,7 +50,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.041341504568653514,
        "r_total_ohm": 0.036399999999999995,
@@ -63,7 +63,7 @@
       "c_min": 0.95,
       "ik_max_a": 5841.587105252895,
       "ik_min_a": 5285.2454761811905,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.041341504568653514
@@ -78,7 +78,7 @@
   },
   {
    "fault_node_id": "bus-TN-S-noup-—",
-   "sha256": "a9fc1ea9125999053c0c552c28e14d9917c7d8d5c946fe9d9aecd4b9b74a2d20",
+   "sha256": "1eaaba383ac3315ad9cc495d44fc0f388d3a48d1df392daa5c00b8a129b79595",
    "to_dict": {
     "components": [
      {
@@ -125,7 +125,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.015811388300841896,
        "r_total_ohm": 0.005,
@@ -138,7 +138,7 @@
       "c_min": 0.95,
       "ik_max_a": 15336.231610144656,
       "ik_min_a": 13875.638123464209,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.015811388300841896
@@ -153,7 +153,7 @@
   },
   {
    "fault_node_id": "bus-TN-S-noup-L (trasa)",
-   "sha256": "0591ccf5dfa525357c73ddb69c1ffe07568e032ff0211d9f151f937b4009357f",
+   "sha256": "6462d8544b6e2d998a47d9ddb066cce0cb41a201c713ab5c5f7cb4b0e0e2ffa8",
    "to_dict": {
     "components": [
      {
@@ -200,7 +200,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7130839529816948,
        "r_total_ohm": 0.7064199999999999,
@@ -213,7 +213,7 @@
       "c_min": 0.95,
       "ik_max_a": 338.6698003652866,
       "ik_min_a": 306.41553366383073,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7130839529816948
@@ -228,7 +228,7 @@
   },
   {
    "fault_node_id": "bus-TN-S-up-L",
-   "sha256": "a29475ef4a0314c0959451129b9e4f908b46eafb091e05c91e250a5d38c3fc67",
+   "sha256": "07c9eaea86072870241994873e6f320d0596b251987cbbf22ff007e604b466b0",
    "to_dict": {
     "components": [
      {
@@ -286,7 +286,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.044718256898050035,
        "r_total_ohm": 0.03763,
@@ -299,7 +299,7 @@
       "c_min": 0.95,
       "ik_max_a": 5400.47883687816,
       "ik_min_a": 4886.14751908024,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.044718256898050035
@@ -314,7 +314,7 @@
   },
   {
    "fault_node_id": "bus-TN-S-up-—",
-   "sha256": "0d1d9db9b1aec8ef35117415dd09b95b87ad98de3088c82eae48d50b93e8180f",
+   "sha256": "d61c655483c9244ac0eef06e799d313292bb5f33ffb9a39d2a36ad6bcf96998d",
    "to_dict": {
     "components": [
      {
@@ -372,7 +372,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.020528187937565265,
        "r_total_ohm": 0.00623,
@@ -385,7 +385,7 @@
       "c_min": 0.95,
       "ik_max_a": 11812.397362940497,
       "ik_min_a": 10687.407137898543,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.020528187937565265
@@ -400,7 +400,7 @@
   },
   {
    "fault_node_id": "bus-TN-S-up-L (trasa)",
-   "sha256": "849c925a3f677f2ea9df9d760dc9a10c6546ddae41e33a88ca68f76f8853a1f9",
+   "sha256": "4fadd680e217d4ba735ca722d196a47dd2d84aa755c30250c552c087a6b33ce8",
    "to_dict": {
     "components": [
      {
@@ -458,7 +458,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7149376440641518,
        "r_total_ohm": 0.7076499999999999,
@@ -471,7 +471,7 @@
       "c_min": 0.95,
       "ik_max_a": 337.7916969473915,
       "ik_min_a": 305.621059142878,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7149376440641518
@@ -486,7 +486,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-noup-L",
-   "sha256": "987de2f58536604b864af9b9e15cc6bbb8445aaa75d083cb75665d99cbf2b3ff",
+   "sha256": "26e34981dbb83ca942c09b0adbc5eeff86b21e3f77dda8dbc0aec1dedb2f9c34",
    "to_dict": {
     "components": [
      {
@@ -533,7 +533,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.041341504568653514,
        "r_total_ohm": 0.036399999999999995,
@@ -546,7 +546,7 @@
       "c_min": 0.95,
       "ik_max_a": 5841.587105252895,
       "ik_min_a": 5285.2454761811905,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.041341504568653514
@@ -561,7 +561,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-noup-—",
-   "sha256": "262738d1c26d48ab51fa19135189ed712c81f7a4062ffe386b47372f5106eb5c",
+   "sha256": "1d575e6fa4a805bfd8222a6e4594ba75c6b5eaca9c8e981b86f08a5a8ee8aa6d",
    "to_dict": {
     "components": [
      {
@@ -608,7 +608,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.015811388300841896,
        "r_total_ohm": 0.005,
@@ -621,7 +621,7 @@
       "c_min": 0.95,
       "ik_max_a": 15336.231610144656,
       "ik_min_a": 13875.638123464209,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.015811388300841896
@@ -636,7 +636,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-noup-L (trasa)",
-   "sha256": "094fcad918228e5199a8752cba3333d89759271cd7402a39ee2691e516b682bf",
+   "sha256": "03f6bf40d6007182b5b75d5ab3843313fd9407b90f85453cad807acaf437258b",
    "to_dict": {
     "components": [
      {
@@ -683,7 +683,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7130839529816948,
        "r_total_ohm": 0.7064199999999999,
@@ -696,7 +696,7 @@
       "c_min": 0.95,
       "ik_max_a": 338.6698003652866,
       "ik_min_a": 306.41553366383073,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7130839529816948
@@ -711,7 +711,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-up-L",
-   "sha256": "dd789806c1fba1cc94845e0f9b1ac617022648800a8ded174bbb649244e76ab9",
+   "sha256": "49cf4bd9e49e2213411be8f3662350b2e8f1a191c389ae7815b517a530a6df6d",
    "to_dict": {
     "components": [
      {
@@ -769,7 +769,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.044718256898050035,
        "r_total_ohm": 0.03763,
@@ -782,7 +782,7 @@
       "c_min": 0.95,
       "ik_max_a": 5400.47883687816,
       "ik_min_a": 4886.14751908024,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.044718256898050035
@@ -797,7 +797,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-up-—",
-   "sha256": "01d276f5c804d9466e22102ad636ea12d6080b5b8e10af34fcc1018b5220ed06",
+   "sha256": "22448192af6655e43fe540c29c4d5c0389785c0f7b4df06e3f81dfdcfa8b0c14",
    "to_dict": {
     "components": [
      {
@@ -855,7 +855,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.020528187937565265,
        "r_total_ohm": 0.00623,
@@ -868,7 +868,7 @@
       "c_min": 0.95,
       "ik_max_a": 11812.397362940497,
       "ik_min_a": 10687.407137898543,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.020528187937565265
@@ -883,7 +883,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-S-up-L (trasa)",
-   "sha256": "3cdade2cf70d8e7ae2aa033e13c72376d26fedf1551f3897938927836791f9c2",
+   "sha256": "b06ec218343e4146660e94f167a1a4f163cf6e337904007e1c63e2abae628599",
    "to_dict": {
     "components": [
      {
@@ -941,7 +941,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7149376440641518,
        "r_total_ohm": 0.7076499999999999,
@@ -954,7 +954,7 @@
       "c_min": 0.95,
       "ik_max_a": 337.7916969473915,
       "ik_min_a": 305.621059142878,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7149376440641518
@@ -969,7 +969,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-noup-L",
-   "sha256": "2850d79ab44f141ab51454ee6a273e97dabc6d1a8738dbee5a2fc63aa92cd909",
+   "sha256": "439f789a99f650cecd6628a762eb1cd57e3b6f265ba680248cfac71f6b282392",
    "to_dict": {
     "components": [
      {
@@ -1016,7 +1016,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.041341504568653514,
        "r_total_ohm": 0.036399999999999995,
@@ -1029,7 +1029,7 @@
       "c_min": 0.95,
       "ik_max_a": 5841.587105252895,
       "ik_min_a": 5285.2454761811905,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.041341504568653514
@@ -1044,7 +1044,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-noup-—",
-   "sha256": "3cd13666b7039bd1c0031756b0783533c5c39509e2ede1e45063f9bf665bc289",
+   "sha256": "8c8ca4f1f6f7bdf4ea902e9bdf29e4efe44291d13123001e6ada8c345fd0f46a",
    "to_dict": {
     "components": [
      {
@@ -1091,7 +1091,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.015811388300841896,
        "r_total_ohm": 0.005,
@@ -1104,7 +1104,7 @@
       "c_min": 0.95,
       "ik_max_a": 15336.231610144656,
       "ik_min_a": 13875.638123464209,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.015811388300841896
@@ -1119,7 +1119,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-noup-L (trasa)",
-   "sha256": "92550585ba768cc0ffbb254297c69436dc15daca72d4645903f6d3b98c7bbd15",
+   "sha256": "d46d2a9244f6efb6eeaccbd26c5e425499b2e44645daced92ecd70082acb5f17",
    "to_dict": {
     "components": [
      {
@@ -1166,7 +1166,7 @@
         "x_ohm": 0.015
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7130839529816948,
        "r_total_ohm": 0.7064199999999999,
@@ -1179,7 +1179,7 @@
       "c_min": 0.95,
       "ik_max_a": 338.6698003652866,
       "ik_min_a": 306.41553366383073,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7130839529816948
@@ -1194,7 +1194,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-up-L",
-   "sha256": "a602c3b89ba4f17914a707f16b2d7897188c40302c04a43b4a19ff4d856275e4",
+   "sha256": "4613ea0b00bfdb2885490e7d4a412de5b7b1420c561a24cb6496938642b6ae45",
    "to_dict": {
     "components": [
      {
@@ -1252,7 +1252,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.044718256898050035,
        "r_total_ohm": 0.03763,
@@ -1265,7 +1265,7 @@
       "c_min": 0.95,
       "ik_max_a": 5400.47883687816,
       "ik_min_a": 4886.14751908024,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.044718256898050035
@@ -1280,7 +1280,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-up-—",
-   "sha256": "e90f1df1ab4a0bbc05b768738ad512153afa72c3f5772cc312f4ba272b677d48",
+   "sha256": "c3e7287deed42ba3c763c175af29c999ced5e66b7b43b63063b418c5b4e9ec8f",
    "to_dict": {
     "components": [
      {
@@ -1338,7 +1338,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.020528187937565265,
        "r_total_ohm": 0.00623,
@@ -1351,7 +1351,7 @@
       "c_min": 0.95,
       "ik_max_a": 11812.397362940497,
       "ik_min_a": 10687.407137898543,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.94010767585033,
       "z_magnitude_ohm": 0.020528187937565265
@@ -1366,7 +1366,7 @@
   },
   {
    "fault_node_id": "bus-TN-C-up-L (trasa)",
-   "sha256": "6d96340b21c6cfbe21fa910e365434f1732dc29955a1f29e425c1748d5b871ac",
+   "sha256": "01edc6079d46c9b5cebc0d1788ad30f30d8a2d00e91673427caa29b6f3eddfdd",
    "to_dict": {
     "components": [
      {
@@ -1424,7 +1424,7 @@
         "x_ohm": 0.00456
        }
       ],
-      "method": "Z_loop = Σ(R_i + jX_i)",
+      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
       "result": {
        "magnitude_ohm": 0.7149376440641518,
        "r_total_ohm": 0.7076499999999999,
@@ -1437,7 +1437,7 @@
       "c_min": 0.95,
       "ik_max_a": 337.7916969473915,
       "ik_min_a": 305.621059142878,
-      "method": "I_k = c * U_n / |Z_loop|",
+      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
       "step": "compute_ik",
       "u_nom_v": 230.0,
       "z_magnitude_ohm": 0.7149376440641518

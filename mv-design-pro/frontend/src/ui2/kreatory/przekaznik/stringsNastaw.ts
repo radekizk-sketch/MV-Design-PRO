@@ -27,7 +27,7 @@ export const NASTAWY_STRINGS = {
   brakPrzypadku: 'Brak aktywnego przypadku — nastaw nie ma gdzie zapisać.',
   obwodTytul: 'Obwód wtórny przekładnika prądowego',
   obwodOpis:
-    'Z tych danych backend liczy nasycenie przekładnika (ALF_eff wg IEC 61869-2) — bez długości '
+    'Z tych danych backend liczy nasycenie przekładnika (efektywny współczynnik granicy dokładności wg IEC 61869-2) — bez długości '
     + 'i przekroju przewodów wiarygodność punktów oceny zabezpieczenia pozostaje nieustalona.',
   obwodDlugosc: 'Długość przewodów (w jedną stronę)',
   obwodPrzekroj: 'Przekrój żyły',

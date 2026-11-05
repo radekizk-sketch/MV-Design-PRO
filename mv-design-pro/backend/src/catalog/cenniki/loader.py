@@ -245,7 +245,9 @@ def _zrodlo(surowe: object, gdzie: str) -> ZrodloCeny:
 def _pozycja(surowa: object, indeks: int) -> PozycjaCennika:
     gdzie = f"Pozycja {indeks + 1} cennika"
     if not isinstance(surowa, Mapping):
-        raise BladCennika(f"{gdzie}: oczekiwano sekcji z polami type_id, jednostka, ceny.")
+        raise BladCennika(
+            f"{gdzie}: oczekiwano sekcji z polami: identyfikator typu, jednostka, ceny."
+        )
     type_id = _napis(surowa.get("type_id"))
     if type_id is None:
         raise BladCennika(f"{gdzie}: brak identyfikatora typu katalogowego.")

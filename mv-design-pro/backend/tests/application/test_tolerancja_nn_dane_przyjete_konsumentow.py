@@ -381,11 +381,14 @@ def test_swz_tn_i_dobor_aparatu(deklaracja: str) -> None:
     assert dobor["dobor"]["kandydaci"]
     for kandydat in dobor["dobor"]["kandydaci"]:
         kryteria = {k["nazwa"]: k for k in kandydat["kryteria"]}
-        swz_kandydata = kryteria["SWZ przy Ik_min"]
+        swz_kandydata = kryteria["Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"]
         assert ("dane_przyjete" in swz_kandydata) is robocza
         assert (swz_kandydata.get("status_danych") == "UNVALIDATED_INPUT") is robocza
-        assert "dane_przyjete" not in kryteria["Zdolność wyłączania >= Ik″max"]
-        assert "dane_przyjete" not in kryteria["Ib<=In<=Iz′"]
+        assert "dane_przyjete" not in kryteria["Zdolność wyłączania ≥ maksymalny prąd zwarciowy"]
+        assert (
+            "dane_przyjete"
+            not in kryteria["Prąd obciążenia ≤ prąd znamionowy ≤ obciążalność przewodu"]
+        )
 
 
 @pytest.mark.parametrize("deklaracja", sorted(DEKLARACJE_TRAFO))

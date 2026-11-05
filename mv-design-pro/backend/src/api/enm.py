@@ -117,6 +117,7 @@ from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request, Response
 from network_model.catalog.materialization import pozycja_w_katalogu
 from pydantic import BaseModel, Field
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 logger = logging.getLogger(__name__)
 
@@ -848,16 +849,31 @@ def get_topology_summary(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+#: Kody operacji topologicznej przyjmowane przez ``TopologyOpRequest.op`` (zapis maszynowy).
+KODY_OPERACJI_TOPOLOGII: tuple[IdentyfikatorKontraktu, ...] = (
+    "create_node",
+    "update_node",
+    "delete_node",
+    "create_branch",
+    "update_branch",
+    "delete_branch",
+    "create_device",
+    "update_device",
+    "delete_device",
+    "create_measurement",
+    "delete_measurement",
+    "attach_protection",
+    "update_protection",
+    "detach_protection",
+)
+
+
 class TopologyOpRequest(BaseModel):
     """Żądanie operacji topologicznej."""
 
     op: str = Field(
         ...,
-        description="Typ operacji (create_node, update_node, delete_node, "
-        "create_branch, update_branch, delete_branch, "
-        "create_device, update_device, delete_device, "
-        "create_measurement, delete_measurement, "
-        "attach_protection, update_protection, detach_protection)",
+        description=f"Typ operacji ({', '.join(KODY_OPERACJI_TOPOLOGII)})",
     )
     data: dict[str, Any] = Field(default_factory=dict, description="Dane operacji")
 

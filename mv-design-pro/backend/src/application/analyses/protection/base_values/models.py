@@ -388,7 +388,7 @@ SETPOINT_BASIS_LABELS_PL: dict[ProtectionSetpointBasis, str] = {
 SETPOINT_OPERATOR_LABELS_PL: dict[ProtectionSetpointOperator, str] = {
     ProtectionSetpointOperator.LT: "mniejszy niż (<)",
     ProtectionSetpointOperator.GT: "większy niż (>)",
-    ProtectionSetpointOperator.GE: "większy lub równy (>=)",
-    ProtectionSetpointOperator.LE: "mniejszy lub równy (<=)",
+    ProtectionSetpointOperator.GE: "większy lub równy (≥)",
+    ProtectionSetpointOperator.LE: "mniejszy lub równy (≤)",
     ProtectionSetpointOperator.EQ: "równy (=)",
 }

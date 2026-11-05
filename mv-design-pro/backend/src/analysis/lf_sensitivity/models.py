@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,8 @@ class LFSensitivityContext:
 @dataclass(frozen=True)
 class LFSensitivityDriver:
     bus_id: str
-    parameter: str
+    #: Identyfikator parametru zaburzanego (klucz sortowania i odczytu), nie tekst dla projektanta.
+    parameter: IdentyfikatorKontraktu
     perturbation: str
     delta_delta_pct: float
     delta_margin_pct: float | None

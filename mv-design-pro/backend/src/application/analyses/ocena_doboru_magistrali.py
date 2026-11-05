@@ -380,7 +380,7 @@ def _ocena_obciazalnosci(r: _Rozwiazany, napiecie_kv: float) -> OcenaKryterium:
     if r.brak_typu is not None:
         braki.append(r.brak_typu)
     if r.odcinek.prad_roboczy_a is None:
-        braki.append("prąd roboczy odcinka I_B — bez niego nie ma czego porównać z obciążalnością")
+        braki.append("prąd roboczy odcinka — bez niego nie ma czego porównać z obciążalnością")
     if r.typ is not None:
         if r.odcinek.prad_roboczy_a is not None:
             wynik = WynikKryterium(
@@ -449,7 +449,8 @@ def _ocena_obciazalnosci(r: _Rozwiazany, napiecie_kv: float) -> OcenaKryterium:
             OdnosnikSladu(
                 krok=f"magistrala-sn:odcinek-{r.indeks}:obciazalnosc",
                 opis_pl=(
-                    f"I_B = {prad_sladu} (projektant); I_z = {sladu_iz} (karta katalogowa, "
+                    f"prąd roboczy {prad_sladu} (projektant); obciążalność {sladu_iz} (karta "
+                    "katalogowa, "
                     "warunki odniesienia producenta)"
                 ),
             ),

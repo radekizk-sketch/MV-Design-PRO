@@ -365,7 +365,7 @@ class ReactiveAdequacyBuilder:
                         f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; " f"{_round(u_max)}] p.u."
                     ),
                     result_pl=f"ΔU = {dev} p.u. ({kind})",
-                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyżej $U_{max}$, − poniżej $U_{min}$.",
+                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyżej Umax, − poniżej Umin.",
                 ),
             )
             out.append(
@@ -415,7 +415,7 @@ class ReactiveAdequacyBuilder:
                 symbol="ΣQ_zrodla",
                 formula_latex=r"\sum Q_{źródła} = \sum_i Q_{akt,i}",
                 substitution_pl=(
-                    f"$Q_{{gen}}$(+) = {q_gen} Mvar; $Q_{{abs}}$(−) = {q_abs} Mvar; "
+                    f"Qgen(+) = {q_gen} Mvar; Qabs(−) = {q_abs} Mvar; "
                     f"netto = {net_source} Mvar"
                 ),
                 result_pl=f"ΣQ_zrodla(netto) = {net_source} Mvar",

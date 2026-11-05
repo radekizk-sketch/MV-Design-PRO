@@ -279,7 +279,7 @@ OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
         "Obliczenie rozpływu nie osiągnęło zbieżności — wynik nie nadaje się do raportu."
     ),
     OGRANICZENIE_POZA_ZAKRESEM_IEC60909: (
-        "Zwarcie przez impedancję przejścia Z_f jest poza zakresem normy IEC 60909, która "
+        "Zwarcie przez impedancję przejścia jest poza zakresem normy IEC 60909, która "
         "definiuje prąd zwarciowy dla zwarcia metalicznego — wynik nie jest podstawą doboru "
         "wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
     ),
@@ -1329,7 +1329,7 @@ def create_run(
         # staje się biegiem, który upadnie dopiero w kolejce wykonawcy.
         if analysis_type != "short_circuit_sn":
             raise OdmowaNazwana(
-                "Impedancja przejścia Z_f dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
+                "Impedancja przejścia dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
                 "biegu jej nie czyta.",
                 kod=KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM,
                 dane={"analysis_type": analysis_type},

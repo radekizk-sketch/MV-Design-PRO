@@ -59,6 +59,7 @@ import {
   fieldRoleLabelPl,
   isSourceFieldRole,
 } from '../../sld/v2/station-rozdzielnia/contract';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama';
 
 /** „Pola pomiarowe” — liczba mnoga etykiety roli z kanonu ról pól SN (jedno słownictwo). */
 const ETYKIETA_POL_POMIAROWYCH = fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.POMIAROWE);
@@ -642,9 +643,9 @@ function DoziemienieSekcji({
 }): JSX.Element {
   const wartosci: [string, string | null][] = [
     [`Prąd doziemienia (${doziemienie.charakter_pl})`, fmtA(doziemienie.prad_a)],
-    ['Prąd pojemnościowy I_C', fmtA(doziemienie.i_c_a)],
-    ['Prąd indukcyjny I_L', fmtA(doziemienie.i_l_a)],
-    ['Składowa czynna I_w', fmtA(doziemienie.i_w_a)],
+    ['Prąd pojemnościowy', fmtA(doziemienie.i_c_a)],
+    ['Prąd indukcyjny dławika', fmtA(doziemienie.i_l_a)],
+    ['Składowa czynna prądu doziemienia', fmtA(doziemienie.i_w_a)],
     ['Napięcie składowej zerowej U0', fmtV(doziemienie.u0_v)],
     ['Współczynnik zwarcia doziemnego k', doziemienie.wspolczynnik_k === null ? null : doziemienie.wspolczynnik_k.toFixed(3)],
   ];
@@ -662,7 +663,7 @@ function DoziemienieSekcji({
       </div>
       {doziemienie.brak_pl ? <div className="text-scada-grounded">{doziemienie.brak_pl}</div> : null}
       <div className="text-scada-muted" title={doziemienie.zastrzezenia_pl.join(' ')}>
-        {doziemienie.podstawa_pl}
+        <TekstZWzorami tekst={doziemienie.podstawa_pl} />
       </div>
     </div>
   );
@@ -717,7 +718,7 @@ function StationEarthingPanel({
                 value={sekcja.prad_dlawikow_a === null ? 'brak dławika w ruchu' : `${sekcja.prad_dlawikow_a.toFixed(1)} A`}
               />
               <Fact
-                label="Rozstrojenie kompensacji v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)"
+                label="Rozstrojenie kompensacji — różnica prądu pojemnościowego i indukcyjnego względem pojemnościowego (dodatnie — niedokompensowanie)"
                 value={sekcja.rozstrojenie === null ? 'nie dotyczy' : `${(sekcja.rozstrojenie * 100).toFixed(1)} %`}
               />
               <Fact label="Kompletność danych" value={ETYKIETA_KOMPLETNOSCI[sekcja.kompletnosc]} />

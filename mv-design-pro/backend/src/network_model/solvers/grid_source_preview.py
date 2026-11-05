@@ -100,9 +100,9 @@ def _build_positive_sequence_impedance(data: GridSourcePreviewInput, c: float) -
     mode = data.short_circuit_mode.upper().strip()
     if mode == "IMPEDANCE":
         if data.r_ohm is None or data.r_ohm < 0:
-            raise OdmowaDanychError("r_ohm must be non-negative in impedance mode")
+            raise OdmowaDanychError("Rezystancja źródła w trybie impedancyjnym musi być nieujemna.")
         if data.x_ohm is None or data.x_ohm <= 0:
-            raise OdmowaDanychError("x_ohm must be positive in impedance mode")
+            raise OdmowaDanychError("Reaktancja źródła w trybie impedancyjnym musi być dodatnia.")
         return complex(data.r_ohm, data.x_ohm)
 
     if data.sk3_mva is None or data.sk3_mva <= 0:

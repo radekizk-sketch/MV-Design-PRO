@@ -22,6 +22,7 @@ from dziedziny.kanon import Dodatnia, KontraktDziedziny, Nieujemna, naruszenie
 from dziedziny.widmo import DziedzinaWidmowa, ModelZrodlaWidmowego
 from pydantic import model_validator
 from werdykt.kontrakt import PodstawaWymagania, Tekst
+from werdykt.wyjasnienie import format_liczba
 
 
 class PasmoWidma(KontraktDziedziny):
@@ -43,16 +44,17 @@ class PasmoWidma(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "pasmo.definicja",
-                    f"Pasmo '{self.ident}': f_min < f_max wymagane ({self.f_min_hz} ≥ "
-                    f"{self.f_max_hz} Hz).",
+                    f"Pasmo '{self.ident}': wymaga częstotliwości dolnej mniejszej od górnej "
+                    f"({format_liczba(self.f_min_hz)} ≥ {format_liczba(self.f_max_hz)} Hz).",
                 )
             )
         if self.pasmo_agregacji_hz < self.rozdzielczosc_hz:
             raise ValueError(
                 naruszenie(
                     "pasmo.definicja",
-                    f"Pasmo '{self.ident}': pasmo agregacji {self.pasmo_agregacji_hz} Hz węższe od "
-                    f"rozdzielczości {self.rozdzielczosc_hz} Hz.",
+                    f"Pasmo '{self.ident}': pasmo agregacji "
+                    f"{format_liczba(self.pasmo_agregacji_hz)} Hz węższe od rozdzielczości "
+                    f"{format_liczba(self.rozdzielczosc_hz)} Hz.",
                 )
             )
         return self

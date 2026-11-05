@@ -254,13 +254,13 @@ def test_p_limit_missing_pct_raises() -> None:
 
 def test_moc_bierna_missing_q_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="q_mvar"):
+    with pytest.raises(ValueError, match="wymaga zadanej wartości \\[Mvar\\]"):
         build_osd_response_view(run, source_ref=SOURCE, command="moc_bierna")
 
 
 def test_cosfi_missing_charakter_raises() -> None:
     run = _golden_pf_run()
-    with pytest.raises(ValueError, match="q_charakter"):
+    with pytest.raises(ValueError, match="charakteru mocy biernej"):
         build_osd_response_view(run, source_ref=SOURCE, command="cosfi", cos_phi=0.95)
 
 

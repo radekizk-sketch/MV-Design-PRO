@@ -290,7 +290,7 @@ def _existing_generation(snapshot: dict[str, Any], bus_ref: str) -> dict[str, fl
         p_mw = gen.get("p_mw")
         if p_mw is None:
             logger.warning(
-                "Generator %r na szynie %r bez pola p_mw w migawce — pominięty "
+                "Generator %r na szynie %r bez mocy czynnej w migawce — pominięty "
                 "w sumie generacji istniejącej (nie liczony jako 0 MW).",
                 gen.get("ref_id"),
                 bus_ref,

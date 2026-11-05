@@ -46,7 +46,7 @@ from network_model.solvers.equipment_checks.slad import (
 READINESS_TRANSFORMER_LOSS_DATA_MISSING = "transformer.loss_data_missing"
 READINESS_TRANSFORMER_LOADING_FACTOR_MISSING = "transformer.loading_factor_missing"
 
-_FORMULA_REF = "ΔP(β) = P0 + β²·Pk;  β_opt = √(P0/Pk)"
+_FORMULA_REF = r"$\Delta P(\beta) = P_0 + \beta^2 \cdot P_k$; $\beta_{opt} = \sqrt{P_0 / P_k}$"
 
 
 @dataclass(frozen=True)
@@ -150,12 +150,13 @@ def compute_transformer_losses(data: TransformerLossesInput) -> TransformerLosse
             sn_mva=sn,
         ),
         assumptions=(
-            "Straty jalowe P0 nie zaleza od obciazenia (rdzen pod napieciem znamionowym).",
-            "Straty obciazeniowe rosna z kwadratem wspolczynnika obciazenia: β²·Pk.",
-            "P0 i Pk pochodza z pozycji katalogowej transformatora (pomiar wyrobu), "
-            "nie z wartosci typowej dla mocy.",
-            "β_opt minimalizuje straty WZGLEDNE (ΔP/S); w tym punkcie P0 = β²·Pk.",
-            "Rachunek pomija zaleznosc Pk od temperatury uzwojen (odniesienie do "
+            "Straty jałowe P0 nie zależą od obciążenia (rdzeń pod napięciem znamionowym).",
+            "Straty obciążeniowe rosną z kwadratem współczynnika obciążenia: β²·Pk.",
+            "P0 i Pk pochodzą z pozycji katalogowej transformatora (pomiar wyrobu), "
+            "nie z wartości typowej dla mocy.",
+            "Optymalny współczynnik obciążenia minimalizuje straty WZGLĘDNE (straty odniesione "
+            "do mocy przenoszonej); w tym punkcie straty jałowe równają się obciążeniowym.",
+            "Rachunek pomija zależność Pk od temperatury uzwojeń (odniesienie do "
             "temperatury pomiaru katalogowego).",
         ),
     )
@@ -260,8 +261,9 @@ def _slad_strat(
                 "straty_opt_kw": wartosc(straty_opt_kw, "kW", "Straty w punkcie optymalnym"),
             },
             "notes": (
-                "W punkcie β_opt straty obciążeniowe zrównują się z jałowymi "
-                "(P0 = β_opt²·Pk) — to warunek minimum strat względnych ΔP/S."
+                "W punkcie optymalnego współczynnika obciążenia straty obciążeniowe zrównują "
+                "się z jałowymi — to warunek minimum strat względnych (strat odniesionych do "
+                "mocy przenoszonej)."
             ),
         }
     )

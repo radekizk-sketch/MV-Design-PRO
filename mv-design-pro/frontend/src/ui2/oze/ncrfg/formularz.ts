@@ -85,9 +85,9 @@ export const ETYKIETY_POL_WEJSCIA: Readonly<Record<PoleLiczboweWejscia, string>>
 
 /** Etykiety pól nastaw zabezpieczeń (słownik Banku Nastaw, jednostki z nazw pól). */
 export const ETYKIETY_POL_NASTAW: Readonly<Record<PoleNastawy, string>> = {
-  u_min_pu: 'U< — próg [p.u. $U_n$]',
+  u_min_pu: 'U< — próg [p.u. napięcia znamionowego]',
   u_min_czas_s: 'U< — czas [s]',
-  u_max_pu: 'U> — próg [p.u. $U_n$]',
+  u_max_pu: 'U> — próg [p.u. napięcia znamionowego]',
   u_max_czas_s: 'U> — czas [s]',
   f_min_hz: 'f< — próg [Hz]',
   f_min_czas_s: 'f< — czas [s]',

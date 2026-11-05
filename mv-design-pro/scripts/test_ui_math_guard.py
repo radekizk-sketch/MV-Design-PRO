@@ -144,7 +144,9 @@ def test_skanuj_ts_ignoruje_kod_w_interpolacji_template_literal(tmp_path: Path) 
     assert wyniki == []
 
 
-def test_skanuj_ts_wykrywa_ascii_w_czesci_literalnej_template_literal(tmp_path: Path) -> None:
+def test_skanuj_ts_wykrywa_ascii_w_czesci_literalnej_template_literal(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "Przyklad.tsx"
     plik.write_text(
         "const opis = `wartosc ${x} spelnia U_dot <= U_dot,dop`;\n",
@@ -214,7 +216,9 @@ def test_skanuj_py_stala_kodu_a_symbol_w_prozie(
 def test_skan_backendu_obejmuje_cale_src() -> None:
     """Skan backendu to CAŁE `backend/src` (karta PROZA-BEZ-SYMBOLI-ASCII) — także moduły prozy
     aparatury pól (karta KD6) i rdzenie B-01; żadnej listy plików wyłączonych."""
-    wzgledne = {p.relative_to(guard.BACKEND_SRC).as_posix() for p in guard.pliki_backendu()}
+    wzgledne = {
+        p.relative_to(guard.BACKEND_SRC).as_posix() for p in guard.pliki_backendu()
+    }
     wszystkie = {
         p.relative_to(guard.BACKEND_SRC).as_posix()
         for p in guard.BACKEND_SRC.rglob("*.py")
@@ -270,10 +274,13 @@ def test_skanuj_py_nie_wybucha_na_niedomknietym_stringu(tmp_path: Path) -> None:
     assert "zepsuty.py:1:" in str(wyjatek.value)
 
 
-def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Path) -> None:
+def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "przyklad.py"
     plik.write_text(
-        '"""Docstring modulu bez ASCII-matematyki."""\n' "wartosc = 'U_dot <= U_dot,dop'\n",
+        '"""Docstring modulu bez ASCII-matematyki."""\n'
+        "wartosc = 'U_dot <= U_dot,dop'\n",
         encoding="utf-8",
     )
 
@@ -294,7 +301,9 @@ def test_wyjatki_znane_jedyny_wpis_nie_jest_osierocony() -> None:
 
 
 def test_wyjatki_osierocone_wykrywa_brakujacy_plik(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset({("nigdy/nieistniejacy.py", 1)}))
+    monkeypatch.setattr(
+        guard, "WYJATKI_ZNANE", frozenset({("nigdy/nieistniejacy.py", 1)})
+    )
 
     problemy = guard.wyjatki_osierocone(tmp_path)
 
@@ -303,7 +312,9 @@ def test_wyjatki_osierocone_wykrywa_brakujacy_plik(monkeypatch, tmp_path: Path) 
     assert "juz nie ma w repo" in problemy[0]
 
 
-def test_wyjatki_osierocone_wykrywa_linie_bez_trafienia(monkeypatch, tmp_path: Path) -> None:
+def test_wyjatki_osierocone_wykrywa_linie_bez_trafienia(
+    monkeypatch, tmp_path: Path
+) -> None:
     plik = tmp_path / "czysty.py"
     plik.write_text("wartosc = 'zwykla proza bez ASCII-matematyki'\n", encoding="utf-8")
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset({("czysty.py", 1)}))
@@ -327,7 +338,9 @@ def test_wyjatki_znane_wylaczaja_trafienie_z_pin(monkeypatch, tmp_path: Path) ->
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
     monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
     monkeypatch.setattr(guard, "PINY_BACKENDU", {})
-    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset({("frontend/src/ui2/Plik.tsx", 1)}))
+    monkeypatch.setattr(
+        guard, "WYJATKI_ZNANE", frozenset({("frontend/src/ui2/Plik.tsx", 1)})
+    )
     monkeypatch.setattr(guard, "PIN", 0)
 
     assert guard.main() == 0
@@ -338,7 +351,9 @@ def test_wyjatki_znane_wylaczaja_trafienie_z_pin(monkeypatch, tmp_path: Path) ->
 # ---------------------------------------------------------------------------
 
 
-def test_main_zwraca_1_gdy_brak_katalogu_frontendowego(monkeypatch, tmp_path: Path) -> None:
+def test_main_zwraca_1_gdy_brak_katalogu_frontendowego(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(guard, "FRONTEND_UI2", tmp_path / "nigdy-nie-istnieje")
 
     assert guard.main() == 1
@@ -376,7 +391,9 @@ def test_main_zwraca_0_gdy_pin_dotrzymany(monkeypatch, tmp_path: Path) -> None:
     frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
     frontend_ui2.mkdir(parents=True)
     plik = frontend_ui2 / "Plik.tsx"
-    plik.write_text("const opis = 'zwykly tekst bez ASCII-matematyki';\n", encoding="utf-8")
+    plik.write_text(
+        "const opis = 'zwykly tekst bez ASCII-matematyki';\n", encoding="utf-8"
+    )
     backend_src = tmp_path / "backend" / "src"
     backend_src.mkdir(parents=True)
     (backend_src / "modul.py").write_text("wartosc = 1\n", encoding="utf-8")
@@ -461,11 +478,17 @@ def test_goly_indeks_nie_wykryty_we_wzorze_i_w_kodzie(tekst: str) -> None:
 
 def test_stala_kodu_jest_kodem_tylko_poza_kontekstem_tekstu_ui() -> None:
     # Predykat parami: ta sama wartość jest kodem albo etykietą — decyduje kontekst, nie treść.
-    assert not any(GOLY in t for t in guard._dopasowania("I_A", stala_kodu_dozwolona=True))
+    assert not any(
+        GOLY in t for t in guard._dopasowania("I_A", stala_kodu_dozwolona=True)
+    )
     assert any(GOLY in t for t in guard._dopasowania("I_A", stala_kodu_dozwolona=False))
-    assert not any(GOLY in t for t in guard._dopasowania("V_MAGNITUDE", stala_kodu_dozwolona=True))
+    assert not any(
+        GOLY in t for t in guard._dopasowania("V_MAGNITUDE", stala_kodu_dozwolona=True)
+    )
     # Proza ze spacją nigdy nie jest stałą kodu.
-    assert any(GOLY in t for t in guard._dopasowania("Prąd I_A", stala_kodu_dozwolona=True))
+    assert any(
+        GOLY in t for t in guard._dopasowania("Prąd I_A", stala_kodu_dozwolona=True)
+    )
 
 
 def test_skanuj_ts_stala_kodu_poza_modulem_tekstow_przechodzi(tmp_path: Path) -> None:
@@ -486,16 +509,21 @@ def test_skanuj_ts_ta_sama_stala_w_module_tekstow_jest_etykieta(tmp_path: Path) 
     assert [(n, GOLY in powod) for n, _l, powod in wyniki] == [(2, True)]
 
 
-def test_skanuj_ts_stala_jako_wartosc_wlasciwosci_tekstowej_jest_etykieta(tmp_path: Path) -> None:
+def test_skanuj_ts_stala_jako_wartosc_wlasciwosci_tekstowej_jest_etykieta(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "model.ts"
     plik.write_text(
-        "const k = { klucz: 'u', etykieta: 'U_m', jednostka: 'kV' };\n", encoding="utf-8"
+        "const k = { klucz: 'u', etykieta: 'U_m', jednostka: 'kV' };\n",
+        encoding="utf-8",
     )
     wyniki = guard.skanuj_ts(plik)
     assert len(wyniki) == 1 and GOLY in wyniki[0][2]
 
 
-def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(tmp_path: Path) -> None:
+def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(
+    tmp_path: Path,
+) -> None:
     """Para cech: {wlasciwosc LaTeX `symbolLatex:`/`formula_latex:`, wlasciwosc tekstowa} ×
     {ta sama linia, osobne linie}. Wartosc pola LaTeX jest zrodlem `MathInline` (jak `*_latex`
     w Pythonie), etykieta z gołym indeksem w tej samej linii pozostaje wykryta."""
@@ -513,11 +541,15 @@ def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(tmp_path: 
 
 def test_skanuj_ts_pomija_komentarz_blokowy(tmp_path: Path) -> None:
     plik = tmp_path / "Plik.tsx"
-    plik.write_text("/** Etykieta: `nazwa · I_Δn w mA`. */\nconst x = 1;\n", encoding="utf-8")
+    plik.write_text(
+        "/** Etykieta: `nazwa · I_Δn w mA`. */\nconst x = 1;\n", encoding="utf-8"
+    )
     assert guard.skanuj_ts(plik) == []
 
 
-def test_skanuj_py_pola_latex_i_identyfikator_symbolu_w_parze_pominiete(tmp_path: Path) -> None:
+def test_skanuj_py_pola_latex_i_identyfikator_symbolu_w_parze_pominiete(
+    tmp_path: Path,
+) -> None:
     plik = tmp_path / "katalog.py"
     plik.write_text(
         "from dataclasses import dataclass\n"
@@ -680,7 +712,10 @@ def test_adnotacja_zapis_latex_z_innego_modulu(
         ),
         ("def f(a):\n    s = 'I_k'\n", 1),
         # krotka celów: wszystkie z adnotacją — wzór; jeden bez — proza
-        ("def f():\n    r: ZapisLatex\n    x: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 0),
+        (
+            "def f():\n    r: ZapisLatex\n    x: ZapisLatex\n    r, x = ('R_k', 'X_k')\n",
+            0,
+        ),
         ("def f():\n    r: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 2),
         # wartość zwracana funkcji `-> ZapisLatex`; zagnieżdżona funkcja ma własny typ zwrotu
         ("def f() -> ZapisLatex:\n    return 'I_k'\n", 0),
@@ -698,7 +733,9 @@ def test_adnotacja_zapis_latex_zmiennych_i_zwrotu(
     monkeypatch, tmp_path: Path, kod: str, trafienia: int
 ) -> None:
     src = _src_z_modulami(
-        monkeypatch, tmp_path, modul="from werdykt.zapis_latex import ZapisLatex\n" + kod
+        monkeypatch,
+        tmp_path,
+        modul="from werdykt.zapis_latex import ZapisLatex\n" + kod,
     )
     assert len(guard.skanuj_py(src / "modul.py")) == trafienia
 
@@ -751,7 +788,12 @@ def test_wzorce_skladni_sprawdzane_na_prozie_poza_segmentem(
     ],
 )
 def test_zapadka_backendu_per_plik_w_obie_strony(
-    monkeypatch, tmp_path: Path, capsys, piny: dict[str, int], oczekiwany_kod: int, znacznik
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+    piny: dict[str, int],
+    oczekiwany_kod: int,
+    znacznik,
 ) -> None:
     """Zapadka per plik: pomiar = pin (zielono); nowe trafienie, pin zawyżony i wpis osierocony
     — każde czerwieni strażnika z nazwanym powodem."""
@@ -794,3 +836,166 @@ def test_skanuj_py_klucz_struktury_danych_jest_identyfikatorem(tmp_path: Path) -
         encoding="utf-8",
     )
     assert [numer for numer, _linia, _powod in guard.skanuj_py(plik)] == [2, 3]
+
+
+_MODUL_IDENTYFIKATOROW = (
+    "from dataclasses import dataclass\n"
+    "from werdykt.zapis_latex import IdentyfikatorKontraktu\n"
+    "@dataclass\n"
+    "class Krok:\n"
+    "    symbol: IdentyfikatorKontraktu\n"
+    "    opis: str\n"
+    "KOLUMNY: dict[IdentyfikatorKontraktu, type] = {'I_k_ka': float}\n"
+    "KODY: tuple[IdentyfikatorKontraktu, ...] = ('pole_I_k',)\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("uzycie", "trafienia"),
+    [
+        # identyfikator kontraktu (klucz wyniku, kolumna, kod) — czytany maszynowo, poza prozą
+        ("from typy import Krok\nk = Krok('I_k', 'prąd zwarciowy')\n", 0),
+        ("from typy import Krok\nk = Krok(symbol='I_k', opis='prąd zwarciowy')\n", 0),
+        # pole prozy obok identyfikatora — skanowane
+        ("from typy import Krok\nk = Krok('I_k', 'prąd I_k w punkcie')\n", 1),
+        # zmienna z adnotacją identyfikatora i dopisanie do niej (AugAssign)
+        (
+            "from werdykt.zapis_latex import IdentyfikatorKontraktu\n"
+            "def f():\n    k: IdentyfikatorKontraktu = 'I_k'\n    k += 'I_b'\n    return k\n",
+            0,
+        ),
+        # dopisanie do zmiennej bez adnotacji — proza, trafienie
+        ("def f():\n    k = 'prąd'\n    k += ' I_k'\n    return k\n", 1),
+    ],
+)
+def test_adnotacja_identyfikatora_kontraktu(
+    monkeypatch, tmp_path: Path, uzycie: str, trafienia: int
+) -> None:
+    """Iloczyn: {pole/zmienna z `IdentyfikatorKontraktu` · pole prozy obok} × {pozycyjnie ·
+    nazwanie · przypisanie z dopisaniem} — adnotacja wyłącza identyfikatory jak `ZapisLatex`
+    wzory, a proza w sąsiednim polu nadal jest skanowana."""
+    src = _src_z_modulami(
+        monkeypatch, tmp_path, typy=_MODUL_IDENTYFIKATOROW, uzycie=uzycie
+    )
+    assert len(guard.skanuj_py(src / "typy.py")) == 0
+    assert len(guard.skanuj_py(src / "uzycie.py")) == trafienia
+
+
+@pytest.mark.parametrize(
+    ("literal", "trafienie"),
+    [
+        # cały literał jest adresem URL albo instrukcją SQL — nie jest prozą dla inżyniera
+        ("'https://example.org/norma?a_b=1&c_d=2'", False),
+        ("'SELECT run_id, I_k_ka FROM wyniki WHERE a_b = 1'", False),
+        # adres wewnątrz zdania nie wyłącza prozy z symbolem
+        ("'Patrz https://example.org — prąd I_k'", True),
+        # słowo kluczowe SQL nie na początku literału — proza
+        ("'Wybierz SELECT dla I_k'", True),
+    ],
+)
+def test_adres_url_i_instrukcja_sql_poza_proza(
+    tmp_path: Path, literal: str, trafienie: bool
+) -> None:
+    plik = tmp_path / "przyklad.py"
+    plik.write_text(f"wartosc = {literal}\n", encoding="utf-8")
+    assert bool(guard.skanuj_py(plik)) is trafienie
+
+
+@pytest.mark.parametrize(
+    ("linia", "trafienia"),
+    [
+        # klucz wzoru w cudzysłowie (dane generowane) i właściwość JSX `latex` — wzór, nie proza
+        ('  "formula_latex": "Z_k = Z_1",\n', 0),
+        ('<FormulaBlock label="Zapis" latex="Z_k = Z_1" />\n', 0),
+        ("<FormulaBlock latex={`Z_1 = ${z}`} />\n", 0),
+        # klucz obiektu (nazwa pola) — kod; ta sama wartość w ternarnym wyrażeniu — tekst ekranu
+        ("  'Load.p_mw': [requiredNumber],\n", 0),
+        ("const e = ok ? 'Prąd I_k' : 'Prąd I_b';\n", 2),
+        # `_slowo,` w napisie bez odstępów (klasa CSS) — kod; w zdaniu — proza
+        ("const k = 'bg-[radial-gradient(circle_at_top_left,rgba(1,2,3,0.1))]';\n", 0),
+        ("const t = 'Rejestr solver_capability_registry, wynik';\n", 1),
+    ],
+)
+def test_skanuj_ts_klucze_wzoru_klucze_obiektu_i_kod_css(
+    tmp_path: Path, linia: str, trafienia: int
+) -> None:
+    """Iloczyn: {klucz wzoru w cudzysłowie · właściwość JSX `latex` · klucz obiektu · wartość
+    ternarna · napis bez odstępów · zdanie} — wyłączenia działają tylko na kod i wzór.
+    """
+    plik = tmp_path / "Komponent.tsx"
+    plik.write_text(linia, encoding="utf-8")
+    assert len(guard.skanuj_ts(plik)) == trafienia
+
+
+def test_skan_frontendu_obejmuje_ui_i_ui2(monkeypatch, tmp_path: Path, capsys) -> None:
+    """Warstwa `ui/**` (sąsiad `ui2/**`) jest skanowana z tym samym pinem: goły symbol w etykiecie
+    `ui/` czerwieni strażnika tak samo jak w `ui2/`."""
+    ui2 = tmp_path / "frontend" / "src" / "ui2"
+    ui = tmp_path / "frontend" / "src" / "ui"
+    ui2.mkdir(parents=True)
+    ui.mkdir(parents=True)
+    (ui / "Etykieta.tsx").write_text(
+        "const e = { label: 'Prąd I_th [kA]' };\n", encoding="utf-8"
+    )
+    _src_z_modulami(monkeypatch, tmp_path, modul="x = 1\n")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_UI2", ui2)
+    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
+    assert [p.name for p in guard.pliki_frontendu()] == ["Etykieta.tsx"]
+    assert guard.main() == 1
+    assert "frontend/src/ui/Etykieta.tsx" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("tresc", "trafienia"),
+    [
+        # tekst JSX w jednej linii i rozpisany na linie — renderowany wprost, skanowany
+        ("<dt>Prąd zwarciowy I_th</dt>\n", 1),
+        ("<label>\n  Czas trwania zwarcia t_k [s]\n</label>\n", 1),
+        # wzór przez komponent (literał z segmentem `$…$`) i słowa — czyste
+        ('<dt><TekstZWzorami tekst="Prąd $I_{th}$" /></dt>\n', 0),
+        ("<dt>Prąd zwarciowy cieplny</dt>\n", 0),
+        # kod w ciele JSX: wywołanie, wywołanie opcjonalne, ternarne gałęzie, komentarz blokowy
+        ("<b>\n  fetchX(a.b_c, d)\n</b>\n", 0),
+        ("<b>\n  onRowClick?.(x.up_id, x.down_id)\n</b>\n", 0),
+        ("{ok\n  ? x.k_sc.toFixed(2)\n  : '—'}\n", 0),
+        ("{/* ślad Z_Q wyżej,\n   oba scenariusze c_max/c_min */}\n", 0),
+    ],
+)
+def test_skanuj_ts_tekst_jsx(tmp_path: Path, tresc: str, trafienia: int) -> None:
+    """Iloczyn: {tekst w linii · tekst rozpisany} × {goły symbol · wzór `$…$` · słowa} oraz kod
+    w ciele JSX (wywołania, ternarne gałęzie, komentarz) — tekst JSX nie jest literałem napisu,
+    więc bez osobnego skanu goła etykieta `<dt>Prąd I_th</dt>` przechodziła niezauważona.
+    """
+    plik = tmp_path / "Komponent.tsx"
+    plik.write_text(tresc, encoding="utf-8")
+    assert len(guard.skanuj_ts(plik)) == trafienia
+    # ten sam tekst w module `.ts` (bez JSX) nie jest skanowany jako tekst JSX
+    plik_ts = tmp_path / "modul.ts"
+    plik_ts.write_text(tresc, encoding="utf-8")
+    assert len(guard.skanuj_ts(plik_ts)) <= trafienia
+
+
+@pytest.mark.parametrize(
+    ("literal", "trafiony"),
+    [
+        # podstawa jednoliterowa × {odstęp, bez odstępu}: proza i krótki napis są skanowane
+        ("prąd I_k zwarcia", True),
+        ("I_k", True),
+        # podstawa wieloliterowa × odstęp: symbol w prozie
+        ("współczynnik ALF_eff przekładnika", True),
+        ("kolumna RX_min arkusza", True),
+        # podstawa wieloliterowa × bez odstępu: identyfikator (źródło, klucz), nie proza
+        ("norma:NC_RfG;std:DFIG_converter", False),
+        ("RX_min", False),
+        # podstawa wieloliterowa × indeks w klamrach: fragment segmentu `$…$` rozciętego f-stringiem
+        ("$ALF_{eff} = ", False),
+    ],
+)
+def test_goly_indeks_wieloliterowy_tylko_w_prozie(literal: str, trafiony: bool) -> None:
+    """Iloczyn: podstawa {jedno-, wieloliterowa} × {literał z odstępem, bez odstępu} × {indeks
+    goły, w klamrach}. Reguła wieloliterowa łapie `ALF_eff` w zdaniu, ale nie identyfikator
+    źródła `std:DFIG_converter` (fałszywy alarm z towarzysza stacji SLD, 2026-11-05)."""
+    powody = guard._dopasowania(literal)
+    assert any("goly indeks" in p for p in powody) is trafiony, (literal, powody)

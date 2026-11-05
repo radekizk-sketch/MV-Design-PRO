@@ -53,11 +53,11 @@ export function validateInverterMode(config: InverterModeConfig): InverterValida
           recommendations.push('Punkty cos φ(P) powinny być posortowane rosnąco po P.');
         }
         if (sorted[0].pPu < 0 || sorted[sorted.length - 1].pPu > 1) {
-          issues.push(`Zakres P/P_n musi być [0, 1]. Obecnie: [${sorted[0].pPu}, ${sorted[sorted.length - 1].pPu}].`);
+          issues.push(`Zakres mocy względnej (moc czynna do znamionowej) musi być [0, 1]. Obecnie: [${sorted[0].pPu}, ${sorted[sorted.length - 1].pPu}].`);
         }
         for (const point of sorted) {
           if (Math.abs(point.cosPhi) < 0.85 || Math.abs(point.cosPhi) > 1.0) {
-            issues.push(`Wartość cos φ = ${point.cosPhi} w punkcie P/P_n=${point.pPu} poza dopuszczalnym zakresem [0.85, 1.0].`);
+            issues.push(`Wartość cos φ = ${point.cosPhi} w punkcie mocy względnej ${point.pPu} poza dopuszczalnym zakresem [0.85, 1.0].`);
           }
         }
       }

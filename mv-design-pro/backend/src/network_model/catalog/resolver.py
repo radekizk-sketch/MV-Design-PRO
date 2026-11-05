@@ -217,9 +217,9 @@ def resolve_line_params(
         if brakujace:
             raise ValueError(
                 "impedance_override.incomplete: nadpisanie impedancji linii/kabla "
-                f"nie niesie pól {brakujace} — override musi podać r_total_ohm, "
-                "x_total_ohm i b_total_us razem, albo nie być podany wcale "
-                "(precedencja spadnie do type_ref/instance)."
+                f"nie niesie pól {brakujace} — nadpisanie musi podać rezystancję, reaktancję "
+                "i susceptancję całkowitą razem, albo nie być podane wcale "
+                "(pierwszeństwo przejdzie na typ katalogowy albo instancję)."
             )
         if length_km <= 0:
             return ResolvedLineParams(

@@ -289,7 +289,8 @@ def test_slad_white_box_niesie_wzor_dane_podstawienie_wynik_dla_kazdej_galezi() 
     kabel = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[cab1]")
     assert "Z_s = \\frac{Z_0 + 2 Z_1}{3}" in kabel["formula_latex"]
     assert kabel["inputs"]["r0_ohm_per_km"] == 0.759 and kabel["inputs"]["length_km"] == 2.0
-    assert "Z_s = (" in kabel["substitution"] and "Z_m = (" in kabel["substitution"]
+    podstawienie = kabel["substitution"]
+    assert "impedancja własna = (" in podstawienie and "impedancja wzajemna = (" in podstawienie
     z_s, z_m = kabel["result"]["z_self_ohm"], kabel["result"]["z_mutual_ohm"]
     z1, z0 = complex(0.253, 0.1) * 2.0, complex(0.759, 0.3) * 2.0
     # Liczby zespolone w kolumnie JSON biegu jako {re, im} (jak z1/z2/z0_ohm zwarcia).
@@ -596,7 +597,7 @@ def test_transformator_yy_z_odbiorem_symetrycznym_jest_dozwolony_bez_podstawiani
     krok = next(k for k in run.white_box_trace if k["key"] == "pf_unbalanced_branch[tr1]")
     assert krok["inputs"]["z0_ohm"] is None
     assert krok["result"]["z_mutual_ohm"] == {"re": 0.0, "im": 0.0}
-    assert "brak drogi I0" in krok["substitution"]
+    assert "brak drogi składowej zerowej" in krok["substitution"]
 
 
 def test_zamkniety_lacznik_szeregowy_jest_galezia_zerowej_impedancji() -> None:

@@ -51,13 +51,13 @@ from .nazwy_elementow import (
 #: rozstrzygnięcie deterministyczne: najpierw wpis kontekstu, potem wpis ogólny.
 #: Słowa = etykiety kreatorów ``frontend/src/ui2/kreatory``.
 NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
-    "a_p": "Udział stałoimpedancyjny P (a_P)",  # odbior/strings.ts zipAP
-    "a_q": "Udział stałoimpedancyjny Q (a_Q)",  # odbior/strings.ts zipAQ
+    "a_p": "Udział stałoimpedancyjny mocy czynnej",  # odbior/strings.ts zipAP
+    "a_q": "Udział stałoimpedancyjny mocy biernej",  # odbior/strings.ts zipAQ
     "accuracy_class": "Klasa dokładności",  # pomiar/strings.ts klasa
     "active_power_control_enabled": "Regulacja mocy czynnej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "apparatus_catalog_ref": "Aparat pola",  # stacja/strings.ts aparatPola
-    "b_p": "Udział stałoprądowy P (b_P)",  # odbior/strings.ts zipBP
-    "b_q": "Udział stałoprądowy Q (b_Q)",  # odbior/strings.ts zipBQ
+    "b_p": "Udział stałoprądowy mocy czynnej",  # odbior/strings.ts zipBP
+    "b_q": "Udział stałoprądowy mocy biernej",  # odbior/strings.ts zipBQ
     "bay_ref": "Pole SN",  # pomiar/strings.ts poleSn; przekaznik/strings.ts poleSn
     "bess_operation_mode_refs": "Tryb pracy magazynu",  # zrodlo-oze/strings.ts bessTryb
     "black_start_capable": "Zdolność rozruchu autonomicznego",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
@@ -65,8 +65,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "blocking_transformer_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts transformator
     "burden_va": "Moc obciążeniowa",  # pomiar/strings.ts burden
     "bus_nn_ref": "Szyna nN",  # pole-nn/strings.ts szyna
-    "c_p": "Udział stałomocowy P (c_P)",  # odbior/strings.ts zipCP
-    "c_q": "Udział stałomocowy Q (c_Q)",  # odbior/strings.ts zipCQ
+    "c_p": "Udział stałomocowy mocy czynnej",  # odbior/strings.ts zipCP
+    "c_q": "Udział stałomocowy mocy biernej",  # odbior/strings.ts zipCQ
     "cable_laying_conditions": "Warunki ułożenia kabla",  # zrodlo-oze/strings.ts doborWarunkiUlozenia
     "cable_laying_conditions.ambient_temperature_c": "Temperatura otoczenia",  # odcinek-nn/strings.ts temperatura
     "cable_laying_conditions.circuit_count": "Liczba obwodów w wiązce/wykopie",  # odcinek-nn/strings.ts liczbaObwodow
@@ -151,8 +151,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "insert_at": "Położenie na odcinku",  # lacznik|slup-odgalezny|zksn/strings.ts polozenie
     "island_operation_capable": "Zdolność pracy wyspowej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "island_operation_required": "Wymagana praca wyspowa",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
-    "k_pf": "Wrażliwość częstotliwościowa P (k_pf)",  # odbior/strings.ts zipKPf
-    "k_qf": "Wrażliwość częstotliwościowa Q (k_qf)",  # odbior/strings.ts zipKQf
+    "k_pf": "Wrażliwość częstotliwościowa mocy czynnej",  # odbior/strings.ts zipKPf
+    "k_qf": "Wrażliwość częstotliwościowa mocy biernej",  # odbior/strings.ts zipKQf
     "karty_widmowe_ref": "Karty widmowe urządzenia",  # karty widmowe wytwórcy (wiązanie katalogowe)
     "length_km": "Długość",  # odcinek-nn/strings.ts dlugosc
     "add_nn_cable_segment:length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
@@ -231,9 +231,9 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "transformer_sn_mva": "Moc znamionowa Sn",  # zrodlo/strings.ts transformatorSn
     "tryb_pracy": "Tryb pracy przyłącza",  # ui2/spaces/projekt/strings.ts osdTrybPracy
     "u_max_czas_s": "U> — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
-    "u_max_pu": "U> — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
+    "u_max_pu": "U> — próg [p.u. napięcia znamionowego]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "u_min_czas_s": "U< — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
-    "u_min_pu": "U< — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
+    "u_min_pu": "U< — próg [p.u. napięcia znamionowego]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "add_grid_source_sn:u_set_pu": "Napięcie zadane szyny bilansującej",  # zrodlo/strings.ts uSetPu
     "u_set_pu": "Nastawa napięcia U",  # zrodlo-oze/strings.ts uSetPu
     "uhv_kv": "Napięcie GN",  # ui/property-grid/field-definitions.ts voltage_hv_kv

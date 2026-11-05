@@ -238,7 +238,7 @@ describe('FaultScenarioModal — nośnik współczynnika c (tworzenie)', () => {
     await user.type(tk, '0');
     await user.click(screen.getByTestId('fault-scenario-save-btn'));
     const blad = await screen.findByTestId('fault-scenario-validation-error');
-    expect(blad.textContent).toContain('t_k');
+    expect(blad.textContent).toContain('Czas trwania zwarcia');
     expect(wywolaniaZapisu()).toHaveLength(0);
   });
 });
@@ -351,7 +351,7 @@ describe('FaultScenarioModal — czas wyłączenia t_b', () => {
       await user.type(screen.getByTestId('fault-scenario-tb-input'), wpis);
       await user.click(screen.getByTestId('fault-scenario-save-btn'));
       const blad = await screen.findByTestId('fault-scenario-validation-error');
-      expect(blad.textContent).toContain('Czas wyłączenia t_b');
+      expect(blad.textContent).toContain('Czas wyłączenia zwarcia');
       expect(blad.textContent).not.toContain('fault.czas_tb_niepoprawny');
       expect(wywolaniaZapisu()).toHaveLength(0);
     });

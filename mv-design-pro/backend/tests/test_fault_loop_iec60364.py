@@ -210,9 +210,9 @@ class TestWhiteBoxTrace:
         sum_step = next(t for t in result.white_box_trace if t["step"] == "sum_components")
         ik_step = next(t for t in result.white_box_trace if t["step"] == "compute_ik")
         assert "method" in sum_step
-        assert "Σ" in sum_step["method"]
+        assert r"\sum" in sum_step["method"]
         assert "method" in ik_step
-        assert "c * U_n" in ik_step["method"]
+        assert r"c \cdot U_n" in ik_step["method"]
 
     def test_trace_audytowalne(self) -> None:
         """Trace zawiera wszystkie komponenty + c_factors + Z + Ik."""
@@ -307,7 +307,7 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=0.0, x_ohm=0.0),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=0.0, x_ohm=0.0),
         )
-        with pytest.raises(ValueError, match=r"degenerated case"):
+        with pytest.raises(ValueError, match=r"fizycznie niemożliwa"):
             compute_fault_loop(bad)
 
     def test_cr_fix_tiny_z_loop_rejected(self) -> None:
@@ -324,7 +324,7 @@ class TestValidation:
             return_conductor=LoopImpedanceComponent(label="PE", r_ohm=1e-15, x_ohm=1e-15),
             transformer_impedance=LoopImpedanceComponent(label="TR", r_ohm=1e-15, x_ohm=1e-15),
         )
-        with pytest.raises(ValueError, match=r"fizycznie niemożliwa|degenerated case"):
+        with pytest.raises(ValueError, match=r"fizycznie niemożliwa"):
             compute_fault_loop(bad)
 
 
@@ -386,7 +386,7 @@ class TestErrorLogging:
                 compute_fault_loop(bad)
         warnings = [r for r in caplog.records if r.levelname == "WARNING"]
         assert len(warnings) == 1
-        assert "Z_loop" in warnings[0].message or "z_magnitude" in str(
+        assert "impedancja pętli" in warnings[0].message or "z_magnitude" in str(
             getattr(warnings[0], "z_magnitude_ohm", "")
         )
 

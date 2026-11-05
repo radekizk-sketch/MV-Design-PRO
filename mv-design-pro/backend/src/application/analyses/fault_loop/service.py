@@ -485,7 +485,9 @@ def impedancja_transformatora_dla_ukladu(
 
 
 #: Etykieta zerowej składowej powrotnej pętli TT (PE kabla nie należy do pętli doziemnej).
-ETYKIETA_POWROT_TT = "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)"
+ETYKIETA_POWROT_TT = (
+    "Przewód ochronny kabla — poza pętlą TT (powrót przez uziom instalacji i uziom stacji)"
+)
 
 
 @dataclass(frozen=True)

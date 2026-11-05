@@ -106,19 +106,19 @@ export type SanityCheckCode =
 export const SANITY_CHECK_CODE_LABELS_PL: Record<SanityCheckCode, string> = {
   // Napieciowe
   VOLT_MISSING_UN: 'Brak wartości Un dla nastawy napięciowej',
-  VOLT_OVERLAP: 'Nakładanie się progów U< i U> (U< >= U>)',
+  VOLT_OVERLAP: 'Nakładanie się progów U< i U> (próg U< nie mniejszy od U>)',
   VOLT_U_LT_TOO_LOW: 'Próg U< zbyt niski (< 0,5×Un)',
   VOLT_U_GT_TOO_HIGH: 'Próg U> zbyt wysoki (> 1,2×Un)',
   // Czestotliwosciowe
-  FREQ_OVERLAP: 'Nakładanie się progów f< i f> (f< >= f>)',
+  FREQ_OVERLAP: 'Nakładanie się progów f< i f> (próg f< nie mniejszy od f>)',
   FREQ_F_LT_TOO_LOW: 'Próg f< zbyt niski (< 45 Hz)',
   FREQ_F_GT_TOO_HIGH: 'Próg f> zbyt wysoki (> 55 Hz)',
   // ROCOF
-  ROCOF_NON_POSITIVE: 'df/dt niedodatnie (<= 0)',
+  ROCOF_NON_POSITIVE: 'Próg szybkości zmian częstotliwości niedodatni',
   ROCOF_TOO_HIGH: 'df/dt zbyt wysokie (> 10 Hz/s)',
   // Nadpradowe
   OC_MISSING_IN: 'Brak wartości In dla nastawy prądowej',
-  OC_OVERLAP: 'Nakładanie się progów I> i I>> (I> >= I>>)',
+  OC_OVERLAP: 'Nakładanie się progów I> i I>> (próg I> nie mniejszy od I>>)',
   OC_I_GT_TOO_LOW: 'Próg I> zbyt niski (< 1,0×In)',
   OC_I_INST_TOO_LOW: 'Próg I>> zbyt niski (< 1,5×In)',
   // SPZ

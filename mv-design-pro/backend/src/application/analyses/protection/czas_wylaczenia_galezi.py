@@ -393,7 +393,7 @@ def wyznacz_czasy_wylaczenia(
             urzadzenie_nazwa=nazwa_aparatu,
             funkcja=decydujacy["funkcja"],
             prad_galezi_a=prad,
-            prad_rozruchowy_a=decydujacy["Is_a"],
+            prad_rozruchowy_a=decydujacy["prog_pierwotny_a"],
             krzywa=decydujacy["krzywa"],
             tms=decydujacy["TMS"],
             stala_a=stale["A"] if stale else None,

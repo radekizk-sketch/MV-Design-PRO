@@ -299,7 +299,7 @@ def test_trunk_drop_is_sum_of_segment_drops_with_white_box(u_v: float) -> None:
     assert wynik.delta_u_v == pytest.approx(sum(p.delta_u_v for p in pojedyncze), rel=1e-12)
     assert wynik.delta_u_pct == pytest.approx(sum(p.delta_u_pct for p in pojedyncze), rel=1e-12)
     assert wynik.line_voltage_v == u_v
-    assert wynik.assumptions and "Σ" in wynik.formula_ref
+    assert wynik.assumptions and r"\sum" in wynik.formula_ref
 
 
 def test_trunk_of_one_segment_equals_segment() -> None:

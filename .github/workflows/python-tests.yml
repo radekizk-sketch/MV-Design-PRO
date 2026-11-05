@@ -151,6 +151,12 @@ jobs:
       - name: Provenance Constant Guard
         working-directory: mv-design-pro
         run: python scripts/provenance_constant_guard.py
+      # Karta PROZA-BEZ-SYMBOLI-ASCII: zapis liczby po polsku ma jedno zrodlo
+      # (`werdykt.format_liczba`); kopie `.replace(".", ",")` w backend/src stoja
+      # w zapadce dwukierunkowej (tylko w dol). Sam AST, bez zaleznosci backendu.
+      - name: Format Liczby Guard
+        working-directory: mv-design-pro
+        run: python scripts/format_liczby_guard.py
       # V12K-206 (karta F-K6): guard KONSUMPCJI kodow gotowosci. Wymaga zaleznosci
       # backendu (importuje rejestr), dlatego biegnie tu, a nie w workflow guardow.
       - name: Readiness Consumption Guard

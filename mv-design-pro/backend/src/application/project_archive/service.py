@@ -864,10 +864,7 @@ class ProjectArchiveService:
                         model,
                         zrodlo_zmiany=ZrodloZmiany(
                             operacja=None,
-                            opis_pl=(
-                                "Model odtworzony z archiwum 2.x (sekcja network_model, "
-                                "W1-B-ARCH)"
-                            ),
+                            opis_pl=("Model odtworzony z archiwum 2.x (sekcja modelu sieci)"),
                             ladunek={
                                 "zrodlo": "import_archiwum_legacy",
                                 "archiwum": archive.project_meta.id,

@@ -912,7 +912,7 @@ class TransformerBranch(Branch):
         if self.uk_percent <= 0:
             raise OdmowaDanychError("uk_percent must be > 0")
         if self.pk_kw < 0:
-            raise OdmowaDanychError("pk_kw must be >= 0")
+            raise OdmowaDanychError("Straty obciążeniowe transformatora muszą być nieujemne.")
         if self.voltage_lv_kv <= 0:
             raise OdmowaDanychError("voltage_lv_kv must be > 0")
         if self.voltage_hv_kv <= 0:
@@ -1275,10 +1275,11 @@ def odmowa_gdy_pk_sprzeczne_z_uk(
     """
     if r_pu > z_pu:
         raise OdmowaDanychError(
-            f"Sprzeczne dane transformatora: straty obciążeniowe P_k = {pk_kw} kW przy "
-            f"S_n = {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
-            f"impedancja zwarciowa z napięcia zwarcia u_k = {uk_percent} % "
-            f"({z_pu:.6g} p.u.). Popraw P_k albo u_k w karcie katalogowej transformatora."
+            f"Sprzeczne dane transformatora: straty obciążeniowe {pk_kw} kW przy mocy "
+            f"znamionowej {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
+            f"impedancja zwarciowa z napięcia zwarcia {uk_percent} % ({z_pu:.6g} p.u.). "
+            "Popraw straty obciążeniowe albo napięcie zwarcia w karcie katalogowej "
+            "transformatora."
         )
 
 

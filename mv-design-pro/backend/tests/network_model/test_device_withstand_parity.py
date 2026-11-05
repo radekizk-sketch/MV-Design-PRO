@@ -234,7 +234,7 @@ def test_komunikat_jest_po_polsku_z_diakrytykami() -> None:
         t_clearing_s=1.0,
     )["message_pl"]
     assert "wytrzymała" in ok_msg
-    assert "wykorzystanie I_dyn 80%" in ok_msg
+    assert "wykorzystanie prądu szczytowego 80%" in ok_msg
 
     bloker_msg = validate_device_withstand(
         device_id="wstd_breaker_vacuum_15_25",

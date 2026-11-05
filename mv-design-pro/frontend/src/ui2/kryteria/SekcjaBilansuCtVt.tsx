@@ -32,6 +32,7 @@ import {
   etykietaWerdyktu,
   fmtLiczba,
 } from './strings';
+import { TekstZWzorami } from '../kreatory/rama';
 
 export interface ObwodWtorny {
   readonly dlugosc_m: number | null;
@@ -230,7 +231,7 @@ export function SekcjaBilansuCtVt({
                 </ul>
               ) : null}
               <p className="mvd-kryteria__wzor">
-                {T.wzorTytul}: {ct.formula_ref}
+                {T.wzorTytul}: <TekstZWzorami tekst={ct.formula_ref} />
               </p>
             </>
           ) : (
@@ -275,7 +276,7 @@ export function SekcjaBilansuCtVt({
                 </ul>
               ) : null}
               <p className="mvd-kryteria__wzor">
-                {T.wzorTytul}: {vt.formula_ref}
+                {T.wzorTytul}: <TekstZWzorami tekst={vt.formula_ref} />
               </p>
             </>
           ) : (

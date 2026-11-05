@@ -29,6 +29,7 @@ import {
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from '../../../ui2/kryteria';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama';
 
 export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
 
@@ -247,10 +248,11 @@ function Gniazdo({
             </div>
             {(kryterium.wymagane !== null || kryterium.dostepne !== null) && (
               <p className="text-xs text-scada-muted" data-testid={`kryterium-rachunek-${kryterium.kod}`}>
-                wymagane: {kryterium.wymagane ?? '—'} · dostępne: {kryterium.dostepne ?? '—'}
+                wymagane: <TekstZWzorami tekst={kryterium.wymagane ?? '—'} /> · dostępne:{' '}
+                <TekstZWzorami tekst={kryterium.dostepne ?? '—'} />
               </p>
             )}
-            <p className="text-xs text-scada-muted">{kryterium.podstawa_pl}</p>
+            <p className="text-xs text-scada-muted"><TekstZWzorami tekst={kryterium.podstawa_pl} /></p>
             {kryterium.komentarz_pl !== null && (
               <p className={`text-xs ${klasaWerdyktu(kryterium.werdykt)}`}>{kryterium.komentarz_pl}</p>
             )}

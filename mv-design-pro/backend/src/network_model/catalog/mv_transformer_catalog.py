@@ -71,7 +71,8 @@ NOTA_JEDNOSTKA_ISTNIEJACA_SN_NN = (
 NOTA_JEDNOSTKA_ISTNIEJACA_WN_SN = (
     f"{ZNACZNIK_PRZEKROCZENIA_TIER2} (UE 548/2014 w brzmieniu 2019/1783, tab. I.7 — "
     "minimalny PEI): jednostka istniejąca — straty sprzed ekoprojektu. Katalog nie ma "
-    "pozycji WN/SN zgodnej z Tier 2: brak karty producenta z kompletem P0/Pk/u_k."
+    "pozycji WN/SN zgodnej z Tier 2: brak karty producenta z kompletem strat jałowych, "
+    "strat obciążeniowych i napięcia zwarcia."
 )
 
 # =============================================================================
@@ -1046,9 +1047,10 @@ ZRODLO_TIER2 = (
 #: Cytat serii Siemens GEAFOL — zrodlo u_k, i0 i zakresu zaczepow pozycji normatywnych.
 ZRODLO_GEAFOL_UK = (
     "Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of "
-    "ordering data for Standard 20kV/22kV/24kV” (str. 7): u_k 6 % dla 200–2500 kVA, "
-    "8 % dla 3150 kVA (przypisanie u_k z kolumny scalonej do wierszy jest interpretacją "
-    "układu tabeli), prąd jałowy i0 z kolumny „No-load Current”, zaczepy ±2×2,5 %; "
+    "ordering data for Standard 20kV/22kV/24kV” (str. 7): napięcie zwarcia 6 % dla "
+    "200–2500 kVA, 8 % dla 3150 kVA (przypisanie napięcia zwarcia z kolumny scalonej do "
+    "wierszy jest interpretacją układu tabeli), prąd jałowy z kolumny „No-load Current”, "
+    "zaczepy ±2×2,5 %; "
     "https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-"
     "8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)"
 )
@@ -1249,7 +1251,9 @@ def _pozycja_normatywna(
             "standard": "UE 548/2014 (2019/1783) Tier 2",
             "verification_status": "REFERENCYJNY",
             "catalog_status": "REFERENCYJNY_V1",
-            "source_reference": f"{ZRODLO_TIER2} || u_k, i0, zaczepy: {ZRODLO_GEAFOL_UK}",
+            "source_reference": (
+                f"{ZRODLO_TIER2} || napięcie zwarcia, prąd jałowy, zaczepy: {ZRODLO_GEAFOL_UK}"
+            ),
             "contract_version": "2.0",
             "verification_note": (
                 f"Pozycja NORMATYWNA/TYPOWA — nie egzemplarz producenta. Transformator "
@@ -1260,7 +1264,7 @@ def _pozycja_normatywna(
                     if moc_kva not in (_TABELA_TIER2_WG_RODZAJU[rodzaj])
                     else ""
                 )
-                + f"; u_k = {uk_proc:g} % z serii Siemens GEAFOL 20/22/24 kV"
+                + f"; napięcie zwarcia {uk_proc:g} % z serii Siemens GEAFOL 20/22/24 kV"
                 + (
                     f", i0 = {i0_proc:g} % z tej samej serii (suchej)"
                     if rodzaj == RODZAJ_SUCHY
@@ -1408,9 +1412,10 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
             ),
             "contract_version": "2.0",
             "verification_note": (
-                "Karta producenta: Sr = 2000 kVA, Dyn11, U1 = 20 000 V, U2 = 480 V, chłodzenie "
-                "AN; P0 = 2340 W gwarantowane (1974 W zmierzone); Pk120 = 16 000 W "
-                "gwarantowane (15 174 W zmierzone; Pk75 = 14 000 W); u_k = 6 % ±10 %; "
+                "Karta producenta: moc znamionowa 2000 kVA, Dyn11, napięcie górne 20 000 V, "
+                "dolne 480 V, chłodzenie AN; straty jałowe 2340 W gwarantowane (1974 W "
+                "zmierzone); straty obciążeniowe w 120 °C 16 000 W gwarantowane (15 174 W "
+                "zmierzone; w 75 °C 14 000 W); napięcie zwarcia 6 % ±10 %; "
                 "zaczepy ±2,5; ±5 %. Prąd jałowy — karta nie podaje (pole puste). "
                 "Wartości gwarantowane równe pułapowi Tier 2 tab. I.2 dla 2000 kVA."
             ),

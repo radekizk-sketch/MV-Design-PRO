@@ -39,6 +39,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from werdykt.zapis_latex import ZapisLatex
+
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
 READINESS_FAULT_DURATION_MISSING = "conductor.fault_duration_missing"
@@ -60,7 +62,10 @@ _CONDUCTOR_KIND_LABELS_PL = {
     CONDUCTOR_KIND_BARE: "przewód goły (linia napowietrzna)",
 }
 
-_FORMULA_REF = "I_dop(t) = I_th(1s)·√(1 s / t);  S_min = I_th·√t / Jth(1s)"
+_FORMULA_REF = (
+    r"$I_{dop}(t) = I_{th}(1\,\mathrm{s}) \cdot \sqrt{1\,\mathrm{s} / t}$; "
+    r"$S_{min} = I_{th} \cdot \sqrt{t} / J_{th}(1\,\mathrm{s})$"
+)
 
 # --- Wyprowadzenie wspolczynnika k wg IEC 60949 (karta F-K1 faza 8) ----------
 #
@@ -249,8 +254,9 @@ class ConductorThermalResult:
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
-            "Równoważna energia cieplna I²·t = const (IEC 60949).",
-            "I_th to prąd zastępczy cieplny z obliczeń zwarciowych, nie prąd początkowy.",
+            r"Równoważna energia cieplna $I^2 t = \mathrm{const}$ (IEC 60949).",
+            "Prąd zastępczy cieplny pochodzi z obliczeń zwarciowych, nie jest prądem "
+            "początkowym.",
             "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
             "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
         )
@@ -633,7 +639,7 @@ def _build_white_box_trace(
     )
 
     if jth_1s_a_per_mm2 is not None and required_section_mm2 is not None:
-        podstawienie = (
+        podstawienie: ZapisLatex = (
             r"S_{min} = \frac{"
             + _liczba_tex(ith_a)
             + r" \cdot \sqrt{"
@@ -711,7 +717,8 @@ STANDARD_REFS: tuple[dict[str, str], ...] = (
         "norma": "IEC 60909-0",
         "punkt": "§ 12",
         "tresc_pl": (
-            "Prąd zastępczy cieplny I_th = I″k·√(m+n) — to on jest porównywany w kryterium, "
+            r"Prąd zastępczy cieplny $I_{th} = I''_k \sqrt{m + n}$ — to on jest porównywany "
+            "w kryterium, "
             "nie prąd początkowy."
         ),
     },
@@ -739,7 +746,7 @@ def _build_criteria(
         {
             "kod": "prad_dopuszczalny",
             "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
-            "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
+            "warunek_pl": r"$I_{th} \le I_{dop}(t) = I_{th}(1\,\mathrm{s}) / \sqrt{t}$",
             "wartosc": round(ith_a, 6),
             "granica": round(admissible_a, 6),
             "jednostka": "A",
@@ -748,7 +755,7 @@ def _build_criteria(
         {
             "kod": "energia_cieplna",
             "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
-            "warunek_pl": "I²·t ≤ k²·S²",
+            "warunek_pl": r"$I^2 t \le k^2 S^2$",
             "wartosc": round(i2t, 3),
             "granica": round(i2t_admissible, 3),
             "jednostka": "A²·s",
@@ -760,7 +767,7 @@ def _build_criteria(
             {
                 "kod": "przekroj_minimalny",
                 "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
+                "warunek_pl": r"$S \ge S_{min} = \sqrt{I^2 t} / k$",
                 "wartosc": round(applied_section_mm2, 6),
                 "granica": round(required_section_mm2, 6),
                 "jednostka": "mm²",
@@ -774,7 +781,7 @@ def _build_criteria(
             {
                 "kod": "przekroj_minimalny",
                 "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
+                "warunek_pl": r"$S \ge S_{min} = \sqrt{I^2 t} / k$",
                 "wartosc": None,
                 "granica": round(required_section_mm2, 6),
                 "jednostka": "mm²",

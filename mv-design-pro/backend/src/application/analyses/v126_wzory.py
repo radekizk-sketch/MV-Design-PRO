@@ -46,6 +46,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from werdykt.zapis_latex import ZapisLatex
+
 JsonDict = dict[str, Any]
 
 #: Budowniczy podstawienia LaTeX: czyta WYŁĄCZNIE `step["data"]`/`step["result"]`
@@ -91,7 +93,7 @@ def _pl(wartosc: float, cyfry: int = 4) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _podstawienie_sverak(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_sverak(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_earthing`, `network_model/solvers/v126_academic.py:1228-1234`:
     `data={"area_m2": area, "lc_m": lc, "rho_ohm_m": data.rho1_ohm_m}`."""
     rho = _liczba(dane, "rho_ohm_m")
@@ -106,7 +108,7 @@ def _podstawienie_sverak(dane: Mapping[str, Any]) -> str | None:
     )
 
 
-def _podstawienie_ic(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_ic(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_neutral_earthing_design`, linie 1375-1389: `data={"omega_rad_s":…,
     "b0_total_siemens":…, "u_line_kv":…}`."""
     omega = _liczba(dane, "omega_rad_s")
@@ -120,7 +122,7 @@ def _podstawienie_ic(dane: Mapping[str, Any]) -> str | None:
     )
 
 
-def _podstawienie_petersen_rezonans(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_petersen_rezonans(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_petersen_design`, linie 1426-1436: `data={"c0_farad":…, "omega_rad_s":…,
     "ic_a":…}`."""
     c0 = _liczba(dane, "c0_farad")
@@ -135,7 +137,7 @@ def _podstawienie_petersen_rezonans(dane: Mapping[str, Any]) -> str | None:
     )
 
 
-def _podstawienie_petersen_resztkowy(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_petersen_resztkowy(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_petersen_design` (krok „petersen_residual_current"): `data={"ic_a":…, "i_l_a":…,
     "i_w_a":…, "detuning_v":…}` — prąd dławika i składowa czynna z impedancji punktów
     neutralnych MODELU (solver `doziemienie_sn`)."""
@@ -150,7 +152,7 @@ def _podstawienie_petersen_resztkowy(dane: Mapping[str, Any]) -> str | None:
     )
 
 
-def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_ner_design` (krok „ner_resistance_sizing"): `data={"resistors": [{"r_ohm":…}, …],
     "ic_a":…, "i_resistive_a":…, "i_coil_a":…}` — rezystory punktu neutralnego z MODELU,
     składowe prądu z impedancji punktów neutralnych (solver `doziemienie_sn`)."""
@@ -171,7 +173,7 @@ def _podstawienie_ner_dobor(dane: Mapping[str, Any]) -> str | None:
     )
 
 
-def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_ner_thermal` (krok „ner_thermal_withstand"): `data={"t_clear_s":…, "resistors":
     [{"i_thermal_a":…, "r_ohm":…, "i_n_a":…, "t_n_s":…}, …]}` — prąd cieplny zastępczy
     I_th = I_R·√(m+n) rezystora (IEC 60909-0 §12)."""
@@ -194,7 +196,7 @@ def _podstawienie_ner_cieplo(dane: Mapping[str, Any]) -> str | None:
     return r";\quad ".join(czlony)
 
 
-def _podstawienie_ner_czas_dopuszczalny(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_ner_czas_dopuszczalny(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_ner_thermal` (krok „ner_thermal_permissible_time"): `data={"c_max":…, "u_phase_v":…,
     "resistors": [{"z_loop_ohm": {"r_ohm":…, "x_ohm":…}, "i_resistor_a":…, "i_n_a":…,
     "t_n_s":…, "permissible_time_s":…}, …]}`."""
@@ -265,7 +267,7 @@ def _metody_pl(kody: Any) -> str | None:
     return ", ".join(str(nazwa) for nazwa in nazwy)
 
 
-def _podstawienie_detekcji_doziemnej(dane: Mapping[str, Any]) -> str | None:
+def _podstawienie_detekcji_doziemnej(dane: Mapping[str, Any]) -> ZapisLatex | None:
     """`_earth_fault_detection`: `data={"neutral_grounding":…, "wariant_uziemienia_sn":…,
     "relay_methods":[…]}` — polskie nazwy zamiast kodów tabeli decyzyjnej (kategoria sieci
     wyprowadzona z wariantu zespołu uziemiającego modelu, karta UX-04/POLE-ZU)."""

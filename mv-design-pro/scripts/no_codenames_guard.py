@@ -65,6 +65,7 @@ Usage:
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -142,7 +143,9 @@ EXCLUDED_RELATIVE_FILES: set[str] = set()
 # (`test_k0_nie_ma_wykluczenia`): wykluczał `K0` "przy okazji", bo obie
 # litery czytały ten sam warunek — deklaracja bez testu byłaby fałszywą
 # pewnością (reguła KLASA §4).
-CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])")
+CODENAME_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])"
+)
 
 # KRYPTONIMY KART W TEKŚCIE UŻYTKOWNIKA (odbiór S-2, 2026-09-16). Wzorzec `[pP]\d+`/`K\d+`
 # nie obejmuje identyfikatorów kart pisanych literami (`S-2`, `FAB-H`, `W3-J`, `CV-3.3-B2`),
@@ -344,6 +347,78 @@ def scan_backend_file(file_path: Path) -> list[Violation]:
     return violations
 
 
+#: POLA NOTY DOWODU (karta PROZA-BEZ-SYMBOLI-ASCII, 2026-11-05). Pole ``notes`` równania
+#: rejestru dowodów (`application/proof_engine/equation_registry.py`) jedzie przez ``to_dict``
+#: do pakietu dowodowego i ekranu dowodu — jest tekstem projektanta, choć nie ma przyrostka
+#: ``_pl`` (marker wierszowy `BACKEND_USER_TEXT_MARKER` go nie widział). Zmierzony przeciek:
+#: „KARTA P0.5b (…, N-D6 + uzgodnienie U4)", „(karta P0.7)", „(kontrakt OD-14 §2)",
+#: „Equipment P12/F-K1", „rejestr G-D1". Skan AST obejmuje KAŻDY literał tekstowy w wartości
+#: argumentu nazwanego albo klucza słownika ``notes`` (także rozcięty na wiersze i sklejany).
+POLA_NOTY_DOWODU = frozenset({"notes"})
+#: Kryptonim karty pisany WIELKIMI literami („KARTA PODSTAWA-VDROP") — `KARTA_PATTERN`
+#: wymaga małego „karta"; w nocie dowodu wielkie litery są tym samym cytatem karty roboczej.
+KARTA_WIELKIMI_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])KART[AEĘĄY]\s+[A-Z][A-Z0-9]*(?:[-.][A-Za-z0-9]+)*"
+)
+#: Identyfikator wiersza rejestru roboczego (`OD-14`, `G-D1`, `N-D6`, `F-K1`): 1–3 wielkie
+#: litery, myślnik, opcjonalna wielka litera, cyfry. Norma („PN-EN 50160", „IEC 60909") nie ma
+#: tej postaci — po myślniku normy stoją litery bez cyfry albo cyfry po spacji.
+REJESTR_ROBOCZY_PATTERN = re.compile(r"(?<![\w-])[A-Z]{1,3}-[A-Z]?\d+(?![\w-])")
+
+
+def _literaly_noty(drzewo: ast.AST) -> list[ast.Constant]:
+    """Literały tekstowe w wartości pola ``notes`` (argument nazwany albo klucz słownika)."""
+    wartosci: list[ast.AST] = []
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.keyword) and wezel.arg in POLA_NOTY_DOWODU:
+            wartosci.append(wezel.value)
+        elif isinstance(wezel, ast.Dict):
+            for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True):
+                if isinstance(klucz, ast.Constant) and klucz.value in POLA_NOTY_DOWODU:
+                    wartosci.append(wartosc)
+    return [
+        stala
+        for wartosc in wartosci
+        for stala in ast.walk(wartosc)
+        if isinstance(stala, ast.Constant) and isinstance(stala.value, str)
+    ]
+
+
+def kryptonimy_w_tekscie(tekst: str) -> list[str]:
+    """Kryptonimy w CAŁYM tekście (nie tylko w literałach wiersza) — dla not dowodu."""
+    trafienia = [
+        m.group()
+        for m in CODENAME_PATTERN.finditer(tekst)
+        if m.group().lower() not in ALLOWED_TECHNICAL_TOKENS
+    ]
+    trafienia += [
+        m.group()
+        for m in KARTA_PATTERN.finditer(tekst)
+        if KARTA_IDENT_MARKER.search(m.group(1))
+    ]
+    trafienia += [m.group() for m in KARTA_WIELKIMI_PATTERN.finditer(tekst)]
+    trafienia += [m.group() for m in REJESTR_ROBOCZY_PATTERN.finditer(tekst)]
+    return trafienia
+
+
+def scan_backend_notes(file_path: Path) -> list[Violation]:
+    """Skanuj noty dowodu (pole ``notes``) pliku backendu — patrz `POLA_NOTY_DOWODU`."""
+    try:
+        drzewo = ast.parse(file_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, OSError, SyntaxError):
+        return []
+    return [
+        Violation(
+            file_path=format_violation_path(file_path),
+            line_number=stala.lineno,
+            line_content=stala.value.strip(),
+            match=kryptonim,
+        )
+        for stala in _literaly_noty(drzewo)
+        for kryptonim in kryptonimy_w_tekscie(stala.value)
+    ]
+
+
 def iter_backend_files(root: Path) -> list[Path]:
     """Pliki backendu do skanu tekstu użytkownika."""
     files: list[Path] = []
@@ -412,6 +487,7 @@ def main() -> int:
 
     for file_path in iter_backend_files(REPO_ROOT):
         violations.extend(scan_backend_file(file_path))
+        violations.extend(scan_backend_notes(file_path))
 
     freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
     if freshness_violations:

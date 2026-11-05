@@ -569,12 +569,12 @@ describe('TypeLibraryBrowser', () => {
     await user.click(screen.getByText('ABB OJS 12 kV 630 A (aparat pola)'));
     let szczegoly = screen.getByTestId('type-library-details-grid');
     expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]nie dotyczy');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]20 kA');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale [kA]20 kA');
 
     await user.click(screen.getByText('Wyłącznik 110 kV (aparat pola)'));
     szczegoly = screen.getByTestId('type-library-details-grid');
     expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]brak danych');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]brak danych');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale [kA]brak danych');
   });
 
   it('aparat SN: propozycje wartości roboczych w osobnej sekcji, nie jako dana karty (V12K-351)', async () => {

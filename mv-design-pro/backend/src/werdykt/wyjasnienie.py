@@ -137,17 +137,42 @@ _METODY_WYKAZANIA_BRAK_METODY = "certyfikat urządzenia albo raport z badania ty
 # ---------------------------------------------------------------------------
 
 
-def format_liczba(wartosc: float, *, znak: bool = False) -> str:
-    """Liczba po polsku: przecinek, ≤ 4 cyfry znaczące, bez zer końcowych i separatora."""
+def format_liczba(
+    wartosc: float,
+    *,
+    znak: bool = False,
+    miejsca: int | None = None,
+    cyfry: int = _CYFRY_ZNACZACE,
+    latex: bool = False,
+) -> str:
+    """Liczba po polsku — JEDYNE źródło zapisu liczby w tekście dla projektanta.
+
+    Domyślnie przecinek, ``cyfry`` (4) cyfr znaczących, bez zer końcowych i separatora.
+    ``miejsca`` — stała liczba miejsc po przecinku (zera końcowe zostają, np. kolumna
+    tabeli raportu). ``latex`` — przecinek w postaci ``{,}`` (segment ``$…$`` i pola
+    ``*_latex``; KaTeX bez nawiasów klamrowych wstawia po przecinku odstęp). Minus zawsze
+    jako znak ``−`` (U+2212). Kopie tej funkcji (``_liczba_pl``, ``replace(".", ",")``) są
+    zakazane — pilnuje ``scripts/format_liczby_guard.py``."""
     if not math.isfinite(wartosc):
         raise ValueError(f"Liczba nieskończona albo nieokreślona nie ma zapisu ({wartosc}).")
+    przecinek = "{,}" if latex else ","
+    if miejsca is not None:
+        if miejsca < 0:
+            raise ValueError(f"Liczba miejsc po przecinku musi być nieujemna ({miejsca}).")
+        stala = Decimal(repr(wartosc)).quantize(Decimal(1).scaleb(-miejsca), ROUND_HALF_UP)
+        tekst = format(abs(stala), "f").replace(".", przecinek)
+        if stala < 0:
+            return _MINUS + tekst
+        return "+" + tekst if znak and not stala.is_zero() else tekst
+    if cyfry < 1:
+        raise ValueError(f"Liczba cyfr znaczących musi być dodatnia ({cyfry}).")
     dziesietna = Decimal(repr(wartosc))
     if dziesietna.is_zero():
         return "0"
     modul = abs(dziesietna)
-    kwant = Decimal(1).scaleb(modul.adjusted() - (_CYFRY_ZNACZACE - 1))
+    kwant = Decimal(1).scaleb(modul.adjusted() - (cyfry - 1))
     zaokraglona = modul.quantize(kwant, rounding=ROUND_HALF_UP).normalize()
-    tekst = format(zaokraglona, "f").replace(".", ",")
+    tekst = format(zaokraglona, "f").replace(".", przecinek)
     if dziesietna < 0:
         return _MINUS + tekst
     return "+" + tekst if znak else tekst

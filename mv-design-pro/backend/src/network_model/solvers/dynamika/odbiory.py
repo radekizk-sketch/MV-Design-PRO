@@ -786,7 +786,7 @@ def sprawdz_punkt_pracy_odbioru(odbior: OdbiorDynamiki, napiecie_pf_pu: complex)
             KOD_ODBIOR_PONIZEJ_NAPIECIA_PRZEJSCIA,
             f"Napięcie punktu pracy odbioru {odbior.ident} w węźle {odbior.wezel} wynosi "
             f"{modul:.6f} pu i jest niższe od "
-            f"napięcia przejścia U_min = {ch.u_min_pu} pu — rozpływ liczył charakterystykę bez "
+            f"napięcia przejścia {ch.u_min_pu} pu — rozpływ liczył charakterystykę bez "
             "przejścia do stałej impedancji, więc punkt pracy nie jest stanem równowagi modelu "
             "dynamicznego odbioru.",
             odbior=odbior.ident,

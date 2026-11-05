@@ -282,7 +282,7 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     // „po rodzaju urządzenia"). Karta W6-1: etykieta niesie proweniencję jawnie.
     expect(
       screen.getByText(
-        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, t_odp=0.05 s)'
+        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, czas odpowiedzi 0.05 s)'
           + ' [profil typowy normy: IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21]',
       ),
     ).toBeInTheDocument();

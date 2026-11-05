@@ -232,7 +232,8 @@ def zalozenia_tolerancji_nn(
             "message_pl": (
                 f"Sieć nN (szyny: {nazwy_szyn}{opis_zasilania}): "
                 f"{wyspa.rozstrzygniecie.opis_zrodla_pl()} Ta sama wartość robocza wyznacza "
-                f"c_max we wzorze K_T transformatora i K_G maszyny tej sieci. {zmiana}"
+                "maksymalny współczynnik napięciowy we współczynnikach korekcyjnych impedancji "
+                f"transformatora i maszyny tej sieci. {zmiana}"
             ),
             "scenariusz": scenario,
         }

@@ -208,8 +208,8 @@ class GridStrengthBuilder:
                     r"{\left(\sum_i S_{n,i}\right)^2}"
                 ),
                 substitution_pl=(
-                    f"licznik Σ($S_{{sc}}\\cdot S_n$) = {_round(numerator)} MVA²; "
-                    f"(Σ $S_n$)² = {_round(sum_sn**2)} MVA²"
+                    f"licznik Σ(Ssc·Sn) = {_round(numerator)} MVA²; "
+                    f"(Σ Sn)² = {_round(sum_sn**2)} MVA²"
                 ),
                 result_pl=f"WSCR = {wscr} (–), n = {len(valid)}",
             ),

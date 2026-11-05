@@ -40,7 +40,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       {
         kod: 'prad_dopuszczalny',
         nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-        warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
+        warunek_pl: '$I_{th} \\le I_{dop}(t) = I_{th}(1\\,\\mathrm{s}) / \\sqrt{t}$',
         wartosc: 15000,
         granica: 13160,
         jednostka: 'A',
@@ -49,7 +49,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       {
         kod: 'energia_cieplna',
         nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-        warunek_pl: 'I²·t ≤ k²·S²',
+        warunek_pl: '$I^2 t \\le k^2 S^2$',
         wartosc: 56_250_000,
         granica: 64_000_000,
         jednostka: 'A²·s',
@@ -501,8 +501,14 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     fireEvent.click(screen.getByText('Magistrala L-01'));
 
     const kryteria = await screen.findByTestId('mvd-jakosc-cieplna-kryteria');
-    expect(kryteria.textContent).toContain('I_th ≤ I_dop(t) = I_th(1s)/√t');
-    expect(kryteria.textContent).toContain('I²·t ≤ k²·S²');
+    // Warunek kryterium to segment `$…$` backendu składany przez TekstZWzorami — wzór
+    // KaTeX-em, bez znaków dolara i bez zapisu ASCII w tekście komórki.
+    const wzory = Array.from(kryteria.querySelectorAll('[data-testid="math-rendered"]')).map(
+      (wzor) => wzor.getAttribute('data-latex'),
+    );
+    expect(wzory).toContain('$I_{th} \\le I_{dop}(t) = I_{th}(1\\,\\mathrm{s}) / \\sqrt{t}$');
+    expect(wzory).toContain('$I^2 t \\le k^2 S^2$');
+    expect(kryteria.textContent).not.toContain('$');
     // Ikona towarzyszy tekstowi — sam kolor nie może nieść werdyktu.
     expect(kryteria.textContent).toContain(JAKOSC_STRINGS.ikonaNaruszone);
   });

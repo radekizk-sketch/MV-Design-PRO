@@ -75,6 +75,7 @@ from network_model.pochodne.pasma_napieciowe import (
     w_pasmie_nn,
 )
 from network_model.solvers import cable_ampacity_derating as cable_derating
+from werdykt import format_liczba
 
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
@@ -7191,10 +7192,11 @@ def odmowa_tabliczki_baterii(
     u_s = napiecie_najwyzsze_sieci_kv(bus_voltage_kv)
     gorna = u_s if u_s is not None else bus_voltage_kv
     return _error_response(
-        f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
-        f"({bus_voltage_kv:g} kV): napięcie znamionowe baterii musi leżeć od napięcia "
-        f"szyny {bus_voltage_kv:g} kV (praca ciągła najwyżej przy napięciu znamionowym "
-        f"baterii, IEC 60871-1) do napięcia najwyższego sieci {gorna:g} kV (IEC 60038). "
+        f"Napięcie baterii ({format_liczba(rated_kv)} kV) nie pasuje do szyny SN "
+        f"({format_liczba(bus_voltage_kv)} kV): napięcie znamionowe baterii musi leżeć od "
+        f"napięcia szyny {format_liczba(bus_voltage_kv)} kV (praca ciągła najwyżej przy "
+        f"napięciu znamionowym baterii, IEC 60871-1) do napięcia najwyższego sieci "
+        f"{format_liczba(gorna)} kV (IEC 60038). "
         "Dobierz typ dla właściwego napięcia.",
         "shunt.voltage_mismatch",
     )
@@ -7215,8 +7217,9 @@ def odmowa_napiecia_generatora(rated_kv: float, bus_voltage_kv: float) -> dict[s
         return None
     return _error_response(
         f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
-        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f}·U_rG, "
-        "a praca ciągła wymaga strefy A maszyny 0,95–1,05·U_rG (IEC 60034-1). Dobierz typ dla "
+        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f} "
+        "napięcia znamionowego maszyny, a praca ciągła wymaga strefy A maszyny 0,95–1,05 "
+        "napięcia znamionowego (IEC 60034-1). Dobierz typ dla "
         "właściwego napięcia.",
         "generator.voltage_mismatch",
     )
@@ -7881,7 +7884,7 @@ def _tabliczka_generatora_reczna(
             _error_response(
                 "Generator synchroniczny wymaga typu z katalogu "
                 f"{nazwa_kategorii_katalogu('GENERATOR_SN')} albo tabliczki znamionowej "
-                "podanej ręcznie (dodatnia moc pozorna S_n [MVA]).",
+                "podanej ręcznie (dodatnia moc pozorna znamionowa [MVA]).",
                 "generator.catalog_required",
             ),
         )
@@ -8088,10 +8091,12 @@ def odmowa_poziomu_izolacji(
         return None
     u_s = napiecie_wymagane_izolacji_kv(bus_voltage_kv)
     return _error_response(
-        f"{opis_pl}: napięcie najwyższe urządzenia U_m = {float(u_m_kv or 0.0):g} kV jest niższe "
-        f"od napięcia najwyższego sieci U_s = {float(u_s or 0.0):g} kV (szyna "
-        f"{float(bus_voltage_kv or 0.0):g} kV, IEC 60038) — wymagane U_m ≥ U_s "
-        "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
+        f"{opis_pl}: napięcie najwyższe urządzenia {format_liczba(float(u_m_kv or 0.0))} kV "
+        f"jest niższe od napięcia najwyższego sieci {format_liczba(float(u_s or 0.0))} kV "
+        f"(szyna {format_liczba(float(bus_voltage_kv or 0.0))} kV, IEC 60038) — napięcie "
+        "najwyższe urządzenia "
+        "musi być nie mniejsze niż napięcie najwyższe sieci (IEC 60071-1). Dobierz typ dla "
+        "właściwego poziomu napięcia.",
         error_code,
     )
 

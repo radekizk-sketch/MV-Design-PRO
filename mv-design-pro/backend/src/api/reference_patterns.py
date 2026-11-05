@@ -354,12 +354,12 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
         ("Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
         ("Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
-        ("I_min okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
-        ("I_max okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
+        ("Dolna granica okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
+        ("Górna granica okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
         ("Zalecana nastawa I>>", artifacts.get("recommended_setting_primary_a"), "A"),
         ("Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
-        ("Kryterium limitujące I_min", artifacts.get("limiting_criterion_min"), ""),
-        ("Kryterium limitujące I_max", artifacts.get("limiting_criterion_max"), ""),
+        ("Kryterium limitujące dolną granicę", artifacts.get("limiting_criterion_min"), ""),
+        ("Kryterium limitujące górną granicę", artifacts.get("limiting_criterion_max"), ""),
     ]
 
     for label, value, unit in artifact_items:
@@ -552,12 +552,15 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     add_artifact_row(
         window_table,
-        "I_min (selektywność, pierwotna)",
+        "Dolna granica (selektywność, pierwotna)",
         artifacts.get("window_i_min_primary_a"),
         "A",
     )
     add_artifact_row(
-        window_table, "I_max (okno, pierwotna)", artifacts.get("window_i_max_primary_a"), "A"
+        window_table,
+        "Górna granica (okno, pierwotna)",
+        artifacts.get("window_i_max_primary_a"),
+        "A",
     )
     add_artifact_row(
         window_table,
@@ -569,10 +572,10 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         window_table, "Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie"
     )
     add_artifact_row(
-        window_table, "Kryterium limitujące I_min", artifacts.get("limiting_criterion_min")
+        window_table, "Kryterium limitujące dolną granicę", artifacts.get("limiting_criterion_min")
     )
     add_artifact_row(
-        window_table, "Kryterium limitujące I_max", artifacts.get("limiting_criterion_max")
+        window_table, "Kryterium limitujące górną granicę", artifacts.get("limiting_criterion_max")
     )
 
     doc.add_paragraph()

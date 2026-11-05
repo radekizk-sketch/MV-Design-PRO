@@ -32,7 +32,7 @@ class ExportManifestV1:
     """All ElementRefV1.elementId used (sorted, deduplicated)."""
 
     analysis_types: tuple[str, ...] = field(default_factory=tuple)
-    """Analysis types included (SC_3F, LOAD_FLOW, etc.; sorted)."""
+    """Analysis types included (analysis type codes, sorted)."""
 
     readiness_status: str = "UNKNOWN"
     """Readiness status at export time: READY | PARTIAL | BLOCKED | UNKNOWN."""

@@ -79,6 +79,7 @@ from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
 from network_model.pochodne import kv_na_v
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 # ---------------------------------------------------------------------------
 # Markery, proweniencja i etykiety (maszynowo-czytelne, nienegocjowalne).
@@ -519,7 +520,7 @@ class ArcFlashCoefficientTable:
         missing: list[str] = []
         for anchor in VoltageAnchor:
             if not self.arc_entry(cfg, anchor).is_present:
-                missing.append(f"I_arc[{cfg.value},{anchor.name}]")
+                missing.append(f"prąd łuku [{cfg.value}, {anchor.name}]")
             if not self.energy_entry(cfg, anchor).is_present:
                 missing.append(f"E[{cfg.value},{anchor.name}]")
         if not self.variation_entry(cfg).is_present:
@@ -723,7 +724,8 @@ class WhiteBoxStep:
     Pole ``table_ref`` wskazuje, KTÓRY wpis tablicy został użyty (lub marker BRAK).
     """
 
-    symbol: str
+    #: Identyfikator kroku (klucz wiersza na ekranie), nie tekst — wzór niesie `formula_latex`.
+    symbol: IdentyfikatorKontraktu
     formula_latex: str
     substitution_pl: str
     result_pl: str

@@ -1554,8 +1554,8 @@ def czas_stopnia(stopien: StopienNastaw, prad_pierwotny_a: float) -> dict[str, A
                 if typ in IEC60255_CURVE_PARAMS
                 else None
             ),
-            "I_a": prad_pierwotny_a,
-            "Is_a": stopien.prog_pierwotny_a,
+            "prad_pierwotny_a": prad_pierwotny_a,
+            "prog_pierwotny_a": stopien.prog_pierwotny_a,
             "TMS": stopien.tms,
             "zwloka_s": stopien.zwloka_s,
             "M": wynik.current_multiple_M,
@@ -1585,8 +1585,8 @@ def czas_stopnia(stopien: StopienNastaw, prad_pierwotny_a: float) -> dict[str, A
         "norma": "IEEE C37.112",
         "wzor_latex": r"t = TD \cdot \left(\frac{A}{M^{p} - 1} + B\right)",
         "stale": {"A": stale.a, "B": stale.b, "p": stale.p},
-        "I_a": prad_pierwotny_a,
-        "Is_a": stopien.prog_pierwotny_a,
+        "prad_pierwotny_a": prad_pierwotny_a,
+        "prog_pierwotny_a": stopien.prog_pierwotny_a,
         "TMS": stopien.tms,
         "zwloka_s": None,
         "M": punkt.current_multiple_m,
@@ -1851,20 +1851,22 @@ def _dane_jadra_pl(wejscie: CtBurdenInput, wynik: CtBurdenResult) -> str:
     """Z czego jądro policzyło ALF_eff — zdanie, które mówi, DLACZEGO rdzeń się nasyca."""
     czesci = [
         f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany",
-        f"S_n {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
+        f"moc znamionowa {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
         (
-            f"obciążenie obwodu wtórnego S_2obl {_liczba(wynik.moc_obliczeniowa_va)} VA"
+            f"obciążenie obwodu wtórnego {_liczba(wynik.moc_obliczeniowa_va)} VA"
             if wynik.moc_obliczeniowa_va is not None
             else ""
         ),
     ]
     if wynik.moc_wewnetrzna_va is not None and wejscie.rct_ohm is not None:
         czesci.append(
-            f"moc uzwojenia S_w {_liczba(wynik.moc_wewnetrzna_va)} VA "
-            f"z R_ct {_liczba(wejscie.rct_ohm)} Ω"
+            f"moc uzwojenia {_liczba(wynik.moc_wewnetrzna_va)} VA "
+            f"z rezystancji uzwojenia {_liczba(wejscie.rct_ohm)} Ω"
         )
     else:
-        czesci.append("wariant uproszczony bez R_ct — katalog nie niesie rezystancji uzwojenia")
+        czesci.append(
+            "wariant bez rezystancji uzwojenia wtórnego — katalog nie niesie tej wartości"
+        )
     return ", ".join(c for c in czesci if c)
 
 
@@ -1895,16 +1897,19 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
         granica = nasycenie["granica_nasycenia_a"]
         dane = _dane_jadra_pl(wejscie, wynik)
         uzasadnienie = (
-            f"ALF_eff = {_liczba(wynik.alf_efektywny)} ({dane}); wymagane ALF_wym = I/I₁n = "
-            f"{_liczba(prad_a)}/{_liczba(i1n)} = {_liczba(alf_wymagany)}; zapas ALF_eff − "
-            f"ALF_wym = {_liczba(wynik.zapas_alf)}"
+            f"efektywny współczynnik granicy dokładności {_liczba(wynik.alf_efektywny)} "
+            f"({dane}); wymagany — prąd przez prąd znamionowy pierwotny "
+            f"{_liczba(prad_a)}/{_liczba(i1n)} = {_liczba(alf_wymagany)}; zapas "
+            f"{_liczba(wynik.zapas_alf)}"
         )
         if wynik.status_nasycenia == STATUS_FAIL:
             return WiarygodnoscPunktu(
                 wiarygodnosc=NIEWIARYGODNY,
                 powod_pl=(
                     f"prąd {_liczba(prad_a)} A przekracza granicę nasycenia przekładnika "
-                    f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie}) — rdzeń nasyca się, "
+                    f"{_liczba(granica)} A — iloczyn efektywnego współczynnika granicy "
+                    f"dokładności i prądu znamionowego pierwotnego ({uzasadnienie}) — rdzeń "
+                    "nasyca się, "
                     "czas zadziałania i margines są niewiarygodne"
                 ),
                 nasycenie=nasycenie,
@@ -1913,7 +1918,8 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
             wiarygodnosc=WIARYGODNY,
             powod_pl=(
                 f"prąd {_liczba(prad_a)} A nie przekracza granicy nasycenia przekładnika "
-                f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie})"
+                f"{_liczba(granica)} A — iloczyn efektywnego współczynnika granicy "
+                f"dokładności i prądu znamionowego pierwotnego ({uzasadnienie})"
             ),
             nasycenie=nasycenie,
         )

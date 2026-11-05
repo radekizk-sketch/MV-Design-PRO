@@ -75,7 +75,7 @@ export function nadpisanieCZPol(pola: PolaWspolczynnikaC): WynikNadpisaniaC {
 /** Kod odmowy backendu dla niepoprawnego t_b (`network_model.core.czas_wylaczenia`). */
 export const KOD_CZAS_TB_NIEPOPRAWNY = 'fault.czas_tb_niepoprawny';
 export const KOMUNIKAT_CZAS_TB_NIEPOPRAWNY =
-  'Czas wyłączenia t_b musi być liczbą dodatnią w sekundach (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) — albo zostaw pole puste.';
+  'Czas wyłączenia zwarcia musi być liczbą dodatnią w sekundach (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) — albo zostaw pole puste.';
 
 export type WynikCzasuWylaczenia =
   | { ok: true; wartosc: number | null }

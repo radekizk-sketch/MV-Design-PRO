@@ -131,7 +131,8 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         )
     if request.parametry_robocze_maszyn and not has_r:
         raise ValueError(
-            "parametry_robocze_maszyn bez impedancji sieci zasilającej (upstream_r_ohm/x_ohm) — "
+            "Parametry robocze maszyn bez impedancji sieci zasilającej (rezystancji "
+            "i reaktancji strony SN) — "
             "wartości robocze maszyn opisują wyłącznie tę składową pętli."
         )
     if has_r and has_x:
@@ -198,11 +199,12 @@ def transformer_lv_impedance_ohm(
     """
     if sn_mva <= 0 or ulv_kv <= 0 or uk_percent <= 0:
         raise ValueError(
-            "sn_mva, ulv_kv i uk_percent muszą być dodatnie do wyznaczenia Z transformatora."
+            "Moc znamionowa, napięcie dolne i napięcie zwarcia muszą być dodatnie do "
+            "wyznaczenia impedancji transformatora."
         )
     if pk_kw < 0:
         raise OdmowaDanychError(
-            f"Straty obciążeniowe transformatora P_k = {pk_kw} kW są ujemne — popraw kartę "
+            f"Straty obciążeniowe transformatora {pk_kw} kW są ujemne — popraw kartę "
             "katalogową transformatora."
         )
     z_base = (ulv_kv**2) / sn_mva

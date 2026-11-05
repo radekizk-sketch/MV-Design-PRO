@@ -295,9 +295,10 @@ class AsynchronousMachineSource:
         z = self.z_internal_ohm
         return {
             "model": (
-                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M"
+                "IEC 60909-0:2016 §6.7 — maszyna dwustronnie zasilana (typ 3): zwieracz wirnika "
+                "→ maszyna asynchroniczna za impedancją maszyny"
                 if self.wind_type_3
-                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za Z_M)"
+                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za impedancją maszyny)"
             ),
             "wind_type_3": self.wind_type_3,
             "pr_mw": self.pr_mw,

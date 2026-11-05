@@ -179,9 +179,31 @@ WEJSCIA_REPREZENTATYWNE: dict[str, dict[str, Any]] = {
 }
 
 
+def _bez_prozy(wartosc: Any) -> Any:
+    """Struktura z liczbami, flagami i kluczami — bez tekstu dla człowieka.
+
+    Intencja testu (karta W3-C2 §0.2) to tożsamość LICZB bit w bit. Proza śladu i not
+    (opisy kroków, wzory, uzasadnienia) zmienia się z kanonem prezentacji (karta
+    PROZA-BEZ-SYMBOLI-ASCII: symbole jako wzór LaTeX albo słowa), więc tekst zastępuje
+    znacznik — liczba wpisów, klucze i każda liczba zostają porównane. Pole zapisu wzoru
+    ``*_latex`` z wartością tekstową jest prozą DODANĄ (kontrakt kroku śladu: proza w
+    ``substitution``, zapis KaTeX w ``substitution_latex``) i nie wchodzi do porównania."""
+    if isinstance(wartosc, dict):
+        return {
+            klucz: _bez_prozy(w)
+            for klucz, w in wartosc.items()
+            if not (klucz.endswith("_latex") and isinstance(w, str))
+        }
+    if isinstance(wartosc, list | tuple):
+        return [_bez_prozy(w) for w in wartosc]
+    if isinstance(wartosc, str):
+        return "<tekst>"
+    return wartosc
+
+
 def _wynik_do_dict_wspolny(wynik: Any) -> dict[str, Any]:
-    """Wytnij TYLKO bloki istniejące przed kartą W3-C2 z `to_dict()`."""
-    dane = wynik.to_dict()
+    """Wytnij TYLKO bloki istniejące przed kartą W3-C2 z `to_dict()` (liczby bez prozy)."""
+    dane = _bez_prozy(wynik.to_dict())
     return {
         "line_id": dane["line_id"],
         "line_name": dane["line_name"],

@@ -181,14 +181,15 @@ NAPIECIE_NAJWYZSZE_SIECI_KV: dict[float, float] = {
     # przesyłowa 400 kV pracuje z U_m = 420 kV):
     400.0: 420.0,
 }
-"""Napięcie znamionowe sieci Uₙ [kV] → napięcie najwyższe sieci U_s [kV] (IEC 60038).
+"""Napięcie znamionowe sieci [kV] → napięcie najwyższe sieci [kV] (IEC 60038).
 
 JEDYNA tabela tej pary w produkcie (lustro frontu: `ui2/model/pasmaNapieciowe.ts`, parytet
 przez `backend/schemas/napiecie_najwyzsze_parytet_v1.json`). Napięcie najwyższe urządzenia
-U_m (IEC 60071-1:2006 p. 3.10) to najwyższe napięcie międzyfazowe, dla którego zaprojektowano
-izolację urządzenia; napięcie najwyższe sieci U_s (p. 3.9) to najwyższe napięcie robocze sieci.
-Z obu definicji urządzenie może pracować w sieci, gdy U_m ≥ U_s (PN-EN 62271-1 p. 5.2 —
-napięcie znamionowe aparatu U_r jest wartością U_m)."""
+(IEC 60071-1:2006 p. 3.10) to najwyższe napięcie międzyfazowe, dla którego zaprojektowano
+izolację urządzenia; napięcie najwyższe sieci (p. 3.9) to najwyższe napięcie robocze sieci.
+Z obu definicji urządzenie może pracować w sieci, gdy jego napięcie najwyższe jest nie mniejsze
+od napięcia najwyższego sieci (PN-EN 62271-1 p. 5.2 — napięcie znamionowe aparatu jest
+wartością napięcia najwyższego urządzenia)."""
 
 _TOLERANCJA_NAPIECIA_SIECI_KV = 1e-6
 

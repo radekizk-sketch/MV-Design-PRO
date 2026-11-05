@@ -44,7 +44,8 @@ KOMUNIKATY_NAPRAWIONE_KARTA_READINESS_DOC: dict[str, str] = {
     "pv.control_mode_missing": "Falownik PV nie ma określonego trybu regulacji",
     "bess.energy_module_missing": "Falownik BESS nie ma przypisanego modułu magazynu energii",
     "bess.soc_limits_invalid": (
-        "Ograniczenia SOC magazynu BESS są nieprawidłowe (min >= max albo poza zakresem 0-100%)"
+        "Ograniczenia SOC magazynu BESS są nieprawidłowe "
+        "(minimum nie mniejsze od maksimum albo poza zakresem 0–100%)"
     ),
     "ups.backup_time_invalid": "Czas podtrzymania UPS jest nieprawidłowy (musi być > 0)",
     "nn.switch.catalog_ref_missing": "Aparat łączeniowy pola nN nie ma przypisanego katalogu",

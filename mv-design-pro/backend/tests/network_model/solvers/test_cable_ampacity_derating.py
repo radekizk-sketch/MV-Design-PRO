@@ -412,7 +412,7 @@ class TestWspolczynnikiNNFailClosed:
             )
 
     def test_liczba_obwodow_ponizej_1_odrzucona(self) -> None:
-        with pytest.raises(ValueError, match="Liczba obwodów musi być >= 1"):
+        with pytest.raises(ValueError, match="Liczba obwodów musi wynosić co najmniej 1"):
             wspolczynniki_nn(
                 srodowisko="powietrze", izolacja="PVC", temperatura_c=30.0, liczba_obwodow=0
             )

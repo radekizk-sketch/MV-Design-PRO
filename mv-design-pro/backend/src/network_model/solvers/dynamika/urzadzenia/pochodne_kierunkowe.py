@@ -163,8 +163,8 @@ def pierwiastek(x: Dual) -> Dual:
     """`sqrt(x)`; w zerze pochodna nie istnieje, wiec zero jest bledem wolajacego."""
     if x.wartosc <= 0.0:
         raise ValueError(
-            f"pierwiastek z {x.wartosc} — pochodna sqrt nie istnieje dla argumentu <= 0; "
-            "wolajacy musi odciac ten przypadek nazwana odmowa, nie liczyc dalej"
+            f"pierwiastek z {x.wartosc} — pochodna pierwiastka nie istnieje dla argumentu "
+            "niedodatniego; wołający musi odciąć ten przypadek nazwaną odmową, nie liczyć dalej"
         )
     wartosc = math.sqrt(x.wartosc)
     return Dual(wartosc, _skala(0.5 / wartosc, x.gradient))

@@ -407,7 +407,8 @@ def zbuduj_rdzen_gfm(
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
             "Przeksztaltnik tworzacy siec o ZEROWEJ impedancji wirtualnej nie ma "
-            "skonczonej admitancji — R_w i X_w nie moga byc jednoczesnie zerowe",
+            "skończonej admitancji — rezystancja i reaktancja wirtualna nie mogą być "
+            "jednocześnie zerowe",
             r_wirtualne_pu=r_wirtualne_pu,
             x_wirtualne_pu=x_wirtualne_pu,
         )

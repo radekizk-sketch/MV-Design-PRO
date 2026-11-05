@@ -176,7 +176,11 @@ def test_nadpisanie_bez_uzasadnienia_odmowa_w_biegu(scenariusz: str, lokalizacja
 def test_dawny_klucz_c_factor_jest_odmowa_bez_warstwy_zgodnosci() -> None:
     wynik = _bieg({"c_factor": 1.10})
     assert wynik.status == "FAILED"
-    assert "c_factor" in (wynik.error_message or "")
+    # Odmowa mówi słowami, CO usunięto, i wskazuje oba nośniki, które zastąpiły dawny klucz
+    # (komunikat projektanta nie powtarza identyfikatora klucza w prozie).
+    komunikat = wynik.error_message or ""
+    assert "Opcja biegu współczynnika napięciowego została usunięta" in komunikat
+    assert "`scenario`" in komunikat and "`nadpisanie_c`" in komunikat
     with pytest.raises(FaultScenarioValidationError):
         ShortCircuitConfig.from_dict({"scenariusz": "MAX", "c_factor": 1.10})
 

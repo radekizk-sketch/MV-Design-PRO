@@ -871,7 +871,7 @@ function AnalysisDataTable({
             <tr>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Typ</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Obiekt</th>
-              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">U_n / wariant</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Napięcie znamionowe / wariant</th>
               <th className="min-w-[260px] border-b border-slate-200 px-3 py-2">Dane wejściowe</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 1</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 2</th>

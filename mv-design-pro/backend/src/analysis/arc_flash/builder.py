@@ -306,20 +306,20 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"$I_{{bf}}$={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
+                    f"Ibf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
                     f"[{cfg.value}]; kotwy: "
                     + ", ".join(f"{k}={_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
                     + f"; VarCf={_round(var_cf)}"
                 ),
                 result_pl=(
-                    f"$I_{{arc}}$ = {_round(i_arc)} kA, I_arc_min = {_round(i_arc_min)} kA "
+                    f"Iarc = {_round(i_arc)} kA, Iarc,min = {_round(i_arc_min)} kA "
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "$I_{bf}$,$I_{arc}$ w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV]."
+                    "Ibf,Iarc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV]."
                 ),
                 table_ref=(
-                    f"$I_{{arc}}$[{cfg.value}, kotwy 600/2700/14300 V] (Tab.1) + "
+                    f"Iarc[{cfg.value}, kotwy 600/2700/14300 V] (Tab.1) + "
                     f"VarCf[{cfg.value}] (Tab.2) = open_source_IEEE_1584"
                 ),
             )
@@ -372,7 +372,7 @@ class ArcFlashBuilder:
                     r"x_5 = k_{12}\lg D\;;\quad E=\mathrm{interp}_U(\cdot)\;[\mathrm{J/cm^2}]"
                 ),
                 substitution_pl=(
-                    f"$I_{{bf}}$={_round(i_bf)} kA, G={_round(gap)} mm, t={_round(arc_time_ms)} ms, "
+                    f"Ibf={_round(i_bf)} kA, G={_round(gap)} mm, t={_round(arc_time_ms)} ms, "
                     f"D={_round(working_distance)} mm, CF={_round(cf)}; kotwy: "
                     + ", ".join(f"{k}={_round(v)} J/cm²" for k, v in sorted(e_anchors_jcm2.items()))
                 ),
@@ -398,12 +398,12 @@ class ArcFlashBuilder:
                     r"\quad(\mathrm{interp}_U);\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
                 ),
                 substitution_pl=(
-                    f"$E_{{\\text{{próg}}}}$ = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
+                    f"E próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
                     f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
                 ),
                 result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
-                unit_check_pl="$D_{AFB}$ w mm; odległość, na której E spada do 1,2 cal/cm².",
+                unit_check_pl="DAFB w mm; odległość, na której E spada do 1,2 cal/cm².",
                 table_ref=(
                     f"E[{cfg.value}] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; "
                     "próg 1,2 cal/cm² publiczny"
@@ -524,21 +524,21 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"$I_{{bf}}$={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
+                    f"Ibf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
                     f"[{cfg.value}, ścieżka LV — U≤600 V, BEZ interpolacji kotew]; "
-                    f"$I_{{arc}}$,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
+                    f"Iarc,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
                 ),
                 result_pl=(
-                    f"$I_{{arc}}$ = {_round(i_arc)} kA (Eq.25, skorygowany do U={_round(voltage)} kV), "
-                    f"I_arc_min = {_round(i_arc_min)} kA "
+                    f"Iarc = {_round(i_arc)} kA (Eq.25, skorygowany do U={_round(voltage)} kV), "
+                    f"Iarc,min = {_round(i_arc_min)} kA "
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "$I_{bf}$,$I_{arc}$,$I_{arc}$,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku "
+                    "Ibf,Iarc,Iarc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku "
                     "kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V)."
                 ),
                 table_ref=(
-                    f"$I_{{arc}}$,600[{cfg.value},V600] (Tab.1) = open_source_IEEE_1584; "
+                    f"Iarc,600[{cfg.value},V600] (Tab.1) = open_source_IEEE_1584; "
                     "Eq.25 publiczna postać zamknięta (bez tablicy)"
                 ),
             )
@@ -587,8 +587,8 @@ class ArcFlashBuilder:
                     r"x_4 = k_{11}\lg I_{bf}+k_{13}\lg I_{arc}+\lg(1/CF)\;[\mathrm{J/cm^2}]"
                 ),
                 substitution_pl=(
-                    f"$I_{{bf}}$={_round(i_bf)} kA, $I_{{arc}}$,600={_round(i_arc_600)} kA (nieskorygowany, "
-                    f"człon x3), $I_{{arc}}$={_round(i_arc)} kA (Eq.25, człon x4), G={_round(gap)} mm, "
+                    f"Ibf={_round(i_bf)} kA, Iarc,600={_round(i_arc_600)} kA (nieskorygowany, "
+                    f"człon x3), Iarc={_round(i_arc)} kA (Eq.25, człon x4), G={_round(gap)} mm, "
                     f"t={_round(arc_time_ms)} ms, D={_round(working_distance)} mm, CF={_round(cf)} "
                     f"[wiersz kotwy 600 V, U rzeczywiste={_round(voltage)} kV]"
                 ),
@@ -614,12 +614,12 @@ class ArcFlashBuilder:
                     r"\quad(\text{wiersz 600 V});\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
                 ),
                 substitution_pl=(
-                    f"$E_{{\\text{{próg}}}}$ = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
+                    f"E próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
                     f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
                 ),
                 result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
-                unit_check_pl="$D_{AFB}$ w mm; odległość, na której E spada do 1,2 cal/cm².",
+                unit_check_pl="DAFB w mm; odległość, na której E spada do 1,2 cal/cm².",
                 table_ref=(
                     f"E[{cfg.value},V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; "
                     "próg 1,2 cal/cm² publiczny"
@@ -719,11 +719,11 @@ class ArcFlashBuilder:
                 symbol="E_Lee",
                 formula_latex=(r"E = 2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ D^{2}"),
                 substitution_pl=(
-                    f"V={_round(voltage)} kV, $I_{{bf}}$={_round(i_bf)} kA, t={_round(arc_time)} s, "
+                    f"V={_round(voltage)} kV, Ibf={_round(i_bf)} kA, t={_round(arc_time)} s, "
                     f"D={_round(working_distance)} mm [poza zakresem IEEE 1584-2018]"
                 ),
                 result_pl=f"E = {_round(e_lee)} cal/cm² ({ARC_FLASH_RALPH_LEE_LABEL})",
-                unit_check_pl="V w kV, $I_{bf}$ w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
+                unit_check_pl="V w kV, Ibf w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
                 table_ref="metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)",
             )
         )
@@ -737,11 +737,11 @@ class ArcFlashBuilder:
                     r"D_{AFB} = \sqrt{2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ 1{,}2}"
                 ),
                 substitution_pl=(
-                    f"V={_round(voltage)} kV, $I_{{bf}}$={_round(i_bf)} kA, t={_round(arc_time)} s; "
-                    f"$E_{{\\text{{próg}}}}$ = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm²"
+                    f"V={_round(voltage)} kV, Ibf={_round(i_bf)} kA, t={_round(arc_time)} s; "
+                    f"E próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm²"
                 ),
                 result_pl=f"AFB = {_round(afb_lee)} mm ({ARC_FLASH_RALPH_LEE_LABEL})",
-                unit_check_pl="$D_{AFB}$ w mm; odległość, na której E = 1,2 cal/cm².",
+                unit_check_pl="DAFB w mm; odległość, na której E = 1,2 cal/cm².",
                 table_ref="metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)",
             )
         )

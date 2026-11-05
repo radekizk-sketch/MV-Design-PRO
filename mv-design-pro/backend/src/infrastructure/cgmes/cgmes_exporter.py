@@ -691,16 +691,20 @@ _SUFIKS_JEDNOSTKI: dict[str, str] = {
 
 #: Dane generatora, których tor obcy EQ+TP NIE odtworzy (side-car je niesie).
 GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
-    "gen_type fw_pmsg/fw_dfig — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
-    "odróżnia profil DY); import daje wind_inverter z ostrzeżeniem",
-    "podział mocy znamionowej na jednostki (quantity/n_parallel) — ratedS niesie moc "
-    "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
-    "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
-    "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
-    "parametry zwarciowe maszyny DFIG (pr_mw, pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
+    "rodzaj turbiny wiatrowej (generator synchroniczny z magnesami trwałymi albo maszyna "
+    "dwustronnie zasilana) — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
+    "odróżnia profil DY); import daje falownik wiatrowy z ostrzeżeniem",
+    "podział mocy znamionowej na jednostki (liczba jednostek i torów równoległych) — ratedS "
+    "niesie moc CAŁEJ instalacji; import: moc znamionowa równa ratedS, jedna jednostka "
+    "(ta sama moc łączna)",
+    "granice pracy (GenLimits), wiązanie katalogowe, wariant przyłączenia, stacja i "
+    "transformator blokowy, dynamika, modele widmowe, nastawy i deklaracje modułu — brak "
+    "odpowiednika w EQ",
+    "parametry zwarciowe maszyny dwustronnie zasilanej (moc znamionowa, liczba par biegunów, "
+    "krotność prądu rozruchowego, współczynnik mocy, sprawność) — "
     "PowerElectronicsConnection nie ma atrybutów maszyny wirującej",
-    "pozostałe klucze materialized_params poza sn_mva, un_kv i parametrami zwarciowymi maszyn "
-    "SynchronousMachine/AsynchronousMachine",
+    "pozostałe parametry zmaterializowane z katalogu poza mocą i napięciem znamionowym "
+    "oraz parametrami zwarciowymi maszyn SynchronousMachine/AsynchronousMachine",
     "wartości projektanta parametrów zwarciowych maszyny (overrides) — EQ niesie wyłącznie "
     "tabliczkę; wartość projektanta wpisana do atrybutu udawałaby daną tabliczki odbiorcy",
 )

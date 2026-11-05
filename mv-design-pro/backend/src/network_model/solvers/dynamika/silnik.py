@@ -2768,7 +2768,7 @@ def jednostka_stanu(nazwa: str) -> str:
         return "s"
     raise AssertionError(
         f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanow wymaga "
-        "sufiksu jednostki (_rad, _pu, _pu_na_s, _s)."
+        "sufiksu jednostki (rad, pu, pu na sekundę albo s)."
     )
 
 

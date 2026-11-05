@@ -75,6 +75,7 @@ from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne.wielkosci_pochodne import rezystancja_w_temperaturze
 from scipy.integrate import quad
 from werdykt.kontrakt import DanaPrzyjeta, KompletnoscDowodu
+from werdykt.zapis_latex import ZapisLatex
 
 #: Wersja metody — zmiana wzoru, stałej albo kolejności kroków podnosi wersję (proweniencja
 #: parametrów gałęzi w modelu niesie ją obok odcisku wejścia).
@@ -213,7 +214,7 @@ def _wartosc_json(wartosc: float | complex) -> float | dict[str, float]:
 class WielkoscSladu:
     """Wielkość kroku (wejście albo wynik): symbol LaTeX, wartość, jednostka."""
 
-    symbol: str
+    symbol: ZapisLatex
     wartosc: float | complex
     jednostka: str
 
@@ -615,8 +616,8 @@ def oblicz_parametry_linii(dane: WejscieParametrowLinii) -> ParametryLiniiNapowi
             ),
             wynik=WielkoscSladu(r"R'_{\theta}", r_theta, "Ω/km"),
             podstawa_pl=(
-                "IEC 60909-0:2016, wzór R_L(θ_e) (α = 0,004 1/K dla miedzi, aluminium i stopów "
-                "aluminium); θ — temperatura dopuszczalna długotrwale przewodu"
+                r"IEC 60909-0:2016, wzór $R_L(\theta_e)$ ($\alpha = 0{,}004$ 1/K dla miedzi, aluminium "
+                r"i stopów aluminium); $\theta$ — temperatura dopuszczalna długotrwale przewodu"
             ),
         )
     )

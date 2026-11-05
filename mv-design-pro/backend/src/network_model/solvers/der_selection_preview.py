@@ -58,7 +58,10 @@ _EPS = 1e-9
 # 1) DOBÓR TRANSFORMATORA BLOKOWEGO (wymaganie 3)
 # ===========================================================================
 
-_TR_FORMULA_REF = "S_wym = ΣS · k_j · (1 + rezerwa);  Sn · obciążalność ≥ S_wym"
+_TR_FORMULA_REF = (
+    r"$S_{wym} = \sum S \cdot k_j \cdot (1 + \mathrm{rezerwa})$; "
+    r"$S_n \cdot \mathrm{obciążalność} \ge S_{wym}$"
+)
 
 
 @dataclass(frozen=True)
@@ -151,9 +154,9 @@ def propose_block_transformer(
     # sprawdzana wyżej jedną funkcją `domain.generator_validation` (API podglądu, tor
     # operacji); tutaj — warunki matematyczne progu, bez których wynik byłby bez sensu.
     if data.simultaneity_factor <= 0.0:
-        raise OdmowaDanychError("Współczynnik jednoczesności k_j musi być dodatni.")
+        raise OdmowaDanychError("Współczynnik jednoczesności musi być dodatni.")
     if data.loadability_pu <= 0.0:
-        raise OdmowaDanychError("Przeciążalność transformatora k_obc musi być dodatnia.")
+        raise OdmowaDanychError("Przeciążalność transformatora musi być dodatnia.")
     if data.reserve_pu < 0.0:
         raise OdmowaDanychError("Rezerwa mocy transformatora nie może być ujemna.")
     simultaneity = data.simultaneity_factor
@@ -252,7 +255,10 @@ def propose_block_transformer(
 # 2) DOBÓR KABLA SN TORU (wymaganie 10)
 # ===========================================================================
 
-_CABLE_FORMULA_REF = "I_z ≥ I_TR · (1 + rezerwa);  ΔU% ≤ ΔU_dop  (ΔU z compute_cable_voltage_drop)"
+_CABLE_FORMULA_REF = (
+    r"$I_z \ge I_{TR} \cdot (1 + \mathrm{rezerwa})$; $\Delta U\% \le \Delta U_{dop}$ "
+    "(spadek napięcia z obliczenia spadku napięcia kabla)"
+)
 
 
 @dataclass(frozen=True)
@@ -574,7 +580,8 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
 # ===========================================================================
 
 _FIELD_FORMULA_REF = (
-    "In ≥ I_TR · (1 + rezerwa);  U_r aparatu ≥ U_s sieci (napięcie najwyższe sieci, IEC 60038)"
+    r"$I_n \ge I_{TR} \cdot (1 + \mathrm{rezerwa})$; napięcie znamionowe aparatu "
+    "nie mniejsze niż napięcie najwyższe sieci (IEC 60038)"
 )
 
 
@@ -674,12 +681,12 @@ def propose_mv_field_apparatus(
                     (
                         (
                             f"Napięcie znamionowe aparatu {candidate.un_kv:g} kV poniżej napięcia "
-                            f"najwyższego sieci U_s = {u_s:g} kV (sieć {data.system_voltage_kv:g} kV, "
+                            f"najwyższego sieci {u_s:g} kV (sieć {data.system_voltage_kv:g} kV, "
                             "IEC 60038)."
                         )
                         if u_s is not None
                         else (
-                            f"Sieć {data.system_voltage_kv:g} kV nie ma napięcia najwyższego U_s "
+                            f"Sieć {data.system_voltage_kv:g} kV nie ma napięcia najwyższego "
                             "w tablicach IEC 60038 — poziomu izolacji aparatu nie da się potwierdzić."
                         )
                     ),

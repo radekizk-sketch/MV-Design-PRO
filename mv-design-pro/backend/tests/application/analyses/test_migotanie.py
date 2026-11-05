@@ -356,9 +356,9 @@ def test_white_box_contains_summation_plt_and_rvc_steps() -> None:
     )
     entry = build_migotanie_view(run)["buses"][0]
     symbols = [step["symbol"] for step in entry["white_box"]]
-    # Karta DOWOD-CIEPLNY: `symbol` jest proza (ekran jakosci pokazuje go tekstem
-    # „Wzór (P_st)"), wiec niesie zapis tekstowy, nie LaTeX `P_{st}`.
-    assert "P_st" in symbols and "P_lt" in symbols and "d" in symbols
+    # `symbol` to symbol wielkości w LaTeX-u (ekran jakości używa go jako klucza kroku,
+    # proza podstawienia niesie symbol jako segment `$…$`) — karta PROZA-BEZ-SYMBOLI-ASCII.
+    assert "Pst" in symbols and "Plt" in symbols and "d" in symbols
     for step in entry["white_box"]:
         assert step["formula_latex"] and step["substitution_pl"] and step["result_pl"]
     assert entry["zalozenia_pl"]

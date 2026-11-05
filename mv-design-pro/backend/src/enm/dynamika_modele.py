@@ -52,6 +52,7 @@ from typing import Annotated, Literal
 
 from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel, Field, model_validator
+from werdykt import format_liczba
 
 # ---------------------------------------------------------------------------
 # Proweniencja bloku (SS0 p. 2)
@@ -191,23 +192,29 @@ class MaszynaSynchroniczna(BaseModel):
     def _porzadek_reaktancji_i_stalych(self) -> MaszynaSynchroniczna:
         if not (self.xd_bis_pu <= self.xd_prim_pu <= self.xd_pu):
             raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xd_bis_pu <= xd_prim_pu <= xd_pu "
-                f"(otrzymano {self.xd_bis_pu} / {self.xd_prim_pu} / {self.xd_pu})."
+                "Maszyna synchroniczna: wymagany porządek reaktancji osi d: "
+                "podprzejściowa ≤ przejściowa ≤ synchroniczna "
+                f"(otrzymano {format_liczba(self.xd_bis_pu)} "
+                f"/ {format_liczba(self.xd_prim_pu)} / {format_liczba(self.xd_pu)})."
             )
         if not (self.xq_bis_pu <= self.xq_prim_pu <= self.xq_pu):
             raise ValueError(
-                "MaszynaSynchroniczna: wymagany porządek xq_bis_pu <= xq_prim_pu <= xq_pu "
-                f"(otrzymano {self.xq_bis_pu} / {self.xq_prim_pu} / {self.xq_pu})."
+                "Maszyna synchroniczna: wymagany porządek reaktancji osi q: "
+                "podprzejściowa ≤ przejściowa ≤ synchroniczna "
+                f"(otrzymano {format_liczba(self.xq_bis_pu)} "
+                f"/ {format_liczba(self.xq_prim_pu)} / {format_liczba(self.xq_pu)})."
             )
         if self.td0_bis_s > self.td0_prim_s:
             raise ValueError(
-                "MaszynaSynchroniczna: td0_bis_s musi być <= td0_prim_s "
-                f"(otrzymano {self.td0_bis_s} > {self.td0_prim_s})."
+                "Maszyna synchroniczna: podprzejściowa stała czasowa osi d stanu jałowego "
+                "nie może przekraczać przejściowej "
+                f"(otrzymano {format_liczba(self.td0_bis_s)} > {format_liczba(self.td0_prim_s)})."
             )
         if self.tq0_bis_s > self.tq0_prim_s:
             raise ValueError(
-                "MaszynaSynchroniczna: tq0_bis_s musi być <= tq0_prim_s "
-                f"(otrzymano {self.tq0_bis_s} > {self.tq0_prim_s})."
+                "Maszyna synchroniczna: podprzejściowa stała czasowa osi q stanu jałowego "
+                "nie może przekraczać przejściowej "
+                f"(otrzymano {format_liczba(self.tq0_bis_s)} > {format_liczba(self.tq0_prim_s)})."
             )
         return self
 
@@ -267,8 +274,9 @@ class PrzeksztaltnikGFL(BaseModel):
     def _granice_napiecia_spojne(self) -> PrzeksztaltnikGFL:
         if self.u_min_ciagle_pu >= self.u_max_ciagle_pu:
             raise ValueError(
-                "PrzeksztaltnikGFL: u_min_ciagle_pu musi być mniejsze niż u_max_ciagle_pu "
-                f"(otrzymano {self.u_min_ciagle_pu} >= {self.u_max_ciagle_pu})."
+                "Przekształtnik nadążny: dolna granica napięcia pracy ciągłej musi być mniejsza "
+                f"niż górna (otrzymano {format_liczba(self.u_min_ciagle_pu)} "
+                f"≥ {format_liczba(self.u_max_ciagle_pu)})."
             )
         return self
 

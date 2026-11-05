@@ -174,7 +174,8 @@ _PODSTAWA_PRADU_AWSC = (
     "środek przedziału 30 A (wartość robocza)"
 )
 _PODSTAWA_NASTAWY_DLAWIKA = (
-    "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia "
+    "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — "
+    "wartość robocza do zastąpienia "
     "nastawą regulatora albo położeniem zaczepu"
 )
 #: Rozstrojenie, poniżej którego nastawa dławika jest uznana za pracę w punkcie
@@ -739,7 +740,7 @@ def _propozycja_z0_tu(u_kv: float) -> tuple[tuple[float, str], tuple[float, str]
     pozycja = _najblizsza_pozycja(get_all_earthing_transformer_records(), u_kv)
     p = pozycja["params"]
     podstawa = (
-        f"pozycja typowa katalogu „{pozycja['name']}” (U_n {p['u_n_kv']:g} kV) — "
+        f"pozycja typowa katalogu „{pozycja['name']}” (napięcie znamionowe {p['u_n_kv']:g} kV) — "
         f"{p[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU]['r0_ohm']}"
     )
     return (float(p["r0_ohm"]), podstawa), (float(p["x0_ohm"]), podstawa)
@@ -881,7 +882,8 @@ def _galaz_rezystora(
             rezystancja_z_pradu_ohm(u_kv, i_n.wartosc),
             "Ω",
             "PROPOZYCJA" if i_n.roboczy else "WYPROWADZONA",
-            f"R = U_n/(√3·I_n) z prądu znamionowego {i_n.wartosc:g} A ({i_n.podstawa_pl})",
+            r"$R = U_n / (\sqrt{3} \cdot I_n)$ z prądu znamionowego "
+            f"{i_n.wartosc:g} A ({i_n.podstawa_pl})",
         )
     parametry.append(r)
     if i_n is not None:
@@ -921,7 +923,7 @@ def _prad_z_rezystancji(u_kv: float, r: ParametrPunktuNeutralnego) -> ParametrPu
         prad_elementu_punktu_neutralnego_a(u_kv, complex(r.wartosc, 0.0)),
         "A",
         "PROPOZYCJA" if r.roboczy else "WYPROWADZONA",
-        f"I_n = U_n/(√3·R) z rezystancji {r.wartosc:g} Ω ({r.podstawa_pl})",
+        r"$I_n = U_n / (\sqrt{3} \cdot R)$ z rezystancji " f"{r.wartosc:g} Ω ({r.podstawa_pl})",
     )
 
 
@@ -1177,7 +1179,7 @@ def _ostrzezenia(sekcja: UziemienieSekcji) -> tuple[str, ...]:
         wynik.append(
             "Nastawa dławików równa prądowi pojemnościowemu sieci (rozstrojenie "
             f"{v * 100:.2f} %) — ENEA Zeszyt 1 §16 s. 30 zakazuje pracy w punkcie rezonansowym "
-            "I_L = I_C."
+            "(prąd dławika równy prądowi pojemnościowemu)."
         )
     return tuple(wynik)
 

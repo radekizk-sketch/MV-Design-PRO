@@ -183,7 +183,8 @@ def admitancja_zwarcia_pu(
     z_zwarcia_pu = complex(r_f_ohm, x_f_ohm) / z_bazowa_ohm
     if z_zwarcia_pu == 0:
         raise ZeroDivisionError(
-            "Zwarcie metaliczne (R_f = X_f = 0) nie ma skończonej admitancji — "
+            "Zwarcie metaliczne (zerowa rezystancja i reaktancja przejścia) nie ma skończonej "
+            "admitancji — "
             "impedancja zwarcia musi być niezerowa."
         )
     return 1.0 / z_zwarcia_pu

@@ -42,6 +42,7 @@ from domain.result_contract_v1 import (
     ResultSetV1,
     compute_deterministic_signature,
 )
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 # ---------------------------------------------------------------------------
 # Default Legend
@@ -247,7 +248,7 @@ def _extract_overlay_warnings(
 #: etykiet metryk frontu (``ui2/wyniki/etykietyMetryk.ts``): fikstura
 #: ``kody_metryk_wynikow`` (``scripts/eksport_fixtur_harnessu.py``) jest liczona
 #: z tej mapy, a test frontu żąda etykiety dla KAŻDEGO kodu (i niczego ponad).
-METRYKI_ELEMENTOW_WYNIKU: dict[str, tuple[str, str, str]] = {
+METRYKI_ELEMENTOW_WYNIKU: dict[str, tuple[IdentyfikatorKontraktu, str, str]] = {
     # key → (code, unit, format_hint)
     "ikss_ka": ("IK_3F_A", "kA", "fixed2"),
     "ikss_a": ("IK_3F_A", "A", "fixed0"),

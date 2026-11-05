@@ -1896,7 +1896,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N "
+            "Konfiguracja punktu neutralnego niespójna: rezystor bez rezystancji, dławik bez "
+            "reaktancji "
             "albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "neutral_grounding"},
@@ -2546,10 +2547,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie "
+            "Udział zwarciowy falownika nie ma miarodajnej deklaracji w karcie "
             "katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik "
             "ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw "
-            "zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo "
+            "zabezpieczeń ani pakietu dowodowego — uzupełnij udział zwarciowy z karty "
+            "producenta albo "
             "certyfikatu jednostki wytwórczej"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
@@ -2632,8 +2634,9 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; "
-            "P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora "
+            "Moc wymagana źródła przekształtnikowego — większa z mocy znamionowej jednostki "
+            "razy liczba jednostek i mocy czynnej przez współczynnik mocy, razy współczynnik "
+            "jednoczesności — przekracza moc transformatora "
             "zasilającego · przeciążalność"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
@@ -3257,7 +3260,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się w uziemionym "
             "uzwojeniu transformatora; krawędzie powyżej liczone bez sprzężenia faz "
-            "(Z_m = 0) — solver BFS nie odwzorowuje izolacji składowej zerowej przez "
+            "(impedancja wzajemna zerowa) — solver BFS nie odwzorowuje izolacji składowej "
+            "zerowej przez "
             "trójkąt/gwiazdę nieuziemioną"
         ),
         fix_navigation={"panel": "inspector", "tab": "transformator", "focus": "vector_group"},
@@ -4117,7 +4121,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl=(
             "Ograniczenia SOC magazynu BESS są nieprawidłowe "
-            "(min >= max albo poza zakresem 0-100%)"
+            "(minimum nie mniejsze od maksimum albo poza zakresem 0–100%)"
         ),
         fix_navigation={
             "panel": "inspector",
@@ -4185,7 +4189,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl=(
             "Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego "
-            "z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
+            "z katalogu — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć"
         ),
         fix_navigation={"panel": "inspector", "tab": "nn", "modal": "add_nn_rcd"},
     ),

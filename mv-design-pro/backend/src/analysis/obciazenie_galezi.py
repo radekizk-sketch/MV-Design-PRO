@@ -60,7 +60,7 @@ TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW = 1e-9
 
 POWOD_BRAK_GALEZI_PL = "Gałęzi nie ma w modelu biegu — brak danych znamionowych."
 POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL = "Brak prądu znamionowego (obciążalności) gałęzi w modelu."
-POWOD_BRAK_MOCY_ZNAMIONOWEJ_PL = "Brak mocy znamionowej S_n transformatora w modelu."
+POWOD_BRAK_MOCY_ZNAMIONOWEJ_PL = "Brak mocy znamionowej transformatora w modelu."
 POWOD_BRAK_NAPIECIA_GN_PL = "Brak napięcia znamionowego strony GN transformatora w modelu."
 POWOD_BRAK_NAPIECIA_DN_PL = "Brak napięcia znamionowego strony DN transformatora w modelu."
 POWOD_RODZAJ_BEZ_ZNAMIONOWYCH_PL = "Rodzaj gałęzi nie ma prądu znamionowego w modelu."

@@ -53,7 +53,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'ERROR',
     code: 'OC_OVERLAP',
-    message_pl: 'Nakladanie sie progow I> i I>> (I> >= I>>): prog I>=600 A >= prog I>>=500 A',
+    message_pl: 'Próg I> (600 A) jest większy lub równy progowi I>> (500 A)',
     element_id: 'switch-001',
     element_type: 'Switch',
     function_ansi: '50/51',
@@ -84,7 +84,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'ERROR',
     code: 'VOLT_OVERLAP',
-    message_pl: 'Nakladanie sie progow U< i U> (U< >= U>): U<=0,9×Un >= U>=0,85×Un',
+    message_pl: 'Próg U< (0,9×Un) jest większy lub równy progowi U> (0,85×Un)',
     element_id: 'connection_node-001',
     element_type: 'Bus',
     function_ansi: '27/59',

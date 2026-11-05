@@ -202,7 +202,11 @@ PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 #: ``I_AC,nom``). Zmiana WYŁĄCZNIE tekstu — sonda zrzutu kanonicznego HEAD → karta: 58 różnic (40 poza polami karty projekcji),
 #: każda w polu tekstowym ``note``/``verification_note``, zero liczb, kluczy i typów. Ogniwo
 #: łańcucha cofa 40 tekstów spoza pól karty z fikstury `noty_katalogu_przed_proza_bez_symboli.json`.
-ODCISK_PO_PROZIE_BEZ_SYMBOLI = "436157b6b3caa3823fbc13d0a324729c4e2faf77ee9f2b8ba637f28765df9270"
+#: Druga sonda (następca 3, transformatory, aparatura nN i SN, przekładniki, rezystory i
+#: transformatory uziemiające): 518 kolejnych różnic, wszystkie str → str w polach
+#: ``verification_note``/``source_reference``/``source_ref`` i w tekście par wartości roboczych —
+#: zero liczb, kluczy i typów; fikstura niesie razem 558 dawnych tekstów.
+ODCISK_PO_PROZIE_BEZ_SYMBOLI = "3fd7850e31b1f3b73a32a3012e21d215ba96fb7d9d36c6b1bc8b524bb1050476"
 _NOTY_PRZED_PROZA = Path(__file__).with_name("noty_katalogu_przed_proza_bez_symboli.json")
 
 
@@ -213,6 +217,10 @@ def _cofnij_proze_bez_symboli(zrzut: dict[str, object]) -> int:
         wezel: Any = zrzut
         *droga, ostatni = wpis["sciezka"]
         for krok in droga:
+            if isinstance(wezel[krok], tuple):
+                # Krotki (np. pary wartości roboczych) zapisują się w JSON jak listy — zamiana
+                # na listę nie zmienia odcisku, a pozwala podstawić dawny tekst.
+                wezel[krok] = list(wezel[krok])
             wezel = wezel[krok]
         assert wezel[ostatni] != wpis["przed"], wpis["sciezka"]
         wezel[ostatni] = wpis["przed"]
@@ -294,7 +302,7 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_PROZIE_BEZ_SYMBOLI
-    assert _cofnij_proze_bez_symboli(zrzut) == 40
+    assert _cofnij_proze_bez_symboli(zrzut) == 558
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]

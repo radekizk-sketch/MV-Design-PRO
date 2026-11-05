@@ -293,7 +293,9 @@ const revision = "K30-38";
 describe('K11-B — nawigator kanwy', () => {
 });
 """
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".test.tsx", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".test.tsx", delete=False
+        ) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -363,7 +365,9 @@ class TestSkanBackendu:
         prozą czytaną przez projektanta, nigdy cytatem karty."""
         for token in ("K1", "K5", "K11", "K13"):
             naruszenia = self._skan(f'    message_pl="Krok ({token}) niekompletny"\n')
-            assert len(naruszenia) == 1, f"token {token} powinien byc zlapany w backendzie"
+            assert (
+                len(naruszenia) == 1
+            ), f"token {token} powinien byc zlapany w backendzie"
             assert naruszenia[0].match == token
 
     def test_kodename_w_tytule_dowodu_jest_naruszeniem(self):
@@ -456,7 +460,10 @@ class TestExcludedRelativeFilesFreshness:
     """
 
     def test_zielony_na_repo(self) -> None:
-        assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
+        assert (
+            guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
+            == []
+        )
 
     def test_kazdy_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
         """KLASA, nie instancja: KAZDY wpis EXCLUDED_RELATIVE_FILES musi wskazywac
@@ -475,7 +482,9 @@ class TestExcludedRelativeFilesFreshness:
             elif not scan_file(full_path):
                 sieroty.append(f"{rel_path!r}: plik nie produkuje zadnego trafienia")
 
-        assert sieroty == [], "EXCLUDED_RELATIVE_FILES ma sieroty:\n" + "\n".join(sieroty)
+        assert sieroty == [], "EXCLUDED_RELATIVE_FILES ma sieroty:\n" + "\n".join(
+            sieroty
+        )
 
     def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
         monkeypatch.setattr(
@@ -484,7 +493,9 @@ class TestExcludedRelativeFilesFreshness:
             {"frontend/src/ui/nigdy/nieistniejacy_plik.ts"},
         )
 
-        naruszenia = guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
+        naruszenia = guard_module.check_excluded_relative_files_freshness(
+            guard_module.REPO_ROOT
+        )
 
         assert len(naruszenia) == 1
         assert "[no-codenames-wykluczenie-osierocone]" in naruszenia[0]
@@ -588,7 +599,9 @@ class TestKartaPattern:
         assert is_test_path(Path("frontend/src/ui/__tests__/a.test.tsx"))
         assert is_test_path(Path("frontend/e2e/scena.spec.ts"))
         assert not is_test_path(Path("frontend/src/ui2/wyniki/zwarcia/strings.ts"))
-        assert find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
+        assert (
+            find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
+        )
 
     def test_backend_pole_pl_z_kryptonimem_karty_jest_naruszeniem(self):
         with tempfile.TemporaryDirectory() as katalog:
@@ -610,5 +623,75 @@ class TestKartaPattern:
             assert scan_backend_file(plik) == []
 
     def test_frontend_literal_z_kryptonimem_karty_jest_naruszeniem(self):
-        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == ["karty FAB-H"]
+        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == [
+            "karty FAB-H"
+        ]
         assert find_codenames_in_strings("const t = 'karta katalogowa';") == []
+
+
+# --- Noty dowodu (pole ``notes`` bez przyrostka ``_pl``), karta PROZA-BEZ-SYMBOLI-ASCII ---
+
+_NOTY_KRYPTONIMY = [
+    ("Ta sama funkcja co Equipment P12.", "P12"),
+    ("KARTA PODSTAWA-VDROP (2026-08-12). Suma spadków.", "KARTA PODSTAWA-VDROP"),
+    ("Wynik solvera (karta P0.7) cytowany.", "karta P0.7"),
+    ("Pełna pętla z impedancją (kontrakt OD-14 §2).", "OD-14"),
+    ("Tablice normy z proweniencją (rejestr G-D1).", "G-D1"),
+]
+_NOTY_CZYSTE = [
+    "Jakość energii wg PN-EN 50160 i IEC 60909-0 § 12.",
+    "Straty jałowe P0 transformatora z tabliczki.",
+    "Karta katalogowa producenta podaje wartość.",
+]
+
+
+def _plik_noty(tmp_path: Path, wyrazenie: str, tekst: str) -> Path:
+    plik = tmp_path / "rejestr.py"
+    plik.write_text(wyrazenie.format(repr(tekst)) + "\n", encoding="utf-8")
+    return plik
+
+
+_POSTACIE_NOTY = [
+    "E = EquationDefinition(notes={})",  # argument nazwany
+    'E = EquationDefinition(notes=({} "dalszy ciąg."))',  # rozcięty na sklejane literały
+    "D = {{'notes': {}}}",  # klucz słownika
+]
+
+
+@pytest.mark.parametrize("postac", _POSTACIE_NOTY)
+@pytest.mark.parametrize(("tekst", "kryptonim"), _NOTY_KRYPTONIMY)
+def test_nota_dowodu_z_kryptonimem_jest_naruszeniem(
+    tmp_path: Path, postac: str, tekst: str, kryptonim: str
+) -> None:
+    """Iloczyn: postać pola noty {argument, sklejany literał, klucz słownika} × rodzaj
+    kryptonimu {P<n>, KARTA wielkimi, karta <ID>, wiersz rejestru OD-/G-}."""
+    naruszenia = guard_module.scan_backend_notes(_plik_noty(tmp_path, postac, tekst))
+    assert [v.match for v in naruszenia] == [kryptonim]
+
+
+@pytest.mark.parametrize("postac", _POSTACIE_NOTY)
+@pytest.mark.parametrize("tekst", _NOTY_CZYSTE)
+def test_nota_dowodu_bez_kryptonimu_przechodzi(
+    tmp_path: Path, postac: str, tekst: str
+) -> None:
+    """Norma (PN-EN, IEC), wielkość techniczna P0 i „karta katalogowa" nie są kryptonimami."""
+    assert guard_module.scan_backend_notes(_plik_noty(tmp_path, postac, tekst)) == []
+
+
+def test_pole_inne_niz_nota_nie_jest_skanowane_jako_nota(tmp_path: Path) -> None:
+    """Skan not obejmuje wyłącznie pole ``notes`` — komentarz kodu i inne pole nie są notą."""
+    plik = tmp_path / "rejestr.py"
+    plik.write_text(
+        "E = EquationDefinition(equation_id='OD-14')  # karta P0.7\n", encoding="utf-8"
+    )
+    assert guard_module.scan_backend_notes(plik) == []
+
+
+def test_noty_rejestru_rownan_bez_kryptonimow_na_tym_drzewie() -> None:
+    """Żywy rejestr równań dowodu: zero kryptonimów w notach (zmierzone 2026-11-05
+    na HEAD karty: 17)."""
+    rejestr = (
+        guard_module.REPO_ROOT
+        / "backend/src/application/proof_engine/equation_registry.py"
+    )
+    assert guard_module.scan_backend_notes(rejestr) == []

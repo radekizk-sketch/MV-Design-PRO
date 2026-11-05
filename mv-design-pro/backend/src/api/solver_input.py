@@ -28,6 +28,7 @@ from solver_input.contracts import (
     SolverAnalysisType,
 )
 from solver_input.eligibility import build_eligibility_map
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 router = APIRouter(
     prefix="/api/cases",
@@ -109,6 +110,15 @@ class EligibilityMapResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+#: Kody typu analizy ścieżki ``analysis_type`` wejścia solvera (zapis maszynowy).
+KODY_TYPU_WEJSCIA_SOLVERA: tuple[IdentyfikatorKontraktu, ...] = (
+    "short_circuit_3f",
+    "short_circuit_1f",
+    "load_flow",
+    "protection",
+)
+
+
 @router.get(
     "/{case_id}/analysis/solver-input/{analysis_type}",
     response_model=SolverInputResponse,
@@ -123,7 +133,7 @@ def get_solver_input(
     case_id: str = Path(..., description="Study case ID"),
     analysis_type: str = Path(
         ...,
-        description="Analysis type: short_circuit_3f, short_circuit_1f, load_flow, protection",
+        description=f"Analysis type: {', '.join(KODY_TYPU_WEJSCIA_SOLVERA)}",
     ),
     project_id: str | None = None,
     station_id: str | None = None,

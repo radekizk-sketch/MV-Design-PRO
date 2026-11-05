@@ -15,6 +15,7 @@ import {
   selectTapChangersForTransformer,
 } from '../../station-der/catalogs';
 import type { TapChangerItem } from '../../station-der/audit2-api';
+import { TekstZWzorami } from '../../../../ui2/kreatory/rama';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
@@ -234,11 +235,11 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <div>
-                <span className="text-scada-muted">U_HV / U_LV: </span>
+                <span className="text-scada-muted">Napięcie górne / dolne: </span>
                 <span className="font-mono">{tr.uhvKv} / {tr.ulvKv} kV</span>
               </div>
               <label className="flex flex-col">
-                <span className="text-scada-muted">U_LV (multi-voltage)</span>
+                <span className="text-scada-muted">Napięcie dolne (transformator wielonapięciowy)</span>
                 <select
                   data-testid={`tr-ulv-${tr.transformerId}`}
                   value={tr.ulvKv}
@@ -268,7 +269,7 @@ export function StationConfigTransformerCard(
                 </select>
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">u_k [%]</span>
+                <span className="text-scada-muted"><TekstZWzorami tekst="$u_k$ [%]" /></span>
                 <input
                   type="number"
                   step="0.1"
@@ -279,7 +280,7 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">P_k [kW]</span>
+                <span className="text-scada-muted"><TekstZWzorami tekst="$P_k$ [kW]" /></span>
                 <input
                   type="number"
                   step="0.1"
@@ -289,7 +290,7 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">P_0 [kW]</span>
+                <span className="text-scada-muted"><TekstZWzorami tekst="$P_0$ [kW]" /></span>
                 <input
                   type="number"
                   step="0.01"

@@ -322,13 +322,13 @@ def _admitancje_baterii_z_migawki(
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
             raise OdmowaNazwana(
-                f"{bateria} nie ma dodatniej mocy znamionowej Q_n.",
+                f"{bateria} nie ma dodatniej mocy znamionowej.",
                 kod=KOD_BATERIA_DANE_ZNAMIONOWE,
                 dane={"element_ref": ref_id},
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
             raise OdmowaNazwana(
-                f"{bateria} nie ma dodatniego napięcia znamionowego U_n.",
+                f"{bateria} nie ma dodatniego napięcia znamionowego.",
                 kod=KOD_BATERIA_DANE_ZNAMIONOWE,
                 dane={"element_ref": ref_id},
             )
@@ -867,7 +867,7 @@ def zloz_wejscie_rozplywu(
         if qmin is None or qmax is None or qmin >= qmax:
             raise OdmowaNazwana(
                 f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia nie ma "
-                "kompletnych i spójnych granic mocy biernej (Q_min < Q_max) — walidator "
+                "kompletnych i spójnych granic mocy biernej (minimalna mniejsza od maksymalnej) — walidator "
                 "modelu odrzuca ten stan przed uruchomieniem rozpływu.",
                 kod=KOD_REGULACJA_NAPIECIA_BEZ_GRANIC_Q,
                 dane={"element_ref": str(gen.get("ref_id") or "")},
@@ -1117,7 +1117,8 @@ def zloz_wejscie_zwarcia(
     # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
     if "c_factor" in options:
         raise OdmowaDanychError(
-            "Opcja biegu `c_factor` została usunięta — współczynnik napięciowy c wynika ze "
+            "Opcja biegu współczynnika napięciowego została usunięta — współczynnik "
+            "napięciowy wynika ze "
             "scenariusza (`scenario`: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
             "z uzasadnieniem (`nadpisanie_c`: `{wartosc, uzasadnienie}`)."
         )
@@ -1823,17 +1824,18 @@ def _spec_galezi_z_sekwencji(
     if z0_ohm is None:
         z_s, z_m = z1_odn, 0j
         podstawienie = (
-            f"brak drogi I0 ({powod_bez_z0}) ⇒ "
-            f"Z_m := 0, Z_s := Z1 = {_fmt_z(z1_odn)} Ω @ {base_kv_ll:g} kV"
+            f"brak drogi składowej zerowej ({powod_bez_z0}) ⇒ impedancja wzajemna := 0, "
+            f"impedancja własna := Z₁ = {_fmt_z(z1_odn)} Ω przy {base_kv_ll:g} kV"
         )
     else:
         z0_odn = impedancja_odniesiona_do_napiecia_ohm(z0_ohm, napiecie_wlasne_kv, base_kv_ll)
         z_s = impedancja_wlasna_ohm(z0_odn, z1_odn)
         z_m = impedancja_wzajemna_ohm(z0_odn, z1_odn)
         podstawienie = (
-            f"Z1 = {_fmt_z(z1_odn)} Ω, Z0 = {_fmt_z(z0_odn)} Ω (@ {base_kv_ll:g} kV, "
-            f"z {napiecie_wlasne_kv:g} kV) ⇒ Z_s = ({_fmt_z(z0_odn)} + 2·({_fmt_z(z1_odn)}))/3 = "
-            f"{_fmt_z(z_s)} Ω; Z_m = ({_fmt_z(z0_odn)} − ({_fmt_z(z1_odn)}))/3 = {_fmt_z(z_m)} Ω"
+            f"Z₁ = {_fmt_z(z1_odn)} Ω, Z₀ = {_fmt_z(z0_odn)} Ω (przy {base_kv_ll:g} kV, "
+            f"z {napiecie_wlasne_kv:g} kV) ⇒ impedancja własna = ({_fmt_z(z0_odn)} "
+            f"+ 2·({_fmt_z(z1_odn)}))/3 = {_fmt_z(z_s)} Ω; impedancja wzajemna = "
+            f"({_fmt_z(z0_odn)} − ({_fmt_z(z1_odn)}))/3 = {_fmt_z(z_m)} Ω"
         )
     tracer.add(
         key=f"pf_unbalanced_branch[{ref_id}]",
@@ -1935,7 +1937,10 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                 "faza–N zamknięta poniżej, w transformatorze "
                 + ", ".join(nazwa_po_identyfikatorze(tr, indeks=nazwy) for tr in zamykajace)
             )
-        return "I_a+I_b+I_c ≡ 0 z topologii: tą krawędzią nie płynie I0 żadnego odbioru faza–N"
+        return (
+            "suma prądów trzech faz ≡ 0 z topologii: tą krawędzią nie płynie prąd składowej "
+            "zerowej żadnego odbioru faza–N"
+        )
 
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
@@ -2255,8 +2260,10 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
             formula_latex=r"S_{b,\varphi} = S_b/3,\quad U_{b,\varphi} = U_{LL}/\sqrt{3}",
             inputs={"base_mva": base_mva, "base_kv_ll": base_kv_ll},
             substitution=(
-                f"S_b = {base_mva:g}/3 = {base_mva_fazy:.6g} MVA; "
-                f"U_b = {base_kv_ll:g}/√3 = {base_kv_fazy:.6g} kV (Z_b = U_LL²/S_b niezmienne)"
+                f"moc bazowa fazy = {base_mva:g}/3 = {base_mva_fazy:.6g} MVA; "
+                f"napięcie bazowe fazy = {base_kv_ll:g}/√3 = {base_kv_fazy:.6g} kV "
+                "(impedancja bazowa z napięcia międzyprzewodowego i mocy trójfazowej "
+                "niezmienna)"
             ),
             result={"base_mva_fazy": base_mva_fazy, "base_kv_fazy": base_kv_fazy},
         )

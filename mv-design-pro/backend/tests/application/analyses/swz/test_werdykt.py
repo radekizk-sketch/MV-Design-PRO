@@ -131,7 +131,7 @@ class TestPasmoIRodzajObwodu:
             u0_v=230.0,
             aparat=AparatZabezpieczajacy(typ="MCB", in_a=16.0, klasa_mcb="B"),
         )
-        assert result.pasmo_u0 == "120<U0<=230"
+        assert result.pasmo_u0 == "powyżej 120 V do 230 V"
         assert result.rodzaj_obwodu == "odbiorczy"
         assert result.t_wymagany_s == pytest.approx(0.4)
 
@@ -239,7 +239,7 @@ class TestOcenSwzWkladkaGgKartaD2:
         )
         assert result.status == SwzStatus.NIEROZSTRZYGALNE
         assert result.ia_wymagane_a is None
-        assert "t_wymagany" in result.przyczyna_pl
+        assert "wymaganym czasie wyłączenia" in result.przyczyna_pl
         assert "0.4" in result.przyczyna_pl or "0,4" in result.przyczyna_pl
 
     def test_in_below_16a_out_of_verified_scope_nierozstrzygalne(self) -> None:

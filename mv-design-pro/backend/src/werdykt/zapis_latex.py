@@ -20,3 +20,9 @@ from typing import TypeAlias
 #: Wzór w notacji LaTeX (np. ``I_k''``, ``Z_{th}``, ``\kappa``) — renderowany, nigdy pokazywany
 #: jako tekst.
 ZapisLatex: TypeAlias = str
+
+#: Identyfikator kontraktu czytany maszynowo, nie tekst dla projektanta: nazwa kolumny arkusza
+#: importu (nagłówek pliku wejściowego), klucz wyniku, identyfikator kroku, kod. Oznaczenie
+#: wyłącza wartość ze skanu prozy ``scripts/ui_math_guard.py`` tak samo jak ``ZapisLatex``;
+#: wartość pokazana projektantowi jako proza nie może nieść tej adnotacji.
+IdentyfikatorKontraktu: TypeAlias = str

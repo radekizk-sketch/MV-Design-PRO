@@ -221,7 +221,9 @@ class Nastawa(BaseModel):
     @model_validator(mode="after")
     def _co_najmniej_jedno(self) -> Nastawa:
         if self.p_mw is None and self.q_mvar is None:
-            raise ValueError("Nastawa bez żadnej wartości (p_mw/q_mvar) nie jest nadpisaniem")
+            raise ValueError(
+                "Nastawa bez żadnej wartości (moc czynna, moc bierna) nie jest nadpisaniem"
+            )
         return self
 
 
@@ -249,7 +251,8 @@ class NastawaDynamiczna(BaseModel):
     def _co_najmniej_jedno(self) -> NastawaDynamiczna:
         if self.p_mw is None and self.q_mvar is None and self.u_pu is None:
             raise ValueError(
-                "NastawaDynamiczna bez żadnej wartości (p_mw/q_mvar/u_pu) nie jest komenda"
+                "Nastawa dynamiczna bez żadnej wartości (moc czynna, moc bierna, napięcie) "
+                "nie jest komendą"
             )
         return self
 
@@ -312,8 +315,9 @@ class Zwarcie(BaseModel):
             )
         if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
             raise ValueError(
-                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi być później niż "
-                f"t_s ({self.t_s}) — zwarcie nie może być usunięte przed wystąpieniem."
+                f"Zwarcie: chwila usunięcia ({self.t_usuniecia_s} s) musi być późniejsza niż "
+                f"chwila wystąpienia ({self.t_s} s) — zwarcie nie może być usunięte przed "
+                "wystąpieniem."
             )
         if (self.t_usuniecia_s is None) != (self.sposob_usuniecia is None):
             raise ValueError(
@@ -717,15 +721,15 @@ class ScenariuszDynamiczny(BaseModel):
             for segment in self.stanowisko.profil:
                 if _koniec_segmentu(segment) > self.horyzont_s:
                     raise ValueError(
-                        f"ScenariuszDynamiczny: segment profilu {segment.rodzaj!r} w t_s="
-                        f"{segment.t_s} kończy się w {_koniec_segmentu(segment)} s, poza "
-                        f"horyzont_s ({self.horyzont_s})."
+                        f"Scenariusz dynamiczny: segment profilu {segment.rodzaj!r} w chwili "
+                        f"{segment.t_s} s kończy się w {_koniec_segmentu(segment)} s, poza "
+                        f"horyzontem symulacji ({self.horyzont_s} s)."
                     )
         for zdarzenie in self.zdarzenia:
             if zdarzenie.t_s > self.horyzont_s:
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zdarzenie {zdarzenie.rodzaj!r} w t_s="
-                    f"{zdarzenie.t_s} wykracza poza horyzont_s ({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zdarzenie {zdarzenie.rodzaj!r} w chwili "
+                    f"{zdarzenie.t_s} s wykracza poza horyzont symulacji ({self.horyzont_s} s)."
                 )
             if (
                 isinstance(zdarzenie, Zwarcie)
@@ -733,9 +737,9 @@ class ScenariuszDynamiczny(BaseModel):
                 and zdarzenie.t_usuniecia_s > self.horyzont_s
             ):
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zwarcie w t_s={zdarzenie.t_s} ma "
-                    f"t_usuniecia_s={zdarzenie.t_usuniecia_s} poza horyzont_s "
-                    f"({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zwarcie w chwili {zdarzenie.t_s} s ma "
+                    f"chwilę usunięcia {zdarzenie.t_usuniecia_s} s poza horyzontem symulacji "
+                    f"({self.horyzont_s} s)."
                 )
         return self
 

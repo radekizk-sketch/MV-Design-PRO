@@ -184,7 +184,7 @@ class BoundaryIdentifier:
                 # netto zamiast fałszywie liczyc sie jako zrodlo zerowej mocy — to
                 # mogłoby odwrocic znak heurystyki "przewaga generacji".
                 logger.warning(
-                    "BoundaryIdentifier: źródło w węźle %s bez payload.p_mw — "
+                    "BoundaryIdentifier: źródło w węźle %s bez mocy czynnej w danych — "
                     "pominięte w heurystyce generator_dominant (nie liczone jako 0).",
                     node_id,
                 )
@@ -201,7 +201,7 @@ class BoundaryIdentifier:
             p_mw = payload.get("p_mw")
             if p_mw is None:
                 logger.warning(
-                    "BoundaryIdentifier: odbiór w węźle %s bez payload.p_mw — "
+                    "BoundaryIdentifier: odbiór w węźle %s bez mocy czynnej w danych — "
                     "pominięty w heurystyce generator_dominant (nie liczony jako 0).",
                     node_id,
                 )

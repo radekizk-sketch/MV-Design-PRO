@@ -166,19 +166,19 @@ def r_b_transformatora(trafo: Transformer) -> tuple[float | None, str | None]:
     if cfg is None:
         return None, (
             f"{opis} nie ma opisu punktu neutralnego strony nN — układ TT wymaga punktu "
-            "neutralnego uziemionego bezpośrednio z rezystancją uziomu R_B."
+            "neutralnego uziemionego bezpośrednio z rezystancją uziomu stacji."
         )
     # ``lv_neutral.r_ohm`` jest rezystancją uziomu R_B wyłącznie przy punkcie bezpośrednio
     # uziemionym (słownik typów: ``network_model.core.uziemienie.TypPunktuNeutralnego``).
     if cfg.type != "directly_grounded":
         return None, (
             f"{opis}: punkt neutralny nN opisany jako „{cfg.type}” — układ TT wymaga punktu "
-            "neutralnego uziemionego bezpośrednio (R_B = rezystancja uziomu)."
+            "neutralnego uziemionego bezpośrednio przez uziom o znanej rezystancji."
         )
     if cfg.r_ohm is None or cfg.r_ohm <= 0:
         return None, (
-            f"{opis}: punkt neutralny nN uziemiony bezpośrednio bez rezystancji uziomu R_B — "
-            "pętla doziemna TT domyka się przez R_B; uzupełnij rezystancję uziomu stacji."
+            f"{opis}: punkt neutralny nN uziemiony bezpośrednio bez rezystancji uziomu — "
+            "pętla doziemna TT domyka się przez uziom stacji; uzupełnij rezystancję uziomu stacji."
         )
     return float(cfg.r_ohm), None
 
@@ -279,8 +279,9 @@ def dane_tt_dla_punktu(
             kod=KOD_BRAK_R_A,
             reason_pl=(
                 "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej "
-                f"R_A — żaden odbiór na szynie „{nazwa_po_identyfikatorze(bus_ref, enm)}” nie deklaruje rezystancji uziomu "
-                "(pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym "
+                f"— żaden odbiór na szynie „{nazwa_po_identyfikatorze(bus_ref, enm)}” nie deklaruje rezystancji uziomu "
+                "(pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij rezystancję uziomu "
+                "odbioru w tym "
                 "punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej."
             ),
             missing_data=["earth_electrode_r_ohm"],
@@ -293,7 +294,7 @@ def dane_tt_dla_punktu(
             reason_pl=(
                 "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku "
                 f"różnicowoprądowym — na trasie do punktu „{nazwa_po_identyfikatorze(bus_ref, enm)}” nie ma aparatu z wiązaniem "
-                "katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy "
+                "katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy, czasy "
                 "wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej."
             ),
             missing_data=["rcd"],
@@ -341,7 +342,7 @@ def dane_sieci_it(
             kod=KOD_BRAK_POJEMNOSCI,
             reason_pl=(
                 "Prąd pierwszego zwarcia doziemnego układu IT płynie przez pojemności doziemne "
-                "sieci — odcinki bez susceptancji zerowej b_0 (pojemności doziemnej) na kilometr: "
+                "sieci — odcinki bez susceptancji zerowej (pojemności doziemnej) na kilometr: "
                 f"{', '.join(braki) if braki else 'brak odcinków sieci nN'}. Uzupełnij pojemność "
                 "doziemną odcinków (pole b0_siemens_per_km z karty kabla); pojemność nie jest "
                 "zgadywana."

@@ -455,7 +455,8 @@ def zbuduj_wejscie_nastaw(
     if not kotwica_jest_scenariuszem_max(kotwica):
         raise BrakDanychNastawError(
             "Kotwica biegu zbiorczego nastaw musi być biegiem scenariusza MAKSYMALNEGO "
-            "(IEC 60909-0, tabela 1: c_max per węzeł) — wskazany bieg zapisał scenariusz "
+            "(IEC 60909-0, tabela 1: maksymalny współczynnik napięciowy per węzeł) — wskazany "
+            "bieg zapisał scenariusz "
             f"{kotwica_wynik.get('scenario')!r}."
         )
 

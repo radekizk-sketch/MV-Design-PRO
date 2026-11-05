@@ -969,6 +969,10 @@ def test_wartosc_frontu_niejednoznaczny_klucz_wymaga_stalej() -> None:
 
 
 _SEGMENT_WZORU = re.compile(r"\$([^$]+)\$")
+#: Wzór w nawiasie po słowach etykiety (``mocy czynnej ($a_P$)``) — symbol formularza, który
+#: komunikat operacji (proza API, bez KaTeX-u) pomija: słowa niosą znaczenie, a goły zapis
+#: ``a_P`` w prozie jest zakazany (`scripts/ui_math_guard.py`, karta PROZA-BEZ-SYMBOLI-ASCII).
+_WZOR_W_NAWIASIE = re.compile(r"\s*\(\$[^$]+\$\)")
 
 
 def _odczyt_bez_wzorow(etykieta: str) -> str:
@@ -988,14 +992,15 @@ def _odczyt_bez_wzorow(etykieta: str) -> str:
             return segment.group(0)
         return wzor.replace("{", "").replace("}", "")
 
-    return _SEGMENT_WZORU.sub(odczyt, etykieta)
+    return _SEGMENT_WZORU.sub(odczyt, _WZOR_W_NAWIASIE.sub("", etykieta))
 
 
 def test_odczyt_bez_wzorow_zdejmuje_proste_wzory_a_zostawia_polecenia_latex() -> None:
-    assert _odczyt_bez_wzorow("Udział stałoimpedancyjny $P$ ($a_P$)") == (
-        "Udział stałoimpedancyjny P (a_P)"
+    assert _odczyt_bez_wzorow("Udział stałoimpedancyjny mocy czynnej ($a_P$)") == (
+        "Udział stałoimpedancyjny mocy czynnej"
     )
-    assert _odczyt_bez_wzorow("Wrażliwość $P$ ($k_{pf}$)") == "Wrażliwość P (k_pf)"
+    assert _odczyt_bez_wzorow("Wrażliwość $P$ ($k_{pf}$)") == "Wrażliwość P"
+    assert _odczyt_bez_wzorow("Wrażliwość $k_{pf}$ odbioru") == "Wrażliwość k_pf odbioru"
     assert _odczyt_bez_wzorow("Współczynnik $\\cos\\varphi$") == "Współczynnik $\\cos\\varphi$"
     assert _odczyt_bez_wzorow("Moc znamionowa") == "Moc znamionowa"
 

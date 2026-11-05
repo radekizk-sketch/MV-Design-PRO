@@ -193,7 +193,8 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): nieznany wariant przyłączenia "
-                        f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
+                        f"'{connection_variant}' (dozwolone: po stronie nN albo przez "
+                        "transformator blokowy)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -521,20 +522,23 @@ def sprawdz_moc_transformatora(
     if pozostale_zrodla:
         opis_wymagania = (
             f"Moc wymagana źródeł zasilanych przez ten sam transformator "
-            f"({mva_na_kva(obciazenie):.0f} kVA = Σ max(S_n,jedn·n; P/cosφ) · k_j po "
-            f"{len(wszystkie)} źródłach: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
-            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, k_j = {k_j:g})"
+            f"({mva_na_kva(obciazenie):.0f} kVA — suma po {len(wszystkie)} źródłach większej z "
+            "mocy znamionowej jednostek i mocy czynnej przez współczynnik mocy, razy "
+            f"współczynnik jednoczesności {k_j:g}: to źródło {mva_na_kva(s_wymagana):.0f} kVA "
+            f"+ pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA)"
         )
     else:
         opis_wymagania = (
             f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA = "
-            f"max(S_n,jedn·n; P/cosφ) · k_j, k_j = {k_j:g})"
+            "większa z mocy znamionowej jednostek i mocy czynnej przez współczynnik mocy, "
+            f"razy współczynnik jednoczesności {k_j:g})"
         )
     return OdmowaKontroliMocy(
         KOD_MOC_TRANSFORMATORA,
         (
             f"{opis_wymagania} przekracza dopuszczalną moc transformatora "
-            f"({mva_na_kva(dopuszczalna):.0f} kVA = S_n,TR · k_obc, k_obc = {k_obc:g}). "
+            f"({mva_na_kva(dopuszczalna):.0f} kVA — moc znamionowa transformatora razy "
+            f"przeciążalność {k_obc:g}). "
             "Wybierz mniejszy wariant źródła albo transformator o większej mocy."
         ),
     )

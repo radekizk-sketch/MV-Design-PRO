@@ -143,7 +143,7 @@ class InverterDynamicProfile(BaseModel):
 
     # Limity prądowo-napięciowe
     i_max_pu: float = Field(ge=1.0, le=3.0)
-    """Maksymalny prąd p.u. (typowo 1.1–1.3 × I_n)."""
+    """Maksymalny prąd p.u. (typowo 1,1–1,3 prądu znamionowego)."""
 
     v_min_continuous_pu: float = Field(ge=0.5, le=1.0)
     v_max_continuous_pu: float = Field(ge=1.0, le=1.5)
@@ -295,7 +295,8 @@ class WindTurbineDynamicProfile(BaseModel):
 
     # Drive train (combined inertia rotor + generator)
     h_total_s: float = Field(ge=1.0, le=15.0)
-    """Stała inercji równoważna H = J·ω²/(2·S_n) [s]."""
+    """Stała inercji równoważna [s] — energia kinetyczna przy prędkości znamionowej przez
+    moc znamionową."""
 
     drive_train_stiffness_pu: float = Field(ge=10.0, le=300.0)
     """Sztywność wału p.u. (typowa 80 dla DFIG, 50 dla PMSG)."""

@@ -67,8 +67,8 @@ def _nadpisanie(zadanie: NadpisanieCZadanie | None) -> NadpisanieC | None:
 
 #: Opis pola Z_f żądań pakietów i wkładów (karta OD-14) — jedno zdanie dla trzech żądań.
 _OPIS_IMPEDANCJI_PRZEJSCIA = (
-    "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). "
-    "Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+    "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady. Brak — zwarcie "
+    "metaliczne IEC 60909; impedancja niezerowa — wynik poza zakresem IEC 60909."
 )
 
 
@@ -210,15 +210,15 @@ class SC3FPackRequest(BaseModel):
 
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
-    tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
+    tk_s: float = Field(1.0, description="Czas trwania zwarcia [s]")
     #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] scenariusza biegu; brak = t_b punktu
     #: rozstrzyga warstwa wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA:
     #: najkrótszy czas wyłączenia pól lokalnych, inaczej wartość robocza 0,1 s).
     tb_s: float | None = Field(
         default=None,
         description=(
-            "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + "
-            "wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza "
+            "Czas wyłączenia [s] scenariusza (najkrótszy czas zabezpieczenia + "
+            "wyłącznika); brak — czas wyłączenia punktu z pól lokalnych albo wartość robocza "
             f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s"
         ),
     )
@@ -348,8 +348,9 @@ def _wywod_sekcje_wkladow(
             {
                 "tekst": (
                     f"Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = "
-                    f"{_ka_pl(ikss_total_a)} kA, c = {_liczba_pl(result.c_factor, 2)}, "
-                    f"t_min = {_liczba_pl(result.t_min_s, 2)} s."
+                    f"{_ka_pl(ikss_total_a)} kA, współczynnik napięciowy "
+                    f"{_liczba_pl(result.c_factor, 2)}, czas minimalny "
+                    f"{_liczba_pl(result.t_min_s, 2)} s."
                 ),
                 "latex": None,
             }
@@ -370,9 +371,9 @@ def _wywod_sekcje_wkladow(
         naglowek.append(
             {
                 "tekst": (
-                    "Zwarcie przez impedancję przejścia Z_f = "
+                    "Zwarcie przez impedancję przejścia "
                     f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω: w mianowniku "
-                    "prądów częściowych stoi pętla Z_kk + Z_f. Wynik poza zakresem IEC 60909-0 "
+                    "prądów częściowych stoi pętla $Z_{kk} + Z_f$. Wynik poza zakresem IEC 60909-0 "
                     "(norma definiuje zwarcie metaliczne)."
                 ),
                 "latex": r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk} + Z_f|\,|Z_m|}\,I_{\mathrm{base}}",
@@ -401,7 +402,7 @@ def _wywod_sekcje_wkladow(
                         + (
                             f"Ib,M = {_ka_pl(result.ib_machines_a)} kA."
                             if result.ib_machines_a is not None
-                            else "Ib,M nieobliczone — brak czasu wyłączenia t_b."
+                            else "Prąd wyłączeniowy maszyn nieobliczony — brak czasu wyłączenia."
                         )
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
@@ -463,7 +464,7 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
                 # to wprost, z wartością Z_f; nie jest oceną zgodności, tylko zakresem metody.
                 "pozycja_pl": "Zakres ważności normy",
                 "wartosc_pl": (
-                    "zwarcie przez impedancję przejścia Z_f = "
+                    "zwarcie przez impedancję przejścia "
                     f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω — poza "
                     "zakresem IEC 60909-0 (norma definiuje zwarcie metaliczne); wynik nie jest "
                     "podstawą doboru aparatury ani wytrzymałości zwarciowej"

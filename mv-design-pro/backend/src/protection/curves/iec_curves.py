@@ -164,7 +164,7 @@ class IECTrippingResult:
             "will_trip": self.will_trip,
             "unclamped_tripping_time_s": self.unclamped_tripping_time_s,
             "clamp_applied": self.clamp_applied,
-            "formula": "t = TMS * (A / (M^B - 1)) + C",
+            "formula": r"$t = TMS \cdot \left(\frac{A}{M^B - 1}\right) + C$",
         }
 
 

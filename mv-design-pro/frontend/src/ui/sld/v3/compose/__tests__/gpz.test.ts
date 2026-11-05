@@ -923,14 +923,14 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
               kind: 'OLTC',
               positionLabel: 'poz. +3',
               modeLabel: 'AUTO',
-              setpointLabel: 'U_zad 15.5 kV',
+              setpointLabel: 'nastawa 15.5 kV',
             },
           },
         ],
       }),
       ORIGIN,
     );
-    expect(trLabelRowsOf(composition, 'tr-1')).toContain('OLTC poz. +3 · AUTO · U_zad 15.5 kV');
+    expect(trLabelRowsOf(composition, 'tr-1')).toContain('OLTC poz. +3 · AUTO · nastawa 15.5 kV');
     expect(composition.parityKeys.has('gpz.transformer.oltc')).toBe(true);
   });
 

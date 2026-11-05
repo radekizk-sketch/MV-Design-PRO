@@ -363,8 +363,8 @@ export const SETPOINT_BASIS_LABELS_PL: Record<ProtectionSetpointBasis, string> =
 export const SETPOINT_OPERATOR_LABELS_PL: Record<ProtectionSetpointOperator, string> = {
   LT: 'mniejszy niż (<)',
   GT: 'większy niż (>)',
-  GE: 'większy lub równy (>=)',
-  LE: 'mniejszy lub równy (<=)',
+  GE: 'większy lub równy (≥)',
+  LE: 'mniejszy lub równy (≤)',
   EQ: 'równy (=)',
 };
 

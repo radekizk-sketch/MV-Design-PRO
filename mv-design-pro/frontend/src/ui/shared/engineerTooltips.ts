@@ -32,7 +32,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
 
   // Transformator
   transformer_rated_power: {
-    text: 'Moc znamionowa transformatora (S_n) — maksymalna moc ciągła w warunkach normalnych.',
+    text: 'Moc znamionowa transformatora — maksymalna moc ciągła w warunkach normalnych.',
     norm: 'PN-EN 60076-1',
   },
   transformer_vector_group: {
@@ -44,7 +44,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'PN-EN 60214-1',
   },
   transformer_inrush: {
-    text: 'Prąd włączeniowy (inrush) — krótkotrwały skok prądu przy załączeniu (~10-12× I_n).',
+    text: 'Prąd włączeniowy (inrush) — krótkotrwały skok prądu przy załączeniu (około 10–12-krotność prądu znamionowego).',
     norm: 'IEC 60076-5',
   },
 
@@ -72,7 +72,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'IEC 61869-3',
   },
   protection_alf: {
-    text: 'ALF (Accuracy Limit Factor) — maksymalna krotność I_p przy której CT zachowuje klasę.',
+    text: 'ALF (Accuracy Limit Factor) — maksymalna krotność prądu pierwotnego, przy której przekładnik prądowy zachowuje klasę.',
     norm: 'IEC 61869-2 § 5.5',
   },
   protection_tms: {
@@ -112,17 +112,17 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'PN-EN 50522',
   },
   earthing_resistor: {
-    text: 'Uziemienie przez rezystor R_n — ogranicza prąd doziemny (typowo 5-100 Ω).',
+    text: 'Uziemienie przez rezystor w punkcie neutralnym — ogranicza prąd doziemny (typowo 5-100 Ω).',
     norm: 'PN-EN 50522',
   },
 
   // Obliczenia
   short_circuit_current: {
-    text: 'Prąd zwarciowy I_k — wartość ustaloną prądu w miejscu zwarcia. I_k3 dla 3-fazowego, I_k1 dla 1-fazowego.',
+    text: 'Prąd zwarciowy — wartość ustalona prądu w miejscu zwarcia, osobno dla zwarcia trójfazowego i jednofazowego.',
     norm: 'IEC 60909',
   },
   short_circuit_peak: {
-    text: 'Wartość szczytowa prądu zwarciowego i_p = κ × √2 × I_k. Stosowana do weryfikacji obciążalności dynamicznej.',
+    text: 'Wartość szczytowa prądu zwarciowego — iloczyn współczynnika udaru κ, pierwiastka z dwóch i prądu zwarciowego początkowego. Stosowana do weryfikacji obciążalności dynamicznej.',
     norm: 'IEC 60909 § 4.3.1',
   },
   power_flow_tolerance: {
@@ -130,13 +130,13 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'IEEE Std 1547',
   },
   voltage_drop: {
-    text: 'Spadek napięcia ΔU = √3 × I × L × (R·cosφ + X·sinφ). Limit zwykle ≤5% U_n.',
+    text: 'Spadek napięcia ΔU — wyznaczany z prądu, długości oraz rezystancji i reaktancji odcinka przy danym cos φ. Limit zwykle do 5 % napięcia znamionowego.',
     norm: 'PN-IEC 60364-5-52',
   },
 
   // Aparatura pola SN — rozróżnienie funkcjonalne
   apparatus_breaker: {
-    text: 'Wyłącznik — łączy i przerywa prądy robocze ORAZ zwarciowe (znamionowy prąd wyłączalny zwarciowy I_sc wg IEC 62271-100 § 4.101). Wymagany w polach z funkcją zabezpieczeniową.',
+    text: 'Wyłącznik — łączy i przerywa prądy robocze ORAZ zwarciowe (znamionowy prąd wyłączalny zwarciowy wg IEC 62271-100 § 4.101). Wymagany w polach z funkcją zabezpieczeniową.',
     norm: 'PN-EN 62271-100',
   },
   apparatus_disconnector: {

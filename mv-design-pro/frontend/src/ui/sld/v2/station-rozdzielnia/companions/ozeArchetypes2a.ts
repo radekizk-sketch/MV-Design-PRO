@@ -422,7 +422,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.087,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -787,7 +787,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.002,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -1290,7 +1290,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.715,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -1655,7 +1655,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2083,7 +2083,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2392,7 +2392,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -3001,7 +3001,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -3366,7 +3366,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -4129,7 +4129,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 3.462,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -4550,7 +4550,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -4971,7 +4971,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -5711,7 +5711,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.866,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -6076,7 +6076,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.044,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.75,
           "verification": {
@@ -6274,7 +6274,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "inverters": "3 \u00d7 ~333 kW (BTVC 315 A/800 V na pole)",
         "nn_grid": "IT",
         "nn_kv": 0.8,
-        "nn_main_breaker": "Q1 3WA1108 \u00b7 800 A \u00b7 1000 V \u00b7 I>=720 A (0,9 In) \u00b7 I>>=4000 A (4 In)",
+        "nn_main_breaker": "Q1 3WA1108 \u00b7 800 A \u00b7 1000 V \u00b7 I> 720 A (0,9 In) \u00b7 I>> 4000 A (4 In)",
         "own_needs": "RPW-PV \u00b7 TS 5 kVA 800/230 V \u00b7 F0=HN-C20/1 \u00b7 F1-F10",
         "pv_modules": "JA SOLAR JAM72D40-595/MB \u00b7 595 Wp \u00b7 3\u00d7560 szt = 999.6 kWp DC",
         "sn_kv": 15.75,
@@ -6908,7 +6908,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.732,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -7273,7 +7273,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -8007,7 +8007,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.277,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -8484,7 +8484,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 6.025,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.69,
           "verification": {
@@ -9312,7 +9312,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za impedancj\u0105 maszyny (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -9889,7 +9889,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za impedancj\u0105 maszyny (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -10732,7 +10732,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za impedancj\u0105 maszyny (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -11309,7 +11309,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za impedancj\u0105 maszyny (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },

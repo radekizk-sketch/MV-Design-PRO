@@ -77,14 +77,13 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: (6 -> 0) — rdzeń B-01, dziewięć literałów poprawionych przeglądem ręcznym (sześć ze skanu
 #: i trzy „nieskonczone/NaN", których słownik nie znał — formy dopisane do słownika).
 ZAMROZONE_TRAFIENIA: dict[str, int] = {
-    "network_model/solvers/cable_voltage_drop.py": 15,
+    "network_model/solvers/cable_voltage_drop.py": 11,
     "network_model/solvers/der_selection_preview.py": 2,
     "network_model/solvers/dynamika/urzadzenia/bazowe.py": 2,
     "network_model/solvers/dynamika/urzadzenia/fabryka.py": 10,
     "network_model/solvers/dynamika/urzadzenia/magazyn.py": 2,
     "network_model/solvers/dynamika/urzadzenia/maszyna_synchroniczna.py": 6,
     "network_model/solvers/dynamika/urzadzenia/okno_mocy.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/pochodne_kierunkowe.py": 1,
     "network_model/solvers/dynamika/urzadzenia/przeksztaltnik_gfl.py": 4,
     "network_model/solvers/dynamika/urzadzenia/przeksztaltnik_gfm.py": 7,
     "network_model/solvers/dynamika/urzadzenia/regulatory.py": 3,
@@ -92,10 +91,9 @@ ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/dynamika/urzadzenia/uklad_stanow.py": 7,
     "network_model/solvers/dynamika/walidacja/rowne_pola.py": 6,
     "network_model/solvers/equipment_checks/cable_thermal_aging.py": 4,
-    "network_model/solvers/equipment_checks/ct_burden_saturation.py": 6,
-    "network_model/solvers/equipment_checks/transformer_losses.py": 3,
+    "network_model/solvers/equipment_checks/ct_burden_saturation.py": 1,
     "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 8,
-    "network_model/solvers/transformer_rated_currents.py": 6,
+    "network_model/solvers/transformer_rated_currents.py": 3,
 }
 
 _IDENTYFIKATOR = re.compile(r"[A-Za-z0-9_.:/\-{}\[\]*|]*")

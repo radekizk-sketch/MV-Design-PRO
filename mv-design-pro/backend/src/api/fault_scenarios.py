@@ -127,12 +127,12 @@ class FaultImpedanceRequest(BaseModel):
 
     r_f_ohm: float = Field(
         ...,
-        description="Rezystancja przejścia R_f w miejscu zwarcia [Ω], R_f ≥ 0",
+        description="Rezystancja przejścia w miejscu zwarcia [Ω], nieujemna",
         json_schema_extra={"x-unit": "Ω"},
     )
     x_f_ohm: float = Field(
         ...,
-        description="Reaktancja przejścia X_f w miejscu zwarcia [Ω], X_f ≥ 0",
+        description="Reaktancja przejścia w miejscu zwarcia [Ω], nieujemna",
         json_schema_extra={"x-unit": "Ω"},
     )
 
@@ -166,14 +166,14 @@ class ShortCircuitConfigRequest(BaseModel):
     nadpisanie_c: NadpisanieCRequest | None = Field(
         None, description="Ręczne nadpisanie c z uzasadnieniem (opcjonalne)"
     )
-    thermal_time_seconds: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
+    thermal_time_seconds: float = Field(1.0, description="Czas trwania zwarcia [s]")
     include_branch_contributions: bool = Field(False, description="Dołącz wkłady gałęziowe")
     breaking_time_seconds: float | None = Field(
         None,
         description=(
-            "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny "
-            "wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = "
-            "t_b rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość "
+            "Czas wyłączenia [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny "
+            "wyłącznika (prąd wyłączeniowy i składowa nieokresowa, IEC 60909-0); brak — czas "
+            "rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość "
             "robocza z jawnym źródłem normowym (założenie biegu fault.czas_tb_wartosc_robocza)"
         ),
         json_schema_extra={"x-unit": "s"},
@@ -182,8 +182,9 @@ class ShortCircuitConfigRequest(BaseModel):
         "spoczynek",
         description=(
             "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym "
-            "przypadku: spoczynek — dławik gaszący sam (Z_N = jX_L), zalaczony — rezystor "
-            "wymuszający równolegle z dławikiem (Z_N = R‖jX_L); ENEA Zeszyt 1 §16, rys. Z.13"
+            "przypadku: spoczynek — dławik gaszący sam (impedancja punktu neutralnego równa "
+            "reaktancji dławika), zalaczony — rezystor wymuszający równolegle z dławikiem; "
+            "ENEA Zeszyt 1 §16, rys. Z.13"
         ),
     )
 

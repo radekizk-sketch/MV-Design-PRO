@@ -351,7 +351,8 @@ class ZakresCzestotliwosci(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "widmo.czestotliwosc",
-                    f"Zakres częstotliwości wymaga f_min < f_max ({self.f_min_hz} ≥ "
+                    "Zakres częstotliwości wymaga częstotliwości dolnej mniejszej od górnej "
+                    f"({self.f_min_hz} ≥ "
                     f"{self.f_max_hz} Hz).",
                 )
             )

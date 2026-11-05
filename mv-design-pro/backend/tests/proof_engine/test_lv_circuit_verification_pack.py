@@ -125,7 +125,7 @@ def _input(
         swz_przyczyna_pl="Ik1_min>=Ia (test)",
         swz_ia_wymagane_a=145.0 if swz_status != "nierozstrzygalne" else None,
         swz_t_wymagany_s=0.4,
-        swz_pasmo_u0="120<U0<=230",
+        swz_pasmo_u0="powyżej 120 V do 230 V",
         swz_rodzaj_obwodu="odbiorczy",
         swz_margines=3.0 if swz_status != "nierozstrzygalne" else None,
     )

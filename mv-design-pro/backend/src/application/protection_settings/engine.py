@@ -48,6 +48,19 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from werdykt import format_liczba
+
+
+def _liczba(wartosc: float) -> str:
+    """Liczba podstawienia śladu (proza, 6 cyfr znaczących) z jedynego źródła zapisu."""
+    return format_liczba(wartosc, cyfry=6)
+
+
+def _liczba_latex(wartosc: float) -> str:
+    """Liczba podstawienia śladu (LaTeX, 6 cyfr znaczących) z jedynego źródła zapisu."""
+    return format_liczba(wartosc, cyfry=6, latex=True)
+
+
 # Thermal density values j_thn [A/mm²] for 1 second (IEC 60909/Hoppel Table 3-4)
 THERMAL_DENSITY = {
     "Cu": 142.0,
@@ -411,14 +424,14 @@ class ProtectionSettingsEngine:
         trace.append(
             {
                 "step": "Sprawdzenie czułości I>",
-                "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
+                "formula": r"k_{cz} = I_{k2,\min,\mathrm{end}} / I_{>}",
                 "inputs": {
                     "I_k2_min_end_A": inp.ik2_min_end_a,
                     "I_setting_A": round(i_setting, 1),
                 },
                 "substitution": f"{inp.ik2_min_end_a:.1f} / {i_setting:.1f}",
                 "result": {"sensitivity_ratio": round(sensitivity, 2)},
-                "requirement": "k_cz >= 1.5",
+                "requirement": r"k_{cz} \geq 1{,}5",
                 "passed": sensitivity >= 1.5,
             }
         )
@@ -429,7 +442,8 @@ class ProtectionSettingsEngine:
         if sensitivity < 1.5:
             is_valid = False
             notes.append(
-                f"Czułość zabezpieczenia I> niewystarczająca: " f"k_cz = {sensitivity:.2f} < 1.5"
+                f"Czułość zabezpieczenia I> niewystarczająca: współczynnik czułości "
+                f"{format_liczba(sensitivity)} < 1,5"
             )
 
         if i_setting > inp.i_nominal_a:
@@ -497,8 +511,12 @@ class ProtectionSettingsEngine:
                     "t_fault_s": t_fault_inst,
                 },
                 "substitution": (
-                    f"({inp.cross_section_mm2} * {j_thn}) / "
-                    f"({inp.k_bth} * sqrt({t_fault_inst}))"
+                    f"({_liczba(inp.cross_section_mm2)} · {_liczba(j_thn)}) / "
+                    f"({_liczba(inp.k_bth)} · √{_liczba(t_fault_inst)})"
+                ),
+                "substitution_latex": (
+                    f"({_liczba_latex(inp.cross_section_mm2)} \\cdot {_liczba_latex(j_thn)}) / "
+                    f"({_liczba_latex(inp.k_bth)} \\cdot \\sqrt{{{_liczba_latex(t_fault_inst)}}})"
                 ),
                 "result": {
                     "I_th_dop_A": round(i_th_dop, 1),
@@ -555,8 +573,8 @@ class ProtectionSettingsEngine:
         if not range_valid:
             notes.append(
                 f"Brak dopuszczalnego zakresu nastaw I>>: "
-                f"I_min_sel = {i_min_sel:.0f} A > "
-                f"min(I_max_th, I_max_cz) = "
+                f"minimalna nastawa z warunku selektywności {i_min_sel:.0f} A > "
+                f"mniejsza z granic cieplnej i czułościowej "
                 f"{min(i_max_thermal, i_max_sensitivity):.0f} A"
             )
 
@@ -603,7 +621,14 @@ class ProtectionSettingsEngine:
                     "material": inp.conductor_material,
                     "t_fault_s": round(t_fault, 3),
                 },
-                "substitution": (f"{inp.cross_section_mm2} * {j_thn} / sqrt({t_fault:.3f})"),
+                "substitution": (
+                    f"{_liczba(inp.cross_section_mm2)} · {_liczba(j_thn)} / "
+                    f"√{_liczba(round(t_fault, 3))}"
+                ),
+                "substitution_latex": (
+                    f"{_liczba_latex(inp.cross_section_mm2)} \\cdot {_liczba_latex(j_thn)} / "
+                    f"\\sqrt{{{_liczba_latex(round(t_fault, 3))}}}"
+                ),
                 "result": {"I_th_dop_A": round(i_th_dop, 1)},
             }
         )
@@ -674,7 +699,10 @@ class ProtectionSettingsEngine:
         trace.append(
             {
                 "step": "Czas cyklu SPZ",
-                "formula": "t_{total} = t_{trip} + t_{SPZ,pause} + t_{trip}",
+                "formula": (
+                    r"t_{\mathrm{total}} = t_{\mathrm{trip}} + t_{\mathrm{SPZ,pause}} "
+                    r"+ t_{\mathrm{trip}}"
+                ),
                 "inputs": {
                     "i_instantaneous_setting_a": inst.i_setting_a,
                     "t_trip_s": t_trip,
@@ -761,7 +789,9 @@ class ProtectionSettingsEngine:
         trace.append(
             {
                 "step": "Rozkład wkładów prądu zwarciowego (system / E-L)",
-                "formula": "I_{system} = I_{k3,max,początek} - I_{E-L}",
+                "formula": (
+                    r"I_{\mathrm{system}} = I_{k3,\max,\mathrm{pocz}} - I_{\mathrm{E\text{-}L}}"
+                ),
                 "inputs": {
                     "ik3_max_beginning_a": round(prad_lacznie, 1),
                     "wklad_el_a": round(wklad_el, 1),
@@ -799,7 +829,10 @@ class ProtectionSettingsEngine:
             trace.append(
                 {
                     "step": "Ryzyko blokady ZSZ — udział niewyznaczalny",
-                    "result": {"ryzyko_blokady_zsz": None, "powod": "ik3_max_beginning_a <= 0"},
+                    "result": {
+                        "ryzyko_blokady_zsz": None,
+                        "powod": "prąd zwarciowy na początku linii nie jest dodatni",
+                    },
                 }
             )
         else:
@@ -907,12 +940,12 @@ class ProtectionSettingsEngine:
                 "jednocześnie."
             )
             recommendations.append(
-                f"Okno nastaw jest sprzeczne (I_min = {i_min/1000:.2f} kA > "
-                f"I_max = {i_max/1000:.2f} kA)."
+                f"Okno nastaw jest sprzeczne (dolna granica {i_min/1000:.2f} kA > "
+                f"górna granica {i_max/1000:.2f} kA)."
             )
             if limiting_max == "sensitivity":
                 recommendations.append(
-                    "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec "
+                    "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec "
                     "kolejnej strefy selektywności, lub przenieś punkt kolejnego "
                     "zabezpieczenia (next_bus_id)."
                 )

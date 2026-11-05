@@ -138,7 +138,7 @@ def test_ct_wariant_uproszczony_bez_rezystancji_uzwojenia() -> None:
     assert wynik.moc_wewnetrzna_va is None
     assert wynik.alf_efektywny == pytest.approx(22.502724939348127, abs=1e-9)
     assert READINESS_CT_WINDING_RESISTANCE_MISSING in wynik.readiness_codes
-    assert any("UPROSZCZONY" in z for z in wynik.assumptions)
+    assert any("wariant uproszczony" in z for z in wynik.assumptions)
     assert any("optymistyczny" in z for z in wynik.assumptions)
 
 

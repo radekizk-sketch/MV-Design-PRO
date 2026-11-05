@@ -143,7 +143,8 @@ def test_generator_missing_p_mw_is_skipped_not_zero(caplog) -> None:
     # (single_feeder), bo net_injection zostaje na wartosci startowej 0.0.
     assert result.method != "generator_dominant"
     assert any(
-        "p_mw" in record.message and "pominięte" in record.message for record in caplog.records
+        "mocy czynnej" in record.message and "pominięte" in record.message
+        for record in caplog.records
     ), "brakujace payload.p_mw musi zostac zalogowane z jawnym powodem, nie wchlyniete po cichu"
 
 

@@ -50,7 +50,7 @@ class PowerFlowRunCreateRequest(BaseModel):
 
     options: dict[str, Any] | None = Field(
         default=None,
-        description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
+        description="Opcje solvera (tolerancja, maksymalna liczba iteracji, poziom śladu)",
     )
 
 
@@ -564,8 +564,8 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         header[0].text = "ID szyny"
         header[1].text = "V [pu]"
         header[2].text = "Kąt [deg]"
-        header[3].text = "P_inj [MW]"
-        header[4].text = "Q_inj [Mvar]"
+        header[3].text = "Moc czynna wprowadzona [MW]"
+        header[4].text = "Moc bierna wprowadzona [Mvar]"
         for cell in header:
             for paragraph in cell.paragraphs:
                 for run in paragraph.runs:

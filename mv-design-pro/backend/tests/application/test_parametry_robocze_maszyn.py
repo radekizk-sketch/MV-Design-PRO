@@ -1390,7 +1390,7 @@ def test_cgmes_maszyna_asynchroniczna_bez_mocy_mechanicznej_pomija_atrybut() -> 
 
 
 def test_cgmes_utraty_nazywaja_dfig_i_wartosci_projektanta() -> None:
-    assert any("maszyny DFIG" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
+    assert any("maszyny dwustronnie zasilanej" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
     assert any("wartości projektanta" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
 
 

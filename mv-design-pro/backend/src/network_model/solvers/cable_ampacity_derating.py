@@ -40,6 +40,7 @@ from typing import Literal, Protocol
 
 from network_model.catalog import lv_ampacity_iec60364_5_52 as _tablice_nn
 from network_model.odmowa_danych import OdmowaDanychError
+from werdykt.wyjasnienie import format_liczba
 
 # ---------------------------------------------------------------------------
 # Wspolny "ksztalt" wspolczynnikow korekcyjnych (SN i nN) — JEDNO miejsce
@@ -114,8 +115,9 @@ class WspolczynnikiObciazalnosci:
             )
         return (
             f"Obciążalność skorygowana dla warunków: {self.etykieta_pl}; "
-            f"f_grunt = {self.f_grunt:g}, f_wiazka = {self.f_wiazka:g}, "
-            f"f_grupa = {self.f_grupa:g}, iloczyn = {self.iloczyn:.4f}. "
+            f"współczynnik gruntu {format_liczba(self.f_grunt, cyfry=6)}, wiązki "
+            f"{format_liczba(self.f_wiazka, cyfry=6)}, grupy {format_liczba(self.f_grupa, cyfry=6)}, "
+            f"iloczyn {format_liczba(self.iloczyn, miejsca=4)}. "
             f"Podstawa: {self.podstawa}."
         )
 
@@ -243,8 +245,8 @@ def wspolczynniki_z_opisu(
         return zestaw_warunkow(klucz)
     if f_grunt is None or f_wiazka is None or f_grupa is None:
         raise OdmowaDanychError(
-            "Własne warunki ułożenia wymagają trzech współczynników "
-            "(f_grunt, f_wiazka, f_grupa) oraz opisu warunków."
+            "Własne warunki ułożenia wymagają trzech współczynników: współczynnik gruntu, "
+            "współczynnik wiązki i współczynnik grupy, oraz opisu warunków."
         )
     return wspolczynniki_wlasne(
         f_grunt=f_grunt,
@@ -363,11 +365,11 @@ class WspolczynnikiObciazalnosciNN:
             )
         )
         return (
-            f"Obciążalność Iz' skorygowana dla: {opis_srodowiska}, izolacja "
+            f"Obciążalność długotrwała skorygowana dla: {opis_srodowiska}, izolacja "
             f"{self.izolacja}, {self.liczba_obwodow} obwód(ów); "
-            f"f_temperatura = {self.f_temperatura:g}, "
-            f"f_rezystywność_gruntu = {self.f_rezystywnosc_gruntu:g}, "
-            f"f_grupowanie = {self.f_grupowanie:g}, iloczyn = {self.iloczyn:.4f}."
+            f"współczynnik temperatury {self.f_temperatura:g}, "
+            f"rezystywności cieplnej gruntu {self.f_rezystywnosc_gruntu:g}, "
+            f"grupowania {self.f_grupowanie:g}, iloczyn {self.iloczyn:.4f}."
         )
 
 
@@ -452,7 +454,7 @@ def wspolczynniki_nn(
     if izolacja not in _IZOLACJE_NN:
         raise OdmowaDanychError(f"Nieznany typ izolacji: {izolacja!r}. Dozwolone: {_IZOLACJE_NN}.")
     if liczba_obwodow < 1:
-        raise OdmowaDanychError("Liczba obwodów musi być >= 1.")
+        raise OdmowaDanychError("Liczba obwodów musi wynosić co najmniej 1.")
     if srodowisko == "grunt" and rezystywnosc_gruntu_km_w is None:
         raise OdmowaDanychError(
             "Ułożenie w gruncie wymaga rezystywności cieplnej gruntu "

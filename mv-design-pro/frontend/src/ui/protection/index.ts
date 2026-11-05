@@ -98,8 +98,8 @@ export const SETPOINT_OPERATOR_LABELS_PL = {
   ...RAW_SETPOINT_OPERATOR_LABELS_PL,
   LT: 'mniejszy niż (<)',
   GT: 'większy niż (>)',
-  GE: 'większy lub równy (>=)',
-  LE: 'mniejszy lub równy (<=)',
+  GE: 'większy lub równy (≥)',
+  LE: 'mniejszy lub równy (≤)',
   EQ: 'równy (=)',
 } satisfies Record<ProtectionSetpointOperator, string>;
 

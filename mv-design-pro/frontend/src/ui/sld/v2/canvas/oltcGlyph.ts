@@ -2,7 +2,7 @@
  * Adnotacja glifu OLTC/DETC na SLD (karta koordynacyjna SLD-02, V12K-045).
  *
  * Czysta funkcja mapująca kanoniczny `Transformer.tap_changer` na adnotację
- * prezentacyjną (etykieta OLTC/DETC, pozycja zaczepu, tryb AUTO/MAN, U_zad).
+ * prezentacyjną (etykieta OLTC/DETC, pozycja zaczepu, tryb AUTO/MAN, napięcie zadane).
  * READ-ONLY, ZERO fizyki — wartości pochodzą wyłącznie z modelu. Brak regulacji
  * (`NONE` / brak tap_changer) → `null` (renderer nie rysuje adnotacji).
  */
@@ -27,7 +27,7 @@ export function buildOltcAnnotation(
   const setpoint = tapChanger.voltage_setpoint_kv;
   const setpointLabel =
     modeLabel === 'AUTO' && typeof setpoint === 'number' && Number.isFinite(setpoint) && setpoint > 0
-      ? `U_zad ${setpoint.toFixed(1)} kV`
+      ? `nastawa ${setpoint.toFixed(1)} kV`
       : undefined;
   return {
     kind: tapChanger.regulation_type,

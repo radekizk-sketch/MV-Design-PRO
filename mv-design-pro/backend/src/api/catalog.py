@@ -618,12 +618,12 @@ def list_ptpiree_generator_certificates(
     if limit is not None and limit < 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr limit musi być >= 1.",
+            detail="Parametr limit musi wynosić co najmniej 1.",
         )
     if offset < 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr offset musi być >= 0.",
+            detail="Parametr offset musi być nieujemny.",
         )
     records = [
         item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()

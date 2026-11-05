@@ -32,17 +32,28 @@ from enm.scenariusze import ScenariuszNieistniejeError, wczytaj_scenariusz
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
+from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 router = APIRouter(tags=["execution-runs"])
+
+
+#: Kody typu analizy przyjmowane przez ``CreateRunRequest.analysis_type`` (zapis maszynowy).
+KODY_TYPU_ANALIZY: tuple[IdentyfikatorKontraktu, ...] = (
+    "SC_3F",
+    "SC_1F",
+    "SC_2F",
+    "SC_2F_G",
+    "LOAD_FLOW",
+    "PF_UNBALANCED",
+    "PHASE_STATE_SN",
+    "DYNAMIKA_RMS",
+)
 
 
 class CreateRunRequest(BaseModel):
     analysis_type: str = Field(
         ...,
-        description=(
-            "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, "
-            "PHASE_STATE_SN, DYNAMIKA_RMS"
-        ),
+        description=f"Typ analizy: {', '.join(KODY_TYPU_ANALIZY)}",
     )
     solver_input: dict[str, Any] = Field(default_factory=dict, description="Opcje solvera")
     scenario_id: str | None = Field(

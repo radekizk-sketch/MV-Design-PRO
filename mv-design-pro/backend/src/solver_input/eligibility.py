@@ -105,8 +105,8 @@ def _check_common_blockers(
                             code="SI-001",
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
-                                f"Branch '{branch.id}' has no catalog_ref, "
-                                f"no impedance_override, and zero impedance"
+                                f"Gałąź '{branch.id}' nie ma typu katalogowego ani "
+                                "nadpisania impedancji, a jej impedancja jest zerowa"
                             ),
                             element_ref=branch.id,
                             field_path=f"branches[ref_id={branch.id}].type_ref",

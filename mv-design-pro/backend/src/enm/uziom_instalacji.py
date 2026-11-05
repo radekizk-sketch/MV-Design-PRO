@@ -38,6 +38,6 @@ def waliduj_r_a(wartosc: object) -> tuple[float | None, str | None]:
 
 def _blad(wartosc: object) -> str:
     return (
-        f"Nieprawidłowa rezystancja uziomu instalacji odbiorczej R_A: {wartosc!r}. Podaj dodatnią "
+        f"Nieprawidłowa rezystancja uziomu instalacji odbiorczej: {wartosc!r}. Podaj dodatnią "
         "liczbę w omach (brak = dana nieobecna; zero nie jest wartością uziomu)."
     )

@@ -517,7 +517,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
             step_id=ProofStep.generate_step_id("LVCV", 10),
             step_number=10,
             title_pl=(
-                f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={data.swz_pasmo_u0}, "
+                f"SWZ — samoczynne wyłączenie zasilania (pasmo napięcia fazowego {data.swz_pasmo_u0}, "
                 f"obwód {data.swz_rodzaj_obwodu})"
             ),
             equation=eq10,
@@ -727,7 +727,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             step_id=ProofStep.generate_step_id("LVCV", 10),
             step_number=10,
             title_pl=(
-                f"SWZ w układzie {uklad} — werdykt wyjaśnialny (pasmo U0={data.swz_pasmo_u0}, "
+                f"SWZ w układzie {uklad} — werdykt wyjaśnialny (pasmo napięcia fazowego {data.swz_pasmo_u0}, "
                 f"obwód {data.swz_rodzaj_obwodu})"
             ),
             equation=eq10,

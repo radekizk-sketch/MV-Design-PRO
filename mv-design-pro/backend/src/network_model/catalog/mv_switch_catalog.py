@@ -908,7 +908,10 @@ ZRODLO_ENEA_ZESZYT_1 = (
     "dwutransformatorowe 110 kV/SN”, wersja 02.2023-2"
 )
 _ENEA_TAB2 = f"{ZRODLO_ENEA_ZESZYT_1}, §8.1 tab. 2, str. I 14/76"
-_ENEA_TAB5 = f"{ZRODLO_ENEA_ZESZYT_1}, §10.1 tab. 5, str. I 16/76 (U_m = 123 kV dla 110 kV)"
+_ENEA_TAB5 = (
+    f"{ZRODLO_ENEA_ZESZYT_1}, §10.1 tab. 5, str. I 16/76 (napięcie najwyższe urządzenia "
+    "123 kV dla 110 kV)"
+)
 _ZALOZENIE_LACZNIKA_110KV = (
     "założenie: typ minimalny łącznika topologii zasilania 110 kV (decyzja właściciela "
     "2026-10-22: 110 kV jako granica zasilania GPZ) — klasa napięcia i prąd znamionowy "
@@ -954,7 +957,8 @@ def _lacznik_110kv(
             "verification_note": (
                 "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd "
                 "znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych "
-                "(I_k, I_cw, I_cu — brak danej) i bez producenta."
+                "(prąd zwarciowy, prąd krótkotrwały wytrzymywany, zdolność wyłączania — brak "
+                "danej) i bez producenta."
             ),
             "contract_version": "2.0",
         },

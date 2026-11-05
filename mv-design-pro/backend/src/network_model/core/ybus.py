@@ -32,8 +32,9 @@ S_BASE_MVA: float = 100.0
 #: WHITE BOX solvera IEC 60909 (`admitancje_poprzeczne_pominiete`).
 PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH: str = (
     "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się "
-    "pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym "
-    "napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera "
+    "pomija; pkt 5.3.1 — zastępcze źródło napięcia (współczynnik napięciowy c razy napięcie "
+    "znamionowe przez √3) w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć "
+    "składowej zgodnej i przeciwnej (impedancja przeciwna równa zgodnej) zawiera "
     "admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii "
     "i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): "
     "pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy "

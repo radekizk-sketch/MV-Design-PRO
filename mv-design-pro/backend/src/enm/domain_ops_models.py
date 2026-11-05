@@ -275,7 +275,7 @@ class CatalogBindingPayload(_FrozenBase):
     """
 
     catalog_namespace: str
-    """Namespace katalogu (np. KABEL_SN, TRAFO_SN_NN, APARAT_SN)."""
+    """Przestrzeń nazw katalogu (kod kategorii, np. kabel SN, transformator SN/nN)."""
 
     catalog_item_id: str
     """Identyfikator pozycji katalogowej."""
@@ -409,7 +409,7 @@ class SNFieldSpec(_FrozenBase):
 
     bay_kind: str | None = None
     """Funkcja jednostki pola w kanonie katalogu rozdzielnic (`BayKind`:
-    liniowe_doplywowe, liniowe_odplywowe, transformatorowe, sprzeglowe_poprzeczne,
+    liniowe dopływowe, liniowe odpływowe, transformatorowe, sprzęgłowe poprzeczne,
     pomiarowe). Kreator stacji wysyła ją na KAŻDYM wpisie pola; obie operacje
     stacyjne zapisują ją w specyfikacji pola pod tą samą nazwą."""
 
@@ -530,7 +530,7 @@ class NNBlockSpec(_FrozenBase):
     """Flaga utworzenia wyłącznika głównego nN (zawsze True)."""
 
     outgoing_feeders_nn_count: int = 1
-    """Liczba odpływów nN (>= 1)."""
+    """Liczba odpływów nN (co najmniej 1)."""
 
     outgoing_feeders_nn: list[NNFeederSpec] = []
     """Specyfikacje poszczególnych odpływów nN."""
@@ -1346,7 +1346,7 @@ class AddNNLoadPayload(_FrozenBase):
     """Rodzaj odbioru (PL)."""
 
     active_power_kw: float
-    """Moc czynna (kW) — >=0, jawnie."""
+    """Moc czynna (kW) — nieujemna, jawnie."""
 
     reactive_power_kvar: float | None = None
     """Moc bierna (kvar) — jawnie."""
@@ -1361,7 +1361,7 @@ class AddNNLoadPayload(_FrozenBase):
     """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
 
     earth_electrode_r_ohm: float | None = None
-    """Rezystancja uziomu instalacji odbiorczej R_A [Ω] (W5-E-TTIT, układy TT/IT); brak = dana nieobecna."""
+    """Rezystancja uziomu instalacji odbiorczej [Ω] (układy TT/IT); brak — dana nieobecna."""
 
     load_name: str | None = None
     load_label: str | None = None

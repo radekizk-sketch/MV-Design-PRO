@@ -133,7 +133,7 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         pf = svc.evaluate_single(enm, "power_flow")
         assert pf.status == "partial"
-        assert any("generator.q_missing" in m for m in pf.missing_fields_pl)
+        assert any("moc bierna generatora 'Gen-01'" in m for m in pf.missing_fields_pl)
         assert "gen_1" in pf.blocking_object_refs
 
     def test_power_flow_ready_when_generator_q_explicit(self) -> None:
@@ -344,7 +344,7 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         sc = svc.evaluate_single(enm, "short_circuit")
         assert sc.status in ("partial", "blocked")
-        assert any("u_k" in m for m in sc.missing_fields_pl)
+        assert any("napięcie zwarcia transformatora" in m for m in sc.missing_fields_pl)
 
     def test_dynamika_blocked_without_der_dynamic_model_with_named_fix(self) -> None:
         """Karta AB-P1 (przepisane z testu skasowanej bramki „stabilność"; intencja

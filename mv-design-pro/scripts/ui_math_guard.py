@@ -88,155 +88,23 @@ PIN = 0
 #: na zgodę architekta na edycję rdzenia — nie wolno ich obniżać bez tej zgody, nie wolno też
 #: ukrywać. Słownik zmierzony na drzewie karty PROZA-BEZ-SYMBOLI-ASCII.
 PINY_BACKENDU: dict[str, int] = {
-    "analysis/arc_flash/builder.py": 3,
-    "analysis/arc_flash/models.py": 1,
-    "analysis/boundary/identifier.py": 2,
-    "analysis/lf_sensitivity/builder.py": 1,
-    "analysis/normative/rule_registry.py": 3,
-    "analysis/obciazenie_galezi.py": 1,
-    "analysis/recommendations/builder.py": 2,
-    "analysis/reporting/arc_flash_report.py": 1,
-    "analysis/sanity_bounds/power_flow_bounds.py": 2,
-    "analysis/sensitivity/builder.py": 2,
-    "analysis/ssci_stability/models.py": 6,
-    "api/catalog.py": 2,
-    "api/enm.py": 1,
-    "api/execution_runs.py": 1,
-    "api/fault_scenarios.py": 5,
-    "api/grid_source_preview.py": 1,
-    "api/power_flow_runs.py": 3,
-    "api/proof_pack.py": 8,
-    "api/protection_coordination.py": 2,
-    "api/reference_patterns.py": 8,
-    "api/solver_input.py": 1,
-    "api/v126_academic.py": 1,
-    "application/analyses/fault_loop/service.py": 1,
-    "application/analyses/fault_loop/tt_it.py": 7,
-    "application/analyses/hosting_capacity.py": 1,
-    "application/analyses/lv_domain/graph_view.py": 1,
-    "application/analyses/migotanie.py": 8,
-    "application/analyses/nn_circuit_sheet.py": 3,
-    "application/analyses/nn_device_selection.py": 14,
-    "application/analyses/ocena_doboru_magistrali.py": 3,
-    "application/analyses/ochrona_lom.py": 3,
-    "application/analyses/odpowiedz_osd.py": 2,
-    "application/analyses/pq_area.py": 1,
-    "application/analyses/pq_coverage.py": 3,
-    "application/analyses/protection/base_values/models.py": 2,
-    "application/analyses/protection/ocena_nadpradowa.py": 7,
-    "application/analyses/protection/sanity_checks/models.py": 4,
-    "application/analyses/protection/sanity_checks/rules.py": 1,
-    "application/analyses/ssci_stability/service.py": 1,
-    "application/analyses/state_estimation/service.py": 2,
-    "application/analyses/v126_wzory.py": 3,
-    "application/analyses/wniosek_osd.py": 1,
-    "application/analyses/wytrzymalosc_cieplna_przewodow.py": 3,
-    "application/analyses/zgodnosc_powykonawcza.py": 2,
-    "application/autorytet_biegu_zwarciowego.py": 1,
-    "application/calculation_readiness/service.py": 8,
+    # opis pola zrzutu FROZEN resultset_dynamic_v2 (STOP)
     "application/contracts/resultset_dynamic_v2.py": 1,
-    "application/dynamika/opis_scenariusza.py": 2,
-    "application/dynamika/opis_wyniku.py": 1,
+    # jednostka „p.u. (U_n)” wspólna z rdzeniami NC RfG — zmiana razem z nimi (B-01)
     "application/ncrfg_compliance/ocena_wymagan.py": 1,
-    "application/project_archive/service.py": 1,
-    "application/protection_settings/batch_run.py": 1,
-    "application/protection_settings/engine.py": 13,
-    "application/solvers/lv_temperature_correction.py": 1,
-    "application/solvers/solver_capability_registry.py": 2,
-    "application/station_templates/templates/wiatrowe.py": 2,
-    "application/symphony/config.py": 1,
-    "application/xlsx_import/importer.py": 6,
-    "catalog/cenniki/loader.py": 1,
     "catalog/profiles/nc_rfg/loader.py": 2,  # rdzeń B-01
-    "domain/canonical_operations.py": 6,
-    "domain/dobor_przekladnika.py": 6,
-    "domain/export_manifest.py": 1,
-    "domain/fault_scenario.py": 1,
-    "domain/generator_validation.py": 6,
-    "domain/result_builder_v1.py": 3,
+    # opis pola schematu FROZEN resultset_v1 — zmiana tylko z podniesieniem wersji (STOP)
     "domain/result_contract_v1.py": 2,
-    "dziedziny/jakosc_energii.py": 2,
-    "dziedziny/pasmo.py": 1,
-    "dziedziny/widmo.py": 1,
-    "enm/adapter_dynamiki.py": 1,
-    "enm/assembler.py": 11,
-    "enm/canonical_analysis.py": 2,
-    "enm/domain_operations_v2.py": 6,
-    "enm/domain_ops_models.py": 5,
-    "enm/dynamika_modele.py": 5,
-    "enm/scenariusze.py": 6,
-    "enm/slownik_komunikatow.py": 10,
-    "enm/tolerancja_nn.py": 1,
-    "enm/uziemienie.py": 2,
-    "enm/uziemienie_sekcji.py": 5,
-    "enm/uziom_instalacji.py": 1,
-    "enm/validator.py": 2,
-    "enm/zero_sequence_transformer.py": 6,
-    "infrastructure/cgmes/cgmes_exporter.py": 4,
-    "infrastructure/cgmes/refmap.py": 2,
-    "infrastructure/persistence/migracja_legacy_db.py": 1,
-    "network_model/catalog/audit2_catalogs.py": 16,
-    "network_model/catalog/der_dynamic/models.py": 2,
-    "network_model/catalog/lv_disconnection_times_iec60364_4_41.py": 9,
-    "network_model/catalog/mv_auxiliary_catalog.py": 4,
-    "network_model/catalog/mv_benchmark_catalog.py": 1,
-    "network_model/catalog/mv_switch_catalog.py": 3,
-    "network_model/catalog/mv_transformer_catalog.py": 5,
-    "network_model/catalog/mv_zespol_uziemiajacy_catalog.py": 3,
-    "network_model/catalog/repository.py": 2,
-    "network_model/catalog/resolver.py": 1,
-    "network_model/catalog/switchgear/families.py": 1,
-    "network_model/core/autorytet_wyniku_zwarciowego.py": 2,
-    "network_model/core/bateria_kondensatorow.py": 1,
-    "network_model/core/branch.py": 5,
-    "network_model/core/impedancja_przejscia.py": 3,
-    "network_model/core/machine.py": 2,
-    "network_model/core/ybus.py": 1,
-    "network_model/core/zdolnosci_wkladu_zwarciowego.py": 4,
-    "network_model/pochodne/pasma_napieciowe.py": 1,
-    "network_model/solvers/cable_ampacity_derating.py": 8,
-    "network_model/solvers/cable_voltage_drop.py": 10,
-    "network_model/solvers/conductor_thermal_withstand.py": 7,
-    "network_model/solvers/der_selection_preview.py": 7,
-    "network_model/solvers/doziemienie_sn.py": 9,
-    "network_model/solvers/dynamika/dozory.py": 3,
-    "network_model/solvers/dynamika/kontrakty.py": 8,
-    "network_model/solvers/dynamika/konwencje.py": 1,
-    "network_model/solvers/dynamika/odbiory.py": 1,
-    "network_model/solvers/dynamika/silnik.py": 3,
-    "network_model/solvers/dynamika/urzadzenia/maszyna_synchroniczna.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/okno_mocy.py": 1,
-    "network_model/solvers/dynamika/urzadzenia/pochodne_kierunkowe.py": 1,
-    "network_model/solvers/dynamika/urzadzenia/przeksztaltnik_gfm.py": 1,
-    "network_model/solvers/dynamika/urzadzenia/regulatory.py": 2,
-    "network_model/solvers/dynamika/urzadzenia/zrodlo_testowe.py": 1,
-    "network_model/solvers/equipment_checks/cable_thermal_aging.py": 2,
-    "network_model/solvers/equipment_checks/ct_burden_saturation.py": 2,
-    "network_model/solvers/equipment_checks/transformer_losses.py": 3,
-    "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 1,
-    "network_model/solvers/fault_loop_builder.py": 3,
-    "network_model/solvers/fault_loop_iec60364.py": 8,
     "network_model/solvers/frt_hvrt/contracts.py": 3,  # rdzeń B-01
-    "network_model/solvers/grid_source_preview.py": 2,
     "network_model/solvers/ncrfg_ptpiree/engine.py": 24,  # rdzeń B-01
-    "network_model/solvers/parametry_linii_napowietrznej.py": 16,
     "network_model/solvers/phase_state_sn.py": 2,  # rdzeń B-01
-    "network_model/solvers/power_flow_inverter.py": 6,
     "network_model/solvers/power_flow_newton_internal.py": 1,  # rdzeń B-01
-    "network_model/solvers/power_flow_oltc_studies.py": 10,
     "network_model/solvers/protection_iec60255.py": 3,  # rdzeń B-01
-    "network_model/solvers/protection_lv_curves.py": 14,
     "network_model/solvers/short_circuit_contributions.py": 1,  # rdzeń B-01
     "network_model/solvers/short_circuit_iec60909.py": 18,  # rdzeń B-01
-    "network_model/solvers/shunt_compensator_preview.py": 1,
     "network_model/solvers/state_estimation_wls.py": 1,  # rdzeń B-01
-    "network_model/solvers/transformer_rated_currents.py": 4,
-    "network_model/solvers/v126_academic.py": 97,  # rdzeń B-01
-    "network_model/validation/oze_validators.py": 2,
-    "protection/curves/iec_curves.py": 1,
-    "protection/curves/ieee_curves.py": 1,
-    "solver_input/contracts.py": 1,
-    "solver_input/eligibility.py": 1,
+    "network_model/solvers/v126_academic.py": 98,  # rdzeń B-01
+    # jednostka „p.u. (U_n)” wspólna z rdzeniami NC RfG — zmiana razem z nimi (B-01)
     "werdykt/kontrakt.py": 1,
 }
 
@@ -257,6 +125,7 @@ WZORZEC_NIEROWNOSC = re.compile(r"<=|>=")
 WZORZEC_SQRT = re.compile(r"sqrt\(")
 WZORZEC_POTEGA = re.compile(r"\^-1|\^2\b")
 WZORZEC_MNOZENIE = re.compile(r"(?<=[A-Za-z0-9_)\]}])\s\*\s(?=[A-Za-z0-9_({])")
+BIALY_ZNAK_RE = re.compile(r"\s")
 WZORZEC_INDEKS_BEZ_MATHRM = re.compile(r"\\?_[a-zA-Z][a-zA-Z]+,(?!.*\\mathrm)")
 #: Goły indeks dolny symbolu w prozie (`U_f`, `I_C`, `Z_0`, `I_k2min`, `Z_{grid}`, `I_Δn`, `φ_r`):
 #: jedna litera — także grecka (nie poprzedzona literą, cyfrą, `_` ani `\\`) + `_` + indeks
@@ -264,7 +133,15 @@ WZORZEC_INDEKS_BEZ_MATHRM = re.compile(r"\\?_[a-zA-Z][a-zA-Z]+,(?!.*\\mathrm)")
 #: wielkości zapisany ASCII zamiast wzoru `$…$`/`*_latex`. Stałe kodu (`SC_1F`, `NO_TRIP`) nie
 #: pasują (przed `_` więcej niż jedna litera); klucze danych (`u_f`, `bus_ref`) wyłącza
 #: `IDENTYFIKATOR_KODU` (cały literał to identyfikator małymi literami).
+#: Podstawa symbolu może być też skrótem 2–4 wielkich liter z indeksem małymi literami
+#: (`ALF_eff`, `ALF_wym`, `RX_min`) — ten sam symbol wielkości w prozie; stałe kodu
+#: (`SC_1F`, `BRAK_METODY`) mają indeks wielkimi literami albo cyfrą, więc nie pasują.
 WZORZEC_GOLY_INDEKS = re.compile(r"(?<![\w\\])[^\W\d_]_(?:\{[^}]*\}|[^\W_]+)(?!\w)")
+#: Goły indeks symbolu o podstawie wieloliterowej (`ALF_eff`, `RX_min`). Stosowany WYŁĄCZNIE
+#: w literale z odstępem (proza): bez odstępu ten kształt to identyfikator (`std:DFIG_converter`).
+WZORZEC_GOLY_INDEKS_WIELOLITEROWY = re.compile(
+    r"(?<![\w\\])[A-Z]{2,4}_[a-z][^\W_]*(?!\w)"
+)
 #: Segment wzoru w prozie (`$…$` / `$$…$$`) — składany przez KaTeX, nie jest ASCII.
 SEGMENT_WZORU_RE = re.compile(r"\$\$?[^$]+\$\$?")
 #: Literał będący identyfikatorem kodu (klucz danych, ścieżka, selektor): małe litery, cyfry,
@@ -290,7 +167,16 @@ KLUCZ_TEKSTU_UI_RE = re.compile(
 NAZWA_MODULU_TEKSTOW_UI = "strings.ts"
 #: Wlasciwosc TS niosaca zapis LaTeX (`formula_latex:`, `symbolLatex:`) — odpowiednik pola
 #: `*_latex` skanu Pythona (`_literaly_symboli`): wartosc renderuje `MathInline`, nie jest proza.
-KLUCZ_LATEX_TS_RE = re.compile(r"\b\w*(?:_latex|Latex)\s*:\s*$")
+#: Klucz może stać w cudzysłowie (`"formula_latex": …` w danych przykładowych), a właściwość
+#: komponentu JSX (`latex="…"`, `latex={`…`}`) niesie wzór tak samo jak pole obiektu.
+KLUCZ_LATEX_TS_RE = re.compile(
+    r"""(?:\b\w*(?:_latex|Latex)|\blatex)['"]?\s*(?::|=\s*\{?)\s*$"""
+)
+
+
+#: Klucz obiektu TS: literał na początku linii albo po `{`/`,`, za nim dwukropek.
+KLUCZ_OBIEKTU_PRZED_RE = re.compile(r"(?:^|[{,])\s*$")
+DWUKROPEK_PO_RE = re.compile(r"\s*:")
 
 
 def _usun_interpolacje(wartosc: str) -> str:
@@ -318,7 +204,9 @@ def _usun_interpolacje(wartosc: str) -> str:
 
 
 def _jest_juz_latex(wartosc: str) -> bool:
-    return bool(LATEX_KOMENDA_RE.search(wartosc)) or bool(DELIMITER_DOLAR_RE.match(wartosc.strip()))
+    return bool(LATEX_KOMENDA_RE.search(wartosc)) or bool(
+        DELIMITER_DOLAR_RE.match(wartosc.strip())
+    )
 
 
 def _jest_identyfikatorem(wartosc: str, *, stala_kodu_dozwolona: bool) -> bool:
@@ -346,12 +234,19 @@ def _dopasowania(wartosc: str, *, stala_kodu_dozwolona: bool = False) -> list[st
             trafienia.append("ASCII '^2'/'^-1' poza LaTeX")
         if WZORZEC_MNOZENIE.search(proza):
             trafienia.append("ASCII ' * ' miedzy symbolami zamiast \\cdot")
-        if WZORZEC_INDEKS_BEZ_MATHRM.search(proza):
+        # `_slowo,` w napisie bez odstępów to kod (klasa CSS, selektor), nie proza dla projektanta.
+        if WZORZEC_INDEKS_BEZ_MATHRM.search(proza) and BIALY_ZNAK_RE.search(wartosc):
             trafienia.append("indeks '_slowo,' bez \\mathrm{}")
     if (
         not _jest_identyfikatorem(wartosc, stala_kodu_dozwolona=stala_kodu_dozwolona)
         and not _jest_juz_latex(proza)
-        and WZORZEC_GOLY_INDEKS.search(proza)
+        and (
+            WZORZEC_GOLY_INDEKS.search(proza)
+            or (
+                BIALY_ZNAK_RE.search(wartosc)
+                and WZORZEC_GOLY_INDEKS_WIELOLITEROWY.search(proza)
+            )
+        )
     ):
         trafienia.append("goly indeks symbolu (np. 'U_f') poza wzorem $...$/*_latex")
     return trafienia
@@ -374,8 +269,62 @@ def skanuj_ts(plik: Path) -> list[tuple[int, str, str]]:
                 # Wartosc pola LaTeX (`formula_latex:`, `symbolLatex:`) — zrodlo `MathInline`,
                 # z definicji nie proza; ta sama regula co `*_latex` w skanie Pythona.
                 continue
+            if KLUCZ_OBIEKTU_PRZED_RE.search(przed) and DWUKROPEK_PO_RE.match(
+                linia[dopasowanie.end() :]
+            ):
+                # Literał jest KLUCZEM obiektu (`'Load.p_mw': [...]`) — nazwą pola, nie tekstem
+                # ekranu; wartość ternarnego `? 'a' : 'b'` nie pasuje (przed nią stoi `?`).
+                continue
             tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
             for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
+                wyniki.append((numer, oczyszczona[:140], powod))
+    if plik.suffix == ".tsx":
+        wyniki += _skanuj_tekst_jsx(tekst)
+    return sorted(wyniki)
+
+
+#: Tekst JSX między znacznikami w jednej linii (`<dt>Prąd I_th</dt>`).
+TEKST_JSX_W_LINII_RE = re.compile(r">([^<>{}]+)<")
+#: Linia będąca w całości tekstem JSX (dziecko znacznika rozpisane na wiele linii): bez znaków
+#: składni kodu. Linia zaczynająca się operatorem (`? x`, `: y`, `&& z`, `.map`) albo
+#: kończąca przecinkiem/nawiasem otwierającym jest kodem, nie tekstem.
+LINIA_TEKSTU_JSX_RE = re.compile(r"[^<>{}=;'\"`?:.&|+\-*/()\[\]!][^<>{}=;'\"`]*")
+WLASCIWOSC_TS_RE = re.compile(r"^\w+\??\s*:")
+KONIEC_KODU = (",", "(", "?", "&&", "||", "=>")
+#: Wywołanie funkcji (`nazwa(`, `f?.(` bez odstępu) — linia jest argumentem kodu, nie tekstem JSX.
+WYWOLANIE_RE = re.compile(r"[\w.]\(")
+
+
+def _skanuj_tekst_jsx(tekst: str) -> list[tuple[int, str, str]]:
+    """Tekst JSX (dzieci znaczników) — renderowany projektantowi wprost, poza literałami
+    napisów, więc skan literałów go nie widzi. Literały i interpolacje `{…}` wycięte przed
+    dopasowaniem; komentarze blokowe `{/* … */}` pominięte."""
+    wyniki: list[tuple[int, str, str]] = []
+    w_komentarzu = False
+    for numer, linia in enumerate(tekst.splitlines(), start=1):
+        if w_komentarzu:
+            if "*/" in linia:
+                w_komentarzu = False
+            continue
+        oczyszczona = linia.strip()
+        if oczyszczona.startswith(("//", "*")):
+            continue
+        if "/*" in linia and "*/" not in linia.split("/*", 1)[1]:
+            w_komentarzu = True
+            linia = linia.split("/*", 1)[0]
+            oczyszczona = linia.strip()
+        bez_literalow = STRING_LITERAL_TS_RE.sub('""', linia)
+        kandydaci = [m.group(1) for m in TEKST_JSX_W_LINII_RE.finditer(bez_literalow)]
+        if (
+            not kandydaci
+            and LINIA_TEKSTU_JSX_RE.fullmatch(oczyszczona)
+            and not WLASCIWOSC_TS_RE.match(oczyszczona)
+            and not oczyszczona.endswith(KONIEC_KODU)
+            and not WYWOLANIE_RE.search(oczyszczona)
+        ):
+            kandydaci.append(oczyszczona)
+        for kandydat in kandydaci:
+            for powod in _dopasowania(kandydat.strip()):
                 wyniki.append((numer, oczyszczona[:140], powod))
     return wyniki
 
@@ -405,8 +354,16 @@ def _linie_docstringow(drzewo: ast.Module) -> set[int]:
 
 #: Adnotacja pola/parametru niosącego wzór LaTeX pod zamrożoną nazwą (`werdykt/zapis_latex.py`).
 ADNOTACJA_LATEX = "ZapisLatex"
-#: Adnotacja słownika, którego KLUCZE są wzorami (`dict[ZapisLatex, str]`) — wartości skanowane.
-ADNOTACJA_KLUCZY_LATEX_RE = re.compile(r"^(?:dict|Dict|Mapping|typing\.Mapping)\[\s*ZapisLatex\b")
+#: Adnotacja pola/parametru niosącego identyfikator kontraktu czytany maszynowo (nazwa kolumny
+#: arkusza importu, klucz wyniku, kod) — `werdykt/zapis_latex.py::IdentyfikatorKontraktu`.
+ADNOTACJA_IDENTYFIKATORA = "IdentyfikatorKontraktu"
+#: Adnotacje wyłączające wartość z prozy — jedno źródło dla `_tryb_pola`.
+ADNOTACJE_POZA_PROZA = (ADNOTACJA_LATEX, ADNOTACJA_IDENTYFIKATORA)
+#: Adnotacja słownika, którego KLUCZE są wzorami albo identyfikatorami
+#: (`dict[ZapisLatex, str]`, `dict[IdentyfikatorKontraktu, type]`) — wartości skanowane.
+ADNOTACJA_KLUCZY_LATEX_RE = re.compile(
+    r"^(?:dict|Dict|Mapping|typing\.Mapping)\[\s*(?:ZapisLatex|IdentyfikatorKontraktu)\b"
+)
 #: Metody, których pierwszy argument łańcuchowy jest kluczem odczytu (identyfikator, nie proza).
 METODY_KLUCZA = frozenset({"get", "pop", "setdefault", "__getitem__"})
 #: Funkcje wbudowane, których drugi argument jest nazwą atrybutu (identyfikator).
@@ -418,13 +375,14 @@ Tryb = str
 
 
 def _tryb_pola(nazwa: str, adnotacja: ast.expr | None) -> Tryb | None:
-    """Czy pole/parametr niesie wzór LaTeX — z nazwy (`*_latex`) albo adnotacji `ZapisLatex`."""
+    """Czy pole/parametr niesie wzór LaTeX albo identyfikator kontraktu — z nazwy (`*_latex`)
+    albo adnotacji `ZapisLatex` / `IdentyfikatorKontraktu`."""
     if nazwa.endswith("_latex"):
         return "caly"
     if adnotacja is None:
         return None
     tekst = ast.unparse(adnotacja).strip("'\"")
-    if ADNOTACJA_LATEX not in tekst:
+    if not any(re.search(rf"\b{a}\b", tekst) for a in ADNOTACJE_POZA_PROZA):
         return None
     return "klucze" if ADNOTACJA_KLUCZY_LATEX_RE.match(tekst) else "caly"
 
@@ -435,7 +393,8 @@ def _parametry(
     """Parametry pozycyjne funkcji (bez `self`/`cls` metody) z trybem pola LaTeX."""
     argumenty = [*funkcja.args.posonlyargs, *funkcja.args.args]
     statyczna = any(
-        isinstance(d, ast.Name) and d.id == "staticmethod" for d in funkcja.decorator_list
+        isinstance(d, ast.Name) and d.id == "staticmethod"
+        for d in funkcja.decorator_list
     )
     if metoda and not statyczna and argumenty:
         argumenty = argumenty[1:]
@@ -463,7 +422,10 @@ def _indeks_modulu(drzewo: ast.Module) -> dict[str, list[tuple[str, Tryb | None]
         if not isinstance(wezel, ast.ClassDef):
             continue
         pola = [
-            (instrukcja.target.id, _tryb_pola(instrukcja.target.id, instrukcja.annotation))
+            (
+                instrukcja.target.id,
+                _tryb_pola(instrukcja.target.id, instrukcja.annotation),
+            )
             for instrukcja in wezel.body
             if isinstance(instrukcja, ast.AnnAssign)
             and isinstance(instrukcja.target, ast.Name)
@@ -532,7 +494,9 @@ def _oznacz_wartosc(wartosc: ast.expr, tryb: Tryb, pomin: set[int]) -> None:
                 if klucz is not None:
                     _oznacz_wartosc(klucz, "caly", pomin)
                 else:
-                    _oznacz_wartosc(element, "klucze", pomin)  # `**{...}` — rozpakowanie
+                    _oznacz_wartosc(
+                        element, "klucze", pomin
+                    )  # `**{...}` — rozpakowanie
         elif isinstance(wartosc, ast.BinOp):  # `{...} | {...}`
             _oznacz_wartosc(wartosc.left, "klucze", pomin)
             _oznacz_wartosc(wartosc.right, "klucze", pomin)
@@ -563,7 +527,8 @@ def _literaly_identyfikatorow(drzewo: ast.Module, pomin: set[int]) -> None:
             # obiekt albo lista — klucz to nazwa pola zapisu JSON, nie tekst dla projektanta.
             for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True):
                 if klucz is not None and isinstance(
-                    wartosc, ast.Dict | ast.List | ast.Tuple | ast.DictComp | ast.ListComp
+                    wartosc,
+                    ast.Dict | ast.List | ast.Tuple | ast.DictComp | ast.ListComp,
                 ):
                     _stale(klucz)
         if isinstance(wezel, ast.Compare):
@@ -659,27 +624,42 @@ def _literaly_symboli(drzewo: ast.Module) -> set[int]:
             tryb_zwrotu = _tryb_pola("", wezel.returns)
             if tryb_zwrotu is not None:
                 for instrukcja in _instrukcje_wlasne(wezel):
-                    if isinstance(instrukcja, ast.Return) and instrukcja.value is not None:
+                    if (
+                        isinstance(instrukcja, ast.Return)
+                        and instrukcja.value is not None
+                    ):
                         _oznacz_wartosc(instrukcja.value, tryb_zwrotu, pomin)
         _oznacz(przypisane)
     _literaly_identyfikatorow(drzewo, pomin)
     return pomin
 
 
-def _oznacz_zmienne_latex(funkcja: ast.FunctionDef | ast.AsyncFunctionDef, pomin: set[int]) -> None:
+def _oznacz_zmienne_latex(
+    funkcja: ast.FunctionDef | ast.AsyncFunctionDef, pomin: set[int]
+) -> None:
     """Zmienna lokalna zadeklarowana adnotacją `ZapisLatex` (także bez wartości, przed
     rozgałęzieniem: `wejscia: list[tuple[ZapisLatex, str]]`) — każde jej przypisanie w tej
     funkcji niesie wzór; przypisanie krotkowe wymaga adnotacji WSZYSTKICH celów."""
     instrukcje = _instrukcje_wlasne(funkcja)
     zmienne: dict[str, Tryb] = {}
     for instrukcja in instrukcje:
-        if isinstance(instrukcja, ast.AnnAssign) and isinstance(instrukcja.target, ast.Name):
+        if isinstance(instrukcja, ast.AnnAssign) and isinstance(
+            instrukcja.target, ast.Name
+        ):
             tryb = _tryb_pola(instrukcja.target.id, instrukcja.annotation)
             if tryb is not None:
                 zmienne[instrukcja.target.id] = tryb
     if not zmienne:
         return
     for instrukcja in instrukcje:
+        if (
+            isinstance(instrukcja, ast.AugAssign)
+            and isinstance(instrukcja.target, ast.Name)
+            and instrukcja.target.id in zmienne
+        ):
+            # Dopisanie do zmiennej wzoru (`podstawienie += r" \le S_{min}"`) niesie wzór.
+            _oznacz_wartosc(instrukcja.value, zmienne[instrukcja.target.id], pomin)
+            continue
         if not isinstance(instrukcja, ast.Assign):
             continue
         for cel in instrukcja.targets:
@@ -688,24 +668,39 @@ def _oznacz_zmienne_latex(funkcja: ast.FunctionDef | ast.AsyncFunctionDef, pomin
             elif (
                 isinstance(cel, ast.Tuple)
                 and cel.elts
-                and all(isinstance(e, ast.Name) and zmienne.get(e.id) == "caly" for e in cel.elts)
+                and all(
+                    isinstance(e, ast.Name) and zmienne.get(e.id) == "caly"
+                    for e in cel.elts
+                )
             ):
                 _oznacz_wartosc(instrukcja.value, "caly", pomin)
 
 
-def _instrukcje_wlasne(funkcja: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.AST]:
+def _instrukcje_wlasne(
+    funkcja: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[ast.AST]:
     """Węzły ciała funkcji bez ciał funkcji zagnieżdżonych (ich `return` ma własny typ)."""
     wynik: list[ast.AST] = []
     stos: list[ast.AST] = [
-        w for w in funkcja.body if not isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef)
+        w
+        for w in funkcja.body
+        if not isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef)
     ]
     while stos:
         wezel = stos.pop()
         wynik.append(wezel)
         for dziecko in ast.iter_child_nodes(wezel):
-            if not isinstance(dziecko, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            if not isinstance(
+                dziecko, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda
+            ):
                 stos.append(dziecko)
     return wynik
+
+
+#: Literał w całości adresem URL — odsyłacz, nie proza (składnia zapytania niesie `_`).
+ADRES_URL_RE = re.compile(r"https?://\S+")
+#: Literał-instrukcja SQL (początek słowem kluczowym DML/DDL) — kod zapytania, nie proza.
+INSTRUKCJA_SQL_RE = re.compile(r"(?:SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER) ")
 
 
 def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
@@ -723,6 +718,10 @@ def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
         if not (isinstance(wezel, ast.Constant) and isinstance(wezel.value, str)):
             continue
         if wezel.lineno in linie_docstringow or id(wezel) in pomin:
+            continue
+        if ADRES_URL_RE.fullmatch(wezel.value) or INSTRUKCJA_SQL_RE.match(wezel.value):
+            # Adres (`https://…?p_Doc_Ref=…`) i instrukcja SQL (`SELECT * FROM …`) to kod
+            # albo odsyłacz, nie proza: znaki `_`/`*` należą do ich składni.
             continue
         stala_kodu = bool(IDENTYFIKATOR_STALEJ_PY.fullmatch(wezel.value))
         for powod in _dopasowania(wezel.value, stala_kodu_dozwolona=stala_kodu):
@@ -765,6 +764,17 @@ def wyjatki_osierocone(root: Path) -> list[str]:
     return problemy
 
 
+def pliki_frontendu() -> list[Path]:
+    """Moduły TS/TSX warstwy prezentacji: `ui2/**` i jej sąsiada `ui/**` (ten sam katalog
+    `frontend/src`) — oba renderują tekst dla projektanta, więc podlegają tej samej regule.
+    """
+    pliki: list[Path] = []
+    for katalog in (FRONTEND_UI2, FRONTEND_UI2.parent / "ui"):
+        if katalog.is_dir():
+            pliki += sorted(katalog.rglob("*.ts")) + sorted(katalog.rglob("*.tsx"))
+    return pliki
+
+
 def pliki_backendu() -> list[Path]:
     """Wszystkie moduły Pythona `backend/src` (bez `__pycache__`), w porządku ścieżek."""
     return sorted(p for p in BACKEND_SRC.rglob("*.py") if "__pycache__" not in p.parts)
@@ -775,7 +785,9 @@ def zmierz_backend() -> dict[str, list[tuple[int, str, str]]]:
     wynik: dict[str, list[tuple[int, str, str]]] = {}
     for plik in pliki_backendu():
         wzgledna_root = plik.relative_to(ROOT).as_posix()
-        trafienia = [t for t in skanuj_py(plik) if (wzgledna_root, t[0]) not in WYJATKI_ZNANE]
+        trafienia = [
+            t for t in skanuj_py(plik) if (wzgledna_root, t[0]) not in WYJATKI_ZNANE
+        ]
         if trafienia:
             wynik[plik.relative_to(BACKEND_SRC).as_posix()] = trafienia
     return wynik
@@ -788,7 +800,9 @@ def problemy_pinow_backendu(pomiar: dict[str, list[tuple[int, str, str]]]) -> li
         liczba = len(pomiar.get(wzgledna, []))
         pin = PINY_BACKENDU.get(wzgledna, 0)
         if wzgledna in PINY_BACKENDU and not (BACKEND_SRC / wzgledna).is_file():
-            problemy.append(f"[ui-math-pin-osierocony] {wzgledna}: pliku nie ma — usuń wpis")
+            problemy.append(
+                f"[ui-math-pin-osierocony] {wzgledna}: pliku nie ma — usuń wpis"
+            )
         elif liczba > pin:
             problemy.append(
                 f"[ui-math-nowe] {wzgledna}: {liczba} trafień > pin {pin} — napraw u źródła"
@@ -816,7 +830,7 @@ def main() -> int:
     wszystkie: list[tuple[str, int, str, str]] = []
     wyjatki_trafione: list[tuple[str, int, str, str]] = []
 
-    for plik in sorted(FRONTEND_UI2.rglob("*.ts")) + sorted(FRONTEND_UI2.rglob("*.tsx")):
+    for plik in pliki_frontendu():
         wzgledna = plik.relative_to(ROOT).as_posix()
         if any(wzorzec in wzgledna for wzorzec in WYLACZONE_WZORCE):
             continue
@@ -830,7 +844,7 @@ def main() -> int:
             print(f"  {sciezka}:{numer}  ({powod})")
         print()
 
-    print(f"Frontend ui2: zmierzono {len(wszystkie)} wystapien (PIN = {PIN}).")
+    print(f"Frontend ui2 + ui: zmierzono {len(wszystkie)} wystapien (PIN = {PIN}).")
     for sciezka, numer, linia, powod in wszystkie:
         print(f"  {sciezka}:{numer}")
         print(f"    {linia}")
@@ -861,7 +875,9 @@ def main() -> int:
         print(f"\nFAILED: {len(wszystkie)} wystapien ASCII-matematyki > PIN ({PIN}).")
         return 1
     if problemy:
-        print(f"\nFAILED: {len(problemy)} rozbieżności zapadki backendu (PINY_BACKENDU).")
+        print(
+            f"\nFAILED: {len(problemy)} rozbieżności zapadki backendu (PINY_BACKENDU)."
+        )
         return 1
     if osierocone:
         print(f"\nFAILED: {len(osierocone)} wyjatek/wyjatki WYJATKI_ZNANE osierocone.")
@@ -872,7 +888,9 @@ def main() -> int:
             "przy najblizszej okazji (zapadka tylko w dol)."
         )
 
-    print(f"\nPASSED: frontend {len(wszystkie)} <= PIN ({PIN}); backend zgodny z PINY_BACKENDU.")
+    print(
+        f"\nPASSED: frontend {len(wszystkie)} <= PIN ({PIN}); backend zgodny z PINY_BACKENDU."
+    )
     return 0
 
 

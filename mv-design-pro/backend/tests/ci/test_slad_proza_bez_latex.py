@@ -362,3 +362,125 @@ def test_slad_migotania_w_kontrakcie() -> None:
     ]
     assert len(kroki) > len(wezel["white_box"])
     assert _naruszenia(kroki) == []
+
+
+# ---------------------------------------------------------------------------
+# Statyczny przegląd producentów kroków w backend/src (karta PROZA-BEZ-SYMBOLI-ASCII)
+# ---------------------------------------------------------------------------
+#
+# DLACZEGO. Testy wyżej biegną przez WYBRANYCH producentów; przegląd karty 2026-11-05 znalazł
+# zapis `$…$` i `\cdot` w polach prozy kroków producentów spoza tej listy (łuk elektryczny,
+# siła sieci, rezerwa mocy biernej, model zerowy transformatora, doziemienie SN, nastawy
+# zabezpieczeń) — każdy przeszedł na zielono, bo żaden test go nie wywoływał. Przegląd AST
+# obejmuje KAŻDY krok w kodzie: wywołanie `…Step(...)`, wywołanie z polem kroku
+# (`tracer.add(formula_latex=…)`) i literał słownika z polem kroku. Rdzenie B-01 są poza tym
+# przeglądem z jednego powodu: niosą kopię LaTeX w prozie z kontraktu FROZEN, a granica
+# aplikacji zdejmuje ją po kluczu — pilnują tego testy rdzenia zwarcia wyżej.
+
+
+def _teksty_wartosci(wezel: Any) -> list[tuple[str, int]]:
+    """Teksty wyrażenia (f-string sklejony z `0` w miejscu wstawek); klucze słowników pomija."""
+    import ast
+
+    wynik: list[tuple[str, int]] = []
+
+    def zbierz(n: ast.AST) -> None:
+        if isinstance(n, ast.JoinedStr):
+            tekst = "".join(
+                v.value if isinstance(v, ast.Constant) else "0" for v in n.values
+            )
+            wynik.append((tekst, n.lineno))
+        elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+            wynik.append((n.value, n.lineno))
+        elif isinstance(n, ast.Dict):
+            for wartosc in n.values:
+                zbierz(wartosc)
+        else:
+            for dziecko in ast.iter_child_nodes(n):
+                zbierz(dziecko)
+
+    zbierz(wezel)
+    return wynik
+
+
+def _naruszenia_statyczne(zrodlo: str, nazwa: str) -> list[str]:
+    import ast
+
+    wyniki: list[str] = []
+    drzewo = ast.parse(zrodlo)
+    # Pomocnik modułu budujący krok (parametr o nazwie pola kroku, np. `_krok(…, substitution,
+    # substitution_latex)`): argumenty POZYCYJNE wywołania mapowane na nazwy parametrów.
+    pomocniki = {
+        f.name: [a.arg for a in f.args.args]
+        for f in ast.walk(drzewo)
+        if isinstance(f, ast.FunctionDef) and {a.arg for a in f.args.args} & straznik.POLA_KROKU
+    }
+    for wezel in ast.walk(drzewo):
+        pary: list[tuple[str, ast.AST]] = []
+        if isinstance(wezel, ast.Call):
+            funkcja = getattr(wezel.func, "id", getattr(wezel.func, "attr", ""))
+            argumenty = {k.arg for k in wezel.keywords if k.arg}
+            if funkcja.endswith("Step") or argumenty & straznik.POLA_KROKU or funkcja in pomocniki:
+                pary = [
+                    (k.arg, k.value)
+                    for k in wezel.keywords
+                    if k.arg and straznik.jest_polem_prozy(k.arg)
+                ]
+                pary += [
+                    (nazwa, wartosc)
+                    for nazwa, wartosc in zip(pomocniki.get(funkcja, []), wezel.args, strict=False)
+                    if straznik.jest_polem_prozy(nazwa)
+                ]
+        elif isinstance(wezel, ast.Dict):
+            klucze = {
+                k.value for k in wezel.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)
+            }
+            if klucze & straznik.POLA_KROKU:
+                pary = [
+                    (k.value, v)
+                    for k, v in zip(wezel.keys, wezel.values, strict=True)
+                    if isinstance(k, ast.Constant)
+                    and isinstance(k.value, str)
+                    and straznik.jest_polem_prozy(k.value)
+                ]
+        for pole, wartosc in pary:
+            for tekst, linia in _teksty_wartosci(wartosc):
+                if straznik.znaczniki_latex(tekst):
+                    wyniki.append(f"{nazwa}:{linia} [{pole}] {tekst[:80]!r}")
+    return wyniki
+
+
+def test_proza_krokow_w_kodzie_backendu_bez_latex() -> None:
+    """Każdy krok śladu zapisany w `backend/src` (poza rdzeniami B-01) ma prozę bez LaTeX."""
+    sys.path.insert(0, str(_SKRYPT.parent))
+    from rdzenie_b01 import jest_rdzeniem_b01
+
+    src = Path(__file__).resolve().parents[2] / "src"
+    naruszenia: list[str] = []
+    for plik in sorted(src.rglob("*.py")):
+        wzgledna = plik.relative_to(src).as_posix()
+        if "__pycache__" in plik.parts or jest_rdzeniem_b01(wzgledna):
+            continue
+        naruszenia += _naruszenia_statyczne(plik.read_text(encoding="utf-8"), wzgledna)
+    assert naruszenia == []
+
+
+@pytest.mark.parametrize(
+    ("kod", "liczba"),
+    [
+        ('WhiteBoxStep(substitution_pl=f"$I_{{bf}}$={x} kA")', 1),  # wywołanie …Step, f-string
+        ('t.add(formula_latex="a", substitution="a \\\\cdot b")', 1),  # pole kroku w wywołaniu
+        ('{"formula_latex": "a", "notes": "$Z_1$ = 1"}', 1),  # literał słownika kroku
+        ('{"formula_latex": "a", "substitution_latex": "a \\\\cdot b"}', 0),  # pole *_latex
+        ('{"formula_latex": "a", "unit_check": {"I\'\'_{k,m}": "kA"}}', 0),  # klucz słownika
+        ('WhiteBoxStep(substitution_pl=f"Ibf={x} kA")', 0),  # proza bez LaTeX
+        ('{"message_pl": "$U_n$"}', 0),  # słownik bez pola kroku nie jest krokiem
+        # pomocnik modułu z parametrem pola kroku × argument pozycyjny {proza, *_latex}
+        ('def _krok(k, substitution, substitution_latex): pass\n_krok("a", "$I_C$ = 1", "I_C")', 1),
+        ('def _krok(k, substitution, substitution_latex): pass\n_krok("a", "Ic = 1", "I_{C}")', 0),
+    ],
+)
+def test_przeglad_statyczny_rozpoznaje_kroki_i_pola(kod: str, liczba: int) -> None:
+    """Iloczyn: postać kroku {…Step, wywołanie z polem kroku, słownik, pomocnik z argumentem
+    pozycyjnym} × pole {proza, *_latex, klucz słownika} × treść {LaTeX, bez LaTeX}."""
+    assert len(_naruszenia_statyczne(kod, "m.py")) == liczba

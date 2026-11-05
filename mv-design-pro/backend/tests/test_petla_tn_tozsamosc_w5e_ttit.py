@@ -12,6 +12,11 @@ zmian; wejście deklaruje +6 % — wiersz, który moduł pętli przyjmował dawn
 wtedy każda liczba i każdy krok śladu muszą być bit w bit takie jak w fikstura. Jedyna różnica
 to pola ADDYTYWNE karty C (``c_min``, ``c_max``, ``c_zrodlo_min``, ``c_zrodlo_max`` wyniku
 i podstawa c w kroku ``compute_ik``), sprawdzane osobno.
+
+Karta PROZA-BEZ-SYMBOLI-ASCII: pole tekstowe ``method`` kroków ``sum_components``
+i ``compute_ik`` niesie wzór jako segment ``$…$`` zamiast zapisu ASCII. W fikstura zmieniono
+WYŁĄCZNIE te linie tekstu i przeliczono SHA-256 z niezmienionego poza nimi ``to_dict``
+(sonda różnicy: zmienione są tylko linie ``method`` i ``sha256``; żadna liczba ani klucz).
 """
 
 from __future__ import annotations

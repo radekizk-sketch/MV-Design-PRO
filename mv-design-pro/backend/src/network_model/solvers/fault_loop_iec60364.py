@@ -245,7 +245,7 @@ def _validate_input(data: FaultLoopInput) -> None:
     """
     if data.u_nom_v <= 0:
         logger.warning(
-            "fault_loop reject: u_nom_v <= 0",
+            "fault_loop reject: u_nom_v nie jest dodatnie",
             extra={"fault_node_id": data.fault_node_id, "u_nom_v": data.u_nom_v},
         )
         raise OdmowaDanychError(
@@ -263,7 +263,8 @@ def _validate_input(data: FaultLoopInput) -> None:
             )
             raise OdmowaDanychError(
                 f"Układ {data.network_type.value}: pętla zwarcia doziemnego wymaga danych "
-                "TT/IT (uziomy R_A/R_B i I_Δn dla TT; pojemności doziemne i częstotliwość dla "
+                "TT/IT (rezystancje uziomów i prąd różnicowy znamionowy dla TT; pojemności "
+                "doziemne i częstotliwość dla "
                 "IT) — brak danej nie jest zastępowany wartością."
             )
     elif data.dane_tt_it is not None:
@@ -309,7 +310,7 @@ def zsumuj_skladowe_petli(
     )
     krok = {
         "step": "sum_components",
-        "method": "Z_loop = Σ(R_i + jX_i)",
+        "method": r"$Z_{\mathrm{loop}} = \sum_i (R_i + j X_i)$",
         "components": [{"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components],
         "result": {
             "r_total_ohm": z_loop_complex.real,
@@ -371,7 +372,7 @@ def prad_z_petli(
     """
     if z_magnitude < Z_MIN_OHM:
         logger.warning(
-            "fault_loop reject: Z_loop below minimum threshold",
+            "fault_loop reject: impedancja pętli poniżej progu minimalnego",
             extra={
                 "fault_node_id": fault_node_id,
                 "z_magnitude_ohm": z_magnitude,
@@ -379,15 +380,15 @@ def prad_z_petli(
             },
         )
         raise OdmowaDanychError(
-            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
-            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
+            f"Impedancja pętli zwarcia {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa "
+            "lub fizycznie niemożliwa. Realna sieć nN ma impedancję pętli "
             "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
     ik_min = (c.c_min * u_v) / z_magnitude
     ik_max = (c.c_max * u_v) / z_magnitude
     krok = {
         "step": "compute_ik",
-        "method": "I_k = c * U_n / |Z_loop|",
+        "method": r"$I_k = c \cdot U_n / |Z_{\mathrm{loop}}|$",
         "c_min": c.c_min,
         "c_max": c.c_max,
         "c_zrodlo_min": c.zrodlo_min,

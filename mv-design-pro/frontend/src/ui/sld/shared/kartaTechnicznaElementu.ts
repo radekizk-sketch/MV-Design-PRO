@@ -1049,7 +1049,7 @@ function kartaAparatu(
           wiersz('ik_wyl', 'Zdolność wyłączalna', aparat.lacznik ? zn.ik : 'nie dotyczy'),
           // Wiersz zawsze dla łącznika: „brak danych” (null) odróżniony od „nie dotyczy”.
           ...(aparat.lacznik || zn.ith ? [wiersz('ith', 'Prąd cieplny Iₜₕ / czas', zn.ith)] : []),
-          ...(zn.idyn ? [wiersz('idyn', 'Prąd szczytowy I_dyn', zn.idyn)] : []),
+          ...(zn.idyn ? [wiersz('idyn', 'Prąd szczytowy (dynamiczny)', zn.idyn)] : []),
         ],
         zrodloPl: zn.zrodloPl,
       },

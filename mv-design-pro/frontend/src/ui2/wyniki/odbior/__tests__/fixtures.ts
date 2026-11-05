@@ -55,7 +55,7 @@ export function widokZgodnosciFixture(): WidokZgodnosci {
         miejsce_pomiaru_pl: null,
         kod_odmowy: null,
         slad_pl: [
-          'Model U = u_pu × U_n = 1.010000 × 15.000000 = 15.150000 kV',
+          'Model: napięcie względne razy napięcie znamionowe = 1.010000 × 15.000000 = 15.150000 kV',
           'Pomiar U = 15.300000 kV',
           'Odchyłka = pomiar − model = 0.150000 kV (0.990099%)',
           'Tolerancja = ±5.000000%',

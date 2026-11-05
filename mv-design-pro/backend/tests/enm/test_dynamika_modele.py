@@ -350,20 +350,20 @@ class TestNiespojnoscKrzyzowa:
     def test_sm_xd_bis_wiekszy_niz_xd_prim(self):
         """Wartosci PRZY WLASNYCH granicach pola (xd_bis_pu<=0.35, xd_prim_pu<=0.6)
         — narusza WYLACZNIE porzadek krzyzowy, nie Field(ge=/le=)."""
-        with pytest.raises(ValidationError, match="xd_bis_pu <= xd_prim_pu <= xd_pu"):
+        with pytest.raises(ValidationError, match="porządek reaktancji osi d"):
             MaszynaSynchroniczna(**_sm_komplet(xd_bis_pu=0.35, xd_prim_pu=0.30, xd_pu=1.8))
 
     def test_sm_xq_bis_wiekszy_niz_xq_prim(self):
         """Symetria klasy (CLAUDE.md KLASA NIE INSTANCJA) — ta sama reguła co xd, os q."""
-        with pytest.raises(ValidationError, match="xq_bis_pu <= xq_prim_pu <= xq_pu"):
+        with pytest.raises(ValidationError, match="porządek reaktancji osi q"):
             MaszynaSynchroniczna(**_sm_komplet(xq_bis_pu=0.40, xq_prim_pu=0.30, xq_pu=1.7))
 
     def test_sm_td0_bis_wiekszy_niz_td0_prim(self):
-        with pytest.raises(ValidationError, match="td0_bis_s musi być"):
+        with pytest.raises(ValidationError, match="stała czasowa osi d stanu jałowego"):
             MaszynaSynchroniczna(**_sm_komplet(td0_prim_s=0.10, td0_bis_s=0.15))
 
     def test_sm_tq0_bis_wiekszy_niz_tq0_prim(self):
-        with pytest.raises(ValidationError, match="tq0_bis_s musi być"):
+        with pytest.raises(ValidationError, match="stała czasowa osi q stanu jałowego"):
             MaszynaSynchroniczna(**_sm_komplet(tq0_prim_s=0.10, tq0_bis_s=0.20))
 
     def test_sm_regulator_napiecia_limity_odwrocone(self):
@@ -387,7 +387,9 @@ class TestNiespojnoscKrzyzowa:
     def test_gfl_napiecie_ciagle_rowne_odrzucone(self):
         """Zakresy pol sa rozlaczne (u_min<=1.0, u_max>=1.0) — jedyny sposob na
         naruszenie porzadku BEZ lamania Field(ge=/le=) to rownosc na granicy."""
-        with pytest.raises(ValidationError, match="u_min_ciagle_pu musi być mniejsze"):
+        with pytest.raises(
+            ValidationError, match="dolna granica napięcia pracy ciągłej musi być mniejsza"
+        ):
             PrzeksztaltnikGFL(**_gfl_komplet(u_min_ciagle_pu=1.0, u_max_ciagle_pu=1.0))
 
     def test_magazyn_soc_min_wiekszy_niz_soc_max(self):

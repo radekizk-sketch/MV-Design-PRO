@@ -1155,7 +1155,7 @@ def _oze_sc_bus(
         entry["source_contribution"] = {
             "machine_type": "IBG",
             "model": (
-                "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated), "
+                "IEC 60909 §6.7 — źródło prądowe ograniczone (krotność prądu znamionowego), "
                 "sprowadzone przez przekładnię"
             ),
             "ik_contribution_ka": round(_ibg_referred_a(graph, un_kv) / 1000.0, 3),
@@ -1169,9 +1169,11 @@ def _oze_sc_bus(
     if is_sync:
         model = "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
     elif machine_type == "DFIG":
-        model = "IEC 60909-0:2016 §6.7/§6.6 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M (zanik μ·q)"
+        model = "IEC 60909-0:2016 §6.7/§6.6 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za impedancją maszyny (zanik μ·q)"
     else:
-        model = "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za Z_M (zanik μ·q)"
+        model = (
+            "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za impedancją maszyny (zanik μ·q)"
+        )
     entry["source_contribution"] = {
         "machine_type": machine_type,
         "model": model,
@@ -1739,7 +1741,7 @@ def build_g4_pvtr() -> dict[str, Any]:
     przekaźnik SN: I>/I>>/Ust II>/G0>/3U0/I0>; granica ZKSN na kablu zasilającym) +
     POLE 2 TRANSFORMATOROWE (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik ◯ → ITK 224 →
     3×YHAKXS DO TRANSFORMATORA, który wisi pod polem; bez przekaźnika).
-    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I>=720A / I>>=4000A) → szyna 3×P40×10 →
+    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I> 720 A / I>> 4000 A) → szyna 3×P40×10 →
     3 POLA FALOWNIKÓW (~333 kW; 560×595Wp/falownik; BTVC 315A/800V) + pole RPW-PV.
     Koordynacja trójpoziomowa (dok. 1.18) — w module zabezpieczenia, nie na płótnie.
 
@@ -1824,7 +1826,7 @@ def build_g4_pvtr() -> dict[str, Any]:
         "nn_kv": _PV1MW_NN_KV,
         "transformer": "1000 kVA · 15,75/0,8 kV · POLIM-D18N",
         "nn_grid": "IT",
-        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I>=720 A (0,9 In) · I>>=4000 A (4 In)",
+        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I> 720 A (0,9 In) · I>> 4000 A (4 In)",
         "pv_modules": f"JA SOLAR JAM72D40-595/MB · 595 Wp · {inv_count}×{modules_per_inv} szt = {p_dc_kwp:.1f} kWp DC",
         "inverters": f"{inv_count} × ~{kwp_per_inv:.0f} kW (BTVC 315 A/800 V na pole)",
         "dc_ac_ratio": round(p_dc_kwp / 1000.0, 3),

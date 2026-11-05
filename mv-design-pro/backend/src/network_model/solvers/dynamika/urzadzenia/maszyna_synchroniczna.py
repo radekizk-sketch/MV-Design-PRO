@@ -178,8 +178,9 @@ def dopasuj_nasycenie(s10: float, s12: float) -> WspolczynnikiNasycenia:
     if iloraz <= 1.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Nasycenie: Se(1,2)={s12} wobec Se(1,0)={s10} daje krzywa nierosnaca "
-            "(1,2*S12 <= S10) — kwadratowa krzywa nasycenia nie ma dopasowania",
+            f"Nasycenie: współczynnik nasycenia przy 1,2 pu ({s12}) wobec współczynnika przy "
+            f"1,0 pu ({s10}) daje krzywą nierosnącą (1,2 razy pierwszy nie większy od "
+            "drugiego) — kwadratowa krzywa nasycenia nie ma dopasowania",
             s10=s10,
             s12=s12,
         )
@@ -659,7 +660,7 @@ class MaszynaSynchroniczna:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
                 f"Maszyna {self.ident!r}: punkt pracy wymaga mocy turbiny "
-                f"P_m = {moc_mechaniczna_pu} pu poza granicami regulatora "
+                f"{moc_mechaniczna_pu} pu poza granicami regulatora "
                 f"[{turbina.p_min_pu}, {turbina.p_max_pu}] — rownowaga nie istnieje",
                 urzadzenie=self.ident,
                 p_mechaniczna_pu=moc_mechaniczna_pu,

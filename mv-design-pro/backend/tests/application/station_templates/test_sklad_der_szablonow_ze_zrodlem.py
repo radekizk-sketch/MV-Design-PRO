@@ -170,7 +170,12 @@ def test_powod_wycofania_turbiny_3mw_to_odmowa_toru_der_sn() -> None:
             szablon, {"der_FW_ref": "conv-wind-nn-3mw-0p69kv", "der_FW_p_mw_each": 3.0}, None
         )
     assert exc.value.code == "converter.der_sn.dobor_tr_brak_kandydata"
-    assert exc.value.code in SZABLONY_WIATROWE_WYCOFANE["tpl_wiatr_3mw"]
+    # Powód wycofania nazywa tę samą odmowę słowami (kod odmowy nie trafia do prozy, karta
+    # PROZA-BEZ-SYMBOLI-ASCII) — intencja: powód to odmowa doboru toru DER-SN, nie domysł.
+    assert (
+        "dobór transformatora toru przyłączenia SN odmawia: brak kandydata"
+        in SZABLONY_WIATROWE_WYCOFANE["tpl_wiatr_3mw"]
+    )
 
 
 def test_powod_wycofania_turbiny_1mw_to_brak_pozycji_ponizej_2mw() -> None:

@@ -41,7 +41,7 @@ describe('buildOltcAnnotation', () => {
       kind: 'OLTC',
       positionLabel: 'poz. +3',
       modeLabel: 'AUTO',
-      setpointLabel: 'U_zad 15.5 kV',
+      setpointLabel: 'nastawa 15.5 kV',
     });
   });
 

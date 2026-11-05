@@ -146,11 +146,11 @@ describe('selectDerDynamicProfilesForKind', () => {
 describe('formatDerDynamicProfileLabelPl', () => {
   it('falownik (PV/BESS): pokazuje tryb regulacji + droop P/f + czas odpowiedzi + proweniencję', () => {
     expect(formatDerDynamicProfileLabelPl(PV_GFL)).toBe(
-      'PV grid-following domyślny (grid-following, droop P/f=5%, t_odp=0.02 s)'
+      'PV grid-following domyślny (grid-following, droop P/f=5%, czas odpowiedzi 0.02 s)'
         + ' [profil typowy normy: IEEE 1547-2018 §5-8]',
     );
     expect(formatDerDynamicProfileLabelPl(BESS_GFM)).toBe(
-      'BESS grid-forming domyślny (grid-forming, droop P/f=5%, t_odp=0.02 s)'
+      'BESS grid-forming domyślny (grid-forming, droop P/f=5%, czas odpowiedzi 0.02 s)'
         + ' [profil typowy normy: IEEE 1547-2018 §5-8]',
     );
   });

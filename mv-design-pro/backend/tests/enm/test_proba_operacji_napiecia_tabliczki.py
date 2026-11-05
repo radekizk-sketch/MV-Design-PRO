@@ -32,6 +32,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import odmowa_napiecia_generatora, odmowa_tabliczki_baterii
 from enm.katalog_projektu import katalog_biezacy
 from fastapi.testclient import TestClient
+from werdykt import format_liczba
 
 from tests.api.test_pole_katalogowe_api import (  # noqa: F401 — fikstura `klient`
     _ciag_sn,
@@ -248,8 +249,10 @@ def test_poziom_izolacji_u_m_wobec_u_s_sieci(droga: str, napiecie_sieci_kv: floa
         )
         if u_m < u_s:
             assert wynik.get("error_code") == kod, (pozycja, u_m, wynik)
-            assert f"U_s = {u_s:g} kV" in wynik["error"], wynik["error"]
-            assert f"U_m = {u_m:g} kV" in wynik["error"], wynik["error"]
+            # Treść niesie obie wielkości słowami i liczbą po polsku (przecinek dziesiętny).
+            tresc = wynik["error"]
+            assert f"napięcia najwyższego sieci {format_liczba(u_s)} kV" in tresc, tresc
+            assert f"napięcie najwyższe urządzenia {format_liczba(u_m)} kV" in tresc, tresc
         else:
             assert not wynik.get("error"), (pozycja, u_m, wynik)
 

@@ -460,7 +460,10 @@ def check_rocof_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.ROCOF_NON_POSITIVE,
-                    message_pl=f"Nastawa df/dt ({rocof_fn.setpoint.display_pl}) jest nieadodatnia (<= 0)",
+                    message_pl=(
+                        "Nastawa szybkości zmian częstotliwości "
+                        f"({rocof_fn.setpoint.display_pl}) jest niedodatnia"
+                    ),
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="81R",

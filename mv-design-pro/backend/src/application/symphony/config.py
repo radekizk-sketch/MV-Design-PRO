@@ -50,7 +50,7 @@ def load_symphony_config(definition: WorkflowDefinition, repo_root: str | Path) 
     if max_concurrency <= 0:
         raise ValueError("polling.max_concurrency must be > 0")
     if retry_max_attempts < 0:
-        raise ValueError("polling.retry_max_attempts must be >= 0")
+        raise ValueError("Liczba ponowień odpytywania musi być nieujemna.")
 
     active_states = _string_list(tracker, "active_states")
     if not active_states:

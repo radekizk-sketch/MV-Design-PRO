@@ -52,6 +52,7 @@ from network_model.pochodne.pasma_napieciowe import (
     powyzej_pasma_nn,
     w_pasmie_nn,
 )
+from werdykt import format_liczba
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
@@ -673,7 +674,7 @@ class DeviceWithstandItem:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
             odmowa_twarda(
                 "KAT-T-025",
-                f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
+                f"{self.id}: prąd cieplny {self.i_th_1s_ka} kA jest spoza znormalizowanego "
                 f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
@@ -701,7 +702,7 @@ class DeviceWithstandItem:
             "i_th_1s_ka": self.i_th_1s_ka,
             "i_th_duration_s": self.i_th_duration_s,
             "zrodlo_pl": (
-                "IEC 62271-1 § 4.6 (I_dyn = 2,5 · I_th dla 50 Hz) i § 4.7 "
+                r"IEC 62271-1 § 4.6 ($I_{dyn} = 2{,}5 \cdot I_{th}$ dla 50 Hz) i § 4.7 "
                 f"(czas trwania zwarcia); {IEC_62271_1_PRZEWODNIK_URL}"
             ),
         }
@@ -712,7 +713,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_vacuum_15_25",
         catalog_namespace="device_withstand",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+        label_pl="Wyłącznik próżniowy 15 kV · prąd cieplny 25 kA/1 s · prąd szczytowy 62,5 kA",
         device_type="breaker_vacuum_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -723,7 +724,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_sf6_15_31_5",
         catalog_namespace="device_withstand",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Wyłącznik SF6 15 kV · I_th=31,5 kA/3s · I_dyn=78,75 kA",
+        label_pl="Wyłącznik SF6 15 kV · prąd cieplny 31,5 kA/3 s · prąd szczytowy 78,75 kA",
         device_type="breaker_sf6_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -734,7 +735,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_2000_50",
         catalog_namespace="device_withstand",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Szyna SN 15 kV · 2000 A · I_th=50 kA/1s · I_dyn=125 kA",
+        label_pl="Szyna SN 15 kV · 2000 A · prąd cieplny 50 kA/1 s · prąd szczytowy 125 kA",
         device_type="busbar_15_2000",
         nominal_voltage_kv=15,
         nominal_current_a=2000,
@@ -745,7 +746,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_1250_25",
         catalog_namespace="device_withstand",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Szyna SN 15 kV · 1250 A · I_th=25 kA/1s · I_dyn=62,5 kA",
+        label_pl="Szyna SN 15 kV · 1250 A · prąd cieplny 25 kA/1 s · prąd szczytowy 62,5 kA",
         device_type="busbar_15_1250",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -756,7 +757,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_switch_load_15_25",
         catalog_namespace="device_withstand",
         catalog_version=AUDIT2_CATALOG_VERSION,
-        label_pl="Rozłącznik z bezpiecznikami 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+        label_pl="Rozłącznik z bezpiecznikami 15 kV · prąd cieplny 25 kA/1 s · prąd szczytowy 62,5 kA",
         device_type="switch_load_15",
         nominal_voltage_kv=15,
         nominal_current_a=630,
@@ -1223,8 +1224,9 @@ def is_vt_voltage_factor_valid_for_grounding(
             "directly_grounded": "bezpośrednio uziemiona",
         }[grounding_type]
         return False, (
-            f"Sieć {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
-            f"Wybrany VT ma U_th = {voltage_factor}."
+            f"Sieć {etykieta} wymaga przekładnika napięciowego (faza-ziemia) o współczynniku "
+            f"napięciowym co najmniej {wymagany} wg IEC 61869-3. "
+            f"Wybrany przekładnik ma współczynnik {voltage_factor}."
         )
     return True, ""
 
@@ -1302,13 +1304,15 @@ def ocen_wytrzymalosc_aparatu(
     niezaliczone: list[str] = []
     if i_dyn_ok is False and util_dyn is not None and i_dyn_ka is not None:
         niezaliczone.append(
-            f"I_dyn {i_peak_calculated_ka:.1f} kA > {i_dyn_ka:.1f} kA (limit) — "
+            f"prąd szczytowy {format_liczba(i_peak_calculated_ka, miejsca=1)} kA > "
+            f"{format_liczba(i_dyn_ka, miejsca=1)} kA (limit) — "
             "przekroczenie wytrzymałości dynamicznej"
         )
     if i_th_ok is False and i_th_effective is not None and t_clearing_s is not None:
         niezaliczone.append(
-            f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
-            f"(limit przy t={t_clearing_s:.2f} s) — przekroczenie wytrzymałości cieplnej"
+            f"prąd cieplny {format_liczba(i_thermal_calculated_ka, miejsca=1)} kA > "
+            f"{format_liczba(i_th_effective, miejsca=1)} kA (limit przy czasie wyłączenia "
+            f"{format_liczba(t_clearing_s, miejsca=2)} s) — przekroczenie wytrzymałości cieplnej"
         )
 
     if niezaliczone:
@@ -1316,9 +1320,9 @@ def ocen_wytrzymalosc_aparatu(
     elif braki:
         zaliczone = []
         if i_dyn_ok is True and util_dyn is not None:
-            zaliczone.append(f"I_dyn {util_dyn:.0f}%")
+            zaliczone.append(f"prąd szczytowy {format_liczba(util_dyn, miejsca=0)} %")
         if i_th_ok is True and util_th is not None:
-            zaliczone.append(f"I_th {util_th:.0f}%")
+            zaliczone.append(f"prąd cieplny {format_liczba(util_th, miejsca=0)} %")
         czesc_zaliczona = f" Sprawdzone: {', '.join(zaliczone)}." if zaliczone else ""
         message = (
             f"NIEUSTALONE: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."
@@ -1327,7 +1331,8 @@ def ocen_wytrzymalosc_aparatu(
     else:
         message = (
             f"OK: aparatura „{etykieta_pl}” wytrzymała "
-            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."
+            f"(wykorzystanie prądu szczytowego {format_liczba(util_dyn, miejsca=0)} %, "
+            f"prądu cieplnego {format_liczba(util_th, miejsca=0)} %)."
         )
 
     return {

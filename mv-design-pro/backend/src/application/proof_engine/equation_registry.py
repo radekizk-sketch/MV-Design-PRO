@@ -247,7 +247,7 @@ EQ_SC3F_003 = EquationDefinition(
     ),
     unit_derivation="Ω + Ω + Ω = Ω",
     notes="Dla sieci promieniowych suma szeregowa. Dla sieci złożonych: redukcja metodą Thevenina. "
-    "AUDIT: c NIE występuje w tym równaniu.",
+    "Współczynnik napięciowy c nie występuje w tym równaniu.",
 )
 
 EQ_SC3F_004 = EquationDefinition(
@@ -282,7 +282,7 @@ EQ_SC3F_004 = EquationDefinition(
         ),
     ),
     unit_derivation="kV / Ω = kA",
-    notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu (Anti-Double-Counting: PASS).",
+    notes="Współczynnik napięciowy c występuje wyłącznie w tym równaniu (bez podwójnego uwzględnienia).",
 )
 
 EQ_SC3F_005 = EquationDefinition(
@@ -311,7 +311,7 @@ EQ_SC3F_005 = EquationDefinition(
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="Wartość κ mieści się w zakresie 1.02 ≤ κ ≤ 2.00. AUDIT: c NIE występuje.",
+    notes="Wartość κ mieści się w zakresie 1.02 ≤ κ ≤ 2.00. Współczynnik napięciowy c nie występuje.",
 )
 
 EQ_SC3F_006 = EquationDefinition(
@@ -340,7 +340,7 @@ EQ_SC3F_006 = EquationDefinition(
         ),
     ),
     unit_derivation="— · — · kA = kA",
-    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
+    notes="Współczynnik napięciowy c nie występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_007 = EquationDefinition(
@@ -369,7 +369,7 @@ EQ_SC3F_007 = EquationDefinition(
         ),
     ),
     unit_derivation="kV · kA = MVA",
-    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
+    notes="Współczynnik napięciowy c nie występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_008 = EquationDefinition(
@@ -404,7 +404,7 @@ EQ_SC3F_008 = EquationDefinition(
         ),
     ),
     unit_derivation="kA · — = kA",
-    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
+    notes="Współczynnik napięciowy c nie występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_008a = EquationDefinition(
@@ -428,7 +428,7 @@ EQ_SC3F_008a = EquationDefinition(
     ),
     unit_derivation="kA = kA",
     notes="Prąd dynamiczny służy do wymiarowania aparatury na wytrzymałość elektrodynamiczną. "
-    "AUDIT: c NIE występuje.",
+    "Współczynnik napięciowy c nie występuje.",
 )
 
 # --- Maszyny wirujące: prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 rozdz. 9) ----
@@ -486,7 +486,9 @@ EQ_SC3F_011 = EquationDefinition(
     "liniowa wartości krzywych obu węzłów ("
     + podstawa_reguly("mu", REGULA_INTERPOLACJA).opis_pl
     + "), $t_{min} < 0{,}02$ s → krzywa 0,02 s (interpretacja inżynierska), $t_{min} > 0{,}25$ s → "
-    "krzywa 0.25 s. Wydanie: " + UWAGA_WYDANIA_NORMY_KRZYWYCH + ". AUDIT: c NIE występuje.",
+    "krzywa 0.25 s. Wydanie: "
+    + UWAGA_WYDANIA_NORMY_KRZYWYCH
+    + ". Współczynnik napięciowy c nie występuje.",
 )
 
 EQ_SC3F_012 = EquationDefinition(
@@ -526,7 +528,7 @@ EQ_SC3F_012 = EquationDefinition(
     + podstawa_reguly("q", REGULA_INTERPOLACJA).opis_pl
     + ". Dla maszyn synchronicznych q = 1 (brak dodatkowego zaniku). Wydanie: "
     + UWAGA_WYDANIA_NORMY_KRZYWYCH
-    + ". AUDIT: c NIE występuje.",
+    + ". Współczynnik napięciowy c nie występuje.",
 )
 
 EQ_SC3F_013 = EquationDefinition(
@@ -562,7 +564,7 @@ EQ_SC3F_013 = EquationDefinition(
     ),
     unit_derivation="— · — · kA = kA",
     notes="Prąd wyłączeniowy maszyny do doboru zdolności łączeniowej aparatury. "
-    "AUDIT: c NIE występuje ($I_k''$ już zawiera c).",
+    "Współczynnik napięciowy c nie występuje ($I_k''$ już zawiera c).",
 )
 
 # --- Pełny bilans punktu zwarcia: I_b, i_DC(t_b) oraz I²t ---------------------------------
@@ -625,7 +627,7 @@ EQ_SC3F_014 = EquationDefinition(
     "przekształtnikowych — źródeł prądowych bez zaniku) suma jest pusta i $I_b = I_k''$. "
     "Dla maszyny na zaciskach zwarcia ΔU''/(c·$U_n$/√3) = 1 i wzór daje μ·q·$I_{k,m}''$ "
     "(EQ_SC3F_013). Zwarcia niesymetryczne: $I_b = I_k''$. Wartość $I_b$ czytana z FROZEN wyniku "
-    "solvera (ib_a, ślad Ib) — proof engine nie liczy fizyki. AUDIT: c występuje wyłącznie "
+    "solvera (ib_a, ślad Ib) — proof engine nie liczy fizyki. Współczynnik napięciowy c występuje wyłącznie "
     "jako normalizacja ΔU'' (współczynnik bezwymiarowy z solvera), $I_k''$ już zawiera c.",
 )
 
@@ -669,7 +671,7 @@ EQ_SC3F_020 = EquationDefinition(
     unit_derivation="kA · — = kA",
     notes="f = 50 Hz. Wielkości (wykładnik, współczynnik zaniku, $i_{DC}$) czytane ze śladu "
     "solvera (klucz iDC) — proof engine nie liczy fizyki. Niesymetryczny prąd wyłączeniowy "
-    "$I_{b,asym}$ = √($I_b^2 + i_{DC}^2$). AUDIT: c NIE występuje ($I_k''$ już zawiera c).",
+    "$I_{b,asym}$ = √($I_b^2 + i_{DC}^2$). Współczynnik napięciowy c nie występuje ($I_k''$ już zawiera c).",
 )
 
 EQ_SC3F_015 = EquationDefinition(
@@ -700,7 +702,7 @@ EQ_SC3F_015 = EquationDefinition(
     unit_derivation="kA² · s = kA²s",
     notes="Krok formatujący wielkości już obecne w dowodzie ($I_{th}$, $t_k$) — definicja prądu "
     "zastępczego cieplnego (IEC 60909-0 § 12). Spójny z projekcją kanoniczną wierszy "
-    "wyników (i2t_ka2s w pełnym bilansie F1). AUDIT: c NIE występuje.",
+    "wyników (i2t_ka2s w pełnym bilansie cieplnym). Współczynnik napięciowy c nie występuje.",
 )
 
 
@@ -739,7 +741,7 @@ EQ_SC3F_016 = EquationDefinition(
     unit_derivation="Ω + Ω = Ω",
     notes="$Z_f$ w każdej fazie zwarcia trójfazowego; $R_f \\geq  0$, $X_f \\geq  0$. Prąd przez $Z_f$ jest "
     "poza zakresem IEC 60909 i nie jest podstawą doboru wytrzymałości zwarciowej. "
-    "AUDIT: c NIE występuje.",
+    "Współczynnik napięciowy c nie występuje.",
 )
 
 EQ_SC3F_017 = EquationDefinition(
@@ -774,7 +776,7 @@ EQ_SC3F_017 = EquationDefinition(
         ),
     ),
     unit_derivation="kV / Ω = kA",
-    notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu wariantu z impedancją przejścia "
+    notes="Współczynnik napięciowy c występuje wyłącznie w tym równaniu wariantu z impedancją przejścia "
     "(Anti-Double-Counting: wariant $Z_f$).",
 )
 
@@ -804,7 +806,7 @@ EQ_SC3F_018 = EquationDefinition(
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="$R_k/X_k$ pełnej pętli z $Z_f$ (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
+    notes="$R_k/X_k$ pełnej pętli z $Z_f$ (kontrakt zwarcia przez impedancję przejścia). Współczynnik napięciowy c nie występuje.",
 )
 
 
@@ -1023,7 +1025,7 @@ EQ_VDROP_007 = EquationDefinition(
     ),
     unit_derivation="kV − kV = kV",
     notes=(
-        "KARTA PODSTAWA-VDROP (2026-08-12). ΔU_total^{kV} to SUMA spadków "
+        "ΔU_total^{kV} to SUMA spadków "
         "odcinkowych w jednostkach bezwzględnych (łańcuch EQ_VDROP_001..006 "
         "TEGO SAMEGO dowodu, każdy odcinek przeliczony przez WŁASNE $U_n$) — "
         "NIE wynik biegu, bo podstawienie wyniku biegu tutaj byłoby dowodzeniem "
@@ -1072,14 +1074,14 @@ EQ_VDROP_010 = EquationDefinition(
     ),
     unit_derivation="kV - kV = kV",
     notes=(
-        "KARTA P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST "
+        "Transformator NIE JEST "
         "odcinkiem w sensie VDROP — RODZAJE_ODCINKA (`voltage_drop_binding.py`) "
         "wyklucza go od początku istnienia tego modułu, bo zmienia napięcie "
         "przekładnią, nie spadkiem wzdłużnym; wzór ΔU=(R·P+X·Q)/$U_n^2$ NIE MA "
         "zastosowania. Ten krok NIE liczy fizyki transformatora — nazywa jawnie "
         "zmianę podstawy napięcia, czytając $U_1/U_2$ z JUŻ ROZWIĄZANEGO rozpływu "
         "(fizyka transformatora policzona przez solver PF, poza domeną VDROP). "
-        "To NIE jest cyrkularność zakazana kartą PODSTAWA-VDROP: tamten zakaz "
+        "To NIE jest cyrkularność zakazana w dowodzie spadku napięcia: tamten zakaz "
         "dotyczy PODMIANY ΔU odcinka linii/kabla (który VDROP rości sobie prawo "
         "policzyć przez R/X/P/Q) wynikiem biegu — tu żadna konkurencyjna formuła "
         "VDROP nie istnieje, więc odczyt nie zastępuje niczego. Wkład do sumy "
@@ -1539,10 +1541,10 @@ EQ_LVCV_001 = EquationDefinition(
     ),
     unit_derivation="A · (—) · (—) · (—) = A",
     notes=(
-        "Iloczyn współczynników REUSE — jedyne miejsce mnożenia jest "
-        "`network_model.solvers.cable_ampacity_derating.obciazalnosc_skorygowana` "
-        "(karta P0.5a); każdy współczynnik pochodzi z NAZWANEGO zestawu tablic "
-        "normy PN-HD 60364-5-52 z proweniencją (rejestr G-D1) — krok dowodu "
+        "Iloczyn współczynników — jedyne miejsce mnożenia jest "
+        "`network_model.solvers.cable_ampacity_derating.obciazalnosc_skorygowana`; "
+        "każdy współczynnik pochodzi z NAZWANEGO zestawu tablic "
+        "normy PN-HD 60364-5-52 z proweniencją — krok dowodu "
         "cytuje zestaw i wartości poszczególnych czynników, nie tylko iloczyn."
     ),
 )
@@ -1574,8 +1576,8 @@ EQ_LVCV_002 = EquationDefinition(
     ),
     unit_derivation="A ≤ A ≤ A",
     notes=(
-        "REUSE `application.analyses.nn_device_selection._kryterium_ib_in_iz` "
-        "(karta P0.7) — ten krok cytuje TEN SAM werdykt dla urządzenia już "
+        "Ponowne użycie `application.analyses.nn_device_selection._kryterium_ib_in_iz` "
+        "— ten krok cytuje TEN SAM werdykt dla urządzenia już "
         "zainstalowanego na obwodzie (weryfikacja), nie dla listy kandydatów "
         "(dobór)."
     ),
@@ -1608,9 +1610,9 @@ EQ_LVCV_003 = EquationDefinition(
     ),
     unit_derivation="A ≤ A",
     notes=(
-        "REUSE `network_model.solvers.protection_lv_curves.compute_mcb_thermal_point` "
+        "Ponowne użycie `network_model.solvers.protection_lv_curves.compute_mcb_thermal_point` "
         "(MCB, I2=1,45×In, IEC 60898-1) albo `compute_fuse_gg_gate` (wkładka gG, "
-        "If=1,6×In, IEC 60269-1) — JEDNO źródło progu per rodzaj aparatu (G-D2/G-D4), "
+        "If=1,6×In, IEC 60269-1) — JEDNO źródło progu per rodzaj aparatu, "
         "ten krok tylko cytuje wynik porównania z 1,45·Iz′."
     ),
 )
@@ -1684,11 +1686,11 @@ EQ_LVCV_005 = EquationDefinition(
     ),
     unit_derivation="A²·s ≤ (A·√s/mm²)² · mm² = A²·s",
     notes=(
-        "REUSE `network_model.solvers.conductor_thermal_withstand."
+        "Ponowne użycie `network_model.solvers.conductor_thermal_withstand."
         "check_conductor_thermal_withstand` (bilans I²t ≤ k²S², IEC 60949) — k "
         "PIERWSZEŃSTWO danej katalogowej (Jth·S), a gdy katalog milczy — "
         "WYPROWADZONE przez `derive_k_iec60949` z materiału żyły i pary temperatur "
-        "(REUSE, ta sama funkcja co Equipment P12/F-K1). Zero drugiej fizyki."
+        "(ta sama funkcja co w dowodzie wytrzymałości wyposażenia). Zero drugiej fizyki."
     ),
 )
 
@@ -1729,9 +1731,9 @@ EQ_LVCV_006 = EquationDefinition(
     ),
     unit_derivation="(—) · V / Ω = A",
     notes=(
-        "REUSE `network_model.solvers.fault_loop_iec60364.compute_fault_loop` — "
+        "Ponowne użycie `network_model.solvers.fault_loop_iec60364.compute_fault_loop` — "
         "trasa (żyła fazowa + powrotna) z `fault_loop_builder`, ekstrakcja z grafu "
-        "wg BFS ENM (karta P0.6/P0.5b), upstream Thevenin SN z istniejącego Zbus. "
+        "wg przeszukiwania grafu modelu wszerz, upstream Thevenin SN z istniejącego Zbus. "
         "Zero drugiej fizyki pętli — ten krok cytuje wynik solvera."
     ),
 )
@@ -1763,10 +1765,10 @@ EQ_LVCV_007 = EquationDefinition(
     ),
     unit_derivation="A ≥ A (przy dowiedzionym t ≤ $t_{wym}$)",
     notes=(
-        "REUSE `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
-        "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche PASS bez danych; "
-        "wkładka gG bez bramek I-t G-D2 jest ZAWSZE nierozstrzygalna). Krok nazywa "
-        "JAWNIE źródło czasu (Tab. 41.1 IEC 60364-4-41, rejestr G-D3) i pasmo U0 "
+        "Ponowne użycie `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
+        "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche „spełnia” bez danych; "
+        "wkładka gG bez bramek I-t jest ZAWSZE nierozstrzygalna). Krok nazywa "
+        "JAWNIE źródło czasu (Tab. 41.1 IEC 60364-4-41) i pasmo $U_0$ "
         "użyte do jego wyboru — nie tylko wynik porównania."
     ),
 )
@@ -1825,8 +1827,8 @@ EQ_LVCV_008 = EquationDefinition(
     ),
     unit_derivation="(—) · V / Ω = A",
     notes=(
-        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_tt` (jądro sumowania "
-        "składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN”). "
+        "Ponowne użycie `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_tt` (jądro sumowania "
+        "składowych i prądu z pętli wspólne z TN — jedna fizyka prądu zwarcia jednofazowego nN). "
         "Przewód ochronny kabla NIE należy do pętli TT (powrót przez uziomy)."
     ),
 )
@@ -1910,7 +1912,7 @@ EQ_LVCV_010 = EquationDefinition(
     ),
     unit_derivation="(1/s) · F · V = A",
     notes=(
-        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
+        "Ponowne użycie `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
         "`pojemnosc_doziemna_sieci_it`, `prad_pierwszego_zwarcia_it`). Susceptancja $b_0$ "
         "odcinków z modelu (pole b0_siemens_per_km) — brak = odmowa nazwana, nie domysł."
     ),
@@ -1949,7 +1951,7 @@ EQ_LVCV_011 = EquationDefinition(
     ),
     unit_derivation="(—) · V / Ω = A",
     notes=(
-        "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
+        "Ponowne użycie `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
         "`sum_components_drugie_zwarcie_it`, `prad_drugiego_zwarcia_it`); impedancja "
         "transformatora to składowa ZGODNA Z1 (punkt neutralny izolowany nie prowadzi pętli)."
     ),

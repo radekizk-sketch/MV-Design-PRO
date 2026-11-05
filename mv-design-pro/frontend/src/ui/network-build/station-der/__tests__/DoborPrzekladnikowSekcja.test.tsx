@@ -38,8 +38,8 @@ const ODPOWIEDZ = {
           nazwa_pl: 'Przekładnia wobec prądu roboczego toru',
           podstawa_pl: 'Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.',
           werdykt: 'spelnione',
-          wymagane: '154.0 A',
-          dostepne: '200.0 A',
+          wymagane: '154,0 A',
+          dostepne: '200,0 A',
           komentarz_pl: null,
           kody_gotowosci: [],
           slad: [],
@@ -50,7 +50,7 @@ const ODPOWIEDZ = {
           podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
           werdykt: 'brak_danych',
           wymagane: null,
-          dostepne: '20.0 kA / 1 s',
+          dostepne: '20,0 kA / 1 s',
           komentarz_pl: 'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego.',
           kody_gotowosci: [],
           slad: [],
@@ -58,7 +58,7 @@ const ODPOWIEDZ = {
         {
           kod: 'ct.alf',
           nazwa_pl: 'Nasycenie rdzenia (bilans mocy wtórnej)',
-          podstawa_pl: 'S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)',
+          podstawa_pl: '$S_{2obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w)/(S_{2obl} + S_w)$',
           werdykt: 'brak_danych',
           wymagane: null,
           dostepne: null,
@@ -133,8 +133,8 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
     const rachunek = await screen.findByTestId('kryterium-rachunek-ct.przekladnia');
-    expect(rachunek.textContent).toContain('wymagane: 154.0 A');
-    expect(rachunek.textContent).toContain('dostępne: 200.0 A');
+    expect(rachunek.textContent).toContain('wymagane: 154,0 A');
+    expect(rachunek.textContent).toContain('dostępne: 200,0 A');
 
     const wiersz = screen.getByTestId('kryterium-ct.przekladnia');
     expect(wiersz.textContent).toContain('Prąd pierwotny przekładnika musi pokryć');
@@ -291,8 +291,8 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
               nazwa_pl: 'Nasycenie rdzenia (bilans mocy wtórnej)',
               podstawa_pl: 'S2obl = S_aparatow + I2n²·Rp',
               werdykt: 'spelnione',
-              wymagane: 'ALF_eff ≥ 9.0',
-              dostepne: 'ALF_eff 15.5 (UPROSZCZONY_BEZ_RCT; S2obl 6.4 VA / Sn 10.0 VA)',
+              wymagane: '$ALF_{eff} \\ge 9{,}0$',
+              dostepne: '$ALF_{eff} = 15{,}5$ (wariant uproszczony, bez rezystancji uzwojenia; obciążenie obwodu wtórnego 6,4 VA wobec mocy znamionowej 10,0 VA)',
               komentarz_pl: null,
               kody_gotowosci: [],
               slad: [

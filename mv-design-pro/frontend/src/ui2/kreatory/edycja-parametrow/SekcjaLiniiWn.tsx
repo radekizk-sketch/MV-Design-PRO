@@ -32,6 +32,7 @@ import {
   type TrybOdgromowych,
 } from './geometriaLiniiWn';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../rama';
 
 export interface SekcjaLiniiWnProps {
   formularz: FormularzLiniiWn;
@@ -263,7 +264,7 @@ export function SekcjaLiniiWn({
                 ton={p.w_pasmie ? 'ok' : 'warn'}
               />
               <KreatorInfo>
-                {p.wyjasnienie_pl} {p.podstawa_pl}
+                {p.wyjasnienie_pl} <TekstZWzorami tekst={p.podstawa_pl} />
               </KreatorInfo>
             </div>
           ))}

@@ -231,7 +231,8 @@ def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str
         petla = widok["fault_loop_min_scenario"]
         return _wartosc(
             petla["ik_min_a"],
-            f"pętla doziemna IEC 60364-4-41 układ {system} (I_d min, scenariusz MIN)",
+            f"pętla doziemna IEC 60364-4-41 układ {system} (minimalny prąd doziemny, "
+            "scenariusz MIN)",
             dane_przyjete_petli_zserializowanej(petla, punkt_pl),
         )
     return {
@@ -614,7 +615,8 @@ def _i2t_dla_kabla(
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
-        "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
+        r"IEC 60949 / IEC 60364-4-43 §434 ($I^2 t \le k^2 S^2$, sprawdzenie wytrzymałości "
+        "cieplnej przewodu)",
         dane_przyjete,
     )
 
@@ -880,7 +882,7 @@ def _build_row(
     if dobor_wejscie is not None:
         ik_min_sekcja = _wartosc(
             dobor_wejscie["ik1_min_a"],
-            "pętla zwarcia IEC 60364-4-41 (Ik1_min, scenariusz MIN)",
+            "pętla zwarcia IEC 60364-4-41 (minimalny prąd zwarcia jednofazowego, scenariusz MIN)",
             dane_ik1_min,
         )
     elif widok_tt_it is not None:
@@ -1023,9 +1025,21 @@ def _build_row(
                     dane_przyjete_ik_max=dane_ik_max,
                     dane_przyjete_ik1_min=dane_ik1_min,
                 )
-                kr_i = next(k for k in ocena.kryteria if k.nazwa == "Ib<=In<=Iz′")
-                kr_ii = next(k for k in ocena.kryteria if k.nazwa == "I2<=1,45·Iz′")
-                kr_swz = next(k for k in ocena.kryteria if k.nazwa == "SWZ przy Ik_min")
+                kr_i = next(
+                    k
+                    for k in ocena.kryteria
+                    if k.nazwa == "Prąd obciążenia ≤ prąd znamionowy ≤ obciążalność przewodu"
+                )
+                kr_ii = next(
+                    k
+                    for k in ocena.kryteria
+                    if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+                )
+                kr_swz = next(
+                    k
+                    for k in ocena.kryteria
+                    if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+                )
                 kryterium_i_sekcja = _wartosc(
                     {"status": kr_i.status.value, "wartosci": kr_i.wartosci},
                     kr_i.uzasadnienie_pl,

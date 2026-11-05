@@ -63,16 +63,20 @@ class CableVoltageDropResult:
     # Kierunek mocy, dla ktorego policzono wynik — bez tego znak ΔU jest nieczytelny.
     flow_direction: str = "load"
     reactive_character: str = "inductive"
-    formula_ref: str = "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)"
+    formula_ref: str = (
+        r"$\Delta U = \sqrt{3} \cdot I \cdot (s_P \cdot R \cos\varphi + s_Q \cdot X \sin\varphi)$"
+    )
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
-            "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-            "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-            "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
-            "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-            "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe).",
+            r"Układ trójfazowy symetryczny; współczynnik linii $\sqrt{3}$.",
+            r"$\sin\varphi = \sqrt{1 - \cos^2\varphi}$; znak składowej biernej z charakteru "
+            "mocy biernej.",
+            "$s_P = +1$ dla odbioru, $-1$ dla generacji (moc czynna).",
+            "$s_Q = +1$ dla poboru mocy biernej (indukcyjny), $-1$ dla oddawania mocy biernej "
+            "(pojemnościowy).",
+            r"$\Delta U > 0$ — spadek napięcia; $\Delta U < 0$ — WZROST (typowy przy generacji).",
+            r"$R = r' \cdot L$, $X = x' \cdot L$ (impedancja odcinka z wartości jednostkowych).",
+            r"$\Delta U\% = \Delta U / U \cdot 100$ ($U$ — napięcie międzyfazowe linii).",
         )
     )
 
@@ -97,12 +101,12 @@ class CableRatedCurrentResult:
 
     rated_current_a: float
     apparent_power_kva: float
-    formula_ref: str = "I = S_n / (√3·U);  S_n = P / cosφ"
+    formula_ref: str = r"$I = S_n / (\sqrt{3} \cdot U)$; $S_n = P / \cos\varphi$"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "S_n = P / cosφ (moc pozorna z mocy czynnej).",
-            "I = S_n / (√3 · U_linii) (U_linii miedzyfazowe).",
+            r"Układ trójfazowy symetryczny; współczynnik linii $\sqrt{3}$.",
+            r"$S_n = P / \cos\varphi$ (moc pozorna z mocy czynnej).",
+            r"$I = S_n / (\sqrt{3} \cdot U)$ ($U$ — napięcie międzyfazowe linii).",
         )
     )
 
@@ -185,7 +189,10 @@ class TrunkVoltageDropResult:
     delta_u_v: float
     delta_u_pct: float
     line_voltage_v: float
-    formula_ref: str = "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100"
+    formula_ref: str = (
+        r"$\Delta U_{\mathrm{ciągu}} = \sum_i \Delta U_i$; "
+        r"$\Delta U_{\mathrm{ciągu}}\% = \Delta U_{\mathrm{ciągu}} / U \cdot 100$"
+    )
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
@@ -193,7 +200,7 @@ class TrunkVoltageDropResult:
             "(prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
             "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między "
             "napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
-            "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków.",
+            "Jedno napięcie międzyfazowe ciągu dla wszystkich odcinków.",
         )
     )
 

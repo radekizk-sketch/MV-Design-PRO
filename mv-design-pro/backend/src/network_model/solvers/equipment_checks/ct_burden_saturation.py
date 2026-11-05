@@ -59,6 +59,7 @@ from network_model.solvers.equipment_checks.slad import (
     wartosc,
     werdykt_zbiorczy,
 )
+from werdykt.wyjasnienie import format_liczba
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CT_SECONDARY_CIRCUIT_MISSING = "ct.secondary_circuit_missing"
@@ -77,7 +78,10 @@ REZYSTYWNOSC_MIEDZI_20C = 0.017241
 WARIANT_ALF_PELNY = "PELNY_IEC61869_2"
 WARIANT_ALF_UPROSZCZONY = "UPROSZCZONY_BEZ_RCT"
 
-_FORMULA_REF = "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)"
+_FORMULA_REF = (
+    r"$S_{2,obl} = S_{aparatów} + I_{2n}^2 \cdot R_p$; "
+    r"$ALF_{eff} = ALF \cdot (S_n + S_w) / (S_{2,obl} + S_w)$"
+)
 
 #: Oznaczenie klasy zabezpieczeniowej wg IEC 61869-2: liczba·P·ALF (np. „5P20”,
 #: „10P10”, „5PR10”). Klasy pomiarowe („0.5”, „0.2S”) NIE maja ALF — dla nich
@@ -174,23 +178,25 @@ class CtBurdenResult:
 
 def _zalozenia(*, rezystywnosc: float, wariant: str) -> tuple[str, ...]:
     podstawa = (
-        "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
-        f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
-        "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Moc przewodow S_przewodow = I2n²·Rp liczona RAZ (nie jest osobnym skladnikiem "
-        "obok siebie samej).",
-        "Moc stykow wchodzi do bilansu wylacznie wtedy, gdy podano ja jawnie.",
+        r"Obwód wtórny dwuprzewodowy: $R_p = 2 \cdot \rho \cdot L / s$ (długość $L$ liczona "
+        "w jedną stronę).",
+        f"Rezystywność żyły {format_liczba(rezystywnosc, cyfry=6)} Ω·mm²/m (miedź, 20 °C, "
+        "IEC 60228) — założenie jawne, nie dane katalogu przekładnika.",
+        r"Moc przewodów $S_{przewodów} = I_{2n}^2 \cdot R_p$ liczona raz (nie jest osobnym "
+        "składnikiem obok siebie samej).",
+        "Moc styków wchodzi do bilansu wyłącznie wtedy, gdy podano ją jawnie.",
     )
     if wariant == WARIANT_ALF_PELNY:
         return podstawa + (
-            "ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw) — wariant PELNY (IEC 61869-2 § 5.6), "
-            "Sw = I2n²·Rct z rezystancji uzwojenia wtornego.",
+            r"$ALF_{eff} = ALF \cdot (S_n + S_w) / (S_{2obl} + S_w)$ — wariant pełny "
+            r"(IEC 61869-2 § 5.6), $S_w = I_{2n}^2 \cdot R_{ct}$ z rezystancji uzwojenia "
+            "wtórnego.",
         )
     return podstawa + (
-        "ALF_eff = ALF·Sn/S2obl — wariant UPROSZCZONY (Sw = 0), bo katalog nie niesie "
-        "rezystancji uzwojenia wtornego Rct.",
-        "Wariant uproszczony przy S2obl < Sn daje ALF_eff WIEKSZY niz pelny — wynik jest "
-        "optymistyczny i wymaga potwierdzenia rezystancja uzwojenia z karty producenta.",
+        r"$ALF_{eff} = ALF \cdot S_n / S_{2obl}$ — wariant uproszczony ($S_w = 0$), bo "
+        "katalog nie niesie rezystancji uzwojenia wtórnego.",
+        r"Wariant uproszczony przy $S_{2obl} < S_n$ daje $ALF_{eff}$ większy niż pełny — wynik "
+        "jest optymistyczny i wymaga potwierdzenia rezystancji uzwojenia z karty producenta.",
     )
 
 

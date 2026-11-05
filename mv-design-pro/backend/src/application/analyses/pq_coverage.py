@@ -157,7 +157,7 @@ def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
 
 def _punkt_krytyczny_pl(punkty: list[dict[str, Any]], krytyczny: dict[str, Any]) -> str:
     dolna = krytyczny["zapas_dolny_mvar"] <= krytyczny["zapas_gorny_mvar"]
-    strona = "dolna (Q_min)" if dolna else "górna (Q_max)"
+    strona = "dolna (minimalna moc bierna)" if dolna else "górna (maksymalna moc bierna)"
     tekst = (
         f"P = {format_liczba(krytyczny['p_mw'])} MW, strona {strona}: producent "
         f"{_mvar(krytyczny['q_min_mvar'])} … {_mvar(krytyczny['q_max_mvar'])}, wymagane "
@@ -333,8 +333,8 @@ def build_pq_coverage_view(converter: ConverterType, profile: NcRfgProfile) -> d
             "q_wymagane_min_mvar": _round(q_wym_min),
             "q_wymagane_max_mvar": _round(q_wym_max),
             "opis": (
-                "Prostokątne wymaganie zakresu Q operatora: "
-                "[udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+                "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego "
+                "do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
             ),
         },
         "punkty": punkty,

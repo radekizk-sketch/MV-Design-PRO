@@ -229,7 +229,7 @@ _KOMUNIKAT_ZNACZNIKA: dict[str, tuple[str, str]] = {
     ),
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY: (
         KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY,
-        "Źródło falownikowe nie ma poprawnego prądu znamionowego I_n, więc jego "
+        "Źródło falownikowe nie ma poprawnego prądu znamionowego, więc jego "
         "wkładu zwarciowego nie da się policzyć. Wkład zerowy zaniżyłby prąd zwarciowy "
         "i przepuścił aparat o za małej zdolności wyłączalnej — uzupełnij dane "
         "tabliczkowe źródła.",
@@ -327,9 +327,9 @@ def blokady_zakresu_waznosci(
             kod=KOD_BLOKADY_IMPEDANCJA_ZWARCIA,
             zdolnosc=zdolnosc,
             komunikat_pl=(
-                "Wynik pochodzi ze zwarcia przez impedancję przejścia Z_f — poza zakresem "
+                "Wynik pochodzi ze zwarcia przez impedancję przejścia — poza zakresem "
                 "normy IEC 60909, która definiuje prąd zwarciowy dla zwarcia metalicznego. "
-                "Prąd przez Z_f nie jest podstawą tej decyzji: przelicz zwarcie metaliczne."
+                "Prąd przez impedancję przejścia nie jest podstawą tej decyzji: przelicz zwarcie metaliczne."
             ),
         ),
     )

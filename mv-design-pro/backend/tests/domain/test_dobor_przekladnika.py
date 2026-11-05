@@ -21,9 +21,15 @@ from __future__ import annotations
 
 import pytest
 from api.main import app
-from domain.dobor_przekladnika import CtDeviceBurden, WymaganiaToru, sprawdz_dobor_ct
+from domain.dobor_przekladnika import (
+    _WARIANT_ALF_PL,
+    CtDeviceBurden,
+    WymaganiaToru,
+    sprawdz_dobor_ct,
+)
 from fastapi.testclient import TestClient
 from network_model.catalog.repository import get_default_mv_catalog
+from werdykt.wyjasnienie import format_liczba
 
 #: Realny wpis katalogu po rozbudowie z V12K-254 (CT 200/5 A kl. 5P10 10 VA).
 CT_200_5P10 = {
@@ -114,7 +120,7 @@ class TestKryteriaZwarciowe:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=6.0))
         k = kryterium(wynik, "ct.alf_katalogowy")
         assert k.werdykt == "informacja"
-        assert "ALF ≥ 30.0" in (k.wymagane or "")
+        assert "ALF ≥ 30,0" in (k.wymagane or "")
         assert "ALF 10" in (k.dostepne or "")
         assert "ct.alf" in (k.komentarz_pl or "")
 
@@ -124,9 +130,9 @@ class TestKryteriaZwarciowe:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=6.0))
         k = kryterium(wynik, "ct.alf")
         assert k.werdykt == "niespelnione"
-        assert "ALF_eff ≥ 30.0" in (k.wymagane or "")
-        assert "ALF_eff" in (k.dostepne or "")
-        assert "UPROSZCZONY_BEZ_RCT" in (k.dostepne or "")
+        assert r"$ALF_{eff} \ge 30{,}0$" in (k.wymagane or "")
+        assert "$ALF_{eff} = " in (k.dostepne or "")
+        assert "wariant uproszczony" in (k.dostepne or "")
         assert k.slad, "ct.alf powinno niesc slad WHITE BOX z jadra"
 
     def test_wytrzymalosc_cieplna_liczona_z_czasu_zwarcia(self) -> None:
@@ -146,7 +152,7 @@ class TestKryteriaZwarciowe:
             "ct.wytrzymalosc_cieplna",
         )
         assert k.werdykt == "niespelnione"
-        assert "25.98" in (k.wymagane or "")
+        assert "25,98" in (k.wymagane or "")
 
     def test_wytrzymalosc_dynamiczna_wobec_pradu_szczytowego(self) -> None:
         assert (
@@ -279,7 +285,7 @@ class TestNasycenieRdzeniaIloczynCech:
         # ale wariant MUSI byc nazwany UPROSZCZONY (wynik optymistyczny).
         k = kryterium(sprawdz_dobor_ct(CT_200_5P10, tor_kompletny()), "ct.alf")
         assert k.werdykt == "spelnione"
-        assert "UPROSZCZONY_BEZ_RCT" in (k.dostepne or "")
+        assert "wariant uproszczony" in (k.dostepne or "")
         assert "ct.winding_resistance_missing" in k.kody_gotowosci
 
     def test_obwod_zapisany_rct_w_katalogu_daje_wariant_pelny(self) -> None:
@@ -287,7 +293,7 @@ class TestNasycenieRdzeniaIloczynCech:
         ct_z_rct = {**CT_200_5P10, "rct_ohm": 0.3}
         k = kryterium(sprawdz_dobor_ct(ct_z_rct, tor_kompletny()), "ct.alf")
         assert k.werdykt == "spelnione"
-        assert "PELNY_IEC61869_2" in (k.dostepne or "")
+        assert "wariant pełny" in (k.dostepne or "")
         assert "ct.winding_resistance_missing" not in k.kody_gotowosci
 
     def test_alf_z_klasy_gdy_pole_katalogu_puste(self) -> None:
@@ -319,7 +325,7 @@ class TestNasycenieRdzeniaIloczynCech:
         assert "ct.required_alf_missing" in k.kody_gotowosci
         # Bilans wtorny nadal jest POLICZONY (i2n/sn/dlugosc/przekroj obecne) —
         # brakuje WYLACZNIE odniesienia (Ik''), wiec status_obciazenia istnieje.
-        assert "S2obl" in (k.dostepne or "") or k.dostepne is None
+        assert "obciążenie obwodu wtórnego" in (k.dostepne or "") or k.dostepne is None
 
     def test_moc_stykow_wchodzi_do_bilansu_gdy_podana(self) -> None:
         # obwod: zapisany + moc stykow jawna. Rct: brak. ALF: z pola. Ik'': znane.
@@ -374,7 +380,7 @@ class TestParytetKtWynikJadraIEndpointuHttp:
         wynik = sprawdz_dobor_ct(pozycja, tor)
         k = kryterium(wynik, "ct.alf")
 
-        assert z_http["wariant_alf"] in (k.dostepne or "")
-        assert f"{z_http['alf_efektywny']:.1f}" in (k.dostepne or "")
+        assert _WARIANT_ALF_PL[z_http["wariant_alf"]] in (k.dostepne or "")
+        assert format_liczba(z_http["alf_efektywny"], miejsca=1, latex=True) in (k.dostepne or "")
         mapa_status = {"PASS": "spelnione", "FAIL": "niespelnione", "UNAVAILABLE": "brak_danych"}
         assert k.werdykt == mapa_status[z_http["status_nasycenia"]]

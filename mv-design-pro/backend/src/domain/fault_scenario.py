@@ -223,9 +223,9 @@ class ShortCircuitConfig:
         """
         if "c_factor" in data:
             raise FaultScenarioValidationError(
-                "Klucz c_factor scenariusza został usunięty — współczynnik c wynika ze "
-                "scenariusza MAX/MIN (IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-                "z uzasadnieniem (nadpisanie_c)."
+                "Klucz współczynnika napięciowego scenariusza został usunięty — współczynnik "
+                "wynika ze scenariusza MAX/MIN (IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
+                "z uzasadnieniem."
             )
         if "scenariusz" not in data:
             raise FaultScenarioValidationError(

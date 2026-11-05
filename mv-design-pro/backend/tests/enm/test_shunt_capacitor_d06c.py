@@ -225,8 +225,8 @@ def test_build_shunt_specs_is_deterministic():
 @pytest.mark.parametrize(
     ("pole", "fragment"),
     [
-        ("rated_mvar", "nie ma dodatniej mocy znamionowej Q_n"),
-        ("rated_kv", "nie ma dodatniego napięcia znamionowego U_n"),
+        ("rated_mvar", "nie ma dodatniej mocy znamionowej"),
+        ("rated_kv", "nie ma dodatniego napięcia znamionowego"),
     ],
 )
 def test_build_shunt_specs_niefizyczne_dane_znamionowe_odmowa_nazwana(pole, fragment, wartosc):

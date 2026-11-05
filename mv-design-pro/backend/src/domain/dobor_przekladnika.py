@@ -46,6 +46,8 @@ from domain.readiness_bridge import opis_kanoniczny
 from network_model.core.uziemienie import UZIEMIENIA_WYMAGAJACE_FV_19
 from network_model.pochodne import ka_na_a, napiecie_fazowe_v
 from network_model.solvers.equipment_checks.ct_burden_saturation import (
+    WARIANT_ALF_PELNY,
+    WARIANT_ALF_UPROSZCZONY,
     CtBurdenInput,
     CtDeviceBurden,
     alf_z_klasy,
@@ -55,6 +57,7 @@ from network_model.solvers.equipment_checks.slad import (
     STATUS_FAIL,
     STATUS_PASS,
 )
+from werdykt.wyjasnienie import format_liczba
 
 #: Ponizej tego wykorzystania przekladni dokladnosc pomiaru pradu roboczego jest slaba
 #: (blad wzgledny rosnie przy malym wykorzystaniu zakresu). Progu nie ma w normie jako
@@ -159,6 +162,13 @@ class WynikDoboru:
         }
 
 
+#: Nazwa wariantu bilansu ALF w zdaniu dla projektanta (kod wariantu zostaje w wyniku jądra).
+_WARIANT_ALF_PL: dict[str, str] = {
+    WARIANT_ALF_PELNY: "wariant pełny",
+    WARIANT_ALF_UPROSZCZONY: "wariant uproszczony, bez rezystancji uzwojenia",
+}
+
+
 def _liczba(wartosc: float | None, jednostka: str, miejsca: int = 1) -> str | None:
     if wartosc is None:
         return None
@@ -228,8 +238,8 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                         "pomiaru (praktyka projektowa, nie wymaganie normy)."
                     ),
                     werdykt="informacja",
-                    wymagane=f"≥ {PROG_WYKORZYSTANIA_PRZEKLADNI:.0%} prądu pierwotnego",
-                    dostepne=f"{wykorzystanie:.0%}",
+                    wymagane=f"≥ {format_liczba(100 * PROG_WYKORZYSTANIA_PRZEKLADNI, miejsca=0)} % prądu pierwotnego",
+                    dostepne=f"{format_liczba(100 * wykorzystanie, miejsca=0)} %",
                     komentarz_pl="Rozważ przekładnik o niższym prądzie pierwotnym.",
                 )
             )
@@ -297,7 +307,7 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 ),
                 werdykt="brak_danych",
                 wymagane=_liczba(tor.ik_ka, "kA"),
-                dostepne=(f"ALF {alf:.0f}" if alf is not None else None),
+                dostepne=(f"ALF {format_liczba(alf, miejsca=0)}" if alf is not None else None),
                 komentarz_pl="Brakuje prądu zwarciowego z obliczeń albo ALF przekładnika.",
             )
         )
@@ -311,8 +321,8 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                     "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
                 ),
                 werdykt="informacja",
-                wymagane=f"ALF ≥ {alf_wymagany:.1f} (Ik″ {tor.ik_ka:.2f} kA / In {in_a:.0f} A)",
-                dostepne=f"ALF {alf:.0f}"
+                wymagane=f"ALF ≥ {format_liczba(alf_wymagany, miejsca=1)} (Ik″ {format_liczba(tor.ik_ka, miejsca=2)} kA / In {format_liczba(in_a, miejsca=0)} A)",
+                dostepne=f"ALF {format_liczba(alf, miejsca=0)}"
                 + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
                 komentarz_pl=(
                     "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego "
@@ -349,8 +359,11 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
         werdykt_nasycenia = "brak_danych"
     if wynik_nasycenia.alf_efektywny is not None:
         dostepne_nasycenia = (
-            f"ALF_eff {wynik_nasycenia.alf_efektywny:.1f} ({wynik_nasycenia.wariant_alf}; "
-            f"S2obl {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA / Sn {obciazalnosc:.1f} VA)"
+            "$ALF_{eff} = "
+            f"{format_liczba(wynik_nasycenia.alf_efektywny, miejsca=1, latex=True)}$ "
+            f"({_WARIANT_ALF_PL[wynik_nasycenia.wariant_alf]}; obciążenie obwodu wtórnego "
+            f"{format_liczba(wynik_nasycenia.moc_obliczeniowa_va, miejsca=1)} VA wobec mocy "
+            f"znamionowej {format_liczba(obciazalnosc, miejsca=1)} VA)"
         )
     else:
         dostepne_nasycenia = None
@@ -371,7 +384,11 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             nazwa_pl="Nasycenie rdzenia (bilans mocy wtórnej)",
             podstawa_pl=wynik_nasycenia.formula_ref,
             werdykt=werdykt_nasycenia,
-            wymagane=(f"ALF_eff ≥ {alf_wymagany:.1f}" if alf_wymagany is not None else None),
+            wymagane=(
+                f"$ALF_{{eff}} \\ge {format_liczba(alf_wymagany, miejsca=1, latex=True)}$"
+                if alf_wymagany is not None
+                else None
+            ),
             dostepne=dostepne_nasycenia,
             komentarz_pl=komentarz_nasycenia,
             kody_gotowosci=wynik_nasycenia.readiness_codes,
@@ -404,8 +421,8 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 podstawa_pl="Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
                 werdykt="spelnione" if spelnione else "niespelnione",
                 wymagane=(
-                    f"{wymagany_ith:.2f} kA / 1 s "
-                    f"(Ik″ {tor.ik_ka:.2f} kA, tk {tor.czas_zwarcia_s:.2f} s)"
+                    f"{format_liczba(wymagany_ith, miejsca=2)} kA / 1 s "
+                    f"(Ik″ {format_liczba(tor.ik_ka, miejsca=2)} kA, tk {format_liczba(tor.czas_zwarcia_s, miejsca=2)} s)"
                 ),
                 dostepne=_liczba(ith, "kA / 1 s", 1),
                 komentarz_pl=(
@@ -465,7 +482,9 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
         )
     else:
         spelnione = any(abs(in_wtorny - w) < 1e-6 for w in tor.prady_wejsc_przekaznika_a)
-        wykaz = " / ".join(f"{w:.0f} A" for w in tor.prady_wejsc_przekaznika_a)
+        wykaz = " / ".join(
+            f"{format_liczba(w, miejsca=0)} A" for w in tor.prady_wejsc_przekaznika_a
+        )
         kryteria.append(
             Kryterium(
                 kod="ct.prad_wtorny",
@@ -629,8 +648,8 @@ def _czas_wspolczynnika_pl(czas_s: float | None) -> str | None:
     if czas_s is None:
         return None
     if czas_s >= 3600.0:
-        return f"{czas_s / 3600.0:.0f} h"
-    return f"{czas_s:.0f} s"
+        return f"{format_liczba(czas_s / 3600.0, miejsca=0)} h"
+    return f"{format_liczba(czas_s, miejsca=0)} s"
 
 
 def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego) -> WynikDoboru:
@@ -661,7 +680,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 nazwa_pl="Przekładnia wobec napięcia sieci",
                 podstawa_pl=(
                     "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
-                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                    "albo napięciu fazowemu, czyli napięciu sieci przez √3 (układ faza–ziemia)."
                 ),
                 werdykt="brak_danych",
                 wymagane=_liczba(tor.napiecie_sieci_v, "V", 0),
@@ -685,16 +704,16 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 nazwa_pl="Przekładnia wobec napięcia sieci",
                 podstawa_pl=(
                     "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
-                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                    "albo napięciu fazowemu, czyli napięciu sieci przez √3 (układ faza–ziemia)."
                 ),
                 werdykt="spelnione" if uklad is not None else "niespelnione",
                 wymagane=(
-                    f"{tor.napiecie_sieci_v:.0f} V (międzyfazowo) "
-                    f"albo {faza_ziemia:.0f} V (faza–ziemia)"
+                    f"{format_liczba(tor.napiecie_sieci_v, miejsca=0)} V (międzyfazowo) "
+                    f"albo {format_liczba(faza_ziemia, miejsca=0)} V (faza–ziemia)"
                 ),
                 dostepne=_liczba(un_pierwotne, "V", 0),
                 komentarz_pl=(
-                    "Rozpoznany układ pracy: faza–ziemia (przekładnia U_n/√3)."
+                    "Rozpoznany układ pracy: faza–ziemia (napięcie pierwotne fazowe, przez √3)."
                     if uklad == "faza_ziemia"
                     else (
                         "Rozpoznany układ pracy: międzyfazowy."
@@ -715,8 +734,8 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                         "do zakresu wejścia (praktyka projektowa, nie wymaganie normy)."
                     ),
                     werdykt="informacja",
-                    wymagane=f"≤ {PROG_NADWYMIAROWANIA_VT:.1f}× napięcia sieci",
-                    dostepne=f"{un_pierwotne / tor.napiecie_sieci_v:.2f}× napięcia sieci",
+                    wymagane=f"≤ {format_liczba(PROG_NADWYMIAROWANIA_VT, miejsca=1)}× napięcia sieci",
+                    dostepne=f"{format_liczba(un_pierwotne / tor.napiecie_sieci_v, miejsca=2)}× napięcia sieci",
                     komentarz_pl="Rozważ przekładnik dopasowany do napięcia sieci.",
                 )
             )
@@ -804,7 +823,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 kod="vt.wspolczynnik_napieciowy",
                 nazwa_pl="Współczynnik napięciowy",
                 podstawa_pl=(
-                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "Współczynnik napięciowy opisuje krotność napięcia znamionowego wytrzymywaną z "
                     "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
                     "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
                 ),
@@ -812,7 +831,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 dostepne=(
                     None
                     if fv is None
-                    else f"{fv:.1f} przez {_czas_wspolczynnika_pl(czas_fv) or 'czas nieznany'}"
+                    else f"{format_liczba(fv, miejsca=1)} przez {_czas_wspolczynnika_pl(czas_fv) or 'czas nieznany'}"
                 ),
                 komentarz_pl="Brakuje: " + "; ".join(brakujace) + ".",
             )
@@ -825,13 +844,13 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 kod="vt.wspolczynnik_napieciowy",
                 nazwa_pl="Współczynnik napięciowy",
                 podstawa_pl=(
-                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "Współczynnik napięciowy opisuje krotność napięcia znamionowego wytrzymywaną z "
                     "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
                     "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
                 ),
                 werdykt="spelnione" if ok_fv and ok_czas else "niespelnione",
-                wymagane=f"{wymagany_fv:.1f} przez {_czas_wspolczynnika_pl(wymagany_czas)}",
-                dostepne=f"{fv:.1f} przez {_czas_wspolczynnika_pl(czas_fv)}",
+                wymagane=f"{format_liczba(wymagany_fv, miejsca=1)} przez {_czas_wspolczynnika_pl(wymagany_czas)}",
+                dostepne=f"{format_liczba(fv, miejsca=1)} przez {_czas_wspolczynnika_pl(czas_fv)}",
                 komentarz_pl=(
                     None
                     if ok_fv and ok_czas
@@ -869,7 +888,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         wykaz = " / ".join(
-            f"{w:.0f} V (albo {napiecie_fazowe_v(w):.1f} V faza–ziemia)"
+            f"{format_liczba(w, miejsca=0)} V (albo {format_liczba(napiecie_fazowe_v(w), miejsca=1)} V faza–ziemia)"
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         kryteria.append(
@@ -988,7 +1007,7 @@ def _kryterium_toru_zerowego(
         )
 
     # Otwarty trojkat i pomiar obliczany wymagaja tego samego: pomiaru napiec fazowych.
-    wymagane = "układ faza–ziemia (przekładnia U_n/√3)"
+    wymagane = "układ faza–ziemia (napięcie pierwotne fazowe, przez √3)"
     if uklad is None:
         return Kryterium(
             kod="vt.tor_napiecia_zerowego",

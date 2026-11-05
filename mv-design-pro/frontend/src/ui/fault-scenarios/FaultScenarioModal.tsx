@@ -19,6 +19,7 @@ import {
   type UpdateFaultScenarioRequest,
 } from './types';
 import { SekcjaWspolczynnikaC } from './SekcjaWspolczynnikaC';
+import { TekstZWzorami } from '../../ui2/kreatory/rama';
 import {
   DOMYSLNE_POLA_C,
   konfiguracjaZwarciaZPol,
@@ -102,14 +103,14 @@ export function FaultScenarioModal() {
       const r = parseFloat(rOhm);
       const x = parseFloat(xOhm);
       if (isNaN(r) || isNaN(x)) {
-        setValidationError('Impedancja przejścia Z_f (R_f i X_f) jest wymagana dla trybu impedancyjnego');
+        setValidationError('Impedancja przejścia (rezystancja i reaktancja) jest wymagana dla trybu impedancyjnego');
         return;
       }
     }
 
     const czas = Number(czasTk.replace(',', '.'));
     if (!Number.isFinite(czas) || czas <= 0) {
-      setValidationError('Czas trwania zwarcia t_k musi być liczbą dodatnią [s]');
+      setValidationError('Czas trwania zwarcia musi być liczbą dodatnią [s]');
       return;
     }
     const konfiguracja = konfiguracjaZwarciaZPol(
@@ -210,10 +211,10 @@ export function FaultScenarioModal() {
           {/* Impedancja zwarcia Zf (v2) — aktywne tylko dla IMPEDANCE */}
           {faultMode === 'IMPEDANCE' && (
             <div className="p-3 rounded border border-amber-200 bg-amber-50">
-              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja przejścia Z_f w miejscu zwarcia</label>
+              <label className="block text-xs font-medium text-amber-800 mb-2"><TekstZWzorami tekst="Impedancja przejścia $Z_f$ w miejscu zwarcia" /></label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">R_f [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5"><TekstZWzorami tekst="$R_f$ [Ω]" /></label>
                   <input
                     type="number" step="any" min="0" value={rOhm} onChange={(e) => setROhm(e.target.value)}
                     placeholder="0.0"
@@ -222,7 +223,7 @@ export function FaultScenarioModal() {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">X_f [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5"><TekstZWzorami tekst="$X_f$ [Ω]" /></label>
                   <input
                     type="number" step="any" min="0" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
                     placeholder="0.0"
@@ -287,7 +288,7 @@ export function FaultScenarioModal() {
           />
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">
-              Czas trwania zwarcia t_k [s]
+              <TekstZWzorami tekst="Czas trwania zwarcia $t_k$ [s]" />
             </label>
             <input
               type="number" step="0.1" min="0" value={czasTk}
@@ -298,7 +299,7 @@ export function FaultScenarioModal() {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="fault-scenario-tb-input">
-              Czas wyłączenia t_b [s]
+              <TekstZWzorami tekst="Czas wyłączenia $t_b$ [s]" />
             </label>
             <input
               id="fault-scenario-tb-input"

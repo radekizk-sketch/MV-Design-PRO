@@ -29,6 +29,7 @@ from enm.nazwy_elementow import nazwa_elementu
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.pochodne import a_na_ka
+from werdykt.zapis_latex import ZapisLatex
 
 
 def _znana(wartosc: float | None) -> float | None:
@@ -433,7 +434,7 @@ def _pl(wartosc: float, cyfry: int) -> str:
 _ZACISK_PL: dict[str, str] = {"od": "początkowy", "do": "końcowy"}
 
 
-def _krok(tekst: str, latex: str | None = None) -> dict:
+def _krok(tekst: str, latex: ZapisLatex | None = None) -> dict:
     """Krok śladu WHITE BOX: tekst po polsku (raporty i ekran) + opcjonalny LaTeX (KaTeX)."""
     return {"tekst": tekst, "latex": latex}
 

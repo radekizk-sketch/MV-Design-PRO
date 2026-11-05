@@ -34,10 +34,11 @@ LOSSY_BOUNDARY: tuple[str, ...] = (
     "ENM ref_id identity (CIM uses mRID; recovered via ref_to_mrid map)",
     "catalog_ref / catalog_namespace / parameter_source / source_mode",
     "materialized_params and ParameterOverride lists",
-    "OZE connection_variant / station_ref / blocking_transformer_ref / n_parallel",
+    "OZE connection variant, station reference, blocking transformer reference and number of "
+    "parallel units",
     "Source/Transformer lv_voltage_tolerance (nN row of IEC 60909-0 Table 1) and controller "
     "bandwidths",
-    "Switch series impedance (r_ohm/x_ohm) — CIM Switch carries no impedance",
+    "Switch series impedance (resistance and reactance) — CIM Switch carries no impedance",
     "ENM topology helpers: Junction, Corridor, BranchPointSN, LineRun, "
     "ConnectionNode, CableJoint, Bay, Measurement, ProtectionAssignment",
     "GPZ sections (gpz_sections / gpz_hv_sections) and Substation external_ports",

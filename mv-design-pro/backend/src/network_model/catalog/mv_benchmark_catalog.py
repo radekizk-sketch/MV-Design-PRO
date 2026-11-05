@@ -89,7 +89,8 @@ _SOURCE_IEC60909 = (
     "IEC 60909-4:2000 Examples for the calculation of short-circuit currents, Section 4"
 )
 _SOURCE_PP_RADIAL = (
-    "pandapower.shortcircuit.calc_sc, IEC 60909 equivalent voltage source method; "
+    "pandapower, moduł obliczeń zwarciowych (calc sc), IEC 60909 equivalent voltage source "
+    "method; "
     "fixture LINE-20KV-01"
 )
 _SOURCE_CIGRE_MV = (

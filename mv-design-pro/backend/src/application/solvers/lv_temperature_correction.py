@@ -116,8 +116,8 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
                         theta_k_c=theta_k,
                         r_theta_ohm_per_km=r_theta,
                         reason=(
-                            "R skorygowane temperaturowo dla scenariusza MIN "
-                            "(IEC 60909, R_theta=R20*[1+0.004*(theta_k-20)])"
+                            "R skorygowane temperaturowo dla scenariusza MIN (IEC 60909, "
+                            r"$R_{\theta} = R_{20} \cdot [1 + 0{,}004 \cdot (\theta_k - 20)]$)"
                         ),
                     )
                 )

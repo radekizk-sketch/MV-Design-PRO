@@ -1254,7 +1254,7 @@ class ENMValidator:
                         wizard_step_hint="K6",
                         suggested_fix=(
                             "Przypisz typ przekształtnika z katalogu, żeby zwarcie liczyło się "
-                            "z udziałem zwarciowym k_sc z karty katalogowej."
+                            "z udziałem zwarciowym z karty katalogowej."
                         ),
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
@@ -2295,7 +2295,8 @@ class ENMValidator:
                         code="E043",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis}: {niezgodnosc}. Udział stopni załączonych u = n_zał/n "
+                            f"{opis}: {niezgodnosc}. Udział stopni załączonych (liczba stopni "
+                            "załączonych przez liczbę stopni) "
                             "wchodzi do mocy biernej baterii w rozpływie i do jej admitancji "
                             "zerowej, więc bez zgodnego stanu stopni nie da się go policzyć."
                         ),

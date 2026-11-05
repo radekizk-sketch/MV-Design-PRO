@@ -1237,7 +1237,8 @@ _FUSE_IN_A: tuple[float, ...] = (
 
 _FUSE_GG_BREAKING_CAPACITY_KA: float = 120.0
 _FUSE_GG_BREAKING_CAPACITY_SOURCE: str = (
-    "IEC 60269-1 (wartości znamionowe normatywne) — I_1=120 kA AC @ 500 V dla wkładek NH gG, "
+    "IEC 60269-1 (wartości znamionowe normatywne) — znamionowa zdolność wyłączania 120 kA AC "
+    "przy 500 V dla wkładek NH gG, "
     "potwierdzone podwójnie w katalogach producenckich niezależnych od siebie: "
     "Socomec (emea.socomec.com/en/p/knife-edge-fuses-nh-gg-type), "
     "EFEN (katalog.efen.sk/en/c/nh-fuse-links/nh-fuse-links-ac-500-v-gg), "
@@ -1341,8 +1342,9 @@ def get_all_ct_types() -> list[dict]:
     verification_note = (
         "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość "
         "cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu "
-        "IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, "
-        "25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg "
+        "IEC 62271-200 (16 kA/1 s dla torów do 150 A, 20 kA/1 s dla 200–1000 A, "
+        "25 kA/1 s od 1200 A); prąd dynamiczny wyprowadzany normowo (2,5 prądu cieplnego), "
+        "współczynnik bezpieczeństwa przyrządu wg "
         "znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla "
         "konkretnego wyrobu potwierdza karta producenta."
     )
@@ -1599,7 +1601,8 @@ def get_all_vt_types() -> list[dict]:
         "która w sieci SN realizuje pomiar napięcia zerowego 3U0 dla kryteriów "
         "ziemnozwarciowych kierunkowych (67N) i nadnapięciowych zerowych (59N). "
         "Uzwojenie pierwotne pracuje między fazą a ziemią, dlatego przekładnia jest "
-        "U_n/√3, a współczynnik napięciowy musi wynosić 1,9 (IEC 61869-3 tab. 2): "
+        "napięcie sieci przez √3, a współczynnik napięciowy musi wynosić 1,9 (IEC 61869-3 "
+        "tab. 2): "
         "przy zwarciu doziemnym napięcie faz zdrowych rośnie do napięcia międzyfazowego. "
         "Klasy, moc i obecność uzwojenia resztkowego potwierdzić kartą producenta."
     )
@@ -2389,11 +2392,13 @@ _RCD_SOURCE_REFERENCE = (
     "status REFERENCYJNY"
 )
 _RCD_VERIFICATION_NOTE = (
-    "Szeregi I_Δn (0,03 / 0,1 / 0,3 / 0,5 A) i I_n (25 / 40 / 63 / 100 A) rodziny generycznej "
+    "Szeregi prądu różnicowego znamionowego (0,03 / 0,1 / 0,3 / 0,5 A) i prądu znamionowego "
+    "(25 / 40 / 63 / 100 A) rodziny generycznej "
     "potwierdzono jako wartości wyrobów w katalogach producentów (Eaton FRBmM, Iskra RCCB "
     "Ver3.1, Terasaki DinSafe); tabela wartości znormalizowanych kl. 5.3.2/5.3.3 IEC 61008-1 "
     "odczytana w jednym źródle wtórnym (asutpp.com) — bez drugiego źródła, więc rodzina nie "
-    "twierdzi, że jest kompletnym szeregiem normy. Typ S: I_Δn > 0,03 A i I_n ≥ 25 A (TRF, "
+    "twierdzi, że jest kompletnym szeregiem normy. Typ S: prąd różnicowy znamionowy powyżej "
+    "0,03 A i prąd znamionowy co najmniej 25 A (TRF, "
     "BEAMA). Rodzaje F i B (IEC 62423) nie wchodzą do rodziny: Tabela 1 dotyczy AC i A."
 )
 

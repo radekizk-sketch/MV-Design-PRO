@@ -260,7 +260,7 @@ def test_brak_pola_wyniku_zwarciowego_podnosi_wyjatek_nie_fabrykuje_zera() -> No
     # Karta #145: odmowa nazywa brakującą WIELKOŚĆ po polsku (nie klucz zapisu `ikss_a`).
     # Partia 13: uszkodzony zapis biegu to niezmiennik programu (AssertionError, strażnik
     # połykania wyjątków) — intencja bez zmian: wyjątek z nazwą wielkości, nigdy 0 A.
-    with pytest.raises(AssertionError, match="prąd zwarciowy początkowy I″k") as odmowa:
+    with pytest.raises(AssertionError, match="prąd zwarciowy początkowy") as odmowa:
         build_wytrzymalosc_cieplna_view(zmutowany)
     assert "ikss_a" not in str(odmowa.value)
 

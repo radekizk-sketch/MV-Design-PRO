@@ -79,10 +79,10 @@ _PODSTAWA_TN_FINALNE = (
 )
 
 TABLICA_TN_ODBIORCZE: dict[str, WpisCzasuWylaczenia] = {
-    "50<U0<=120": WpisCzasuWylaczenia(0.8, _PODSTAWA_TN_FINALNE),
-    "120<U0<=230": WpisCzasuWylaczenia(0.4, _PODSTAWA_TN_FINALNE),
-    "230<U0<=400": WpisCzasuWylaczenia(0.2, _PODSTAWA_TN_FINALNE),
-    "U0>400": WpisCzasuWylaczenia(0.1, _PODSTAWA_TN_FINALNE),
+    "powyżej 50 V do 120 V": WpisCzasuWylaczenia(0.8, _PODSTAWA_TN_FINALNE),
+    "powyżej 120 V do 230 V": WpisCzasuWylaczenia(0.4, _PODSTAWA_TN_FINALNE),
+    "powyżej 230 V do 400 V": WpisCzasuWylaczenia(0.2, _PODSTAWA_TN_FINALNE),
+    "powyżej 400 V": WpisCzasuWylaczenia(0.1, _PODSTAWA_TN_FINALNE),
 }
 
 _PODSTAWA_TN_ROZDZIELCZE = (
@@ -114,10 +114,10 @@ _PODSTAWA_TT_FINALNE = (
 )
 
 TABLICA_TT_ODBIORCZE: dict[str, WpisCzasuWylaczenia] = {
-    "50<U0<=120": WpisCzasuWylaczenia(0.3, _PODSTAWA_TT_FINALNE),
-    "120<U0<=230": WpisCzasuWylaczenia(0.2, _PODSTAWA_TT_FINALNE),
-    "230<U0<=400": WpisCzasuWylaczenia(0.07, _PODSTAWA_TT_FINALNE),
-    "U0>400": WpisCzasuWylaczenia(0.04, _PODSTAWA_TT_FINALNE),
+    "powyżej 50 V do 120 V": WpisCzasuWylaczenia(0.3, _PODSTAWA_TT_FINALNE),
+    "powyżej 120 V do 230 V": WpisCzasuWylaczenia(0.2, _PODSTAWA_TT_FINALNE),
+    "powyżej 230 V do 400 V": WpisCzasuWylaczenia(0.07, _PODSTAWA_TT_FINALNE),
+    "powyżej 400 V": WpisCzasuWylaczenia(0.04, _PODSTAWA_TT_FINALNE),
 }
 
 _PODSTAWA_TT_ROZDZIELCZE = (
@@ -164,9 +164,9 @@ def pasmo_dla_u0(u0_v: float) -> str:
             "ochrona nie opiera się na samoczynnym wyłączeniu)."
         )
     if u0_v <= 120.0 + tol:
-        return "50<U0<=120"
+        return "powyżej 50 V do 120 V"
     if u0_v <= 230.0 + tol:
-        return "120<U0<=230"
+        return "powyżej 120 V do 230 V"
     if u0_v <= 400.0 + tol:
-        return "230<U0<=400"
-    return "U0>400"
+        return "powyżej 230 V do 400 V"
+    return "powyżej 400 V"

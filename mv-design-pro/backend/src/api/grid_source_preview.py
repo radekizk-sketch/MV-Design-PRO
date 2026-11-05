@@ -582,7 +582,9 @@ def preview_cable_ampacity_derating(
         derating_set=derating.nazwa,
         utilization_pct=request.design_current_a / effective * 100.0,
         ok=request.design_current_a <= effective,
-        formula_ref="I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+        formula_ref=(
+            r"$I'_z = I_z \cdot f_{grunt} \cdot f_{wiązka} \cdot f_{grupa}$; " r"$I_{obl} \le I'_z$"
+        ),
         assumption_pl=derating.zalozenie_pl(),
     )
 

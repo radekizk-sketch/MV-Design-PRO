@@ -145,7 +145,7 @@ class IEEETrippingResult:
                 "base_time_s": self.base_time_s,
             },
             "will_trip": self.will_trip,
-            "formula": "t = TD * (A / (M^p - 1) + B)",
+            "formula": r"$t = TD \cdot \left(\frac{A}{M^p - 1} + B\right)$",
         }
 
 

@@ -113,12 +113,12 @@ class TestWspolczynnikNapieciowy:
     def test_przekladnik_MIEDZYFAZOWY_potrzebuje_tylko_wspolczynnika_ciaglego(self) -> None:
         k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_3P), tor()), "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "spelnione"
-        assert "1.2" in (k.wymagane or "")
+        assert "1,2" in (k.wymagane or "")
 
     def test_uzwojenie_FAZA_ZIEMIA_w_sieci_kompensowanej_wymaga_1_9_przez_8_h(self) -> None:
         k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_FZ), tor()), "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "spelnione"
-        assert "1.9 przez 8 h" in (k.wymagane or "")
+        assert "1,9 przez 8 h" in (k.wymagane or "")
 
     def test_faza_ziemia_w_sieci_bezposrednio_uziemionej_wymaga_1_5_przez_30_s(self) -> None:
         k = kryterium(
@@ -133,7 +133,7 @@ class TestWspolczynnikNapieciowy:
         )
         # Dana o automatyce NIE jest tu potrzebna: w sieci uziemionej norma podaje 30 s.
         assert k.werdykt == "spelnione"
-        assert "1.5 przez 30 s" in (k.wymagane or "")
+        assert "1,5 przez 30 s" in (k.wymagane or "")
 
     def test_siec_uziemiona_przez_rezystor_tez_wymaga_1_9(self) -> None:
         # Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona — to byl
@@ -142,7 +142,7 @@ class TestWspolczynnikNapieciowy:
             sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="resistor_grounded")),
             "vt.wspolczynnik_napieciowy",
         )
-        assert "1.9" in (k.wymagane or "")
+        assert "1,9" in (k.wymagane or "")
 
     def test_nieznany_sposob_uziemienia_daje_BRAK_DANYCH_nie_zgodnosc(self) -> None:
         wynik = sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia=None))

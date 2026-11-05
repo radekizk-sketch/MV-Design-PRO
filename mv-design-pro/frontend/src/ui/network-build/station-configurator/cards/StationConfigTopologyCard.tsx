@@ -3,6 +3,7 @@
  */
 
 import { PORT_KIND_LABELS_PL, type PortKind } from '../../../sld/v2/core/ports';
+import { TekstZWzorami } from '../../../../ui2/kreatory/rama';
 
 export interface StationConfigPortRow {
   readonly portId: string;
@@ -68,7 +69,7 @@ export function StationConfigTopologyCard(
               <tr className="border-b border-scada-border text-scada-muted">
                 <th className="text-left">Port</th>
                 <th className="text-left">Typ</th>
-                <th className="text-right">U_n [kV]</th>
+                <th className="text-right"><TekstZWzorami tekst="$U_n$ [kV]" /></th>
                 <th className="text-left">Pole</th>
                 <th className="text-left">Stan portu</th>
               </tr>

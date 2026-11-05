@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama';
 
 export interface FunkcjaWymagana {
   readonly kod: string;
@@ -227,7 +228,7 @@ export function FunkcjeZabezpieczenSekcja({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-scada-muted">{funkcja.podstawa_pl}</p>
+              <p className="text-xs text-scada-muted"><TekstZWzorami tekst={funkcja.podstawa_pl} /></p>
               <p className="text-xs text-scada-muted">
                 Chroniony obiekt: {funkcja.chroniony_obiekt_pl} · Pomiar:{' '}
                 {funkcja.zrodlo_pomiaru_pl}

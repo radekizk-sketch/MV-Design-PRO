@@ -845,7 +845,7 @@ class TestSettingWindow:
         result = ProtectionSettingsEngine.calculate(inp)
         window = result.setting_window
         assert window.limiting_criterion_max == "sensitivity"
-        assert any("k_b" in r for r in window.recommendations_pl)
+        assert any("współczynnik bezpieczeństwa" in r for r in window.recommendations_pl)
 
     def test_conflict_recommendation_mentions_thermal_fix_when_limiting(self):
         # Bardzo maly przekroj + niska czulosc utrzymana wysoko -> cieplne staje sie

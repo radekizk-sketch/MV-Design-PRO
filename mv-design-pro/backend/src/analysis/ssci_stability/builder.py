@@ -340,7 +340,7 @@ class SsciStabilityBuilder:
                         else "NIE przecinają się (|L| < 1)"
                     )
                 ),
-                unit_check_pl="L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |$Z_{grid}$|=|$Z_{conv}$|.",
+                unit_check_pl="L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |Zgrid|=|Zconv|.",
             )
         )
 

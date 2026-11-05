@@ -167,19 +167,19 @@ class ProtectionSanityCheckResult:
 SANITY_CHECK_CODE_LABELS_PL: dict[SanityCheckCode, str] = {
     # Napieciowe
     SanityCheckCode.VOLT_MISSING_UN: "Brak wartości Un dla nastawy napięciowej",
-    SanityCheckCode.VOLT_OVERLAP: "Nakładanie się progów U< i U> (U< >= U>)",
+    SanityCheckCode.VOLT_OVERLAP: "Nakładanie się progów U< i U> (próg U< nie mniejszy od U>)",
     SanityCheckCode.VOLT_U_LT_TOO_LOW: "Próg U< zbyt niski (< 0,5×Un)",
     SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Próg U> zbyt wysoki (> 1,2×Un)",
     # Czestotliwosciowe
-    SanityCheckCode.FREQ_OVERLAP: "Nakładanie się progów f< i f> (f< >= f>)",
+    SanityCheckCode.FREQ_OVERLAP: "Nakładanie się progów f< i f> (próg f< nie mniejszy od f>)",
     SanityCheckCode.FREQ_F_LT_TOO_LOW: "Próg f< zbyt niski (< 45 Hz)",
     SanityCheckCode.FREQ_F_GT_TOO_HIGH: "Próg f> zbyt wysoki (> 55 Hz)",
     # ROCOF
-    SanityCheckCode.ROCOF_NON_POSITIVE: "df/dt nieadodatnie (<= 0)",
+    SanityCheckCode.ROCOF_NON_POSITIVE: "Próg szybkości zmian częstotliwości niedodatni",
     SanityCheckCode.ROCOF_TOO_HIGH: "df/dt zbyt wysokie (> 10 Hz/s)",
     # Nadpradowe
     SanityCheckCode.OC_MISSING_IN: "Brak wartości In dla nastawy prądowej",
-    SanityCheckCode.OC_OVERLAP: "Nakładanie się progów I> i I>> (I> >= I>>)",
+    SanityCheckCode.OC_OVERLAP: "Nakładanie się progów I> i I>> (próg I> nie mniejszy od I>>)",
     SanityCheckCode.OC_I_GT_TOO_LOW: "Próg I> zbyt niski (< 1,0×In)",
     SanityCheckCode.OC_I_INST_TOO_LOW: "Próg I>> zbyt niski (< 1,5×In)",
     # SPZ

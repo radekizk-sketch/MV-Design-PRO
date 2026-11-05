@@ -54,6 +54,7 @@ from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.tor_pola import szyna_raportowa
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
+from werdykt.wyjasnienie import format_liczba
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
 
@@ -176,12 +177,24 @@ def _context(run: CanonicalRun) -> dict[str, Any]:
 
 
 def _step(symbol: str, formula_latex: str, substitution_pl: str, result_pl: str) -> dict[str, str]:
+    """Krok śladu: wzór w ``formula_latex``; ``symbol``, podstawienie i wynik są prozą kroku
+    (kontrakt `scripts/slad_proza_bez_latex_guard.py` — bez LaTeX-u), więc symbole zapisane
+    notacją IEC 61000 bez podkreślnika (``Pst``, ``Plt``), liczby po polsku (`format_liczba`)."""
     return {
         "symbol": symbol,
         "formula_latex": formula_latex,
         "substitution_pl": substitution_pl,
         "result_pl": result_pl,
     }
+
+
+#: Wykładnik prawa sumowania zapisany cyfrą w indeksie górnym (proza kroku, bez LaTeX-u).
+_WYKLADNIK: dict[int, str] = {2: "²", 3: "³", 4: "⁴"}
+
+
+def _liczba(wartosc: float) -> str:
+    """Liczba w prozie kroku — jedyne źródło zapisu (`werdykt.format_liczba`), 6 cyfr."""
+    return format_liczba(wartosc, cyfry=6)
 
 
 def _module_view(
@@ -235,10 +248,10 @@ def _module_view(
     pst_i = _r(flicker_c * sn_mva / sk_mva)
     white_box = [
         _step(
-            "P_st,i",
+            "Pst,i",
             r"P_{st,i} = c_i \cdot \dfrac{S_{n,i}}{S_{k}''}",
-            f"P_st_i = {flicker_c:g} · {sn_mva:g} / {sk_mva:g} MVA",
-            f"P_st_i = {pst_i}",
+            f"Pst,i = {_liczba(flicker_c)} · {_liczba(sn_mva)} / {_liczba(sk_mva)} MVA",
+            f"Pst,i = {_liczba(pst_i)}",
         )
     ]
     return (
@@ -308,21 +321,21 @@ def _bus_entry(
         summed = sum(value**m for value in pst_contribs)
         pst = _r(summed ** (1.0 / m))
         plt = pst
-        terms = " + ".join(f"{value:g}^{m}" for value in pst_contribs)
+        terms = " + ".join(f"{_liczba(value)}{_WYKLADNIK[m]}" for value in pst_contribs)
         white_box.append(
             _step(
-                "P_st",
+                "Pst",
                 r"P_{st} = \left( \sum_i P_{st,i}^{\,m} \right)^{1/m}, \quad m = 3",
-                f"P_st = ({terms})^(1/{m})",
-                f"P_st = {pst}",
+                f"Pst = pierwiastek stopnia {m} z sumy {terms}",
+                f"Pst = {_liczba(pst)}",
             )
         )
         white_box.append(
             _step(
-                "P_lt",
+                "Plt",
                 r"P_{lt} = P_{st}",
-                f"P_lt = P_st = {pst} (emisja ciągła, założenie konserwatywne)",
-                f"P_lt = {plt}",
+                f"Plt = Pst = {_liczba(pst)} (emisja ciągła, założenie konserwatywne)",
+                f"Plt = {_liczba(plt)}",
             )
         )
     else:
@@ -337,8 +350,8 @@ def _bus_entry(
             _step(
                 "d",
                 r"d = k_{max} \cdot \dfrac{S_{n}}{S_{k}''} \cdot 100\%",
-                f"d = {RVC_KMAX:g} · {sn_total:g} / {sk_mva:g} · 100 %",
-                f"d = {d_percent} %",
+                f"d = {_liczba(RVC_KMAX)} · {_liczba(sn_total)} / {_liczba(sk_mva)} · 100 %",
+                f"d = {_liczba(d_percent)} %",
             )
         )
     else:

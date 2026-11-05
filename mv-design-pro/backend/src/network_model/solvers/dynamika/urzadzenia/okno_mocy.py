@@ -54,9 +54,9 @@ class OknoMocy:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "domkniecie_gory",
-            "domkniecie ZALEZNE OD STANU (crowbar) skladane w trakcie "
-            "liczenia pochodnych (`z_domknieciem`); w urzadzeniu zbudowanym przez fabryke "
-            "jest zawsze `None`, a nastawy crowbar wchodza do odcisku przez `crowbar`",
+            "domknięcie ZALEŻNE OD STANU (zwieracz wirnika) składane w trakcie "
+            "liczenia pochodnych; w urządzeniu zbudowanym przez fabrykę "
+            "jest zawsze puste, a nastawy zwieracza wchodzą do odcisku przez pole zwieracza",
         ),
     )
 

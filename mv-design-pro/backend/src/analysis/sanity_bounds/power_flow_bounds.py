@@ -254,12 +254,12 @@ def evaluate_branch_loading(obciazenie: ObciazenieGalezi) -> BranchLoadingSanity
     in_range = loading_pct <= 100.0
     if in_range:
         why = (
-            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) nie przekracza I_r = "
+            f"Prąd {abs(prad_ka):.4f} kA (zacisk {zacisk}) nie przekracza prądu znamionowego "
             f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %)."
         )
     else:
         why = (
-            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) przekracza I_r = "
+            f"Prąd {abs(prad_ka):.4f} kA (zacisk {zacisk}) przekracza prąd znamionowy "
             f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %) — wynik "
             "fizycznie wątpliwy (błąd modelu/doboru przekroju?)."
         )

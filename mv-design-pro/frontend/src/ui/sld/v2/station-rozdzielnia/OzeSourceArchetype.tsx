@@ -339,7 +339,7 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
       </text>
       {/* Gate J — the source contribution, machine-typed. */}
       <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={contrib.machine_type} data-synchronous={String(contrib.is_synchronous_machine)}>
-        {`wkład ${contrib.machine_type}: ${contrib.ik_contribution_ka.toFixed(3)} kA (${contrib.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${contrib.ib_contribution_ka != null ? ` · i_b=${contrib.ib_contribution_ka.toFixed(3)} kA` : ''}`}
+        {`wkład ${contrib.machine_type}: ${contrib.ik_contribution_ka.toFixed(3)} kA (${contrib.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${contrib.ib_contribution_ka != null ? ` · Ib=${contrib.ib_contribution_ka.toFixed(3)} kA` : ''}`}
       </text>
       {/* Per-machine WHITE-BOX breakdown (§6.6) — each rotating machine's partial I″k,
           breaking current i_b, decay μ and (asynchronous) q. Absent for IBG. */}
@@ -355,7 +355,7 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
           data-machine-mu={m.mu}
           data-machine-q={m.q}
         >
-          {`#${j + 1} ${m.node_ref}: I″k=${m.ikss_partial_ka.toFixed(3)} · i_b=${m.ib_partial_ka.toFixed(3)} kA · μ=${m.mu.toFixed(3)}${contrib.is_synchronous_machine ? '' : ` · q=${m.q.toFixed(3)}`}`}
+          {`#${j + 1} ${m.node_ref}: I″k=${m.ikss_partial_ka.toFixed(3)} · Ib=${m.ib_partial_ka.toFixed(3)} kA · μ=${m.mu.toFixed(3)}${contrib.is_synchronous_machine ? '' : ` · q=${m.q.toFixed(3)}`}`}
         </text>
       ))}
     </g>
@@ -905,9 +905,9 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW ${src.machine_type === 'ASYNCHRONOUS' ? '(Typ 1, generator asynchroniczny)' : src.machine_type === 'DFIG' ? '(Typ 3, DFIG)' : '(Typ 4, pełny przekształtnik)'}`,
             `Trafo turbiny (każda): ${collector.turbine_transformer}`,
             src.machine_type === 'ASYNCHRONOUS'
-              ? `Maszyna: asynchroniczna — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
+              ? `Maszyna: asynchroniczna — Ik za impedancją maszyny (§6.7), zanik μ·q (§6.6)`
               : src.machine_type === 'DFIG'
-                ? `Maszyna: DFIG (crowbar→asynchr.) — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
+                ? `Maszyna: DFIG (crowbar→asynchr.) — Ik za impedancją maszyny (§6.7), zanik μ·q (§6.6)`
                 : `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>

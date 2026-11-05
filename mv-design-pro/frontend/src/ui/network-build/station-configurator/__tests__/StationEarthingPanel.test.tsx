@@ -217,17 +217,17 @@ describe('StationConfigurator — karta uziemienia z modelu', () => {
     const spoczynek = within(dlawik).getByTestId('station-earthing-doziemienie-spoczynek');
     expect(spoczynek.textContent).toContain('Doziemienie sieci: punkt neutralny kompensowany');
     expect(spoczynek.textContent).toContain('Prąd doziemienia (prąd resztkowy sieci skompensowanej): 4.1 A');
-    expect(spoczynek.textContent).toContain('Prąd indukcyjny I_L: 92.1 A');
-    expect(spoczynek.textContent).toContain('Składowa czynna I_w: 1.2 A');
+    expect(spoczynek.textContent).toContain('Prąd indukcyjny dławika: 92.1 A');
+    expect(spoczynek.textContent).toContain('Składowa czynna prądu doziemienia: 1.2 A');
     expect(spoczynek.textContent).toContain('Napięcie składowej zerowej U0: 8660 V');
     expect(spoczynek.textContent).toContain('Współczynnik zwarcia doziemnego k: 1.732');
     const zalaczony = within(dlawik).getByTestId('station-earthing-doziemienie-zalaczony');
     expect(zalaczony.textContent).toContain('Doziemienie sieci po załączeniu AWSC');
-    expect(zalaczony.textContent).toContain('Składowa czynna I_w: 30.0 A');
+    expect(zalaczony.textContent).toContain('Składowa czynna prądu doziemienia: 30.0 A');
     // Rezystor: prąd rezystancyjno-pojemnościowy, bez I_L i bez drugiego stanu automatyki.
     const rez = within(rezystor).getByTestId('station-earthing-doziemienie-spoczynek');
     expect(rez.textContent).toContain('Prąd doziemienia (prąd rezystancyjno-pojemnościowy): 202.4 A');
-    expect(rez.textContent).not.toContain('Prąd indukcyjny I_L');
+    expect(rez.textContent).not.toContain('Prąd indukcyjny dławika');
     expect(within(rezystor).queryByTestId('station-earthing-doziemienie-zalaczony')).toBeNull();
     // Etykiety: suma NASTAW dławików (nie prąd I_L przy doziemieniu) i znak rozstrojenia.
     expect(dlawik.textContent).toContain('Suma nastaw dławików w ruchu');

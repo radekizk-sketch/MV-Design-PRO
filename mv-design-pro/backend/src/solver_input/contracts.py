@@ -327,8 +327,8 @@ class SolverInputEnvelope(BaseModel):
     audit2_extensions: dict[str, Any] | None = Field(
         default=None,
         description=(
-            "Audit2 extensions: {sc_iec60909_extensions, power_flow_extensions, "
-            "protection_extensions} — additive, optional"
+            "Rozszerzenia wejścia solverów: zwarciowe IEC 60909, rozpływu mocy i zabezpieczeń "
+            "— addytywne, opcjonalne"
         ),
     )
 

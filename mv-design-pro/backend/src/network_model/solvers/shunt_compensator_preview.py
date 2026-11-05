@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from network_model.odmowa_danych import OdmowaDanychError
 
-_FORMULA_REF = "B = Q / U² ; I_c = Q / (√3·U)"
+_FORMULA_REF = r"$B = Q / U^2$; $I_c = Q / (\sqrt{3} \cdot U)$"
 
 
 @dataclass(frozen=True)

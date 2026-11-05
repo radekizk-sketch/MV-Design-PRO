@@ -116,8 +116,10 @@ class WejscieZwarcioweZBiegu:
     punktu (znacznik wiersza biegu ``dane_przyjete_galezi``) — ta sama konsekwencja."""
     zalozenia_zaniku: tuple[dict[str, Any], ...] = ()
     """Karta PODSTAWA-Q: krzywe zaniku μ/q maszyn punktu wyznaczone na założeniu inżynierskim
-    (pole wiersza biegu ``zalozenia_zaniku``) — I_b stoi na interpretacji, nie na samej normie.
-    Poza echem i odciskiem: wpis jest funkcją liczb μ, q, t_min i argumentu już w odcisku
+    (pole wiersza biegu ``zalozenia_zaniku``) — prąd wyłączeniowy stoi na interpretacji, nie na
+    samej normie.
+    Poza echem i odciskiem: wpis jest funkcją współczynników zaniku, czasu minimalnego
+    i argumentu już w odcisku
     implementacji, nie wielkością, którą konsument mógłby podmienić."""
     parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
     """Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy

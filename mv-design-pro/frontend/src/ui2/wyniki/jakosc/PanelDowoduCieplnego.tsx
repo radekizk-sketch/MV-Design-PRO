@@ -13,6 +13,7 @@
  * porządkuje je na ekranie i formatuje.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { PrzegladDowodu } from '../dowod';
 import { useNazwaObiektu } from '../wzorzec';
 import type {
@@ -82,7 +83,7 @@ export function PanelDowoduCieplnego({
       {/* --- Pełny bilans (uwaga 2) --- */}
       <dl className="mvd-cieplny-bilans" data-testid="mvd-jakosc-cieplna-bilans">
         <div>
-          <dt>Prąd zwarciowy I_th</dt>
+          <dt><TekstZWzorami tekst="Prąd zwarciowy cieplny $I_{th}$" /></dt>
           <dd className="mvd-num">
             {pozycja.i_fault_a === null ? JAKOSC_STRINGS.kreska : `${fmtWartosc(pozycja.i_fault_a)} A`}
           </dd>
@@ -138,7 +139,9 @@ export function PanelDowoduCieplnego({
               {pozycja.kryteria.map((kryterium) => (
                 <tr key={kryterium.kod}>
                   <td>{kryterium.nazwa_pl}</td>
-                  <td className="mvd-mono">{kryterium.warunek_pl}</td>
+                  <td className="mvd-mono">
+                    <TekstZWzorami tekst={kryterium.warunek_pl} />
+                  </td>
                   <td className="mvd-num">
                     {kryterium.wartosc === null
                       ? JAKOSC_STRINGS.kreska

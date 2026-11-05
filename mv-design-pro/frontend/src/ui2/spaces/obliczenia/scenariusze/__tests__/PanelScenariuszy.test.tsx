@@ -170,7 +170,7 @@ function zamontujBackend(
         const tb = body.config?.breaking_time_seconds;
         if (typeof tb === 'number' && !(tb > 0)) {
           return new Response(
-            JSON.stringify({ detail: 'Czas wyłączenia t_b musi być dodatni', kod: 'fault.czas_tb_niepoprawny' }),
+            JSON.stringify({ detail: 'Czas przerwania prądu zwarciowego musi być dodatni', kod: 'fault.czas_tb_niepoprawny' }),
             { status: 422, headers: JSON_NAGLOWKI },
           );
         }
@@ -435,7 +435,7 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       render(<PanelScenariuszy />);
       await wypelnij(user, wpis);
       const blad = screen.getByTestId('mvd-scenariusze-blad-formularza').textContent ?? '';
-      expect(blad).toContain('Czas wyłączenia t_b');
+      expect(blad).toContain('Czas wyłączenia zwarcia');
       expect(blad).not.toContain('fault.czas_tb_niepoprawny');
       expect(zadania.some((z) => z.metoda === 'POST')).toBe(false);
     });
@@ -525,7 +525,7 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       const zadania = zamontujBackend([scenariusz('s1', 'Scenariusz 1', KONFIG_BEZ_TB)]);
       render(<PanelScenariuszy />);
       await zmienTb(user, 's1', wpis);
-      expect(screen.getByTestId('mvd-scenariusze-tb-blad-s1').textContent).toContain('Czas wyłączenia t_b');
+      expect(screen.getByTestId('mvd-scenariusze-tb-blad-s1').textContent).toContain('Czas wyłączenia zwarcia');
       expect(zadania.some((z) => z.metoda === 'PUT')).toBe(false);
     });
 

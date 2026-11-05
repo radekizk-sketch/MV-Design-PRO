@@ -40,7 +40,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NamedTuple
 
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment, ProtectionSetting
@@ -67,6 +67,7 @@ from werdykt import (
     ocen_kryterium,
     zagreguj_wymaganie,
 )
+from werdykt.zapis_latex import ZapisLatex
 
 
 def _liczba_pl(wartosc: float, miejsca: int | None = None) -> str:
@@ -435,7 +436,7 @@ _WINDOW_EVALUATORS: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 
-def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
+def _krok(tekst: str, latex: ZapisLatex | None = None) -> dict[str, Any]:
     """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
 
     Kontrakt kanoniczny ``{tekst, latex}`` — wzorzec 1:1 z
@@ -444,24 +445,34 @@ def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
     return {"tekst": tekst, "latex": latex}
 
 
-# Parametry wywodu okna normatywnego per function_type:
-# (symbol LaTeX nastawy, jednostka LaTeX, znak warunku, wartosc okna, opis okna ASCII).
-_WYWOD_OKNA: dict[str, tuple[str, str, str, float, str]] = {
-    "rocof_81R": (
+class _WywodOkna(NamedTuple):
+    """Parametry wywodu okna normatywnego funkcji: trzy pola wzoru (LaTeX), krawędź okna
+    i opis okna słowami (proza dla projektanta)."""
+
+    symbol_latex: str
+    jednostka_latex: str
+    znak_latex: str
+    okno: float
+    opis_pl: str
+
+
+# Parametry wywodu okna normatywnego per function_type.
+_WYWOD_OKNA: dict[str, _WywodOkna] = {
+    "rocof_81R": _WywodOkna(
         r"\left(\tfrac{df}{dt}\right)_{nast}",
         r"\tfrac{\text{Hz}}{\text{s}}",
         r"\ge",
         ROCOF_MIN_DF_DT_HZ_S,
         "dolna krawędź okna (NC RfG art. 13 ust. 1 lit. b, PTPiREE 2 Hz/s)",
     ),
-    "underfrequency_81U": (
+    "underfrequency_81U": _WywodOkna(
         r"f_{81U}",
         r"\text{Hz}",
         r"\le",
         FREQ_UNDER_MAX_HZ,
         "górna krawędź okna (NC RfG art. 13 ust. 1 lit. a, pasmo 47,5–51,5 Hz)",
     ),
-    "overfrequency_81O": (
+    "overfrequency_81O": _WywodOkna(
         r"f_{81O}",
         r"\text{Hz}",
         r"\ge",

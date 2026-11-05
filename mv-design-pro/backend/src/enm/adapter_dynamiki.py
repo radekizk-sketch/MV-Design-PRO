@@ -1671,7 +1671,7 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
         "Punkt pracy pochodzi z biegu rozpływu na tej samej migawce efektywnej "
         "(zero płaskiego startu).",
         "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model "
-        "podaje obliczeniom zwarciowym (Z_Q wg IEC 60909).",
+        "podaje obliczeniom zwarciowym (impedancja zasilania wg IEC 60909).",
         "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji "
         "zastępczej łącznika — tak samo jak w rozpływie mocy.",
     ]

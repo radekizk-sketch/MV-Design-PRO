@@ -2095,7 +2095,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     <CatalogMetric label="Q min/max" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
                     <CatalogMetric label="cos phi" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
                     <CatalogMetric
-                      label="k_sc (udział zwarciowy)"
+                      label="Udział zwarciowy (krotność prądu znamionowego)"
                       value={
                         typeof selectedDevice.k_sc === 'number' && Number.isFinite(selectedDevice.k_sc)
                           ? selectedDevice.k_sc.toFixed(2)

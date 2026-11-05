@@ -270,7 +270,9 @@ def _czas_wylaczenia_pola(
         "urzadzenie_nazwa": wpis.name,
         "funkcja": (odniesienie or {}).get("funkcja", najczulszy.funkcja),
         "krzywa": (odniesienie or {}).get("krzywa", najczulszy.krzywa),
-        "prad_rozruchowy_a": (odniesienie or {}).get("Is_a", najczulszy.prog_pierwotny_a),
+        "prad_rozruchowy_a": (odniesienie or {}).get(
+            "prog_pierwotny_a", najczulszy.prog_pierwotny_a
+        ),
         "prad_zwarciowy_a": prad_a,
         "tms": (odniesienie or {}).get("TMS", najczulszy.tms),
         "stala_a": ((odniesienie or {}).get("stale") or {}).get("A"),

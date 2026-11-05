@@ -146,7 +146,11 @@ class TestKryteriumIbInIz:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "Ib<=In<=Iz′")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Prąd obciążenia ≤ prąd znamionowy ≤ obciążalność przewodu"
+        )
         assert k.status == KryteriumStatus.SPELNIA
 
     def test_nie_spelnia_in_za_maly(self) -> None:
@@ -158,7 +162,11 @@ class TestKryteriumIbInIz:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "Ib<=In<=Iz′")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Prąd obciążenia ≤ prąd znamionowy ≤ obciążalność przewodu"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
     def test_nie_spelnia_in_za_duzy(self) -> None:
@@ -170,7 +178,11 @@ class TestKryteriumIbInIz:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "Ib<=In<=Iz′")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Prąd obciążenia ≤ prąd znamionowy ≤ obciążalność przewodu"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
 
@@ -190,7 +202,9 @@ class TestKryteriumI2:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.SPELNIA
         assert k.wartosci["i2_a"] == pytest.approx(1.45 * 16.0)
 
@@ -204,7 +218,9 @@ class TestKryteriumI2:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
     def test_fuse_switch_spelnia(self) -> None:
@@ -217,7 +233,9 @@ class TestKryteriumI2:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.SPELNIA
         assert k.wartosci["i2_a"] == pytest.approx(1.6 * 25.0)
 
@@ -231,7 +249,9 @@ class TestKryteriumI2:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
 
@@ -255,7 +275,9 @@ class TestKryteriumI2MccbKartaD1:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.SPELNIA
         assert k.wartosci["i2_a"] == pytest.approx(1.3 * 400.0)
         assert k.wartosci["ir_a"] == pytest.approx(400.0)
@@ -271,7 +293,9 @@ class TestKryteriumI2MccbKartaD1:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
     def test_nierozstrzygalne_brak_tr_mimo_ir(self) -> None:
@@ -285,7 +309,9 @@ class TestKryteriumI2MccbKartaD1:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
     def test_iniekcja_usuniecie_nastawy_z_rekordu_katalogu_daje_trzeci_stan(self) -> None:
@@ -326,7 +352,9 @@ class TestKryteriumI2MccbKartaD1:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert (
             k.status == KryteriumStatus.NIEROZSTRZYGALNE
         ), "Usunięcie nastawy z rekordu katalogu MUSI dać trzeci stan, nie błąd/fabrykację"
@@ -371,7 +399,11 @@ class TestKryteriumI2MccbKartaD1:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert (
             k.status == KryteriumStatus.NIEROZSTRZYGALNE
         ), "Usunięcie ii_range z rekordu katalogu MUSI dać trzeci stan SWZ, nie błąd/fabrykację"
@@ -449,7 +481,11 @@ class TestKryteriumSwz:
             ik1_min_a=1000.0,  # >> Ia=5*16=80A
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.SPELNIA
 
     def test_mcb_nie_spelnia_niski_ik1_min(self) -> None:
@@ -461,7 +497,11 @@ class TestKryteriumSwz:
             ik1_min_a=50.0,  # << Ia=10*63=630A
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
     def test_fuse_switch_nierozstrzygalne(self) -> None:
@@ -474,7 +514,11 @@ class TestKryteriumSwz:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
     def test_mccb_nierozstrzygalne(self) -> None:
@@ -487,7 +531,11 @@ class TestKryteriumSwz:
             ik1_min_a=1000.0,
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
     def test_mccb_spelnia_karta_d1(self) -> None:
@@ -500,7 +548,11 @@ class TestKryteriumSwz:
             ik1_min_a=7000.0,  # >= Ii=6000 A
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.SPELNIA
         assert k.wartosci["ia_wymagane_a"] == pytest.approx(6000.0)
 
@@ -514,7 +566,11 @@ class TestKryteriumSwz:
             ik1_min_a=500.0,  # << Ii=6000 A
             u0_v=230.0,
         )
-        k = next(k for k in wynik.kryteria if k.nazwa == "SWZ przy Ik_min")
+        k = next(
+            k
+            for k in wynik.kryteria
+            if k.nazwa == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+        )
         assert k.status == KryteriumStatus.NIE_SPELNIA
 
 
@@ -578,7 +634,9 @@ class TestND5FuseNigdyPrzezRownaniePrzekaznikowe:
             )
         mock_mcb.assert_not_called()
         mock_fuse.assert_not_called()
-        k = next(k for k in wynik.kryteria if k.nazwa == "I2<=1,45·Iz′")
+        k = next(
+            k for k in wynik.kryteria if k.nazwa == "Prąd zadziałania ≤ 1,45 obciążalności przewodu"
+        )
         assert k.status == KryteriumStatus.NIEROZSTRZYGALNE
 
 
@@ -922,7 +980,11 @@ class TestDoborNaObwodzieReferencyjnym:
         ]
         assert wysokoprad
         for k in wysokoprad:
-            swz = next(kr for kr in k["kryteria"] if kr["nazwa"] == "SWZ przy Ik_min")
+            swz = next(
+                kr
+                for kr in k["kryteria"]
+                if kr["nazwa"] == "Samoczynne wyłączenie przy minimalnym prądzie zwarciowym"
+            )
             assert swz["status"] in ("nie spełnia", "nierozstrzygalne")
 
     def test_stan_docelowy_missing_data_honest(self) -> None:

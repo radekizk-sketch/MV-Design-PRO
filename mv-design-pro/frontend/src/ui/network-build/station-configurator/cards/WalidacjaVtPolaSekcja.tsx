@@ -208,7 +208,7 @@ export function WalidacjaVtPolaSekcja({
           <span className="font-mono-eng">{wiersz.bayDesignation}</span>
           {' · '}
           {wiersz.nazwaTypu ?? 'typ spoza katalogu'}
-          {wiersz.wspolczynnik !== null && ` · F_v = ${wiersz.wspolczynnik}`}
+          {wiersz.wspolczynnik !== null && ` · współczynnik napięciowy ${wiersz.wspolczynnik}`}
           {' — '}
           {wiersz.ok === true ? 'zgodny z siecią o tym sposobie uziemienia' : wiersz.komunikat}
         </p>
