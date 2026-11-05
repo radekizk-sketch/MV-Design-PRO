@@ -2087,7 +2087,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zbiorow +3, -0: rekord aparatu pola (`enm/models.py`: `zaczep_pierwotny_a`,
     # `zrodlo_zaczepu`) i rozstrzygniecie zaczepu (`wartosci_robocze.py::ZaczepRozstrzygniety`:
     # `zaczepy`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4472." in wyjscie, wyjscie
+    # Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 4472 -> 4474 — pole
+    # `GroundingConfig.awsc_prad_wymuszenia_a` (karta EWALUATORY-ZIEMNOZWARCIOWE) w dwóch
+    # kontraktach wejściowych niosących punkt neutralny.
+    assert "Pol kontraktow wejsciowych: 4474." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2407,7 +2410,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Decyzje wlasciciela 2026-10-29 karty UX-04/POLE-LINIOWE-WZORZEC: 609 -> 610 (+1
         # `enm/zrodlo_napiecia_zerowego.py` — zrodlo 3U0 pola i warunek 67N). Dlug i wykluczenia
         # BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta POLA-GPZ-SZABLONY (2026-11-05): 610 -> 611 (+1 `enm/nosniki_punktu_neutralnego.py`
+        # — jeden nosnik punktu neutralnego w wyspie SN). Dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "Przeskanowano 611 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2713,7 +2718,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`); dlug 7/64 BEZ ZMIAN. POMIAR.
         # Decyzje wlasciciela 2026-10-29 (zrodlo 3U0 z pola Z.17): enm 82 -> 83 (+1
         # `enm/zrodlo_napiecia_zerowego.py`); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=83, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta POLA-GPZ-SZABLONY: enm 83 -> 84 (+1 `enm/nosniki_punktu_neutralnego.py`); dlug
+        # 7/64 BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=84, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

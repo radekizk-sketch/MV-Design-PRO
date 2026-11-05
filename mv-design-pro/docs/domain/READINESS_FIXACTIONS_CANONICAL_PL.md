@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **188** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -70,6 +70,7 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.voltage_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowe napięcie źródła zasilania | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `connection.power_flow_missing` | SOURCES | 2 | WARNING | Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić warunki przyłączenia | panel: `analizy`, tab: `rozplyw` |
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
+| `earthing.multiple_grounded_neutrals_in_island` | SOURCES | 2 | BLOCKER | Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej SN — pozostaw jeden (pozostałe izolowane) albo otwórz sprzęgło sekcji | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
@@ -250,21 +251,21 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 108 |
+| BLOCKER | 109 |
 | WARNING | 71 |
 | INFO | 8 |
-| **Razem** | **187** |
+| **Razem** | **188** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 19 |
+| SOURCES | 20 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
 | STATIONS | 38 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 29 |
-| **Razem** | **187** |
+| **Razem** | **188** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

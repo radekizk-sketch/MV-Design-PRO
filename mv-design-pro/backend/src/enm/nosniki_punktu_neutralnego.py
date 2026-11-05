@@ -27,13 +27,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+from network_model.pochodne.pasma_napieciowe import w_pasmie_sn
 
-from .models import EnergyNetworkModel
+from .models import EnergyNetworkModel, GroundingConfig
 from .uziemienie import uziemienie_grounded
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
-
-PASMO_SN = "SN"
 
 
 @dataclass(frozen=True)
@@ -50,7 +48,7 @@ class NosnikPunktuNeutralnego:
 
 def wyspy_galwaniczne_sn(enm: EnergyNetworkModel) -> dict[str, str]:
     """Szyna pasma SN → reprezentant wyspy (najmniejszy ``ref_id`` — deterministycznie)."""
-    sn = sorted(b.ref_id for b in enm.buses if pasmo_napieciowe(b.voltage_kv) == PASMO_SN)
+    sn = sorted(b.ref_id for b in enm.buses if w_pasmie_sn(b.voltage_kv))
     rodzic = {ref: ref for ref in sn}
 
     def korzen(ref: str) -> str:
@@ -72,7 +70,7 @@ def wyspy_galwaniczne_sn(enm: EnergyNetworkModel) -> dict[str, str]:
 
 def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralnego]:
     """Uziemione nośniki punktu neutralnego na szynach SN (kolejność deterministyczna)."""
-    pasmo = {b.ref_id: pasmo_napieciowe(b.voltage_kv) for b in enm.buses}
+    sn = {b.ref_id for b in enm.buses if w_pasmie_sn(b.voltage_kv)}
     wynik: list[NosnikPunktuNeutralnego] = []
     for zrodlo in sorted(enm.sources, key=lambda s: s.ref_id):
         cfg = zrodlo.neutral_grounding
@@ -80,7 +78,7 @@ def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralneg
             cfg is not None
             and uziemienie_grounded(cfg.type)
             and zrodlo.source_side != "HV_110"
-            and pasmo.get(zrodlo.bus_ref) == PASMO_SN
+            and zrodlo.bus_ref in sn
         ):
             wynik.append(
                 NosnikPunktuNeutralnego(
@@ -93,7 +91,7 @@ def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralneg
         except (OdmowaDanychError, ValueError):
             # Model zerowy niezbudowalny — własne kody E-W5-02/E-W5-03 walidatora.
             continue
-        strony: list[tuple[str, str, object]] = []
+        strony: list[tuple[str, str, GroundingConfig | None]] = []
         if model.connection in (
             ZeroSeqConnection.HV_SHUNT_GROUND,
             ZeroSeqConnection.SERIES_THROUGH,
@@ -105,9 +103,9 @@ def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralneg
         ):
             strony.append((trafo.lv_bus_ref, "lv_neutral", trafo.lv_neutral))
         for bus_ref, pole, cfg in strony:
-            if pasmo.get(bus_ref) != PASMO_SN:
+            if bus_ref not in sn:
                 continue
-            typ = getattr(cfg, "type", None) or "directly_grounded"
+            typ = cfg.type if cfg is not None else "directly_grounded"
             wynik.append(NosnikPunktuNeutralnego(trafo.ref_id, "transformer", bus_ref, pole, typ))
     return wynik
 

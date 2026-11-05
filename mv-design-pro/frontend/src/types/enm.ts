@@ -33,6 +33,9 @@ export interface GroundingConfig {
   type: TypPunktuNeutralnego;
   r_ohm?: number | null;
   x_ohm?: number | null;
+  /** Prąd czynny wymuszenia automatyki AWSC [A] — wyłącznie przy dławiku (`petersen_coil`);
+   *  predykat backendu `enm.uziemienie.blad_konfiguracji_uziemienia`. */
+  awsc_prad_wymuszenia_a?: number | null;
 }
 
 export interface BusLimits {
