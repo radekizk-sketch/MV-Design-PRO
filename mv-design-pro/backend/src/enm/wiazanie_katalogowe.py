@@ -238,8 +238,16 @@ def zamienniki_klucza_w_ladunku(operacja: str, ladunek: Mapping[str, Any]) -> li
     (``enm.domain_operations.execute_domain_operation``) i brama API
     (``api.domain_ops_policy.validate_and_materialize_catalog_binding``).
     """
-    from domain.canonical_operations import klucze_spoza_kontraktu
+    from domain.canonical_operations import (
+        CANONICAL_OPERATIONS,
+        klucze_spoza_kontraktu,
+        resolve_operation_name,
+    )
 
+    if resolve_operation_name(operacja) not in CANONICAL_OPERATIONS:
+        # Nieznaną operację odrzuca dyspozytor kodem `dispatcher.unknown_operation` —
+        # tu nie ma kontraktu, względem którego klucz byłby zamiennikiem.
+        return []
     return [
         sciezka
         for sciezka in klucze_spoza_kontraktu(operacja, dict(ladunek))
@@ -255,3 +263,77 @@ def komunikat_zamiennikow_pl(sciezki: list[str]) -> str:
         "Pozycję katalogu wskazuje wyłącznie wiązanie „catalog_binding” "
         "(albo „<rola>_catalog_binding”) z identyfikatorem „catalog_item_id”."
     )
+
+
+def _jest_kluczem_wiazania(nazwa: str) -> bool:
+    return nazwa == KLUCZ_WIAZANIA or nazwa.endswith("_" + KLUCZ_WIAZANIA)
+
+
+def _bledy_wiazan_w_wezle(
+    wezel: object,
+    ksztalt: object,
+    sciezka: str,
+    wynik: list[tuple[str, OdczytWiazania]],
+) -> None:
+    elementy: list[tuple[str, object]]
+    if isinstance(wezel, Mapping):
+        elementy = [(sciezka, wezel)]
+    elif isinstance(wezel, list):
+        elementy = [(f"{sciezka}[{i}]", e) for i, e in enumerate(wezel)]
+    else:
+        return
+    pola = getattr(ksztalt, "pola", frozenset())
+    zagniezdzone = getattr(ksztalt, "zagniezdzone", {})
+    for prefiks, element in elementy:
+        if not isinstance(element, Mapping):
+            continue
+        for klucz in sorted(pola):
+            if _jest_kluczem_wiazania(klucz) and klucz in element:
+                odczyt = odczytaj_wiazanie(element, klucz, opis_pl=f"{prefiks}.{klucz}")
+                if odczyt.kod_bledu is not None:
+                    wynik.append((f"{prefiks}.{klucz}", odczyt))
+        for klucz, pod in zagniezdzone.items():
+            if not _jest_kluczem_wiazania(klucz) and klucz in element:
+                _bledy_wiazan_w_wezle(element[klucz], pod, f"{prefiks}.{klucz}", wynik)
+
+
+def bledy_wiazan_w_ladunku(
+    operacja: str, ladunek: Mapping[str, Any]
+) -> list[tuple[str, OdczytWiazania]]:
+    """Odmowy odczytu KAŻDEGO wiązania kontraktu operacji obecnego w ładunku.
+
+    Jedno miejsce kontroli kształtu wiązań (wiązanie nie-obiekt, bez ``catalog_item_id``,
+    z zamiennikiem pola wewnątrz) dla wszystkich kluczy wiązań — także ról
+    (``<rola>_catalog_binding``) czytanych w operacji tylko po pozycji. Woła je dyspozytor
+    operacji i brama API obok :func:`zamienniki_klucza_w_ladunku`, więc obie strony pary
+    predykatów odrzucają ten sam ładunek tym samym kodem. Ścieżka: ``sn_fields[0].x``.
+    """
+    from domain.canonical_operations import (
+        CANONICAL_OPERATIONS,
+        KSZTALTY_ZAGNIEZDZONE,
+        klucze_kontraktu,
+        resolve_operation_name,
+    )
+
+    nazwa = resolve_operation_name(operacja)
+    if nazwa not in CANONICAL_OPERATIONS:
+        return []
+    wynik: list[tuple[str, OdczytWiazania]] = []
+    for klucz in sorted(klucze_kontraktu(nazwa)):
+        if _jest_kluczem_wiazania(klucz) and klucz in ladunek:
+            odczyt = odczytaj_wiazanie(ladunek, klucz, opis_pl=klucz)
+            if odczyt.kod_bledu is not None:
+                wynik.append((klucz, odczyt))
+    for klucz, ksztalt in KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}).items():
+        if not _jest_kluczem_wiazania(klucz) and klucz in ladunek:
+            _bledy_wiazan_w_wezle(ladunek[klucz], ksztalt, klucz, wynik)
+    return wynik
+
+
+def pozycja_wiazania(wezel: object, klucz: str) -> str | None:
+    """Pozycja katalogu wskazana wiązaniem ``wezel[klucz]`` (``None`` — brak albo odmowa).
+
+    Do odczytu w operacji PO kontroli :func:`bledy_wiazan_w_ladunku` w dyspozytorze — odmowa
+    kształtu nie dociera wtedy do handlera; ta sama funkcja odczytu co brama API.
+    """
+    return odczytaj_wiazanie(wezel, klucz).pozycja

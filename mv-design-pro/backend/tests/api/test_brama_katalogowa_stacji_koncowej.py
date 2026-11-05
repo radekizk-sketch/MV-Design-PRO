@@ -107,7 +107,7 @@ def _payload_stacji_koncowej(
             "payload": {
                 "endpoint_bus_ref": endpoint_bus_ref,
                 "station": {"name": "Stacja końcowa", "station_type": "terminal"},
-                "field_apparatus_catalog_ref": REF_APARAT_SN,
+                "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
                 "transformer": transformer,
                 "nn_voltage_kv": 0.4,
             },
@@ -126,7 +126,7 @@ def _payload_stacji_w_odcinku(
                 "segment_ref": segment_ref,
                 "position_m": 250.0,
                 "station": {"name": "Stacja w odcinku", "station_type": "mv_lv"},
-                "field_apparatus_catalog_ref": REF_APARAT_SN,
+                "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
                 "transformer": transformer,
                 "nn_voltage_kv": 0.4,
             },

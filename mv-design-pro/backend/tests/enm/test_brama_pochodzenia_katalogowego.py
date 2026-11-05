@@ -192,10 +192,16 @@ def _blok_stacji(
 ) -> dict[str, Any]:
     blok: dict[str, Any] = {
         "sn_fields": [
-            {"field_role": "LINIA_IN", "apparatus_catalog_ref": REF_APARAT_SN},
-            {"field_role": "TRANSFORMATOROWE", "apparatus_catalog_ref": REF_APARAT_SN},
+            {
+                "field_role": "LINIA_IN",
+                "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
+            },
+            {
+                "field_role": "TRANSFORMATOROWE",
+                "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
+            },
         ],
-        "field_apparatus_catalog_ref": REF_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO_630},
@@ -204,7 +210,7 @@ def _blok_stacji(
     if nn_source_ref is not None:
         blok["nn_block"] = {
             "nn_configuration": nn_configuration,
-            "source_converter_catalog_ref": nn_source_ref,
+            "source_converter_catalog_binding": {"catalog_item_id": nn_source_ref},
             "source_converter_name": "Źródło nN stacji",
             "outgoing_feeders_nn_count": 1,
         }
@@ -875,12 +881,17 @@ def test_parytet_wymogu_transformatora_stacja_vs_operacja_atomowa() -> None:
             "sn_voltage_kv": 15.0,
             "nn_voltage_kv": 0.4,
         },
-        "sn_fields": [{"field_role": "LINIA_IN", "apparatus_catalog_ref": REF_APARAT_SN}],
-        "field_apparatus_catalog_ref": REF_APARAT_SN,
+        "sn_fields": [
+            {
+                "field_role": "LINIA_IN",
+                "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
+            }
+        ],
+        "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
         "transformer": {"create": False},
         "nn_block": {
             "nn_configuration": "PV_INVERTER",
-            "source_converter_catalog_ref": REF_PV_W_ZAKRESIE,
+            "source_converter_catalog_binding": {"catalog_item_id": REF_PV_W_ZAKRESIE},
             "source_converter_name": "Źródło nN bez transformatora",
             "outgoing_feeders_nn_count": 1,
         },
@@ -907,8 +918,13 @@ def test_stacja_bez_transformatora_i_bez_zrodla_nn_dziala_jak_dotad() -> None:
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "sn_fields": [{"field_role": "LINIA_IN", "apparatus_catalog_ref": REF_APARAT_SN}],
-            "field_apparatus_catalog_ref": REF_APARAT_SN,
+            "sn_fields": [
+                {
+                    "field_role": "LINIA_IN",
+                    "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
+                }
+            ],
+            "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
             "transformer": {"create": False},
         },
     )

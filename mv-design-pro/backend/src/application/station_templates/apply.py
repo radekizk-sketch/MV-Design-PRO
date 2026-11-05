@@ -418,7 +418,9 @@ def _zastosuj_szablon_pod_blokada(
             "nn_block": nn_block_spec,
         }
         if wspolny_aparat_pol:
-            station_payload["field_apparatus_catalog_ref"] = wspolny_aparat_pol
+            station_payload["field_apparatus_catalog_binding"] = {
+                "catalog_item_id": wspolny_aparat_pol
+            }
 
         insert_result = execute_domain_operation(
             enm_dict=enm_dict,
@@ -947,7 +949,11 @@ def _zabuduj_stacje_w_odgalezieniu(
             "transformer": transformer_spec,
             "sn_fields": sn_fields,
             "nn_block": nn_block_spec,
-            **({"field_apparatus_catalog_ref": wspolny_aparat_pol} if wspolny_aparat_pol else {}),
+            **(
+                {"field_apparatus_catalog_binding": {"catalog_item_id": wspolny_aparat_pol}}
+                if wspolny_aparat_pol
+                else {}
+            ),
         },
     )
     enm_dict = wynik_stacji.get("snapshot") or enm_dict
@@ -1322,7 +1328,7 @@ def _resolve_sn_fields(
             # pole dostaje nazwę (`enm.rola_pola_sn`, karta #141); rola spoza słownika przechodzi
             # bez zmiany (operacja decyduje, co z nią zrobić).
             "field_role": kanoniczna_rola_pola_sn(role),
-            "apparatus_catalog_ref": apparatus_ref,
+            "apparatus_catalog_binding": {"catalog_item_id": apparatus_ref},
         }
         # Pomiar JAWNIE (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, V12K-335
         # pkt 2 + korekta V12K-336): szablon deklarujący pole POMIAROWE opisuje
@@ -1344,7 +1350,7 @@ def _wspolny_aparat_pol_sn(
 ) -> str | None:
     """Wspólny aparat pól SN szablonu: wskazanie projektanta (`sn_bay_apparatus_ref`) albo
     wspólne opcje szablonu (kaskada producenta). Ten sam aparat jedzie w ładunku operacji
-    stacyjnej jako `field_apparatus_catalog_ref` — dostaje go pole, które operacja DOMYKA
+    stacyjnej jako `field_apparatus_catalog_binding` — dostaje go pole, które operacja DOMYKA
     (POLA-W-TORZE: pole transformatorowe dla transformatora szablonu, którego skład pól nie
     deklaruje, np. blok transformatorowy magazynu energii)."""
     override_ref = overrides.get("sn_bay_apparatus_ref")

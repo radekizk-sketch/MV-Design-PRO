@@ -58,7 +58,7 @@ def _stacja_z_transformatorem() -> dict[str, Any]:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "TR"],
-            "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
             "transformer": {
                 "create": True,
                 "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},

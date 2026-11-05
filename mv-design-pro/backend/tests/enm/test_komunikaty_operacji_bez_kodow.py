@@ -39,7 +39,7 @@ import pytest
 from enm import slownik_komunikatow as slownik
 from enm.deklaracje_modulu import POLA_DEKLARACJI, POLA_NC_RFG_GENERATORA
 from enm.domain_operations import _TRANSFORMER_REQUIRED_FIELDS, execute_domain_operation
-from enm.domain_operations_v2 import _KATALOGI_WIAZAN_DER, rozbieznosci_tabliczki
+from enm.domain_operations_v2 import DER_WIAZANIA_LADUNKU, rozbieznosci_tabliczki
 from enm.katalog_projektu_karty import KLUCZ_KART_WIDMOWYCH
 from enm.load_zip_model import KLUCZE_ODNIESIENIA_ZIP, KLUCZE_ZIP_ODBIORU
 from enm.models import BayPrimaryDevice, Generator
@@ -851,7 +851,7 @@ def test_kazde_wywolanie_pola_ma_wpis_w_mapie() -> None:
             ),
             None,
         ),
-        (tuple(k for k, _ in _KATALOGI_WIAZAN_DER), None),
+        (tuple(DER_WIAZANIA_LADUNKU), None),
         (("dynamic_model_ref", "bess_operation_mode_refs", KLUCZ_KART_WIDMOWYCH), None),
         (POLA_NC_RFG_GENERATORA, None),
         (POLA_DEKLARACJI, "deklaracje_modulu"),
@@ -1254,7 +1254,9 @@ def _stacja_z_nn(magistrala: tuple[dict[str, Any], str, str]) -> tuple[dict[str,
     wynik = execute_domain_operation(
         copy.deepcopy(snap),
         "insert_station_on_segment_sn",
-        _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN),
+        _insert_payload(
+            segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+        ),
     )
     assert not wynik.get("error"), wynik.get("error")
     stan = wynik["snapshot"]
@@ -1321,7 +1323,7 @@ def _przypadki(
                 "insert_station_on_segment_sn",
                 "brak pola",
                 "station.insert.field_apparatus_ref_missing",
-                slownik.nazwa_pola("apparatus_catalog_ref"),
+                slownik.nazwa_pola("apparatus_catalog_binding"),
             ),
             snap,
             _insert_payload(segment_ref),
@@ -1520,7 +1522,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         "add_transformer_sn_nn",
         {},
         "catalog.ref_required",
-        (slownik.nazwa_pola("transformer_catalog_ref", "add_transformer_sn_nn"),),
+        (slownik.nazwa_pola("transformer_catalog_binding"),),
     ),
     (
         "add_transformer_sn_nn",
@@ -1544,7 +1546,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         "add_transformer_sn_nn",
         {
             "catalog_binding": {"catalog_item_id": _TRAFO},
-            "transformer_tap_changer_catalog_ref": "zaczep" + _LITEROWKA,
+            "transformer_tap_changer_catalog_binding": {"catalog_item_id": "zaczep" + _LITEROWKA},
         },
         "catalog.item_not_found",
         (),
@@ -1553,11 +1555,14 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         "set_der_catalog_bindings",
         {
             "generator_ref": "gen-1",
-            "ct_catalog_ref": "ct" + _LITEROWKA,
-            "protection_catalog_ref": "zab" + _LITEROWKA,
+            "ct_catalog_binding": {"catalog_item_id": "ct" + _LITEROWKA},
+            "protection_catalog_binding": {"catalog_item_id": "zab" + _LITEROWKA},
         },
         "catalog.item_not_found",
-        (slownik.nazwa_pola("ct_catalog_ref"), slownik.nazwa_pola("protection_catalog_ref")),
+        (
+            slownik.nazwa_pola("ct_catalog_binding"),
+            slownik.nazwa_pola("protection_catalog_binding"),
+        ),
     ),
     (
         "set_der_catalog_bindings",
@@ -1581,7 +1586,12 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
     (
         "append_station_on_endpoint",
         {
-            "sn_fields": [{"field_role": "LINIA_IN", "apparatus_catalog_ref": "ap" + _LITEROWKA}],
+            "sn_fields": [
+                {
+                    "field_role": "LINIA_IN",
+                    "apparatus_catalog_binding": {"catalog_item_id": "ap" + _LITEROWKA},
+                }
+            ],
             "transformer": _STACJA_TR,
         },
         "catalog.item_not_found",
@@ -1593,7 +1603,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
             "sn_fields": [
                 {
                     "field_role": "LINIA_IN",
-                    "apparatus_catalog_ref": APARAT_SN,
+                    "apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
                     "equipment": {
                         "ct": {
                             "catalog_binding": {"catalog_item_id": "ct" + _LITEROWKA},

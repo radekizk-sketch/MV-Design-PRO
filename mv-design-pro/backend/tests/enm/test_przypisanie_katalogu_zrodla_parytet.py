@@ -103,7 +103,7 @@ def test_przypisanie_typu_magazynu_zachowuje_pakiet_baterii() -> None:
             "bus_nn_ref": km._szyna_nn(snapshot, 0.69),
             "source_name": "Magazyn",
             "catalog_binding": {"catalog_item_id": km.TYP_BESS},
-            "battery_catalog_ref": "bess_bat_lfp_2880kwh_1230vdc",
+            "battery_catalog_binding": {"catalog_item_id": "bess_bat_lfp_2880kwh_1230vdc"},
         },
     )
     generator = km._generator(snapshot)
@@ -161,7 +161,10 @@ def _przed_stacja(
     )
     payload = h._payload_stacji(
         str(snapshot["branches"][-1]["to_bus_ref"]),
-        h._blok_nn(nn_configuration=konfiguracja, source_converter_catalog_ref=typ),
+        h._blok_nn(
+            nn_configuration=konfiguracja,
+            source_converter_catalog_binding={"catalog_item_id": typ},
+        ),
     )
     payload["nn_voltage_kv"] = napiecie_kv
     payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": trafo}

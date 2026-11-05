@@ -444,7 +444,7 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
             "transformer_regulation_type": "OLTC",
-            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_tap_changer_catalog_binding": {"catalog_item_id": "tc_oltc_110sn_19_125"},
             "transformer_control_mode": "AUTOMATIC",
             "transformer_voltage_setpoint_kv": 15.3,
             "transformer_deadband_kv": 0.2,
@@ -507,7 +507,7 @@ def test_add_grid_source_sn_ldc_bez_r_x_zostaje_nieskonfigurowane():
             "voltage_kv": 15.0,
             **_gpz_110kv(1),
             "transformer_regulation_type": "OLTC",
-            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_tap_changer_catalog_binding": {"catalog_item_id": "tc_oltc_110sn_19_125"},
             "transformer_ldc_enabled": True,
             # transformer_ldc_r_ohm / transformer_ldc_x_ohm CELOWO pominięte.
         },

@@ -200,7 +200,7 @@ from .topology_ops import (
 )
 from .tor_pola import szyna_glowna_stacji, szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
-from .wiazanie_katalogowe import odczytaj_wiazanie
+from .wiazanie_katalogowe import odczytaj_wiazanie, pozycja_wiazania
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
 
@@ -4698,10 +4698,9 @@ def _materializuj_bateria_bess(
     dotyczyć `der_kind="BESS"` (bateria nie ma zastosowania dla PV/FW) i MUSI
     istnieć w katalogu — obie kontrole 422, nigdy ciche pominięcie.
     """
-    ref = payload.get("battery_catalog_ref")
-    if not isinstance(ref, str) or not ref.strip():
+    ref = pozycja_wiazania(payload, "battery_catalog_binding")
+    if ref is None:
         return {}, None
-    ref = ref.strip()
     if technology != "BESS":
         return {}, _error_response(
             "Pakiet baterii magazynu dotyczy wyłącznie źródeł BESS — dla tej technologii "
@@ -6480,7 +6479,8 @@ def tor_z_transformatorem_dedykowanym_z_katalogu(payload: dict[str, Any]) -> boo
         and not (isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn")
         and not (isinstance(blocking, str) and blocking.strip())
         and bool(
-            payload.get("block_transformer_catalog_ref") or payload.get("sn_connection_bus_ref")
+            pozycja_wiazania(payload, "block_transformer_catalog_binding")
+            or payload.get("sn_connection_bus_ref")
         )
     )
 
@@ -6516,14 +6516,13 @@ def _transformator_dedykowany_z_katalogu(
     Zwraca (kopia modelu z szyną i transformatorem, ref transformatora, ref szyny urządzenia,
     utworzone refy) albo odpowiedź błędu.
     """
-    btr_catalog_ref = payload.get("block_transformer_catalog_ref")
-    if not isinstance(btr_catalog_ref, str) or not btr_catalog_ref.strip():
+    btr_catalog_ref = pozycja_wiazania(payload, "block_transformer_catalog_binding")
+    if btr_catalog_ref is None:
         return _error_response(
             "Wariant z transformatorem dedykowanym wymaga pozycji katalogowej transformatora "
-            f"w polu {pole('block_transformer_catalog_ref')}.",
+            f"w polu {pole('block_transformer_catalog_binding')}.",
             "generator.block_transformer_catalog_missing",
         )
-    btr_catalog_ref = btr_catalog_ref.strip()
     sn_bus_ref = payload.get("sn_connection_bus_ref")
     if not isinstance(sn_bus_ref, str) or not sn_bus_ref.strip():
         return _error_response(
@@ -6554,7 +6553,7 @@ def _transformator_dedykowany_z_katalogu(
     # dopiero, gdy pozycja i napięcia są potwierdzone.
     tr_data, blad_tr = _materialize_der_block_transformer(
         spec={
-            "catalog_ref": btr_catalog_ref,
+            "catalog_binding": {"catalog_item_id": btr_catalog_ref},
             "lv_voltage_tolerance": payload.get("block_transformer_lv_voltage_tolerance"),
         },
         ref_id=transformer_ref,
@@ -8571,6 +8570,31 @@ DER_BINDING_KEYS: tuple[str, ...] = (
     "dynamic_model_ref",
 )
 
+#: Klucze ŁADUNKU wiązań aparatury DER (karta JEDEN-KLUCZ-KATALOGU: wiązanie
+#: ``<rola>_catalog_binding``) → pole MODELU wytwórcy, w którym zapis trzyma pozycję
+#: (``materialized_params``/``meta`` — ``<rola>_catalog_ref``, czytane przez gotowość DER).
+DER_WIAZANIA_LADUNKU: dict[str, str] = {
+    "protection_catalog_binding": "protection_catalog_ref",
+    "ct_catalog_binding": "ct_catalog_ref",
+    "vt_catalog_binding": "vt_catalog_ref",
+}
+
+
+def wiazania_der_z_ladunku(payload: dict[str, Any]) -> dict[str, Any]:
+    """Ładunek ``set_der_catalog_bindings`` z wiązaniami ról sprowadzonymi do pól modelu.
+
+    JEDEN odczyt dla operacji i bramy API (predykaty parami): ``<rola>_catalog_binding``
+    → ``<rola>_catalog_ref`` = pozycja wiązania; ``null`` w ładunku = jawne wyczyszczenie
+    (wartość ``None``), brak klucza = bez zmian. Kształt wiązania sprawdza wcześniej
+    ``bledy_wiazan_w_ladunku`` (dyspozytor i brama).
+    """
+    wynik = {k: v for k, v in payload.items() if k not in DER_WIAZANIA_LADUNKU}
+    for klucz_ladunku, pole_w_modelu in DER_WIAZANIA_LADUNKU.items():
+        if klucz_ladunku in payload:
+            wynik[pole_w_modelu] = pozycja_wiazania(payload, klucz_ladunku)
+    return wynik
+
+
 #: Referencje profili zgodności przyłączeniowej — trzymane w podsłowniku ``profiles``,
 #: bo tam ich szuka odczyt (i tam trafiają z kreatora OZE).
 #:
@@ -8610,7 +8634,14 @@ def opis_nieznanych_wiazan(nieznane: list[str]) -> str:
     ``pole=wartość``); do projektanta idzie wyłącznie nazwa pola formularza, w którym
     wybrano pozycję spoza katalogu (ten sam opis dla bramy API i operacji).
     """
-    return lista_pl((pole(wpis.partition("=")[0]) for wpis in nieznane), "i")
+    klucz_ladunku = {model: k for k, model in DER_WIAZANIA_LADUNKU.items()}
+    return lista_pl(
+        (
+            pole(klucz_ladunku.get(wpis.partition("=")[0], wpis.partition("=")[0]))
+            for wpis in nieznane
+        ),
+        "i",
+    )
 
 
 def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
@@ -8757,6 +8788,7 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     wartość. Determinizm istniejących modeli nietknięty: wywołanie bez żadnego wiązania
     niczego nie dopisuje.
     """
+    payload = wiazania_der_z_ladunku(payload)
     generator_ref = payload.get("generator_ref") or payload.get("source_ref")
     if not generator_ref:
         return _error_response(
@@ -9091,31 +9123,14 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     # Aparat pola nN wskazany przy dodaniu pola (odpływ albo pole źródłowe) — wiązanie
     # zapisane na polu dla promocji aparatów nN (`_wiazanie_aparatu_pola_nn`).
     PozycjaBramyKatalogowejV2(
-        "add_nn_outgoing_field", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
-    ),
-    PozycjaBramyKatalogowejV2(
         "add_nn_outgoing_field",
         "catalog_binding",
         _PRZESTRZEN_APARATU_POLA_NN,
         True,
-        "druga droga wskazania pozycji",
     ),
-    PozycjaBramyKatalogowejV2("add_ct", "catalog_ref", "CT", True),
-    PozycjaBramyKatalogowejV2(
-        "add_ct", "catalog_binding", "CT", True, "druga droga wskazania pozycji"
-    ),
-    PozycjaBramyKatalogowejV2("add_vt", "catalog_ref", "VT", True),
-    PozycjaBramyKatalogowejV2(
-        "add_vt", "catalog_binding", "VT", True, "druga droga wskazania pozycji"
-    ),
-    PozycjaBramyKatalogowejV2("add_relay", "catalog_ref", "ZABEZPIECZENIE", True),
-    PozycjaBramyKatalogowejV2(
-        "add_relay",
-        "protection.catalog_item_id",
-        "ZABEZPIECZENIE",
-        True,
-        "kontrakt kreatora pola — rozwiązywany do tego samego wiązania",
-    ),
+    PozycjaBramyKatalogowejV2("add_ct", "catalog_binding", "CT", True),
+    PozycjaBramyKatalogowejV2("add_vt", "catalog_binding", "VT", True),
+    PozycjaBramyKatalogowejV2("add_relay", "catalog_binding", "ZABEZPIECZENIE", True),
     PozycjaBramyKatalogowejV2("add_sn_bay", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     # CV-4.3 K1: `add_load_sn` reużywa DOKŁADNIE ten sam wzorzec co `add_nn_load`
@@ -9125,8 +9140,12 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     # CV-4.3 K1: generator synchroniczny wprost na SN — katalog OBOWIĄZKOWY
     # (element fizyczny, K1.2), weryfikowany przez `_pozycja_katalogu`.
     PozycjaBramyKatalogowejV2("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
+    PozycjaBramyKatalogowejV2("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
     PozycjaBramyKatalogowejV2(
-        "add_converter_source", "catalog_ref", "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER", True
+        "add_converter_source",
+        "catalog_binding",
+        "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER",
+        True,
     ),
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
@@ -9141,7 +9160,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     ),
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
-        "der_topology.block_transformer.catalog_ref",
+        "der_topology.block_transformer.catalog_binding",
         "TRAFO_SN_NN",
         True,
         "materializacja przez `_materialize_der_block_transformer`",
@@ -9152,7 +9171,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     # (`domain_ops_policy.API_CATALOG_REF_PAYLOAD_KEYS`).
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
-        "block_transformer_catalog_ref",
+        "block_transformer_catalog_binding",
         "TRAFO_SN_NN",
         True,
         "materializacja przez `_transformator_dedykowany_z_katalogu` → "
@@ -9160,7 +9179,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     ),
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
-        "der_topology.mv_field_configuration.cable_catalog_ref",
+        "der_topology.mv_field_configuration.cable_catalog_binding",
         "KABEL_SN",
         True,
         "materializacja przez `_materialize_der_mv_cable`",
@@ -9173,7 +9192,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     ),
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
-        "battery_catalog_ref",
+        "battery_catalog_binding",
         "BATERIA_BESS",
         True,
         "materializacja przez `_materializuj_bateria_bess` — "
@@ -9186,15 +9205,6 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego.
     PozycjaBramyKatalogowejV2(
         "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
-    ),
-    PozycjaBramyKatalogowejV2(
-        "add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True
-    ),
-    PozycjaBramyKatalogowejV2(
-        "add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True
-    ),
-    PozycjaBramyKatalogowejV2(
-        "add_zespol_uziemiajacy_sn", "rezystor.catalog_ref", "REZYSTOR_UZIEMIAJACY", True
     ),
     PozycjaBramyKatalogowejV2(
         "add_zespol_uziemiajacy_sn",
@@ -9211,10 +9221,10 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "materializacja przez `_urzadzenie_punktu_neutralnego`",
     ),
     PozycjaBramyKatalogowejV2(
-        "set_der_catalog_bindings", "protection_catalog_ref", "ZABEZPIECZENIE", True
+        "set_der_catalog_bindings", "protection_catalog_binding", "ZABEZPIECZENIE", True
     ),
-    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "ct_catalog_ref", "CT", True),
-    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "vt_catalog_ref", "VT", True),
+    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "ct_catalog_binding", "CT", True),
+    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "vt_catalog_binding", "VT", True),
     # Karta AB-H0 §0.7: lista id kart widmowych (istnienie w katalogu MODELU i zgodność
     # `urzadzenie_ref` z typem generatora) oraz typ przekształtnika karty projektu.
     PozycjaBramyKatalogowejV2(
@@ -9253,49 +9263,34 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     ),
     # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE dla kabla
     # (KABEL_NN) i aparatów (APARAT_NN — aparat pola i sprzęgło sekcyjne).
-    PozycjaBramyKatalogowejV2("add_nn_cable_segment", "catalog_ref", "KABEL_NN", True),
     PozycjaBramyKatalogowejV2(
         "add_nn_cable_segment",
         "catalog_binding",
         "KABEL_NN",
         True,
-        "druga droga wskazania pozycji",
-    ),
-    PozycjaBramyKatalogowejV2(
-        "add_nn_switch_device", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
     ),
     PozycjaBramyKatalogowejV2(
         "add_nn_switch_device",
         "catalog_binding",
         _PRZESTRZEN_APARATU_POLA_NN,
         True,
-        "druga droga wskazania pozycji",
     ),
-    PozycjaBramyKatalogowejV2("add_nn_rcd", "catalog_ref", _PRZESTRZEN_RCD_NN, True),
-    PozycjaBramyKatalogowejV2(
-        "add_nn_rcd", "catalog_binding", _PRZESTRZEN_RCD_NN, True, "druga droga wskazania pozycji"
-    ),
-    PozycjaBramyKatalogowejV2(
-        "add_nn_section_coupler", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
-    ),
+    PozycjaBramyKatalogowejV2("add_nn_rcd", "catalog_binding", _PRZESTRZEN_RCD_NN, True),
     PozycjaBramyKatalogowejV2(
         "add_nn_section_coupler",
         "catalog_binding",
         _PRZESTRZEN_APARATU_POLA_NN,
         True,
-        "druga droga wskazania pozycji",
     ),
     # Zasilenie rozdzielnicy nN (`payload.supply`) — ten sam materializator kabla nN co
     # `add_nn_cable_segment` (`_add_nn_cable_segment_internal`), więc te same dwie drogi
     # wskazania. Pozycja była czytana bez wiersza inwentarza (skan handlerów widział tylko
     # ciało handlera, nie funkcje, które on woła — karta W5-C rozszerzyła skan).
-    PozycjaBramyKatalogowejV2("add_nn_distribution_board", "supply.catalog_ref", "KABEL_NN", True),
     PozycjaBramyKatalogowejV2(
         "add_nn_distribution_board",
         "supply.catalog_binding",
         "KABEL_NN",
         True,
-        "druga droga wskazania pozycji",
     ),
     # W5-C: wyposażenie pola SN — aparat rodzaju z katalogiem SN wskazuje pozycję
     # przestrzeni tego rodzaju (`enm.wyposazenie_pola.PRZESTRZEN_KATALOGU_APARATU`),
@@ -9313,15 +9308,16 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
 #: Zbiór WYPROWADZONY z inwentarza (test klasy pilnuje zgodności obu stron).
 V2_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
+        # Pole MODELU urządzenia pola (`set_bay_equipment.devices[].catalog_ref`) — jedyny
+        # klucz `catalog_ref` czytany z ładunku V2; wskazania pozycji niesie wiązanie.
+        # Pozostałe to pola MODELU zapisywane przez operacje V2 (karta JEDEN-KLUCZ-KATALOGU:
+        # żaden nie jest kluczem ładunku — strażnik `klucz_katalogu_guard`, reguła 4):
+        # pakiet baterii w tabliczce źródła, szyna transformatora dedykowanego w `meta`,
+        # wiązanie zabezpieczenia DER wytwórcy.
         "catalog_ref",
-        "apparatus_catalog_ref",
         "battery_catalog_ref",
-        # Transformator dedykowany źródła OZE z płaskiego ładunku kreatora (TRAFO_SN_NN).
         "block_transformer_catalog_ref",
-        "cable_catalog_ref",
         "protection_catalog_ref",
-        "ct_catalog_ref",
-        "vt_catalog_ref",
     }
 )
 
@@ -9335,7 +9331,12 @@ V2_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
         "catalog_item_version",
         "catalog_namespace",
         "apparatus_catalog_binding",
+        "battery_catalog_binding",
+        "block_transformer_catalog_binding",
         "cable_catalog_binding",
+        "ct_catalog_binding",
+        "protection_catalog_binding",
+        "vt_catalog_binding",
         # Znacznik migawki („pole czeka na wskazanie aparatu"), nie kanał wskazania
         # pozycji — zapisywany przez operację, nigdy z niego nie czytany.
         "requires_catalog_binding",

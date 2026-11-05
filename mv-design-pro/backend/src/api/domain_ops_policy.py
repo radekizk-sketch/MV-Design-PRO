@@ -10,8 +10,10 @@ from enm.slownik_komunikatow import opis_operacji, pole
 from enm.wiazanie_katalogowe import (
     KOD_ZAMIENNIKA_KLUCZA,
     PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
+    bledy_wiazan_w_ladunku,
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
+    pozycja_wiazania,
     zamienniki_klucza_w_ladunku,
 )
 from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
@@ -264,9 +266,9 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         return candidate
 
     if operation == "append_station_on_endpoint":
-        # Ref transformatora czytany DOKŁADNIE tak, jak czyta go operacja
-        # domenowa (`transformer_catalog_ref` albo `catalog_ref`) — brama API
-        # ma sprawdzać tę samą pozycję katalogową, która trafi do migawki.
+        # Wiązanie transformatora czytane DOKŁADNIE tak, jak czyta je operacja
+        # domenowa (`transformer.transformer_catalog_binding`) — brama API
+        # sprawdza tę samą pozycję katalogową, która trafi do migawki.
         candidate = _extract_binding_from_container(
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
@@ -427,47 +429,51 @@ _FIELD_EQUIPMENT_OPERATIONS: tuple[tuple[str, str], ...] = (
 #: Ta lista jest KONTRAKTEM: test klasy skanuje `enm/domain_operations.py` i
 #: czerwienieje, gdy operacja stacyjna zacznie czytać referencję spoza inwentarza.
 STATION_CATALOG_REF_INVENTORY: tuple[tuple[str, str], ...] = (
-    ("transformer.transformer_catalog_ref", "add_transformer_sn_nn"),
-    ("transformer.catalog_ref", "add_transformer_sn_nn"),
-    ("sn_fields[].apparatus_catalog_ref", "add_sn_bay"),
-    ("field_apparatus_catalog_ref", "add_sn_bay"),
+    ("transformer.transformer_catalog_binding", "add_transformer_sn_nn"),
+    ("sn_fields[].apparatus_catalog_binding", "add_sn_bay"),
+    ("field_apparatus_catalog_binding", "add_sn_bay"),
     ("sn_fields[].equipment.ct", "add_ct"),
     ("sn_fields[].equipment.vt", "add_vt"),
     ("sn_fields[].equipment.relay", "add_relay"),
-    ("nn_block.source_converter_catalog_ref", "add_converter_source"),
-    ("nn_block.source_protection.device_catalog_ref", "add_relay"),
+    ("nn_block.source_converter_catalog_binding", "add_converter_source"),
+    ("nn_block.source_protection.device_catalog_binding", "add_relay"),
 )
 
-#: Klucze payloadu z referencją katalogową, które operacjom stacyjnym wolno czytać.
-#: Zbiór wyprowadzony z inwentarza powyżej — służy testowi klasy do skanu kodu
-#: domenowego (`segment.catalog_ref` przy podziale odcinka pochodzi Z MODELU, nie
-#: z payloadu, i był bramkowany przy tworzeniu odcinka).
+#: Klucze `*catalog_ref` występujące w operacjach stacyjnych — WYŁĄCZNIE pola modelu
+#: (skan klasy testu inwentarza stacyjnego); wskazania z ładunku niesie wiązanie
+#: (`STATION_CATALOG_BINDING_KEYS`).
 STATION_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
+        # Pola MODELU zapisywane przez operacje stacyjne (karta JEDEN-KLUCZ-KATALOGU: żaden
+        # klucz ładunku nie kończy się na `catalog_ref` — strażnik `klucz_katalogu_guard`):
+        # `catalog_ref` rekordu gałęzi/transformatora/źródła, `apparatus_catalog_ref`
+        # rekordu pola SN, `device_catalog_ref` zamiaru ochrony źródła nN w `meta`.
         "catalog_ref",
-        "transformer_catalog_ref",
         "apparatus_catalog_ref",
-        "field_apparatus_catalog_ref",
-        "source_converter_catalog_ref",
         "device_catalog_ref",
     }
 )
 
-#: Klucze o kształcie WIĄZANIA katalogowego dopuszczone w operacjach stacyjnych.
-#: Osobny zbiór, bo wiązanie jest drugą drogą wskazania pozycji katalogu i bez
-#: niego skan klasy dałoby się obejść, podając `catalog_binding` zamiast
-#: `catalog_ref`:
-#:   * `catalog_binding` / `catalog_item_id` — kanoniczny kontrakt wiązania
-#:     (transformator, wyposażenie pól) — czytany przez `extract_catalog_binding`;
+#: Klucze o kształcie WIĄZANIA katalogowego dopuszczone w operacjach stacyjnych —
+#: JEDYNA droga wskazania pozycji katalogu w ładunku (karta JEDEN-KLUCZ-KATALOGU):
+#:   * `catalog_binding` / `catalog_item_id` i `<rola>_catalog_binding` — kontrakt
+#:     wiązania (transformator, zaczepy, aparat pól, źródło i ochrona nN, wyposażenie
+#:     pól) czytany przez `enm.wiazanie_katalogowe.odczytaj_wiazanie`;
 #:   * `catalog_bindings` — INTENCJA zapisywana w `meta` specyfikacji pola/odpływu
 #:     nN; z tego klucza operacja stacyjna NIE tworzy elementu (element źródła nN
-#:     powstaje z `nn_block.source_converter_catalog_ref`, który brama sprawdza).
+#:     powstaje z `nn_block.source_converter_catalog_binding`, który brama sprawdza).
 #:     Gdyby kiedyś zaczął tworzyć — trzeba go dopisać do inwentarza i bramy.
 STATION_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
     {
         "catalog_binding",
         "catalog_bindings",
         "catalog_item_id",
+        "apparatus_catalog_binding",
+        "device_catalog_binding",
+        "field_apparatus_catalog_binding",
+        "source_converter_catalog_binding",
+        "transformer_catalog_binding",
+        "transformer_tap_changer_catalog_binding",
     }
 )
 
@@ -503,7 +509,7 @@ class PozycjaBramyApi:
     uzasadnienie: str = ""
 
 
-#: Pseudo-przestrzeń zaczepów: `transformer_tap_changer_catalog_ref` rozstrzyga się
+#: Pseudo-przestrzeń zaczepów: `transformer_tap_changer_catalog_binding` rozstrzyga się
 #: w katalogu podobciążeniowych przełączników zaczepów (`get_tap_changer`), który NIE
 #: jest kategorią `CatalogNamespace` i nie ma kontraktu materializacji.
 PRZESTRZEN_ZACZEPY = "ZACZEPY_TRANSFORMATORA"
@@ -535,7 +541,7 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_grid_source_sn", "transformer_catalog_binding", "TRAFO_SN_NN", True),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "transformer_tap_changer_catalog_ref",
+        "transformer_tap_changer_catalog_binding",
         PRZESTRZEN_ZACZEPY,
         True,
     ),
@@ -562,7 +568,7 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_transformer_sn_nn", "transformer_catalog_binding", "TRAFO_SN_NN", True),
     PozycjaBramyApi(
         "add_transformer_sn_nn",
-        "transformer_tap_changer_catalog_ref",
+        "transformer_tap_changer_catalog_binding",
         PRZESTRZEN_ZACZEPY,
         True,
     ),
@@ -574,10 +580,16 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         True,
     ),
     PozycjaBramyApi(
-        "insert_station_on_segment_sn", "sn_fields[].apparatus_catalog_ref", "APARAT_SN", True
+        "insert_station_on_segment_sn",
+        "sn_fields[].apparatus_catalog_binding",
+        "APARAT_SN",
+        True,
     ),
     PozycjaBramyApi(
-        "insert_station_on_segment_sn", "field_apparatus_catalog_ref", "APARAT_SN", True
+        "insert_station_on_segment_sn",
+        "field_apparatus_catalog_binding",
+        "APARAT_SN",
+        True,
     ),
     PozycjaBramyApi("insert_station_on_segment_sn", "sn_fields[].equipment.ct", "CT", True),
     PozycjaBramyApi("insert_station_on_segment_sn", "sn_fields[].equipment.vt", "VT", True),
@@ -586,32 +598,39 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi(
         "insert_station_on_segment_sn",
-        "nn_block.source_converter_catalog_ref",
+        "nn_block.source_converter_catalog_binding",
         "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER",
         True,
     ),
     PozycjaBramyApi(
         "insert_station_on_segment_sn",
-        "nn_block.source_protection.device_catalog_ref",
+        "nn_block.source_protection.device_catalog_binding",
         "ZABEZPIECZENIE",
         True,
     ),
     PozycjaBramyApi(
         "insert_station_on_segment_sn",
-        "transformer.transformer_tap_changer_catalog_ref",
+        "transformer.transformer_tap_changer_catalog_binding",
         PRZESTRZEN_ZACZEPY,
         True,
     ),
     PozycjaBramyApi(
         "append_station_on_endpoint", "transformer.transformer_catalog_binding", "TRAFO_SN_NN", True
     ),
-    #: `transformer.catalog_ref` czyta WYŁĄCZNIE `append_station_on_endpoint`
-    #: (`transformer_catalog_ref or catalog_ref`) — `insert_station_on_segment_sn`
-    #: zna sam `transformer_catalog_ref`. Brama jest LUSTREM tej różnicy: dopisanie
-    #: pozycji tam, gdzie operacja jej nie czyta, byłoby fikcją inwentarza.
     PozycjaBramyApi(
-        "append_station_on_endpoint", "sn_fields[].apparatus_catalog_ref", "APARAT_SN", True
+        "append_station_on_endpoint",
+        "sn_fields[].apparatus_catalog_binding",
+        "APARAT_SN",
+        True,
     ),
+    PozycjaBramyApi(
+        "append_station_on_endpoint",
+        "field_apparatus_catalog_binding",
+        "APARAT_SN",
+        True,
+    ),
+    PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.ct", "CT", True),
+    PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.vt", "VT", True),
     PozycjaBramyApi("append_station_on_endpoint", "field_apparatus_catalog_ref", "APARAT_SN", True),
     PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.ct", "CT", True),
     PozycjaBramyApi("append_station_on_endpoint", "sn_fields[].equipment.vt", "VT", True),
@@ -620,19 +639,19 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi(
         "append_station_on_endpoint",
-        "nn_block.source_converter_catalog_ref",
+        "nn_block.source_converter_catalog_binding",
         "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER",
         True,
     ),
     PozycjaBramyApi(
         "append_station_on_endpoint",
-        "nn_block.source_protection.device_catalog_ref",
+        "nn_block.source_protection.device_catalog_binding",
         "ZABEZPIECZENIE",
         True,
     ),
     PozycjaBramyApi(
         "append_station_on_endpoint",
-        "transformer.transformer_tap_changer_catalog_ref",
+        "transformer.transformer_tap_changer_catalog_binding",
         PRZESTRZEN_ZACZEPY,
         True,
     ),
@@ -679,7 +698,9 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_converter_source", "source_field.catalog_binding", "APARAT_NN", True),
     # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany z katalogu TRAFO_SN_NN
     # (ten sam katalog i ten sam materializator co tor DER-SN).
-    PozycjaBramyApi("add_converter_source", "block_transformer_catalog_ref", "TRAFO_SN_NN", True),
+    PozycjaBramyApi(
+        "add_converter_source", "block_transformer_catalog_binding", "TRAFO_SN_NN", True
+    ),
     PozycjaBramyApi(
         "add_converter_source",
         "der_topology.block_transformer.catalog_binding",
@@ -700,7 +721,7 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi(
         "add_converter_source",
-        "battery_catalog_ref",
+        "battery_catalog_binding",
         "",
         False,
         "karta FAB-K (R2): pole OPCJONALNE (pakiet BESS może zostać dobrany później), "
@@ -742,7 +763,16 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
     PozycjaBramyApi("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
     PozycjaBramyApi(
-        "set_der_catalog_bindings", "protection_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True
+        "set_der_catalog_bindings",
+        "protection_catalog_binding",
+        PRZESTRZEN_WIAZANIA_DER,
+        True,
+    ),
+    PozycjaBramyApi(
+        "set_der_catalog_bindings", "ct_catalog_binding", PRZESTRZEN_WIAZANIA_DER, True
+    ),
+    PozycjaBramyApi(
+        "set_der_catalog_bindings", "vt_catalog_binding", PRZESTRZEN_WIAZANIA_DER, True
     ),
     PozycjaBramyApi("set_der_catalog_bindings", "ct_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
     PozycjaBramyApi("set_der_catalog_bindings", "vt_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
@@ -790,19 +820,18 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
 #: tego, że skan obu modułów operacji nie znajduje klucza spoza zbioru).
 API_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
+        # Karta JEDEN-KLUCZ-KATALOGU: jedyny klucz `catalog_ref` czytany Z ŁADUNKU to pole
+        # MODELU aparatu pola `set_bay_equipment.devices[].catalog_ref`; pozostałe to pola
+        # MODELU zapisywane przez operacje (rekord pola SN, zamiar ochrony źródła nN, pakiet
+        # baterii i szyna transformatora dedykowanego w migawce, wiązania DER wytwórcy) —
+        # żaden nie jest kluczem ładunku (strażnik `klucz_katalogu_guard`, reguła 4).
         "catalog_ref",
         "apparatus_catalog_ref",
         "battery_catalog_ref",
-        # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany źródła OZE (TRAFO_SN_NN).
         "block_transformer_catalog_ref",
-        "cable_catalog_ref",
         "ct_catalog_ref",
         "device_catalog_ref",
-        "field_apparatus_catalog_ref",
         "protection_catalog_ref",
-        "source_converter_catalog_ref",
-        "transformer_catalog_ref",
-        "transformer_tap_changer_catalog_ref",
         "vt_catalog_ref",
         # Klucz ODPOWIEDZI (metadane dziedziczenia katalogu przez połówki odcinka),
         # nie kanał wskazania pozycji — operacja go ZAPISUJE, nigdy z niego nie czyta.
@@ -820,10 +849,19 @@ API_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
         "catalog_item_version",
         "catalog_namespace",
         "apparatus_catalog_binding",
+        "battery_catalog_binding",
+        "block_transformer_catalog_binding",
         "cable_catalog_binding",
+        "ct_catalog_binding",
+        "device_catalog_binding",
+        "field_apparatus_catalog_binding",
+        "protection_catalog_binding",
+        "source_converter_catalog_binding",
         "transformer_catalog_binding",
+        "transformer_tap_changer_catalog_binding",
+        "vt_catalog_binding",
         # INTENCJA zapisywana w `meta` specyfikacji pola nN — z tego klucza operacja
-        # nie tworzy elementu (źródło nN powstaje z `source_converter_catalog_ref`).
+        # nie tworzy elementu (źródło nN powstaje z `source_converter_catalog_binding`).
         "catalog_bindings",
         # Znacznik migawki („pole czeka na wskazanie aparatu"), nie kanał wskazania.
         "requires_catalog_binding",
@@ -926,8 +964,8 @@ def _referencje_dodatkowe(
         )
         aparat_gpz = payload.get("gpz_line_field_apparatus")
         if isinstance(aparat_gpz, dict):
-            # LUSTRO `_normalize_gpz_line_field_apparatus`: wiązanie ma pierwszeństwo,
-            # potem `catalog_ref`/`catalog_item_id` na wierzchu bloku.
+            # LUSTRO `_normalize_gpz_line_field_apparatus`: jedyną drogą wskazania aparatu
+            # jest wiązanie bloku (`catalog_binding`).
             _dodaj(
                 "Aparat pól liniowych GPZ",
                 "APARAT_SN",
@@ -939,7 +977,8 @@ def _referencje_dodatkowe(
         _dodaj(
             "Przełącznik zaczepów transformatora",
             PRZESTRZEN_ZACZEPY,
-            payload.get("transformer_tap_changer_catalog_ref"),
+            None,
+            payload.get("transformer_tap_changer_catalog_binding"),
         )
 
     if operation in _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT:
@@ -948,7 +987,8 @@ def _referencje_dodatkowe(
             _dodaj(
                 "Przełącznik zaczepów transformatora stacji",
                 PRZESTRZEN_ZACZEPY,
-                transformer.get("transformer_tap_changer_catalog_ref"),
+                None,
+                transformer.get("transformer_tap_changer_catalog_binding"),
             )
 
     if operation == "add_converter_source":
@@ -966,7 +1006,8 @@ def _referencje_dodatkowe(
             _dodaj(
                 "Transformator dedykowany źródła",
                 "TRAFO_SN_NN",
-                payload.get("block_transformer_catalog_ref"),
+                None,
+                payload.get("block_transformer_catalog_binding"),
             )
         der_topology = payload.get("der_topology")
         if isinstance(der_topology, dict):
@@ -1131,8 +1172,10 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
         _nieznane_referencje_katalogowe,
         _referencja_wiazania_bez_bialych_znakow,
         opis_nieznanych_wiazan,
+        wiazania_der_z_ladunku,
     )
 
+    payload = wiazania_der_z_ladunku(payload)
     # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — ten sam predykat istnienia karty co
     # operacja domenowa, w katalogu MODELU (statyczny + karty projektu): końcówka
     # `domain-ops` woła bramę w kontekście katalogu modelu (`kontekst_katalogu`).
@@ -1311,14 +1354,14 @@ def _validate_station_field_apparatus_bindings(
     if operation not in _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT:
         return None
 
-    wspolny_ref = _tekst_referencji(payload.get("field_apparatus_catalog_ref"))
+    wspolny_ref = pozycja_wiazania(payload, "field_apparatus_catalog_binding")
     sn_fields = payload.get("sn_fields")
     pola = sn_fields if isinstance(sn_fields, list) else []
 
     sprawdzone: set[str] = set()
     for index, pole_sn in enumerate(pola, start=1):
         ref = (
-            _tekst_referencji(pole_sn.get("apparatus_catalog_ref"))
+            pozycja_wiazania(pole_sn, "apparatus_catalog_binding")
             if isinstance(pole_sn, dict)
             else None
         )
@@ -1367,7 +1410,7 @@ def _validate_station_nn_block_bindings(
     technologia = (
         _NN_SOURCE_TECHNOLOGY.get(konfiguracja.strip()) if isinstance(konfiguracja, str) else None
     )
-    converter_ref = _tekst_referencji(nn_block.get("source_converter_catalog_ref"))
+    converter_ref = pozycja_wiazania(nn_block, "source_converter_catalog_binding")
     if technologia is None or converter_ref is None:
         # Operacja domenowa wychodzi wtedy bez utworzenia źródła — nie powstaje
         # ŻADEN element wiązany katalogiem, więc nie ma czego bramkować (dotyczy
@@ -1383,7 +1426,7 @@ def _validate_station_nn_block_bindings(
 
     source_protection = nn_block.get("source_protection")
     if isinstance(source_protection, dict):
-        protection_ref = _tekst_referencji(source_protection.get("device_catalog_ref"))
+        protection_ref = pozycja_wiazania(source_protection, "device_catalog_binding")
         if protection_ref is not None:
             blad, _ = validate_and_materialize_catalog_binding(
                 "add_relay", {"catalog_binding": {"catalog_item_id": protection_ref}}
@@ -1469,6 +1512,22 @@ def _validate_and_materialize_catalog_binding(
                 code=KOD_ZAMIENNIKA_KLUCZA,
                 message_pl=komunikat,
                 errors=[{"code": KOD_ZAMIENNIKA_KLUCZA, "message_pl": komunikat}],
+            ),
+            {},
+        )
+    bledy_wiazan = bledy_wiazan_w_ladunku(operation, payload)
+    if bledy_wiazan:
+        odczyt = bledy_wiazan[0][1]
+        return (
+            CatalogPolicyError(
+                code=str(odczyt.kod_bledu),
+                message_pl=str(odczyt.komunikat_pl),
+                errors=[
+                    {
+                        "code": str(odczyt.kod_bledu),
+                        "message_pl": str(odczyt.komunikat_pl),
+                    }
+                ],
             ),
             {},
         )

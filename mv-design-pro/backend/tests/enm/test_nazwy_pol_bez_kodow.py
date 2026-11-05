@@ -178,7 +178,9 @@ def _pola_stacji(migawka: dict[str, Any], przed: dict[str, Any]) -> list[dict[st
 
 def test_stacja_wstawiana_w_odcinek_nazywa_kazde_pole_po_polsku() -> None:
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     # Stacja wcięta w magistralę: role toru tranzytu i odgałęzienia. Pole pomiarowe w torze
     # tranzytu jest odrzucane regułą pomiaru rozliczeniowego (kod `pomiar_w_torze_tranzytu`)
     # zanim powstanie nazwa — jego nazwę pokrywa test mapy i test stacji dołączanej.
@@ -203,7 +205,7 @@ def test_stacja_dolaczana_na_koncu_nazywa_pola_po_polsku() -> None:
             "endpoint_bus_ref": terminal_bus_ref,
             "station": {"name": "Stacja końcowa", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         },
     )
     assert wynik.get("error") is None, wynik.get("error")
@@ -233,7 +235,9 @@ def test_komunikat_awarii_wyposazenia_pola_nazywa_pole_nie_identyfikator() -> No
     """Awaria dodania wyposażenia pola (przekładnik z nieistniejącej pozycji katalogu) —
     komunikat nazywa pole jego nazwą z modelu, bez surowego identyfikatora pola."""
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     payload["sn_fields"] = [
         {
             "field_role": "LINIA_IN",

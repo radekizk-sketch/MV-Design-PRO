@@ -65,9 +65,9 @@ class TestWiazaniaTrafiajaDoModelu:
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
-                "protection_catalog_ref": "REF-OC-200",
-                "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-                "vt_catalog_ref": "vt_10kv_100v_05_abb",
+                "protection_catalog_binding": {"catalog_item_id": "REF-OC-200"},
+                "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+                "vt_catalog_binding": {"catalog_item_id": "vt_10kv_100v_05_abb"},
                 # Karta FAB-K: `dynamic_model_ref` MA teraz katalog (der_dynamic) —
                 # musi byc identyfikatorem realnym, nie dowolnym lancuchem.
                 "dynamic_model_ref": "default_pv_gfl",
@@ -114,7 +114,11 @@ class TestWiazaniaTrafiajaDoModelu:
         enm = _enm_z_wytworca()
         enm["generators"][0]["ref_id"] = "inny_ref"
         wynik = _wykonaj(
-            {"generator_ref": ID_WYTWORCY, "ct_catalog_ref": "ct_150_1_0_5_10va_abb"}, enm
+            {
+                "generator_ref": ID_WYTWORCY,
+                "ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"},
+            },
+            enm,
         )
 
         assert wynik.get("error") is None
@@ -125,7 +129,12 @@ class TestZeroFabrykacji:
     def test_klucz_nieobecny_w_payloadzie_nie_dopisuje_niczego(self) -> None:
         # Kontrola kluczowa dla determinizmu: aktualizacja JEDNEGO wiązania nie może
         # wpisać `null` w pozostałe, bo puste pole udające wartość jest gorsze niż brak.
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"},
+            }
+        )
 
         params = _params(wynik)
         assert params["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
@@ -139,8 +148,10 @@ class TestZeroFabrykacji:
 
     def test_jawny_null_USUWA_wiazanie_zamiast_zostawiac_puste_pole(self) -> None:
         enm = _enm_z_wytworca()
-        enm["generators"][0]["materialized_params"]["ct_catalog_ref"] = "ct_150_1_0_5_10va_abb"
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": None}, enm)
+        enm["generators"][0]["materialized_params"]["ct_catalog_binding"] = {
+            "catalog_item_id": "ct_150_1_0_5_10va_abb"
+        }
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_binding": None}, enm)
 
         assert wynik.get("error") is None
         # Reguła gotowości musi znów widzieć BRAK DANEJ, nie pustą wartość.
@@ -164,11 +175,16 @@ class TestZeroFabrykacji:
 
 class TestGranice:
     def test_brak_identyfikatora_wytworcy(self) -> None:
-        wynik = _wykonaj({"ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
+        wynik = _wykonaj({"ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"}})
         assert wynik.get("error_code") == "der_bindings.generator_missing"
 
     def test_wytworca_nieobecny_w_modelu_jest_bledem_a_nie_cichym_zapisem(self) -> None:
-        wynik = _wykonaj({"generator_ref": "gen_nie_ma", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_nie_ma",
+                "ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"},
+            }
+        )
         assert wynik.get("error_code") == "der_bindings.generator_not_found"
 
     def test_operacja_jest_na_kanonicznej_bialej_liscie(self) -> None:
@@ -183,7 +199,7 @@ class TestGranice:
     def test_determinizm_dwa_identyczne_wywolania_daja_ten_sam_model(self) -> None:
         payload = {
             "generator_ref": "gen_pv_1",
-            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
             "nc_rfg_profile_ref": "pse",
         }
         pierwszy = _wykonaj(dict(payload))
@@ -201,7 +217,10 @@ class TestWiazanieMusiIstniecWKatalogu:
         # dowolny lancuch, wiec literowka stawala sie dana projektowa nieodrozninalna
         # od „jeszcze nie wybrano".
         wynik = _wykonaj(
-            {"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_TYP_KTORY_NIE_ISTNIEJE"}
+            {
+                "generator_ref": "gen_pv_1",
+                "ct_catalog_binding": {"catalog_item_id": "ct_TYP_KTORY_NIE_ISTNIEJE"},
+            }
         )
 
         assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
@@ -210,7 +229,12 @@ class TestWiazanieMusiIstniecWKatalogu:
         assert "ct_TYP_KTORY_NIE_ISTNIEJE" not in (wynik.get("error") or "")
 
     def test_realny_typ_katalogu_przechodzi(self) -> None:
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"})
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+            }
+        )
 
         assert wynik.get("error") is None
         assert _params(wynik)["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
@@ -219,8 +243,10 @@ class TestWiazanieMusiIstniecWKatalogu:
         # Kontrola granicy: `null` to usuniecie wiazania, nie wskazanie typu — nie wolno
         # go odrzucic jako „nieznanej referencji".
         enm = _enm_z_wytworca()
-        enm["generators"][0]["materialized_params"]["ct_catalog_ref"] = "ct_200_5_5p10_10va_abb"
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": None}, enm)
+        enm["generators"][0]["materialized_params"]["ct_catalog_binding"] = {
+            "catalog_item_id": "ct_200_5_5p10_10va_abb"
+        }
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_binding": None}, enm)
 
         assert wynik.get("error") is None
         assert "ct_catalog_ref" not in _params(wynik)
@@ -384,10 +410,10 @@ def test_der_binding_profile_keys_pin_parytet_fe_be() -> None:
 #: osobne w `_nieznane_referencje_katalogowe`), więc wartość musi być realną
 #: pozycją, nie dowolnym łańcuchem. `bess_operation_mode_refs` jest LISTĄ, nie
 #: skalarem — jedyne pole tego kształtu w obu zbiorach kluczy.
-_WARTOSC_DLA_KLUCZA: dict[str, str | list[str]] = {
-    "protection_catalog_ref": "REF-OC-200",
-    "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-    "vt_catalog_ref": "vt_10kv_100v_05_abb",
+_WARTOSC_DLA_KLUCZA: dict[str, object] = {
+    "protection_catalog_binding": {"catalog_item_id": "REF-OC-200"},
+    "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+    "vt_catalog_binding": {"catalog_item_id": "vt_10kv_100v_05_abb"},
     "dynamic_model_ref": "default_pv_gfl",
     "nc_rfg_profile_ref": "pse",
     "lvrt_curve_ref": "lvrt_pse_b",
@@ -399,18 +425,32 @@ _WARTOSC_DLA_KLUCZA: dict[str, str | list[str]] = {
 
 def _wartosc_wynikowa(wynik: dict, klucz: str) -> object:
     """Odczyt wartości klucza z odpowiedzi — profile idą do podsłownika ``profiles``."""
-    from enm.domain_operations_v2 import DER_PROFILE_KEYS
+    from enm.domain_operations_v2 import DER_PROFILE_KEYS, DER_WIAZANIA_LADUNKU
 
     params = _params(wynik)
     if klucz in DER_PROFILE_KEYS:
         return params.get("profiles", {}).get(klucz)
+    if klucz in DER_WIAZANIA_LADUNKU:
+        # Wiązanie roli w ładunku → pozycja w polu MODELU wytwórcy (`<rola>_catalog_ref`).
+        pozycja = params.get(DER_WIAZANIA_LADUNKU[klucz])
+        return None if pozycja is None else {"catalog_item_id": pozycja}
     return params.get(klucz)
 
 
 def _wszystkie_klucze() -> tuple[str, ...]:
-    from enm.domain_operations_v2 import DER_BINDING_KEYS, DER_PROFILE_KEYS
+    from enm.domain_operations_v2 import (
+        DER_BINDING_KEYS,
+        DER_PROFILE_KEYS,
+        DER_WIAZANIA_LADUNKU,
+    )
 
-    return DER_BINDING_KEYS + DER_PROFILE_KEYS
+    # Klucze ŁADUNKU: wiązania ról (`<rola>_catalog_binding`) i pozostałe referencje DER.
+    modelowe = set(DER_WIAZANIA_LADUNKU.values())
+    return (
+        tuple(DER_WIAZANIA_LADUNKU)
+        + tuple(k for k in DER_BINDING_KEYS if k not in modelowe)
+        + DER_PROFILE_KEYS
+    )
 
 
 @pytest.mark.parametrize("klucz", _wszystkie_klucze())
@@ -435,13 +475,19 @@ def test_round_trip_wyczyszczenie_klucza(klucz: str) -> None:
     gotowości musi znów widzieć BRAK danej, nie pustą wartość) — nie tylko
     ``ct_catalog_ref``/``nc_rfg_profile_ref`` z dwóch istniejących przykładów.
     """
-    from enm.domain_operations_v2 import DER_PROFILE_KEYS
+    from enm.domain_operations_v2 import DER_PROFILE_KEYS, DER_WIAZANIA_LADUNKU
 
     enm = _enm_z_wytworca()
     if klucz in DER_PROFILE_KEYS:
         enm["generators"][0]["materialized_params"]["profiles"] = {
             klucz: _WARTOSC_DLA_KLUCZA[klucz]
         }
+    elif klucz in DER_WIAZANIA_LADUNKU:
+        enm["generators"][0]["materialized_params"][
+            DER_WIAZANIA_LADUNKU[klucz]
+        ] = _WARTOSC_DLA_KLUCZA[klucz][
+            "catalog_item_id"
+        ]  # type: ignore[index]
     else:
         enm["generators"][0]["materialized_params"][klucz] = _WARTOSC_DLA_KLUCZA[klucz]
 

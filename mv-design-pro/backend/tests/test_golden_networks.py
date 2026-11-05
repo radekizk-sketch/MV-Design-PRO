@@ -86,7 +86,9 @@ class TestGN01SNProsta:
                 {
                     "segment_id": last_branch_ref,
                     # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                    "field_apparatus_catalog_binding": {
+                        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a"
+                    },
                     "insert_at": {"mode": "RATIO", "value": 0.5},
                     "station": {"station_type": "B", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                     "sn_fields": [
@@ -162,7 +164,9 @@ class TestGN02SNODG:
                 {
                     "segment_id": branches[-1]["ref_id"],
                     # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                    "field_apparatus_catalog_binding": {
+                        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a"
+                    },
                     "insert_at": {"mode": "RATIO", "value": 0.5},
                     "station": {"station_type": "C", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                     "sn_fields": [

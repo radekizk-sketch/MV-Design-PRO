@@ -135,8 +135,11 @@ def zbuduj_etapy() -> list[Etap]:
             "append_station_on_endpoint",
             {
                 "endpoint_bus_ref": nowy_odcinek["to_bus_ref"],
-                "station": {"name": f"Stacja {numer + 1:02d}", "station_type": "terminal"},
-                "field_apparatus_catalog_ref": APARAT,
+                "station": {
+                    "name": f"Stacja {numer + 1:02d}",
+                    "station_type": "terminal",
+                },
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                 "nn_voltage_kv": 0.4,
                 "sn_fields": list(_ROLE_POL_STACJI),

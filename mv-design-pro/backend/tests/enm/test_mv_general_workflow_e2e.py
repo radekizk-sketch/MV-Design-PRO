@@ -77,7 +77,7 @@ def op(snap: dict, name: str, payload: dict) -> dict:
 
 _STATION_CATALOG_PAYLOAD = {
     # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+    "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
     "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
     "station": {"nn_voltage_kv": 0.4},
 }
@@ -1037,7 +1037,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             {
                 "segment_id": seg_id,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "name": "Stacja PV za transformatorem",
                 "station_type": "terminal",
                 "station": {"nn_voltage_kv": 0.4},
@@ -1046,7 +1046,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 },
                 "nn_block": {
                     "nn_configuration": "PV_INVERTER",
-                    "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
+                    "source_converter_catalog_binding": {"catalog_item_id": CATALOG_FALOWNIK_PV_NN},
                     "source_converter_name": "Falownik PV katalogowy",
                     "source_converter_kind": "PV",
                     "outgoing_feeders_nn_count": 1,
@@ -1061,7 +1061,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                                 }
                             },
                             "protection": {
-                                "device_catalog_ref": "EM_ETANGO_400_V0",
+                                "device_catalog_binding": {"catalog_item_id": "EM_ETANGO_400_V0"},
                                 "device_label": "Elektrometal e2TANGO-400",
                                 "protected_object": "falownik PV i kabel nN do PCC",
                                 "analysis_scope": "nadpradowe i koordynacja z wyłącznikiem głównym nN",
@@ -1069,7 +1069,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                         },
                     ],
                     "source_protection": {
-                        "device_catalog_ref": "EM_ETANGO_400_V0",
+                        "device_catalog_binding": {"catalog_item_id": "EM_ETANGO_400_V0"},
                         "device_label": "Elektrometal e2TANGO-400",
                         "protected_object": "falownik PV i kabel nN do PCC",
                         "analysis_scope": "nadpradowe i koordynacja z wyłącznikiem głównym nN",

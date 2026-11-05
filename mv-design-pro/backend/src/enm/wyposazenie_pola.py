@@ -35,8 +35,8 @@ CZTERY TRYBY (``mode``):
   przez TEN SAM resolver, co budowa pola (``pole_katalogowe.aparaty_pola_z_referencji``):
   szablon kanoniczny daje propozycję, katalogowe pole rodziny — aparaty z BOM-u.
 * ``wyczysc`` — usunięcie wyposażenia (stan ``BRAK_DANYCH``).
-* ``wkladka`` — wkładka bezpiecznikowa SN (``catalog_ref`` z katalogu wkładek albo ``None``
-  = usunięcie wskazania) na KAŻDYM aparacie ``FUSE`` pola, bez przebudowy listy aparatów.
+* ``wkladka`` — wkładka bezpiecznikowa SN (wiązanie ``catalog_binding`` z katalogu wkładek
+  albo ``None`` = usunięcie wskazania; zapis w polu modelu aparatu ``catalog_ref``) na KAŻDYM aparacie ``FUSE`` pola, bez przebudowy listy aparatów.
   Jedyny nośnik wyboru wkładki w konfiguratorze stacji (karta JEDNA-SCIEZKA-EDYCJI
   skasowała mapę wkładek w zapisanej konfiguracji stacji obok modelu). Pole bez aparatu
   ``FUSE`` = odmowa ``bay_equipment.fuse_missing``.
@@ -78,6 +78,7 @@ from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
 from .topology import TYPY_LACZNIKOW_ENM
+from .wiazanie_katalogowe import pozycja_wiazania
 
 StanDanychAparatu = Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"]
 TrybWyposazenia = Literal["katalog", "szablon", "wyczysc", "wkladka"]
@@ -512,7 +513,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
 
     zmiany: dict[str, Any] = {}
     if tryb == "wkladka":
-        return _ustaw_wkladke(nowy, rekord, payload.get("catalog_ref"))
+        return _ustaw_wkladke(nowy, rekord, pozycja_wiazania(payload, "catalog_binding"))
     if tryb == "wyczysc":
         aparaty: list[dict[str, Any]] = []
     elif tryb == "szablon":

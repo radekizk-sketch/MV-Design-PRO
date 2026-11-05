@@ -60,7 +60,7 @@ def _siec_ze_stacja() -> dict:
         snapshot,
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": APARAT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
             "segment_id": segment["ref_id"],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -68,7 +68,7 @@ def _siec_ze_stacja() -> dict:
             "sn_fields": ["IN", "OUT"],
             "transformer": {
                 "create": True,
-                "catalog_binding": {
+                "transformer_catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": TRAFO,
                     "catalog_item_version": "2024.1",

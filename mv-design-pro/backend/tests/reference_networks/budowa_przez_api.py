@@ -175,7 +175,7 @@ class KlientBudowy:
             "insert_station_on_segment_sn",
             {
                 "segment_id": segment_ref,
-                "field_apparatus_catalog_ref": APARAT_POLA_SN,
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA_SN},
                 "insert_at": {"mode": "RATIO", "value": ratio},
                 "station": {
                     "station_type": "B",

@@ -47,7 +47,7 @@ def test_insert_station_dry_run_param_accepted() -> None:
         {
             "segment_id": "non-existent",
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "dry_run": True,
             "station": {"name": "X"},
         },
@@ -65,7 +65,7 @@ def test_insert_station_dry_run_default_false() -> None:
         {
             "segment_id": "non-existent",
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "station": {"name": "X"},
         },
     )
@@ -83,7 +83,7 @@ def test_insert_station_dry_run_with_invalid_segment() -> None:
         {
             "segment_id": "missing-segment",
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "dry_run": True,
             "station": {"name": "X"},
         },

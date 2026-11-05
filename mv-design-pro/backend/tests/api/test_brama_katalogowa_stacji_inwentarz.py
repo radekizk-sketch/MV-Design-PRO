@@ -5,15 +5,15 @@ ogłosiła „bramę katalogową stacji", ale `extract_catalog_binding` dla oper
 stacyjnych czytał WYŁĄCZNIE referencję transformatora. Elementy powstające w TEJ
 SAMEJ funkcji domenowej były poza bramą:
 
-* źródło OZE nN (`nn_block.source_converter_catalog_ref`) — generator dostawał
+* źródło OZE nN (`nn_block.source_converter_catalog_binding`) — generator dostawał
   `parameter_source: CATALOG` / `source_mode: KATALOG` przy tabliczce sklejonej
   z payloadu, a jego `p_mw` wchodziło WPROST do bilansu rozpływu (zmierzone:
   9,9 MW generacji na szynie nN 0,4 kV za transformatorem 630 kVA);
-* aparat pola SN (`sn_fields[].apparatus_catalog_ref` /
-  `field_apparatus_catalog_ref`) — model zapisywał jako FAKT zdanie „aparat
+* aparat pola SN (`sn_fields[].apparatus_catalog_binding` /
+  `field_apparatus_catalog_binding`) — model zapisywał jako FAKT zdanie „aparat
   z pozycji katalogu APARAT_SN: X" dla pozycji, której w katalogu NIE MA;
 * urządzenie zabezpieczeniowe źródła nN
-  (`nn_block.source_protection.device_catalog_ref`) — martwa referencja
+  (`nn_block.source_protection.device_catalog_binding`) — martwa referencja
   w `protection_assignments`.
 
 Pilnowane własności:
@@ -122,7 +122,7 @@ def _blok_stacji() -> dict[str, Any]:
         "sn_fields": [
             {
                 "field_role": "LINIA_IN",
-                "apparatus_catalog_ref": REF_APARAT_SN,
+                "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
                 "equipment": {
                     "ct": {
                         "catalog_binding": {"catalog_item_id": REF_CT},
@@ -140,23 +140,26 @@ def _blok_stacji() -> dict[str, Any]:
                     },
                 },
             },
-            {"field_role": "TRANSFORMATOROWE", "apparatus_catalog_ref": REF_APARAT_SN},
+            {
+                "field_role": "TRANSFORMATOROWE",
+                "apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
+            },
         ],
-        "field_apparatus_catalog_ref": REF_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
         },
         "nn_block": {
             "nn_configuration": "PV_INVERTER",
-            "source_converter_catalog_ref": REF_FALOWNIK_PV,
+            "source_converter_catalog_binding": {"catalog_item_id": REF_FALOWNIK_PV},
             "source_converter_name": "Falownik PV stacji",
             "source_converter_kind": "PV",
             # Tabliczka w payloadzie CELOWO sprzeczna z katalogiem (0,5 MW / 0,55 MVA):
             # po naprawie wygrywa katalog, payload nie może wstrzyknąć mocy do rozpływu.
             "outgoing_feeders_nn_count": 1,
             "source_protection": {
-                "device_catalog_ref": REF_ZABEZPIECZENIE_ZRODLA,
+                "device_catalog_binding": {"catalog_item_id": REF_ZABEZPIECZENIE_ZRODLA},
                 "device_label": "Elektrometal e2TANGO-400",
                 "protected_object": "falownik PV i kabel nN",
                 "analysis_scope": "nadprądowe",
@@ -201,69 +204,67 @@ class PozycjaInwentarza:
     operacje: tuple[str, ...] = OPERACJE_STACYJNE
 
 
-def _zepsuj_transformer_catalog_ref(payload: dict[str, Any]) -> None:
+def _zepsuj_transformer(payload: dict[str, Any]) -> None:
     payload["transformer"]["transformer_catalog_binding"] = {
         "catalog_item_id": REF_TRAFO + LITEROWKA
     }
 
 
-def _zepsuj_transformer_catalog_ref_alias(payload: dict[str, Any]) -> None:
-    # Wariant `catalog_ref` czyta WYŁĄCZNIE `append_station_on_endpoint`
-    # (`insert_station_on_segment_sn` wymaga `transformer_catalog_ref`) — brama
-    # jest lustrem tej asymetrii, więc pozycja obowiązuje tylko w torze append.
-    payload["transformer"].pop("transformer_catalog_ref", None)
-    payload["transformer"]["catalog_ref"] = REF_TRAFO + LITEROWKA
-
-
 def _zepsuj_aparat_pola(payload: dict[str, Any]) -> None:
     # Referencja POLA wygrywa nad wspólną — wspólna zostaje poprawna, żeby test
     # dowodził bramkowania właśnie referencji per pole.
-    payload["sn_fields"][0]["apparatus_catalog_ref"] = REF_APARAT_SN + LITEROWKA
+    payload["sn_fields"][0]["apparatus_catalog_binding"] = {
+        "catalog_item_id": REF_APARAT_SN + LITEROWKA
+    }
 
 
 def _zepsuj_aparat_wspolny(payload: dict[str, Any]) -> None:
     for pole in payload["sn_fields"]:
-        pole.pop("apparatus_catalog_ref", None)
-    payload["field_apparatus_catalog_ref"] = REF_APARAT_SN + LITEROWKA
+        pole.pop("apparatus_catalog_binding", None)
+    payload["field_apparatus_catalog_binding"] = {"catalog_item_id": REF_APARAT_SN + LITEROWKA}
 
 
 def _zepsuj_ct(payload: dict[str, Any]) -> None:
-    payload["sn_fields"][0]["equipment"]["ct"]["catalog_ref"] = REF_CT + LITEROWKA
+    payload["sn_fields"][0]["equipment"]["ct"]["catalog_binding"] = {
+        "catalog_item_id": REF_CT + LITEROWKA
+    }
 
 
 def _zepsuj_vt(payload: dict[str, Any]) -> None:
-    payload["sn_fields"][0]["equipment"]["vt"]["catalog_ref"] = REF_VT + LITEROWKA
+    payload["sn_fields"][0]["equipment"]["vt"]["catalog_binding"] = {
+        "catalog_item_id": REF_VT + LITEROWKA
+    }
 
 
 def _zepsuj_przekaznik(payload: dict[str, Any]) -> None:
-    payload["sn_fields"][0]["equipment"]["relay"]["catalog_ref"] = REF_PRZEKAZNIK + LITEROWKA
+    payload["sn_fields"][0]["equipment"]["relay"]["catalog_binding"] = {
+        "catalog_item_id": REF_PRZEKAZNIK + LITEROWKA
+    }
 
 
 def _zepsuj_falownik(payload: dict[str, Any]) -> None:
-    payload["nn_block"]["source_converter_catalog_ref"] = REF_FALOWNIK_PV + LITEROWKA
+    payload["nn_block"]["source_converter_catalog_binding"] = {
+        "catalog_item_id": REF_FALOWNIK_PV + LITEROWKA
+    }
 
 
 def _zepsuj_zabezpieczenie_zrodla(payload: dict[str, Any]) -> None:
-    payload["nn_block"]["source_protection"]["device_catalog_ref"] = (
-        REF_ZABEZPIECZENIE_ZRODLA + LITEROWKA
-    )
+    payload["nn_block"]["source_protection"]["device_catalog_binding"] = {
+        "catalog_item_id": REF_ZABEZPIECZENIE_ZRODLA + LITEROWKA
+    }
 
 
 INIEKCJE: tuple[PozycjaInwentarza, ...] = (
-    PozycjaInwentarza("transformer.transformer_catalog_ref", _zepsuj_transformer_catalog_ref),
-    PozycjaInwentarza(
-        "transformer.catalog_ref",
-        _zepsuj_transformer_catalog_ref_alias,
-        ("append_station_on_endpoint",),
-    ),
-    PozycjaInwentarza("sn_fields[].apparatus_catalog_ref", _zepsuj_aparat_pola),
-    PozycjaInwentarza("field_apparatus_catalog_ref", _zepsuj_aparat_wspolny),
+    PozycjaInwentarza("transformer.transformer_catalog_binding", _zepsuj_transformer),
+    PozycjaInwentarza("sn_fields[].apparatus_catalog_binding", _zepsuj_aparat_pola),
+    PozycjaInwentarza("field_apparatus_catalog_binding", _zepsuj_aparat_wspolny),
     PozycjaInwentarza("sn_fields[].equipment.ct", _zepsuj_ct),
     PozycjaInwentarza("sn_fields[].equipment.vt", _zepsuj_vt),
     PozycjaInwentarza("sn_fields[].equipment.relay", _zepsuj_przekaznik),
-    PozycjaInwentarza("nn_block.source_converter_catalog_ref", _zepsuj_falownik),
+    PozycjaInwentarza("nn_block.source_converter_catalog_binding", _zepsuj_falownik),
     PozycjaInwentarza(
-        "nn_block.source_protection.device_catalog_ref", _zepsuj_zabezpieczenie_zrodla
+        "nn_block.source_protection.device_catalog_binding",
+        _zepsuj_zabezpieczenie_zrodla,
     ),
 )
 
@@ -359,12 +360,14 @@ def test_operacje_stacyjne_nie_czytaja_referencji_spoza_inwentarza() -> None:
     wiazania: set[str] = set()
     for wezel in wezly:
         for potomek in ast.walk(wezel):
-            if isinstance(potomek, ast.Constant) and isinstance(potomek.value, str):
+            if (
+                isinstance(potomek, ast.Constant)
+                and isinstance(potomek.value, str)
+                and not any(znak.isspace() for znak in potomek.value)
+            ):
                 if potomek.value.endswith("catalog_ref"):
                     referencje.add(potomek.value)
-                elif potomek.value.startswith("catalog_binding") or potomek.value in {
-                    "catalog_item_id"
-                }:
+                elif "catalog_binding" in potomek.value or potomek.value in {"catalog_item_id"}:
                     wiazania.add(potomek.value)
 
     # Wiązanie katalogowe to DRUGA droga wskazania pozycji — bez tej połowy skanu
@@ -382,7 +385,8 @@ def test_operacje_stacyjne_nie_czytaja_referencji_spoza_inwentarza() -> None:
         "STATION_CATALOG_REF_INVENTORY i obejmij bramą."
     )
     # Kontrola żywotności skanu: inwentarz nie może być martwą literą.
-    assert "source_converter_catalog_ref" in referencje
+    assert "source_converter_catalog_binding" in wiazania
+    assert "apparatus_catalog_binding" in wiazania
     assert "apparatus_catalog_ref" in referencje
 
 
@@ -596,7 +600,7 @@ def test_kazda_technologia_zrodla_nn_materializuje_sie_z_katalogu(
         "append_station_on_endpoint", endpoint_bus_ref=endpoint_bus_ref, segment_ref=""
     )
     payload["nn_block"]["nn_configuration"] = konfiguracja
-    payload["nn_block"]["source_converter_catalog_ref"] = ref_katalogu
+    payload["nn_block"]["source_converter_catalog_binding"] = {"catalog_item_id": ref_katalogu}
     payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": ref_transformatora}
 
     blad, _ = validate_and_materialize_catalog_binding("append_station_on_endpoint", payload)
@@ -645,8 +649,8 @@ def test_aparat_pola_sn_ma_tabliczke_z_katalogu(operacja: str) -> None:
 def test_aparat_wskazany_na_polu_dociera_do_stacji_na_koncu_ciagu() -> None:
     """`append_station_on_endpoint` czyta aparat WSKAZANY NA POLU (nie tylko wspólny).
 
-    Kreator stacji ui2 wysyła `sn_fields[].apparatus_catalog_ref` i NIE wysyła
-    wspólnego `field_apparatus_catalog_ref` — przed naprawą specyfikacja pola
+    Kreator stacji ui2 wysyła `sn_fields[].apparatus_catalog_binding` i NIE wysyła
+    wspólnego `field_apparatus_catalog_binding` — przed naprawą specyfikacja pola
     gubiła ten klucz i produkcyjna ścieżka „stacja na końcu ciągu" kończyła się
     błędem „pole bez wskazanego aparatu".
     """
@@ -656,7 +660,7 @@ def test_aparat_wskazany_na_polu_dociera_do_stacji_na_koncu_ciagu() -> None:
         endpoint_bus_ref=endpoint_bus_ref,
         segment_ref="",
     )
-    payload.pop("field_apparatus_catalog_ref")
+    payload.pop("field_apparatus_catalog_binding")
 
     wynik = execute_domain_operation(copy.deepcopy(snapshot), "append_station_on_endpoint", payload)
 
@@ -686,7 +690,9 @@ def test_stacja_bez_zrodla_nn_nie_wymaga_pozycji_falownika() -> None:
     payload["nn_block"] = {
         "nn_configuration": "LOAD_NN",
         "outgoing_feeders_nn_count": 1,
-        "source_protection": {"device_catalog_ref": REF_ZABEZPIECZENIE_ZRODLA + LITEROWKA},
+        "source_protection": {
+            "device_catalog_binding": {"catalog_item_id": REF_ZABEZPIECZENIE_ZRODLA + LITEROWKA}
+        },
     }
 
     blad, _ = validate_and_materialize_catalog_binding("append_station_on_endpoint", payload)

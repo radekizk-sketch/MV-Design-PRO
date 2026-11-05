@@ -429,12 +429,16 @@ class TestHarnessDaneScen:
         )
 
         for ref in protection_refy:
-            nieznane = _nieznane_referencje_katalogowe({"protection_catalog_ref": ref})
+            nieznane = _nieznane_referencje_katalogowe(
+                {"protection_catalog_binding": {"catalog_item_id": ref}}
+            )
             assert (
                 not nieznane
             ), f"protection_catalog_ref='{ref}' nieznany walidatorowi domeny: {nieznane}"
         for ref in ct_refy:
-            nieznane = _nieznane_referencje_katalogowe({"ct_catalog_ref": ref})
+            nieznane = _nieznane_referencje_katalogowe(
+                {"ct_catalog_binding": {"catalog_item_id": ref}}
+            )
             assert not nieznane, f"ct_catalog_ref='{ref}' nieznany walidatorowi domeny: {nieznane}"
         for ref in dynamic_refy:
             nieznane = _nieznane_referencje_katalogowe({"dynamic_model_ref": ref})

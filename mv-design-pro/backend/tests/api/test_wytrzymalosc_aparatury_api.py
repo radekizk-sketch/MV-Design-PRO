@@ -133,7 +133,7 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
         case_id,
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": APARAT_POLA,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA},
             "segment_id": segmenty[-1],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -150,7 +150,7 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
             "sn_fields": [pole_in, "OUT"],
             "transformer": {
                 "create": True,
-                "catalog_binding": {
+                "transformer_catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": TRAFO,
                     "catalog_item_version": "2024.1",

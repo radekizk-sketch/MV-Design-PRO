@@ -225,7 +225,7 @@ def migawka_z_operacji(klient: TestClient) -> tuple[str, dict[str, Any]]:
     budowa.operacja(
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": _APARAT_POLA,
+            "field_apparatus_catalog_binding": {"catalog_item_id": _APARAT_POLA},
             "segment_id": segmenty[-1],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -234,7 +234,7 @@ def migawka_z_operacji(klient: TestClient) -> tuple[str, dict[str, Any]]:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "catalog_binding": wiazanie("TRAFO_SN_NN", _TRANSFORMATOR),
+                "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", _TRANSFORMATOR),
             },
         },
     )

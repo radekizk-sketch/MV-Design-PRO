@@ -84,7 +84,7 @@ def _tor_stacyjny(technologia: str) -> dict[str, Any]:
         str(snapshot["branches"][-1]["to_bus_ref"]),
         h._blok_nn(
             nn_configuration=KONFIGURACJA_STACYJNA[technologia],
-            source_converter_catalog_ref=typ,
+            source_converter_catalog_binding={"catalog_item_id": typ},
             source_converter_kind=technologia,
         ),
     )
@@ -97,7 +97,7 @@ def _tor_der_sn(technologia: str) -> dict[str, Any]:
     typ, _, napiecie, _, trafo_blokowe = KARTY[technologia]
     snapshot = h._siec_ze_stacja()
     payload = copy.deepcopy(h._payload_konwerter_der_sn(snapshot))
-    payload["catalog_ref"] = typ
+    payload["catalog_binding"] = {"catalog_item_id": typ}
     payload["source_technology"] = technologia
     payload.pop("power_setpoint_mw", None)
     topologia = payload["der_topology"]

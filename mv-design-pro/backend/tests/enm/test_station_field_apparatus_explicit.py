@@ -126,9 +126,15 @@ def test_insert_station_without_apparatus_ref_points_at_first_incomplete_field()
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(segment_ref)
     payload["sn_fields"] = [
-        {"field_role": "LINIA_IN", "apparatus_catalog_ref": APARAT_SN},
+        {
+            "field_role": "LINIA_IN",
+            "apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
+        },
         {"field_role": "LINIA_OUT"},
-        {"field_role": "TRANSFORMATOROWE", "apparatus_catalog_ref": APARAT_SN},
+        {
+            "field_role": "TRANSFORMATOROWE",
+            "apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
+        },
     ]
     response = execute_domain_operation(
         copy.deepcopy(snap), "insert_station_on_segment_sn", payload
@@ -162,9 +168,14 @@ def test_append_station_without_apparatus_ref_returns_validation_error() -> None
 
 def test_insert_station_uses_explicit_apparatus_ref_per_field() -> None:
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     payload["sn_fields"] = [
-        {"field_role": "LINIA_IN", "apparatus_catalog_ref": APARAT_SN_ALT},
+        {
+            "field_role": "LINIA_IN",
+            "apparatus_catalog_binding": {"catalog_item_id": APARAT_SN_ALT},
+        },
         {"field_role": "LINIA_OUT"},
         {"field_role": "TRANSFORMATOROWE"},
     ]
@@ -200,7 +211,7 @@ def test_append_station_uses_explicit_apparatus_ref() -> None:
             "endpoint_bus_ref": terminal_bus_ref,
             "station": {"name": "Stacja końcowa", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
-            "field_apparatus_catalog_ref": APARAT_SN_ALT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN_ALT},
         },
     )
     assert result.get("error") is None, result.get("error")
@@ -218,7 +229,9 @@ def test_append_station_uses_explicit_apparatus_ref() -> None:
 
 def test_insert_station_stores_designation_and_construction_type() -> None:
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     payload["station"]["designation"] = "ST-15/0,4-01"
     payload["station"]["construction_type"] = "kontenerowa"
     result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
@@ -246,7 +259,7 @@ def test_append_station_stores_designation_and_construction_type() -> None:
                 "construction_type": "slupowa",
             },
             "nn_voltage_kv": 0.4,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         },
     )
     assert result.get("error") is None, result.get("error")
@@ -258,7 +271,9 @@ def test_append_station_stores_designation_and_construction_type() -> None:
 
 def test_station_rejects_unknown_construction_type() -> None:
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     payload["station"]["construction_type"] = "podziemna"
     response = execute_domain_operation(
         copy.deepcopy(snap), "insert_station_on_segment_sn", payload
@@ -270,7 +285,9 @@ def test_station_rejects_unknown_construction_type() -> None:
 def test_station_without_identity_fields_keeps_record_unchanged() -> None:
     """Addytywność: bez oznaczenia/typu konstrukcji rekord nie zyskuje pól."""
     snap, segment_ref, _ = _build_trunk_with_segment()
-    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload = _insert_payload(
+        segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+    )
     result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
     assert result.get("error") is None, result.get("error")
     station = next(

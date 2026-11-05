@@ -15,7 +15,10 @@ KONTRAKT operacji (``domain.canonical_operations``) nie ogłaszał drugiej drogi
 2. kształty zagnieżdżone (``KSZTALTY_ZAGNIEZDZONE``) — ta sama reguła na każdym poziomie,
    a kształt wiązania (``_WIAZANIE_KATALOGOWE``) nie zawiera zamienników pól wiązania
    (``ZAMIENNIKI_W_WIAZANIU``);
-3. każdy klucz wiązania w kształcie ma pod sobą kształt wiązania katalogowego.
+3. każdy klucz wiązania w kształcie ma pod sobą kształt wiązania katalogowego;
+4. żaden węzeł kontraktu nie niesie klucza ``catalog_ref`` ani ``<rola>_catalog_ref``
+   (decyzja architekta: klucze ról przechodzą na ``<rola>_catalog_binding``) — poza polami
+   MODELU wymienionymi jawnie w :data:`POLA_MODELU_W_LADUNKU`.
 
 Pola MODELU niesione przez ładunek (``set_bay_equipment.devices[].catalog_ref`` — pole
 urządzenia pola w modelu, nie wskazanie pozycji obok wiązania) reguła 1–2 przepuszcza,
@@ -31,6 +34,26 @@ from collections.abc import Mapping
 from pathlib import Path
 
 BACKEND_SRC = Path(__file__).resolve().parent.parent / "backend" / "src"
+
+
+#: Ścieżki pól MODELU ENM niesionych przez ładunek (lista ZAMKNIĘTA, przypięta samotestem):
+#: ``set_bay_equipment.devices[].catalog_ref`` to pole aparatu pola ``BayPrimaryDevice``
+#: zapisywane wprost do rekordu pola, nie wskazanie pozycji ładunku.
+POLA_MODELU_W_LADUNKU: frozenset[str] = frozenset({"set_bay_equipment.devices.catalog_ref"})
+
+
+def _jest_kluczem_ref(klucz: str) -> bool:
+    return klucz == "catalog_ref" or klucz.endswith("_catalog_ref")
+
+
+def naruszenia_kluczy_ref(sciezka: str, pola: frozenset[str] | set[str]) -> list[str]:
+    """Reguła 4: klucz ``catalog_ref``/``<rola>_catalog_ref`` w węźle kontraktu operacji."""
+    return [
+        f"{sciezka}: klucz „{klucz}” w ładunku operacji — pozycję wskazuje wiązanie "
+        f"„{klucz[: -len('catalog_ref')]}catalog_binding”"
+        for klucz in sorted(pola)
+        if _jest_kluczem_ref(klucz) and f"{sciezka}.{klucz}" not in POLA_MODELU_W_LADUNKU
+    ]
 
 
 def _jest_kluczem_wiazania(klucz: str) -> bool:
@@ -70,6 +93,7 @@ def naruszenia_ksztaltow(
             continue
         pola = getattr(ksztalt, "pola", frozenset())
         wynik.extend(naruszenia_wezla(s, pola))
+        wynik.extend(naruszenia_kluczy_ref(s, pola))
         for k in sorted(pola):
             if _jest_kluczem_wiazania(k) and k not in getattr(ksztalt, "zagniezdzone", {}):
                 wynik.append(f"{s}.{k}: klucz wiązania bez kształtu wiązania katalogowego")
@@ -89,6 +113,7 @@ def naruszenia_kontraktu(
         spec = operacje[op]
         pola = set(getattr(spec, "required_fields", ())) | set(getattr(spec, "optional_fields", ()))
         wynik.extend(naruszenia_wezla(op, pola))
+        wynik.extend(naruszenia_kluczy_ref(op, pola))
         for k in sorted(pola):
             if _jest_kluczem_wiazania(k) and k not in ksztalty.get(op, {}):
                 wynik.append(f"{op}.{k}: klucz wiązania bez kształtu wiązania katalogowego")

@@ -121,7 +121,7 @@ def _payload_wciecia(
             "sn_voltage_kv": 15.0,
             "nn_voltage_kv": 0.4,
         },
-        "field_apparatus_catalog_ref": APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         "sn_fields": sn_fields,
         "transformer": (
             transformer
@@ -624,7 +624,7 @@ def test_add_sn_bay_przyjmuje_uklad_energii_na_stacji_koncowej() -> None:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": koniec,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"name": "Stacja końcowa", "station_type": "terminal"},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
@@ -849,7 +849,7 @@ def test_stacja_koncowa_bez_deklaracji_utrwala_uklad_podstawowy() -> None:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": koniec,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"name": "Stacja abonencka", "station_type": "terminal"},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [
@@ -878,7 +878,7 @@ def test_stacja_koncowa_odmawia_nieznanego_rodzaju() -> None:
         op_name="append_station_on_endpoint",
         payload={
             "endpoint_bus_ref": koniec,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"name": "Stacja abonencka", "station_type": "terminal"},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [

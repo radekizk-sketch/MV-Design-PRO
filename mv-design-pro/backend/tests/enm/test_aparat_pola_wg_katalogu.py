@@ -67,7 +67,7 @@ def _wstaw_stacje(apparatus_ref: str, role: list[str]) -> dict[str, Any]:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": role,
-            "field_apparatus_catalog_ref": apparatus_ref,
+            "field_apparatus_catalog_binding": {"catalog_item_id": apparatus_ref},
             "transformer": {
                 "create": True,
                 "transformer_catalog_binding": {"catalog_item_id": TRAFO},
@@ -129,7 +129,7 @@ def test_dolozenie_stacji_na_koncu_ciagu_uzywa_TEJ_SAMEJ_reguly() -> None:
             "station_type": "B",
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "TR"],
-            "field_apparatus_catalog_ref": ROZLACZNIK_BEZPIECZNIKOWY,
+            "field_apparatus_catalog_binding": {"catalog_item_id": ROZLACZNIK_BEZPIECZNIKOWY},
             "transformer": {
                 "create": True,
                 "transformer_catalog_binding": {"catalog_item_id": TRAFO},

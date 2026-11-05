@@ -197,7 +197,10 @@ def werdykt_stacyjny(c: Przypadek) -> str | None:
             }
         },
     )
-    blok = h._blok_nn(nn_configuration="PV_INVERTER", source_converter_catalog_ref=c.typ)
+    blok = h._blok_nn(
+        nn_configuration="PV_INVERTER",
+        source_converter_catalog_binding={"catalog_item_id": c.typ},
+    )
     if c.cos_phi is not None:
         blok["cos_phi"] = c.cos_phi
     if c.k_j is not None:

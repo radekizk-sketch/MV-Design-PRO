@@ -144,7 +144,7 @@ def _wpisy_toru(tor: str) -> list[dict[str, Any]]:
                 "manufacturer_ref": PRODUCENT_MODULARNY,
                 "switchgear_family_ref": RODZINA_MODULARNA,
                 "bay_template_ref": _szablon_rodziny_dla_funkcji(RODZINA_MODULARNA, funkcja),
-                "apparatus_catalog_ref": CATALOG_APARAT_SN,
+                "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
                 "_funkcja": funkcja,
             }
             for funkcja in ("liniowe_doplywowe", "liniowe_odplywowe", "transformatorowe")
@@ -163,7 +163,7 @@ def _wpisy_toru(tor: str) -> list[dict[str, Any]]:
                 "bay_template_ref": _szablon_rodziny_dla_funkcji(
                     konfiguracja.switchgear_family_ref, jednostka.bay_kind
                 ),
-                "apparatus_catalog_ref": CATALOG_APARAT_SN,
+                "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
                 POLE_BLOKU_FABRYCZNEGO: BLOK_RMU,
                 POLE_JEDNOSTKI_BLOKU: numer,
                 "_funkcja": jednostka.bay_kind,
@@ -200,7 +200,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
             },
         },
         "sn_fields": sn_fields,
-        "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},

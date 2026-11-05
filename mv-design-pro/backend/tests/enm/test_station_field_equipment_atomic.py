@@ -109,7 +109,7 @@ def _insert_payload(segment_ref: str, sn_fields: list[dict[str, Any]]) -> dict[s
             "nn_voltage_kv": 0.4,
         },
         "sn_fields": sn_fields,
-        "field_apparatus_catalog_ref": APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
@@ -437,7 +437,7 @@ def test_append_station_creates_field_equipment_in_same_snapshot() -> None:
             "endpoint_bus_ref": terminal_bus_ref,
             "station": {"name": "Stacja końcowa B-3", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "sn_fields": [{"field_role": "LINIA_IN", "equipment": _wyposazenie()}],
         },
     )
@@ -459,7 +459,7 @@ def test_append_station_invalid_equipment_aborts_whole_operation() -> None:
             "endpoint_bus_ref": terminal_bus_ref,
             "station": {"name": "Stacja końcowa B-3", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "sn_fields": [
                 {
                     "field_role": "LINIA_IN",
@@ -505,7 +505,7 @@ def test_append_station_field_equipment_binding_checked_by_gate() -> None:
     payload = {
         "endpoint_bus_ref": "bus/x",
         "station": {"name": "Stacja", "station_type": "terminal"},
-        "field_apparatus_catalog_ref": APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         "sn_fields": [
             {
                 "field_role": "LINIA_IN",

@@ -161,7 +161,7 @@ def _siec_z_odcinkiem() -> tuple[dict[str, Any], str]:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": koniec,
-            "field_apparatus_catalog_ref": APARAT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
             "station": {"name": "Stacja Końcowa", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -177,7 +177,7 @@ def _wstaw(
         "insert_station_on_segment_sn",
         {
             "segment_id": odcinek,
-            "field_apparatus_catalog_ref": APARAT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {"station_type": typ, "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, **stacja},
             "nn_earthing": {"lv_system": "TN-C-S"},
@@ -220,7 +220,7 @@ def test_koniec_ciagu_odmawia_roli_spoza_slownika(rola: str) -> None:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": koniec,
-            "field_apparatus_catalog_ref": APARAT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
             "station": {"name": "Stacja X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": rola}],
@@ -245,7 +245,7 @@ def test_deklaracja_koncowa_zapisywana_tak_samo_w_obu_drogach() -> None:
             "append_station_on_endpoint",
             {
                 "endpoint_bus_ref": koniec,
-                "field_apparatus_catalog_ref": APARAT,
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "station": {"name": "Stacja K", "station_type": typ},
                 "nn_voltage_kv": 0.4,
             },

@@ -383,8 +383,12 @@ def test_wstawienie_stacji_na_odcinku_zachowuje_dane_cieplne_obu_polowek() -> No
         {
             "segment_id": odcinek["ref_id"],
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-            "station": {"name": "Stacja SN/nN", "station_type": "inline", "nn_voltage_kv": 0.4},
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
+            "station": {
+                "name": "Stacja SN/nN",
+                "station_type": "inline",
+                "nn_voltage_kv": 0.4,
+            },
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
         },
     )

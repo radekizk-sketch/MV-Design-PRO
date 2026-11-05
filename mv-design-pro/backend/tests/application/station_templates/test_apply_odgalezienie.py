@@ -170,7 +170,7 @@ def _zastosuj_szablon(
                 "sn_fields": specyfikacje,
                 "nn_block": nn_block,
                 **(
-                    {"field_apparatus_catalog_ref": wspolny_aparat_pol}
+                    {"field_apparatus_catalog_binding": {"catalog_item_id": wspolny_aparat_pol}}
                     if wspolny_aparat_pol
                     else {}
                 ),
@@ -553,7 +553,7 @@ def test_wciecie_w_odcinek_odmawia_ukladu_klasy_b_niezaleznie_od_drogi_wejscia()
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             # Kształt klasy B DOKŁADNIE TAKI, JAKI DAJE SZABLON — z polem
             # REZERWOWYM (rola odpływowa) ZA pomiarem. Wariant bez rezerwy
             # przechodziłby także przy zbiorowym teście obecności ról, więc
@@ -592,7 +592,7 @@ def test_wciecie_w_odcinek_przyjmuje_zlacze_z_petla_osd_i_pomiarem() -> None:
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
@@ -634,7 +634,7 @@ def test_brama_rozpoznaje_role_pomiarowa_takze_z_aliasu_skrotowego() -> None:
                     "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": alias}],
                 "transformer": {
                     "transformer_catalog_binding": {

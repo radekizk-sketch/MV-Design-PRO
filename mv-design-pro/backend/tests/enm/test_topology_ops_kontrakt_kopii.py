@@ -140,7 +140,7 @@ def _payload_stacji_na_koncu(snapshot: dict[str, Any]) -> dict[str, Any]:
         "station": {"name": "Stacja końcowa", "station_type": "terminal"},
         "nn_voltage_kv": 0.4,
         "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-        "field_apparatus_catalog_ref": REF_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 

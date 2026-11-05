@@ -93,10 +93,10 @@ def test_polowki_po_wstawieniu_stacji_dziedzicza_nazwe_rodzica() -> None:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
-            "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
             "transformer": {
                 "create": True,
-                "catalog_binding": {
+                "transformer_catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": CATALOG_TRAFO_630,
                 },

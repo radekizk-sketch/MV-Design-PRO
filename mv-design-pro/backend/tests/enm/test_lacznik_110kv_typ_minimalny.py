@@ -93,7 +93,7 @@ def _dodaj_lacznik(
         "bay_role": "IN",
     }
     if catalog_ref is not None:
-        ladunek["catalog_ref"] = catalog_ref
+        ladunek["catalog_binding"] = {"catalog_item_id": catalog_ref}
     po = _ok(_op(enm, "add_sn_bay", ladunek))
     (nowa,) = (g["ref_id"] for g in po["branches"] if g["ref_id"] not in przed)
     return po, nowa

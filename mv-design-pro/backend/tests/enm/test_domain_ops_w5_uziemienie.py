@@ -215,7 +215,7 @@ def _stacja(snap: dict[str, Any], nn_earthing: dict[str, Any] | None) -> dict[st
     segment = next(b for b in snap["branches"] if b.get("type") == "cable")
     payload: dict[str, Any] = {
         "segment_id": segment["ref_id"],
-        "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "insert_at": {"mode": "RATIO", "value": 0.5},
         "station": {
             "station_type": "B",

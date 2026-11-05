@@ -82,7 +82,7 @@ def _model(napowietrzny: bool = False) -> tuple[dict[str, Any], str]:
 def _stacja(segment: str) -> dict[str, Any]:
     return {
         "segment_id": segment,
-        "field_apparatus_catalog_ref": APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         "station": {"station_type": "B", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
         "sn_fields": [
             {"field_role": "LINIA_IN"},

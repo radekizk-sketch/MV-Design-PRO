@@ -109,7 +109,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": _kable(enm)[-1]["ref_id"],
-            "field_apparatus_catalog_ref": APARAT_POLA,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA},
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -590,6 +590,11 @@ def test_odmowy_wkladki_sa_atomowe(siec: Any, tryb: str, wskazanie: object, kod:
         z_bezpiecznikami = _pole_z_bezpiecznikami(enm, pola["TR"])
         if za_niskie:
             z_bezpiecznikami = _z_napieciem_szyny_pola(z_bezpiecznikami, pola["TR"], 20.0)
+        # Tryb `wkladka` wskazuje wkładkę WIĄZANIEM: identyfikator pusty albo nietekstowy to
+        # wiązanie bez pozycji — jeden kod kształtu wiązania dla każdej operacji
+        # (`bledy_wiazan_w_ladunku`, karta JEDEN-KLUCZ-KATALOGU), nie kod reguły wkładki.
+        if kod == "bay_equipment.fuse_catalog_missing":
+            kod = "catalog.binding_invalid"
         _odmowa(
             z_bezpiecznikami,
             {
@@ -633,7 +638,7 @@ def test_tryb_wkladka_bez_bezpiecznikow_w_polu(siec: Any, wskazanie: object) -> 
             {
                 "bay_ref": pola["IN"],
                 "mode": "wkladka",
-                "catalog_binding": {"catalog_item_id": wskazanie},
+                "catalog_binding": (None if wskazanie is None else {"catalog_item_id": wskazanie}),
             },
             "bay_equipment.fuse_missing",
         )
@@ -885,7 +890,7 @@ def test_determinizm(siec: Any, tryb: str) -> None:
         ladunek["bay_template_ref"] = "bay_template_line_out"
     if tryb == "wkladka":
         enm = _pole_z_bezpiecznikami(enm, pola["OUT"])
-        ladunek["catalog_ref"] = WKLADKA_15
+        ladunek["catalog_binding"] = {"catalog_item_id": WKLADKA_15}
     pierwszy = _wykonaj(copy.deepcopy(enm), ladunek)
     drugi = _wykonaj(copy.deepcopy(enm), ladunek)
     assert pierwszy.get("error") is None, pierwszy.get("error")

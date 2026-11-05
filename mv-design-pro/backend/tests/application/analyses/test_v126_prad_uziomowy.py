@@ -171,7 +171,7 @@ def _z_stacja_odbiorcza(migawka: dict[str, Any]) -> dict[str, Any]:
         payload={
             "endpoint_bus_ref": koniec,
             "station": {"name": "Stacja Brzozowa", "station_type": "terminal"},
-            "field_apparatus_catalog_ref": APARAT_POLA,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_SN_NN}},
             "nn_voltage_kv": 0.4,
             "sn_fields": [{"field_role": "LINIA_IN"}],

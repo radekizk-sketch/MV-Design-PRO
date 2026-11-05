@@ -336,7 +336,10 @@ def test_dowolna_operacja_przelicza_kopie_po_zmianie_tabliczki() -> None:
     wynik = execute_domain_operation(
         migawka,
         "set_der_catalog_bindings",
-        {"generator_ref": "g1", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"},
+        {
+            "generator_ref": "g1",
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+        },
     )
     assert wynik.get("error") is None, wynik.get("error")
     assert _gen(wynik, "g1")["dynamika"]["s_n_mva"] == pytest.approx(3.0)
@@ -349,7 +352,10 @@ def test_operacja_usuwa_kopie_gdy_tabliczka_przestala_wystarczac() -> None:
     wynik = execute_domain_operation(
         migawka,
         "set_der_catalog_bindings",
-        {"generator_ref": "g1", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"},
+        {
+            "generator_ref": "g1",
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+        },
     )
     assert _gen(wynik, "g1").get("dynamika") is None
 
@@ -391,7 +397,9 @@ def test_profil_typu_jest_podpowiedzia_a_nie_kopia() -> None:
     enm = _enm(_generator("g1", "pv_inverter"))
     enm["generators"][0]["materialized_params"]["dynamic_profile_id"] = "default_pv_gfm"
     wynik = execute_domain_operation(
-        enm, "set_der_catalog_bindings", {"generator_ref": "g1", "ct_catalog_ref": None}
+        enm,
+        "set_der_catalog_bindings",
+        {"generator_ref": "g1", "ct_catalog_binding": None},
     )
     assert _gen(wynik, "g1").get("dynamika") is None
     stan = stan_dynamiki_generatorow(wynik["snapshot"])[0]

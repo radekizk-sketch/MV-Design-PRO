@@ -167,7 +167,7 @@ def _wciecie(pole_ref: str | None, rodzina_ref: str | None) -> dict[str, Any]:
         "insert_at": {"value": 0.5},
         "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
         "sn_fields": [pole],
-        "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
@@ -184,7 +184,7 @@ def _koniec_ciagu(pole_ref: str | None, rodzina_ref: str | None, endpoint: str) 
         pole["switchgear_family_ref"] = rodzina_ref
     return {
         "endpoint_bus_ref": endpoint,
-        "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "station": {"name": "Stacja Końcowa", "station_type": "terminal"},
         "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
         "nn_voltage_kv": 0.4,

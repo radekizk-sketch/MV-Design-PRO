@@ -439,7 +439,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": seg_ref,
-            "field_apparatus_catalog_ref": REF_APARAT_POLA_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_POLA_SN},
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "ST-03"},

@@ -120,7 +120,7 @@ def _ladunek_podzialu(operacja: str, segment_ref: str) -> dict[str, Any]:
     if operacja == "insert_station_on_segment_sn":
         return {
             **wspolne,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"station_type": "B", "name": "Stacja P", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "LINIA_OUT"}],
@@ -192,7 +192,7 @@ def _z_stacja_koncowa(snap: dict[str, Any]) -> tuple[dict[str, Any], str]:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": _galaz(snap, "G2")["to_bus_ref"],
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"station_type": "A", "name": "Stacja K", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
             "transformer": {
@@ -222,7 +222,7 @@ def test_stacja_koncowa_nie_tworzy_listy_stacji_ciagu(z_run_ref: bool) -> None:
         {
             "endpoint_bus_ref": _galaz(snap, "G2")["to_bus_ref"],
             **ladunek_ciagu,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {"station_type": "A", "name": "Stacja K", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
             "transformer": {

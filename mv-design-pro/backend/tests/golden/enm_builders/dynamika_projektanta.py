@@ -161,7 +161,7 @@ def build_dynamika_projektanta_enm(
         enm,
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "segment_id": odcinki[0],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -169,7 +169,9 @@ def build_dynamika_projektanta_enm(
             "sn_fields": ["IN", "OUT", "FEEDER", "TR"],
             "transformer": {
                 "create": True,
-                "catalog_binding": _wiazanie("TRAFO_SN_NN", "tr-sn-nn-15-0p8-1mva-dyn11-inverter"),
+                "transformer_catalog_binding": _wiazanie(
+                    "TRAFO_SN_NN", "tr-sn-nn-15-0p8-1mva-dyn11-inverter"
+                ),
             },
         },
     )

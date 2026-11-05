@@ -98,7 +98,7 @@ def _insert_payload(segment_ref: str, transformer: dict[str, Any]) -> dict[str, 
             {"field_role": "LINIA_OUT"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
-        "field_apparatus_catalog_ref": APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
         "transformer": transformer,
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
@@ -338,8 +338,11 @@ def test_append_station_sets_tap_changer_in_same_snapshot() -> None:
                 "name": "Stacja B-2 koniec",
                 "nn_voltage_kv": 0.4,
             },
-            "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "sn_fields": [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "TRANSFORMATOROWE"},
+            ],
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "transformer": {
                 "create": True,
                 "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},

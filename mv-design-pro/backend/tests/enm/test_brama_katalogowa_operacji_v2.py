@@ -129,7 +129,7 @@ def _payload_stacji(endpoint_bus_ref: str, nn_block: dict[str, Any]) -> dict[str
         "station": {"name": "Stacja końcowa", "station_type": "terminal"},
         "nn_voltage_kv": 0.4,
         "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-        "field_apparatus_catalog_ref": REF_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
@@ -310,14 +310,6 @@ def _payload_relay(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _payload_relay_protection(snapshot: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "field_ref": _pole_sn_ref(snapshot),
-        "protection": {"catalog_item_id": REF_PRZEKAZNIK},
-        "relay_type": "NADPRADOWY",
-    }
-
-
 def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
@@ -400,7 +392,7 @@ def _payload_konwerter_tr_dedykowany(snapshot: dict[str, Any]) -> dict[str, Any]
         connection_variant="block_transformer",
         power_setpoint_mw=0.5,
         bus_nn_ref=None,
-        block_transformer_catalog_ref=REF_TRAFO_BLOKOWY,
+        block_transformer_catalog_binding={"catalog_item_id": REF_TRAFO_BLOKOWY},
         sn_connection_bus_ref=_szyna_sn_ref(snapshot),
     )
 
@@ -650,14 +642,15 @@ def _payload_wiazan_der(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Aktualizacja wiązań katalogowych utworzonego już źródła (klucze na wierzchu)."""
     return {
         "generator_ref": _generator(snapshot)["ref_id"],
-        "protection_catalog_ref": REF_PRZEKAZNIK,
-        "ct_catalog_ref": REF_CT,
-        "vt_catalog_ref": REF_VT,
+        "protection_catalog_binding": {"catalog_item_id": REF_PRZEKAZNIK},
+        "ct_catalog_binding": {"catalog_item_id": REF_CT},
+        "vt_catalog_binding": {"catalog_item_id": REF_VT},
     }
 
 
-def _zepsuj_klucz(payload: dict[str, Any], klucz: str) -> None:
-    payload[klucz] = str(payload[klucz]) + LITEROWKA
+def _zepsuj_wiazanie(payload: dict[str, Any], klucz: str = "catalog_binding") -> None:
+    """Literówka w identyfikatorze pozycji wiązania — jedynej drogi wskazania pozycji."""
+    payload[klucz]["catalog_item_id"] = str(payload[klucz]["catalog_item_id"]) + LITEROWKA
 
 
 #: Karta AB-H0 §0.7: karta widmowa PROJEKTU typu magazynu z `_payload_konwerter`
@@ -707,7 +700,6 @@ def _payload_rozdzielnicy_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_rozdzielnicy_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
     payload = _payload_rozdzielnicy_nn(snapshot)
-    del payload["supply"]["catalog_ref"]
     payload["supply"]["catalog_binding"] = {
         "catalog_namespace": "KABEL_NN",
         "catalog_item_id": REF_KABEL_NN,
@@ -729,18 +721,14 @@ def _payload_wyposazenia_pola(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 
 INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
-    PrzypadekIniekcji(
-        "catalog_ref", "add_ct", _payload_ct, lambda p: _zepsuj_klucz(p, "catalog_ref")
-    ),
+    PrzypadekIniekcji("catalog_binding", "add_ct", _payload_ct, lambda p: _zepsuj_wiazanie(p)),
     PrzypadekIniekcji(
         "catalog_binding",
         "add_ct",
         _payload_ct_binding,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_CT + LITEROWKA}),
     ),
-    PrzypadekIniekcji(
-        "catalog_ref", "add_vt", _payload_vt, lambda p: _zepsuj_klucz(p, "catalog_ref")
-    ),
+    PrzypadekIniekcji("catalog_binding", "add_vt", _payload_vt, lambda p: _zepsuj_wiazanie(p)),
     PrzypadekIniekcji(
         "catalog_binding",
         "add_vt",
@@ -748,40 +736,33 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_VT + LITEROWKA}),
     ),
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_relay",
         _payload_relay,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
         wymaga_ct=True,
     ),
     PrzypadekIniekcji(
-        "protection.catalog_item_id",
-        "add_relay",
-        _payload_relay_protection,
-        lambda p: p["protection"].update({"catalog_item_id": REF_PRZEKAZNIK + LITEROWKA}),
-        wymaga_ct=True,
-    ),
-    PrzypadekIniekcji(
-        "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_klucz(p, "catalog_ref")
+        "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_wiazanie(p)
     ),
     # Plan pola z katalogu rozdzielnic tej samej operacji (wybór katalogowy w payloadzie).
     PrzypadekIniekcji(
         "catalog_binding",
         "add_sn_bay",
         _payload_sn_bay_z_katalogu,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
         "add_nn_load",
         _payload_nn_load,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_converter_source",
         _payload_konwerter,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "source_field.catalog_binding",
@@ -792,25 +773,23 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         ),
     ),
     PrzypadekIniekcji(
-        "der_topology.block_transformer.catalog_ref",
+        "der_topology.block_transformer.catalog_binding",
         "add_converter_source",
         _payload_konwerter_der_sn,
-        lambda p: p["der_topology"]["block_transformer"].update(
-            {"catalog_ref": REF_TRAFO_BLOKOWY + LITEROWKA, "catalog_binding": None}
-        ),
+        lambda p: _zepsuj_wiazanie(p["der_topology"]["block_transformer"]),
     ),
     PrzypadekIniekcji(
-        "block_transformer_catalog_ref",
+        "block_transformer_catalog_binding",
         "add_converter_source",
         _payload_konwerter_tr_dedykowany,
-        lambda p: _zepsuj_klucz(p, "block_transformer_catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p, "block_transformer_catalog_binding"),
     ),
     PrzypadekIniekcji(
-        "der_topology.mv_field_configuration.cable_catalog_ref",
+        "der_topology.mv_field_configuration.cable_catalog_binding",
         "add_converter_source",
         _payload_konwerter_der_sn,
-        lambda p: p["der_topology"]["mv_field_configuration"].update(
-            {"cable_catalog_binding": None}
+        lambda p: _zepsuj_wiazanie(
+            p["der_topology"]["mv_field_configuration"], "cable_catalog_binding"
         ),
     ),
     PrzypadekIniekcji(
@@ -831,33 +810,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego — każdy
     # wskazany w swojej przestrzeni i każdy bramkowany (iloczyn element × wskazanie).
     PrzypadekIniekcji(
-        "catalog_ref",
-        "add_zespol_uziemiajacy_sn",
-        _payload_zespol_uziemiajacy,
-        lambda p: p.update({"catalog_ref": REF_TU + LITEROWKA}),
-    ),
-    PrzypadekIniekcji(
-        "dlawik.catalog_ref",
-        "add_zespol_uziemiajacy_sn",
-        _payload_zespol_uziemiajacy,
-        lambda p: p["dlawik"].update({"catalog_ref": REF_DLAWIK + LITEROWKA}),
-    ),
-    PrzypadekIniekcji(
-        "rezystor.catalog_ref",
-        "add_zespol_uziemiajacy_sn",
-        _payload_zespol_uziemiajacy,
-        lambda p: p["rezystor"].update({"catalog_ref": REF_REZYSTOR + LITEROWKA}),
-    ),
-    PrzypadekIniekcji(
         "catalog_binding",
         "add_zespol_uziemiajacy_sn",
         _payload_zespol_uziemiajacy,
-        lambda p: p.update(
-            {
-                "catalog_ref": None,
-                "catalog_binding": {"catalog_item_id": REF_TU + LITEROWKA},
-            }
-        ),
+        lambda p: p.update({"catalog_binding": {"catalog_item_id": REF_TU + LITEROWKA}}),
     ),
     PrzypadekIniekcji(
         "dlawik.catalog_binding",
@@ -882,7 +838,7 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "catalog_binding",
         "add_load_sn",
         _payload_odbior_sn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     # CV-4.3 K1: `add_generator_sn` (generator synchroniczny wprost na SN) —
     # katalog OBOWIĄZKOWY, weryfikowany przez `_pozycja_katalogu`.
@@ -890,7 +846,7 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "catalog_binding",
         "add_generator_sn",
         _payload_generator_sn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -901,10 +857,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     ),
     # P0.1 nN (karta P0.1, C §4.1): wiązanie katalogowe OBOWIĄZKOWE.
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_nn_cable_segment",
         _payload_kabel_nn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -916,10 +872,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     # i ląduje na polu dla promocji aparatów nN — iloczyn {referencja, wiązanie} × {odpływ,
     # pole źródłowe}.
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_nn_outgoing_field",
         _payload_pole_nn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -928,10 +884,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
     ),
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_nn_switch_device",
         _payload_aparat_nn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -940,17 +896,17 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
     ),
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_nn_section_coupler",
         _payload_sprzeglo_nn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     # W5-E-TTIT: wyłącznik różnicowoprądowy nN — obie drogi wskazania pozycji.
     PrzypadekIniekcji(
-        "catalog_ref",
+        "catalog_binding",
         "add_nn_rcd",
         _payload_rcd_nn,
-        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+        lambda p: _zepsuj_wiazanie(p),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -967,10 +923,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     # Zasilenie rozdzielnicy nN — referencja czytana przez funkcję wołaną z handlera
     # (`_add_nn_cable_segment_internal`); przed kartą W5-C brama API jej nie znała.
     PrzypadekIniekcji(
-        "supply.catalog_ref",
+        "supply.catalog_binding",
         "add_nn_distribution_board",
         _payload_rozdzielnicy_nn,
-        lambda p: p["supply"].update({"catalog_ref": REF_KABEL_NN + LITEROWKA}),
+        lambda p: _zepsuj_wiazanie(p["supply"]),
     ),
     PrzypadekIniekcji(
         "supply.catalog_binding",
@@ -996,10 +952,14 @@ INIEKCJE_WIAZAN_DER: tuple[PrzypadekIniekcji, ...] = tuple(
         klucz,
         "set_der_catalog_bindings",
         _payload_wiazan_der,
-        (lambda k: lambda p: p.update({k: p[k] + LITEROWKA}))(klucz),
+        (lambda k: lambda p: _zepsuj_wiazanie(p, k))(klucz),
         oczekiwany_kod="der_bindings.catalog_ref_unknown",
     )
-    for klucz in ("protection_catalog_ref", "ct_catalog_ref", "vt_catalog_ref")
+    for klucz in (
+        "protection_catalog_binding",
+        "ct_catalog_binding",
+        "vt_catalog_binding",
+    )
 ) + (
     # Karta AB-H0 §0.7.6: karta widmowa istnieje w katalogu PROJEKTU modelu (dołożona
     # operacją `dodaj_karte_widmowa_projektu` w `_przygotowana_siec`).
@@ -1039,7 +999,7 @@ POKRYCIE_POZA_INIEKCJAMI: dict[str, str] = {
         "pozycja NIEBRAMKOWANA — brak kategorii katalogu dla UPS; "
         "uzasadnienie pilnowane testem `pozycje_niebramkowane_maja_uzasadnienie`"
     ),
-    "add_converter_source|battery_catalog_ref": (
+    "add_converter_source|battery_catalog_binding": (
         "karta FAB-K (R2): bramkowana w WARSTWIE DOMENOWEJ "
         "(`_materializuj_bateria_bess`), CELOWO NIE w bramie API — kod "
         "`converter.battery_catalog_ref_unknown`/`_not_applicable` jest bogatszy "
@@ -1513,7 +1473,7 @@ def test_tor_atomowy_i_stacyjny_daja_te_same_liczby(
     stacyjnie = _siec_ze_stacja(
         _blok_nn(
             nn_configuration=konfiguracja,
-            source_converter_catalog_ref=ref_katalogu,
+            source_converter_catalog_binding={"catalog_item_id": ref_katalogu},
             source_converter_kind=technologia,
         )
     )

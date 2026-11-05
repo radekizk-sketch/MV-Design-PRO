@@ -419,7 +419,7 @@ class TestFullV1Sequence:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -491,7 +491,7 @@ class TestInsertStationCreatesStructure:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -551,7 +551,7 @@ class TestInsertStationCreatesStructure:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {
@@ -594,7 +594,7 @@ class TestInsertStationCreatesStructure:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -898,7 +898,7 @@ class TestNnFieldAdapters:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -953,7 +953,7 @@ class TestNnFieldAdapters:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1026,7 +1026,7 @@ class TestNnFieldAdapters:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1084,7 +1084,7 @@ class TestNnFieldAdapters:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1313,7 +1313,7 @@ class TestInsertStationReadinessBlockers:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1345,7 +1345,7 @@ class TestDeterministicIds100x:
         payload = {
             "segment_ref": first_seg,
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1451,7 +1451,9 @@ class TestPermutationInvarianceSNFields:
                 payload={
                     "segment_ref": first_seg,
                     # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                    "field_apparatus_catalog_binding": {
+                        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a"
+                    },
                     "station_type": "B",
                     "insert_at": {"value": 0.5},
                     "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1517,7 +1519,7 @@ class TestPVBESSTransformerGate:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1609,7 +1611,7 @@ class TestPVBESSTransformerGate:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": first_seg,
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1672,7 +1674,7 @@ class TestPVBESSTransformerGate:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1896,7 +1898,7 @@ class TestStationTypeBPassthrough:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -1982,7 +1984,7 @@ class TestStationTypeCBranch:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "C",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2028,7 +2030,7 @@ class TestStationTypeCBranch:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "branch",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2080,7 +2082,7 @@ class TestStationTypeDSectional:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "D",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2180,7 +2182,7 @@ class TestInsertStationFieldTemplateBinding:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "sectional",
                 "insert_at": {"value": 0.5},
                 "station": {
@@ -2264,7 +2266,7 @@ class TestInsertStationOnNonexistentSegment:
             payload={
                 "segment_ref": "nonexistent_segment_xyz",
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2311,7 +2313,7 @@ class TestInsertAtRatioOutOfRange:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 1.5},  # > 1.0
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -2389,7 +2391,7 @@ class TestDomainEventsOrder:
             payload={
                 "segment_ref": first_seg,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},

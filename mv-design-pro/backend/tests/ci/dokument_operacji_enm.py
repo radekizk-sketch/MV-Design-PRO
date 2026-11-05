@@ -481,7 +481,7 @@ KROKI: tuple[Krok, ...] = (
         lambda k: {
             "segment_id": _segment_o_nazwie(k, "Odcinek 2"),
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {
                 "station_type": "B",
                 "station_name": "Stacja S01",
@@ -558,7 +558,7 @@ KROKI: tuple[Krok, ...] = (
         "stacja końcowa na otwartym końcu odgałęzienia",
         lambda k: {
             "endpoint_bus_ref": k.utworzone("odgalezienie")[0],
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "station": {
                 "station_type": "A",
                 "name": "Stacja S02",

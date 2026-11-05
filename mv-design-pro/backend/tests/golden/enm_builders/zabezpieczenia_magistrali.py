@@ -149,7 +149,7 @@ def siec_magistrali(
         -1
     ]
     stacja: dict[str, Any] = {
-        "field_apparatus_catalog_ref": KATALOG_APARATU,
+        "field_apparatus_catalog_binding": {"catalog_item_id": KATALOG_APARATU},
         "insert_at": {"mode": "RATIO", "value": 0.5},
         "sn_fields": [
             {"field_role": "LINIA_IN"},

@@ -116,7 +116,7 @@ def _ciag_sn(klient: TestClient, case_id: str) -> dict[str, Any]:
             "station": {"name": "Stacja koncowa", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
             "sn_fields": [{"field_role": "LINIA_IN"}],
-            "field_apparatus_catalog_ref": REF_APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": REF_APARAT_SN},
             "transformer": {
                 "create": True,
                 "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},

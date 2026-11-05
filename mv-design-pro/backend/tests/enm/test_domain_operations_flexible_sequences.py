@@ -88,7 +88,7 @@ def test_sequence_continue_continue_insert_station_then_branch():
         {
             "segment_ref": target_segment,
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             # POLA-W-TORZE: pole wyjściowe stacji niesie dalszą połówkę odcinka, więc
             # odgałęzienie ze stacji wychodzi z pola odgałęźnego — stacja odgałęźna (typ C).
             "station_type": "C",

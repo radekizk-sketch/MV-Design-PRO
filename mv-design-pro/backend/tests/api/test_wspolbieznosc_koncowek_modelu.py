@@ -705,9 +705,9 @@ class TestWyscigWiazanWytworcy:
 
         rewizja_przed = _model(app_client, case_id).header.revision
         pola = {
-            "protection_catalog_ref": "REF-OC-200",
-            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-            "vt_catalog_ref": "vt_10kv_100v_05_abb",
+            "protection_catalog_binding": {"catalog_item_id": "REF-OC-200"},
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+            "vt_catalog_binding": {"catalog_item_id": "vt_10kv_100v_05_abb"},
         }
 
         def zadanie(pole: str, wartosc: str) -> Callable[[], None]:
@@ -753,7 +753,10 @@ class TestWyscigWiazanWytworcy:
         def wiazania() -> None:
             _bez_odmowy(
                 _ustaw_wiazanie(
-                    app_client, case_id, generator_ref, {"protection_catalog_ref": "REF-OC-200"}
+                    app_client,
+                    case_id,
+                    generator_ref,
+                    {"protection_catalog_binding": {"catalog_item_id": "REF-OC-200"}},
                 )
             )
 

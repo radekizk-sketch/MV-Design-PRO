@@ -350,7 +350,7 @@ def test_protection_functions_zglasza_niezgodnosc_przeznaczenia_urzadzenia(app_c
         app_client,
         case_id,
         generator_ref,
-        {"protection_catalog_ref": "ABB_REB670"},
+        {"protection_catalog_binding": {"catalog_item_id": "ABB_REB670"}},
     )
 
     dane = app_client.get(
@@ -469,9 +469,9 @@ def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) 
         case_id,
         generator_ref,
         {
-            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-            "vt_catalog_ref": "vt_20kv_100v_3p_abb",
-            "protection_catalog_ref": "ABB_REB670",
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+            "vt_catalog_binding": {"catalog_item_id": "vt_20kv_100v_3p_abb"},
+            "protection_catalog_binding": {"catalog_item_id": "ABB_REB670"},
         },
     )
 

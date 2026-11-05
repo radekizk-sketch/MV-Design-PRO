@@ -96,9 +96,13 @@ def _stacja_konca(sn_fields: list[dict[str, Any]] | None = None) -> dict[str, An
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": koniec,
-            "station": {"name": "Stacja końca", "station_type": "terminal", "nn_voltage_kv": 0.4},
+            "station": {
+                "name": "Stacja końca",
+                "station_type": "terminal",
+                "nn_voltage_kv": 0.4,
+            },
             "sn_fields": sn_fields or [{"field_role": "LINIA_IN"}, {"field_role": "POMIAROWE"}],
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
@@ -179,7 +183,7 @@ def test_stacja_konca_ciagu_identyfikatory_pol_i_transformator_na_zacisku_pola_t
             "endpoint_bus_ref": _build_trunk_with_segment()[2],
             "station": {"name": "Stacja K", "station_type": "terminal", "nn_voltage_kv": 0.4},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "LINIA_ODG"}],
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
         },
     )

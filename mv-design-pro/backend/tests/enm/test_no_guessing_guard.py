@@ -116,7 +116,7 @@ class TestNoDefaultLengthBranch:
             payload={
                 "segment_id": first_segment,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "name": "Stacja testowa",
                 "station_type": "branch",
                 "transformer": {
@@ -217,7 +217,7 @@ class TestNoDefaultVoltageStation:
             payload={
                 "segment_ref": first_seg_ref,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "station_type": "B",
                 "insert_at": {"value": 0.5},
                 "station": {

@@ -55,7 +55,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "a_q": "Udział stałoimpedancyjny Q (a_Q)",  # odbior/strings.ts zipAQ
     "accuracy_class": "Klasa dokładności",  # pomiar/strings.ts klasa
     "active_power_control_enabled": "Regulacja mocy czynnej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
-    "apparatus_catalog_ref": "Aparat pola",  # stacja/strings.ts aparatPola
+    "apparatus_catalog_binding": "Aparat pola",  # stacja/strings.ts aparatPola
     "b_p": "Udział stałoprądowy P (b_P)",  # odbior/strings.ts zipBP
     "b_q": "Udział stałoprądowy Q (b_Q)",  # odbior/strings.ts zipBQ
     "bay_ref": "Pole SN",  # pomiar/strings.ts poleSn; przekaznik/strings.ts poleSn
@@ -63,7 +63,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "black_start_capable": "Zdolność rozruchu autonomicznego",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "black_start_required": "Wymagany rozruch autonomiczny",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "blocking_transformer_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts transformator
-    "block_transformer_catalog_ref": "Transformator dedykowany z katalogu",  # ui/network-build/station-der/AddDerWizard.tsx (etykieta pola w JSX)
+    "block_transformer_catalog_binding": "Transformator dedykowany z katalogu",  # ui/network-build/station-der/AddDerWizard.tsx (etykieta pola w JSX)
     "burden_va": "Moc obciążeniowa",  # pomiar/strings.ts burden
     "bus_nn_ref": "Szyna nN",  # pole-nn/strings.ts szyna
     "c_p": "Udział stałomocowy P (c_P)",  # odbior/strings.ts zipCP
@@ -105,7 +105,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "connection_variant": "Sposób przyłączenia",  # zrodlo-oze/strings.ts wariant
     "control_mode": "Tryb regulacji mocy biernej",  # zrodlo-oze/strings.ts regulacja
     "add_nn_load:cos_phi": "Współczynnik mocy cosφ",  # odbior/strings.ts cosPhi
-    "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
+    "ct_catalog_binding": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
     "data_umowy_przylaczeniowej": "Data umowy przyłączeniowej (wersje warstw profilu)",  # ui2/oze/ncrfg/strings.ts dataUmowy
     "deklaracje_modulu": "Deklaracje modułu (testy T05, T10–T13, T16–T20)",  # ui2/oze/ncrfg/strings.ts deklaracjeTytul
     "der_topology.block_transformer:catalog_binding": "Transformator blokowy",  # zrodlo-oze/strings.ts doborPropTr (krok Dobór toru SN)
@@ -178,7 +178,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "power_oscillation_damping_enabled": "Tłumienie kołysań mocy aktywne",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "power_oscillation_damping_required": "Wymagane tłumienie kołysań mocy",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "power_setpoint_mw": "Moc robocza P (nastawa)",  # zrodlo-oze/strings.ts mocRobocza
-    "protection_catalog_ref": "Zabezpieczenie pola wytwórcy",  # zrodlo-oze/strings.ts aparaturaZabezpieczenie
+    "protection_catalog_binding": "Zabezpieczenie pola wytwórcy",  # zrodlo-oze/strings.ts aparaturaZabezpieczenie
     "przesuniecie_fazy_deg": "Skok wektora — próg [°]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "q_max_mvar": "Q max (oddawanie, nadwzbudzenie)",  # zrodlo-oze/strings.ts qMax
     "q_min_mvar": "Q min (pobór, podwzbudzenie)",  # zrodlo-oze/strings.ts qMin
@@ -265,7 +265,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "update_element_parameters:catalog_namespace": "Kategoria katalogu",
     "update_element_parameters:overrides": "Wartości parametrów nadane przez projektanta",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
-    "vt_catalog_ref": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
+    "vt_catalog_binding": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
     "wymagany_cos_phi": "Wymagany cosφ (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi
     "x_ohm_per_km": "Reaktancja X",  # magistrala/strings.ts paramX
     "deklaracje_modulu:zrodlo_pl": "Źródło deklaracji",  # ui2/oze/ncrfg/strings.ts deklaracjeZrodlo

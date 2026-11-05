@@ -174,9 +174,11 @@ from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
 from .wiazanie_katalogowe import (
     KOD_ZAMIENNIKA_KLUCZA,
     PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
+    bledy_wiazan_w_ladunku,
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
     odmowa_przestrzeni,
+    pozycja_wiazania,
     zamienniki_klucza_w_ladunku,
 )
 from .zajetosc_pol import (
@@ -842,7 +844,7 @@ KLUCZE_TRANSFORMATOROW_GPZ: tuple[str, ...] = (
     "transformer_regulated_winding",
     "transformer_regulation_type",
     "transformer_sn_mva",
-    "transformer_tap_changer_catalog_ref",
+    "transformer_tap_changer_catalog_binding",
     "transformer_tap_current_position",
     "transformer_tap_max_position",
     "transformer_tap_min_position",
@@ -3255,7 +3257,7 @@ def _build_gpz_tap_changer(
     not request regulation (regulation_type NONE/absent) — backward compatible.
     """
     regulation_type = str(payload.get("transformer_regulation_type") or "NONE").upper()
-    catalog_ref = payload.get("transformer_tap_changer_catalog_ref")
+    catalog_ref = pozycja_wiazania(payload, "transformer_tap_changer_catalog_binding")
 
     if regulation_type == "NONE" and not catalog_ref:
         return None
@@ -5847,18 +5849,12 @@ def _sn_field_apparatus_catalog_ref(
     fabrykacją decyzji projektowej — aparat wybiera projektant z katalogu
     APARAT_SN, nie operacja domenowa.
     """
-    raw = field_spec.get("apparatus_catalog_ref")
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
-    return payload_default_ref
+    return pozycja_wiazania(field_spec, "apparatus_catalog_binding") or payload_default_ref
 
 
 def _payload_field_apparatus_catalog_ref(payload: dict[str, Any]) -> str | None:
     """Wspólna referencja aparatu pól SN z payloadu operacji (B-12)."""
-    raw = payload.get("field_apparatus_catalog_ref")
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
-    return None
+    return pozycja_wiazania(payload, "field_apparatus_catalog_binding")
 
 
 #: Rodzaj aparatu z katalogu APARAT_SN (`device_kind`) → typ gałęzi łącznikowej ENM
@@ -5957,7 +5953,7 @@ def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) ->
     rola = nazwa_roli_pola_sn(field_role).lower() if field_role.strip() else "bez roli"
     return _error_response(
         f"Pole SN nr {index + 1} ({rola}) nie ma wskazanego aparatu. "
-        f"Wybierz go w polu {pole('apparatus_catalog_ref')} tego pola — pozycję z katalogu "
+        f"Wybierz go w polu {pole('apparatus_catalog_binding')} tego pola — pozycję z katalogu "
         f"{nazwa_kategorii_katalogu('APARAT_SN')}.",
         code,
     )
@@ -5982,7 +5978,7 @@ def _brak_pola_toru_error(*, bay_role: str, code: str) -> dict[str, Any]:
     return _error_response(
         f"Stacja wymaga pola „{nazwa}”: aparat tego pola leży w torze "
         f"{_ELEMENT_TORU_POLA_PL[bay_role]}. Skład pól stacji go nie zawiera — dodaj to pole "
-        f"do składu rozdzielnicy SN i wybierz jego {pole('apparatus_catalog_ref')} z katalogu "
+        f"do składu rozdzielnicy SN i wybierz jego {pole('apparatus_catalog_binding')} z katalogu "
         f"{nazwa_kategorii_katalogu('APARAT_SN')}.",
         code,
     )
@@ -6470,7 +6466,7 @@ def _zamiar_ochrony_zrodla_nn(source_protection: object) -> dict[str, Any] | Non
         return None
     return {
         "breaker_role": source_protection.get("breaker_role"),
-        "device_catalog_ref": source_protection.get("device_catalog_ref"),
+        "device_catalog_ref": pozycja_wiazania(source_protection, "device_catalog_binding"),
         "device_label": source_protection.get("device_label"),
         "protected_object": source_protection.get("protected_object"),
         "analysis_scope": source_protection.get("analysis_scope"),
@@ -6508,7 +6504,7 @@ def _materialize_nn_source(
     nierozstrzygalna, ``None`` gdy operacja źródła nie tworzy.
     """
     nn_configuration = str(nn_block.get("nn_configuration") or "")
-    source_converter_ref = nn_block.get("source_converter_catalog_ref")
+    source_converter_ref = pozycja_wiazania(nn_block, "source_converter_catalog_binding")
     source_converter_kind = str(nn_block.get("source_converter_kind") or "")
     source_protection = nn_block.get("source_protection")
     zamiar_ochrony = _zamiar_ochrony_zrodla_nn(source_protection)
@@ -6559,7 +6555,7 @@ def _materialize_nn_source(
 
     protection_catalog_ref: str | None = None
     if isinstance(source_protection, dict):
-        raw_protection_ref = source_protection.get("device_catalog_ref")
+        raw_protection_ref = pozycja_wiazania(source_protection, "device_catalog_binding")
         if isinstance(raw_protection_ref, str) and raw_protection_ref.strip():
             protection_catalog_ref = raw_protection_ref.strip()
             protection_materialization = _materialize_catalog_payload(
@@ -9942,8 +9938,8 @@ def _brama_katalogowa_przypisania(
     if not catalog_namespace:
         return _error_response(
             f"{opis_nazwy(target_element.get('name'), 'Element')}: nie da się ustalić "
-            "kategorii katalogu — wybierz ją w polu "
-            f"{pole('catalog_namespace', 'assign_catalog_to_element')}. Bez kategorii nie "
+            "kategorii katalogu — podaj ją w wiązaniu "
+            f"{pole('catalog_binding', 'assign_catalog_to_element')}. Bez kategorii nie "
             "ma czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia "
             "katalogowego.",
             "catalog.namespace_required",
@@ -11173,10 +11169,12 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             new_enm,
             {
                 "element_ref": element_ref,
-                "catalog_item_id": parameters.get("catalog_ref"),
-                "catalog_namespace": parameters.get(
-                    "catalog_namespace", current_element.get("catalog_namespace")
-                ),
+                "catalog_binding": {
+                    "catalog_item_id": parameters.get("catalog_ref"),
+                    "catalog_namespace": parameters.get(
+                        "catalog_namespace", current_element.get("catalog_namespace")
+                    ),
+                },
             },
         )
 
@@ -12214,7 +12212,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # B-12/defekt F: aparat WSKAZANY NA POLU — wskazanie projektanta zostaje
         # na rekordzie pola (`_materialize_sn_field_apparatus` czyta je stąd, obok
         # wspólnego `field_apparatus_catalog_ref` payloadu).
-        field_apparatus_ref = field.get("apparatus_catalog_ref")
+        field_apparatus_ref = pozycja_wiazania(field, "apparatus_catalog_binding")
         aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
             field_ref=field_ref,
             bay_template_ref=field_bay_template_ref,
@@ -12353,9 +12351,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             return None, equipment_refs
 
         # B-12: aparat pola SN WYŁĄCZNIE z jawnego wskazania (katalog APARAT_SN).
-        apparatus_catalog_ref = _sn_field_apparatus_catalog_ref(
-            rekord, _payload_field_apparatus_catalog_ref(payload)
-        )
+        # Rekord MODELU pola (``zbuduj_pole``) niesie pole ``apparatus_catalog_ref``
+        # przepisane z wiązania wpisu ładunku (``apparatus_catalog_binding``).
+        apparatus_catalog_ref = rekord.get(
+            "apparatus_catalog_ref"
+        ) or _payload_field_apparatus_catalog_ref(payload)
         if apparatus_catalog_ref is None:
             return (
                 _field_apparatus_missing_error(
@@ -12989,6 +12989,10 @@ def execute_domain_operation(
         zamienniki = zamienniki_klucza_w_ladunku(canonical_name, payload)
         if zamienniki:
             return _error_response(komunikat_zamiennikow_pl(zamienniki), KOD_ZAMIENNIKA_KLUCZA)
+        bledy_wiazan = bledy_wiazan_w_ladunku(canonical_name, payload)
+        if bledy_wiazan:
+            odczyt = bledy_wiazan[0][1]
+            return _error_response(str(odczyt.komunikat_pl), str(odczyt.kod_bledu))
         obce = klucze_spoza_kontraktu(canonical_name, payload)
         if obce:
             logger.warning(

@@ -388,14 +388,16 @@ def test_stacja_sn_nn_ze_strona_dolna_poza_pasmem_odmawia_bez_skutku(
 
     snap, segment_ref, terminal = _build_trunk_with_segment()
     if operacja == "insert_station_on_segment_sn":
-        payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+        payload = _insert_payload(
+            segment_ref, field_apparatus_catalog_binding={"catalog_item_id": APARAT_SN}
+        )
         payload["station"]["nn_voltage_kv"] = napiecie
     else:
         payload = {
             "endpoint_bus_ref": terminal,
             "station": {"name": "Stacja K", "station_type": "terminal"},
             "nn_voltage_kv": napiecie,
-            "field_apparatus_catalog_ref": APARAT_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_SN},
             "transformer": {
                 "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"}
             },

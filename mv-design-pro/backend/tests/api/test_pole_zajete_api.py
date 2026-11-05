@@ -97,7 +97,7 @@ def _siec(klient: TestClient, case_id: str) -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": odcinek["ref_id"],
-            "field_apparatus_catalog_ref": APARAT,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"name": "Stacja Olchowa", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},

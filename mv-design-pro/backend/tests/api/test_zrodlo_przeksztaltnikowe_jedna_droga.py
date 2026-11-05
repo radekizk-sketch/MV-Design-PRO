@@ -86,7 +86,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
         {
             "catalog_binding": {"catalog_item_id": "pv_inv_system_1000"},
             "power_setpoint_mw": 1.0,
-            "block_transformer_catalog_ref": TR_1250,
+            "block_transformer_catalog_binding": {"catalog_item_id": TR_1250},
             "sn_connection_bus_ref": "station/1/sn_bus",
         },
     ),
@@ -95,7 +95,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
         {
             "catalog_binding": {"catalog_item_id": "conv-bess-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
-            "battery_catalog_ref": BATERIA,
+            "battery_catalog_binding": {"catalog_item_id": BATERIA},
         },
     ),
     ("BESS", "nn_jawna"): (
@@ -111,9 +111,9 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
         {
             "catalog_binding": {"catalog_item_id": "conv-bess-nn-2mw-0p69kv"},
             "power_setpoint_mw": 2.0,
-            "block_transformer_catalog_ref": TR_3150,
+            "block_transformer_catalog_binding": {"catalog_item_id": TR_3150},
             "sn_connection_bus_ref": "station/1/sn_bus",
-            "battery_catalog_ref": BATERIA,
+            "battery_catalog_binding": {"catalog_item_id": BATERIA},
         },
     ),
     ("FW", "nn_auto"): (
@@ -202,7 +202,10 @@ def test_iloczyn_rodzaj_wariant_proba_modul(app_client, rodzaj, wariant, proba, 
         generator["gen_type"]
         == {"PV": "pv_inverter", "BESS": "bess", "FW": "wind_inverter"}[rodzaj]
     )
-    assert generator["catalog_ref"] == _ZRODLA[(rodzaj, wariant)][1]["catalog_ref"]
+    assert (
+        generator["catalog_ref"]
+        == _ZRODLA[(rodzaj, wariant)][1]["catalog_binding"]["catalog_item_id"]
+    )
     # Deklaracja modułu nie jest zapisywana — moduł wynika z klasyfikacji.
     assert "nc_rfg_module" not in generator
     if wariant == "dedykowany":
@@ -210,7 +213,10 @@ def test_iloczyn_rodzaj_wariant_proba_modul(app_client, rodzaj, wariant, proba, 
             t for t in model["transformers"] if t["ref_id"] == generator["blocking_transformer_ref"]
         )
         assert tr["catalog_namespace"] == "TRAFO_SN_NN"
-        assert tr["catalog_ref"] == _ZRODLA[(rodzaj, wariant)][1]["block_transformer_catalog_ref"]
+        assert (
+            tr["catalog_ref"]
+            == _ZRODLA[(rodzaj, wariant)][1]["block_transformer_catalog_binding"]["catalog_item_id"]
+        )
         assert tr["hv_bus_ref"] == "station/1/sn_bus"
         szyna = next(b for b in model["buses"] if b["ref_id"] == tr["lv_bus_ref"])
         assert szyna["voltage_kv"] == tr["ulv_kv"] == 0.69
@@ -318,11 +324,11 @@ def test_stacja_bez_szyny_nn_jest_nazwana_odmowa(app_client) -> None:
             "generator.sn_bus_voltage_mismatch",
         ),
         (
-            {"block_transformer_catalog_ref": None},
+            {"block_transformer_catalog_binding": None},
             "generator.block_transformer_catalog_missing",
         ),
         (
-            {"block_transformer_catalog_ref": TR_800},
+            {"block_transformer_catalog_binding": {"catalog_item_id": TR_800}},
             "converter.transformer_capacity_exceeded",
         ),
         (
@@ -373,7 +379,7 @@ def test_pozycja_spoza_katalogu_trafo_odrzuca_brama(app_client) -> None:
     for ref in ("btr_pv_15_069_1250", "tr-ktorego-nie-ma"):
         ladunek = {
             **_ladunek("PV", "dedykowany", False, "brak"),
-            "block_transformer_catalog_ref": ref,
+            "block_transformer_catalog_binding": {"catalog_item_id": ref},
         }
         odpowiedz = _operacja(app_client, case_id, "add_converter_source", ladunek)
         assert odpowiedz.status_code == 422, odpowiedz.text
@@ -390,7 +396,7 @@ def test_brama_i_operacja_jednym_predykatem_istniejacy_transformator(
 
     baza = {
         "connection_variant": "block_transformer",
-        "block_transformer_catalog_ref": "x",
+        "block_transformer_catalog_binding": {"catalog_item_id": "x"},
     }
     assert tor_z_transformatorem_dedykowanym_z_katalogu(baza)
     assert tor_z_transformatorem_dedykowanym_z_katalogu(
@@ -419,7 +425,7 @@ def test_brama_i_operacja_jednym_predykatem_istniejacy_transformator(
             "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
             "blocking_transformer_ref": "station/1/tr",
-            "block_transformer_catalog_ref": "pozycja-ignorowana",
+            "block_transformer_catalog_binding": {"catalog_item_id": "pozycja-ignorowana"},
         },
     )
     assert _kod(odpowiedz) is None, odpowiedz.text
@@ -432,7 +438,7 @@ def test_wariant_nn_ignoruje_pola_toru_dedykowanego(app_client) -> None:
     _seed_station_enm(case_id)
     ladunek = {
         **_ladunek("PV", "nn_auto", False, "brak"),
-        "block_transformer_catalog_ref": TR_1250,
+        "block_transformer_catalog_binding": {"catalog_item_id": TR_1250},
     }
     assert _kod(_operacja(app_client, case_id, "add_converter_source", ladunek)) is None
     model = _model(app_client, case_id)
@@ -537,7 +543,7 @@ class TestBateriaBess:
         _seed_station_enm(case_id)
         ladunek = {
             **_ladunek(rodzaj, "nn_auto", False, "brak"),
-            "battery_catalog_ref": ref,
+            "battery_catalog_binding": {"catalog_item_id": ref},
         }
         assert _kod(_operacja(app_client, case_id, "add_converter_source", ladunek)) == kod
         assert _model(app_client, case_id)["generators"] == []
@@ -627,9 +633,9 @@ def test_wiazania_trafiaja_do_modelu(app_client) -> None:
         case_id,
         ref,
         {
-            "protection_catalog_ref": "REF-OC-200",
-            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-            "vt_catalog_ref": "vt_10kv_100v_05_abb",
+            "protection_catalog_binding": {"catalog_item_id": "REF-OC-200"},
+            "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
+            "vt_catalog_binding": {"catalog_item_id": "vt_10kv_100v_05_abb"},
             "dynamic_model_ref": "default_pv_gfl",
             "nc_rfg_profile_ref": "pse",
             "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
@@ -658,7 +664,7 @@ def test_wiazania_biale_znaki_to_brak_wyboru(app_client) -> None:
                 app_client,
                 case_id,
                 ref,
-                {"ct_catalog_ref": "  ct_150_1_0_5_10va_abb  "},
+                {"ct_catalog_binding": {"catalog_item_id": "  ct_150_1_0_5_10va_abb  "}},
             )
         )
         is None
@@ -678,21 +684,39 @@ def test_wiazania_biale_znaki_to_brak_wyboru(app_client) -> None:
     assert _params(app_client, case_id)["profiles"]["bess_operation_mode_refs"] == [
         "mode_peak_shaving"
     ]
-    assert _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_ref": "   "})) is None
-    assert "ct_catalog_ref" not in _params(app_client, case_id)
+    # Wiązanie z identyfikatorem z samych spacji nie wskazuje pozycji — to wiązanie bez
+    # pozycji (`catalog.binding_invalid`), a nie wyczyszczenie; czyści jawne `null`.
+    pusty = {"ct_catalog_binding": {"catalog_item_id": "   "}}
+    assert _kod(_wiazania(app_client, case_id, ref, pusty)) == "catalog.binding_invalid"
+    assert _params(app_client, case_id)["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
 
 
 def test_wiazania_pominiete_zostaja_null_usuwa(app_client) -> None:
     case_id, ref = _wytworca(app_client)
     assert (
-        _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_ref": "ct_150_1_0_5_10va_abb"}))
+        _kod(
+            _wiazania(
+                app_client,
+                case_id,
+                ref,
+                {"ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"}},
+            )
+        )
         is None
     )
     assert (
-        _kod(_wiazania(app_client, case_id, ref, {"vt_catalog_ref": "vt_10kv_100v_05_abb"})) is None
+        _kod(
+            _wiazania(
+                app_client,
+                case_id,
+                ref,
+                {"vt_catalog_binding": {"catalog_item_id": "vt_10kv_100v_05_abb"}},
+            )
+        )
+        is None
     )
     assert _params(app_client, case_id)["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
-    assert _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_ref": None})) is None
+    assert _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_binding": None})) is None
     params = _params(app_client, case_id)
     assert "ct_catalog_ref" not in params
     assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
@@ -714,7 +738,7 @@ def test_wiazania_odmowy(app_client) -> None:
                 app_client,
                 case_id,
                 "gen_nie_ma",
-                {"ct_catalog_ref": "ct_150_1_0_5_10va_abb"},
+                {"ct_catalog_binding": {"catalog_item_id": "ct_150_1_0_5_10va_abb"}},
             )
         )
         is not None
@@ -751,7 +775,12 @@ def test_awaria_zapisu_modelu_jest_nazwana_i_model_bez_zmian(
             {**_ladunek("PV", "nn_auto", False, "brak"), "source_name": "drugi"},
         )
     else:
-        odpowiedz = _wiazania(app_client, case_id, ref, {"protection_catalog_ref": "REF-OC-200"})
+        odpowiedz = _wiazania(
+            app_client,
+            case_id,
+            ref,
+            {"protection_catalog_binding": {"catalog_item_id": "REF-OC-200"}},
+        )
     assert _kod(odpowiedz) == "api.snapshot_validation_failed"
     monkeypatch.undo()
     assert _model(app_client, case_id) == przed
@@ -889,7 +918,7 @@ def test_prog_87t_z_profilu_operatora_wytworcy(
     )
     assert _kod(odpowiedz) is None, odpowiedz.text
     ref = _model(app_client, case_id)["generators"][0]["ref_id"]
-    wiazania: dict = {"ct_catalog_ref": "ct_200_5_5p10_10va_abb"}
+    wiazania: dict = {"ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"}}
     if profil != "brak":
         wiazania["nc_rfg_profile_ref"] = "pse"
     assert _kod(_wiazania(app_client, case_id, ref, wiazania)) is None

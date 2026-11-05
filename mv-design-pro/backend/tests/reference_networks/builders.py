@@ -105,7 +105,7 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
             {
                 "segment_id": last_branch_ref,
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "insert_at": {"mode": "RATIO", "value": 0.5},
                 "station": {
                     "station_type": "B",
@@ -198,7 +198,7 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
             {
                 "segment_id": branches[-1]["ref_id"],
                 # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "insert_at": {"mode": "RATIO", "value": 0.5},
                 "station": {
                     "station_type": "C",
@@ -416,7 +416,7 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
         {
             "segment_id": branches[0]["ref_id"],
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {
                 "station_type": "B",

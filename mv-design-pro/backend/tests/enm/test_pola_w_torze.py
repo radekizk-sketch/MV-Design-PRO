@@ -102,7 +102,7 @@ def _wciecie(
             "insert_station_on_segment_sn",
             {
                 "segment_ref": _odcinki(enm)[0]["ref_id"],
-                "field_apparatus_catalog_ref": APARAT,
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "station_type": typ,
                 "insert_at": {"value": 0.5},
                 "station": {"name": nazwa, "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -127,7 +127,7 @@ def _koniec_ciagu(sn_fields: list[str], *, nazwa: str = "Stacja Brzozowa") -> di
             {
                 "endpoint_bus_ref": koniec,
                 "station": {"name": nazwa, "station_type": "terminal"},
-                "field_apparatus_catalog_ref": APARAT,
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                 "nn_voltage_kv": 0.4,
                 "sn_fields": [{"field_role": r} for r in sn_fields],
@@ -927,7 +927,7 @@ def test_stacja_konca_ciagu_przyjmuje_kazdy_kanal_katalogu_transformatora(
             {
                 "endpoint_bus_ref": _odcinki(enm)[-1]["to_bus_ref"],
                 "station": {"name": "Stacja Brzozowa", "station_type": "terminal"},
-                "field_apparatus_catalog_ref": APARAT,
+                "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "transformer": transformator,
                 "nn_voltage_kv": 0.4,
                 "sn_fields": [{"field_role": "LINIA_IN"}],
@@ -975,7 +975,11 @@ def test_brak_pola_toru_bez_wspolnego_aparatu_to_nazwana_odmowa_bez_skutku(
     pola, nie inna reguła)."""
     enm = _ciag_z_gpz(1)
     role = [r for r, _ in POLA_TORU_OPERACJI[operacja]]
-    sklad = [{"field_role": r, "apparatus_catalog_ref": APARAT} for r in role if r != brak]
+    sklad = [
+        {"field_role": r, "apparatus_catalog_binding": {"catalog_item_id": APARAT}}
+        for r in role
+        if r != brak
+    ]
     if operacja == "insert_station_on_segment_sn":
         payload: dict[str, Any] = {
             "segment_ref": _odcinki(enm)[0]["ref_id"],
@@ -1008,7 +1012,9 @@ def test_brak_pola_toru_bez_wspolnego_aparatu_to_nazwana_odmowa_bez_skutku(
     assert wynik.get("snapshot") is None
     assert enm == przed
 
-    pelny = [{"field_role": r, "apparatus_catalog_ref": APARAT} for r in role]
+    pelny = [
+        {"field_role": r, "apparatus_catalog_binding": {"catalog_item_id": APARAT}} for r in role
+    ]
     ok(op(copy.deepcopy(enm), operacja, {**payload, "sn_fields": pelny}))
 
 
@@ -1049,7 +1055,7 @@ def test_stacja_z_bloku_rmu_prowadzi_tor_przez_jednostke_liniowa_w_roli_wejsciow
         pola.append(
             {
                 "field_role": rola,
-                "apparatus_catalog_ref": APARAT,
+                "apparatus_catalog_binding": {"catalog_item_id": APARAT},
                 "bay_template_ref": _pole_rodziny_dla_funkcji(
                     blok.switchgear_family_ref, jednostka.bay_kind
                 ).template_ref,

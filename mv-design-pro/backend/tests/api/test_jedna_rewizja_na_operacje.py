@@ -120,7 +120,7 @@ def _substrat(klient: TestClient, case_id: str) -> dict[str, Any]:
         case_id,
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "segment_id": segmenty[-1],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -133,7 +133,7 @@ def _substrat(klient: TestClient, case_id: str) -> dict[str, Any]:
             "sn_fields": ["IN", "OUT", "FEEDER", "TR"],
             "transformer": {
                 "create": True,
-                "catalog_binding": {
+                "transformer_catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
                     "catalog_item_version": "2024.1",

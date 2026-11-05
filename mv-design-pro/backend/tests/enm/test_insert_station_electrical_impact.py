@@ -72,7 +72,7 @@ def _exec_dry_run(snap: dict[str, Any], seg_id: str, **kwargs: Any) -> dict[str,
     payload = {
         "segment_id": seg_id,
         # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
-        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
         "dry_run": True,
         "station": {"name": "Stacja", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},

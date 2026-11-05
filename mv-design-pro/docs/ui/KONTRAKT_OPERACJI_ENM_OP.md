@@ -302,7 +302,7 @@ dokladnie jeden GPZ).
 | `from_terminal_id` | `string` | NIE | Identyfikator terminala, od ktorego kontynuowac (brak --- koniec magistrali) |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
-| `segment.catalog_ref` | `string` | NIE | Referencja katalogowa segmentu |
+| `segment.catalog_binding` | `object` | NIE | Wiazanie pozycji katalogowej segmentu (`catalog_item_id`) |
 | `segment.name` | `string` | NIE | Nazwa segmentu |
 
 **Tworzy:**
@@ -334,7 +334,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `station.nn_voltage_kv` | `float` | TAK | Napiecie nN [kV] --- MUSI byc jawne |
 | `sn_fields` | `list[SNFieldSpec]` | TAK | Lista pol SN rozdzielnicy (role: `LINIA_IN`, `LINIA_OUT`, `LINIA_ODG`, `TRANSFORMATOROWE`, `SPRZEGLO`) |
 | `transformer.create` | `bool` | NIE | Flaga utworzenia transformatora (domyslnie `true`) |
-| `transformer.transformer_catalog_ref` | `string` | NIE | Referencja katalogowa transformatora |
+| `transformer.transformer_catalog_binding` | `object` | NIE | Wiazanie pozycji katalogowej transformatora (`catalog_item_id`) |
 | `nn_block.outgoing_feeders_nn_count` | `int` | NIE | Liczba odplywow nN (domyslnie 1) |
 | `nn_block.outgoing_feeders_nn` | `list` | NIE | Specyfikacje poszczegolnych odplywow nN |
 
@@ -368,7 +368,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `from_bus_ref` | `string` | TAK | Referencja szyny zrodlowej --- MUSI byc jawna, brak auto-detekcji |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
-| `segment.catalog_ref` | `string` | NIE | Referencja katalogowa |
+| `segment.catalog_binding` | `object` | NIE | Wiazanie pozycji katalogowej (`catalog_item_id`) |
 
 **Tworzy:**
 - Szyne koncowa odgalezienia (`bus`) z napieciem dziedziczonym topologicznie
@@ -421,7 +421,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `to_bus_ref` | `string` | TAK | Referencja szyny koncowej --- MUSI byc jawna |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | NIE | Rodzaj segmentu (domyslnie `KABEL`) |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
-| `segment.catalog_ref` | `string` | NIE | Referencja katalogowa |
+| `segment.catalog_binding` | `object` | NIE | Wiazanie pozycji katalogowej (`catalog_item_id`) |
 | `ring_name` | `string` | NIE | Nazwa pierscienia |
 
 **Tworzy:**
@@ -506,7 +506,7 @@ analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
 |------|-----|----------|------|
 | `hv_bus_ref` | `string` | TAK | Referencja szyny strony gornego napiecia (SN) |
 | `lv_bus_ref` | `string` | TAK | Referencja szyny strony dolnego napiecia (nN) |
-| `transformer_catalog_ref` | `string` | NIE | Referencja katalogowa transformatora |
+| `transformer_catalog_binding` | `object` | NIE | Wiazanie pozycji katalogowej transformatora (`catalog_item_id`) |
 | `sn_mva` | `float` | NIE | Moc znamionowa [MVA] |
 | `uhv_kv` | `float` | NIE | Napiecie znamionowe strony gornej [kV] (topologicznie z szyny HV) |
 | `ulv_kv` | `float` | NIE | Napiecie znamionowe strony dolnej [kV] (topologicznie z szyny LV) |
@@ -536,8 +536,7 @@ Po przypisaniu element otrzymuje `parameter_source = "CATALOG"`.
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
 | `element_ref` | `string` | TAK | Referencja elementu docelowego |
-| `catalog_item_id` | `string` | TAK | Identyfikator pozycji katalogowej |
-| `catalog_item_version` | `string` | NIE | Wersja pozycji katalogowej |
+| `catalog_binding` | `object \| null` | TAK | Wiazanie pozycji katalogowej (`catalog_item_id`, opcjonalnie `catalog_item_version`); `null` = odpiecie pozycji |
 
 **Modyfikuje:**
 - Element docelowy --- ustawia `catalog_ref` i `parameter_source`

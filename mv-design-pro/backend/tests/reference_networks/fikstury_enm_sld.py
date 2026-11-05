@@ -347,7 +347,7 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_id": segmenty_korytarza(b.migawka())[0],
-            "field_apparatus_catalog_ref": APARAT_POLA_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA_SN},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {
                 "station_type": "B",
@@ -471,7 +471,7 @@ def _stacja_b2(b: KlientBudowy, segment_ref: str, nazwa: str) -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_id": segment_ref,
-            "field_apparatus_catalog_ref": APARAT_POLA_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA_SN},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {
                 "station_type": "B",

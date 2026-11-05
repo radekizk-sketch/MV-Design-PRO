@@ -387,10 +387,10 @@ class SNFieldSpec(_FrozenBase):
     zamiast nich, została usunięta — była drugim nazewnictwem tej samej prawdy,
     którego żadna operacja stacyjna nie czytała."""
 
-    apparatus_catalog_ref: str | None = None
-    """Aparat pola z katalogu APARAT_SN (B-12) — wskazanie WYMAGANE przez operację
-    (albo wspólne `field_apparatus_catalog_ref` payloadu). Operacja nie dobiera
-    aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
+    apparatus_catalog_binding: dict[str, Any] | None = None
+    """Aparat pola z katalogu APARAT_SN (B-12), wiązanie z `catalog_item_id` — wskazanie
+    WYMAGANE przez operację (albo wspólne `field_apparatus_catalog_binding` payloadu). Operacja
+    nie dobiera aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
 
     manufacturer_ref: str | None = None
     """Producent rozdzielnicy tego pola. Wpis pola ma pierwszeństwo przed
@@ -488,8 +488,8 @@ class TransformerSpec(_FrozenBase):
     create: Literal[True] = True
     """Flaga utworzenia transformatora (zawsze True)."""
 
-    transformer_catalog_ref: str | None = None
-    """Referencja do pozycji katalogowej transformatora."""
+    transformer_catalog_binding: dict[str, Any] | None = None
+    """Wiązanie pozycji katalogowej transformatora (`catalog_item_id`)."""
 
     model_type: Literal["DWU_UZWOJENIOWY"] = "DWU_UZWOJENIOWY"
     """Typ modelu transformatora."""
@@ -560,8 +560,8 @@ class NNSwitchSpec(_FrozenBase):
     normal_state: Literal["OTWARTY", "ZAMKNIETY"]
     """Stan normalny aparatu — jawnie, bez domyślnego."""
 
-    catalog_ref: str | None = None
-    """Referencja katalogowa aparatu (id+wersja) lub None => blocker."""
+    catalog_binding: dict[str, Any] | None = None
+    """Wiązanie pozycji katalogowej aparatu (`catalog_item_id`) lub None => blocker."""
 
     catalog_version: str | None = None
     """Wersja pozycji katalogowej."""
@@ -790,8 +790,8 @@ class SegmentSpec(_FrozenBase):
     dlugosc_m: float
     """Długość segmentu [m]."""
 
-    catalog_ref: str | None = None
-    """Opcjonalna referencja katalogowa."""
+    catalog_binding: dict[str, Any] | None = None
+    """Opcjonalne wiązanie pozycji katalogowej (`catalog_item_id`)."""
 
     name: str | None = None
     """Opcjonalna nazwa segmentu."""
@@ -896,9 +896,9 @@ class InsertStationOnSegmentSNPayload(_FrozenBase):
     wskazuje projektant, operacja nie fabrykuje decyzji projektowej). Flagi usunięte
     — decyzja o polu transformatorowym jest w tej liście, jawnie."""
 
-    field_apparatus_catalog_ref: str | None = None
-    """Wspólny aparat pól SN z katalogu APARAT_SN (B-12) — używany, gdy pole nie
-    ma własnego `apparatus_catalog_ref`."""
+    field_apparatus_catalog_binding: dict[str, Any] | None = None
+    """Wspólny aparat pól SN z katalogu APARAT_SN (B-12), wiązanie — używany, gdy pole nie
+    ma własnego `apparatus_catalog_binding`."""
 
     transformer: TransformerSpec
     """Specyfikacja transformatora SN/nN."""
@@ -1013,8 +1013,8 @@ class AddTransformerSNNNPayload(_FrozenBase):
     lv_bus_ref: str
     """Referencja szyny strony dolnego napięcia (nN)."""
 
-    transformer_catalog_ref: str | None = None
-    """Opcjonalna referencja katalogowa transformatora."""
+    transformer_catalog_binding: dict[str, Any] | None = None
+    """Opcjonalne wiązanie pozycji katalogowej transformatora (`catalog_item_id`)."""
 
     sn_mva: float | None = None
     """Moc znamionowa [MVA]."""
@@ -1172,7 +1172,6 @@ class DerBlockTransformerSpec(_FrozenBase):
     secondary_voltage_kv: float | None = None
     uk_percent: float | None = None
     vector_group: str | None = None
-    catalog_ref: str | None = None
     catalog_binding: dict[str, Any] | None = None
     loadability_pu: float | None = None
     """Dopuszczalne obciążenie (przeciążalność) TR blokowego [pu]. Brak → domyślnie 1,0
@@ -1202,7 +1201,6 @@ class DerMvFieldConfigurationSpec(_FrozenBase):
     field_name: str | None = None
     bay_template_ref: str | None = None
     apparatus_catalog_binding: dict[str, Any] | None = None
-    cable_catalog_ref: str | None = None
     cable_catalog_binding: dict[str, Any] | None = None
     cable_length_km: float | None = None
 
@@ -1253,12 +1251,12 @@ class AddConverterSourcePayload(_FrozenBase):
     connection_variant: Literal["nn_side", "block_transformer"]
     station_ref: str
     # Brak = szyna rozdzielnicy nN wskazanej stacji ustalona z modelu (`nn_side`) albo szyna
-    # urządzenia nowego transformatora dedykowanego (`block_transformer_catalog_ref`).
+    # urządzenia nowego transformatora dedykowanego (`block_transformer_catalog_binding`).
     bus_nn_ref: str | None = None
     # Karta JEDNA-SCIEZKA-EDYCJI: nowy transformator dedykowany z katalogu TRAFO_SN_NN
     # (strona górna wprost na istniejącej szynie SN `sn_connection_bus_ref`, strona dolna na
     # nowej szynie urządzenia) i tolerancja napięcia sieci nN jego strony wtórnej.
-    block_transformer_catalog_ref: str | None = None
+    block_transformer_catalog_binding: dict[str, Any] | None = None
     block_transformer_lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
     sn_connection_bus_ref: str | None = None
     # Deklaracja modułu NC RfG — sprawdzana wobec klasyfikacji (moc × napięcie punktu

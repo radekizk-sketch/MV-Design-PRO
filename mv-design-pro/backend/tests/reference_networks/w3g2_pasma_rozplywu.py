@@ -108,7 +108,7 @@ def zbuduj_siec_w3g2_dzis(klient: TestClient) -> dict[str, Any]:
     op = b.operacja(
         "insert_station_on_segment_sn",
         {
-            "field_apparatus_catalog_ref": APARAT_POLA_SN,
+            "field_apparatus_catalog_binding": {"catalog_item_id": APARAT_POLA_SN},
             "segment_id": segmenty[-1],
             "station_type": "B",
             "insert_at": {"value": 0.5},
@@ -116,7 +116,7 @@ def zbuduj_siec_w3g2_dzis(klient: TestClient) -> dict[str, Any]:
             "sn_fields": ["IN", "OUT", "FEEDER", "TR"],
             "transformer": {
                 "create": True,
-                "catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_630),
+                "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_630),
             },
         },
     )

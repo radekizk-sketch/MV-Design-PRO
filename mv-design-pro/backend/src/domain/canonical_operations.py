@@ -110,7 +110,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "transformer_regulated_winding",
             "transformer_regulation_type",
             "transformer_sn_mva",
-            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_changer_catalog_binding",
             "transformer_tap_current_position",
             "transformer_tap_max_position",
             "transformer_tap_min_position",
@@ -150,7 +150,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "construction_type",
             "designation",
             "dry_run",
-            "field_apparatus_catalog_ref",
+            "field_apparatus_catalog_binding",
             "insert_at",
             "name",
             "name_pl",
@@ -259,7 +259,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("bay_ref", "mode"),
-        optional_fields=("devices", "bay_template_ref", "catalog_ref"),
+        optional_fields=("devices", "bay_template_ref", "catalog_binding"),
         creates_elements=False,
     ),
     "add_sn_bay": OperationSpec(
@@ -325,7 +325,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "transformer_ldc_x_ohm",
             "transformer_regulated_winding",
             "transformer_regulation_type",
-            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_changer_catalog_binding",
             "transformer_tap_current_position",
             "transformer_tap_max_position",
             "transformer_tap_min_position",
@@ -416,9 +416,9 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "connection_variant",
         ),
         optional_fields=(
-            "battery_catalog_ref",
+            "battery_catalog_binding",
             "bess_mode",
-            "block_transformer_catalog_ref",
+            "block_transformer_catalog_binding",
             "block_transformer_lv_voltage_tolerance",
             "blocking_transformer_ref",
             "bus_nn_ref",
@@ -514,15 +514,15 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("generator_ref",),
         optional_fields=(
             "bess_operation_mode_refs",
-            "ct_catalog_ref",
+            "ct_catalog_binding",
             "dynamic_model_ref",
             "hvrt_curve_ref",
             "karty_widmowe_ref",
             "lvrt_curve_ref",
             "nc_rfg_profile_ref",
             "pf_curve_ref",
-            "protection_catalog_ref",
-            "vt_catalog_ref",
+            "protection_catalog_binding",
+            "vt_catalog_binding",
         ),
         creates_elements=False,
     ),
@@ -668,7 +668,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "designation",
             "dry_run",
             "endpoint_bus_ref",
-            "field_apparatus_catalog_ref",
+            "field_apparatus_catalog_binding",
             "nn_block",
             "nn_earthing",
             "nn_voltage_kv",
@@ -1048,6 +1048,8 @@ _KSZTALT_REZYSTORA_UZIEMIAJACEGO = KsztaltObiektu(
 
 KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_converter_source": {
+        "battery_catalog_binding": _WIAZANIE_KATALOGOWE,
+        "block_transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "der_topology": KsztaltObiektu(
             pola=frozenset(
@@ -1154,6 +1156,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
     },
     "add_grid_source_sn": {
+        "transformer_tap_changer_catalog_binding": _WIAZANIE_KATALOGOWE,
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "gpz_line_field_apparatus": KsztaltObiektu(
             pola=frozenset({"apparatus_kind", "catalog_binding"}),
@@ -1275,6 +1278,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "add_transformer_sn_nn": {
+        "transformer_tap_changer_catalog_binding": _WIAZANIE_KATALOGOWE,
         "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "add_ups_nn": {
@@ -1302,6 +1306,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "append_station_on_endpoint": {
+        "field_apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
         "nn_block": KsztaltObiektu(
             pola=frozenset(
                 {
@@ -1311,23 +1316,25 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "outgoing_feeders_nn",
                     "outgoing_feeders_nn_count",
                     "simultaneity_factor",
-                    "source_converter_catalog_ref",
+                    "source_converter_catalog_binding",
                     "source_converter_kind",
                     "source_converter_name",
                     "source_protection",
                 }
             ),
             zagniezdzone={
+                "source_converter_catalog_binding": _WIAZANIE_KATALOGOWE,
                 "source_protection": KsztaltObiektu(
                     pola=frozenset(
                         {
                             "analysis_scope",
                             "breaker_role",
-                            "device_catalog_ref",
+                            "device_catalog_binding",
                             "device_label",
                             "protected_object",
                         }
                     ),
+                    zagniezdzone={"device_catalog_binding": _WIAZANIE_KATALOGOWE},
                 ),
             },
         ),
@@ -1346,7 +1353,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "sn_fields": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "apparatus_catalog_ref",
+                    "apparatus_catalog_binding",
                     "bay_kind",
                     "bay_template_ref",
                     "catalog_bindings",
@@ -1364,6 +1371,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "switchgear_family_ref",
                 }
             ),
+            zagniezdzone={"apparatus_catalog_binding": _WIAZANIE_KATALOGOWE},
         ),
         "station": KsztaltObiektu(
             pola=frozenset(
@@ -1417,7 +1425,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "transformer_ldc_x_ohm",
                     "transformer_regulated_winding",
                     "transformer_regulation_type",
-                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_changer_catalog_binding",
                     "transformer_tap_current_position",
                     "transformer_tap_max_position",
                     "transformer_tap_min_position",
@@ -1428,6 +1436,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             ),
             zagniezdzone={
                 "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
+                "transformer_tap_changer_catalog_binding": _WIAZANIE_KATALOGOWE,
             },
         ),
     },
@@ -1479,6 +1488,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
     },
     "insert_station_on_segment_sn": {
+        "field_apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
         "insert_at": KsztaltObiektu(
             pola=frozenset({"mode", "value"}),
         ),
@@ -1491,23 +1501,25 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "outgoing_feeders_nn",
                     "outgoing_feeders_nn_count",
                     "simultaneity_factor",
-                    "source_converter_catalog_ref",
+                    "source_converter_catalog_binding",
                     "source_converter_kind",
                     "source_converter_name",
                     "source_protection",
                 }
             ),
             zagniezdzone={
+                "source_converter_catalog_binding": _WIAZANIE_KATALOGOWE,
                 "source_protection": KsztaltObiektu(
                     pola=frozenset(
                         {
                             "analysis_scope",
                             "breaker_role",
-                            "device_catalog_ref",
+                            "device_catalog_binding",
                             "device_label",
                             "protected_object",
                         }
                     ),
+                    zagniezdzone={"device_catalog_binding": _WIAZANIE_KATALOGOWE},
                 ),
             },
         ),
@@ -1526,7 +1538,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "sn_fields": KsztaltObiektu(
             pola=frozenset(
                 {
-                    "apparatus_catalog_ref",
+                    "apparatus_catalog_binding",
                     "bay_kind",
                     "bay_template_ref",
                     "equipment",
@@ -1542,6 +1554,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "switchgear_family_ref",
                 }
             ),
+            zagniezdzone={"apparatus_catalog_binding": _WIAZANIE_KATALOGOWE},
         ),
         "station": KsztaltObiektu(
             pola=frozenset(
@@ -1598,7 +1611,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "transformer_ldc_x_ohm",
                     "transformer_regulated_winding",
                     "transformer_regulation_type",
-                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_changer_catalog_binding",
                     "transformer_tap_current_position",
                     "transformer_tap_max_position",
                     "transformer_tap_min_position",
@@ -1609,6 +1622,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             ),
             zagniezdzone={
                 "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
+                "transformer_tap_changer_catalog_binding": _WIAZANIE_KATALOGOWE,
             },
         ),
     },
@@ -1619,11 +1633,19 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
     },
     "set_bay_equipment": {
+        # Tryb `wkladka`: wkładka wskazana wiązaniem; `devices[].catalog_ref` to pole MODELU
+        # aparatu pola (`BayPrimaryDevice.catalog_ref`), nie wskazanie obok wiązania.
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
         "devices": KsztaltObiektu(
             pola=frozenset(
                 {"catalog_ref", "designation", "earthing_role", "kind", "linked_ref", "placement"}
             ),
         ),
+    },
+    "set_der_catalog_bindings": {
+        "ct_catalog_binding": _WIAZANIE_KATALOGOWE,
+        "protection_catalog_binding": _WIAZANIE_KATALOGOWE,
+        "vt_catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "set_nn_cable_laying_conditions": {
         "cable_laying_conditions": KsztaltObiektu(

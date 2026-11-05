@@ -355,7 +355,7 @@ class TestParytetKtWynikJadraIEndpointuHttp:
         odpowiedz = klient.post(
             "/api/solver/ct-burden-check",
             json={
-                "ct_catalog_ref": ref,
+                "ct_catalog_binding": {"catalog_item_id": ref},
                 "dlugosc_przewodu_m": 20.0,
                 "przekroj_przewodu_mm2": 4.0,
                 "obciazenia_aparatow": [{"nazwa": "Przekaźnik", "moc_va": 2.0}],

@@ -146,7 +146,7 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
                     "insert_station_on_segment_sn",
                     {
                         "segment_ref": dzielony["ref_id"],
-                        "field_apparatus_catalog_ref": APARAT,
+                        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                         "station_type": "B",
                         "insert_at": {"value": 0.5},
                         "station": {
@@ -170,8 +170,11 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
                     "append_station_on_endpoint",
                     {
                         "endpoint_bus_ref": koniec_ciagu(enm),
-                        "station": {"name": "Stacja Brzozowa", "station_type": "terminal"},
-                        "field_apparatus_catalog_ref": APARAT,
+                        "station": {
+                            "name": "Stacja Brzozowa",
+                            "station_type": "terminal",
+                        },
+                        "field_apparatus_catalog_binding": {"catalog_item_id": APARAT},
                         "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                         "nn_voltage_kv": 0.4,
                         "sn_fields": [{"field_role": role[r]} for r in pola_stacji],

@@ -145,7 +145,7 @@ def _wpisy_pol_z_bloku(configuration_ref: str) -> list[dict[str, Any]]:
                 "bay_template_ref": _szablon_rodziny_dla_funkcji(
                     konfiguracja.switchgear_family_ref, jednostka.bay_kind
                 ),
-                "apparatus_catalog_ref": CATALOG_APARAT_SN,
+                "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
                 POLE_BLOKU_FABRYCZNEGO: configuration_ref,
                 POLE_JEDNOSTKI_BLOKU: numer,
             }
@@ -158,7 +158,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "station": {"name": "Stacja", "station_type": "inline", "nn_voltage_kv": 0.4},
         "sn_fields": sn_fields,
-        "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "field_apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "transformer": {
             "create": True,
             "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
@@ -293,7 +293,7 @@ def test_rodzina_modulowa_nie_dostaje_kluczy_bloku(operacja: str) -> None:
         "field_role": "LINIA_OUT",
         "switchgear_family_ref": RODZINA_MODULARNA,
         "bay_template_ref": POLE_MODULARNE,
-        "apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
     }
     odpowiedz = _uruchom(operacja, [wpis])
     assert odpowiedz.get("error") in (None, ""), odpowiedz
@@ -324,7 +324,7 @@ def test_ta_sama_rodzina_odrzucona_celka_przyjeta_jednostka_bloku(operacja: str)
         "field_role": "LINIA_OUT",
         "switchgear_family_ref": RODZINA_BLOKOWA,
         "bay_template_ref": POLE_BLOKOWE,
-        "apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
     }
     odrzucone = _uruchom(operacja, [celka])
     assert odrzucone.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO, odrzucone
@@ -405,7 +405,7 @@ def test_zadna_operacja_nie_czyta_bloku_z_metadanej_wiazan() -> None:
         "field_role": "LINIA_OUT",
         "switchgear_family_ref": RODZINA_BLOKOWA,
         "bay_template_ref": POLE_BLOKOWE,
-        "apparatus_catalog_ref": CATALOG_APARAT_SN,
+        "apparatus_catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
         "catalog_bindings": {
             "factory_configuration": {
                 "catalog_namespace": "ROZDZIELNICA_SN",

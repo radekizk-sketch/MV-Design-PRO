@@ -131,7 +131,7 @@ def _realny_enm() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_id": segment,
-            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "field_apparatus_catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {
                 "station_type": "B",
