@@ -17,7 +17,7 @@
 
 import './zabezpieczenia-automatyka.css';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useFieldReadModel } from '../../../ui/field/useFieldReadModel';
@@ -109,10 +109,20 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
   const openInspectorPanel = useNetworkBuildStore((s) => s.openInspectorPanel);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const zSterownikiem = wiersze.filter((w) => w.sterownikRef !== null);
+  // Ekran otwarty akcją „Uzupełnij” oceny zabezpieczeń: sterownik (`entityRef`) i funkcja
+  // (`payload.funkcja_ref`) — wiersz rozwinięty, kursor w nastawie tej funkcji.
+  const powierzchnia = useNetworkBuildStore((s) => s.activeSurface);
+  const fokusSterownik = powierzchnia?.screenCode === 'E-27' ? powierzchnia.entityRef : null;
+  const fokusFunkcja = fokusSterownik ? powierzchnia?.routeState.payload?.funkcja_ref : undefined;
+  const fokusFunkcjaRef = typeof fokusFunkcja === 'string' ? fokusFunkcja : null;
+  const kluczFokusu = zSterownikiem.find((w) => w.sterownikRef === fokusSterownik)?.klucz ?? null;
   // Jeden sterownik w modelu — rozwinięty od razu (zero kliknięć do nastaw); więcej — na żądanie.
   const [rozwiniete, setRozwiniete] = useState<ReadonlySet<string>>(
     () => new Set(zSterownikiem.length === 1 ? [zSterownikiem[0].klucz] : []),
   );
+  useEffect(() => {
+    if (kluczFokusu) setRozwiniete((r) => (r.has(kluczFokusu) ? r : new Set([...r, kluczFokusu])));
+  }, [kluczFokusu]);
   const nastawyWgUrzadzenia = new Map(
     widok.data.assignments.filter((a) => a.nastawy).map((a) => [a.device_id, a.nastawy] as const),
   );
@@ -212,6 +222,7 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
                           urzadzenieRef={w.sterownikRef}
                           nastawy={nastawyWgUrzadzenia.get(w.sterownikRef)}
                           profile={widok.data.profile_charakterystyk ?? []}
+                          fokusFunkcjaRef={w.sterownikRef === fokusSterownik ? fokusFunkcjaRef : null}
                           testid={`mvd-za-edytor-${w.sterownikRef}`}
                         />
                       </td>

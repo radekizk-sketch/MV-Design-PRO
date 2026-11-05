@@ -132,6 +132,7 @@ from werdykt import (
     format_wielkosc,
     ocen_kryterium,
 )
+from werdykt.etykiety import etykieta as etykieta_werdyktu
 from werdykt.proweniencja import FieldQuality
 
 ZDOLNOSC_OCENY = "zabezpieczenia.ocena_ziemnozwarciowa"
@@ -171,15 +172,30 @@ _JEDNOSTKA: dict[str, str] = {
     "P0": "kW",
     "U0": "% U0n",
 }
+#: Symbol wielkości decydującej w LaTeX — w nawiasie klamrowym, bo wzory doklejają indeks
+#: (``{3I_0}_s``); bez klamer ``3I_0_s`` to podwójny indeks dolny (błąd składni KaTeX).
 _SYMBOL: dict[str, str] = {
-    "PRAD": r"3I_0",
-    "RZUT_PRADU": r"3I_0\cos(\varphi_0-\varphi_{ch})",
-    "MODUL_Y0": r"|Y_0|",
-    "G0": r"G_0",
-    "B0": r"B_0",
-    "P0": r"P_0",
-    "U0": r"U_0",
+    "PRAD": r"{3I_0}",
+    "RZUT_PRADU": r"{3I_0\cos(\varphi_0-\varphi_{ch})}",
+    "MODUL_Y0": r"{|Y_0|}",
+    "G0": r"{G_0}",
+    "B0": r"{B_0}",
+    "P0": r"{P_0}",
+    "U0": r"{U_0}",
 }
+
+
+def _tex(wartosc: float) -> str:
+    """Liczba w zapisie polskim do LaTeX — przecinek dziesiętny w klamrach (``{,}``), inaczej
+    KaTeX składa go jako znak interpunkcyjny z odstępem."""
+    return liczba_pl(wartosc).replace(",", "{,}")
+
+
+def _relacja_tex(spelnia: bool) -> str:
+    """Znak relacji podstawionego wzoru zgodny z wynikiem (wzór nie twierdzi nieprawdy)."""
+    return r"\ge" if spelnia else "<"
+
+
 _OPIS_WIELKOSCI: dict[str, str] = {
     "PRAD": "prąd zerowy 3I0 w polu (strona pierwotna)",
     "RZUT_PRADU": "rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna)",
@@ -1994,6 +2010,9 @@ def wykres_wskazowy_67n(
         "os": list(u),
         "granice": granice,
         "polowa_sektora_deg": polowa,
+        # Sektor szerszy niż półpłaszczyzna: łuk sektora od granicy do granicy jest „dużym
+        # łukiem” (rysunek nie rozstrzyga geometrii sam).
+        "sektor_duzy_luk": polowa > 90.0,
         "tryb": tryb_kryterium(f),
         "tryb_pl": tryb_pl(f),
         "prog_a": f.prog,
@@ -2044,14 +2063,25 @@ _KOLEJNOSC_STANU = {
 }
 
 
-def stan_wiersza(rekordy: Sequence[RekordOcenyZiemnozwarciowej]) -> tuple[str, str | None]:
-    """Stan wiersza = najgorszy status rekordów funkcji (NIE_DOTYCZY pominięte) i zdanie
-    rekordu, który go wyznacza (podpowiedź stanu)."""
+def stan_wiersza(
+    rekordy: Sequence[RekordOcenyZiemnozwarciowej],
+) -> tuple[str, str | None, dict[str, str]]:
+    """Stan wiersza = najgorszy status rekordów funkcji (NIE_DOTYCZY pominięte), zdanie
+    rekordu, który go wyznacza (podpowiedź stanu), i etykieta TEGO rekordu (tekst i semantyka
+    z backendu — ekran nie mapuje statusu na tekst ani kolor; kontrakt werdyktu §9)."""
     istotne = [r for r in rekordy if r.ocena.status_maszynowy != "NIE_DOTYCZY"]
     if not istotne:
-        return "NIE_OCENIONO", None
+        return (
+            "NIE_OCENIONO",
+            None,
+            etykieta_werdyktu("NIE_OCENIONO", None, "K").model_dump(mode="json"),
+        )
     najgorszy = min(istotne, key=lambda r: _KOLEJNOSC_STANU.get(r.ocena.status_maszynowy, 4))
-    return najgorszy.ocena.status_maszynowy, najgorszy.ocena.wyjasnienie.zdanie_pl
+    return (
+        najgorszy.ocena.status_maszynowy,
+        najgorszy.ocena.wyjasnienie.zdanie_pl,
+        najgorszy.ocena.etykieta.model_dump(mode="json"),
+    )
 
 
 def _rekord_wspolczynnika(
@@ -2193,9 +2223,9 @@ def wiersze_funkcji(
                     wartosci["k_c"] = _wartosc(k_c, "1", spelnia=k_c >= k_c_wym.wartosc)
                     wymagane["k_c"] = k_c_wym.to_dict()
                     wzor = (
-                        rf"k_c = \frac{{{_SYMBOL[f.rodzaj]}_{{dz,min}}}}{{{_SYMBOL[f.rodzaj]}_s}}"
-                        rf" = \frac{{{liczba_pl(dz)}}}{{{liczba_pl(f.prog)}}} = {liczba_pl(k_c)}"
-                        rf" \ge {liczba_pl(k_c_wym.wartosc)}"
+                        rf"k_c = \frac{{{_SYMBOL[f.rodzaj]}_{{\text{{dz,min}}}}}}{{{_SYMBOL[f.rodzaj]}_s}}"
+                        rf" = \frac{{{_tex(dz)}}}{{{_tex(f.prog)}}} = {_tex(k_c)}"
+                        rf" {_relacja_tex(k_c >= k_c_wym.wartosc)} {_tex(k_c_wym.wartosc)}"
                     )
                     wzory.append({"symbol_latex": "k_c", "wzor_latex": wzor})
                     nowe.append(
@@ -2208,7 +2238,7 @@ def wiersze_funkcji(
                             wymaganie=k_c_wym,
                             wzor_latex=r"k_c = \frac{"
                             + _SYMBOL[f.rodzaj]
-                            + r"_{dz,min}}{"
+                            + r"_{\text{dz,min}}}{"
                             + _SYMBOL[f.rodzaj]
                             + r"_s} \ge k_{c,wym}",
                             punkt_pl=f"zwarcie w punkcie {najgorszy.nazwa_pl}",
@@ -2291,9 +2321,10 @@ def wiersze_funkcji(
                                 "symbol_latex": "k_b",
                                 "wzor_latex": (
                                     rf"k_b = \frac{{{_SYMBOL[f.rodzaj]}_s}}"
-                                    rf"{{{_SYMBOL[f.rodzaj]}_{{wł,max}}}} = "
-                                    rf"\frac{{{liczba_pl(f.prog)}}}{{{liczba_pl(wl_wartosc)}}}"
-                                    rf" = {liczba_pl(k_b)} \ge {liczba_pl(k_b_wym.wartosc)}"
+                                    rf"{{{_SYMBOL[f.rodzaj]}_{{\text{{wł,max}}}}}} = "
+                                    rf"\frac{{{_tex(f.prog)}}}{{{_tex(wl_wartosc)}}}"
+                                    rf" = {_tex(k_b)} {_relacja_tex(k_b >= k_b_wym.wartosc)}"
+                                    rf" {_tex(k_b_wym.wartosc)}"
                                 ),
                             }
                         )
@@ -2310,7 +2341,7 @@ def wiersze_funkcji(
                                 + _SYMBOL[f.rodzaj]
                                 + r"_s}{"
                                 + _SYMBOL[f.rodzaj]
-                                + r"_{wł,max}} \ge k_{b,wym}",
+                                + r"_{\text{wł,max}}} \ge k_{b,wym}",
                                 punkt_pl=f"zwarcie poza polem w punkcie {najgorszy_poza.nazwa_pl}",
                                 obliczenie=obliczenie,
                                 odniesienie=odniesienie,
@@ -2347,7 +2378,7 @@ def wiersze_funkcji(
             for r in [*rekordy, *nowe]
             if r.urzadzenie_ref == f.urzadzenie_ref and r.funkcja_ref == f.funkcja_ref
         ]
-        stan, przyczyna = stan_wiersza(rekordy_f)
+        stan, przyczyna, etykieta_stanu = stan_wiersza(rekordy_f)
         sprawdz_wartosci_wiersza(rodzina, set(wartosci))
         braki = list(surowa.braki)
         wiersze.append(
@@ -2363,6 +2394,7 @@ def wiersze_funkcji(
                 "sterownik_pl": f.nazwa_urzadzenia_pl,
                 "grupa": f.grupa,
                 "stan": stan,
+                "etykieta": etykieta_stanu,
                 "przyczyna_pl": przyczyna,
                 "wartosci": wartosci,
                 "wymagania": wymagane,
@@ -2865,7 +2897,7 @@ def wiersze_uziemien(
             r for r in rekordy if r.kryterium in ("NAPIECIE_UZIOMOWE", "REZYSTANCJA_DOPUSZCZALNA")
         )
         d = glowny.dodatkowe
-        stan, przyczyna = stan_wiersza(rekordy)
+        stan, przyczyna, etykieta_stanu = stan_wiersza(rekordy)
         wiersze.append(
             {
                 "stacja_ref": ref,
@@ -2897,6 +2929,7 @@ def wiersze_uziemien(
                 "wzor_pradu_latex": d["wzor_latex"],
                 "r_e_max_latex": d["r_e_max_latex"],
                 "stan": stan,
+                "etykieta": etykieta_stanu,
                 "przyczyna_pl": przyczyna,
                 "kryteria": [r.ocena.kryterium_id for r in rekordy],
             }

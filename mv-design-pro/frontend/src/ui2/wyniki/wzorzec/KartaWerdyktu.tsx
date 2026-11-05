@@ -1234,3 +1234,42 @@ export function EtykietaWerdyktu({ etykieta, status = null, testid, zwarta = fal
     </span>
   );
 }
+
+/** Znak semantyki etykiety do kolumny stanu tabel arkusza — JEDYNA mapa semantyka → znak. */
+const SEMANTYKA_ZNAK: Readonly<Record<SemantykaEtykiety, string>> = {
+  pozytywna: '✓',
+  negatywna: '✗',
+  ostrzegawcza: '!',
+  neutralna: '–',
+};
+
+export interface ZnakWerdyktuProps {
+  /** Etykieta Z REKORDU backendu — znak i kolor z semantyki, pełny tekst w podpowiedzi. */
+  readonly etykieta: Etykieta;
+  /** Zdanie wyjaśnienia rekordu rozstrzygającego (podpowiedź: etykieta + przyczyna z liczbą). */
+  readonly przyczyna?: string | null;
+  readonly status?: StatusWerdyktu | null;
+  readonly testid?: string;
+}
+
+/**
+ * Znak stanu wiersza tabeli (jeden znak w kolorze semantyki, pełna etykieta i przyczyna
+ * w podpowiedzi i dla czytnika ekranu). Wiersz prowadzi do szczegółów z kartą werdyktu —
+ * znak nie zastępuje karty (§9).
+ */
+export function ZnakWerdyktu({ etykieta, przyczyna = null, status = null, testid }: ZnakWerdyktuProps) {
+  const opis = przyczyna ? `${etykieta.etykieta_pl}. ${przyczyna}` : etykieta.etykieta_pl;
+  return (
+    <span
+      className="mvd-werdykt-znak"
+      style={{ color: SEMANTYKA_KOLOR[etykieta.semantyka] }}
+      title={opis}
+      data-testid={testid}
+      data-semantyka={etykieta.semantyka}
+      data-status={status ?? undefined}
+    >
+      <span aria-hidden="true">{SEMANTYKA_ZNAK[etykieta.semantyka]}</span>
+      <span className="mvd-sr-only">{etykieta.etykieta_pl}</span>
+    </span>
+  );
+}

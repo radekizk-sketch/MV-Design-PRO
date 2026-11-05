@@ -39,7 +39,7 @@ import {
   type WynikOcenyZabezpieczen,
 } from './ocenaZabezpieczenApi';
 import { KOORDYNACJA_STRINGS as T } from './strings';
-import { TabelaOcenyZiemnozwarciowej } from './TabelaOcenyZiemnozwarciowej';
+import { TabelaOcenyZiemnozwarciowej, type CelUzupelnienia } from './TabelaOcenyZiemnozwarciowej';
 
 type Wariant = 'max' | 'min';
 type Stan = 'wczytywanie' | 'bezczynny' | 'wToku' | 'blad';
@@ -133,6 +133,10 @@ export function SekcjaOcenyZabezpieczen({
   }, [caseId, projectId, scRunId, wybierzBieg]);
 
   const doEdycji = () => openRouteSurface('E-27');
+  // „Uzupełnij” z wiersza oceny ziemnozwarciowej: karta nastaw E-27 otwarta na TYM sterowniku,
+  // z kursorem w nastawie TEJ funkcji (ten sam pisarz nastaw co edycja ręczna).
+  const doNastawFunkcji = (cel: CelUzupelnienia) =>
+    openRouteSurface('E-27', { entityRef: cel.urzadzenieRef, payload: { funkcja_ref: cel.funkcjaRef } });
 
   return (
     <section
@@ -258,7 +262,7 @@ export function SekcjaOcenyZabezpieczen({
           ) : null}
           <TabelaOcenyZiemnozwarciowej
             wynik={wynik.ziemnozwarciowe}
-            onUzupelnij={doEdycji}
+            onUzupelnij={doNastawFunkcji}
             testid="mvd-ocena-zabezpieczen-ziemne"
           />
           {wynik.pominiete.length > 0 ? (

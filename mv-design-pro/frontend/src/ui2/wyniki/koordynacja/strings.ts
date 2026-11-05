@@ -5,6 +5,14 @@
  * ekranu prowadzącego"). Sekcja nastaw (karta W3-C1) — metoda Hoppela/IRiESD.
  */
 
+/** Odmiana rzeczownika „funkcja” po liczebniku (1 funkcja, 2–4 funkcje, 5+ funkcji, 22 funkcje). */
+function odmianaFunkcji(n: number): string {
+  if (n === 1) return 'funkcja';
+  const j = n % 10;
+  const d = n % 100;
+  return [2, 3, 4].includes(j) && ![12, 13, 14].includes(d) ? 'funkcje' : 'funkcji';
+}
+
 export const KOORDYNACJA_STRINGS = {
   eyebrow: 'KOORDYNACJA ZABEZPIECZEŃ',
   // Cel jednym zdaniem (cytat z karty F-E5b §0.2).
@@ -164,19 +172,72 @@ export const KOORDYNACJA_STRINGS = {
   ocenaUzupelnij: 'Uzupełnij w modelu',
 
   // Ocena funkcji ziemnozwarciowych i uziemień stacji (ten sam bieg / ta sama koordynacja).
-  ziemneTytul: 'Funkcje ziemnozwarciowe i uziemienie stacji',
-  ziemneOpis: 'Czułość, selektywność i czas działania funkcji 51N/50N, 67N, admitancyjnych '
-    + '(Yo>, Go>, Bo>), 32N, 59N i automatyki ZAWSC przy zwarciu doziemnym w strefie i poza nią '
-    + '(prądy i napięcia zerowe z obliczenia doziemnego zależnego od sposobu pracy punktu '
-    + 'neutralnego), oraz prąd uziomowy i napięcie uziomowe stacji (PN-EN 50522).',
+  // Tabela na rodzinę zabezpieczeń (kolumny z rejestru backendu), wyjaśnienie w szczegółach.
+  ziemneTytul: 'Zabezpieczenia ziemnozwarciowe',
   ziemneBrak: 'Model nie ma funkcji ziemnozwarciowych ani stacji z węzłem SN w ocenie.',
-  ziemneKolUrzadzenie: 'Urządzenie',
+  ziemneSiec: 'Sieć',
+  ziemnePrzypadek: 'Przypadek doziemienia',
+  ziemneSiecNr: (n: number) => `sieć ${n + 1}`,
+  ziemnePunktNeutralny: 'punkt neutralny',
+  // Symbole wielkości jako LaTeX (KaTeX przez `MathInline`), jednostka osobno w nawiasie.
+  ziemneIc: 'I_{\\mathrm{C}}',
+  ziemneV: 'v',
+  ziemneIres: 'I_{\\mathrm{res}}',
+  ziemneAwsc: 'I_{\\mathrm{AWSC}}',
+  ziemneAwscCzas: 't_{\\mathrm{AWSC}}',
+  ziemneRodzaj: 'rodzaj',
+  ziemneRodzajPl: (rodzaj: string) => (rodzaj === 'METALICZNE' ? 'metaliczne' : 'wysokooporowe'),
+  ziemneRf: 'R_{\\mathrm{F}}',
+  ziemneC: 'c',
+  ziemneU0: 'U_0',
+  ziemneIdz: 'I_{\\mathrm{dz,max}}',
+  ziemneAwscStany: 'AWSC',
+  ziemneAwscStanPl: (stan: string) => (stan === 'PRZED_WYMUSZENIEM' ? 'przed' : 'po wymuszeniu'),
+  ziemnePunkty: 'punkty',
+  ziemneBezNastaw: (funkcji: number, pol: number) =>
+    `Bez nastaw: ${funkcji} ${odmianaFunkcji(funkcji)} w ${pol} ${pol === 1 ? 'polu' : 'polach'}.`,
+  ziemneKolPole: 'Pole',
   ziemneKolFunkcja: 'Funkcja',
-  ziemneKolKryterium: 'Kryterium',
-  ziemneKolWynik: 'Wynik',
-  ziemneKolWymagane: 'Wymagane',
-  ziemneKolOcena: 'Ocena',
-  ziemneBrakuje: 'Brakuje:',
+  ziemneKolGrupa: 'Gr.',
+  ziemneKolStan: 'Stan',
+  ziemneGrupa: (n: number) => `gr. ${n}`,
+  ziemneUzupelnij: 'Uzupełnij',
+  ziemneUzupelnijOpis: (funkcja: string) => `Otwórz nastawy funkcji ${funkcja} w karcie sterownika`,
+  ziemneSzczegoly: 'Szczegóły',
+  ziemneSzczegolyZwin: 'Zwiń',
+  ziemneSzczegolyOpis: 'Szczegóły obliczeń: wykres, wzory, dane przyjęte i wyjaśnienie werdyktu',
+  ziemneWymagane: 'Wymagane',
+  ziemneWymaganiePrzyjete: 'założenie inżynierskie (wartość robocza)',
+  ziemneWymaganieZweryfikowane: 'źródło zweryfikowane',
+  ziemneWymaganieWskazane: 'źródło wskazane, niezweryfikowane',
+  ziemneWarunki67n: 'Warunki algorytmu 67N',
+  ziemneWarunekRola: (rola: string) => (rola === 'W_POLU' ? 'doziemienie w polu' : 'doziemienie poza polem'),
+  ziemneKolWarunek: 'Warunek',
+  ziemneKolWartosc: 'Wartość',
+  ziemneKolNastawa: 'Nastawa',
+  ziemneKolZapas: 'Zapas',
+  ziemneRozstrzyga: 'rozstrzyga',
+  ziemneWzory: 'Wzory',
+  ziemneBraki: 'Braki',
+  ziemneKryteria: 'Wyjaśnienie werdyktu kryteriów',
+  // Wykres wskazowy 67N (rysowany z danych algorytmu backendu).
+  wykresTytul: 'Wykres wskazowy 3I₀ względem −U₀',
+  wykresOdniesienie: '−U₀',
+  wykresOs: (deg: string) => `oś φch = ${deg}°`,
+  wykresProg: (a: string) => `I₀> = ${a} A`,
+  wykresWskaz: (rola: string) => (rola === 'W_POLU' ? 'w polu' : 'poza polem'),
+  wykresSektor: (tryb: string, polowa: string) => `sektor ±${polowa}° (${tryb})`,
+  // Uziemienia stacji (osobna sekcja).
+  uziemieniaTytul: 'Uziemienia stacji',
+  uziemieniaKolStacja: 'Stacja',
+  uziemieniaKolIe: 'I_{\\mathrm{E}}',
+  uziemieniaKolRe: 'R_{\\mathrm{E}}',
+  uziemieniaKolUe: 'U_{\\mathrm{E}}',
+  uziemieniaKolUt: 'U_{\\mathrm{T}}',
+  uziemieniaKolUtp: 'U_{\\mathrm{Tp}}(t_{\\mathrm{F}})',
+  uziemieniaKolRemax: 'R_{\\mathrm{E,max}}',
+  uziemieniaKolUs: 'U_{\\mathrm{S}}',
+  uziemieniaKolTf: 't_{\\mathrm{F}}',
 
   // V12K-262 (kontynuacja): stan spoza kontraktu NIE MOŻE czytać się jak wynik.
   nastawyStanNieznany: 'Stan nierozpoznany — nie traktuj tej wartości jak wyznaczonej',

@@ -26,7 +26,7 @@ import {
   runCoordinationAnalysis,
 } from './api';
 import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
-import { rekordyZiemnozwarciowe } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { wierszeRodzin } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 import { TabelaOcenyZiemnozwarciowej } from '../../ui2/wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -309,7 +309,9 @@ function TabNavigation({
     { id: 'sensitivity', label: LABELS.tabs.sensitivity, count: result.sensitivity_checks.length },
     { id: 'selectivity', label: LABELS.tabs.selectivity, count: result.selectivity_checks.length },
     { id: 'overload', label: LABELS.tabs.overload, count: result.overload_checks.length },
-    { id: 'ziemne', label: LABELS.tabs.ziemne, count: rekordyZiemnozwarciowe(result.ziemnozwarciowe).length },
+    { id: 'ziemne', label: LABELS.tabs.ziemne, count:
+        wierszeRodzin(result.ziemnozwarciowe).length
+        + (result.ziemnozwarciowe?.wiersze_uziemien?.length ?? 0) },
     { id: 'tcc', label: LABELS.tabs.tcc },
     { id: 'trace', label: LABELS.tabs.trace, count: result.trace_steps.length },
   ];
@@ -455,7 +457,12 @@ export function ProtectionCoordinationPage() {
                   <div className="rounded-lg border border-slate-200 bg-white p-4">
                     <TabelaOcenyZiemnozwarciowej
                       wynik={result.ziemnozwarciowe}
-                      onUzupelnij={doEdycjiNastaw}
+                      onUzupelnij={(cel) =>
+                        openRouteSurface('E-27', {
+                          entityRef: cel.urzadzenieRef,
+                          payload: { funkcja_ref: cel.funkcjaRef },
+                        })
+                      }
                       testid="coordination-ziemne"
                     />
                   </div>

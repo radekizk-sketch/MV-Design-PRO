@@ -64,17 +64,9 @@ _POLA_REKORDU = (
 
 
 def _rekord(r: dict[str, Any]) -> dict[str, Any]:
-    ocena = r["ocena"]
-    return {
-        **{k: r[k] for k in _POLA_REKORDU if k in r},
-        "ocena": {
-            "status_maszynowy": ocena["status_maszynowy"],
-            "etykieta": ocena["etykieta"],
-            "wyjasnienie": {"zdanie_pl": ocena["wyjasnienie"]["zdanie_pl"]},
-            "wynik": ({"wartosc": ocena["wynik"]["wartosc"]} if ocena.get("wynik") else None),
-            "limit": ({"wartosc": ocena["limit"]["wartosc"]} if ocena.get("limit") else None),
-        },
-    }
+    # Pełny rekord werdyktu wyjaśnialnego — szczegóły wiersza tabeli rodziny pokazują go kartą
+    # werdyktu (`KartaWerdyktu`), więc fikstura niesie cały kontrakt, nie wycinek.
+    return {**{k: r[k] for k in _POLA_REKORDU if k in r}, "ocena": r["ocena"]}
 
 
 def _po_jednym_z_kryterium(rekordy: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -98,6 +90,8 @@ def _wariant(sposob: str, rezystancja_ohm: float | None) -> dict[str, Any]:
         model, map_enm_to_network_graph(model), odniesienie="fikstura frontu"
     ).to_dict()
     return {
+        # Po jednym rekordzie każdego rodzaju kryterium (pełny rekord werdyktu) — szczegóły
+        # wiersza tabeli rodziny pokazują kartą werdyktu te kryteria wiersza, które fikstura niesie.
         "oceny": _po_jednym_z_kryterium(wynik["oceny"]),
         "uziemienia": _po_jednym_z_kryterium(wynik["uziemienia"]),
         "odmowy": [_rekord(r) for r in wynik["odmowy"]],

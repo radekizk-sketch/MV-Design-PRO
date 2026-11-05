@@ -12145,6 +12145,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12209,6 +12213,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12273,6 +12281,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12337,6 +12349,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12401,6 +12417,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12465,6 +12485,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12529,6 +12553,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12593,6 +12621,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12657,6 +12689,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12721,6 +12757,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12785,6 +12825,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12849,6 +12893,10 @@
           "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
           "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
         ],
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "grupa": 1,
@@ -12872,6 +12920,10 @@
     ],
     "wiersze_uziemien": [
       {
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
         "kryteria": [
           "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.rezystancja_dopuszczalna",
           "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.napiecie_dotykowe",
@@ -12905,6 +12957,10 @@
         "wzor_pradu_latex": "I_E = r\\cdot I_C"
       },
       {
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
         "kryteria": [
           "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.rezystancja_dopuszczalna",
           "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.napiecie_dotykowe",
@@ -12938,6 +12994,10 @@
         "wzor_pradu_latex": "I_E = r\\cdot I_C"
       },
       {
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
         "kryteria": [
           "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.rezystancja_dopuszczalna",
           "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.napiecie_dotykowe",
@@ -12971,6 +13031,10 @@
         "wzor_pradu_latex": "I_E = r\\cdot I_C"
       },
       {
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
         "kryteria": [
           "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.rezystancja_dopuszczalna",
           "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.napiecie_dotykowe",
@@ -13004,6 +13068,10 @@
         "wzor_pradu_latex": "I_E = r\\cdot I_C"
       },
       {
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
         "kryteria": [
           "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.rezystancja_dopuszczalna",
           "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.napiecie_dotykowe",

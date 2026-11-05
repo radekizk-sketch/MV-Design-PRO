@@ -21,7 +21,7 @@
 
 import './edytorNastaw.css';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import type { NastawyUrzadzeniaWidok, PozycjaSlownika } from '../../../ui/protection/nastawyModelu';
@@ -45,7 +45,8 @@ import {
 import { NASTAWY_STRINGS as T } from './stringsNastaw';
 import { ObwodWtornyPrzekladnika } from './ObwodWtornyPrzekladnika';
 import { zdanieSwiezosci } from '../../wyniki/kontekst/kontekstWyniku';
-import { rekordyZiemnozwarciowe } from '../../wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { wierszeRodzin } from '../../wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { ZnakWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { TabelaOcenyZiemnozwarciowej } from '../../wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
 import { useOcenaZiemnozwarciowaAktywnegoBiegu } from '../../wyniki/koordynacja/useOcenaZiemnozwarciowa';
 
@@ -172,15 +173,60 @@ function jednostkaPola(schemat: SchematNastawyEaz): string | null {
   return schemat.jednostka;
 }
 
+/** Kolumna tabeli nastaw (lista nastaw producenta): nastawa, czas/charakterystyka, kierunek. */
+type KolumnaNastawy = 'NASTAWA' | 'CZAS' | 'KIERUNEK';
+
+/** Nastawy kierunku działania (kierunek, kąt charakterystyczny, sektor, tryb kryterium). */
+const NASTAWY_KIERUNKU: ReadonlySet<string> = new Set([
+  'kierunek',
+  'kat_charakterystyczny_deg',
+  'polowa_sektora_deg',
+  'tryb_kryterium',
+]);
+
+export function kolumnaNastawy(schemat: SchematNastawyEaz): KolumnaNastawy {
+  if (NASTAWY_KIERUNKU.has(schemat.klucz)) return 'KIERUNEK';
+  return czyNastawaCzasu(schemat) ? 'CZAS' : 'NASTAWA';
+}
+
+/** Zakres progu stopnia z pozycji katalogu (wyrób albo profil roboczy) z jednostką zakresu. */
+export interface ZakresProgu {
+  readonly od: number;
+  readonly do: number;
+  readonly jednostka: 'KROTNOSC_IN' | 'A_WTORNY';
+}
+
+function zakresProgu(nastawy: NastawyUrzadzeniaWidok | undefined, kod: string): ZakresProgu | null {
+  const z = nastawy?.zakresy;
+  if (!z || !z.jednostka_zakresow_pradowych || (kod !== '51' && kod !== '50')) return null;
+  return { od: z[kod].prog[0], do: z[kod].prog[1], jednostka: z.jednostka_zakresow_pradowych };
+}
+
+/**
+ * Wartość progu poza zakresem wyrobu — sprawdzane tylko, gdy strona progu w polu jest tą samą
+ * jednostką co zakres katalogu (porównanie liczb tej samej jednostki; przeliczenie stron robi
+ * backend i jego walidacja zapisu).
+ */
+export function pozaZakresemProgu(tekst: string, jednostkaProgu: string, zakres: ZakresProgu | null): boolean {
+  if (!zakres || jednostkaProgu !== zakres.jednostka) return false;
+  const liczba = Number(tekst.replace(',', '.'));
+  if (tekst.trim() === '' || !Number.isFinite(liczba)) return false;
+  return liczba < zakres.od || liczba > zakres.do;
+}
+
 function PoleNastawy({
   schemat,
   wartosc,
   onZmiana,
+  zakres,
+  jednostkaProgu,
   testid,
 }: {
   schemat: SchematNastawyEaz;
   wartosc: string;
   onZmiana: (tekst: string) => void;
+  zakres: ZakresProgu | null;
+  jednostkaProgu: string;
   testid: string;
 }) {
   if (schemat.typ === 'LOGICZNA') {
@@ -217,8 +263,12 @@ function PoleNastawy({
     );
   }
   const jednostka = jednostkaPola(schemat);
+  const podpowiedz = zakres
+    ? `${schemat.nazwaPl} — ${T.zakresPodpowiedz(liczbaNastawy(zakres.od), liczbaNastawy(zakres.do), JEDNOSTKA_ZAKRESU_PL[zakres.jednostka])}`
+    : schemat.nazwaPl;
+  const pozaZakresem = pozaZakresemProgu(wartosc, jednostkaProgu, zakres);
   return (
-    <span className="mvd-edytor-nastaw-pole" title={schemat.nazwaPl}>
+    <span className="mvd-edytor-nastaw-pole" title={podpowiedz}>
       {schemat.klucz === 'tms' ? <span className="mvd-edytor-nastaw-prefiks">TMS</span> : null}
       <input
         type="number"
@@ -228,6 +278,8 @@ function PoleNastawy({
         value={wartosc}
         onChange={(e) => onZmiana(e.target.value)}
         aria-label={schemat.nazwaPl}
+        aria-invalid={pozaZakresem || undefined}
+        title={pozaZakresem ? T.pozaZakresem : podpowiedz}
         data-testid={testid}
       />
       {jednostka ? <span className="mvd-edytor-nastaw-jednostka">{jednostka}</span> : null}
@@ -260,6 +312,8 @@ export interface EdytorNastawZabezpieczeniaProps {
   readonly nastawy?: NastawyUrzadzeniaWidok;
   /** Profile charakterystyk do wyboru (read model `protection-view`). */
   readonly profile?: readonly PozycjaSlownika[];
+  /** Funkcja wskazana akcją „Uzupełnij” oceny — wiersz przewinięty do widoku, pole w fokusie. */
+  readonly fokusFunkcjaRef?: string | null;
   readonly testid?: string;
 }
 
@@ -267,6 +321,7 @@ export function EdytorNastawZabezpieczenia({
   urzadzenieRef,
   nastawy,
   profile = [],
+  fokusFunkcjaRef = null,
   testid = 'mvd-edytor-nastaw',
 }: EdytorNastawZabezpieczeniaProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
@@ -289,8 +344,7 @@ export function EdytorNastawZabezpieczenia({
   );
   const [profil, setProfil] = useState<string | null>(sterownik?.charakterystyki_ref ?? null);
   const [szczegoly, setSzczegoly] = useState(false);
-  const [doDodania, setDoDodania] = useState('');
-  const [doZdjecia, setDoZdjecia] = useState('');
+  const sekcja = useRef<HTMLElement | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
 
@@ -301,6 +355,15 @@ export function EdytorNastawZabezpieczenia({
     setFormularz(formularzZeSterownika(sterownik, grupa));
     setProfil(sterownik.charakterystyki_ref ?? null);
   }, [sterownik, grupa]);
+
+  // „Uzupełnij” z oceny: wiersz funkcji w widoku, kursor w pierwszym polu jej nastaw (raz).
+  const maSterownik = sterownik !== null;
+  useEffect(() => {
+    if (!fokusFunkcjaRef || !maSterownik) return;
+    const wiersz = sekcja.current?.querySelector<HTMLElement>(`[data-testid="${testid}-${fokusFunkcjaRef}"]`);
+    wiersz?.scrollIntoView?.({ block: 'center' });
+    wiersz?.querySelector<HTMLElement>('input[type="number"], select')?.focus();
+  }, [fokusFunkcjaRef, maSterownik, testid]);
 
   const ladunek = useMemo(
     () => (sterownik ? ladunekZapisu(sterownik, grupa, formularz, profil) : null),
@@ -354,22 +417,41 @@ export function EdytorNastawZabezpieczenia({
   for (const f of sterownik.funkcje) if (!pierwszyRefKodu.has(f.kod)) pierwszyRefKodu.set(f.kod, f.ref);
   const zakresy = opisZakresow(nastawy);
 
+  const wierszeOceny = new Map(
+    wierszeRodzin(ocenaZiemna?.wynik, sterownik.ref_id).map((w) => [w.funkcja_ref, w] as const),
+  );
+  const nieocenianeWgKodu = new Map(nieoceniane.map((n) => [n.funkcja, n.powod_pl] as const));
+  const ocenaNieaktualna = Boolean(ocenaZiemna?.nieaktualnyPowodPl || ocenaZiemna?.swiezosc?.stan === 'nieaktualny');
+  const profilRoboczy = nastawy?.charakterystyki?.zrodlo === 'WARTOSC_ROBOCZA';
+  const dostepneDoDodania = wszystkieFunkcjeEaz().filter((w) => !sterownik.funkcje.some((f) => f.kod === w.kod));
+
   return (
-    <section className="mvd-edytor-nastaw" data-testid={testid}>
+    <section className="mvd-edytor-nastaw" data-testid={testid} ref={sekcja}>
       <header className="mvd-edytor-nastaw-naglowek">
-        <h4>{sterownik.name ?? nazwaUrzadzeniaSterownika(sterownik)}</h4>
+        <h4 data-testid={`${testid}-pole`}>{pole?.name ?? sterownik.name ?? nazwaUrzadzeniaSterownika(sterownik)}</h4>
         <span className="mvd-edytor-nastaw-kontekst" data-testid={`${testid}-urzadzenie`}>
           {nazwaUrzadzeniaSterownika(sterownik)}
         </span>
-        <span className="mvd-edytor-nastaw-kontekst" data-testid={`${testid}-przekladnia`}>
+        {profilRoboczy ? (
+          <span
+            className="mvd-edytor-nastaw-znacznik"
+            title={nastawy?.charakterystyki?.powod_pl ?? opisProfilu(nastawy)}
+            data-testid={`${testid}-profil-roboczy`}
+          >
+            {T.profilRoboczy}
+          </span>
+        ) : null}
+        <span className="mvd-edytor-nastaw-kontekst mvd-num" data-testid={`${testid}-przekladnia`}>
           {T.przekladnikSkrot} {przekladnia}
         </span>
-        <div className="mvd-edytor-nastaw-grupy" role="group" aria-label={T.grupaNastaw}>
+        <div className="mvd-edytor-nastaw-grupy" role="tablist" aria-label={T.grupaNastaw}>
           <span className="mvd-edytor-nastaw-kontekst">{T.grupaNastaw}</span>
           {NUMERY_GRUP_NASTAW.map((n) => (
             <button
               key={n}
               type="button"
+              role="tab"
+              aria-selected={n === grupa}
               aria-pressed={n === grupa}
               data-aktywna={n === aktywna ? 'true' : 'false'}
               title={n === aktywna ? T.grupaAktywnaOpis(n) : T.grupaOpis(n)}
@@ -393,42 +475,103 @@ export function EdytorNastawZabezpieczenia({
         </div>
       </header>
 
+      <div className="mvd-edytor-nastaw-dodaj" data-testid={`${testid}-sklad`}>
+        <select
+          value=""
+          disabled={zapisywanie || !caseId || dostepneDoDodania.length === 0}
+          onChange={(e) => {
+            const dane = ladunekSkladuFunkcji(sterownik, { dodaj: e.target.value });
+            if (dane) void wykonaj(dane);
+          }}
+          aria-label={T.skladDodajWybor}
+          title={T.skladOpis}
+          data-testid={`${testid}-sklad-dodaj-wybor`}
+        >
+          <option value="">{T.skladDodajPusty}</option>
+          {dostepneDoDodania.map((w) => (
+            <option key={w.kod} value={w.kod}>
+              {`${w.ansi ?? w.kod} ${w.oznaczeniePl} — ${w.nazwaPl} (${RODZAJ_FUNKCJI_EAZ_PL[w.rodzaj]})`}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <table className="mvd-edytor-nastaw-tabela" data-testid={`${testid}-tabela`}>
         <thead>
           <tr>
+            <th scope="col">{T.kolAnsi}</th>
+            <th scope="col">{T.kolFunkcja}</th>
+            <th scope="col">{T.kolStopien}</th>
+            <th scope="col">{T.kolNastawa}</th>
+            <th scope="col">{T.kolCzas}</th>
+            <th scope="col">{T.kolKierunek}</th>
             <th scope="col" title={T.kolWlaczonaOpis}>
               {T.kolWlaczona}
             </th>
-            <th scope="col">{T.kolFunkcja}</th>
-            <th scope="col">{T.kolNazwa}</th>
-            <th scope="col">{T.kolNastawy}</th>
-            <th scope="col">{T.kolCzas}</th>
             <th scope="col">{T.kolWylacza}</th>
+            <th scope="col" title={T.kolOcenaOpis}>
+              {T.kolOcena}
+            </th>
+            <th scope="col">
+              <span className="mvd-sr-only">{T.skladZdejmij}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {sterownik.funkcje.map((f) => {
             const wpis = funkcjaEaz(f.kod);
             const schemat = wpis?.nastawy ?? [];
-            const zKrzywa = schemat.some((s) => s.klucz === 'krzywa');
+            const zKrzywa = schemat.some((sch) => sch.klucz === 'krzywa');
             const wartosci = formularz.nastawy[f.ref] ?? {};
-            const widoczne = schemat.filter((s) => czyNastawaWidoczna(s, wartosci, zKrzywa));
+            const widoczne = schemat.filter((sch) => czyNastawaWidoczna(sch, wartosci, zKrzywa));
             const wlaczona = formularz.wlaczone[f.ref] ?? true;
             const rozwiazany = pierwszyRefKodu.get(f.kod) === f.ref ? progiPierwotne.get(f.kod) : undefined;
-            const komorka = (czas: boolean) =>
+            const zakres = zakresProgu(nastawy, f.kod);
+            const komorka = (kolumna: KolumnaNastawy) =>
               widoczne
-                .filter((s) => czyNastawaCzasu(s) === czas)
-                .map((s) => (
+                .filter((sch) => kolumnaNastawy(sch) === kolumna)
+                .map((sch) => (
                   <PoleNastawy
-                    key={s.klucz}
-                    schemat={s}
-                    wartosc={wartosci[s.klucz] ?? ''}
-                    onZmiana={(t) => zmienNastawe(f.ref, s.klucz, t)}
-                    testid={`${testid}-${f.ref}-${s.klucz}`}
+                    key={sch.klucz}
+                    schemat={sch}
+                    wartosc={wartosci[sch.klucz] ?? ''}
+                    onZmiana={(t) => zmienNastawe(f.ref, sch.klucz, t)}
+                    zakres={sch.klucz === 'prog' ? zakres : null}
+                    jednostkaProgu={wartosci.jednostka_progu ?? ''}
+                    testid={`${testid}-${f.ref}-${sch.klucz}`}
                   />
                 ));
+            const ocena = wierszeOceny.get(f.ref);
+            const powodNieocenienia = nieocenianeWgKodu.get(f.kod);
             return (
-              <tr key={f.ref} data-wlaczona={wlaczona ? 'true' : 'false'} data-testid={`${testid}-${f.ref}`}>
+              <tr
+                key={f.ref}
+                data-wlaczona={wlaczona ? 'true' : 'false'}
+                data-fokus={fokusFunkcjaRef === f.ref ? 'true' : undefined}
+                data-testid={`${testid}-${f.ref}`}
+              >
+                <td className="mvd-edytor-nastaw-kod">{wpis?.ansi ?? f.kod}</td>
+                <td>{wpis?.nazwaPl ?? T.spozaRejestru}</td>
+                <td className="mvd-edytor-nastaw-kod">{wpis?.oznaczeniePl ?? '—'}</td>
+                <td>
+                  <div className="mvd-edytor-nastaw-komorka">
+                    {schemat.length === 0 ? <span className="mvd-edytor-nastaw-pusto">{T.bezNastaw}</span> : komorka('NASTAWA')}
+                    {rozwiazany ? (
+                      <span className="mvd-edytor-nastaw-wynik mvd-num" data-testid={`${testid}-${f.ref}-pierwotny`}>
+                        {T.progPierwotnyWtorny(
+                          liczbaNastawy(rozwiazany.prog_pierwotny_a),
+                          liczbaNastawy(rozwiazany.prog_wtorny_a),
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
+                <td>
+                  <div className="mvd-edytor-nastaw-komorka">{komorka('CZAS')}</div>
+                </td>
+                <td>
+                  <div className="mvd-edytor-nastaw-komorka">{komorka('KIERUNEK')}</div>
+                </td>
                 <td>
                   <input
                     type="checkbox"
@@ -440,23 +583,35 @@ export function EdytorNastawZabezpieczenia({
                     data-testid={`${testid}-${f.ref}-wlaczona`}
                   />
                 </td>
-                <td className="mvd-edytor-nastaw-kod">{etykietaFunkcjiEaz(f.kod)}</td>
-                <td>{wpis?.nazwaPl ?? T.spozaRejestru}</td>
-                <td>
-                  <div className="mvd-edytor-nastaw-komorka">
-                    {schemat.length === 0 ? <span className="mvd-edytor-nastaw-pusto">{T.bezNastaw}</span> : komorka(false)}
-                    {rozwiazany ? (
-                      <span className="mvd-edytor-nastaw-wynik mvd-num" data-testid={`${testid}-${f.ref}-pierwotny`}>
-                        {T.progPierwotny(liczbaNastawy(rozwiazany.prog_pierwotny_a))}
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td>
-                  <div className="mvd-edytor-nastaw-komorka">{komorka(true)}</div>
-                </td>
                 <td data-testid={`${testid}-${f.ref}-wylacza`}>
                   {aparatyWyzwalaneFunkcji({ branches: galezie }, pole, sterownik, f.ref) ?? '—'}
+                </td>
+                <td className="mvd-edytor-nastaw-ocena" data-testid={`${testid}-${f.ref}-ocena`}>
+                  {ocena ? (
+                    <ZnakWerdyktu etykieta={ocena.etykieta} przyczyna={ocena.przyczyna_pl} status={ocena.stan} />
+                  ) : powodNieocenienia ? (
+                    <span className="mvd-edytor-nastaw-pusto" title={powodNieocenienia}>
+                      {T.ocenaGdzieIndziej}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="mvd-edytor-nastaw-zdejmij"
+                    title={T.skladZdejmijOpis(etykietaFunkcjiEaz(f.kod))}
+                    aria-label={T.skladZdejmijOpis(etykietaFunkcjiEaz(f.kod))}
+                    disabled={zapisywanie || !caseId}
+                    onClick={() => {
+                      const dane = ladunekSkladuFunkcji(sterownik, { zdejmij: f.kod });
+                      if (dane) void wykonaj(dane);
+                    }}
+                    data-testid={`${testid}-${f.ref}-zdejmij`}
+                  >
+                    ×
+                  </button>
                 </td>
               </tr>
             );
@@ -530,62 +685,6 @@ export function EdytorNastawZabezpieczenia({
                 </select>
               </dd>
             </div>
-            <div data-testid={`${testid}-sklad`}>
-              <dt>{T.skladFunkcji}</dt>
-              <dd className="mvd-edytor-nastaw-sklad">
-                <select
-                  value={doDodania}
-                  onChange={(e) => setDoDodania(e.target.value)}
-                  aria-label={T.skladDodajWybor}
-                  data-testid={`${testid}-sklad-dodaj-wybor`}
-                >
-                  <option value="">{T.skladDodajPusty}</option>
-                  {wszystkieFunkcjeEaz()
-                    .filter((w) => !sterownik.funkcje.some((f) => f.kod === w.kod))
-                    .map((w) => (
-                      <option key={w.kod} value={w.kod}>
-                        {`${etykietaFunkcjiEaz(w.kod)} — ${w.nazwaPl} (${RODZAJ_FUNKCJI_EAZ_PL[w.rodzaj]})`}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={zapisywanie || !caseId || ladunekSkladuFunkcji(sterownik, { dodaj: doDodania }) === null}
-                  onClick={() => {
-                    const dane = ladunekSkladuFunkcji(sterownik, { dodaj: doDodania });
-                    if (dane) void wykonaj(dane).then(() => setDoDodania(''));
-                  }}
-                  data-testid={`${testid}-sklad-dodaj`}
-                >
-                  {T.skladDodaj}
-                </button>
-                <select
-                  value={doZdjecia}
-                  onChange={(e) => setDoZdjecia(e.target.value)}
-                  aria-label={T.skladZdejmijWybor}
-                  data-testid={`${testid}-sklad-zdejmij-wybor`}
-                >
-                  <option value="">{T.skladZdejmijPusty}</option>
-                  {sterownik.funkcje.map((f) => (
-                    <option key={f.ref} value={f.kod}>
-                      {etykietaFunkcjiEaz(f.kod)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={zapisywanie || !caseId || ladunekSkladuFunkcji(sterownik, { zdejmij: doZdjecia }) === null}
-                  onClick={() => {
-                    const dane = ladunekSkladuFunkcji(sterownik, { zdejmij: doZdjecia });
-                    if (dane) void wykonaj(dane).then(() => setDoZdjecia(''));
-                  }}
-                  data-testid={`${testid}-sklad-zdejmij`}
-                >
-                  {T.skladZdejmij}
-                </button>
-                <span className="mvd-edytor-nastaw-zalozenie">{T.skladOpis}</span>
-              </dd>
-            </div>
             {zakresy ? (
               <div>
                 <dt>{T.zakresyProfilu}</dt>
@@ -604,33 +703,24 @@ export function EdytorNastawZabezpieczenia({
               ))}
             </ul>
           ) : null}
-          {nieoceniane.length > 0 ? (
-            <ul className="mvd-edytor-nastaw-nieoceniane" data-testid={`${testid}-nieoceniane`}>
-              {nieoceniane.map((n) => (
-                <li key={n.funkcja}>
-                  <strong>{etykietaFunkcjiEaz(n.funkcja)}</strong> — {n.powod_pl}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {ocenaZiemna && rekordyZiemnozwarciowe(ocenaZiemna.wynik, sterownik.ref_id).length > 0 ? (
-            <div className="mvd-edytor-nastaw-ziemne" data-testid={`${testid}-ziemne`}>
-              <h5>{T.ziemneTytul}</h5>
-              {ocenaZiemna.nieaktualnyPowodPl || ocenaZiemna.swiezosc?.stan === 'nieaktualny' ? (
-                <p className="mvd-edytor-nastaw-braki" role="status" data-testid={`${testid}-ziemne-nieaktualny`}>
-                  <strong>{T.ziemneNieaktualna}:</strong>{' '}
-                  {ocenaZiemna.nieaktualnyPowodPl ?? zdanieSwiezosci(ocenaZiemna.swiezosc!)}
-                </p>
-              ) : null}
-              <TabelaOcenyZiemnozwarciowej
-                wynik={ocenaZiemna.wynik}
-                urzadzenieRef={sterownik.ref_id}
-                testid={`${testid}-ziemne-tabela`}
-                bezNaglowka
-              />
-            </div>
-          ) : null}
           {nastawy?.ct_ref ? <ObwodWtornyPrzekladnika ctRef={nastawy.ct_ref} testid={`${testid}-obwod`} /> : null}
+        </div>
+      ) : null}
+
+      {ocenaZiemna && wierszeOceny.size > 0 ? (
+        <div className="mvd-edytor-nastaw-ziemne" data-testid={`${testid}-ziemne`}>
+          {ocenaNieaktualna ? (
+            <p className="mvd-edytor-nastaw-braki" role="status" data-testid={`${testid}-ziemne-nieaktualny`}>
+              <strong>{T.ziemneNieaktualna}:</strong>{' '}
+              {ocenaZiemna.nieaktualnyPowodPl ?? zdanieSwiezosci(ocenaZiemna.swiezosc!)}
+            </p>
+          ) : null}
+          <TabelaOcenyZiemnozwarciowej
+            wynik={ocenaZiemna.wynik}
+            urzadzenieRef={sterownik.ref_id}
+            testid={`${testid}-ziemne-tabela`}
+            bezNaglowka
+          />
         </div>
       ) : null}
     </section>

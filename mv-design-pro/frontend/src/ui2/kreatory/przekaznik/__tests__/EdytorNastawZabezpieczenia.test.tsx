@@ -39,7 +39,7 @@ import migawkaSceny from '../../../../harness-fixtures/generated/koordynacja_sce
 import widokSceny from '../../../../harness-fixtures/generated/koordynacja_scena_widok_zabezpieczen.json';
 import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
 import type { WynikOcenyZabezpieczen } from '../../../wyniki/koordynacja/ocenaZabezpieczenApi';
-import { rekordyZiemnozwarciowe } from '../../../wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { wierszeRodzin } from '../../../wyniki/koordynacja/ocenaZiemnozwarciowa';
 import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 
@@ -307,21 +307,18 @@ describe('edytor na danych sieci złotej', () => {
     expect(zapis.mock.calls[0][2]).toEqual({ protection_ref: REF, charakterystyki_ref: docelowy.kod });
   });
 
-  it('skład funkcji natywnymi klikami: dodanie funkcji z rejestru i zdjęcie funkcji sterownika', async () => {
+  it('skład funkcji natywnymi klikami: „Dodaj funkcję” nad tabelą i „Zdejmij” jako akcja wiersza', async () => {
     const user = userEvent.setup();
     renderuj();
-    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
-    const dodaj = screen.getByTestId('edytor-sklad-dodaj');
-    expect(dodaj).toBeDisabled();
-    // Lista dodawania = rejestr bez funkcji, które sterownik już ma.
-    const opcje = within(screen.getByTestId('edytor-sklad-dodaj-wybor'))
+    // Wybór nad tabelą, bez rozwijania szczegółów (jeden wybór = jedna operacja).
+    const wybor = screen.getByTestId('edytor-sklad-dodaj-wybor');
+    const opcje = within(wybor)
       .getAllByRole('option')
       .map((o) => (o as HTMLOptionElement).value)
       .filter((v) => v !== '');
     expect(opcje).toContain('46');
     for (const f of STEROWNIK.funkcje) expect(opcje).not.toContain(f.kod);
-    await user.selectOptions(screen.getByTestId('edytor-sklad-dodaj-wybor'), '46');
-    await user.click(dodaj);
+    await user.selectOptions(wybor, '46');
     await waitFor(() => expect(zapis).toHaveBeenCalledTimes(1));
     expect(zapis.mock.calls[0][1]).toBe('update_protection_settings');
     expect(zapis.mock.calls[0][2]).toEqual({
@@ -329,8 +326,8 @@ describe('edytor na danych sieci złotej', () => {
       funkcje: [...STEROWNIK.funkcje.map((f) => f.kod), '46'],
     });
 
-    await user.selectOptions(screen.getByTestId('edytor-sklad-zdejmij-wybor'), '50');
-    await user.click(screen.getByTestId('edytor-sklad-zdejmij'));
+    const ref50 = STEROWNIK.funkcje.find((f) => f.kod === '50')!.ref;
+    await user.click(screen.getByTestId(`edytor-${ref50}-zdejmij`));
     await waitFor(() => expect(zapis).toHaveBeenCalledTimes(2));
     expect(zapis.mock.calls[1][2]).toEqual({
       protection_ref: REF,
@@ -410,31 +407,33 @@ describe('karta nastaw — ocena zwarć doziemnych aktywnego biegu', () => {
     useExecutionRunsStore.setState({ runs: [] });
   });
 
-  it('bieg świeży: rekordy WYŁĄCZNIE tego sterownika, ze zdaniem wyjaśnienia i brakami', async () => {
-    const user = userEvent.setup();
+  it('bieg świeży: pod tabelą nastaw ten sam komponent oceny, wiersze WYŁĄCZNIE tego sterownika', async () => {
     bieg();
     renderuj(NASTAWY_ZIEMNEGO, REF_ZIEMNY);
-    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
+    // Ocena stoi pod tabelą nastaw (bez rozwijania szczegółów), stan funkcji w kolumnie „Ocena”.
     const blok = await screen.findByTestId('edytor-ziemne');
-    const rekordy = rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe, REF_ZIEMNY);
-    expect(rekordy.length).toBeGreaterThan(0);
+    const oczekiwane = wierszeRodzin(WYNIK_OCENY.ziemnozwarciowe, REF_ZIEMNY);
+    expect(oczekiwane.length).toBeGreaterThan(0);
     const wiersze = within(blok).getAllByTestId('edytor-ziemne-tabela-wiersz');
-    expect(wiersze).toHaveLength(rekordy.length);
+    expect(wiersze).toHaveLength(oczekiwane.length);
     expect(wiersze.every((w) => w.dataset.urzadzenie === REF_ZIEMNY)).toBe(true);
-    wiersze.forEach((w, i) => expect(w).toHaveTextContent(rekordy[i].zdanie_pl));
-    expect(within(blok).getAllByTestId('edytor-ziemne-tabela-braki').length).toBeGreaterThan(0);
+    expect(wiersze.map((w) => w.dataset.status)).toEqual(oczekiwane.map((w) => w.stan));
+    for (const w of oczekiwane) {
+      const komorka = screen.getByTestId(`edytor-${w.funkcja_ref}-ocena`);
+      expect(komorka).toHaveTextContent(w.etykieta.etykieta_pl);
+    }
+    // Akapit „Funkcję … ocenia ocena zabezpieczeń ziemnozwarciowych…” nie wraca na kartę.
+    expect(screen.queryByTestId('edytor-nieoceniane')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edytor-ziemne-nieaktualny')).not.toBeInTheDocument();
   });
 
   it('bieg nieaktualny: przyczyna z serwera nad tabelą', async () => {
-    const user = userEvent.setup();
     bieg({
       ...WYNIK_OCENY,
       result_status: 'OUTDATED',
       result_status_reason_pl: 'Model zmienił się od biegu (zmiana nastaw zabezpieczenia).',
     });
     renderuj(NASTAWY_ZIEMNEGO, REF_ZIEMNY);
-    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
     expect(await screen.findByTestId('edytor-ziemne-nieaktualny')).toHaveTextContent(
       'zmiana nastaw zabezpieczenia',
     );
@@ -448,7 +447,7 @@ describe('karta nastaw — ocena zwarć doziemnych aktywnego biegu', () => {
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/protection-runs/ocena-1/results')).toBe(true),
     );
-    expect(rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe, REF)).toHaveLength(0);
+    expect(wierszeRodzin(WYNIK_OCENY.ziemnozwarciowe, REF)).toHaveLength(0);
     expect(screen.queryByTestId('edytor-ziemne')).not.toBeInTheDocument();
     // Brak biegu rodziny „Zabezpieczenia" w rejestrze przypadku: brak oceny do pokazania.
     cleanup();

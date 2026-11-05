@@ -46,7 +46,8 @@
   background: transparent;
   color: var(--mvd-ink);
   border-radius: 4px;
-  font: 600 12px/1.4 var(--mvd-font-mono);
+  font: 600 12px/1.4 var(--mvd-font-sans);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
@@ -76,8 +77,7 @@
 
 .mvd-edytor-nastaw-tabela th {
   text-align: left;
-  font: 600 10.5px/1.4 var(--mvd-font-mono);
-  letter-spacing: 0.04em;
+  font: 600 11px/1.4 var(--mvd-font-sans);
   color: var(--mvd-muted);
   border-bottom: 1px solid var(--mvd-line);
   padding: 2px 6px;
@@ -94,7 +94,7 @@
 }
 
 .mvd-edytor-nastaw-kod {
-  font-family: var(--mvd-font-mono);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -255,8 +255,7 @@
 /* Obwód wtórny przekładnika (karta CT-JEDEN-WERDYKT) — sekcja w ramie stopnia. */
 .mvd-edytor-nastaw-legenda {
   padding: 0 4px;
-  font: 600 10.5px/1.4 var(--mvd-font-mono);
-  letter-spacing: 0.08em;
+  font: 600 12px/1.4 var(--mvd-font-sans);
   color: var(--mvd-muted);
 }
 
@@ -277,4 +276,87 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+/* Karta EKRANY-EAZ-ZIEMNOZWARCIOWE: krój bazowy w polach i etykietach (bez kroju maszynowego),
+   liczby tabular-nums, zwarte pola obwodu wtórnego przekładnika. */
+.mvd-edytor-nastaw input,
+.mvd-edytor-nastaw select,
+.mvd-edytor-nastaw .mvd-num,
+.mvd-edytor-nastaw .mvd-pole-etykieta,
+.mvd-edytor-nastaw .mvd-pole-blad {
+  font-family: var(--mvd-font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-edytor-nastaw-pole input[aria-invalid='true'] {
+  border-color: var(--mvd-err);
+  color: var(--mvd-err);
+}
+
+.mvd-edytor-nastaw-znacznik {
+  font-size: 11px;
+  padding: 0 6px;
+  border: 1px solid var(--mvd-warn);
+  border-radius: 3px;
+  color: var(--mvd-warn-ink);
+  cursor: help;
+}
+
+.mvd-edytor-nastaw-dodaj select {
+  font-size: 12px;
+  max-width: 420px;
+}
+
+.mvd-edytor-nastaw-zdejmij {
+  border: 0;
+  background: transparent;
+  color: var(--mvd-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.mvd-edytor-nastaw-zdejmij:hover:not(:disabled) {
+  color: var(--mvd-err);
+}
+
+.mvd-edytor-nastaw-tabela tr[data-fokus='true'] td {
+  background: var(--mvd-sel);
+}
+
+.mvd-edytor-nastaw-ocena {
+  text-align: center;
+}
+
+.mvd-edytor-nastaw-stopien .mvd-edytor-nastaw-pola {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 200px));
+  gap: 6px 12px;
+}
+
+.mvd-edytor-nastaw-stopien {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.mvd-edytor-nastaw .mvd-pole {
+  gap: 2px;
+}
+
+.mvd-edytor-nastaw .mvd-pole-etykieta {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mvd-edytor-nastaw .mvd-pole-input,
+.mvd-edytor-nastaw .mvd-pole-select {
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw .mvd-pole-pomoc {
+  font-size: 10.5px;
 }

@@ -25,7 +25,7 @@ import { EkranKoordynacji } from '../EkranKoordynacji';
 import { useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
-import { rekordyZiemnozwarciowe } from '../ocenaZiemnozwarciowa';
+import { wierszeRodzin } from '../ocenaZiemnozwarciowa';
 
 const DONE_SC_RUN = {
   id: 'run-sc-1',
@@ -476,17 +476,24 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
     useNetworkBuildStore.setState({ openRouteSurface } as never);
     mockOceny({});
     render(<EkranKoordynacji />);
-    const rekordy = rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe);
-    expect(rekordy.length).toBeGreaterThan(0);
+    const oczekiwane = wierszeRodzin(WYNIK_OCENY.ziemnozwarciowe);
+    expect(oczekiwane.length).toBeGreaterThan(0);
     const tabela = await screen.findByTestId('mvd-ocena-zabezpieczen-ziemne');
     const wiersze = within(tabela).getAllByTestId('mvd-ocena-zabezpieczen-ziemne-wiersz');
-    expect(wiersze.map((w) => w.dataset.kryterium)).toEqual(rekordy.map((r) => r.kryterium));
-    wiersze.forEach((w, i) => {
-      expect(w).toHaveTextContent(rekordy[i].ocena.etykieta.etykieta_pl);
-      expect(w).toHaveTextContent(rekordy[i].zdanie_pl);
-    });
+    expect(wiersze.map((w) => `${w.dataset.urzadzenie}::${w.dataset.funkcja}|${w.dataset.status}`).sort()).toEqual(
+      oczekiwane.map((w) => `${w.urzadzenie_ref}::${w.funkcja_ref}|${w.stan}`).sort(),
+    );
+    // Stan wiersza: znak z etykietą rekordu backendu (pełny tekst w podpowiedzi i dla czytnika).
+    for (const w of wiersze) {
+      const dane = oczekiwane.find((o) => o.urzadzenie_ref === w.dataset.urzadzenie && o.funkcja_ref === w.dataset.funkcja)!;
+      expect(w).toHaveTextContent(dane.etykieta.etykieta_pl);
+    }
+    const cel = oczekiwane.find((w) => w.braki.length > 0 && Object.keys(w.wartosci).length === 0)!;
     await user.click(within(tabela).getAllByTestId('mvd-ocena-zabezpieczen-ziemne-uzupelnij')[0]);
-    expect(openRouteSurface).toHaveBeenCalledWith('E-27');
+    expect(openRouteSurface).toHaveBeenCalledWith('E-27', {
+      entityRef: cel.urzadzenie_ref,
+      payload: { funkcja_ref: cel.funkcja_ref },
+    });
   });
 });
 

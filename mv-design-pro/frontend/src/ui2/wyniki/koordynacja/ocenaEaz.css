@@ -1,0 +1,222 @@
+/*
+ * Ocena zabezpieczeń ziemnozwarciowych i uziemień stacji (E-28, koordynacja, karta nastaw
+ * E-27) — standard warsztatu: zwarte tabele rodzin, liczby `tabular-nums` w kroju BAZOWYM
+ * (bez kroju maszynowego), kolor wyłącznie na liczbie niespełniającej kryterium, kolory
+ * tokenami `--mvd-*` (oba motywy).
+ */
+
+.mvd-eaz {
+  color: var(--mvd-ink);
+  font-size: var(--mvd-font-size-data);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-eaz h4,
+.mvd-eaz h5,
+.mvd-eaz h6 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mvd-eaz h4 {
+  font-size: 14px;
+}
+
+.mvd-eaz h5 {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.mvd-eaz h6 {
+  font-size: 12px;
+  color: var(--mvd-muted);
+  margin-bottom: 4px;
+}
+
+/* Liczby: kolumny wyrównane cyframi o stałej szerokości, krój bazowy. */
+.mvd-eaz .mvd-num {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-eaz-pasek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-surface);
+}
+
+.mvd-eaz-pasek-grupa {
+  display: contents;
+}
+
+.mvd-eaz-pasek-tytul {
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.mvd-eaz-pasek-etykieta {
+  color: var(--mvd-muted);
+}
+
+.mvd-eaz-braki {
+  margin: 0;
+  color: var(--mvd-warn-ink);
+}
+
+.mvd-eaz-przewijanie {
+  overflow-x: auto;
+}
+
+.mvd-eaz-tabela {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.mvd-eaz-tabela th,
+.mvd-eaz-tabela td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.mvd-eaz-tabela th {
+  font-weight: 600;
+  color: var(--mvd-muted);
+  font-size: var(--mvd-font-size-small);
+}
+
+.mvd-eaz-tabela .mvd-eaz-liczba {
+  text-align: right;
+}
+
+/* Jedyny kolor wiersza: liczba niespełniająca kryterium. */
+.mvd-eaz-tabela td[data-spelnia='false'] {
+  color: var(--mvd-err);
+  font-weight: 600;
+}
+
+.mvd-eaz-stan {
+  text-align: center;
+  width: 3em;
+}
+
+.mvd-werdykt-znak {
+  font-weight: 700;
+  cursor: help;
+}
+
+.mvd-eaz-akcja {
+  font: inherit;
+  font-size: var(--mvd-font-size-small);
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--mvd-line-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-eaz-akcja:hover {
+  background: var(--mvd-bg-hover);
+}
+
+.mvd-eaz-wiersz-szczegolow > td {
+  white-space: normal;
+  background: var(--mvd-surface);
+}
+
+.mvd-eaz-szczegoly {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.mvd-eaz-szczegoly-gora {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.mvd-eaz-szczegoly-dane {
+  flex: 1 1 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mvd-eaz-podnaglowek td {
+  color: var(--mvd-muted);
+  font-style: italic;
+}
+
+.mvd-eaz-rozstrzyga {
+  margin-left: 6px;
+  font-size: var(--mvd-font-size-small);
+  color: var(--mvd-muted);
+}
+
+.mvd-eaz-wzor {
+  overflow-x: auto;
+}
+
+.mvd-eaz-lista {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.mvd-eaz-przypis,
+.mvd-eaz-przypisy {
+  color: var(--mvd-muted);
+  font-size: var(--mvd-font-size-small);
+}
+
+.mvd-eaz-przypisy {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.mvd-eaz-odsylacz {
+  color: var(--mvd-muted);
+  margin-left: 1px;
+}
+
+.mvd-eaz-wykres {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.mvd-eaz-wykres figcaption {
+  font-size: var(--mvd-font-size-small);
+  color: var(--mvd-muted);
+  margin-bottom: 2px;
+}
+
+.mvd-eaz-wykres svg {
+  display: block;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+
+.mvd-eaz-wykres-tekst {
+  font-family: var(--mvd-font-sans);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-eaz-wykres-tekst--drugi {
+  font-size: 10px;
+}
