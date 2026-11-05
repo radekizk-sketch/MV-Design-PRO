@@ -39,9 +39,9 @@ from typing import Any
 
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.catalog.bay_templates import (
-    SZABLON_WARIANTU_ZESPOLU,
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
     BAY_TEMPLATES_GPZ_POLA,
+    SZABLON_WARIANTU_ZESPOLU,
     BayTemplate,
     szablon_pola_liniowego_gpz,
 )
@@ -399,4 +399,14 @@ def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
             # scena niesie wariant Z.13; Z.14 i Z.15 ćwiczą testy pola zespołu.
             continue
         enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+    return enm
+
+
+def zbuduj_gpz_pole_zespolu(wariant: str) -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ ``gpz_110kv`` z jednym polem zespołu uziemiającego wariantu
+    ``wariant`` (Z13 / Z14 / Z15) w sekcji 1 — jeden zespół w wyspie galwanicznej SN (Zeszyt 1 §16,
+    bloker E-W5-04), więc każdy wariant ma własną scenę (zrzuty pól Z.13–Z.15)."""
+    enm = zbuduj_gpz_110kv()
+    sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
+    enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, SZABLON_WARIANTU_ZESPOLU[wariant])
     return enm

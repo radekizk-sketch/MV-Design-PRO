@@ -2888,6 +2888,7 @@
         "p0_kw": 25.0,
         "parameter_source": "CATALOG",
         "pk_kw": 120.0,
+        "r0_ohm": null,
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn",
         "sn_mva": 25.0,
         "source_mode": "KATALOG",
@@ -2902,7 +2903,8 @@
         "uhv_kv": 110.0,
         "uk_percent": 11.0,
         "ulv_kv": 15.0,
-        "vector_group": "Yd11"
+        "vector_group": "Yd11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -2936,6 +2938,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -2948,7 +2951,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -2982,6 +2986,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -2994,7 +2999,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       }
     ]
   }

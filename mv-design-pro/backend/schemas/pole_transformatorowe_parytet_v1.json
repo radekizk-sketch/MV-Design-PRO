@@ -9,7 +9,10 @@
     "Kazdy wiersz opisuje KSZTALT MODELU i JEDEN oczekiwany werdykt. Backend buduje z niego migawke ENM,",
     "front buduje z niego wejscie sceny (snBays + transformerUnits + hasTransformer). Rozjazd predykatow",
     "wywraca test po OBU stronach — dlatego tablica jest jedna, a nie dwie kopie w dwoch jezykach.",
-    "Iloczyn cech wymagany karta (§0 pkt 4): {pole TR jest, pola TR nie ma, transformatora brak} x {ostrzezenie, marker}."
+    "Iloczyn cech wymagany karta (§0 pkt 4): {pole TR jest, pola TR nie ma, transformatora brak} x {ostrzezenie, marker}.",
+    "Transformator uziemiajacy pola ZU (zapis pary Transformer.meta.zespol_uziemiajacy.bay_ref) ma pole wlasne wtedy i tylko wtedy, gdy zapis wskazuje ISTNIEJACE pole roli ZU",
+    "(enm/pole_transformatorowe.py::pole_zespolu_transformatora, lustro ui/shared/transformatoryStacji.ts::poleZespoluTransformatora).",
+    "Iloczyn cech: {zapis zespolu jest, brak} x {pole ZU jest, brak, pole innej roli}."
   ],
   "wiersze": [
     {
@@ -203,6 +206,66 @@
         "sn_bus_kv": 109.999,
         "nn_bus_kv": 0.4,
         "role_pol": ["IN", "OUT", "FEEDER"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-uziemiajacy-w-polu-zu",
+      "opis_pl": "Transformator uziemiajacy ZNyn11 z zapisem pary wskazujacym istniejace pole ZU — aparat pola zespolu, pole TR go nie dotyczy (przed karta: falszywe W041).",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_zespol_uziemiajacy": "zapis",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "ZU"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn", "zespol_uziemiajacy_pole": "pole-001" },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-uziemiajacy-zapis-na-brak-pola",
+      "opis_pl": "Zapis pary wskazuje pole, ktorego w modelu nie ma — transformator bez pola: zwykla regula W041, nie cichy wyjatek.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_zespol_uziemiajacy": "zapis",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn", "zespol_uziemiajacy_pole": "pole-009" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-uziemiajacy-zapis-na-pole-innej-roli",
+      "opis_pl": "Zapis pary wskazuje pole roli OUT — to nie pole zespolu, transformator bez pola: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_zespol_uziemiajacy": "zapis",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "OUT"],
+        "deklaruje_transformator": true
+      },
+      "transformator": { "hv": "sn", "lv": "nn", "zespol_uziemiajacy_pole": "pole-001" },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-rozdzielczy-obok-pola-zu",
+      "opis_pl": "Transformator rozdzielczy (bez zapisu zespolu) w stacji z polem ZU i bez pola TR — pole ZU nie domyka pola transformatorowego: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_zespol_uziemiajacy": "brak_zapisu",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": ["IN", "ZU"],
         "deklaruje_transformator": true
       },
       "transformator": { "hv": "sn", "lv": "nn" },

@@ -7518,6 +7518,7 @@
     "p0_kw": 1.3,
     "parameter_source": "CATALOG",
     "pk_kw": 8.0,
+    "r0_ohm": null,
     "ref_id": "stn/60906c356e0f9a3e6946ccbf17a52c29/transformer",
     "sn_mva": 0.63,
     "source_mode": "KATALOG",
@@ -7530,7 +7531,8 @@
     "uhv_kv": 15.0,
     "uk_percent": 5.0,
     "ulv_kv": 0.4,
-    "vector_group": "Dyn11"
+    "vector_group": "Dyn11",
+    "x0_ohm": null
    },
    {
     "catalog_namespace": "TRAFO_SN_NN",
@@ -7564,6 +7566,7 @@
     "p0_kw": 0.93,
     "parameter_source": "CATALOG",
     "pk_kw": 5.75,
+    "r0_ohm": null,
     "ref_id": "stn/c16428a6c5b18ea62371d813e0a3d084/transformer",
     "sn_mva": 0.4,
     "source_mode": "KATALOG",
@@ -7576,7 +7579,8 @@
     "uhv_kv": 15.0,
     "uk_percent": 4.5,
     "ulv_kv": 0.4,
-    "vector_group": "Dyn11"
+    "vector_group": "Dyn11",
+    "x0_ohm": null
    },
    {
     "catalog_namespace": "TRAFO_SN_NN",
@@ -7610,6 +7614,7 @@
     "p0_kw": 2.1,
     "parameter_source": "CATALOG",
     "pk_kw": 13.5,
+    "r0_ohm": null,
     "ref_id": "stn/b90fe112224f1de151746da1e8b35949/transformer",
     "sn_mva": 1.25,
     "source_mode": "KATALOG",
@@ -7622,7 +7627,8 @@
     "uhv_kv": 15.0,
     "uk_percent": 6.0,
     "ulv_kv": 0.4,
-    "vector_group": "Dyn11"
+    "vector_group": "Dyn11",
+    "x0_ohm": null
    },
    {
     "catalog_namespace": "TRAFO_SN_NN",
@@ -7656,6 +7662,7 @@
     "p0_kw": 1.7,
     "parameter_source": "CATALOG",
     "pk_kw": 11.0,
+    "r0_ohm": null,
     "ref_id": "tr/ed9391b0cd05c80ed6631c0043c6b682/transformer",
     "sn_mva": 1.0,
     "source_mode": "KATALOG",
@@ -7668,7 +7675,8 @@
     "uhv_kv": 15.0,
     "uk_percent": 6.0,
     "ulv_kv": 0.4,
-    "vector_group": "Dyn11"
+    "vector_group": "Dyn11",
+    "x0_ohm": null
    },
    {
     "catalog_namespace": "TRAFO_SN_NN",
@@ -7702,6 +7710,7 @@
     "p0_kw": 1.7,
     "parameter_source": "CATALOG",
     "pk_kw": 11.0,
+    "r0_ohm": null,
     "ref_id": "tr/ac04375d68166f4e570661e425317f57/transformer",
     "sn_mva": 1.0,
     "source_mode": "KATALOG",
@@ -7714,7 +7723,8 @@
     "uhv_kv": 15.0,
     "uk_percent": 6.0,
     "ulv_kv": 0.4,
-    "vector_group": "Dyn11"
+    "vector_group": "Dyn11",
+    "x0_ohm": null
    }
   ]
  }

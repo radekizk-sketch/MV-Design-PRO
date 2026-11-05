@@ -84,7 +84,7 @@ odczytu Zeszytu 1; **NZ** = niezweryfikowane / niezaimplementowane.
 | Z.11 | 90 | `szablon_pola_liniowego_gpz("Z11", …)` | ZŹ kartą UX-04; kontrola tej karty: tabliczka T3 „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3”, I 0-10 VA kl. 0,2, II 7,5 VA kl. 0,2 — zgodne |
 | Z.11.1 | 91 | `szablon_pola_liniowego_gpz("Z11_1", …)` | ZŹ kartą UX-04 (bez ponownej kontroli w tej karcie) |
 | Z.12 | 92 | `BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12`, `_OBWODY_Z12` | dane: ZŹ; rysunek pionowy A/B i rekord pola związany z gałęzią łącznika (D3), port uziemiany Q2: NZ |
-| Z.13 | 93 | `bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13`, `_OBWODY_Z13`; wariant `Z13` | tor pola, tabliczka CT, funkcje, sygnały: ZŹ (§4.4, Io> z rdzenia I — interpretacja); rola ZU i operacje pola: wykonane; rysunek SLD pola i gałęzi punktu neutralnego: NZ |
+| Z.13 | 93 | `bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13`, `_OBWODY_Z13`; wariant `Z13` | tor pola, tabliczka CT, funkcje, sygnały: ZŹ (§4.4, Io> z rdzenia I — interpretacja); rola ZU i operacje pola: wykonane; rysunek SLD pola i gałęzi punktu neutralnego w GPZ: wykonany z nośnika modelu (następca 7, §4.4) — kolejność aparatów ZŹ, porównanie zrzutu ze stroną: §4.4; pole ZU w stacji SN/nN: NZ |
 | Z.14 | 94 | `…_dlawik_rezystor_enea_z14`, `_OBWODY_Z14`; wariant `Z14` | j.w.; Io>, Io>> z przekładnika gałęzi rezystora (linia rysunku) |
 | Z.15 | 95 | `…_rezystor_enea_z15`, `_OBWODY_Z15`; wariant `Z15` | j.w.; SPZ (79) → ZW |
 | Z.16 | 96 | `BAY_TEMPLATE_GPZ_BKR_Z16`, `_OBWODY_Z16` | dane: ZŹ; rysunek: przekładniki międzyfazowe T4/T5 na zaciskach baterii (glif `capacitorBank`) — poprawione 2026-11-05 (wcześniej odczep przekładnika napięciowego toru — rozbieżność z s.96); porównanie rysunku całego pola ze zrzutem: NZ |
@@ -207,7 +207,30 @@ Stan po następcy 5 (2026-11-05), odczyt obrazów stron 93–95 w 200 dpi:
 | Okrężne | +AwUp, Up, Aw, Al, ZAWSC, Pobudzenie LRW, Blokowanie ZS, UL1,UL2,UL3,N (4 żyły), Z,Zz (2 żyły) | j.w. | bez ZAWSC | `_obwody_zespolu_uziemiajacego` |
 | BTI, BTII | blok przy transformatorze, linia do sterownika (kierunek nieopisany) | j.w. | j.w. | sygnał wejściowy — interpretacja |
 | Regulator dławika | blok poza sterownikiem, linie do sterownika, SSiN | — | — | sygnał „Regulator dławika” — interpretacja |
-| Gałąź punktu neutralnego | odłącznik → dławik z regulacją (BDI/BDII, 500 V, 100 V), AWSC: stycznik + rezystor (ramka), ogranicznik w punkcie neutralnym | odłącznik → dławik ∥ odłącznik → rezystor → CT → ziemia; ogranicznik; gwiazdka — opcjonalne miejsce CT | odłącznik → rezystor → CT → ziemia; ogranicznik | nośnik `Transformer.hv_neutral` (D1); rysunek: NZ |
+| Gałąź punktu neutralnego | odłącznik → dławik z regulacją (BDI/BDII, 500 V, 100 V), AWSC: stycznik + rezystor (ramka), ogranicznik w punkcie neutralnym | odłącznik → dławik ∥ odłącznik → rezystor → CT → ziemia; ogranicznik; gwiazdka — opcjonalne miejsce CT | odłącznik → rezystor → CT → ziemia; ogranicznik | nośnik `Transformer.hv_neutral` (D1); rysunek w GPZ: wykonany (następca 7, niżej) |
+
+Stan po następcy 7 (2026-11-05) — rysunek pola ZU w GPZ (`compose/gpz.ts`,
+`ogonZespoluUziemiajacego`; widok `v2/model/zespolUziemiajacyPola.ts` z zapisu pary
+`Transformer.meta.zespol_uziemiajacy` i nośnika `hv_neutral`):
+
+| Element rysunku | Źródło (s.93–95) | Status | Rysunek |
+|---|---|---|---|
+| Tor pola do transformatora | Q1 → Q0 → P1, T1, P2 → węzeł z F1 → transformator | ZŹ (kolejność z planu szablonu — tor jest ten sam co danych) | stos pola ZU, transformator ZNyn11 jako ostatni aparat toru (bez wieży transformatora) |
+| Transformator ZNyn11 | zygzak od strony SN z wyprowadzonym punktem neutralnym, gwiazda 400/230 V | ZŹ | glif `transformer2W` z uzwojeniami z grupy połączeń; zacisk `punktNeutralny` rysowany tylko przy zygzaku z N |
+| Ogranicznik w punkcie neutralnym | ogranicznik przepięć do ziemi przy punkcie neutralnym | ZŹ | `surgeArrester` pod węzłem punktu neutralnego |
+| Odłącznik gałęzi | odłącznik przed dławikiem / rezystorem | ZŹ | `disconnector` (stan zamknięty) w każdej gałęzi |
+| Dławik / rezystor | Z.13 dławik; Z.14 dławik ∥ rezystor; Z.15 rezystor | ZŹ | `neutralEarthing` coil / resistor z wariantu, bez wariantu z typu `hv_neutral`; podpis X_N / R_N z nośnika |
+| CT gałęzi rezystora (T2) | Z.14, Z.15: przekładnik między rezystorem a ziemią → Io>, Io>> | ZŹ w treści; **świadoma różnica**: rysunek stawia CT NAD rezystorem (bliżej punktu neutralnego), bo port dolny glifu `neutralEarthing` jest uziemieniem glifu | przekładnik `…-zespol-rezystor-przekladnik` |
+| AWSC | Z.13: rezystor na uzwojeniu 500 V przez stycznik (ramka kreskowana) | ZŹ w treści; **świadoma różnica**: rysunek nie rysuje uzwojenia 500 V ani stycznika — AWSC jest podpisem wartości („AWSC 40 A”) przy dławiku (nośnik `awsc_prad_wymuszenia_a`, bez elementu modelu, który mógłby być aparatem) | podpis gałęzi dławika |
+| CT w uziemieniu dławika → regulator dławika (Z.13) | obecny | ZŹ w treści; **świadoma różnica**: nierysowany — model nie ma tego przekładnika ani regulatora (obwody wtórne opisują sygnał „Regulator dławika”) | — |
+| Potrzeby własne 0,4 kV | gwiazda 400/230 V z uziemionym N → „Zasilanie potrzeb własnych 400/230 V AC” | ZŹ | strzałka odbioru `loadArrow` z podpisem „potrzeby własne 0,4 kV” (napięcie z `lv_bus` transformatora) |
+| BTI/BTII, BDI/BDII, uzwojenie 100 V | bloki zabezpieczeń własnych aparatów | WO (z odczytu następcy 5) | nierysowane (obwody wtórne pola) |
+
+Testy: `frontend/src/ui/sld/v2/model/__tests__/zespolUziemiajacyPola.test.ts` (iloczyn wariant ×
+dawca × deklaracja stacji × zapis na pole innej roli × glif), tablica parytetu
+`pole_transformatorowe_parytet_v1.json` (cztery wiersze zespołu, pytest i vitest), sceny
+`gpz110kvPoleZu{Z13,Z14,Z15}` z generatora `fikstury_enm_sld.py`. Zrzuty:
+`mv-design-pro/docs/uiux/zrzuty/pola-gpz/pole-z1{3,4,5}-{ciemny,jasny}.png`.
 
 Napotkane i naprawione: nośnik punktu neutralnego zadeklarowany jako uziemiony bez kompletu
 wartości (dławik bez X_N przy nieznanej pojemności doziemnej) był niewidoczny dla blokera

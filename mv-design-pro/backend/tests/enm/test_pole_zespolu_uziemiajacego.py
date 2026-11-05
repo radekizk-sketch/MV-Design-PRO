@@ -130,6 +130,9 @@ def test_dodaj_usun_drugi(wariant: str, uziemienie: str, sekcja: str) -> None:
         assert wpis["jakosc"] == "ESTIMATED" and wpis["podstawa_pl"]
     kody = _kody(po)
     assert "E009" not in kody  # transformator ma pozycję katalogu
+    # W041: transformator uziemiający jest aparatem pola ZU (`pole_zespolu_transformatora`), nie
+    # transformatorem rozdzielczym bez pola TR — ostrzeżenie byłoby fałszywe.
+    assert "W041" not in kody
     assert "E-W5-04" not in kody or (
         not wyspa_zrodla and uziemienie != "izolowany"
     ), "jeden nośnik w wyspie zespołu"
@@ -154,6 +157,14 @@ def test_dodaj_usun_drugi(wariant: str, uziemienie: str, sekcja: str) -> None:
     assert all(b["ref_id"] != szyna_nn["ref_id"] for b in po_usunieciu["buses"])
     (pole_po,) = _pole_zu(po_usunieciu)
     assert tr["ref_id"] not in pole_po["equipment_refs"]
+
+    # Zapis wskazuje pole innej roli (dane spoza operacji — rola ZU nie zmienia się operacją):
+    # transformator nie ma pola zespołu, więc W041 wraca (jedno źródło, bez cichego wyjątku).
+    inna_rola = copy.deepcopy(po)
+    for bay in inna_rola["bays"]:
+        if bay["ref_id"] == pole["ref_id"]:
+            bay["bay_role"] = "OUT"
+    assert "W041" in _kody(inna_rola)
 
 
 @pytest.mark.parametrize("wariant", WARIANTY)

@@ -27,6 +27,9 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
 * ``gpz110kvBkr``, ``gpz110kvBkrGwiazdaUziemiona`` (``public``) — GPZ 110/15 kV z polem
   baterii kondensatorów (``scena_pola_bkr``, karta UX-04/POLE-BKR-MODEL);
+* ``gpz110kvPolaSzablonow``, ``gpz110kvPoleZu{Z13,Z14,Z15}`` (``public``) — GPZ 110/15 kV
+  z polami z szablonów ENEA Zeszyt 1 i po jednym polu zespołu uziemiającego na wariant
+  (karta POLA-GPZ-SZABLONY);
 * ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
@@ -67,6 +70,10 @@ from tests.reference_networks.budowa_przez_api import (
     port_odgalezny,
     segmenty_korytarza,
     wiazanie,
+)
+from tests.reference_networks.scena_geometrii_stacji import (
+    zbuduj_gpz_pola_szablonow,
+    zbuduj_gpz_pole_zespolu,
 )
 from tests.reference_networks.scena_pola_bkr import zbuduj_gpz_z_bkr
 from tests.utils.biegi import wykonaj_bieg
@@ -784,6 +791,16 @@ def render_fikstur_enm_sld() -> dict[str, str]:
         # `scena_pola_bkr`, operacje domenowe) — harness zrzutów glifu baterii w obu motywach.
         for plik, nazwa, cechy in _SCENY_BKR:
             tresci[f"{PUBLICZNE}/{plik}.enm.json"] = _plik_enm(zbuduj_gpz_z_bkr(**cechy), nazwa)
+        # Karta POLA-GPZ-SZABLONY: pola GPZ z szablonów ENEA Zeszyt 1 (Z.7, Z.12, Z.13, Z.16, Z.17)
+        # i po jednej scenie na wariant pola zespołu uziemiającego (Z.13–Z.15) — harness zrzutów
+        # pól GPZ w obu motywach (`e2e/pola-gpz-zrzuty-screenshot.spec.ts`).
+        tresci[f"{PUBLICZNE}/gpz110kvPolaSzablonow.enm.json"] = _plik_enm(
+            zbuduj_gpz_pola_szablonow(), "GPZ z polami z szablonów ENEA"
+        )
+        for wariant in ("Z13", "Z14", "Z15"):
+            tresci[f"{PUBLICZNE}/gpz110kvPoleZu{wariant}.enm.json"] = _plik_enm(
+                zbuduj_gpz_pole_zespolu(wariant), f"GPZ z polem zespołu uziemiającego {wariant}"
+            )
         tresci[f"{PUBLICZNE}/nnBoardDemo.enm.json"] = _plik_enm(
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",

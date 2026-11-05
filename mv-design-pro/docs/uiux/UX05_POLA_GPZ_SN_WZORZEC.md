@@ -78,10 +78,49 @@ transformator ZNyn11 (zacisk SN = zacisk pola, szyna potrzeb własnych 0,4 kV) i
 neutralny; `set_bay_equipment` szablonem innego wariantu zmienia nośnik; `delete_element`
 transformatora (wprost albo kaskadą szyny) oddaje go źródłu i zabiera pustą szynę potrzeb
 własnych. Test iloczynu `backend/tests/enm/test_pole_zespolu_uziemiajacego.py`. Rysunek pola ZU
-(gałąź punktu neutralnego z nośnika) — niewykonany; wzorzec opisów po lewej (pas oznaczeń
+(gałąź punktu neutralnego z nośnika) — niewykonany u następcy 5 (wykonany niżej, następca 7); wzorzec opisów po lewej (pas oznaczeń
 z kolumną przekładni, kolumna odgałęzienia przy torze, ramka zabezpieczeń zaraz za nią —
 wzór właściciela 2026-11-05) obowiązuje także pola Z.12–Z.16 i czeka na commit pasa oznaczeń
 z drzewa `wt-pole`.
+Stan 2026-11-05 (następca 7) — rysunek pola ZU z nośnika i W041:
+- Transformator uziemiający należy do pola ZU wtedy i tylko wtedy, gdy zapis pary
+  `Transformer.meta.zespol_uziemiajacy.bay_ref` wskazuje ISTNIEJĄCE pole roli ZU — JEDNA funkcja
+  po każdej stronie: `enm/pole_transformatorowe.py::pole_zespolu_transformatora` (backend: W041
+  i brama dokumentacji wykonawczej) i jej lustro
+  `ui/shared/transformatoryStacji.ts::poleZespoluTransformatora` (rysunek: marker braku pola TR,
+  wieże GPZ, rysunek pola ZU). Taki transformator nie jest transformatorem rozdzielczym stacji —
+  nie dostaje fałszywego W041 ani markera. Parytet: wiersze `tr-uziemiajacy-*` i
+  `tr-rozdzielczy-obok-pola-zu` tablicy `backend/schemas/pole_transformatorowe_parytet_v1.json`
+  (iloczyn {zapis jest, brak} × {pole ZU jest, brak, pole innej roli}). Napotkane i naprawione:
+  ścieżka awaryjna `stationTransformerSelection.ts` (refy `transformer_refs` bez rekordu)
+  przywracała ref transformatora, którego rekord ISTNIEJE, a reguła go wykluczyła — także
+  transformator blokowy DER z rolą katalogową.
+- Rysunek pola ZU (`compose/gpz.ts::ogonZespoluUziemiajacego`, widok
+  `v2/model/zespolUziemiajacyPola.ts`): tor pola z rekordów aparatów (Q1, Q0, T1 z P1/P2,
+  ogranicznik F1) → transformator ZNyn11 (uzwojenia z grupy połączeń modelu; zacisk
+  `punktNeutralny` symbolu `transformer2W` i wyprowadzenie punktu neutralnego tylko przy zygzaku
+  z „N”) → od punktu neutralnego w prawo węzeł z ogranicznikiem przepięć do ziemi i gałęzie wg
+  wariantu zapisu: Z.13 — odłącznik → dławik (podpis X_N i AWSC z nośnika), Z.14 — gałąź dławika
+  ∥ gałąź rezystora, Z.15 — odłącznik → przekładnik prądowy T2 → rezystor (podpis R_N); strona
+  dolna → odbiór „potrzeby własne 0,4 kV” (napięcie szyny potrzeb własnych z modelu). Źródło-dawca
+  punktu neutralnego nie dostaje już glifu przy sekcji (sieć nie jest izolowana — uziemia ją
+  zespół). Test iloczynu `v2/model/__tests__/zespolUziemiajacyPola.test.ts`; zrzuty
+  `docs/uiux/zrzuty/pola-gpz/`.
+- Różnice wobec stron 93–95, zostawione świadomie i nazwane: przekładnik T2 gałęzi rezystora stoi
+  NAD rezystorem (glif `neutralEarthing` łączy aparat z uziomem, więc przekładnik pod rezystorem
+  wymagałby osobnego glifu uziomu); w Z.13 AWSC i regulator dławika są podpisem przy dławiku, nie
+  rysunkiem uzwojenia 500 V z rezystorem i stycznikiem; CT w uziemieniu dławika Z.13 (połączony
+  wyłącznie z regulatorem) nie jest rysowany; ogranicznik przepięć punktu neutralnego wisi w dół
+  z węzła, bez osobnego odłącznika. Werdykt B-02: właściciel.
+- Opisy po lewej: drzewo `wt-pole` nie ma commitu kolumny opisów poza `9dafb6083` (P1/P2
+  i przekładnie toru głównego po lewej, `pasOpisowPrzekladnikowLewy`), który jest już w tej
+  gałęzi — tor pola ZU korzysta z niej bez zmian. Podpisy ogona ZU (wartości gałęzi, T2) stoją
+  po PRAWEJ swoich symboli, jak podpisy kolumny odgałęzienia; tabliczka transformatora — po
+  lewej. Punkt integracji przyszłej kolumny oznaczeń: `fieldDesignations` ogona
+  (`ogonZespoluUziemiajacego`) — te same wejścia etykiet co reszta pola.
+- Niewykonane: pole ZU w stacji SN/nN (rola ZU nie jest zawężona do GPZ, a blok stacji
+  `compose/station.ts` nie rysuje ogona ZU).
+
 Rozstrzygnięcie architekta D1: transformator uziemiający (ZNyn11, uzwojenie
 potrzeb własnych 400/230 V AC) jest elementem `Transformer` pola; dławik i rezystor rysuje się
 z nośnika punktu neutralnego `hv_neutral` (`GroundingConfig`: `petersen_coil` z X_N,

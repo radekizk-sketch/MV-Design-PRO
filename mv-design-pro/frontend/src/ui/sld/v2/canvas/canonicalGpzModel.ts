@@ -24,6 +24,7 @@ import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotation
 import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 import type { RolaPolaZrodlowego } from '../model/polaZModelu';
 import type { BateriaPolaView } from '../model/bateriaPola';
+import type { ZespolUziemiajacyPolaView } from '../model/zespolUziemiajacyPola';
 import type { ZrodloU0PolaView } from '../model/zrodloNapieciaZerowego';
 
 /**
@@ -138,6 +139,11 @@ export interface CanonicalGpzBay {
    *  (`v2/model/bateriaPola.ts bateriaNaKoncuToruPola`, ta sama funkcja co pola stacji);
    *  kompozycja dokłada glif `capacitorBank` na końcu stosu. Brak = pole bez baterii. */
   readonly bateria?: BateriaPolaView;
+  /** Karta POLA-GPZ-SZABLONY: zespół uziemiający pola ZU (Zeszyt 1 Z.13–Z.15) — transformator
+   *  uziemiający z zapisu pary (`v2/model/zespolUziemiajacyPola.ts`) i sposób uziemienia z jego
+   *  nośnika; kompozycja dokłada transformator ZNyn11, gałąź punktu neutralnego i szynę potrzeb
+   *  własnych na końcu stosu. Brak = pole bez transformatora uziemiającego. */
+  readonly zespolUziemiajacy?: ZespolUziemiajacyPolaView;
   /** Stan łączników z modelu (`v2/model/stanAparatowPola.ts`; brak danej = nieznany). */
   readonly cbState?: SwitchState;
   readonly dsState?: SwitchState;

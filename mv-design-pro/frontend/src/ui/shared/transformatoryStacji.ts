@@ -14,7 +14,42 @@ import { szynyStacji } from './szynyStacji';
 
 /** Minimalny wycinek migawki czytany przez regułę (wyrocznie sceny niosą tylko część pól). */
 export type ModelTransformatorow = Pick<EnergyNetworkModel, 'transformers'>
-  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations'>>;
+  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations' | 'bays'>>;
+
+/** Klucz zapisu pary przeniesienia punktu neutralnego w `Transformer.meta` — backend
+ *  `enm.zespol_uziemiajacy.ZAPIS_ZESPOLU`. */
+export const ZAPIS_ZESPOLU_UZIEMIAJACEGO = 'zespol_uziemiajacy';
+/** Rola pola zespołu uziemiającego — backend `ROLA_POLA_ZESPOLU_UZIEMIAJACEGO`. */
+export const ROLA_POLA_ZESPOLU_UZIEMIAJACEGO = 'ZU';
+
+/** Zapis pary zespołu uziemiającego na transformatorze (`null` — transformator nie jest
+ *  transformatorem uziemiającym pola ZU). */
+export function zapisZespoluUziemiajacego(
+  transformer: { readonly meta?: unknown },
+): { readonly bay_ref?: string | null; readonly wariant?: string | null; readonly zrodlo_ref?: string | null } | null {
+  const meta = transformer.meta;
+  if (meta === null || typeof meta !== 'object') return null;
+  const zapis = (meta as Record<string, unknown>)[ZAPIS_ZESPOLU_UZIEMIAJACEGO];
+  return zapis !== null && typeof zapis === 'object' ? (zapis as Record<string, string | null>) : null;
+}
+
+/**
+ * Pole zespołu uziemiającego (rola `ZU`), do którego należy transformator — JEDNO źródło
+ * odpowiedzi „transformator uziemiający ma swoje pole” we froncie (marker braku pola TR,
+ * rysunek pola ZU w GPZ). Lustro backendu `enm.pole_transformatorowe.pole_zespolu_transformatora`
+ * (parytet: wiersze `tr-uziemiajacy-*` tablicy `pole_transformatorowe_parytet_v1.json`):
+ * zapis pary musi wskazywać ISTNIEJĄCE pole roli `ZU`; inaczej `null` (transformator bez pola).
+ */
+export function poleZespoluTransformatora<B extends { readonly ref_id?: string; readonly id?: string; readonly bay_role?: string | null }>(
+  bays: readonly B[] | null | undefined,
+  transformer: { readonly meta?: unknown },
+): B | null {
+  const bayRef = zapisZespoluUziemiajacego(transformer)?.bay_ref;
+  if (!nonEmptyRef(bayRef)) return null;
+  const pole = (bays ?? []).find((bay) => bay.ref_id === bayRef || bay.id === bayRef);
+  if (!pole) return null;
+  return (pole.bay_role ?? '').toUpperCase() === ROLA_POLA_ZESPOLU_UZIEMIAJACEGO ? pole : null;
+}
 
 /** Rola katalogowa transformatora blokowego toru DER po stronie SN — backend
  *  `enm.domain_operations_v2` zapisuje ją w `Transformer.meta.catalog_role` przy
@@ -68,7 +103,8 @@ export function transformatorBlokowyDer(
  * `enm.pole_transformatorowe.transformatory_stacji`), czytana przez rysunek, inspektor,
  * konfigurator stacji, kartę stacji i kreator źródła:
  *  1. transformator blokowy źródła DER (`transformatorBlokowyDer`) jest wykluczony — także
- *     wtedy, gdy stacja deklaruje go w `transformer_refs`;
+ *     wtedy, gdy stacja deklaruje go w `transformer_refs`; tak samo transformator uziemiający
+ *     z polem zespołu (`poleZespoluTransformatora`) — aparat pola ZU, nie transformator rozdzielczy;
  *  2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
  *  3. przy BRAKU deklaracji — transformator, którego koniec leży na szynie stacji z lustra
  *     `szynyStacji` (strona górna na zacisku pola TR, strona dolna za wyłącznikiem głównym nN).
@@ -99,6 +135,9 @@ export interface KontekstTransformatorowStacji {
   readonly refyBlokowe: ReadonlySet<string>;
   /** Transformatory migawki spełniające `transformatorBlokowyDer` (jedyny filtr, wyżej). */
   readonly blokowe: ReadonlySet<Transformer>;
+  /** Transformatory uziemiające z polem zespołu (`poleZespoluTransformatora`) — aparaty pola ZU,
+   *  nie transformatory rozdzielcze. */
+  readonly zespolu: ReadonlySet<Transformer>;
   /** Pamięć szyn i deklaracji stacji (wyliczane raz na stację migawki przy pierwszym pytaniu —
    *  odwrotność reguły pyta o każdą stację dla każdego transformatora). */
   readonly stacje: Map<Substation, DaneStacji>;
@@ -116,6 +155,9 @@ export function kontekstTransformatorowStacji(snapshot: ModelTransformatorow): K
     refyBlokowe,
     blokowe: new Set(
       (snapshot.transformers ?? []).filter((transformer) => transformatorBlokowyDer(transformer, refyBlokowe)),
+    ),
+    zespolu: new Set(
+      (snapshot.transformers ?? []).filter((transformer) => poleZespoluTransformatora(snapshot.bays, transformer) !== null),
     ),
     stacje: new Map(),
   };
@@ -161,6 +203,7 @@ export function selectStationDistributionTransformers(
   return (snapshot.transformers ?? []).filter(
     (transformer) =>
       !pelny.blokowe.has(transformer)
+      && !pelny.zespolu.has(transformer)
       && transformatorStacji(transformer, deklarowane, szyny),
   );
 }

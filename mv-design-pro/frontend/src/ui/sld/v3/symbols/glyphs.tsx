@@ -698,6 +698,18 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <OznaczenieUzwojen glif={props} />
+      {/* Karta POLA-GPZ-SZABLONY: wyprowadzenie punktu neutralnego uzwojenia ZYGZAKOWEGO
+          (transformator uziemiający ZNyn11, Zeszyt 1 Z.13–Z.15) — od okręgu górnego do zacisku
+          `punktNeutralny` na prawej krawędzi. Tylko zygzak z wyprowadzonym punktem (dana modelu). */}
+      {props.uzwojenia?.stan === 'znane'
+        && props.uzwojenia.gorne.rodzaj === 'zygzak'
+        && props.uzwojenia.gorne.punktNeutralny && (
+        <line
+          x1={16 + Math.sqrt(11 * 11 - 3 * 3)} y1={16} x2={32} y2={16}
+          stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+          data-punkt-neutralny="wyprowadzony"
+        />
+      )}
       {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
        *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
        *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),

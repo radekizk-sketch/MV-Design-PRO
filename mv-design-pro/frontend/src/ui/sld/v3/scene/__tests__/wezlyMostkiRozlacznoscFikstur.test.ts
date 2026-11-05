@@ -172,8 +172,12 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): fikstura `pola_gpz_szablonow` nie zmienia
     // pinów, gdy przekładniki międzyfazowe T4/T5 pola Z.16 rysuje glif baterii (s. 96); rysowane
     // dawniej jako odczep przekładnika napięciowego toru dokładały 8 fałszywych kropek (77).
+    // AKTUALIZACJA ŚWIADOMA kropek 69 → 71 (karta POLA-GPZ-SZABLONY, rysunek pola ZU z nośnika):
+    // pomiar na fiksturze `pola_gpz_szablonow` — węzeł punktu neutralnego transformatora
+    // uziemiającego Z.13 (przewód od zacisku `punktNeutralny`, ogranicznik przepięć w dół, gałąź
+    // dławika dalej w prawo: trzy ramiona toru, kropka jak na rysunku ENEA s.93) × LOD1/LOD2.
     expect(przeciecia).toBe(113);
-    expect(kropki).toBe(69);
+    expect(kropki).toBe(71);
   });
 });
 

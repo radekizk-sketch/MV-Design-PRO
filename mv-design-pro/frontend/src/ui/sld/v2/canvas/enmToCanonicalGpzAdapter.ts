@@ -59,7 +59,12 @@ import {
 import { buildOltcAnnotation } from './oltcGlyph';
 import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
 import { polaStacji } from '../../../shared/polaStacji';
-import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
+import {
+  poleZespoluTransformatora,
+  transformatoryNalezaceDoStacji,
+  zapisZespoluUziemiajacego,
+} from '../../../shared/transformatoryStacji';
+import { zespolWidokuPola } from '../model/zespolUziemiajacyPola';
 import { czyPoleRezerwowe, czyPoleWolne } from '../../../shared/rodzajStacji';
 
 /* =============================================================================
@@ -109,7 +114,12 @@ export function buildCanonicalGpzProps(
   // Karta W5-B: pola GPZ = rekordy `bays` stacji (JEDEN nośnik pól; pole bez rekordu = brak pola).
   const allBays = [...polaStacji(enm, substationRef)];
   // SZYNY-STACJI-LUSTRO: transformatory GPZ z JEDNEJ reguły „transformatory stacji”.
-  const allTransformers = transformatoryNalezaceDoStacji(enm, substation);
+  // Karta POLA-GPZ-SZABLONY: transformator uziemiający z polem zespołu (`poleZespoluTransformatora`
+  // — ta sama funkcja co wykluczenie z transformatorów rozdzielczych, W041) jest aparatem pola ZU:
+  // rysuje się na końcu toru tego pola (`zespolWidokuPola`), nie jako wieża transformatora.
+  const allTransformers = transformatoryNalezaceDoStacji(enm, substation).filter(
+    (tr) => poleZespoluTransformatora(enm.bays, tr) === null,
+  );
 
   // F11.1: kontekst rejestru device-ref przekazywany DALEJ do `buildBay` —
   // WYŁĄCZNIE pola faktycznie czytane przez `resolveBayProtectionMarking`/
@@ -135,6 +145,8 @@ export function buildCanonicalGpzProps(
     shunt_capacitors: enm.shunt_capacitors ?? [],
     // Odbiór B-02 (pkt 6): napięcie szyny pola — strona pierwotna krótkiej przekładni VT.
     buses: enm.buses ?? [],
+    // Karta POLA-GPZ-SZABLONY: transformator uziemiający pola ZU (`zespolWidokuPola`).
+    transformers: enm.transformers ?? [],
   };
 
   // GPZ-PARYTET cz. 3 (pkt 2): pole TR, którego JEDYNYM transformatorem jest transformator
@@ -190,7 +202,7 @@ export function buildCanonicalGpzProps(
     // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
+    snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? [], enm.transformers ?? []),
     couplers,
     hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -390,7 +402,7 @@ export function extractTransformerDesignation(name: string | null | undefined, i
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
 type ProtectionCtx = Pick<
   EnergyNetworkModel,
-  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays' | 'shunt_capacitors' | 'buses'
+  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays' | 'shunt_capacitors' | 'buses' | 'transformers'
 > & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
@@ -548,6 +560,7 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     rolaPola: rolaPolaGpz(bay.bay_role),
     ...(fieldRole === 'SOURCE' ? { rolaZrodla: rolaPolaZrodlowego(bay, protectionCtx.generatoryWgPola) } : {}),
     ...bateriaWidokuPola(bay, protectionCtx),
+    ...(bay.bay_role === 'ZU' ? zespolWidokuPola(bay, protectionCtx) : {}),
     cbState: stany.cbState,
     dsState: stany.dsState,
     esState: stany.esState,
@@ -695,12 +708,22 @@ function deriveSnNeutralEarthing(
   substation: Substation,
   buses: readonly Bus[],
   sources: readonly Source[],
+  transformers: readonly Transformer[],
 ): CanonicalGpzProps['snNeutralEarthing'] {
   // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
   const stationBusRefs = szynyStacji(enm, substation);
+  // Karta POLA-GPZ-SZABLONY: źródło, którego punkt neutralny przeniesiono na transformator
+  // uziemiający pola ZU (zapis pary `zrodlo_ref`), nie jest nośnikiem — punkt neutralny rysuje
+  // pole zespołu; dawny glif „izolowany” przy sekcji przeczyłby uziemieniu przez zespół.
+  const dawcy = new Set(
+    transformers
+      .map((tr) => zapisZespoluUziemiajacego(tr)?.zrodlo_ref)
+      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+  );
   const source = sources.find(
     (s) =>
-      Boolean(s.neutral_grounding)
+      !dawcy.has(s.ref_id)
+      && Boolean(s.neutral_grounding)
       && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
   );
   const g = source?.neutral_grounding;
