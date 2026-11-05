@@ -356,6 +356,22 @@
   white-space: nowrap;
 }
 
+/* Podstawy znamion: krótka lista „kryterium → źródło” (karta KD6). */
+.mvd-apar-podstawy {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mvd-muted);
+}
+
+.mvd-apar-podstawy-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 0;
+  padding: 0 0 0 1.2em;
+  max-width: 90ch;
+}
+
 /* Parametry aparatu użyte w ocenie (V12K-351): wartość, pochodzenie, etykieta wartości roboczej. */
 .mvd-apar-parametry {
   display: flex;

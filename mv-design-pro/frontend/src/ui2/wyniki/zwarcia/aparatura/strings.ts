@@ -25,6 +25,7 @@ export const APARATURA_STRINGS = {
   kolAparat: 'Aparat',
   jednKa: '[kA]',
   jednS: '[s]',
+  czasPrzerwania: 'czas przerwania prądu',
   kolZapasDynamiczny: 'Zapas dynamiczny [kA]',
   kolZapasCieplny: 'Zapas cieplny [kA]',
   kolZapasWylaczalny: 'Zapas wyłączalny [kA]',

@@ -36,8 +36,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -176,8 +176,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -317,8 +317,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -457,8 +457,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -597,8 +597,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -737,7 +737,7 @@
         {
           "code": "fault.c_tolerancja_nn_robocza",
           "element_ref": "tr_sn_nn",
-          "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: c_max 1,10, c_min 0,90 (sieć +6 %: c_max 1,05, c_min 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (c_max 1,10, c_min 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza c_max we wzorze K_T transformatora i K_G maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
+          "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: współczynnik napięciowy maksymalny 1,10, minimalny 0,90 (sieć +6 %: współczynnik napięciowy maksymalny 1,05, minimalny 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (współczynnik napięciowy maksymalny 1,10, minimalny 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza c_max we wzorze K_T transformatora i K_G maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
           "scenariusz": "MAX",
           "parametr": "lv_voltage_tolerance",
           "element_type": "Transformer"
@@ -764,8 +764,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -775,8 +775,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -786,8 +786,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -797,8 +797,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -808,8 +808,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             }
           ]
         }
@@ -863,7 +863,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "5be71503e3e5ce52d196c4f722c40e56ab55d0893b802a18f63589ddb765b389",
+        "result_hash": "f06b396103eabf57c037127f8d977a23839586faf7a7346806bf0d3dd9335a01",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -917,8 +917,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -1057,8 +1057,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -1198,8 +1198,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -1338,8 +1338,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -1478,8 +1478,8 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
           "parametry_robocze_maszyn": [
@@ -1618,7 +1618,7 @@
         {
           "code": "fault.c_tolerancja_nn_robocza",
           "element_ref": "tr_sn_nn",
-          "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: c_max 1,10, c_min 0,90 (sieć +6 %: c_max 1,05, c_min 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (c_max 1,10, c_min 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza c_max we wzorze K_T transformatora i K_G maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
+          "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: współczynnik napięciowy maksymalny 1,10, minimalny 0,90 (sieć +6 %: współczynnik napięciowy maksymalny 1,05, minimalny 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (współczynnik napięciowy maksymalny 1,10, minimalny 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza c_max we wzorze K_T transformatora i K_G maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
           "scenariusz": "MIN",
           "parametr": "lv_voltage_tolerance",
           "element_type": "Transformer"
@@ -1645,8 +1645,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -1656,8 +1656,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -1667,8 +1667,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -1678,8 +1678,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             },
             {
               "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -1689,8 +1689,8 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
             }
           ]
         }
@@ -1744,7 +1744,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b99c3582dc61079bfe2cb538410508a2d118c69fb21922f4be286057148489d5",
-        "result_hash": "8a8300055cc02f782738de65d296bba4a2dfb36e82cc0f81807c9d9a756f840e",
+        "result_hash": "1ce9cfe7ea63b52c775dd4dc76157e1a0a6ad15cce0a4f1bffb59748a07d7765",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

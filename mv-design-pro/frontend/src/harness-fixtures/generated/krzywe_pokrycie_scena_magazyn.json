@@ -126,7 +126,7 @@
         "wartosc": -0.26,
         "jednostka": "Mvar"
       },
-      "definicja_latex": "m = x - x_{\\lim}",
+      "definicja_latex": "\\Delta x = x - x_{\\lim}",
       "punkt_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
       "skala": null,
       "skala_rodzaj": null,

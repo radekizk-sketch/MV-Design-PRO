@@ -64,10 +64,14 @@ from application.analyses.aparaty_pol import (
     parametry_aparatu,
     znajdz_stacje,
 )
-from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
+from application.analyses.protection.ocena_nadpradowa import (
+    ETYKIETY_KRZYWYCH_PL,
+    czas_urzadzenia,
+    rozwiaz_nastawy,
+)
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, oznaczenie_zabezpieczenia
 from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
 from network_model.catalog.wartosci_robocze import (
@@ -234,7 +238,10 @@ def _czas_wylaczenia_pola(
             "więc czas zadziałania jest niewyznaczalny.",
         )
 
-    nazwa_zabezpieczenia = nazwa_elementu(wpis, "protection_assignments")
+    # Zabezpieczenie nazwane przez miejsce, które chroni (karta KD6) — jeden helper nazw
+    # modelu; nazwa przypisania po słowie „zabezpieczenie” dawała „zabezpieczenia
+    # Zabezpieczenie pola …”.
+    oznaczenie = oznaczenie_zabezpieczenia(enm, wpis)
     nastawy = rozwiaz_nastawy(enm, wpis)
     if not nastawy.gotowe:
         return _bez_czasu(
@@ -274,25 +281,25 @@ def _czas_wylaczenia_pola(
     if decydujacy is None:
         return _bez_czasu(
             READINESS_PONIZEJ_ROZRUCHU,
-            f"Prąd zwarciowy {prad_a:.1f} A nie przekracza progu rozruchowego "
-            f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+            f"Prąd zwarciowy {liczba_pl(round(prad_a, 1))} A nie przekracza progu rozruchowego "
+            f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
             f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała.",
             **slad,
         )
     czas_nastawy = float(decydujacy["t_s"])
-    krzywa_txt = str(decydujacy["krzywa"])
+    krzywa_txt = ETYKIETY_KRZYWYCH_PL[str(decydujacy["krzywa"])]
 
     wylacznik = next((a for a in aparaty_pola if a.aparat_ref == wpis.breaker_ref), None)
     pozycja_ref = wylacznik.catalog_ref if wylacznik is not None else None
     czas_wlasny = _czas_wlasny_aparatu(wylacznik) if wylacznik is not None else None
     opis_czlonu = (
-        f"Czas stopnia {decydujacy['etykieta_pl']} ({krzywa_txt}) zabezpieczenia "
-        f"{nazwa_zabezpieczenia} przy prądzie {prad_a:.1f} A"
+        f"Czas stopnia {decydujacy['etykieta_pl']} zabezpieczenia {oznaczenie}, "
+        f"charakterystyka: {krzywa_txt}, przy prądzie {liczba_pl(round(prad_a, 1))} A"
     )
     # Jedno zdanie o członie nastawczym (karta KD6-SZCZEGOLY pkt 4): funkcja, stopień, prąd.
     opis_czlonu_krotki = (
-        f"{liczba_pl(czas_nastawy)} s — stopień {decydujacy['etykieta_pl']} ({krzywa_txt}) "
-        f"zabezpieczenia {nazwa_zabezpieczenia} przy prądzie zwarciowym "
+        f"{liczba_pl(czas_nastawy)} s — stopień {decydujacy['etykieta_pl']}, "
+        f"charakterystyka: {krzywa_txt}, zabezpieczenie {oznaczenie}, przy prądzie zwarciowym "
         f"{liczba_pl(round(a_na_ka(prad_a), 2))} kA"
     )
     if czas_wlasny is None or czas_wlasny.wartosc is None:
@@ -302,23 +309,23 @@ def _czas_wylaczenia_pola(
         # jest krótszy, więc dawałby wyższy limit cieplny). Człon zostaje jako ślad.
         if wylacznik is None:
             powod_braku = (
-                f"Wyłącznik otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie leży "
+                f"Wyłącznik otwierany przez zabezpieczenie {oznaczenie} nie leży "
                 "w tym polu, więc jego czasu własnego nie ma skąd odczytać"
             )
         elif czas_wlasny is None:
             powod_braku = (
-                f"Aparat otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie ma "
+                f"Aparat otwierany przez zabezpieczenie {oznaczenie} nie ma "
                 f"pozycji „{pozycja_ref}” w katalogu aparatów SN"
             )
         else:
             powod_braku = (
-                f"Zabezpieczenie {nazwa_zabezpieczenia} otwiera aparat, który nie wyłącza "
+                f"Zabezpieczenie {oznaczenie} otwiera aparat, który nie wyłącza "
                 f"zwarcia: {czas_wlasny.powod_braku_pl}"
             )
         return {
             **_bez_czasu(
                 READINESS_BRAK_CZASU_WLASNEGO,
-                f"{opis_czlonu} wynosi {czas_nastawy:.6g} s. {powod_braku} — czasu "
+                f"{opis_czlonu} wynosi {liczba_pl(czas_nastawy)} s. {powod_braku} — czasu "
                 "wyłączenia zwarcia nie da się złożyć, a sam człon nastawczy zaniżyłby "
                 "go i zawyżył limit cieplny aparatu.",
                 **slad,
@@ -438,17 +445,19 @@ def czas_tb_z_pol_lokalnych(
     nazwa = _nazwa_pola(pole.bay)
     t_b = float(czas["t_clearing_s"])
     opis = (
-        f"t_b = {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól lokalnych punktu zwarcia "
+        f"Czas przerwania prądu zwarciowego {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól "
+        "lokalnych punktu zwarcia "
         f"(pole {nazwa}, z {len(pola)} pól z aparatem przy szynie): człon nastawczy "
         f"{liczba_pl(float(czas['czlon_nastawczy_s']))} s ({str(czas['powod_pl']).rstrip('.')}) "
         f"+ czas własny wyłącznika {liczba_pl(float(czas['czas_wlasny_wylacznika_s']))} s "
         f"({czas_wlasny['opis_zrodla_pl'].rstrip('.')}). Charakterystykę sprawdzono przy "
-        f"prądzie I_k'' punktu zwarcia {rodzaj_zwarcia_pl} {liczba_pl(round(prad_a, 1))} A."
+        f"prądzie zwarciowym początkowym punktu zwarcia {rodzaj_zwarcia_pl} "
+        f"{liczba_pl(round(prad_a, 1))} A."
     )
     if robocza:
         opis += (
-            " Czas własny wyłącznika jest wartością roboczą, więc t_b też — zmień t_b "
-            "w scenariuszu zwarciowym albo nadaj czas własny wyłącznika, aby przeliczyć."
+            " Czas własny wyłącznika jest wartością roboczą, więc czas przerwania prądu też — "
+            "zmień go w scenariuszu zwarciowym albo nadaj czas własny wyłącznika, aby przeliczyć."
         )
     return CzasWylaczeniaTb(
         wartosc_s=t_b,

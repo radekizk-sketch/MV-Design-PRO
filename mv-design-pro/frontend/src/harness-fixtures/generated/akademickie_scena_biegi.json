@@ -3367,7 +3367,7 @@
                       "zakres_stosowalnosci_pl": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f"
                     },
                     "margines": {
-                      "definicja_latex": "m = x_{\\lim} - x",
+                      "definicja_latex": "\\Delta x = x_{\\lim} - x",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "Szyna SN",
@@ -3624,7 +3624,7 @@
                       "zakres_stosowalnosci_pl": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f"
                     },
                     "margines": {
-                      "definicja_latex": "m = x_{\\lim} - x",
+                      "definicja_latex": "\\Delta x = x_{\\lim} - x",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "Szyna SN",
@@ -4391,7 +4391,7 @@
                       "zakres_stosowalnosci_pl": "U_c,wym = U_TOV (doziemienie długotrwałe)"
                     },
                     "margines": {
-                      "definicja_latex": "m = x - x_{\\lim}",
+                      "definicja_latex": "\\Delta x = x - x_{\\lim}",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "Stacja B SN",
@@ -4539,7 +4539,7 @@
                       "zakres_stosowalnosci_pl": "U_TOV = k·U_m/√3"
                     },
                     "margines": {
-                      "definicja_latex": "m = x - x_{\\lim}",
+                      "definicja_latex": "\\Delta x = x - x_{\\lim}",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "Stacja B SN",
@@ -4721,7 +4721,7 @@
                       "zakres_stosowalnosci_pl": null
                     },
                     "margines": {
-                      "definicja_latex": "m = x - x_{\\lim}",
+                      "definicja_latex": "\\Delta x = x - x_{\\lim}",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "Stacja B SN",
@@ -6127,7 +6127,7 @@
                       "zakres_stosowalnosci_pl": null
                     },
                     "margines": {
-                      "definicja_latex": "m = x_{\\lim} - x",
+                      "definicja_latex": "\\Delta x = x_{\\lim} - x",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "silnik M-1 (szyna Stacja B SN)",
@@ -6278,7 +6278,7 @@
                       "zakres_stosowalnosci_pl": "dopuszczalny czas utyku z karty silnika"
                     },
                     "margines": {
-                      "definicja_latex": "m = x_{\\lim} - x",
+                      "definicja_latex": "\\Delta x = x_{\\lim} - x",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "silnik M-1 (szyna Stacja B SN)",
@@ -6425,7 +6425,7 @@
                       "zakres_stosowalnosci_pl": "moment obciążenia przy rozruchu z danych napędu"
                     },
                     "margines": {
-                      "definicja_latex": "m = x - x_{\\lim}",
+                      "definicja_latex": "\\Delta x = x - x_{\\lim}",
                       "niedefiniowalny": false,
                       "powod_pl": null,
                       "punkt_pl": "silnik M-1 (szyna Stacja B SN)",
@@ -7662,7 +7662,7 @@
                   "zakres_stosowalnosci_pl": null
                 },
                 "margines": {
-                  "definicja_latex": "m = x_{\\lim} - x",
+                  "definicja_latex": "\\Delta x = x_{\\lim} - x",
                   "niedefiniowalny": false,
                   "powod_pl": null,
                   "punkt_pl": "Sieć SN 15 kV — Szyna SN",

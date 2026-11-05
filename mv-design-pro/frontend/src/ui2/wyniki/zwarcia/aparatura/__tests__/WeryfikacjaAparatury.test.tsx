@@ -73,6 +73,19 @@ const WARUNEK: Readonly<Record<RodzajKryteriumAparatu, string>> = {
   wylaczanie: 'I_b \\le I_{sc}',
 };
 
+/**
+ * Definicja zapasu relacji „nie więcej” w kształcie backendu (`werdykt.decyzja`, symbol
+ * `SYMBOL_MARGINESU_LATEX`). Pozostałe relacje kontraktu — `DEFINICJE_ZAPASU_RELACJI`.
+ */
+const DEFINICJA_ZAPASU = '\\Delta x = x_{\\lim} - x';
+const DEFINICJE_ZAPASU_RELACJI = [
+  DEFINICJA_ZAPASU,
+  '\\Delta x = x - x_{\\lim}',
+  '\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)',
+  '\\Delta x = x(t^{*}) - x_{\\lim}(t^{*})',
+  '\\Delta x = x_{\\lim}(t^{*}) - x(t^{*})',
+] as const;
+
 /** Rekord K (kształt `model_dump` backendu) z liczbami wyniku, limitu i marginesu. */
 function ocenaK(
   rodzaj: RodzajKryteriumAparatu,
@@ -133,7 +146,7 @@ function ocenaK(
       margines === undefined && wynik !== null && limit !== null
         ? {
             wartosc: { wartosc: limit - wynik, jednostka: 'kA' },
-            definicja_latex: 'I_{lim} - I',
+            definicja_latex: DEFINICJA_ZAPASU,
             punkt_pl: null,
             skala: null,
             skala_rodzaj: null,
@@ -154,7 +167,7 @@ function ocenaK(
             }
           : {
               wartosc: { wartosc: margines, jednostka: 'kA' },
-              definicja_latex: 'I_{lim} - I',
+              definicja_latex: DEFINICJA_ZAPASU,
               punkt_pl: null,
               skala: null,
               skala_rodzaj: null,
@@ -249,7 +262,7 @@ function parametr(
     propozycja: null,
     powod_projektanta_pl: null,
     powod_braku_pl: null,
-    opis_zrodla_pl: robocza ? `wartość robocza: opis źródła ${nazwa}` : 'dana karty katalogowej (producent)',
+    opis_zrodla_pl: robocza ? `wartość robocza: opis źródła — ${nazwaPl}` : 'dana karty katalogowej (producent)',
     ...dodatki,
   };
 }
@@ -281,7 +294,8 @@ const WYPROWADZENIE = {
 };
 const WZOR_LIMITU =
   'I_{th,\\mathrm{dop}} = I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}';
-const OPIS_CZLONU = '0,3 s — stopień I> (51) (DT) zabezpieczenia Z-1 przy prądzie zwarciowym 9,09 kA';
+const OPIS_CZLONU =
+  '0,3 s — stopień I> (51), charakterystyka: czas niezależny (DT), zabezpieczenie pola „P-1”, przy prądzie zwarciowym 9,09 kA';
 const OPIS_CZASU_WLASNEGO =
   '0,06 s — wartość robocza: profil typowy wyłącznika próżniowego SN (IEC 62271-100: czas wyłączania deklaruje producent)';
 
@@ -832,6 +846,101 @@ describe('WeryfikacjaAparatury — tabela pól stacji', () => {
     expect(screen.queryByTestId('mvd-zwarcia-aparatura-komunikat-P-1')).toBeNull();
     expect(szczegoly.textContent).not.toContain('OK: aparatura wytrzymała.');
   });
+
+  // Karta KD6 (uwaga właściciela do zrzutu): podstawy znamion jako krótka lista
+  // „kryterium → źródło”, każda podstawa raz, symbol kryterium przez MathRenderer; żaden tekst
+  // szczegółów (także podpowiedzi `title`) nie niesie symbolu w notacji ASCII z podkreśleniem.
+  it('PODSTAWY ZNAMION: lista „kryterium → źródło”, podstawa raz, symbol przez MathRenderer', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        prady_pola: { ...poleOdpowiedzi({}).prady_pola, wyprowadzenie: WYPROWADZENIE },
+        wzor_limitu_cieplnego_latex: WZOR_LIMITU,
+      }),
+    ]);
+    await sprawdz(user);
+    await pokazSzczegoly(user, 'P-1');
+    const lista = screen.getByTestId('mvd-zwarcia-aparatura-podstawy-P-1');
+    const pozycje = [...lista.querySelectorAll('li')];
+    // Wspólna podstawa trzech rekordów (fikstura) — jedna pozycja z trzema kryteriami.
+    expect(pozycje).toHaveLength(1);
+    expect(pozycje[0].getAttribute('data-kryteria')).toBe('dynamiczna cieplna wylaczanie');
+    expect(pozycje[0].textContent).toContain('→ IEC 62271-1, 2007, § 4.6');
+    const symbole = [...pozycje[0].querySelectorAll('[data-latex]')].map((e) => e.getAttribute('data-latex'));
+    expect(symbole).toEqual([WARUNEK.dynamiczna, WARUNEK.cieplna, WARUNEK.wylaczanie]);
+  });
+
+  it('TEKST SZCZEGÓŁÓW bez symbolu ASCII z podkreśleniem (tekst i podpowiedzi)', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        prady_pola: { ...poleOdpowiedzi({}).prady_pola, wyprowadzenie: WYPROWADZENIE },
+        wzor_limitu_cieplnego_latex: WZOR_LIMITU,
+      }),
+    ]);
+    await sprawdz(user);
+    const szczegoly = await pokazSzczegoly(user, 'P-1');
+    const kopia = szczegoly.cloneNode(true) as HTMLElement;
+    for (const wzor of kopia.querySelectorAll('[data-latex]')) wzor.remove();
+    const GOLY_INDEKS = /(?<![\p{L}\p{N}_\\])\p{L}_(?:\{[^}]*\}|[\p{L}\p{N}]+)/u;
+    expect(kopia.textContent ?? '').not.toMatch(GOLY_INDEKS);
+    const podpowiedzi = [...szczegoly.querySelectorAll('[title]')].map((e) => e.getAttribute('title') ?? '');
+    for (const tytul of podpowiedzi) expect(tytul).not.toMatch(GOLY_INDEKS);
+    // Czas przerwania prądu (IEC 60909) nazwany słowem obok symbolu — nie mylić z czasem pola.
+    expect(tekst('mvd-zwarcia-aparatura-prady-P-1')).toContain('czas przerwania prądu');
+  });
+
+  // Karta KD6: zapas zapisany jako „m = x_lim − x” kolidował ze współczynnikiem cieplnym m
+  // IEC 60909 (I_th = I_k''·√(m+n), wynik pośredni „m”). Jeden symbol = jedna wielkość w całych
+  // szczegółach: lewe strony wzorów i symbole wyników pośrednich. Iloczyn: każda definicja
+  // zapasu kontraktu werdyktu (pięć relacji) × szczegóły pola z kompletem wzorów backendu.
+  // Wielkość tożsama w dwóch miejscach (limit cieplny = wynik pośredni I_th,dop) jest jawna.
+  const TA_SAMA_WIELKOSC: Readonly<Record<string, string>> = { 'wzor:limit-cieplny': 'posrednia:ith-dop' };
+  it.each(DEFINICJE_ZAPASU_RELACJI)(
+    'SYMBOLE SZCZEGÓŁÓW: jeden symbol = jedna wielkość (zapas %s)',
+    async (definicja) => {
+      const user = userEvent.setup();
+      zamontujBackend([
+        poleOdpowiedzi({
+          prady_pola: { ...poleOdpowiedzi({}).prady_pola, wyprowadzenie: WYPROWADZENIE },
+          wzor_limitu_cieplnego_latex: WZOR_LIMITU,
+          oceny: ocenyPola1().map((r) =>
+            r.margines === null ? r : { ...r, margines: { ...r.margines, definicja_latex: definicja } },
+          ),
+        }),
+      ]);
+      await sprawdz(user);
+      await pokazSzczegoly(user, 'P-1');
+      const latexW = (el: Element | null): string => {
+        const zrodlo = el?.querySelector('[data-latex]')?.getAttribute('data-latex');
+        expect(zrodlo, 'element bez wzoru z danych backendu').toBeTruthy();
+        return (zrodlo ?? '').replace(/\s+/g, '');
+      };
+      const symbole: [string, string][] = [];
+      for (const klucz of ['ip', 'ith', 'ib', 'limit-cieplny', 'zapas-0']) {
+        const wzor = latexW(screen.getByTestId(`mvd-zwarcia-aparatura-wzor-P-1-${klucz}`));
+        symbole.push([wzor.split('=')[0], `wzor:${klucz}`]);
+      }
+      for (const klucz of ['kappa', 'm', 'n', 'tk-biegu', 'ith-dop', 'tzab', 'twyl', 'tk']) {
+        const dd = screen.getByTestId(`mvd-zwarcia-aparatura-posrednia-P-1-${klucz}`);
+        symbole.push([latexW(dd.previousElementSibling), `posrednia:${klucz}`]);
+      }
+      const wielkoscSymbolu = new Map<string, string>();
+      const kolizje: string[] = [];
+      for (const [symbol, miejsce] of symbole) {
+        const wielkosc = TA_SAMA_WIELKOSC[miejsce] ?? miejsce;
+        const poprzednia = wielkoscSymbolu.get(symbol);
+        if (poprzednia !== undefined && poprzednia !== wielkosc) {
+          kolizje.push(`${symbol}: ${poprzednia} i ${wielkosc}`);
+        }
+        wielkoscSymbolu.set(symbol, wielkosc);
+      }
+      expect(kolizje).toEqual([]);
+      // Zapas ma własny symbol, a m zostaje współczynnikiem cieplnym IEC 60909.
+      expect(wielkoscSymbolu.get('\\Deltax')).toBe('wzor:zapas-0');
+      expect(wielkoscSymbolu.get('m')).toBe('posrednia:m');
+    },
+  );
 
   // Uwaga 1 z oględzin (pkt 7 dyrektywy): I_th wiersza biegu jest liczony dla T_k biegu, nie dla
   // czasu TEGO pola — przy nieustalonym czasie pola kolumna „Prąd obliczony” wiersza cieplnego

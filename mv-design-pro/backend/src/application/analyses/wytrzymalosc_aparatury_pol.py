@@ -99,6 +99,7 @@ from network_model.catalog.wartosci_robocze import (
     WartoscRozstrzygnieta,
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
+    liczba_pl,
 )
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
@@ -499,10 +500,12 @@ _IEC_62271_1_WYDANIE = "2007"
 _IEC_60865_1 = "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków"
 _IEC_60865_1_WYDANIE = "2011"
 
-#: Jednostka redakcyjna normy aparatury dla każdej wielkości znamionowej.
+#: Jednostka redakcyjna normy aparatury dla każdej wielkości znamionowej — SŁOWAMI, bez
+#: symbolu (karta KD6): podstawa trafia do zdań werdyktu, dokumentu i podpowiedzi, które
+#: pokazują tekst; symbol renderuje się wyłącznie z pól ``*_latex`` (``ui_math_guard``).
 _PARAGRAF_ZNAMIENIA = {
-    "i_dyn": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
-    "i_th": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+    "i_dyn": "§ 4.6 znamionowy prąd szczytowy wytrzymywany",
+    "i_th": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany i § 4.7 znamionowy czas trwania zwarcia",
 }
 
 _PODSTAWA_DYNAMICZNA = PodstawaWymagania(
@@ -522,8 +525,9 @@ _PODSTAWA_CIEPLNA = PodstawaWymagania(
     dokument=_IEC_60865_1,
     wydanie=_IEC_60865_1_WYDANIE,
     jednostka_redakcyjna=(
-        "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz "
-        "I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr"
+        "wytrzymałość cieplna urządzeń elektrycznych: prąd cieplny zastępczy nie większy niż "
+        "znamionowy prąd krótkotrwały przeliczony na czas trwania zwarcia dłuższy od "
+        "znamionowego (przy krótszym — sam prąd znamionowy)"
     ),
     status="WSKAZANE",
     uwagi_pl=(
@@ -684,6 +688,25 @@ def _dowod(run_id: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()) -> StatusD
     )
 
 
+def _z_jednostka(wartosc: float | None, jednostka: str) -> str:
+    """Liczba śladu w zdaniu: polski zapis z jednostką albo „nie podano” (bez cichego zera)."""
+    if wartosc is None:
+        return "nie podano"
+    return f"{liczba_pl(float(wartosc))} {jednostka}"
+
+
+def _ka(wartosc: float | None) -> str:
+    return _z_jednostka(wartosc, "kA")
+
+
+def _kv(wartosc: float | None) -> str:
+    return _z_jednostka(wartosc, "kV")
+
+
+def _s(wartosc: float | None) -> str:
+    return _z_jednostka(wartosc, "s")
+
+
 def _opis_punktu(prady: PradyPola) -> str:
     """Punkt zabudowy pola w zdaniu: szyna z nazwą albo opis braku nazwy — JEDNA reguła nazwy
     (`network_model.nazwy`); identyfikator szyny nigdy nie zastępuje nazwy."""
@@ -776,7 +799,8 @@ def _ocena_dynamiczna(
         )
     elif not nie_dotyczy:
         braki.append(
-            f"pozycja katalogu „{etykieta}” nie niesie prądu szczytowego I_p (I_dyn), a "
+            f"pozycja katalogu „{etykieta}” nie niesie znamionowego prądu szczytowego "
+            "wytrzymywanego, a "
             "propozycji wartości roboczej nie ma: "
             + str((zapis_i_dyn or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
@@ -817,8 +841,9 @@ def _ocena_dynamiczna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:dynamiczna",
                 opis_pl=(
-                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt: {_opis_punktu(prady)}); "
-                    f"I_dyn = {i_dyn} kA (pochodzenie: {znamiona['i_dyn_pochodzenie']})"
+                    f"prąd udarowy {_ka(prady.ip_ka)} (wiersz biegu, punkt: "
+                    f"{_opis_punktu(prady)}); znamionowy prąd szczytowy wytrzymywany "
+                    f"{_ka(i_dyn)} (pochodzenie: {znamiona['i_dyn_pochodzenie']})"
                 ),
             ),
         ),
@@ -858,7 +883,8 @@ def _ocena_cieplna(
         braki.append(prady.powod_pl)
     if not nie_dotyczy and (znamiona["i_th_ka"] is None or znamiona["i_th_duration_s"] is None):
         braki.append(
-            f"pozycja katalogu „{etykieta}” nie niesie prądu krótkotrwałego I_th z czasem t_th, "
+            f"pozycja katalogu „{etykieta}” nie niesie znamionowego prądu krótkotrwałego "
+            "wytrzymywanego z czasem jego trwania, "
             "a propozycji wartości roboczej nie ma: "
             + str((zapis_i_th or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
@@ -870,8 +896,8 @@ def _ocena_cieplna(
             wartosc=Wielkosc(wartosc=float(limit_ka), jednostka="kA"),
             podstawa=podstawa_limitu,
             zakres_stosowalnosci_pl=(
-                f"prąd krótkotrwały {znamiona['i_th_ka']} kA / {znamiona['i_th_duration_s']} s "
-                f"przeliczony na czas wyłączenia T_k = {t_k} s"
+                f"prąd krótkotrwały {_ka(znamiona['i_th_ka'])} / "
+                f"{_s(znamiona['i_th_duration_s'])} przeliczony na czas wyłączenia {_s(t_k)}"
             ),
         )
     wynik = (
@@ -910,8 +936,9 @@ def _ocena_cieplna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:cieplna",
                 opis_pl=(
-                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt: {_opis_punktu(prady)}); "
-                    f"T_k = {t_k} s (źródło: {czas.get('zrodlo')}); limit = {limit_ka} kA"
+                    f"prąd cieplny zastępczy {_ka(prady.ith_ka)} (wiersz biegu, punkt: "
+                    f"{_opis_punktu(prady)}); czas wyłączenia {_s(t_k)} (źródło: "
+                    f"{czas.get('zrodlo')}); dopuszczalny prąd cieplny {_ka(limit_ka)}"
                 ),
             ),
         ),
@@ -927,8 +954,8 @@ def _podstawa_wylaczania(wielkosc: WielkoscKryteriumWylaczania | None) -> Podsta
             dokument="IEC 62271-100 (wyłącznik SN/WN) / IEC 60364-4-43 (nN)",
             wydanie="2008",
             jednostka_redakcyjna=(
-                "wielkość porównywana zależy od pasma napięcia punktu zwarcia: I_b (SN/WN) "
-                "albo I″k (nN)"
+                "wielkość porównywana zależy od pasma napięcia punktu zwarcia: prąd wyłączeniowy "
+                "symetryczny (SN/WN) albo spodziewany prąd zwarciowy początkowy (nN)"
             ),
             status="WSKAZANE",
             uwagi_pl="bieg nie niesie napięcia znamionowego punktu — pasma nie da się ustalić",
@@ -985,7 +1012,8 @@ def _ocena_wylaczania(
         else:
             braki.append(
                 "wiersz biegu nie niesie napięcia znamionowego punktu zabudowy pola — nie "
-                "wiadomo, czy porównać I_b (SN/WN, IEC 62271-100), czy I″k (nN)"
+                "wiadomo, czy porównać prąd wyłączeniowy symetryczny (SN/WN, IEC 62271-100), "
+                "czy spodziewany prąd zwarciowy początkowy (nN)"
             )
     else:
         wartosc = prady.ib_ka if wielkosc.klucz == "ib_ka" else prady.ik_ka
@@ -997,7 +1025,7 @@ def _ocena_wylaczania(
                 "— przelicz bieg zwarciowy"
             )
     symbol_znamienia = (
-        wielkosc.symbol_znamienia if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
+        wielkosc.symbol_znamienia_latex if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
     )
     nazwa_znamienia = (
         wielkosc.nazwa_znamienia_pl if wielkosc is not None else NAZWA_ZNAMIENIA_NIEUSTALONA_PL
@@ -1024,7 +1052,7 @@ def _ocena_wylaczania(
     wynik = (
         WynikKryterium(
             wielkosc_pl=f"{wielkosc.nazwa_pl} zwarcia trójfazowego w punkcie zabudowy pola",
-            symbol_latex=wielkosc.symbol,
+            symbol_latex=wielkosc.symbol_latex,
             wartosc=Wielkosc(wartosc=wartosc, jednostka="kA"),
             punkt_krytyczny_pl=f"zwarcie w punkcie zabudowy pola: {_opis_punktu(prady)}",
             metoda="OBLICZENIE",
@@ -1032,12 +1060,13 @@ def _ocena_wylaczania(
         if wielkosc is not None and wartosc is not None
         else None
     )
-    symbol = wielkosc.symbol if wielkosc is not None else "I_b"
+    symbol = wielkosc.symbol_latex if wielkosc is not None else WIELKOSC_IB.symbol_latex
+    nazwa_wielkosci = (wielkosc or WIELKOSC_IB).nazwa_pl
     dane = _dane_przyjete_czasu_tb(prady, wielkosc)
     tb_txt = (
         "nie podano"
         if prady.tb_s is None
-        else f"{prady.tb_s} s ("
+        else f"{_s(prady.tb_s)} ("
         + (
             str(prady.tb_zrodlo.get("opis_pl"))
             if prady.tb_zrodlo is not None
@@ -1045,7 +1074,7 @@ def _ocena_wylaczania(
         )
         + ")"
     )
-    idc_txt = "nieobliczona" if prady.i_dc_ka is None else f"{prady.i_dc_ka} kA"
+    idc_txt = "nieobliczona" if prady.i_dc_ka is None else _ka(prady.i_dc_ka)
     return ocen_kryterium(
         kryterium_id=f"{kryterium_id}.wylaczanie",
         przedmiot=przedmiot,
@@ -1099,9 +1128,10 @@ def _ocena_wylaczania(
                 run_id=run_id,
                 krok=f"{kryterium_id}:wylaczanie",
                 opis_pl=(
-                    f"{symbol} = {wartosc} kA (wiersz biegu, punkt: {_opis_punktu(prady)}, "
-                    f"U_n = {prady.un_kv} kV); {nazwa_znamienia} = {i_cu} kA; t_b = {tb_txt}; składowa "
-                    f"nieokresowa i_DC(t_b) = {idc_txt} — informacyjnie (IEC 60909-0 "
+                    f"{nazwa_wielkosci} {_ka(wartosc)} (wiersz biegu, punkt: "
+                    f"{_opis_punktu(prady)}, napięcie znamionowe {_kv(prady.un_kv)}); "
+                    f"{nazwa_znamienia} {_ka(i_cu)}; chwila przerwania prądu {tb_txt}; składowa "
+                    f"nieokresowa w chwili przerwania {idc_txt} — informacyjnie (IEC 60909-0 "
                     "rozdz. 10), katalog nie niesie znamionowej składowej nieokresowej"
                 ),
             ),
@@ -1133,7 +1163,7 @@ def _dane_przyjete_czasu_tb(
         return ()
     return (
         DanaPrzyjeta(
-            nazwa_pl=f"czas wyłączenia t_b ({_opis_punktu(prady)})",
+            nazwa_pl=f"chwila przerwania prądu zwarciowego ({_opis_punktu(prady)})",
             wartosc=Wielkosc(wartosc=float(prady.tb_s), jednostka="s"),
             powod_pl=str(zrodlo["opis_pl"]),
             jakosc=FieldQuality.ESTIMATED,

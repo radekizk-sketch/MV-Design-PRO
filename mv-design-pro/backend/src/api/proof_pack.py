@@ -356,7 +356,10 @@ def _wywod_sekcje_wkladow(
         )
     if zrodlo_tb is not None:
         naglowek.append(
-            {"tekst": f"Czas t_min (= t_b punktu zwarcia): {zrodlo_tb.opis_pl}", "latex": None}
+            {
+                "tekst": f"Czas minimalny wywodu równy czasowi przerwania prądu punktu zwarcia. {zrodlo_tb.opis_pl}",
+                "latex": None,
+            }
         )
     for wpis in parametry_robocze_maszyn:
         naglowek.append(

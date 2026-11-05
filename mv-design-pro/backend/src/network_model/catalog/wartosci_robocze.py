@@ -393,7 +393,8 @@ def _propozycja_i_th(karta: KartaAparatuSN) -> tuple[PropozycjaWartosci | None, 
         return None, (
             "prąd krótkotrwały wytrzymywany nie dotyczy tego rodzaju aparatu — w rozłączniku "
             "bezpiecznikowym zwarcie przerywa wkładka, która przepala się, a nie przewodzi "
-            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw)"
+            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje prądu "
+            "krótkotrwałego wytrzymywanego)"
         )
     icu = karta.breaking_capacity_ka
     if karta.device_kind.strip().upper() == RODZAJ_WYLACZNIK and icu is not None and icu > 0:
@@ -457,9 +458,10 @@ def _propozycja_i_dyn(i_th: WartoscRozstrzygnieta) -> tuple[PropozycjaWartosci |
             rodzaj_zrodla="NORMA",
             odniesienie=_ODNIESIENIE_I_DYN,
             uzasadnienie_pl=(
-                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową "
-                f"I_p = {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}·I_k dla 50 Hz z prądu "
-                f"krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
+                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową: "
+                f"prąd szczytowy równy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}-krotności prądu "
+                f"krótkotrwałego dla 50 Hz, z prądu krótkotrwałego {liczba_pl(i_th.wartosc)} kA "
+                f"{zrodlo_i_th}"
             ),
             wplyw_pl=(
                 "limit dynamiczny wynika z relacji normowej, nie z próby typu konkretnego "
@@ -685,7 +687,7 @@ def _liczba_c(wartosc: float) -> str:
 def opis_c_klasy_nn_pl(tolerancja: TolerancjaNapieciaNn) -> str:
     """c_max/c_min klasy tolerancji jednym zwrotem — liczby z JEDYNEJ tabeli (``voltage_factor``)."""
     c_max, c_min = c_wiersza_nn(tolerancja)
-    return f"c_max {_liczba_c(c_max)}, c_min {_liczba_c(c_min)}"
+    return f"współczynnik napięciowy maksymalny {_liczba_c(c_max)}, minimalny {_liczba_c(c_min)}"
 
 
 def _procent_pl(wartosc: float) -> str:

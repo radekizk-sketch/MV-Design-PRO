@@ -50,7 +50,7 @@
       },
       "nazwa_punktu_pl": "Stacja S03",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -83,7 +83,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -98,7 +98,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S03",
@@ -120,7 +120,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -157,11 +157,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -289,7 +289,7 @@
       },
       "nazwa_punktu_pl": "Stacja S02",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -322,7 +322,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -337,7 +337,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S02",
@@ -359,7 +359,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -396,11 +396,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -528,7 +528,7 @@
       },
       "nazwa_punktu_pl": "Stacja S04",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -561,7 +561,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -576,7 +576,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S04",
@@ -598,7 +598,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -635,11 +635,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -767,7 +767,7 @@
       },
       "nazwa_punktu_pl": "Stacja S01",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -800,7 +800,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -815,7 +815,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S01",
@@ -837,7 +837,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 20 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -874,11 +874,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9058 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik pola liniowego GPZ” zapisane w modelu sieci projektu” (margines +6658 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1006,7 +1006,7 @@
       },
       "nazwa_punktu_pl": "Stacja S03",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -1039,7 +1039,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -1054,7 +1054,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S03",
@@ -1076,7 +1076,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -1113,11 +1113,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1245,7 +1245,7 @@
       },
       "nazwa_punktu_pl": "Stacja S02",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -1278,7 +1278,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -1293,7 +1293,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S02",
@@ -1315,7 +1315,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -1352,11 +1352,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6968 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1484,7 +1484,7 @@
       },
       "nazwa_punktu_pl": "Stacja S04",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
-      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej).",
+      "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej).",
       "ocena": {
         "dowod": {
           "domena_pl": null,
@@ -1517,7 +1517,7 @@
           "obwiednia": null,
           "pasmo": null,
           "podstawa": {
-            "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+            "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
             "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
@@ -1532,7 +1532,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x - x_{\\lim}",
+          "definicja_latex": "\\Delta x = x - x_{\\lim}",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "zwarcie w punkcie Stacja S04",
@@ -1554,7 +1554,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu",
+          "dokument": "Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu",
           "jednostka_redakcyjna": "stopień I>> (50): próg 15 A (strona wtórna)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -1591,11 +1591,11 @@
           "czego_brakuje": [],
           "przyczyna_pl": null,
           "zastrzezenia": [
-            "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
-          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej)."
+          "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia wyłącznika „Wyłącznik odejścia S01” zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375,1 % wartości granicznej)."
         },
         "wynik": {
           "chwila_s": null,
@@ -1739,7 +1739,7 @@
               }
             ],
             "wartosc_w_modelu": 2.0,
-            "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu wyłącznika „Wyłącznik pola liniowego GPZ”"
           },
           "tms": 0.3,
           "wartosc_progu": 2.0,
@@ -1783,7 +1783,7 @@
               }
             ],
             "wartosc_w_modelu": 20.0,
-            "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie pola liniowego GPZ"
+            "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu wyłącznika „Wyłącznik pola liniowego GPZ”"
           },
           "tms": null,
           "wartosc_progu": 20.0,
@@ -1912,7 +1912,7 @@
               }
             ],
             "wartosc_w_modelu": 1.5,
-            "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            "zrodlo_pl": "nastawa stopnia I> (51) zapisana w modelu przy zabezpieczeniu wyłącznika „Wyłącznik odejścia S01”"
           },
           "tms": 0.1,
           "wartosc_progu": 1.5,
@@ -1956,7 +1956,7 @@
               }
             ],
             "wartosc_w_modelu": 15.0,
-            "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu Zabezpieczenie odejścia S01"
+            "zrodlo_pl": "nastawa stopnia I>> (50) zapisana w modelu przy zabezpieczeniu wyłącznika „Wyłącznik odejścia S01”"
           },
           "tms": null,
           "wartosc_progu": 15.0,

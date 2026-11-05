@@ -41,12 +41,14 @@ from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _prad_galezi,
 )
 from application.analyses.protection.ocena_nadpradowa import (
+    ETYKIETY_KRZYWYCH_PL,
     NastawyUrzadzenia,
     czas_urzadzenia,
     rozwiaz_nastawy,
 )
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from network_model.catalog.wartosci_robocze import liczba_pl
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -355,13 +357,13 @@ def wyznacz_czasy_wylaczenia(
                     (
                         f"Każdy wkład źródła do tej gałęzi to {NAZWA_WKLADU_POMINIETEGO}, "
                         f"więc prąd gałęzi nie przekracza progu rozruchowego "
-                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
                         f"{najczulszy.etykieta_pl} — to zabezpieczenie nie zadziała."
                     )
                     if pominieta
                     else (
-                        f"Prąd gałęzi {prad:.1f} A nie przekracza progu rozruchowego "
-                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"Prąd gałęzi {liczba_pl(round(prad, 1))} A nie przekracza progu rozruchowego "
+                        f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
                         f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała."
                     )
                 ),
@@ -381,8 +383,10 @@ def wyznacz_czasy_wylaczenia(
             tk_s=decydujacy["t_s"],
             zrodlo=ZRODLO_NASTAWA,
             powod_pl=(
-                f"Czas stopnia {decydujacy['etykieta_pl']} ({decydujacy['krzywa']}) "
-                f"zabezpieczenia {nastawy.nazwa_pl} przy prądzie gałęzi {prad:.1f} A — "
+                f"Czas stopnia {decydujacy['etykieta_pl']} zabezpieczenia "
+                f"{nastawy.oznaczenie_pl}, charakterystyka: "
+                f"{ETYKIETY_KRZYWYCH_PL[str(decydujacy['krzywa'])]}, przy prądzie gałęzi "
+                f"{liczba_pl(round(prad, 1))} A — "
                 "najszybszy stopień, który ruszył."
             ),
             urzadzenie_ref=aparat_id,
@@ -443,7 +447,7 @@ def slad_czasu(
         pozycja["zrodlo"] = ZRODLO_ZALOZENIE_PRZYPADKU
         pozycja["powod_pl"] = (
             f"{czas.powod_pl} Przyjęto założony czas przypadku obliczeniowego "
-            f"{tk_s_zalozony:g} s."
+            f"{liczba_pl(tk_s_zalozony)} s."
         )
         wynik[branch_id] = pozycja
     return wynik

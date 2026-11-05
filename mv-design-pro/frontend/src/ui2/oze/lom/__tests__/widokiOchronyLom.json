@@ -164,7 +164,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",
@@ -467,7 +467,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",
@@ -927,7 +927,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",
@@ -1465,7 +1465,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x - x_{\\lim}",
+                "definicja_latex": "\\Delta x = x - x_{\\lim}",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-bess” pola „Pole BESS B”",
@@ -1766,7 +1766,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x - x_{\\lim}",
+                "definicja_latex": "\\Delta x = x - x_{\\lim}",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-bess” pola „Pole BESS B”",
@@ -2089,7 +2089,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",
@@ -2392,7 +2392,7 @@
                 "zakres_stosowalnosci_pl": null
               },
               "margines": {
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "niedefiniowalny": false,
                 "powod_pl": null,
                 "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",
@@ -3103,7 +3103,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-bess” pola „Pole BESS B”",
@@ -3338,7 +3338,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie LoM prot-fw” pola „Pole FW C”",

@@ -226,9 +226,9 @@ class EquipmentProofGenerator:
             # Treść nazywa porównane wielkości, wartości i podstawę; status niesie pole
             # `status` (kontrakt werdyktu wyjaśnialnego: tekst nie składa kodu werdyktu).
             message_pl=(
-                f"{_symbol_tekstowy(wielkosc.symbol_znamienia)} aparatu ({wielkosc.nazwa_znamienia_pl}) "
+                f"{_symbol_tekstowy(wielkosc.symbol_znamienia_latex)} aparatu ({wielkosc.nazwa_znamienia_pl}) "
                 f"{device_val:.4f} kA wobec {wielkosc.opis_pl} {required_val:.4f} kA (warunek "
-                f"{_symbol_tekstowy(wielkosc.symbol_znamienia)} ≥ wartość wymagana; "
+                f"{_symbol_tekstowy(wielkosc.symbol_znamienia_latex)} ≥ wartość wymagana; "
                 f"{wielkosc.norma})."
             ),
             notes=notes,
@@ -569,12 +569,12 @@ class EquipmentProofGenerator:
             wielkosc = WIELKOSC_IB
         equation = _equation(
             "EQ_P12_004",
-            rf"{symbol_znamienia} \ge {wielkosc.symbol}",
+            rf"{symbol_znamienia} \ge {wielkosc.symbol_latex}",
             "Sprawdzenie zdolności wyłączalnej",
             wielkosc.norma,
             (
                 _symbol(symbol_znamienia, "kA", nazwa_znamienia, "device.i_cu_ka"),
-                _symbol(wielkosc.symbol, "kA", wielkosc.opis_pl, wielkosc.klucz),
+                _symbol(wielkosc.symbol_latex, "kA", wielkosc.opis_pl, wielkosc.klucz),
             ),
         )
         input_values = (
@@ -582,7 +582,7 @@ class EquipmentProofGenerator:
                 symbol_znamienia, check.device_value, "kA", "device.i_cu_ka", check.status
             ),
             _value_or_missing(
-                wielkosc.symbol,
+                wielkosc.symbol_latex,
                 _as_float(check.required_value),
                 "kA",
                 wielkosc.klucz,
@@ -930,7 +930,7 @@ def _value_or_missing(
 
 def _symbol_znamienia(wielkosc: WielkoscKryteriumWylaczania | None) -> str:
     """Symbol LaTeX znamienia zdolności wyłączania z predykatu pasma (nieustalone = ogólny)."""
-    return wielkosc.symbol_znamienia if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
+    return wielkosc.symbol_znamienia_latex if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
 
 
 def _nazwa_znamienia(wielkosc: WielkoscKryteriumWylaczania | None) -> str:

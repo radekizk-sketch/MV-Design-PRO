@@ -1869,7 +1869,7 @@
                 "wartosc": 0.05,
                 "jednostka": "p.u. (U_n)"
               },
-              "definicja_latex": "m = x_{\\lim}(t^{*}) - x(t^{*})",
+              "definicja_latex": "\\Delta x = x_{\\lim}(t^{*}) - x(t^{*})",
               "punkt_pl": "nastawa U< = 0,8 p.u. (U_n) z czasem 1,5 s (źródło nastaw: Karta nastaw zabezpieczeń instalacji PV)",
               "skala": {
                 "wartosc": 0.85,
@@ -2225,7 +2225,7 @@
                 "wartosc": 0.000749354005168,
                 "jednostka": "p.u. (P_n modułu)"
               },
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
               "skala": {
                 "wartosc": 0.33,

@@ -2336,7 +2336,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="nastawy_urzadzenia",
-                description_pl=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} z modelu",
+                description_pl=f"Nastawy zabezpieczenia {nastawy.oznaczenie_pl} z modelu",
                 inputs={"urzadzenie_ref": nastawy.urzadzenie_ref},
                 outputs=nastawy.to_dict(),
             )
@@ -2345,7 +2345,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             kroki.append(
                 ProtectionTraceStep(
                     step="strefa_urzadzenia",
-                    description_pl=f"Strefa zabezpieczenia {nastawy.nazwa_pl} z topologii modelu",
+                    description_pl=f"Strefa zabezpieczenia {nastawy.oznaczenie_pl} z topologii modelu",
                     inputs={"breaker_ref": nastawy.breaker_ref},
                     outputs=wynik.strefy[nastawy.urzadzenie_ref],
                 )
@@ -2355,7 +2355,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             ProtectionTraceStep(
                 step="ocena_punktu",
                 description_pl=(
-                    f"Zabezpieczenie {ocena.nazwa_urzadzenia_pl} — zwarcie w punkcie "
+                    f"Zabezpieczenie {ocena.oznaczenie_urzadzenia_pl} — zwarcie w punkcie "
                     f"{ocena.nazwa_punktu_pl}"
                 ),
                 inputs={
@@ -2378,7 +2378,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="odmowa_urzadzenia",
-                description_pl=f"Ocena zabezpieczenia {odmowa.nazwa_pl} wstrzymana",
+                description_pl=f"Ocena zabezpieczenia {odmowa.oznaczenie_pl} wstrzymana",
                 inputs={"urzadzenie_ref": odmowa.urzadzenie_ref},
                 outputs={
                     "braki": [b.to_dict() for b in odmowa.braki],

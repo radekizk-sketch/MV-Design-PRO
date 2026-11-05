@@ -415,7 +415,7 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     cieplna = _ocena(pole, "cieplna")
     assert cieplna["status_maszynowy"] == "SPELNIA"
     assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
-    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("T_k = 0.36 s")
+    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("czas wyłączenia 0,36 s")
     dane = _dane_przyjete(cieplna)
     assert [d["wartosc"] for d in dane] == [{"wartosc": 0.06, "jednostka": "s"}]
     assert dane[0]["jakosc"] == "ESTIMATED"
@@ -673,6 +673,22 @@ def test_wyprowadzenie_pradow_pola_z_wiersza_biegu_i_sladu_solvera(klient: TestC
         warunek = _ocena(pole, "cieplna")["kryterium"]["warunek_latex"]
         wzor = pole["wzor_limitu_cieplnego_latex"]
         assert warunek.split(r"\le ", 1)[1] == wzor.split("= ", 1)[1]
+        # Karta KD6: symbol zapasu (lewa strona definicji marginesu rekordów pola) nie jest
+        # symbolem żadnego wzoru wyprowadzenia (m, n, κ, I_th…) — jeden symbol, jedna wielkość.
+        import re
+
+        symbole_wzorow = {
+            t
+            for w in [*wyprowadzenie["wzory"].values(), wzor]
+            for t in re.findall(r"\\[A-Za-z]+|[A-Za-z](?:_\{[^}]*\}|_[A-Za-z0-9])?", w)
+        }
+        for rodzaj in ("dynamiczna", "cieplna", "wylaczanie"):
+            margines = _ocena(pole, rodzaj)["margines"]
+            if margines is None or margines["definicja_latex"] is None:
+                continue
+            lewa = margines["definicja_latex"].split("=", 1)[0].strip()
+            assert lewa not in symbole_wzorow
+            assert not set(lewa.split()) & {"m", "n", r"\kappa"}
 
 
 def test_zdania_o_czasie_pola_sa_krotkie_i_z_tych_samych_danych(klient: TestClient):
@@ -709,3 +725,112 @@ def test_pole_bez_nastaw_nie_ma_zdan_o_czasie(klient: TestClient):
         assert "opis_czlonu_pl" not in czas
         assert "opis_czasu_wlasnego_pl" not in czas
         assert czas["powod_pl"]
+
+
+def _straznik_matematyki_ui() -> Any:
+    """Moduł ``scripts/ui_math_guard.py`` — jedno źródło wzorca gołego indeksu symbolu."""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    skrypty = Path(__file__).resolve().parents[3] / "scripts"
+    if str(skrypty) not in sys.path:
+        sys.path.insert(0, str(skrypty))
+    spec = importlib.util.spec_from_file_location("ui_math_guard", skrypty / "ui_math_guard.py")
+    assert spec is not None and spec.loader is not None
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+#: Pola tekstowe kontraktu, które NIE są prozą dla projektanta (identyfikatory, kody, statusy,
+#: jednostki, zapis LaTeX). Każde inne pole tekstowe odpowiedzi jest prozą.
+_POLA_NIE_PROZY = frozenset(
+    {
+        "pole",
+        "pole_ref",
+        "rola",
+        "zrodlo",
+        "aparat_ref",
+        "punkt_ref",
+        "kryterium_id",
+        "element_ref",
+        "relacja",
+        "status",
+        "status_maszynowy",
+        "rodzaj",
+        "jednostka",
+        "metoda",
+        "jakosc",
+        "pochodzenie",
+        "parametr",
+        "rodzaj_zrodla",
+        "run_id",
+        "krok",
+        "urzadzenie_ref",
+        "funkcja",
+        "krzywa",
+        "kod",
+        "kompletnosc",
+        "poziom",
+        "rodzaj_twierdzenia",
+        "status_modelu",
+        "status_danych",
+        "skala_rodzaj",
+        "czas_wlasny_pozycja_ref",
+        "catalog_ref",
+        "klucz",
+        "etykieta",
+        "typ_modulu",
+        "technologia",
+        "pole_nazwa",
+        "zabezpieczenie_ref",
+        "wersja_profilu",
+        # Wzory wyprowadzenia prądów pola — zapis LaTeX solvera (słownik ``wzory``).
+        "wzory",
+        # Komunikat zbiorczy jądra werdyktu konfiguratora stacji (``audit2_catalogs``) — widok
+        # aparatury pól go NIE wyświetla (V12K-353, przypięte w WeryfikacjaAparatury.test.tsx);
+        # jego proza należy do ekranu konfiguratora stacji, nie do tego widoku.
+        "komunikat_pl",
+        "werdykt",
+    }
+)
+
+
+def _proza_odpowiedzi(dane: Any, klucz: str = "") -> list[tuple[str, str]]:
+    """(ścieżka, tekst) każdej prozy odpowiedzi — pola spoza ``_POLA_NIE_PROZY`` i bez ``_latex``."""
+    wynik: list[tuple[str, str]] = []
+    if isinstance(dane, dict):
+        for k, v in dane.items():
+            if k.endswith("_latex") or k in _POLA_NIE_PROZY or k.endswith("_ref"):
+                continue
+            wynik.extend(_proza_odpowiedzi(v, f"{klucz}/{k}"))
+    elif isinstance(dane, list):
+        for i, v in enumerate(dane):
+            wynik.extend(_proza_odpowiedzi(v, f"{klucz}[{i}]"))
+    elif isinstance(dane, str):
+        wynik.append((klucz, dane))
+    return wynik
+
+
+@pytest.mark.parametrize("z_zabezpieczeniem", [True, False])
+def test_proza_widoku_aparatury_bez_symboli_ascii(klient: TestClient, z_zabezpieczeniem: bool):
+    """Karta KD6: każdy tekst odpowiedzi pokazywany w szczegółach aparatury pól (podstawy
+    znamion, zdania czasu, pochodzenie czasu przerwania prądu, ślady, braki, wartości robocze)
+    nazywa wielkości słowami — symbol wielkości przychodzi wyłącznie w polach ``*_latex``
+    i renderuje go MathRenderer. Wzorzec gołego indeksu z ``ui_math_guard`` (jedno źródło).
+    Iloczyn: pole z czasem z nastaw (zabezpieczenie) × pole bez nastaw (czas nieustalony)."""
+    straznik = _straznik_matematyki_ui()
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=z_zabezpieczeniem)
+    run_id = _bieg(klient, case_id)
+    widok = _wytrzymalosc(klient, case_id, station_ref, run_id).json()
+
+    proza = _proza_odpowiedzi(widok["pola"])
+    assert len(proza) > 20, "odpowiedź bez prozy — test niczego nie sprawdza"
+    naruszenia = [
+        (sciezka, tekst)
+        for sciezka, tekst in proza
+        if straznik.WZORZEC_GOLY_INDEKS.search(straznik.SEGMENT_WZORU_RE.sub(" ", tekst))
+    ]
+    assert naruszenia == [], "\n".join(f"{s}: {t}" for s, t in naruszenia)

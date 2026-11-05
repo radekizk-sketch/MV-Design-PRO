@@ -593,7 +593,8 @@ def _czas_tb_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
             "wartosc": None,
             "pochodzenie": "punkt_zwarcia",
             "opis_pl": (
-                "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to "
+                "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu "
+                "każdego punktu zwarcia to "
                 "najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy "
                 "zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza "
                 f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s ({ZRODLO_CZASU_TB_ROBOCZEGO})."

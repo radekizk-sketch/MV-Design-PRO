@@ -443,7 +443,8 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
     assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
     assert dane["wywod"][2]["tekst"].startswith(
-        "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
+        "Czas minimalny wywodu równy czasowi przerwania prądu punktu zwarcia. "
+        "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza"
     )
     assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
     # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).

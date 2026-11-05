@@ -423,23 +423,37 @@ function PodstawyZnamion({
   readonly pole: PoleWytrzymalosci;
   readonly rekordy: readonly { rodzaj: RodzajKryteriumAparatu; rekord: OcenaKryterium | null }[];
 }) {
-  const grupy = new Map<string, RodzajKryteriumAparatu[]>();
+  // Krótka lista „kryterium → źródło” (uwaga właściciela do zrzutu KD6): każda podstawa raz,
+  // kryteria o wspólnej podstawie w jednej pozycji, symbol kryterium z `warunek_latex`
+  // rekordu przez MathRenderer — proza podstawy z backendu nazywa wielkości słowami.
+  const grupy = new Map<string, { rodzaj: RodzajKryteriumAparatu; warunek: string }[]>();
   for (const { rodzaj, rekord } of rekordy) {
     if (!rekord?.limit) continue;
     const opis = opisPodstawy(rekord.limit.podstawa);
-    grupy.set(opis, [...(grupy.get(opis) ?? []), rodzaj]);
+    grupy.set(opis, [...(grupy.get(opis) ?? []), { rodzaj, warunek: rekord.kryterium.warunek_latex }]);
   }
   if (grupy.size === 0) return null;
   return (
-    <p className="mvd-apar-opis" data-testid={`mvd-zwarcia-aparatura-podstawy-${pole.pole}`}>
-      {T.podstawy}:{' '}
-      {[...grupy].map(([opis, rodzaje], i) => (
-        <span key={opis} data-testid={`mvd-zwarcia-aparatura-podstawa-${pole.pole}-${i}`} data-kryteria={rodzaje.join(' ')}>
-          {i > 0 ? '; ' : ''}
-          {rodzaje.map((r) => NAZWA_KRYTERIUM[r].toLowerCase()).join(', ')} — {opis}
-        </span>
-      ))}
-    </p>
+    <div className="mvd-apar-podstawy" data-testid={`mvd-zwarcia-aparatura-podstawy-${pole.pole}`}>
+      <span className="mvd-apar-wzor-nazwa">{T.podstawy}</span>
+      <ul className="mvd-apar-podstawy-lista">
+        {[...grupy].map(([opis, kryteria], i) => (
+          <li
+            key={opis}
+            data-testid={`mvd-zwarcia-aparatura-podstawa-${pole.pole}-${i}`}
+            data-kryteria={kryteria.map((k) => k.rodzaj).join(' ')}
+          >
+            {kryteria.map((k, j) => (
+              <span key={k.rodzaj} className="mvd-apar-symbol">
+                {j > 0 ? ', ' : ''}
+                {NAZWA_KRYTERIUM[k.rodzaj]} <MathInline latex={k.warunek} />
+              </span>
+            ))}{' '}
+            → {opis}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -590,8 +604,10 @@ function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; rea
             <dd className="mvd-num">{liczba(prady.i_dc_ka, 'prad')}</dd>
           </div>
           <div>
+            {/* t_b — chwila przerwania prądu wg IEC 60909-0 (I_b, i_DC(t_b)), nie czas trwania
+                zwarcia T_k pola: nazwana słowem, żeby symbolu nie mylić z T_k (karta KD6). */}
             <dt>
-              <Symbol latex={LATEX.tb_latex} jednostka={T.jednS} />
+              {T.czasPrzerwania} <Symbol latex={LATEX.tb_latex} jednostka={T.jednS} />
             </dt>
             {/* Pochodzenie t_b (backend) jako podpowiedź: jego treść powtarza uzasadnienie czasu
                 wyłączenia pola, które stoi niżej raz (dyrektywa 2026-11-04 pkt 4). */}

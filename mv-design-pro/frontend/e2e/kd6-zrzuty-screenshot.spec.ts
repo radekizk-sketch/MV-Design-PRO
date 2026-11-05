@@ -412,6 +412,23 @@ test.describe('kd6:zrzuty', () => {
       await expect(szczegoly).toBeVisible();
       const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-szczegoly-${pierwszePole}`);
       await expect(czas).toBeVisible();
+      // Karta KD6 (realny backend): tekst szczegółów i podpowiedzi bez symbolu w notacji ASCII
+      // z podkreśleniem (symbole wyłącznie przez MathRenderer), zdanie członu nastawczego nazywa
+      // zabezpieczenie przez pole, bez dublowania słowa, a zapas nie używa litery m.
+      const tekstySzczegolow = await szczegoly.evaluate((el) => {
+        const kopia = el.cloneNode(true) as HTMLElement;
+        kopia.querySelectorAll('[data-latex]').forEach((w) => w.remove());
+        const tytuly = [...el.querySelectorAll('[title]')].map((w) => w.getAttribute('title') ?? '');
+        const wzory = [...el.querySelectorAll('[data-latex]')].map((w) => w.getAttribute('data-latex') ?? '');
+        return { tekst: kopia.textContent ?? '', tytuly, wzory };
+      });
+      const golyIndeks = /(?<![\p{L}\p{N}_\\])\p{L}_(?:\{[^}]*\}|[\p{L}\p{N}]+)/u;
+      expect(tekstySzczegolow.tekst).not.toMatch(golyIndeks);
+      for (const tytul of tekstySzczegolow.tytuly) expect(tytul).not.toMatch(golyIndeks);
+      const opisCzasu = (await page.getByTestId(`mvd-zwarcia-aparatura-czas-opis-${pierwszePole}`).textContent()) ?? '';
+      expect(opisCzasu).toContain('charakterystyka: czas niezależny (DT), zabezpieczenie pola „');
+      expect(opisCzasu).not.toMatch(/zabezpieczeni[ae] Zabezpieczenie/);
+      expect(tekstySzczegolow.wzory.filter((w) => /^m\s*=/.test(w))).toEqual([]);
       const ramkaSzczegolow = await szczegoly.boundingBox();
       await page.setViewportSize({
         width: 1360,

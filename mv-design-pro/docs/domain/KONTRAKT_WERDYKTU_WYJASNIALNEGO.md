@@ -131,8 +131,8 @@ rekord, którego status różni się od wyniku reguły (predykaty parami).
    kryterium — → `BRAK_PODSTAWY` (wynik i margines wobec przyjętej wartości liczone i
    pokazywane informacyjnie). Dla relacji liczbowych `podstawa` KRYTERIUM (wymaganie) o stanie
    `NIEUSTALONE` nie zmienia statusu — wpływa na kompletność dowodu (§3) i zastrzeżenia;
-5. margines `m`, niepewność `u`: `|m| ≤ u` → `NIEJEDNOZNACZNY`;
-6. `m ≥ 0` → `SPELNIA`; `m < 0` → `NIE_SPELNIA`. Kryteria logiczne (np. „moduł pozostał
+5. margines `Δx` (symbol marginesu we wszystkich definicjach `definicja_latex`: `\Delta x`; litera `m` jest zarezerwowana dla współczynnika cieplnego IEC 60909 — karta KD6), niepewność `u`: `|Δx| ≤ u` → `NIEJEDNOZNACZNY`;
+6. `Δx ≥ 0` → `SPELNIA`; `Δx < 0` → `NIE_SPELNIA`. Kryteria logiczne (np. „moduł pozostał
    przyłączony") nie mają marginesu skalarnego — margines jest jawnie „niedefiniowalny" z powodem;
    margines wielkości sterującej (np. zapas czasu zadziałania zabezpieczenia podnapięciowego
    modułu) jest OSOBNYM kryterium liczbowym tego samego wymagania (np.
@@ -170,14 +170,14 @@ która go pokazuje.
 9. kompletność dowodu ≠ `PELNY` (§3) → `BRAK_DOWODU` (wyjaśnienie podaje wynik obliczeniowy i
    powód niepełności);
 10. w przeciwnym razie `SPELNIA`; `kryterium_najblizej_granicy` = składnik o najmniejszym
-    MARGINESIE WZGLĘDNYM `m / skala` (§2.4) — gdy żaden składnik nie ma marginesu względnego (sam
+    MARGINESIE WZGLĘDNYM `Δx / skala` (§2.4) — gdy żaden składnik nie ma marginesu względnego (sam
     certyfikat, wyłącznie kryteria logiczne), pole jest `None`, a wyjaśnienie podaje powód
     (przegląd #6c); remis rozstrzyga porządek `kryterium_id` (determinizm).
 
 ### 2.4 Skala marginesu względnego
 
 Marginesy różnych kryteriów mają różne jednostki, więc porównuje się je bezwymiarowo:
-`wzgledny = m / skala`, gdzie `skala` (z jednostką marginesu) i `skala_rodzaj` są polami rekordu:
+`wzgledny = Δx / skala`, gdzie `skala` (z jednostką marginesu) i `skala_rodzaj` są polami rekordu:
 `TOLERANCJA` — pasmo tolerancji z profilu, gdy zdefiniowane (np. ±1,0 pp statyzmu);
 `LIMIT` — `|limit|`, gdy tolerancji nie ma i limit ≠ 0; `NIEPEWNOSC` — `u`, gdy podano wyłącznie
 niepewność; przy `limit = 0` bez tolerancji i niepewności `wzgledny = None` (składnik nie
@@ -575,7 +575,7 @@ płaską listę komunikatów. Testy przypinające:
 | T8 | agregat `NIE_SPELNIA` → `kryteria_naruszone` = zbiór WSZYSTKICH składników `NIE_SPELNIA`, każdy nazwany w wyjaśnieniu |
 | T9 | agregat `SPELNIA` → `kryterium_najblizej_granicy` ustawione, liczone z marginesu względnego |
 | T10 | `NIE_DOTYCZY` → `stosowalnosc.powod_pl` niepusty |
-| T11 | `|m| ≤ u` → `NIEJEDNOZNACZNY` (również dla `m ≥ 0`) |
+| T11 | `|Δx| ≤ u` → `NIEJEDNOZNACZNY` (również dla `Δx ≥ 0`) |
 | T12 | determinizm: ten sam wynik solvera → bajtowo ten sam rekord (JSON kanoniczny) |
 | T13 | UI i dokument formalny: to samo `zdanie_pl` i te same zastrzeżenia (test porównuje kontrakt API z tekstem wyrenderowanego dokumentu) |
 | T14 | metoda `SYMULACJA` bez `niepewnosc.wartosc` → błąd walidacji; metoda niedopuszczalna dla rodzaju twierdzenia (`DEKLARACJA` przy zachowaniu dynamicznym) → `NIE_OCENIONO` mimo wyniku |

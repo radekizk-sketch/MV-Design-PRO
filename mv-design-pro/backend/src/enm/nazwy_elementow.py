@@ -254,3 +254,81 @@ def nazwa_po_identyfikatorze(
     if element_ref is None:
         return spoza_modelu
     return mapa.get(str(element_ref), spoza_modelu)
+
+
+def _lista(model: object, kolekcja: str) -> list[object]:
+    elementy = _pole(model, kolekcja)
+    return list(elementy) if isinstance(elementy, list | tuple) else []
+
+
+def _slownik(element: object, klucz: str) -> Mapping[str, Any]:
+    wartosc = _pole(element, klucz)
+    return wartosc if isinstance(wartosc, Mapping) else {}
+
+
+def _pole_zabezpieczenia(model: object, przypisanie: object) -> object | None:
+    """Pole rozdzielnicy, które chroni zabezpieczenie (rekord `bays`) albo `None`.
+
+    Trzy nośniki powiązania w modelu, w kolejności: `Bay.protection_ref` wskazujące to
+    zabezpieczenie, `meta.field_ref` przypisania (operacja dodania zabezpieczenia pola) i
+    `meta.bay_ref` jego wyłącznika (aparat zabudowany w polu).
+    """
+    ref = _pole(przypisanie, "ref_id")
+    pola = sorted(_lista(model, "bays"), key=lambda b: str(_pole(b, "ref_id")))
+    for pole in pola:
+        if ref and _pole(pole, "protection_ref") == ref:
+            return pole
+    wylacznik_ref = _pole(przypisanie, "breaker_ref")
+    wylacznik = next(
+        (
+            g
+            for g in _lista(model, "branches")
+            if wylacznik_ref and _pole(g, "ref_id") == wylacznik_ref
+        ),
+        None,
+    )
+    for pole_ref in (
+        _slownik(przypisanie, "meta").get("field_ref"),
+        _slownik(wylacznik, "meta").get("bay_ref"),
+    ):
+        pole = next((p for p in pola if pole_ref and _pole(p, "ref_id") == pole_ref), None)
+        if pole is not None:
+            return pole
+    return None
+
+
+def oznaczenie_zabezpieczenia(model: object, przypisanie: object) -> str:
+    """Zabezpieczenie w zdaniu PO rzeczowniku „zabezpieczenie” (w dowolnym przypadku).
+
+    PO CO (karta KD6): domyślna nazwa przypisania to „Zabezpieczenie pola <pole>” albo
+    „Zabezpieczenie <wyłącznik>”, więc wstawiona po rzeczowniku dawała „zabezpieczenia
+    Zabezpieczenie pola …”. Zabezpieczenie nazywa się przez MIEJSCE, które chroni:
+    ``pola „<nazwa pola>”``, a bez pola ``wyłącznika „<nazwa wyłącznika>”``. Gdy w tym samym
+    miejscu jest więcej niż jedno zabezpieczenie (np. podstawowe i rezerwowe), miejsce nie
+    rozróżnia urządzeń — wtedy nazwa przypisania w cudzysłowie. Bez oceny kształtu nazwy.
+    """
+    przypisania = _lista(model, "protection_assignments")
+    pole = _pole_zabezpieczenia(model, przypisanie)
+    if pole is not None:
+        w_tym_polu = [
+            p
+            for p in przypisania
+            if (n := _pole_zabezpieczenia(model, p)) is not None
+            and _pole(n, "ref_id") == _pole(pole, "ref_id")
+        ]
+        if len(w_tym_polu) <= 1:
+            return f"pola „{nazwa_elementu(pole, 'bays')}”"
+    else:
+        wylacznik_ref = _pole(przypisanie, "breaker_ref")
+        wylacznik = next(
+            (
+                g
+                for g in _lista(model, "branches")
+                if wylacznik_ref and _pole(g, "ref_id") == wylacznik_ref
+            ),
+            None,
+        )
+        przy_wylaczniku = [p for p in przypisania if _pole(p, "breaker_ref") == wylacznik_ref]
+        if wylacznik is not None and len(przy_wylaczniku) <= 1:
+            return f"wyłącznika „{nazwa_elementu(wylacznik, 'branches')}”"
+    return f"„{nazwa_elementu(przypisanie, 'protection_assignments')}”"

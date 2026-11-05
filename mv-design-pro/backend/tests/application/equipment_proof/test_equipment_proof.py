@@ -364,12 +364,12 @@ def _input_wylaczania(u_kv: float | None, ib_ka: float | None) -> EquipmentProof
 @pytest.mark.parametrize(
     ("u_kv", "ib_ka", "status", "klucz", "wartosc", "fragment"),
     [
-        (12.0, 18.0, "PASS", "ib_ka", 18.0, "wobec prądu wyłączeniowego symetrycznego I_b"),
+        (12.0, 18.0, "PASS", "ib_ka", 18.0, "wobec prądu wyłączeniowego symetrycznego"),
         (12.0, 21.0, "FAIL", "ib_ka", 21.0, "IEC 62271-100"),
         # Karta TB-WARTOSC-ROBOCZA: t_b jest rozstrzygany w każdym punkcie, więc brak I_b to
         # wyłącznie zapis bez pola (wiersz bez solvera) — brak podstawy, nigdy podmiana na I″k.
         (12.0, None, "FAIL", "ib_ka", None, "nie niosą prądu wyłączeniowego I_b"),
-        (0.4, 18.0, "FAIL", "ikss_ka", 22.0, "spodziewanego prądu zwarciowego początkowego I″k"),
+        (0.4, 18.0, "FAIL", "ikss_ka", 22.0, "spodziewanego prądu zwarciowego początkowego"),
         (0.4, 21.0, "FAIL", "ikss_ka", 22.0, "IEC 60947-2"),
         (0.4, None, "FAIL", "ikss_ka", 22.0, "22.0000 kA"),
         (None, 18.0, "FAIL", "ib_ka", None, "Brak podstawy"),

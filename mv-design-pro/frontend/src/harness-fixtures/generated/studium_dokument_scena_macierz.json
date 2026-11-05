@@ -155,7 +155,7 @@
               "wartosc": -0.02795,
               "jednostka": "Mvar"
             },
-            "definicja_latex": "m = x - x_{\\lim}",
+            "definicja_latex": "\\Delta x = x - x_{\\lim}",
             "punkt_pl": "P = 0,215 MW, strona dolna (Q_min): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)",
             "skala": null,
             "skala_rodzaj": null,
@@ -251,7 +251,7 @@
         },
         "podstawa_pl": "dokument: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”; wydanie: 2018; jednostka redakcyjna: nie wskazano; rodzaj: wymogi ogólnego stosowania (WOS); stan źródła: nieustalone; uwagi: wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
       },
-      "odcisk_sekcji_sha256": "743463d2e428293719a00fe8ac145f57fa9ce39c497ac1b85fff3a691ac3afe7"
+      "odcisk_sekcji_sha256": "d5af25d74a13792ff63b4bbea94cd45a0463b0b06869b2920a5ad455c56671fe"
     }
   ],
   "podsumowanie": [
@@ -273,7 +273,7 @@
     "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy przyłączalnej i napięcia węzła wariantu."
   ],
   "odciski_sekcji_sha256": {
-    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "743463d2e428293719a00fe8ac145f57fa9ce39c497ac1b85fff3a691ac3afe7",
+    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "d5af25d74a13792ff63b4bbea94cd45a0463b0b06869b2920a5ad455c56671fe",
     "zalozenia": "6872d8f007514cad6440a41f8c16851978c0bd63736785249dc75bab8c4f3ea2",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },

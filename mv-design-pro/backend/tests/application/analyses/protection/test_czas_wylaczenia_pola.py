@@ -420,3 +420,56 @@ def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
     assert kod_braku in {b["kod"] for b in czas["braki_nastaw"]}
+
+
+# ---------------------------------------------------------------------------
+# Karta KD6: zdania o członie nastawczym — zabezpieczenie nazwane przez pole, które chroni,
+# charakterystyka słowami, liczby po polsku. Iloczyn: charakterystyka (DT, SI) × ścieżka
+# (czas złożony, brak czasu własnego — aparat spoza katalogu, rozłącznik zamiast wyłącznika).
+# ---------------------------------------------------------------------------
+
+_NASTAWA_SI = ProtectionSetting(
+    function_type="overcurrent_51",
+    threshold_a=400.0,
+    threshold_unit="A_PIERWOTNY",
+    curve_type="IEC_SI",
+    time_multiplier=0.1,
+)
+
+
+@pytest.mark.parametrize(
+    ("nastawy", "krzywa_pl"),
+    [(None, "czas niezależny (DT)"), ([_NASTAWA_SI], "IEC normalnie odwrotna (SI)")],
+    ids=["DT", "SI"],
+)
+@pytest.mark.parametrize("sciezka", ["zlozony", "aparat_spoza_katalogu", "rozlacznik"])
+def test_zdanie_czlonu_nazywa_pole_i_charakterystyke_bez_dublowania(
+    nastawy: list[ProtectionSetting] | None, krzywa_pl: str, sciezka: str
+) -> None:
+    model = {
+        "zlozony": {},
+        "aparat_spoza_katalogu": {"aparat_katalog": "nie-ma-takiej-pozycji"},
+        "rozlacznik": {"drugi_aparat": True, "breaker_ref": "aparat/02"},
+    }[sciezka]
+    czas = _czas(enm=_enm(nastawy=nastawy, **model))
+
+    opis = czas["opis_czlonu_pl"]
+    assert f"stopień I> (51), charakterystyka: {krzywa_pl}, zabezpieczenie pola „P-01”" in opis
+    assert opis.endswith(", przy prądzie zwarciowym 8 kA")
+    for tekst in (opis, czas["powod_pl"]):
+        assert "Zabezpieczenie pola IN" not in tekst  # nazwa przypisania po rzeczowniku
+        assert "zabezpieczenia Zabezpieczenie" not in tekst
+        assert "zabezpieczenie Zabezpieczenie" not in tekst
+        assert "pola „P-01”" in tekst
+        assert "8000.0" not in tekst  # liczby po polsku, nie zapis kropkowy
+
+
+def test_zdanie_czlonu_oznaczenie_przez_pole_z_meta_przypisania() -> None:
+    """Pole wskazane w ``meta.field_ref`` przypisania (operacja dodania zabezpieczenia pola)
+    — bez ``bay_ref`` wyłącznika — też nazywa zabezpieczenie przez pole."""
+    from enm.nazwy_elementow import oznaczenie_zabezpieczenia
+
+    enm = _enm()
+    enm.branches[0].meta = {"station_ref": "stn"}
+    enm.protection_assignments[0].meta = {"field_ref": POLE}
+    assert oznaczenie_zabezpieczenia(enm, enm.protection_assignments[0]) == "pola „P-01”"

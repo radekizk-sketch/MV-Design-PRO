@@ -34,7 +34,7 @@ vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
 
 const TRESC =
   'Sieć nN zasilana przez transformator „TR 15/0,4 kV” (bez deklaracji tolerancji napięcia) '
-  + 'liczona na wartości roboczej tolerancji +10 % (c_max 1,10).';
+  + 'liczona na wartości roboczej tolerancji +10 % (współczynnik napięciowy maksymalny 1,10).';
 
 const NAZWY: Record<string, string> = {
   'tr-nn-1': 'TR 15/0,4 kV',

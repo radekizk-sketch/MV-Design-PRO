@@ -560,7 +560,7 @@ def test_galaz_z_wkladem_pominietym_nie_wykazuje_pradu_zero(
     if sciezka == "ponizej_rozruchu":
         assert NAZWA_WKLADU_POMINIETEGO in czasy["kabel_B"].powod_pl
         assert "0.0 A" not in czasy["kabel_B"].powod_pl
-        assert "Prąd gałęzi 400.0 A" in czasy["kabel_A"].powod_pl
+        assert "Prąd gałęzi 400 A" in czasy["kabel_A"].powod_pl
         assert NAZWA_WKLADU_POMINIETEGO not in czasy["kabel_A"].powod_pl
     slad = slad_czasu(czasy, tk_s_zalozony=1.0)
     assert slad["kabel_B"]["prad_galezi_a"] is None
