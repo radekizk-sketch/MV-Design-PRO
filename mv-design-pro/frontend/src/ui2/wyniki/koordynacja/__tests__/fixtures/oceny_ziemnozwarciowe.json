@@ -6,10 +6,12 @@
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "CZULOSC",
         "kryterium_pl": "czułość",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "5 A",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
@@ -23,7 +25,7 @@
           },
           "status_maszynowy": "SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 80,34 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +75,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +1507 % wartości granicznej)."
+            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 80,34 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +75,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +1507 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -34,15 +36,18 @@
         },
         "status": "SPELNIA",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
-        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 80,34 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +75,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +1507 % wartości granicznej)."
+        "wynik_pl": "80,34 A",
+        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 80,34 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +75,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +1507 % wartości granicznej)."
       },
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "SELEKTYWNOSC",
         "kryterium_pl": "selektywność",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "5 A",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium naruszone",
@@ -56,7 +61,7 @@
           },
           "status_maszynowy": "NIE_SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej)."
+            "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -67,15 +72,18 @@
         },
         "status": "NIE_SPELNIA",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
-        "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej)."
+        "wynik_pl": "28,89 A",
+        "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej)."
       },
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "STOPNIOWANIE_CZASOWE:sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik",
         "kryterium_pl": "stopniowanie czasowe",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "0,2 s",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
@@ -89,7 +97,7 @@
           },
           "status_maszynowy": "SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +150 % wartości granicznej)."
+            "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +150 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -100,7 +108,8 @@
         },
         "status": "SPELNIA",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
-        "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +150 % wartości granicznej)."
+        "wynik_pl": "0,5 s",
+        "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +150 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -110,27 +119,36 @@
             "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n)."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n).",
+            "nazwa_braku_pl": "próg napięcia przesunięcia punktu neutralnego U₀"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej.",
+            "nazwa_braku_pl": "zwłoka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola."
         ],
         "etykieta_pl": "U0> (59N)",
         "funkcja_ref": "59N",
+        "kierunek_rzutu": null,
         "kod": "59N",
         "kryterium": "ODMOWA",
         "kryterium_pl": "ocena wstrzymana",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole pomiarowe — GPZ 15 kV",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Sterownik · Pole pomiarowe — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Ocena niewykonana",
@@ -139,22 +157,25 @@
           "limit": null,
           "status_maszynowy": "NIE_OCENIONO",
           "wyjasnienie": {
-            "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik pola Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
           },
           "wynik": null
         },
         "status": "NIE_OCENIONO",
         "urzadzenie_ref": "sn/56c60428083632fed7e5daf111007841/bay/sterownik",
-        "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik pola Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        "wynik_pl": null,
+        "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       }
     ],
     "uziemienia": [
       {
         "etykieta_pl": null,
         "funkcja_ref": null,
+        "kierunek_rzutu": null,
         "kod": null,
         "kryterium": "REZYSTANCJA_DOPUSZCZALNA",
         "kryterium_pl": "rezystancja uziemienia dopuszczalna",
+        "limit_pl": null,
         "nazwa_urzadzenia_pl": "GPZ 15 kV",
         "ocena": {
           "etykieta": {
@@ -175,15 +196,18 @@
         },
         "status": "BRAK_PODSTAWY",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
+        "wynik_pl": "116,6 A",
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 116,6 A."
       },
       {
-        "czego_brakuje_pl": "Geometria uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywność gruntu — model jej nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
+        "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
+        "kierunek_rzutu": null,
         "kod": null,
         "kryterium": "NAPIECIE_KROKOWE",
         "kryterium_pl": "napięcie krokowe",
+        "limit_pl": null,
         "nazwa_urzadzenia_pl": "GPZ 15 kV",
         "ocena": {
           "etykieta": {
@@ -193,13 +217,14 @@
           "limit": null,
           "status_maszynowy": "NIE_OCENIONO",
           "wyjasnienie": {
-            "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
           },
           "wynik": null
         },
         "status": "NIE_OCENIONO",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
-        "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
       }
     ],
     "wyniki_uziemien": []
@@ -211,10 +236,12 @@
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "CZULOSC",
         "kryterium_pl": "czułość",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "5 A",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
@@ -228,7 +255,7 @@
           },
           "status_maszynowy": "SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 29,06 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +24,06 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +481,2 % wartości granicznej)."
+            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 29,06 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +24,06 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +481,2 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -239,15 +266,18 @@
         },
         "status": "SPELNIA",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
-        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 29,06 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +24,06 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +481,2 % wartości granicznej)."
+        "wynik_pl": "29,06 A",
+        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy prąd zerowy 3I0 w polu (strona pierwotna) osiąga próg nastawy funkcji Io> (51N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Prąd zerowy 3I0 w polu (strona pierwotna): 29,06 A wobec wymaganych ≥ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +24,06 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +481,2 % wartości granicznej)."
       },
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "SELEKTYWNOSC",
         "kryterium_pl": "selektywność",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "5 A",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium naruszone",
@@ -261,7 +291,7 @@
           },
           "status_maszynowy": "NIE_SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej)."
+            "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -272,15 +302,18 @@
         },
         "status": "NIE_SPELNIA",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
-        "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej)."
+        "wynik_pl": "28,03 A",
+        "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej)."
       },
       {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
         "kod": "51N",
         "kryterium": "STOPNIOWANIE_CZASOWE:sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik",
         "kryterium_pl": "stopniowanie czasowe",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "limit_pl": "0,2 s",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
@@ -294,7 +327,7 @@
           },
           "status_maszynowy": "SPELNIA",
           "wyjasnienie": {
-            "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Węzeł łącznika 2, względnie +150 % wartości granicznej)."
+            "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Węzeł łącznika 2, względnie +150 % wartości granicznej)."
           },
           "wynik": {
             "wartosc": {
@@ -305,7 +338,8 @@
         },
         "status": "SPELNIA",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
-        "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik pola Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Węzeł łącznika 2, względnie +150 % wartości granicznej)."
+        "wynik_pl": "0,5 s",
+        "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Węzeł łącznika 2, względnie +150 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -315,27 +349,36 @@
             "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n)."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n).",
+            "nazwa_braku_pl": "próg napięcia przesunięcia punktu neutralnego U₀"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
             "funkcja": "59N",
             "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
-            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik pola Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej."
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej.",
+            "nazwa_braku_pl": "zwłoka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola."
         ],
         "etykieta_pl": "U0> (59N)",
         "funkcja_ref": "59N",
+        "kierunek_rzutu": null,
         "kod": "59N",
         "kryterium": "ODMOWA",
         "kryterium_pl": "ocena wstrzymana",
-        "nazwa_urzadzenia_pl": "Sterownik pola Pole pomiarowe — GPZ 15 kV",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Sterownik · Pole pomiarowe — GPZ 15 kV",
         "ocena": {
           "etykieta": {
             "etykieta_pl": "Ocena niewykonana",
@@ -344,13 +387,14 @@
           "limit": null,
           "status_maszynowy": "NIE_OCENIONO",
           "wyjasnienie": {
-            "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik pola Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
           },
           "wynik": null
         },
         "status": "NIE_OCENIONO",
         "urzadzenie_ref": "sn/f08415cf9528654b19c6a9d76da8dcbb/bay/sterownik",
-        "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik pola Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        "wynik_pl": null,
+        "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       },
       {
         "braki": [
@@ -358,14 +402,20 @@
             "akcja_naprawcza_pl": "Dodaj w polu punktu neutralnego sterownik z automatyką ZAWSC i nastawami (próg U0, zwłoka).",
             "funkcja": "ZAWSC",
             "kod": "zabezpieczenia.ziemnozwarciowe.awsc_bez_automatyki",
-            "komunikat_pl": "Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji."
+            "komunikat_pl": "Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji.",
+            "nazwa_braku_pl": null
           }
+        ],
+        "braki_pl": [
+          "Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji. Dodaj w polu punktu neutralnego sterownik z automatyką ZAWSC i nastawami (próg U0, zwłoka)."
         ],
         "etykieta_pl": "ZAWSC",
         "funkcja_ref": null,
+        "kierunek_rzutu": null,
         "kod": "ZAWSC",
         "kryterium": "ODMOWA",
         "kryterium_pl": "ocena wstrzymana",
+        "limit_pl": null,
         "nazwa_urzadzenia_pl": "punkt neutralny z AWSC",
         "ocena": {
           "etykieta": {
@@ -375,22 +425,25 @@
           "limit": null,
           "status_maszynowy": "NIE_OCENIONO",
           "wyjasnienie": {
-            "zdanie_pl": "Czułość, selektywność i czas działania funkcji ZAWSC przy zwarciu doziemnym (punkt neutralny z AWSC) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Czułość, selektywność i czas działania funkcji ZAWSC przy zwarciu doziemnym (punkt neutralny z AWSC) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji. Dodaj w polu punktu neutralnego sterownik z automatyką ZAWSC i nastawami (próg U0, zwłoka)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
           },
           "wynik": null
         },
         "status": "NIE_OCENIONO",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/source/main",
-        "zdanie_pl": "Czułość, selektywność i czas działania funkcji ZAWSC przy zwarciu doziemnym (punkt neutralny z AWSC) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        "wynik_pl": null,
+        "zdanie_pl": "Czułość, selektywność i czas działania funkcji ZAWSC przy zwarciu doziemnym (punkt neutralny z AWSC) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji. Dodaj w polu punktu neutralnego sterownik z automatyką ZAWSC i nastawami (próg U0, zwłoka)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       }
     ],
     "uziemienia": [
       {
         "etykieta_pl": null,
         "funkcja_ref": null,
+        "kierunek_rzutu": null,
         "kod": null,
         "kryterium": "NAPIECIE_UZIOMOWE",
         "kryterium_pl": "napięcie uziomowe U_E",
+        "limit_pl": null,
         "nazwa_urzadzenia_pl": "GPZ 15 kV",
         "ocena": {
           "etykieta": {
@@ -411,15 +464,18 @@
         },
         "status": "BRAK_PODSTAWY",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
+        "wynik_pl": "64,64 V",
         "zdanie_pl": "Napięcie uziomowe U_E = R_E·I_E nie większe niż napięcie dotykowe dopuszczalne U_Tp(t_F); t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V."
       },
       {
-        "czego_brakuje_pl": "Geometria uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywność gruntu — model jej nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
+        "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
+        "kierunek_rzutu": null,
         "kod": null,
         "kryterium": "NAPIECIE_KROKOWE",
         "kryterium_pl": "napięcie krokowe",
+        "limit_pl": null,
         "nazwa_urzadzenia_pl": "GPZ 15 kV",
         "ocena": {
           "etykieta": {
@@ -429,13 +485,14 @@
           "limit": null,
           "status_maszynowy": "NIE_OCENIONO",
           "wyjasnienie": {
-            "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+            "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
           },
           "wynik": null
         },
         "status": "NIE_OCENIONO",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
-        "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
       }
     ],
     "wyniki_uziemien": []

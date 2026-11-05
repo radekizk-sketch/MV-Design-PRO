@@ -242,7 +242,7 @@ export function SekcjaOcenyZabezpieczen({
                 {wynik.odmowy.map((o) => (
                   <li key={o.urzadzenie_ref}>
                     <strong>{o.nazwa_pl}:</strong>{' '}
-                    {o.braki.map((b) => `${b.komunikat_pl} ${b.akcja_naprawcza_pl}`).join(' ')}{' '}
+                    {o.braki_pl.join(' ')}{' '}
                     <button
                       type="button"
                       className="mvd-koordynacja-akcja"

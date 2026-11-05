@@ -129,7 +129,7 @@ class SsciStabilityContext:
             "project_name": self.project_name,
             "case_name": self.case_name,
             "case_id": self.case_id,
-            "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
+            "run_timestamp": (self.run_timestamp.isoformat() if self.run_timestamp else None),
             "snapshot_hash": self.snapshot_hash,
             "run_id": self.run_id,
         }
@@ -274,6 +274,7 @@ def ocena_ssci_niewykonana(
                 "niepewność wyniku nie dotyczy"
             ),
             czego_brakuje=braki,
+            przyczyna="BRAK_METODY",
         )
     )
 

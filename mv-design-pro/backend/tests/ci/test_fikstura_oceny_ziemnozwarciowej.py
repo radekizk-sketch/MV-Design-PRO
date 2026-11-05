@@ -32,7 +32,10 @@ from application.analyses.protection.ocena_ziemnozwarciowa import (
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 
-from tests.reference_networks.scena_doziemienia import scena_z_nastawami, ustaw_uziom_stacji
+from tests.reference_networks.scena_doziemienia import (
+    scena_z_nastawami,
+    ustaw_uziom_stacji,
+)
 
 BACKEND = Path(__file__).resolve().parents[2]
 FIKSTURA = (
@@ -51,7 +54,11 @@ _POLA_REKORDU = (
     "kryterium_pl",
     "status",
     "zdanie_pl",
+    "wynik_pl",
+    "kierunek_rzutu",
+    "limit_pl",
     "braki",
+    "braki_pl",
     "czego_brakuje_pl",
 )
 
@@ -64,7 +71,7 @@ def _rekord(r: dict[str, Any]) -> dict[str, Any]:
             "status_maszynowy": ocena["status_maszynowy"],
             "etykieta": ocena["etykieta"],
             "wyjasnienie": {"zdanie_pl": ocena["wyjasnienie"]["zdanie_pl"]},
-            "wynik": {"wartosc": ocena["wynik"]["wartosc"]} if ocena.get("wynik") else None,
+            "wynik": ({"wartosc": ocena["wynik"]["wartosc"]} if ocena.get("wynik") else None),
             "limit": ({"wartosc": ocena["limit"]["wartosc"]} if ocena.get("limit") else None),
         },
     }

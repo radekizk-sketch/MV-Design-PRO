@@ -401,7 +401,8 @@ def _spz_verdict(
     """
     if lom_time_s is None:
         return Verdict(
-            "INFO", "Brak danych o czasie zadziałania LoM — porównanie z SPZ niemożliwe."
+            "INFO",
+            "Brak danych o czasie zadziałania LoM — porównanie z SPZ niemożliwe.",
         )
     candidates = [t for t in (spz_fast_time_s, spz_slow_time_s) if t is not None]
     if not candidates:
@@ -974,7 +975,8 @@ def _ocena_koordynacji_spz(
     )
     limit = (
         LimitKryterium(
-            wartosc=Wielkosc(wartosc=spz_interval, jednostka="s"), podstawa=_PODSTAWA_PRZERWY_SPZ
+            wartosc=Wielkosc(wartosc=spz_interval, jednostka="s"),
+            podstawa=_PODSTAWA_PRZERWY_SPZ,
         )
         if spz_interval is not None
         else None
@@ -1062,8 +1064,13 @@ def _ocena_pola(bay: Bay, oceny: list[OcenaKryterium]) -> OcenaKryterium | Wynik
             "w polu.",
             "Nastawy funkcji LoM porównane z oknami normatywnymi.",
             "Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych.",
-            "Przypisanie polu zabezpieczenia z funkcjami LoM i ich nastawami (albo "
-            "deklaracja funkcji w kodach zabezpieczeń pola) i ponowna ocena.",
+        ),
+        # Przyczyna: model pola nie niesie funkcji LoM do porównania — brak danych modelu,
+        # nie brak metody (porównanie nastaw z oknami jest metodą narzędzia).
+        przyczyna="BRAK_DANYCH",
+        akcja_naprawcza_pl=(
+            "przypisz polu zabezpieczenie z funkcjami LoM i ich nastawami (albo zadeklaruj "
+            "funkcje w kodach zabezpieczeń pola) i ponów ocenę"
         ),
     )
 
@@ -1089,6 +1096,10 @@ def _ocena_modulu_bez_pola(generator_ref: str, nazwa: str) -> OcenaKryterium:
         czego_brakuje=(
             "Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo "
             "pole o roli OZE) — bez pola nie ma nastaw, które można porównać.",
+        ),
+        przyczyna="BRAK_DANYCH",
+        akcja_naprawcza_pl=(
+            "przyłącz moduł przez pole przyłączeniowe z przypisaniem zabezpieczeń i ponów ocenę"
         ),
     )
 

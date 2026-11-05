@@ -15,6 +15,8 @@ export interface BrakNastaw {
   readonly komunikat_pl: string;
   readonly akcja_naprawcza_pl: string;
   readonly funkcja: string | null;
+  /** Krótka nazwa brakującej nastawy (np. „próg rozruchowy 3I₀”); `null` — brak innego rodzaju. */
+  readonly nazwa_braku_pl?: string | null;
 }
 
 /** Rozwiązany stopień nadprądowy (wartości modelu + wielkości wyprowadzone przez backend). */
@@ -86,6 +88,9 @@ export interface NastawyUrzadzeniaWidok {
   readonly charakterystyki: CharakterystykiSterownikaWidok | null;
   readonly stopnie: readonly StopienNastawWidok[];
   readonly braki: readonly BrakNastaw[];
+  /** Braki złożone przez backend (`ocena_nadpradowa.zdania_brakow`): podmiot raz, lista nazw
+   *  nastaw, jedno wezwanie — JEDEN zapis dla ekranu, karty nastaw i raportu. */
+  readonly braki_pl: readonly string[];
   readonly funkcje_nieoceniane: readonly { funkcja: string; powod_pl: string }[];
   readonly gotowe: boolean;
 }

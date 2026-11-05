@@ -29,6 +29,7 @@ przeliczenie nastawy na stronę pierwotną robi warstwa analiz (`network_model.p
 
 from __future__ import annotations
 
+import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -127,7 +128,8 @@ def sterowniki(enm: object) -> list[Any]:
 def domyslna_nazwa_sterownika_pola(pole: Mapping[str, Any]) -> str:
     """Domyślna nazwa sterownika pola — JEDNA reguła dla pisarza z szablonu pola
     (`enm.pola.zapisz_sterownik_pola`) i dla doboru urządzenia (`add_relay`): nazwa pola
-    z jedynego słownika nazw (`enm.nazwy_elementow.nazwa_elementu`), nigdy identyfikator."""
+    z jedynego słownika nazw (`enm.nazwy_elementow.nazwa_elementu`), nigdy identyfikator.
+    """
     # Import leniwy: słownik nazw czyta pakiet `enm` (cykl przy imporcie modułu).
     from enm.nazwy_elementow import nazwa_elementu
 
@@ -137,6 +139,28 @@ def domyslna_nazwa_sterownika_pola(pole: Mapping[str, Any]) -> str:
 def referencja_sterownika_pola(bay_ref: str) -> str:
     """Identyfikator sterownika zakładanego dla pola (pisarz z szablonu, `add_relay`)."""
     return f"{bay_ref}/{ODNOSNIK_STEROWNIKA_POLA}"
+
+
+#: Rodzaj w domyślnej nazwie sterownika pola (``domyslna_nazwa_sterownika_pola``).
+_PRZEDROSTEK_STEROWNIKA_POLA = "Sterownik pola "
+_SLOWO_POLE = re.compile(r"pole(?=$|[\s·,;:()/-])", re.IGNORECASE)
+
+
+def _bez_powtorzenia_rodzaju(nazwa: str) -> str:
+    """Nazwa sterownika bez powtórzenia rodzaju zawartego w nazwie pola.
+
+    Domyślna nazwa sterownika pola to „Sterownik pola <nazwa pola>”, a nazwy pól same zaczynają
+    się rodzajem („Pole liniowe GPZ 1.2”) — wyjaśnienia mówiły wtedy „Sterownik pola Pole
+    liniowe GPZ 1.2”. Rodzaj pada raz: „Sterownik · Pole liniowe GPZ 1.2” (wzorzec „rodzaj ·
+    nazwa” reguły opisu bez powtórzeń frontu, ``ui/shared/opisBezPowtorzen.ts``). Nazwa zapisana
+    w modelu zostaje bez zmian (zmiana dotyczy zapisu w wyjaśnieniach, ocenach i raportach);
+    nazwa nadana przez projektanta, która nie powtarza rodzaju, przechodzi bez zmian."""
+    if not nazwa.startswith(_PRZEDROSTEK_STEROWNIKA_POLA):
+        return nazwa
+    reszta = nazwa[len(_PRZEDROSTEK_STEROWNIKA_POLA) :]
+    if _SLOWO_POLE.match(reszta) is None:
+        return nazwa
+    return f"Sterownik · {reszta}"
 
 
 def nazwa_sterownika(enm: object, sterownik: object) -> str:
@@ -154,7 +178,7 @@ def nazwa_sterownika(enm: object, sterownik: object) -> str:
     from enm.nazwy_elementow import nazwa_elementu
     from enm.pola import stacja_pola
 
-    nazwa = nazwa_elementu(sterownik, "protection_assignments")
+    nazwa = _bez_powtorzenia_rodzaju(nazwa_elementu(sterownik, "protection_assignments"))
     bay_ref = _napis(_pole(sterownik, "bay_ref"))
     stacja = (
         stacja_pola(enm, bay_ref)
@@ -199,7 +223,8 @@ def kody_funkcji_pola(
     enm: object, bay_ref: str | None, *, tylko_wlaczone: bool = True
 ) -> list[str]:
     """Kody funkcji zabezpieczeń i automatyki POLA — z jego sterownika (pusta lista: pole bez
-    sterownika). Jedyne źródło bloku przekaźnika, karty pola, oceny pola i walidatora."""
+    sterownika). Jedyne źródło bloku przekaźnika, karty pola, oceny pola i walidatora.
+    """
     sterownik = sterownik_pola(enm, bay_ref)
     return kody_funkcji_sterownika(sterownik, tylko_wlaczone=tylko_wlaczone) if sterownik else []
 
@@ -332,7 +357,8 @@ def funkcje_zasilane_z_aparatu(sterownik: object, device_ref: str) -> list[str]:
 
 def funkcje_wylaczajace_aparat(sterownik: object, device_ref: str | None) -> list[str]:
     """Kody włączonych funkcji, które działają na aparat (macierz wyzwoleń; ``device_ref`` —
-    wynik `ref_aparatu_wyzwalanego` aparatu pola albo identyfikator gałęzi wyłącznika)."""
+    wynik `ref_aparatu_wyzwalanego` aparatu pola albo identyfikator gałęzi wyłącznika).
+    """
     if not device_ref:
         return []
     # Kolejność = kolejność funkcji sterownika (jak `funkcje_zasilane_z_aparatu`), nie kolejność
@@ -433,7 +459,8 @@ def przekladnik_pradowy(enm: object, ref: str | None) -> PrzekladnikPradowy | No
             )
             przekladnie = [str(_pole(r, "przekladnia")) for r in rdzenie]
             zaczep = rozstrzygnij_zaczep_przekladnika(
-                zaczepy_przekladnika(przekladnie), _liczba(_pole(aparat, "zaczep_pierwotny_a"))
+                zaczepy_przekladnika(przekladnie),
+                _liczba(_pole(aparat, "zaczep_pierwotny_a")),
             )
             rdzen = _przekladnia_rdzenia(str(_pole(ochronny, "przekladnia")))
             if rdzen is None:
@@ -463,7 +490,8 @@ def przekladnik_pradu_zerowego(enm: object, sterownik: object) -> PrzekladnikPra
     Układ Holmgreena: przekładnia przekładników fazowych ``ct_ref`` (suma prądów wtórnych).
     Przekładnik Ferrantiego: ``i0_ct_ref`` — encja ``measurements`` (przekładnik prądowy)
     albo aparat pola rodzaju ``CORE_BALANCE_CT`` z przekładnią ``przekladnia`` („100/1").
-    ``None`` — wejście nieprzypięte albo przekładnia nieustalona (wołający nazywa brak)."""
+    ``None`` — wejście nieprzypięte albo przekładnia nieustalona (wołający nazywa brak).
+    """
     from enm.nazwy_elementow import nazwa_elementu
 
     wejscia = _pole(sterownik, "wejscia") or {}
@@ -511,7 +539,8 @@ def ref_aparatu_wyzwalanego(aparat: object) -> str | None:
     Wyłącznik pola wskazujący gałąź modelu (``linked_ref`` — gałąź ``breaker``, której stan
     i pozycję katalogu czytają rozpływ, zwarcia i czas własny) wchodzi do macierzy
     identyfikatorem tej gałęzi; wyłącznik pola bez gałęzi — identyfikatorem aparatu pola.
-    Wyłącznik liniowy bez pola jest gałęzią, więc jego identyfikator jest tym samym kluczem."""
+    Wyłącznik liniowy bez pola jest gałęzią, więc jego identyfikator jest tym samym kluczem.
+    """
     return _napis(_pole(aparat, "linked_ref")) or _napis(_pole(aparat, "device_ref"))
 
 
@@ -623,7 +652,10 @@ def ustaw_zestaw_funkcji(
     refy = {f["ref"] for f in funkcje}
     sterownik["funkcje"] = funkcje
     sterownik["grupy_nastaw"] = [
-        {**g, "funkcje": [n for n in g.get("funkcje") or [] if n.get("funkcja_ref") in refy]}
+        {
+            **g,
+            "funkcje": [n for n in g.get("funkcje") or [] if n.get("funkcja_ref") in refy],
+        }
         for g in sterownik.get("grupy_nastaw") or []
     ]
     macierz = [w for w in sterownik.get("macierz_wyzwolen") or [] if w.get("funkcja_ref") in refy]
@@ -694,7 +726,8 @@ def _referencje_aparatow(
 ) -> tuple[set[str], dict[str, str]]:
     """Wyłączniki (gałąź ``breaker`` albo aparat pola rodzaju wyłącznika, regułą
     `ref_aparatu_wyzwalanego`) oraz rodzaj każdego aparatu pola i pomiaru (referencja →
-    rodzaj; wejście sprawdza rodzaj regułą `RODZAJE_WEJSCIA_STEROWNIKA`) modelu i ``aparaty``."""
+    rodzaj; wejście sprawdza rodzaj regułą `RODZAJE_WEJSCIA_STEROWNIKA`) modelu i ``aparaty``.
+    """
     wylaczniki = {
         str(_pole(g, "ref_id"))
         for g in _lista(enm, "branches")
@@ -891,7 +924,8 @@ _OPIS_RODZAJU_WEJSCIA_PL: Mapping[str, str] = {
 @dataclass(frozen=True)
 class IndeksReferencjiSterownikow:
     """Zbiory referencji modelu, wobec których sprawdza się sterownik — liczone RAZ na migawkę
-    (walidator sprawdza wszystkie sterowniki, operacja jeden; obie drogi czytają ten indeks)."""
+    (walidator sprawdza wszystkie sterowniki, operacja jeden; obie drogi czytają ten indeks).
+    """
 
     pola: frozenset[str]
     sterowniki_pol: Mapping[str, tuple[str, ...]]
@@ -966,7 +1000,8 @@ def naruszenia_referencji_sterownika(
             )
     wejscia_sterownika = _pole(sterownik, "wejscia")
     for klucz, ref in _niezgodne_wejscia(
-        wejscia_sterownika if isinstance(wejscia_sterownika, Mapping) else {}, ind.przekladniki
+        wejscia_sterownika if isinstance(wejscia_sterownika, Mapping) else {},
+        ind.przekladniki,
     ):
         przyczyna = (
             "aparat, którego nie ma w modelu sieci"

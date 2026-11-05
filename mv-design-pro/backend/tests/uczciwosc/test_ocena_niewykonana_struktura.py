@@ -46,6 +46,7 @@ def _rekord(czego_brakuje: list[str]) -> dict[str, object]:
             zakres_waznosci=ZakresWaznosci(opis_pl="zakres testowy"),
             powod_braku_niepewnosci_pl="brak wyniku — niepewność nie dotyczy",
             czego_brakuje=czego_brakuje,
+            przyczyna="BRAK_METODY",
         )
     )
 
@@ -61,6 +62,8 @@ def test_rekord_jest_pelnym_rekordem_kontraktu_z_brakiem_powierzchni_po_brakach_
 
 
 @pytest.mark.parametrize("braki", [[], [""], ["   "]])
-def test_rekord_bez_konkretnego_braku_powierzchni_jest_bledem_konstrukcji(braki: list[str]) -> None:
+def test_rekord_bez_konkretnego_braku_powierzchni_jest_bledem_konstrukcji(
+    braki: list[str],
+) -> None:
     with pytest.raises(ValueError):
         _rekord(braki)

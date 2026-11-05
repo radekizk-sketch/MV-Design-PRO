@@ -26,8 +26,16 @@ export interface RekordOcenyZiemnozwarciowej {
   kryterium_pl: string;
   status: StatusWerdyktu;
   zdanie_pl: string;
+  /** Wynik zapisem generatora werdyktu (liczba z jednostką; dla 67N z nazwanym rzutem). */
+  wynik_pl: string | null;
+  /** Wartość wymagana tym samym zapisem. */
+  limit_pl: string | null;
+  /** 67N: rzut 3I₀ względem kierunku działania; `null` — wynik nie jest rzutem. */
+  kierunek_rzutu: 'ZGODNY' | 'PRZECIWNY' | null;
   /** Odmowa oceny: braki z akcją naprawczą. */
   braki?: BrakNastaw[];
+  /** Odmowa oceny: braki złożone przez backend (podmiot raz, jedno wezwanie). */
+  braki_pl?: string[];
   /** Kryterium bez danych do oceny (np. napięcie krokowe bez geometrii uziomu). */
   czego_brakuje_pl?: string | null;
   ocena: OcenaKryterium;

@@ -4,12 +4,20 @@ Kontrakt werdyktu wyjaśnialnego (``docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.
 z pakietu ``werdykt`` są JEDYNYMI typami rekordu oceny w produkcie. Powierzchnie, które nie
 mają podstawy do werdyktu (trajektorie FRT z profilu wejściowego, tor stabilności z kątów
 wpisanych przez użytkownika, jakość energii z solvera niezwalidowanego, SSCI z Z_grid bez
-przekładni transformatora, pole LoM bez sprawdzeń), dostają pełny rekord poziomu K
-``OcenaKryterium`` zbudowany regułą K z ``wynik=None`` i dowodem ``BRAK_METODY``: reguła daje
-wtedy ``NIE_OCENIONO``, etykietę „Ocena niewykonana" (semantyka neutralna) z jedynego słownika
-etykiet i zdanie z jedynego generatora wyjaśnień (``werdykt/wyjasnienie.py``). Konkretne
-braki powierzchni (czego brakuje i co trzeba dostarczyć) wchodzą jako ``braki_dodatkowe`` —
-po brakach nazwanych przez regułę.
+przekładni transformatora) oraz oceny wstrzymane brakami modelu (nastawy zabezpieczeń, pole LoM
+bez funkcji, uziom bez geometrii) dostają pełny rekord poziomu K ``OcenaKryterium`` zbudowany
+regułą K z ``wynik=None``: reguła daje ``NIE_OCENIONO``, etykietę „Ocena niewykonana" (semantyka
+neutralna) z jedynego słownika etykiet i zdanie z jedynego generatora wyjaśnień
+(``werdykt/wyjasnienie.py``). Konkretne braki powierzchni (czego brakuje i co trzeba
+dostarczyć) wchodzą jako ``braki_dodatkowe`` — po brakach nazwanych przez regułę.
+
+PRZYCZYNA jest jawnym, obowiązkowym parametrem (kontrakt werdyktu §2.1–§2.2: brak danych
+wejściowych modelu ≠ brak metody dowodu). ``BRAK_METODY`` — narzędzie nie ma metody, która
+wykazuje twierdzenie (krok METODA: zdanie nazywa metodę właściwą); ``BRAK_DANYCH`` — metoda
+istnieje (``METODA_DLA_TWIERDZENIA``), a model nie dostarcza danych wejściowych (krok WYNIK:
+zdanie nazywa braki i akcję naprawczą). Dawniej fabryka zawsze dawała ``BRAK_METODY`` —
+ocena wstrzymana brakiem nastaw mówiła „brak metody dowodu; właściwa metoda: certyfikat
+urządzenia…", choć przyczyną był brak danych.
 
 Moduł nie ma własnego typu rekordu, etykiety ani tekstu werdyktu — tylko składa pola kontraktu
 z parametrów wołającego. Importuje wyłącznie pakiet ``werdykt`` (liść), więc jest importowalny
@@ -19,7 +27,7 @@ z warstw analizy, aplikacji i ENM.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from werdykt import (
     ClaimKind,
@@ -37,10 +45,24 @@ from werdykt import (
     ZakresWaznosci,
     ocen_kryterium,
 )
-from werdykt.kontrakt import StatusModelu
+from werdykt.kontrakt import MetodaDowodu, StatusModelu
 
-#: Status maszynowy rekordu tej fabryki — wyprowadza go reguła K (krok METODA), tu tylko nazwa.
+#: Status maszynowy rekordu tej fabryki — wyprowadza go reguła K (krok METODA albo WYNIK), tu
+#: tylko nazwa.
 STATUS_NIE_OCENIONO: Final = "NIE_OCENIONO"
+
+#: Przyczyna oceny niewykonanej (lista ZAMKNIĘTA): brak danych wejściowych modelu albo brak
+#: metody dowodu w narzędziu. Brak podstawy limitu nie należy do tej fabryki — wymaga wyniku
+#: (reguła K, krok PODSTAWA: ``BRAK_PODSTAWY`` z wynikiem informacyjnym).
+PrzyczynaNiewykonania = Literal["BRAK_DANYCH", "BRAK_METODY"]
+
+#: Metoda dowodu, którą narzędzie wykazuje twierdzenie danego rodzaju, gdy model dostarczy
+#: dane (przyczyna ``BRAK_DANYCH``) — dopuszczalna dla rodzaju twierdzenia (reguła K, krok 2).
+METODA_DLA_TWIERDZENIA: Final[dict[ClaimKind, MetodaDowodu]] = {
+    ClaimKind.STATIC_CALCULATION: "OBLICZENIE",
+    ClaimKind.DECLARED_CONFIGURATION: "DEKLARACJA",
+    ClaimKind.DYNAMIC_PERFORMANCE: "SYMULACJA",
+}
 
 
 def ocena_niewykonana(
@@ -56,11 +78,18 @@ def ocena_niewykonana(
     zakres_waznosci: ZakresWaznosci,
     powod_braku_niepewnosci_pl: str,
     czego_brakuje: Sequence[str],
+    przyczyna: PrzyczynaNiewykonania,
+    akcja_naprawcza_pl: str | None = None,
     status_danych: StatusDanych | None = None,
     odniesienie_dowodu: str | None = None,
     slad: Sequence[OdnosnikSladu] = (),
 ) -> OcenaKryterium:
-    """Rekord K ``NIE_OCENIONO``: kryterium logiczne bez wyniku, dowód ``BRAK_METODY``.
+    """Rekord K ``NIE_OCENIONO``: kryterium logiczne bez wyniku, przyczyna jawna.
+
+    ``przyczyna`` — ``BRAK_METODY`` (dowód ``BRAK_METODY``, krok METODA) albo ``BRAK_DANYCH``
+    (dowód metodą ``METODA_DLA_TWIERDZENIA[rodzaj_twierdzenia]``, krok WYNIK — zdanie nazywa
+    braki modelu); ``akcja_naprawcza_pl`` — akcja właściwa dla kryterium (tylko
+    ``BRAK_DANYCH``; ``None`` — akcja ogólna generatora).
 
     Kryterium jest logiczne (relacja ``LOGICZNE``, bez limitu skalarnego i bez warunku
     w LaTeX) — powierzchnia nie ma metody, która rozstrzygnęłaby kryterium, więc nie ma też
@@ -75,6 +104,14 @@ def ocena_niewykonana(
         raise ValueError(
             "Ocena niewykonana musi nazwać konkretny brak powierzchni (czego_brakuje)."
         )
+    if przyczyna == "BRAK_METODY" and akcja_naprawcza_pl is not None:
+        raise ValueError(
+            "Akcja naprawcza braku wyniku dotyczy braku danych — brak metody nazywa metodę "
+            "właściwą, nie akcję uzupełnienia modelu."
+        )
+    metoda: MetodaDowodu = (
+        "BRAK_METODY" if przyczyna == "BRAK_METODY" else METODA_DLA_TWIERDZENIA[rodzaj_twierdzenia]
+    )
     return ocen_kryterium(
         kryterium_id=kryterium_id,
         przedmiot=przedmiot,
@@ -85,7 +122,7 @@ def ocena_niewykonana(
         limit=None,
         niepewnosc=Niepewnosc(nie_dotyczy=True, powod_pl=powod_braku_niepewnosci_pl),
         dowod=StatusDowodu(
-            metoda="BRAK_METODY",
+            metoda=metoda,
             poziom=poziom,
             rodzaj_twierdzenia=rodzaj_twierdzenia,
             status_modelu=status_modelu,
@@ -95,6 +132,7 @@ def ocena_niewykonana(
         zakres_waznosci=zakres_waznosci,
         slad=slad,
         braki_dodatkowe=czego_brakuje,
+        akcja_naprawcza_pl=akcja_naprawcza_pl,
     )
 
 

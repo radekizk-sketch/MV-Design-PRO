@@ -64,7 +64,8 @@ def nazwy_urzadzen(result: dict[str, Any]) -> dict[str, str]:
 
 def nazwa_wpisu_urzadzenia(wpis: dict[str, Any], klucz: str = "name") -> str:
     """Nazwa urządzenia z wpisu wyniku (urządzenie: `name`, krzywa TCC: `device_name`) albo
-    opis braku — ta sama reguła dla wiersza urządzenia, wiersza krzywej i tabel sprawdzeń."""
+    opis braku — ta sama reguła dla wiersza urządzenia, wiersza krzywej i tabel sprawdzeń.
+    """
     return nazwa_nadana(wpis.get(klucz)) or URZADZENIE_BEZ_NAZWY
 
 
@@ -128,7 +129,15 @@ def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str
     nazwa = nazwa_wpisu_urzadzenia(urzadzenie)
     stopnie = ((urzadzenie.get("nastawy") or {}).get("stopnie")) or []
     if not stopnie:
-        return [(nazwa, NIE_DOTYCZY, NIE_DOTYCZY, NIE_DOTYCZY, "Brak nastaw gotowych do oceny")]
+        return [
+            (
+                nazwa,
+                NIE_DOTYCZY,
+                NIE_DOTYCZY,
+                NIE_DOTYCZY,
+                "Brak nastaw gotowych do oceny",
+            )
+        ]
     wiersze: list[tuple[str, str, str, str, str]] = []
     for stopien in sorted(stopnie, key=lambda s: str(s.get("funkcja")), reverse=True):
         tms = stopien.get("tms")
@@ -221,7 +230,10 @@ def wiersze_podsumowania_pl(
             f"{liczba(przeciazalnosc['najmniejszy_iloraz'])} "
             f"(wymagany {liczba(kryteria['overload_ratio_required'])})",
         ),
-        ("Urządzenia bez ilorazu przeciążalności:", str(przeciazalnosc["bez_wartosci"])),
+        (
+            "Urządzenia bez ilorazu przeciążalności:",
+            str(przeciazalnosc["bez_wartosci"]),
+        ),
     ]
 
 
@@ -240,44 +252,52 @@ NAGLOWKI_ZIEMNOZWARCIOWYCH_PL: tuple[str, ...] = (
 )
 
 
-def _wielkosc(wielkosc: Any) -> str:
-    if not isinstance(wielkosc, dict) or wielkosc.get("wartosc") is None:
-        return NIE_DOTYCZY
-    wartosc = float(wielkosc["wartosc"])
-    return f"{wartosc:.4g} {wielkosc.get('jednostka', '')}".strip()
-
-
 def rekordy_ziemnozwarciowe(ziemne: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Rekordy sekcji w kolejności raportu: oceny funkcji, uziemienia stacji, odmowy."""
     if not ziemne:
         return []
-    return [*ziemne.get("oceny", []), *ziemne.get("uziemienia", []), *ziemne.get("odmowy", [])]
+    return [
+        *ziemne.get("oceny", []),
+        *ziemne.get("uziemienia", []),
+        *ziemne.get("odmowy", []),
+    ]
 
 
 def wiersz_ziemnozwarciowy(rekord: dict[str, Any]) -> tuple[str, str, str, str, str, str]:
     """Wiersz tabeli raportu: urządzenie, funkcja, kryterium (nazwa z rekordu ewaluatora —
     lista zamknięta `KRYTERIA_ZIEMNOZWARCIOWE`), wynik, wartość wymagana, ocena (etykieta
-    statusu z rekordu werdyktu). Liczby z rekordu — zero liczenia."""
+    statusu z rekordu werdyktu). Wynik i wartość wymagana — zapis z rekordu (``wynik_pl``,
+    ``limit_pl``: jeden zapis liczb z jednostką dla ekranu i obu raportów; rzut 67N z nazwanym
+    kierunkiem) — zero liczenia i zero drugiego formatu liczb."""
     ocena = rekord["ocena"]
-    wynik = (ocena.get("wynik") or {}).get("wartosc")
-    limit = (ocena.get("limit") or {}).get("wartosc")
     return (
         str(rekord["nazwa_urzadzenia_pl"]),
         str(rekord.get("etykieta_pl") or NIE_DOTYCZY),
         str(rekord["kryterium_pl"]),
-        _wielkosc(wynik),
-        _wielkosc(limit),
+        str(rekord.get("wynik_pl") or NIE_DOTYCZY),
+        str(rekord.get("limit_pl") or NIE_DOTYCZY),
         str(ocena["etykieta"]["etykieta_pl"]),
     )
 
 
 def zdanie_ziemnozwarciowe(rekord: dict[str, Any]) -> str:
-    """Zdanie wyjaśnienia rekordu (co oceniono, wynik, limit z podstawą, margines, przyczyna);
-    przy ocenie wstrzymanej — braki z akcją naprawczą."""
-    zdanie = str(rekord["ocena"]["wyjasnienie"]["zdanie_pl"])
-    braki = [f"{b['komunikat_pl']} {b['akcja_naprawcza_pl']}" for b in rekord.get("braki") or []]
-    if rekord.get("czego_brakuje_pl"):
-        braki.append(str(rekord["czego_brakuje_pl"]))
-    if braki:
-        zdanie = f"{zdanie} Brakuje: {' '.join(braki)}"
-    return f"{rekord['nazwa_urzadzenia_pl']}: {zdanie}"
+    """Zdanie wyjaśnienia rekordu (co oceniono, wynik, limit z podstawą, margines, przyczyna).
+    Przy ocenie wstrzymanej zdanie generatora werdyktu już niesie braki złożone przez
+    ``zdania_brakow`` (podmiot raz, lista nazw nastaw, jedno wezwanie) — raport nie dokleja ich
+    drugi raz ani nie składa po jednym zdaniu na brak."""
+    return f"{rekord['nazwa_urzadzenia_pl']}: {rekord['ocena']['wyjasnienie']['zdanie_pl']}"
+
+
+#: Nagłówek sekcji raportu z urządzeniami nadprądowymi, których ocena jest wstrzymana brakami.
+NAGLOWEK_ODMOW_URZADZEN_PL = "Zabezpieczenia nadprądowe z oceną wstrzymaną"
+
+
+def zdania_odmow_urzadzen(result: dict[str, Any]) -> list[str]:
+    """Zdania raportu o urządzeniach nadprądowych (50/51) z oceną wstrzymaną: nazwa i braki
+    złożone przez ``zdania_brakow`` (``braki_pl`` odmowy — ten sam zapis co ekran wyników).
+    PDF i DOCX czytają to samo; kolejność — kolejność odmów wyniku (deterministyczna).
+    """
+    return [
+        f"{nazwa_wpisu_urzadzenia(odmowa, 'nazwa_pl')}: {' '.join(odmowa.get('braki_pl') or [])}"
+        for odmowa in result.get("odmowy_urzadzen") or []
+    ]

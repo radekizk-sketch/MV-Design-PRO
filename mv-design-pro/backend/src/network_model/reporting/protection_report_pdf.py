@@ -27,6 +27,7 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_ODMOW_URZADZEN_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
     NAGLOWKI_NASTAW_PL,
     NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
@@ -42,6 +43,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
     zdania_funkcji_nieocenianych,
+    zdania_odmow_urzadzen,
     zdanie_ziemnozwarciowe,
 )
 
@@ -51,6 +53,7 @@ try:
     from reportlab.lib.colors import HexColor
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
+    from reportlab.lib.utils import simpleSplit
     from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
@@ -150,21 +153,31 @@ def export_protection_coordination_to_pdf(
         bold: bool = False,
         colors: list[str | None] | None = None,
     ) -> None:
-        """Draw a table row with optional column colors."""
+        """Wiersz tabeli: każda komórka ZAWIJANA do szerokości kolumny (nigdy przycinana).
+
+        Komórki były przycinane (``[:25]``, ``[:14]``, ``textwrap.shorten``) — nazwa urządzenia
+        „Sterownik · Po…”, a wynik rzutu 67N „rzut na kierunek…” bez liczby. Wysokość wiersza
+        = najdłuższa komórka; łamanie strony przed wierszem, który się nie mieści."""
         nonlocal y
         font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
+        linie_komorek = [
+            simpleSplit(str(val), font_name, font_size, col_widths[i] - 2 * mm) or [""]
+            for i, val in enumerate(values)
+        ]
+        wysokosc_linii = max(line_height * font_size / 9, 3 * mm)
+        y = check_page_break(wysokosc_linii * max(len(linie) for linie in linie_komorek))
         current_x = x
-        for i, val in enumerate(values):
-            text = str(val)[:25]  # Truncate long text
+        for i, linie in enumerate(linie_komorek):
             if colors and i < len(colors) and colors[i]:
                 c.setFillColor(HexColor(colors[i]))
             else:
                 c.setFillColor(HexColor("#000000"))
             c.setFont(font_name, font_size)
-            c.drawString(current_x, y, text)
+            for n, linia in enumerate(linie):
+                c.drawString(current_x, y - n * wysokosc_linii, linia)
             current_x += col_widths[i]
         c.setFillColor(HexColor("#000000"))  # Reset color
-        y -= line_height
+        y -= wysokosc_linii * (max(len(linie) for linie in linie_komorek) - 1) + line_height
 
     def draw_uzasadnienia(sprawdzenia: list[dict[str, Any]]) -> None:
         """Zdania z liczbami sprawdzeń pod tabelą (punkt zwarcia, prądy, czasy, wymagania)."""
@@ -245,7 +258,7 @@ def export_protection_coordination_to_pdf(
             for wiersz in wiersze_nastaw_urzadzenia(dev):
                 y = check_page_break(line_height)
                 draw_table_row(
-                    [wiersz[0][:14], *wiersz[1:]],
+                    list(wiersz),
                     dev_cols,
                     left_margin,
                 )
@@ -260,6 +273,18 @@ def export_protection_coordination_to_pdf(
         y = check_page_break(20 * mm)
         draw_text(NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL, left_margin, font_size=11, bold=True)
         for zdanie in zdania_nieocenianych:
+            for fragment in textwrap.wrap(zdanie, width=110):
+                y = check_page_break(line_height)
+                c.setFont("DejaVuSans", 8)
+                c.drawString(left_margin + 4 * mm, y, fragment)
+                y -= line_height
+
+    zdania_odmow = zdania_odmow_urzadzen(result)
+    if zdania_odmow:
+        y -= line_height
+        y = check_page_break(20 * mm)
+        draw_text(NAGLOWEK_ODMOW_URZADZEN_PL, left_margin, font_size=11, bold=True)
+        for zdanie in zdania_odmow:
             for fragment in textwrap.wrap(zdanie, width=110):
                 y = check_page_break(line_height)
                 c.setFont("DejaVuSans", 8)
@@ -290,9 +315,7 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             draw_table_row(
                 [
-                    textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check["device_id"]), 20, placeholder="…"
-                    ),
+                    nazwa_urzadzenia(nazwy, check["device_id"]),
                     _format_value(check["i_fault_min_a"]),
                     _format_value(check["i_pickup_a"]),
                     _format_value(check["ratio"]),
@@ -313,14 +336,26 @@ def export_protection_coordination_to_pdf(
     # 6) SELECTIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Selektywność czasowa — odstęp t_nad − t_pod", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Selektywność czasowa — odstęp t_nad − t_pod",
+        left_margin,
+        font_size=14,
+        bold=True,
+    )
     y -= 3 * mm
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
         sel_cols = [30 * mm, 30 * mm, 22 * mm, 22 * mm, 22 * mm, 25 * mm]
         draw_table_row(
-            ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"],
+            [
+                "Podrzędne",
+                "Nadrzędne",
+                "t_pod [s]",
+                "t_nad [s]",
+                "Odstęp [s]",
+                "Wymagany [s]",
+            ],
             sel_cols,
             left_margin,
             bold=True,
@@ -331,16 +366,8 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             draw_table_row(
                 [
-                    textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check["downstream_device_id"]),
-                        20,
-                        placeholder="…",
-                    ),
-                    textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check["upstream_device_id"]),
-                        20,
-                        placeholder="…",
-                    ),
+                    nazwa_urzadzenia(nazwy, check["downstream_device_id"]),
+                    nazwa_urzadzenia(nazwy, check["upstream_device_id"]),
                     _format_value(check["t_downstream_s"]),
                     _format_value(check["t_upstream_s"]),
                     _format_value(check["margin_s"]),
@@ -383,9 +410,7 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             draw_table_row(
                 [
-                    textwrap.shorten(
-                        nazwa_urzadzenia(nazwy, check["device_id"]), 20, placeholder="…"
-                    ),
+                    nazwa_urzadzenia(nazwy, check["device_id"]),
                     _format_value(check["i_operating_a"]),
                     _format_value(check["i_pickup_a"]),
                     _format_value(check["ratio"]),
@@ -413,7 +438,10 @@ def export_protection_coordination_to_pdf(
     if tcc_curves:
         tcc_cols = [40 * mm, 30 * mm, 30 * mm, 30 * mm]
         draw_table_row(
-            ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"], tcc_cols, left_margin, bold=True
+            ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"],
+            tcc_cols,
+            left_margin,
+            bold=True,
         )
         y -= 2 * mm
 
@@ -421,7 +449,7 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             draw_table_row(
                 [
-                    nazwa_wpisu_urzadzenia(curve, "device_name")[:20],
+                    nazwa_wpisu_urzadzenia(curve, "device_name"),
                     # Komórka: kod charakterystyki; pełny opis stopni niżej, zawinięty.
                     etykieta_typu_krzywej_pl({**curve, "opis_pl": None}),
                     _format_value(curve.get("pickup_current_a")),
@@ -466,7 +494,7 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             wiersz_zz = wiersz_ziemnozwarciowy(rekord)
             draw_table_row(
-                [textwrap.shorten(w, 24, placeholder="…") for w in wiersz_zz],
+                list(wiersz_zz),
                 zz_cols,
                 left_margin,
                 font_size=7,
@@ -479,7 +507,11 @@ def export_protection_coordination_to_pdf(
                 y -= line_height
     else:
         c.setFont("DejaVuSans-Oblique", 10)
-        c.drawString(left_margin, y, "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie")
+        c.drawString(
+            left_margin,
+            y,
+            "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
+        )
         y -= line_height
 
     # ==========================================================================

@@ -188,6 +188,7 @@ def ocena_frt_niewykonana(
                 "niepewność wyniku nie dotyczy"
             ),
             czego_brakuje=BRAKI_OCENY_FRT,
+            przyczyna="BRAK_METODY",
         )
     )
 

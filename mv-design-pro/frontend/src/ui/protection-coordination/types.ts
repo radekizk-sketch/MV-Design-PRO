@@ -56,6 +56,9 @@ export interface OdmowaUrzadzenia {
   nazwa_pl: string;
   breaker_ref: string;
   braki: BrakNastaw[];
+  /** Braki złożone przez backend (`ocena_nadpradowa.zdania_brakow`) — jeden zapis dla ekranu
+   *  i raportu PDF/DOCX (podmiot raz, lista nazw nastaw, jedno wezwanie). */
+  braki_pl: string[];
   kandydaci_naprawy: string[];
 }
 

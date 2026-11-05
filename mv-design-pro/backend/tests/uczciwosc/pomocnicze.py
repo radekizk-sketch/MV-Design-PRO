@@ -13,14 +13,16 @@ from werdykt import OcenaKryterium
 _SKRYPT_FIXTUR = Path(__file__).resolve().parents[2] / "scripts" / "eksport_fixtur_harnessu.py"
 
 
-def sprawdz_ocene_niewykonana(ocena: Any) -> OcenaKryterium:
+def sprawdz_ocene_niewykonana(ocena: Any, *, przyczyna: str = "BRAK_METODY") -> OcenaKryterium:
     """Rekord ``NIE_OCENIONO`` jest PEŁNYM rekordem kontraktu werdyktu (``werdykt.OcenaKryterium``).
 
     Odczyt z JSON przechodzi walidację kontraktu (reguła K, etykieta, braki, zastrzeżenia —
     wyprowadzone ponownie i porównane), więc rekord zbudowany poza regułą albo okrojony
     (np. sam status bez wyjaśnienia) jest odrzucany. Ponadto: status ``NIE_OCENIONO``,
     etykieta „Ocena niewykonana" o semantyce neutralnej z jedynego słownika, niepuste zdanie
-    z generatora i niepusta lista „czego brakuje"."""
+    z generatora i niepusta lista „czego brakuje". ``przyczyna`` — ``BRAK_METODY`` (dowód bez
+    metody, zdanie kroku METODA) albo ``BRAK_DANYCH`` (dowód metodą narzędzia, zdanie kroku
+    WYNIK — brak danych modelu nie udaje braku metody)."""
     assert isinstance(ocena, dict), ocena
     rekord = OcenaKryterium.model_validate(ocena)
     assert rekord.status_maszynowy == "NIE_OCENIONO"
@@ -28,7 +30,15 @@ def sprawdz_ocene_niewykonana(ocena: Any) -> OcenaKryterium:
     assert rekord.etykieta.semantyka == "neutralna"
     assert rekord.wyjasnienie.zdanie_pl.strip()
     assert rekord.wyjasnienie.czego_brakuje
-    assert rekord.wynik is None and rekord.dowod.metoda == "BRAK_METODY"
+    assert rekord.wynik is None
+    if przyczyna == "BRAK_METODY":
+        assert rekord.dowod.metoda == "BRAK_METODY"
+        assert "brak metody dowodu" in rekord.wyjasnienie.zdanie_pl
+    else:
+        assert przyczyna == "BRAK_DANYCH", przyczyna
+        assert rekord.dowod.metoda != "BRAK_METODY"
+        assert "brak wyznaczonej wielkości ocenianej" in rekord.wyjasnienie.zdanie_pl
+        assert "brak metody dowodu" not in rekord.wyjasnienie.zdanie_pl
     return rekord
 
 
@@ -69,7 +79,8 @@ def enm_sceny_akademickiej() -> Any:
 
 def model_sceny_akademickiej(rodzaj: Any) -> Any:
     """Model wejścia V12.6 sieci demonstracyjnej sceny „akademickie" (ta sama, na której audyt
-    harmonicznych zmierzył THD_U 3049 %) — złożony DOKŁADNIE tą ścieżką, co bieg z API."""
+    harmonicznych zmierzył THD_U 3049 %) — złożony DOKŁADNIE tą ścieżką, co bieg z API.
+    """
     from api.v126_academic import _with_parameter_payloads
     from application.analyses.v126_gotowosc import (
         ocen_gotowosc_v126,

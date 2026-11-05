@@ -29,7 +29,13 @@ from tests.werdykt import fabryki as f
 #: Rada ponownego biegu / uzupełnienia danych — akcja, która nie ma celu bez metody dowodu.
 _RADY_BEZ_CELU = ("wykonaj bieg", "uzupełnij dane wejściowe", "Akcja naprawcza")
 #: Pola nawigacji albo akcji — rekord kontraktu ich nie ma; żadna powierzchnia ich nie dokłada.
-_POLA_AKCJI = ("akcja", "akcja_naprawcza_pl", "fix_action", "fix_navigation", "cel_nawigacji")
+_POLA_AKCJI = (
+    "akcja",
+    "akcja_naprawcza_pl",
+    "fix_action",
+    "fix_navigation",
+    "cel_nawigacji",
+)
 #: Budowniczowie odpowiedzi powierzchni — TE SAME funkcje, z których powstają fixtury frontu.
 _POWIERZCHNIE: dict[str, Callable[[], Any]] = {
     "frt": fixtury._frt,
@@ -93,20 +99,28 @@ def _sprawdz_rekord(rekord: dict[str, Any]) -> str:
 
 
 @pytest.mark.parametrize("powierzchnia", sorted(_POWIERZCHNIE))
-def test_ocena_niewykonana_powierzchni_nie_oferuje_akcji_bez_celu(powierzchnia: str) -> None:
+def test_ocena_niewykonana_powierzchni_nie_oferuje_akcji_bez_celu(
+    powierzchnia: str,
+) -> None:
     metody = {_sprawdz_rekord(r) for r in _rekordy_niewykonane(_POWIERZCHNIE[powierzchnia]())}
-    # Kontrola dodatnia: powierzchnia naprawdę niesie rekordy „oceny niewykonanej" bez metody.
-    assert "BRAK_METODY" in metody, (powierzchnia, metody)
+    # Kontrola dodatnia: powierzchnia naprawdę niesie rekordy „oceny niewykonanej". Pole LoM bez
+    # funkcji to brak DANYCH modelu (metoda deklaracji istnieje — rada ma cel), pozostałe
+    # powierzchnie nie mają metody dowodu (przyczyna jawna w fabryce `ocena_niewykonana`).
+    oczekiwana = "DEKLARACJA" if powierzchnia == "widoki_lom" else "BRAK_METODY"
+    assert oczekiwana in metody, (powierzchnia, metody)
 
 
 def test_porownanie_lom_bez_nastawy_zachowuje_rade_z_celem() -> None:
     """Druga strona pary: porównanie nastawy LoM bez wartości (metoda deklaracji dopuszczalna)
-    niesie radę uzupełnienia danych — cel istnieje (nastawa w przypisaniu zabezpieczeń)."""
+    niesie radę uzupełnienia danych — cel istnieje (nastawa w przypisaniu zabezpieczeń).
+    """
     metody = {_sprawdz_rekord(r) for r in _rekordy_niewykonane(fixtury._widoki_lom())}
     assert "DEKLARACJA" in metody, metody
 
 
-def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client: Any) -> None:
+def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(
+    app_client: Any,
+) -> None:
     """Ścieżka użytkownika (karta AB-P1, zastępuje skasowany tor T1): bieg kanoniczny
     `dynamika_rms` ze scenariuszem nazwanym → końcówka wyniku → rekordy `NIE_OCENIONO`
     bez metody dowodu i bez rady „wykonaj bieg" ani pól akcji."""
@@ -141,7 +155,10 @@ def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client
         json={"name": "Zwarcie w odcinku", "dynamika": SCENARIUSZ_IZOLACJI},
     ).json()
     bieg = _bieg(
-        app_client, case_id, scenariusz["scenario_id"], _uruchom_rozplyw(app_client, case_id)
+        app_client,
+        case_id,
+        scenariusz["scenario_id"],
+        _uruchom_rozplyw(app_client, case_id),
     )
     assert bieg["status"] == "DONE", bieg["error_message"]
     odpowiedz = app_client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika")
@@ -152,7 +169,8 @@ def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client
 
 def test_regula_k_rada_biegu_tylko_gdy_istnieje_metoda() -> None:
     """Para predykatów: bez metody dowodu brak wyniku jest nazwany bez rady; z metodą
-    dopuszczalną (tu deklaracja konfiguracji) i bez wyniku rada ponownego biegu zostaje."""
+    dopuszczalną (tu deklaracja konfiguracji) i bez wyniku rada ponownego biegu zostaje.
+    """
     bez_metody = f.ocena(jest_wynik=False, dowod_oceny=f.dowod(metoda="BRAK_METODY"))
     z_metoda = f.ocena(jest_wynik=False)
     assert bez_metody.status_maszynowy == z_metoda.status_maszynowy == "NIE_OCENIONO"

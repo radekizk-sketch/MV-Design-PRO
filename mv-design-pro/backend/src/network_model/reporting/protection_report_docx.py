@@ -27,6 +27,7 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_ODMOW_URZADZEN_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
     NAGLOWKI_NASTAW_PL,
     NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
@@ -42,6 +43,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
     zdania_funkcji_nieocenianych,
+    zdania_odmow_urzadzen,
     zdanie_ziemnozwarciowe,
 )
 
@@ -181,6 +183,12 @@ def export_protection_coordination_to_docx(
         for zdanie in zdania_nieocenianych:
             doc.add_paragraph(zdanie, style="No Spacing")
 
+    zdania_odmow = zdania_odmow_urzadzen(result)
+    if zdania_odmow:
+        doc.add_heading(NAGLOWEK_ODMOW_URZADZEN_PL, level=2)
+        for zdanie in zdania_odmow:
+            doc.add_paragraph(zdanie, style="No Spacing")
+
     doc.add_paragraph()
 
     # ==========================================================================
@@ -228,14 +236,24 @@ def export_protection_coordination_to_docx(
         # Sort by (downstream_device_id, upstream_device_id) for deterministic order
         sorted_sel_checks = sorted(
             selectivity_checks,
-            key=lambda c: (c.get("downstream_device_id", ""), c.get("upstream_device_id", "")),
+            key=lambda c: (
+                c.get("downstream_device_id", ""),
+                c.get("upstream_device_id", ""),
+            ),
         )
 
         sel_table = doc.add_table(rows=1, cols=6)
         sel_table.style = "Table Grid"
 
         # Header
-        headers = ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"]
+        headers = [
+            "Podrzędne",
+            "Nadrzędne",
+            "t_pod [s]",
+            "t_nad [s]",
+            "Odstęp [s]",
+            "Wymagany [s]",
+        ]
         hdr_cells = sel_table.rows[0].cells
         for i, h in enumerate(headers):
             hdr_cells[i].text = h
@@ -363,7 +381,8 @@ def export_protection_coordination_to_docx(
             doc.add_paragraph(zdanie_ziemnozwarciowe(rekord), style="No Spacing")
     else:
         doc.add_paragraph(
-            "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie", style="No Spacing"
+            "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
+            style="No Spacing",
         )
 
     doc.add_paragraph()

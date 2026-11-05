@@ -6,9 +6,22 @@ from collections.abc import Mapping
 from typing import Any
 
 from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE
-from analysis.ssci_stability.models import SOLVER_INCOMPLETE_STATUS, ocena_ssci_niewykonana
-from application.ocena_niewykonana import STATUS_NIE_OCENIONO, ocena_niewykonana, rekord_json
-from werdykt import ClaimKind, EvidenceTier, PodstawaWymagania, Przedmiot, ZakresWaznosci
+from analysis.ssci_stability.models import (
+    SOLVER_INCOMPLETE_STATUS,
+    ocena_ssci_niewykonana,
+)
+from application.ocena_niewykonana import (
+    STATUS_NIE_OCENIONO,
+    ocena_niewykonana,
+    rekord_json,
+)
+from werdykt import (
+    ClaimKind,
+    EvidenceTier,
+    PodstawaWymagania,
+    Przedmiot,
+    ZakresWaznosci,
+)
 
 JsonDict = dict[str, Any]
 
@@ -56,7 +69,11 @@ def _result_payload(run_record: Mapping[str, Any]) -> Mapping[str, Any]:
 #: sensowny tylko jako komentarz DO rankingu, który po zdjęciu rankingu byłby
 #: osieroconym, mylącym fragmentem — sugerowałby, że "reszta" ma poprawny
 #: ranking N-1, podczas gdy ranking nie jest prezentowany w CAŁOŚCI).
-_KLUCZE_RANKINGU_N1 = ("contingency_ranking", "brak_danych", "elementy_bez_obciazalnosci")
+_KLUCZE_RANKINGU_N1 = (
+    "contingency_ranking",
+    "brak_danych",
+    "elementy_bez_obciazalnosci",
+)
 
 
 def bez_rankingu_n1(result: Mapping[str, Any]) -> JsonDict:
@@ -223,6 +240,7 @@ def ocena_jakosci_energii_niewykonana() -> JsonDict:
                 "niepewność wyniku nie dotyczy"
             ),
             czego_brakuje=BRAKI_OCENY_JAKOSCI_ENERGII,
+            przyczyna="BRAK_METODY",
         )
     )
 

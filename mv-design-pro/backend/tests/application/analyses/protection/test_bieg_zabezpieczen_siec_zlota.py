@@ -106,7 +106,9 @@ def _odmowy_tylko_szablonu(model: EnergyNetworkModel, wynik: dict[str, Any]) -> 
         assert odmowa["braki"] and all(b["akcja_naprawcza_pl"] for b in odmowa["braki"])
 
 
-def test_siec_zlota_niesie_dwa_zabezpieczenia_z_operacji(model: EnergyNetworkModel) -> None:
+def test_siec_zlota_niesie_dwa_zabezpieczenia_z_operacji(
+    model: EnergyNetworkModel,
+) -> None:
     szablonu = _sterowniki_szablonu_bez_nastaw(model)
     # Sześć pól SN dwóch stacji (po trzy z szablonu) — każde ma sterownik z funkcjami szablonu.
     assert len(szablonu) == 6
@@ -208,7 +210,9 @@ def test_scenariusz_minimalny_ta_sama_sciezka(model: EnergyNetworkModel) -> None
         assert ocena["t_trip_s"] == pytest.approx(t, abs=1e-6)
 
 
-def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(model: EnergyNetworkModel) -> None:
+def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(
+    model: EnergyNetworkModel,
+) -> None:
     """Parytet liść po liściu: ten sam model bez przypisań i przekładników daje identyczne
     wiersze biegu zwarciowego — nastawy i przekładniki nie wchodzą do fizyki."""
     sc_z, _zab = _biegi(model)
@@ -221,7 +225,9 @@ def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(model: EnergyNetwo
     set_enm("case-g08-bez", bez)
     sc_bez = execute_run(
         create_run(
-            case_id="case-g08-bez", klucz_twin="case-g08-bez", analysis_type="short_circuit_sn"
+            case_id="case-g08-bez",
+            klucz_twin="case-g08-bez",
+            analysis_type="short_circuit_sn",
         ).id
     )
     # Wiązanie dowodu (`proof_ref`, `proof_binding`) niesie odcisk MIGAWKI — ta różni się
@@ -246,7 +252,7 @@ def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(model: EnergyNetwo
     assert len(wiersze_z) == 9
     assert fizyka(sc_bez.raw_result["results"]) == fizyka(wiersze_z)
     opisy_tb = [w["tb_zrodlo"]["opis_pl"] for w in wiersze_z if w.get("tb_zrodlo")]
-    assert any("Sterownik pola" in o for o in opisy_tb), "przyczyna t_b nazywa sterownik pola"
+    assert any("Sterownik · Pole" in o for o in opisy_tb), "przyczyna t_b nazywa sterownik pola"
 
 
 def test_edycja_nastaw_nie_wymaga_ponownego_zwarcia(model: EnergyNetworkModel) -> None:
@@ -294,7 +300,9 @@ def test_edycja_nastaw_nie_wymaga_ponownego_zwarcia(model: EnergyNetworkModel) -
     assert ocena["curve_kind"] == "IEC_VI"
 
 
-def test_zmiana_sieci_po_biegu_wymaga_ponownego_zwarcia(model: EnergyNetworkModel) -> None:
+def test_zmiana_sieci_po_biegu_wymaga_ponownego_zwarcia(
+    model: EnergyNetworkModel,
+) -> None:
     """Zmiana poza zabezpieczeniami (długość odcinka) po biegu zwarciowym — utworzenie biegu
     oceny odmawia z nazwanym powodem zamiast składać nastawy z inną siecią."""
     from enm.domain_operations import execute_domain_operation
@@ -305,7 +313,10 @@ def test_zmiana_sieci_po_biegu_wymaga_ponownego_zwarcia(model: EnergyNetworkMode
     wynik = execute_domain_operation(
         dane,
         "update_element_parameters",
-        {"element_ref": kabel, "parameters": {"length_km": 2.0, "parameter_source": "CATALOG"}},
+        {
+            "element_ref": kabel,
+            "parameters": {"length_km": 2.0, "parameter_source": "CATALOG"},
+        },
     )
     assert wynik.get("error") is None, wynik.get("error")
     set_enm("case-g08", EnergyNetworkModel.model_validate(wynik["snapshot"]))

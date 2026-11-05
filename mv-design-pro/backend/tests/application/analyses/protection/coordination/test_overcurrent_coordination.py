@@ -132,7 +132,10 @@ def test_pary_z_topologii_szereg_trzech_urzadzen_daje_pary_bezposrednie() -> Non
         "C": frozenset({"4"}),
     }
     pary, odmowy = pary_z_topologii(strefy)
-    assert [(p.nadrzedne_ref, p.podrzedne_ref) for p in pary] == [("A", "B"), ("B", "C")]
+    assert [(p.nadrzedne_ref, p.podrzedne_ref) for p in pary] == [
+        ("A", "B"),
+        ("B", "C"),
+    ]
     assert odmowy == ()
 
 
@@ -169,7 +172,11 @@ def test_pary_jawne_sprawdzane_tym_samym_predykatem(wskazanie: tuple[str, str], 
 
 
 def test_pary_jawne_zgodne_z_topologia_rowne_parom_z_topologii() -> None:
-    strefy = {"A": frozenset({"1", "2", "3"}), "B": frozenset({"2", "3"}), "C": frozenset({"3"})}
+    strefy = {
+        "A": frozenset({"1", "2", "3"}),
+        "B": frozenset({"2", "3"}),
+        "C": frozenset({"3"}),
+    }
     z_topologii, _ = pary_z_topologii(strefy)
     jawne, odmowy = pary_jawne([("A", "B"), ("B", "C")], strefy)
     assert odmowy == ()
@@ -183,7 +190,8 @@ def test_pary_jawne_zgodne_z_topologia_rowne_parom_z_topologii() -> None:
 
 class _Ocena:
     """Pola ``OcenaPunktu`` czytane przez porównanie pary — także rekord oceny punktu
-    (``ocena.dowod.status_danych``), z którego zdanie bierze dane przyjęte prądu punktu."""
+    (``ocena.dowod.status_danych``), z którego zdanie bierze dane przyjęte prądu punktu.
+    """
 
     def __init__(self, t: float | None, prad: float, *, robocza: bool = False) -> None:
         self.t_zadzialania_s = t
@@ -219,7 +227,8 @@ def test_porownanie_punktu_iloczyn_cech(
     zadeklarowana, sieć nN na wartości roboczej tolerancji}: rekord niesie FAKT (stan pary)
     i liczby, bez werdyktu (P-06) — także odstęp mniejszy od wymaganego albo ujemny nie jest
     nazwany „nieskoordynowane", tylko pokazany liczbą obok wymaganej. Punkt liczony z
-    wartością roboczą (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — zdanie nazywa daną przyjętą."""
+    wartością roboczą (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — zdanie nazywa daną przyjętą.
+    """
     para = ParaSelektywnosci(nadrzedne_ref="nad", podrzedne_ref="pod")
     wynik = _porownanie(
         para,
@@ -353,7 +362,10 @@ def test_pary_wskazane_sprzeczne_nie_daja_sprawdzenia(biegi: dict[str, str]) -> 
 
 
 def test_krzywe_tcc_z_jednej_sciezki_czasu(biegi: dict[str, str]) -> None:
-    from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
+    from application.analyses.protection.ocena_nadpradowa import (
+        czas_urzadzenia,
+        rozwiaz_nastawy,
+    )
 
     wynik = _koordynuj(biegi)
     model = get_enm(KLUCZ)
@@ -392,9 +404,13 @@ def test_determinizm(biegi: dict[str, str]) -> None:
 def test_slad_white_box_po_polsku(biegi: dict[str, str]) -> None:
     kroki = _koordynuj(biegi)["trace_steps"]
     rodzaje = {k["step"] for k in kroki}
-    assert {"urzadzenia_z_modelu", "czulosc", "przeciazalnosc", "selektywnosc", "krzywe_tcc"} <= (
-        rodzaje
-    )
+    assert {
+        "urzadzenia_z_modelu",
+        "czulosc",
+        "przeciazalnosc",
+        "selektywnosc",
+        "krzywe_tcc",
+    } <= (rodzaje)
     assert all(k["description_pl"] for k in kroki)
 
 
@@ -427,7 +443,10 @@ def test_zmiana_sieci_po_biegu_odmowa(biegi: dict[str, str]) -> None:
     wynik = execute_domain_operation(
         dane,
         "update_element_parameters",
-        {"element_ref": kabel, "parameters": {"length_km": 3.0, "parameter_source": "CATALOG"}},
+        {
+            "element_ref": kabel,
+            "parameters": {"length_km": 3.0, "parameter_source": "CATALOG"},
+        },
     )
     assert wynik.get("error") is None
     set_enm(KLUCZ, EnergyNetworkModel.model_validate(wynik["snapshot"]))
@@ -471,7 +490,14 @@ def test_urzadzenie_z_odmowa_widoczne_jako_brak_oceny(biegi: dict[str, str]) -> 
         "update_protection_settings",
         {
             "protection_ref": q2,
-            "nastawy": {"51": {"prog": None, "jednostka_progu": None, "krzywa": None, "tms": None}},
+            "nastawy": {
+                "51": {
+                    "prog": None,
+                    "jednostka_progu": None,
+                    "krzywa": None,
+                    "tms": None,
+                }
+            },
         },
     )
     assert wynik.get("error") is None, wynik.get("error")
@@ -481,7 +507,7 @@ def test_urzadzenie_z_odmowa_widoczne_jako_brak_oceny(biegi: dict[str, str]) -> 
     assert czulosc[q2]["ratio"] is None
     assert czulosc[q2]["i_pickup_a"] is None
     # Streszczenie braków (jedno dla czasu wyłączenia i koordynacji) nazywa brak progu stopnia.
-    assert "I> (51) — brak progu rozruchowego" in czulosc[q2]["notes_pl"]
+    assert ": I> (51): próg rozruchowy" in czulosc[q2]["notes_pl"]
     assert koordynacja["selectivity_checks"] == []
     assert q2 in {o["urzadzenie_ref"] for o in koordynacja["odmowy_urzadzen"]}
     assert koordynacja["summary"]["sensitivity"]["bez_wartosci"] == 1 + len(_sterowniki_szablonu())
@@ -544,7 +570,12 @@ def test_bezpiecznik_bez_pasma_ma_pozycje_tcc_bez_punktow(biegi: dict[str, str])
         rodzaj_zwarcia_max="3F",
         rodzaj_zwarcia_min="3F",
         bezpieczniki=(
-            {"id": "F1", "name": "Bezpiecznik F1", "device_type": "FUSE", "nastawy": None},
+            {
+                "id": "F1",
+                "name": "Bezpiecznik F1",
+                "device_type": "FUSE",
+                "nastawy": None,
+            },
         ),
         config=CoordinationConfig(),
         project_id="p",
@@ -599,7 +630,12 @@ S = StanPary
         ([None], [(S.PODRZEDNE_NIE_ZADZIALA, None)], [None, None]),
         ([1.1, 0.7], [(S.ODSTEP, -0.1), (S.NADRZEDNE_NIE_POBUDZA, None)], [0.9, 5.0]),
     ],
-    ids=["bez_sprawdzen", "komplet_z_brakiem", "same_braki", "wartosci_ponizej_wymaganych"],
+    ids=[
+        "bez_sprawdzen",
+        "komplet_z_brakiem",
+        "same_braki",
+        "wartosci_ponizej_wymaganych",
+    ],
 )
 def test_podsumowanie_to_liczby_bez_werdyktu_ogolnego(
     czulosc: list[float | None],
@@ -646,7 +682,10 @@ def test_podsumowanie_to_liczby_bez_werdyktu_ogolnego(
         # Podrzędne nie zadziała (samo albo z nadrzędnym) — mniejszego odstępu nie ma.
         ([(S.ODSTEP, -0.3, "a"), (S.PODRZEDNE_NIE_ZADZIALA, None, "b")], "b"),
         ([(S.ODSTEP, 0.1, "a"), (S.ZADNE_NIE_ZADZIALA, None, "b")], "b"),
-        ([(S.NADRZEDNE_NIE_POBUDZA, None, "a"), (S.ZADNE_NIE_ZADZIALA, None, "b")], "b"),
+        (
+            [(S.NADRZEDNE_NIE_POBUDZA, None, "a"), (S.ZADNE_NIE_ZADZIALA, None, "b")],
+            "b",
+        ),
         # Ujemny odstęp jest mniejszy od każdego dodatniego.
         ([(S.ODSTEP, 0.25, "a"), (S.ODSTEP, -0.05, "b")], "b"),
         # Remis odstępu — kolejność deterministyczna po punkcie.

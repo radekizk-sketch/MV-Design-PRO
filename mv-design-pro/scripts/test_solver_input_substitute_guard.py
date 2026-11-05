@@ -2109,7 +2109,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `earthing_mode`, `i_p_a`,
     # `i_u_a`, `pack_input`, `r_u_ohm`, `readiness_issues`, `touch_voltage_*`, `z_e_ohm`).
     # PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4513." in wyjscie, wyjscie
+    # Poprawka karty EWALUATORY-ZIEMNOZWARCIOWE po ogledzinach zrzutow (2026-11-05): 4513 -> 4514
+    # — POMIAR `contract_fields()` na drzewie `7cde8b19e` (`git archive`: 4513) i na drzewie
+    # poprawki (4514); roznica zbiorow +1, -0: `nazwa_braku_pl` (`PozycjaGotowosci` — krotka
+    # nazwa brakujacej nastawy skladana przez `zdania_brakow`). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4514." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

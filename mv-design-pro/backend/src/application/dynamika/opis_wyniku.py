@@ -70,7 +70,11 @@ _KANALY: dict[str, tuple[str, str | None, str]] = {
     "q_do_pu": ("Moc bierna wpływająca do gałęzi zaciskiem", "do", "galaz"),
     "i_zwarcia_pu": ("Moduł prądu do ziemi w miejscu zwarcia", None, "miejsce_zwarcia"),
     "u_zwarcia_pu": ("Moduł napięcia w miejscu zwarcia", None, "miejsce_zwarcia"),
-    "i_zwarcia_kat_deg": ("Kąt fazora prądu w miejscu zwarcia", None, "miejsce_zwarcia"),
+    "i_zwarcia_kat_deg": (
+        "Kąt fazora prądu w miejscu zwarcia",
+        None,
+        "miejsce_zwarcia",
+    ),
     # Kanały odbiorów (karta modeli odbiorów): moc POBIERANA (konwencja poboru), tryb modelu
     # i — dla odbioru czułego częstotliwościowo — częstotliwość widziana i stan estymatora.
     "p_pobor_pu": ("Moc czynna pobierana przez odbiór", None, "odbior"),
@@ -81,7 +85,11 @@ _KANALY: dict[str, tuple[str, str | None, str]] = {
         "odbior",
     ),
     "f_odbioru_hz": ("Częstotliwość widziana przez odbiór", None, "odbior"),
-    "kat_pomiaru_rad": ("Kąt pomiaru częstotliwości odbioru (stan estymatora)", None, "odbior"),
+    "kat_pomiaru_rad": (
+        "Kąt pomiaru częstotliwości odbioru (stan estymatora)",
+        None,
+        "odbior",
+    ),
 }
 
 #: Zmienne stanu urządzeń (przestrzeń `urzadzenie`) — nazwa stanu rdzenia -> opis.
@@ -230,7 +238,11 @@ def _indeks_elementow(snapshot: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
             ref = element.get("ref_id")
             if not isinstance(ref, str) or ref in indeks:
                 continue
-            indeks[ref] = {"kolekcja": kolekcja, "rodzaj_pl": rodzaj_pl, "element": element}
+            indeks[ref] = {
+                "kolekcja": kolekcja,
+                "rodzaj_pl": rodzaj_pl,
+                "element": element,
+            }
     return indeks
 
 
@@ -273,7 +285,13 @@ def _zaciski(wpis: Mapping[str, Any]) -> tuple[str | None, str | None]:
 def _opis_elementu(indeks: Mapping[str, Mapping[str, Any]], ref: str) -> dict[str, Any]:
     wpis = indeks.get(ref)
     if wpis is None:
-        return {"ref_id": ref, "nazwa": None, "rodzaj_pl": None, "kolekcja": None, "typ": None}
+        return {
+            "ref_id": ref,
+            "nazwa": None,
+            "rodzaj_pl": None,
+            "kolekcja": None,
+            "typ": None,
+        }
     typ = wpis["element"].get("type")
     opis: dict[str, Any] = {
         "ref_id": ref,
@@ -286,8 +304,14 @@ def _opis_elementu(indeks: Mapping[str, Mapping[str, Any]], ref: str) -> dict[st
     }
     od, do = _zaciski(wpis)
     if od is not None or do is not None:
-        opis["zacisk_od"] = {"szyna_ref": od, "szyna_nazwa": _nazwa(indeks, str(od or ""))}
-        opis["zacisk_do"] = {"szyna_ref": do, "szyna_nazwa": _nazwa(indeks, str(do or ""))}
+        opis["zacisk_od"] = {
+            "szyna_ref": od,
+            "szyna_nazwa": _nazwa(indeks, str(od or "")),
+        }
+        opis["zacisk_do"] = {
+            "szyna_ref": do,
+            "szyna_nazwa": _nazwa(indeks, str(do or "")),
+        }
     return opis
 
 
@@ -385,7 +409,10 @@ def _opis_przekroczenia(
 
 
 def opis_wyniku_dynamiki(
-    ladunek: Mapping[str, Any], snapshot: Mapping[str, Any], *, baza_mocy_mva: float | None
+    ladunek: Mapping[str, Any],
+    snapshot: Mapping[str, Any],
+    *,
+    baza_mocy_mva: float | None,
 ) -> dict[str, Any]:
     """Opis kanałów, metryk i elementów wyniku — z migawki BIEGU (reguły w docstringu modułu).
 
@@ -566,6 +593,7 @@ def oceny_biegu_dynamiki(
                 ),
                 powod_stosowalnosci_pl="bieg zawiera moduły wytwórcze i zdarzenie zakłóceniowe",
                 czego_brakuje=BRAKI_OCENY_FRT,
+                przyczyna="BRAK_METODY",
                 **wspolne,
             )
         ),
@@ -581,6 +609,7 @@ def oceny_biegu_dynamiki(
                 ),
                 powod_stosowalnosci_pl="bieg zawiera zdarzenie zakłóceniowe w sieci",
                 czego_brakuje=BRAKI_OCENY_STABILNOSCI,
+                przyczyna="BRAK_METODY",
                 **wspolne,
             )
         ),

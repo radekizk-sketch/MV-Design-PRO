@@ -345,7 +345,9 @@ _KROKI_REGULY_K: tuple[tuple[KrokRegulyK, Callable[[_WejscieK], _WynikKroku]], .
 )
 
 
-def _rozstrzygnij_kryterium(w: _WejscieK) -> tuple[StatusWerdyktu, KrokRegulyK, tuple[str, ...]]:
+def _rozstrzygnij_kryterium(
+    w: _WejscieK,
+) -> tuple[StatusWerdyktu, KrokRegulyK, tuple[str, ...]]:
     status: StatusWerdyktu | None = None
     krok: KrokRegulyK | None = None
     braki: list[str] = []
@@ -861,12 +863,15 @@ def ocen_kryterium(
     slad: Sequence[OdnosnikSladu],
     tolerancja: Wielkosc | None = None,
     braki_dodatkowe: Sequence[str] = (),
+    akcja_naprawcza_pl: str | None = None,
 ) -> OcenaKryterium:
     """Zbuduj rekord K: margines, status, kompletność, etykieta i wyjaśnienie z reguły.
 
     ``tolerancja`` — tolerancja kryterium z profilu (skala marginesu względnego ``TOLERANCJA``).
     ``braki_dodatkowe`` — konkretne braki znane producentowi oceny (np. brak biegu dynamiki dla
     danego typu modułu); trafiają do ``czego_brakuje`` po brakach nazwanych przez regułę.
+    ``akcja_naprawcza_pl`` — akcja braku wyniku właściwa dla kryterium (zdanie kroku ``WYNIK``);
+    ``None`` — akcja ogólna. Nie zmienia statusu ani braków reguły.
     """
     pochodne = wyprowadz_pola_kryterium(
         kryterium=kryterium,
@@ -910,6 +915,7 @@ def ocen_kryterium(
             czego_brakuje=czego_brakuje,
             zastrzezenia=pochodne.zastrzezenia,
             braki_dodatkowe=tuple(braki_dodatkowe),
+            akcja_naprawcza_pl=akcja_naprawcza_pl,
         ),
         dowod=dowod,
         zakres_waznosci=zakres_waznosci,

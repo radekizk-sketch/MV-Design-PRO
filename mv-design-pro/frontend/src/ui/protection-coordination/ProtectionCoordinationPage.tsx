@@ -190,7 +190,7 @@ function PanelUrzadzen({ result }: { result: CoordinationResult }) {
             {result.odmowy_urzadzen.map((o) => (
               <li key={o.urzadzenie_ref}>
                 <span className="font-medium">{o.nazwa_pl}:</span>{' '}
-                {o.braki.map((b) => `${b.komunikat_pl} ${b.akcja_naprawcza_pl}`).join(' ')}
+                {o.braki_pl.join(' ')}
               </li>
             ))}
           </ul>

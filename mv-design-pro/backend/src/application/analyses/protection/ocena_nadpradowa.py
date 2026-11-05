@@ -258,12 +258,18 @@ ZDOLNOSC_OCENY = "zabezpieczenia.ocena_nadpradowa"
 
 @dataclass(frozen=True)
 class PozycjaGotowosci:
-    """Nazwany brak wstrzymujący ocenę urządzenia — kod, zdanie i akcja naprawcza."""
+    """Nazwany brak wstrzymujący ocenę urządzenia — kod, zdanie i akcja naprawcza.
+
+    ``nazwa_braku_pl`` — krótka nazwa brakującej NASTAWY funkcji (np. „próg rozruchowy 3I₀”);
+    braki z nią składa ``zdania_brakow`` w jedno zdanie na funkcję (podmiot raz, lista nazw,
+    jedno wezwanie). ``None`` — brak innego rodzaju (przekładnik, macierz wyzwoleń, strefa),
+    opisany własnym zdaniem ``komunikat_pl`` z akcją."""
 
     kod: str
     komunikat_pl: str
     akcja_naprawcza_pl: str
     funkcja: str | None = None
+    nazwa_braku_pl: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -271,45 +277,74 @@ class PozycjaGotowosci:
             "komunikat_pl": self.komunikat_pl,
             "akcja_naprawcza_pl": self.akcja_naprawcza_pl,
             "funkcja": self.funkcja,
+            "nazwa_braku_pl": self.nazwa_braku_pl,
         }
 
 
-#: Krótka nazwa braku kompletności nastawy stopnia — do streszczenia braków sterownika.
-_BRAK_STOPNIA_KROTKO_PL: dict[str, str] = {
-    KOD_BRAK_PROGU: "progu rozruchowego",
-    KOD_JEDNOSTKA_PROGU_NIEUSTALONA: "jednostki progu",
-    KOD_BRAK_CHARAKTERYSTYKI: "charakterystyki czasowej",
-    KOD_BRAK_ZWLOKI: "zwłoki",
-    KOD_BRAK_MNOZNIKA: "mnożnika czasowego",
+#: Nazwa brakującej nastawy stopnia nadprądowego (``PozycjaGotowosci.nazwa_braku_pl``).
+NAZWA_BRAKU_STOPNIA_PL: dict[str, str] = {
+    KOD_BRAK_PROGU: "próg rozruchowy",
+    KOD_JEDNOSTKA_PROGU_NIEUSTALONA: "strona przekładnika progu (wtórna albo pierwotna)",
+    KOD_BRAK_CHARAKTERYSTYKI: "charakterystyka czasowa",
+    KOD_BRAK_ZWLOKI: "zwłoka charakterystyki niezależnej",
+    KOD_BRAK_MNOZNIKA: "mnożnik czasowy charakterystyki zależnej",
 }
+
+#: Jedno wezwanie zdania braków nastaw (karta pola niesie nastawy wszystkich funkcji).
+WEZWANIE_UZUPELNIENIA_NASTAW_PL = "uzupełnij w karcie pola"
+
+
+def zdania_brakow(
+    braki: Sequence[PozycjaGotowosci],
+    *,
+    podmiot_pl: str | None = None,
+    z_funkcja: bool = True,
+) -> tuple[str, ...]:
+    """Braki oceny jako zdania dla projektanta — JEDNA funkcja składająca dla każdej ścieżki
+    (rekord werdyktu ``czego_brakuje``, ekran wyników, karta nastaw, raport PDF/DOCX, czas
+    wyłączenia pola i gałęzi, koordynacja), funkcji nadprądowych (50/51) i ziemnozwarciowych.
+
+    Braki NASTAW (``nazwa_braku_pl``) składają się w jedno zdanie: podmiot raz, nazwy brakujących
+    nastaw jako lista (per funkcja), jedno wezwanie — „Brakuje nastaw: próg rozruchowy 3I₀,
+    charakterystyka czasowa — uzupełnij w karcie pola.” Dawniej każdy brak powtarzał pełny
+    podmiot („Funkcja … zabezpieczenia …: brak X. Uzupełnij nastawy funkcji … zabezpieczenia …
+    w karcie pola.”), więc funkcja 67N bez nastaw dawała kilkanaście linii. Pozostałe braki
+    (przekładnik, macierz wyzwoleń, strefa) zostają własnym zdaniem z akcją, w kolejności
+    rozstrzygnięcia; zdanie nastaw stoi w miejscu pierwszego braku nastawy.
+
+    ``podmiot_pl`` — nazwa zabezpieczenia, gdy kontekst jej nie podaje (czas wyłączenia,
+    koordynacja); ``z_funkcja`` — ``False``, gdy kontekst już nazywa funkcję (wiersz oceny jednej
+    funkcji), wtedy lista nazw idzie bez etykiety funkcji, o ile braki dotyczą jednej funkcji.
+    Żaden brak nie ginie: pełne zdanie każdego zostaje w ``braki`` (szczegóły na żądanie).
+    """
+    nastawy: dict[str | None, list[str]] = {}
+    czesci: list[str | None] = []
+    for brak in braki:
+        if brak.nazwa_braku_pl is None:
+            czesci.append(f"{brak.komunikat_pl} {brak.akcja_naprawcza_pl}")
+            continue
+        if not nastawy:
+            czesci.append(None)  # miejsce zdania o nastawach — pierwszy brak nastawy
+        nastawy.setdefault(brak.funkcja, []).append(brak.nazwa_braku_pl)
+    if nastawy:
+        if not z_funkcja and len(nastawy) == 1:
+            lista = ", ".join(dict.fromkeys(next(iter(nastawy.values()))))
+        else:
+            lista = "; ".join(
+                (f"{etykieta_funkcji_eaz(funkcja)}: " if funkcja is not None else "")
+                + ", ".join(dict.fromkeys(nazwy))
+                for funkcja, nazwy in nastawy.items()
+            )
+        podmiot = f" zabezpieczenia {podmiot_pl}" if podmiot_pl else ""
+        zdanie_nastaw = f"Brakuje nastaw{podmiot}: {lista} — {WEZWANIE_UZUPELNIENIA_NASTAW_PL}."
+    return tuple(dict.fromkeys(zdanie_nastaw if c is None else c for c in czesci))
 
 
 def streszczenie_brakow_nastaw(nazwa_pl: str, braki: Sequence[PozycjaGotowosci]) -> str:
-    """Braki nastaw sterownika jednym akapitem — JEDNO streszczenie dla czasu wyłączenia pola
-    (``czas_wylaczenia_pola``), czasu wyłączenia gałęzi (``czas_wylaczenia_galezi``)
-    i koordynacji (``coordination.analyzer``).
-
-    Braki kompletności stopni (próg, jednostka, charakterystyka, zwłoka, mnożnik) grupuje per
-    funkcja — nazwa sterownika pada raz, nie przy każdym braku; pozostałe braki (przekładnik,
-    zakresy katalogu, macierz wyzwoleń) zostają własnym zdaniem, w kolejności rozstrzygnięcia.
-    Żaden brak nie ginie: każdy z pełnym zdaniem i akcją naprawczą zostaje w ``braki``
-    (szczegóły na żądanie)."""
-    stopnie: dict[str, list[str]] = {}
-    czesci: list[str | None] = []
-    for brak in braki:
-        krotko = _BRAK_STOPNIA_KROTKO_PL.get(brak.kod)
-        if krotko is None or brak.funkcja is None:
-            czesci.append(brak.komunikat_pl)
-            continue
-        if not stopnie:
-            czesci.append(None)  # miejsce zdania o stopniach — pierwszy brak stopnia
-        stopnie.setdefault(brak.funkcja, []).append(krotko)
-    opis_stopni = "; ".join(
-        f"{etykieta_funkcji_eaz(funkcja)} — brak {', '.join(dict.fromkeys(krotkie))}"
-        for funkcja, krotkie in stopnie.items()
-    )
-    zdanie_stopni = f"Nastawy zabezpieczenia {nazwa_pl} są niekompletne: {opis_stopni}."
-    return " ".join(zdanie_stopni if c is None else c for c in czesci)
+    """Braki nastaw sterownika jednym akapitem (czas wyłączenia pola i gałęzi, koordynacja) —
+    zdania ``zdania_brakow`` z podmiotem: nazwa sterownika pada raz, nie przy każdym braku.
+    """
+    return " ".join(zdania_brakow(braki, podmiot_pl=nazwa_pl))
 
 
 @dataclass(frozen=True)
@@ -392,6 +427,7 @@ class NastawyUrzadzenia:
             ),
             "stopnie": [s.to_dict() for s in self.stopnie],
             "braki": [b.to_dict() for b in self.braki],
+            "braki_pl": list(zdania_brakow(self.braki)),
             "funkcje_nieoceniane": list(self.funkcje_nieoceniane),
             "gotowe": self.gotowe,
         }
@@ -481,6 +517,7 @@ class OdmowaUrzadzenia:
             "nazwa_pl": self.nazwa_pl,
             "breaker_ref": self.breaker_ref,
             "braki": [b.to_dict() for b in self.braki],
+            "braki_pl": list(zdania_brakow(self.braki)),
             "kandydaci_naprawy": list(self.kandydaci_naprawy),
             "ocena": self.ocena.model_dump(mode="json"),
         }
@@ -638,7 +675,8 @@ class CharakterystykiSterownika:
     ``zrodlo`` — ``PROJEKTANT`` (profil wskazany w sterowniku, ``charakterystyki_ref``),
     ``WYROB`` (profil związany z pozycją katalogu wyrobu, ``analytical_library_ref``) albo
     ``WARTOSC_ROBOCZA`` (profil roboczy rejestru wartości roboczych — wyrób nie podał zakresów,
-    zasada nr 4); ``dana_przyjeta`` — wpis danych przyjętych werdyktu dla profilu roboczego."""
+    zasada nr 4); ``dana_przyjeta`` — wpis danych przyjętych werdyktu dla profilu roboczego.
+    """
 
     zdolnosc: DeviceCapability
     zrodlo: str
@@ -649,8 +687,8 @@ class CharakterystykiSterownika:
             "profil": self.zdolnosc.device_id,
             "model": self.zdolnosc.model,
             "zrodlo": self.zrodlo,
-            "jakosc": self.dana_przyjeta.jakosc if self.dana_przyjeta is not None else None,
-            "powod_pl": self.dana_przyjeta.powod_pl if self.dana_przyjeta is not None else None,
+            "jakosc": (self.dana_przyjeta.jakosc if self.dana_przyjeta is not None else None),
+            "powod_pl": (self.dana_przyjeta.powod_pl if self.dana_przyjeta is not None else None),
         }
 
 
@@ -683,7 +721,10 @@ def charakterystyki_sterownika(
                     ),
                 )
             ]
-        return CharakterystykiSterownika(wskazany, ZRODLO_CHARAKTERYSTYK_PROJEKTANT, None), []
+        return (
+            CharakterystykiSterownika(wskazany, ZRODLO_CHARAKTERYSTYK_PROJEKTANT, None),
+            [],
+        )
     # JEDEN RESOLVER katalogu (`enm.katalog_projektu`): katalog statyczny + pozycje projektu
     # niesione przez model — ten sam, którym operacje zapisu sprawdzają `catalog_ref`.
     typ = (
@@ -693,7 +734,10 @@ def charakterystyki_sterownika(
     )
     z_wyrobu = profil_charakterystyk(typ.analytical_library_ref if typ is not None else None)
     if z_wyrobu is not None:
-        return CharakterystykiSterownika(z_wyrobu, ZRODLO_CHARAKTERYSTYK_WYROB, None), []
+        return (
+            CharakterystykiSterownika(z_wyrobu, ZRODLO_CHARAKTERYSTYK_WYROB, None),
+            [],
+        )
     if not assignment.catalog_ref:
         powod = "sterownik nie wskazuje wyrobu z katalogu urządzeń"
     elif typ is None or not typ.analytical_library_ref:
@@ -771,6 +815,7 @@ def _rozwiaz_stopien(
                 komunikat_pl=komunikat,
                 akcja_naprawcza_pl=akcja,
                 funkcja=funkcja,
+                nazwa_braku_pl=NAZWA_BRAKU_STOPNIA_PL.get(kod),
             )
         )
 
@@ -1062,7 +1107,7 @@ def _wejscie_nasycenia(enm: EnergyNetworkModel, ct: PrzekladnikPradowy) -> CtBur
         sn_va=ct.burden_va,
         alf=alf_z_klasy(ct.accuracy_class),
         dlugosc_przewodu_m=obwod.dlugosc_przewodu_m if obwod is not None else None,
-        przekroj_przewodu_mm2=obwod.przekroj_przewodu_mm2 if obwod is not None else None,
+        przekroj_przewodu_mm2=(obwod.przekroj_przewodu_mm2 if obwod is not None else None),
         obciazenia_aparatow=(
             tuple(CtDeviceBurden(nazwa=a.nazwa, moc_va=a.moc_va) for a in obwod.obciazenia_aparatow)
             if obwod is not None
@@ -1106,6 +1151,7 @@ def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGoto
                 ),
                 akcja_naprawcza_pl=akcja,
                 funkcja=nastawa.funkcja,
+                nazwa_braku_pl=NAZWA_BRAKU_STOPNIA_PL[KOD_BRAK_PROGU],
             )
         )
     if nastawa.jednostka_progu is None:
@@ -1118,6 +1164,7 @@ def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGoto
                 ),
                 akcja_naprawcza_pl=akcja,
                 funkcja=nastawa.funkcja,
+                nazwa_braku_pl=NAZWA_BRAKU_STOPNIA_PL[KOD_JEDNOSTKA_PROGU_NIEUSTALONA],
             )
         )
     if nastawa.krzywa is None:
@@ -1129,6 +1176,7 @@ def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGoto
                 ),
                 akcja_naprawcza_pl=akcja,
                 funkcja=nastawa.funkcja,
+                nazwa_braku_pl=NAZWA_BRAKU_STOPNIA_PL[KOD_BRAK_CHARAKTERYSTYKI],
             )
         )
     return wynik
@@ -1785,7 +1833,9 @@ def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> Pod
     )
 
 
-def _dane_przyjete_charakterystyk(nastawy: NastawyUrzadzenia) -> tuple[DanaPrzyjeta, ...]:
+def _dane_przyjete_charakterystyk(
+    nastawy: NastawyUrzadzenia,
+) -> tuple[DanaPrzyjeta, ...]:
     """Profil roboczy charakterystyk (zasada nr 4) — zakresy nastaw i krzywa stopnia stoją na
     założeniu, więc każdy rekord oceny sterownika niesie je w danych przyjętych."""
     charakterystyki = nastawy.charakterystyki
@@ -1943,7 +1993,11 @@ def odmowa_rekord(
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
             dokument=f"Nastawy zabezpieczenia {nazwa_pl} zapisane w modelu sieci projektu",
-            status="NIEUSTALONE",
+            # Podstawą kryterium są nastawy z modelu (wskazane); ich brak jest brakiem DANYCH
+            # (krok WYNIK), nie brakiem dokumentu źródłowego podstawy.
+            wydanie="model sieci biegu oceny (odcisk migawki w kopercie biegu)",
+            jednostka_redakcyjna="nastawy funkcji sterownika (karta pola)",
+            status="WSKAZANE",
             uwagi_pl="nastawy albo dane toru pomiarowego niekompletne — patrz braki",
         ),
         powod_stosowalnosci_pl="zabezpieczenie nadprądowe czynne w modelu",
@@ -1955,7 +2009,8 @@ def odmowa_rekord(
             opis_pl="Ocena nadprądowa urządzenia — wstrzymana do uzupełnienia danych",
         ),
         powod_braku_niepewnosci_pl="ocena się nie odbyła — niepewność nie dotyczy",
-        czego_brakuje=tuple(f"{b.komunikat_pl} {b.akcja_naprawcza_pl}" for b in braki),
+        czego_brakuje=zdania_brakow(braki),
+        przyczyna="BRAK_DANYCH",
     )
 
 
@@ -2004,7 +2059,7 @@ def _opis_nasycenia(wynik: CtBurdenResult, *, alf_wymagany: float, i1n_a: float)
 def _dane_jadra_pl(wejscie: CtBurdenInput, wynik: CtBurdenResult) -> str:
     """Z czego jądro policzyło ALF_eff — zdanie, które mówi, DLACZEGO rdzeń się nasyca."""
     czesci = [
-        f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany",
+        (f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany"),
         f"S_n {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
         (
             f"obciążenie obwodu wtórnego S_2obl {_liczba(wynik.moc_obliczeniowa_va)} VA"
@@ -2072,7 +2127,7 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
             nasycenie=nasycenie,
         )
     braki = [
-        opis["canonical_message_pl"] if (opis := opis_kanoniczny(kod)) is not None else kod
+        (opis["canonical_message_pl"] if (opis := opis_kanoniczny(kod)) is not None else kod)
         for kod in wynik.readiness_codes
         if kod != READINESS_CT_WINDING_RESISTANCE_MISSING
     ]

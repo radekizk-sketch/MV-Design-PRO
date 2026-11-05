@@ -3,10 +3,14 @@ OCHRONA-JEDNO-ZRODLO).
 
 Nazwy pól są jednoznaczne tylko w obrębie stacji, więc domyślna nazwa sterownika pola
 („Sterownik pola Pole liniowe wejściowe 1") powtarzała się w raporcie koordynacji sieci złotej
-dla obu stacji. ``nazwa_sterownika`` dokłada nazwę stacji z modelu w chwili odczytu.
+dla obu stacji. ``nazwa_sterownika`` dokłada nazwę stacji z modelu w chwili odczytu
+i nie powtarza rodzaju zawartego w nazwie pola (poprawka z oględzin karty
+EWALUATORY-ZIEMNOZWARCIOWE: „Sterownik pola Pole liniowe GPZ 1.2” → „Sterownik · Pole liniowe
+GPZ 1.2”).
 
 Iloczyn cech: sterownik {pola stacji, pola bez stacji w modelu, wyłącznika liniowego bez pola}
-× nazwa {domyślna, już z nazwą stacji, pusta}. Sieć złota G08: wszystkie sterowniki mają różne
+× nazwa {domyślna z nazwą pola zaczynającą się rodzajem, domyślna z nazwą pola bez rodzaju,
+już z nazwą stacji, nadana przez projektanta ze słowem „pole” nie na granicy, pusta}. Sieć złota G08: wszystkie sterowniki mają różne
 nazwy w ocenie (``rozwiaz_nastawy``).
 """
 
@@ -37,11 +41,29 @@ def _model(stacja: bool) -> dict[str, Any]:
             True,
             "pole-1",
             "Sterownik pola Pole liniowe 1",
-            "Sterownik pola Pole liniowe 1 — Stacja Lipowa",
+            "Sterownik · Pole liniowe 1 — Stacja Lipowa",
         ),
-        (True, "pole-1", "Sterownik Stacja Lipowa / pole 1", "Sterownik Stacja Lipowa / pole 1"),
+        (True, "pole-1", "Sterownik pola Q3", "Sterownik pola Q3 — Stacja Lipowa"),
+        (
+            True,
+            "pole-1",
+            "Sterownik pola Polesie 2",
+            "Sterownik pola Polesie 2 — Stacja Lipowa",
+        ),
+        (False, "pole-1", "Sterownik pola pole OZE", "Sterownik · pole OZE"),
+        (
+            True,
+            "pole-1",
+            "Sterownik Stacja Lipowa / pole 1",
+            "Sterownik Stacja Lipowa / pole 1",
+        ),
         (True, "pole-1", "", "Zabezpieczenie bez nazwy — Stacja Lipowa"),
-        (False, "pole-1", "Sterownik pola Pole liniowe 1", "Sterownik pola Pole liniowe 1"),
+        (
+            False,
+            "pole-1",
+            "Sterownik pola Pole liniowe 1",
+            "Sterownik · Pole liniowe 1",
+        ),
         (True, None, "Zabezpieczenie odejścia S01", "Zabezpieczenie odejścia S01"),
     ],
 )

@@ -20,7 +20,13 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs  # noqa: E402
+from enm.canonical_analysis import (
+    create_run,
+    execute_run,
+    reset_canonical_runs,
+)
+
+# noqa: E402
 from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
 from enm.models import EnergyNetworkModel  # noqa: E402
@@ -73,7 +79,11 @@ def _uruchom(app_client: Any, projekt: str, cialo: dict[str, Any]) -> Any:
 
 
 def _zadanie(biegi: dict[str, str]) -> dict[str, Any]:
-    return {"sc_run_id": biegi["max"], "sc_run_id_min": biegi["min"], "pf_run_id": biegi["pf"]}
+    return {
+        "sc_run_id": biegi["max"],
+        "sc_run_id_min": biegi["min"],
+        "pf_run_id": biegi["pf"],
+    }
 
 
 def test_koordynacja_urzadzen_modelu_przez_api(scena: tuple[Any, str, dict[str, str]]) -> None:
@@ -109,7 +119,8 @@ def test_koordynacja_urzadzen_modelu_przez_api(scena: tuple[Any, str, dict[str, 
         assert kontrola["ratio"] is None
         nazwa = next(d["name"] for d in bez_nastaw if d["id"] == kontrola["device_id"])
         assert kontrola["notes_pl"].count(nazwa) <= 3, kontrola["notes_pl"]
-        assert "są niekompletne: I> (51) — brak progu rozruchowego" in (kontrola["notes_pl"])
+        assert ": I> (51): próg rozruchowy" in kontrola["notes_pl"]
+        assert kontrola["notes_pl"].count("Brakuje nastaw zabezpieczenia") == 1
     assert len(wynik["pary"]) == 1
     assert len(wynik["tcc_curves"]) == 2 and all(k["points"] for k in wynik["tcc_curves"])
     assert wynik["fault_markers"]
@@ -166,7 +177,11 @@ def test_scenariusze_zamienione_odmowa(scena: tuple[Any, str, dict[str, str]]) -
     odpowiedz = _uruchom(
         klient,
         projekt,
-        {"sc_run_id": biegi["min"], "sc_run_id_min": biegi["max"], "pf_run_id": biegi["pf"]},
+        {
+            "sc_run_id": biegi["min"],
+            "sc_run_id_min": biegi["max"],
+            "pf_run_id": biegi["pf"],
+        },
     )
     assert odpowiedz.status_code == 422
     assert odpowiedz.json()["detail"]["powod"] == "SCENARIUSZ_BIEGU_NIEZGODNY"
@@ -180,7 +195,10 @@ def test_siec_zmieniona_od_biegu_odmowa(scena: tuple[Any, str, dict[str, str]]) 
     wynik = execute_domain_operation(
         dane,
         "update_element_parameters",
-        {"element_ref": kabel, "parameters": {"length_km": 4.0, "parameter_source": "CATALOG"}},
+        {
+            "element_ref": kabel,
+            "parameters": {"length_km": 4.0, "parameter_source": "CATALOG"},
+        },
     )
     assert wynik.get("error") is None
     set_enm(klucz, EnergyNetworkModel.model_validate(wynik["snapshot"]))
@@ -228,7 +246,10 @@ def test_nieznany_run_id_404(app_client: Any, sufiks: str) -> None:
     ("sufiks", "typ"),
     [
         ("pdf", "application/pdf"),
-        ("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        (
+            "docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
     ],
 )
 def test_eksport_deterministyczny(

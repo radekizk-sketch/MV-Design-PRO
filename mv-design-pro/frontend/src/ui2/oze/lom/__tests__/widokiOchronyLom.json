@@ -15,7 +15,7 @@
         "ocena": {
           "dowod": {
             "domena_pl": null,
-            "metoda": "BRAK_METODY",
+            "metoda": "DEKLARACJA",
             "odniesienie": null,
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
@@ -56,7 +56,6 @@
             "wydanie": null
           },
           "powody_niepelnosci": [
-            "Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
             "Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "przedmiot": {
@@ -77,19 +76,17 @@
           },
           "wyjasnienie": {
             "czego_brakuje": [
-              "Metoda dowodu właściwa dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-              "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
               "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło).",
               "Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu.",
               "Nastawy funkcji LoM porównane z oknami normatywnymi.",
-              "Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych.",
-              "Przypisanie polu zabezpieczenia z funkcjami LoM i ich nastawami (albo deklaracja funkcji w kodach zabezpieczeń pola) i ponowna ocena."
+              "Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych."
             ],
-            "przyczyna_pl": "brak metody dowodu, która wykazuje konfiguracji zadeklarowanej",
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych)",
             "zastrzezenia": [
               "Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło)."
             ],
-            "zdanie_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — ocena niewykonana: brak metody dowodu, która wykazuje konfiguracji zadeklarowanej; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora."
+            "zdanie_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych). Akcja naprawcza: przypisz polu zabezpieczenie z funkcjami LoM i ich nastawami (albo zadeklaruj funkcje w kodach zabezpieczeń pola) i ponów ocenę."
           },
           "wynik": null,
           "zakres_waznosci": {
@@ -791,7 +788,7 @@
           {
             "dowod": {
               "domena_pl": null,
-              "metoda": "BRAK_METODY",
+              "metoda": "DEKLARACJA",
               "odniesienie": null,
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
@@ -832,7 +829,6 @@
               "wydanie": null
             },
             "powody_niepelnosci": [
-              "Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
               "Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
             ],
             "przedmiot": {
@@ -853,19 +849,17 @@
             },
             "wyjasnienie": {
               "czego_brakuje": [
-                "Metoda dowodu właściwa dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-                "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło).",
                 "Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu.",
                 "Nastawy funkcji LoM porównane z oknami normatywnymi.",
-                "Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych.",
-                "Przypisanie polu zabezpieczenia z funkcjami LoM i ich nastawami (albo deklaracja funkcji w kodach zabezpieczeń pola) i ponowna ocena."
+                "Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych."
               ],
-              "przyczyna_pl": "brak metody dowodu, która wykazuje konfiguracji zadeklarowanej",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych)",
               "zastrzezenia": [
                 "Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło)."
               ],
-              "zdanie_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — ocena niewykonana: brak metody dowodu, która wykazuje konfiguracji zadeklarowanej; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora."
+              "zdanie_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych). Akcja naprawcza: przypisz polu zabezpieczenie z funkcjami LoM i ich nastawami (albo zadeklaruj funkcje w kodach zabezpieczeń pola) i ponów ocenę."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -1130,7 +1124,6 @@
         "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
           "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole FW C): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
@@ -1162,32 +1155,29 @@
         },
         "wyjasnienie": {
           "czego_brakuje": [
-            "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Metoda dowodu właściwa dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-            "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+            "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
             "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło).",
             "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu.",
             "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Nastawy funkcji LoM porównane z oknami normatywnymi.",
             "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych.",
-            "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Przypisanie polu zabezpieczenia z funkcjami LoM i ich nastawami (albo deklaracja funkcji w kodach zabezpieczeń pola) i ponowna ocena.",
             "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole FW C): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola.",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
             "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X): Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole FW C): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — brak metody dowodu, która wykazuje konfiguracji zadeklarowanej; Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
+          "przyczyna_pl": "Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
           "zastrzezenia": [
             "Podstawa „Okna normatywne funkcji LoM (NC RfG, PTPiREE)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (źródła okien cytowane przy porównaniach nastaw — pole bez sprawdzeń nie ma porównania, do którego źródło by się odnosiło).",
             "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — brak metody dowodu, która wykazuje konfiguracji zadeklarowanej; Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)."
+          "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Ochrona od pracy wyspowej pola: obecność funkcji LoM, nastawy w oknach normatywnych i koordynacja z SPZ (Pole OZE X) — brak wyznaczonej wielkości ocenianej (Sprawdzenie obecności funkcji ochrony od pracy wyspowej (81R, 78, 81U, 81O) w polu; Nastawy funkcji LoM porównane z oknami normatywnymi; Czas zadziałania LoM porównany z przerwą SPZ jednostek nadrzędnych); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)."
         },
         "wymaganie_id": "lom.siec",
         "zakres_waznosci": {
@@ -3645,7 +3635,7 @@
           {
             "dowod": {
               "domena_pl": null,
-              "metoda": "BRAK_METODY",
+              "metoda": "DEKLARACJA",
               "odniesienie": null,
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
@@ -3686,7 +3676,6 @@
               "wydanie": null
             },
             "powody_niepelnosci": [
-              "Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
             ],
             "przedmiot": {
@@ -3707,17 +3696,16 @@
             },
             "wyjasnienie": {
               "czego_brakuje": [
-                "Metoda dowodu właściwa dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-                "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać."
               ],
-              "przyczyna_pl": "brak metody dowodu, która wykazuje konfiguracji zadeklarowanej",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać)",
               "zastrzezenia": [
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — ocena niewykonana: brak metody dowodu, która wykazuje konfiguracji zadeklarowanej; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora."
+              "zdanie_pl": "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać). Akcja naprawcza: przyłącz moduł przez pole przyłączeniowe z przypisaniem zabezpieczeń i ponów ocenę."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -3753,7 +3741,6 @@
           "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole FW C): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV A): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
           "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
         "slad": [
@@ -3812,8 +3799,7 @@
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło.",
             "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV A): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV A): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
-            "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Metoda dowodu właściwa dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, obliczenie, deklaracja, pomiar albo ocena operatora — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
-            "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+            "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
             "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -3822,17 +3808,16 @@
             "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole FW C): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV A): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Brak metody dowodu — właściwa metoda dla twierdzenia o konfiguracji zadeklarowanej: certyfikat urządzenia, raport z testu, deklaracja, pomiar albo ocena operatora.",
             "Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole BESS B) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — brak metody dowodu, która wykazuje konfiguracji zadeklarowanej",
+          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole BESS B) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — brak wyznaczonej wielkości ocenianej (Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać)",
           "zastrzezenia": [
             "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole BESS B) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — brak metody dowodu, która wykazuje konfiguracji zadeklarowanej."
+          "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole BESS B) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole FW C) — brak wyznaczonej wielkości ocenianej (Czas zadziałania funkcji LoM (zwłoka nastaw) w sterowniku pola; Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło); Ochrona od pracy wyspowej modułu wytwórczego w jego polu przyłączeniowym (PV bez pola) — brak wyznaczonej wielkości ocenianej (Pole przyłączeniowe modułu z przypisaniem zabezpieczeń (pole na szynie modułu albo pole o roli OZE) — bez pola nie ma nastaw, które można porównać)."
         },
         "wymaganie_id": "lom.siec",
         "zakres_waznosci": {

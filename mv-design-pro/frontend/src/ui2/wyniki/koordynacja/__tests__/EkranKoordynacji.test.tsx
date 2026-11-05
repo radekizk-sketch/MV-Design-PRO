@@ -447,6 +447,8 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
                 funkcja: null,
               },
             ],
+            // Zdania braków złożone przez backend (`zdania_brakow`) — ekran ich nie składa.
+            braki_pl: ['Wyłącznik nie ma przekładnika prądowego. Dodaj przekładnik prądowy przy wyłączniku.'],
             kandydaci_naprawy: [],
           },
         ],

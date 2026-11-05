@@ -774,8 +774,13 @@ def wyjasnienie_kryterium(
     czego_brakuje: Sequence[str],
     zastrzezenia: Sequence[str],
     braki_dodatkowe: Sequence[str],
+    akcja_naprawcza_pl: str | None = None,
 ) -> WyjasnienieWerdyktu:
-    """Wyjaśnienie rekordu K wg wzorców §5.1; treść wybiera krok reguły, który wydał status."""
+    """Wyjaśnienie rekordu K wg wzorców §5.1; treść wybiera krok reguły, który wydał status.
+
+    ``akcja_naprawcza_pl`` — akcja naprawcza braku wyniku właściwa dla KRYTERIUM (krok
+    ``WYNIK``), np. metoda wyznaczenia wielkości, której model nie niesie; ``None`` — akcja
+    ogólna (bieg na aktualnym modelu albo uzupełnienie danych wejściowych)."""
     relacja = kryterium.relacja
     naglowek = f"{kryterium.opis_pl} ({przedmiot.nazwa_pl})"
     porownanie = (
@@ -805,7 +810,7 @@ def wyjasnienie_kryterium(
             informacja = (
                 porownanie
                 if porownanie is not None
-                else _opis_stanu(wynik) if relacja == "LOGICZNE" else _opis_wyniku(wynik)
+                else (_opis_stanu(wynik) if relacja == "LOGICZNE" else _opis_wyniku(wynik))
             )
             rodzaj_wartosci = (
                 "wartość zadeklarowana"
@@ -821,7 +826,13 @@ def wyjasnienie_kryterium(
         )
         zdania = [
             f"{naglowek} — ocena niewykonana: brak wyznaczonej wielkości ocenianej{dopisek}.",
-            "Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Akcja naprawcza: "
+            + (
+                _bez_kropki(akcja_naprawcza_pl)
+                if akcja_naprawcza_pl is not None
+                else "wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe"
+            )
+            + ".",
         ]
         przyczyna = "brak wyznaczonej wielkości ocenianej" + (
             dopisek or " (brak biegu, bieg nieaktualny albo nieudany, albo brak danych wejściowych)"
@@ -887,7 +898,8 @@ def wyjasnienie_kryterium(
             przyczyna = None
             if not spelnia:
                 modul = Wielkosc(
-                    wartosc=abs(margines.wartosc.wartosc), jednostka=margines.wartosc.jednostka
+                    wartosc=abs(margines.wartosc.wartosc),
+                    jednostka=margines.wartosc.jednostka,
                 )
                 przyczyna = (
                     f"{wynik.wielkosc_pl} {_KIERUNEK_NARUSZENIA[relacja]} o "

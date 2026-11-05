@@ -29,7 +29,11 @@ from enm.models import (
 )
 from werdykt import OcenaKryterium, WynikWymagania
 
-from tests.uczciwosc.pomocnicze import braki_tekstem, eksport_fixtur, sprawdz_ocene_niewykonana
+from tests.uczciwosc.pomocnicze import (
+    braki_tekstem,
+    eksport_fixtur,
+    sprawdz_ocene_niewykonana,
+)
 from tests.utils.sterownik import Stopien, sterownik, stopien
 
 #: Pole OZE bez przypisanego zabezpieczenia — przedmiot rekordu oceny niewykonanej.
@@ -53,7 +57,7 @@ def _rekord_pola(dane: dict[str, Any]) -> OcenaKryterium | WynikWymagania:
 def test_pole_bez_sprawdzen_to_ocena_niewykonana() -> None:
     pole, skladowe = _pole_widoku(_POLE, [], [], [])
     assert pole["status"] == "NIE_OCENIONO" and pole["status"] != "OK"
-    rekord = sprawdz_ocene_niewykonana(pole["ocena"])
+    rekord = sprawdz_ocene_niewykonana(pole["ocena"], przyczyna="BRAK_DANYCH")
     assert rekord.przedmiot.element_ref == _POLE.ref_id
     braki = braki_tekstem(pole["ocena"])
     assert "81R" in braki and "oknami normatywnymi" in braki and "SPZ" in braki
@@ -234,13 +238,17 @@ def test_siec_bez_modulow_wytworczych_nie_dotyczy() -> None:
 
 def test_modul_bez_pola_to_ocena_niewykonana_w_wymaganiu_sieci() -> None:
     samotny = Generator(
-        ref_id="gen_x", name="PV bez pola", bus_ref="bus_bez_pola", p_mw=1.0, gen_type="pv_inverter"
+        ref_id="gen_x",
+        name="PV bez pola",
+        bus_ref="bus_bez_pola",
+        p_mw=1.0,
+        gen_type="pv_inverter",
     )
     widok = build_ochrona_lom_view(_enm([], [samotny], []))
     siec = WynikWymagania.model_validate(widok["summary"]["ocena"])
     assert siec.status_maszynowy == "NIE_OCENIONO"
     (modul,) = siec.oceny_skladowe
-    sprawdz_ocene_niewykonana(modul.model_dump(mode="json"))
+    sprawdz_ocene_niewykonana(modul.model_dump(mode="json"), przyczyna="BRAK_DANYCH")
     assert modul.przedmiot.nazwa_pl == "PV bez pola"
 
 

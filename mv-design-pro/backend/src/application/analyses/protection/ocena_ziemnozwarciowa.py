@@ -39,7 +39,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from application.analyses.protection.coordination.models import CoordinationConfig
 from application.analyses.protection.ocena_nadpradowa import (
@@ -50,6 +50,7 @@ from application.analyses.protection.ocena_nadpradowa import (
     StrefaUrzadzenia,
     czas_stopnia,
     strefa_urzadzenia,
+    zdania_brakow,
 )
 from enm.assembler import wezly_bez_impedancji_do_odniesienia
 from enm.mapping import ref_to_graph_id, sklad_sieci_doziemnej
@@ -112,6 +113,7 @@ from werdykt import (
     Wielkosc,
     WynikKryterium,
     ZakresWaznosci,
+    format_wielkosc,
     ocen_kryterium,
 )
 from werdykt.proweniencja import FieldQuality
@@ -123,6 +125,9 @@ FUNKCJE_ZIEMNOZWARCIOWE: tuple[str, ...] = tuple(
     kod for kod, f in FUNKCJE_EAZ.items() if f.ocena == "ZIEMNOZWARCIOWA"
 )
 #: Rodzaj wielkości decydującej funkcji — JEDNA mapa dla wielkości, progu, jednostki i opisu.
+KierunekRzutu = Literal["ZGODNY", "PRZECIWNY"]
+"""Kierunek rzutu 3I₀ względem kierunku działania funkcji 67N (pole ``kierunek_rzutu``)."""
+
 _RODZAJ_WIELKOSCI: dict[str, str] = {
     "51N": "PRAD",
     "50N": "PRAD",
@@ -258,7 +263,7 @@ class FunkcjaZiemnozwarciowa:
             "etykieta_pl": self.etykieta_pl,
             "nastawy": dict(self.nastawy),
             "breaker_ref": self.breaker_ref,
-            "przekladnia_3i0_a": list(self.przekladnia_3i0) if self.przekladnia_3i0 else None,
+            "przekladnia_3i0_a": (list(self.przekladnia_3i0) if self.przekladnia_3i0 else None),
             "wielkosc_pl": _OPIS_WIELKOSCI[self.rodzaj],
             "jednostka": _JEDNOSTKA[self.rodzaj],
             "prog": self.prog if not self.braki else None,
@@ -272,49 +277,87 @@ def _liczba_dodatnia(wartosc: object) -> float | None:
     return float(wartosc) if math.isfinite(wartosc) and wartosc > 0 else None
 
 
+#: Nazwa brakującej nastawy funkcji ziemnozwarciowej (``PozycjaGotowosci.nazwa_braku_pl``) —
+#: składana przez ``zdania_brakow`` w jedno zdanie na funkcję.
+_NAZWA_PROGU_PL: dict[str, str] = {
+    "PRAD": "próg rozruchowy 3I₀",
+    "RZUT_PRADU": "próg rozruchowy 3I₀",
+    "MODUL_Y0": "próg admitancji zerowej |Y₀|",
+    "G0": "próg konduktancji zerowej G₀",
+    "B0": "próg susceptancji zerowej B₀",
+    "P0": "próg mocy czynnej składowej zerowej P₀",
+    "U0": "próg napięcia przesunięcia punktu neutralnego U₀",
+}
+
+
 def _braki_nastaw(kod: str, nastawy: Mapping[str, Any], *, nazwa: str) -> list[PozycjaGotowosci]:
-    """Nastawy wymagane przez wielkość decydującą i czas funkcji — brak = nazwany brak modelu."""
+    """Nastawy wymagane przez wielkość decydującą i czas funkcji — brak = nazwany brak modelu.
+
+    Każdy brak niesie pełne zdanie (``komunikat_pl``, szczegóły na żądanie) i krótką nazwę
+    nastawy (``nazwa_braku_pl``) — zdanie dla projektanta składa ``zdania_brakow``."""
     etykieta = etykieta_funkcji_eaz(kod)
     akcja = f"Uzupełnij nastawy funkcji {etykieta} zabezpieczenia {nazwa} w karcie pola."
     braki: list[PozycjaGotowosci] = []
 
-    def brak(opis: str) -> None:
+    def brak(nazwa_braku: str, opis: str) -> None:
         braki.append(
             PozycjaGotowosci(
                 kod=KOD_BRAK_NASTAWY,
                 komunikat_pl=f"Funkcja {etykieta} zabezpieczenia {nazwa}: {opis}.",
                 akcja_naprawcza_pl=akcja,
                 funkcja=kod,
+                nazwa_braku_pl=nazwa_braku,
             )
         )
 
     rodzaj = _RODZAJ_WIELKOSCI[kod]
     if rodzaj in ("PRAD", "RZUT_PRADU"):
         if _liczba_dodatnia(nastawy.get("prog")) is None:
-            brak("brak dodatniego progu rozruchowego prądu zerowego")
+            brak(
+                _NAZWA_PROGU_PL[rodzaj],
+                "brak dodatniego progu rozruchowego prądu zerowego",
+            )
         if nastawy.get("jednostka_progu") not in ("A_WTORNY", "A_PIERWOTNY"):
-            brak("próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna)")
+            brak(
+                "strona przekładnika progu (wtórna albo pierwotna)",
+                "próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna)",
+            )
         krzywa = nastawy.get("krzywa")
         if krzywa not in KRZYWE_IEC and krzywa not in KRZYWE_IEEE:
-            brak("brak charakterystyki czasowej")
+            brak("charakterystyka czasowa", "brak charakterystyki czasowej")
         elif krzywa == "DT":
             if _liczba_dodatnia(nastawy.get("zwloka_s")) is None:
-                brak("charakterystyka niezależna bez dodatniej zwłoki")
+                brak(
+                    "zwłoka charakterystyki niezależnej",
+                    "charakterystyka niezależna bez dodatniej zwłoki",
+                )
         elif _liczba_dodatnia(nastawy.get("tms")) is None:
-            brak("charakterystyka zależna bez dodatniego mnożnika czasowego")
+            brak(
+                "mnożnik czasowy charakterystyki zależnej",
+                "charakterystyka zależna bez dodatniego mnożnika czasowego",
+            )
         if rodzaj == "RZUT_PRADU":
             if nastawy.get("kierunek") not in ("DO_LINII", "DO_SZYN"):
-                brak("brak kierunku działania (do linii albo do szyn)")
+                brak(
+                    "kierunek działania (do linii albo do szyn)",
+                    "brak kierunku działania (do linii albo do szyn)",
+                )
             kat = nastawy.get("kat_charakterystyczny_deg")
             if isinstance(kat, bool) or not isinstance(kat, int | float):
-                brak("brak kąta charakterystycznego")
+                brak("kąt charakterystyczny", "brak kąta charakterystycznego")
         return braki
     if _liczba_dodatnia(nastawy.get(_KLUCZ_PROGU[rodzaj])) is None:
-        brak(f"brak dodatniego progu ({_OPIS_WIELKOSCI[rodzaj]})")
+        brak(
+            _NAZWA_PROGU_PL[rodzaj],
+            f"brak dodatniego progu ({_OPIS_WIELKOSCI[rodzaj]})",
+        )
     if rodzaj in _Z_ROZRUCHEM_U0 and _liczba_dodatnia(nastawy.get("prog_u0_proc")) is None:
-        brak("brak dodatniego progu rozruchowego napięcia zerowego U0")
+        brak(
+            "próg rozruchowy napięcia zerowego U₀",
+            "brak dodatniego progu rozruchowego napięcia zerowego U0",
+        )
     if _liczba_dodatnia(nastawy.get("zwloka_s")) is None:
-        brak("brak dodatniej zwłoki czasowej")
+        brak("zwłoka czasowa", "brak dodatniej zwłoki czasowej")
     return braki
 
 
@@ -566,7 +609,8 @@ def oblicz_siec_doziemna(
     funkcje: Sequence[FunkcjaZiemnozwarciowa],
 ) -> ObliczenieDoziemne:
     """Wejście solvera doziemnego z modelu: Y0 z boczników, Z1 = Z2 z sieci zwarciowej IEC 60909
-    (rdzeń ``build_zbus``, wyłącznie wołany), punkty = szyny SN, strefy = strefy funkcji."""
+    (rdzeń ``build_zbus``, wyłącznie wołany), punkty = szyny SN, strefy = strefy funkcji.
+    """
     node_index, y0, boczniki, slad, propozycje = sklad_sieci_doziemnej(enm, graph)
     wezly_bez = wezly_bez_impedancji_do_odniesienia(graph)
     graf_zgodny = (
@@ -618,7 +662,9 @@ def oblicz_siec_doziemna(
     nazwy_galezi = {g.ref_id: nazwa_elementu(g, "branches") for g in enm.branches}
     dane = [
         dana_przyjeta_b0(
-            wartosc=wartosc, zalozenie=zalozenie, miejsce_pl=f"odcinek {nazwy_galezi[ref]}"
+            wartosc=wartosc,
+            zalozenie=zalozenie,
+            miejsce_pl=f"odcinek {nazwy_galezi[ref]}",
         )
         for ref, (wartosc, zalozenie) in sorted(propozycje.items())
     ]
@@ -905,6 +951,46 @@ class RekordOcenyZiemnozwarciowej:
             self.kryterium.split(":", 1)[0] in KRYTERIA_ZIEMNOZWARCIOWE
         ), f"Kryterium spoza listy rodzajów oceny: {self.kryterium!r}"
 
+    @property
+    def wynik_pl(self) -> str | None:
+        """Wynik do kolumny „Wynik” (ekran, karta nastaw, raport PDF/DOCX — jeden zapis):
+        liczba z jednostką zapisem generatora werdyktu (``format_wielkosc``, ≤ 4 cyfry znaczące).
+        Funkcja kierunkowa (67N) ocenia RZUT prądu 3I₀ na kierunek działania — wynik mówi to
+        wprost, a ujemny rzut (prąd w kierunku przeciwnym do kierunku działania) jest nazwany,
+        nie zostawiony gołym minusem."""
+        wynik = self.ocena.wynik
+        if wynik is None:
+            return None
+        tekst = format_wielkosc(wynik.wartosc)
+        kierunek = self.kierunek_rzutu
+        if kierunek is None:
+            return tekst
+        tekst = f"rzut na kierunek działania: {tekst}"
+        return f"{tekst} (kierunek przeciwny)" if kierunek == "PRZECIWNY" else tekst
+
+    @property
+    def limit_pl(self) -> str | None:
+        """Wartość wymagana tym samym zapisem co wynik; ``None`` — kryterium bez limitu
+        liczbowego (np. odmowa oceny, brak podstawy limitu)."""
+        limit = self.ocena.limit
+        if limit is None or limit.wartosc is None:
+            return None
+        return format_wielkosc(limit.wartosc)
+
+    @property
+    def kierunek_rzutu(self) -> KierunekRzutu | None:
+        """Kierunek prądu 3I₀ względem kierunku działania (osi charakterystyki) funkcji
+        kierunkowej 67N — pole danych rekordu, nie zapis do sformatowania przez ekran:
+        ``ZGODNY`` (rzut ≥ 0: prąd w kierunku działania), ``PRZECIWNY`` (rzut < 0: prąd
+        w kierunku przeciwnym, np. zwarcie za plecami zabezpieczenia). ``None`` — wynik nie jest
+        rzutem (funkcja bezkierunkowa, napięciowa, uziemienie) albo brak wyniku."""
+        wynik = self.ocena.wynik
+        if wynik is None or self.kod is None:
+            return None
+        if _RODZAJ_WIELKOSCI.get(self.kod) != "RZUT_PRADU":
+            return None
+        return "PRZECIWNY" if wynik.wartosc.wartosc < 0 else "ZGODNY"
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "urzadzenie_ref": self.urzadzenie_ref,
@@ -916,6 +1002,9 @@ class RekordOcenyZiemnozwarciowej:
             "kryterium_pl": KRYTERIA_ZIEMNOZWARCIOWE[self.kryterium.split(":", 1)[0]],
             "status": self.ocena.status_maszynowy,
             "zdanie_pl": self.ocena.wyjasnienie.zdanie_pl,
+            "wynik_pl": self.wynik_pl,
+            "kierunek_rzutu": self.kierunek_rzutu,
+            "limit_pl": self.limit_pl,
             "punkty": [p.to_dict() for p in self.punkty],
             **dict(self.dodatkowe),
             "ocena": self.ocena.model_dump(mode="json"),
@@ -1038,6 +1127,8 @@ def rekord_odmowy(
     from werdykt import ClaimKind, EvidenceTier
 
     etykieta = etykieta_funkcji_eaz(kod) if kod else "ziemnozwarciowa"
+    # Wiersz oceny nazywa urządzenie i funkcję — lista braków nastaw bez powtórzenia podmiotu.
+    braki_pl = zdania_brakow(braki, z_funkcja=kod is None)
     ocena = ocena_niewykonana(
         kryterium_id=f"zabezpieczenia.ziemnozwarciowe.{urzadzenie_ref}.{funkcja_ref or 'siec'}",
         przedmiot=Przedmiot(
@@ -1051,7 +1142,11 @@ def rekord_odmowy(
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
             dokument=f"Nastawy zabezpieczenia {nazwa_pl} zapisane w modelu sieci projektu",
-            status="NIEUSTALONE",
+            # Podstawą kryterium są nastawy z modelu (wskazane); ich brak jest brakiem DANYCH
+            # (krok WYNIK), nie brakiem dokumentu źródłowego podstawy.
+            wydanie="model sieci biegu oceny (odcisk migawki w kopercie biegu)",
+            jednostka_redakcyjna="nastawy funkcji sterownika (karta pola)",
+            status="WSKAZANE",
             uwagi_pl="nastawy albo tor pomiarowy funkcji niekompletne — patrz braki",
         ),
         powod_stosowalnosci_pl="funkcja ziemnozwarciowa włączona w sterowniku modelu",
@@ -1063,7 +1158,8 @@ def rekord_odmowy(
             opis_pl="Ocena ziemnozwarciowa funkcji — wstrzymana do uzupełnienia modelu",
         ),
         powod_braku_niepewnosci_pl="ocena się nie odbyła — niepewność nie dotyczy",
-        czego_brakuje=tuple(f"{b.komunikat_pl} {b.akcja_naprawcza_pl}" for b in braki),
+        czego_brakuje=braki_pl,
+        przyczyna="BRAK_DANYCH",
     )
     return RekordOcenyZiemnozwarciowej(
         urzadzenie_ref=urzadzenie_ref,
@@ -1072,7 +1168,7 @@ def rekord_odmowy(
         kod=kod,
         kryterium="ODMOWA",
         ocena=ocena,
-        dodatkowe={"braki": [b.to_dict() for b in braki]},
+        dodatkowe={"braki": [b.to_dict() for b in braki], "braki_pl": list(braki_pl)},
     )
 
 
@@ -1096,7 +1192,7 @@ class WynikOcenyZiemnozwarciowej:
             "funkcje": [f.to_dict() for f in self.funkcje],
             "oceny": [r.to_dict() for r in self.oceny],
             "odmowy": [r.to_dict() for r in self.odmowy],
-            "doziemienie": self.obliczenie.to_dict() if self.obliczenie is not None else None,
+            "doziemienie": (self.obliczenie.to_dict() if self.obliczenie is not None else None),
             "uziemienia": [r.to_dict() for r in self.uziemienia],
             "wyniki_uziemien": [w.to_dict() for w in self.wyniki_uziemien],
         }
@@ -1181,7 +1277,8 @@ def ocen_funkcje(
     odniesienie: str,
 ) -> tuple[list[RekordOcenyZiemnozwarciowej], dict[str, list[DzialaniePunktu]]]:
     """Rekordy czułości, selektywności i stopniowania czasowego każdej gotowej funkcji oraz
-    działanie każdej funkcji w każdym punkcie (c_min) — wejście czasu trwania zwarcia t_F."""
+    działanie każdej funkcji w każdym punkcie (c_min) — wejście czasu trwania zwarcia t_F.
+    """
     cti = CoordinationConfig().get_minimum_grading_margin_s()
     rekordy: list[RekordOcenyZiemnozwarciowej] = []
     gotowe = [f for f in funkcje if not f.braki and f.wezel_pomiaru is not None]
@@ -1403,7 +1500,11 @@ def ocen_funkcje(
     # --- stopniowanie czasowe -----------------------------------------------------------------
     rekordy.extend(
         _stopniowanie(
-            gotowe, dzialania_min, cti=cti, obliczenie=obliczenie, odniesienie=odniesienie
+            gotowe,
+            dzialania_min,
+            cti=cti,
+            obliczenie=obliczenie,
+            odniesienie=odniesienie,
         )
     )
     return rekordy, dzialania_min
@@ -1604,9 +1705,17 @@ PODSTAWA_U_TP = PodstawaWymagania(
 )
 KOD_NAPIECIE_KROKOWE_BEZ_GEOMETRII = "uziemienie.napiecie_krokowe_brak_geometrii"
 BRAK_GEOMETRII_UZIOMU_PL = (
-    "Geometria uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywność gruntu — "
-    "model jej nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni "
-    "gruntu; liczba bez geometrii byłaby zgadywaniem."
+    "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności "
+    "gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na "
+    "powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
+)
+#: Metoda właściwa dla napięcia krokowego (akcja naprawcza rekordu) — dobrana do kryterium,
+#: nie ogólna lista metod rodzaju twierdzenia (certyfikat urządzenia nie wykazuje napięcia
+#: krokowego uziomu).
+METODA_NAPIECIA_KROKOWEGO_PL = (
+    "wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem "
+    "uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć "
+    "krokowych w stacji"
 )
 
 
@@ -1843,6 +1952,10 @@ def _rekord_napiecia_krokowego(w: WynikUziemieniaStacji) -> RekordOcenyZiemnozwa
         ),
         powod_braku_niepewnosci_pl="ocena się nie odbyła — niepewność nie dotyczy",
         czego_brakuje=(BRAK_GEOMETRII_UZIOMU_PL,),
+        # Przyczyna: brak danych modelu (geometria uziomu, rezystywność gruntu), nie brak
+        # metody — metodę właściwą dla kryterium nazywa akcja naprawcza.
+        przyczyna="BRAK_DANYCH",
+        akcja_naprawcza_pl=METODA_NAPIECIA_KROKOWEGO_PL,
     )
     return RekordOcenyZiemnozwarciowej(
         urzadzenie_ref=w.stacja_ref,
@@ -1864,7 +1977,8 @@ def _braki_awsc(
     obliczenie: ObliczenieDoziemne,
 ) -> list[RekordOcenyZiemnozwarciowej]:
     """Punkt neutralny z AWSC w sieci zerowej bez czynnej automatyki ZAWSC — nazwany brak modelu
-    (stan po wymuszeniu nie jest osiągany, ocena liczy wyłącznie stan przed wymuszeniem)."""
+    (stan po wymuszeniu nie jest osiągany, ocena liczy wyłącznie stan przed wymuszeniem).
+    """
     zawsc_skladowe = {
         _skladowa_wezla(obliczenie.wynik_min, obliczenie.punkty, f.wezel_pomiaru)
         for f in funkcje
@@ -1901,10 +2015,13 @@ def _braki_awsc(
     return wynik
 
 
-def kroki_sladu_ziemnozwarciowego(wynik: WynikOcenyZiemnozwarciowej) -> list[dict[str, Any]]:
+def kroki_sladu_ziemnozwarciowego(
+    wynik: WynikOcenyZiemnozwarciowej,
+) -> list[dict[str, Any]]:
     """Kroki śladu White Box biegu zabezpieczeń dla części ziemnozwarciowej: budowa sieci
     zerowej z modelu, rozwiązanie solvera doziemień (c_min i c_max), prąd i napięcie uziomowe
-    stacji. Słowniki o kształcie ``ProtectionTraceStep`` (warstwa domeny buduje kroki)."""
+    stacji. Słowniki o kształcie ``ProtectionTraceStep`` (warstwa domeny buduje kroki).
+    """
     kroki: list[dict[str, Any]] = []
     obliczenie = wynik.obliczenie
     if obliczenie is None:

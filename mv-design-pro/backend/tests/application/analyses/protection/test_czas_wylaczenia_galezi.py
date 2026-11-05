@@ -184,7 +184,10 @@ def _sc_result(*, prad_a: float | None, tk_s: float = 1.0) -> ShortCircuitResult
                 i_contrib_a=prad_a,
                 direction="from_to",
             )
-            for ident, a, b in (("kabel_A", "BUS2", "BUS3"), ("kabel_B", "BUS3", "BUS4"))
+            for ident, a, b in (
+                ("kabel_A", "BUS2", "BUS3"),
+                ("kabel_B", "BUS3", "BUS4"),
+            )
         ]
     )
     return ShortCircuitResult(
@@ -248,7 +251,11 @@ def _nastawy(*przypisania: ProtectionAssignment) -> dict:
                 name="Przekładnik 600/5",
                 measurement_type="CT",
                 bus_ref="BUS1",
-                rating={"ratio_primary": 600.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
+                rating={
+                    "ratio_primary": 600.0,
+                    "ratio_secondary": 5.0,
+                    "accuracy_class": "5P20",
+                },
             )
         ],
         protection_assignments=list(przypisania),
@@ -323,7 +330,10 @@ def test_galaz_za_drugim_wylacznikiem_ma_czas_z_tego_blizszego_aparatu() -> None
         nastawy_aparatow=_nastawy(
             _zabezpieczenie(),
             _zabezpieczenie(
-                breaker_ref="CB2", curve_type="DT", time_multiplier=None, time_delay_s=0.15
+                breaker_ref="CB2",
+                curve_type="DT",
+                time_multiplier=None,
+                time_delay_s=0.15,
             ),
         ),
     )
@@ -427,7 +437,7 @@ def test_niekompletna_nastawa_krzywej_odwrotnej_daje_jawny_brak() -> None:
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
-    assert "mnożnika czasowego" in czasy["kabel_A"].powod_pl
+    assert "mnożnik czasowy" in czasy["kabel_A"].powod_pl
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +496,11 @@ def test_slad_czasu_nazywa_zrodlo_dla_KAZDEJ_galezi() -> None:
         tk_s_zalozony=1.0,
     )
     assert all(poz["zrodlo"] == ZRODLO_NASTAWA for poz in z_nastawa.values())
-    assert podsumowanie_czasow(z_nastawa) == {"z_nastawy": 2, "z_zalozenia": 0, "razem": 2}
+    assert podsumowanie_czasow(z_nastawa) == {
+        "z_nastawy": 2,
+        "z_zalozenia": 0,
+        "razem": 2,
+    }
 
 
 def test_wynik_jest_deterministyczny() -> None:
@@ -552,7 +566,9 @@ def test_galaz_z_wkladem_pominietym_nie_wykazuje_pradu_zero(
     prądzie poniżej progu.
     """
     czasy = wyznacz_czasy_wylaczenia(
-        graph=graf(), sc_result=_sc_result_kabel_b_pominiety(), nastawy_aparatow=nastawy()
+        graph=graf(),
+        sc_result=_sc_result_kabel_b_pominiety(),
+        nastawy_aparatow=nastawy(),
     )
     assert czasy["kabel_B"].tk_s is None
     assert czasy["kabel_B"].zrodlo == zrodlo

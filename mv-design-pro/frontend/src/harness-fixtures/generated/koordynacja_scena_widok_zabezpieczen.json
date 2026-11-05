@@ -13,44 +13,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -69,7 +80,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S02",
+        "nazwa_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S02",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -158,44 +169,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -214,7 +236,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02",
+        "nazwa_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S02",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -303,44 +325,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -375,7 +408,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S02",
+        "nazwa_pl": "Sterownik · Pole transformatorowe 3 — Stacja S02",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -465,44 +498,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -521,7 +565,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S04",
+        "nazwa_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S04",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -610,44 +654,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -666,7 +721,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04",
+        "nazwa_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S04",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -755,44 +810,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -827,7 +893,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S04",
+        "nazwa_pl": "Sterownik · Pole transformatorowe 3 — Stacja S04",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -917,44 +983,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -973,7 +1050,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S03",
+        "nazwa_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S03",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1062,44 +1139,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -1118,7 +1206,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03",
+        "nazwa_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S03",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1207,44 +1295,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -1279,7 +1378,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S03",
+        "nazwa_pl": "Sterownik · Pole transformatorowe 3 — Stacja S03",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1369,44 +1468,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -1425,7 +1535,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S01",
+        "nazwa_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S01",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1514,44 +1624,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -1570,7 +1691,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01",
+        "nazwa_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S01",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1659,44 +1780,55 @@
             "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
             "funkcja": null,
             "kod": "zabezpieczenia.brak_przekladnika",
-            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+            "komunikat_pl": "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny.",
+            "nazwa_braku_pl": null
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "51",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_progu",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego.",
+            "nazwa_braku_pl": "próg rozruchowy"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.jednostka_progu_nieustalona",
-            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
           },
           {
-            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
             "funkcja": "50",
             "kod": "zabezpieczenia.brak_charakterystyki",
-            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej."
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
           }
+        ],
+        "braki_pl": [
+          "Zabezpieczenie Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny. Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+          "Brakuje nastaw: I> (51): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa; I>> (50): próg rozruchowy, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola."
         ],
         "breaker_ref": null,
         "charakterystyki": {
@@ -1731,7 +1863,7 @@
         ],
         "gotowe": false,
         "klasa_ct": null,
-        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S01",
+        "nazwa_pl": "Sterownik · Pole transformatorowe 3 — Stacja S01",
         "obwod_wtorny_ct": null,
         "pozycja_katalogu": null,
         "przekladnia_a": null,
@@ -1817,6 +1949,7 @@
       "nastawy": {
         "alf": 20.0,
         "braki": [],
+        "braki_pl": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "charakterystyki": {
           "jakosc": null,
@@ -2344,6 +2477,7 @@
       "nastawy": {
         "alf": 20.0,
         "braki": [],
+        "braki_pl": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "charakterystyki": {
           "jakosc": null,
