@@ -767,9 +767,16 @@ def _assemble_zero_sequence_y0(
     # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
     # calculations singular; adding a local numerical reference keeps them
     # isolated from the solved SN network.
+    #
+    # Karta POLA-GPZ-SZABLONY (sonda D1): odniesienie ma admitancję ZNIKOMĄ (1e-6 pu, czyli
+    # Z_0 = 1e6 pu — przerwa w sieci zerowej), nie idealną. Dawne 1e6 pu dawało węzłowi bez
+    # żadnej drogi zerowej Z_0 ≈ 0, czyli zwarcie 1F w takim węźle (np. szyna SN z punktem
+    # neutralnym izolowanym, bez pojemności doziemnej) liczyło się jak w sieci uziemionej
+    # bezpośrednio — prąd fabrykowany. Węzeł bez drogi do ziemi ma I″k1 → 0 (składowe
+    # symetryczne: Z_0 → ∞); dla zwarć w innych węzłach odniesienie i tak nie jest sprzężone.
     for idx in range(size):
         if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
-            y0_bus[idx, idx] += complex(1e6, 0.0)
+            y0_bus[idx, idx] += complex(1e-6, 0.0)
 
     return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
 

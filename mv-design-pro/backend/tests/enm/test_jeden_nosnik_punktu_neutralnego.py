@@ -54,8 +54,9 @@ def _zrodlo(ref: str, bus: str, cfg: GroundingConfig | None) -> Source:
 
 
 def _transformator_uziemiajacy(bus: str, cfg: GroundingConfig) -> Transformer:
-    # Transformator uziemiający z punktem neutralnym po stronie SN (gwiazda uziemiona, trójkąt
-    # po stronie potrzeb własnych) — nośnik `hv_neutral` (decyzja D1).
+    # Transformator uziemiający pola zespołu uziemiającego: ZNyn11 (ENEA Zeszyt 1 §16 s.30 —
+    # zygzak SN z punktem neutralnym, uzwojenie potrzeb własnych 400/230 V) — nośnik
+    # `hv_neutral` (decyzja D1; zygzak uziemiony = bocznik zacisku SN do ziemi).
     return Transformer(
         ref_id="tu",
         name="Transformator uziemiający",
@@ -66,7 +67,7 @@ def _transformator_uziemiajacy(bus: str, cfg: GroundingConfig) -> Transformer:
         ulv_kv=0.4,
         uk_percent=4.0,
         pk_kw=4.0,
-        vector_group="YNd11",
+        vector_group="ZNyn11",
         hv_neutral=cfg,
     )
 
