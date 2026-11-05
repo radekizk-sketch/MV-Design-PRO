@@ -43,6 +43,7 @@ from network_model.pochodne.skladowe_symetryczne import (
 from network_model.pochodne.skladowe_zerowe import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
+    reaktancja_dlawika_dostrojonego_ohm,
 )
 from network_model.pochodne.wielkosci_pochodne import (
     SQRT2,
@@ -132,6 +133,7 @@ __all__ = [
     "skladowa_spadku_napiecia_procent",
     "spadek_procentowy_przy_innym_napieciu",
     "susceptancja_z_pojemnosci_s_per_km",
+    "reaktancja_dlawika_dostrojonego_ohm",
     "tan_phi_z_cos_phi",
     "udzial_mocy_biernej_pu",
     "v_na_kv",

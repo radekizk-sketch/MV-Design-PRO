@@ -84,9 +84,9 @@ odczytu Zeszytu 1; **NZ** = niezweryfikowane / niezaimplementowane.
 | Z.11 | 90 | `szablon_pola_liniowego_gpz("Z11", …)` | ZŹ kartą UX-04; kontrola tej karty: tabliczka T3 „SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3”, I 0-10 VA kl. 0,2, II 7,5 VA kl. 0,2 — zgodne |
 | Z.11.1 | 91 | `szablon_pola_liniowego_gpz("Z11_1", …)` | ZŹ kartą UX-04 (bez ponownej kontroli w tej karcie) |
 | Z.12 | 92 | `BAY_TEMPLATE_GPZ_LACZNIK_SZYN_Z12`, `_OBWODY_Z12` | dane: ZŹ; rysunek pionowy A/B i rekord pola związany z gałęzią łącznika (D3), port uziemiany Q2: NZ |
-| Z.13 | 93 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
-| Z.14 | 94 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
-| Z.15 | 95 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
+| Z.13 | 93 | brak szablonu; `enm/zespol_uziemiajacy.py` wariant `Z13` | porównanie wykonane (§4.4); grupa ZNyn11 i para przeniesienia uziemienia: wykonane; szablon, rola ZU, operacja pola, rysunek: NZ |
+| Z.14 | 94 | brak szablonu; wariant `Z14` | j.w. |
+| Z.15 | 95 | brak szablonu; wariant `Z15` | j.w. |
 | Z.16 | 96 | `BAY_TEMPLATE_GPZ_BKR_Z16`, `_OBWODY_Z16` | dane: ZŹ; rysunek: przekładniki międzyfazowe T4/T5 na zaciskach baterii (glif `capacitorBank`) — poprawione 2026-11-05 (wcześniej odczep przekładnika napięciowego toru — rozbieżność z s.96); porównanie rysunku całego pola ze zrzutem: NZ |
 | Z.17 | 97 | `BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17` | sekwencja, tabliczka i zestaw funkcji: ZŹ (karta UX-04 2026-10-29, kontrola tej karty zgodna); relacje funkcja → uzwojenie zapisane w §4.5, w danych szablonu brak obwodów wtórnych (NZ) |
 
@@ -176,8 +176,24 @@ z `r_ohm`, rezystor wymuszający AWSC (Z.13 po stronie wtórnej, Z.14 po stronie
 `GroundingConfig.awsc_prad_wymuszenia_a` karty EWALUATORY-ZIEMNOZWARCIOWE (drzewo `wt-ziemne`, w tym drzewie jeszcze nieobecne; predykat `blad_konfiguracji_uziemienia`).
 Bloker walidatora E-W5-04 (dwa uziemione nośniki w wyspie galwanicznej SN) i pole AWSC
 `GroundingConfig.awsc_prad_wymuszenia_a` (przeniesione z karty zwarć doziemnych): wykonane
-2026-11-05. Szablony Z.13–Z.15 i operacja przeniesienia uziemienia: NZ. Brak w słowniku grup
-połączeń: ZNyn11 (§16) — `enm/grupa_polaczen.py` nie zna zygzaka po stronie górnej.
+2026-11-05.
+
+Stan po następcy 4 (2026-11-05):
+- ZNyn11 (§16 s.30, tekst strony odczytany z warstwy tekstowej PDF): w słowniku
+  `enm/grupa_polaczen.py` razem z parami odwrotnymi do Dz i Yz (Zd, ZNd, Zy, Zyn, ZNy, ZNyn;
+  46 → 66 grup), lustro frontu i snapshot OpenAPI (addytywnie). Gałąź zygzaka uziemionego
+  w `_decide_connection` ma test produkcyjny. Sonda `tests/enm/test_sonda_transformatora_uziemiajacego.py`:
+  ZNyn11 z Z_N ≡ źródło z Z_0,Q = Z_T0 + 3·Z_N (do 1e-9), różnica wobec Z_0,Q = 3·Z_N równa Z_T0.
+- Para przeniesienie / oddanie punktu neutralnego: `enm/zespol_uziemiajacy.py` (zapis pary na
+  `Transformer.meta["zespol_uziemiajacy"]`, wartości robocze ESTIMATED: X_N = 1/(3·ΣB_0·1,1)
+  przy znanej pojemności doziemnej — §16 zabrania pracy w rezonansie, rozstrojenie +10 % to
+  założenie inżynierskie; R_N z profilu `mng_resistor_medium` 40 Ω; AWSC 40 A wg §16).
+  Czytelnicy opisu sieci (`solver_input/v126_contracts._resolve_network_neutral`,
+  `application/analyses/v126_gotowosc._uziemienie_z_modelu`,
+  `application/field_read_model._resolve_neutral_grounding_mode`) czytają nośnik WYSPY
+  (`typy_punktu_neutralnego_szyn_sn`) — jedno źródło z E-W5-04.
+- NZ: rola pola „ZU” w słowniku ról i wszystkich miejscach roli BKR, szablony Z.13–Z.15
+  z obwodami wtórnymi, wpięcie pary w `add_sn_bay` / `delete_element`, rysunek pola ZU.
 
 ### 4.5. Z.17 (s.97) — relacje funkcja → uzwojenie (kontrola)
 
@@ -213,3 +229,14 @@ opcjonalny (Z.7: transformator poza celą).
   brak statusu wtórnego odczytu, predykat parami połączenia sygnałów).
 - `backend/tests/enm/test_powiazania_obwodow_aparatow_pola.py` — powiązania aparatów pól Z.7,
   Z.12, Z.16 ścieżką użytkownika (pole właściwej roli, tryb szablonu i katalogu).
+
+## 7. Defekt zmierzony sondą D1 — nienaprawiony (zmienia złote wartości, decyzja architekta)
+
+`enm/mapping._assemble_zero_sequence_y0` dokłada węzłowi bez żadnej drogi zerowej odniesienie
+numeryczne 1e6 pu, czyli Z_0 ≈ 0: zwarcie 1F na szynie SN z punktem neutralnym izolowanym i bez
+pojemności doziemnej liczy się jak w sieci uziemionej bezpośrednio (pomiar sondą: 4062,43 A wobec
+4062,43 A dla Z_0 = 0). Zmiana na 1e-6 pu (przerwa, I″k1 → 0) czerwieni parytet assemblera
+(`tests/golden/parytet_assemblera`, benchmarki IEEE 4/9/13/14 węzłów bez danych składowej
+zerowej: I″k1 19 562,8 A → 0,0014 A; I″k2E o połowę) — granica karty „golden bez zmian wartości”,
+więc zmiana wycofana. Do rozstrzygnięcia: odmowa nazwana zwarcia doziemnego w węźle bez drogi
+zerowej zamiast liczby, z przebudową złotych benchmarków.

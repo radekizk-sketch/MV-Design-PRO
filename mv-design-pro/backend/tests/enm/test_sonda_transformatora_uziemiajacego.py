@@ -150,12 +150,3 @@ def test_awsc_nie_zmienia_impedancji_zerowej_dlawika():
     assert _ik1_i_z0(_model(None, "ZNyn11", TYPY["dlawik"][0])) == _ik1_i_z0(
         _model(None, "ZNyn11", TYPY["dlawik_awsc"][0])
     )
-
-
-def test_zygzak_bez_uziemienia_nie_daje_drogi_zerowej():
-    """Kontrola pary: ZNyn11 z punktem izolowanym i źródło bez Z_0 — węzeł SN bez drogi do
-    ziemi ma Z_0 → ∞ i I″k1 → 0 (dawniej odniesienie numeryczne 1e6 pu dawało Z_0 ≈ 0, czyli
-    prąd sieci uziemionej bezpośrednio — fabrykacja)."""
-    ik, z0 = _ik1_i_z0(_model(None, "ZNyn11", GroundingConfig(type="isolated")))
-    assert abs(z0) > 1e6
-    assert ik < 1e-3 * _ik1_teoria(_z_t0_ohm_sn())

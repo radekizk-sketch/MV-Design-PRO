@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
@@ -50,9 +50,11 @@ from enm.nastawy_zabezpieczen import (
     ETYKIETY_JEDNOSTEK_PROGU_PL,
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
+from enm.nosniki_punktu_neutralnego import typy_punktu_neutralnego_szyn_sn
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from enm.uziemienie import uziemienie_grounded
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
 from enm.zrodlo_napiecia_zerowego import (
     funkcje_bez_zrodla_u0,
@@ -154,6 +156,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     {transformer.ref_id: transformer for transformer in enm.transformers}
     transformers_by_bus = _group_transformers_by_bus(enm.transformers)
     sources_by_bus = _group_sources_by_bus(enm.sources)
+    typy_punktu_neutralnego = typy_punktu_neutralnego_szyn_sn(enm)
     generators_by_bus = _group_generators_by_bus(enm.generators)
 
     finished_runs = [run for run in list_runs_for_case(case_id) if run.status == "FINISHED"]
@@ -276,6 +279,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             generators_by_bus=generators_by_bus,
             latest_sc_run_id=str(latest_sc_run.id) if latest_sc_run is not None else None,
             latest_pf_run_id=str(latest_pf_run.id) if latest_pf_run is not None else None,
+            typy_punktu_neutralnego=typy_punktu_neutralnego,
             measurement_chain=measurement_chain,
             zrodlo_u0_potwierdzone=bool(
                 (zrodla_u0.get(bay.ref_id) or {}).get("potwierdzone", False)
@@ -1081,6 +1085,7 @@ def _build_project_results(
     latest_pf_run_id: str | None,
     measurement_chain: BayMeasurementChain | None,
     zrodlo_u0_potwierdzone: bool = False,
+    typy_punktu_neutralnego: dict[str, str] | None = None,
 ) -> BayProjectResults | None:
     run_ref = latest_pf_run_id or latest_sc_run_id
     if run_ref is None:
@@ -1110,6 +1115,7 @@ def _build_project_results(
         sources_by_bus=sources_by_bus,
         transformers_by_bus=transformers_by_bus,
         zrodlo_u0_potwierdzone=zrodlo_u0_potwierdzone,
+        typ_wyspy=(typy_punktu_neutralnego or {}).get(bay.bus_ref),
     )
     proof_binding = BayProofBinding(
         proof_ref=f"proof:{bay.ref_id}:{run_ref}",
@@ -1284,6 +1290,7 @@ def _build_earth_fault_path(
     sources_by_bus: dict[str, list[Source]],
     transformers_by_bus: dict[str, list[Transformer]],
     zrodlo_u0_potwierdzone: bool = False,
+    typ_wyspy: str | None = None,
 ) -> BayEarthFaultPath | None:
     """Ścieżka zwarcia doziemnego pola. Tor napięcia zerowego i prądu zerowego — z łańcucha
     pomiarowego pola (encje `Measurement`), a gdy łańcuch go nie niesie — z potwierdzonego
@@ -1314,6 +1321,7 @@ def _build_earth_fault_path(
         neutral_grounding_mode=_resolve_neutral_grounding_mode(
             sources=sources_by_bus.get(bay.bus_ref, []),
             transformers=transformers,
+            typ_wyspy=typ_wyspy,
         ),
         zero_sequence_current_source=prad_zerowy,
         zero_sequence_voltage_source=napiecie_zerowe,
@@ -1331,11 +1339,19 @@ def _resolve_neutral_grounding_mode(
     *,
     sources: list[Source],
     transformers: list[Transformer],
+    typ_wyspy: str | None = None,
 ) -> TypPunktuNeutralnego | None:
     """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
     `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
     Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
-    neutralnego zrodla (GPZ) na tej szynie."""
+    neutralnego zrodla (GPZ) na tej szynie.
+
+    Karta POLA-GPZ-SZABLONY (D1): uziemiony nośnik WYSPY galwanicznej SN szyny pola
+    (`enm.nosniki_punktu_neutralnego.typy_punktu_neutralnego_szyn_sn`) rozstrzyga pierwszy —
+    transformator uziemiający stoi na zacisku SWOJEGO pola, nie pola odpływowego, a źródło GPZ
+    po przeniesieniu uziemienia ma `isolated`."""
+    if typ_wyspy is not None and uziemienie_grounded(typ_wyspy):
+        return cast(TypPunktuNeutralnego, typ_wyspy)
     for transformer in transformers:
         if transformer.hv_neutral is not None:
             return transformer.hv_neutral.type
@@ -1344,6 +1360,8 @@ def _resolve_neutral_grounding_mode(
     for source in sources:
         if source.neutral_grounding is not None:
             return source.neutral_grounding.type
+    if typ_wyspy is not None:
+        return cast(TypPunktuNeutralnego, typ_wyspy)
     # V12K-246: brak danych o punkcie neutralnym to `None` (nieznany), NIE
     # „bezposrednio uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej
     # ostrozny werdykt: w sieci bezposrednio uziemionej prad zwarcia doziemnego jest

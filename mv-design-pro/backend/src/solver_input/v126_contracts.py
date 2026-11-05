@@ -353,7 +353,19 @@ def _wejscia_izolacji(
             None,
         )
 
+    from enm.nosniki_punktu_neutralnego import typy_punktu_neutralnego_szyn_sn
+    from enm.uziemienie import uziemienie_grounded
+
+    typy_wysp = typy_punktu_neutralnego_szyn_sn(enm)
+
     def _resolve_network_neutral(bus_ref: str) -> str | None:
+        # Karta POLA-GPZ-SZABLONY (D1): uziemiony nośnik WYSPY galwanicznej SN szyny (źródło
+        # albo transformator uziemiający pola zespołu uziemiającego) rozstrzyga pierwszy —
+        # jedno źródło z blokerem E-W5-04. Bez tego źródło GPZ z `isolated` po przeniesieniu
+        # uziemienia na transformator ZNyn11 opisywało sieć jako izolowaną.
+        typ_wyspy = typy_wysp.get(bus_ref)
+        if typ_wyspy is not None and uziemienie_grounded(typ_wyspy):
+            return _grounding_type_to_network_neutral(typ_wyspy)
         # W5-A: opis punktu neutralnego sieci SN niesie ZRODLO (GPZ) — na tej szynie
         # albo w tej samej stacji (zrodlo po stronie 110 kV nie stoi na szynie SN).
         stacja = _stacja_szyny(bus_ref)

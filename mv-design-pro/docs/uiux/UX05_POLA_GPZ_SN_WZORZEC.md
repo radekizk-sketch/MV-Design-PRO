@@ -60,6 +60,11 @@ test iloczynu `backend/tests/enm/test_jeden_nosnik_punktu_neutralnego.py`) i pol
 `GroundingConfig.awsc_prad_wymuszenia_a` z predykatem `blad_konfiguracji_uziemienia`. Brak do
 rozstrzygnięcia przy szablonach: grupa ZNyn11 (Zeszyt 1 §16) nie należy do słownika
 `enm/grupa_polaczen.py`, choć model składowej zerowej obsługuje zygzak po stronie górnej.
+Stan 2026-11-05 (następca 4): ZNyn11 jest w słowniku (z parami Zd/Zy), para przeniesienia
+i oddania punktu neutralnego — `backend/src/enm/zespol_uziemiajacy.py` (test iloczynu
+`backend/tests/enm/test_zespol_uziemiajacy.py`), sonda składowej zerowej —
+`backend/tests/enm/test_sonda_transformatora_uziemiajacego.py`. Niewykonane: rola pola „ZU”,
+szablony Z.13–Z.15, wpięcie pary w operacje pola, rysunek pola ZU.
 Rozstrzygnięcie architekta D1: transformator uziemiający (ZNyn11, uzwojenie
 potrzeb własnych 400/230 V AC) jest elementem `Transformer` pola; dławik i rezystor rysuje się
 z nośnika punktu neutralnego `hv_neutral` (`GroundingConfig`: `petersen_coil` z X_N,

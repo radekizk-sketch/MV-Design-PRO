@@ -44,6 +44,10 @@ class NosnikPunktuNeutralnego:
     #: Klucz nośnika w rekordzie: ``neutral_grounding`` | ``hv_neutral`` | ``lv_neutral``.
     pole: str
     typ: str
+    #: Uziemienie zadeklarowane konfiguracją (``GroundingConfig``); ``False`` — wyłącznie z litery
+    #: grupy połączeń (punkt wyprowadzony bez opisu sposobu uziemienia). Bloker E-W5-04 i czytelnicy
+    #: OPISU sieci liczą tylko jawne (brak konfiguracji = model milczy, karta W5-D p. 12).
+    jawny: bool = True
 
 
 def wyspy_galwaniczne_sn(enm: EnergyNetworkModel) -> dict[str, str]:
@@ -106,7 +110,11 @@ def nosniki_uziemione_sn(enm: EnergyNetworkModel) -> list[NosnikPunktuNeutralneg
             if bus_ref not in sn:
                 continue
             typ = cfg.type if cfg is not None else "directly_grounded"
-            wynik.append(NosnikPunktuNeutralnego(trafo.ref_id, "transformer", bus_ref, pole, typ))
+            wynik.append(
+                NosnikPunktuNeutralnego(
+                    trafo.ref_id, "transformer", bus_ref, pole, typ, jawny=cfg is not None
+                )
+            )
     return wynik
 
 
@@ -118,6 +126,52 @@ def wyspy_z_wieloma_nosnikami(
     grupy: dict[str, list[NosnikPunktuNeutralnego]] = {}
     for nosnik in nosniki_uziemione_sn(enm):
         klucz = wyspa.get(nosnik.bus_ref)
-        if klucz is not None:
+        # Wyłącznie nośniki ZADEKLAROWANE konfiguracją: punkt wyprowadzony bez konfiguracji
+        # (litera grupy, np. Dyn11 dwóch transformatorów GPZ za zamkniętym sprzęgłem) jest
+        # domyślną fizyką modelu (W5-A), nie decyzją projektanta, której można zapomnieć cofnąć.
+        # Pomiar 2026-11-05: bez tego filtra golden network ENM (dwa TR Dyn11, sprzęgło
+        # zamknięte) dostawał bloker E-W5-04.
+        if klucz is not None and nosnik.jawny:
             grupy.setdefault(klucz, []).append(nosnik)
     return [(k, tuple(v)) for k, v in sorted(grupy.items()) if len(v) > 1]
+
+
+def typy_punktu_neutralnego_szyn_sn(enm: EnergyNetworkModel) -> dict[str, str]:
+    """Szyna pasma SN → typ punktu neutralnego JEJ WYSPY galwanicznej — jedno źródło dla
+    czytelników opisu sieci (dane wejściowe koordynacji izolacji, propozycje gotowości analiz
+    akademickich, ścieżka zwarcia doziemnego pola).
+
+    Uziemiony nośnik wyspy (``nosniki_uziemione_sn`` — ten sam zbiór, który czyta bloker
+    E-W5-04) wygrywa z każdą deklaracją izolowania: po przeniesieniu uziemienia na transformator
+    uziemiający pola zespołu uziemiającego źródło GPZ ma ``isolated``, a sieć jest uziemiona
+    przez transformator (decyzja D1). Przy kilku nośnikach (stan blokowany E-W5-04) — pierwszy
+    w kolejności deterministycznej; nośnik wyłącznie z litery grupy (bez konfiguracji) nie jest
+    opisem sieci (karta W5-D p. 12: brak danej ≠ uziemiony). Wyspa bez uziemionego nośnika: ``isolated``, gdy którekolwiek
+    źródło SN albo strona transformatora na szynie wyspy deklaruje punkt izolowany; inaczej
+    szyny w słowniku nie ma (model milczy — brak danej ≠ izolowany).
+    """
+    wyspa = wyspy_galwaniczne_sn(enm)
+    typ_wyspy: dict[str, str] = {}
+    for nosnik in nosniki_uziemione_sn(enm):
+        klucz = wyspa.get(nosnik.bus_ref)
+        if klucz is not None and nosnik.jawny:
+            typ_wyspy.setdefault(klucz, nosnik.typ)
+    deklaracje_izolowania: list[str] = [
+        zrodlo.bus_ref
+        for zrodlo in enm.sources
+        if zrodlo.neutral_grounding is not None
+        and zrodlo.neutral_grounding.type == "isolated"
+        and zrodlo.source_side != "HV_110"
+    ]
+    for trafo in enm.transformers:
+        for bus_ref, cfg in (
+            (trafo.hv_bus_ref, trafo.hv_neutral),
+            (trafo.lv_bus_ref, trafo.lv_neutral),
+        ):
+            if cfg is not None and cfg.type == "isolated":
+                deklaracje_izolowania.append(bus_ref)
+    for bus_ref in deklaracje_izolowania:
+        klucz = wyspa.get(bus_ref)
+        if klucz is not None:
+            typ_wyspy.setdefault(klucz, "isolated")
+    return {szyna: typ_wyspy[klucz] for szyna, klucz in sorted(wyspa.items()) if klucz in typ_wyspy}

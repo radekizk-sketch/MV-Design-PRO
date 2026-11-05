@@ -39,3 +39,15 @@ def impedancja_rozproszenia_transformatora_pu(
     disc = z_pu * z_pu - r_pu * r_pu
     x_pu = math.sqrt(disc) if disc > 0 else 0.0
     return complex(r_pu, x_pu)
+
+
+def reaktancja_dlawika_dostrojonego_ohm(
+    susceptancja_zerowa_sieci_s: float, rozstrojenie: float
+) -> float:
+    """X_N dławika gaszącego dostrojonego do pojemności doziemnej sieci z rozstrojeniem v.
+
+    Prąd pojemnościowy I_C = 3·B_0·U_f (B_0 = ω·C_0 — suma susceptancji zerowych sieci
+    na fazę, S); prąd dławika I_L = U_f/X_N; nadkompensacja I_L = (1 + v)·I_C ⇒
+    X_N = 1 / (3·B_0·(1 + v)) [Ω]. Wołający podaje B_0 > 0 i v > −1.
+    """
+    return 1.0 / (3.0 * susceptancja_zerowa_sieci_s * (1.0 + rozstrojenie))

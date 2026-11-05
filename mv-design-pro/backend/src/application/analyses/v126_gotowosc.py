@@ -267,7 +267,29 @@ def przedmiot_modelu(enm: EnergyNetworkModel) -> dict[str, Any]:
 def _uziemienie_z_modelu(enm: EnergyNetworkModel) -> tuple[str, str] | None:
     """(typ uziemienia modelu, źródło PL) dla sieci SN — opis punktu neutralnego
     sieci SN na źródle (GPZ), potem punkt neutralny transformatora po stronie SN.
-    `None` = model milczy. W5-A: `Bus.grounding` skasowane."""
+    `None` = model milczy. W5-A: `Bus.grounding` skasowane.
+
+    Karta POLA-GPZ-SZABLONY (D1): uziemiony nośnik wyspy SN (`nosniki_uziemione_sn` — ten sam
+    zbiór co bloker E-W5-04) rozstrzyga pierwszy; źródło GPZ z `isolated` po przeniesieniu
+    uziemienia na transformator uziemiający nie opisuje już sieci jako izolowanej."""
+    from enm.nosniki_punktu_neutralnego import nosniki_uziemione_sn
+
+    for nosnik in nosniki_uziemione_sn(enm):
+        if not nosnik.jawny:
+            continue
+        if nosnik.rodzaj == "transformer":
+            tr = next(t for t in enm.transformers if t.ref_id == nosnik.element_ref)
+            return (
+                nosnik.typ,
+                f"punkt neutralny transformatora „{tr.name}” po stronie SN "
+                f"({_OPIS_UZIEMIENIA_PL[nosnik.typ]})",
+            )
+        zrodlo = next(s for s in enm.sources if s.ref_id == nosnik.element_ref)
+        return (
+            nosnik.typ,
+            f"punkt neutralny sieci SN zasilanej ze źródła {zrodlo.name} "
+            f"({_OPIS_UZIEMIENIA_PL[nosnik.typ]})",
+        )
     for source in enm.sources:
         if source.neutral_grounding is not None:
             return (
