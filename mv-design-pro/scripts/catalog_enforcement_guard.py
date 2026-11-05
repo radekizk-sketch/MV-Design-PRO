@@ -81,7 +81,8 @@ def check_catalog_required_operations() -> list[str]:
 
 
 def check_catalog_binding_extraction_paths() -> list[str]:
-    """Check that API gate extracts binding from canonical payload shapes."""
+    """Check that API gate extracts binding from canonical payload shapes (jedyny klucz
+    wiązania: `catalog_binding` / `<rola>_catalog_binding`; przestrzeń z rodzaju elementu)."""
     errors: list[str] = []
 
     from api.domain_ops_policy import DEFAULT_CATALOG_VERSION, extract_catalog_binding
@@ -89,19 +90,28 @@ def check_catalog_binding_extraction_paths() -> list[str]:
     cases = [
         (
             "add_grid_source_sn",
-            {"catalog_ref": "GPZ_SN_001"},
+            {"catalog_binding": {"catalog_item_id": "GPZ_SN_001"}},
             "ZRODLO_SN",
             "GPZ_SN_001",
         ),
         (
             "continue_trunk_segment_sn",
-            {"segment": {"segment_kind": "KABEL_SN", "catalog_ref": "KABEL_SN_240"}},
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "catalog_binding": {"catalog_item_id": "KABEL_SN_240"},
+                }
+            },
             "KABEL_SN",
             "KABEL_SN_240",
         ),
         (
             "insert_station_on_segment_sn",
-            {"transformer": {"transformer_catalog_ref": "TRAFO_SN_NN_630"}},
+            {
+                "transformer": {
+                    "transformer_catalog_binding": {"catalog_item_id": "TRAFO_SN_NN_630"}
+                }
+            },
             "TRAFO_SN_NN",
             "TRAFO_SN_NN_630",
         ),
@@ -110,13 +120,13 @@ def check_catalog_binding_extraction_paths() -> list[str]:
             {
                 "source_technology": "PV",
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": "ZRODLO_NN_PV",
                     "catalog_item_id": "PV_FALOWNIK_500",
                     "catalog_item_version": DEFAULT_CATALOG_VERSION,
                     "materialize": True,
                 },
             },
-            "CONVERTER",
+            "ZRODLO_NN_PV",
             "PV_FALOWNIK_500",
         ),
         (
@@ -124,18 +134,18 @@ def check_catalog_binding_extraction_paths() -> list[str]:
             {
                 "source_technology": "BESS",
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
+                    "catalog_namespace": "ZRODLO_NN_BESS",
                     "catalog_item_id": "BESS_FALOWNIK_250",
                     "catalog_item_version": DEFAULT_CATALOG_VERSION,
                     "materialize": True,
                 },
             },
-            "CONVERTER",
+            "ZRODLO_NN_BESS",
             "BESS_FALOWNIK_250",
         ),
         (
             "insert_section_switch_sn",
-            {"catalog_ref": "ROZLACZNIK_SN_001"},
+            {"catalog_binding": {"catalog_item_id": "ROZLACZNIK_SN_001"}},
             "APARAT_SN",
             "ROZLACZNIK_SN_001",
         ),

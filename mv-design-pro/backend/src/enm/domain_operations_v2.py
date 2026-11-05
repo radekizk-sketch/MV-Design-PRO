@@ -8585,6 +8585,10 @@ DER_WIAZANIA_LADUNKU: dict[str, str] = {
     "vt_catalog_binding": "vt_catalog_ref",
 }
 
+#: Klucze ładunku ``set_der_catalog_bindings`` z referencją wprost (nie wiązaniem katalogu):
+#: model dynamiczny wytwórcy. Razem z polami ``DER_WIAZANIA_LADUNKU`` dają ``DER_BINDING_KEYS``.
+DER_KLUCZE_REFERENCJI_LADUNKU: tuple[str, ...] = ("dynamic_model_ref",)
+
 
 def wiazania_der_z_ladunku(payload: dict[str, Any]) -> dict[str, Any]:
     """Ładunek ``set_der_catalog_bindings`` z wiązaniami ról sprowadzonymi do pól modelu.
@@ -8595,10 +8599,18 @@ def wiazania_der_z_ladunku(payload: dict[str, Any]) -> dict[str, Any]:
     ``bledy_wiazan_w_ladunku`` (dyspozytor i brama).
     """
     wynik = {k: v for k, v in payload.items() if k not in DER_WIAZANIA_LADUNKU}
-    for klucz_ladunku, pole_w_modelu in DER_WIAZANIA_LADUNKU.items():
-        if klucz_ladunku in payload:
-            wynik[pole_w_modelu] = pozycja_wiazania(payload, klucz_ladunku)
+    wynik.update(wiazania_der_modelu(payload))
     return wynik
+
+
+def wiazania_der_modelu(payload: dict[str, Any]) -> dict[str, Any]:
+    """Pola modelu z wiązań ról obecnych w ładunku (``<rola>_catalog_ref`` → pozycja) —
+    odczyt jawny po stałej mapie ``DER_WIAZANIA_LADUNKU`` (analiza odczytów handlera)."""
+    return {
+        pole_w_modelu: pozycja_wiazania(payload, klucz_ladunku)
+        for klucz_ladunku, pole_w_modelu in DER_WIAZANIA_LADUNKU.items()
+        if klucz_ladunku in payload
+    }
 
 
 #: Referencje profili zgodności przyłączeniowej — trzymane w podsłowniku ``profiles``,
@@ -8794,7 +8806,6 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     wartość. Determinizm istniejących modeli nietknięty: wywołanie bez żadnego wiązania
     niczego nie dopisuje.
     """
-    payload = wiazania_der_z_ladunku(payload)
     generator_ref = payload.get("generator_ref") or payload.get("source_ref")
     if not generator_ref:
         return _error_response(
@@ -8808,12 +8819,19 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
         **payload,
         **{
             klucz: _referencja_wiazania_bez_bialych_znakow(payload[klucz])
-            for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS)
+            for klucz in (*DER_KLUCZE_REFERENCJI_LADUNKU, *DER_PROFILE_KEYS)
             if klucz in payload
         },
     }
 
-    obecne_wiazania = {k: payload[k] for k in DER_BINDING_KEYS if k in payload}
+    # Wiązania ról (`<rola>_catalog_binding`) → pola modelu; kolejność `DER_BINDING_KEYS`.
+    obecne_wiazania = {
+        **{
+            pole: _referencja_wiazania_bez_bialych_znakow(wartosc)
+            for pole, wartosc in wiazania_der_modelu(payload).items()
+        },
+        **{k: payload[k] for k in DER_KLUCZE_REFERENCJI_LADUNKU if k in payload},
+    }
     obecne_profile = {k: payload[k] for k in DER_PROFILE_KEYS if k in payload}
     karty_obecne = KLUCZ_KART_WIDMOWYCH in payload
     if not obecne_wiazania and not obecne_profile and not karty_obecne:

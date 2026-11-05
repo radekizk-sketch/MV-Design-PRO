@@ -377,7 +377,7 @@ def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
             "source_name": "GPZ 110/15",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "catalog_binding": {"catalog_item_id": _KATALOG_ZRODLA_KOORD},
         },
     )
     stacja = next(s["ref_id"] for s in enm["substations"] if s["ref_id"].endswith("/substation"))
@@ -415,9 +415,8 @@ def _dodaj_modul_oze_sn(
                 "rated_power_mva": modul["moc_transformatora_mva"],
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": modul["napiecie_falownika_kv"],
-                "catalog_ref": modul["transformator_blokowy"],
                 "catalog_binding": _wiazanie_katalogowe(
-                    "TRANSFORMATOR_SN_NN", modul["transformator_blokowy"]
+                    "TRAFO_SN_NN", modul["transformator_blokowy"]
                 ),
                 # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN wyjścia falownika +6 % (wiersz
                 # c 1,05/0,95 tabeli 1 IEC 60909-0) — dana kreatora OZE, nie domyślka.
@@ -436,13 +435,12 @@ def _dodaj_modul_oze_sn(
                 "apparatus_catalog_binding": _wiazanie_katalogowe(
                     "APARAT_SN", _KATALOG_APARATU_KOORD
                 ),
-                "cable_catalog_ref": _KATALOG_KABLA_KOORD,
                 "cable_catalog_binding": _wiazanie_katalogowe("KABEL_SN", _KATALOG_KABLA_KOORD),
             },
         },
     }
     if modul["bateria"] is not None:
-        payload["battery_catalog_ref"] = modul["bateria"]
+        payload["battery_catalog_binding"] = {"catalog_item_id": modul["bateria"]}
     payload.update(modul.get("deklaracja_kreatora") or {})
     payload.update(modul.get("dane_nc_rfg") or {})
     enm = _operacja_domenowa_sceny(enm, "add_converter_source", payload)
@@ -497,8 +495,8 @@ _KATALOG_PV_SCENY_POLA = "conv-pv-1mw-15kv"
 #: dowodzi właśnie stanu „wybierz wariant katalogowy" i osi zabezpieczeń z
 #: NAZWANYM brakiem, więc to dana sceny, nie niedopatrzenie.
 _WIAZANIA_SCENY_POLA_OZE: dict[str, Any] = {
-    "protection_catalog_ref": "ABB_REB670",
-    "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+    "protection_catalog_binding": {"catalog_item_id": "ABB_REB670"},
+    "ct_catalog_binding": {"catalog_item_id": "ct_200_5_5p10_10va_abb"},
     "dynamic_model_ref": "default_pv_gfl",
     "nc_rfg_profile_ref": "pse",
     "lvrt_curve_ref": "pse",
@@ -535,7 +533,7 @@ def _enm_sceny_pola_oze() -> EnergyNetworkModel:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
                 "name": "Linia kablowa farmy PV",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
+                "catalog_binding": {"catalog_item_id": _KATALOG_KABLA_KOORD},
             }
         },
     )
@@ -552,8 +550,11 @@ def _enm_sceny_pola_oze() -> EnergyNetworkModel:
             "station": {"name": "Stacja wytwórcy PV", "station_type": "terminal"},
             "nn_voltage_kv": 0.8,
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
-            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
+            "field_apparatus_catalog_binding": {"catalog_item_id": _KATALOG_APARATU_KOORD},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": _KATALOG_TRAFO_SCENY_OZE},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )
@@ -577,7 +578,7 @@ def _enm_sceny_pola_oze() -> EnergyNetworkModel:
             "source_name": "Farma PV 1 MW",
             "quantity": 1,
             "power_setpoint_mw": 1.0,
-            "catalog_binding": _wiazanie_katalogowe("CONVERTER", _KATALOG_PV_SCENY_POLA),
+            "catalog_binding": _wiazanie_katalogowe("ZRODLO_NN_PV", _KATALOG_PV_SCENY_POLA),
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -2202,7 +2203,7 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "source_name": "GPZ 110/15",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "catalog_binding": {"catalog_item_id": _KATALOG_ZRODLA_KOORD},
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -2213,7 +2214,7 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
                 "name": "Magistrala stacji PV",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
+                "catalog_binding": {"catalog_item_id": _KATALOG_KABLA_KOORD},
             }
         },
     )
@@ -2230,8 +2231,11 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "station": {"name": "Stacja PV", "station_type": "terminal"},
             "nn_voltage_kv": 0.8,
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
-            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
+            "field_apparatus_catalog_binding": {"catalog_item_id": _KATALOG_APARATU_KOORD},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": _KATALOG_TRAFO_SCENY_OZE},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
             # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
             # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
@@ -2253,7 +2257,7 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "station_ref": stacja["ref_id"],
             "bus_nn_ref": szyna_nn,
             "source_name": "Farma PV",
-            "catalog_ref": _KARTA_PV_SCENY_OZE,
+            "catalog_binding": {"catalog_item_id": _KARTA_PV_SCENY_OZE},
         },
     )
 
@@ -3923,7 +3927,7 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             "source_name": "GPZ 110/15",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "catalog_binding": {"catalog_item_id": _KATALOG_ZRODLA_KOORD},
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -3934,7 +3938,7 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 600,
                 "name": "Magistrala wytwórcy",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
+                "catalog_binding": {"catalog_item_id": _KATALOG_KABLA_KOORD},
             }
         },
     )
@@ -3948,14 +3952,17 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
         "insert_station_on_segment_sn",
         {
             "segment_id": segment,
-            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "field_apparatus_catalog_binding": {"catalog_item_id": _KATALOG_APARATU_KOORD},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_LOM},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": _KATALOG_TRAFO_SCENY_LOM},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
             # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
             # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
@@ -3981,7 +3988,7 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             "source_name": "Farma PV 1 MW",
             "quantity": 1,
             "power_setpoint_mw": 1.0,
-            "catalog_binding": _wiazanie_katalogowe("CONVERTER", _KATALOG_PV_SCENY_POLA),
+            "catalog_binding": _wiazanie_katalogowe("ZRODLO_NN_PV", _KATALOG_PV_SCENY_POLA),
         },
     )
     # Pole wytwórcy = relacja `Generator.meta.field_ref` (`enm.pola.ref_pola_wytworcy`, jeden
@@ -4130,7 +4137,6 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
                     "rated_power_mva": 0.5,
                     "primary_voltage_kv": 15.0,
                     "secondary_voltage_kv": 0.8,
-                    "catalog_ref": _TRANSFORMATOR_BLOKOWY_SCENY_V126,
                     "catalog_binding": _wiazanie_katalogowe_sceny(
                         "TRAFO_SN_NN", _TRANSFORMATOR_BLOKOWY_SCENY_V126
                     ),
@@ -4150,7 +4156,6 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
                     "apparatus_catalog_binding": _wiazanie_katalogowe_sceny(
                         "APARAT_SN", _APARAT_POLA_SN_SCENY_V126
                     ),
-                    "cable_catalog_ref": _KABEL_SN_SCENY_V126,
                     "cable_catalog_binding": _wiazanie_katalogowe_sceny(
                         "KABEL_SN", _KABEL_SN_SCENY_V126
                     ),
@@ -4172,8 +4177,8 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
         {
             "bus_ref": "bus_sn_main",
             "name": "Zespół uziemiający GPZ",
-            "catalog_ref": _TRANSFORMATOR_UZIEMIAJACY_SCENY_V126,
-            "dlawik": {"catalog_ref": _DLAWIK_SCENY_V126},
+            "catalog_binding": {"catalog_item_id": _TRANSFORMATOR_UZIEMIAJACY_SCENY_V126},
+            "dlawik": {"catalog_binding": {"catalog_item_id": _DLAWIK_SCENY_V126}},
         },
     )
     if wynik.get("error"):
@@ -4630,7 +4635,7 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
             "source_name": "GPZ 110/15",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "catalog_binding": {"catalog_item_id": _KATALOG_ZRODLA_KOORD},
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -4641,7 +4646,7 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 600,
                 "name": "Magistrala demonstracyjna",
-                "catalog_ref": _KATALOG_KABLA_KOORD,
+                "catalog_binding": {"catalog_item_id": _KATALOG_KABLA_KOORD},
             }
         },
     )
@@ -4655,14 +4660,17 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_id": segment,
-            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "field_apparatus_catalog_binding": {"catalog_item_id": _KATALOG_APARATU_KOORD},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_KOORD},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": _KATALOG_TRAFO_KOORD},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
             "station": {
                 "station_type": "B",

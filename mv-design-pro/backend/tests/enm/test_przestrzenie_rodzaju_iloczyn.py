@@ -224,3 +224,15 @@ def test_odcinek_sn_brama_i_operacja_z_tej_samej_mapy(rodzaj: str, deklarowana: 
     assert (odmowa is None) is (deklarowana in oczekiwane[rodzaj])
     if odmowa is not None:
         assert odmowa.kod_bledu == KOD_PRZESTRZENI_NIEZGODNEJ
+
+
+def test_klucze_wiazan_der_skladaja_sie_z_dwoch_kanalow() -> None:
+    """Predykaty parami: pola modelu zapisu wiązań DER (`DER_BINDING_KEYS`) to dokładnie pola
+    z wiązań ról ładunku i klucze referencji wprost — handler czyta je dwoma kanałami."""
+    from enm.domain_operations_v2 import (
+        DER_BINDING_KEYS,
+        DER_KLUCZE_REFERENCJI_LADUNKU,
+        DER_WIAZANIA_LADUNKU,
+    )
+
+    assert DER_BINDING_KEYS == (*DER_WIAZANIA_LADUNKU.values(), *DER_KLUCZE_REFERENCJI_LADUNKU)

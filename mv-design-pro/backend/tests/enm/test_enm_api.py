@@ -525,7 +525,8 @@ class TestDomainOpsCatalogPolicy:
         )
         assert malformed.status_code == 422
         body = malformed.json()
-        assert body["detail"]["code"] == "catalog.ref_required"
+        # Zamiennik klucza wiązania (`namespace`) to odmowa własnym kodem — nie „brak wiązania".
+        assert body["detail"]["code"] == "catalog.binding_key_alias"
 
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert after["header"]["hash_sha256"] == before_hash
@@ -784,7 +785,7 @@ class TestDomainOpsCatalogPolicy:
                         "field_ref": "field_in_1",
                         "breaker_ref": "brk_1",
                         "relay_type": "NADPRADOWY",
-                        "protection": {"catalog_item_id": "REF-OC-EF-500"},
+                        "catalog_binding": {"catalog_item_id": "REF-OC-EF-500"},
                     },
                 }
             },
@@ -897,7 +898,8 @@ class TestDomainOpsCatalogPolicy:
         )
         assert malformed.status_code == 422
         body = malformed.json()
-        assert body["detail"]["code"] == "catalog.ref_required"
+        # Zamiennik klucza wiązania (`namespace`) to odmowa własnym kodem — nie „brak wiązania".
+        assert body["detail"]["code"] == "catalog.binding_key_alias"
 
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert after["header"]["hash_sha256"] == before_hash
