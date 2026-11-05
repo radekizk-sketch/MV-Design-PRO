@@ -42,6 +42,13 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Final, Literal, Protocol
 
+from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
+    CZAS_TN_ROZDZIELCZY,
+    CZAS_TT_ROZDZIELCZY,
+    TABLICA_TN_ODBIORCZE,
+    TABLICA_TT_ODBIORCZE,
+    pasmo_dla_u0,
+)
 from network_model.catalog.przekladniki import zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.core.bateria_kondensatorow import NAZWY_UKLADOW_POLACZEN_BATERII_PL
@@ -2485,4 +2492,121 @@ def zaczep_rekordu_aparatu(aparat: Mapping[str, Any]) -> ZaczepRozstrzygniety | 
     return rozstrzygnij_zaczep_przekladnika(
         zaczepy_przekladnika(przekladnie),
         float(projektant) if projektant is not None else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: obwód nN — czas wyłączenia zwarcia (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN,
+# pakiet 6a)
+# ---------------------------------------------------------------------------
+#
+# Wytrzymałość cieplna przewodu nN (I²t ≤ k²S²) potrzebuje czasu wyłączenia zwarcia przez aparat
+# obwodu. Pierwszeństwo: wartość projektanta na aparacie (``czas_wylaczenia_zwarcia_s`` gałęzi
+# łącznika albo bezpiecznika) > czas z charakterystyki czasowo-prądowej aparatu przy prądzie
+# zwarciowym obwodu (solver ``protection_lv_curves``) > PROPOZYCJA poniżej. Propozycją jest
+# NAJDŁUŻSZY czas wyłączenia dopuszczony przez PN-HD 60364-4-41 dla danego obwodu — wartość
+# zachowawcza dla I²t (dłuższy czas = większa całka Joule'a).
+#
+# Rodzaj obwodu: obwód odbiorczy — aparat o prądzie znamionowym ≤ 32 A (§411.3.2.2: obwody
+# odbiorcze do 32 A zasilające odbiorniki na stałe; obwody z gniazdami do 63 A). Obecność gniazd
+# nie jest daną modelu, więc dla I²t pasmo 32–63 A przyjmuje się jako obwód rozdzielczy (czas
+# dłuższy, zachowawczo). Werdykt samoczynnego wyłączenia (``application.analyses.swz.werdykt``)
+# klasyfikuje to samo pasmo odwrotnie — jako obwód odbiorczy, bo dla SWZ zachowawczy jest czas
+# KRÓTSZY. Oba kierunki wynikają z tej samej reguły normy i są nazwane w wyjaśnieniu.
+#
+# Układ IT: przy drugim zwarciu obowiązują warunki TN (części przewodzące połączone) albo TT
+# (uziemione indywidualnie) — §411.6.4; propozycja bierze czasy TN (dłuższe, zachowawczo).
+# Układ nieznany: najdłuższy czas tablicy (5 s, obwód rozdzielczy TN).
+
+PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A: Final[float] = 32.0
+
+_ZRODLO_CZASU_NN_PL = "PN-HD 60364-4-41"
+
+
+@dataclass(frozen=True)
+class CzasWylaczeniaRoboczyNn:
+    """Propozycja czasu wyłączenia zwarcia obwodu nN z normy (wartość robocza ``ESTIMATED``)."""
+
+    czas_s: float
+    rodzaj_obwodu: Literal["odbiorczy", "rozdzielczy"]
+    uklad_przyjety: Literal["TN", "TT"]
+    jednostka_redakcyjna: str
+    podstawa_tabeli_pl: str
+    uzasadnienie_pl: str
+
+
+def czas_wylaczenia_roboczy_nn(
+    *, uklad: str | None, in_a: float | None, u0_v: float | None
+) -> CzasWylaczeniaRoboczyNn:
+    """Najdłuższy dopuszczalny czas wyłączenia obwodu nN wg PN-HD 60364-4-41 (propozycja).
+
+    ``uklad`` — układ sieci nN z transformatora zasilającego (``TN-S``/``TN-C-S``/``TN-C``/
+    ``TT``/``IT`` albo ``None``), ``in_a`` — prąd znamionowy aparatu obwodu (``None`` — obwód
+    rozdzielczy), ``u0_v`` — napięcie fazowe względem ziemi (``None`` przy obwodzie odbiorczym —
+    pasmo nieznane, przyjmuje się czas obwodu rozdzielczego).
+    """
+    uklad_tt = uklad == "TT"
+    uklad_przyjety: Literal["TN", "TT"] = "TT" if uklad_tt else "TN"
+    if uklad is None:
+        opis_ukladu = "układ sieci nN niezadeklarowany — przyjęto najdłuższy czas tablicy (TN)"
+    elif uklad == "IT":
+        opis_ukladu = (
+            "układ IT — przy drugim zwarciu warunki TN albo TT (§411.6.4); przyjęto czasy TN "
+            "(dłuższe)"
+        )
+    else:
+        opis_ukladu = f"układ {uklad}"
+    if (
+        uklad is not None
+        and in_a is not None
+        and in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A
+        and u0_v is not None
+        and u0_v > 50.0
+    ):
+        pasmo = pasmo_dla_u0(u0_v)
+        wpis = (TABLICA_TT_ODBIORCZE if uklad_tt else TABLICA_TN_ODBIORCZE)[pasmo]
+        jednostka = "tablica 41.1"
+        rodzaj: Literal["odbiorczy", "rozdzielczy"] = "odbiorczy"
+        opis_obwodu = (
+            f"obwód odbiorczy (aparat {in_a:g} A ≤ {PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A:g} A), "
+            f"U0 {u0_v:.0f} V (pasmo {pasmo.replace('<=', '≤')} V)"
+        )
+    else:
+        wpis = CZAS_TT_ROZDZIELCZY if uklad_tt else CZAS_TN_ROZDZIELCZY
+        jednostka = "§411.3.2.4" if uklad_tt else "§411.3.2.3"
+        rodzaj = "rozdzielczy"
+        opis_obwodu = "obwód rozdzielczy" + (
+            f" (aparat {in_a:g} A > {PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A:g} A — obecność "
+            "gniazd nie jest daną modelu, dla I²t przyjęto czas dłuższy)"
+            if in_a is not None and in_a > PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A
+            else (
+                " (aparat bez prądu znamionowego albo pasmo napięcia nieznane)"
+                if uklad is not None
+                else ""
+            )
+        )
+    return CzasWylaczeniaRoboczyNn(
+        czas_s=wpis.czas_s,
+        rodzaj_obwodu=rodzaj,
+        uklad_przyjety=uklad_przyjety,
+        jednostka_redakcyjna=f"{_ZRODLO_CZASU_NN_PL} {jednostka}",
+        podstawa_tabeli_pl=wpis.podstawa,
+        uzasadnienie_pl=(
+            f"Wartość robocza czasu wyłączenia zwarcia {wpis.czas_s:g} s — najdłuższy czas "
+            f"dopuszczony przez {_ZRODLO_CZASU_NN_PL} {jednostka} ({opis_ukladu}, {opis_obwodu}); "
+            "wartość zachowawcza dla I²t. Zmień ją na aparacie obwodu (czas wyłączenia zwarcia), "
+            "gdy znasz charakterystykę aparatu."
+        ),
+    )
+
+
+def dana_przyjeta_czasu_wylaczenia_nn(
+    *, miejsce_pl: str, czas: CzasWylaczeniaRoboczyNn
+) -> DanaPrzyjeta:
+    """Wartość robocza czasu wyłączenia obwodu nN jako dana przyjęta werdyktu (``ESTIMATED``)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"czas wyłączenia zwarcia ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=czas.czas_s, jednostka="s"),
+        powod_pl=czas.uzasadnienie_pl,
+        jakosc=FieldQuality.ESTIMATED,
     )

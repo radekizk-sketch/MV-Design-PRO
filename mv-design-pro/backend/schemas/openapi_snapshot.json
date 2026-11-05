@@ -6564,7 +6564,8 @@
     "type": "object"
    },
    "LVCircuitVerificationPackRequest": {
-    "description": "Wejście pakietu dowodowego weryfikacji obwodu nN.\n\nGrupuje parametry wg dostawcy: (1) tożsamość pakietu/kontekst, (2) obwód w\nmodelu ENM (``case_id`` — ta sama przestrzeń co ``/api/cases/{case_id}/\nenm/...``), (3) dane mocy dla Ib, (4) warunki ułożenia G-D1 dla Iz′ (REUSE\n``wspolczynniki_nn``), (5) Ik″max w punkcie zabudowy (osobny bieg zwarciowy\n— parametr wejściowy, wzorzec ``nn_device_selection``), (6) dane cieplne\nI²t (REUSE ``check_conductor_thermal_withstand``), (7) ΔU (REUSE pakietu\nVDROP / ``vdrop_chain_binding`` — headline U_source/ΔU_total).",
+    "additionalProperties": false,
+    "description": "Wejście pakietu dowodowego weryfikacji obwodu nN.\n\nKarta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): żądanie niesie wyłącznie tożsamość\npakietu, obwód w modelu ENM i dane, których model nie przechowuje (P/Q obwodu dla Ib,\nΔU całkowite z pakietu VDROP). Napięcie, obciążalność i warunki ułożenia, dane cieplne\nprzewodu, I″k i κ oraz czas wyłączenia pochodzą z MODELU i BIEGU zwarciowego\n(`nn_circuit_sheet.wejscie_dowodu_obwodu_nn_z_modelu`). ``short_circuit_run_id`` pominięty\n— najnowszy zakończony bieg zwarciowy przypadku (scenariusz MAX, zwarcie metaliczne);\nbrak biegu = kryterium cieplne i zdolność wyłączania nieocenione, z akcją naprawczą.\nPole spoza kontraktu (dawne ``u_ll_kv``, ``fault_duration_s``…) to 422, nie cicha ignorancja.",
     "properties": {
      "apparatus_branch_ref": {
       "anyOf": [
@@ -6593,110 +6594,6 @@
       "title": "Case Name",
       "type": "string"
      },
-     "conductor_material": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Conductor Material"
-     },
-     "cross_section_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Cross Section Mm2"
-     },
-     "fault_duration_s": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Fault Duration S"
-     },
-     "ik_max_ka": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ik Max Ka"
-     },
-     "ikss_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ikss A"
-     },
-     "ith_1s_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ith 1S A"
-     },
-     "iz_katalogowe_a": {
-      "title": "Iz Katalogowe A",
-      "type": "number"
-     },
-     "izolacja": {
-      "enum": [
-       "PVC",
-       "XLPE"
-      ],
-      "title": "Izolacja",
-      "type": "string"
-     },
-     "jth_1s_a_per_mm2": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Jth 1S A Per Mm2"
-     },
-     "kappa": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Kappa"
-     },
-     "liczba_obwodow": {
-      "title": "Liczba Obwodow",
-      "type": "integer"
-     },
      "p_mw": {
       "title": "P Mw",
       "type": "number"
@@ -6713,17 +6610,6 @@
       "title": "Q Mvar",
       "type": "number"
      },
-     "rezystywnosc_gruntu_km_w": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Rezystywnosc Gruntu Km W"
-     },
      "run_id": {
       "title": "Run Id",
       "type": "string"
@@ -6737,6 +6623,17 @@
       "title": "Segment Ref",
       "type": "string"
      },
+     "short_circuit_run_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Short Circuit Run Id"
+     },
      "snapshot_id": {
       "title": "Snapshot Id",
       "type": "string"
@@ -6746,47 +6643,9 @@
       "title": "Solver Version",
       "type": "string"
      },
-     "srodowisko": {
-      "enum": [
-       "powietrze",
-       "grunt"
-      ],
-      "title": "Srodowisko",
-      "type": "string"
-     },
      "station_ref": {
       "title": "Station Ref",
       "type": "string"
-     },
-     "temp_operating_c": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Temp Operating C"
-     },
-     "temp_short_circuit_c": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Temp Short Circuit C"
-     },
-     "temperatura_c": {
-      "title": "Temperatura C",
-      "type": "number"
-     },
-     "u_ll_kv": {
-      "title": "U Ll Kv",
-      "type": "number"
      },
      "vdrop_delta_u_total_kv": {
       "title": "Vdrop Delta U Total Kv",
@@ -6802,10 +6661,6 @@
        }
       ],
       "title": "Vdrop Delta U Total Percent"
-     },
-     "vdrop_u_source_kv": {
-      "title": "Vdrop U Source Kv",
-      "type": "number"
      }
     },
     "required": [
@@ -6822,13 +6677,6 @@
      "segment_ref",
      "p_mw",
      "q_mvar",
-     "u_ll_kv",
-     "iz_katalogowe_a",
-     "srodowisko",
-     "izolacja",
-     "temperatura_c",
-     "liczba_obwodow",
-     "vdrop_u_source_kv",
      "vdrop_delta_u_total_kv"
     ],
     "title": "LVCircuitVerificationPackRequest",
@@ -20591,7 +20439,7 @@
   },
   "/api/cases/{case_id}/enm/nn-circuit-sheet": {
    "get": {
-    "description": "Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,\ndocs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).\n\nJeden wiersz PER ODPŁYW rozdzielnicy/stacji nN: Ib (z biegu rozpływu, gdy\n``load_flow_run_id`` podany i biegu ma wynik dla obwodu, inaczej „z\ntabliczki\" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,\nIz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),\ndługość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/\nIk1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),\nstatus doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych\ndostawców (zero fizyki tutaj).\n\n``load_flow_run_id``/``short_circuit_run_id`` OPCJONALNE — bez nich\nkolumny zależne od biegu dostają uczciwy trzeci stan „brak danych\" z\nakcją naprawczą po stronie UI („uruchom bieg\"), nie fabrykowaną liczbę.",
+    "description": "Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,\ndocs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).\n\nJeden wiersz PER ODPŁYW rozdzielnicy/stacji nN: Ib (z biegu rozpływu, gdy\n``load_flow_run_id`` podany i biegu ma wynik dla obwodu, inaczej „z\ntabliczki\" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,\nIz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),\ndługość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/\nIk1_min, SWZ, I²t (wymaga ``short_circuit_run_id``; czas wyłączenia obwodu z jednego\ndostawcy ``czas_wylaczenia_nn`` — wartość projektanta na aparacie, charakterystyka\naparatu przy I″k albo wartość robocza PN-HD 60364-4-41),\nstatus doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych\ndostawców (zero fizyki tutaj).\n\n``load_flow_run_id``/``short_circuit_run_id`` OPCJONALNE — bez nich\nkolumny zależne od biegu dostają uczciwy trzeci stan „brak danych\" z\nakcją naprawczą po stronie UI („uruchom bieg\"), nie fabrykowaną liczbę.",
     "operationId": "get_nn_circuit_sheet_api_cases__case_id__enm_nn_circuit_sheet_get",
     "parameters": [
      {
@@ -20642,22 +20490,6 @@
         }
        ],
        "title": "Short Circuit Run Id"
-      }
-     },
-     {
-      "in": "query",
-      "name": "fault_duration_s",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "number"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Fault Duration S"
       }
      }
     ],
@@ -25911,7 +25743,7 @@
   },
   "/api/nn-proof/circuit/pack": {
    "post": {
-    "description": "Pakiet dowodowy LV_CIRCUIT_VERIFICATION (ZIP) dla obwodu nN.\n\n10 kroków (Ib → Iz′ → dobór → I2 → zdolność wyłączania → I²t → ΔU →\nIk1_min → SWZ), Formula→Data→Substitution→Result→Unit, deterministyczny\ndla identycznego modelu ENM i identycznych parametrów wejściowych.",
+    "description": "Pakiet dowodowy LV_CIRCUIT_VERIFICATION (ZIP) dla obwodu nN.\n\n10 kroków (Ib → Iz′ → dobór → I2 → zdolność wyłączania → I²t → ΔU →\nIk1_min → SWZ), Formula→Data→Substitution→Result→Unit, deterministyczny\ndla identycznego modelu ENM, biegu i parametrów wejściowych.",
     "operationId": "download_lv_circuit_verification_pack_api_nn_proof_circuit_pack_post",
     "requestBody": {
      "content": {
@@ -25951,7 +25783,7 @@
   },
   "/api/nn-proof/circuit/preview": {
    "post": {
-    "description": "Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie).",
+    "description": "Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie + źródła).",
     "operationId": "preview_lv_circuit_verification_pack_api_nn_proof_circuit_preview_post",
     "requestBody": {
      "content": {

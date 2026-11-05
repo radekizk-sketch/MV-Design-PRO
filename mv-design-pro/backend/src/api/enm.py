@@ -580,7 +580,6 @@ def get_nn_circuit_sheet(
     station_ref: str,
     load_flow_run_id: str | None = None,
     short_circuit_run_id: str | None = None,
-    fault_duration_s: float | None = None,
 ) -> dict[str, Any]:
     """Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,
     docs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).
@@ -590,7 +589,9 @@ def get_nn_circuit_sheet(
     tabliczki" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,
     Iz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),
     długość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/
-    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),
+    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id``; czas wyłączenia obwodu z jednego
+    dostawcy ``czas_wylaczenia_nn`` — wartość projektanta na aparacie, charakterystyka
+    aparatu przy I″k albo wartość robocza PN-HD 60364-4-41),
     status doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych
     dostawców (zero fizyki tutaj).
 
@@ -616,7 +617,6 @@ def get_nn_circuit_sheet(
         station_ref=station_ref,
         load_flow_run=load_flow_run,
         short_circuit_run=short_circuit_run,
-        fault_duration_s=fault_duration_s,
     )
 
 

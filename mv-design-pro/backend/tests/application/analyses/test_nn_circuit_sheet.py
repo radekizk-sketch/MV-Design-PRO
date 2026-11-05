@@ -448,31 +448,42 @@ class TestStanyTrzecie:
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
         assert wiersz["ik_max"]["status"] == "brak danych"
 
-    def test_brak_czasu_wylaczenia_daje_brak_dla_i2t(self) -> None:
+    def test_brak_biegu_zwarciowego_daje_nieocenione_i2t_z_akcja(self) -> None:
+        # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): czas wyłączenia nie jest już
+        # parametrem żądania — bez biegu zwarciowego kryterium cieplne nie jest oceniane
+        # i wiersz nazywa akcję naprawczą.
         enm = _siec_referencyjna()
-        _wgraj_siec(enm)
-        sc_run = execute_run(
-            create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
-        )
-        wynik = build_nn_circuit_sheet(
-            enm=enm, station_ref="stn", short_circuit_run=sc_run, fault_duration_s=None
-        )
+        wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn")
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
         assert wiersz["i2t"]["status"] == "brak danych"
-        assert "czasu wyłączenia" in wiersz["i2t"]["reason_pl"]
+        assert "nie zostało ocenione" in wiersz["i2t"]["reason_pl"]
+        assert wiersz["i2t"]["akcja_pl"] == "Uruchom obliczenia zwarciowe"
 
-    def test_i2t_policzony_gdy_ith_i_czas_dostarczone(self) -> None:
+    def test_i2t_z_biegiem_niesie_czas_wylaczenia_z_pochodzeniem(self) -> None:
         enm = _siec_referencyjna()
+        # Dane cieplne kabli z karty typu (zgodne: I_th(1 s) = J_th · S), żeby kryterium
+        # zostało policzone — test wiąże czas sekcji z czasem użytym w I_th.
+        for kabel in enm.branches:
+            if isinstance(kabel, Cable):
+                kabel.cross_section_mm2 = 120.0
+                kabel.jth_1s_a_per_mm2 = 115.0
+                kabel.ith_1s_a = 13800.0
+                kabel.conductor_material = "CU"
+                kabel.insulation = "PVC"
+                kabel.operating_temperature_c = 70.0
+                kabel.short_circuit_temperature_c = 160.0
         _wgraj_siec(enm)
         sc_run = execute_run(
             create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
         )
-        wynik = build_nn_circuit_sheet(
-            enm=enm, station_ref="stn", short_circuit_run=sc_run, fault_duration_s=0.2
-        )
+        wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn", short_circuit_run=sc_run)
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
-        # Brak Ith(1s)/Jth(1s) na kablu referencyjnym -> nierozstrzygalne (uczciwe), nie crash.
-        assert wiersz["i2t"]["status"] in ("OK", "nierozstrzygalne")
+        assert wiersz["i2t"]["status"] == "OK", wiersz["i2t"]
+        wartosc = wiersz["i2t"]["wartosc"]
+        czas = wartosc["czas_wylaczenia"]
+        assert czas["zrodlo"] in ("projektant", "charakterystyka_aparatu", "wartosc_robocza")
+        # Jedno źródło: czas w wyjaśnieniu = czas, przy którym liczono I_th.
+        assert wartosc["prad_cieplny"]["tk_s"] == czas["czas_s"]
 
 
 class TestZgodnoscZNiezaleznymWywolaniemDostawcow:
@@ -543,14 +554,12 @@ class TestDeterminizm:
             station_ref="stn",
             load_flow_run=pf,
             short_circuit_run=sc,
-            fault_duration_s=0.2,
         )
         b = build_nn_circuit_sheet(
             enm=enm,
             station_ref="stn",
             load_flow_run=pf,
             short_circuit_run=sc,
-            fault_duration_s=0.2,
         )
         assert a == b
 

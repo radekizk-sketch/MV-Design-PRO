@@ -415,12 +415,26 @@ class SwitchBranch(BranchBase):
     # własnego stanu dziedziczy stan pola — `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`
     # (jedno źródło). `None` = gałąź sprzed atrybutu. Rozstrzyga zakaz gazów fluorowanych.
     stan_obiektu: StanObiektu | None = None
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiet 6a): czas wyłączenia zwarcia obwodu
+    # chronionego tym aparatem — wartość PROJEKTANTA (zasada nr 4: nadpisanie wartości roboczej).
+    # Pierwszeństwo w `application.analyses.czas_wylaczenia_nn`: ta wartość > czas
+    # z charakterystyki aparatu przy prądzie zwarciowym obwodu > wartość robocza PN-HD 60364-4-41.
+    # `None` = brak deklaracji (poza odciskiem modelu). Zakres (0; 5] s — granica metody
+    # adiabatycznej I²t (IEC 60949) i najdłuższy czas tablicy 41.1.
+    czas_wylaczenia_zwarcia_s: float | None = Field(default=None, gt=0.0, le=5.0)
 
 
 class FuseBranch(BranchBase):
     type: Literal["fuse"] = "fuse"
     rated_current_a: float | None = None
     rated_voltage_kv: float | None = None
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiet 6a): czas wyłączenia zwarcia obwodu
+    # chronionego tym aparatem — wartość PROJEKTANTA (zasada nr 4: nadpisanie wartości roboczej).
+    # Pierwszeństwo w `application.analyses.czas_wylaczenia_nn`: ta wartość > czas
+    # z charakterystyki aparatu przy prądzie zwarciowym obwodu > wartość robocza PN-HD 60364-4-41.
+    # `None` = brak deklaracji (poza odciskiem modelu). Zakres (0; 5] s — granica metody
+    # adiabatycznej I²t (IEC 60949) i najdłuższy czas tablicy 41.1.
+    czas_wylaczenia_zwarcia_s: float | None = Field(default=None, gt=0.0, le=5.0)
 
 
 Branch = Annotated[

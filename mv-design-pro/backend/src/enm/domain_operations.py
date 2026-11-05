@@ -10752,6 +10752,43 @@ def _pola_kontraktu_kolekcji(coll: str) -> frozenset[str]:
     return frozenset(nazwy)
 
 
+_TYPY_APARATU_Z_CZASEM_WYLACZENIA = frozenset({"switch", "breaker", "disconnector", "fuse"})
+
+
+def _blad_czasu_wylaczenia_aparatu(
+    element: dict[str, Any], parameters: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Czas wyłączenia zwarcia (wartość projektanta) — wyłącznie na aparacie, (0; 5] s albo zdjęcie.
+
+    Ten sam zakres co kontrakt pola (`SwitchBranch`/`FuseBranch.czas_wylaczenia_zwarcia_s`):
+    granica metody adiabatycznej I²t i najdłuższy czas tablicy 41.1 PN-HD 60364-4-41.
+    """
+    if "czas_wylaczenia_zwarcia_s" not in parameters:
+        return None
+    if element.get("type") not in _TYPY_APARATU_Z_CZASEM_WYLACZENIA:
+        return _error_response(
+            f"{opis_nazwy(element.get('name'), 'Element')}: czas wyłączenia zwarcia ma wyłącznie "
+            "aparat zabezpieczający obwód (wyłącznik, rozłącznik, odłącznik albo bezpiecznik).",
+            "params.key_not_allowed",
+        )
+    wartosc = parameters["czas_wylaczenia_zwarcia_s"]
+    if wartosc is None:
+        return None
+    if (
+        isinstance(wartosc, bool)
+        or not isinstance(wartosc, int | float)
+        or not math.isfinite(wartosc)
+        or not 0.0 < float(wartosc) <= 5.0
+    ):
+        return _error_response(
+            f"Pole {pole('parameters', 'update_element_parameters')}: czas wyłączenia zwarcia "
+            "podaje się w sekundach z przedziału (0; 5] s — granica metody adiabatycznej I²t "
+            "i najdłuższy czas wyłączenia PN-HD 60364-4-41.",
+            "params.invalid_value",
+        )
+    return None
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu.
 
@@ -10885,6 +10922,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "normal_state",
                 # Karta LINIA-110: geometria słupa linii (dana projektu).
                 "geometria_slupa",
+                # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): czas wyłączenia zwarcia
+                # obwodu nN chronionego aparatem — wartość projektanta, kontrola niżej.
+                "czas_wylaczenia_zwarcia_s",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -11084,6 +11124,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_stanu = _blad_stanu_lacznika_w_parametrach(enm, current_element, parameters)
         if blad_stanu is not None:
             return blad_stanu
+        blad_czasu = _blad_czasu_wylaczenia_aparatu(current_element, parameters)
+        if blad_czasu is not None:
+            return blad_czasu
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN na STANIE KOŃCOWYM nośnika —
     # strona dolna transformatora albo szyna przyłączenia źródła sieciowego w paśmie nN.
     if coll in ("transformers", "sources") and "lv_voltage_tolerance" in parameters:

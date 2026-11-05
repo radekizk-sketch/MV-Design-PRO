@@ -26,15 +26,17 @@ import type {
   Branch,
   Bus,
   EnergyNetworkModel,
+  FuseBranch,
   Generator,
   Measurement,
   ProtectionAssignment,
   Source,
   StanObiektu,
   Substation,
+  SwitchBranch,
   Transformer,
 } from '../../../types/enm';
-import { isSwitchBranch } from '../../../types/enm';
+import { isFuseBranch, isSwitchBranch } from '../../../types/enm';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import {
@@ -1180,6 +1182,33 @@ function kartaAparatu(
         ],
         zrodloPl: zn.zrodloPl,
       },
+      ...(galaz && (isFuseBranch(galaz) || (isSwitchBranch(galaz) && galaz.type !== 'bus_coupler'))
+        ? [sekcjaCzasuWylaczenia(galaz)]
+        : []),
+    ],
+  };
+}
+
+/** Czas wyłączenia zwarcia obwodu chronionego aparatem — wartość projektanta na gałęzi aparatu
+ *  (`update_element_parameters`, klucz `czas_wylaczenia_zwarcia_s`). Bez deklaracji backend
+ *  bierze czas z charakterystyki aparatu albo wartość roboczą normy — wiersz mówi to wprost. */
+function sekcjaCzasuWylaczenia(galaz: SwitchBranch | FuseBranch): SekcjaKarty {
+  const czas = galaz.czas_wylaczenia_zwarcia_s ?? null;
+  return {
+    id: 'czas_wylaczenia',
+    tytul: 'Wyłączenie zwarcia',
+    wiersze: [
+      wiersz(
+        'czas_wylaczenia_zwarcia',
+        'Czas wyłączenia zwarcia',
+        czas === null
+          ? 'z charakterystyki aparatu albo wartość robocza PN-HD 60364-4-41'
+          : zapisLiczby(czas, 's'),
+        {
+          edycja: edycja(galaz.ref_id, 'czas_wylaczenia_zwarcia_s', czas),
+          zrodloPl: czas === null ? 'wyznacza obliczenie' : 'wartość projektanta',
+        },
+      ),
     ],
   };
 }

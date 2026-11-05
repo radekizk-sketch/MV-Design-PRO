@@ -350,12 +350,24 @@ export interface SwitchBranch extends BranchBase {
    * stan z pola, które go wymienia, albo nieustalony.
    */
   stan_obiektu?: StanObiektu | null;
+  /**
+   * Czas wyłączenia zwarcia obwodu chronionego aparatem [s] — wartość projektanta (lustro
+   * `enm.models.SwitchBranch/FuseBranch.czas_wylaczenia_zwarcia_s`, zakres (0; 5]). Brak = czas
+   * z charakterystyki aparatu przy prądzie zwarciowym albo wartość robocza PN-HD 60364-4-41.
+   */
+  czas_wylaczenia_zwarcia_s?: number | null;
 }
 
 export interface FuseBranch extends BranchBase {
   type: 'fuse';
   rated_current_a?: number | null;
   rated_voltage_kv?: number | null;
+  /**
+   * Czas wyłączenia zwarcia obwodu chronionego aparatem [s] — wartość projektanta (lustro
+   * `enm.models.SwitchBranch/FuseBranch.czas_wylaczenia_zwarcia_s`, zakres (0; 5]). Brak = czas
+   * z charakterystyki aparatu przy prądzie zwarciowym albo wartość robocza PN-HD 60364-4-41.
+   */
+  czas_wylaczenia_zwarcia_s?: number | null;
 }
 
 export type Branch = OverheadLine | Cable | SwitchBranch | FuseBranch;

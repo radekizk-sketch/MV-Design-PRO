@@ -11,6 +11,10 @@
  * przetestowaną ścieżką WYŁĄCZNIE dla nowego pakietu nN — zero fabrykacji:
  * przycisk pobierania woła realny `POST /api/nn-proof/circuit/pack`.
  *
+ * Dane modelu i biegu (napięcie szyny, obciążalność i warunki ułożenia odcinka, dane cieplne
+ * przewodu, I″k i κ, czas wyłączenia obwodu) backend bierze z modelu i najnowszego biegu
+ * zwarciowego przypadku — formularz niesie tylko to, czego model nie przechowuje.
+ *
  * Stan: idle → loading → success | error (żadnego cichego niepowodzenia —
  * błąd z backendu (`detail`, powód po polsku) pokazany wprost).
  */
@@ -28,20 +32,6 @@ interface FormularzWejscia {
   segmentRef: string;
   pMw: string;
   qMvar: string;
-  uLlKv: string;
-  izKatalogoweA: string;
-  srodowisko: 'powietrze' | 'grunt';
-  izolacja: 'PVC' | 'XLPE';
-  temperaturaC: string;
-  liczbaObwodow: string;
-  ikMaxKa: string;
-  ikssA: string;
-  kappa: string;
-  faultDurationS: string;
-  ith1sA: string;
-  jth1sAPerMm2: string;
-  crossSectionMm2: string;
-  vdropUSourceKv: string;
   vdropDeltaUTotalKv: string;
 }
 
@@ -52,20 +42,6 @@ const PUSTY_FORMULARZ: FormularzWejscia = {
   segmentRef: '',
   pMw: '',
   qMvar: '',
-  uLlKv: '0.4',
-  izKatalogoweA: '',
-  srodowisko: 'powietrze',
-  izolacja: 'PVC',
-  temperaturaC: '30',
-  liczbaObwodow: '1',
-  ikMaxKa: '',
-  ikssA: '',
-  kappa: '',
-  faultDurationS: '',
-  ith1sA: '',
-  jth1sAPerMm2: '',
-  crossSectionMm2: '',
-  vdropUSourceKv: '0.4',
   vdropDeltaUTotalKv: '',
 };
 
@@ -104,11 +80,6 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
     formularz.segmentRef.trim() !== '' &&
     num(formularz.pMw) !== undefined &&
     num(formularz.qMvar) !== undefined &&
-    num(formularz.uLlKv) !== undefined &&
-    num(formularz.izKatalogoweA) !== undefined &&
-    num(formularz.temperaturaC) !== undefined &&
-    num(formularz.liczbaObwodow) !== undefined &&
-    num(formularz.vdropUSourceKv) !== undefined &&
     num(formularz.vdropDeltaUTotalKv) !== undefined &&
     !!activeProjectId &&
     !!activeCaseId;
@@ -134,20 +105,6 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
         segment_ref: formularz.segmentRef.trim(),
         p_mw: num(formularz.pMw)!,
         q_mvar: num(formularz.qMvar)!,
-        u_ll_kv: num(formularz.uLlKv)!,
-        iz_katalogowe_a: num(formularz.izKatalogoweA)!,
-        srodowisko: formularz.srodowisko,
-        izolacja: formularz.izolacja,
-        temperatura_c: num(formularz.temperaturaC)!,
-        liczba_obwodow: num(formularz.liczbaObwodow)!,
-        ik_max_ka: num(formularz.ikMaxKa),
-        ikss_a: num(formularz.ikssA),
-        kappa: num(formularz.kappa),
-        fault_duration_s: num(formularz.faultDurationS),
-        ith_1s_a: num(formularz.ith1sA),
-        jth_1s_a_per_mm2: num(formularz.jth1sAPerMm2),
-        cross_section_mm2: num(formularz.crossSectionMm2),
-        vdrop_u_source_kv: num(formularz.vdropUSourceKv)!,
         vdrop_delta_u_total_kv: num(formularz.vdropDeltaUTotalKv)!,
       };
       try {
@@ -243,53 +200,6 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
             />
           </label>
           <label className="flex flex-col gap-0.5">
-            <span>Iz katalogowe [A]</span>
-            <input
-              type="number"
-              step="any"
-              value={formularz.izKatalogoweA}
-              onChange={pole('izKatalogoweA')}
-              data-testid="nn-circuit-proof-iz-katalogowe"
-              className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span>Środowisko</span>
-            <select
-              value={formularz.srodowisko}
-              onChange={pole('srodowisko')}
-              data-testid="nn-circuit-proof-srodowisko"
-              className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-            >
-              <option value="powietrze">powietrze</option>
-              <option value="grunt">grunt</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span>Izolacja</span>
-            <select
-              value={formularz.izolacja}
-              onChange={pole('izolacja')}
-              data-testid="nn-circuit-proof-izolacja"
-              className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-            >
-              <option value="PVC">PVC</option>
-              <option value="XLPE">XLPE</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-0.5">
-            <span>Ik″max [kA] (opcjonalnie)</span>
-            <input
-              type="number"
-              step="any"
-              value={formularz.ikMaxKa}
-              onChange={pole('ikMaxKa')}
-              data-testid="nn-circuit-proof-ik-max"
-              className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
-            />
-          </label>
-          <label className="flex flex-col gap-0.5">
             <span>ΔU_total [kV]</span>
             <input
               type="number"
@@ -302,6 +212,10 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
             />
           </label>
         </div>
+        <p className="text-scada-muted" data-testid="nn-circuit-proof-zrodla">
+          Napięcie, obciążalność i warunki ułożenia, dane cieplne przewodu, prąd zwarciowy i czas
+          wyłączenia pochodzą z modelu i najnowszego biegu zwarciowego przypadku.
+        </p>
         <button
           type="submit"
           disabled={!gotoweDoWyslania || stan === 'loading'}
