@@ -2953,6 +2953,17 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
     ),
+    "conductor.thermal_data_inconsistent": ReadinessCodeSpec(
+        code="conductor.thermal_data_inconsistent",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Dane cieplne przewodu są sprzeczne (Ith dla 1 s różni się od Jth·S przy podanym "
+            "przekroju) — popraw pozycję katalogową albo dane odcinka"
+        ),
+        fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
+    ),
     # Kryteria WYPOSAŻENIA stacji (karta KD-3, dług §7.4 „zdolności bez dostawcy").
     # Cztery rachunki wróciły z warstwy prezentacji do solverów; każdy brak danej
     # kończy się TYM kodem, nigdy wartością zastępczą — inaczej werdykt doboru

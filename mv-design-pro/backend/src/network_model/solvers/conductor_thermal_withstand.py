@@ -52,6 +52,16 @@ from werdykt.proweniencja import FieldQuality
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
 READINESS_FAULT_DURATION_MISSING = "conductor.fault_duration_missing"
 READINESS_FAULT_CURRENT_MISSING = "conductor.fault_current_missing"
+# Dane cieplne przewodu wzajemnie sprzeczne: I_th(1s) ≠ J_th(1s)·S przy podanym przekroju.
+# Kryterium prądowe (I_th(1s)/√t) i przekrojowe (S ≥ I_th·√t/J_th) to ta sama nierówność
+# I²t ≤ k²S² tylko wtedy, gdy I_th(1s) = J_th(1s)·S — inaczej dwa zapisy mogą dać dwa werdykty.
+READINESS_CONDUCTOR_THERMAL_DATA_INCONSISTENT = "conductor.thermal_data_inconsistent"
+
+#: Względna tolerancja zgodności I_th(1s) z J_th(1s)·S. Katalogi podają I_th(1s) zaokrąglone
+#: do trzech cyfr znaczących (np. 14,3 kA dla 150 mm² Al przy J_th = 94 A/mm²), co daje
+#: rozjazd ≤ 0,5 %; 1 % to dwukrotność tego zaokrąglenia — powyżej dane opisują dwa różne
+#: przewody (np. nadpisane I_th gałęzi przy przekroju i gęstości z katalogu).
+TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH = 0.01
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -329,6 +339,21 @@ def check_conductor_thermal_withstand(
     if ith_1s is None:
         braki.append(READINESS_CONDUCTOR_THERMAL_DATA_MISSING)
 
+    if not braki and jth is not None and section is not None and ith_1s is not None:
+        z_gestosci = jth * section
+        if abs(ith_1s - z_gestosci) > TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH * max(
+            ith_1s, z_gestosci
+        ):
+            return _odmowa_sprzecznych_danych(
+                ith_1s=ith_1s,
+                jth=jth,
+                section=section,
+                cieplny=cieplny,
+                zalozenie_kappa=data.zalozenie_kappa,
+                dane_przyjete=dane_przyjete,
+                powod_pl=None,
+            )
+
     if braki:
         return ConductorThermalResult(
             status=STATUS_UNAVAILABLE,
@@ -361,6 +386,34 @@ def check_conductor_thermal_withstand(
     i2t_admissible = ith_1s * ith_1s  # k²S² = (Jth·S)² = I_th(1s)² dla t = 1 s
     margin_percent = (1.0 - utilization) * 100.0
 
+    criteria = _build_criteria(
+        ith_a=ith,
+        admissible_a=admissible,
+        i2t=i2t,
+        i2t_admissible=i2t_admissible,
+        required_section_mm2=required_section,
+        applied_section_mm2=section,
+    )
+    # Zapisy są równoważne tylko przy I_th(1s) = J_th(1s)·S. W granicy tolerancji zgodności
+    # danych werdykty mogą się rozejść tuż przy granicy kryterium — wtedy też odmowa z liczbami
+    # (nie asercja: rozjazd jest własnością danych, nie błędem programu).
+    werdykty = {poz["status"] for poz in criteria if poz["status"] != STATUS_UNAVAILABLE}
+    if werdykty != {status}:
+        return _odmowa_sprzecznych_danych(
+            ith_1s=ith_1s,
+            jth=jth,
+            section=section,
+            cieplny=cieplny,
+            zalozenie_kappa=data.zalozenie_kappa,
+            dane_przyjete=dane_przyjete,
+            powod_pl=(
+                "Kryteria cząstkowe dały różne werdykty "
+                f"({', '.join(sorted(werdykty))}) przy I_th = {_liczba_pl(ith, 0)} A wobec "
+                f"I_dop = {_liczba_pl(admissible, 0)} A — wynik leży na granicy kryterium, "
+                "w obrębie niepewności danych cieplnych."
+            ),
+        )
+
     return ConductorThermalResult(
         status=status,
         admissible_current_a=admissible,
@@ -373,15 +426,7 @@ def check_conductor_thermal_withstand(
         i2t_a2s=i2t,
         i2t_admissible_a2s=i2t_admissible,
         margin_percent=margin_percent,
-        criteria=_build_criteria(
-            ith_a=ith,
-            admissible_a=admissible,
-            i2t=i2t,
-            i2t_admissible=i2t_admissible,
-            required_section_mm2=required_section,
-            applied_section_mm2=section,
-            status=status,
-        ),
+        criteria=criteria,
         decision_reason_pl=_decision_reason(
             status=status,
             ith_a=ith,
@@ -845,7 +890,6 @@ def _build_criteria(
     i2t_admissible: float,
     required_section_mm2: float | None,
     applied_section_mm2: float | None,
-    status: str,
 ) -> tuple[dict[str, Any], ...]:
     """Kryteria czastkowe z OSOBNYM werdyktem — ktore ograniczenie zdecydowalo.
 
@@ -903,10 +947,47 @@ def _build_criteria(
             }
         )
 
-    # Zapisy sa rownowazne, wiec rozjazd werdyktow oznaczalby blad rachunku.
-    werdykty = {poz["status"] for poz in pozycje if poz["status"] != STATUS_UNAVAILABLE}
-    assert werdykty <= {status}, f"kryteria cząstkowe rozjechały się z werdyktem: {werdykty}"
+    # Zgodność werdyktów sprawdza wołający (`check_conductor_thermal_withstand`): rozjazd
+    # kończy się jawną odmową z liczbami, nie asercją.
     return tuple(pozycje)
+
+
+def _odmowa_sprzecznych_danych(
+    *,
+    ith_1s: float,
+    jth: float | None,
+    section: float | None,
+    cieplny: PradCieplny,
+    zalozenie_kappa: DanaPrzyjeta | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...],
+    powod_pl: str | None,
+) -> ConductorThermalResult:
+    """BRAK PODSTAWY: I_th(1s) i J_th(1s)·S opisują różne przewody — bez rozstrzygnięcia,
+    która dana jest prawdziwa, werdykt byłby wyborem jednej z dwóch liczb."""
+    if jth is not None and section is not None:
+        z_gestosci = jth * section
+        rozjazd = abs(ith_1s - z_gestosci) / max(ith_1s, z_gestosci) * 100.0
+        zdanie = (
+            f"Dane cieplne przewodu są sprzeczne: I_th(1s) = {_liczba_pl(ith_1s, 0)} A, a "
+            f"J_th(1s)·S = {_liczba_pl(jth)} A/mm² · {_liczba_pl(section, 0)} mm² = "
+            f"{_liczba_pl(z_gestosci, 0)} A (rozjazd {_liczba_pl(rozjazd)} %, dopuszczalny "
+            f"{_liczba_pl(TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH * 100.0)} %). Popraw "
+            "I_th(1s), gęstość prądu cieplnego albo przekrój, by obie dane opisywały "
+            "ten sam przewód."
+        )
+    else:
+        zdanie = f"Brak podstawy do werdyktu przy I_th(1s) = {_liczba_pl(ith_1s, 0)} A."
+    return ConductorThermalResult(
+        status=STATUS_UNAVAILABLE,
+        admissible_current_a=None,
+        utilization=None,
+        required_cross_section_mm2=None,
+        margin_a=None,
+        readiness_codes=(READINESS_CONDUCTOR_THERMAL_DATA_INCONSISTENT,),
+        decision_reason_pl=zdanie if powod_pl is None else f"{zdanie} {powod_pl}",
+        prad_cieplny=_prad_cieplny_dict(cieplny, zalozenie_kappa),
+        dane_przyjete=dane_przyjete,
+    )
 
 
 def _decision_reason(

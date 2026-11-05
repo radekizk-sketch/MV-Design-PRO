@@ -430,6 +430,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "conductor.thermal_data_inconsistent",
+      "fix_navigation": {
+        "focus": "ith_1s_a",
+        "panel": "katalog",
+        "tab": "kable"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "conductor.thermal_data_missing",
       "fix_navigation": {
         "focus": "ith_1s_a",
@@ -1589,7 +1598,7 @@
       }
     }
   ],
-  "count": 187,
+  "count": 188,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

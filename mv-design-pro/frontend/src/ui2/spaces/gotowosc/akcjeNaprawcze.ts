@@ -320,6 +320,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'vt.winding_category_missing': KATALOG,
   // --- Przewody i kable ------------------------------------------------------------
   'conductor.thermal_data_missing': KATALOG,
+  'conductor.thermal_data_inconsistent': KATALOG,
   'conductor.fault_current_missing': przestrzen('obliczenia', POWOD_BIEG_ZWARCIOWY),
   'conductor.fault_duration_missing': przestrzen(
     'wyniki',

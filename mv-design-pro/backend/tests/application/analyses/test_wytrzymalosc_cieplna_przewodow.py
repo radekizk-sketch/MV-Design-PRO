@@ -99,7 +99,10 @@ def _catalog_with_cable_type(
     type_id: str = "cable_pass",
     ith_1s_a: float | None = 8000.0,
     jth_1s_a_per_mm2: float | None = 80.0,
-    cross_section_mm2: float = 95.0,
+    # S = 100 mm²: I_th(1s) = J_th·S = 80 · 100 = 8 000 A — dane cieplne zgodne. Dawne
+    # 95 mm² (7 600 A, rozjazd 5 %) opisywało dwa różne kable; solver odmawia teraz werdyktu
+    # na sprzecznych danych (`conductor.thermal_data_inconsistent`).
+    cross_section_mm2: float = 100.0,
 ) -> CatalogRepository:
     return CatalogRepository(
         line_types={},
