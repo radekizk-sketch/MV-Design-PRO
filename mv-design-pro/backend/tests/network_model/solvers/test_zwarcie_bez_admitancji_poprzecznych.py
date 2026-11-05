@@ -577,6 +577,9 @@ _WOLAJACY_BUILD_ZBUS = {
     "network_model/solvers/machine_sc_iec60909.py",
     "application/analyses/fault_loop/service.py",
     "application/analyses/lv_domain/upstream_equivalent.py",
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: Z_1 = Z_2 punktów zwarcia doziemnego (solver
+    # `doziemienie_sn`) z TEJ SAMEJ sieci zgodnej co bieg zwarciowy — bez drugiej reprezentacji.
+    "application/analyses/protection/ocena_ziemnozwarciowa.py",
 }
 
 

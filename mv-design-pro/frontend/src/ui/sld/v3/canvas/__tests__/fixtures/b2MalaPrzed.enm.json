@@ -2515,7 +2515,9 @@
         "tags": [],
         "transformer_refs": [
           "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -2540,7 +2542,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/15ec590199593aedd97bb7794dd02000/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -2565,7 +2569,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/5a5162352a7a96891da4bfaa813076c8/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       }
     ],
     "transformers": [

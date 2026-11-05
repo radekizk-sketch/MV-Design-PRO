@@ -72,8 +72,7 @@ def blad_konfiguracji_uziemienia(
         ):
             return (
                 "prąd wymuszenia AWSC w polu „Prąd wymuszenia AWSC” musi być skończoną liczbą "
-                "dodatnią [A] — "
-                "nie wolno przyjąć I_W ≤ 0"
+                "dodatnią [A] — nie wolno przyjąć prądu wymuszenia równego zeru ani ujemnego"
             )
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (

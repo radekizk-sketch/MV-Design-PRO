@@ -1612,7 +1612,9 @@
         "tags": [],
         "transformer_refs": [
           "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -1637,7 +1639,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/885d2eb948f80ab1765ba89be1491d7c/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       }
     ],
     "transformers": [
