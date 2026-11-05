@@ -2097,7 +2097,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `aktywna_grupa`, `macierz_wyzwolen`, `prad_znamionowy_wejscia_a`, `charakterystyki_ref`,
     # rejestr funkcji `wejscia_wymagane`/`wejscia_opcjonalne`, delty scenariusza
     # `protection_groups`/`protection_overrides`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4456." in wyjscie, wyjscie
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE (2026-11-05, solver doziemien SN i ocena funkcji
+    # ziemnozwarciowych): 4456 -> 4513 — POMIAR `contract_fields()` na drzewie bazy `4c94c52ba`
+    # (`git archive`: 4456, pin zgodny) i na drzewie karty (4513). Roznica zbiorow +68, -11:
+    # kontrakty solvera `network_model/solvers/doziemienie_sn.py` (punkt neutralny, boczniki
+    # zerowe, wielkosci pola `prad_3i0_a`/`u0_proc`/`admitancja_y0_s`/`kat_phi0_deg`/
+    # `moc_p0_w`, wyniki punktow i uziemien stacji), dane uziomu stacji
+    # (`uziom_rezystancja_ohm`, `uziom_wspolczynnik_redukcji`), prad wymuszenia AWSC punktu
+    # neutralnego (`awsc_prad_wymuszenia_a`) i pole `ziemnozwarciowe` wyniku biegu; skasowane
+    # pola mostu `ground_fault_bridge` i dawnego pakietu dowodu uziemienia
+    # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `earthing_mode`, `i_p_a`,
+    # `i_u_a`, `pack_input`, `r_u_ohm`, `readiness_issues`, `touch_voltage_*`, `z_e_ohm`).
+    # PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4513." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2632,7 +2644,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart: 191 + 2 + 3 = 196. POMIAR guardem na drzewie scalonym.
         # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: 196 -> 197 (+1
         # `catalog/obwody_wtorne_pola.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  network_model: pliki_skanowane=197, dlug=10 plikow/suma 67, "
+        # Karta EWALUATORY-ZIEMNOZWARCIOWE (2026-11-05): 197 -> 198 (+1 solver doziemien SN
+        # `solvers/doziemienie_sn.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=198, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2838,7 +2852,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
         # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Karta EWALUATORY-ZIEMNOZWARCIOWE (2026-11-05): application 255 -> 254 (-2 skasowany
+        # pakiet mostu `application/analyses/earthing` z `ground_fault_bridge.py`, +1
+        # `analyses/protection/ocena_ziemnozwarciowa.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

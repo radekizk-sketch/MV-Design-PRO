@@ -54,6 +54,8 @@ from network_model.core.voltage_factor import (
 from network_model.pochodne import (
     moc_pozorna_z_czynnej_mva,
     moc_znamionowa_maszyny_asynchronicznej_mw,
+    simens_na_mikrosimens,
+    susceptancja_zerowa_z_reguly_pradu_pojemnosciowego_s_per_km,
 )
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
@@ -1298,9 +1300,14 @@ ZALOZENIE_B0_KABLA_POLE_PROMIENIOWE = (
 )
 #: Reguła praktyczna I_C ≈ U_n·l/300 [A] (U_n w kV, l w km) prądu pojemnościowego linii
 #: napowietrznej SN bez przewodu odgromowego ⇒ B′0 = 1/(300·√3·1000) S/km przy 50 Hz.
-B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM: Final = 1.0 / (300.0 * math.sqrt(3.0) * 1000.0)
+DZIELNIK_REGULY_PRADU_POJEMNOSCIOWEGO_LINII: Final = 300.0
+B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM: Final = (
+    susceptancja_zerowa_z_reguly_pradu_pojemnosciowego_s_per_km(
+        DZIELNIK_REGULY_PRADU_POJEMNOSCIOWEGO_LINII
+    )
+)
 ZALOZENIE_B0_LINII_NAPOWIETRZNEJ = (
-    f"B′0 = {B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM * 1e6:.3f} µS/km — założenie inżynierskie: "
+    f"B′0 = {simens_na_mikrosimens(B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM):.3f} µS/km — założenie inżynierskie: "
     "reguła praktyczna prądu pojemnościowego linii napowietrznej SN bez przewodu odgromowego "
     "I_C ≈ U_n·l/300 A (U_n w kV, l w km) przy 50 Hz; geometria zawieszenia przewodów nie jest "
     "daną modelu"
@@ -1341,7 +1348,7 @@ def dana_przyjeta_b0(*, wartosc: float, zalozenie: str, miejsce_pl: str) -> Dana
     """Propozycja B′0 jako dana przyjęta werdyktu (§3c pkt 4) — jakość ESTIMATED."""
     return DanaPrzyjeta(
         nazwa_pl=f"B′0 ({miejsce_pl})",
-        wartosc=Wielkosc(wartosc=wartosc * 1e6, jednostka="µS/km"),
+        wartosc=Wielkosc(wartosc=simens_na_mikrosimens(wartosc), jednostka="µS/km"),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo "
             "pomiar prądu pojemnościowego)."

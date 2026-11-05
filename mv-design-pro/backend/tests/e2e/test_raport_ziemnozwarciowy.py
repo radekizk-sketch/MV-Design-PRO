@@ -59,7 +59,7 @@ def test_kryterium_rekordu_spoza_listy_to_blad_kontraktu() -> None:
     )
 
     assert all(nazwa.strip() for nazwa in KRYTERIA_ZIEMNOZWARCIOWE.values())
-    with pytest.raises(ValueError, match="Kryterium spoza listy"):
+    with pytest.raises(AssertionError, match="Kryterium spoza listy"):
         RekordOcenyZiemnozwarciowej(
             urzadzenie_ref="u",
             nazwa_urzadzenia_pl="U",

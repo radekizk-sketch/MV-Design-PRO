@@ -34,6 +34,10 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
 const ZRODLO = 'src-gpz-15kv-250mva-rx010';
 const APARAT = 'sw-cb-abb-vd4-17kv-630a';
 const KABEL = 'cable-tfk-yakxs-3x120';
+/** Aparat toru pola pomiaru napięcia (odłącznik/rozłącznik toru przekładników napięciowych) —
+ *  kreator pola SN wymaga pozycji katalogu APARAT_SN także dla pola pomiarowego. */
+const APARAT_POMIARU = 'sw-ls-ogolny-prozniowy-24kv-630a';
+const WERSJA_KATALOGU = '2024.1';
 const SZABLON_Z10 = 'bay_template_gpz_line_enea_z10_trojpolozeniowy';
 const SZABLON_Z17 = 'bay_template_gpz_pomiar_napiecia_enea_z17';
 const DLUGOSCI_POL_M = [5000, 10000];
@@ -63,6 +67,10 @@ type WynikOceny = {
 };
 
 let licznikOperacji = 0;
+
+function katalog(przestrzen: string, pozycja: string) {
+  return { catalog_namespace: przestrzen, catalog_item_id: pozycja, catalog_item_version: WERSJA_KATALOGU };
+}
 
 async function operacja(
   request: APIRequestContext,
@@ -142,10 +150,10 @@ async function zbudujSiec(request: APIRequestContext, caseId: string) {
   let m = await operacja(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
-    catalog_ref: ZRODLO,
+    catalog_binding: katalog('ZRODLO_SN', ZRODLO),
     sections_count: 1,
     line_fields_per_section: DLUGOSCI_POL_M.length,
-    gpz_line_field_apparatus: { catalog_ref: APARAT },
+    gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },
     grounding: { type: 'petersen_coil', r_ohm: 6.0, x_ohm: 80.0, awsc_prad_wymuszenia_a: 25.0 },
     zero_sequence: { enabled: true, r0_ohm: 18.0, x0_ohm: 240.0 },
   });
@@ -159,6 +167,7 @@ async function zbudujSiec(request: APIRequestContext, caseId: string) {
     bay_role: 'MEASUREMENT',
     apparatus_kind: 'MEASUREMENT',
     funkcja_pomiaru: 'NAPIECIA_SZYN',
+    catalog_binding: katalog('APARAT_SN', APARAT_POMIARU),
   });
   const polePomiaru = m.bays.find((b) => !przed.has(b.ref_id))!.ref_id;
   m = await operacja(request, caseId, 'set_bay_equipment', {
@@ -184,7 +193,12 @@ async function zbudujSiec(request: APIRequestContext, caseId: string) {
     });
     m = await operacja(request, caseId, 'continue_trunk_segment_sn', {
       field_ref: pole,
-      segment: { rodzaj: 'KABEL', dlugosc_m: DLUGOSCI_POL_M[i], name: `Kabel pola ${i + 1}`, catalog_ref: KABEL },
+      segment: {
+        rodzaj: 'KABEL',
+        dlugosc_m: DLUGOSCI_POL_M[i],
+        name: `Kabel pola ${i + 1}`,
+        catalog_binding: katalog('KABEL_SN', KABEL),
+      },
     });
   }
   m = await operacja(request, caseId, 'update_element_parameters', {

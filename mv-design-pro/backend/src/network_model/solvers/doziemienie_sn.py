@@ -437,8 +437,8 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
 
     # --- stany wymuszenia: macierze Z0 --------------------------------------------------
     z0_przed = _odwroc(y0, aktywne, "przed wymuszeniem")
-    awsc = [(b, _bocznik_awsc_pu(b)) for b in wejscie.boczniki]
-    awsc = [(b, y) for b, y in awsc if y is not None]
+    kandydaci_awsc = [(b, _bocznik_awsc_pu(b)) for b in wejscie.boczniki]
+    awsc: list[tuple[BocznikZerowy, complex]] = [(b, y) for b, y in kandydaci_awsc if y is not None]
     z0_po_skladowej: dict[int, np.ndarray] = {}
     for numer in sorted({numer_skladowej[b.indeks] for b, _ in awsc}):
         y0_po = y0.copy()

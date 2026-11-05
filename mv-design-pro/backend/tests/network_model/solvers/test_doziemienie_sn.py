@@ -169,6 +169,27 @@ def test_kirchhoff_sieci_zerowej_w_kazdym_punkcie(sposob: SposobPracy, wariant: 
     assert miejsca["w_strefie"] and miejsca["poza_strefa"]
 
 
+@pytest.mark.parametrize("sposob", SPOSOBY_PRACY)
+@pytest.mark.parametrize("wariant", ["wynik_min", "wynik_max"])
+def test_brak_kata_albo_admitancji_tylko_przy_zerowym_sygnale(sposob: SposobPracy, wariant: str):
+    """Niezmiennik, na którym stoi `wielkosc_decydujaca` (zero zamiast kąta/admitancji): solver
+    zwraca ``kat_phi0_deg is None`` wyłącznie przy |3I0| = 0 albo |U0| = 0, a ``admitancja is
+    None`` wyłącznie przy |U0| = 0 — i w każdym takim polu |3I0| = 0, więc zerowa wielkość
+    decydująca jest DOKŁADNA (rzut zerowego wektora), nie podstawiona. Pole w strefie
+    doziemienia ma zawsze kąt i admitancję."""
+    _, _, obliczenie = _scena(sposob)
+    pola = _pola_gpz(sposob)
+    for punkt in getattr(obliczenie, wariant).punkty:
+        for f in pola:
+            w = punkt.pole(f.klucz)
+            if w.kat_phi0_deg is None or w.admitancja_y0_s is None:
+                assert w.prad_3i0_a == 0, (punkt.nazwa_pl, f.klucz)
+            if w.admitancja_y0_s is None:
+                assert w.u0_v == 0, (punkt.nazwa_pl, f.klucz)
+            if w.zwarcie_w_strefie:
+                assert w.kat_phi0_deg is not None and w.admitancja_y0_s is not None
+
+
 def _punkt(obliczenie: ObliczenieDoziemne, nazwa: str, stan: str = STAN_PRZED):
     return next(p for p in obliczenie.wynik_min.punkty if p.nazwa_pl == nazwa and p.stan == stan)
 

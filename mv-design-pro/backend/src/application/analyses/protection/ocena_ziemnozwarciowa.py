@@ -73,6 +73,8 @@ from network_model.pochodne import (
     prad_pierwotny_z_wtornego_a,
     prad_wtorny_z_pierwotnego_a,
     prad_znamionowy_a,
+    simens_na_milisimens,
+    w_na_kw,
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.doziemienie_sn import (
@@ -670,6 +672,11 @@ def oblicz_siec_doziemna(
 def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float:
     """Wielkość decydująca funkcji przy zwarciu (strona pierwotna, jednostka ``_JEDNOSTKA``)."""
     rodzaj = f.rodzaj
+    # Kąt i admitancja są nieokreślone (``None``) wyłącznie przy zerowym sygnale pola: solver
+    # zwraca ``None`` tylko przy |3I0| = 0 albo |U0| = 0, a w każdym takim polu |3I0| = 0 —
+    # zero poniżej to DOKŁADNY rzut zerowego wektora prądu, nie podstawienie (niezmiennik
+    # przypięty: `test_doziemienie_sn.py::test_brak_kata_albo_admitancji_tylko_przy_zerowym_
+    # sygnale`).
     if rodzaj == "PRAD":
         return abs(pole.prad_3i0_a)
     if rodzaj == "RZUT_PRADU":
@@ -684,12 +691,12 @@ def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float
     if pole.admitancja_y0_s is None:
         return 0.0
     if rodzaj == "MODUL_Y0":
-        return abs(pole.admitancja_y0_s) * 1000.0
+        return simens_na_milisimens(abs(pole.admitancja_y0_s))
     if rodzaj == "G0":
-        return pole.admitancja_y0_s.real * 1000.0
+        return simens_na_milisimens(pole.admitancja_y0_s.real)
     if rodzaj == "B0":
-        return pole.admitancja_y0_s.imag * 1000.0
-    return pole.moc_p0_w / 1000.0
+        return simens_na_milisimens(pole.admitancja_y0_s.imag)
+    return w_na_kw(pole.moc_p0_w)
 
 
 def rusza(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> bool:
@@ -893,8 +900,10 @@ class RekordOcenyZiemnozwarciowej:
     dodatkowe: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.kryterium.split(":", 1)[0] not in KRYTERIA_ZIEMNOZWARCIOWE:
-            raise ValueError(f"Kryterium spoza listy rodzajów oceny: {self.kryterium!r}")
+        # Rekord buduje wyłącznie ten moduł — kryterium spoza listy to błąd programu.
+        assert (
+            self.kryterium.split(":", 1)[0] in KRYTERIA_ZIEMNOZWARCIOWE
+        ), f"Kryterium spoza listy rodzajów oceny: {self.kryterium!r}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1437,18 +1446,16 @@ def _stopniowanie(
                         czasy_b[d.punkt_ref] = min(
                             czasy_b.get(d.punkt_ref, _NIE_DZIALA), d.t_zadzialania_s
                         )
-            pary = [
-                (da, czasy_b[da.punkt_ref])
-                for da in dzialania_min[a.klucz]
-                if da.punkt_ref in czasy_b and da.t_zadzialania_s is not None
-            ]
+            # Para (działanie A, czas A, czas B) wyłącznie z punktów, w których działają OBIE
+            # funkcje — czas A zawężony raz, przy budowie pary (bez podstawienia za brak).
+            pary: list[tuple[DzialaniePunktu, float, float]] = []
+            for da in dzialania_min[a.klucz]:
+                if da.punkt_ref in czasy_b and da.t_zadzialania_s is not None:
+                    pary.append((da, da.t_zadzialania_s, czasy_b[da.punkt_ref]))
             if not pary:
                 continue
-            da, t_b = min(
-                pary, key=lambda p: ((p[0].t_zadzialania_s or 0.0) - p[1], p[0].punkt_ref)
-            )
-            assert da.t_zadzialania_s is not None
-            odstep = da.t_zadzialania_s - t_b
+            da, t_a, t_b = min(pary, key=lambda p: (p[1] - p[2], p[0].punkt_ref))
+            odstep = t_a - t_b
             nazwa_b = funkcje_b[0].nazwa_urzadzenia_pl
             rekordy.append(
                 _rekord_liczbowy(

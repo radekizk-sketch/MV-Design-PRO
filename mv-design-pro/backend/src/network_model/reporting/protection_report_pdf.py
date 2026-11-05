@@ -464,9 +464,9 @@ def export_protection_coordination_to_pdf(
         y -= 2 * mm
         for rekord in rekordy_zz:
             y = check_page_break(line_height)
-            wiersz = wiersz_ziemnozwarciowy(rekord)
+            wiersz_zz = wiersz_ziemnozwarciowy(rekord)
             draw_table_row(
-                [textwrap.shorten(w, 24, placeholder="…") for w in wiersz],
+                [textwrap.shorten(w, 24, placeholder="…") for w in wiersz_zz],
                 zz_cols,
                 left_margin,
                 font_size=7,
