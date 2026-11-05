@@ -2246,7 +2246,9 @@ def _zapisz_pole_sprzegla(
         new_enm,
         {
             "ref_id": coupler_ref,
-            "name": f"Sprzęgło {field_name}",
+            # Nazwa sprzęgła = oznaczenie pola sprzęgła (jedno oznaczenie aparatu i pola);
+            # dawny przedrostek dawał „Sprzęgło Sprzęgło S2-S3” w komunikatach gotowości.
+            "name": field_name,
             "type": "bus_coupler",
             "from_bus_ref": bus_ref,
             "to_bus_ref": coupled_bus_ref,

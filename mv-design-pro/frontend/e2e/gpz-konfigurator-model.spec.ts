@@ -280,7 +280,9 @@ test('GPZ: nowa sekcja z nową szyną i sprzęgło do niej z „Dodaj pole" — 
   expect((await sprzeglo())?.status).toBe('open');
   const pole = (await enm(request, seed.caseId)).bays!.find((b) => b.name === 'Sprzęgło S2-S3')!;
   expect(pole.bay_role).toBe('COUPLER');
-  await expect(page.getByTestId('sld-canvas-v3').getByText('Sprzęgło S2-S3').first()).toBeAttached({ timeout: 20000 });
+  // Oznaczenie sprzęgła na schemacie między sekcją 2 a 3 (kanwa skraca długie etykiety
+  // wielokropkiem w środku — „Sprzęg…S2-S3”; pełna nazwa jest w drzewie układu).
+  await expect(page.getByTestId('sld-canvas-v3').getByText(/^Sprzęg.*S2-S3$/).first()).toBeAttached({ timeout: 20000 });
 
   await expect(page.getByTestId('gpz-configurator-surface')).toBeVisible({ timeout: 20000 });
   await page.getByTestId('gpz-card-tab-bays').click();

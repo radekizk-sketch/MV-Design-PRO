@@ -273,6 +273,8 @@ def test_sprzeglo_gpz_tworzy_galaz_i_wiaze_sekcje_a_usuniecie_pola_je_czysci(
     assert sekcje[b3].get("left_coupler_ref") == nowe[0]["ref_id"]
     pole = next(b for b in po["bays"] if b["bay_role"] == "COUPLER" and b["bus_ref"] == b2)
     assert pole["equipment_refs"] == [nowe[0]["ref_id"]]
+    # jedno oznaczenie aparatu i pola (dawniej „Sprzęgło <nazwa pola>” → „Sprzęgło Sprzęgło …”)
+    assert nowe[0]["name"] == pole["name"] and pole["name"].strip()
     # sekcji ze sprzęgłem nie usuwa się spod niego
     assert (
         _kod(po, "delete_gpz_section", {"substation_ref": sid, "section_id": "sek-3"})
@@ -603,3 +605,14 @@ def test_strony_sekcji_sprzegla_z_kolejnosci_niezaleznie_od_kierunku(
     sekcje = {s["bus_ref"]: s for s in _sub(po)["gpz_sections"]}
     assert sekcje[b2].get("right_coupler_ref") == galaz["ref_id"]
     assert sekcje[b3].get("left_coupler_ref") == galaz["ref_id"]
+
+
+def test_nazwa_sprzegla_jest_nazwa_pola_nadana_przez_projektanta() -> None:
+    snap, sid, (_b1, b2, b3) = _gpz_trzy_sekcje()
+    po = _ok(
+        snap, "add_sn_bay", {**_sprzeglo(snap, sid, b2, b3, None), "field_name": "Sprzęgło S2-S3"}
+    )["snapshot"]
+    galaz = next(
+        g for g in po["branches"] if g["type"] == "bus_coupler" and g["from_bus_ref"] == b2
+    )
+    assert galaz["name"] == "Sprzęgło S2-S3"
