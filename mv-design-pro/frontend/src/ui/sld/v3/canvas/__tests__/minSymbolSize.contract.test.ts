@@ -12,15 +12,15 @@
  * skalowanie glifu — dlatego kontrakt brzmi: **żaden poziom szczegółu nie jest
  * aktywny przy skali, przy której jego własne symbole schodzą poniżej progu
  * rozpoznawalności**. Innymi słowy: zanim aparat stanie się plamką, kamera
- * MUSI już rysować reprezentację zgrubniejszą (stacja jako mini-RMU).
+ * MUSI już rysować poziom bez szczegółu, którego nie da się przeczytać.
  *
- * Granica dowodu jest nazwana wprost: L0 jest reprezentacją NAJZGRUBSZĄ —
- * poniżej niej nie ma czego przełączyć, a przegląd całej sieci referencyjnej
- * (53 stacje) siłą rzeczy schodzi do skali ≈0,12. Dlatego dla L0 dowodzimy
- * rzeczy słabszej, ale prawdziwej: że jego nośnik informacji (glif stacji
- * 48 px świata) jest 3× większy od aparatu, którego L0 nie rysuje — czyli że
- * przełączenie reprezentacji FAKTYCZNIE kupuje czytelność, zamiast tylko
- * zmniejszać liczbę elementów.
+ * Granica dowodu jest nazwana wprost: L0 jest poziomem NAJZGRUBSZYM — poniżej
+ * niego nie ma czego przełączyć, a przegląd całej sieci referencyjnej (53 stacje)
+ * siłą rzeczy schodzi do skali ≈0,1. Od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA L0
+ * NIE zastępuje aparatów sylwetką stacji (dawny mini-RMU 48 px): rysuje TĘ SAMĄ
+ * kompozycję co L1 i zdejmuje wyłącznie szczegół (podpisy aparatów i ról pól,
+ * kody zabezpieczeń, tabliczki). Dla L0 dowodzimy więc, że oddalenie nie zmienia
+ * kształtu rysunku, a zabiera wyłącznie opisy.
  *
  * Sieć: fixtura REFERENCYJNA `sldSubstrate52s` (ta sama, na której kalibrowano
  * progi i na której stoją wyrocznie sceny).
@@ -165,13 +165,12 @@ describe('K11-B — minimalny rozmiar renderowania symboli: progi LOD trzymają 
     expect(wyjscieZL2 * LABEL_TYPOGRAPHY.t2.fontSize).toBeGreaterThanOrEqual(MIN_READABLE_LABEL_SCREEN_PX);
   });
 
-  it('L0 jest reprezentacją NAJZGRUBSZĄ: przełączenie na nią kupuje 3× czytelności nośnika', () => {
-    // Granica dowodu (patrz nagłówek): przy skrajnym oddaleniu nic nie jest
-    // czytelne — ale L0 zastępuje 16-px aparat 48-px sylwetką stacji, więc
-    // to, co pozostaje na ekranie, jest 3× większe niż to, co zniknęło.
-    const glifStacji = 48;
-    expect(scenes[0].symbols.some((s) => s.symbolId === 'stationCollapsed')).toBe(true);
-    expect(glifStacji / smallestExtentAtLod(1)).toBeGreaterThanOrEqual(3);
+  it('L0 jest poziomem NAJZGRUBSZYM: ten sam kształt co L1, mniej opisów', () => {
+    // Granica dowodu (patrz nagłówek): jedna kompozycja — symbole L0 są symbolami
+    // L1 (rodzaj i położenie), a L0 zdejmuje wyłącznie opisy.
+    const klucz = (sc: SceneV3): string[] => sc.symbols.map((s) => `${s.symbolId}@${s.x},${s.y}`).sort();
+    expect(klucz(scenes[0])).toEqual(klucz(scenes[1]));
+    expect(scenes[0].labels.length).toBeLessThan(scenes[1].labels.length);
     // I dokładnie tam, gdzie L0 przestaje wystarczać, kamera przechodzi na L1:
     // próg wejścia daje aparatowi 11 px — rozmiar czytany bez wysiłku.
     const wejscieDoL1 = DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN);

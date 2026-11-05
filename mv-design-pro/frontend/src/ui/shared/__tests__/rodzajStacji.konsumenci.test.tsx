@@ -113,16 +113,18 @@ describe('rodzaj stacji — każdy konsument czyta jedną regułę (iloczyn dekl
   }
 
   for (const deklaracja of DEKLARACJE_SCHEMATU) {
-    it(`deklaracja ${deklaracja}: schemat L0 (sylwetka), L1 i L2 (podpis) — odgałęźna`, () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje tę samą kompozycję co L1 — dawna
+    // sylwetka `stationCollapsed` (rodzaj w `stationGlyph.lineTopology`) skasowana, rodzaj
+    // niesie podpis pasma nazw stacji na KAŻDYM poziomie szczegółu.
+    it(`deklaracja ${deklaracja}: schemat L0, L1 i L2 (podpis) — odgałęźna`, () => {
       const model = zDeklaracja(deklaracja);
-      for (const lod of [1, 2] as const) {
-        const podpisy = stationTypeLabels(buildSceneV3(model, lod));
-        expect(podpisy.map(([ref]) => ref).sort()).toEqual(stacjePol.map((s) => s.ref_id).sort());
+      for (const lod of [0, 1, 2] as const) {
+        const scena = buildSceneV3(model, lod);
+        const podpisy = stationTypeLabels(scena);
+        expect(podpisy.map(([ref]) => ref).sort(), `L${lod}`).toEqual(stacjePol.map((s) => s.ref_id).sort());
         expect(new Set(podpisy.map(([, tekst]) => tekst))).toEqual(new Set(['stacja odgałęźna']));
+        expect(scena.symbols.some((s) => (s.symbolId as string).endsWith('Collapsed'))).toBe(false);
       }
-      const sylwetki = buildSceneV3(model, 0).symbols.filter((s) => s.symbolId === 'stationCollapsed');
-      expect(sylwetki).toHaveLength(3);
-      for (const s of sylwetki) expect(s.meta?.stationGlyph?.lineTopology).toBe('odgałęźna');
     });
   }
 

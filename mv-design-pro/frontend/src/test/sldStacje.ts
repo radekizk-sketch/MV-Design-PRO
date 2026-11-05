@@ -4,10 +4,10 @@
  * Do tej karty stacja i GPZ miały na L0 symbol zbiorczy (`elementKind: 'station'`, blok
  * zwinięty), a testy kanwy szukały stacji predykatem `s.meta?.elementKind === 'station'`
  * powielonym w kilkunastu plikach. Blok zwinięty skasowano (jedna kompozycja na każdym LOD),
- * więc obiekt STACJI reprezentuje na rysunku jej NAZWA: wiersz tożsamości pasma nazw
- * (`ownerKind: 'station-name'`, `ownerRef: <ref stacji>#name-row-0`) — ten sam na L0/L1/L2.
- * Trafienie w nazwę rozstrzyga kotwica w modelu (`canvasMenuSubject.resolveCanvasMenuSubject`
- * → stacja), tak samo jak dawniej trafienie w blok.
+ * więc stację na rysunku identyfikuje jej NAZWA (wiersz tożsamości pasma nazw,
+ * `ownerKind: 'station-name'`, `ownerRef: <ref stacji>#name-row-0`, ten sam na L0/L1/L2),
+ * a UCHWYTEM kliku jest jej OBRYS (decyzja A: rama strefy GPZ albo obwiednia symboli stacji,
+ * `canvas/hitAreas.ts::stacjeSceny`) — obecny także wtedy, gdy plan czytelności zdejmie nazwę.
  *
  * Wiersze nazw transformatora i źródła mają ten sam `ownerKind`, ale ref `…#label#name-row-0`
  * — nie są uchwytem stacji. Testy pytają tutaj, nie powielają selektora.
@@ -56,16 +56,25 @@ export function nazwaStacjiSn(scene: SceneV3): NazwaStacji | undefined {
   return nazwyStacji(scene).find((n) => !n.stationRef.startsWith('gpz/'));
 }
 
-/** Uchwyt trafienia nazwy stacji w warstwie `sld-v3-trafienia` — węzeł, w który
- *  w przeglądarce faktycznie trafia kursor (rysunek kanwy jest bierny). */
+/** Uchwyt STACJI w warstwie `sld-v3-trafienia` — krawędź obrysu stacji (rama strefy GPZ albo
+ *  obwiednia symboli stacji SN/nN, decyzja A karty), węzeł, w który w przeglądarce faktycznie
+ *  trafia kursor (rysunek kanwy jest bierny). Istnieje na każdym LOD i przy każdym planie
+ *  czytelności — nie zależy od nazwy. */
 export function uchwytStacji(container: ParentNode, stationRef: string): Element | null {
+  return container.querySelector(
+    `[data-hit-klasa="stacja"][data-hit-role="obrys"][data-hit-owner-ref="${stationRef}"]`,
+  );
+}
+
+/** Uchwyt NAZWY stacji (wiersz tożsamości) — obecny tylko, gdy plan czytelności rysuje nazwę. */
+export function uchwytNazwyStacji(container: ParentNode, stationRef: string): Element | null {
   return container.querySelector(
     `[data-hit-klasa="etykieta"][data-hit-role="obrys"][data-hit-owner-ref="${stationRef}${SUFIKS_NAZWY}"]`,
   );
 }
 
-/** Stacje SN/nN sceny (bez GPZ), których nazwa ma uchwyt trafienia w bieżącym kadrze kanwy —
- *  stacje poza kadrem albo z nazwą zdjętą planem czytelności uchwytu nie mają. */
+/** Stacje SN/nN sceny (bez GPZ) z uchwytem obrysu w drzewie kanwy (filtr warstw może uchwyt
+ *  zdjąć razem z obiektem). */
 export function stacjeSnZUchwytem(
   container: ParentNode,
   scene: SceneV3,

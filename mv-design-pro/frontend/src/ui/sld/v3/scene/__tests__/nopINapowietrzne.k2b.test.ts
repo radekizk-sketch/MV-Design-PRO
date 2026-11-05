@@ -90,25 +90,19 @@ describe('punkt podziału z `SwitchBranch.normal_state` na każdym poziomie szcz
   ];
   for (const [nazwa, ref, model] of PRZYPADKI) {
     for (const lod of LODY) {
-      it(`${nazwa} · L${lod}: dokładnie jedna reprezentacja (łącznika albo znacznika NO jego stacji), ${lod === 0 ? 'bez podpisu (GS-1)' : 'jeden podpis „NO"'}, bez notatki o pominięciu`, () => {
+      it(`${nazwa} · L${lod}: dokładnie jeden symbol łącznika NO, ${lod === 0 ? 'bez podpisu (GS-1)' : 'jeden podpis „NO"'}, bez notatki o pominięciu`, () => {
         const sc = buildSceneV3(model, lod);
         const stacja = stacjaPola(ref);
-        const glifStacji = sc.symbols.some((s) => s.meta?.ownerRef === stacja && s.meta?.stationGlyph?.noOpen === true);
-        const reprezentacje = [
-          ...sc.symbols.filter((s) => s.symbolId === 'noPoint'),
-          ...(glifStacji ? ['glif L0 stacji'] : []),
-        ];
-        // Jeden punkt podziału = jedna reprezentacja w CAŁEJ scenie: symbol łącznika
-        // z sekcji 6z ALBO znacznik NO stacji, który adapter wyprowadza z tego samego łącznika.
+        // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje tę samą kompozycję co L1, więc punkt
+        // podziału ma na KAŻDYM LOD symbol łącznika (dawny znacznik NO zwiniętej stacji L0,
+        // `stationGlyph.noOpen`, skasowano razem z blokiem). Intencja bez zmian: jeden punkt
+        // podziału = jedna reprezentacja w całej scenie.
+        const reprezentacje = sc.symbols.filter((s) => s.symbolId === 'noPoint');
         expect(reprezentacje, 'reprezentacje punktu podziału').toHaveLength(1);
-        const symbol = sc.symbols.find((s) => s.symbolId === 'noPoint');
-        if (symbol) {
-          expect([ref, stacja]).toContain(symbol.meta?.ownerRef);
-          expect(symbol.meta?.testId).toBe(`sld-v3-nop-${symbol.meta?.ownerRef}`);
-          expect(symbol.meta?.elementKind).toBe('apparatus');
-        } else {
-          expect(lod, 'brak symbolu dopuszczalny wyłącznie na L0 z glifem stacji').toBe(0);
-        }
+        const symbol = reprezentacje[0]!;
+        expect([ref, stacja]).toContain(symbol.meta?.ownerRef);
+        expect(symbol.meta?.testId).toBe(`sld-v3-nop-${symbol.meta?.ownerRef}`);
+        expect(symbol.meta?.elementKind).toBe('apparatus');
         const podpisy = sc.labels.filter((l) => l.text === 'NO');
         expect(podpisy).toHaveLength(lod === 0 ? 0 : 1);
         if (lod !== 0) expect(podpisy[0]!.labelClass).toBe('t3');

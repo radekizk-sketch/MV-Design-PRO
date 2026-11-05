@@ -10,8 +10,8 @@
  * ---------------------------------------------------------------------------
  * Minimapa jest PROJEKCJĄ tej samej `SceneV3`, którą rysuje kanwa — nie ma
  * własnego modelu rysunku, nie czyta ENM, nie liczy layoutu. Bierze scenę
- * poziomu NAJZGRUBSZEGO (LOD 0 — stacje jako mini-RMU, magistrala, laterale;
- * 83 symbole/126 odcinków na sieci referencyjnej wobec 765/690 na LOD 2) i
+ * poziomu NAJZGRUBSZEGO (LOD 0 — od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA ta sama
+ * kompozycja co L1, bez podpisów i szczegółu zabezpieczeń) i
  * rzutuje bboxy jej elementów na prostokąty i linie. Wołający buduje tę scenę
  * TĄ SAMĄ funkcją `buildSceneV3(snapshot, 0)` co kanwa (czysta, memoizowana na
  * snapshot — wzorzec `buildEnergizationOverlay`/`buildFlowOverlayForSnapshot`
@@ -45,6 +45,7 @@
 import type { V3Rect } from '../core/grid';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { SceneV3 } from '../scene/buildScene';
+import { prostokatObrysuStacji, stacjeSceny } from './hitAreas';
 
 /** Prostokąt w układzie MINIMAPY (piksele panelu, początek w jej lewym górnym rogu). */
 export interface MinimapRect {
@@ -167,33 +168,20 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
   }
   // Obrys stacji: jedna kompozycja na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-
   // KOMPOZYCJA), więc stacja nie ma już własnego symbolu zbiorczego — punkt
-  // orientacyjny nawigatora to bbox symboli stacji (baza refu `stn/<id>`,
-  // ta sama reguła co `stationAnchors` w scenie). Kolejność: po bazie refu.
-  const stationBoxes = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
-  for (const symbol of scene.symbols) {
-    const parts = (symbol.meta?.ownerRef ?? '').replace(/#.*$/, '').split('/');
-    if (parts.length < 2 || parts[0] !== 'stn' || parts[1].length === 0) continue;
-    const base = `stn/${parts[1]}`;
-    const def = SYMBOL_DEFS[symbol.symbolId];
-    const box = stationBoxes.get(base);
-    const next = {
-      minX: Math.min(box?.minX ?? Infinity, symbol.x),
-      minY: Math.min(box?.minY ?? Infinity, symbol.y),
-      maxX: Math.max(box?.maxX ?? -Infinity, symbol.x + def.width),
-      maxY: Math.max(box?.maxY ?? -Infinity, symbol.y + def.height),
-    };
-    stationBoxes.set(base, next);
-  }
-  for (const base of [...stationBoxes.keys()].sort()) {
-    const box = stationBoxes.get(base)!;
-    const topLeft = projectPoint(projection, box.minX, box.minY);
+  // orientacyjny nawigatora to TEN SAM obrys, który jest uchwytem stacji na kanwie
+  // (`stacjeSceny`: rama strefy GPZ i `meta.stationOutlines` stacji SN, z odstępem
+  // `prostokatObrysuStacji`). Jedno źródło: dawna obwiednia liczona tu z samych
+  // symboli była drugą prawdą o tym samym obszarze (bez odcinków stacji).
+  for (const stacja of stacjeSceny(scene.meta)) {
+    const r = prostokatObrysuStacji(stacja);
+    const topLeft = projectPoint(projection, r.x, r.y);
     shapes.push({
       kind: 'station',
       rect: {
         x: topLeft.x,
         y: topLeft.y,
-        width: Math.max(1.5, (box.maxX - box.minX) * projection.scale),
-        height: Math.max(1.5, (box.maxY - box.minY) * projection.scale),
+        width: Math.max(1.5, r.width * projection.scale),
+        height: Math.max(1.5, r.height * projection.scale),
       },
     });
   }

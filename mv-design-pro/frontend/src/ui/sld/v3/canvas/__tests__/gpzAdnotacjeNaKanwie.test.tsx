@@ -208,11 +208,16 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     });
   }
 
-  it('L0 (blok zwinięty): brak adnotacji pól — nie ma pól, których by dotyczyły; dane glifu bloku docierają do DOM', () => {
+  it('L0 (jedna kompozycja): pola GPZ są na rysunku, więc ich adnotacje też — te same panele co na L2', () => {
+    // Dawniej L0 zwijał GPZ do bloku bez pól, więc adnotacji pól nie było (i glif bloku niósł
+    // liczbę sekcji). Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: GPZ ma jedną kompozycję na każdym
+    // LOD — rama strefy rezerwuje adnotacje na każdym poziomie, a tła pól (kształt) zostają.
     const container = renderKanwe(0);
-    expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')).toBeNull();
-    const blok = container.querySelector('[data-gpz-sections]');
-    expect(blok, 'glif zwiniętego GPZ dostaje liczbę sekcji z kompozycji').not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')).not.toBeNull();
+    expect(container.querySelector('[data-gpz-sections]'), 'glif zwiniętego GPZ nie istnieje').toBeNull();
+    const panele = container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]');
+    expect(panele.length).toBe(buildSceneV3(enm, 0).meta.gpzAdnotacje!.panele.length);
+    expect(panele.length).toBeGreaterThan(0);
   });
 
   // Rozszerzenie 5 karty UX-04: plakietki automatyki z kodów funkcji pola (SPZ⇔79, SCO⇔SCO,

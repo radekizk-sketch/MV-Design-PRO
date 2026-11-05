@@ -779,12 +779,31 @@ export function jestNazwaTozsamosci(label: OwnedLabel): boolean {
   return label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0');
 }
 
-function pismoPelnejNazwy(label: OwnedLabel, fontSize: number, granica: number): number {
-  const naturalne = LABEL_TYPOGRAPHY[label.labelClass].fontSize;
+/** Pismo `fontSize` [j.św.] przy skali `scale` ma na ekranie co najmniej podłogę czytelności. */
+function pismoPonadPodloga(fontSize: number, scale: number): boolean {
+  return fontSize * scale >= MIN_READABLE_LABEL_SCREEN_PX - 1e-9;
+}
+
+function pismoPelnejNazwy(
+  label: OwnedLabel,
+  fontSize: number,
+  granica: number,
+  scale: number,
+  podlogaPx: number = MIN_READABLE_LABEL_SCREEN_PX,
+): number {
+  // Dolna granica ściskania: pismo naturalne klasy ALBO pismo podłogi czytelności przy tej
+  // skali (`podlogaPx / scale`, w górę do 0,5 j.św.; podłoga ogólna albo podłoga opisów
+  // celu kadru K2b) — większa z nich.
+  // Pomiar przed poprawką (granica = samo pismo naturalne): „GPZ Referencyjny 110 kV ·
+  // 110/15 kV" przy skali 0,1 rysowany pismem 14 j.św., czyli 1,4 px na ekranie, z flagą
+  // powiększenia. Nazwa szersza od rezerwacji w piśmie podłogi wychodzi poza rezerwację —
+  // o miejscu rozstrzyga plan kolizji (z obrysem arkusza), nie skracanie.
+  const podloga = Math.ceil((podlogaPx / scale) * 2) / 2;
+  const dolna = Math.min(fontSize, Math.max(LABEL_TYPOGRAPHY[label.labelClass].fontSize, podloga));
   const szerokosc = measureTextWidth(label.text, fontSize, wagaPisma(label));
-  if (szerokosc <= granica || fontSize <= naturalne) return fontSize;
+  if (szerokosc <= granica || fontSize <= dolna) return fontSize;
   const dopasowane = Math.floor(((fontSize * granica) / szerokosc) * 2) / 2;
-  return Math.max(naturalne, Math.min(fontSize, dopasowane));
+  return Math.max(dolna, Math.min(fontSize, dopasowane));
 }
 
 /**
@@ -895,7 +914,11 @@ export function planSceneLabels(
     // cofnęłoby całe powiększenie. Dla nich granicą zostaje dopiero
     // rozstrzyganie kolizji (razem z obrysem arkusza) niżej.
     const nazwa = jestNazwaTozsamosci(label);
-    const fontSize = nazwa ? pismoPelnejNazwy(label, fontSizeKlasy, granicaTekstu) : fontSizeKlasy;
+    const fontSize = nazwa ? pismoPelnejNazwy(label, fontSizeKlasy, granicaTekstu, scale) : fontSizeKlasy;
+    // Strażnik pary (pismo powiększone ↔ podłoga): powiększona nazwa nigdy nie jest
+    // rysowana pod podłogą czytelności — gdyby `pismoPelnejNazwy` zeszło niżej, tożsamość
+    // znika JAWNIE (`droppedIdentity`), zamiast malować się nieczytelnie.
+    if (nazwa && !czytelna && !pismoPonadPodloga(fontSize, scale)) return 'utracona';
     const tekstBazowy =
       nazwa || (!czytelna && label.ownerKind !== 'station-name')
         ? label.text
@@ -914,7 +937,7 @@ export function planSceneLabels(
       const rotated = label.rotated === true;
       const granicaCelu = label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated);
       const nazwaCelu = jestNazwaTozsamosci(label);
-      const pismoCelu = nazwaCelu ? pismoPelnejNazwy(label, fontCelu, granicaCelu) : fontCelu;
+      const pismoCelu = nazwaCelu ? pismoPelnejNazwy(label, fontCelu, granicaCelu, scale, podlogaCelu?.screenPx) : fontCelu;
       const tekstBazowy =
         label.ownerKind === 'station-name' && !nazwaCelu
           ? shortenPreservingIdentity(label.text, fontCelu, wagaPisma(label), granicaCelu)

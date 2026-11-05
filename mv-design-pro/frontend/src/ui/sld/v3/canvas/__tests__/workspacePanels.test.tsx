@@ -17,6 +17,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
+import { stacjeSceny } from '../hitAreas';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
@@ -471,8 +472,12 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
     expect(svg.querySelectorAll('polyline').length).toBe(
       sceneL0.segments.filter((s) => s.points.length >= 2).length,
     );
-    // Prostokąty: symbole sceny + prostokąt przycięcia (clipPath) + kadr.
-    expect(svg.querySelectorAll('rect').length).toBe(sceneL0.symbols.length + 2);
+    // Prostokąty: symbole sceny + obrysy stacji (`stacjeSceny`, karta
+    // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — stacja nie ma symbolu zbiorczego) + prostokąt
+    // przycięcia (clipPath) + kadr.
+    expect(svg.querySelectorAll('rect').length).toBe(
+      sceneL0.symbols.length + stacjeSceny(sceneL0.meta).length + 2,
+    );
     expect(within(panel).getByTestId('sld-v3-minimap-frame')).toBeInTheDocument();
   });
 

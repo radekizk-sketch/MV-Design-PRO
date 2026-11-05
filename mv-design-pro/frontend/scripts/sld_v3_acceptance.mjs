@@ -167,6 +167,7 @@ import {
   hitLayerOrderingInDom,
   pointerBlockersInDom,
   sondaSiatkowaTrafien,
+  stacjeSceny,
   HIT_OBJECT_CLASSES,
 } from '../src/ui/sld/v3/canvas/hitAreas.ts';
 // Karta S9-5 (menu kontekstowe i operacje budowy na kanwie): temat menu ma
@@ -617,7 +618,14 @@ const EXPECTED_STATION_COUNT = 53;
 // `starting_port_ref`, nowe identyfikatory korytarzy, inna kolejność remisu ciągów
 // odgałęzień — atrybucja w `crossings.test.ts`): −352 przy 0,62 em, −400 przy tabeli.
 // Cały spadek siedzi w przyczynie „rezerwacja-kanalu" (niżej); pozostałe przyczyny bez zmian.
-const VERTICAL_LENGTH_BASELINE = { 0: 19976, 1: 43040, 2: 43040 };
+// Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (2026-11-05, zmierzone): 19976/43040/43040 →
+// 43008/43008/43008. Jedna kompozycja na każdym LOD — L0 rysuje rysunek L1/L2 (dawne
+// 19976 mierzyło zwinięte stacje i blok GPZ), więc wartość L0 = wartość L1/L2. Na L1/L2
+// spadek o 32: „footprint" 1936 → 1920 i „jog-trasy" 160 → 144 — oba od sylwetki pola bez
+// wyposażenia wysokości kafla aparatu (48 zamiast 32, decyzja D: przewód pod nią krótszy).
+// Sonda: stała sylwetki przywrócona do 32 daje 43040 (footprint 1936, jog 160) i
+// wypełnienie arkusza 0.025599 — cała różnica należy do decyzji D.
+const VERTICAL_LENGTH_BASELINE = { 0: 43008, 1: 43008, 2: 43008 };
 
 // Rozstrzygnięcie architekta S7-P2 (2026-10-30): skrzyżowania toru mocy z mostkiem §22.1
 // na fiksturze referencyjnej, zmierzone po skasowaniu rozcinania kabli „węzłem T" (dawniej
@@ -628,7 +636,9 @@ const VERTICAL_LENGTH_BASELINE = { 0: 19976, 1: 43040, 2: 43040 };
 // przy obu szerokościach tekstu, fikstura po regeneracji 8/19/19 przy obu; nowe
 // identyfikatory korytarzy układają wiersze odgałęzień w innej kolejności remisu i przybywa
 // jedno skrzyżowanie odgałęzienie × odgałęzienie na każdym LOD, z mostkiem (0 bez mostka).
-const CROSSING_WITH_BRIDGE_BASELINE = { 0: 8, 1: 19, 2: 19 };
+// Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: 8/19/19 → 19/19/19 (L0 rysuje tę samą kompozycję
+// co L1/L2; dawne 8 liczyło przecięcia rysunku ze stacjami zwiniętymi).
+const CROSSING_WITH_BRIDGE_BASELINE = { 0: 19, 1: 19, 2: 19 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -693,10 +703,11 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // przywraca jog 88. Wartości sondy „rezerwacja-kanalu": fikstura sprzed — 0,62 em
   // 20952/42048/42048, tabela 20048/41136/41136; fikstura po — 0,62 em 20600/41696/41696,
   // tabela 19648/40736/40736. footprint i „slupek-terminalny" bez zmian w każdym wariancie.
-  0: { footprint: 32, 'rezerwacja-kanalu': 19648, 'jog-trasy': 88, 'slupek-terminalny': 208 },
-  // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (zmierzone, atrybucja przy
+  // `VERTICAL_LENGTH_BASELINE`): jeden wpis dla każdego LOD — footprint 1920, „jog-trasy" 144.
+  0: { footprint: 1920, 'rezerwacja-kanalu': 40736, 'jog-trasy': 144, 'slupek-terminalny': 208 },
+  1: { footprint: 1920, 'rezerwacja-kanalu': 40736, 'jog-trasy': 144, 'slupek-terminalny': 208 },
+  2: { footprint: 1920, 'rezerwacja-kanalu': 40736, 'jog-trasy': 144, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -787,8 +798,13 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // posuwów kroju: −8304/−10296/−11016 na fiksturze sprzed i −8424/−10416/−11160 na fiksturze
 // po (węższe kolumny pól i stacji). Regeneracja fikstury: −32 na każdym LOD przy tabeli.
 // Załamania bez zmian (43/171/171 w każdym wariancie).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 45312, 1: 58832, 2: 62784 };
-const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
+// Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (zmierzone): poziomy 45312/58832/62784 →
+// 62784/62784/62784, rogi 43/171/171 → 171/171/171. Jedna kompozycja: L0 i L1 rysują tę
+// samą geometrię torów co L2 (dawniej L1 pomijał poziomy szczegółu L2, a L0 rysował
+// stacje zwinięte). Wartość L2 bez zmian — wzrost na L0/L1 jest skutkiem decyzji karty,
+// nie regresją układu.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 62784, 1: 62784, 2: 62784 };
+const BEND_COUNT_BASELINE = { 0: 171, 1: 171, 2: 171 };
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
@@ -841,7 +857,11 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // 0.014760/0.022099/0.022865, tabela 0.016201/0.024810/0.025599. Tabela posuwów kroju
 // zwęża arkusz (krótsze poziomy i piony przy tej samej treści), więc udział pokrytych
 // komórek rośnie. Podłoga = zmierzona wartość minus ~0.00005 (reguła S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.01615, 1: 0.02476, 2: 0.02555 };
+// Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (zmierzone 0.025542 na każdym LOD): podłoga
+// 0.01615/0.02476/0.02555 → 0.02549/0.02549/0.02549 (L0/L1 PODNIESIONE — jedna kompozycja;
+// L2 obniżona o 0.00006 — arkusz wyższy o realną treść: sylwetka pola bez wyposażenia
+// wysokości kafla aparatu, decyzja D). Reguła: zmierzona wartość minus ~0.00005.
+const SHEET_FILL_FLOOR = { 0: 0.02549, 1: 0.02549, 2: 0.02549 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -2510,11 +2530,14 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
   // Test negatywny OBOWIĄZKOWY — plan liczony z arkuszem NIESKOŃCZONYM musi
   // przywrócić zmierzony przelew (dowód, że sonda mierzy naprawę, a nie zbieg
   // okoliczności), a etykiet przy tym NIE ubywa (tożsamość jest PRZESUWANA).
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawny przypadek (kody zwiniętych stacji na L0
+  // @0,181) nie istnieje; zmierzony przelew bez granicy: L1 @0,30 — 224 j.św. (podpis roli
+  // pola stacji dolnego wiersza), ten sam co w `obrysArkusza.contract.test.tsx`.
   {
-    const scene = buildSceneV3(enm, 0);
+    const scene = buildSceneV3(enm, 1);
     const obstacles = sceneObstacleRects(scene);
     const sheet = sheetSizeFor(scene);
-    const bezGranicy = planSceneLabels(scene.labels, obstacles, 0.181, {
+    const bezGranicy = planSceneLabels(scene.labels, obstacles, 0.3, {
       width: Number.MAX_SAFE_INTEGER,
       height: Number.MAX_SAFE_INTEGER,
     });
@@ -2524,7 +2547,7 @@ line('=== sheet_outline_probe (RAMKA-TNIE-PODPISY: zero tuszu poza obrysem arkus
       przelewy.length > 0 && Math.max(...przelewy.map((p) => p.overflow)) > 30,
       `przelewów=${przelewy.length} max=${przelewy.length ? Math.max(...przelewy.map((p) => p.overflow)).toFixed(1) : 'n/d'} j.św.`,
     );
-    const zGranica = planSceneLabels(scene.labels, obstacles, 0.181, sheet);
+    const zGranica = planSceneLabels(scene.labels, obstacles, 0.3, sheet);
     check(
       'sheet_outline_probe: granica arkusza NIE zabiera tożsamości — ta sama liczba napisów co bez granicy',
       zGranica.drawn.length === bezGranicy.drawn.length
@@ -2688,6 +2711,9 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
             testId: `sld-v3-result-aggregate-${i}`, ownerRef: a.anchorRef, x: a.x, y: a.y, width: a.width, height: a.height,
           })),
         ],
+        // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): obrysy stacji są uchwytami
+        // kanwy — oczekiwany zbiór MUSI je nieść (para z renderem `SldCanvasV3`).
+        stacje: stacjeSceny(scene.meta),
         scale,
       });
       const zDrzewa = hitAreasFromDom(svg);
@@ -2860,6 +2886,7 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       segments: scene.segments,
       labels: plan.drawn,
       resultMarkers: [],
+      stacje: stacjeSceny(scene.meta),
       scale: 1,
     });
     const wgKlasy = new Map(HIT_OBJECT_CLASSES.map((k) => [k, { obiektow: 0, tematow: 0, kategorie: new Map() }]));
@@ -2914,14 +2941,17 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       const w = resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind, busRef: busRefy.get(a.testId) }, indexModelu);
       return w.stan === 'temat' && w.temat.kotwica === 'galaz';
     }).length;
-    if (lod === 0) {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: menu stacji niesie obrys stacji (uchwyt na
+    // KAŻDYM LOD), więc kryterium odbioru obowiązuje na L0, L1 i L2 (dawniej tylko L0,
+    // gdzie stała zwinięta sylwetka stacji).
+    {
       check(
-        `menu_chain_probe (S9-5, kryterium odbioru) LOD 0: ≥ ${PROG_STACJI} stacji z menu stacji na rysunku`,
+        `menu_chain_probe (S9-5, kryterium odbioru) LOD ${lod}: ≥ ${PROG_STACJI} stacji z menu stacji na rysunku`,
         stacjeZMenu.length >= PROG_STACJI,
         `stacji=${stacjeZMenu.length}`,
       );
       check(
-        'menu_chain_probe (S9-5, POLE-ZAJĘTE) LOD 0: wejście „kontynuuj ciąg" KAŻDEJ stacji = wolne pole liniowe wg line_fields',
+        `menu_chain_probe (S9-5, POLE-ZAJĘTE) LOD ${lod}: wejście „kontynuuj ciąg" KAŻDEJ stacji = wolne pole liniowe wg line_fields`,
         rozjazdyWejscia.length === 0,
         rozjazdyWejscia.length === 0
           ? `stacji=${stacjeZMenu.length}, z wolnym polem=${stacjeZMenu.filter(wolnePoleStacji).length}`
@@ -2962,7 +2992,8 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
       const planEtapu = planSceneLabels(scena.labels, sceneObstacleRects(scena), 1, sheetSizeFor(scena));
       const busRefyEtapu = busRefSceny(scena);
       const obszaryEtapu = buildCanvasHitAreas({
-        symbols: scena.symbols, segments: scena.segments, labels: planEtapu.drawn, resultMarkers: [], scale: 1,
+        symbols: scena.symbols, segments: scena.segments, labels: planEtapu.drawn, resultMarkers: [],
+        stacje: stacjeSceny(scena.meta), scale: 1,
       });
       const wejscia = stacjeZWejsciemKontynuacji(
         obszaryEtapu.map((area) => ({ area, busRef: busRefyEtapu.get(area.testId) })),
@@ -2999,7 +3030,8 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
   {
     const sceneL2 = buildSceneV3(enm, 2);
     const obszaryL2 = buildCanvasHitAreas({
-      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [],
+      stacje: stacjeSceny(sceneL2.meta), scale: 1,
     });
     const rodziny = new Map();
     for (const area of obszaryL2) {
@@ -3030,7 +3062,8 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
     const pustyIndex = buildCanvasModelIndex(null);
     const sceneL2 = buildSceneV3(enm, 2);
     const obszaryL2 = buildCanvasHitAreas({
-      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [], scale: 1,
+      symbols: sceneL2.symbols, segments: sceneL2.segments, labels: [], resultMarkers: [],
+      stacje: stacjeSceny(sceneL2.meta), scale: 1,
     });
     const tematy = obszaryL2.filter(
       (a) => resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind }, pustyIndex).stan === 'temat',

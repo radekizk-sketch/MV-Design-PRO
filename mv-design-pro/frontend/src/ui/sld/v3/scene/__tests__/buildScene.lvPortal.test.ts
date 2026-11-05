@@ -13,7 +13,7 @@
  *      elementami sceny SN; graf elektryczny nadal waliduje CAŁĄ sieć);
  *  (4) źródła strony nN (20/20 na fixturze) POZOSTAJĄ widoczne w rzędzie DER
  *      na zacisku (nigdy nie ukrywamy źródeł) — `sourceCoverageGaps` puste;
- *  (5) L0: zero portali (blok zwinięty), kotwice stacji identyczne L0/L1/L2;
+ *  (5) L0: portale te same co na L1 (jedna kompozycja), kotwice stacji identyczne L0/L1/L2;
  *  (6) multi-TR: druga jednostka transformatorowa tej samej stacji ⇒ dwa
  *      symbole TR, dwa zejścia LV, JEDEN portal;
  *  (7) determinizm.
@@ -48,7 +48,9 @@ function segmentsEndingWith(scene: SceneV3, suffix: string) {
 const NN_INTERIOR_SYMBOLS = new Set(['nnBreaker', 'nnFuseSwitch']);
 
 describe('PORTAL nN — scena referencyjna (53 stacje, 20/20 DER na nN)', () => {
-  for (const lod of [1, 2] as const) {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: portal nN jest częścią kompozycji stacji, więc
+  // kontrakt portalu obowiązuje na KAŻDYM LOD (dawniej L0 zwijał stację do bloku bez portalu).
+  for (const lod of [0, 1, 2] as const) {
     it(`L${lod}: liczba portali == liczba zacisków nN (#lv-bus); każdy portal z tożsamością stacji i pionem kind='lv' NA zacisku`, () => {
       const scene = buildSceneV3(enm, lod);
       const lvBuses = segmentsEndingWith(scene, '#lv-bus');
@@ -103,10 +105,12 @@ describe('PORTAL nN — scena referencyjna (53 stacje, 20/20 DER na nN)', () => 
     });
   }
 
-  it('L0: zero portali i zero zacisków (blok zwinięty) — wejściem jest dwuklik w blok stacji', () => {
-    const scene = buildSceneV3(enm, 0);
-    expect(portals(scene)).toHaveLength(0);
-    expect(segmentsEndingWith(scene, '#lv-bus')).toHaveLength(0);
+  it('L0: portale i zaciski nN te same co na L1 (jedna kompozycja — dwuklik w portal otwiera projekcję nN na każdym LOD)', () => {
+    // Dawniej: L0 bez portali (blok zwinięty), wejściem był dwuklik w blok stacji. Karta
+    // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała blok — L0 niesie te same portale co L1.
+    const ref = (scene: SceneV3) => portals(scene).map((p) => `${p.meta?.ownerRef}@${p.x},${p.y}`);
+    expect(ref(buildSceneV3(enm, 0))).toEqual(ref(buildSceneV3(enm, 1)));
+    expect(segmentsEndingWith(buildSceneV3(enm, 0), '#lv-bus').length).toBe(segmentsEndingWith(buildSceneV3(enm, 1), '#lv-bus').length);
   });
 
   it('kotwica stacji IDENTYCZNA L0/L1/L2 (portal nie przesuwa kotwic — KD-5/S1 „jedna kotwica")', () => {

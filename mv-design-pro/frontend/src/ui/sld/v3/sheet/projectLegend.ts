@@ -21,7 +21,7 @@
  * legendzie. Zakres SYMBOLI jest PEŁNY (wszystkie `SYMBOL_DEFS`, nie tylko
  * dotychczasowy kurator 12 pozycji `DEFAULT_SYMBOL_LEGEND_IDS`) — scena może
  * dziś rysować symbole spoza tego kuratora (np. `derPv`/`derWind`/
- * `stationCollapsed`/`junction`), które w STAREJ stałej legendzie NIE miały
+ * `junction`), które w STAREJ stałej legendzie NIE miały
  * żadnego wpisu objaśniającego (luka niezależna od K12, naprawiona przy
  * okazji: „Zero-Debt" — legenda licząca z projektu jest właściwym miejscem
  * na PEŁNE pokrycie, nie tylko kuratora historycznego).

@@ -355,7 +355,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
     });
     expect(ref, 'fikstura ma stację w pasie dawnej szuflady').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwytNazwyStacji(container, ref), {
+    fireEvent.click(uchwytNazwyStacji(container, ref!), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
@@ -371,7 +371,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
     });
     expect(ref, 'fikstura ma stację na lewo od pasa').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwytNazwyStacji(container, ref), {
+    fireEvent.click(uchwytNazwyStacji(container, ref!), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);

@@ -154,8 +154,10 @@ function naruszenia(scena: SceneV3): string[] {
 const SCENY = FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const));
 
 describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura × LOD', () => {
-  it('kontrola wejścia: 58 fikstur i macierz W1c', () => {
-    expect(FIKSTURY).toHaveLength(59);
+  it('kontrola wejścia: 63 fikstury i macierz W1c', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: 59 → 64 — pięć fikstur przeglądu sieci
+    // (`przegladGpz*.enm.json`) w iloczynie fikstura × LOD.
+    expect(FIKSTURY).toHaveLength(64);
   });
 
   it.each(SCENY)('%s L%i', (_nazwa, lod, enm) => {

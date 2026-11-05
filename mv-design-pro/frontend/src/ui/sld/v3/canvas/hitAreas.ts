@@ -57,6 +57,7 @@ import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, typ
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { OwnerKind } from '../layout/labels';
 import type { PlannedLabel } from './labelLegibility';
+import type { SceneV3Meta } from '../scene/buildScene';
 import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
 import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
 
@@ -332,7 +333,68 @@ export interface ResultMarkerHitInput {
   readonly height: number;
 }
 
+/**
+ * Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A) — UCHWYT STACJI.
+ *
+ * Po skasowaniu bloku zwiniętego stacja nie ma na rysunku własnego symbolu; nazwa stacji
+ * bywa zdjęta planem czytelności. Uchwytem stacji jest więc jej OBRYS: ramka strefy (GPZ ma
+ * widoczną ramę strefy) albo — gdy stacja ramki nie ma — obwiednia jej symboli odsunięta
+ * o `ODSTEP_OBRYSU_STACJI`, pokazywana obrysem po najechaniu kursorem. Kształtem trafienia
+ * jest KRAWĘDŹ prostokąta (łamana zamknięta), nie jego wnętrze: aparat, szyna i tor wewnątrz
+ * stacji zostają swoimi uchwytami, klik w obrys zaznacza stację. Obiekt jest obecny na każdym
+ * LOD i przy każdym planie czytelności (nie zależy od etykiet).
+ */
+export interface StacjaHitInput {
+  /** Ref stacji (GPZ albo stacja SN/nN) — tożsamość obiektu modelu. */
+  readonly ownerRef: string;
+  /** Obwiednia rysunku stacji albo rama strefy [świat]. */
+  readonly rect: V3Rect;
+  /** `true` = prostokąt JEST widoczną ramką rysunku (rama strefy GPZ) — obrys bez odsunięcia. */
+  readonly ramka: boolean;
+}
+
+/** Odsunięcie obrysu stacji bez ramki od obwiedni jej symboli [świat] — krawędź uchwytu nie
+ *  leży na tuszu aparatów skrajnych pól (klik w aparat zostaje klikiem w aparat). */
+export const ODSTEP_OBRYSU_STACJI = 4;
+
+/** Grubość widocznego obrysu stacji [świat] — obrys trafienia krawędzi. */
+export const GRUBOSC_OBRYSU_STACJI = 1;
+
+/** `data-testid` uchwytu stacji. */
+export function testIdUchwytuStacji(ownerRef: string): string {
+  return `sld-v3-stacja-${ownerRef}`;
+}
+
+/** Prostokąt obrysu stacji (z odsunięciem dla stacji bez ramki) — TEN SAM dla uchwytu
+ *  trafienia i dla obrysu rysowanego po najechaniu (predykat parami). */
+export function prostokatObrysuStacji(stacja: StacjaHitInput): V3Rect {
+  const d = stacja.ramka ? 0 : ODSTEP_OBRYSU_STACJI;
+  return { x: stacja.rect.x - d, y: stacja.rect.y - d, width: stacja.rect.width + 2 * d, height: stacja.rect.height + 2 * d };
+}
+
+function krawedzProstokata(r: V3Rect): readonly RouteVertex[] {
+  return [
+    { x: r.x, y: r.y },
+    { x: r.x + r.width, y: r.y },
+    { x: r.x + r.width, y: r.y + r.height },
+    { x: r.x, y: r.y + r.height },
+    { x: r.x, y: r.y },
+  ];
+}
+
+/** Uchwyty stacji SCENY: rama strefy GPZ (widoczna ramka) i obwiednie stacji SN/nN. */
+export function stacjeSceny(
+  meta: Pick<SceneV3Meta, 'gpzId' | 'gpzZone' | 'stationOutlines'>,
+): readonly StacjaHitInput[] {
+  const wynik: StacjaHitInput[] = [];
+  if (meta.gpzId && meta.gpzZone) wynik.push({ ownerRef: meta.gpzId, rect: meta.gpzZone, ramka: true });
+  for (const o of meta.stationOutlines ?? []) wynik.push({ ownerRef: o.stationRef, rect: o.rect, ramka: false });
+  return wynik;
+}
+
 export interface CanvasHitAreaInput {
+  /** Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — obrysy stacji (patrz `StacjaHitInput`). */
+  readonly stacje?: readonly StacjaHitInput[];
   readonly symbols: readonly PreviewSymbol[];
   readonly segments: readonly PreviewSegment[];
   /** Etykiety WEDŁUG PLANU renderu (`planSceneLabels`) — rysowane są tylko te,
@@ -359,7 +421,7 @@ function testIdOdcinka(segment: PreviewSegment, index: number): string {
 
 /**
  * Obszary trafienia WSZYSTKICH obiektów kanwy, w kolejności malowania DOM
- * (odcinki → symbole → etykiety → znaczniki wyniku). Kolejność jest częścią
+ * (obrysy stacji → odcinki → symbole → etykiety → znaczniki wyniku). Kolejność jest częścią
  * kontraktu: rozstrzyga, który obiekt wygrywa przy nałożeniu obrysów.
  */
 export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasHitArea[] {
@@ -367,6 +429,23 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
   const ukryte = input.ukryteTestId;
   const areas: CanvasHitArea[] = [];
   let z = 0;
+
+  // Obrysy stacji malowane NAJNIŻEJ: na krawędzi obrysu tor przecinający ramkę (kabel
+  // wchodzący do stacji) wygrywa swoim tuszem — jedyne punkty wspólne obu obiektów.
+  (input.stacje ?? []).forEach((stacja) => {
+    const testId = testIdUchwytuStacji(stacja.ownerRef);
+    if (ukryte?.has(testId)) return;
+    const points = krawedzProstokata(prostokatObrysuStacji(stacja));
+    areas.push({
+      testId,
+      ownerRef: stacja.ownerRef,
+      elementKind: 'station',
+      klasa: 'stacja',
+      z: z++,
+      obrys: { ksztalt: 'lamana', points, halfWidth: GRUBOSC_OBRYSU_STACJI / 2 },
+      obszar: { ksztalt: 'lamana', points, halfWidth: Math.max(GRUBOSC_OBRYSU_STACJI / 2, hitPadWorld(scale)) },
+    });
+  });
 
   segments.forEach((segment, index) => {
     if (segment.points.length < 2) return;

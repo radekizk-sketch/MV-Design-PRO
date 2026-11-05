@@ -35,7 +35,7 @@ import {
   topBandFieldClearances,
   allTopBandFieldsClearance,
   anchorDisplacementMetrics,
-  stationCollapsedAnchors,
+  stationAnchors,
   noSceneSymbolOverlaps,
   allSceneSegmentEndpointsAnchored,
   allSourcesConnected,
@@ -108,14 +108,25 @@ describe('RECENZJA EKSPERCKA — metryki gęstości lokalnej (rozkład zajętoś
     expect(rows.length).toBe(3);
   });
 
-  it('miara GRYZIE: gęstsza scena (więcej detalu L2>L0) ma wyższą średnią i niższą pustkę niż L0', () => {
-    // Rozkład reaguje na realną treść: L2 (pełen detal) jest gęstszy niż L0
-    // (kompaktowy przegląd), więc pustka spada, a średnia rośnie — dowód, że
-    // miara nie zwraca stałej.
-    const l0 = localDensityMetrics(buildSceneV3(bigEnm, 0));
-    const l2 = localDensityMetrics(buildSceneV3(bigEnm, 2));
-    expect(l2.meanDensity).toBeGreaterThan(l0.meanDensity);
-    expect(l2.voidRatio).toBeLessThan(l0.voidRatio);
+  it('miara GRYZIE: ta sama scena bez treści prawej połowy arkusza ma niższą średnią i wyższą pustkę', () => {
+    // Intencja bez zmian: rozkład reaguje na realną treść, miara nie zwraca stałej.
+    // Dawny kontrast „L2 (pełen detal) gęstszy niż L0 (kompaktowy przegląd)" zniknął
+    // z kanonem JEDNEJ KOMPOZYCJI (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): L0 rysuje te same
+    // symbole i odcinki co L2, a miara liczy wyłącznie symbole i trasy, więc oba poziomy dają
+    // tę samą gęstość (pomiar: średnia 0,025192 na L0 i L2). Kontrast niesie teraz scena
+    // z usuniętą treścią prawej połowy przy TYM SAMYM obrysie arkusza.
+    const pelna = buildSceneV3(bigEnm, 2);
+    const srodek = pelna.bbox.x + pelna.bbox.width / 2;
+    const rzadka = {
+      ...pelna,
+      symbols: pelna.symbols.filter((s) => s.x < srodek),
+      segments: pelna.segments.filter((g) => g.points.every((p) => p.x < srodek)),
+    };
+    const dPelna = localDensityMetrics(pelna);
+    const dRzadka = localDensityMetrics(rzadka);
+    expect(dRzadka.windowCount).toBe(dPelna.windowCount);
+    expect(dPelna.meanDensity).toBeGreaterThan(dRzadka.meanDensity);
+    expect(dPelna.voidRatio).toBeLessThan(dRzadka.voidRatio);
   });
 
   it('raport metryk layoutu niesie pola gęstości lokalnej (spójne z `localDensityMetrics`)', () => {
@@ -388,8 +399,8 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
       }
     }
     // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona jako ruch.
-    const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
-      stationCollapsedAnchors(after).has(k),
+    const retained = [...stationAnchors(before).keys()].filter((k) =>
+      stationAnchors(after).has(k),
     ).length;
     expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBe(retained);
   });
@@ -487,8 +498,8 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
 
         // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona
         // jako ruch (TA SAMA asercja co P1.4 — dowód, że miara nie gubi stacji).
-        const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
-          stationCollapsedAnchors(after).has(k),
+        const retained = [...stationAnchors(before).keys()].filter((k) =>
+          stationAnchors(after).has(k),
         ).length;
         expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBe(retained);
 

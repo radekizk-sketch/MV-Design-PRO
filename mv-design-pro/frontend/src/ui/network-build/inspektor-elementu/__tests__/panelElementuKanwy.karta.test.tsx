@@ -26,6 +26,7 @@ import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useNetworkBuildStore } from '../../networkBuildStore';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../../sld/v3/scene/buildScene';
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
+import { testIdUchwytuStacji } from '../../../sld/v3/canvas/hitAreas';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
 
@@ -55,19 +56,38 @@ function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
 interface Przypadek {
   readonly nazwa: string;
   readonly lod: SceneLod;
-  readonly predykat: (s: SceneV3['symbols'][number]) => boolean;
+  readonly uchwyt: (scena: SceneV3) => string;
   readonly rodzajKarty: string;
 }
 
+function symbol(predykat: (s: SceneV3['symbols'][number]) => boolean) {
+  return (scena: SceneV3): string => {
+    const i = scena.symbols.findIndex(predykat);
+    expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
+    return scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
+  };
+}
+
 const PRZYPADKI: readonly Przypadek[] = [
-  { nazwa: 'stacja', lod: 0, predykat: (s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed', rodzajKarty: 'stacja' },
+  // Uchwytem stacji jest obrys jej strefy, klikalny na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA,
+  // decyzja A); dawny zwinięty symbol stacji nie istnieje.
+  {
+    nazwa: 'stacja',
+    lod: 0,
+    uchwyt: (scena) => {
+      const ref = scena.meta.stationOutlines?.[0]?.stationRef;
+      expect(ref, 'obrys stacji w scenie').toBeTruthy();
+      return testIdUchwytuStacji(ref!);
+    },
+    rodzajKarty: 'stacja',
+  },
   {
     nazwa: 'pole',
     lod: 2,
-    predykat: (s) => jestPoleBezRekorduAparatu(s),
+    uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)),
     rodzajKarty: 'pole',
   },
-  { nazwa: 'transformator', lod: 2, predykat: (s) => s.meta?.elementKind === 'transformer', rodzajKarty: 'transformator' },
+  { nazwa: 'transformator', lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'transformer'), rodzajKarty: 'transformator' },
 ];
 
 const otworzOperacje = vi.fn();
@@ -98,9 +118,7 @@ function kliknij(przypadek: Przypadek): HTMLElement {
     </>,
   );
   const scena = buildSceneV3(SIEC, przypadek.lod);
-  const i = scena.symbols.findIndex(przypadek.predykat);
-  expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
-  const testId = scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
+  const testId = przypadek.uchwyt(scena);
   const uchwyt = container.querySelector(`[data-hit-for="${testId}"]`);
   expect(uchwyt, `uchwyt trafienia ${testId}`).not.toBeNull();
   fireEvent.click(uchwyt!, { detail: 1 });

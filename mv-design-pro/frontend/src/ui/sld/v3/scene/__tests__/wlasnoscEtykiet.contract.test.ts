@@ -443,13 +443,11 @@ describe('BLOK-LATERAL-WLASNOSC §5 — kontrakt B-2 (kotwica na WSZYSTKICH trze
     }
   });
 
-  it('POLE nie jest rysowane na L0 — kotwica cofa się do stacji, i ta jest osiągalna', () => {
-    // POMIAR (przed i po karcie identycznie: 0/171): `bay.bayRef` ma rysunek na
-    // L1/L2, a na L0 stacja jest symbolem zbiorczym BEZ pól. To kontrakt LOD
-    // (spec §7 „osobne rezerwacje"), nie regres tej karty — `kotwicaWidoku`
-    // celowo odrzuca kandydata bez kompletu i próbuje NASTĘPNEGO. Test pilnuje
-    // OBU stron: że pole faktycznie znika dopiero na L0 (a nie np. na L2, co
-    // byłoby regresem rysunku) i że stacja-następca jest osiągalna.
+  it('POLE jest rysowane na KAŻDYM LOD — kotwica widoku pola osiągalna bez cofania do stacji', () => {
+    // Dawniej (pomiar 0/171): na L0 stacja była symbolem zbiorczym BEZ pól, więc kotwica pola
+    // cofała się do stacji. Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: jedna kompozycja na każdym
+    // LOD — pole ma rysunek na L0/L1/L2 i `kotwicaWidoku` zwraca SAMO pole. Intencja (kontrakt
+    // B-2: kotwica każdego obiektu osiągalna na wszystkich trzech poziomach) bez zmian.
     const pola = [
       ...new Set(
         sceneByLod[2].labels
@@ -459,13 +457,10 @@ describe('BLOK-LATERAL-WLASNOSC §5 — kontrakt B-2 (kotwica na WSZYSTKICH trze
     ];
     expect(pola.length).toBeGreaterThan(100);
     for (const bay of pola) {
-      expect(prostokatElementuWScenie(sceneByLod[2], bay), `pole ${bay} bez rysunku na L2`).not.toBeNull();
-      expect(prostokatElementuWScenie(sceneByLod[1], bay), `pole ${bay} bez rysunku na L1`).not.toBeNull();
-      expect(prostokatElementuWScenie(sceneByLod[0], bay)).toBeNull();
-      expect(kotwicaWidoku(sceneByLod, [bay], tozsamosc)).toBeNull();
-      const korzen = korzenBloku(`${bay}/`);
-      expect(korzen, `ref pola bez korzenia bloku: ${bay}`).not.toBeNull();
-      expect(kotwicaWidoku(sceneByLod, [bay, refBloku(korzen!)], tozsamosc)?.ref).toBe(refBloku(korzen!));
+      for (const lod of [0, 1, 2] as const) {
+        expect(prostokatElementuWScenie(sceneByLod[lod], bay), `pole ${bay} bez rysunku na L${lod}`).not.toBeNull();
+      }
+      expect(kotwicaWidoku(sceneByLod, [bay], tozsamosc)?.ref).toBe(bay);
     }
   });
 });

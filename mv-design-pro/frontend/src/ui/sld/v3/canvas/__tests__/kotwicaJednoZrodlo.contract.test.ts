@@ -44,7 +44,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { SLD_MENU_REGISTRY } from '../../../v2/command/SldCommandService';
-import { LABEL_OWNER_ELEMENT_KIND, HIT_OBJECT_CLASSES, buildCanvasHitAreas, type CanvasHitArea } from '../hitAreas';
+import { LABEL_OWNER_ELEMENT_KIND, HIT_OBJECT_CLASSES, buildCanvasHitAreas, stacjeSceny, type CanvasHitArea } from '../hitAreas';
 import {
   ELEMENT_KIND_KOTWICY,
   KLASY_UCHWYTU,
@@ -348,6 +348,9 @@ describe('D — pokrycie iloczynu cech', () => {
     const etykietaWgIndeksu = new Map<number, (typeof scene.labels)[number]>();
     scene.labels.forEach((label, i) => etykietaWgIndeksu.set(i, label));
     const areas: readonly CanvasHitArea[] = buildCanvasHitAreas({
+      // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): uchwyty stacji (obrys) — te same co
+      // w renderze (`SldCanvasV3.stacjeUchwytow`); para `stacja×stacja` pochodzi od nich.
+      stacje: stacjeSceny(scene.meta),
       symbols: scene.symbols,
       segments: scene.segments,
       labels: scene.labels.map((label, i) => ({ index: i, label, rect: label.rect })) as never,

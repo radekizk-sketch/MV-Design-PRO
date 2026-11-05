@@ -402,16 +402,17 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     cleanup();
   });
 
-  it('WNĘTRZE sylwetki skalowane RAZEM z obrysem (zwinięty blok stacji — cały rekord wag)', () => {
-    const Glyph = SYMBOL_GLYPHS.stationCollapsed;
+  it('WNĘTRZE glifu skalowane RAZEM z obrysem (glif o kilku wagach kreski — cały rekord wag)', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawny nośnik tej asercji (sylwetka zwiniętego
+    // bloku stacji: obrys 0,5, tor 1,6, szyna 1,2) skasowany. Intencja bez zmian, na
+    // jedynym glifie biblioteki o trzech wagach kreski — głowicy kablowej QET (przewód 1,2,
+    // kreska glifu 2, obrys 1): KAŻDA waga rośnie razem z mnożnikiem.
+    const Glyph = SYMBOL_GLYPHS.qetCableHead;
     const bez = renderToStaticMarkup(<Glyph x={0} y={0} />);
     const zDwa = renderToStaticMarkup(<Glyph x={0} y={0} strokeScale={2} />);
-    // Obrys (0,5), tor (1,6) i szyna (1,2) MUSZĄ urosnąć wszystkie — glif z
-    // obrysem wzmocnionym przy nietkniętym torze rozjeżdża się wewnętrznie.
-    expect(bez).toContain('stroke-width="0.5"');
-    expect(zDwa).toContain('stroke-width="1"');
-    expect(zDwa).toContain('stroke-width="3.2"');
-    expect(zDwa).toContain('stroke-width="2.4"');
+    for (const w of ['1.2', '1', '2']) expect(bez).toContain(`stroke-width="${w}"`);
+    for (const w of ['2.4', '2', '4']) expect(zDwa).toContain(`stroke-width="${w}"`);
+    expect(zDwa).not.toContain('stroke-width="1.2"');
   });
 });
 

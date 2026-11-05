@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
@@ -40,7 +40,11 @@ import {
   buildCanvasHitAreas,
   hitAreasFromDom,
   hitLayerOrderingInDom,
+  pickCanvasHitArea,
   pointerBlockersInDom,
+  prostokatObrysuStacji,
+  stacjeSceny,
+  testIdUchwytuStacji,
   type HitDomNode,
   type HitObjectClass,
 } from '../hitAreas';
@@ -115,6 +119,7 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
         segments: scene.segments,
         labels: plan.drawn,
         resultMarkers: [],
+        stacje: stacjeSceny(scene.meta),
         scale,
       });
       const zDrzewa = hitAreasFromDom(svgOf(container) as unknown as HitDomNode);
@@ -149,9 +154,9 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
 });
 
 describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24 px ekranu', () => {
-  /** Iloczyn cech {rodzaj obiektu} × {LOD}: na L0 są bloki stacji i łączniki
-   *  wierszy arkusza (S9-1), na L1/L2 aparaty pól, transformatory, szyny i
-   *  układy DER. Rodzaj nieobecny na danym poziomie nie jest błędem —
+  /** Iloczyn cech {rodzaj obiektu} × {LOD}: jedna kompozycja na każdym LOD (karta
+   *  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA) — aparaty pól, transformatory, szyny, układy DER,
+   *  łączniki wierszy arkusza (S9-1) i obrysy stacji (uchwyt stacji, decyzja A). Rodzaj nieobecny na danym poziomie nie jest błędem —
    *  błędem jest rodzaj OBECNY na scenie i BEZ uchwytu. */
   it.each([0, 1, 2] as SceneLod[])('LOD %s: żaden rodzaj obiektu sceny nie zostaje bez uchwytu', (lod) => {
     const { container } = render(
@@ -165,6 +170,7 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
       segments: scene.segments,
       labels: plan.drawn,
       resultMarkers: [],
+      stacje: stacjeSceny(scene.meta),
       scale,
     });
     const obecneRodzaje = new Set<HitObjectClass>(oczekiwane.map((a) => a.klasa));
@@ -186,7 +192,7 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
     }
   });
 
-  it('L0 niesie łączniki wierszy arkusza (S9-1) i bloki stacji — oba z uchwytem', () => {
+  it('L0 niesie łączniki wierszy arkusza (S9-1) i obrysy stacji — oba z uchwytem', () => {
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
     );
@@ -372,9 +378,11 @@ describe('S9-4 — klik w tło (audyt P-6)', () => {
         onBackgroundClick={onBackgroundClick}
       />,
     );
+    // JEDNA KOMPOZYCJA: dawny symbol `stationCollapsed` nie istnieje — obiektem jest
+    // obrys stacji (uchwyt stacji, decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA).
     const scene = buildSceneV3(enm, 0);
-    const stacja = scene.symbols.find((s) => s.symbolId === 'stationCollapsed')!;
-    await user.click(hitNode(container, stacja.meta!.testId!, 'obrys')!);
+    const stacja = scene.meta.stationOutlines![0]!;
+    await user.click(hitNode(container, testIdUchwytuStacji(stacja.stationRef), 'obrys')!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
     expect(onBackgroundClick).not.toHaveBeenCalled();
   });
@@ -403,5 +411,90 @@ describe('S9-4 — tryb motywu podany wprost (dowód dla harnessu zrzutowego)', 
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />,
     );
     expect(svgOf(bezPropa).getAttribute('data-theme-mode')).toBe('dark_scada');
+  });
+});
+
+/**
+ * Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: uchwytem stacji jest OBRYS jej strefy
+ * (rama GPZ; dla stacji bez ramki — obwiednia jej symboli z odstępem), klikalny na każdym
+ * LOD i przy każdym planie czytelności. Iloczyn cech: {każda z 53 stacji} × {LOD 0/1/2} ×
+ * {kanwa 800×600 (plan czytelności przeglądu) · 1322×696}.
+ */
+describe('decyzja A — obrys stacji jest uchwytem stacji', () => {
+  const W = 800;
+  const H = 600;
+
+  it('kanwa 800×600, sieć 53 stacji, LOD 0: NATYWNY klik w obrys stacji zaznacza TĘ stację', async () => {
+    const user = userEvent.setup();
+    const onElementClick = vi.fn();
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={W} height={H} lodOverride={0} onElementClick={onElementClick} />,
+    );
+    const scene = buildSceneV3(enm, 0);
+    const obrysy = scene.meta.stationOutlines ?? [];
+    expect(obrysy.length).toBe(53);
+    for (const o of obrysy) {
+      onElementClick.mockClear();
+      const wezel = hitNode(container, testIdUchwytuStacji(o.stationRef), 'obrys');
+      expect(wezel, `${o.stationRef}: uchwyt obrysu`).toBeTruthy();
+      await user.click(wezel!);
+      expect(onElementClick).toHaveBeenCalledTimes(1);
+      expect(onElementClick.mock.calls[0]![0]).toBe(testIdUchwytuStacji(o.stationRef));
+      expect(onElementClick.mock.calls[0]![1]).toMatchObject({
+        ownerRef: o.stationRef,
+        elementKind: 'station',
+        klasa: 'stacja',
+      });
+    }
+  }, 120_000);
+
+  for (const [w, h] of [[W, H], [CANVAS_WIDTH, CANVAS_HEIGHT]] as const) {
+    it.each([0, 1, 2] as SceneLod[])(`kanwa ${w}×${h}, LOD %s: punkt na krawędzi obrysu KAŻDEJ stacji rozstrzyga się na tę stację (drzewo renderu)`, (lod) => {
+      const { container } = render(
+        <SldCanvasV3 snapshot={enm} width={w} height={h} lodOverride={lod} onElementClick={() => {}} />,
+      );
+      const scene = buildSceneV3(enm, lod);
+      const zDrzewa = hitAreasFromDom(svgOf(container) as unknown as HitDomNode);
+      const stacje = stacjeSceny(scene.meta);
+      expect(stacje.length).toBe(54); // GPZ + 53 stacje SN
+      const bezTrafienia: string[] = [];
+      for (const st of stacje) {
+        const r = prostokatObrysuStacji(st);
+        // Próbki: środki czterech boków i cztery narożniki — wystarczy JEDNA trafiona,
+        // bo uchwyt jest najniżej w porządku z (obiekt wewnątrz wygrywa w swoim polu).
+        const probki = [
+          [r.x + r.width / 2, r.y], [r.x + r.width / 2, r.y + r.height],
+          [r.x, r.y + r.height / 2], [r.x + r.width, r.y + r.height / 2],
+          [r.x, r.y], [r.x + r.width, r.y], [r.x, r.y + r.height], [r.x + r.width, r.y + r.height],
+        ];
+        const trafione = probki.some(([x, y]) => pickCanvasHitArea(zDrzewa, x!, y!)?.ownerRef === st.ownerRef);
+        if (!trafione) bezTrafienia.push(st.ownerRef);
+      }
+      expect(bezTrafienia).toEqual([]);
+    });
+  }
+
+  it('najechanie obrysu stacji rysuje obrys (ten sam prostokąt co uchwyt), opuszczenie go zdejmuje', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={W} height={H} lodOverride={0} onElementClick={() => {}} />,
+    );
+    const scene = buildSceneV3(enm, 0);
+    const o = scene.meta.stationOutlines![0]!;
+    expect(screen.queryByTestId('sld-v3-obrys-stacji-najechanie')).toBeNull();
+    await user.hover(hitNode(container, testIdUchwytuStacji(o.stationRef), 'obszar')!);
+    const obrys = screen.getByTestId('sld-v3-obrys-stacji-najechanie');
+    const r = prostokatObrysuStacji({ ownerRef: o.stationRef, rect: o.rect, ramka: false });
+    expect(Number(obrys.getAttribute('x'))).toBeCloseTo(r.x);
+    expect(Number(obrys.getAttribute('width'))).toBeCloseTo(r.width);
+    await user.unhover(hitNode(container, testIdUchwytuStacji(o.stationRef), 'obszar')!);
+    expect(screen.queryByTestId('sld-v3-obrys-stacji-najechanie')).toBeNull();
+  });
+
+  it('REGRESJA WSTRZYKNIĘTA: bez obrysów stacji w meta sceny uchwytów stacji SN nie ma', () => {
+    const scene = buildSceneV3(enm, 0);
+    const bez = stacjeSceny({ ...scene.meta, stationOutlines: undefined });
+    expect(bez.filter((s) => s.ownerRef.startsWith('stn/') || !s.ramka)).toEqual([]);
+    expect(stacjeSceny(scene.meta).filter((s) => !s.ramka).length).toBe(53);
   });
 });

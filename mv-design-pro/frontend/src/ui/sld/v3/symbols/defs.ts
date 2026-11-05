@@ -10,7 +10,11 @@
  */
 
 import { GRID, isOnGrid, type SymbolPort, type V3Rect } from '../core/grid';
-import { QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
+import { QET_BOK_KAFLA_STANU, QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
+
+/** Wysokość sylwetki pola bez wyposażenia = bok kafla aparatu ciągłości (decyzja D karty
+ *  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA) — jedno źródło dla definicji, glifu i wyroczni (g). */
+export const WYSOKOSC_SYLWETKI_POLA_BEZ_WYPOSAZENIA = QET_BOK_KAFLA_STANU;
 
 export type SymbolId =
   | 'breaker'          // wyłącznik (CB)
@@ -276,11 +280,15 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   // niesie ŻADNEGO rekordu aparatu (ani `Bay.primary_devices`, ani gałęzi łączeniowej
   // w `equipment_refs`), rysuje się JEDNĄ jawną sylwetką „brak danych wyposażenia pola"
   // zamiast stosu aparatów z konwencji. Sylwetka nie ma stanu (glif ignoruje `state`)
-  // — kolor stanu bez rekordu byłby fabrykacją. Gabaryt 16×32 (2×4 GRID), porty N/S
-  // w osi toru pola jak każdy aparat szeregowy.
-  bayNoEquipment: def('bayNoEquipment', 16, 32, [
+  // — kolor stanu bez rekordu byłby fabrykacją. Porty N/S w osi toru pola jak każdy aparat
+  // szeregowy. Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja D): WYSOKOŚĆ sylwetki = bok
+  // kafla aparatu ciągłości (`QET_BOK_KAFLA_STANU`, 48 = 6 GRID) — pole bez wyposażenia
+  // zajmuje w torze tyle, co aparat, który w nim stanie; dawne 32 dawało zejścia krótsze
+  // od sąsiednich pól tej samej szyny. Szerokość 16 (2 GRID) bez zmian. Wyrocznia (g)
+  // `scene/przegladKompozycja.ts::sylwetkaPolaGaps`.
+  bayNoEquipment: def('bayNoEquipment', 16, WYSOKOSC_SYLWETKI_POLA_BEZ_WYPOSAZENIA, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
-    { name: 'bottom', x: 8, y: 32, dir: 'S' },
+    { name: 'bottom', x: 8, y: WYSOKOSC_SYLWETKI_POLA_BEZ_WYPOSAZENIA, dir: 'S' },
   ], 'Brak danych wyposażenia pola'),
   // UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN (`ShuntCapacitor` ENM) na
   // końcu toru pola — element MODELU, którego pole jest nośnikiem (jak transformator pola TR),
@@ -444,11 +452,13 @@ export function obrysSymbolu(id: SymbolId): V3Rect {
  * 8 px = dwukrotność siatki GRID w skali 1:1; przy najmniejszym gabarycie
  * biblioteki (16 px świata) odpowiada skali 0,5.
  *
- * Egzekwowane STRUKTURALNIE przez progi LOD kamery (`canvas/camera.ts`
- * `DEFAULT_LOD_THRESHOLDS`), NIE przez skalowanie glifu: poniżej skali, przy
- * której aparat schodzi pod ten próg, kamera przełącza REPREZENTACJĘ na
- * zgrubniejszą (stacja jako mini-RMU 48 px zamiast rozwiniętych pól), zamiast
- * rysować ten sam glif mniejszy. Dowód: `canvas/__tests__/minSymbolSize.contract.test.ts`.
+ * Egzekwowane przez progi LOD kamery liczone z gabarytu najmniejszego aparatu
+ * ciągłości sceny (`canvas/camera.ts` `lodThresholdsForMinApparatus`), NIE przez
+ * skalowanie glifu: L1/L2 (podpisy i oznaczniki aparatów) są aktywne wyłącznie
+ * wtedy, gdy aparat ma na ekranie co najmniej ten próg. Poniżej progu kamera
+ * przechodzi na L0, który rysuje TĘ SAMĄ kompozycję (karta
+ * PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — zero zwiniętych bloków), zdejmując szczegół,
+ * którego przy tej skali nie da się przeczytać. Dowód: `canvas/__tests__/minSymbolSize.contract.test.ts`.
  */
 export const MIN_SYMBOL_SCREEN_PX = 8;
 
@@ -492,9 +502,8 @@ export function makeBusbarDef(length: number): BusbarDef {
  */
 export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   // Karta UX-04/POLE-LINIOWE-WZORZEC: rysunek QET tego samego łącznika stoi TUŻ za
-  // kanonicznym (kolejność = pierwszeństwo aparatu ciągłości pola na L0: wyłącznik przed
-  // rozłącznikiem i odłącznikiem); łącznik trójpołożeniowy toru po wszystkich
-  // dwupołożeniowych (pole z wyłącznikiem pokazuje na L0 wyłącznik).
+  // kanonicznym; kolejność: wyłączniki, rozłączniki i odłączniki, łącznik trójpołożeniowy
+  // toru po wszystkich dwupołożeniowych (zbiór, nie ranking — L0 rysuje wszystkie aparaty).
   'breaker',
   'qetBreaker',
   'qetBreakerZNapedem',

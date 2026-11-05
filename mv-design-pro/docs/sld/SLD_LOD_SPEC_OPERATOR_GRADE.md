@@ -45,6 +45,39 @@ LOD MUSI uprościć szczegół wizualny. NIE wolno mu zmienić:
 - znaczenia elektrycznego (kolor toru wynika z `energization_state`/`switching_state`),
 - liczby pól w stacji (pusta tablica `bays[]` → blocker badge, nie domyślny szablon).
 
+### 5.1. Jedna kompozycja na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, BINDING)
+
+Kanwa `SldCanvasV3` rysuje na L0, L1 i L2 **tę samą kompozycję**: te same symbole w tych samych
+miejscach, te same odcinki toru, te same obrysy stacji i rama strefy GPZ. Oddalenie upraszcza
+szczegół, nie kształt. Poziom zdejmuje wyłącznie:
+
+- podpisy aparatów i ról pól (od L1),
+- kody funkcji zabezpieczeń, tabliczki przekładników i blok zabezpieczeń pola (szczegół adnotacji
+  `protectionAnnotationDetailForLod`),
+- etykiety, których przy danej skali nie da się narysować czytelnie: tożsamość ponad sufitem
+  proporcji klasy albo pełna nazwa stacji/GPZ szersza od rezerwacji w piśmie podłogi czytelności.
+  Takie etykiety znikają jawnie (wskaźnik „Ukryto N opisów"). Etykieta obecna na L0 jest tą samą
+  etykietą co na L1 (właściciel, treść, kotwica). Nie zmienia tożsamości i nie przeskakuje na inny
+  obiekt.
+
+Zakazane są: zwinięty blok stacji (dawny `stationCollapsed`, „mini-RMU 48 px"), zwinięty blok
+GPZ (dawny `gpzCollapsed`), skracanie nazwy wielokropkiem i wybór poziomu progiem zoomu
+niezależnym od rozmiaru aparatu. Progi poziomu liczy `canvas/camera.ts`
+`lodThresholdsForMinApparatus` z gabarytu najmniejszego aparatu ciągłości sceny. Uchwytem stacji
+jest obrys jej strefy, klikalny na każdym LOD (`canvas/hitAreas.ts` `stacjeSceny`). Dla GPZ to rama
+strefy, dla stacji SN obwiednia jej rysunku (`meta.stationOutlines`) z obrysem po najechaniu.
+
+Dowody:
+
+- `scene/__tests__/przegladKompozycja.test.ts`: wyrocznie (a)–(e) i (g) × fikstura × LOD, z iniekcjami.
+- `canvas/__tests__/tozsamoscEtykiet.contract.test.ts`: L0 ⊂ L1 oraz zniknięcie tożsamości
+  wyłącznie z przyczyn czytelności.
+- `canvas/__tests__/trafienieKanwy.contract.test.tsx`: obrys stacji jako uchwyt, kanwa
+  800×600 × LOD.
+- `sheet/__tests__/legendaStanow.contract.test.tsx`: legenda stanów zgodna z UX-04 na każdym LOD.
+- e2e `przeglad-sieci-zrzuty-screenshot`: wyrocznia (h), czyli obrys treści po „Dopasuj widok"
+  rozłączny z chromem kanwy dla 1280×800 i 1920×1080.
+
 ## 6. Hierarchia etykiet (per LOD)
 
 | LOD | Etykiety widoczne |

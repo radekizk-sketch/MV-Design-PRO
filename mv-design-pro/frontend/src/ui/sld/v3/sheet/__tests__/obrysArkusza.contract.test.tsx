@@ -228,38 +228,40 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
     expect(zgloszone[0].overflow).toBeGreaterThan(0);
   });
 
-  it('INIEKCJA (−): usunięcie granicy arkusza z planu przywraca ZMIERZONY defekt (36,7 j.św. pod ramką)', () => {
+  it('INIEKCJA (−): usunięcie granicy arkusza z planu przywraca ZMIERZONY defekt (przelew pod ramkę)', () => {
     // Dowód w drugą stronę: gdyby naprawa była pozorna (np. defekt zniknął
     // przez przypadek, a nie przez granicę), plan liczony z arkuszem
     // NIESKOŃCZONYM dałby ten sam wynik. Daje inny — i to jest dokładnie ten
     // przelew, który właściciel zobaczył na zrzucie.
-    const scene = scenaDla('referencyjna', REFERENCYJNA, 0);
-    const przeszkody = sceneObstacleRects(scene);
-    const sheet = sheetSizeFor(scene);
-    const bezGranicy = planSceneLabels(scene.labels, przeszkody, 0.181, {
-      width: Number.MAX_SAFE_INTEGER,
-      height: Number.MAX_SAFE_INTEGER,
-    });
-    const przelewy = plannedLabelsOutsideSheet(bezGranicy, sheet);
-    expect(przelewy.length).toBeGreaterThan(0);
-    expect(Math.max(...przelewy.map((p) => p.overflow))).toBeGreaterThan(30);
+    //
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawny przypadek (kody zwiniętych stacji
+    // ostatniego wiersza na L0 przy skali 0,181, przelew 36,7 j.św.) nie istnieje — L0 rysuje
+    // tę samą kompozycję co L1. Pomiar na tej fiksturze po karcie: bez granicy przelewa
+    // podpis roli pola stacji dolnego wiersza — L1 @0,30: 224 j.św., @0,50: 90 j.św.,
+    // @0,70: 32 j.św.; L0 @0,10: cztery nazwy stacji po 18 j.św. Intencja bez zmian: granica
+    // PRZESUWA etykietę do arkusza, nie porzuca jej.
+    for (const [lod, skala, prog] of [[1, 0.3, 200], [1, 0.5, 60], [0, 0.1, 10]] as const) {
+      const scene = scenaDla('referencyjna', REFERENCYJNA, lod);
+      const przeszkody = sceneObstacleRects(scene);
+      const sheet = sheetSizeFor(scene);
+      const bezGranicy = planSceneLabels(scene.labels, przeszkody, skala, {
+        width: Number.MAX_SAFE_INTEGER,
+        height: Number.MAX_SAFE_INTEGER,
+      });
+      const przelewy = plannedLabelsOutsideSheet(bezGranicy, sheet);
+      expect(przelewy.length, `L${lod} @${skala}`).toBeGreaterThan(0);
+      expect(Math.max(...przelewy.map((p) => p.overflow)), `L${lod} @${skala}`).toBeGreaterThan(prog);
 
-    // …a z granicą tych samych etykiet NIE ubywa: tożsamość stacji ostatniego
-    // wiersza jest PRZESUNIĘTA, nie porzucona (kanon KD-11).
-    const zGranica = planSceneLabels(scene.labels, przeszkody, 0.181, sheet);
-    expect(plannedLabelsOutsideSheet(zGranica, sheet)).toEqual([]);
-    expect(zGranica.drawn.length).toBe(bezGranicy.drawn.length);
-    expect(zGranica.droppedIdentity.length).toBe(bezGranicy.droppedIdentity.length);
-    // SLD-LOC (2026-09-05): kody stacji fallback (`S51`/`S52`/`S53`) ZALEŻĄ od
-    // numeracji fallback ciągów — naprawa lokalności pionowej kotwic zmienia
-    // ich WARTOŚCI (patrz `enmToSldAdapter.ts` `fallbackSequenceBaseByRunId`).
-    // Zmierzone na tej fixturze PO naprawie: stacje najbliżej dolnej krawędzi
-    // arkusza (największy `rect.y` w planie tej sceny/skali) to S109-S112 i
-    // S145-S148 (ranga ostatnich dwóch ciągów) — trzy z nich zastępują dawne
-    // S51/S52/S53, ta sama rola testowa (kod przy dolnej krawędzi PRZESUNIĘTY,
-    // nie porzucony).
-    for (const kod of ['S109', 'S110', 'S111']) {
-      expect(zGranica.drawn.some((p) => p.text === kod), `nazwa ${kod} musi zostać narysowana`).toBe(true);
+      // …a z granicą tych samych etykiet NIE ubywa: przelewające etykiety są
+      // PRZESUNIĘTE do arkusza, nie porzucone (kanon KD-11).
+      const zGranica = planSceneLabels(scene.labels, przeszkody, skala, sheet);
+      expect(plannedLabelsOutsideSheet(zGranica, sheet)).toEqual([]);
+      expect(zGranica.drawn.length).toBe(bezGranicy.drawn.length);
+      expect(zGranica.droppedIdentity.length).toBe(bezGranicy.droppedIdentity.length);
+      const narysowane = new Set(zGranica.drawn.map((p) => p.label.ownerRef));
+      for (const p of przelewy) {
+        expect(narysowane.has(p.ownerRef), `${p.ownerRef} przesunięta, nie porzucona`).toBe(true);
+      }
     }
   });
 

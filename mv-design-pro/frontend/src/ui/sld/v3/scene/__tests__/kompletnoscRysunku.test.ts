@@ -184,11 +184,13 @@ describe('stacja z pomiarem z szablonu 1000 kVA za ZKSN zaraz za GPZ (znalezisko
   }
 });
 
-describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POLE-BKR-MODEL)', () => {
-  // Fikstura generatora z GPZ o dwóch sekcjach SN i sprzęgłem jako gałęzią. Na L0 GPZ jest
-  // symbolem zbiorczym (`composeCollapsedGpz`) — sprzęgło jest wnętrzem bloku; na L1/L2 ma
-  // prymityw. ILOCZYN: końce gałęzi {ta sama narysowana stacja, dwie stacje, jeden koniec poza
-  // stacją} × LOD {0, 1, 2} × prymityw {jest, usunięty}.
+describe('sprzęgło sekcji GPZ na każdym LOD — prymityw albo luka (karta UX-04/POLE-BKR-MODEL)', () => {
+  // Fikstura generatora z GPZ o dwóch sekcjach SN i sprzęgłem jako gałęzią. Dawniej na L0 GPZ
+  // był symbolem zbiorczym i sprzęgło liczyło się jako wnętrze bloku. Karta PRZEGLAD-SIECI-
+  // JEDNA-KOMPOZYCJA: GPZ ma jedną kompozycję na każdym LOD, więc sprzęgło ma prymityw na
+  // L0/L1/L2, a bez prymitywu jest luką na każdym poziomie (wyjątek L0 skasowany w produkcie).
+  // ILOCZYN: końce gałęzi {ta sama narysowana stacja, dwie stacje, jeden koniec poza stacją} ×
+  // LOD {0, 1, 2} × prymityw {jest, usunięty}.
   const enm = wczytaj(resolve(FRONTEND, 'public/test-fixtures/gpz110kvBkr.enm.json'))!;
   const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
   const szynyGpz = new Set(gpz.bus_refs ?? []);
@@ -207,18 +209,17 @@ describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POL
   });
 
   for (const lod of LODY) {
-    it(`L${lod}: sprzęgło ${lod === 0 ? 'wnętrzem bloku GPZ' : 'narysowane'}; bez prymitywu na L1/L2 — niewyjaśnione`, () => {
+    it(`L${lod}: sprzęgło narysowane; bez prymitywu — niewyjaśnione`, () => {
       const scena = buildSceneV3(enm, lod);
       const kategoria = kompletnoscRysunku(scena, enm).pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria;
-      expect(kategoria).toBe(lod === 0 ? 'blok-stacji' : 'narysowany');
+      expect(kategoria).toBe('narysowany');
       const bez = kompletnoscRysunku(bezPrymitywuGalezi(scena, sprzeglo.ref_id), enm);
-      expect(bez.pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria).toBe(
-        lod === 0 ? 'blok-stacji' : 'niewyjasniony',
-      );
+      expect(bez.pozycje.find((p) => p.ref === sprzeglo.ref_id)?.kategoria).toBe('niewyjasniony');
     });
   }
 
-  // Predykat parami: wnętrze bloku = OBA końce na szynach JEDNEJ narysowanej stacji.
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: gałąź bez prymitywu jest luką NIEZALEŻNIE od LOD
+  // i od tego, czy oba końce leżą w jednej stacji (dawny wyjątek „wnętrze bloku na L0").
   const syntetyczny = (koniecB: 'ta sama stacja' | 'druga stacja' | 'poza stacją', lod: 0 | 1 | 2) => {
     const snapshot = {
       buses: ['s1/a', 's1/b', 's2/a', 'wolna'].map((ref_id) => ({ ref_id, name: ref_id, voltage_kv: 15 })),
@@ -247,7 +248,7 @@ describe('sprzęgło sekcji GPZ na L0 — wnętrze bloku stacji (karta UX-04/POL
   for (const koniecB of ['ta sama stacja', 'druga stacja', 'poza stacją'] as const) {
     for (const lod of LODY) {
       it(`gałąź bez prymitywu: drugi koniec ${koniecB} @ L${lod}`, () => {
-        expect(syntetyczny(koniecB, lod)).toBe(lod === 0 && koniecB === 'ta sama stacja' ? 'blok-stacji' : 'niewyjasniony');
+        expect(syntetyczny(koniecB, lod)).toBe('niewyjasniony');
       });
     }
   }

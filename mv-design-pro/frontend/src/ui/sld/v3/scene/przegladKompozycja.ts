@@ -21,12 +21,24 @@
  *  (e) `nazwyBezWielokropkaGaps` — żadna etykieta sceny nie niesie wielokropka,
  *      a nazwa tożsamości mieści się w piśmie naturalnym w swojej rezerwacji
  *      (warunek, na którym plan etykiet kanwy opiera rezygnację ze skracania);
- *  (f) kadr po dopasowaniu — w teście (wyrocznia kamery należy do warstwy kanwy).
+ *  (f) kadr po dopasowaniu — w teście (wyrocznia kamery należy do warstwy kanwy);
+ *  (g) `sylwetkaPolaGaps` — sylwetka pola bez wyposażenia ma wysokość kafla aparatu
+ *      ciągłości (`QET_BOK_KAFLA_STANU`), a jej port dolny leży na tej wysokości —
+ *      pole puste nie jest niższe od pola wyposażonego w tym samym rzędzie;
+ *  (h) chrom kanwy po „Dopasuj widok" — w teście e2e `przeglad-sieci-zrzuty-screenshot`
+ *      (prostokąty chromu istnieją wyłącznie w DOM).
  */
 import { odcinkiBezOdbioru } from '../../../shared/odcinkiBezOdbioru';
 import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../core/text';
-import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, smallestSymbolExtent, type SymbolId } from '../symbols/defs';
+import { QET_BOK_KAFLA_STANU } from '../cad/qet/qetPoleSn';
+import {
+  CONTINUITY_APPARATUS_SYMBOL_IDS,
+  SYMBOL_DEFS,
+  smallestSymbolExtent,
+  type SymbolDef,
+  type SymbolId,
+} from '../symbols/defs';
 import {
   OPEN_TERMINAL_LABEL_TEXT,
   openTerminalGaps,
@@ -60,7 +72,7 @@ export function najmniejszyAparatCiaglosci(scene: SceneV3): number | null {
 }
 
 export interface PrzegladGap {
-  readonly wyrocznia: 'a' | 'b' | 'c' | 'd' | 'e';
+  readonly wyrocznia: 'a' | 'b' | 'c' | 'd' | 'e' | 'g';
   readonly opis: string;
 }
 
@@ -287,7 +299,26 @@ export function nazwyBezWielokropkaGaps(scene: SceneV3): readonly PrzegladGap[] 
   return gaps;
 }
 
-/** Komplet wyroczni jednej sceny (b–e); z migawką ENM także para rysunek ↔ gotowość (d). */
+/** (g) Sylwetka pola bez wyposażenia: wysokość i port dolny = bok kafla aparatu ciągłości.
+ *  `defs` — tabela definicji symboli (domyślnie produkcyjna; iniekcja w teście). */
+export function sylwetkaPolaGaps(
+  scene: SceneV3,
+  defs: Readonly<Record<SymbolId, SymbolDef>> = SYMBOL_DEFS,
+): readonly PrzegladGap[] {
+  const gaps: PrzegladGap[] = [];
+  if (!scene.symbols.some((s) => s.symbolId === 'bayNoEquipment')) return gaps;
+  const def = defs.bayNoEquipment;
+  if (def.height !== QET_BOK_KAFLA_STANU) {
+    gaps.push({ wyrocznia: 'g', opis: `sylwetka pola bez wyposażenia ${def.height} ≠ kafel aparatu ${QET_BOK_KAFLA_STANU}` });
+  }
+  const dolny = def.ports.reduce((m, p) => Math.max(m, p.y), -Infinity);
+  if (dolny !== def.height) {
+    gaps.push({ wyrocznia: 'g', opis: `port dolny sylwetki y=${dolny} ≠ wysokość ${def.height}` });
+  }
+  return gaps;
+}
+
+/** Komplet wyroczni jednej sceny (b–e, g); z migawką ENM także para rysunek ↔ gotowość (d). */
 export function przegladSceneGaps(scene: SceneV3, snapshot?: unknown): readonly PrzegladGap[] {
   return [
     ...rowneZejsciaGaps(scene),
@@ -295,5 +326,6 @@ export function przegladSceneGaps(scene: SceneV3, snapshot?: unknown): readonly 
     ...magistralaPrzyRamieGaps(scene),
     ...zakonczeniaTorowGaps(scene, snapshot),
     ...nazwyBezWielokropkaGaps(scene),
+    ...sylwetkaPolaGaps(scene),
   ];
 }

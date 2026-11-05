@@ -194,7 +194,8 @@ describe('pokrycie: każdy znak etykiet sceny na każdej fiksturze repozytorium 
   );
 
   it('liczba fikstur z modelem ENM (ta sama kolekcja co test mostków i węzłów)', () => {
-    expect(FIKSTURY.length).toBe(58);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA dodała 5 fikstur przeglądu (`przegladGpz*.enm.json`).
+    expect(FIKSTURY.length).toBe(63);
   });
 
   it('LOD 2 (pełna treść etykiet): zero znaków poza tabelą', () => {

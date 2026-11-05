@@ -11,8 +11,8 @@
  *  (c) każde przecięcie toru mocy ma rysowalny mostek §22.1 (`przecieciaBezMostka`);
  *  (d) zero przecięć z szyną (mostek na szynie zakazany);
  *  (e) KD-5: zero współliniowych nałożeń odcinków dwóch różnych właścicieli;
- *  (f) każdy koniec odcinka toru jest portem symbolu, portem zejścia bloku zwiniętego
- *      (`meta.portyZejscBloku`, na krawędzi bloku) albo dotyka innego odcinka
+ *  (f) każdy koniec odcinka toru jest portem symbolu albo dotyka innego odcinka (dawny port
+ *      zejścia bloku zwiniętego skasowany kartą PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA)
  *      (`sceneSegmentEndpointGaps` — pomiar przed naprawą: 15 luk, w tym 5 na L0 migawek
  *      sieci złotej z GPZ bez pola liniowego i 10 na L1/L2 przy szynie zerowej długości;
  *      po rozsunięciu zejść L0 dodatkowe 5 luk na portach zejść spoza osi bloku);
@@ -122,8 +122,11 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
 }
 
 describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze × LOD', () => {
-  it('kontrola wejścia: 58 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
-    expect(FIKSTURY).toHaveLength(58);
+  it('kontrola wejścia: 63 fikstury modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: 58 → 63 — pięć fikstur przeglądu sieci
+    // (`przegladGpz*.enm.json`: GPZ × liczba sekcji × liczba pól × liczba stacji × odgałęzienie)
+    // wchodzi do iloczynu cech wszystkich wyroczni toru.
+    expect(FIKSTURY).toHaveLength(63);
     for (const katalog of KATALOGI) expect(FIKSTURY.some(([n]) => n.startsWith(`${katalog}/`))).toBe(true);
     // Migawki biegu (model pod `snapshot`) i fikstury kanwy (model pod `enm`) są w zbiorze.
     expect(FIKSTURY.some(([n]) => n.endsWith('pulpit_scena_migawka.json'))).toBe(true);
@@ -167,8 +170,13 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // z portu S odłącznika Q5 w kolumnie odgałęzienia (`…#odgalezienie-0-lateral-0`), dwa pola
     // Z.11 wykonania stałego × LOD1/LOD2; dawniej odczep kolumny nosił właściciela `…-wire-…`,
     // którego predykat kropki (`ODCZEP_WEZLA_POLA`) nie rozpoznawał — rozgałęzienie bez kropki.
-    expect(przeciecia).toBe(113);
-    expect(kropki).toBe(69);
+    // AKTUALIZACJA ŚWIADOMA 113 → 141 przecięć i 69 → 99 kropek (karta PRZEGLAD-SIECI-JEDNA-
+    // KOMPOZYCJA): pomiar per fikstura × LOD — stare 58 fikstur dają na KAŻDYM poziomie 46
+    // przecięć i 33 kropki (L0 rysuje tę samą kompozycję co L1/L2, dawniej blok zwinięty bez pól
+    // i odczepów), nowe fikstury przeglądu po 1 przecięciu na poziom i 0 kropek: 3·46 + 3·1 = 141,
+    // 3·33 = 99.
+    expect(przeciecia).toBe(141);
+    expect(kropki).toBe(99);
   });
 });
 
@@ -319,25 +327,25 @@ describe('iniekcje — każda wyrocznia gryzie na realnej scenie', () => {
     ];
     expect(crossingBusGaps(z)).toEqual([expect.objectContaining({ x, y: a.y })]);
   });
-  it('port zejścia bloku zwiniętego zadeklarowany POZA krawędzią bloku → luka końca odcinka (L0)', () => {
+  it('przewód skrócony przed portem aparatu → luka końca odcinka (L0)', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawna iniekcja przesuwała porty zejść bloku
+    // zwiniętego GPZ (`portyZejscBloku`); blok skasowano, więc na L0 końce przewodów kotwiczą
+    // w portach aparatów jak na L1/L2. Intencja bez zmian: koniec odcinka, który nie trafia
+    // w port ani w inny przewód, jest luką wyroczni (f) na L0. Iniekcja: koniec przewodu
+    // dochodzącego do aparatu cofnięty o pół rastru wzdłuż ostatniego biegu.
     const l0 = buildSceneV3(enm, 0);
     expect(sceneSegmentEndpointGaps(l0)).toEqual([]);
-    const blok = l0.symbols.find((s) => s.symbolId === 'gpzCollapsed')!;
-    const porty = blok.meta?.portyZejscBloku ?? [];
-    // Wachlarz gpzProtectionDataPath ma zejścia spoza osi bloku (porty deklarowane).
-    expect(porty.length).toBeGreaterThan(1);
-    const przesuniete = porty.map((p) => ({ x: p.x, y: p.y + GRID }));
-    const z: SceneV3 = {
-      ...l0,
-      symbols: l0.symbols.map((s) => (s === blok ? { ...s, meta: { ...s.meta, portyZejscBloku: przesuniete } } : s)),
-    };
-    expect(sceneSegmentEndpointGaps(z).length).toBeGreaterThan(0);
-    // Bez deklaracji portów zejścia poza osią wiszą w pustce.
-    const bezPortow: SceneV3 = {
-      ...l0,
-      symbols: l0.symbols.map((s) => (s === blok ? { ...s, meta: { ...s.meta, portyZejscBloku: undefined } } : s)),
-    };
-    expect(sceneSegmentEndpointGaps(bezPortow).length).toBe(porty.length - 1);
+    const lukiPoIniekcji = l0.segments.flatMap((seg, i) => {
+      if (seg.meta?.kind !== 'sn' || seg.points.length < 2) return [];
+      const a = seg.points[seg.points.length - 2]!;
+      const b = seg.points[seg.points.length - 1]!;
+      const dx = Math.sign(a.x - b.x) * (GRID / 2);
+      const dy = Math.sign(a.y - b.y) * (GRID / 2);
+      const skrocony = { ...seg, points: [...seg.points.slice(0, -1), { x: b.x + dx, y: b.y + dy }] };
+      const z: SceneV3 = { ...l0, segments: l0.segments.map((g, j) => (j === i ? skrocony : g)) };
+      return sceneSegmentEndpointGaps(z).length > 0 ? [i] : [];
+    });
+    expect(lukiPoIniekcji.length).toBeGreaterThan(0);
   });
 
   it('szyna zwinięta do punktu → szynyZerowe', () => {

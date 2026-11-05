@@ -12,7 +12,7 @@
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, rodzajSymbolu, type SymbolId } from './defs';
+import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, rodzajSymbolu, WYSOKOSC_SYLWETKI_POLA_BEZ_WYPOSAZENIA, type SymbolId } from './defs';
 import { CadPrimitiveLayer } from '../cad/CadSymbol';
 import type { CadPrimitive } from '../cad/cadSymbolRegistry';
 import {
@@ -906,21 +906,24 @@ export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
  * ma stanu, a więc i koloru stanu (dyrektywa właściciela 2026-10-21, zero fabrykacji).
  */
 export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
+  // Wysokość z definicji symbolu (decyzja D karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: bok kafla
+  // aparatu ciągłości) — ramka od 4 do h−4, przewody pola 4 j.św. na końcach.
+  const h = WYSOKOSC_SYLWETKI_POLA_BEZ_WYPOSAZENIA;
   return (
     <g {...glyphGroupProps('bayNoEquipment', props)} data-brak-wyposazenia="true">
       <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <rect
-        x={1} y={4} width={14} height={24}
+        x={1} y={4} width={14} height={h - 8}
         fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         strokeDasharray="3 2"
       />
       <text
-        x={8} y={21} textAnchor="middle"
+        x={8} y={h / 2 + 5} textAnchor="middle"
         fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={13} fontWeight={700}
       >
         ?
       </text>
-      <line x1={8} y1={28} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={8} y1={h - 4} x2={8} y2={h} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
   );
 }

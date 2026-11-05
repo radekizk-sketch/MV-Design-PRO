@@ -39,8 +39,12 @@ import {
   przegladSceneGaps,
   ramaStrefyGpzGaps,
   rowneZejsciaGaps,
+  sylwetkaPolaGaps,
   zakonczeniaTorowGaps,
 } from '../przegladKompozycja';
+import { QET_BOK_KAFLA_STANU } from '../../cad/qet/qetPoleSn';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS, czySymbolQet } from '../../symbols/defs';
+import { prostokatKaflaStanu } from '../../symbols/glyphs';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -94,7 +98,7 @@ describe('przegląd sieci — jedna kompozycja: iloczyn fikstura × LOD', () => 
       expect(pozycjeKompozycjiGaps(scenyFikstury(nazwa))).toEqual([]);
     });
     for (const lod of LODS) {
-      it(`${nazwa} L${lod}: brak bloków zwiniętych, wyrocznie (b)–(e) czyste`, () => {
+      it(`${nazwa} L${lod}: brak bloków zwiniętych, wyrocznie (b)–(e), (g) czyste`, () => {
         const scena = scenyFikstury(nazwa)[lod];
         expect(scena.symbols.some((s) => (s.symbolId as string).endsWith('Collapsed'))).toBe(false);
         expect(przegladSceneGaps(scena, migawka(nazwa))).toEqual([]);
@@ -320,5 +324,36 @@ describe('przegląd sieci — iniekcje (każda wyrocznia łapie swój defekt)', 
       labels: s.labels.map((l, k) => (k === i ? { ...l, rezerwacjaSzerokosci: 4 } : l)),
     };
     expect(nazwyBezWielokropkaGaps(za_waska).length).toBeGreaterThan(0);
+  });
+});
+
+describe('przegląd sieci — (g) sylwetka pola bez wyposażenia = kafel aparatu ciągłości', () => {
+  it('co najmniej jedna fikstura rysuje sylwetkę pola bez wyposażenia (wyrocznia nie jest pusta)', () => {
+    const zSylwetka = Object.keys(FIKSTURY).filter((n) =>
+      LODS.every((lod) => scenyFikstury(n)[lod].symbols.some((s) => s.symbolId === 'bayNoEquipment')),
+    );
+    expect(zSylwetka.length).toBeGreaterThan(0);
+  });
+
+  it('wysokość sylwetki = wysokość kafla KAŻDEGO aparatu ciągłości QET (jedno źródło: QET_BOK_KAFLA_STANU)', () => {
+    const qet = CONTINUITY_APPARATUS_SYMBOL_IDS.filter(czySymbolQet);
+    expect(qet.length).toBeGreaterThan(0);
+    for (const id of qet) expect(prostokatKaflaStanu(id).height, id).toBe(SYMBOL_DEFS.bayNoEquipment.height);
+    expect(SYMBOL_DEFS.bayNoEquipment.height).toBe(QET_BOK_KAFLA_STANU);
+  });
+
+  it('iniekcja: sylwetka niższa od kafla → luka; port dolny poza wysokością → luka', () => {
+    const scena = Object.keys(FIKSTURY)
+      .map((n) => scenyFikstury(n)[1])
+      .find((sc) => sc.symbols.some((s) => s.symbolId === 'bayNoEquipment'))!;
+    expect(sylwetkaPolaGaps(scena)).toEqual([]);
+    const def = SYMBOL_DEFS.bayNoEquipment;
+    const nizsza = { ...SYMBOL_DEFS, bayNoEquipment: { ...def, height: 32 } };
+    expect(sylwetkaPolaGaps(scena, nizsza).map((g) => g.wyrocznia)).toContain('g');
+    const portObok = {
+      ...SYMBOL_DEFS,
+      bayNoEquipment: { ...def, ports: def.ports.map((p) => (p.y === def.height ? { ...p, y: 32 } : p)) },
+    };
+    expect(sylwetkaPolaGaps(scena, portObok).length).toBeGreaterThan(0);
   });
 });

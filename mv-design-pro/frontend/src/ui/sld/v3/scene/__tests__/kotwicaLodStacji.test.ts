@@ -96,33 +96,14 @@ describe('S9-10 — kotwica X stacji jest JEDNĄ prawdą między LOD', () => {
     expect(cechy.odgalezienie, 'zbiór zawiera stacje odgałęzień').toBeGreaterThan(0);
   });
 
-  it('L0 ↔ L1: porządek stacji w osi X identyczny (stacja nie zmienia kolumny przy zoomie)', () => {
-    // W obrębie jednego WIERSZA arkusza (S9-1): porządek X bloków L0 musi być
-    // tym samym porządkiem, co porządek kotwic pól na L1 — inaczej stacja
-    // „przeskakiwałaby" kolumnę przy przejściu poziomu szczegółu. Porównanie
-    // per wiersz, bo między wierszami X zaczyna się od nowa (łamanie arkusza).
-    const l0x = new Map<string, number>();
-    for (const s of sceny[0].symbols) {
-      const ref = s.meta?.ownerRef ?? '';
-      if (s.meta?.elementKind === 'station' && ref.startsWith('stn/')) {
-        l0x.set(ref.replace(/\/station$/, ''), s.x);
-      }
-    }
+  it('L0 ↔ L1: kotwica X każdej stacji identyczna (stacja nie zmienia kolumny przy zoomie)', () => {
+    // Dawniej porównywano PORZĄDEK bloków zwiniętych L0 (`elementKind: 'station'`) z kotwicami
+    // pól L1. Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje te same pola co L1, więc dowód
+    // jest mocniejszy — kotwica X (lewy aparat pól) KAŻDEJ stacji jest ta sama co do jednostki.
+    // Intencja („stacja nie przeskakuje kolumny przy przejściu poziomu") bez zmian.
+    const l0 = kotwicePol(sceny[0]);
     const l1 = kotwicePol(sceny[1]);
-    expect(sceny[0].meta.sheetRows.length, 'arkusz jest łamany na wiersze (S9-1)').toBeGreaterThan(0);
-    let porownanych = 0;
-    for (const wiersz of sceny[0].meta.sheetRows) {
-      const wWierszu = wiersz
-        .map((id) => id.replace(/\/station$/, ''))
-        .filter((ref) => l0x.has(ref) && l1.has(ref));
-      const poL0 = [...wWierszu].sort((a, b) => l0x.get(a)! - l0x.get(b)!);
-      const poL1 = [...wWierszu].sort((a, b) => l1.get(a)! - l1.get(b)!);
-      expect(poL0, 'porządek X stacji w wierszu identyczny na L0 i L1').toEqual(poL1);
-      porownanych += wWierszu.length;
-    }
-    // `meta.sheetRows` niesie stacje MAGISTRALI (wiersze łamania S9-1) —
-    // stacje odgałęzień nie mają wiersza i porównania między-wierszowe nie są
-    // zdefiniowane; kotwicę odgałęzień pilnuje test L1↔L2 wyżej (całe 53).
-    expect(porownanych).toBeGreaterThan(10);
+    expect(l0.size).toBeGreaterThan(10);
+    expect([...l0].sort()).toEqual([...l1].sort());
   });
 });

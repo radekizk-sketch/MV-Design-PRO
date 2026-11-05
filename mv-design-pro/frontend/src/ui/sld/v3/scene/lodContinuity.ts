@@ -9,8 +9,9 @@
  * ---------------------------------------------------------------------------
  * CO TA WYROCZNIA SPRAWDZA (i dlaczego dokładnie to)
  * ---------------------------------------------------------------------------
- * LOD wolno UPRASZCZAĆ reprezentację (stacja jako mini-RMU zamiast rozwiniętych
- * pól — to jest sens LOD), ale NIE wolno mu PRZERWAĆ toru: projektant musi na
+ * LOD wolno zdejmować SZCZEGÓŁ (podpisy aparatów, kody zabezpieczeń, tabliczki), a od
+ * karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA nie zmienia już KOMPOZYCJI (jedna kompozycja na
+ * każdym LOD, bez zwiniętych bloków stacji i GPZ); tym bardziej NIE wolno mu PRZERWAĆ toru: projektant musi na
  * każdym poziomie widzieć, czym i skąd stacja jest zasilana. Trzy asercje, po
  * jednej na możliwy sposób złamania tej zasady:
  *
@@ -53,8 +54,7 @@ export const CURRENT_PATH_SEGMENT_KINDS: readonly PreviewSegmentKind[] = [
 ];
 
 // APARATY CIĄGŁOŚCI ELEKTRYCZNEJ — definicja w `symbols/defs.ts` (jedno źródło dla tej
-// wyroczni i dla aparatu ciągłości zwiniętego bloku GPZ w `buildScene.ts`, który nie może
-// importować tego modułu bez cyklu).
+// wyroczni i dla wyroczni przeglądu sieci `scene/przegladKompozycja.ts`).
 export { CONTINUITY_APPARATUS_SYMBOL_IDS } from '../symbols/defs';
 
 export type LodContinuityGapReason =
@@ -70,9 +70,8 @@ export interface LodContinuityGap {
 }
 
 /** Tożsamość STACJI niezależna od LOD: `stn/<hash>/...` → `stn/<hash>`.
- *  Na L0 stacja jest jednym symbolem `stationCollapsed`, na L1/L2 rozpada się
- *  na szynę + pola + aparaty — wszystkie dzielą ten prefiks, więc porównanie
- *  „ta sama stacja" działa w poprzek poziomów. `null` = element nie należy do
+ *  Na każdym LOD stacja to szyna + pola + aparaty (jedna kompozycja) — wszystkie
+ *  dzielą ten prefiks, więc porównanie „ta sama stacja" działa w poprzek poziomów. `null` = element nie należy do
  *  żadnej stacji (GPZ, magistrala między stacjami). */
 export function stationKeyOfOwnerRef(ownerRef: string | undefined): string | null {
   if (!ownerRef) return null;

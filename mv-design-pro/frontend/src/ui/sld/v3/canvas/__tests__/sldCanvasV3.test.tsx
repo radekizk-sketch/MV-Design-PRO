@@ -22,6 +22,7 @@ import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
+import { testIdUchwytuStacji } from '../hitAreas';
 import {
   SldCanvasV3,
   computeFaultFlowPlacements,
@@ -163,7 +164,7 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
 });
 
 describe('SldCanvasV3 — LOD (spec §7): L0 vs L2 daje różną zawartość', () => {
-  it('data-scene-lod odzwierciedla lodOverride; L2 ma więcej węzłów DOM niż L0 (specyfikacje/podpisy)', () => {
+  it('data-scene-lod odzwierciedla lodOverride; L2 ma więcej opisów niż L0, a te same symbole (jedna kompozycja)', () => {
     const { container: c0 } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
     const { container: c2 } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     expect(c0.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod')).toBe('0');
@@ -180,9 +181,13 @@ describe('SldCanvasV3 — LOD (spec §7): L0 vs L2 daje różną zawartość', (
     };
     expect(opisyRazem(c2)).toBeGreaterThan(opisyRazem(c0));
 
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje TĘ SAMĄ kompozycję co L2 (dawniej
+    // stacje zwinięte do jednego symbolu, więc L2 miał więcej węzłów symboli) — poziom
+    // zdejmuje wyłącznie opisy, nie kształty.
     const symbols0 = c0.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;
     const symbols2 = c2.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;
-    expect(symbols2).toBeGreaterThan(symbols0);
+    expect(symbols0).toBeGreaterThan(0);
+    expect(symbols2).toBe(symbols0);
   });
 
   it('domyślnie (brak lodOverride) LOD wynika z kamery dopasowanej do sceny — startuje jako liczba 0|1|2 valid', () => {
@@ -214,28 +219,33 @@ describe('SldCanvasV3 — klik w symbol', () => {
     expect(firstSymbolHit, 'pierwszy symbol ma uchwyt trafienia').toBeTruthy();
     fireEvent.click(firstSymbolHit!);
     expect(onElementClick).toHaveBeenCalledTimes(1);
-    expect(onElementClick).toHaveBeenCalledWith(expectedTestId, {
-      ownerRef: scene.symbols[0].meta?.ownerRef,
-      elementKind: scene.symbols[0].meta?.elementKind,
-      // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia`
-      // z prawym klikiem) — pierwszy symbol L0 to blok stacji.
-      klasa: 'stacja',
-    });
+    expect(onElementClick).toHaveBeenCalledWith(
+      expectedTestId,
+      expect.objectContaining({
+        ownerRef: scene.symbols[0].meta?.ownerRef,
+        elementKind: scene.symbols[0].meta?.elementKind,
+        // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia` z prawym
+        // klikiem). Od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA pierwszy symbol L0 to aparat
+        // pola GPZ (nie blok stacji) — klasa z uchwytu, który kliknięto.
+        klasa: firstSymbolHit!.getAttribute('data-hit-klasa'),
+      }),
+    );
   });
 
-  it('F8b-1: klik w symbol L0 (stationCollapsed) przekazuje ownerRef=station id + elementKind=station', () => {
+  it('F8b-1: klik w obrys stacji na L0 przekazuje ownerRef=station id + elementKind=station', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): dawny symbol `stationCollapsed`
+    // skasowany — uchwytem stacji jest obrys jej strefy (`meta.stationOutlines`).
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
-    expect(stationIndex).toBeGreaterThanOrEqual(0);
+    const obrys = scene.meta.stationOutlines?.[0];
+    expect(obrys).toBeTruthy();
     const onElementClick = vi.fn();
     const { container } = render(
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={onElementClick} />,
     );
-    // Karta S9-4: klik idzie w uchwyt obiektu (patrz komentarz wyżej).
-    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
-    fireEvent.click(container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`)!);
-    expect(onElementClick).toHaveBeenCalledWith(expect.any(String), {
-      ownerRef: scene.symbols[stationIndex].meta?.ownerRef,
+    const testId = testIdUchwytuStacji(obrys!.stationRef);
+    fireEvent.click(container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`)!);
+    expect(onElementClick).toHaveBeenCalledWith(testId, {
+      ownerRef: obrys!.stationRef,
       elementKind: 'station',
       // S9-10: klasa trafienia w lewym kliku — patrz test wyżej.
       klasa: 'stacja',
@@ -704,7 +714,11 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
     return sceneBoxToCameraWorld(contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox));
   };
 
-  it('lodOverride=0: viewBox startowy dopasowany do treści L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: treść L0 jest treścią L2 (jedna kompozycja),
+  // więc kadr L0 i kadr L2 są dziś RÓWNE — dawny defekt „mały rysunek w rogu" (kadr L0
+  // liczony z treści L2 przy innym świecie) nie ma już z czego powstać. Intencja: kadr
+  // startowy L0 liczy się z treści L0 drogą produkcyjną.
+  it('lodOverride=0: viewBox startowy dopasowany do treści L0 (przy jednej kompozycji równej treści L2)', () => {
     const bbox0 = contentFitBbox(0);
     const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
@@ -716,7 +730,7 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
       computeInitialCameraState(bbox0, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
       viewportSize,
     );
-    const expectedWrongFitToL2 = cameraViewBox(
+    const expectedFitToL2 = cameraViewBox(
       computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
       viewportSize,
     );
@@ -725,7 +739,7 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
     const actual = viewBoxOf(container);
 
     expect(actual).toBe(expectedFitToL0);
-    expect(actual).not.toBe(expectedWrongFitToL2);
+    expect(actual).toBe(expectedFitToL2);
   });
 
   it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do treści L2', () => {
@@ -1007,7 +1021,11 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 
   it('(a) ref dopasowany do SYMBOLU → znacznik w środku bboxa tego symbolu', () => {
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: symbol zbiorczy stacji skasowany — celem
+    // znacznika jest symbol APARATU (intencja: ref dopasowany do symbolu sceny).
+    const stationIndex = scene.symbols.findIndex(
+      (s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.ownerRef) && !s.meta!.ownerRef!.includes('#'),
+    );
     expect(stationIndex).toBeGreaterThanOrEqual(0);
     const symbol = scene.symbols[stationIndex];
     const ownerRef = symbol.meta!.ownerRef!;
@@ -1080,7 +1098,11 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 
   it('(d) znacznik jest WARSTWĄ nakładki, nie zmianą layoutu: geometria segmentów/symboli IDENTYCZNA z i bez znacznika', () => {
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: symbol zbiorczy stacji skasowany — celem
+    // znacznika jest symbol APARATU (intencja: ref dopasowany do symbolu sceny).
+    const stationIndex = scene.symbols.findIndex(
+      (s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.ownerRef) && !s.meta!.ownerRef!.includes('#'),
+    );
     const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
 
     const { container: without } = render(
@@ -1105,7 +1127,11 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
 
   it('(e) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy', () => {
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: symbol zbiorczy stacji skasowany — celem
+    // znacznika jest symbol APARATU (intencja: ref dopasowany do symbolu sceny).
+    const stationIndex = scene.symbols.findIndex(
+      (s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.ownerRef) && !s.meta!.ownerRef!.includes('#'),
+    );
     const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
     const overlay = overlayWithFaultPoint(ownerRef);
 

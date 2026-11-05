@@ -86,15 +86,6 @@ function uchwytTrafienia(container: HTMLElement, testId: string): Element | null
   return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
 }
 
-/** Uchwyt symbolu po indeksie sceny (testId ze sceny albo fallback indeksowy). */
-function uchwytSymbolu(
-  container: HTMLElement,
-  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
-  index: number,
-): Element | null {
-  return uchwytTrafienia(container, scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`);
-}
-
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
   it('brak snapshot w store: nie renderuje kanwy (brak sieci = brak rysunku, nie crash)', () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);

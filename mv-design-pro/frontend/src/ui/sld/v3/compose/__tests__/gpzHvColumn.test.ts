@@ -505,27 +505,25 @@ describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-
     expect(gaps.some((g) => g.reason.includes('busGpz'))).toBe(true);
   });
 
-  // KD-7 (Zero-Debt, dług zastany po KD-5): wyrocznie §21 opisują RYSUNEK
-  // rozdzielni. KD-5 wprowadziło kanon bloku ZWINIĘTEGO na przeglądzie (cała
-  // geometria wewnętrzna świadomie w jednym symbolu), a wyroczni nie
-  // zaktualizowano — `accept:sld-v3` (krok BLOKUJĄCY w CI) był czerwony od
-  // `5bd044f2`: 2 luki na L0, L1/L2 czyste (zmierzone 2026-07-31).
-  it('blok GPZ ZWINIĘTY (przegląd) ⇒ obie wyrocznie milczą — §21 opisuje rysunek rozwinięty', () => {
+  // KD-7 zwalniał wyrocznie §21 na L0, bo blok GPZ był tam zwinięty do jednego symbolu
+  // (`gpzCollapsed`). Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała blok zwinięty: GPZ ma
+  // jedną kompozycję na każdym LOD, więc wyrocznie §21 obowiązują na L0 bez zwolnienia.
+  // Intencja dawnych testów („zwolnienie nie jest furtką do wyciszenia §21") jest spełniona
+  // mocniej — zwolnienia nie ma.
+  it('L0 — ta sama kompozycja GPZ: kolumna WN i dominacja szyny GPZ bez luk, bez symbolu zwinięcia', () => {
     const sceneL0 = buildSceneV3(referenceEnm, 0);
-    expect(sceneL0.symbols.some((s) => s.symbolId === 'gpzCollapsed')).toBe(true);
+    expect(sceneL0.symbols.some((s) => (s.symbolId as string) === 'gpzCollapsed')).toBe(false);
     expect(gpzHvColumnGaps(sceneL0, referenceEnm)).toEqual([]);
-    expect(gpzDominanceGaps(sceneL0).filter((g) => g.reason.includes('busGpz'))).toEqual([]);
+    expect(gpzDominanceGaps(sceneL0)).toEqual([]);
   });
 
-  it('zwolnienie jest przywiązane do SYMBOLU zwinięcia, nie do poziomu szczegółu — bez niego wyrocznie gryzą', () => {
-    // Ta sama scena przeglądowa BEZ symbolu `gpzCollapsed`: rysunek nie ma ani
-    // kolumny WN, ani szyny `busGpz`, a nic nie tłumaczy ich nieobecności ⇒
-    // obie wyrocznie MUSZĄ zgłosić braki. Inaczej zwolnienie z KD-7 byłoby
-    // furtką do wyciszenia §21 na dowolnej scenie.
+  it('L0 — wyrocznie gryzą: scena L0 bez szyny busGpz ⇒ luka dominacji', () => {
     const sceneL0 = buildSceneV3(referenceEnm, 0);
-    const bezBloku = { ...sceneL0, symbols: sceneL0.symbols.filter((s) => s.symbolId !== 'gpzCollapsed') };
-    expect(gpzHvColumnGaps(bezBloku, referenceEnm).length).toBeGreaterThan(0);
-    expect(gpzDominanceGaps(bezBloku).some((g) => g.reason.includes('busGpz'))).toBe(true);
+    const stripped = {
+      ...sceneL0,
+      segments: sceneL0.segments.map((seg) => (seg.meta?.kind === 'busGpz' ? { ...seg, meta: { ...seg.meta, kind: 'bus' as const } } : seg)),
+    };
+    expect(gpzDominanceGaps(stripped).some((g) => g.reason.includes('busGpz'))).toBe(true);
   });
 });
 

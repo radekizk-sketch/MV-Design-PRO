@@ -131,10 +131,6 @@ interface CableRunRendererPropsLight {
    *  against it (OZE backfeed). Renderer flips the arrow on 'reverse'. Absent ⇒
    *  no solver companion ⇒ renderer falls back to geometric arrows. */
   segmentDirections?: Readonly<Record<string, SldFlowDirection>>;
-  /** P-A: run-level direction (solver) for the representative energized segment —
-   *  drives the single overview flow arrow at L0/L1 where per-segment paths are
-   *  not drawn. Absent ⇒ geometric fallback. */
-  flowDirection?: SldFlowDirection;
   /** P-A: per-segment energization READ from the solver companion
    *  (`energized_branch_refs`). A segment NOT solved by the solver is
    *  de-energized → renderer dims it. Absent ⇒ topology fallback (`energized`). */
@@ -651,20 +647,12 @@ export function buildSldDataFromSnapshot(
       }
       const allEnergized = refs.every((ref) => segmentEnergized[ref]);
       const anyOpenPoint = runHasOpenPoint || refs.some((ref) => openPointSet.has(ref));
-      // Run-level arrow uses the first energized segment that carries a real
-      // (non-zero) direction; this is the representative flow at L0/L1.
-      const representative =
-        refs.find((ref) => segmentDirections[ref] === 'forward' || segmentDirections[ref] === 'reverse');
-      const flowDirection: SldFlowDirection = representative
-        ? segmentDirections[representative]
-        : 'none';
       return {
         ...run,
         energized: allEnergized,
         containsOpenPoint: anyOpenPoint,
         segmentEnergized,
         segmentDirections,
-        flowDirection,
       };
     }
     // Topology fallback (no solver companion).
@@ -1825,7 +1813,7 @@ function collectStationTransformerUnits(
 }
 
 /**
- * Pola SN stacji na bloku mini-RMU — JEDNA ścieżka z rekordów `bays` (karta W5-B). Do karty
+ * Pola SN stacji — JEDNA ścieżka z rekordów `bays` (karta W5-B). Do karty
  * W5-B istniały tu DWIE ścieżki: pola z listy w `meta` stacji (kolejność z danych, oznaczenie
  * z roli, stany z aparatów pola) i rekordy `bays` (sortowanie rankingiem, oznaczenie z nazwy,
  * adnotacje zabezpieczeń i pomiarów), a przy obu kanałach naraz wygrywał pierwszy — ta sama

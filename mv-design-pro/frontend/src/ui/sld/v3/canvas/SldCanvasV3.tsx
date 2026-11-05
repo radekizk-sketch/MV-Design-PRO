@@ -51,6 +51,9 @@ import { paneleWgPlanu, ramkiBlokowWgPlanu } from './obrysyWgPlanu';
 import {
   LABEL_OWNER_ELEMENT_KIND,
   buildCanvasHitAreas,
+  prostokatObrysuStacji,
+  stacjeSceny,
+  testIdUchwytuStacji,
   type CanvasHitArea,
   type HitObjectClass,
   type ResultMarkerHitInput,
@@ -648,8 +651,11 @@ function HitShapeNode(props: {
   readonly onKlik: (testId: string) => void;
   readonly onDwuklik: ((testId: string) => void) | undefined;
   readonly onMenu: ((testId: string, clientX: number, clientY: number) => void) | undefined;
+  /** Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: najechanie na uchwyt STACJI (ref) /
+   *  zejście z niego (`null`) — kanwa rysuje wtedy obrys stacji. */
+  readonly onNajechanieStacji: (ownerRef: string | null) => void;
 }): JSX.Element {
-  const { area, rola, interaktywna, onKlik, onDwuklik, onMenu } = props;
+  const { area, rola, interaktywna, onKlik, onDwuklik, onMenu, onNajechanieStacji } = props;
   const shape = rola === 'obrys' ? area.obrys : area.obszar;
   const klik = (event: { stopPropagation: () => void }): void => {
     // `stopPropagation` — klik w obiekt NIE jest klikiem w tło (patrz handler
@@ -680,6 +686,8 @@ function HitShapeNode(props: {
         }
       : undefined,
     style: interaktywna ? ({ cursor: 'pointer' } as const) : undefined,
+    onPointerEnter: area.klasa === 'stacja' && area.ownerRef ? () => onNajechanieStacji(area.ownerRef ?? null) : undefined,
+    onPointerLeave: area.klasa === 'stacja' ? () => onNajechanieStacji(null) : undefined,
   };
   if (shape.ksztalt === 'prostokat') {
     return (
@@ -3094,9 +3102,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [resultLabelLayout],
   );
 
+  /** Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: uchwyty stacji (rama strefy GPZ,
+   *  obwiednie stacji SN/nN) — jedno źródło dla warstwy trafień i obrysu po najechaniu. */
+  const stacjeUchwytow = useMemo(() => stacjeSceny(scene.meta), [scene]);
+  /** Ref stacji, której obrys jest pod kursorem — obrys rysowany po najechaniu. */
+  const [stacjaPodKursorem, setStacjaPodKursorem] = useState<string | null>(null);
+  const obrysPodKursorem = useMemo(() => {
+    const stacja = stacjaPodKursorem ? stacjeUchwytow.find((s) => s.ownerRef === stacjaPodKursorem) : undefined;
+    return stacja ? prostokatObrysuStacji(stacja) : null;
+  }, [stacjaPodKursorem, stacjeUchwytow]);
+
   const hitAreas = useMemo<readonly CanvasHitArea[]>(
     () =>
       buildCanvasHitAreas({
+        stacje: stacjeUchwytow,
         symbols: scene.symbols,
         segments: scene.segments,
         labels: labelPlan.drawn,
@@ -3104,7 +3123,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         scale: camera.transform.scale,
         ukryteTestId,
       }),
-    [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
+    [stacjeUchwytow, scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
   );
 
   /** Meta kliku per obiekt sceny — TA SAMA treść, którą przed kartą S9-4
@@ -3142,6 +3161,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         lvPortalStationRef: symbol.meta?.lvPortalStationRef,
       });
     });
+    // Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obrys stacji zaznacza STACJĘ.
+    for (const stacja of stacjeUchwytow) {
+      mapa.set(testIdUchwytuStacji(stacja.ownerRef), { ownerRef: stacja.ownerRef, elementKind: 'station' });
+    }
     // Etykieta jest UCHWYTEM swojego właściciela (audyt P-2) — klik w napis
     // „Q1"/„S08 · 15 kV"/nazwę stacji zaznacza TEN element, nie tło.
     labelPlan.drawn.forEach((planned) => {
@@ -3155,7 +3178,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       });
     });
     return mapa;
-  }, [scene, labelPlan]);
+  }, [scene, labelPlan, stacjeUchwytow]);
 
   /** Aktywacja znacznika wynikowego po `testId` (etykieta → `onResultLabelActivate`,
    *  marker skupiska → rozwinięcie popovera) — te same wywołania co węzły
@@ -3409,8 +3432,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   }, []);
 
   /** Czy kanwa ma wołającego, który cokolwiek zrobi z klikiem — steruje
-   *  WYŁĄCZNIE kursorem (kształt uchwytu jest niezmienny, bo kamera KD-5
-   *  reaguje na klik w blok GPZ także w kanwie bez handlerów wołającego). */
+   *  WYŁĄCZNIE kursorem (kształt uchwytu jest niezmienny: warstwa trafień jest
+   *  ta sama w kanwie z handlerami i bez nich). */
   const kanwaInteraktywna = Boolean(
     onElementClick || onElementDoubleClick || onElementContextMenu || onResultLabelActivate,
   );
@@ -3511,6 +3534,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 onKlik={handleHitClick}
                 onDwuklik={onElementDoubleClick ? handleHitDoubleClick : undefined}
                 onMenu={onElementContextMenu ? handleHitContextMenu : undefined}
+                onNajechanieStacji={setStacjaPodKursorem}
               />
             ))}
           </g>
@@ -3524,6 +3548,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 onKlik={handleHitClick}
                 onDwuklik={onElementDoubleClick ? handleHitDoubleClick : undefined}
                 onMenu={onElementContextMenu ? handleHitContextMenu : undefined}
+                onNajechanieStacji={setStacjaPodKursorem}
               />
             ))}
           </g>
@@ -3548,6 +3573,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             strokeWidth={1.2 * strokeScaleFactor(camera.transform.scale)}
             strokeDasharray="12 6"
             opacity={pozaKadrem(scene.meta.gpzId) ? 0.7 * KURTYNA_KADRU_OPACITY : 0.7}
+          />
+        )}
+        {/* Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obrys stacji pod kursorem — ten sam
+         *  prostokąt co uchwyt trafienia (`prostokatObrysuStacji`), stała grubość ekranowa. */}
+        {obrysPodKursorem && (
+          <rect
+            data-testid="sld-v3-obrys-stacji-najechanie"
+            data-owner-ref={stacjaPodKursorem ?? undefined}
+            x={obrysPodKursorem.x}
+            y={obrysPodKursorem.y}
+            width={obrysPodKursorem.width}
+            height={obrysPodKursorem.height}
+            fill="none"
+            stroke={palette.baseStroke}
+            strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke"
+            strokeDasharray="6 3"
           />
         )}
         {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
@@ -3625,10 +3667,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
-            // KD-5: blok GPZ zwinięty jest jedynym symbolem, w którym klik
-            // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD).
-            // Karta S9-4: ta reguła żyje teraz w `handleHitClick` (jedno miejsce
-            // rozstrzygania kliku), a węzeł symbolu jest czystym rysunkiem.
+            // Karta S9-4: rozstrzyganie kliku żyje w `handleHitClick` (jedno miejsce),
+            // a węzeł symbolu jest czystym rysunkiem.
             const wezel = (
               <SceneSymbolNode
                 key={`symbol-${index}`}

@@ -125,9 +125,10 @@ export interface LodThresholds {
  *  Próg 0,6 wyprowadzony ODWROTNIE, z bramy tej warstwy:
  *  `l0Max = MIN_SYMBOL_SCREEN_PX / (najmniejszy gabaryt · (1−margin))
  *         = 8 / (16 · 0,85) = 0,588` → zaokrąglone w GÓRĘ do 0,6.
- *  Glif mini-RMU nie przestaje przez to być kalibrowany: 48 px świata przy
- *  skali przeglądu 0,12 dalej daje 5,78 px (V12K-137) — L0 pozostaje
- *  reprezentacją NAJZGRUBSZĄ, poniżej której nie ma czego przełączać.
+ *  Od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA glifu mini-RMU nie ma: L0 rysuje TĘ SAMĄ
+ *  kompozycję co L1 i zdejmuje wyłącznie szczegół (podpisy, kody zabezpieczeń,
+ *  tabliczki), a progi sceny liczy `lodThresholdsForMinApparatus` z gabarytu jej
+ *  najmniejszego aparatu ciągłości.
  *  Dowód progu: `canvas/__tests__/minSymbolSize.contract.test.ts`.
  *
  *  Uwaga o normalizacji: glif żyje w świecie L0, a próg jest w `refScale`

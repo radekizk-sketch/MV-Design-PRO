@@ -98,6 +98,15 @@ function skaleProdukcyjne(lod: SceneLod, skalaFit: number): readonly number[] {
   return [l1Max * (1 - m), l1Max * (1 + m), 2];
 }
 
+/** Pełna nazwa (`#name-row-0`) w piśmie podłogi czytelności przy skali `scale` jest szersza
+ *  od rezerwacji swojego wiersza — nie da się jej narysować czytelnie bez wielokropka. */
+function nazwaNieMiesciSieWPodlodze(l: SceneV3['labels'][number], scale: number): boolean {
+  if (!(l.ownerKind === 'station-name' && l.ownerRef.endsWith('#name-row-0'))) return false;
+  const typ = LABEL_TYPOGRAPHY[l.labelClass];
+  const pismo = Math.max(typ.fontSize, Math.ceil((MIN_READABLE_LABEL_SCREEN_PX / scale) * 2) / 2);
+  return measureTextWidth(l.text, pismo, typ.fontWeight) > (l.rezerwacjaSzerokosci ?? l.rect.width);
+}
+
 describe('KD-11 §1 — klasyfikacja etykiet pochodzi z DANYCH SCENY', () => {
   const sceny = scenyPerLod(GPZ_ENM);
 
@@ -252,17 +261,50 @@ describe('KD-11 §3 (bramka 2) — wyrocznia braku kolizji na golden sieci wielo
       });
     }
 
-    it(`LOD ${lod}: w stanach kamery PRODUKCYJNYCH żadna tożsamość nie jest porzucana`, () => {
+    // Druga przyczyna czytelności: pełna nazwa stacji/GPZ (nigdy skracana wielokropkiem)
+    // w piśmie podłogi czytelności jest szersza od swojej rezerwacji, więc wychodzi na
+    // sąsiadów i plan kolizji odrzuca ją JAWNIE. Pomiar na tej fiksturze przy skali
+    // dopasowania L0 0,0822: 6 nazw stacji („Stacja L11-2", „Stacja L10-4"…); przed poprawką
+    // planu te nazwy rysowały się pismem naturalnym 8,3 px, czyli pod podłogą 9 px.
+    // JEDNA KOMPOZYCJA (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, decyzja B): L0 rysuje
+    // tę samą kompozycję co L1, więc przy skali „Dopasuj widok" sieci 53-stacyjnej
+    // (≈0,1) tożsamości klas, których proporcjonalne powiększenie przekracza sufit
+    // (`enlargedFontSizeWithinProportion` = null), znikają JAWNIE (`droppedIdentity`,
+    // wskaźnik „Ukryto N opisów"). Pomiar: 129 takich tożsamości, wszystkie ponad
+    // sufitem, zero porzuconych od kolizji. Intencja KD-11 bez zmian: żadna tożsamość,
+    // którą da się narysować proporcjonalnie, nie ginie od kolizji ani progu.
+    it(`LOD ${lod}: w stanach kamery PRODUKCYJNYCH tożsamość znika wyłącznie ponad sufitem proporcji`, () => {
       const scene = sceny[lod];
       const obstacles = sceneObstacleRects(scene);
       for (const scale of skaleProdukcyjne(lod, skalaFit)) {
         const plan = planSceneLabels(scene.labels, obstacles, scale, sheetSizeFor(scene));
         expect(
-          plan.droppedIdentity.map((l) => `${scale.toFixed(4)}:${l.ownerKind}:${l.text}`),
+          plan.droppedIdentity
+            .filter((l) => enlargedFontSizeWithinProportion(l.labelClass, scale) !== null)
+            .filter((l) => !nazwaNieMiesciSieWPodlodze(l, scale))
+            .map((l) => `${scale.toFixed(4)}:${l.ownerKind}:${l.text}`),
         ).toEqual([]);
       }
     });
   }
+
+  // Decyzja B: etykieta istniejąca na L0 jest TĄ SAMĄ etykietą co na L1 — ten sam
+  // właściciel, ta sama treść, ta sama kotwica. Oddalenie może ją tylko ukryć dla
+  // czytelności, nigdy przenieść na inny obiekt ani zmienić jej tożsamości.
+  it('L0 ⊂ L1: każda etykieta L0 ma bliźniaka na L1 (właściciel, treść, położenie, rola)', () => {
+    const klucz = (l: SceneV3['labels'][number]): string =>
+      `${l.ownerRef}|${l.text}|${l.rect.x},${l.rect.y},${l.rect.width},${l.rect.height}|${l.labelRole}`;
+    const l1 = new Set(sceny[1].labels.map(klucz));
+    expect(sceny[0].labels.length).toBeGreaterThan(0);
+    expect(sceny[0].labels.map(klucz).filter((k) => !l1.has(k))).toEqual([]);
+    // Każdy właściciel tożsamości L0 ma na L1 tę samą jedną treść (bez skoku na inny obiekt).
+    const tekstL1 = new Map(
+      sceny[1].labels.filter((l) => l.labelRole === 'tozsamosc').map((l) => [l.ownerRef, l.text]),
+    );
+    for (const l of sceny[0].labels.filter((x) => x.labelRole === 'tozsamosc')) {
+      expect(tekstL1.get(l.ownerRef), l.ownerRef).toBe(l.text);
+    }
+  });
 });
 
 describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {

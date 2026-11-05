@@ -12,19 +12,15 @@
  *  (2) „Rezerwacja nie znikła, tylko przeniosła się do własnego pola" —
  *      `labelGrowthReservationGaps` (drugi koniec pary: tusz nie wystaje poza
  *      rezerwację) + geometryczne zawieranie prostokąta w rezerwacji.
- *      JEDYNY WYJĄTEK jest DŁUGIEM NAZWANYM, nie ustępstwem: wiersz stanu
- *      zwinięcia GPZ (tylko L0) wystaje o zmierzone 50 j.św. poza baner strefy
- *      — defekt PIERWOTNY, którego zamknięcie wymaga rozstrzygnięcia kontraktu
- *      KD-5 (patrz `scene/buildScene.ts` `composeCollapsedGpz`). Test go NIE
- *      filtruje: asertuje go co do sztuki i co do rozmiaru, więc nowe takie
- *      miejsce albo zmiana nadmiaru pada natychmiast, a na L1/L2 zbiór musi
- *      być PUSTY bez żadnego ustępstwa.
+ *      Dawny DŁUG NAZWANY (wiersz stanu zwinięcia GPZ na L0, 50 j.św. poza
+ *      banerem) spłaciła karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — zbiór luk jest
+ *      PUSTY na każdym poziomie, bez ustępstwa.
  *  (3) „Napis nie zmienił położenia" — środek prostokąta wiersza pasma nazw
  *      leży dokładnie w środku slotu kolumny (render rysuje `textAnchor=middle`
  *      w środku prostokąta, więc równość środków = brak ruchu na rysunku).
  *  (4) „Układ nie idzie za tuszem" — `labelReservationRect` sprawia, że
- *      szerokość arkusza jest IDENTYCZNA na L0/L1/L2 mimo różnej treści
- *      wierszy (KD-5/S1 „jedna kotwica" — nietykalne, patrz §0 karty R4).
+ *      szerokość arkusza jest IDENTYCZNA na L0/L1/L2 mimo różnego zbioru
+ *      etykiet poziomu (KD-5/S1 „jedna kotwica" — nietykalne, patrz §0 karty R4).
  *  (5) „Strona nN wisi RÓWNOLEGLE, więc rezerwacja to `max`, nie suma" —
  *      `nnSideBelowBusHeight` (portal domeny nN / rząd DER / strzałka odbioru,
  *      LV Domain Projection po B-02) porównana z REALNYM zwisem kompozycji, na
@@ -90,34 +86,13 @@ describe('BLOK-PUSTY §1 — prostokąt etykiety niesie TUSZ, nie rezerwację sl
       expect(labelRectsWiderThanInk(scene.labels)).toEqual([]);
     });
 
-    it(`L${lod}: tusz mieści się w rezerwacji wszędzie POZA jednym nazwanym długiem (drugi koniec pary)`, () => {
+    it(`L${lod}: tusz mieści się w rezerwacji (drugi koniec pary)`, () => {
       const scene = buildSceneV3(enm, lod);
       const luki = labelGrowthReservationGaps(scene.labels);
-      if (lod === 0) {
-        // DŁUG NAZWANY (opis i uzasadnienie: `scene/buildScene.ts`
-        // `composeCollapsedGpz`): wiersz stanu zwinięcia GPZ jest dopisywany do
-        // pasma, którego baner zmierzono wyłącznie dla wiersza tytułowego.
-        // NIE filtrujemy go z wyroczni — ASERTUJEMY go co do sztuki i co do
-        // liczby, więc test pada zarówno wtedy, gdy dojdzie NOWE takie miejsce,
-        // jak i wtedy, gdy nadmiar zmieni rozmiar albo gdy dług zostanie
-        // spłacony (wtedy tę gałąź się usuwa — świadomie, nie „żeby przeszło").
-        // Ref GPZ czytany z fikstury (karta GPZ-MODEL: ziarno GPZ z równoważnikiem 110 kV
-        // zmieniło identyfikator; literał przepinany przy każdej regeneracji).
-        const gpzRef = enm.substations.find((st) => st.station_type === 'gpz')!.ref_id;
-        expect(luki.map((g) => g.ownerRef)).toEqual([`${gpzRef}#name-row-1`]);
-        // GPZ-MODEL (2026-10-21): 95 → 87. Tusz wiersza stanu bez zmian (391), baner
-        // szerszy o 8 (296 → 304), bo nazwa GPZ substratu brzmi „GPZ Referencyjny 110 kV"
-        // (o jeden znak dłuższa niż „… 15 kV" — GPZ z równoważnikiem 110 kV); pomiar sondą
-        // karty na fiksturze przed/po. Dług ten sam, nadmiar mniejszy o szerokość znaku.
-        // UX-04/POLE-LINIOWE-WZORZEC (2026-10-30, §11.7 pkt 7 — tabela posuwów kroju zamiast
-        // 0,62 em): 87 → 50. Baner 304 → 248, tusz wiersza stanu 391 → 298 (sonda na fiksturze
-        // przed/po); dług ten sam, nadmiar mniejszy, bo cyfry i małe litery są węższe od szacunku.
-        expect(luki[0].inkExtent - luki[0].rectExtent).toBeCloseTo(50, 6);
-        // Wiersz stanu istnieje WYŁĄCZNIE na poziomie przeglądowym — na L1/L2
-        // gałąź `else` niżej wymaga zbioru PUSTEGO bez żadnego ustępstwa.
-      } else {
-        expect(luki).toEqual([]);
-      }
+      // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA spłaciła DŁUG NAZWANY tej wyroczni: wiersz stanu
+      // zwinięcia GPZ (tylko L0, nadmiar 50 j.św. poza baner) zniknął z blokiem zwiniętym,
+      // więc zbiór luk jest PUSTY na każdym LOD, bez ustępstwa.
+      expect(luki).toEqual([]);
       // Rezerwacja obejmuje prostokąt geometrycznie — nie tylko liczbowo.
       for (const label of scene.labels) {
         const rez = labelReservationRect(label);
@@ -198,19 +173,16 @@ describe('BLOK-PUSTY §2 — zwężenie prostokąta NIE przesuwa napisu', () => 
 // ---------------------------------------------------------------------------
 
 describe('BLOK-PUSTY §3 — arkusz mierzy REZERWACJĘ, więc nie zależy od treści poziomu', () => {
-  it('szerokość bbox sceny IDENTYCZNA na L0/L1/L2, mimo że wiersz pasma nazw niesie na L0 kod, a na L1/L2 nazwę', () => {
+  it('szerokość bbox sceny IDENTYCZNA na L0/L1/L2, mimo że zbiór etykiet poziomu jest różny', () => {
     const szerokosci = LODY.map((lod) => buildSceneV3(enm, lod).bbox.width);
     expect(new Set(szerokosci).size, `szerokości arkusza: ${szerokosci.join(' / ')}`).toBe(1);
     // Kontrola, że przesłanka testu zachodzi (treść RÓŻNI się między poziomami)
     // — inaczej równość wyżej byłaby prawdziwa z powodu, którego nie badamy.
-    // Bierzemy wiersz STACJI (nie nagłówek GPZ, który jest ten sam na każdym
-    // poziomie): na L0 niesie kod stacji, na L2 jej nazwę.
-    const wierszStacji = (lod: SceneLod): string | undefined =>
-      buildSceneV3(enm, lod).labels.find(
-        (l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('stn/'),
-      )?.text;
-    expect(wierszStacji(0)).toBeDefined();
-    expect(wierszStacji(0)).not.toBe(wierszStacji(2));
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: wiersz pasma nazw stacji niesie na każdym
+    // LOD tę samą nazwę (dawny kod stacji na L0 zniknął z blokiem zwiniętym), więc
+    // przesłanką jest zbiór etykiet: L0 zdejmuje podpisy aparatów i ról pól.
+    const etykiety = (lod: SceneLod): number => buildSceneV3(enm, lod).labels.length;
+    expect(etykiety(0)).toBeLessThan(etykiety(2));
   });
 });
 
@@ -402,14 +374,10 @@ describe('BLOK-PUSTY §5 — rama bloku obejmuje TREŚĆ, nie rezerwację kolumn
         zbadane += 1;
       }
       expect(zbadane).toBeGreaterThan(50);
-      // Równość zachodzi WYŁĄCZNIE tam, gdzie tusz nie mieści się w rezerwacji
-      // i `tuszWSlocie` oddaje slot bez zmian — czyli w jedynym nazwanym długu
-      // (wiersz stanu zwinięcia GPZ, istniejący tylko na L0; opis w
-      // `scene/buildScene.ts` `composeCollapsedGpz`). Liczba, nie filtr: nowy
-      // blok „na styk" zapala test.
-      expect(naStyk, `bloki z pasmem na styk kolumny: ${naStyk.join(', ')}`).toHaveLength(
-        lod === 0 ? 1 : 0,
-      );
+      // Równość zachodziła WYŁĄCZNIE w dawnym nazwanym długu (wiersz stanu
+      // zwinięcia GPZ na L0), spłaconym przez kartę PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA.
+      // Liczba, nie filtr: nowy blok „na styk" zapala test.
+      expect(naStyk, `bloki z pasmem na styk kolumny: ${naStyk.join(', ')}`).toHaveLength(0);
     });
   }
 });

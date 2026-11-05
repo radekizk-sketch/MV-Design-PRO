@@ -26,6 +26,7 @@ import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useRawResultOverlayStore } from '../../../sld-overlay/rawResultOverlayStore';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../../sld/v3/scene/buildScene';
+import { testIdUchwytuStacji } from '../../../sld/v3/canvas/hitAreas';
 import { buildW1MatrixFixture } from '../../../sld/v3/scene/__tests__/fixtures/w1MatrixVariants';
 import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspace';
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
@@ -114,7 +115,18 @@ function segment(predykat: (s: SceneV3['segments'][number]) => boolean) {
 }
 
 const PRZYPADKI: readonly Przypadek[] = [
-  { nazwa: 'stacja', enm: SIEC, lod: 0, uchwyt: symbol((s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed') },
+  // Uchwytem stacji jest obrys jej strefy, klikalny na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA,
+  // decyzja A); dawny zwinięty symbol stacji nie istnieje.
+  {
+    nazwa: 'stacja',
+    enm: SIEC,
+    lod: 0,
+    uchwyt: (scena) => {
+      const ref = scena.meta.stationOutlines?.[0]?.stationRef;
+      expect(ref, 'obrys stacji w scenie').toBeTruthy();
+      return testIdUchwytuStacji(ref!);
+    },
+  },
   { nazwa: 'pole', enm: SIEC, lod: 2, uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)) },
   { nazwa: 'aparat', enm: SIEC_APARATOW, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.deviceRef)) },
   { nazwa: 'transformator', enm: SIEC, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'transformer') },

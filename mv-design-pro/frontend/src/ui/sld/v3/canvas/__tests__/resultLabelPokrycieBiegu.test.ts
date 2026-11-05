@@ -155,8 +155,12 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
     const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
     expect(bezTabeli.inGpzTable).toBe(0);
     expect(bezTabeli.withoutTemplate).toBe(2);
-    // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
-    expect(resultPointsInGpzTable(buildSceneV3(enm, 0)).size).toBe(0);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje tę samą kompozycję GPZ (z tabelą
+    // „Pola GPZ"), więc zbiór wierszy tabeli jest TEN SAM na każdym LOD (dawniej na L0
+    // pusty — blok zwinięty bez adnotacji).
+    for (const lod of [0, 1, 2] as const) {
+      expect([...resultPointsInGpzTable(buildSceneV3(enm, lod))].sort(), `L${lod}`).toEqual([...gpzTabela].sort());
+    }
   });
 
   it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {

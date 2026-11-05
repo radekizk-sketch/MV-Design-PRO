@@ -2114,10 +2114,12 @@ class ENMValidator:
                     code=KOD_WALIDATORA_KONIEC_OTWARTY_NN if nn else KOD_WALIDATORA_KONIEC_OTWARTY,
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"{opis_obiektu(galaz, 'Odcinek')} kończy się na szynie "
-                        f"„{koniec.szyna_ref}”, do której nic nie jest przyłączone — koniec "
-                        f"otwarty bez {'odbioru nN' if nn else 'stacji odbiorczej'}. Obliczenia traktują go jako odcinek "
-                        "jałowy (prąd ładowania w rozpływie, impedancja odcinka w zwarciu)."
+                        f"{opis_obiektu(galaz, 'Odcinek')} kończy się na "
+                        f"{opis_elementu(enm, koniec.szyna_ref, 'szynie')}, do której nic nie "
+                        "jest przyłączone — koniec otwarty bez "
+                        f"{'odbioru nN' if nn else 'stacji odbiorczej'}. Obliczenia traktują go "
+                        "jako odcinek jałowy (prąd ładowania w rozpływie, impedancja odcinka "
+                        "w zwarciu)."
                     ),
                     element_refs=[koniec.odcinek_ref, koniec.szyna_ref],
                     wizard_step_hint="K3",

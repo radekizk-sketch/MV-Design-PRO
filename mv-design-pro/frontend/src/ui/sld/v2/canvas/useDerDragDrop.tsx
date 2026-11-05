@@ -88,7 +88,8 @@ export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
         background: active ? color : disabled ? 'var(--mvd-surface)' : 'var(--mvd-panel)',
         color: active ? '#0B1014' : 'var(--mvd-ink)',
         border: `1.5px solid ${color}`,
-        padding: '6px 10px',
+        // Mieści się w rzędzie doku `h-7` (28 px) — patrz paleta w `SldCanvasV3Workspace`.
+        padding: '2px 8px',
         borderRadius: 3,
         fontSize: 10,
         fontWeight: 700,

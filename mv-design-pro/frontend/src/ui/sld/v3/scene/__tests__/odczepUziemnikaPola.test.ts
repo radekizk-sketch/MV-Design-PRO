@@ -147,12 +147,9 @@ describe('odczep uziemnika pola: węzeł → poziomo → pionowo w górny styk (
             const scena = buildSceneV3(wariant(enm, stan, przylaczenie), lod);
             for (const bay of polaLiniowe(enm).filter((b) => (b.primary_devices ?? []).some((d) => d.kind === 'ES'))) {
               const uziemniki = uziemnikiPola(scena, bay.ref_id);
-              // L0: GPZ zwinięty do widoku przeglądowego (pole = kafel wyłącznika, bez aparatów
-              // toru — `SLD_LOD_SPEC_OPERATOR_GRADE.md` §2); odczepu nie ma czego sprawdzać.
-              if (lod === 0) {
-                expect(uziemniki, `${bay.ref_id}: L0 bez aparatów toru`).toEqual([]);
-                continue;
-              }
+              // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: GPZ nie zwija się na L0 (jedna kompozycja na
+              // każdym LOD), więc odczep uziemnika jest rysowany i sprawdzany na L0 tak samo jak na
+              // L1/L2. Dawna gałąź „L0 bez aparatów toru" skasowana razem z blokiem zwiniętym.
               expect(uziemniki.length, `${bay.ref_id}: uziemniki pola na scenie`).toBeGreaterThan(0);
               for (const s of uziemniki) {
                 expect(naruszeniaDoprowadzenia(scena, s), `${bay.ref_id} ${s.meta?.deviceRef}`).toEqual([]);

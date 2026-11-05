@@ -320,9 +320,18 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //  · szerokości kolumn pola zaokrąglane w górę do rastru (`snapUp` w `layout/measure.ts`,
   //    +8/+16 — widoczne także w wariancie z dawną szerokością 0,62 em);
   //  · etykiety po lewej kotwiczone prawą krawędzią (decyzja 8): podpis łącznika Q1 o 2 w lewo.
+  // AKTUALIZACJA ŚWIADOMA (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, 2026-11-05). Sonda (symbole:
+  // rodzaj + x + y + ownerRef, trasy: punkty, etykiety: tekst + x + y) HEAD sprzed karty
+  // (574501f3) vs kod karty, rozdzielona stałą wysokości sylwetki pola bez wyposażenia:
+  //  · kod karty ze stałą 32 (bez decyzji D): ten sam zestaw symboli, tras i etykiet z jednym
+  //    dodatkiem — podpis „koniec otwarty · brak stacji odbiorczej" przy końcu odcinka bez
+  //    odbioru od L1 (predykat W065, `ui/shared/odcinkiBezOdbioru.ts`); pola 001–003 stacji
+  //    przesunięte o +32 w prawo i etykieta napięcia szyny SN o 16 wyżej (L1 i L2);
+  //  · decyzja D (32 → 48): pole TR GPZ nie ma w tej migawce rekordów aparatów, więc rysuje
+  //    sylwetkę — wszystko pod nią (szyna SN GPZ, magistrala, stacja) schodzi o +16.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '5320dc6486437d8375747cd5de3a657e',
-    2: '0cc819141ed93063401020389247859a',
+    1: '7d026363fc875954737d593b465efb73',
+    2: 'c24140b85cd20d50d5b7c2a904a14a26',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -431,11 +440,13 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     });
   }
 
-  it('L0: stacja zwinięta — kontrakt LOD bez zmian (żadnych symboli aparatów, jak przy polu TR)', () => {
-    const bezPola = buildSceneV3(enm, 0);
-    const zPolem = buildSceneV3(enmZPolem, 0);
+  it('L0: ta sama kompozycja co L1 — transformator bez pola z markerem braku pola także na L0', () => {
+    // Dawniej: L0 zwijał stację do bloku, więc stacja bez pola TR i z polem TR miały na L0 ten
+    // sam zestaw symboli. Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje tę samą kompozycję
+    // co L1 — stan niekompletny (transformator bez pola) jest widoczny na każdym poziomie.
     const symbole = (sc: SceneV3): string[] => sc.symbols.map((s) => s.symbolId).sort();
-    expect(symbole(bezPola)).toEqual(symbole(zPolem));
+    expect(symbole(buildSceneV3(enm, 0))).toEqual(symbole(buildSceneV3(enm, 1)));
+    expect(buildSceneV3(enm, 0).symbols.some((s) => s.meta?.transformerFieldGap === true)).toBe(true);
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {

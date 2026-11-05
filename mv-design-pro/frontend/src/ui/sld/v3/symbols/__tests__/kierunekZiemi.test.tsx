@@ -458,8 +458,6 @@ function wariantyGlifu(id: SymbolId): ReadonlyArray<readonly [string, Partial<Gl
       for (const p of [false, true]) w.push([`${uklad ?? 'NIEOKRESLONY'}${p ? ' z przekładnikiem' : ''}`, { bateria: { uklad, przekladnikNiezrownowazenia: p } }]);
     }
   }
-  w.push(['stacja sekcjonowana z transformatorem', { stationSectioned: true, stationHasTransformer: true }]);
-  for (const der of ['pv', 'bess', 'wind', 'generator'] as const) w.push([`stacja z OZE ${der}`, { stationDerOnMv: der }]);
   w.push(['licznik A', { meterQuantity: 'A' }], ['licznik V', { meterQuantity: 'V' }]);
   return w;
 }

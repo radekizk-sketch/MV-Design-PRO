@@ -192,9 +192,14 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // etykiet) i regeneracja fikstury (jedna postać `starting_port_ref`); sonda 2×2 z
     // wartościami każdego wariantu przy `VERTICAL_LENGTH_BASELINE` w
     // `scripts/sld_v3_acceptance.mjs` (ta sama fikstura, ta sama funkcja pomiaru).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(19976);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43040);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43040);
+    // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (2026-11-05): 19976/43040/43040 → 43008/43008/43008
+    // (zmierzone). L0 rysuje tę samą kompozycję co L1/L2 (zwinięte bloki stacji skasowane), więc
+    // piony L0 = piony L1/L2. −32 na L1/L2 wyłącznie z decyzji D (sylwetka pola bez aparatu ma
+    // wysokość kafla stanu): z dawną wysokością 32 kod karty daje 43040 — atrybucja przy
+    // `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(43008);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43008);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43008);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

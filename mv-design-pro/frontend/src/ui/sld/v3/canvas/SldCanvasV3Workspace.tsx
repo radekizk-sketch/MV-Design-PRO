@@ -1877,8 +1877,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // MINIMAPA (nawigator) — projekcja TEJ SAMEJ sceny, interakcja WYŁĄCZNIE na
   // kamerze.
   //
-  // Scena nawigatora: `scenaSld(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
-  // jako mini-RMU + magistrala + laterale), ten sam builder co kanwa, czysty i
+  // Scena nawigatora: `scenaSld(snapshot, 0)` — poziom NAJZGRUBSZY (ta sama
+  // kompozycja co L1, bez szczegółu), ten sam builder co kanwa, czysty i
   // memoizowany na `snapshot` (wzorzec `buildEnergizationOverlay` wyżej w tym
   // pliku). Zero drugiej prawdy geometrii: nawigator nie zna ENM.
   //
@@ -2298,8 +2298,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // PORTAL DOMENY nN (architektura LV Domain Projection po B-02, `docs/sld/
   // PROJEKCJA_SN_NN_PORTAL_V1.md`): projekcja nN stacji otwiera się z JAWNEGO
   // portalu na zacisku nN transformatora (symbol `lvPortal`, `compose/
-  // station.ts`) — klik od L1. Na L0 stacja jest jednym zwiniętym blokiem
-  // (mini-RMU) bez geometrii zacisku, więc wejściem jest dwuklik w blok.
+  // station.ts`) — klik na każdym LOD (jedna kompozycja stacji, karta
+  // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: portal stoi na zacisku także na L0).
   // Dane portalu NIE są składane z bieżącego snapshotu klienta — jeden
   // `LvDomainProjectionV1` przychodzi z backendu wraz z wynikami i SWZ.
   const [lvDomainStationRef, setLvDomainStationRef] = useState<string | null>(null);
@@ -2621,7 +2621,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       </>
     ),
     uklady: (
-      <div className="flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg">
+      <div className="flex h-7 items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 shadow-lg">
+        {/* Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja E): grupa ma wysokość rzędu
+            doku `h-7` (`TOOLBAR_ROW_HEIGHT_PX`), na której kamera liczy pas zasłonięty
+            `SLD_CANVAS_DOCK_INSETS`. Dawne `py-1` + przyciski 6 px dawały ok. 37 px,
+            więc kadr „Dopasuj widok" wchodził pod paletę. */}
         <span style={{ fontSize: 9, color: 'var(--mvd-muted)', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
           UKŁADY PV/BESS/FW:
         </span>

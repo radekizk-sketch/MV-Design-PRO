@@ -214,53 +214,39 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
   });
 
   it('L0: źródło (sieć zewnętrzna/GPZ) i transformator rozpoznawalne bez zoomu (glify obecne)', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (test przepisany do kanonu, intencja §3
+    // „transformator NIGDY nie znika przy oddalaniu" zachowana): dawna sylwetka bloku GPZ
+    // (`gpzCollapsed`, `gpzGlyph.transformers`) i mini-RMU stacji (`stationGlyph`)
+    // skasowane — L0 rysuje TĘ SAMĄ kompozycję co L1, więc transformator GPZ i każdy
+    // transformator stacji stoją na L0 własnym symbolem `transformer2W` w tym samym miejscu.
     const scene = buildSceneV3(bigEnm, 0);
     expect(scene.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
-    // KD-5: transformator GPZ nie jest już na L0 osobnym symbolem `transformer2W`
-    // — blok GPZ jest ZWINIĘTY, a jego transformator niesie SYLWETKA bloku
-    // (`GpzCollapsedGlyph`, uzwojenia rysowane gdy `gpzGlyph.transformers > 0`).
-    // Dokładnie ten sam mechanizm, którym stacje SN niosą swój TR na L0 od GS-1
-    // (`stationGlyph.hasTransformer` w mini-RMU) — wymóg §3 „transformator NIGDY
-    // nie znika przy oddalaniu" jest spełniony na poziomie CZYTELNOŚCI, a nie
-    // przez rysowanie glifu 32×40 px, który przy skali przeglądu miał ≈4 px.
-    const gpzBlock = scene.symbols.find((s) => s.symbolId === 'gpzCollapsed');
-    expect(gpzBlock, 'blok GPZ zwinięty obecny na L0').toBeTruthy();
-    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBeGreaterThan(0);
-    // Parytet z L1/L2: liczba transformatorów w sylwetce == liczba realnych
-    // symboli transformatora GPZ na poziomie rozwiniętym (zero fabrykacji).
-    const rozwiniete = buildSceneV3(bigEnm, 1).symbols.filter(
-      (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('gpz/'),
-    );
-    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBe(rozwiniete.length);
-    // Stacje SN: transformator dalej rozpoznawalny sylwetką mini-RMU (GS-1).
-    expect(
-      scene.symbols.some((s) => s.symbolId === 'stationCollapsed' && s.meta?.stationGlyph?.hasTransformer),
-    ).toBe(true);
+    const tr = (sc: SceneV3, prefiks: string): string[] =>
+      sc.symbols
+        .filter((s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith(prefiks))
+        .map((s) => `${s.meta?.ownerRef}@${s.x},${s.y}`)
+        .sort();
+    const l1 = buildSceneV3(bigEnm, 1);
+    expect(tr(scene, 'gpz/').length).toBeGreaterThan(0);
+    expect(tr(scene, 'gpz/')).toEqual(tr(l1, 'gpz/'));
+    expect(tr(scene, 'stn/').length).toBeGreaterThan(0);
+    expect(tr(scene, 'stn/')).toEqual(tr(l1, 'stn/'));
+    expect(scene.symbols.some((s) => (s.symbolId as string).endsWith('Collapsed'))).toBe(false);
   });
 
-  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — sylwetka mini-RMU niesie marker noOpen (GS-1)', () => {
-    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2 — test do obecnego kanonu z
-    // zachowaniem intencji „NOP na L0 nie znika"): na L0 punkt NO stacji niesie
-    // SYLWETKA mini-RMU (marker `noOpen` w `meta.stationGlyph`, rysowany przez
-    // `StationCollapsedGlyph`), a nie osobny 16×16 symbol `noPoint` pogrzebany w
-    // enklozurze 48×48. Symbol `noPoint` + etykieta „NO" to reprezentacja L1/L2
-    // (patrz test niżej) — TA SAMA kotwica (środek stacji) na wszystkich LOD.
+  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — te same symbole NO co na L1', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (intencja GS-1 „NOP na L0 nie znika" zachowana):
+    // sylwetka mini-RMU z markerem `noOpen` skasowana; reprezentacja NO z L1/L2 stoi na L0
+    // w tym samym miejscu (jedna kompozycja). Każdy punkt podziału poza stacją NOP jest
+    // symbolem `noPoint` na L0.
     const withNop = withSyntheticNop(bigEnm);
     const nopRef = buildSceneV3(bigEnm, 2).meta.mainTrunkStationIds[0];
     const nopScene0 = buildSceneV3(withNop, 0);
-    const nopGlyph = nopScene0.symbols.find(
-      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === nopRef,
-    );
-    expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
-    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-    // Na L0 osobny symbol `noPoint` STACJI NOP NIE jest rysowany (sylwetka go
-    // zastępuje). Przepisane do kanonu K2b §0.4 i W5-C (intencja zachowana): punkt
-    // podziału to łącznik z pozycją normalną „otwarty” (`punktyPodzialu`, jedna
-    // prawda z modelu — dawne `Corridor.no_point_ref` skasowane). Łącznik w polu
-    // stacji NOP niesie sylwetka stacji (jedna reprezentacja), każdy INNY punkt
-    // podziału (łącznik toru poza polami stacji NOP) jest rysowany symbolem
-    // `noPoint` na KAŻDYM poziomie, także na L0.
-    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(false);
+    const nopScene1 = buildSceneV3(withNop, 1);
+    const znakiNo = (sc: SceneV3): string[] =>
+      sc.symbols.filter((s) => s.symbolId === 'noPoint').map((s) => `${s.meta?.ownerRef}@${s.x},${s.y}`).sort();
+    expect(znakiNo(nopScene0).length).toBeGreaterThan(0);
+    expect(znakiNo(nopScene0)).toEqual(znakiNo(nopScene1));
     const lacznikiPolStacjiNop = new Set(
       (withNop.bays ?? [])
         .filter((pole) => pole.substation_ref === nopRef)
@@ -292,12 +278,14 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     expect(no1 && no2 ? { x: no1.x, y: no1.y } : null).toEqual(no2 ? { x: no2.x, y: no2.y } : null);
   });
 
-  it('L0: każda narysowana stacja ma kompaktowy glif + etykietę S-id (tożsamość nie znika)', () => {
+  it('L0: każda narysowana stacja ma obrys i podpis tożsamości (tożsamość nie znika)', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawny kompaktowy glif stacji skasowany —
+    // stację na L0 niesie jej obrys (`meta.stationOutlines`, uchwyt stacji) i pasmo nazw.
     const scene = buildSceneV3(bigEnm, 0);
-    const collapsed = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(collapsed.length).toBeGreaterThan(0);
+    const obrysy = scene.meta.stationOutlines ?? [];
+    expect(obrysy.length).toBeGreaterThan(0);
     const nameOwners = new Set(scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')));
-    for (const c of collapsed) expect(nameOwners.has((c.meta?.ownerRef ?? '').replace(/#.*$/, ''))).toBe(true);
+    for (const o of obrysy) expect(nameOwners.has(o.stationRef), o.stationRef).toBe(true);
   });
 
   it('wyrocznia GRYZIE: usunięcie klasy snTrunk (tor główny bez wagi) ⇒ luka toru mocy na L0', () => {

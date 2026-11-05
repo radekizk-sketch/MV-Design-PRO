@@ -255,6 +255,12 @@ export interface SheetRowBand {
   readonly height: number;
 }
 
+/** Obwiednia rysunku jednej stacji — patrz `SceneV3Meta.stationOutlines`. */
+export interface ObrysStacji {
+  readonly stationRef: string;
+  readonly rect: V3Rect;
+}
+
 export interface SceneV3Meta {
   readonly lod: SceneLod;
   readonly stationCount: number;
@@ -344,11 +350,15 @@ export interface SceneV3Meta {
    *  §16); współrzędne świata (kompozycja pass-2). `null`/brak = brak GPZ
    *  lub kompozycja pusta. */
   readonly gpzZone?: import('../compose/gpz').GpzZoneDecoration | null;
+  /** Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): obwiednie rysunku NARYSOWANYCH stacji
+   *  SN/nN (bez GPZ — jego uchwytem jest `gpzZone`), posortowane po refie. Kanwa buduje z nich
+   *  uchwyt stacji (`canvas/hitAreas.ts`), widoczny obrysem po najechaniu. */
+  readonly stationOutlines?: readonly ObrysStacji[];
   /** GPZ-PARYTET (§0 pkt 3–5): adnotacje bloku GPZ — sloty bilansu i alarmów w belce
    *  nagłówka, tabela „Pola GPZ" (karty pól z rolą, automatyką i miejscem na pomiary)
    *  oraz tła pól wg roli. Wyłącznie GEOMETRIA (wartości wyniku dokleja kanwa z
-   *  `results/v1`). Obecne tylko na LOD rozwiniętego bloku (L1/L2) — na L0 blok jest
-   *  zwinięty do jednego symbolu i nie ma pól, których dotyczą (jak `parityKeys`).
+   *  `results/v1`). Obecne na każdym LOD (jedna kompozycja GPZ — karta
+   *  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA).
    *  Mieści się w `gpzZone` (rama rezerwuje na nie miejsce na każdym LOD). */
   readonly gpzAdnotacje?: import('../compose/gpzAdnotacje').GpzAdnotacje | null;
   /** Opis punktu neutralnego sieci SN do LEGENDY arkusza (V12K-223) — tekst z
@@ -1276,6 +1286,9 @@ interface ComposedRowStation {
    *  port trasy przy krawędzi kolumny stacji na osi szyny SN i koniec szyny, do którego
    *  przewód dochodzi poziomo (`dociagnijPrzylaczaBezPola`). Puste, gdy stacja ma oba pola. */
   readonly przylaczaBezPola: readonly PrzylaczeBezPola[];
+  /** Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): obwiednia RYSUNKU stacji (symbole
+   *  i odcinki kompozycji stacji, bez adnotacji zabezpieczeń) — uchwyt stacji na kanwie. */
+  readonly obrys: V3Rect;
 }
 
 /** Przyłącze magistrali bez pola liniowego — patrz `ComposedRowStation.przylaczaBezPola`. */
@@ -1717,6 +1730,7 @@ function composeRowStation(
   return {
     symbols: [...symbols, ...protectionSymbols],
     segments: [...segments, ...protectionSegments, ...measurementSegments],
+    obrys: obwiedniaRysunkuStacji(symbols, segments),
     stationNameOwner: composition.labels.stationName,
     apparatusOwners: composition.labels.apparatus,
     // Podpis kierunku pola (`#direction`) to szczegół L2 — zdejmowany z gotowej
@@ -2877,6 +2891,21 @@ function unionRects(rects: readonly V3Rect[]): V3Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+/**
+ * Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A) — obwiednia RYSUNKU stacji: prostokąt
+ * otaczający gabaryty symboli i łamane odcinków kompozycji stacji (szyna, zejścia, pola,
+ * transformator, strona nN, DER). Adnotacje zabezpieczeń i podpisy nie wchodzą — obwiednia
+ * opisuje aparat stacji, nie jej opisy. Stacja nie ma ramki strefy (ma ją wyłącznie GPZ),
+ * więc ta obwiednia jest jej UCHWYTEM na kanwie na każdym LOD (`canvas/hitAreas.ts`).
+ */
+function obwiedniaRysunkuStacji(symbols: readonly PreviewSymbol[], segments: readonly PreviewSegment[]): V3Rect {
+  const rects: V3Rect[] = symbols.map(symbolRect);
+  for (const seg of segments) {
+    for (const p of seg.points) rects.push({ x: p.x, y: p.y, width: 0, height: 0 });
+  }
+  return unionRects(rects);
+}
+
 function symbolRect(sym: PreviewSymbol): V3Rect {
   const def = SYMBOL_DEFS[sym.symbolId];
   return { x: sym.x, y: sym.y, width: def.width, height: def.height };
@@ -3043,6 +3072,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const segmentSpans: SegmentSpanOwnerInput[] = [];
   const segmentLaterals: SegmentLateralOwnerInput[] = [];
   const stationNameBands: StationNameBandOwnerInput[] = [];
+  /** Decyzja A karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obwiednie rysunku stacji SN/nN. */
+  const obrysyStacji: ObrysStacji[] = [];
   const portCaptions: PortCaptionOwnerInput[] = [];
   const simpleAnchored: SimpleAnchoredOwnerInput[] = [];
   // §16-v3: etykiety „koniec otwarty" biegów otwartych — konstruowane WPROST
@@ -3082,11 +3113,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       points: tickPoints,
       meta: { kind: 'openTerminal', ownerRef: `${lastSegmentRef}#open-terminal` },
     });
-    if (withLabel && odcinkiOtwarte.has(lastSegmentRef)) {
+    if (withLabel) {
       // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: koniec bez stacji odbiorczej to
       // jawny BRAK MODELU, nie ozdobnik L2 — podpis od L1 mówi, czego brakuje,
       // a trafienie (`segment-endpoint` → odcinek) otwiera menu odcinka z akcją
-      // naprawy „Zakończ odcinek stacją SN/nN" (`SldCommandService`).
+      // naprawy „Zakończ odcinek stacją SN/nN" (`SldCommandService`). Slot podpisu
+      // powstaje przy KAŻDYM słupku; rozstrzygnięcie treści zapada w sekcji 6c, gdy
+      // znane są powiązania: koniec zamknięty powiązaniem dostaje odsyłacz
+      // „powiązanie", koniec z predykatu gotowości (`odcinkiOtwarte`) — „koniec
+      // otwarty", każdy inny słupek — brak podpisu.
       const text = OPEN_TERMINAL_LABEL_TEXT;
       const labelClass = 't4' as const;
       const width = measureLabelWidth(text, labelClass);
@@ -3345,14 +3380,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   let mainLayout: RowLayout | null = sheetRowLayouts[0] ?? null;
 
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --
-  /** Kompozycja RENDEROWANA GPZ — `null` na L0 (KD-5: blok GPZ jest tam
-   *  ZWINIĘTY, patrz sekcja 4 niżej). */
+  /** Kompozycja RENDEROWANA GPZ — ta sama na każdym LOD (karta
+   *  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA; różni się wyłącznie szczegółem adnotacji). */
   let gpzComposition: GpzComposition | null = null;
   /** KD-5: kompozycja GEOMETRYCZNA GPZ — ZAWSZE pełny szczegół, NIEZALEŻNIE od
    *  poziomu renderu. Wszystkie wyprowadzenia geometrii świata (offsety
    *  magistrali `mainRowDx`/`mainRowDy`, port zaczepu magistrali, objazd rynną,
    *  porty pól feederowych, rama strefy) czytają TĘ kompozycję — dzięki temu
-   *  zwinięcie bloku na L0 NIE przesuwa magistrali ani stacji („zoom = skala
+   *  zmiana szczegółu adnotacji NIE przesuwa magistrali ani stacji („zoom = skala
    *  szczegółu, nie przemeblowanie", SCHEMAT-10 S1 / V12K-135, ta sama zasada
    *  co dla stacji: `buildRowLayout` liczy kolumny zawsze przy L2). Dla L1/L2
    *  jest to DOKŁADNIE ta sama geometria co `gpzComposition` (różnica wyłącznie
@@ -3673,6 +3708,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
+      obrysyStacji.push({ stationRef: measureInput.id, rect: composed.obrys });
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
       // Punkt NO stacji: symbol `noPoint` na osi szyny — ta sama kotwica na wszystkich LOD
@@ -4406,6 +4442,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         allSymbols.push(...composed.symbols);
         allSegments.push(...composed.segments);
         stationNameBands.push(composed.stationNameOwner);
+        obrysyStacji.push({ stationRef: measureInput.id, rect: composed.obrys });
         portCaptions.push(...composed.portCaptionOwners);
         simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
         // Punkt NO: symbol na każdym LOD, podpis „NO" od L1 (patrz ciąg główny wyżej).
@@ -4763,6 +4800,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
+      obrysyStacji.push({ stationRef: measureInput.id, rect: composed.obrys });
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
       // Punkt NO: symbol na każdym LOD, podpis „NO" od L1 (patrz ciąg główny).
@@ -5087,19 +5125,29 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // Koniec zamknięty powiązaniem: etykieta „koniec otwarty" staje się odsyłaczem
     // powiązania (ten sam slot, krótszy tekst — zero nowych kolizji), z refem
     // POWIĄZANIA (klik prowadzi do odcinka, który ten koniec zamyka).
-    for (let i = 0; i < openTerminalLabels.length; i++) {
-      const etykieta = openTerminalLabels[i];
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: podpis „koniec otwarty" zostaje WYŁĄCZNIE przy
+    // odcinkach z predykatu gotowości (`odcinkiOtwarte`, ten sam zbiór co W065/W066).
+    const rozstrzygniete: OwnedLabel[] = [];
+    for (const etykieta of openTerminalLabels) {
       const ref = etykieta.ownerRef.replace(/#open-terminal-label$/, '');
+      if (ref === etykieta.ownerRef) {
+        rozstrzygniete.push(etykieta);
+        continue;
+      }
       const powiazanie = toru.zamknieteKonceOdcinkow.get(ref);
-      if (powiazanie == null || ref === etykieta.ownerRef) continue;
-      const text = 'powiązanie';
-      openTerminalLabels[i] = {
-        ...etykieta,
-        ownerRef: `${powiazanie}#powiazanie-label-${ref}`,
-        text,
-        rect: { ...etykieta.rect, width: measureLabelWidth(text, etykieta.labelClass) },
-      };
+      if (powiazanie != null) {
+        const text = 'powiązanie';
+        rozstrzygniete.push({
+          ...etykieta,
+          ownerRef: `${powiazanie}#powiazanie-label-${ref}`,
+          text,
+          rect: { ...etykieta.rect, width: measureLabelWidth(text, etykieta.labelClass) },
+        });
+      } else if (odcinkiOtwarte.has(ref)) {
+        rozstrzygniete.push(etykieta);
+      }
     }
+    openTerminalLabels.splice(0, openTerminalLabels.length, ...rozstrzygniete);
   }
 
   // F9.4 (runda korekcyjna, F-1.3, spec §13.1): DER/źródło, którego
@@ -5132,9 +5180,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   //      rysowane na każdym poziomie, więc symbol też);
   //  (2) NOP na łączniku narysowanym symbolem na tym poziomie — symbol `noPoint`
   //      tuż za symbolem łącznika (łącznik zostaje widoczny w stanie otwartym);
-  //  (3) łącznik niewidoczny na tym poziomie (L0 — stacja zwinięta) — symbol
-  //      `noPoint` przy prawym górnym narożniku bloku stacji, która go zawiera
-  //      (przynależność z rekordu stacji `bus_refs`, bez przeszukiwania grafu).
+  //  (dawny przypadek (3) — łącznik w stacji zwiniętej na L0 — skasowany z blokiem
+  //   zwiniętym: karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA rysuje łączniki na każdym LOD).
   // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). Łącznik w polu stacji, którą
   // adapter oznaczył znacznikiem NO (`isNop`), zostaje przy reprezentacji stacji
   // (symbol L1/L2, znacznik glifu L0) — bez drugiego symbolu z tej sekcji.
@@ -5143,8 +5190,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (lustro `enm.topology.punkty_podzialu`); dawne `Corridor.no_point_ref` skasowane.
   const refyNop = punktyPodzialu(snapshot).map((g) => g.ref_id);
   if (refyNop.length > 0) {
-    const stacjaSzynyNop = new Map<string, string>();
-    for (const st of snapshot.substations ?? []) for (const bus of st.bus_refs ?? []) stacjaSzynyNop.set(bus, st.ref_id);
     const galezNop = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
     // Jeden punkt podziału = jedna reprezentacja. Adapter wyprowadza z TEGO SAMEGO
     // łącznika znacznik NO stacji (`isNop`, GS-1: glif L0, symbol + „NO" L1/L2), gdy
@@ -5192,19 +5237,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           podpisNad = true;
         }
       }
-      // (3) łącznik w stacji zwiniętej
-      if (!kotwica) {
-        const galaz = galezNop.get(nopRef);
-        const stacja = galaz ? stacjaSzynyNop.get(galaz.from_bus_ref) ?? stacjaSzynyNop.get(galaz.to_bus_ref) : undefined;
-        const blok = stacja ? allSymbols.find((s) => s.meta?.ownerRef === stacja) : undefined;
-        if (blok) {
-          const r = symbolRect(blok);
-          kotwica = { x: r.x + r.width + NO_POINT_SIZE / 2 + GRID / 2, y: r.y - NO_POINT_SIZE / 2 };
-        }
-      }
       if (!kotwica) {
         stopNotes.push(
-          `Punkt normalnie otwarty „${nopRef}" (łącznik z pozycją normalną „otwarty”) nie wskazuje ani odcinka, ani łącznika, ani stacji narysowanej na tym poziomie szczegółu — symbol NO pominięty.`,
+          `Punkt normalnie otwarty „${nopRef}" (łącznik z pozycją normalną „otwarty”) nie wskazuje ani odcinka, ani łącznika narysowanego na scenie — symbol NO pominięty.`,
         );
         continue;
       }
@@ -5459,7 +5494,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
     // KD-5: rama strefy jest własnością ŚWIATA (nie renderu) — czytana z
     // kompozycji GEOMETRYCZNEJ, więc obszar GPZ i bbox sceny są takie same na
-    // każdym LOD (zwinięcie nie przesuwa arkusza ani kamery).
+    // każdym LOD (zmiana poziomu nie przesuwa arkusza ani kamery).
     ...(gpzGeometry?.zone ? [gpzGeometry.zone] : []),
   ]);
 
@@ -5493,8 +5528,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       lod,
       stationCount,
       gpzId: gpzData?.id ?? null,
-      // KD-5: `parityKeys` opisuje ELEMENTY FAKTYCZNIE NARYSOWANE — na L0 blok
-      // jest zwinięty, więc kluczy pól GPZ na scenie nie ma (uczciwie puste).
+      // KD-5: `parityKeys` opisuje ELEMENTY FAKTYCZNIE NARYSOWANE — kompozycja GPZ
+      // jest rysowana na każdym LOD, więc klucze pól GPZ są na każdym poziomie.
       // Reszta meta GPZ (braki danych, sekcje, transformatory, strefa, nota
       // punktu neutralnego) opisuje MODEL, nie render — czytana z kompozycji
       // geometrycznej, identyczna na każdym LOD.
@@ -5521,6 +5556,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stopNotes,
       sources: allSources,
       gpzZone: gpzGeometry?.zone ?? null,
+      stationOutlines: [...obrysyStacji].sort((a, b) => (a.stationRef < b.stationRef ? -1 : a.stationRef > b.stationRef ? 1 : 0)),
       gpzAdnotacje: gpzComposition?.adnotacje ?? null,
       neutralEarthingNotePl: gpzGeometry?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),

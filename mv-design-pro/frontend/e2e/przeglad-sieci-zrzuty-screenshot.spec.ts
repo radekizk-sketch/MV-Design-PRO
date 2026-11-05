@@ -178,6 +178,47 @@ async function zmierzKadr(page: Page): Promise<PomiarKadru> {
   }, KANWA);
 }
 
+interface PomiarChromu {
+  readonly kanwa: { w: number; h: number };
+  readonly tresc: { x0: number; y0: number; x1: number; y1: number };
+  readonly chrom: Array<{ id: string; x0: number; y0: number; x1: number; y1: number }>;
+}
+
+/**
+ * Wyrocznia (h) karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obrys treści (suma prostokątów
+ * uchwytów trafienia, BEZ przycinania do kanwy) i prostokąty chromu kanwy — pierwszy
+ * element każdej grupy pasa narzędzi (`[data-toolbar-group]`) oraz przyciski doków
+ * dolnych. Prostokąty w układzie kanwy (px ekranu).
+ */
+async function zmierzChrom(page: Page): Promise<PomiarChromu> {
+  return page.evaluate((selektor) => {
+    const svg = document.querySelector(selektor) as SVGSVGElement;
+    const k = svg.getBoundingClientRect();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const el of svg.querySelectorAll('[data-hit-klasa]')) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      x0 = Math.min(x0, r.left - k.left);
+      y0 = Math.min(y0, r.top - k.top);
+      x1 = Math.max(x1, r.right - k.left);
+      y1 = Math.max(y1, r.bottom - k.top);
+    }
+    const chrom: Array<{ id: string; x0: number; y0: number; x1: number; y1: number }> = [];
+    const dodaj = (id: string, el: Element | null): void => {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return;
+      chrom.push({ id, x0: r.left - k.left, y0: r.top - k.top, x1: r.right - k.left, y1: r.bottom - k.top });
+    };
+    for (const grupa of document.querySelectorAll('[data-testid="sld-v3-toolbar"] > [data-toolbar-group]')) {
+      dodaj(`pasek:${grupa.getAttribute('data-toolbar-group')}`, grupa.firstElementChild);
+    }
+    dodaj('dok:dowody', document.querySelector('[data-testid="sld-v3-proof-packs-toggle"]'));
+    dodaj('dok:warstwy', document.querySelector('[data-testid="sld-v3-layer-panel-toggle"]'));
+    return { kanwa: { w: k.width, h: k.height }, tresc: { x0, y0, x1, y1 }, chrom };
+  }, KANWA);
+}
+
 async function motywBiezacy(page: Page): Promise<'jasny' | 'ciemny'> {
   const t = await page.evaluate(() => document.documentElement.getAttribute('data-theme') ?? '');
   return t.includes('dark') ? 'ciemny' : 'jasny';
@@ -208,6 +249,25 @@ test('przegląd sieci — GPZ z 4 polami i magistrala: widok startowy i „Dopas
   }
   console.log(`[przeglad-sieci] pomiary kadrów: ${JSON.stringify(pomiary)}`);
   if (TYLKO_ZRZUTY) return;
+
+  // Wyrocznia (h): po „Dopasuj widok" obrys treści nie przecina chromu kanwy na dwóch
+  // rozmiarach okna. Chrom ma wysokość rzędu doku (28 px, `TOOLBAR_ROW_HEIGHT_PX`), na
+  // której kamera liczy pas zasłonięty — wyższa grupa (dawna paleta PV/BESS/FW, ok. 37 px)
+  // wchodziła pod kadr.
+  for (const okno of [{ width: 1280, height: 800 }, { width: 1920, height: 1080 }]) {
+    await page.setViewportSize(okno);
+    await page.waitForTimeout(600);
+    await page.getByTestId('sld-v3-fit-view').click();
+    await page.waitForTimeout(1200);
+    const c = await zmierzChrom(page);
+    console.log(`[przeglad-sieci] chrom ${okno.width}×${okno.height}: ${JSON.stringify(c)}`);
+    expect(c.chrom.length, `${okno.width}×${okno.height}: znaleziono chrom kanwy`).toBeGreaterThanOrEqual(3);
+    for (const r of c.chrom) {
+      expect(r.y1 - r.y0, `${okno.width}×${okno.height} ${r.id}: wysokość ≤ rząd doku`).toBeLessThanOrEqual(28.5);
+      const przecina = c.tresc.x0 < r.x1 && r.x0 < c.tresc.x1 && c.tresc.y0 < r.y1 && r.y0 < c.tresc.y1;
+      expect(przecina, `${okno.width}×${okno.height}: treść ${JSON.stringify(c.tresc)} przecina ${JSON.stringify(r)}`).toBe(false);
+    }
+  }
   for (const [kadr, p] of Object.entries(pomiary)) {
     expect(p.zwiniete, `${kadr}: symbol zwinięty GPZ/stacji`).toBe(0);
     expect(p.lod, `${kadr}: mały model na poziomie szczegółu ≥ L1`).toBeGreaterThanOrEqual(1);

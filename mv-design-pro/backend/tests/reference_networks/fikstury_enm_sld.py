@@ -738,7 +738,14 @@ def _przeglad_sieci(
 SCENY_PRZEGLADU: tuple[tuple[str, str, int, int, int, bool], ...] = (
     ("przegladGpz1s1p0st", "Przegląd — GPZ 1 pole, magistrala bez stacji", 1, 1, 0, False),
     ("przegladGpz1s2p1st", "Przegląd — GPZ 2 pola, magistrala z jedną stacją", 1, 2, 1, False),
-    ("przegladGpz2s2p0st", "Przegląd — GPZ 2 sekcje × 2 pola, magistrala bez stacji", 2, 2, 0, False),
+    (
+        "przegladGpz2s2p0st",
+        "Przegląd — GPZ 2 sekcje × 2 pola, magistrala bez stacji",
+        2,
+        2,
+        0,
+        False,
+    ),
     (
         "przegladGpz2s2p3stOdg",
         "Przegląd — GPZ 2 sekcje × 2 pola, magistrala z trzema stacjami i odgałęzienie",

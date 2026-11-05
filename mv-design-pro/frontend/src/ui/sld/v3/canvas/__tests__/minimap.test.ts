@@ -13,6 +13,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
+import { prostokatObrysuStacji, stacjeSceny } from '../hitAreas';
 import type { V3Rect } from '../../core/grid';
 import {
   MINIMAP_MAX_HEIGHT,
@@ -69,12 +70,20 @@ describe('K11-B — projekcja minimapy', () => {
     const shapes = minimapShapesOf(sceneL0, projection);
     const segmenty = sceneL0.segments.filter((s) => s.points.length >= 2).length;
     const symbole = sceneL0.symbols.length;
-    expect(shapes.length).toBe(segmenty + symbole);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: stacja nie ma symbolu zbiorczego — klasa
+    // „station" to obrysy stacji ze sceny (`stacjeSceny`: rama GPZ + 53 stacje SN), ten
+    // sam obrys co uchwyt stacji na kanwie; nic poza scenę.
+    const stacje = stacjeSceny(sceneL0.meta);
+    expect(stacje.length).toBe(54);
+    expect(shapes.length).toBe(segmenty + symbole + stacje.length);
     expect(shapes.filter((s) => 'points' in s).length).toBe(segmenty);
-    // KD-5: klasa „station" obejmuje TERAZ także zwinięty blok GPZ (stacja
-    // zasilająca) — nawigator klasyfikuje go tak samo jak stacje SN.
-    expect(shapes.filter((s) => s.kind === 'station').length).toBe(
-      sceneL0.symbols.filter((s) => s.symbolId === 'stationCollapsed' || s.symbolId === 'gpzCollapsed').length,
+    const obrysy = shapes.filter((s) => s.kind === 'station');
+    expect(obrysy.length).toBe(stacje.length);
+    // Para z uchwytem kanwy: ten sam prostokąt (po rzutowaniu).
+    const r0 = prostokatObrysuStacji(stacje[0]!);
+    expect((obrysy[0] as { rect: { width: number } }).rect.width).toBeCloseTo(
+      Math.max(1.5, r0.width * projection.scale),
+      9,
     );
   });
 
@@ -126,25 +135,19 @@ describe('K11-B — prostokąt kadru i odwzorowanie odwrotne', () => {
   });
 
   it('MOSTEK LOD: kadr z innego świata mapuje się przez proporcje bboxów (i wraca)', () => {
-    // Światy L0 i L2 sieci referencyjnej mają tę samą szerokość, ale RÓŻNE
-    // wysokości — dokładnie przypadek, dla którego istnieje normalizacja.
-    expect(sceneL0.bbox.height).not.toBe(sceneL2.bbox.height);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: na sieci referencyjnej światy L0 i L2 mają
+    // dziś TEN SAM prostokąt (jedna kompozycja, pomiar 5846 j.św. wysokości na obu), więc
+    // normalizację ćwiczy świat o innej wysokości — taki powstaje, gdy etykiety szczegółu
+    // L2 wychodzą poza rysunek. Intencja bez zmian: środek obcego świata trafia w środek
+    // panelu, a odwrotność wraca do świata AKTYWNEGO LOD.
+    const swiatL2 = { ...sceneL2.bbox, height: sceneL2.bbox.height * 1.25 };
+    expect(sceneL0.bbox.height).not.toBe(swiatL2.height);
     const projection = minimapProjectionOf(sceneL0.bbox)!;
-    const srodekL2 = {
-      x: sceneL2.bbox.x + sceneL2.bbox.width / 2,
-      y: sceneL2.bbox.y + sceneL2.bbox.height / 2,
-    };
-    const frame = worldRectToMinimap(
-      { x: srodekL2.x, y: srodekL2.y, width: 0, height: 0 },
-      sceneL2.bbox,
-      projection,
-    );
-    // Środek świata L2 musi wypaść na środku treści panelu (proporcja 0,5).
+    const srodekL2 = { x: swiatL2.x + swiatL2.width / 2, y: swiatL2.y + swiatL2.height / 2 };
+    const frame = worldRectToMinimap({ x: srodekL2.x, y: srodekL2.y, width: 0, height: 0 }, swiatL2, projection);
     expect(frame.x).toBeCloseTo(projection.offsetX + (sceneL0.bbox.width * projection.scale) / 2, 6);
     expect(frame.y).toBeCloseTo(projection.offsetY + (sceneL0.bbox.height * projection.scale) / 2, 6);
-    // …i odwrotność wraca do świata L2, nie L0 (nawigator oddaje współrzędną
-    // w świecie AKTYWNEGO LOD — tego, w którym kamera liczy viewBox).
-    const back = minimapPointToWorld({ x: frame.x, y: frame.y }, sceneL2.bbox, projection);
+    const back = minimapPointToWorld({ x: frame.x, y: frame.y }, swiatL2, projection);
     expect(back.x).toBeCloseTo(srodekL2.x, 6);
     expect(back.y).toBeCloseTo(srodekL2.y, 6);
   });

@@ -49,7 +49,11 @@ function rectAround(centerX: number, centerY: number, halfSize: number): LassoRe
 describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po SYMBOL_DEFS)', () => {
   it('trafia symbol, którego środek bboxa (world) wpada w rect (IDENTITY_TRANSFORM ⇒ world===screen)', () => {
     const scene = buildSceneV3(enm, 0);
-    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'station');
+    // JEDNA KOMPOZYCJA (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): L0 nie niesie już
+    // zwiniętego symbolu stacji — rysuje te same aparaty co L1. Intencja testu
+    // (lasso trafia symbol z tożsamością domenową) ćwiczona na pierwszym
+    // aparacie z ownerRef + elementKind.
+    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind);
     expect(target).toBeTruthy();
     const def = SYMBOL_DEFS[target!.symbolId];
     const centerX = target!.x + def.width / 2;
@@ -57,7 +61,7 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
 
     const hits = symbolsInLassoRect(scene, rectAround(centerX, centerY, 4), IDENTITY_TRANSFORM);
 
-    expect(hits.some((h) => h.ownerRef === target!.meta!.ownerRef && h.elementKind === 'station')).toBe(true);
+    expect(hits.some((h) => h.ownerRef === target!.meta!.ownerRef && h.elementKind === target!.meta!.elementKind)).toBe(true);
   });
 
   it('NIE trafia symboli spoza rect', () => {
@@ -100,7 +104,11 @@ describe('symbolsInLassoRect — F12-B pkt 5: hit-test czysty (worldToScreen po 
 
   it('respektuje transform (scale+translate) — worldToScreen mapuje world→screen przed testem trafienia', () => {
     const scene = buildSceneV3(enm, 0);
-    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind === 'station');
+    // JEDNA KOMPOZYCJA (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): L0 nie niesie już
+    // zwiniętego symbolu stacji — rysuje te same aparaty co L1. Intencja testu
+    // (lasso trafia symbol z tożsamością domenową) ćwiczona na pierwszym
+    // aparacie z ownerRef + elementKind.
+    const target = scene.symbols.find((s) => s.meta?.ownerRef && s.meta.elementKind);
     expect(target).toBeTruthy();
     const def = SYMBOL_DEFS[target!.symbolId];
     const worldCenterX = target!.x + def.width / 2;

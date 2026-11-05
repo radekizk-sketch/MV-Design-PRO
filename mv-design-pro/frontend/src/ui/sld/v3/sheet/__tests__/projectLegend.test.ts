@@ -75,14 +75,16 @@ describe('computeProjectLegendEntries — zero fabrykacji (K12 §0.3)', () => {
     expect(entries.find((e) => e.id === 'loadArrow')?.labelPl).toBe('Odbiór (zagregowany)');
   });
 
-  it('symbol POZA historycznym kuratorem 12 pozycji (np. derPv/junction/stationCollapsed) MA wpis — pełne pokrycie, nie tylko dawny kurator', () => {
+  it('symbol POZA historycznym kuratorem 12 pozycji (np. derPv/junction/bayNoEquipment) MA wpis — pełne pokrycie, nie tylko dawny kurator', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: `stationCollapsed` skasowany z biblioteki —
+    // intencja (symbol spoza kuratora ma wpis) ćwiczona na sylwetce pola bez wyposażenia.
     const scene = makeScene({
-      symbols: [{ symbolId: 'derPv' }, { symbolId: 'junction' }, { symbolId: 'stationCollapsed' }],
+      symbols: [{ symbolId: 'derPv' }, { symbolId: 'junction' }, { symbolId: 'bayNoEquipment' }],
     });
     const ids = computeProjectLegendEntries(scene).map((e) => e.id);
     expect(ids).toContain('derPv');
     expect(ids).toContain('junction');
-    expect(ids).toContain('stationCollapsed');
+    expect(ids).toContain('bayNoEquipment');
   });
 
   it('kolejność wpisów symboli jest DETERMINISTYCZNA (kolejność SYMBOL_DEFS), niezależna od kolejności w scenie', () => {

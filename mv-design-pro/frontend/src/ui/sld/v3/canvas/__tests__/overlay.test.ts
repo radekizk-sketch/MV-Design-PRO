@@ -357,13 +357,12 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
         }
       }
     }
-    // Geometria stacji: na L0 KAŻDA stacja ma dokładnie jeden symbol
-    // `stationCollapsed` z `ownerRef = station id` — kotwica pozycji X.
+    // Geometria stacji: karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała symbol zbiorczy
+    // `stationCollapsed`; kotwicą pozycji X stacji jest środek jej obrysu
+    // (`meta.stationOutlines`, ten sam obrys co uchwyt stacji) — na KAŻDYM LOD.
     const scene0 = buildSceneV3(enm, 0);
     const stationX = new Map<string, number>();
-    for (const s of scene0.symbols) {
-      if (s.symbolId === 'stationCollapsed' && s.meta?.ownerRef) stationX.set(s.meta.ownerRef, s.x);
-    }
+    for (const o of scene0.meta.stationOutlines ?? []) stationX.set(o.stationRef, o.rect.x + o.rect.width / 2);
     let checked = 0;
     for (const seg of scene0.segments) {
       const ref = seg.meta?.ownerRef;
@@ -372,7 +371,7 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
       if (!terminals) continue; // wielokawałkowe — poza bramką, bez strzałki
       const fromX = stationX.get(terminals.fromRef);
       const toX = stationX.get(terminals.toRef);
-      if (fromX === undefined || toX === undefined) continue; // GPZ (brak stationCollapsed)
+      if (fromX === undefined || toX === undefined) continue; // GPZ (rama strefy, nie obrys stacji SN)
       const p0 = seg.points[0];
       const pLast = seg.points[seg.points.length - 1];
       // points[0] leży BLIŻEJ stacji fromTerminal niż stacji toTerminal —

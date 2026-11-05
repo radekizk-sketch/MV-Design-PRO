@@ -26,6 +26,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import {
+  OPEN_TERMINAL_LABEL_TEXT,
   allBusbarLabelsValid,
   allEarthSwitchesLateral,
   allPathTerminationsLabeled,
@@ -169,36 +170,23 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
         // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
         // kropkę węzłową `junction` w scenie produkcyjnej.
-        // KD-5: odczep lateralny jest cechą ROZWINIĘTEGO pola — na L0 pól nie
-        // ma ANI w stacjach (mini-RMU), ANI w GPZ (blok zwinięty), więc kropek
-        // lateralnych na L0 nie ma i mieć nie może (kropka bez pola byłaby
-        // wskazaniem węzła, którego rysunek nie pokazuje). Intencja testu —
-        // „kropka wyłącznie na REALNYM węźle, obustronna spójność" — bez zmian:
-        // na L0 dowodzimy zera, na L1/L2 obecności.
+        // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: pola stacji i GPZ są rysowane na KAŻDYM LOD
+        // (dawniej L0 zwijał je do mini-RMU i bloku GPZ, więc kropek lateralnych na L0 nie
+        // było — test przypinał zero). Odczep pola jest kształtem, nie szczegółem, więc kropki
+        // lateralne istnieją na L0 tak samo jak na L1/L2. Intencja testu — „kropka wyłącznie
+        // na REALNYM węźle, obustronna spójność" — bez zmian.
         const lateralDots = scene.symbols.filter((s) =>
           String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
         );
-        if (lod === 0) expect(lateralDots.length).toBe(0);
-        else expect(lateralDots.length).toBeGreaterThan(0);
+        expect(lateralDots.length).toBeGreaterThan(0);
         // Obustronna spójność kropka⇔węzeł (tee + lateral):
         expect(noBranchWithoutAccent(scene)).toBe(true);
       });
 
       it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
-        if (lod === 0) {
-          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic).
-          // KD-5: blok GPZ jest na L0 ZWINIĘTY (dawniej renderował pełny detal
-          // na każdym LOD, stąd poprzednia treść tej gałęzi), więc jego głowica
-          // kablowa też nie istnieje — na L0 nie ma ŻADNEJ głowicy. Intencja
-          // testu (zbiór głowic NIEOSIĄGNIĘTYCH trasą jest pusty) obowiązuje
-          // dalej i jest tu spełniona w sposób mocniejszy: nie ma czego nie
-          // osiągnąć. Ciągłość toru źródło→magistrala na L0 dowodzi osobno
-          // `lodContinuity.test.ts` (aparat pola odejściowego + tor).
-          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(false);
-          expect(fieldEntryConnectionsReachCableHead(scene)).toEqual([]);
-          expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
-          return;
-        }
+        // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawna gałąź L0 („brak głowic, symbol zbiorczy")
+        // skasowana — L0 rysuje głowice kablowe pól tak jak L1/L2, więc kontrakt POŁĄCZENIA
+        // obowiązuje na każdym poziomie.
         expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
         const unreached = fieldEntryConnectionsReachCableHead(scene);
         // DECYZJA (F9.3 FIX-1, patrz docstring `fieldEntryConnectionsReachCableHead`):
@@ -281,28 +269,24 @@ describe('buildSceneV3 — determinizm (ta sama sieć musi dawać identyczny wyn
 });
 
 describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
-  it('LOD 0: stacje jako symbol zbiorczy (junction), brak etykiet segmentów/podpisów kierunku', () => {
+  it('LOD 0: JEDNA KOMPOZYCJA — te same symbole i odcinki toru co L1, brak etykiet segmentów/podpisów kierunku', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawniej L0 rysował każdą stację symbolem
+    // zbiorczym `stationCollapsed` (53 na fiksturze). Kanon: JEDNA kompozycja na każdym LOD —
+    // oddalenie zdejmuje SZCZEGÓŁ (opisy), kształt (aparaty, szyny, tory) zostaje. Intencja
+    // testu („L0 nie niesie opisów segmentów ani podpisów kierunku pól") bez zmian; kontrast
+    // „symbol zbiorczy zamiast aparatów" zastąpiony dowodem tożsamości kształtu z L1.
     const scene = buildSceneV3(enm, 0);
     const counts = labelOwnerKindCounts(scene);
     expect(counts['segment-span'] ?? 0).toBe(0);
     expect(counts['segment-lateral'] ?? 0).toBe(0);
     expect(counts['port-caption'] ?? 0).toBe(0);
-    // Każda z 53 stacji ma DOKŁADNIE jeden symbol 'stationCollapsed' (F6b:
-    // dedykowany symbol zbiorczy stacji L0, kontur kwadratu — spłata
-    // STOP-notatki F6a; wcześniej placeholder `junction`, patrz nagłówek
-    // `buildScene.ts`).
-    const collapsedSymbols = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(collapsedSymbols.length).toBe(EXPECTED_STATION_COUNT);
-    // 'junction' pozostaje WYŁĄCZNIE węzłem T tras — NIE stacją. Od S7-P2
-    // (V12K-137) węzeł T zejścia lateralu z kablem poziomym (Rodzina B na L0)
-    // materializuje kropkę `junction`; sprawdzamy więc, że ŻADNA kropka nie
-    // pokrywa się z pozycją stacji zbiorczej (kropki to węzły tras, stacje to
-    // `stationCollapsed`), zamiast dawnego „0 kropek w ogóle".
-    const collapsedKeys = new Set(collapsedSymbols.map((s) => `${s.x},${s.y}`));
-    const junctionOnStation = scene.symbols.some(
-      (s) => s.symbolId === 'junction' && collapsedKeys.has(`${s.x},${s.y}`),
-    );
-    expect(junctionOnStation).toBe(false);
+    const sceneL1 = buildSceneV3(enm, 1);
+    expect(scene.symbols.map((s) => s.symbolId)).toEqual(sceneL1.symbols.map((s) => s.symbolId));
+    expect(scene.segments.length).toBe(sceneL1.segments.length);
+    // Stacja nie ma na żadnym LOD symbolu, którego ownerRef = ref stacji z rodzajem „station"
+    // (uchwytem stacji jest jej obrys — `meta.stationOutlines`, po jednym na stację).
+    expect(scene.symbols.some((s) => s.meta?.elementKind === 'station')).toBe(false);
+    expect(scene.meta.stationOutlines?.length).toBe(EXPECTED_STATION_COUNT);
   });
 
   it('LOD 1: pełne symbole stacji, ale zero etykiet segmentów i zero podpisów kierunku', () => {
@@ -311,9 +295,9 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     expect(counts['segment-span'] ?? 0).toBe(0);
     expect(counts['segment-lateral'] ?? 0).toBe(0);
     expect(counts['port-caption'] ?? 0).toBe(0);
-    // Pełne symbole (composeStation/composeGpz) — realne aparaty, NIE
-    // placeholder zbiorczy 'stationCollapsed' (kontrast z LOD 0).
-    expect(scene.symbols.some((s) => s.symbolId === 'stationCollapsed')).toBe(false);
+    // Pełne symbole (composeStation/composeGpz) — realne aparaty; żaden symbol nie jest
+    // obiektem „stacja" (zwinięty blok stacji skasowano, uchwytem jest obrys strefy).
+    expect(scene.symbols.some((s) => s.meta?.elementKind === 'station')).toBe(false);
     expect(scene.symbols.length).toBeGreaterThan(200);
     // Nazwy/kVA/typ stacji (pasmo B5) SĄ obecne na L1 (kontrast z brakiem
     // etykiet segmentów/podpisów kierunku powyżej).
@@ -402,10 +386,10 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
       expect(a2.has(ref), `kotwica ${ref} obecna na L0, brak na L2`).toBe(true);
     }
     const brakNaL0 = [...a1.keys()].filter((ref) => !a0.has(ref)).sort();
-    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 2 na fixturze:
-    // tabliczka TR i tabliczka źródła systemowego.
-    expect(brakNaL0.every((ref) => ref.startsWith('gpz/')), `nie-GPZ pasmo zgubione na L0: ${brakNaL0.join(', ')}`).toBe(true);
-    expect(brakNaL0.length).toBe(2);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: blok GPZ nie zwija się na L0, więc pasma nazw
+    // elementów GPZ (tabliczka TR, tabliczka źródła systemowego) istnieją na każdym LOD —
+    // dawne „dokładnie 2 pasma GPZ brak na L0" zastąpione „żadne pasmo nie ginie".
+    expect(brakNaL0, `pasma zgubione na L0: ${brakNaL0.join(', ')}`).toEqual([]);
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       const pos1 = a1.get(ref);
@@ -601,7 +585,7 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     return { enm: zPunktemPodzialuWStacji(enm, targetStationRef), targetStationRef };
   }
 
-  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, reszta→apparatus', () => {
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), lvPortal→lvPortal, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
     expect(byKind.get('gridSource')).toBe('source');
@@ -616,33 +600,35 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         s.symbolId !== 'transformer2W' &&
         !s.symbolId.startsWith('der') &&
         s.symbolId !== 'gridSource' &&
-        s.symbolId !== 'stationCollapsed' &&
         s.symbolId !== 'lvPortal',
     );
     expect(nonSpecial.length).toBeGreaterThan(0);
     expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
   });
 
-  it('L0: stationCollapsed niesie ownerRef=station id + elementKind=station', () => {
-    const scene0 = buildSceneV3(enm, 0);
-    const stationSymbols = scene0.symbols.filter((s) => s.symbolId === 'stationCollapsed');
-    expect(stationSymbols.length).toBeGreaterThan(0);
-    for (const s of stationSymbols) {
-      expect(s.meta?.elementKind).toBe('station');
-      expect(s.meta?.ownerRef).toBeTruthy();
-      // testId ma postać `sld-v3-l0-${ownerRef}` z konstrukcji.
-      expect(s.meta?.testId).toBe(`sld-v3-l0-${s.meta?.ownerRef}`);
+  it('L0/L1/L2: uchwyt stacji = obrys rysunku stacji (meta.stationOutlines) — ref stacji, obrys obejmuje jej symbole', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (decyzja A): dawny symbol `stationCollapsed` niósł
+    // `ownerRef`=ref stacji i `elementKind: 'station'` — fundament selekcji stacji na L0. Po
+    // skasowaniu bloku zwiniętego tożsamość stacji niesie OBRYS jej rysunku. Intencja (stacja
+    // ma na rysunku obiekt z własnym refem na każdym LOD) bez zmian i rozszerzona na L1/L2.
+    for (const lod of [0, 1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      const obrysy = scene.meta.stationOutlines ?? [];
+      expect(obrysy.map((o) => o.stationRef)).toEqual([...scene.meta.drawnStationIds].filter((r) => !r.startsWith('gpz/')));
+      for (const o of obrysy) {
+        expect(o.rect.width, o.stationRef).toBeGreaterThan(0);
+        expect(o.rect.height, o.stationRef).toBeGreaterThan(0);
+      }
     }
   });
 
-  it('L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus; L0 = marker noOpen sylwetki (GS-1)', () => {
-    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2): symbol `noPoint` (16×16 na
-    // osi szyny) to reprezentacja L1/L2. Na L0 (sylwetka mini-RMU 48×48) osobny
-    // noPoint byłby POGRZEBANY w enklozurze — NOP niesie marker `noOpen`
-    // sylwetki (`meta.stationGlyph.noOpen`). TA SAMA kotwica (środek stacji) na
-    // wszystkich LOD (test D7 niżej).
+  it('L0/L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus (jedna kompozycja)', () => {
+    // GS-1 rysował NOP stacji na L0 markerem `noOpen` sylwetki mini-RMU. Karta
+    // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała sylwetkę: symbol `noPoint` na osi szyny jest
+    // tą samą reprezentacją na KAŻDYM LOD. Intencja (NOP stacji ma symbol z tożsamością stacji)
+    // bez zmian, rozszerzona na L0.
     const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
-    for (const lod of [1, 2] as const) {
+    for (const lod of [0, 1, 2] as const) {
       const scene = buildSceneV3(enmWithNop, lod);
       const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
       expect(nopSymbols.length).toBeGreaterThan(0);
@@ -651,20 +637,12 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         expect(s.meta?.ownerRef).toBeTruthy();
         expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
       }
+      expect(scene.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef), `LOD ${lod}`).toBe(true);
     }
-    // L0: brak osobnego noPoint STACJI; NOP stacji w markerze sylwetki stacji
-    // docelowej. (K2b §0.4: fikstura niesie też NOP ŁĄCZNIKA w `Corridor.no_point_ref`
-    // — ten ma własny symbol `noPoint` na każdym poziomie, przy bloku stacji;
-    // asercja zawężona do NOP-stacji, intencja GS-1 bez zmian.)
-    const scene0 = buildSceneV3(enmWithNop, 0);
-    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === targetStationRef)).toBe(false);
-    const nopGlyph = scene0.symbols.find(
-      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef,
-    );
-    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
   });
 
   it('SCHEMAT-10 S3 (V12K-135, D7) + GS-1: KOTWICA znacznika NOP (środek stacji) IDENTYCZNA na L0/L1/L2', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: reprezentacja NOP jest jedna na każdym LOD.
     // Macierz prawdy LOD §3, wiersz „Sekcje/NOP": „znacznik NA torze (kotwica =
     // render szyny TEGO LOD)". Intencja D7 („marker nie dryfuje przy zmianie
     // poziomu") ZACHOWANA pod kanonem GS-1: kotwica = ŚRODEK STACJI (JEDNA
@@ -676,14 +654,8 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     // Środek NOP-a stacji docelowej per LOD (kotwica, niezależnie od symbolu).
     const nopCenter = (lod: SceneLod): string | null => {
       const scene = buildSceneV3(enmWithNop, lod);
-      if (lod === 0) {
-        const g = scene.symbols.find(
-          (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef && s.meta?.stationGlyph?.noOpen,
-        );
-        if (!g) return null;
-        const d = SYMBOL_DEFS.stationCollapsed;
-        return `${g.x + d.width / 2},${g.y + d.height / 2}`;
-      }
+      // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: na L0 ten sam symbol `noPoint` co na L1/L2
+      // (sylwetka mini-RMU z markerem `noOpen` skasowana) — kotwica liczona jedną formułą.
       const s = scene.symbols.find((x) => x.symbolId === 'noPoint' && x.meta?.ownerRef === targetStationRef);
       if (!s) return null;
       const d = SYMBOL_DEFS.noPoint;
@@ -796,16 +768,11 @@ describe('buildSceneV3 — F9.4 runda korekcyjna: sourceCoverageGaps/allSourcesV
     }
   });
 
-  it('L0 (spec §7 — decyzja F9.4: DER od L1): TYLKO external_grid podlega wyroczni, 0 luk (GPZ zawsze renderowany w pełni)', () => {
-    const scene = buildSceneV3(enm, 0);
-    const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
-    expect(derSymbols).toHaveLength(0); // DER faktycznie nieobecne na L0, z konstrukcji.
-    expect(sourceCoverageGaps(scene)).toEqual([]);
-    expect(allSourcesVisible(scene)).toBe(true);
-  });
-
-  it('L1/L2: WSZYSTKIE 21 źródeł (external_grid + 20 DER) mają symbol na scenie, 0 luk', () => {
-    for (const lod of [1, 2] as const) {
+  it('L0/L1/L2: WSZYSTKIE 21 źródeł (external_grid + 20 DER) mają symbol na scenie, 0 luk', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: decyzja F9.4 „DER od L1" skasowana razem z blokiem
+    // zwiniętym — instalacja DER jest kształtem stacji, więc rysuje się na KAŻDYM LOD. Dawny
+    // test „L0: tylko external_grid, 0 DER" zastąpiony pełnym pokryciem źródeł także na L0.
+    for (const lod of [0, 1, 2] as const) {
       const scene = buildSceneV3(enm, lod);
       const derSymbols = scene.symbols.filter((s) => s.meta?.elementKind === 'der');
       expect(derSymbols).toHaveLength(20);
@@ -1276,9 +1243,15 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // Przesunięcie styku członów z obcego przewodu i usunięcie wierzchołków współliniowych
     // (`scene/stykiCzlonow.ts`, `dedupeVertices`) nie zmieniają sumy pionów (suma geometryczna
     // toru ta sama).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21608);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45128);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45128);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (CELOWA aktualizacja baseline): 21608/45128/45128 →
+    // 45112/45112/45112. L0 rysuje tę samą kompozycję co L1/L2 (blok zwinięty skasowany), więc
+    // suma pionów L0 równa się L1/L2 — trzy poziomy, jedna geometria toru. −16 na L1/L2:
+    // sylwetka pola bez wyposażenia ma wysokość kafla aparatu ciągłości (decyzja D, 32 → 48),
+    // a przewody pola z sylwetką skracają się łącznie o 16 (pomiar: stała 32 → 45128,
+    // stała 48 → 45112, reszta kodu identyczna).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(45112);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45112);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45112);
   });
 });
 
@@ -1337,7 +1310,8 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
       'powiązanie',
       'powiązanie',
     ]);
-    expect(openLabels.every((l) => l.text === 'koniec otwarty')).toBe(true);
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: podpis mówi, CZEGO brakuje (OPEN_TERMINAL_LABEL_TEXT).
+    expect(openLabels.every((l) => l.text === OPEN_TERMINAL_LABEL_TEXT)).toBe(true);
     // Wyrocznia §18.6 MUSI dalej gryźć: scena z USUNIĘTYMI ogonami (i ich
     // etykietami) = 13 głowic znowu bez trasy i bez opisu → 13 luk.
     const isOpenRunPiece = (ownerRef: string | undefined) =>
