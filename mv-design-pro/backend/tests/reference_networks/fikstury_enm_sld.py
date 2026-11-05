@@ -31,7 +31,10 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
   odcinkach 1 i 3, element rodzaju ZKSN / słup rozgałęźny / łącznik sekcyjny / węzeł nazwany
-  na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją).
+  na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją);
+* ``przegladGpz<sekcje>s<pola>p<stacje>st[Odg]`` — iloczyn cech przeglądu sieci (karta
+  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): GPZ z 1/2 sekcjami po 1/2/4 pola liniowe, magistrala
+  z 0/1/3 stacjami, odgałęzienie ze stacją (``SCENY_PRZEGLADU``).
 
 GPZ każdej sieci (karta GPZ-MODEL): równoważnik sieci po stronie 110 kV i jeden
 transformator 110/15 kV 25 MVA na wspólnej szynie WN (``KlientBudowy.gpz_110kv(1)``).
@@ -711,6 +714,43 @@ def _elementy_ciagu(b: KlientBudowy, rodzaj: str) -> dict[str, Any]:
     return b.migawka()
 
 
+def _przeglad_sieci(
+    b: KlientBudowy, sekcje: int, pola_na_sekcje: int, stacje: int, odgalezienie: bool
+) -> dict[str, Any]:
+    """Iloczyn cech przeglądu sieci (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): GPZ z `sekcje`
+    sekcjami SN po `pola_na_sekcje` pól liniowych (ładunek kreatora źródła), magistrala z
+    `max(1, stacje)` odcinków i `stacje` stacjami B (0 = odcinek bez stacji odbiorczej, jak
+    na zrzucie oceny właściciela) oraz — gdy `odgalezienie` — odgałęzienie z drugiego pola
+    GPZ ze stacją. Pozostałe pola liniowe zostają bez odejścia (pola rezerwowe)."""
+    b.gpz_110kv(1, sections_count=sekcje, line_fields_per_section=pola_na_sekcje)
+    for indeks in range(max(1, stacje)):
+        b.odcinek_magistrali(300, f"Magistrala {indeks + 1}")
+    odcinki = segmenty_korytarza(b.migawka())
+    for indeks in range(stacje):
+        b.stacja_b(odcinki[indeks], f"Stacja S{indeks + 1:02d}", nn_odplywy=1)
+    if odgalezienie:
+        b.odgalezienie(pole_gpz(b.migawka(), 1), 250)
+        b.stacja_b(segmenty_korytarza(b.migawka(), 1)[0], "Stacja odgałęzienia", nn_odplywy=1)
+    return b.migawka()
+
+
+#: Sceny przeglądu sieci: (plik, nazwa, sekcje, pola na sekcję, stacje magistrali, odgałęzienie).
+SCENY_PRZEGLADU: tuple[tuple[str, str, int, int, int, bool], ...] = (
+    ("przegladGpz1s1p0st", "Przegląd — GPZ 1 pole, magistrala bez stacji", 1, 1, 0, False),
+    ("przegladGpz1s2p1st", "Przegląd — GPZ 2 pola, magistrala z jedną stacją", 1, 2, 1, False),
+    ("przegladGpz2s2p0st", "Przegląd — GPZ 2 sekcje × 2 pola, magistrala bez stacji", 2, 2, 0, False),
+    (
+        "przegladGpz2s2p3stOdg",
+        "Przegląd — GPZ 2 sekcje × 2 pola, magistrala z trzema stacjami i odgałęzienie",
+        2,
+        2,
+        3,
+        True,
+    ),
+    ("przegladGpz1s4p1st", "Przegląd — GPZ 4 pola w jednej sekcji, jedna stacja", 1, 4, 1, False),
+)
+
+
 # --- rejestr plików ---------------------------------------------------------------
 
 #: Sieci budowane jednym torem API: (ścieżki plików, nazwa w nagłówku, budowniczy).
@@ -788,6 +828,12 @@ def render_fikstur_enm_sld() -> dict[str, str]:
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",
         )
+
+        for plik, nazwa, sekcje, pola, stacje, odgalezienie in SCENY_PRZEGLADU:
+            tresci[f"{SCENA}/{plik}.enm.json"] = _plik_enm(
+                _przeglad_sieci(KlientBudowy(klient, nazwa), sekcje, pola, stacje, odgalezienie),
+                nazwa,
+            )
 
         for rodzaj in RODZAJE_ELEMENTOW_CIAGU:
             nazwa = f"Elementy ciągu — {rodzaj}"

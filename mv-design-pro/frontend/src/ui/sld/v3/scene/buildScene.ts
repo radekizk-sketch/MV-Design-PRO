@@ -55,12 +55,14 @@
  * LOD (spec §7): KAŻDY poziom ma WŁASNĄ rezerwację (measure→bands→columns
  * liczone NA NOWO per LOD — bands różnią się wysokością, patrz spec).
  * ---------------------------------------------------------------------------
- *  L0: GPZ blok (pełny) + magistrale/laterale + stacje jako symbol zbiorczy
- *      DEDYKOWANY (`stationCollapsed` 16×16, kontur kwadratu — spłata
- *      STOP-notatki F6a; do F6b placeholder był `junction`, 4-portowy węzeł
- *      kropkowy — teraz `symbols/defs.ts`/`glyphs.tsx` mają odrębny symbol,
- *      patrz REBUILD_PLAN_V3 F6b) + TYLKO kod stacji jako podpis + NO.
- *  L1: pełne symbole (composeStation/composeGpz), nazwy+kVA+typ+NO+DER, BEZ
+ *  JEDNA KOMPOZYCJA na wszystkich LOD (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, dyrektywa
+ *  właściciela „LOD zachowuje kształt i upraszcza szczegół", wzorzec UX04): GPZ i stacje
+ *  rysuje ta sama kompozycja (composeGpz/composeStation) w tych samych pozycjach; LOD
+ *  zmienia wyłącznie szczegół adnotacji i zbiór etykiet.
+ *  L0: kompozycja bez bloku zabezpieczeń, tabliczek przekładników, przekładni i opisów
+ *      aparatów oraz bez oznaczeń pól; zostają nazwy stacji/GPZ, szyny, pola, aparaty
+ *      ciągłości toru, źródła i transformatory.
+ *  L1: L0 + oznaczenia pól i aparatów, nazwy+kVA+typ+NO+DER, okrąg zabezpieczenia, BEZ
  *      etykiet segmentów (typ·przekrój·długość) i BEZ podpisów kierunku pól
  *      (kier./odg.) — `bayDirectionCaptions` i teksty przęseł wyłączone.
  *  L2: wszystko (jak L1 + etykiety segmentów + podpisy kierunku pól).
@@ -118,7 +120,7 @@ import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/gri
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
-import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import { ukladKodowWOkregu } from '../symbols/okragPrzekaznika';
 import {
   classifyRouteNodes,
@@ -171,7 +173,6 @@ import {
   type SegmentSpanOwnerInput,
   type SegmentLateralOwnerInput,
   type StationNameBandOwnerInput,
-  type StationNameBandRow,
   type PortCaptionOwnerInput,
   type SimpleAnchoredOwnerInput,
 } from '../layout/labels';
@@ -191,7 +192,7 @@ import {
   stationBayCaptions,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
-import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
+import { isSourceOperationalState, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { crossingBusGaps, junctionDotGaps, odczepyWezlowModelu, przecieciaBezMostka } from './crossings';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { punktyPodzialu } from '../../../shared/stanLacznika';
@@ -213,10 +214,8 @@ import type {
   PreviewSegment,
   PreviewSegmentKind,
   PreviewSymbol,
-  StationCompactGlyphSummary,
 } from '../compose/preview';
 import { jestZnacznikiemToru } from './znacznikiToru';
-import type { StationDerGlyphKind } from '../symbols/glyphs';
 
 // ---------------------------------------------------------------------------
 // Aliasy typów wyjścia adaptera v2 nienazwanych publicznie (indexed access —
@@ -467,7 +466,6 @@ function obrysPunktuNo(cx: number, cy: number): V3Rect {
     height: SYMBOL_DEFS.noPoint.height,
   };
 }
-const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
 /** F9.3 (spec §14.4): gabaryt akcentu węzła rozgałęzienia — patrz
  *  `symbols/defs.ts` (32×32, 4×GRID, WIĘKSZY niż `junction` bazowy 16×16). */
 
@@ -920,8 +918,7 @@ function splitChainAtBranchPoints(
 /**
  * F8b-1 (fundament B/C): kategoria elementu WYŁĄCZNIE z `symbolId` — mała,
  * zamknięta unia (`PreviewElementKind`, `compose/preview.tsx`). Zastosowana
- * JEDNOLICIE do WSZYSTKICH symboli sceny (stacje L1/L2, L0 `stationCollapsed`,
- * GPZ) — jedna prawda, zero rozjazdu między kontekstami.
+ * JEDNOLICIE do WSZYSTKICH symboli sceny (stacje, GPZ, każdy LOD) — jedna prawda, zero rozjazdu między kontekstami.
  */
 function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   if (symbolId === 'transformer2W') return 'transformer';
@@ -932,9 +929,6 @@ function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   // — nie jest DER, ma własny elementKind `'source'` (spec §13.1/§13.2).
   if (symbolId === 'gridSource') return 'source';
   if (symbolId.startsWith('der')) return 'der';
-  // KD-5: blok GPZ zwinięty (L0) jest STACJĄ zasilającą, nie aparatem — ta sama
-  // kategoria co `stationCollapsed` (warstwa „stacje i aparatura", selekcja).
-  if (symbolId === 'stationCollapsed' || symbolId === 'gpzCollapsed') return 'station';
   // PORTAL nN (LV Domain Projection po B-02): przejście do projekcji nN — nie
   // aparat toru mocy, własna kategoria (klik otwiera portal, zero menu).
   if (symbolId === 'lvPortal') return 'lvPortal';
@@ -1014,49 +1008,6 @@ interface RowLayout {
   readonly blockTopY: number;
 }
 
-/** SCHEMAT-10 GS-1/GS-4 (V12K-137, GAP §10.4; recenzja 2026-07-23):
- *  dominujący rodzaj DER stacji PER STRONA przyłączenia dla markera sylwetki
- *  mini-RMU na L0 — deterministyczny (lista `derSources` posortowana po `id`
- *  w `buildSceneV3`, bierzemy PIERWSZE źródło o pasującej stronie).
- *  `'unknown'` (rodzaj) → `'generator'` (glif generyczny, spójnie z
- *  `DER_SOURCE_KIND_SYMBOL`). `null` gdy zero DER po tej stronie. */
-function dominantDerGlyphKind(
-  sources: readonly StationDerSourceInput[],
-  sides: readonly DerConnectionSide[],
-): StationDerGlyphKind | null {
-  const first = sources.find((s) => sides.includes(s.connectionSide ?? 'unknown'));
-  if (!first) return null;
-  const map: Readonly<Record<DerSourceKind, StationDerGlyphKind>> = {
-    pv: 'pv',
-    bess: 'bess',
-    generator: 'generator',
-    wind: 'wind',
-    unknown: 'generator',
-  };
-  return map[first.kind];
-}
-
-/** GS-1 (V12K-137, macierz §3 „Stacja"): sylwetka mini-RMU L0 z TYPU
- *  elementów stacji (nie nazw, spec §19.3): sekcyjna = sprzęgło w topologii;
- *  SN/nN = transformator; DER = dominujący rodzaj PER STRONA (GS-4); NO =
- *  punkt normalnie otwarty. Rozdzielnia sieciowa = brak TR i brak sprzęgła.
- *  GS-4 (recenzja 2026-07-23 — „mini-RMU nie może kłamać topologicznie"):
- *   - `derBehindTr` = źródło na szynie nN (`connectionSide==='nn'` z REALNEJ
- *     szyny ENM) — znak przy gałęzi pola TR, PONIŻEJ uzwojeń;
- *   - `derOnMv` = źródło na SN (`'sn'`) LUB strona nieznana (`'unknown'` —
- *     model nie mówi nN, więc rysunek od szyny rozdzielnicy jest uczciwym
- *     punktem przyłączenia stacji; jedyny ZAKAZ kanonu dotyczy renderu z
- *     szyny, gdy model MÓWI nN);
- *   - `derBehindTr` bez transformatora = sprzeczność modelu (źródło „za TR"
- *     w stacji bez TR) — jawny stopNote, glif nie rysuje nN bez pola TR. */
-/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7 + karta
- *  ETYKIETA-STACJI-PRZELOTOWEJ: rola topologiczna stacji dla WSZYSTKICH LOD (sylwetka L0
- *  i podpis L1/L2) to `props.topologicalType` — rodzaj WYPROWADZONY z topologii JEDNĄ regułą
- *  produktu (`ui/shared/rodzajStacji.ts`, lustro backendu `enm/rodzaj_stacji.py`, §19.3),
- *  którą adapter wpisuje w propsy. Reguła zawiera już „przelotowa ⇔ oba pola liniowe
- *  POŁĄCZONE" (stacja z drugim polem wolnym albo z wiszącym odcinkiem jest końcowa). Dawna
- *  druga reguła sceny (liczba pól `snBays` + „ostatnia stacja wiersza/ciągu") skasowana —
- *  zależała od łamania arkusza i rozjeżdżała się z drzewem projektu. */
 /**
  * TR2W-BEZ-POLA: JEDNA prawda faktu domenowego „stacja ma transformator
  * SN/nN". Przed tą kartą L0 (sylwetka, niżej) i L1/L2 (`hasLvSection` w
@@ -1065,8 +1016,9 @@ function dominantDerGlyphKind(
  * `props.hasTransformer ?? false`) — predykat wejścia i wyjścia z dwóch źródeł
  * (naruszenie reguły KLASA §3), rozjeżdżający się dokładnie wtedy, gdy
  * `hasTransformer` jest nieustawione, a `transformerRatedKva` jest. Jedna
- * funkcja dla WSZYSTKICH trzech konsumentów (sylwetka L0, bramka strony nN
- * L1/L2, `StationMeasureInput.hasTransformer`).
+ * funkcja dla WSZYSTKICH konsumentów (bramka strony nN kompozycji stacji,
+ * `StationMeasureInput.hasTransformer`; od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA ta
+ * sama kompozycja rysuje stację na L0/L1/L2 — dawnej sylwetki L0 nie ma).
  */
 function stationHasTransformerFact(
   props: Pick<StationOnRunViewModel, 'hasTransformer' | 'transformerRatedKva'>,
@@ -1074,59 +1026,12 @@ function stationHasTransformerFact(
   return props.hasTransformer ?? props.transformerRatedKva != null;
 }
 
-function stationCompactGlyphSummary(
-  props: StationOnRunViewModel,
-  derSources: readonly StationDerSourceInput[],
-  stopNotes: string[],
-): StationCompactGlyphSummary {
-  const hasTransformer = stationHasTransformerFact(props);
-  const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
-  if (derBehindTr != null && !hasTransformer) {
-    stopNotes.push(
-      `station.der.behindTrBezTR: stacja „${props.name}" (${props.id}) — źródło DER na szynie nN (za TR), ale stacja bez transformatora; sprzeczność modelu ENM (GS-4), sylwetka L0 nie rysuje strony nN bez pola TR.`,
-    );
-  }
-  const rodzaj = props.topologicalType;
-  return {
-    sectioned: rodzaj === 'sekcyjna',
-    // GS-5: pola liniowe sylwetki z RODZAJU stacji (jedna reguła produktu). Sekcyjna ⇒
-    // dwustronna z definicji (mv_lv_sectional ma 2 pola liniowe) — mapuje na
-    // 'przelotowa' + `sectioned`.
-    lineTopology: rodzaj === 'sekcyjna' ? 'przelotowa' : rodzaj,
-    hasTransformer,
-    derOnMv: dominantDerGlyphKind(derSources, ['sn', 'unknown']),
-    derBehindTr,
-    noOpen: props.isNop ?? false,
-  };
-}
-
 function buildMeasureInput(
   props: StationOnRunViewModel,
   lod: SceneLod,
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
-  stopNotes: string[],
 ): StationMeasureInput {
-  if (lod === 0) {
-    // L0 (spec §7 „stacje jako ∎16 z kodem Sxx + NO"): stacja = symbol
-    // zbiorczy + KOD (nic więcej), BEZ aparatów/DER — spec §7 lista L1
-    // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
-    // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
-    // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
-    // kodu, zero zmian w measure.ts. ROLA topologiczna stacji (GS-5) to ten
-    // sam rodzaj, który podpisuje L1/L2 (`props.topologicalType`, jedna reguła
-    // produktu) i wchodzi do `compactGlyph`.
-    // GS-1 (V12K-137, GAP §10.4): L0 niesie SYLWETKĘ mini-RMU — typ stacji/TR/
-    // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
-    // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
-    // cechy rozpoznawcze rysowane WEWNĄTRZ glifu (zero zmiany geometrii).
-    return {
-      id: props.id,
-      name: props.stationCode ?? props.name,
-      snBays: [],
-      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes),
-    };
-  }
   const includeCableAndPorts = lod === 2;
   // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ: podpis rodzaju to
   // rodzaj WYPROWADZONY z topologii jedną regułą produktu (`props.topologicalType`, adapter
@@ -1142,8 +1047,8 @@ function buildMeasureInput(
     stationTypeLabel: stationTypeLabelPl(props.topologicalType),
     snBays,
     bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
-    // F9.4 (spec §13.1 V12K-029, §7): DER widoczny od L1 — dostarczone
-    // WYŁĄCZNIE dla lod>=1 (lod===0 zwraca wcześniej, powyżej).
+    // F9.4 (spec §13.1 V12K-029, §7): źródła DER stacji — część kompozycji na każdym LOD
+    // (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: LOD upraszcza szczegół, nie kształt).
     derSources: derSourcesByStationId.get(props.id) ?? undefined,
     // F10.3 (spec §18.4, K30-37): napięcie znamionowe szyny SN — kanał
     // REALNY (`StationOnRunViewModel.busVoltageKv`, `enmToSldAdapter.ts`
@@ -1181,20 +1086,6 @@ function stacjaSzynySekcjiNarysowanych(
   }
   pary.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return Object.fromEntries(pary);
-}
-
-/** Łącznik ciągłości pola GPZ z kompozycji pełnej (`buildCollapsedGpz`, L0): pierwszy
- *  symbol pola wg kolejności `CONTINUITY_APPARATUS_SYMBOL_IDS`; `null` = pole bez rekordu
- *  łącznika (sylwetka braku danych). */
-function lacznikCiaglosciPolaGpz(
-  symbols: readonly ComposedGpzSymbolInstance[],
-  bayRef: string,
-): { readonly symbolId: SymbolId; readonly state: ComposedGpzSymbolInstance['state'] } | null {
-  for (const symbolId of CONTINUITY_APPARATUS_SYMBOL_IDS) {
-    const symbol = symbols.find((s) => s.meta.bayRef === bayRef && s.symbolId === symbolId);
-    if (symbol) return { symbolId, state: symbol.state };
-  }
-  return null;
 }
 
 function buildRowLayout(
@@ -1236,7 +1127,7 @@ function buildRowLayout(
       }
       const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
       const captions = stationBayCaptions(props.snBays ?? [], context);
-      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId, notes);
+      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId);
     });
     let valid = arr.filter((m): m is StationMeasureInput => m != null);
     // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
@@ -1429,18 +1320,6 @@ function dociagnijPrzylaczaBezPola(
 }
 
 /**
- * ODEJŚCIA-ZAGNIEŻDŻONE (L0): symbol zbiorczy stacji nie ma pól, więc porty odejść
- * odgałęzień leżą na osi magistrali w obrysie symbolu, krok `GRID`, rozstawione
- * symetrycznie wokół zaczepu (`tapX`) — rosnąco z `branchPos`, jak porty pól na
- * L1/L2. Jedno pole odgałęźne = port na `tapX` (geometria sprzed zmiany). Wspólny
- * port wszystkich odejść dawał wspólny pion: dwa kable na jednej kresce, a punkt,
- * w którym pierwszy skręcał do kanału, leżał na pionie drugiego (skrzyżowanie).
- */
-function collapsedBranchPortX(tapX: number, branchPos: number, branchCount: number): number {
-  return tapX + (branchPos - Math.floor(Math.max(0, branchCount - 1) / 2)) * GRID;
-}
-
-/**
  * T1 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.2, defekty (a)/(b) B-02):
  * (b) szyna nN kolektorowa (`#lv-bus`, wzorzec SYMETRYCZNY z `#sn-bus` —
  * OBIE są odcinki, do których dotykają porty WIELU pól/aparatów tej samej
@@ -1512,82 +1391,6 @@ function composeRowStation(
   stopNotes: string[],
   edgeDomainByRef: ReadonlyMap<string, 'lv' | 'sn'>,
 ): ComposedRowStation {
-  if (lod === 0) {
-    // L0 nie mierzy pól (`buildMeasureInput`: `snBays: []`), więc lista pól
-    // odgałęźnych pochodzi z widoku stacji — tego samego, z którego geometria L2
-    // (`buildRowLayout`, `geometryInputs`) liczy poziomy odejścia.
-    const collapsedBays = props.snBays ?? [];
-    const collapsedBranchBayRefs = findLineBayIndices(collapsedBays).branchIndices.map(
-      (index) => collapsedBays[index].bayRef,
-    );
-    const halfBox = COLLECTIVE_BOX_SIZE / 2;
-    const portSpread = Math.floor(Math.max(0, collapsedBranchBayRefs.length - 1) / 2) * GRID;
-    if (portSpread > halfBox || (collapsedBranchBayRefs.length - 1) * GRID - portSpread > halfBox) {
-      stopNotes.push(
-        `Stacja „${measureInput.id}": ${collapsedBranchBayRefs.length} pól odgałęźnych — porty odejść na L0 `
-          + `wychodzą poza obrys symbolu zbiorczego (krok siatki ${GRID}, obrys ${COLLECTIVE_BOX_SIZE}).`,
-      );
-    }
-    const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
-    const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
-    // L0 (sylwetka mini-RMU): CAŁA geometria strony nN (zacisk, portal) znika
-    // — `composeStation` nie jest tu wołane. Stacja z transformatorem niesie
-    // marker TR w glifie (`compactGlyph.hasTransformer`), a wejściem do
-    // projekcji nN na L0 jest dwuklik w blok stacji (`SldCanvasV3Workspace`,
-    // wyłącznie na L0 — od L1 jedynym wejściem jest klik w symbol portalu).
-    const nameRows: StationNameBandRow[] = [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }];
-    return {
-      symbols: [
-        {
-          symbolId: 'stationCollapsed',
-          x: boxX,
-          y: boxY,
-          meta: {
-            testId: `sld-v3-l0-${measureInput.id}`,
-            ownerRef: measureInput.id,
-            elementKind: 'station',
-            // GS-1 (V12K-137, GAP §10.4): sylwetka mini-RMU — typ/TR/DER/NO.
-            stationGlyph: measureInput.compactGlyph,
-            // KD-5: porty odejść pól odgałęźnych na dolnej krawędzi (ta sama funkcja co
-            // `branchPort` niżej — jedno źródło położenia).
-            portyZejscBloku: collapsedBranchBayRefs.map((_, branchPos) => ({
-              x: collapsedBranchPortX(column.tapX, branchPos, collapsedBranchBayRefs.length),
-              y: boxY + COLLECTIVE_BOX_SIZE,
-            })),
-          },
-        },
-      ],
-      segments: [],
-      stationNameOwner: {
-        ownerRef: measureInput.id,
-        nameSlot: column.nameSlot,
-        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0 (wiersz 1);
-        // T5a: plakietka nN strukturalna (wiersz 2, WYŁĄCZNIE gdy obecna).
-        rows: nameRows,
-      },
-      apparatusOwners: [],
-      portCaptionOwners: [],
-      derOwners: [],
-      protectionOwners: [],
-      busbarOwners: [],
-      entryPort: { x: column.tapX, y: busAxisY },
-      exitPort: { x: column.tapX, y: busAxisY },
-      // Porty odejść na DOLNEJ krawędzi symbolu zbiorczego (KD-5, rozstrzygnięcie architekta
-      // 2026-10-30): tor ciągu przechodzi przez środek symbolu (wejście i wyjście w osi), więc
-      // port odejścia w osi kładł początek kabla odgałęzienia na wnętrzu kabla ciągu — styk
-      // dwóch różnych kabli bez węzła modelu (sonda: `punkt_startu_stacja_na_odcinku_…`, L0).
-      branchPort: (branchPos: number) =>
-        branchPos >= 0 && branchPos < collapsedBranchBayRefs.length
-          ? {
-              x: collapsedBranchPortX(column.tapX, branchPos, collapsedBranchBayRefs.length),
-              y: boxY + COLLECTIVE_BOX_SIZE,
-            }
-          : null,
-      branchBayRefs: collapsedBranchBayRefs,
-      przylaczaBezPola: [],
-    };
-  }
-
   // TR2W-BEZ-POLA: JEDNA prawda z sylwetką L0 i `StationMeasureInput.
   // hasTransformer` — ta linia POMIJAŁA fallback `transformerRatedKva != null`.
   const hasLvSection = stationHasTransformerFact(props);
@@ -2049,22 +1852,6 @@ function trunkCorridorYOf(layout: RowLayout): number {
  */
 function rowTopYOf(layout: RowLayout): number {
   return layout.blockTopY - layout.bandsResult.bands.B4.y;
-}
-
-/** L0 (stacja zbiorczy symbol) nie ma realnych głowic — port POŁĄCZENIA
- *  leży NA osi magistrali z konstrukcji (`composeRowStation` L0), więc jog
- *  degeneruje się do prostej linii: korytarz = `busAxisY` tego wiersza. L1/L2
- *  używają sub-poziomu międzystacyjnego strefy B4/B5 (patrz wyżej).
- *
- *  SCHEMAT-10 S1 (V12K-135) — GAP do S2/S3 (D1(b) „jedna geometria korytarza"):
- *  pełne ujednolicenie korytarza na `trunkCorridorYOf` dla WSZYSTKICH LOD
- *  wymaga, by symbol zbiorczy stacji L0 wystawiał głowice na sub-poziomie
- *  (jak L1/L2), a nie port na osi — inaczej jog L0 do sub-poziomu przecina
- *  szyny (regresja `bus_band_clearance_probe`/`interiorCrossings`). Geometria
- *  KOLUMN/PASM/KOTWIC jest już jednolita (buildRowLayout @ L2); domknięcie
- *  korytarza L0 = zakres kolejnej fazy (wymaga glifu L0 z głowicami). */
-function interStationCorridorY(layout: RowLayout, lod: SceneLod): number {
-  return lod === 0 ? layout.busAxisY : trunkCorridorYOf(layout);
 }
 
 // ---------------------------------------------------------------------------
@@ -2819,7 +2606,7 @@ function connectRowStations(
   // wymaga bliskości etykiety do rzeczywistej trasy kabla, tylko zero
   // kolizji (`noLabelWireCollisions`), a etykieta na osi jest rozłączna z
   // jogiem (inny pasek Y) z konstrukcji.
-  const corridorY = interStationCorridorY(layout, lod);
+  const corridorY = trunkCorridorYOf(layout);
   for (let i = 1; i < row.length; i++) {
     const prev = row[i - 1];
     const cur = row[i];
@@ -2983,353 +2770,6 @@ function gpzBayBottomPort(
   if (!last) return null;
   const def = SYMBOL_DEFS[last.symbolId];
   return { x: last.x + def.width / 2, y: last.y + def.height };
-}
-
-// ---------------------------------------------------------------------------
-// KD-5 (dług nazwany w V12K-285) — BLOK GPZ ZWINIĘTY na poziomie przeglądowym L0.
-// ---------------------------------------------------------------------------
-
-/** Prześwit zejścia pola odejściowego pod blokiem ponad wysokość najwyższego aparatu
- *  pola (8 px z obu stron aparatu) — patrz `composeCollapsedGpz`. */
-const GPZ_COLLAPSED_DESCENT_CLEARANCE = 2 * GRID;
-/** Odstęp między poziomami wachlarza zejść pól niemagistralnych (rozdziela
- *  poziome biegi kolejnych pól, żeby się nie zlewały). */
-const GPZ_COLLAPSED_FAN_STEP = 2 * GRID;
-/** Prześwit między glifem sieci zewnętrznej a górną krawędzią bloku. */
-const GPZ_COLLAPSED_SOURCE_GAP = 2 * GRID;
-
-interface CollapsedGpz {
-  readonly symbols: readonly PreviewSymbol[];
-  readonly segments: readonly PreviewSegment[];
-  readonly nameBand: StationNameBandOwnerInput;
-}
-
-/**
- * KD-5 — reprezentacja ZWINIĘTA bloku GPZ dla L0 (dyrektywa właściciela z oceny
- * ekranu: na przeglądzie sieci GPZ ma być zwartym symbolem stacji zasilającej,
- * nie pełnym układem wewnętrznym; dług nazwany w V12K-285).
- *
- * ---------------------------------------------------------------------------
- * CO ZNIKA, A CO ZOSTAJE (i dlaczego dokładnie tak)
- * ---------------------------------------------------------------------------
- * ZNIKA cała GEOMETRIA WEWNĘTRZNA rozdzielni: szyna WN, pola WN, transformator
- * z polem TR, szyny sekcji SN, punkt neutralny oraz STOSY APARATÓW pól
- * (odłącznik/przekładnik/uziemnik/głowica) — na fixturze referencyjnej 16
- * symboli po 16 px świata, które przy skali przeglądu ≈0,12 renderowały się po
- * ≈1,9 px, a więc poniżej progu rozpoznawalności `MIN_SYMBOL_SCREEN_PX` (szum,
- * nie informacja). Ich treść niesie teraz JEDEN symbol `gpzCollapsed`, którego
- * sylwetka rysuje tę samą gramatykę w miniaturze (`GpzCollapsedGlyph`).
- *
- * ZOSTAJE — świadomie, nie z niedoróbki:
- *  (a) GLIF SIECI ZEWNĘTRZNEJ (`gridSource`) — kontrakt `allSourcesVisible`
- *      (§13.1): źródło jest widoczne na KAŻDYM LOD, bo „skąd to jest zasilane"
- *      nie jest szczegółem, tylko treścią przeglądu;
- *  (b) APARAT CIĄGŁOŚCI POLA ODEJŚCIOWEGO — jeden aparat na KAŻDE pole
- *      liniowe SN (łącznik z rekordu modelu albo sylwetka braku danych), zakotwiczony DOKŁADNIE w porcie, w którym pole oddaje tor
- *      sieci. To wymóg 3 karty K11-B (dyrektywa właściciela: „LOD NIGDY nie
- *      ukrywa toru przepływu energii ANI APARATÓW CIĄGŁOŚCI elektrycznej
- *      (odłącznik/wyłącznik w torze)") — rysunek bez łącznika kłamałby o
- *      możliwości odcięcia magistrali. To NIE jest geometria wewnętrzna pola:
- *      cały stos pola jest zwinięty DO swojego aparatu ciągłości, a ten stoi na
- *      GRANICY bloku z siecią. Wyrocznia `lodPathContinuityGaps` liczy go
- *      wprost — zwinięcie przechodzi strażnika BEZ poszerzania tolerancji.
- *
- * ---------------------------------------------------------------------------
- * KOTWICA (zoom = skala szczegółu, nie przemeblowanie)
- * ---------------------------------------------------------------------------
- * Blok kotwiczy się OSIĄ pola magistrali (`port.x` — ten sam punkt, z którego
- * magistrala wychodzi na L1/L2) i osią szyny SN (`busY`), a jego zejścia kończą
- * się w PORTACH pól policzonych z kompozycji PEŁNEJ. Trasa magistrali, trasy
- * feederów, offsety wiersza i rama strefy są więc IDENTYCZNE jak na L1/L2 —
- * zwinięcie zmienia wyłącznie to, CO jest narysowane wewnątrz strefy GPZ
- * (SCHEMAT-10 S1 / V12K-135, ta sama zasada co `buildRowLayout` dla stacji).
- */
-function composeCollapsedGpz(
-  gpz: GpzComposition,
-  gpzData: CanonicalGpzProps,
-  gridSources: readonly SldSourceView[],
-  stopNotes: string[],
-): CollapsedGpz {
-  const symbols: PreviewSymbol[] = [];
-  const segments: PreviewSegment[] = [];
-  const blockDef = SYMBOL_DEFS.gpzCollapsed;
-  const sourceDef = SYMBOL_DEFS.gridSource;
-
-  const trunkPort = findGpzTrunkBottomPort(gpz, gpzData, stopNotes);
-  const axisX = trunkPort.x;
-  const busY = findGpzPrimaryBus(gpz)?.points[0]?.y ?? snapToGrid(trunkPort.y - blockDef.height);
-  // Blok wyśrodkowany na osi pola magistrali i na osi szyny SN; gdy zejście
-  // wyszłoby krótsze niż aparat ciągłości + prześwity, blok wędruje w górę
-  // (geometria deterministyczna, bez zgadywania).
-  const lineBayRefs = findGpzLineBayRefs(gpzData);
-  // GEOMETRIA-STACJI (§0 pkt 4): aparat ciągłości pola = łącznik, który KOMPOZYCJA PEŁNA
-  // narysowała w tym polu z rekordu modelu (pierwszy wg `CONTINUITY_APPARATUS_SYMBOL_IDS`:
-  // wyłącznik przed rozłącznikiem i odłącznikiem), ze stanem tego rekordu. Pole bez rekordu
-  // łącznika — ta sama sylwetka braku danych co na L1/L2, bez koloru stanu. Do karty L0
-  // rysował wyłącznik w KAŻDYM polu (aparat z konwencji, nie z modelu). Zejście rezerwuje
-  // wysokość NAJWYŻSZEGO z tych aparatów (sylwetka braku danych jest dwa razy wyższa od
-  // wyłącznika), inaczej odcinek zejścia zdegenerowałby się do punktu i rozciął tor.
-  const aparatyPol = new Map(lineBayRefs.map((bayRef) => [bayRef, lacznikCiaglosciPolaGpz(gpz.symbols, bayRef)]));
-  const wysokoscAparatu = Math.max(
-    SYMBOL_DEFS.breaker.height,
-    ...[...aparatyPol.values()].map((a) => SYMBOL_DEFS[a?.symbolId ?? 'bayNoEquipment'].height),
-  );
-  // ODEJŚCIA-ZAGNIEŻDŻONE (L0 GPZ): porty pól liczone RAZ, przed położeniem bloku — blok
-  // musi stać tak wysoko, by NAJNIŻSZY poziom wachlarza leżał nad aparatem ciągłości
-  // KAŻDEGO pola (nie tylko pola magistrali). Inaczej poziomy biegły przez aparaty pól o
-  // wyżej zawieszonym porcie, a pion takiego pola wracał w górę przez cudze poziomy
-  // (sonda `gpzProtectionDataPath`: pole bay/001/002 z portem 88 j.św. nad polami line0x).
-  const portyPol = lineBayRefs.map((bayRef, i) => (i === 0 ? trunkPort : gpzBayBottomPort(gpz, bayRef)));
-  const gornyAparatPol = Math.min(
-    ...lineBayRefs.map((bayRef, i) => {
-      const port = portyPol[i];
-      const lacznik = aparatyPol.get(bayRef) ?? null;
-      return port ? port.y - SYMBOL_DEFS[lacznik?.symbolId ?? 'bayNoEquipment'].height : Infinity;
-    }),
-  );
-  const poziomyWachlarza = Math.max(0, lineBayRefs.length - 1) * GPZ_COLLAPSED_FAN_STEP;
-  // GPZ bez pola liniowego SN (magistrala zaczepiona w prawym końcu szyny SN, `findGpzTrunkPort`
-  // opcja 2): blok jest zwiniętą szyną i nie ma zejścia pola, więc DOLNA krawędź bloku stoi
-  // dokładnie w zaczepie magistrali (port S bloku = początek kabla). Dawniej blok wisiał nad
-  // zaczepem na wysokość aparatu, którego nie ma, a kabel zaczynał się w pustce (sonda końców
-  // odcinków: migawki sieci złotej, 5 plików na L0).
-  const blockY = lineBayRefs.length === 0 ? snapToGrid(trunkPort.y - blockDef.height) : Math.min(
-    snapToGrid(busY - blockDef.height / 2),
-    snapToGrid(trunkPort.y - blockDef.height - wysokoscAparatu - GPZ_COLLAPSED_DESCENT_CLEARANCE),
-    ...(Number.isFinite(gornyAparatPol)
-      ? [Math.floor((gornyAparatPol - GRID - poziomyWachlarza - blockDef.height) / GRID) * GRID]
-      : []),
-  );
-  const blockX = snapToGrid(axisX - blockDef.width / 2);
-  const blockBottomY = blockY + blockDef.height;
-
-  symbols.push({
-    symbolId: 'gpzCollapsed',
-    x: blockX,
-    y: blockY,
-    meta: {
-      testId: `sld-v3-l0-gpz-${gpzData.id}`,
-      // Tożsamość LOD-niezależna: TEN SAM ref, którym GPZ występuje na L1/L2
-      // (pas tytułowy `labels.stationName.ownerRef`, terminale przęseł) —
-      // selekcja/nawigacja/nakładki działają bez tłumaczenia per LOD.
-      ownerRef: gpzData.id,
-      elementKind: 'station',
-      gpzGlyph: {
-        sections: gpz.sections.length,
-        transformers: gpz.transformers.length,
-        feeders: lineBayRefs.length,
-      },
-    },
-  });
-
-  // (a) Sieć zewnętrzna NAD blokiem — glif zachowany na każdym LOD (§13.1).
-  //     Wiele źródeł: rozstawione w prawo od osi, spięte do portu N bloku
-  //     łamaną (dla pierwszego źródła degeneruje się do prostego pionu).
-  gridSources.forEach((src, i) => {
-    const srcCx = axisX + i * (3 * GRID);
-    const srcY = blockY - GPZ_COLLAPSED_SOURCE_GAP - sourceDef.height;
-    symbols.push({
-      symbolId: 'gridSource',
-      x: snapToGrid(srcCx - sourceDef.width / 2),
-      y: srcY,
-      meta: {
-        testId: `sld-v3-l0-gpz-source-${src.id}`,
-        ownerRef: src.id,
-        elementKind: 'source',
-        missingData: src.missingData,
-      },
-    });
-    const raw: RouteVertex[] = [
-      { x: srcCx, y: srcY + sourceDef.height },
-      { x: srcCx, y: blockY - GRID },
-      { x: axisX, y: blockY - GRID },
-      { x: axisX, y: blockY },
-    ];
-    segments.push({
-      points: dedupeVertices(raw),
-      meta: { kind: 'sn', ownerRef: `${src.id}#grid-source-drop`, elementKind: 'segment' },
-    });
-  });
-
-  // (b) Pola odejściowe: aparat ciągłości zakotwiczony w PORCIE pola (ten sam
-  //     punkt, w którym tor sieci wychodzi z GPZ na L1/L2 — trasy nietknięte)
-  //     + zejście od bloku do tego aparatu.
-  // ODEJŚCIA-ZAGNIEŻDŻONE (L0 GPZ): poziom wachlarza z ODLEGŁOŚCI portu od osi, nie z
-  // kolejności pól — pole dalsze od osi biegnie wyżej, bliższe niżej. Przy poziomach w
-  // kolejności pól pion pola bliższego, zawieszony wyżej, schodził przez poziom pola
-  // dalszego (sonda `gpzProtectionDataPath`: przecięcie line01 × line02). Pole magistrali
-  // (`i = 0`, port na osi) zostaje na poziomie 0 — jego zejście jest pionem osi.
-  //
-  // Rozstrzygnięcie architekta KD-5 (2026-10-30): zejście KAŻDEGO pola ma własny punkt
-  // wyjścia z bloku. Dawniej wszystkie zejścia zaczynały się w jednym porcie osi i biegły
-  // wspólnym pionem do swoich poziomów — cztery różne kable na jednym odcinku (pomiar:
-  // x = 128, y 536…584, fikstury pól liniowych GPZ). Teraz pola po prawej stronie osi
-  // wychodzą z dolnej krawędzi bloku w krokach GRID w prawo od osi, po lewej — w lewo;
-  // pole dalsze od osi dostaje punkt dalszy od osi i poziom wyższy (zagnieżdżenie bez
-  // przecięć: poziom pola bliższego leży pod końcem pionu pola dalszego). Gdy pól po
-  // jednej stronie jest więcej niż kroków dolnej krawędzi, kolejne (najdalsze) wychodzą
-  // z krawędzi bocznej bloku, od dołu w górę — poziom nad dolną krawędzią jest wyższy
-  // od każdego poziomu wachlarza, więc zagnieżdżenie zostaje zachowane.
-  const krokiDolnejKrawedzi = Math.floor(blockDef.width / 2 / GRID);
-  const poziomWachlarza = new Map<number, number>();
-  const wyjscieZBloku = new Map<number, { readonly x: number; readonly y: number }>();
-  poziomWachlarza.set(0, 0);
-  wyjscieZBloku.set(0, { x: axisX, y: blockBottomY });
-  for (const strona of [1, -1] as const) {
-    const pola = lineBayRefs
-      .map((_, i) => i)
-      .filter((i) => i > 0 && Math.sign((portyPol[i]?.x ?? axisX) - axisX) === (strona === 1 ? 1 : -1))
-      // Od najbliższego osi do najdalszego; remis — kolejność pól (determinizm).
-      .sort((a, b) => {
-        const da = Math.abs((portyPol[a]?.x ?? axisX) - axisX);
-        const db = Math.abs((portyPol[b]?.x ?? axisX) - axisX);
-        return da - db || a - b;
-      });
-    pola.forEach((i, k) => {
-      const krok = k + 1;
-      wyjscieZBloku.set(
-        i,
-        krok <= krokiDolnejKrawedzi
-          ? { x: axisX + strona * krok * GRID, y: blockBottomY }
-          : { x: axisX + strona * (blockDef.width / 2), y: blockBottomY - (krok - krokiDolnejKrawedzi) * GRID },
-      );
-    });
-  }
-  // Pola leżące dokładnie na osi (port w osi, a nie pole magistrali) — bez własnego kroku
-  // nie da się ich rozdzielić; zostają w osi i zgłaszają się notatką (dane niepełne układu).
-  lineBayRefs.forEach((bayRef, i) => {
-    if (i > 0 && !wyjscieZBloku.has(i)) {
-      wyjscieZBloku.set(i, { x: axisX, y: blockBottomY });
-      stopNotes.push(
-        `Blok GPZ zwinięty (L0): pole „${bayRef}" ma port w osi bloku — zejście wspólne z polem magistrali.`,
-      );
-    }
-  });
-  // Porty zejść deklarowane na symbolu bloku (`PreviewElementMeta.portyZejscBloku`) — te same
-  // punkty, z których niżej wychodzą odcinki wachlarza (jedno źródło położenia).
-  const indeksBloku = symbols.findIndex((s) => s.symbolId === 'gpzCollapsed');
-  const blok = symbols[indeksBloku]!;
-  symbols[indeksBloku] = {
-    ...blok,
-    meta: {
-      ...blok.meta,
-      portyZejscBloku: lineBayRefs
-        .map((_, i) => wyjscieZBloku.get(i)!)
-        .filter((p, i, all) => all.findIndex((q) => q.x === p.x && q.y === p.y) === i),
-    },
-  };
-  lineBayRefs
-    .map((_, i) => i)
-    .filter((i) => i > 0)
-    .sort((a, b) => {
-      const da = Math.abs((portyPol[a]?.x ?? axisX) - axisX);
-      const db = Math.abs((portyPol[b]?.x ?? axisX) - axisX);
-      return db - da || a - b;
-    })
-    .forEach((i, rank) => poziomWachlarza.set(i, rank + 1));
-  lineBayRefs.forEach((bayRef, i) => {
-    const port = portyPol[i];
-    if (!port) {
-      stopNotes.push(
-        `Blok GPZ zwinięty (L0): pole liniowe „${bayRef}" bez portu w kompozycji — aparat ciągłości pominięty (dane niepełne).`,
-      );
-      return;
-    }
-    const lacznikPola = aparatyPol.get(bayRef) ?? null;
-    const apparatusDef = SYMBOL_DEFS[lacznikPola?.symbolId ?? 'bayNoEquipment'];
-    const breakerTopY = port.y - apparatusDef.height;
-    symbols.push({
-      symbolId: lacznikPola?.symbolId ?? 'bayNoEquipment',
-      x: snapToGrid(port.x - apparatusDef.width / 2),
-      y: breakerTopY,
-      state: lacznikPola?.state,
-      meta: {
-        testId: `sld-v3-l0-gpz-bay-${bayRef}`,
-        ownerRef: bayRef,
-        elementKind: 'apparatus',
-      },
-    });
-    const wyjscie = wyjscieZBloku.get(i)!;
-    // Wyjście z krawędzi bocznej: poziom = wysokość punktu wyjścia (nad dolną krawędzią).
-    const fanY =
-      wyjscie.y < blockBottomY ? wyjscie.y : blockBottomY + poziomWachlarza.get(i)! * GPZ_COLLAPSED_FAN_STEP;
-    const raw: RouteVertex[] = [
-      { x: wyjscie.x, y: wyjscie.y },
-      { x: wyjscie.x, y: fanY },
-      { x: port.x, y: fanY },
-      { x: port.x, y: breakerTopY },
-    ];
-    segments.push({
-      points: dedupeVertices(raw),
-      meta: { kind: 'sn', ownerRef: `${bayRef}#descent`, elementKind: 'segment' },
-    });
-  });
-
-  // Pas nazwy bloku: WIERSZ TYTUŁOWY REUŻYTY z kompozycji pełnej (jedna prawda
-  // tytułu „GPZ ⟨nazwa⟩ · UHV/ULV kV", D3-12) + wiersz stanu z REALNYCH liczb
-  // tego, co zostało zwinięte (zero fabrykacji — liczby z kompozycji).
-  const base = gpz.labels.stationName;
-  const wierszStanu = {
-    text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
-    labelClass: 't3' as const,
-    // KD-11: wiersz LICZBOWY stanu zwinięcia — dane szczegółowe (tożsamość
-    // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
-    role: 'dane' as const,
-  };
-  // DŁUG NAZWANY WPROST (BLOK-PUSTY, §0 R3 „brak pokrycia = dług nazwany, NIE
-  // obejście") — WIERSZ STANU NIE MIEŚCI SIĘ W BANERZE STREFY GPZ.
-  //
-  // POMIAR (fixtura referencyjna, L0, tabela posuwów kroju od 2026-10-30): baner strefy
-  // (`compose/gpz.ts` `headerSlot`) ma 248 j.św. i jest zmierzony WYŁĄCZNIE dla wiersza
-  // tytułowego; wiersz stanu niesie 298 j.św. tuszu, więc wystaje poza własną rezerwację
-  // o 50 j.św. (25 na stronę, bo wiersze pasma są centrowane). Przy szacunku 0,62 em: 304 /
-  // 391 / 87 (296 / 391 / 95 przed GPZ-MODEL).
-  // Defekt jest PIERWOTNY — istniał przed tą kartą; różnica polega tylko na
-  // tym, że dopóki prostokąt etykiety BYŁ slotem, nikt tego nie widział.
-  //
-  // DLACZEGO TA KARTA GO NIE ZAMYKA. To nadmiar TUSZU nad rezerwacją, czyli
-  // ODWROTNY kierunek niż klasa BLOK-PUSTY (rezerwacja ponad tuszem), a obie
-  // naprawy, które się narzucają, łamią rzecz NIETYKALNĄ (§0 R4):
-  //  · poszerzenie slotu od lewej krawędzi przesuwa ŚRODEK pasma o 56 j.św.
-  //    między L0 a L1/L2 — kotwica bloku dryfuje przy zmianie poziomu
-  //    szczegółu (KD-5/S1 „jedna kotwica"; pada `buildScene.w2GS4b`,
-  //    `buildScene.w2cDerSnTopology`, `buildScene.test.ts`);
-  //  · poszerzenie symetryczne środek zachowuje, ale wypycha wiersz na
-  //    x = −39,5, czyli POZA lewą krawędź arkusza (pada wyrocznia D2/k5b), i
-  //    rozjeżdża szerokość arkusza między poziomami (8392 wobec 8344).
-  // Zmieszczenie wiersza wymaga rozstrzygnięcia, GDZIE podpis zwinięcia
-  // należy: do banera (wtedy trzeba go przełamać na wiersze) czy do CAŁEJ
-  // strefy (wtedy pasmo ma dwa różne środki) — to decyzja kontraktu KD-5
-  // o zwinięciu GPZ, nie tej karty. Dług pilnuje test: `layout/__tests__/
-  // blokPusty.test.ts` §1 wymaga, żeby to było JEDYNE takie miejsce rysunku
-  // i żeby nadmiar miał DOKŁADNIE zmierzoną wartość — nowy przypadek albo
-  // zmiana rozmiaru zapala się natychmiast.
-  const nameBand: StationNameBandOwnerInput = {
-    ownerRef: base.ownerRef,
-    nameSlot: base.nameSlot,
-    rows: [...base.rows, wierszStanu],
-  };
-
-  return { symbols, segments, nameBand };
-}
-
-/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
- *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
- *  wzorzec co objazd rynną w sekcji 5 — ORAZ wierzchołki pośrednie leżące na prostej
- *  sąsiadów. Wierzchołek współliniowy nie zmienia rysunku, ale dzieli odcinek na dwie
- *  krawędzie, a skrzyżowanie w takim wierzchołku nie jest „wnętrzem” żadnej z nich:
- *  `interiorCrossings` go nie widzi i kanwa nie rysuje mostka (karta
- *  UX-04/POLE-LINIOWE-WZORZEC, decyzja §11.7 pkt 1; pomiar przed naprawą: zejście źródła
- *  `#grid-source-drop` bloku GPZ na L0 — jeden taki wierzchołek na każdej scenie z GPZ:
- *  57 fikstur na L0 i 6 sieci syntetycznych, żaden na obcym przewodzie). */
-function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
-  const bezPowtorzen = points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
-  return bezPowtorzen.filter((p, i) => {
-    if (i === 0 || i === bezPowtorzen.length - 1) return true;
-    const a = bezPowtorzen[i - 1];
-    const b = bezPowtorzen[i + 1];
-    return !((a.x === p.x && b.x === p.x) || (a.y === p.y && b.y === p.y));
-  });
 }
 
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
@@ -4019,19 +3459,20 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           + '.',
       );
     }
-    // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
-    // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
-    // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
-    // `gpzCollapsed` + glif źródła + aparat ciągłości pola magistrali).
-    gpzComposition =
-      lod === 0
-        ? null
-        : composeGpz(
-            gpzData,
-            { x: 0, y: originY + mainRowDy },
-            zrodlaSieci,
-            annotationDetail,
-          );
+    // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie. Karta
+    // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (zastępuje KD-5/V12K-285): JEDNA kompozycja GPZ na
+    // każdym LOD — szyna SN przez wszystkie pola sekcji, pola w tych samych pozycjach,
+    // aparaty ciągłości toru w rzeczywistym miejscu na osi pola. LOD zmienia wyłącznie
+    // szczegół adnotacji (`protectionAnnotationDetailForLod`: L0 bez bloku zabezpieczeń,
+    // tabliczek przekładników i kodów) i zbiór etykiet (filtr poziomu szczegółu niżej).
+    // Dawny blok zwinięty `gpzCollapsed` rysował hybrydę: ramę i porty z kompozycji pełnej,
+    // a w rogu miniaturę z wachlarzem zejść do aparatów rozrzuconych na różnych wysokościach.
+    gpzComposition = composeGpz(
+      gpzData,
+      { x: 0, y: originY + mainRowDy },
+      zrodlaSieci,
+      annotationDetail,
+    );
   }
 
   // -- 3. Przesuń magistralę o (bbox GPZ + GAP) w prawo i o nawis strefy GPZ
@@ -4109,12 +3550,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         'f6-1 NIEROZWIĄZANE: GPZ ma >1 sekcję — kolorowanie wierszy fieldCaptions jest PER SEKCJA (composeGpz, F5b zamrożony); F6a nie dowodzi rozłączności między sekcjami globalnie.',
       );
     }
-  } else if (gpzGeometry && gpzData) {
-    // KD-5: L0 — blok GPZ ZWINIĘTY (patrz `composeCollapsedGpz`).
-    const collapsed = composeCollapsedGpz(gpzGeometry, gpzData, externalGridSources, stopNotes);
-    allSymbols.push(...collapsed.symbols);
-    allSegments.push(...collapsed.segments);
-    stationNameBands.push(collapsed.nameBand);
   }
 
   // -- 5. Skomponuj stacje magistrali + routing GPZ→S0→S1→...→S11. ---------
@@ -4226,15 +3661,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-      // GS-1 (V12K-137, GAP §10.4): na L0 punkt NO stacji niesie SYLWETKA
-      // mini-RMU (marker `noOpen` na szynie glifu — `meta.stationGlyph.noOpen`),
-      // spójnie z rodziną glifów L0→L2. Osobny symbol `noPoint` (16×16 w środku
-      // 48×48 stacji byłby POGRZEBANY w enklozurze, a jego etykieta „NO" koliduje
-      // z glifem — declutter ją odrzuca) + etykieta „NO" pozostają reprezentacją
-      // L1/L2 (szyna pełna, marker na osi). TA SAMA kotwica (środek stacji) na
-      // wszystkich LOD — „zoom = skala szczegółu, nie przemeblowanie" (§3).
-      if (props.isNop && lod !== 0) {
-        simpleAnchored.push({
+      // Punkt NO stacji: symbol `noPoint` na osi szyny — ta sama kotwica na wszystkich LOD
+      // (jedna kompozycja stacji, karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA); podpis „NO" od L1.
+      if (props.isNop) {
+        // Symbol NO należy do kompozycji (każdy LOD); podpis „NO" — szczegół od L1.
+        if (lod !== 0) simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
           ownerKind: 'no-point',
           text: 'NO',
@@ -4359,7 +3790,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     const branchPointCorridorY =
       planBiegowOtwartychGpz != null && ciagGlownyOtwarty
         ? planBiegowOtwartychGpz.get(KLUCZ_CIAGU_GLOWNEGO_GPZ)!
-        : interStationCorridorY(rowLayout, lod);
+        : trunkCorridorYOf(rowLayout);
     const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
     const rowAnchorByRef = new Map<string, RouteVertex>();
     for (const bp of rowBranchPoints) {
@@ -4390,7 +3821,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (gpzPort) {
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
-        const corridorY = interStationCorridorY(rowLayout, lod);
+        const corridorY = trunkCorridorYOf(rowLayout);
         // F13.3-pre (D3-4/§22.3, wykryte przy przejęciu F13.1): gdy korytarz
         // leży POWYŻEJ portu głowicy GPZ, prosty pion `connectViaCorridor`
         // (x = gpzPort.x) PRZEBIJA własną szynę sekcji GPZ (wnętrze przęsła —
@@ -4568,7 +3999,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const first = rowStations[0];
       const entry = first.composed.entryPort;
       const exit = prev.last.composed.exitPort;
-      const exitCorridorY = interStationCorridorY(prev.layout, lod);
+      const exitCorridorY = trunkCorridorYOf(prev.layout);
       const returnChannelX = snapUp(prev.bandRightX) + SHEET_RETURN_CHANNEL_GAP;
       // Strop pasm TEGO wiersza w świecie: `blockTopY` jest globalne (niesie
       // `dy`), `bandsResult` lokalne — różnica jest niezmiennicza względem
@@ -4577,12 +4008,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const col0 = rowLayout.columnsResult.columns[0];
       const gutterX = snapToGrid(col0.x - 2 * GRID);
       const underY = trunkCorridorYOf(rowLayout) + GRID;
-      // Ta sama łamana na KAŻDYM poziomie szczegółu (KD-5/S1 „jedna kotwica":
-      // bbox świata musi być identyczny na L0 i L2). Różni się WYŁĄCZNIE
-      // ostatnie podejście: na L1/L2 tor wchodzi w głowicę OD DOŁU (§22.3 —
-      // pion nie może przeciąć pasa szyny), na L0 stacja jest symbolem
-      // zbiorczym bez pasa szyny, więc podejście jest poziome na osi.
-      const approachY = lod === 0 ? entry.y : underY;
+      // Ta sama łamana na KAŻDYM poziomie szczegółu (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA:
+      // jedna kompozycja stacji na L0/L1/L2): tor wchodzi w głowicę OD DOŁU (§22.3 —
+      // pion nie może przeciąć pasa szyny).
+      const approachY = underY;
       const rawLink: RouteVertex[] = [
         { x: exit.x, y: exit.y },
         { x: exit.x, y: exitCorridorY },
@@ -4739,7 +4168,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const tail = openTailSegmentRefs(mainCableRun, lastStation.id);
       if (tail.length > 0) {
         const exit = lastStation.composed.exitPort;
-        const tailCorridorY = interStationCorridorY(rowLayout, lod);
+        const tailCorridorY = trunkCorridorYOf(rowLayout);
         // ODG-RYSUNEK: ogon musi sięgać ZA ostatni punkt odgałęźny, który na nim
         // leży — inaczej kotwica punktu wypadłaby poza biegiem i tor nie dałby
         // się w niej rozciąć (a punkt zostałby bez symbolu).
@@ -4965,10 +4394,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         stationNameBands.push(composed.stationNameOwner);
         portCaptions.push(...composed.portCaptionOwners);
         simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-        // GS-1 (V12K-137, GAP §10.4): NO na L0 = sylwetka mini-RMU (patrz ciąg
-        // główny wyżej); symbol `noPoint` + etykieta „NO" = reprezentacja L1/L2.
-        if (props.isNop && lod !== 0) {
-          simpleAnchored.push({
+        // Punkt NO: symbol na każdym LOD, podpis „NO" od L1 (patrz ciąg główny wyżej).
+        if (props.isNop) {
+          // Symbol NO należy do kompozycji (każdy LOD); podpis „NO" — szczegół od L1.
+          if (lod !== 0) simpleAnchored.push({
             ownerRef: `${measureInput.id}#no-point`,
             ownerKind: 'no-point',
             text: 'NO',
@@ -4990,7 +4419,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // Trasa pole GPZ → stacja 0 feederu — TEN SAM kształt co GPZ→S0
       // (port → korytarz wiersza → wejście), tożsamość łańcucha jak wszędzie.
       const first = feederRow[0];
-      const feederCorridorY = interStationCorridorY(feederLayout, lod);
+      const feederCorridorY = trunkCorridorYOf(feederLayout);
       const rawIn: RouteVertex[] = [
         { x: feederPort.x, y: feederPort.y },
         { x: feederPort.x, y: feederCorridorY },
@@ -5322,10 +4751,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-      // GS-1 (V12K-137, GAP §10.4): NO na L0 = sylwetka mini-RMU (patrz ciąg
-      // główny); symbol `noPoint` + etykieta „NO" = reprezentacja L1/L2.
-      if (props.isNop && lod !== 0) {
-        simpleAnchored.push({
+      // Punkt NO: symbol na każdym LOD, podpis „NO" od L1 (patrz ciąg główny).
+      if (props.isNop) {
+        // Symbol NO należy do kompozycji (każdy LOD); podpis „NO" — szczegół od L1.
+        if (lod !== 0) simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
           ownerKind: 'no-point',
           text: 'NO',
@@ -5431,17 +4860,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // międzystacyjnym tego wiersza — trzeci sub-poziom strefy B4/B5, patrz
       // `trunkCorridorYOf`) i wejście w głowicę OD DOŁU (czytanie toru:
       // kabel → głowica ▲ → aparaty → szyna, kanon „linia wchodzi do pola,
-      // nie na szynę"). L0 (stacja = symbol zbiorczy, port na osi, brak
-      // szyny/pól) zachowuje zejście proste — pas szyny nie istnieje.
+      // nie na szynę"). Ta sama łamana na każdym LOD (jedna kompozycja stacji).
       const entry = first.composed.entryPort;
       const rawJogPoints: RouteVertex[] = (() => {
-        if (lod === 0) {
-          return [
-            ...descentHead(),
-            { x: channelX, y: entry.y },
-            { x: entry.x, y: entry.y },
-          ];
-        }
         const col0 = layout.columnsResult.columns[0];
         const gutterX = snapToGrid(col0.x - 2 * GRID);
         const underY = trunkCorridorYOf(layout) + GRID;
@@ -5530,7 +4951,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const tail = openTailSegmentRefs(cableRun, lastStation.id);
       if (tail.length > 0) {
         const exit = lastStation.composed.exitPort;
-        const tailCorridorY = interStationCorridorY(layout, lod);
+        const tailCorridorY = trunkCorridorYOf(layout);
         const xEnd = snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN;
         const rawTail: RouteVertex[] = [
           { x: exit.x, y: exit.y },
@@ -5816,15 +5237,19 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // kompozycja stacji zostaje nietknięta (ta sama geometria, te same porty), więc
   // Acceptance Invariant nr 6 („LOD zmienia szczegół wizualny, nie znaczenie
   // elektryczne") jest zachowany wprost — zmienia się WYŁĄCZNIE zbiór etykiet.
-  // Filtrowany jest WYŁĄCZNIE identyfikator aparatu (`#apparatus-id-` w `ownerRef`,
-  // ta sama wyrocznia co §19.1 niżej), a nie cały `ownerKind:'apparatus'` — ten
-  // rodzaj jest DZIELONY ze znacznikiem GPZ obecnym na L0 i szersze cięcie zdjęłoby
-  // go z mapy sieci (zmierzone: L0 traciło 1 element).
+  // L1: filtrowany jest identyfikator aparatu (`#apparatus-id-` w `ownerRef`, ta sama
+  // wyrocznia co §19.1 niżej) i etykiety aparatów QET powyżej swojego `odLod`.
+  // L0 (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, reguła LOD wzorca UX04 „kształt zostaje,
+  // znika szczegół"): ta sama kompozycja bez opisów aparatów i bez oznaczeń pól
+  // (`ownerKind` 'apparatus' i 'field-role' — oznaczenia widać od L1); etykieta stanu
+  // nieznanego łącznika (`unresolved`) zostaje na każdym LOD (stan nie znika z rysunku).
   const simpleAnchoredForLod =
     lod === 2
       ? simpleAnchored
       : simpleAnchored.filter(
           (owner) =>
+            !(lod === 0 && (owner.ownerKind === 'apparatus' || owner.ownerKind === 'field-role') && !owner.unresolved)
+            &&
             !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-'))
             // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET pola GPZ — ta sama reguła
             // poziomu szczegółu co identyfikatory aparatów stacji; etykieta stanu nieznanego
@@ -7173,32 +6598,6 @@ export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentE
   const portKeys = new Set<string>();
   scene.symbols.forEach((s) => {
     symbolAllPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
-    // L0 (spec §7): `stationCollapsed` (16×16, symbol zbiorczy stacji) łączy
-    // się WŁASNYM ŚRODKIEM, nie krawędzią — konwencja routingu L0 od F6b
-    // (`composeRowStation`, gałąź `lod===0`; `SYMBOL_DEFS.stationCollapsed.
-    // ports` niesie WYŁĄCZNIE 4 porty krawędziowe, jak reszta biblioteki §3,
-    // bo te SĄ używane przez inne wyrocznie — grid_probe/`noSceneSymbolOverlaps`).
-    // Środek jest DODATKOWYM, udokumentowanym legalnym zakotwiczeniem
-    // WYŁĄCZNIE dla tego symbolu (dowód empiryczny F9.7: WSZYSTKICH 12
-    // końcowych odcinków laterali na L0 trafia DOKŁADNIE w środek, 0
-    // wyjątków — deterministyczna konwencja routingu, nie usterka).
-    if (s.symbolId === 'stationCollapsed') {
-      const def = SYMBOL_DEFS[s.symbolId];
-      portKeys.add(`${s.x + def.width / 2},${s.y + def.height / 2}`);
-    }
-  });
-  // L0 (rozstrzygnięcie architekta KD-5, 2026-10-30): blok zwinięty (GPZ, stacja) deklaruje
-  // porty zejść swoich pól (`meta.portyZejscBloku`) — zejście KAŻDEGO pola wychodzi
-  // z WŁASNEGO punktu krawędzi bloku, bez wspólnego pionu. Port deklarowany jest legalnym
-  // zakotwiczeniem wyłącznie, gdy leży na krawędzi DOLNEJ albo BOCZNEJ obrysu bloku —
-  // deklaracja punktu spoza krawędzi nie otwiera furtki dla wiszącego końca kabla.
-  scene.symbols.forEach((s) => {
-    const def = SYMBOL_DEFS[s.symbolId];
-    for (const p of s.meta?.portyZejscBloku ?? []) {
-      const naDolnej = p.y === s.y + def.height && p.x >= s.x && p.x <= s.x + def.width;
-      const naBocznej = (p.x === s.x || p.x === s.x + def.width) && p.y >= s.y && p.y <= s.y + def.height;
-      if (naDolnej || naBocznej) portKeys.add(`${p.x},${p.y}`);
-    }
   });
 
   const gaps: SceneSegmentEndpointGap[] = [];
@@ -8104,22 +7503,26 @@ export function layoutMetricsReport(scene: SceneV3): LayoutMetricsReport {
 // maxAnchorDisplacement, unchangedSubtreeMovementCount). Miary MIĘDZY dwiema
 // scenami TEGO SAMEGO LOD: ile kotwic stacji przesunęło się po lokalnej zmianie
 // topologii/footprintu (dowód, że silnik nie reorganizuje całości przy zmianie
-// jednej gałęzi). Kotwica = origin symbolu `stationCollapsed` (warstwa L0, jedna
+// jednej gałęzi). Kotwica = narożnik kompozycji stacji (`stationAnchors`, jedna
 // kotwica na stację) — deterministyczna i LOD-niezależna z konstrukcji „JEDNA
-// KOTWICA". Wyprowadzone z właściwości ogólnych (ref stacji, pozycja), zero
+// KOMPOZYCJA". Wyprowadzone z właściwości ogólnych (ref stacji, pozycja), zero
 // hardcode (WYTYCZNE §1/§2).
 // ---------------------------------------------------------------------------
 
-/** Kotwice stacji z warstwy L0 (`stationCollapsed`, jedna kotwica/stacja),
- *  kluczowane BAZĄ ref stacji (`stn/<hash>` bez sufiksu `#...`). */
-export function stationCollapsedAnchors(scene: SceneV3): ReadonlyMap<string, readonly [number, number]> {
-  const anchors = new Map<string, readonly [number, number]>();
+/** Kotwice stacji (jedna na stację, kluczowana bazą ref `stn/<hash>`): narożnik
+ *  (min x, min y) symboli kompozycji stacji. Od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA ta
+ *  sama kompozycja rysuje stację na KAŻDYM LOD, więc kotwica jest LOD-niezależna
+ *  z konstrukcji (dawniej: origin symbolu zbiorczego `stationCollapsed` warstwy L0). */
+export function stationAnchors(scene: SceneV3): ReadonlyMap<string, readonly [number, number]> {
+  const anchors = new Map<string, [number, number]>();
   for (const s of scene.symbols) {
-    if (s.symbolId !== 'stationCollapsed') continue;
-    const base = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
-    if (base) anchors.set(base, [s.x, s.y]);
+    const parts = (s.meta?.ownerRef ?? '').replace(/#.*$/, '').split('/');
+    if (parts.length < 2 || parts[0] !== 'stn' || parts[1].length === 0) continue;
+    const base = `${parts[0]}/${parts[1]}`;
+    const prev = anchors.get(base);
+    anchors.set(base, prev ? [Math.min(prev[0], s.x), Math.min(prev[1], s.y)] : [s.x, s.y]);
   }
-  return anchors;
+  return new Map([...anchors.entries()].sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0)));
 }
 
 export interface AnchorDisplacementMetrics {
@@ -8150,8 +7553,8 @@ export interface AnchorDisplacementMetrics {
  * kluczu-ref, wynik posortowany).
  */
 export function anchorDisplacementMetrics(before: SceneV3, after: SceneV3): AnchorDisplacementMetrics {
-  const a = stationCollapsedAnchors(before);
-  const b = stationCollapsedAnchors(after);
+  const a = stationAnchors(before);
+  const b = stationAnchors(after);
   let count = 0;
   let total = 0;
   let max = 0;
@@ -8502,15 +7905,10 @@ export interface SourceCoverageGap {
  * `scene.meta.sources[i]` (podlegającego LOD, patrz niżej) istnieje ≥1
  * symbol o `elementKind∈{'der','source'}` i `ownerRef===id`.
  *
- * L0 (spec §7, decyzja F9.4 udokumentowana w `buildMeasureInput` wyżej): DER
- * NIE są rysowane na L0 (kompozycja stacji na tym LOD to WYŁĄCZNIE
- * `stationCollapsed` + kod — `composeRowStation` L0 branch, WCZEŚNIEJ niż
- * `composeStation`) — WYJĄTEK JAWNY z konstrukcji, DER nieobecne na L0 NIE
- * są luką (`scene.meta.lod>=1` warunkuje filtrowanie niżej). `external_grid`
- * (glif `gridSource`, GPZ) NIE zależy od `lod` (`composeGpz` wołane
- * IDENTYCZNIE na KAŻDYM LOD, sekcja 2 `buildSceneV3` wyżej — brak gałęzi
- * `if (lod...)` przy jego wywołaniu) — MUSI mieć symbol na WSZYSTKICH LOD,
- * więc luka `external_grid` liczy się zawsze, niezależnie od `lod`.
+ * Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: stacje i GPZ rysuje ta sama kompozycja na
+ * KAŻDYM LOD, więc źródła (DER i sieć zewnętrzna) są na scenie także na L0 — luka
+ * liczy się niezależnie od `lod` (dawny wyjątek „DER nieobecne na L0" znikł razem
+ * z symbolem zbiorczym stacji).
  */
 export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[] {
   const visibleSourceRefs = new Set<string>();
@@ -8520,7 +7918,6 @@ export function sourceCoverageGaps(scene: SceneV3): readonly SourceCoverageGap[]
     }
   });
   return scene.meta.sources
-    .filter((s) => scene.meta.lod >= 1 || s.kind === 'external_grid')
     .filter((s) => !visibleSourceRefs.has(s.id))
     .map((s) => ({ sourceId: s.id, kind: s.kind }));
 }
@@ -8897,16 +8294,6 @@ export function sceneConnectivityIndex(scene: SceneV3): SceneConnectivityIndex {
   };
 }
 
-/**
- * KD-5: symbole ZWINIĘTE, których glif rysuje WŁASNĄ szynę zbiorczą
- * (`MINI_RMU.bus` / `MINI_GPZ.szynaSn`). Deklaracja JAWNA — dopisanie tu
- * symbolu, który szyny nie rysuje, byłoby cichym osłabieniem wymogu §14.1.
- */
-const COLLAPSED_BUSBAR_CARRIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
-  'stationCollapsed',
-  'gpzCollapsed',
-]);
-
 export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
   const sourceIndices: number[] = [];
   scene.symbols.forEach((s, i) => {
@@ -8920,18 +8307,6 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
   scene.segments.forEach((seg, si) => {
     if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(connectivity.segmentRoot(si));
   });
-  // KD-5: na L0 szyna zbiorcza NIE jest osobnym odcinkiem sceny — niesie ją
-  // SYLWETKA symbolu zwiniętego (`MINI_RMU.bus` dla stacji, `MINI_GPZ.szynaSn`
-  // dla bloku GPZ; ta sama zasada, dla której L0 w ogóle istnieje: zwijamy
-  // reprezentację, nie treść). Wymóg §14.1 „źródło ma trasę do co najmniej
-  // jednej szyny" jest więc spełniony, gdy źródło dochodzi do symbolu, który
-  // szynę RYSUJE — inaczej wyrocznia karałaby za samo zwinięcie, mimo że tor
-  // źródło→szyna jest na rysunku widoczny. Zbiór JAWNY i zamknięty: wolno tu
-  // stać wyłącznie symbolom, których glif niesie szynę w swojej geometrii.
-  scene.symbols.forEach((sym, mi) => {
-    if (COLLAPSED_BUSBAR_CARRIER_SYMBOLS.has(sym.symbolId)) busRoots.add(connectivity.symbolRoot(mi));
-  });
-
   const gaps: SourceConnectivityGap[] = [];
   sourceIndices.forEach((mi) => {
     if (!busRoots.has(connectivity.symbolRoot(mi))) {
@@ -9067,10 +8442,9 @@ export function allProtectionMarkingsValid(scene: SceneV3): boolean {
  *  `protectionRelay`/`meter`, zero segmentów `protectionTrip`/
  *  `measurementLink` (F10.5, spec §20.1: linia pomiarowa jest TĄ SAMĄ
  *  warstwą adnotacji co tor wyzwalania — patrz `isAnnotationSegment`,
- *  `sourceConnectivityGaps`). Prawdziwe Z KONSTRUKCJI (L0 nie wywołuje
- *  `composeStation` na realnych polach — `composeRowStation` gałąź
- *  `lod===0` zwraca WCZEŚNIEJ; GPZ dostaje `annotationDetail='none'`), ta
- *  funkcja to dowód dla CI, nie mechanizm. */
+ *  `sourceConnectivityGaps`). Prawdziwe Z KONSTRUKCJI (stacje i GPZ dostają na L0
+ *  `annotationDetail='none'` — `protectionAnnotationDetailForLod(0)`), ta funkcja to
+ *  dowód dla CI, nie mechanizm. */
 export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
   if (scene.meta.lod !== 0) return true;
   const hasSymbol = scene.symbols.some((s) => s.symbolId === 'protectionRelay' || s.symbolId === 'meter');
@@ -9411,17 +8785,9 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
 // (S-id), ŹRÓDŁO ZASILANIA, ZNACZNIK SEKCJI/NOP. Sprawdza je WPROST na scenie
 // L0.
 //
-// SCHEMAT-10 GS-1 (V12K-137, DOMKNIĘCIE GAP §10.4): zbiór §3 „nigdy nie znika"
-// ROZSZERZONY o TYP STACJI, TRANSFORMATOR, MARKER DER i STAN ŁĄCZNIKA/NO —
-// dawniej odłożone do S1 „Gramatyka stacji" (sylwetka `stationCollapsed` była
-// gołym kwadratem 16×16 bez markerów; DER na L0 = 0). GS-1 wprowadził rodzinę
-// glifów mini-RMU (obrys + szyna + markery typu/TR/DER/NO, `symbols/glyphs.ts`
-// `StationCollapsedGlyph`), więc te cechy SĄ TERAZ NA L0 i wyrocznia je
-// bramkuje: każdy kompaktowy glif stacji NIESIE podsumowanie sylwetki
-// (`meta.stationGlyph` — typ/TR/DER/NO wyprowadzone z TYPU elementów, spec
-// §19.3), a marker DER pojawia się na L0 gdy stacja ma DER (koniec bazy
-// „L0=0 vs L1=20"). Parytet obecności DER L0↔L1 sprawdza test w
-// `buildScene.schemat10gs1.test.ts` (osobno od tej wyroczni scenowo-lokalnej).
+// SCHEMAT-10 GS-1 (V12K-137) + karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: TYP STACJI,
+// TRANSFORMATOR, MARKER DER i STAN ŁĄCZNIKA/NO są na L0, bo L0 rysuje tę samą
+// kompozycję stacji co L1/L2 (dawna sylwetka mini-RMU `stationCollapsed` skasowana).
 // ---------------------------------------------------------------------------
 
 export interface Lod0ReadabilityGap {
@@ -9443,30 +8809,27 @@ export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap
   }
   for (const g of trunkThicknessGaps(scene)) gaps.push({ element: 'tor mocy', reason: g });
 
-  // (2) TOŻSAMOŚĆ + POZYCJA STACJI: każdy kompaktowy glif stacji (`stationCollapsed`)
-  //     na L0 ma etykietę tożsamości (S-id / nazwa) — §3 „tożsamość i pozycja
-  //     stacji NIGDY nie znika".
-  const nameOwners = new Set(
-    scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')),
-  );
-  for (const sym of scene.symbols) {
-    if (sym.symbolId !== 'stationCollapsed') continue;
-    const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
+  // (2) TOŻSAMOŚĆ + POZYCJA STACJI I GPZ: każda stacja narysowana na L0 (kotwica
+  //     `stationAnchors` — ta sama kompozycja co L1/L2) i GPZ mają etykietę tożsamości
+  //     (nazwa) — §3 „tożsamość i pozycja stacji NIGDY nie znika". Typ stacji, TR, DER,
+  //     NO i stan łączników niesie na L0 SAMA kompozycja (te same symbole co L1/L2).
+  // Właściciel nazwy stacji to `stn/<id>/station#name-row-k`, kotwica stacji to
+  // baza `stn/<id>` — porównanie po bazie (dwa pierwsze człony), GPZ po pełnym
+  // `gpz/<id>/substation` (= `meta.gpzId`).
+  const nameOwners = new Set<string>();
+  for (const l of scene.labels) {
+    if (l.ownerKind !== 'station-name') continue;
+    const full = l.ownerRef.replace(/#.*$/, '');
+    nameOwners.add(full);
+    nameOwners.add(full.split('/').slice(0, 2).join('/'));
+  }
+  for (const ref of stationAnchors(scene).keys()) {
     if (!nameOwners.has(ref)) {
-      gaps.push({ element: 'tożsamość stacji', reason: `kompaktowy glif stacji ${ref} bez etykiety S-id na L0` });
+      gaps.push({ element: 'tożsamość stacji', reason: `stacja ${ref} bez etykiety tożsamości na L0` });
     }
-    // (4) GS-1 (V12K-137, DOMKNIĘCIE GAP §10.4): TYP STACJI · TRANSFORMATOR ·
-    //     MARKER DER · STAN ŁĄCZNIKA/NO — sylwetka mini-RMU NIESIE podsumowanie
-    //     rozpoznawcze (`meta.stationGlyph`, wyprowadzone z TYPU elementów, spec
-    //     §19.3). Brak podsumowania = sylwetka bez cech typu/TR/DER/NO ⇒ luka
-    //     czytelności §3 (glif nie do odróżnienia SN/nN vs rozdzielnia vs
-    //     sekcyjna, bez TR/DER/NO). Renderuje je `StationCollapsedGlyph`.
-    if (!sym.meta?.stationGlyph) {
-      gaps.push({
-        element: 'sylwetka stacji',
-        reason: `glif stacji ${ref} bez podsumowania typ/TR/DER/NO (meta.stationGlyph) — typ nierozpoznawalny na L0`,
-      });
-    }
+  }
+  if (scene.meta.gpzId && !nameOwners.has(scene.meta.gpzId)) {
+    gaps.push({ element: 'tożsamość GPZ', reason: `GPZ ${scene.meta.gpzId} bez etykiety tożsamości na L0` });
   }
 
   // (3) ŹRÓDŁO ZASILANIA: sieci zewnętrzne/GPZ widoczne na L0 (§3 „źródło" —
@@ -9474,26 +8837,6 @@ export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap
   //     liczbie źródeł podlegających temu LOD, external_grid zawsze).
   if (!allSourcesVisible(scene)) {
     gaps.push({ element: 'źródło', reason: `źródła sieci niewidoczne na L0: ${sourceCoverageGaps(scene).length} luk` });
-  }
-
-  // (5) KD-5: BLOK GPZ ZWINIĘTY — tożsamość i sylwetka. Ta sama dyscyplina co
-  //     dla stacji w punkcie (2)/(4): zwinięcie wolno robić tylko wtedy, gdy
-  //     zwinięty obiekt DALEJ mówi, czym jest (etykieta tożsamości) i jak jest
-  //     zbudowany (sylwetka z realnych liczb sekcji/TR/pól). Blok bez etykiety
-  //     albo bez podsumowania byłby anonimowym prostokątem — dokładnie tym,
-  //     czego zwinięcie NIE ma prawa wprowadzić.
-  for (const sym of scene.symbols) {
-    if (sym.symbolId !== 'gpzCollapsed') continue;
-    const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
-    if (!nameOwners.has(ref)) {
-      gaps.push({ element: 'tożsamość GPZ', reason: `zwinięty blok GPZ ${ref} bez etykiety tożsamości na L0` });
-    }
-    if (!sym.meta?.gpzGlyph) {
-      gaps.push({
-        element: 'sylwetka GPZ',
-        reason: `zwinięty blok GPZ ${ref} bez podsumowania sekcje/TR/pola (meta.gpzGlyph) — układ nierozpoznawalny na L0`,
-      });
-    }
   }
 
   return gaps;

@@ -1,0 +1,588 @@
+{
+  "enm": {
+    "bays": [
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "FEEDER",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "id": "b656211a-9a1a-5561-b460-3d420d5c4ef2",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "field_status": "READY_FOR_TRUNK",
+          "gpz_line_field_index": 0,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 0,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 1.1",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "FEEDER",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "id": "fffacd37-a287-5501-87be-8227b1ed8a66",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "field_status": "READY_FOR_TRUNK",
+          "gpz_line_field_index": 1,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 0,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 1.2",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "FEEDER",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "id": "1f07e329-33bb-55f5-bc2a-1c1bc840c652",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "field_status": "READY_FOR_TRUNK",
+          "gpz_line_field_index": 0,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 1,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 2.1",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "FEEDER",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "id": "1fa28a11-34d0-56b2-8f03-d493095a65e8",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "field_status": "READY_FOR_TRUNK",
+          "gpz_line_field_index": 1,
+          "gpz_line_fields_count": 2,
+          "gpz_section_order": 1,
+          "source_field_kind": "FEEDER"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe GPZ 2.2",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
+      }
+    ],
+    "branch_points": [],
+    "branches": [
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "id": "70d633ea-f1fd-5611-9767-580dce8544e6",
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sprzęgło sekcji GPZ 1-2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
+        "source_mode": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "status": "closed",
+        "tags": [],
+        "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "type": "bus_coupler",
+        "x_ohm": null
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "id": "895eaa28-cc04-554d-8fba-95e4fe6366df",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.3,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "origin_apparatus_kind": "cable_head",
+          "origin_bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
+          "origin_port_role": "OUTGOING_HEAD"
+        },
+        "n_parallel": null,
+        "name": "Magistrala 1",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/c018dce2ef17aded26747b65a6e4492f/segment",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "bus/c018dce2ef17aded26747b65a6e4492f/downstream",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      }
+    ],
+    "buses": [
+      {
+        "frequency_hz": null,
+        "id": "d1c20376-3c5c-53cd-a416-fd991e86cf72",
+        "meta": {
+          "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+        },
+        "name": "Szyna GPZ S1 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "35e549e4-bba3-5c7b-8f5b-5177d81ab0e3",
+        "meta": {
+          "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+          "gpz_section_order": 1,
+          "gpz_substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+        },
+        "name": "Szyna GPZ S2 15 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "tags": [],
+        "voltage_kv": 15.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "af34415d-a2e4-55fe-9228-d9cfb4e34358",
+        "meta": {
+          "gpz_substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "render_on_sld": true,
+          "visual_role": "GPZ_HV_BUS"
+        },
+        "name": "Szyna GPZ WN 110 kV",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
+        "tags": [
+          "gpz_hv_bus"
+        ],
+        "voltage_kv": 110.0,
+        "zone": "GPZ"
+      },
+      {
+        "frequency_hz": null,
+        "id": "87d743a1-574f-59f7-8924-3a922744eb30",
+        "meta": {
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "visual_role": "INLINE_TERMINAL"
+        },
+        "name": "Zacisk końcowy Magistrala 1",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "bus/c018dce2ef17aded26747b65a6e4492f/downstream",
+        "tags": [
+          "helper_bus",
+          "topology_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      }
+    ],
+    "connection_nodes": [],
+    "corridors": [
+      {
+        "corridor_type": "radial",
+        "id": "a9193a97-3cb2-55f2-b2f7-81183a3fdf56",
+        "meta": {},
+        "name": "Magistrala 01",
+        "ordered_segment_refs": [
+          "seg/c018dce2ef17aded26747b65a6e4492f/segment"
+        ],
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01",
+        "tags": []
+      }
+    ],
+    "generators": [],
+    "header": {
+      "connection_conditions": null,
+      "created_at": "2026-09-25T00:00:00Z",
+      "defaults": {
+        "frequency_hz": 50.0,
+        "sn_nominal_kv": null,
+        "unit_system": "SI"
+      },
+      "description": null,
+      "enm_version": "1.0",
+      "hash_sha256": "c90ff4a2783e30b4d6e763e06d08b72d5de634900e0241058dc1453c5987cf82",
+      "name": "Przegląd — GPZ 2 sekcje × 2 pola, magistrala bez stacji",
+      "revision": 3,
+      "updated_at": "2026-09-25T00:00:00Z"
+    },
+    "junctions": [],
+    "katalog_projektu": null,
+    "line_runs": [
+      {
+        "branch_origin_station_ref": null,
+        "id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01",
+        "name": "Magistrala 01",
+        "parent_run_ref": null,
+        "run_kind": "main_trunk",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/c018dce2ef17aded26747b65a6e4492f/segment"
+          }
+        ],
+        "starting_bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
+        "starting_port_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
+        "stations": []
+      }
+    ],
+    "loads": [],
+    "measurements": [],
+    "protection_assignments": [],
+    "shunt_capacitors": [],
+    "sources": [
+      {
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "gpz_section_id": null,
+        "id": "3cc7e372-cd19-51ff-859f-b63d066eadd5",
+        "ik3_ka": null,
+        "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
+        "materialized_params": {
+          "manual_equivalent": true,
+          "rx_ratio": 0.1,
+          "short_circuit_input_side": "HV_110",
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "short_circuit_model": "short_circuit_power",
+          "sk3_hv_mva": 3000.0,
+          "sk3_mva": 3000.0,
+          "sn_voltage_kv": 15.0,
+          "voltage_hv_kv": 110.0,
+          "voltage_rating_kv": 110.0
+        },
+        "meta": {
+          "catalog_role": "GPZ_110_SN",
+          "solution_ref": null,
+          "source_id": null
+        },
+        "model": "short_circuit_power",
+        "name": "Źródło GPZ 110 kV",
+        "neutral_grounding": null,
+        "overrides": [],
+        "parameter_source": "MANUAL_EQUIVALENT",
+        "r0_ohm": null,
+        "r_ohm": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/source/main",
+        "rx_ratio": 0.1,
+        "rx_ratio_min": null,
+        "sk3_hv_mva": 3000.0,
+        "sk3_min_mva": null,
+        "sk3_mva": 3000.0,
+        "sn_voltage_kv": 15.0,
+        "source_mode": "EKSPERCKI_RECZNY",
+        "source_side": "HV_110",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "tags": [],
+        "u_set_pu": null,
+        "voltage_hv_kv": 110.0,
+        "x0_ohm": null,
+        "x_ohm": null,
+        "z0_z1_ratio": null
+      }
+    ],
+    "substations": [
+      {
+        "bus_refs": [
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn"
+        ],
+        "construction_type": null,
+        "designation": null,
+        "entry_point_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
+        "external_ports": [],
+        "gpz_hv_sections": [],
+        "gpz_sections": [
+          {
+            "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+            "incoming_source_ref": null,
+            "left_coupler_ref": null,
+            "line_field_name": "Pole liniowe GPZ 1.1",
+            "name": "Sekcja 1",
+            "order": 0,
+            "right_coupler_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
+            "section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001"
+          },
+          {
+            "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "incoming_source_ref": null,
+            "left_coupler_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
+            "line_field_name": "Pole liniowe GPZ 2.1",
+            "name": "Sekcja 2",
+            "order": 1,
+            "right_coupler_ref": null,
+            "section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002"
+          }
+        ],
+        "id": "d6361937-52b4-55bc-a3df-200d0760df3f",
+        "meta": {
+          "gpz_hv_bus_refs": [
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn"
+          ],
+          "gpz_section_count": 2,
+          "short_circuit_input_side": "HV_110",
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+          "wn_sn_transformer_count": 1
+        },
+        "name": "GPZ 15 kV",
+        "nn_sections": [],
+        "nn_voltage_levels": [],
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "station_type": "gpz",
+        "tags": [],
+        "transformer_refs": [
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn"
+        ]
+      }
+    ],
+    "transformers": [
+      {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "hv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
+        "hv_neutral": null,
+        "i0_percent": 0.35,
+        "id": "f0bda3f1-e39e-589c-9262-4c4d7387ebb4",
+        "lv_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+        "lv_earthing_system": null,
+        "lv_neutral": null,
+        "lv_voltage_tolerance": null,
+        "materialized_params": {
+          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+          "catalog_item_version": "2024.1",
+          "i0_percent": 0.35,
+          "p0_kw": 25.0,
+          "pk_kw": 120.0,
+          "rated_power_mva": 25.0,
+          "uk_percent": 11.0,
+          "vector_group": "Yd11",
+          "voltage_hv_kv": 110.0,
+          "voltage_lv_kv": 15.0
+        },
+        "meta": {
+          "catalog_item_version": "2024.1",
+          "catalog_role": "TRANSFORMATOR_WN_SN",
+          "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+          "gpz_section_order": 0,
+          "gpz_substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "visual_role": "GPZ_WN_SN_TRANSFORMER"
+        },
+        "n_parallel": null,
+        "name": "TR1 110/15 kV",
+        "overrides": [],
+        "p0_kw": 25.0,
+        "parameter_source": "CATALOG",
+        "pk_kw": 120.0,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn",
+        "sn_mva": 25.0,
+        "source_mode": "KATALOG",
+        "tags": [
+          "gpz_wn_sn_transformer"
+        ],
+        "tap_changer": null,
+        "tap_max": null,
+        "tap_min": null,
+        "tap_position": null,
+        "tap_step_percent": null,
+        "uhv_kv": 110.0,
+        "uk_percent": 11.0,
+        "ulv_kv": 15.0,
+        "vector_group": "Yd11"
+      }
+    ]
+  }
+}

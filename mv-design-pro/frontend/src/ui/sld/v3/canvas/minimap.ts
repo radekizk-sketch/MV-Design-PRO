@@ -59,7 +59,8 @@ export interface MinimapPoint {
   readonly y: number;
 }
 
-/** Uproszczony kształt sceny na minimapie. `station` (glif zbiorczy stacji) i
+/** Uproszczony kształt sceny na minimapie. `station` (obrys stacji — bbox
+ *  WSZYSTKICH jej symboli z tej samej kompozycji co rysunek) i
  *  `trunk` (magistrala) są wyróżnione — to szkielet orientacyjny nawigatora;
  *  reszta rysuje się jednolicie, bez próby oddania szczegółu (który na kilku
  *  pikselach byłby nieczytelny — ta sama zasada co próg `MIN_SYMBOL_SCREEN_PX`). */
@@ -152,11 +153,7 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
     const def = SYMBOL_DEFS[symbol.symbolId];
     const topLeft = projectPoint(projection, symbol.x, symbol.y);
     shapes.push({
-      // KD-5: blok GPZ zwinięty jest STACJĄ (zasilającą) — ta sama klasa
-      // nawigacyjna co `stationCollapsed`. Minimapa nie ma własnej ścieżki
-      // renderu: bierze to, co niesie scena L0, więc zwinięcie GPZ dziedziczy
-      // automatycznie; ta gałąź nadaje mu wyłącznie właściwą KLASĘ kształtu.
-      kind: symbol.symbolId === 'stationCollapsed' || symbol.symbolId === 'gpzCollapsed' ? 'station' : 'symbol',
+      kind: 'symbol',
       rect: {
         x: topLeft.x,
         y: topLeft.y,
@@ -165,6 +162,38 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
         // inaczej nawigator gubi stacje, po których użytkownik nawiguje.
         width: Math.max(1.5, def.width * projection.scale),
         height: Math.max(1.5, def.height * projection.scale),
+      },
+    });
+  }
+  // Obrys stacji: jedna kompozycja na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-
+  // KOMPOZYCJA), więc stacja nie ma już własnego symbolu zbiorczego — punkt
+  // orientacyjny nawigatora to bbox symboli stacji (baza refu `stn/<id>`,
+  // ta sama reguła co `stationAnchors` w scenie). Kolejność: po bazie refu.
+  const stationBoxes = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
+  for (const symbol of scene.symbols) {
+    const parts = (symbol.meta?.ownerRef ?? '').replace(/#.*$/, '').split('/');
+    if (parts.length < 2 || parts[0] !== 'stn' || parts[1].length === 0) continue;
+    const base = `stn/${parts[1]}`;
+    const def = SYMBOL_DEFS[symbol.symbolId];
+    const box = stationBoxes.get(base);
+    const next = {
+      minX: Math.min(box?.minX ?? Infinity, symbol.x),
+      minY: Math.min(box?.minY ?? Infinity, symbol.y),
+      maxX: Math.max(box?.maxX ?? -Infinity, symbol.x + def.width),
+      maxY: Math.max(box?.maxY ?? -Infinity, symbol.y + def.height),
+    };
+    stationBoxes.set(base, next);
+  }
+  for (const base of [...stationBoxes.keys()].sort()) {
+    const box = stationBoxes.get(base)!;
+    const topLeft = projectPoint(projection, box.minX, box.minY);
+    shapes.push({
+      kind: 'station',
+      rect: {
+        x: topLeft.x,
+        y: topLeft.y,
+        width: Math.max(1.5, (box.maxX - box.minX) * projection.scale),
+        height: Math.max(1.5, (box.maxY - box.minY) * projection.scale),
       },
     });
   }

@@ -27,7 +27,6 @@ import {
   type QetSymbolPolaSnId,
 } from '../cad/qet/qetPoleSn';
 import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
-import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
 import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
@@ -116,12 +115,6 @@ export function polozenieGeometrii(id: SymbolId, state: SwitchState | undefined)
   return geometria === 'earthed' ? 'unknown' : geometria;
 }
 
-/** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
- *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
- *  re-eksport tu zachowuje istniejące importy; `'unknown'` mapuje wołający na
- *  `'generator'` (glif generyczny, jak `DER_SOURCE_KIND_SYMBOL`). */
-export type { StationDerGlyphKind } from './miniRmuGrammar';
-
 export interface GlyphProps {
   readonly x: number;
   readonly y: number;
@@ -184,49 +177,6 @@ export interface GlyphProps {
    *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
    *  wpisem legendy arkusza). */
   readonly meterQuantity?: 'A' | 'V';
-  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): stacja SEKCYJNA (sprzęgło w
-   *  topologii, rodzaj z `ui/shared/rodzajStacji.ts`) — WYŁĄCZNIE `Station
-   *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `labelLines`).
-   *  Rodzaj stacji (SN/nN · rozdzielnia sieciowa · sekcyjna) WYPROWADZONY z
-   *  TYPU elementów, nie z nazw (spec §19.3). */
-  readonly stationSectioned?: boolean;
-  /** GS-1: stacja SN/nN z transformatorem (`Substation.hasTransformer`/
-   *  `transformerRatedKva`) — mini-glif TR zwieszony pod szyną. Odróżnia
-   *  stację transformatorową od rozdzielni sieciowej (bez TR). */
-  readonly stationHasTransformer?: boolean;
-  /** GS-4 (recenzja 2026-07-23; baza GS-1 §10.4): dominujący rodzaj DER
-   *  przyłączonego do SZYNY SN stacji — pole DER nad szyną (`poleDer`).
-   *  `null`/brak = zero DER na SN. Pozycja symbolu DER wynika z RZECZYWISTEGO
-   *  miejsca przyłączenia (nie z samego faktu obecności). */
-  readonly stationDerOnMv?: StationDerGlyphKind | null;
-  /** GS-4: dominujący rodzaj DER ZA TRANSFORMATOREM (strona nN) — znak przy
-   *  gałęzi pola TR PONIŻEJ uzwojeń (`poleTr.derNn`, INNA kotwica niż DER na
-   *  SN). Wymaga `stationHasTransformer` (bez TR nie istnieje strona nN —
-   *  sprzeczność raportuje `buildScene`, glif jej nie rysuje). NIEZALEŻNE od
-   *  `stationDerOnMv` — oba mogą wystąpić naraz. */
-  readonly stationDerBehindTr?: StationDerGlyphKind | null;
-  /** GS-1: stacja niesie punkt/łącznik NORMALNIE OTWARTY (`Substation.isNop`)
-   *  — marker otwartego łącznika na szynie (odróżnialny od zamkniętego). */
-  readonly stationNoOpen?: boolean;
-  /** GS-5 (uwaga właściciela 2026-07-23: „render zakłada, że większość stacji
-   *  to przelotowe, a w realnej sieci to końcowe z odgałęzień"): topologia
-   *  pól liniowych sylwetki z REALNEJ roli stacji w ciągu (spec §19.3 +
-   *  prezentacja stacji ostatniej w ciągu): `'końcowa'` = TYLKO pole WE,
-   *  szyna kończy się w rozdzielnicy (zero fantomowego toru na wylot);
-   *  `'przelotowa'` = dwa pola (zachowanie dotychczasowe = default dla
-   *  wołających bez podsumowania); `'odgałęźna'` = dwa pola + węzeł
-   *  odgałęzienia na szynie (kabel zejścia rysuje scena; pełne pole
-   *  odgałęźne od L1 — uzasadnienie przestrzenne w `miniRmuGrammar.ts`). */
-  readonly stationLineTopology?: MiniRmuLineTopology;
-  /** KD-5: liczba SEKCJI szyn SN bloku GPZ — WYŁĄCZNIE `GpzCollapsedGlyph`
-   *  (wzór `stationSectioned`). >1 ⇒ sprzęgło sekcyjne w sylwetce. */
-  readonly gpzSections?: number;
-  /** KD-5: liczba transformatorów WN/SN bloku GPZ — 0 ⇒ sylwetka bez uzwojeń
-   *  (uczciwy obraz danych: GPZ bez TR w modelu nie dostaje fantomowego TR). */
-  readonly gpzTransformers?: number;
-  /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
-   *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
-  readonly gpzFeeders?: number;
   /** Karta GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu —
    *  WYŁĄCZNIE `Transformer2WGlyph`. `undefined` = wołający nie rozwiązuje grupy dla
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
@@ -285,17 +235,6 @@ function stroke(props: GlyphProps): string {
 function grubosc(props: GlyphProps, base: number): number {
   const k = props.strokeScale;
   return Number.isFinite(k) && (k as number) > 0 ? base * (k as number) : base;
-}
-
-/** PROPORCJE — ten sam mnożnik nałożony na CAŁY rekord wag sylwetki zwiniętej
- *  (`MINI_RMU.stroke` / `MINI_GPZ.stroke`: tor, szyna, marker, obrys).
- *  Jednorodnie, jednym przebiegiem — wzmocnienie samego toru przy nietkniętym
- *  obrysie zmieniłoby WEWNĘTRZNE proporcje sylwetki, a nie tylko jej wagę
- *  wobec reszty rysunku. */
-function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProps, wagi: T): T {
-  const wynik: Record<string, number> = {};
-  for (const klucz of Object.keys(wagi)) wynik[klucz] = grubosc(props, wagi[klucz]);
-  return wynik as unknown as T;
 }
 
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
@@ -998,230 +937,6 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
       <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <path d="M4,8 L12,8 L8,16 Z" fill={stroke(props)} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={16} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-    </g>
-  );
-}
-
-/** GS-3 (K4/K5): marker RODZAJU DER — pomocniczy. Trójkąt jest ZAREZERWOWANY
- *  dla głowicy kablowej, więc PV=romb, BESS=bateria, FW/gen=okrąg. GS-4:
- *  kotwica (cx,cy,h) parametryzowana — TEN SAM kształt rodzaju w polu DER na
- *  SN (`poleDer`) i za TR na nN (`poleTr.derNn`); różni się WYŁĄCZNIE miejsce
- *  przyłączenia (topologia), nigdy notacja rodzaju. */
-function derMiniMarker(props: GlyphProps, kind: StationDerGlyphKind, s: string, cx: number, cy: number, h: number): JSX.Element {
-  const w = grubosc(props, MINI_RMU.stroke.marker);
-  const shape = DER_MARKER_SHAPE[kind];
-  if (shape === 'diamond') {
-    return <path d={`M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`} fill="none" stroke={s} strokeWidth={w} />;
-  }
-  if (shape === 'battery') {
-    // Prostokąt bateryjny 2:1 z kreską wewnętrzną (NIE kwadrat aparatu).
-    return (
-      <g>
-        <rect x={cx - h} y={cy - h / 2} width={2 * h} height={h} fill="none" stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy - h / 2} x2={cx} y2={cy + h / 2} stroke={s} strokeWidth={w} />
-      </g>
-    );
-  }
-  if (shape === 'circle-spokes') {
-    // Wirnik: okrąg + 3 ramiona (Y).
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx} y2={cy - h} stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx - 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
-        <line x1={cx} y1={cy} x2={cx + 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
-      </g>
-    );
-  }
-  // Generator: okrąg z kropką centralną.
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
-      <circle cx={cx} cy={cy} r={0.35} fill={s} stroke="none" />
-    </g>
-  );
-}
-
-/** Głowica kablowa (K1/K4): trójkąt wierzchołkiem ku wnętrzu pola. */
-function glowica(xBase: number, xTip: number, y: number, halfH: number, s: string, w: number): JSX.Element {
-  return <path d={`M${xTip},${y} L${xBase},${y - halfH} L${xBase},${y + halfH} Z`} fill="none" stroke={s} strokeWidth={w} />;
-}
-
-/**
- * GS-3 (V12K-137, werdykt NO-GO recenzji GS-2 — `GRAMATYKA_MINI_RMU_2026-07.md`
- * K1–K7): stacja SN/nN na L0 = MINIATUROWY SLD ROZDZIELNICY — kompozycja PÓL,
- * nie ikona na linii. Tor: kabel → △głowica → aparat pola → SZYNA WEWNĘTRZNA
- * (nie wychodzi poza enklozurę, K2) → aparat → △głowica → kabel. Pola TR/DER
- * jako własne odgałęzienia z aparatem (K3/K5); sekcja/NO = stan aparatu W TORZE
- * szyny (K6, NO = realna przerwa). Obrys wtórny (K7). Geometria WYŁĄCZNIE z
- * `MINI_RMU` (reguła 13). Mono (P5) — stan/rodzaj = geometria, nie kolor.
- */
-export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
-  const s = stroke(props);
-  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, odgalezienie: od, stroke: swBazowe } = MINI_RMU;
-  const sw = skalujWagi(props, swBazowe);
-  const y = L.y;
-  const busBroken = props.stationNoOpen === true;
-  // GS-5: topologia pól liniowych z roli stacji w ciągu; brak danych =
-  // 'przelotowa' (zachowanie dotychczasowe — sylwetka bazowa bez podsumowania).
-  const lineTopology = props.stationLineTopology ?? 'przelotowa';
-  const drawRightField = lineTopology !== 'końcowa';
-  return (
-    <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu" data-station-line-topology={lineTopology}>
-      {/* Obrys enklozury — WTÓRNY (K7): najlżejsza kreska, bez wypełnienia. */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-station-outline="true" />
-      {/* POLE LINIOWE L1: kabel → głowica → aparat → łącznik do szyny (K1). */}
-      <line x1={L.stubL.x1} y1={y} x2={L.stubL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-      {glowica(L.glowicaL.xBase, L.glowicaL.xTip, y, L.glowicaL.halfH, s, sw.path)}
-      <rect x={L.aparatL.x - L.aparatL.size / 2} y={y - L.aparatL.size / 2} width={L.aparatL.size} height={L.aparatL.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L1" />
-      <line x1={L.glowicaL.xTip} y1={y} x2={L.aparatL.x - L.aparatL.size / 2} y2={y} stroke={s} strokeWidth={sw.path} />
-      <line x1={L.linkL.x1} y1={y} x2={L.linkL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-      {/* SZYNA WEWNĘTRZNA (K2) — najgrubsza; przy NO realna PRZERWA (K6). */}
-      {busBroken ? (
-        <g data-station-no="true">
-          <line x1={bus.x1} y1={y} x2={sp.x - sp.gapHalf} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
-          <line x1={sp.x + sp.gapHalf} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} />
-          {/* Otwarty styk aparatu: kreska odchylona od osi (stan OTWARTY). */}
-          <line x1={sp.x - sp.gapHalf} y1={y} x2={sp.x + sp.gapHalf} y2={y - 2 * sp.gapHalf} stroke={s} strokeWidth={sw.path} />
-        </g>
-      ) : (
-        <line x1={bus.x1} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
-      )}
-      {/* Rodzina APARAT SEKCYJNY (K6): stan ZAMKNIĘTY = te same styki co stan
-          otwarty (NO), człon ruchomy DOMKNIĘTY na osi (ciągłość); zmienia się
-          wyłącznie położenie członu — jedna rodzina glifu, jedna kotwica. */}
-      {props.stationSectioned && !busBroken && (
-        <g data-station-sectioned="true">
-          <line x1={sp.x - sp.gapHalf} y1={y - 2} x2={sp.x - sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
-          <line x1={sp.x + sp.gapHalf} y1={y - 2} x2={sp.x + sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {props.stationSectioned && busBroken && <g data-station-sectioned="true" />}
-      {/* POLE LINIOWE L2 (lustrzane) — TYLKO gdy tor kontynuuje (GS-5):
-          stacja KOŃCOWA nie dostaje fantomowego pola na wylot; szyna kończy
-          się w rozdzielnicy (rezerwa/koniec ciągu — uczciwy obraz roli). */}
-      {drawRightField && (
-        <g data-station-field-out="true">
-          <line x1={L.linkR.x1} y1={y} x2={L.linkR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-          <rect x={L.aparatR.x - L.aparatR.size / 2} y={y - L.aparatR.size / 2} width={L.aparatR.size} height={L.aparatR.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L2" />
-          <line x1={L.aparatR.x + L.aparatR.size / 2} y1={y} x2={L.glowicaR.xTip} y2={y} stroke={s} strokeWidth={sw.path} />
-          {glowica(L.glowicaR.xBase, L.glowicaR.xTip, y, L.glowicaR.halfH, s, sw.path)}
-          <line x1={L.stubR.x1} y1={y} x2={L.stubR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {/* GS-5: WĘZEŁ ODGAŁĘZIENIA na szynie (stacja odgałęźna, ≥3 pola
-          liniowe §19.3) — kropka węzłowa (junction); kabel zejścia rysuje
-          scena. Przy NO (przerwa szyny w środku) kropka NIE jest rysowana —
-          punkt środka leży w realnej przerwie; odgałęzienie pozostaje
-          widoczne kablem sceny. */}
-      {lineTopology === 'odgałęźna' && !busBroken && (
-        <circle cx={od.x} cy={y} r={od.r} fill={s} stroke="none" data-station-branch-node="true" />
-      )}
-      {/* POLE TR (K3): szyna → aparat pola TR → transformator (dwuuzwojeniowy). */}
-      {props.stationHasTransformer && (
-        <g data-station-transformer="true">
-          <line x1={tr.x} y1={tr.stub1.y1} x2={tr.x} y2={tr.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          <rect x={tr.x - tr.aparat.size / 2} y={tr.aparat.y} width={tr.aparat.size} height={tr.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="TR" />
-          <line x1={tr.x} y1={tr.stub2.y1} x2={tr.x} y2={tr.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          {/* GS-4: DER ZA TRANSFORMATOREM (strona nN) — znak źródła przy
-              gałęzi pola TR PONIŻEJ uzwojeń, POZA enklozurą (nN na zewnątrz
-              rozdzielnicy SN). ZAKAZ renderu z szyny SN, gdy model mówi nN.
-              Guard `stationHasTransformer` z konstrukcji: blok żyje WEWNĄTRZ
-              grupy TR (bez TR strona nN nie istnieje). */}
-          {props.stationDerBehindTr && (
-            <g data-station-der-nn={props.stationDerBehindTr}>
-              <line x1={tr.x} y1={tr.derNn.stub.y1} x2={tr.x} y2={tr.derNn.stub.y2} stroke={s} strokeWidth={sw.path} />
-              {derMiniMarker(props, props.stationDerBehindTr, s, tr.x, tr.derNn.markerCY, tr.derNn.markerHalf)}
-            </g>
-          )}
-        </g>
-      )}
-      {/* POLE DER na SN (K5): szyna → aparat pola DER → marker rodzaju. */}
-      {props.stationDerOnMv && (
-        <g data-station-der-sn={props.stationDerOnMv}>
-          <line x1={der.x} y1={der.stub1.y1} x2={der.x} y2={der.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          <rect x={der.x - der.aparat.size / 2} y={der.aparat.y} width={der.aparat.size} height={der.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="DER" />
-          <line x1={der.x} y1={der.stub2.y1} x2={der.x} y2={der.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {derMiniMarker(props, props.stationDerOnMv, s, der.x, der.markerCY, der.markerHalf)}
-        </g>
-      )}
-    </g>
-  );
-}
-
-/**
- * KD-5 (dług nazwany w V12K-285): BLOK GPZ ZWINIĘTY na L0 — miniatura
- * gramatyki GPZ (spec §3), nie plakietka. Rysunek WYŁĄCZNIE z `MINI_GPZ`
- * (`miniRmuGrammar.ts`, reguła 13: zero literałów geometrii w rendererze).
- *
- * Tor czytany z kształtu, z góry na dół: zejście od sieci zewnętrznej → SZYNA
- * WN → pole WN (aparat) → TRANSFORMATOR → pole TR (aparat) → SZYNA SN → POLA
- * ODEJŚCIOWE; pole magistrali schodzi portem S do toru magistrali sceny.
- * Liczby sekcji/transformatorów/pól pochodzą z REALNEJ kompozycji GPZ
- * (`meta.gpzGlyph`, `scene/buildScene.ts`) — brak danych ⇒ element nie jest
- * rysowany (zero fantomu), a nie rysowany „domyślnie".
- */
-export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
-  const s = stroke(props);
-  const { enclosure: e, zrodlo, szynaWn, poleWn, transformator: tr, poleTr, szynaSn, polaOdejsciowe: po, sprzeglo: sp, stroke: swBazowe } = MINI_GPZ;
-  const sw = skalujWagi(props, swBazowe);
-  const sections = props.gpzSections ?? 1;
-  const transformers = props.gpzTransformers ?? 0;
-  const feeders = props.gpzFeeders ?? 0;
-  const drawnFeeders = po.xs.slice(0, Math.max(0, Math.min(feeders, po.xs.length)));
-  const sectioned = sections > 1;
-  const aparat = (x: number, y: number, size: number, testId: string): JSX.Element => (
-    <rect x={x - size / 2} y={y} width={size} height={size} fill="none" stroke={s} strokeWidth={sw.path} data-gpz-aparat={testId} />
-  );
-  return (
-    <g {...glyphGroupProps('gpzCollapsed', props)} data-gpz-silhouette="mini-gpz" data-gpz-sections={sections}>
-      {/* Obrys rozdzielni — WTÓRNY (K7). */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-gpz-outline="true" />
-      {/* Zejście od sieci zewnętrznej (port N) do szyny WN. */}
-      <line x1={MINI_GPZ.axis} y1={zrodlo.stub.y1} x2={MINI_GPZ.axis} y2={zrodlo.stub.y2} stroke={s} strokeWidth={sw.path} />
-      {/* SZYNA WN. */}
-      <line x1={szynaWn.x1} y1={szynaWn.y} x2={szynaWn.x2} y2={szynaWn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="wn" />
-      {/* Pole WN transformatora (aparat w torze). */}
-      {transformers > 0 && (
-        <g data-gpz-transformer="true">
-          <line x1={poleWn.x} y1={poleWn.stub1.y1} x2={poleWn.x} y2={poleWn.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(poleWn.x, poleWn.aparat.y, poleWn.aparat.size, 'WN')}
-          <line x1={poleWn.x} y1={poleWn.stub2.y1} x2={poleWn.x} y2={poleWn.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {/* TRANSFORMATOR — dwa uzwojenia (ta sama notacja co pole TR mini-RMU). */}
-          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
-          {/* Pole TR po stronie SN (aparat w torze). */}
-          <line x1={poleTr.x} y1={poleTr.stub1.y1} x2={poleTr.x} y2={poleTr.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(poleTr.x, poleTr.aparat.y, poleTr.aparat.size, 'TR')}
-          <line x1={poleTr.x} y1={poleTr.stub2.y1} x2={poleTr.x} y2={poleTr.stub2.y2} stroke={s} strokeWidth={sw.path} />
-        </g>
-      )}
-      {/* SZYNA SN — przy >1 sekcji realna PRZERWA + styki sprzęgła (wzór K6). */}
-      {sectioned ? (
-        <g data-gpz-sectioned="true">
-          <line x1={szynaSn.x1} y1={szynaSn.y} x2={sp.x - sp.gapHalf} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
-          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} />
-          <line x1={sp.x - sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x - sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
-          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x + sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
-        </g>
-      ) : (
-        <line x1={szynaSn.x1} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
-      )}
-      {/* POLA ODEJŚCIOWE: pierwsze (na osi) schodzi na wylot do magistrali. */}
-      {drawnFeeders.map((x, i) => (
-        <g key={`pole-${x}`} data-gpz-feeder={i === 0 ? 'magistrala' : 'liniowe'}>
-          <line x1={x} y1={po.stub1.y1} x2={x} y2={po.stub1.y2} stroke={s} strokeWidth={sw.path} />
-          {aparat(x, po.aparat.y, po.aparat.size, i === 0 ? 'POLE-MAGISTRALA' : 'POLE')}
-          <line x1={x} y1={po.stub2.y1} x2={x} y2={po.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {i === 0 ? (
-            <line x1={x} y1={po.wyjscie.y1} x2={x} y2={po.wyjscie.y2} stroke={s} strokeWidth={sw.path} />
-          ) : (
-            <line x1={x} y1={po.stubKoncowy.y1} x2={x} y2={po.stubKoncowy.y2} stroke={s} strokeWidth={sw.path} />
-          )}
-        </g>
-      ))}
     </g>
   );
 }
@@ -1943,8 +1658,6 @@ const GLIFY_SYMBOLI: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Elemen
   derUnknown: DerUnknownGlyph,
   bayNoEquipment: BayNoEquipmentGlyph,
   gridSource: GridSourceGlyph,
-  stationCollapsed: StationCollapsedGlyph,
-  gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
   nnBreaker: NnBreakerGlyph,

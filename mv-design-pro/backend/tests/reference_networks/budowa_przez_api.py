@@ -130,26 +130,32 @@ class KlientBudowy:
             },
         )
 
-    def gpz_110kv(self, transformer_count: int, sections_count: int = 1) -> dict[str, Any]:
+    def gpz_110kv(
+        self,
+        transformer_count: int,
+        sections_count: int = 1,
+        line_fields_per_section: int | None = None,
+    ) -> dict[str, Any]:
         """GPZ z równoważnikiem sieci po stronie 110 kV (Sk″ = 3000 MVA, R/X = 0,1)
         i `transformer_count` transformatorami 110/15 kV 25 MVA na wspólnej szynie 110 kV
         — jedyny tryb, w którym transformatory 110/SN są elementami modelu (karta
-        GPZ-MODEL)."""
-        return self.operacja(
-            "add_grid_source_sn",
-            {
-                "voltage_kv": 15.0,
-                "manual_equivalent": {
-                    "short_circuit_input_side": "HV_110",
-                    "hv_voltage_kv": 110.0,
-                    "sk3_hv_mva": 3000.0,
-                    "rx_ratio": 0.1,
-                },
-                "sections_count": sections_count,
-                "transformer_count": transformer_count,
-                "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+        GPZ-MODEL). `line_fields_per_section` — liczba pól liniowych każdej sekcji SN
+        (to samo pole ładunku, które wysyła kreator źródła); brak = domyślne 1 pole."""
+        payload: dict[str, Any] = {
+            "voltage_kv": 15.0,
+            "manual_equivalent": {
+                "short_circuit_input_side": "HV_110",
+                "hv_voltage_kv": 110.0,
+                "sk3_hv_mva": 3000.0,
+                "rx_ratio": 0.1,
             },
-        )
+            "sections_count": sections_count,
+            "transformer_count": transformer_count,
+            "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+        }
+        if line_fields_per_section is not None:
+            payload["line_fields_per_section"] = line_fields_per_section
+        return self.operacja("add_grid_source_sn", payload)
 
     def odcinek_magistrali(
         self,

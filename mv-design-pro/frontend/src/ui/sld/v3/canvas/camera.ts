@@ -226,20 +226,16 @@ export function lodFromScaleWithHysteresis(
 }
 
 /**
- * KD-5 — WSPÓŁCZYNNIK ZOOMU do przekroczenia progu WEJŚCIA na poziom wyższy
- * niż `fromLod`. Potrzebny dla jednej interakcji: klik/dwuklik w ZWINIĘTY blok
- * GPZ ma go rozwinąć, a rozwinięcie jest własnością POZIOMU SZCZEGÓŁU, nie
- * osobnego trybu — więc „rozwiń" znaczy dokładnie „zbliż do progu".
+ * WSPÓŁCZYNNIK ZOOMU do przekroczenia progu WEJŚCIA na poziom wyższy niż
+ * `fromLod` — „zbliż do progu" tymi samymi progami i marginesem co histereza
+ * kamery (brak drugiego systemu progów). Konsumenci: skrypty pomiarowe kamery
+ * (`scripts/pomiar_b2_kamera.tsx`, `scripts/render_b2_kotwica.tsx`), które
+ * odtwarzają pracę projektanta realnymi akcjami `'zoom'`. (Dawny konsument
+ * kanwy — rozwinięcie zwiniętego bloku GPZ klikiem — skasowany razem z
+ * blokiem, karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA.)
  *
- * Zero nowego toru: wynik podaje się istniejącej akcji `'zoom'`
- * (`cameraReducer`), która sama przełączy LOD histerezą (`lodFromScaleWith
- * Hysteresis`) i zmapuje skalę (`applyLodScaleMapping`). Próg czytany z TEJ
- * SAMEJ tabeli `DEFAULT_LOD_THRESHOLDS` i marginesu `LOD_HYSTERESIS_MARGIN`,
- * co histereza kamery — brak drugiego systemu progów (rozstrzygnięcie karty).
- *
- * `1` (brak zoomu) gdy: poziom najwyższy (nie ma czego rozwijać), `refScale`
- * już powyżej progu wejścia, albo dane zdegenerowane — funkcja NIGDY nie
- * oddala (współczynnik < 1 byłby cofnięciem, nie rozwinięciem).
+ * `1` (brak zoomu) gdy: poziom najwyższy, `refScale` już powyżej progu
+ * wejścia, albo dane zdegenerowane — funkcja NIGDY nie oddala.
  */
 export function zoomFactorToEnterNextLod(
   refScale: number,
@@ -255,8 +251,8 @@ export function zoomFactorToEnterNextLod(
   // zmiennoprzecinkowej równe `target` — dla niektórych skal kadru iloczyn
   // ląduje ułamek ULP PONIŻEJ progu i kamera zostaje na poprzednim poziomie
   // (pomiar 2026-09-01: skala 1800/11117,87 golden sieci 53 stacji po
-  // zmianie wysokości arkusza; test `gpzCollapsedExpand` — klik w zwinięty
-  // blok GPZ nie rozwijał widoku). Klasa, nie instancja: dotyczy KAŻDEGO
+  // zmianie wysokości arkusza; kamera zostawała na L0 mimo
+  // zoomu „do progu"). Klasa, nie instancja: dotyczy KAŻDEGO
   // przejścia L0→L1 i L1→L2 wyliczanego z ilorazu.
   const factor = (target * (1 + 1e-12)) / refScale;
   return factor > 1 ? factor : 1;

@@ -389,8 +389,8 @@ const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
 /**
  * F8b-1 C: nakładka energizacji — patrz uzasadnienie źródła w nagłówku pliku.
  * Buduje `energizedByTestId` dla WSZYSTKICH TRZECH LOD naraz (scena ma inny
- * zestaw testId per LOD — L0 ma `stationCollapsed`, L1/L2 mają aparaturę per
- * pole — kanwa wybiera efektywny LOD z kamery, więc nakładka musi pokrywać
+ * zestaw testId per LOD — ta sama kompozycja, ale indeksy i adnotacje różnią
+ * się między poziomami — kanwa wybiera efektywny LOD z kamery, więc nakładka musi pokrywać
  * wszystkie possible testId, nie tylko jednego LOD). WYŁĄCZNIE `elementKind`
  * 'station'/'bus'/'segment' — apparatus/transformer/der mają `ownerRef=bayRef`,
  * który nie odpowiada żadnej kategorii `SupplyPathHighlight` (patrz nagłówek).
@@ -2798,7 +2798,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           height={size.height}
           overlay={overlay}
           onElementClick={handleElementClick}
-          onPrzedPoleceniemWidoku={kadrowanie.zapamietajPrzedPoleceniem}
           onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
           lodOverride={lodOverride}

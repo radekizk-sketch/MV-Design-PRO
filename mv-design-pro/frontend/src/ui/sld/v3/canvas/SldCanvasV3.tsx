@@ -91,8 +91,6 @@ import {
   type CameraState,
   pointerDistance,
   pointerMidpoint,
-  refScaleFor,
-  zoomFactorToEnterNextLod,
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
@@ -455,12 +453,6 @@ export interface SldCanvasV3Props {
     readonly lod: SceneLod;
     readonly seq: number;
   } | null;
-  /** K2 („Poprzedni widok"): wołane TUŻ PRZED poleceniem widoku, które kanwa
-   *  wykonuje sama — rozwinięcie zwiniętego bloku GPZ klikiem (KD-5). Wołający
-   *  odkłada wtedy bieżący kadr do historii, więc „Wstecz" wraca także sprzed
-   *  rozwinięcia (bez tego dwuklik w zwinięty GPZ zapisywał w historii kadr PO
-   *  rozwinięciu, a widok sieci był nieosiągalny). */
-  readonly onPrzedPoleceniemWidoku?: () => void;
   /**
    * K2b §0.1 (c) — KURTYNA KADRU: refy rysunku celu bieżącego kadru
    * (`useKadrowanieWidoku().refyKurtyny`). Wszystko, co do celu nie należy
@@ -1827,10 +1819,9 @@ export function layoutResultLabels(
     if (lines.length === 0) continue;
     // S9-2: kotwica dobierana PREFERENCJĄ klasy, ale z zejściem do drugiego
     // rejestru. Powód: ta sama tożsamość wynikowa bywa narysowana raz odcinkiem,
-    // raz symbolem — szyna SN stacji to odcinek na L1/L2, a na poziomie
-    // przeglądu (L0) TEN SAM punkt niesie zwinięty blok stacji (symbol).
-    // Bez zejścia wpis nie miałby kotwicy na L0 i wartość stacyjna nigdy by się
-    // nie pokazała.
+    // raz symbolem (szyna SN stacji to odcinek; transformator i źródło to symbol) —
+    // jedna kompozycja na każdym LOD, więc zejście chroni tylko przed brakiem
+    // kotwicy preferowanej klasy.
     const preferSymbol = entry.kind === 'transformer' || entry.kind === 'source';
     const symbolCandidate = symbolAnchor.get(ref);
     const segmentCandidate = segmentAnchor.get(ref);
@@ -3091,17 +3082,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [scene, labelPlan, resultMarkerHits, camera.transform.scale, ukryteTestId],
   );
 
-  /** Symbole, których klik NIESIE też nawigację (KD-5: rozwinięcie zwiniętego
-   *  bloku GPZ na L0) — po `testId`, żeby warstwa trafień nie musiała znać
-   *  indeksów sceny. */
-  const rozwijalneSymbole = useMemo(() => {
-    const mapa = new Map<string, PreviewSymbol>();
-    scene.symbols.forEach((symbol, index) => {
-      if (symbol.symbolId === 'gpzCollapsed') mapa.set(symbolTestId(symbol, index), symbol);
-    });
-    return mapa;
-  }, [scene]);
-
   /** Meta kliku per obiekt sceny — TA SAMA treść, którą przed kartą S9-4
    *  budowały węzły `SceneSymbolNode`/`SceneSegmentNode` (tożsamość zaznaczenia:
    *  `ownerRef` klikniętego obiektu, nie jego kontenera). */
@@ -3287,48 +3267,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     return () => svg.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
-  /**
-   * KD-5 — ROZWINIĘCIE ZWINIĘTEGO BLOKU: klik (a więc i dwuklik, którego
-   * pierwszy człon jest klikiem) w blok GPZ na L0 przenosi kadr na blok i
-   * zbliża DOKŁADNIE do progu wejścia na następny poziom szczegółu.
-   *
-   * Reużyta ISTNIEJĄCA nawigacja kamery — zero nowego toru: akcja `'center'`
-   * (ta sama, którą wywołuje minimapa) + akcja `'zoom'` ze współczynnikiem
-   * z `zoomFactorToEnterNextLod` (progi z tej samej tabeli, co histereza
-   * kamery). Przełączenie LOD i przeliczenie skali robi `cameraReducer`, jak
-   * przy zwykłym kółku myszy.
-   *
-   * Bramka `camera.lod !== 0`: rozwijamy WYŁĄCZNIE z poziomu przeglądowego —
-   * drugi człon dwukliku (kamera jest już na L1) nie doda kolejnego skoku.
-   */
-  const onPrzedPoleceniemWidoku = props.onPrzedPoleceniemWidoku;
-  const expandCollapsedBlock = useCallback(
-    (symbol: PreviewSymbol) => {
-      if (camera.lod !== 0) return;
-      onPrzedPoleceniemWidoku?.();
-      const def = SYMBOL_DEFS[symbol.symbolId];
-      // KD-7: środek symbolu to współrzędna SCENY — kamera centruje w świecie
-      // arkusza (`scenePointToCameraWorld`).
-      dispatch({
-        type: 'center',
-        worldPoint: scenePointToCameraWorld({ x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 }),
-      });
-      const factor = zoomFactorToEnterNextLod(
-        refScaleFor(camera.transform.scale, camera.lod, camera.lodBboxes),
-        camera.lod,
-      );
-      if (factor > 1) {
-        // Kursor = ŚRODEK viewportu: po `'center'` blok leży dokładnie tam,
-        // więc zoom „do kursora" utrzymuje go w kadrze (zero dryfu).
-        dispatch({ type: 'zoom', cursor: { x: viewportSize.width / 2, y: viewportSize.height / 2 }, factor });
-      }
-    },
-    [camera, viewportSize, onPrzedPoleceniemWidoku],
-  );
-
   /** Karta S9-4: JEDYNY uchwyt lewego kliku na kanwie. Rozstrzyga po `testId`
-   *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „zwinięty blok
-   *  GPZ dodatkowo rozwija kadr", „reszta zaznacza") jest w jednym miejscu, a
+   *  obiektu, więc semantyka („znacznik wyniku aktywuje panel", „reszta zaznacza") jest w jednym miejscu, a
    *  nie rozsypana po węzłach rysunku. */
   /** Karta S9-5: obszary trafienia po `testId` — meta kliku bierze KLASĘ i
    *  (dla obiektów spoza mapy `klikMeta`, np. znacznika wyniku) także
@@ -3362,11 +3302,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         aktywacja();
         return;
       }
-      const rozwijalny = rozwijalneSymbole.get(testId);
-      if (rozwijalny) expandCollapsedBlock(rozwijalny);
       onElementClick?.(testId, metaZTrafienia(testId));
     },
-    [aktywacjaZnacznika, rozwijalneSymbole, expandCollapsedBlock, onElementClick, metaZTrafienia],
+    [aktywacjaZnacznika, onElementClick, metaZTrafienia],
   );
 
   const handleHitContextMenu = useCallback(

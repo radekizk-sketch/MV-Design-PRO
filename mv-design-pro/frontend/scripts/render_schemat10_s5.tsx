@@ -36,6 +36,8 @@ import { buildSceneV3, SCENE_LOD_LABELS_PL } from '../src/ui/sld/v3/scene/buildS
 import type { SceneLod } from '../src/ui/sld/v3/scene/buildScene';
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
+import { szynyStacji } from '../src/ui/shared/szynyStacji';
+import { transformatoryNalezaceDoStacji } from '../src/ui/shared/transformatoryStacji';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -53,23 +55,25 @@ const BANNER = 108;
 const ASPECT = W / H;
 
 // Cel: pierwsza stacja magistrali z TR + DER za TR (PV na szynie nN) —
-// wyznaczona z danych: stacja z `stationGlyph.hasTransformer && derBehindTr`.
+// wyznaczona z DANYCH MODELU (dawniej z meta sylwetki zbiorczej L0, skasowanej
+// kartą PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): stacja ciągu głównego, do której należy
+// transformator i na której szynie nN (< 1 kV) stoi źródło DER.
 const TARGET = pickTargetStation();
 
 function pickTargetStation(): string {
   const scene = buildSceneV3(enm, 0);
   const trunk = scene.meta.mainTrunkStationIds;
-  const trunkSet = new Set(trunk);
-  const eligible = scene.symbols.filter((s) => {
-    if (s.symbolId !== 'stationCollapsed') return false;
-    const g = (s.meta as { stationGlyph?: { hasTransformer?: boolean; derBehindTr?: string | null } } | undefined)?.stationGlyph;
-    return Boolean(g?.hasTransformer) && g?.derBehindTr != null && trunkSet.has(s.meta?.ownerRef as string);
+  const napiecie = new Map(enm.buses.map((b) => [b.ref_id, b.voltage_kv] as const));
+  const eligible = trunk.filter((id) => {
+    const station = (enm.substations ?? []).find((s) => s.ref_id === id);
+    if (!station) return false;
+    if (transformatoryNalezaceDoStacji(enm, station).length === 0) return false;
+    const szyny = szynyStacji(enm, station);
+    return (enm.generators ?? []).some((g) => szyny.has(g.bus_ref) && (napiecie.get(g.bus_ref) ?? Infinity) < 1);
   });
   if (eligible.length === 0) throw new Error('S5: brak stacji magistrali z TR + DER za TR na fixturze referencyjnej');
   // Pierwsza w kolejności ciągu głównego (deterministycznie).
-  const order = new Map(trunk.map((id, i) => [id, i] as const));
-  eligible.sort((a, b) => (order.get(a.meta?.ownerRef as string) ?? 0) - (order.get(b.meta?.ownerRef as string) ?? 0));
-  return eligible[0].meta?.ownerRef as string;
+  return eligible[0];
 }
 
 function anchorRect(lod: SceneLod): { x: number; y: number; width: number; height: number } {
