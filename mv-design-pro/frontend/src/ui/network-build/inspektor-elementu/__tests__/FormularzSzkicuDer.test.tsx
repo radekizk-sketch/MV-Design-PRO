@@ -30,6 +30,7 @@ import { useKontekstElementuKanwy, type RodzajSzkicuDer } from '../../../sld/sha
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { FormularzSzkicuDer } from '../FormularzSzkicuDer';
 import { useNetworkBuildStore } from '../../networkBuildStore';
+import { domainOpsEndpoint } from '../../../topology/domainApi';
 
 const KATALOG: Readonly<Record<'PV' | 'BESS' | 'WIND', readonly unknown[]>> = {
   PV: [
@@ -194,7 +195,7 @@ describe('formularz szkicu DER w inspektorze — zapis', () => {
 
     await waitFor(() => expect(postyZapisu()).toHaveLength(1));
     const [post] = postyZapisu();
-    expect(post.url).toBe('/api/cases/case-1/enm/domain-ops');
+    expect(post.url).toBe(domainOpsEndpoint('case-1'));
     expect(post.cialo?.operation.name).toBe('add_converter_source');
     expect(post.cialo?.operation.payload).toEqual({
       station_ref: 'station/1',

@@ -198,6 +198,7 @@ function render(
   return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 import { useStationDerStore, selectAllDers } from '../store';
+import { domainOpsEndpoint } from '../../../topology/domainApi';
 
 /**
  * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): krok „Punkt" wymaga REALNEJ
@@ -422,7 +423,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     await waitFor(() => {
       const [zapis] = zapisyDer();
-      expect(zapis?.url).toBe('/api/cases/case-snapshot-001/enm/domain-ops');
+      expect(zapis?.url).toBe(domainOpsEndpoint('case-snapshot-001'));
       expect(zapis?.body).toMatchObject({
         catalog_ref: 'pv_inv_huawei_185',
         power_setpoint_mw: 0.185,

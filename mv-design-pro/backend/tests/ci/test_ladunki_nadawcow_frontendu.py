@@ -44,6 +44,9 @@ PLIKI_BEZ_LADUNKU: dict[str, str] = {
     # Makieta odpowiedzi + formularze otwierane hakiem `__mvdpOpenOperationForm`
     # (kontekst formularza, nie ładunek).
     "e2e/ux-feedback-loop.spec.ts": "makieta odpowiedzi i kontekst formularza",
+    # Spec czeka na ODPOWIEDŹ zapisu źródła OZE wysłanego przez produkt (formularz
+    # inspektora) — ładunek składa kod produktu, sprawdzany w `test_ladunki_kodu_produktu…`.
+    "e2e/ui02-jeden-inspektor-zrzuty-screenshot.spec.ts": "nasłuch odpowiedzi zapisu produktu",
 }
 
 

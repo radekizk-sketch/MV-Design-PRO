@@ -381,6 +381,21 @@ def _payload_konwerter_pole(snapshot: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _payload_konwerter_tr_dedykowany(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Tor z transformatorem dedykowanym wariantu blokowego (płaski ładunek kreatora, karta
+    JEDNA-SCIEZKA-EDYCJI): pozycja TRAFO_SN_NN i szyna SN strony górnej."""
+    return _payload_zrodla(
+        snapshot,
+        catalog_ref=REF_PV,
+        technologia="PV",
+        connection_variant="block_transformer",
+        power_setpoint_mw=0.5,
+        bus_nn_ref=None,
+        block_transformer_catalog_ref=REF_TRAFO_BLOKOWY,
+        sn_connection_bus_ref=_szyna_sn_ref(snapshot),
+    )
+
+
 def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Tor DER-SN: szyna nN producenta → TR blokowy → kabel SN → pole SN stacji."""
     return _payload_zrodla(
@@ -770,6 +785,12 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         lambda p: p["der_topology"]["block_transformer"].update(
             {"catalog_ref": REF_TRAFO_BLOKOWY + LITEROWKA, "catalog_binding": None}
         ),
+    ),
+    PrzypadekIniekcji(
+        "block_transformer_catalog_ref",
+        "add_converter_source",
+        _payload_konwerter_tr_dedykowany,
+        lambda p: _zepsuj_klucz(p, "block_transformer_catalog_ref"),
     ),
     PrzypadekIniekcji(
         "der_topology.mv_field_configuration.cable_catalog_ref",

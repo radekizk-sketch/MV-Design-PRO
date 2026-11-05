@@ -25,6 +25,9 @@ import { dirname, resolve } from 'node:path';
 import { katalogZrzutow } from './katalogZrzutow';
 import { BACKEND_BASE, otworzAplikacje, siecKadrow, ustawMotyw } from './siecKadrowStacji';
 
+/** Operacja domenowa zapisu źródła OZE — jedyna droga zapisu (karta JEDNA-SCIEZKA-EDYCJI). */
+const OPERACJA_ZAPISU_OZE = 'add_converter_source';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(
   resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'ui02-jeden-inspektor'),
@@ -149,7 +152,7 @@ test('UI-02b — klik stacji otwiera prawy inspektor, kanwa odsłonięta, zapis 
         const odpowiedz = page.waitForResponse(
           (r) => r.url().endsWith(`/api/cases/${seed.caseId}/enm/domain-ops`)
             && r.request().method() === 'POST'
-            && r.request().postDataJSON()?.operation?.name === 'add_converter_source',
+            && r.request().postDataJSON()?.operation?.name === OPERACJA_ZAPISU_OZE,
           { timeout: 15000 },
         );
         await formularz.getByTestId('inspektor-der-zapisz').click();

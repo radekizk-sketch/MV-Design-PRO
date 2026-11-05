@@ -18,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DomainOpResponseV1 } from '../../../../types/enm';
 import { DerWiazaniaEditor } from '../DerWiazaniaEditor';
+import { domainOpsEndpoint } from '../../../topology/domainApi';
+import { toAdresOperacjiDomenowych } from './atrapaProbyZapisuDer';
 
 /** Realne wpisy katalogu backendu — identyfikator wymyślony sprawdzałby atrapę (V12K-239). */
 const CT_REALNY = {
@@ -69,7 +71,7 @@ function stubFetch(): void {
     const metoda = init?.method ?? 'GET';
     // Jedyna droga zapisu wiązań: operacja `set_der_catalog_bindings` przez domain-ops
     // (karta JEDNA-SCIEZKA-EDYCJI) — `body` to ładunek operacji z koperty.
-    if (metoda === 'POST' && url.endsWith('/enm/domain-ops')) {
+    if (metoda === 'POST' && toAdresOperacjiDomenowych(url)) {
       const koperta = JSON.parse(String(init?.body ?? '{}')) as {
         operation: { name: string; payload: Record<string, unknown> };
       };
@@ -131,7 +133,7 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     await uzytkownik.click(wiersz);
 
     await waitFor(() => expect(zadania).toHaveLength(1));
-    expect(zadania[0].url).toBe('/api/cases/CASE-1/enm/domain-ops');
+    expect(zadania[0].url).toBe(domainOpsEndpoint('CASE-1'));
     // Dokładnie JEDNO wiązanie (plus wskazanie wytwórcy): gdyby żądanie niosło komplet
     // wiązań, wybór przekładnika nadpisywałby zabezpieczenie i VT wartościami z ekranu.
     expect(Object.keys(zadania[0].body).sort()).toEqual(['ct_catalog_ref', 'generator_ref']);

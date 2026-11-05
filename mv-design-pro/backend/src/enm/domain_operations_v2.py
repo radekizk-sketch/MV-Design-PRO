@@ -6727,8 +6727,8 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     modul_ncrfg = payload.get("nc_rfg_module")
     if modul_ncrfg is not None and modul_ncrfg not in _MODULY_NC_RFG:
         return _error_response(
-            f"Pole {pole('nc_rfg_module')} przyjmuje moduł NC RfG "
-            f"{lista_pl(_MODULY_NC_RFG, 'albo')}.",
+            f"Pole {pole('nc_rfg_module')} przyjmuje moduł wytwarzania NC RfG "
+            f"{lista_pl((f'typu {modul}' for modul in _MODULY_NC_RFG), 'albo')}.",
             KOD_TYPU_POLA_LADUNKU,
         )
 
@@ -9185,6 +9185,18 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
         "materializacja przez `_materialize_der_block_transformer`",
     ),
+    # Tor z transformatorem dedykowanym wariantu blokowego (karta JEDNA-SCIEZKA-EDYCJI):
+    # pozycja TRAFO_SN_NN z płaskiego ładunku kreatora, materializowana tym samym
+    # materializatorem co tor DER-SN; ten sam klucz bramkuje API
+    # (`domain_ops_policy.API_CATALOG_REF_PAYLOAD_KEYS`).
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "block_transformer_catalog_ref",
+        "TRAFO_SN_NN",
+        True,
+        "materializacja przez `_transformator_dedykowany_z_katalogu` → "
+        "`_materialize_der_block_transformer`",
+    ),
     PozycjaBramyKatalogowejV2(
         "add_converter_source",
         "der_topology.mv_field_configuration.cable_catalog_ref",
@@ -9343,6 +9355,8 @@ V2_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
         "catalog_ref",
         "apparatus_catalog_ref",
         "battery_catalog_ref",
+        # Transformator dedykowany źródła OZE z płaskiego ładunku kreatora (TRAFO_SN_NN).
+        "block_transformer_catalog_ref",
         "cable_catalog_ref",
         "protection_catalog_ref",
         "ct_catalog_ref",

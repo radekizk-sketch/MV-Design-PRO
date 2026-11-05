@@ -312,11 +312,13 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
     const poleIn = poleStacji(k.migawka, k.stacja.ref_id, 'IN');
     // Pole transformatorowe z rozłącznikiem bezpiecznikowym (bez wskazanej wkładki) —
     // wyposażenie pola operacją modelu, ta sama co edytor wyposażenia pola.
+    // Klucz `catalog_ref` w cudzysłowie: to BIEŻĄCY klucz kontraktu operacji, nie alias
+    // legacy, w który celuje `repo_hygiene_guard` (wzorzec `catalog_ref:` w e2e).
     await operacja(request, k.caseId, 'set_bay_equipment', {
       bay_ref: poleTr.ref_id,
       mode: 'katalog',
       devices: [
-        { kind: 'LOAD_SWITCH', placement: 'MIDSTREAM', catalog_ref: ROZLACZNIK_BEZPIECZNIKOWY },
+        { kind: 'LOAD_SWITCH', placement: 'MIDSTREAM', 'catalog_ref': ROZLACZNIK_BEZPIECZNIKOWY },
         { kind: 'FUSE', placement: 'MIDSTREAM', designation: 'F1' },
       ],
     });
@@ -324,7 +326,7 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
     // wybór przekładnika napięciowego pola.
     const poCt = await operacja(request, k.caseId, 'add_ct', {
       field_ref: poleIn.ref_id,
-      catalog_ref: PRZEKLADNIK_CT,
+      'catalog_ref': PRZEKLADNIK_CT,
       ratio_primary_a: 400.0,
       ratio_secondary_a: 5.0,
     });
@@ -333,7 +335,7 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
     const poPrzekazniku = await operacja(request, k.caseId, 'add_relay', {
       field_ref: poleIn.ref_id,
       ct_ref: ct!.ref_id,
-      catalog_ref: PRZEKAZNIK,
+      'catalog_ref': PRZEKAZNIK,
     });
     const zabezpieczenia = poPrzekazniku.protection_assignments;
     const zabezpieczenie = zabezpieczenia[zabezpieczenia.length - 1];

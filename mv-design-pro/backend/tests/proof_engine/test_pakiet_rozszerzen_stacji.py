@@ -158,10 +158,6 @@ def _model(
             )
         )
         odbiory.append(Load(ref_id="ld-b", name="Odbiór B", bus_ref="bus-b", p_mw=0.1, q_mvar=0))
-        generatory.append(Generator(ref_id="gen/pv-b", name="PV Polna", bus_ref="bus-b", p_mw=0.1))
-        odbiory.append(Load(ref_id="ld-b", name="Odbiór B", bus_ref="bus-b", p_mw=0.1, q_mvar=0))
-        generatory.append(Generator(ref_id="gen/pv-b", name="PV Polna", bus_ref="bus-b", p_mw=0.1))
-        odbiory.append(Load(ref_id="ld-b", name="Odbiór B", bus_ref="bus-b", p_mw=0.1, q_mvar=0))
     transformator = Transformer(
         ref_id="tr/5b0f7d1e",
         name="Transformator T1 Łąkowa",

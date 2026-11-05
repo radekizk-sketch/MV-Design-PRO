@@ -3166,7 +3166,6 @@ def koordynacja_scena_ocena() -> dict[str, Any]:
                     project_id=str(_PROJEKT_SCENY_KOORDYNACJA),
                     options={"sc_run_id": str(bieg_max.id)},
                 ).id,
-                uow_factory=uow_factory,
             )
         widok = get_protection_run_results(bieg.id, uow_factory=uow_factory)
         return _ustabilizuj_identyfikatory(
@@ -4996,7 +4995,6 @@ def _biegi_sceny_zabezpieczen() -> Iterator[tuple[Any, Any, Any]]:
                         project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
                         options={"sc_run_id": str(sc.id)},
                     ).id,
-                    uow_factory=uow_factory,
                 )
 
         bieg_a = _biegi_wariantu(

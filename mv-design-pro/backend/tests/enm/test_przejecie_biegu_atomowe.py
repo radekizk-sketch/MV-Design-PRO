@@ -245,7 +245,7 @@ def test_execute_run_liczy_analize_dokladnie_raz(
     wejscia = 0
     zamek = threading.Lock()
 
-    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, graf=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         with zamek:
             wejscia += 1
@@ -270,7 +270,7 @@ def test_execute_run_nie_powtarza_biegu_zakonczonego(
     run = _bieg(status="FINISHED")
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, graf=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -330,7 +330,7 @@ def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
 
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, graf=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -394,7 +394,7 @@ def test_przegrany_dostaje_stan_biezacy_i_nie_dotyka_wiersza(
 
     wejscia = 0
 
-    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, graf=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         wejscia += 1
 
@@ -570,7 +570,7 @@ def test_przejecie_jest_atomowe_takze_na_postgresie(
     wejscia = 0
     zamek = threading.Lock()
 
-    def sonda(bieg: CanonicalRun, uow_factory=None, kontekst=None) -> None:  # noqa: ANN001
+    def sonda(bieg: CanonicalRun, graf=None, kontekst=None) -> None:  # noqa: ANN001
         nonlocal wejscia
         with zamek:
             wejscia += 1

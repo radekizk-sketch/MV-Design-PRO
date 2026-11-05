@@ -16,6 +16,17 @@
  * `backend/tests/enm/test_kontrola_mocy_zrodla_o53.py`; tu wyłącznie tor kreatora.
  */
 
+import { domainOpsEndpoint } from '../../../topology/domainApi';
+
+/**
+ * Czy adres to końcówka operacji domenowych przypadku — porównanie z JEDYNYM budowniczym
+ * adresu (`domainOpsEndpoint`), nie z literałem ścieżki (strażnik `domain_ops_unified_guard`).
+ */
+export function toAdresOperacjiDomenowych(url: string): boolean {
+  const przypadek = decodeURIComponent(url.split('/')[3] ?? '');
+  return przypadek.length > 0 && url === domainOpsEndpoint(przypadek);
+}
+
 export interface UrzadzenieAtrapy {
   readonly id: string;
   readonly sn_mva?: number;
@@ -60,7 +71,7 @@ export function odpowiedzProbyZapisuDer(
   init: RequestInit | undefined,
   dane: DaneAtrapyProby,
 ): Response | null {
-  if (!url.endsWith('/enm/domain-ops') || init?.method !== 'POST') return null;
+  if (!toAdresOperacjiDomenowych(url) || init?.method !== 'POST') return null;
   const koperta = JSON.parse(String(init.body)) as {
     operation?: { name?: string; payload?: Record<string, unknown> };
   };
@@ -105,7 +116,7 @@ export function zadaniaZrodlaOze(
   const wywolania = (fetchMock as { mock: { calls: Array<[unknown, RequestInit | undefined]> } })
     .mock.calls;
   return wywolania
-    .filter(([url, init]) => String(url).endsWith('/enm/domain-ops') && init?.method === 'POST')
+    .filter(([url, init]) => toAdresOperacjiDomenowych(String(url)) && init?.method === 'POST')
     .map(([url, init]) => ({
       url: String(url),
       koperta: JSON.parse(String(init?.body)) as {

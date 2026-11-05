@@ -583,9 +583,7 @@ def test_lekkie_zadanie_obsluzone_gdy_bieg_stoi_w_oknie_solvera_a_reszta_czeka_w
     pierwszy_w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def dyspozytor_ze_spotkaniem(
-        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
-    ) -> None:
+    def dyspozytor_ze_spotkaniem(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         """Ten sam dyspozytor: pierwszy bieg parkuje na progu okna solvera do
         zwolnienia; kazdy bieg liczy liczbe rownoczesnych wejsc (musi byc 1)."""
         nonlocal w_srodku, max_w_srodku
@@ -598,7 +596,7 @@ def test_lekkie_zadanie_obsluzone_gdy_bieg_stoi_w_oknie_solvera_a_reszta_czeka_w
             pierwszy_w_oknie.set()
             zwolnij.wait(timeout=ZAWOR_SPOTKANIA_S)
         try:
-            oryginalny_dyspozytor(run, graf, uow_factory, kontekst)
+            oryginalny_dyspozytor(run, graf, kontekst)
         finally:
             with zamek:
                 w_srodku -= 1

@@ -232,9 +232,11 @@ test.describe('Katalogi stacji i pakiet rozszerzeń (realny backend)', () => {
       generator_ref: magazyn!.ref_id,
       bess_operation_mode_refs: ['mode_voltage_support'],
     });
+    // Klucz `catalog_ref` w cudzysłowie: to BIEŻĄCY klucz kontraktu operacji, nie alias
+    // legacy, w który celuje `repo_hygiene_guard` (wzorzec `catalog_ref:` w e2e).
     await operacjaDomenowa(request, caseId, 'e2e-pakiet-zaczepy', 'update_element_parameters', {
       element_ref: transformator!.ref_id,
-      parameters: { tap_changer: { catalog_ref: 'tc_detc_snnn_5_25' } },
+      parameters: { tap_changer: { 'catalog_ref': 'tc_detc_snnn_5_25' } },
     });
     const poleLiniowe = poMagazynie.bays.find(
       (b) => b.substation_ref === stacja!.ref_id && b.bay_role === 'IN',
@@ -242,7 +244,7 @@ test.describe('Katalogi stacji i pakiet rozszerzeń (realny backend)', () => {
     expect(poleLiniowe, 'pole liniowe stacji').toBeTruthy();
     await operacjaDomenowa(request, caseId, 'e2e-pakiet-vt', 'add_vt', {
       field_ref: poleLiniowe!.ref_id,
-      catalog_ref: 'vt_15kv_100v_05_abb',
+      'catalog_ref': 'vt_15kv_100v_05_abb',
       ratio_primary_v: 15000.0,
       ratio_secondary_v: 100.0,
     });

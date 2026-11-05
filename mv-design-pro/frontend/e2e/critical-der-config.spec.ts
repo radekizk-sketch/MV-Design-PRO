@@ -1,5 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+/** Operacja domenowa zapisu źródła OZE — jedyna droga zapisu (karta JEDNA-SCIEZKA-EDYCJI). */
+const OPERACJA_ZAPISU_OZE = 'add_converter_source';
+
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
@@ -237,7 +240,7 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   const saveResponse = page.waitForResponse(
     (response) => response.url().endsWith(`/api/cases/${seed.caseId}/enm/domain-ops`)
       && response.request().method() === 'POST'
-      && response.request().postDataJSON()?.operation?.name === 'add_converter_source',
+      && response.request().postDataJSON()?.operation?.name === OPERACJA_ZAPISU_OZE,
     { timeout: 15000 },
   );
   await formularz.getByTestId('inspektor-der-zapisz').click();

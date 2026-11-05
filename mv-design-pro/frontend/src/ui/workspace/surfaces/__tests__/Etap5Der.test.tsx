@@ -15,6 +15,8 @@ import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
+import { domainOpsEndpoint } from '../../../topology/domainApi';
+import { toAdresOperacjiDomenowych } from '../../../network-build/station-der/__tests__/atrapaProbyZapisuDer';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
@@ -1069,7 +1071,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         // Jedyna droga zapisu wiązań: operacja `set_der_catalog_bindings` przez domain-ops.
-        if ((init?.method ?? 'GET') === 'POST' && String(url).endsWith('/enm/domain-ops')) {
+        if ((init?.method ?? 'GET') === 'POST' && toAdresOperacjiDomenowych(String(url))) {
           const koperta = JSON.parse(String(init?.body ?? '{}'));
           zadaniaPatch.push({ url: String(url), body: koperta.operation.payload });
           return {
@@ -1122,7 +1124,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     await uzytkownik.click(await screen.findByText('CT 200/5 A kl. 5P10 10 VA'));
 
     await waitFor(() => expect(zadaniaPatch).toHaveLength(1));
-    expect(zadaniaPatch[0].url).toBe('/api/cases/CASE-1/enm/domain-ops');
+    expect(zadaniaPatch[0].url).toBe(domainOpsEndpoint('CASE-1'));
     expect(zadaniaPatch[0].body).toEqual({
       generator_ref: 'der_wybor_ct',
       ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
@@ -1149,7 +1151,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
-        if ((init?.method ?? 'GET') === 'POST' && String(url).endsWith('/enm/domain-ops')) {
+        if ((init?.method ?? 'GET') === 'POST' && toAdresOperacjiDomenowych(String(url))) {
           return {
             ok: true,
             status: 200,

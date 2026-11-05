@@ -4,6 +4,8 @@
       "pola": [
         "battery_catalog_ref",
         "bess_mode",
+        "block_transformer_catalog_ref",
+        "block_transformer_lv_voltage_tolerance",
         "blocking_transformer_ref",
         "bus_nn_ref",
         "catalog_binding",
@@ -25,6 +27,7 @@
         "modul_istniejacy",
         "mv_bus_ref",
         "nastawy_zabezpieczen",
+        "nc_rfg_module",
         "placement",
         "power_setpoint_mw",
         "q_max_mvar",
@@ -34,6 +37,7 @@
         "qu_slope_pu_per_pu",
         "quantity",
         "simultaneity_factor",
+        "sn_connection_bus_ref",
         "soc_max_percent",
         "soc_min_percent",
         "source_field",
@@ -1684,6 +1688,7 @@
       "pola": [
         "bay_ref",
         "bay_template_ref",
+        "catalog_ref",
         "devices",
         "mode"
       ],

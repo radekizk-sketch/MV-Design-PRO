@@ -186,10 +186,10 @@ def test_drugie_zlecenie_tego_samego_biegu_nie_liczy_drugi_raz(client: TestClien
     wejscia = 0
     oryginal = canonical_analysis._wykonaj_analize_biegu
 
-    def liczacy(run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None) -> None:
+    def liczacy(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         nonlocal wejscia
         wejscia += 1
-        oryginal(run, graf, uow_factory, kontekst)
+        oryginal(run, graf, kontekst)
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(canonical_analysis, "_wykonaj_analize_biegu", liczacy)
@@ -217,16 +217,14 @@ def test_dwa_biegi_naraz_konczy_oba_a_w_trakcie_jeden_liczy_drugi_czeka(
     zamek = threading.Lock()
     w_oknie: list[str] = []
 
-    def parkujacy(
-        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
-    ) -> None:
+    def parkujacy(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         with zamek:
             w_oknie.append(str(run.id))
             pierwszy = len(w_oknie) == 1
         if pierwszy:
             pierwszy_w_oknie.set()
             zwolnij.wait(timeout=LIMIT_S)
-        oryginal(run, graf, uow_factory, kontekst)
+        oryginal(run, graf, kontekst)
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", parkujacy)
     for run_id in biegi:
@@ -255,12 +253,10 @@ def test_anulowanie_biegu_w_kolejce_jest_natychmiastowe_a_pierwszy_liczy_do_konc
     w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def parkujacy(
-        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
-    ) -> None:
+    def parkujacy(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         w_oknie.set()
         zwolnij.wait(timeout=LIMIT_S)
-        oryginal(run, graf, uow_factory, kontekst)
+        oryginal(run, graf, kontekst)
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", parkujacy)
     assert client.post(f"/api/execution/runs/{pierwszy}/execute").status_code == 202
@@ -311,12 +307,10 @@ def test_anulowanie_rozplywu_w_toku_odmawia_bo_rdzen_nie_ma_punktu_przerwania(
     w_oknie = threading.Event()
     zwolnij = threading.Event()
 
-    def parkujacy(
-        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
-    ) -> None:
+    def parkujacy(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         w_oknie.set()
         zwolnij.wait(timeout=LIMIT_S)
-        oryginal(run, graf, uow_factory, kontekst)
+        oryginal(run, graf, kontekst)
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", parkujacy)
     assert client.post(f"/api/execution/runs/{run_id}/execute").status_code == 202
@@ -432,12 +426,10 @@ def test_blad_programu_w_tle_to_failed_z_nazwa_bledu_a_wykonawca_zyje_dalej(
     wybuchajacy, zdrowy = (_utworz(client, case_id, "LOAD_FLOW") for _ in range(2))
     oryginal = canonical_analysis._wykonaj_analize_biegu
 
-    def dyspozytor(
-        run: Any, graf: Any = None, uow_factory: Any = None, kontekst: Any = None
-    ) -> None:
+    def dyspozytor(run: Any, graf: Any = None, kontekst: Any = None) -> None:
         if str(run.id) == wybuchajacy:
             raise KeyError("wstrzyknięty błąd programu")
-        oryginal(run, graf, uow_factory, kontekst)
+        oryginal(run, graf, kontekst)
 
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", dyspozytor)
     # Oba zlecone NARAZ: zdrowy czeka w kolejce, gdy wybuchający kończy wątek roboczy
