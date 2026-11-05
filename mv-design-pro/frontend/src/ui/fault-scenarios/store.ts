@@ -42,6 +42,19 @@ interface FaultScenariosState {
   reset: () => void;
 }
 
+/**
+ * Przypadek scenariusza z jego rekordu na liście — scenariusz jest adresowany w obrębie
+ * przypadku (backend wyszukuje go wyłącznie w projekcie przypadku). Scenariusz spoza listy
+ * to błąd wywołującego, nie adres do zgadnięcia.
+ */
+function przypadekScenariusza(scenarios: FaultScenario[], scenarioId: string): string {
+  const scenariusz = scenarios.find((s) => s.scenario_id === scenarioId);
+  if (!scenariusz) {
+    throw new Error(`Scenariusz ${scenarioId} nie należy do wczytanej listy przypadku`);
+  }
+  return scenariusz.study_case_id;
+}
+
 function sortScenarios(scenarios: FaultScenario[]): FaultScenario[] {
   return [...scenarios].sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 }
@@ -109,7 +122,11 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
   updateScenario: async (scenarioId, data) => {
     set({ isLoading: true, error: null });
     try {
-      const updated = await api.updateScenario(scenarioId, data);
+      const updated = await api.updateScenario(
+        przypadekScenariusza(get().scenarios, scenarioId),
+        scenarioId,
+        data,
+      );
       set((state) => ({
         scenarios: sortScenarios(state.scenarios.map((s) => (s.scenario_id === scenarioId ? updated : s))),
         isLoading: false,
@@ -127,7 +144,7 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
   deleteScenario: async (scenarioId) => {
     set({ isLoading: true, error: null });
     try {
-      await api.deleteScenario(scenarioId);
+      await api.deleteScenario(przypadekScenariusza(get().scenarios, scenarioId), scenarioId);
       set((state) => ({
         scenarios: state.scenarios.filter((s) => s.scenario_id !== scenarioId),
         selectedScenarioId: state.selectedScenarioId === scenarioId ? null : state.selectedScenarioId,
@@ -141,14 +158,20 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
 
   checkEligibility: async (scenarioId) => {
     try {
-      const eligibility = await api.fetchScenarioEligibility(scenarioId);
+      const eligibility = await api.fetchScenarioEligibility(
+        przypadekScenariusza(get().scenarios, scenarioId),
+        scenarioId,
+      );
       set({ eligibility });
     } catch { /* non-critical */ }
   },
 
   loadSldOverlay: async (scenarioId) => {
     try {
-      const overlay = await api.fetchScenarioSldOverlay(scenarioId);
+      const overlay = await api.fetchScenarioSldOverlay(
+        przypadekScenariusza(get().scenarios, scenarioId),
+        scenarioId,
+      );
       set({ sldOverlay: overlay });
     } catch { /* non-critical */ }
   },
@@ -156,7 +179,10 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
   createRun: async (scenarioId) => {
     set({ isLoading: true, error: null });
     try {
-      const result = await api.createRunFromScenario(scenarioId);
+      const result = await api.createRunFromScenario(
+        przypadekScenariusza(get().scenarios, scenarioId),
+        scenarioId,
+      );
       set({ isLoading: false });
       return result;
     } catch (err) {

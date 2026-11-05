@@ -552,7 +552,9 @@ class TestExecuteBatch:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
-        delete = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
+        delete = client.delete(
+            f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{s1['scenario_id']}"
+        )
         assert delete.status_code == 204
 
         done = wykonaj_serie(client, batch["batch_id"]).json()
@@ -572,7 +574,7 @@ class TestExecuteBatch:
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
         update = client.put(
-            f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}",
+            f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{s1['scenario_id']}",
             json={"name": "Zmieniona nazwa scenariusza"},
         )
         assert update.status_code == 200
@@ -599,7 +601,10 @@ class TestExecuteBatch:
             json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
         ).json()
         # Usuwamy DRUGI w porządku wykonania.
-        assert client.delete(f"{BASE_URL}/fault-scenarios/{drugi}").status_code == 204
+        assert (
+            client.delete(f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{drugi}").status_code
+            == 204
+        )
 
         done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "PARTIAL"
@@ -909,7 +914,9 @@ class TestSolverInputJednoZrodlo:
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, element_ref="bus-main")
 
-        pojedynczy = client.post(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}/runs", json={})
+        pojedynczy = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{s1['scenario_id']}/runs", json={}
+        )
         assert pojedynczy.status_code == 201
 
         batch = client.post(
@@ -970,7 +977,9 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
         done = wykonaj_serie(client, batch["batch_id"]).json()
         assert done["status"] == "FINISHED"
 
-        delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
+        delete_resp = client.delete(
+            f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{s1['scenario_id']}"
+        )
         assert delete_resp.status_code == 409
         assert "powiązanymi przebiegami" in delete_resp.json()["detail"]
 
@@ -1120,7 +1129,9 @@ def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_global
     scenariusz = _create_scenario(case_id, element_ref="bus-main")
     monkeypatch.setattr(kanon, "create_run", _zepsuty)
     surowy = TestClient(app, raise_server_exceptions=False)
-    odpowiedz = surowy.post(f"{BASE_URL}/fault-scenarios/{scenariusz['scenario_id']}/runs")
+    odpowiedz = surowy.post(
+        f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{scenariusz['scenario_id']}/runs"
+    )
     assert odpowiedz.status_code == kod_http, odpowiedz.text
     if kod_http == 500:
         assert odpowiedz.json()["detail"] == "Wewnętrzny błąd serwera"

@@ -295,7 +295,7 @@ export async function uruchomObliczenie(
 
 /**
  * Uruchamia bieg ZE SCENARIUSZA ZWARCIOWEGO (karta OD-14, partia integracji 10):
- * `POST /api/execution/fault-scenarios/{id}/runs` (bieg PENDING z opcjami scenariusza —
+ * `POST /api/execution/study-cases/{case_id}/fault-scenarios/{id}/runs` (bieg PENDING z opcjami scenariusza —
  * rodzaj, miejsce, c, czas cieplny, tryb i Z_f) → `POST …/runs/{id}/execute` → stan
  * końcowy → ten sam koniec co bieg z przypadku (`zakonczBieg`). Odmowa utworzenia
  * (np. 409 z blokadą modelu) zostaje w store scenariuszy i panel ją pokazuje — tu bez

@@ -169,6 +169,8 @@ class TestFormat300Contract:
             "interpretations",
             "issues",
             "enm",
+            # Sekcja magazynu scenariuszy (porównywana tylko, gdy niepusta w którymś archiwum).
+            "scenariusze",
         }
         assert set(SECTION_LABELS_PL) == set(SECTION_HASH_MAP)
 

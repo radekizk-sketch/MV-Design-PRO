@@ -74,7 +74,7 @@ def _klucz() -> str:
 # `TestExecutionEngineScenarioIntegration`, tez zdjeta (patrz sekcja 5 nizej).
 # Fizyka (SC3F/SC2F/SC1F przez scenariusz zwarciowy, determinizm, 3F>2F) ma
 # rownowazny dowod na torze kanonicznym: `tests/test_fault_scenarios_run_integration.py`
-# (`create_run_from_scenario`, karta CV-1-W/C6-PERSIST, POST /fault-scenarios/{id}/runs)
+# (`create_run_from_scenario`, karta CV-1-W/C6-PERSIST, POST /study-cases/{case_id}/fault-scenarios/{id}/runs)
 # oraz `tests/enm/test_short_circuit_migracja_e3_golden.py` (migracja E3, ta karta).
 
 
@@ -899,7 +899,9 @@ class TestFaultScenarioApi:
         )
         scenario_id = create_resp.json()["scenario_id"]
 
-        delete_resp = client.delete(f"/api/execution/fault-scenarios/{scenario_id}")
+        delete_resp = client.delete(
+            f"/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}"
+        )
         assert delete_resp.status_code == 204
 
         # Verify gone
@@ -908,7 +910,8 @@ class TestFaultScenarioApi:
 
     def test_delete_scenario_not_found(self, client):
         """DELETE nonexistent scenario returns 404."""
-        response = client.delete(f"/api/execution/fault-scenarios/{uuid4()}")
+        case_id = self._nowy_przypadek(client)
+        response = client.delete(f"/api/execution/study-cases/{case_id}/fault-scenarios/{uuid4()}")
         assert response.status_code == 404
 
     def test_duplicate_scenario_returns_409(self, client):

@@ -57,7 +57,10 @@ from typing import Any
 # `Bay.protection_ref`, `Bay.zrodlo_u0_ref`) i dawny kształt przypisania (`breaker_ref`,
 # `ct_ref`, `settings`) skasowane bez migracji. Archiwum 3.x z zabezpieczeniami w dawnym
 # kształcie jest odrzucane głośno przez kontrakt sterownika (`extra="forbid"`).
-ARCHIVE_SCHEMA_VERSION = "4.0.0"
+# EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: bump MINOR — addytywna sekcja `scenariusze` (magazyn
+# scenariuszy projektu: scenariusze nazwane i wybory zabezpieczeń przypadków), emitowana
+# wyłącznie niepusta; archiwum 4.0.0 wczytuje się bez zmian (brak sekcji = pusty magazyn).
+ARCHIVE_SCHEMA_VERSION = "4.1.0"
 
 ARCHIVE_FORMAT_ID = "MV-DESIGN-PRO-ARCHIVE"
 
@@ -229,6 +232,26 @@ class EnmSection:
 
 
 @dataclass(frozen=True)
+class ScenariuszeSection:
+    """Sekcja magazynu scenariuszy projektu (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN).
+
+    Każdy wpis to pełny rejestr scenariusza (`enm/scenariusze.py`: `scenario_id`, `wersja`,
+    `rewizje` z nagrobkami) — scenariusze nazwane (zwarciowe, łączeniowe, dynamiczne, N-1)
+    i wybory zabezpieczeń przypadków (`przypadek-<case_id>`, ADR-022). Sekcja jest emitowana
+    WYŁĄCZNIE, gdy jest niepusta (`SEKCJE_EMITOWANE_GDY_NIEPUSTE`): archiwum projektu bez
+    scenariuszy ma bajtowo tę samą treść i ten sam `archive_hash` co przed sekcją.
+    """
+
+    rejestry: list[dict[str, Any]] = field(default_factory=list)
+
+
+#: Sekcje dodane po formacie 3.0.0, które archiwum niesie TYLKO, gdy są niepuste — ich klucz
+#: w treści, pole odcisku i składnik `archive_hash` istnieją wyłącznie przy niepustej sekcji.
+#: Jedno źródło dla eksportu, odcisków, weryfikacji, paczki zmian i porównania archiwów.
+SEKCJE_EMITOWANE_GDY_NIEPUSTE: tuple[str, ...] = ("scenariusze",)
+
+
+@dataclass(frozen=True)
 class ArchiveFingerprints:
     """Fingerprints (hashe) wszystkich sekcji archiwum formatu 3.0.0.
 
@@ -246,6 +269,29 @@ class ArchiveFingerprints:
     interpretations_hash: str
     issues_hash: str
     enm_hash: str = ""  # puste w archiwach sprzed sekcji ENM
+    scenariusze_hash: str = ""  # puste, gdy projekt nie ma scenariuszy (sekcja nieemitowana)
+
+
+def odciski_do_slownika(fp: ArchiveFingerprints) -> dict[str, str]:
+    """Odciski archiwum jako słownik — JEDNA postać dla archiwum, paczki zmian i ich sygnatur.
+
+    `scenariusze_hash` pojawia się wyłącznie przy niepustej sekcji scenariuszy
+    (`SEKCJE_EMITOWANE_GDY_NIEPUSTE`) — odciski projektu bez scenariuszy są bajtowo te same
+    co przed tą sekcją.
+    """
+    wynik = {
+        "archive_hash": fp.archive_hash,
+        "project_meta_hash": fp.project_meta_hash,
+        "cases_hash": fp.cases_hash,
+        "runs_hash": fp.runs_hash,
+        "results_hash": fp.results_hash,
+        "interpretations_hash": fp.interpretations_hash,
+        "issues_hash": fp.issues_hash,
+        "enm_hash": fp.enm_hash,
+    }
+    if fp.scenariusze_hash:
+        wynik["scenariusze_hash"] = fp.scenariusze_hash
+    return wynik
 
 
 @dataclass(frozen=True)
@@ -263,6 +309,7 @@ class ProjectArchive:
     - interpretations: interpretacje
     - issues: problemy/walidacje
     - enm: model(e) ENM (JEDYNY nośnik sieci — W1-B-ARCH)
+    - scenariusze: rejestry magazynu scenariuszy (tylko gdy niepuste)
     - fingerprints: hashe wszystkich sekcji
 
     Sekcje `network_model`/`sld_diagrams`/`proofs` NIE ISTNIEJĄ w tym formacie
@@ -279,6 +326,7 @@ class ProjectArchive:
     issues: IssuesSection
     fingerprints: ArchiveFingerprints
     enm: EnmSection = field(default_factory=EnmSection)
+    scenariusze: ScenariuszeSection = field(default_factory=ScenariuszeSection)
 
 
 # ============================================================================
@@ -325,6 +373,7 @@ def compute_archive_fingerprints(
     interpretations: dict[str, Any],
     issues: dict[str, Any],
     enm: dict[str, Any] | None = None,
+    scenariusze: dict[str, Any] | None = None,
 ) -> ArchiveFingerprints:
     """Oblicz fingerprints dla wszystkich sekcji archiwum formatu 3.0.0.
 
@@ -340,6 +389,11 @@ def compute_archive_fingerprints(
     interpretations_hash = compute_hash(interpretations)
     issues_hash = compute_hash(issues)
     enm_hash = compute_hash(enm if enm is not None else {"models": []})
+    # Sekcja scenariuszy wchodzi do odcisków WYŁĄCZNIE niepusta — `archive_hash` projektu bez
+    # scenariuszy jest ten sam co przed sekcją (SEKCJE_EMITOWANE_GDY_NIEPUSTE).
+    scenariusze_hash = (
+        compute_hash(scenariusze) if scenariusze and scenariusze.get("rejestry") else ""
+    )
 
     # Hash całego archiwum to hash wszystkich hash'y sekcji formatu 3.0.0.
     archive_hash = compute_hash(
@@ -351,6 +405,7 @@ def compute_archive_fingerprints(
             "interpretations": interpretations_hash,
             "issues": issues_hash,
             "enm": enm_hash,
+            **({"scenariusze": scenariusze_hash} if scenariusze_hash else {}),
         }
     )
 
@@ -363,6 +418,7 @@ def compute_archive_fingerprints(
         interpretations_hash=interpretations_hash,
         issues_hash=issues_hash,
         enm_hash=enm_hash,
+        scenariusze_hash=scenariusze_hash,
     )
 
 
@@ -406,16 +462,12 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
             "enm": {
                 "models": archive.enm.models,
             },
-            "fingerprints": {
-                "archive_hash": archive.fingerprints.archive_hash,
-                "project_meta_hash": archive.fingerprints.project_meta_hash,
-                "cases_hash": archive.fingerprints.cases_hash,
-                "runs_hash": archive.fingerprints.runs_hash,
-                "results_hash": archive.fingerprints.results_hash,
-                "interpretations_hash": archive.fingerprints.interpretations_hash,
-                "issues_hash": archive.fingerprints.issues_hash,
-                "enm_hash": archive.fingerprints.enm_hash,
-            },
+            **(
+                {"scenariusze": {"rejestry": archive.scenariusze.rejestry}}
+                if archive.scenariusze.rejestry
+                else {}
+            ),
+            "fingerprints": odciski_do_slownika(archive.fingerprints),
         }
     )
 
@@ -457,6 +509,7 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
     interpretations = _sekcja(data, "interpretations", wymagana=False)
     issues = _sekcja(data, "issues", wymagana=False)
     enm = _sekcja(data, "enm", wymagana=False)
+    scenariusze = _sekcja(data, "scenariusze", wymagana=False)
 
     return ProjectArchive(
         schema_version=schema_version,
@@ -490,6 +543,9 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
         enm=EnmSection(
             models=_lista(enm, "enm", "models"),
         ),
+        scenariusze=ScenariuszeSection(
+            rejestry=_lista(scenariusze, "scenariusze", "rejestry"),
+        ),
         fingerprints=odciski_ze_slownika(data["fingerprints"], "fingerprints"),
     )
 
@@ -516,7 +572,12 @@ _WYMAGANE_ODCISKI: tuple[str, ...] = (
     "runs_hash",
     "results_hash",
 )
-_OPCJONALNE_ODCISKI: tuple[str, ...] = ("interpretations_hash", "issues_hash", "enm_hash")
+_OPCJONALNE_ODCISKI: tuple[str, ...] = (
+    "interpretations_hash",
+    "issues_hash",
+    "enm_hash",
+    "scenariusze_hash",
+)
 
 
 #: Konstruktor nazwanego błędu struktury: (komunikat, ścieżka pola) -> błąd.
@@ -710,6 +771,7 @@ _SECTION_HASH_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("interpretations", "interpretations_hash", "interpretations"),
     ("issues", "issues_hash", "issues"),
     ("enm", "enm_hash", "enm"),
+    ("scenariusze", "scenariusze_hash", "scenariusze"),
 )
 
 
@@ -756,6 +818,20 @@ def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
             errors.append(
                 f"Błąd integralności sekcji '{section_key}': "
                 f"oczekiwano {stored_hash}, obliczono {computed_hash}"
+            )
+
+    # Sekcja emitowana tylko niepusta MUSI mieć odcisk: obecna treść bez pola odcisku
+    # przeszłaby pętlę wyżej jako „sekcja z wersji bez tego pola" i trafiłaby do importu
+    # niesprawdzona.
+    for section_key, fp_field, _ in _SECTION_HASH_FIELDS:
+        if (
+            section_key in SEKCJE_EMITOWANE_GDY_NIEPUSTE
+            and section_key in data
+            and not fingerprints.get(fp_field)
+        ):
+            errors.append(
+                f"Błąd integralności: archiwum zawiera sekcję '{section_key}' bez odcisku "
+                f"'{fp_field}' w fingerprints"
             )
 
     stored_archive_hash = fingerprints.get("archive_hash")

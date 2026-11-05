@@ -56,13 +56,15 @@ class ArchiveSummary(BaseModel):
     niesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,
     które je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum
     NAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per
-    przypadek (`enm_models_count`).
+    przypadek (`enm_models_count`) i rejestry magazynu scenariuszy — scenariusze nazwane
+    oraz wybory zabezpieczeń przypadków (`scenariusze_count`).
     """
 
     study_cases_count: int
     operating_cases_count: int
     canonical_runs_count: int
     enm_models_count: int
+    scenariusze_count: int
 
 
 class PreviewResponse(BaseModel):
@@ -231,5 +233,6 @@ async def preview_archive(
             operating_cases_count=summary_data.get("operating_cases_count", 0),
             canonical_runs_count=summary_data.get("canonical_runs_count", 0),
             enm_models_count=summary_data.get("enm_models_count", 0),
+            scenariusze_count=summary_data.get("scenariusze_count", 0),
         ),
     )

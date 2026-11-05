@@ -51,6 +51,7 @@ export const ARCHIWUM_STRINGS = {
   podgladWarianty: 'Warianty obliczeniowe',
   podgladPrzebiegi: 'Przebiegi obliczeń',
   podgladModele: 'Zapisy modelu sieci',
+  podgladScenariusze: 'Scenariusze i zabezpieczenia przypadków',
 
   // Raport wyniku importu
   raportTytul: 'Wynik odtworzenia',

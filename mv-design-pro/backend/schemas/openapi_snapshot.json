@@ -271,7 +271,7 @@
     "type": "object"
    },
    "ArchiveSummary": {
-    "description": "Podsumowanie zawartości archiwum.\n\nW1-B-ARCH: model sieci żyje wyłącznie w ENM — archiwum formatu 3.0.0 nie\nniesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,\nktóre je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum\nNAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per\nprzypadek (`enm_models_count`).",
+    "description": "Podsumowanie zawartości archiwum.\n\nW1-B-ARCH: model sieci żyje wyłącznie w ENM — archiwum formatu 3.0.0 nie\nniesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,\nktóre je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum\nNAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per\nprzypadek (`enm_models_count`) i rejestry magazynu scenariuszy — scenariusze nazwane\noraz wybory zabezpieczeń przypadków (`scenariusze_count`).",
     "properties": {
      "canonical_runs_count": {
       "title": "Canonical Runs Count",
@@ -285,6 +285,10 @@
       "title": "Operating Cases Count",
       "type": "integer"
      },
+     "scenariusze_count": {
+      "title": "Scenariusze Count",
+      "type": "integer"
+     },
      "study_cases_count": {
       "title": "Study Cases Count",
       "type": "integer"
@@ -294,7 +298,8 @@
      "study_cases_count",
      "operating_cases_count",
      "canonical_runs_count",
-     "enm_models_count"
+     "enm_models_count",
+     "scenariusze_count"
     ],
     "title": "ArchiveSummary",
     "type": "object"
@@ -6632,6 +6637,17 @@
       ],
       "title": "Ik Max Ka"
      },
+     "ikss_a": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ikss A"
+     },
      "ith_1s_a": {
       "anyOf": [
        {
@@ -6642,17 +6658,6 @@
        }
       ],
       "title": "Ith 1S A"
-     },
-     "ith_a": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ith A"
      },
      "iz_katalogowe_a": {
       "title": "Iz Katalogowe A",
@@ -6676,6 +6681,17 @@
        }
       ],
       "title": "Jth 1S A Per Mm2"
+     },
+     "kappa": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kappa"
      },
      "liczba_obwodow": {
       "title": "Liczba Obwodow",
@@ -24339,284 +24355,6 @@
     ]
    }
   },
-  "/api/execution/fault-scenarios/{scenario_id}": {
-   "delete": {
-    "description": "Usuń scenariusz zwarcia.\n\nBlokada usunięcia jeśli scenariusz ma powiązane przebiegi (wyprowadzone\nz koperty biegu — karta C6-PERSIST).",
-    "operationId": "delete_fault_scenario_api_execution_fault_scenarios__scenario_id__delete",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "204": {
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Delete Fault Scenario",
-    "tags": [
-     "fault-scenarios"
-    ]
-   },
-   "get": {
-    "description": "Pobierz szczegóły scenariusza zwarcia.",
-    "operationId": "get_fault_scenario_api_execution_fault_scenarios__scenario_id__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/FaultScenarioResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Fault Scenario",
-    "tags": [
-     "fault-scenarios"
-    ]
-   },
-   "put": {
-    "description": "Zaktualizuj scenariusz zwarcia (copy-on-write, nowa rewizja w magazynie).\n\nWaliduje invarianty po aktualizacji. Przelicza content_hash.",
-    "operationId": "update_fault_scenario_api_execution_fault_scenarios__scenario_id__put",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/UpdateFaultScenarioRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/FaultScenarioResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Update Fault Scenario",
-    "tags": [
-     "fault-scenarios"
-    ]
-   }
-  },
-  "/api/execution/fault-scenarios/{scenario_id}/eligibility": {
-   "get": {
-    "description": "Sprawdź gotowość scenariusza do uruchomienia analizy.\n\nZwraca status eligibility z listą problemów i sugestii naprawczych (FixActions).",
-    "operationId": "get_scenario_eligibility_api_execution_fault_scenarios__scenario_id__eligibility_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ScenarioEligibilityResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Scenario Eligibility",
-    "tags": [
-     "fault-scenarios"
-    ]
-   }
-  },
-  "/api/execution/fault-scenarios/{scenario_id}/runs": {
-   "post": {
-    "description": "Utwórz przebieg obliczeniowy z scenariusza zwarcia.\n\nTworzy Run w statusie PENDING powiązany z scenariuszem.\nSprawdza eligibility przed utworzeniem — blokada jeśli INELIGIBLE.",
-    "operationId": "create_run_from_scenario_api_execution_fault_scenarios__scenario_id__runs_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "anyOf": [
-         {
-          "$ref": "#/components/schemas/CreateRunFromScenarioRequest"
-         },
-         {
-          "type": "null"
-         }
-        ],
-        "title": "Request"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Create Run From Scenario Api Execution Fault Scenarios  Scenario Id  Runs Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Create Run From Scenario",
-    "tags": [
-     "fault-scenarios"
-    ]
-   }
-  },
-  "/api/execution/fault-scenarios/{scenario_id}/sld-overlay": {
-   "get": {
-    "description": "Pobierz overlay SLD dla scenariusza zwarcia.\n\nZwraca payload overlay z elementami, legendą i etykietą PL.\nDeterministyczny: ten sam scenario_id -> identyczny payload.",
-    "operationId": "get_scenario_sld_overlay_api_execution_fault_scenarios__scenario_id__sld_overlay_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "scenario_id",
-      "required": true,
-      "schema": {
-       "title": "Scenario Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Scenario Sld Overlay Api Execution Fault Scenarios  Scenario Id  Sld Overlay Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Scenario Sld Overlay",
-    "tags": [
-     "fault-scenarios"
-    ]
-   }
-  },
   "/api/execution/runs/{run_id}": {
    "get": {
     "operationId": "get_run_api_execution_runs__run_id__get",
@@ -25058,6 +24796,338 @@
      }
     },
     "summary": "Create Fault Scenario",
+    "tags": [
+     "fault-scenarios"
+    ]
+   }
+  },
+  "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}": {
+   "delete": {
+    "description": "Usuń scenariusz zwarcia.\n\nBlokada usunięcia jeśli scenariusz ma powiązane przebiegi (wyprowadzone\nz koperty biegu — karta C6-PERSIST).",
+    "operationId": "delete_fault_scenario_api_execution_study_cases__case_id__fault_scenarios__scenario_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Fault Scenario",
+    "tags": [
+     "fault-scenarios"
+    ]
+   },
+   "get": {
+    "description": "Pobierz szczegóły scenariusza zwarcia.",
+    "operationId": "get_fault_scenario_api_execution_study_cases__case_id__fault_scenarios__scenario_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FaultScenarioResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Fault Scenario",
+    "tags": [
+     "fault-scenarios"
+    ]
+   },
+   "put": {
+    "description": "Zaktualizuj scenariusz zwarcia (copy-on-write, nowa rewizja w magazynie).\n\nWaliduje invarianty po aktualizacji. Przelicza content_hash.",
+    "operationId": "update_fault_scenario_api_execution_study_cases__case_id__fault_scenarios__scenario_id__put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UpdateFaultScenarioRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FaultScenarioResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Fault Scenario",
+    "tags": [
+     "fault-scenarios"
+    ]
+   }
+  },
+  "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/eligibility": {
+   "get": {
+    "description": "Sprawdź gotowość scenariusza do uruchomienia analizy.\n\nZwraca status eligibility z listą problemów i sugestii naprawczych (FixActions).",
+    "operationId": "get_scenario_eligibility_api_execution_study_cases__case_id__fault_scenarios__scenario_id__eligibility_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ScenarioEligibilityResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Scenario Eligibility",
+    "tags": [
+     "fault-scenarios"
+    ]
+   }
+  },
+  "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/runs": {
+   "post": {
+    "description": "Utwórz przebieg obliczeniowy z scenariusza zwarcia.\n\nTworzy Run w statusie PENDING powiązany z scenariuszem.\nSprawdza eligibility przed utworzeniem — blokada jeśli INELIGIBLE.",
+    "operationId": "create_run_from_scenario_api_execution_study_cases__case_id__fault_scenarios__scenario_id__runs_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/CreateRunFromScenarioRequest"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Request"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Create Run From Scenario Api Execution Study Cases  Case Id  Fault Scenarios  Scenario Id  Runs Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Run From Scenario",
+    "tags": [
+     "fault-scenarios"
+    ]
+   }
+  },
+  "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/sld-overlay": {
+   "get": {
+    "description": "Pobierz overlay SLD dla scenariusza zwarcia.\n\nZwraca payload overlay z elementami, legendą i etykietą PL.\nDeterministyczny: ten sam scenario_id -> identyczny payload.",
+    "operationId": "get_scenario_sld_overlay_api_execution_study_cases__case_id__fault_scenarios__scenario_id__sld_overlay_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "scenario_id",
+      "required": true,
+      "schema": {
+       "title": "Scenario Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Scenario Sld Overlay Api Execution Study Cases  Case Id  Fault Scenarios  Scenario Id  Sld Overlay Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Scenario Sld Overlay",
     "tags": [
      "fault-scenarios"
     ]

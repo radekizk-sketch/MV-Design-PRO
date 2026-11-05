@@ -53,6 +53,7 @@ from domain.project_archive import (
     ProjectMeta,
     ResultsSection,
     RunsSection,
+    ScenariuszeSection,
     archive_to_dict,
     compute_archive_fingerprints,
     dict_to_archive,
@@ -63,6 +64,12 @@ from domain.project_archive import (
 from enm.canonical_analysis import odtworz_bieg_z_archiwum
 from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego, kompiluj_graf
 from enm.models import EnergyNetworkModel
+from enm.scenariusze import (
+    RejestrArchiwumNieprawidlowyError,
+    przemapuj_rejestry_z_archiwum,
+    rejestry_scenariuszy_do_archiwum,
+    zapisz_rejestry_z_archiwum,
+)
 from enm.store import (
     ZrodloZmiany,
     get_enm,
@@ -182,6 +189,10 @@ class ProjectArchiveService:
         # ENM (model EnergyNetworkModel projektu, wpis per przypadek — N-D1, CV-1-W)
         enm_dict = self._collect_enm(project_id, cases_dict)
 
+        # Magazyn scenariuszy projektu (scenariusze nazwane i wybory zabezpieczeń przypadków)
+        rejestry_scenariuszy = self._collect_scenariusze(project_id)
+        scenariusze_dict = {"rejestry": rejestry_scenariuszy}
+
         # Oblicz fingerprints
         fingerprints = compute_archive_fingerprints(
             project_meta=project_meta_dict,
@@ -191,6 +202,7 @@ class ProjectArchiveService:
             interpretations=interpretations_dict,
             issues=issues_dict,
             enm=enm_dict,
+            scenariusze=scenariusze_dict,
         )
 
         # Utwórz archiwum
@@ -228,8 +240,20 @@ class ProjectArchiveService:
             enm=EnmSection(
                 models=enm_dict["models"],
             ),
+            scenariusze=ScenariuszeSection(rejestry=rejestry_scenariuszy),
             fingerprints=fingerprints,
         )
+
+    def _collect_scenariusze(self, project_id: UUID) -> list[dict[str, Any]]:
+        """Rejestry magazynu scenariuszy projektu — pod kluczem projektu po migracji legacy.
+
+        Ta sama droga do klucza co `_collect_enm` (migracja przed odczytem): scenariusze
+        przypadków sprzed CV-1 przenosi ta sama migracja, która przenosi model.
+        """
+        klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
+            project_id, CaseRepository(self._session)
+        ).klucz_projektu
+        return rejestry_scenariuszy_do_archiwum(klucz_projektu)
 
     def _collect_enm(self, project_id: UUID, cases_dict: dict[str, Any]) -> dict[str, Any]:
         """Zbierz model ENM projektu i zapisz go pod KAŻDYM jego przypadkiem (N-D1, CV-1-W).
@@ -491,7 +515,10 @@ class ProjectArchiveService:
 
         except ArchiveError as e:
             # Błędy dekodowania ZIP/JSON przychodzą tu już jako nazwany
-            # `ArchiveError` z komunikatem PL (`_odczytaj_archiwum_zip`).
+            # `ArchiveError` z komunikatem PL (`_odczytaj_archiwum_zip`). Odmowa w trakcie
+            # odtwarzania (np. wadliwy rejestr scenariusza) nie może zostawić połowy projektu:
+            # wiersze dodane do sesji są wycofywane, zanim jednostka pracy zatwierdzi sesję.
+            self._session.rollback()
             return ArchiveImportResult(
                 status=ArchiveImportStatus.FAILED,
                 project_id=None,
@@ -673,6 +700,17 @@ class ProjectArchiveService:
             self._session.add(settings_orm)
 
         self._session.flush()
+
+        # 11. Magazyn scenariuszy — sprawdzony i przemapowany na NOWE przypadki teraz (mapa
+        # przypadków jest kompletna), zapisany po odtworzeniu modelu niżej. Wadliwy rejestr
+        # odmawia importu PRZED jakimkolwiek zapisem do magazynu.
+        try:
+            rejestry_scenariuszy = przemapuj_rejestry_z_archiwum(
+                archive.scenariusze.rejestry,
+                {stary: str(nowy) for stary, nowy in id_map.items()},
+            )
+        except RejestrArchiwumNieprawidlowyError as blad:
+            raise ArchiveStructureError(str(blad), sciezka=blad.sciezka) from blad
 
         # 15. Canonical runs (R1) — CV-3.3-B. Dwa przebiegi:
         #   (a) nowe id dla KAŻDEGO biegu + zebranie mapy stary->nowy PRZED
@@ -867,6 +905,11 @@ class ProjectArchiveService:
                         ),
                     )
 
+        # 23. Magazyn scenariuszy pod kluczem NOWEGO projektu (identyfikatory scenariuszy bez
+        # zmian — wyszukiwanie scenariusza jest zawsze w obrębie projektu, więc ten sam
+        # `scenario_id` w projekcie źródłowym i zaimportowanym nie koliduje).
+        zapisz_rejestry_z_archiwum(klucz_projektu_docelowy, rejestry_scenariuszy)
+
         return new_project_id
 
     # ========================================================================
@@ -903,6 +946,7 @@ class ProjectArchiveService:
                     "operating_cases_count": len(archive.cases.operating_cases),
                     "canonical_runs_count": len(archive.runs.canonical_runs),
                     "enm_models_count": len(archive.enm.models),
+                    "scenariusze_count": len(archive.scenariusze.rejestry),
                 },
             }
 

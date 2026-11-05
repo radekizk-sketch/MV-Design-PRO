@@ -361,6 +361,8 @@ class TestFormat300Contract:
             "interpretations_hash",
             "issues_hash",
             "enm_hash",
+            # Sekcja magazynu scenariuszy — odcisk pusty, gdy sekcja nie jest emitowana.
+            "scenariusze_hash",
         }
 
     def test_project_archive_has_no_deleted_section_fields(self):

@@ -21,6 +21,7 @@ from enum import StrEnum
 from typing import Any
 
 from domain.project_archive import (
+    SEKCJE_EMITOWANE_GDY_NIEPUSTE,
     ArchiveFingerprints,
     ProjectArchive,
     archive_to_dict,
@@ -70,6 +71,9 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
         "analysis_runs_index": "run_id",
     },
     "results": {},
+    # Rejestry magazynu scenariuszy — tożsamość wpisu to identyfikator scenariusza
+    # (scenariusze nazwane i wybory zabezpieczeń przypadków `przypadek-<case_id>`).
+    "scenariusze": {"rejestry": "scenario_id"},
 }
 
 # Pola sekcji, które są POJEDYNCZYM obiektem (nie listą elementów) — porównanie
@@ -87,6 +91,7 @@ _SECTION_HASH_MAP: dict[str, str] = {
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
     "enm": "enm_hash",
+    "scenariusze": "scenariusze_hash",
 }
 
 # Mapowanie nazw sekcji na etykiety PL
@@ -98,6 +103,7 @@ _SECTION_LABELS_PL: dict[str, str] = {
     "interpretations": "Interpretacje",
     "issues": "Problemy",
     "enm": "Model sieci",
+    "scenariusze": "Scenariusze i zabezpieczenia przypadków",
 }
 
 # Pola, po których element listy modelu sieci ma tożsamość: elementy techniczne
@@ -703,6 +709,7 @@ _ETYKIETY_TYPOW_PL: dict[str, str] = {
     "settings": "Ustawienia przypadków",
     "canonical_runs": "Przebiegi obliczeń",
     "analysis_runs_index": "Indeks przebiegów (historyczny)",
+    "rejestry": "Scenariusze (z historią rewizji)",
 }
 
 _PRZEDROSTEK_PRZYPADKU = "przypadek:"
@@ -1090,6 +1097,10 @@ def compare_archives(
     for section_name in section_names:
         sec_hash_a = _get_section_hash(archive_a.fingerprints, section_name)
         sec_hash_b = _get_section_hash(archive_b.fingerprints, section_name)
+        if section_name in SEKCJE_EMITOWANE_GDY_NIEPUSTE and not sec_hash_a and not sec_hash_b:
+            # Sekcja nieobecna w obu archiwach nie jest porównywana (liczba sekcji porównania
+            # projektów bez scenariuszy bez zmian).
+            continue
 
         # Pobierz dane sekcji — obsluz aliasy
         section_data_key = section_name

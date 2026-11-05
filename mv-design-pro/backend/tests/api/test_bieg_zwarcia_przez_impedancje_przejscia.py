@@ -200,13 +200,15 @@ def _bieg_ze_scenariusza(
     scenariusz = _utworz_scenariusz(klient, case_id, **kwargs)
     assert scenariusz.status_code == 201, scenariusz.text
     sid = scenariusz.json()["scenario_id"]
-    kwalifikacja = klient.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+    kwalifikacja = klient.get(
+        f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{sid}/eligibility"
+    ).json()
     assert kwalifikacja["status"] == "ELIGIBLE", kwalifikacja
     assert all(
         "UNSUPPORTED_FAULT_IMPEDANCE" not in blokada.get("code", "")
         for blokada in kwalifikacja.get("blockers", [])
     )
-    bieg = klient.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+    bieg = klient.post(f"{BASE_URL}/study-cases/{case_id}/fault-scenarios/{sid}/runs", json={})
     assert bieg.status_code == 201, bieg.text
     run_id = bieg.json()["id"]
     koniec = wykonaj_bieg(klient, run_id)
@@ -429,7 +431,7 @@ def test_scenariusz_z_niedopuszczalna_impedancja_to_odmowa_nazwana(
     poprawny = _utworz_scenariusz(klient, przypadek, impedancja={"r_f_ohm": 1.0, "x_f_ohm": 0.0})
     assert poprawny.status_code == 201, poprawny.text
     zmiana = klient.put(
-        f"{BASE_URL}/fault-scenarios/{poprawny.json()['scenario_id']}",
+        f"{BASE_URL}/study-cases/{przypadek}/fault-scenarios/{poprawny.json()['scenario_id']}",
         json={"fault_mode": "IMPEDANCE", "fault_impedance": impedancja},
     )
     assert zmiana.status_code == 422, zmiana.text

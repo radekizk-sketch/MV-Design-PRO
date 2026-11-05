@@ -54,6 +54,7 @@ from domain.incremental_archive import (
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
+    SEKCJE_EMITOWANE_GDY_NIEPUSTE,
     ArchiveFingerprints,
     CasesSection,
     InterpretationsSection,
@@ -62,9 +63,15 @@ from domain.project_archive import (
     ProjectMeta,
     ResultsSection,
     RunsSection,
+    ScenariuszeSection,
     archive_to_dict,
     compute_archive_fingerprints,
+    dict_to_archive,
 )
+
+#: Sekcje obecne w KAŻDYM archiwum (bez sekcji emitowanych tylko niepustych) — tyle delt ma
+#: paczka zmian archiwów bez scenariuszy.
+SEKCJE_ZAWSZE = tuple(n for n in SECTION_NAMES if n not in SEKCJE_EMITOWANE_GDY_NIEPUSTE)
 
 # ============================================================================
 # FIXTURES — tworzenie archiwum testowych (format 3.0.0)
@@ -78,6 +85,7 @@ def _make_fingerprints(
     results: dict,
     interpretations: dict | None = None,
     issues: dict | None = None,
+    scenariusze: dict | None = None,
 ) -> ArchiveFingerprints:
     """Pomocnicza fabryka fingerprints."""
     return compute_archive_fingerprints(
@@ -87,6 +95,7 @@ def _make_fingerprints(
         results=results,
         interpretations=interpretations or {"cached": []},
         issues=issues or {"snapshot": []},
+        scenariusze=scenariusze,
     )
 
 
@@ -94,6 +103,7 @@ def _make_archive(
     study_cases: list | None = None,
     canonical_runs: list | None = None,
     project_name: str = "TestProject",
+    rejestry_scenariuszy: list | None = None,
 ) -> ProjectArchive:
     """Fabryka pełnego archiwum testowego z opcjonalnymi nadpisaniami."""
     pm_dict = {
@@ -119,7 +129,10 @@ def _make_archive(
     interp_dict = {"cached": []}
     issues_dict = {"snapshot": []}
 
-    fp = _make_fingerprints(pm_dict, cases_dict, runs_dict, results_dict, interp_dict, issues_dict)
+    scen_dict = {"rejestry": rejestry_scenariuszy or []}
+    fp = _make_fingerprints(
+        pm_dict, cases_dict, runs_dict, results_dict, interp_dict, issues_dict, scen_dict
+    )
 
     return ProjectArchive(
         schema_version=ARCHIVE_SCHEMA_VERSION,
@@ -130,6 +143,7 @@ def _make_archive(
         results=ResultsSection(),
         interpretations=InterpretationsSection(**interp_dict),
         issues=IssuesSection(**issues_dict),
+        scenariusze=ScenariuszeSection(**scen_dict),
         fingerprints=fp,
     )
 
@@ -154,10 +168,14 @@ class TestFormat300Contract:
             "interpretations",
             "issues",
             "enm",
+            "scenariusze",
         }
 
-    def test_section_names_has_seven_entries(self):
-        assert len(SECTION_NAMES) == 7
+    def test_section_names_has_eight_entries_seven_always_present(self):
+        # Siedem sekcji formatu 3.0.0 + sekcja scenariuszy emitowana tylko niepusta.
+        assert len(SECTION_NAMES) == 8
+        assert SEKCJE_EMITOWANE_GDY_NIEPUSTE == ("scenariusze",)
+        assert len(SEKCJE_ZAWSZE) == 7
 
 
 class TestComputeSectionDeltas:
@@ -168,7 +186,7 @@ class TestComputeSectionDeltas:
         archive = _make_archive()
         deltas = compute_section_deltas(archive.fingerprints, archive)
 
-        assert len(deltas) == len(SECTION_NAMES)
+        assert tuple(d.section_name for d in deltas) == SEKCJE_ZAWSZE
         for d in deltas:
             assert d.status == SectionChangeStatus.UNCHANGED
             assert d.data is None
@@ -254,7 +272,7 @@ class TestBuildIncrementalArchive:
         assert incr.export_type == IncrementalExportType.DELTA
         assert incr.base_archive_hash == archive.fingerprints.archive_hash
         assert incr.base_timestamp == "2025-06-01T00:00:00Z"
-        assert len(incr.deltas) == len(SECTION_NAMES)
+        assert len(incr.deltas) == len(SEKCJE_ZAWSZE)
 
         for d in incr.deltas:
             assert d.status == SectionChangeStatus.UNCHANGED
@@ -523,8 +541,49 @@ class TestSizeSavings:
         assert result.size_delta_bytes == len(delta_bytes)
         assert result.sections_changed >= 0
         assert result.sections_unchanged >= 0
-        assert result.sections_changed + result.sections_unchanged == len(SECTION_NAMES)
+        assert result.sections_changed + result.sections_unchanged == len(SEKCJE_ZAWSZE)
         assert result.savings_percent > 0.0
+
+
+_REJESTR = {
+    "scenario_id": "przypadek-sc1",
+    "wersja": 1,
+    "rewizje": [{"revision": 1, "usuniety": True}],
+}
+
+
+class TestSekcjaScenariuszy:
+    """Sekcja emitowana tylko niepusta × status delty {ADDED, REMOVED, UNCHANGED, MODIFIED}."""
+
+    @pytest.mark.parametrize(
+        ("w_bazie", "w_biezacym", "status"),
+        [
+            (False, True, SectionChangeStatus.ADDED),
+            (True, False, SectionChangeStatus.REMOVED),
+            (True, True, SectionChangeStatus.UNCHANGED),
+        ],
+        ids=["dodana", "usunieta", "bez_zmian"],
+    )
+    def test_delta_i_odtworzenie(self, w_bazie, w_biezacym, status) -> None:
+        baza = _make_archive(rejestry_scenariuszy=[_REJESTR] if w_bazie else None)
+        biezace = _make_archive(rejestry_scenariuszy=[_REJESTR] if w_biezacym else None)
+        paczka = build_incremental_archive(baza.fingerprints, biezace)
+        (delta,) = (d for d in paczka.deltas if d.section_name == "scenariusze")
+        assert delta.status == status
+        odtworzone = apply_incremental_archive(baza, paczka)
+        assert archive_to_dict(odtworzone) == archive_to_dict(biezace)
+        assert ("scenariusze" in archive_to_dict(odtworzone)) is w_biezacym
+
+    def test_zmiana_rejestru_to_modified_z_trescia(self) -> None:
+        drugi = {**_REJESTR, "rewizje": [*_REJESTR["rewizje"], {"revision": 2, "usuniety": True}]}
+        baza = _make_archive(rejestry_scenariuszy=[_REJESTR])
+        biezace = _make_archive(rejestry_scenariuszy=[drugi])
+        paczka = build_incremental_archive(baza.fingerprints, biezace)
+        (delta,) = (d for d in paczka.deltas if d.section_name == "scenariusze")
+        assert delta.status == SectionChangeStatus.MODIFIED
+        assert delta.data == {"rejestry": [drugi]}
+        odtworzone = dict_to_archive(archive_to_dict(apply_incremental_archive(baza, paczka)))
+        assert odtworzone.scenariusze.rejestry == [drugi]
 
 
 class TestErrorHandling:

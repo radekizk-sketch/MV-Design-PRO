@@ -1347,7 +1347,11 @@ def create_run(
     run = CanonicalRun(
         id=uuid4(),
         case_id=case_id,
-        project_id=project_id,
+        # Ten sam projekt co w kopercie (parametr albo klucz twin). Dawne `project_id=project_id`
+        # zostawiało `None` w rekordzie biegu dla wołających bez parametru (bieg ze scenariusza
+        # zwarciowego, seria, biegi akademickie): koperta znała projekt, a rekord nie, więc
+        # eksport projektu (filtr po `project_id`) gubił te biegi.
+        project_id=project_id_koperty,
         analysis_type=analysis_type,
         status="CREATED",
         created_at=datetime.now(UTC),

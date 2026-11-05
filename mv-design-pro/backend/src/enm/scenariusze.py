@@ -1720,48 +1720,6 @@ def wczytaj_scenariusz(
     raise ScenariuszNieistniejeError(klucz, scenario_id, rewizja)
 
 
-def znajdz_klucz_scenariusza(scenario_id: str) -> str | None:
-    """Klucz magazynu (projektu), ktory przechowuje scenariusz o tym identyfikatorze
-    — BEZ indeksu drugiej prawdy (karta C6-PERSIST).
-
-    Konczowki API adresowane WYLACZNIE `scenario_id` (bez `case_id` w sciezce:
-    `GET/PUT/DELETE .../fault-scenarios/{scenario_id}`, `.../eligibility`,
-    `.../sld-overlay`, `.../runs`) potrzebuja klucza magazynu, zeby w ogole
-    wolac `wczytaj_scenariusz`/`zapisz_scenariusz`/`usun_scenariusz` — a klucz
-    zalezy od PROJEKTU, ktorego adres nie jest czescia sciezki. Zamiast osobnego
-    pliku indeksu (`scenario_id -> klucz`), ktory moglby sie rozjechac z
-    rzeczywistymi plikami po awarii zapisu, PRZEGLADAMY magazyn: kazdy plik
-    scenariusza jest juz nazwany `<scenario_id>.json` (patrz `_sciezka_
-    scenariusza`) i jego WLASNY rejestr niesie pole `"klucz"` (patrz
-    `zapisz_scenariusz`) — jedno zrodlo prawdy, ten sam plik, ktory i tak trzeba
-    by odczytac.
-
-    Zwraca `None`, gdy zaden projekt nie ma pliku o tej nazwie (scenariusz
-    nigdy nie istnial, albo zyje wylacznie w `legacy_przypadki/` po migracji
-    klucza — CV-1); wolajacy tlumaczy to na `FaultScenarioNotFoundError`
-    (uczciwy 404, nieodrozniny od „scenariusz nigdy nie istnial" — z perspektywy
-    API to ten sam brak).
-
-    Wiele trafien jest teoretycznie niemozliwe (identyfikator scenariusza to
-    `uuid4()` nadany raz przy tworzeniu) — gdyby jednak wystapilo, wybor jest
-    DETERMINISTYCZNY (posortowane sciezki, pierwsza wygrywa), nie przypadkowy.
-    """
-    korzen = _store_dir()
-    if not korzen.is_dir():
-        return None
-    dopasowania = sorted(korzen.glob(f"*{SUFIKS_KATALOGU_SCENARIUSZY}/{scenario_id}.json"))
-    if not dopasowania:
-        return None
-    plik = dopasowania[0]
-    try:
-        rejestr = json.loads(plik.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise ScenariuszUszkodzonyError(f"{plik}: {exc}") from exc
-    if not isinstance(rejestr, dict) or not rejestr.get("klucz"):
-        raise ScenariuszUszkodzonyError(f"{plik}: brak pola 'klucz' w rejestrze")
-    return str(rejestr["klucz"])
-
-
 def lista_scenariuszy(klucz: str) -> list[OperatingScenario]:
     """Najnowsze, nieusuniete rewizje wszystkich scenariuszy projektu (po identyfikatorze)."""
     katalog = katalog_scenariuszy(klucz)
@@ -1971,3 +1929,112 @@ def naloz_wybor_przypadku(
         scenario_hash=wybor.hash if normalny else migawka.scenario_hash,
         nadpisania=tuple(nadpisania),
     )
+
+
+# ---------------------------------------------------------------------------
+# Magazyn scenariuszy w archiwum projektu (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN)
+# ---------------------------------------------------------------------------
+#
+# Archiwum projektu niesie CAŁE rejestry scenariuszy projektu (wszystkie rewizje i nagrobki),
+# nie tylko bieżące treści: biegi archiwum zapisują rewizję scenariusza w kopercie i rewizję
+# wyboru zabezpieczeń przypadku w opcjach, a świeżość po imporcie porównuje je z rewizją
+# w magazynie — historia przycięta do ostatniej rewizji zmieniłaby numery i uczyniła świeże
+# wyniki nieaktualnymi. Pole `klucz` rejestru jest adresem magazynu instancji, nie treścią
+# projektu — eksport go pomija, import nadaje klucz nowego projektu.
+
+
+class RejestrArchiwumNieprawidlowyError(ValueError):
+    """Wpis sekcji scenariuszy archiwum nie jest rejestrem scenariusza (ścieżka pola w treści)."""
+
+    def __init__(self, komunikat: str, sciezka: str) -> None:
+        self.sciezka = sciezka
+        super().__init__(komunikat)
+
+
+def rejestry_scenariuszy_do_archiwum(klucz: str) -> list[dict[str, Any]]:
+    """Rejestry scenariuszy projektu do sekcji archiwum (po identyfikatorze, bez `klucz`)."""
+    katalog = katalog_scenariuszy(klucz)
+    if not katalog.is_dir():
+        return []
+    wynik: list[dict[str, Any]] = []
+    for plik in sorted(katalog.glob("*.json")):
+        rejestr = _wczytaj_rejestr(klucz, plik.stem)
+        if rejestr is None:
+            continue
+        wynik.append({k: copy.deepcopy(v) for k, v in rejestr.items() if k != "klucz"})
+    return wynik
+
+
+def _przemapuj_przypadek(case_id: object, mapa_przypadkow: dict[str, str]) -> object:
+    return mapa_przypadkow.get(str(case_id), case_id) if case_id is not None else None
+
+
+def przemapuj_rejestry_z_archiwum(
+    rejestry: list[Any], mapa_przypadkow: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Rejestry z archiwum sprawdzone i przemapowane na przypadki nowego projektu — BEZ zapisu.
+
+    Przemapowanie dotyczy dwóch miejsc, w których scenariusz wskazuje przypadek: identyfikatora
+    wyboru zabezpieczeń przypadku (`przypadek-<case_id>`, w rejestrze i w każdej rewizji) oraz
+    `fault_spec.study_case_id` scenariusza zwarciowego. Odciski rewizji (`hash`) nie zmieniają
+    się — treść scenariusza nie zawiera identyfikatora przypadku. Przypadek spoza mapy zostaje
+    wprost (ta sama reguła co `case_id` biegów archiwum). Każda nieusunięta rewizja jest
+    walidowana modelem `OperatingScenario` PRZED jakimkolwiek zapisem — wadliwe archiwum
+    odmawia importu w całości, nie zostawia połowy magazynu.
+    """
+    wynik: list[dict[str, Any]] = []
+    for indeks, rejestr in enumerate(rejestry):
+        sciezka = f"scenariusze.rejestry[{indeks}]"
+        if not isinstance(rejestr, dict):
+            raise RejestrArchiwumNieprawidlowyError(f"Pole {sciezka} nie jest obiektem", sciezka)
+        scenario_id = rejestr.get("scenario_id")
+        if not isinstance(scenario_id, str) or not scenario_id:
+            raise RejestrArchiwumNieprawidlowyError(
+                f"Brak identyfikatora scenariusza: {sciezka}.scenario_id", f"{sciezka}.scenario_id"
+            )
+        rewizje = rejestr.get("rewizje")
+        if not isinstance(rewizje, list) or not rewizje:
+            raise RejestrArchiwumNieprawidlowyError(
+                f"Pole {sciezka}.rewizje nie jest niepustą listą", f"{sciezka}.rewizje"
+            )
+        nowy_id = scenario_id
+        if czy_scenariusz_przypadku(scenario_id):
+            stary_case = scenario_id[len(PREFIKS_SCENARIUSZA_PRZYPADKU) :]
+            nowy_id = id_scenariusza_przypadku(str(mapa_przypadkow.get(stary_case, stary_case)))
+        nowe_rewizje: list[dict[str, Any]] = []
+        for nr, wpis in enumerate(rewizje):
+            sciezka_wpisu = f"{sciezka}.rewizje[{nr}]"
+            if not isinstance(wpis, dict) or not isinstance(wpis.get("revision"), int):
+                raise RejestrArchiwumNieprawidlowyError(
+                    f"Pole {sciezka_wpisu} nie jest rewizją scenariusza", sciezka_wpisu
+                )
+            wpis = copy.deepcopy(wpis)
+            if not wpis.get("usuniety"):
+                tresc = wpis.get("scenariusz")
+                if not isinstance(tresc, dict):
+                    raise RejestrArchiwumNieprawidlowyError(
+                        f"Brak treści rewizji: {sciezka_wpisu}.scenariusz",
+                        f"{sciezka_wpisu}.scenariusz",
+                    )
+                tresc["scenario_id"] = nowy_id
+                zwarcie = tresc.get("fault_spec")
+                if isinstance(zwarcie, dict) and "study_case_id" in zwarcie:
+                    zwarcie["study_case_id"] = _przemapuj_przypadek(
+                        zwarcie["study_case_id"], mapa_przypadkow
+                    )
+                try:
+                    OperatingScenario.model_validate(tresc)
+                except ValidationError as exc:
+                    raise RejestrArchiwumNieprawidlowyError(
+                        f"Nieprawidłowa treść rewizji {sciezka_wpisu}: {exc}",
+                        f"{sciezka_wpisu}.scenariusz",
+                    ) from exc
+            nowe_rewizje.append(wpis)
+        wynik.append({**copy.deepcopy(rejestr), "scenario_id": nowy_id, "rewizje": nowe_rewizje})
+    return wynik
+
+
+def zapisz_rejestry_z_archiwum(klucz: str, rejestry: list[dict[str, Any]]) -> None:
+    """Zapis rejestrów przemapowanych (`przemapuj_rejestry_z_archiwum`) pod klucz projektu."""
+    for rejestr in rejestry:
+        _zapisz_rejestr(klucz, rejestr["scenario_id"], {**rejestr, "klucz": klucz})
