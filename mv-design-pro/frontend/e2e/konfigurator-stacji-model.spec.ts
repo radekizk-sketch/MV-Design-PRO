@@ -57,7 +57,13 @@ interface Pole {
 }
 interface Migawka {
   buses: Array<{ ref_id: string; voltage_kv: number }>;
-  substations: Array<{ ref_id: string; name: string; station_type?: string; bus_refs?: string[] }>;
+  substations: Array<{
+    ref_id: string;
+    name: string;
+    station_type?: string;
+    bus_refs?: string[];
+    transformer_refs?: string[];
+  }>;
   transformers: Array<{
     ref_id: string;
     hv_bus_ref: string;
@@ -250,10 +256,12 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
   }) => {
     test.setTimeout(240000);
     const k = await zbudujProjekt(request, 'E2E Zaczepy z konfiguratora');
-    const szynyStacji = new Set(k.stacja.bus_refs ?? []);
-    const transformator = k.migawka.transformers.find(
-      (t) => szynyStacji.has(t.lv_bus_ref) || szynyStacji.has(t.hv_bus_ref),
-    );
+    // Relacja stacji z transformatorem wprost z modelu (`Substation.transformer_refs`). Zaciski
+    // transformatora NIE leżą na szynach stacji: strona SN wisi na zacisku pola, a strona nN
+    // na szynie odpływu pola głównego nN po promocji aparatu (od karty JEDNA-SCIEZKA-EDYCJI
+    // cz. 4 promocja jest częścią zapisu operacji, więc widać ją już w odpowiedzi operacji).
+    const refyTransformatorow = new Set(k.stacja.transformer_refs ?? []);
+    const transformator = k.migawka.transformers.find((t) => refyTransformatorow.has(t.ref_id));
     expect(transformator, 'transformator stacji').toBeTruthy();
     expect(transformator!.tap_changer ?? null).toBeNull();
 

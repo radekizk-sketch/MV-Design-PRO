@@ -189,8 +189,11 @@ test.describe('Katalogi stacji i pakiet rozszerzeń (realny backend)', () => {
     const snapshot = await zbudujSiecZeStacja(request, caseId, 'e2e-pakiet');
     const stacja = snapshot.substations.find((s) => s.station_type !== 'gpz' && (s.bus_refs ?? []).length > 0);
     expect(stacja, 'stacja SN/nN w modelu').toBeTruthy();
-    const transformator = snapshot.transformers.find(
-      (t) => (stacja!.bus_refs ?? []).includes(t.lv_bus_ref) || (stacja!.bus_refs ?? []).includes(t.hv_bus_ref),
+    // Relacja stacji z transformatorem wprost z modelu (`Substation.transformer_refs`): zaciski
+    // transformatora leżą na zacisku pola SN i na szynie odpływu pola głównego nN, nie na
+    // szynach stacji (promocja pól nN jest częścią zapisu operacji).
+    const transformator = snapshot.transformers.find((t) =>
+      (stacja!.transformer_refs ?? []).includes(t.ref_id),
     );
     expect(transformator, 'transformator stacji w modelu').toBeTruthy();
 
@@ -310,7 +313,13 @@ test.describe('Katalogi stacji i pakiet rozszerzeń (realny backend)', () => {
 
 interface SnapshotSieci {
   buses: Array<{ ref_id: string; voltage_kv: number }>;
-  substations: Array<{ ref_id: string; name: string; station_type?: string; bus_refs?: string[] }>;
+  substations: Array<{
+    ref_id: string;
+    name: string;
+    station_type?: string;
+    bus_refs?: string[];
+    transformer_refs?: string[];
+  }>;
   transformers: Array<{ ref_id: string; name: string; hv_bus_ref: string; lv_bus_ref: string }>;
   generators: Array<{ ref_id: string; name: string }>;
   bays: Array<{ ref_id: string; substation_ref?: string; bay_role?: string }>;
