@@ -1,0 +1,903 @@
+{
+  "iloczyn": {
+    "konce": [
+      [
+        "O/biale",
+        "K/biale"
+      ],
+      [
+        "O/galaz-dalej",
+        "K/galaz-koniec"
+      ],
+      [
+        "O/linia",
+        "K/linia"
+      ],
+      [
+        "O/nic",
+        "K/nic"
+      ],
+      [
+        "O/odwrotny",
+        "K/odwrotny"
+      ],
+      [
+        "O/petla",
+        "P/x"
+      ],
+      [
+        "O/pomiar",
+        "K/pomiar"
+      ],
+      [
+        "O/wyspa",
+        "W/a"
+      ],
+      [
+        "O/wyspa",
+        "W/b"
+      ]
+    ],
+    "model": {
+      "bays": [
+        {
+          "bus_ref": "X",
+          "ref_id": "P/1",
+          "terminal_bus_ref": "K/zacisk-pola"
+        },
+        {
+          "bus_ref": "K/szyna-pola",
+          "ref_id": "P/2"
+        }
+      ],
+      "branch_points": [
+        {
+          "bus_ref": "K/punkt",
+          "ref_id": "ZK"
+        }
+      ],
+      "branches": [
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/nic",
+          "to_bus_ref": "K/nic",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/linia",
+          "to_bus_ref": "K/linia",
+          "type": "line_overhead"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/pomiar",
+          "to_bus_ref": "K/pomiar",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "K/odwrotny",
+          "ref_id": "O/odwrotny",
+          "to_bus_ref": "Z",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/galaz",
+          "to_bus_ref": "K/galaz",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "K/galaz",
+          "ref_id": "O/galaz-dalej",
+          "to_bus_ref": "K/galaz-koniec",
+          "type": "line_overhead"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/lacznik",
+          "to_bus_ref": "K/lacznik",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "K/lacznik",
+          "ref_id": "S/lacznik",
+          "to_bus_ref": "Z",
+          "type": "switch"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "S/sam-lacznik",
+          "to_bus_ref": "K/sam-lacznik",
+          "type": "breaker"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "S/bezpiecznik",
+          "to_bus_ref": "K/bezpiecznik",
+          "type": "fuse"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/trafo-wn",
+          "to_bus_ref": "K/trafo-wn",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/trafo-nn",
+          "to_bus_ref": "K/trafo-nn",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/zrodlo",
+          "to_bus_ref": "K/zrodlo",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/odbior",
+          "to_bus_ref": "K/odbior",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/generator",
+          "to_bus_ref": "K/generator",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/bateria",
+          "to_bus_ref": "K/bateria",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/stacja",
+          "to_bus_ref": "K/stacja",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/zacisk-pola",
+          "to_bus_ref": "K/zacisk-pola",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/szyna-pola",
+          "to_bus_ref": "K/szyna-pola",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/sekcja-gpz",
+          "to_bus_ref": "K/sekcja-gpz",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/sekcja-gpz-wn",
+          "to_bus_ref": "K/sekcja-gpz-wn",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/sekcja-nn",
+          "to_bus_ref": "K/sekcja-nn",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "O/punkt",
+          "to_bus_ref": "K/punkt",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "W/a",
+          "ref_id": "O/wyspa",
+          "to_bus_ref": "W/b",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "P/x",
+          "ref_id": "O/petla",
+          "to_bus_ref": "P/x",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "  O/biale  ",
+          "to_bus_ref": "  K/biale  ",
+          "type": "cable"
+        },
+        {
+          "from_bus_ref": "Z",
+          "ref_id": "",
+          "to_bus_ref": "K/bez-refu",
+          "type": "cable"
+        }
+      ],
+      "generators": [
+        {
+          "bus_ref": "K/generator",
+          "ref_id": "G"
+        }
+      ],
+      "loads": [
+        {
+          "bus_ref": "K/odbior",
+          "ref_id": "L"
+        }
+      ],
+      "measurements": [
+        {
+          "bus_ref": "K/pomiar",
+          "measurement_type": "VT",
+          "ref_id": "VT"
+        }
+      ],
+      "shunt_capacitors": [
+        {
+          "bus_ref": "K/bateria",
+          "ref_id": "C"
+        }
+      ],
+      "sources": [
+        {
+          "bus_ref": "Z",
+          "ref_id": "Q"
+        },
+        {
+          "bus_ref": "K/zrodlo",
+          "ref_id": "Q/zrodlo"
+        }
+      ],
+      "substations": [
+        {
+          "bus_refs": [
+            "K/stacja",
+            "  "
+          ],
+          "gpz_hv_sections": [
+            {
+              "bus_ref": "K/sekcja-gpz-wn"
+            }
+          ],
+          "gpz_sections": [
+            {
+              "bus_ref": "K/sekcja-gpz"
+            }
+          ],
+          "nn_sections": [
+            {
+              "bus_ref": "K/sekcja-nn"
+            }
+          ],
+          "ref_id": "ST"
+        }
+      ],
+      "transformers": [
+        {
+          "hv_bus_ref": "K/trafo-wn",
+          "lv_bus_ref": "N/1",
+          "ref_id": "T/wn"
+        },
+        {
+          "hv_bus_ref": "N/2",
+          "lv_bus_ref": "K/trafo-nn",
+          "ref_id": "T/nn"
+        }
+      ]
+    }
+  },
+  "pliki": {
+    "public/test-fixtures/gpz110kvBkr.enm.json": {
+      "/enm": []
+    },
+    "public/test-fixtures/gpz110kvBkrGwiazdaUziemiona.enm.json": {
+      "/enm": []
+    },
+    "public/test-fixtures/gpzFeeder.enm.json": {
+      "/enm": [
+        [
+          "seg/88ced29037bd5e349790a5f668820445/segment_R",
+          "bus/88ced29037bd5e349790a5f668820445/downstream"
+        ],
+        [
+          "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R",
+          "bus/f31c2d6beb2fb5ea74648308abfaa4d5/branch_end"
+        ]
+      ]
+    },
+    "public/test-fixtures/nnBoardDemo.enm.json": {
+      "/enm": [
+        [
+          "seg/27539daaa659fbadd21b511d7f4ec96e/segment_R",
+          "bus/27539daaa659fbadd21b511d7f4ec96e/downstream"
+        ],
+        [
+          "seg/72ce0e434a74b654e882b35c70e3e454/branch_segment",
+          "bus/72ce0e434a74b654e882b35c70e3e454/branch_end"
+        ]
+      ]
+    },
+    "public/test-fixtures/sldSubstrate52s.enm.json": {
+      "/enm": [
+        [
+          "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_R_R_R",
+          "bus/01a20b171cd616a1e37f812b6a2ed1bc/branch_end"
+        ],
+        [
+          "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_R_R_R",
+          "bus/21a0bddd26b8d860a64c18e1dd0e7a39/branch_end"
+        ],
+        [
+          "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_R_R_R",
+          "bus/231d55173c8d5b45cfa95895613eef00/branch_end"
+        ],
+        [
+          "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_R_R",
+          "bus/430076b255026cb573b95788b0a50ae4/branch_end"
+        ],
+        [
+          "seg/6275da2fa468b7f2b4aca0e40261843d/segment_R",
+          "bus/6275da2fa468b7f2b4aca0e40261843d/downstream"
+        ],
+        [
+          "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_R_R_R",
+          "bus/722501a1dc58a9b35e5f34255e339d80/branch_end"
+        ],
+        [
+          "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_R_R_R",
+          "bus/9e8194ce6a2202dcac3567c707bf3cd8/branch_end"
+        ],
+        [
+          "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_R_R_R",
+          "bus/ba3c23635791b79dfb67e1aa8224b0ee/branch_end"
+        ],
+        [
+          "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_R_R",
+          "bus/e243a31d168593d36a118f9056ffeaaa/branch_end"
+        ],
+        [
+          "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_R_R_R",
+          "bus/e42f7922322d32cf7aaf765cda708f16/branch_end"
+        ],
+        [
+          "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_R_R_R",
+          "bus/eef87edda57b6ee688d4f45f9506d955/branch_end"
+        ]
+      ]
+    },
+    "scripts/demo-oze-sc/demoOzeSc.enm.json": {
+      "/enm": [
+        [
+          "seg/bf1e05a69c0f5fa7f59e1c4ecbdece2e/segment",
+          "bus/bf1e05a69c0f5fa7f59e1c4ecbdece2e/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/ciag_w_budowie_etapy.json": {
+      "/etapy/0/snapshot": [],
+      "/etapy/1/snapshot": [],
+      "/etapy/10/snapshot": [],
+      "/etapy/11/snapshot": [],
+      "/etapy/12/snapshot": [],
+      "/etapy/13/snapshot": [],
+      "/etapy/14/snapshot": [],
+      "/etapy/15/snapshot": [],
+      "/etapy/2/snapshot": [],
+      "/etapy/3/snapshot": [],
+      "/etapy/4/snapshot": [],
+      "/etapy/5/snapshot": [],
+      "/etapy/6/snapshot": [],
+      "/etapy/7/snapshot": [],
+      "/etapy/8/snapshot": [],
+      "/etapy/9/snapshot": []
+    },
+    "src/harness-fixtures/generated/dynamika_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/geometria_stacji_bez_wyposazenia.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/geometria_stacji_gpz_110kv.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/geometria_stacji_otwarte.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/geometria_stacji_zamkniete.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/koordynacja_scena_migawka.json": {
+      "": [
+        [
+          "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_R",
+          "bus/9704d44d1ae3394b377910d77a80b97c/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/lom_scena_migawka.json": {
+      "": [
+        [
+          "seg/5a810eceaf6c7d13cff44e2be46f4ea8/segment_R",
+          "bus/5a810eceaf6c7d13cff44e2be46f4ea8/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/macierz_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/magazyn_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/nazwy_obiektow_scen_akademickich.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/oze_analiz_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/oze_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json": {
+      "/snapshot": [
+        [
+          "seg/3d5b4481534721c0121ef7dae10da9ef/segment",
+          "bus/3d5b4481534721c0121ef7dae10da9ef/downstream"
+        ],
+        [
+          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment",
+          "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json": {
+      "/snapshot": [
+        [
+          "seg/3d5b4481534721c0121ef7dae10da9ef/segment",
+          "bus/3d5b4481534721c0121ef7dae10da9ef/downstream"
+        ],
+        [
+          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment",
+          "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json": {
+      "/snapshot": [
+        [
+          "seg/3d5b4481534721c0121ef7dae10da9ef/segment",
+          "bus/3d5b4481534721c0121ef7dae10da9ef/downstream"
+        ],
+        [
+          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment",
+          "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/pulpit_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_brak_pol.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_wolne_jedno.json": {
+      "/snapshot": [
+        [
+          "seg/e542bc98f810bf3976cf53cbc97a3750/segment",
+          "bus/e542bc98f810bf3976cf53cbc97a3750/downstream"
+        ],
+        [
+          "seg/e9d27f75aef63828e64331e6ee8d433d/segment",
+          "bus/e9d27f75aef63828e64331e6ee8d433d/downstream"
+        ],
+        [
+          "seg/f67cf495ae0286be24648dbf0d6d3b6c/segment",
+          "bus/f67cf495ae0286be24648dbf0d6d3b6c/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_wolne_kilka.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_zajete_wszystkie.json": {
+      "/snapshot": [
+        [
+          "seg/dd3c91f6002518b2a88678206c770b97/segment",
+          "bus/dd3c91f6002518b2a88678206c770b97/downstream"
+        ],
+        [
+          "seg/e542bc98f810bf3976cf53cbc97a3750/segment",
+          "bus/e542bc98f810bf3976cf53cbc97a3750/downstream"
+        ],
+        [
+          "seg/e9d27f75aef63828e64331e6ee8d433d/segment",
+          "bus/e9d27f75aef63828e64331e6ee8d433d/downstream"
+        ],
+        [
+          "seg/f67cf495ae0286be24648dbf0d6d3b6c/segment",
+          "bus/f67cf495ae0286be24648dbf0d6d3b6c/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_brak_pol.json": {
+      "/snapshot": [
+        [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
+          "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_wolne_jedno.json": {
+      "/snapshot": [
+        [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
+          "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream"
+        ],
+        [
+          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment",
+          "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_wolne_kilka.json": {
+      "/snapshot": [
+        [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
+          "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/punkt_startu_stacja_na_odcinku_zajete_wszystkie.json": {
+      "/snapshot": [
+        [
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
+          "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream"
+        ],
+        [
+          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment",
+          "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream"
+        ],
+        [
+          "seg/f34acd81c5473a342b03918e0c2ee385/segment",
+          "bus/f34acd81c5473a342b03918e0c2ee385/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/siec_zlota_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/skladowe_scena_migawka.json": {
+      "/snapshot": []
+    },
+    "src/harness-fixtures/generated/stacja_demo_scena_migawka.json": {
+      "": [
+        [
+          "seg/4364e2842858577811ebef3369cbea20/segment_R",
+          "bus/4364e2842858577811ebef3369cbea20/downstream"
+        ]
+      ]
+    },
+    "src/harness-fixtures/generated/zbieznosc_scena_migawka.json": {
+      "": []
+    },
+    "src/harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json": {
+      "": []
+    },
+    "src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json": {
+      "/enm": [
+        [
+          "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_R_R_R",
+          "bus/01a20b171cd616a1e37f812b6a2ed1bc/branch_end"
+        ],
+        [
+          "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_R_R_R",
+          "bus/21a0bddd26b8d860a64c18e1dd0e7a39/branch_end"
+        ],
+        [
+          "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_R_R_R",
+          "bus/231d55173c8d5b45cfa95895613eef00/branch_end"
+        ],
+        [
+          "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_R_R",
+          "bus/430076b255026cb573b95788b0a50ae4/branch_end"
+        ],
+        [
+          "seg/6275da2fa468b7f2b4aca0e40261843d/segment_R",
+          "bus/6275da2fa468b7f2b4aca0e40261843d/downstream"
+        ],
+        [
+          "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_R_R_R",
+          "bus/722501a1dc58a9b35e5f34255e339d80/branch_end"
+        ],
+        [
+          "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_R_R_R",
+          "bus/9e8194ce6a2202dcac3567c707bf3cd8/branch_end"
+        ],
+        [
+          "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_R_R_R",
+          "bus/ba3c23635791b79dfb67e1aa8224b0ee/branch_end"
+        ],
+        [
+          "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_R_R",
+          "bus/e243a31d168593d36a118f9056ffeaaa/branch_end"
+        ],
+        [
+          "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_R_R_R",
+          "bus/e42f7922322d32cf7aaf765cda708f16/branch_end"
+        ],
+        [
+          "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_R_R_R",
+          "bus/eef87edda57b6ee688d4f45f9506d955/branch_end"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-add_grid_source_sn.enm.json": {
+      "/enm": []
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-add_sn_bay.enm.json": {
+      "/enm": [
+        [
+          "seg/653b66daa305195f5b6b631b4a36ab21/branch_segment",
+          "bus/653b66daa305195f5b6b631b4a36ab21/branch_end"
+        ],
+        [
+          "seg/908556526fbac181d1be24f1f0a3f251/segment",
+          "bus/908556526fbac181d1be24f1f0a3f251/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-continue_trunk_segment_sn.enm.json": {
+      "/enm": [
+        [
+          "seg/908556526fbac181d1be24f1f0a3f251/segment",
+          "bus/908556526fbac181d1be24f1f0a3f251/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-insert_station_on_segment_sn.enm.json": {
+      "/enm": [
+        [
+          "seg/908556526fbac181d1be24f1f0a3f251/segment",
+          "bus/908556526fbac181d1be24f1f0a3f251/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-start_branch_segment_sn.enm.json": {
+      "/enm": [
+        [
+          "seg/653b66daa305195f5b6b631b4a36ab21/branch_segment",
+          "bus/653b66daa305195f5b6b631b4a36ab21/branch_end"
+        ],
+        [
+          "seg/908556526fbac181d1be24f1f0a3f251/segment",
+          "bus/908556526fbac181d1be24f1f0a3f251/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPo.enm.json": {
+      "/enm": [
+        [
+          "seg/188f25eaf3412b30276a4f85c703125a/segment",
+          "bus/188f25eaf3412b30276a4f85c703125a/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPrzed.enm.json": {
+      "/enm": [
+        [
+          "seg/188f25eaf3412b30276a4f85c703125a/segment",
+          "bus/188f25eaf3412b30276a4f85c703125a/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPo.enm.json": {
+      "/enm": [
+        [
+          "seg/f552ee5bc6ee454b0ff0739c655e3ee3/segment",
+          "bus/f552ee5bc6ee454b0ff0739c655e3ee3/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPrzed.enm.json": {
+      "/enm": [
+        [
+          "seg/f552ee5bc6ee454b0ff0739c655e3ee3/segment",
+          "bus/f552ee5bc6ee454b0ff0739c655e3ee3/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json": {
+      "": [
+        [
+          "seg/a9bc466ffbf7944f96515e31a111c281/segment_R",
+          "bus/a9bc466ffbf7944f96515e31a111c281/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/s95GpzSwiezy.enm.json": {
+      "": []
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-lacznik.enm.json": {
+      "/enm": [
+        [
+          "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_SR",
+          "bus/9e6fe81bdcc4c5dc947b3a1c1e853ffe/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-slup.enm.json": {
+      "/enm": [
+        [
+          "seg/102e2d28ad5dea54ae11df0baecc0b18/branch_segment_R",
+          "bus/102e2d28ad5dea54ae11df0baecc0b18/branch_end"
+        ],
+        [
+          "seg/45d95fa031c6317990b8c97627194eb0/branch_segment_R",
+          "bus/45d95fa031c6317990b8c97627194eb0/branch_end"
+        ],
+        [
+          "seg/a5b634d09b4d680db533e98a60c77446/branch_segment_R",
+          "bus/a5b634d09b4d680db533e98a60c77446/branch_end"
+        ],
+        [
+          "seg/d0c91eb3644ba2107b1dfc79874ddae7/segment_R_branch_pole",
+          "bus/d0c91eb3644ba2107b1dfc79874ddae7/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-wezel.enm.json": {
+      "/enm": [
+        [
+          "seg/55651b7664474b4abaa4d10c0301b29b/segment",
+          "bus/55651b7664474b4abaa4d10c0301b29b/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-zksn.enm.json": {
+      "/enm": [
+        [
+          "seg/157644508f6e3a9585acef59af226370/branch_segment_R",
+          "bus/157644508f6e3a9585acef59af226370/branch_end"
+        ],
+        [
+          "seg/9cc784d4b07403052586652b8eac0f35/branch_segment_R",
+          "bus/9cc784d4b07403052586652b8eac0f35/branch_end"
+        ],
+        [
+          "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_R_zksn",
+          "bus/9e6fe81bdcc4c5dc947b3a1c1e853ffe/downstream"
+        ],
+        [
+          "seg/e5538ef5f71422009848289f9c89808c/branch_segment_R",
+          "bus/e5538ef5f71422009848289f9c89808c/branch_end"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/gpzFeeder.enm.json": {
+      "/enm": [
+        [
+          "seg/88ced29037bd5e349790a5f668820445/segment_R",
+          "bus/88ced29037bd5e349790a5f668820445/downstream"
+        ],
+        [
+          "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R",
+          "bus/f31c2d6beb2fb5ea74648308abfaa4d5/branch_end"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json": {
+      "/enm": [
+        [
+          "seg/88ced29037bd5e349790a5f668820445/segment_R",
+          "bus/88ced29037bd5e349790a5f668820445/downstream"
+        ],
+        [
+          "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R",
+          "bus/f31c2d6beb2fb5ea74648308abfaa4d5/branch_end"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/openBranch.enm.json": {
+      "/enm": [
+        [
+          "seg/27539daaa659fbadd21b511d7f4ec96e/segment_R",
+          "bus/27539daaa659fbadd21b511d7f4ec96e/downstream"
+        ],
+        [
+          "seg/72ce0e434a74b654e882b35c70e3e454/branch_segment",
+          "bus/72ce0e434a74b654e882b35c70e3e454/branch_end"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/openTerminal.enm.json": {
+      "/enm": [
+        [
+          "seg/27539daaa659fbadd21b511d7f4ec96e/segment",
+          "bus/27539daaa659fbadd21b511d7f4ec96e/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/openTrunkChain.enm.json": {
+      "/enm": [
+        [
+          "seg/6a8e3508c89da7fe4531667b37d9c479/segment_R",
+          "bus/6a8e3508c89da7fe4531667b37d9c479/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/pomiarOdgalezienie.enm.json": {
+      "/enm": [
+        [
+          "seg/33f2ac0de75846abe094e46a64b63638/segment_R_branch_pole",
+          "bus/33f2ac0de75846abe094e46a64b63638/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/przegladGpz1s1p0st.enm.json": {
+      "/enm": [
+        [
+          "seg/676c3689c5f57cd2da65c4742922a3e4/segment",
+          "bus/676c3689c5f57cd2da65c4742922a3e4/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/przegladGpz1s2p1st.enm.json": {
+      "/enm": [
+        [
+          "seg/676c3689c5f57cd2da65c4742922a3e4/segment_R",
+          "bus/676c3689c5f57cd2da65c4742922a3e4/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/przegladGpz1s4p1st.enm.json": {
+      "/enm": [
+        [
+          "seg/676c3689c5f57cd2da65c4742922a3e4/segment_R",
+          "bus/676c3689c5f57cd2da65c4742922a3e4/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/przegladGpz2s2p0st.enm.json": {
+      "/enm": [
+        [
+          "seg/c018dce2ef17aded26747b65a6e4492f/segment",
+          "bus/c018dce2ef17aded26747b65a6e4492f/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/przegladGpz2s2p3stOdg.enm.json": {
+      "/enm": [
+        [
+          "seg/68324e69208e4cf4c95502b06eaa740d/branch_segment_R",
+          "bus/68324e69208e4cf4c95502b06eaa740d/branch_end"
+        ],
+        [
+          "seg/b77f44adc07155fc74be885c47ca8841/segment_R",
+          "bus/b77f44adc07155fc74be885c47ca8841/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPolePomiarowe.enm.json": {
+      "/enm": [
+        [
+          "seg/cd3285aea708b65f4eb56f3d3adb4f95/segment_R",
+          "bus/cd3285aea708b65f4eb56f3d3adb4f95/downstream"
+        ]
+      ]
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json": {
+      "/enm": [
+        [
+          "seg/a9bc466ffbf7944f96515e31a111c281/segment_R_zksn",
+          "bus/a9bc466ffbf7944f96515e31a111c281/downstream"
+        ]
+      ]
+    }
+  }
+}

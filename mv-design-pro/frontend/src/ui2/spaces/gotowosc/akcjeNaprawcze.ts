@@ -137,6 +137,15 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'earthing.electrode_data_missing': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
+  // W065 (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA): koniec odcinka SN bez odbioru — ta sama
+  // operacja co pozycja menu odcinka na schemacie „Zakończ odcinek stacją SN/nN".
+  'topology.segment_open_end': formularz('insert_station_on_segment_sn'),
+  // W066: ta sama reguła w paśmie nN — odbiór dołącza się w projekcji nN stacji.
+  'topology.lv_segment_open_end': przestrzen(
+    'schemat',
+    'Odbiór nN na końcu odcinka dołącza się w projekcji nN stacji — na schemacie wejdź do ' +
+      'projekcji nN stacji (portal nN) i dodaj odbiór przy końcu odcinka.',
+  ),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_length_missing': EDYCJA,
   'trunk.segment_length_invalid': EDYCJA,

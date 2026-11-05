@@ -1,12 +1,13 @@
 /**
  * PORTAL DOMENY nN — wejście do projekcji nN z kanwy SN (architektura LV
  * Domain Projection po B-02, `docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`):
- *  · od L1: JEDYNYM wejściem jest klik w symbol portalu (`lvPortal`) na
- *    zacisku nN transformatora — klik/dwuklik w transformator NIE otwiera
- *    projekcji;
- *  · L0: blok stacji jest jednym zwiniętym obiektem (zacisk i portal nie mają
- *    geometrii) — dwuklik w blok kadruje stację na L ≥ 1 (karta K2), gdzie
- *    wejściem jest portal; pojedynczy klik NIE otwiera;
+ *  · na KAŻDYM poziomie JEDYNYM wejściem jest klik w symbol portalu (`lvPortal`)
+ *    na zacisku nN transformatora — klik/dwuklik w transformator NIE otwiera
+ *    projekcji. Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała blok zwinięty
+ *    stacji L0: L0 rysuje tę samą kompozycję co L1/L2, więc zacisk i portal mają
+ *    geometrię także na L0;
+ *  · L0: dwuklik w nazwę stacji kadruje stację na L ≥ 1 (karta K2); pojedynczy
+ *    klik w nazwę NIE otwiera projekcji;
  *  · portal pobiera DOKŁADNIE jedno żądanie atomowej projekcji v1 stacji
  *    wskazanej przez `lvPortalStationRef` symbolu (tożsamość z meta, nie z
  *    parsowania refu);
@@ -27,6 +28,7 @@ import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverl
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
+import { nazwaStacjiSn, nazwyStacji, uchwytStacji } from '../../../../../test/sldStacje';
 import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 
@@ -167,7 +169,7 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
   });
 });
 
-describe('SldCanvasV3Workspace — L0: blok zwinięty stacji, dwuklik i wejście do projekcji nN', () => {
+describe('SldCanvasV3Workspace — L0: nazwa stacji, dwuklik i wejście do projekcji nN', () => {
   // K2 (UI-04, §0.3) — ZMIANA ŚWIADOMA: dawniej dwuklik w blok stacji na L0
   // otwierał od razu portal nN. Karta K2 nadaje dwuklikowi w stację jedno
   // znaczenie na KAŻDYM poziomie: „otwórz wnętrze stacji bez utraty kontekstu"
@@ -175,24 +177,23 @@ describe('SldCanvasV3Workspace — L0: blok zwinięty stacji, dwuklik i wejście
   // Intencja dawnego testu zostaje: projekcja nN stacji jest osiągalna z kanwy
   // SN, teraz przez symbol portalu (`lvPortal`) w kadrze stacji — tym samym
   // jedynym wejściem, które obowiązuje od L1.
-  it('dwuklik w blok stacji (L0) kadruje stację na L ≥ 1, a portal nN tej stacji jest osiągalny z kadru', async () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obiekt stacji na L0 = jej nazwa (blok zwinięty
+  // skasowano; pomocnik `test/sldStacje`). Kanwa 1600×1000 — na 800×600 plan czytelności
+  // zdejmuje nazwy wszystkich 52 stacji. Intencja K2 bez zmian.
+  it('dwuklik w nazwę stacji (L0) kadruje stację na L ≥ 1, a portal nN tej stacji jest osiągalny z kadru', async () => {
     const scene = buildSceneV3(enm, 0);
     const scene2 = buildSceneV3(enm, 2);
     // Stacja z portalem nN (ma transformator SN/nN) — żeby wejście było sprawdzalne.
     const stacjeZPortalem = new Set(
       scene2.symbols.filter((s) => s.meta?.elementKind === 'lvPortal').map((s) => s.meta?.lvPortalStationRef),
     );
-    const stationIndex = indexOf(
-      scene,
-      (s) => s.meta?.elementKind === 'station' && stacjeZPortalem.has(s.meta?.ownerRef),
-    );
-    const stationRef = scene.symbols[stationIndex].meta?.ownerRef;
+    const stationRef = nazwyStacji(scene).find((n) => stacjeZPortalem.has(n.stationRef))?.stationRef;
     expect(stationRef).toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
     const kanwa = container.querySelector('[data-testid="sld-canvas-v3"]')!;
     expect(kanwa.getAttribute('data-scene-lod')).toBe('0');
-    fireEvent.doubleClick(uchwyt(container, scene, stationIndex));
+    fireEvent.doubleClick(uchwytStacji(container, stationRef!)!);
 
     const poziom = Number(kanwa.getAttribute('data-scene-lod'));
     expect(poziom).toBeGreaterThanOrEqual(1);
@@ -212,12 +213,22 @@ describe('SldCanvasV3Workspace — L0: blok zwinięty stacji, dwuklik i wejście
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('pojedynczy klik w blok stacji (L0) NIE otwiera portalu', () => {
-    const scene = buildSceneV3(enm, 0);
-    const stationIndex = indexOf(scene, (s) => s.meta?.elementKind === 'station');
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={0} />);
-    fireEvent.click(uchwyt(container, scene, stationIndex));
+  it('pojedynczy klik w nazwę stacji (L0) NIE otwiera portalu', () => {
+    const stacja = nazwaStacjiSn(buildSceneV3(enm, 0));
+    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} lodOverride={0} />);
+    fireEvent.click(uchwytStacji(container, stacja!.stationRef)!);
     expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('L0 rysuje portal nN tą samą kompozycją co L2 — klik w portal na L0 otwiera projekcję jego stacji', async () => {
+    const scene = buildSceneV3(enm, 0);
+    const portalIndex = indexOf(scene, (s) => s.meta?.elementKind === 'lvPortal');
+    const stationRef = scene.symbols[portalIndex].meta?.lvPortalStationRef;
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={0} />);
+    fireEvent.click(uchwyt(container, scene, portalIndex));
+    expect(screen.getByTestId('lv-domain-portal')).toHaveAttribute('data-station-ref', stationRef!);
+    expect(await screen.findByTestId('lv-domain-view-root')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

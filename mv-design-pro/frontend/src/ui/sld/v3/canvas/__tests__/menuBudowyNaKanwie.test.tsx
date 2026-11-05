@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../../../types/enm';
@@ -146,6 +146,21 @@ function wejscieTematu(kanwa: Kanwa, area: CanvasHitArea) {
     derKind: kanwa.derKindy.get(area.testId),
     busRef: kanwa.busRefy.get(area.testId),
   };
+}
+
+/** Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obiekt stacji na rysunku = jej nazwa (wiersz
+ *  tożsamości `<ref>#name-row-0`, ten sam na L0/L1/L2; blok zwinięty L0 i jego klasa trafienia
+ *  `stacja` skasowane). Obszar trafienia nazwy stacji o refie `ref` (albo pierwszej stacji,
+ *  której ref zaczyna się od `prefiks`). */
+function obszarStacji(kanwa: Kanwa, ref: string): CanvasHitArea | undefined {
+  return kanwa.obszary.find((a) => a.klasa === 'etykieta' && a.ownerRef === `${ref}#name-row-0`);
+}
+function obszarStacjiZPrefiksem(kanwa: Kanwa, prefiks: string): (CanvasHitArea & { readonly stacjaRef: string }) | undefined {
+  const a = kanwa.obszary.find(
+    (o) => o.klasa === 'etykieta' && o.ownerRef?.startsWith(prefiks) && o.ownerRef.endsWith('#name-row-0')
+      && !o.ownerRef.includes('#label#'),
+  );
+  return a ? { ...a, stacjaRef: a.ownerRef!.slice(0, -'#name-row-0'.length) } : undefined;
 }
 
 function uchwyt(kanwa: Kanwa, testId: string): Element {
@@ -315,25 +330,35 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
     expect(pozycjeMenu(napowietrzna!)).not.toContain('insert-zksn');
   }, 180000);
 
-  it('symbol i etykieta TEGO SAMEGO obiektu dają identyczne menu i identyczne blokady', async () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: symbol stacji (blok zwinięty L0) skasowano — dwa
+  // uchwyty TEGO SAMEGO obiektu to teraz dwa wiersze jego nazwy (tożsamość i rodzaj stacji).
+  // Intencja bez zmian: menu i blokady nie zależą od miejsca kliku w ten sam obiekt.
+  // Na kadrze sieci plan czytelności rysuje sam wiersz tożsamości; pełne pasmo nazw stoi w kadrze
+  // stacji (dwuklik w nazwę — ścieżka natywna), więc oba uchwyty bierzemy z tego kadru.
+  it('dwa uchwyty TEGO SAMEGO obiektu (wiersze nazwy stacji) dają identyczne menu i identyczne blokady', async () => {
     const kanwa = renderKanwe(0);
-    const symbol = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'));
+    const symbol = obszarStacjiZPrefiksem(kanwa, 'stn/');
     expect(symbol).toBeTruthy();
-    const etykieta = kanwa.obszary.find(
-      (a) => a.klasa === 'etykieta' && a.ownerRef?.startsWith(symbol!.ownerRef!),
-    );
-    expect(etykieta, 'stacja ma na scenie także etykietę-uchwyt').toBeTruthy();
-
-    const zSymbolu = await prawyKlik(kanwa, symbol!.testId);
-    const opisSymbolu = Array.from(zSymbolu!.querySelectorAll('[data-testid^="sld-menu-"]')).map(
-      (el) => `${el.getAttribute('data-testid')}:${(el as HTMLButtonElement).disabled ? 'blokada' : 'aktywna'}`,
-    );
-    await zamknijMenu();
-
-    const zEtykiety = await prawyKlik(kanwa, etykieta!.testId);
-    const opisEtykiety = Array.from(zEtykiety!.querySelectorAll('[data-testid^="sld-menu-"]')).map(
-      (el) => `${el.getAttribute('data-testid')}:${(el as HTMLButtonElement).disabled ? 'blokada' : 'aktywna'}`,
-    );
+    fireEvent.doubleClick(uchwyt(kanwa, symbol!.testId));
+    const wiersze = Array.from(
+      kanwa.container.querySelectorAll(`[data-hit-klasa="etykieta"][data-hit-role="obrys"]`),
+    ).filter((el) => (el.getAttribute('data-hit-owner-ref') ?? '').startsWith(`${symbol!.stacjaRef}#name-row-`));
+    const tozsamosc = wiersze.find((el) => el.getAttribute('data-hit-owner-ref')!.endsWith('#name-row-0'));
+    const drugi = wiersze.find((el) => !el.getAttribute('data-hit-owner-ref')!.endsWith('#name-row-0'));
+    expect(tozsamosc, 'kadr stacji rysuje wiersz tożsamości').toBeTruthy();
+    expect(drugi, 'kadr stacji rysuje drugi wiersz nazwy-uchwyt').toBeTruthy();
+    const opisMenu = async (cel: Element): Promise<string[]> => {
+      await userEvent.pointer({ keys: '[MouseRight]', target: cel });
+      const menu = screen.getByRole('menu');
+      const opis = Array.from(menu.querySelectorAll('[data-testid^="sld-menu-"]')).map(
+        (el) => `${el.getAttribute('data-testid')}:${(el as HTMLButtonElement).disabled ? 'blokada' : 'aktywna'}`,
+      );
+      await zamknijMenu();
+      return opis;
+    };
+    const opisSymbolu = await opisMenu(tozsamosc!);
+    const opisEtykiety = await opisMenu(drugi!);
+    expect(opisSymbolu.length).toBeGreaterThan(0);
     // Przed kartą S9-5 etykieta stacji NIE dostawała blokady „Dodaj agregat nN"
     // (jej `ownerRef` z sufiksem `#name-row-0` nie rozwiązywał się do stacji),
     // więc ten sam obiekt miał dwa różne menu zależnie od miejsca kliku.
@@ -446,8 +471,9 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
     const kanwa = renderKanwe(0, scena.snapshot);
-    const stacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('stn/'));
-    expect(stacja, 'scena ma stację na kanwie').toBeTruthy();
+    const stacjaObszar = obszarStacjiZPrefiksem(kanwa, 'stn/');
+    expect(stacjaObszar, 'scena ma stację na kanwie').toBeTruthy();
+    const stacja = { ...stacjaObszar!, ownerRef: stacjaObszar!.stacjaRef };
     // Wyrocznia niezależna od resolvera: wolny wiersz OUT/FEEDER tej stacji w `line_fields`.
     const wolnePoleLiniowe = (scena.logical_views.line_fields ?? []).some(
       (w) => w.station_ref === stacja!.ownerRef && !w.occupied && ['OUT', 'FEEDER'].includes(String(w.bay_role)),
@@ -471,19 +497,19 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    * kabel (zajętość z modelu odczytu backendu, karta POLE-ZAJĘTE). Właściwą odpowiedzią
    * produktu jest tu uczciwa blokada OBU pozycji budowy z powodem po polsku — zdolność
    * budowy dowodzi scena W BUDOWIE (sekcja E). Iloczyn {stacja środkowa / końcowa ciągu /
-   * GPZ rysowany symbolem stacji na LOD 0} × {kontynuacja / odgałęzienie}.
+   * GPZ (uchwyt: nazwa stacji na LOD 0)} × {kontynuacja / odgałęzienie}.
    */
   it.each([
     ['środkowa ciągu', 'srodkowa' as const],
     ['końcowa ciągu', 'koncowa' as const],
-    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const],
+    ['GPZ (nazwa stacji, LOD 0)', 'gpz' as const],
   ])('sieć GOTOWA, stacja %s: „Prowadź ciąg dalej" i „Rozpocznij odgałęzienie" zablokowane z powodem', async (_n, rola) => {
     const openOperationForm = vi.fn();
     useNetworkBuildStore.setState({ openOperationForm } as never);
     const kanwa = renderKanwe(0);
     const stacjaRef = stacjeWgRoli(enm, widokiEnm)[rola][0];
     expect(stacjaRef, `sieć referencyjna ma stację roli ${rola}`).toBeTruthy();
-    const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
+    const obszar = obszarStacji(kanwa, stacjaRef);
     expect(obszar, `stacja ${stacjaRef} jest na kanwie LOD 0`).toBeTruthy();
     const menu = await prawyKlik(kanwa, obszar!.testId);
     expect(menu, 'menu stacji otwarte').toBeTruthy();
@@ -515,8 +541,10 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     );
     // S95-START: „realne wejście" = temat menu stacji ORAZ punkt startu ciągu z TEGO SAMEGO
     // rozstrzygnięcia, którego użyje kreator.
+    // Uchwyt stacji = wiersz tożsamości jej nazwy (jeden na stację — pozostałe wiersze nazwy
+    // to ten sam obiekt).
     const stacjeNaKanwie = kanwa.obszary.flatMap((a) => {
-      if (a.klasa !== 'stacja') return [];
+      if (a.klasa !== 'etykieta' || !a.ownerRef?.endsWith('#name-row-0')) return [];
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
       return wynik.stan === 'temat' && wynik.temat.menuKind === 'station' ? [{ obszar: a, ref: wynik.temat.modelRef }] : [];
     });
@@ -527,7 +555,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
         `stacja ${ref}: wejście budowy = wolne pole liniowe wg line_fields`,
       ).toBe(wolnePoleStacji(ref));
     }
-    const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
+    const gpzJakoStacja = obszarStacjiZPrefiksem(kanwa, 'gpz/');
     if (gpzJakoStacja) {
       const menuGpz = await prawyKlik(kanwa, gpzJakoStacja.testId);
       expect(pozycjaAktywna(menuGpz!, 'continue-trunk'), 'GPZ bez wolnego pola liniowego').toBe(false);
@@ -839,7 +867,7 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
       // wejściem kontynuacji jest stacja startu (koniec ciągu albo GPZ na etapie 0).
       expect(stacjeZWejsciemKontynuacji(wejsciaKanwy(kanwa), etap.snapshot, etap.logical_views, indeks))
         .toContain(etap.stacja_startu);
-      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === etap.stacja_startu);
+      const obszar = obszarStacji(kanwa, etap.stacja_startu);
       expect(obszar, `stacja startu ${etap.stacja_startu} jest na kanwie`).toBeTruthy();
       const menu = await prawyKlik(kanwa, obszar!.testId);
       expect(menu, 'menu stacji startu otwarte').toBeTruthy();
@@ -878,7 +906,7 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
   it.each([
     ['środkowa', 'srodkowa' as const, 'FEEDER', true],
     ['końcowa', 'koncowa' as const, 'OUT', true],
-    ['GPZ (symbol stacji, LOD 0)', 'gpz' as const, 'OUT', false],
+    ['GPZ (nazwa stacji, LOD 0)', 'gpz' as const, 'OUT', false],
   ])(
     'scena W BUDOWIE, stacja %s: kontynuacja z pola %s, odgałęzienie aktywne=%s — menu i kreator z jednego rozstrzygnięcia',
     async (_n, rola, rolaPolaKontynuacji, odgalezienieAktywne) => {
@@ -889,7 +917,7 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
       const poleKontynuacji = wolnePole(stacjaRef, rolaPolaKontynuacji);
       expect(poleKontynuacji, `stacja ${stacjaRef} ma wolne pole ${rolaPolaKontynuacji}`).toBeTruthy();
       const kanwa = renderKanwe(0, koniec.snapshot);
-      const obszar = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef === stacjaRef);
+      const obszar = obszarStacji(kanwa, stacjaRef);
       expect(obszar, `stacja ${stacjaRef} jest na kanwie`).toBeTruthy();
 
       const menu = await prawyKlik(kanwa, obszar!.testId);

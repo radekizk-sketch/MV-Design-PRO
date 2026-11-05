@@ -2030,6 +2030,34 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl="Magistrala nie ma terminala końcowego",
         fix_navigation={"panel": "sld"},
     ),
+    # Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: koniec odcinka bez odbioru (emiter W065,
+    # predykat `enm/odcinki_bez_odbioru.py`). OSTRZEŻENIE: odcinek jałowy jest fizycznie
+    # poprawny (prąd ładowania w rozpływie, impedancja odcinka w zwarciu); brakuje informacji
+    # projektowej, dokąd odcinek prowadzi.
+    "topology.segment_open_end": ReadinessCodeSpec(
+        code="topology.segment_open_end",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Odcinek kończy się na szynie, do której nic nie jest przyłączone — koniec otwarty "
+            "bez stacji odbiorczej; zakończ odcinek stacją SN/nN albo usuń odcinek"
+        ),
+        fix_navigation={"panel": "sld"},
+    ),
+    # Ta sama reguła w paśmie nN (emiter W066): naprawą jest odbiór nN na końcu odcinka
+    # w projekcji nN stacji, nie stacja SN/nN — stąd osobny kod z inną akcją.
+    "topology.lv_segment_open_end": ReadinessCodeSpec(
+        code="topology.lv_segment_open_end",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Odcinek nN kończy się na szynie, do której nic nie jest przyłączone — koniec "
+            "otwarty bez odbioru; dołącz odbiór nN w projekcji nN stacji albo usuń odcinek"
+        ),
+        fix_navigation={"panel": "sld"},
+    ),
     "trunk.segment_missing": ReadinessCodeSpec(
         code="trunk.segment_missing",
         area=ReadinessArea.TOPOLOGY,

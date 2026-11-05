@@ -19,6 +19,7 @@ import userEvent from '@testing-library/user-event';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
+import { nazwaStacjiSn, uchwytStacji } from '../../../../../test/sldStacje';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { useNetworkBuildStore } from '../../../../network-build/networkBuildStore';
@@ -89,13 +90,18 @@ function wezelRysunku(
 }
 
 describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
-  it('(a) prawy klik w symbol stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: blok zwinięty stacji (symbol `elementKind:
+  // 'station'` na L0) skasowano — stację reprezentuje jej nazwa (ten sam wiersz na każdym
+  // LOD). Intencja bez zmian: natywny prawy klik w obiekt STACJI otwiera menu stacji.
+  // Kanwa 1600×1000: na 800×600 plan czytelności zdejmuje wszystkie nazwy 52 stacji
+  // („przybliż, aby zobaczyć"), więc uchwytu nazwy nie ma — test ćwiczy widok z nazwami.
+  it('(a) prawy klik w nazwę stacji otwiera menu z akcjami dla stacji (SLD_MENU_REGISTRY.station)', async () => {
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-    expect(stationIndex).toBeGreaterThanOrEqual(0);
+    const stacja = nazwaStacjiSn(scene);
+    expect(stacja).toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = uchwytSymbolu(container, scene, stationIndex);
+    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+    const stationGroup = uchwytStacji(container, stacja!.stationRef);
     expect(stationGroup).toBeTruthy();
 
     await userEvent.pointer({ keys: '[MouseRight]', target: stationGroup! });

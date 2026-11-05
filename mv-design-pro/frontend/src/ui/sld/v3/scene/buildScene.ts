@@ -197,6 +197,7 @@ import { crossingBusGaps, junctionDotGaps, odczepyWezlowModelu, przecieciaBezMos
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { punktyPodzialu } from '../../../shared/stanLacznika';
 import { elementyToru } from './elementyToru';
+import { odcinkiBezOdbioru } from '../../../shared/odcinkiBezOdbioru';
 import { odsunStykiCzlonow } from './stykiCzlonow';
 import {
   bayHasProtectionAnnotation,
@@ -3048,6 +3049,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (jak `terminationLabels` w sekcji 7b — słupek terminalny ma jedną,
   // deterministyczną pozycję; sloty `resolveLabels` nie są tu potrzebne).
   const openTerminalLabels: OwnedLabel[] = [];
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: odcinki z końcem bez odbioru — JEDEN predykat
+  // z gotowością (lustro `enm/odcinki_bez_odbioru.py`, emiter W065/W066), wyliczony RAZ na
+  // scenę. Podpis braku stacji odbiorczej stoi wyłącznie przy odcinkach z tego zbioru, więc
+  // rysunek i panel gotowości mówią o tych samych końcach (wyrocznia (d) z migawką,
+  // `przegladKompozycja.zakonczeniaTorowGaps`).
+  const odcinkiOtwarte = odcinkiBezOdbioru(snapshot);
 
   /** §16-v3: słupek terminalny (każdy LOD) + (od L1) etykieta braku modelu na KOŃCU
    *  biegu otwartego. `horizontalRun` — orientacja OSTATNIEGO biegu trasy
@@ -3075,7 +3082,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       points: tickPoints,
       meta: { kind: 'openTerminal', ownerRef: `${lastSegmentRef}#open-terminal` },
     });
-    if (withLabel) {
+    if (withLabel && odcinkiOtwarte.has(lastSegmentRef)) {
       // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: koniec bez stacji odbiorczej to
       // jawny BRAK MODELU, nie ozdobnik L2 — podpis od L1 mówi, czego brakuje,
       // a trafienie (`segment-endpoint` → odcinek) otwiera menu odcinka z akcją

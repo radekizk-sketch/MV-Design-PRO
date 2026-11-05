@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **189** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -82,6 +82,8 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `trunk.terminal_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma terminala końcowego | panel: `sld` |
 | `line.geometria_wartosc_robocza` | TOPOLOGY | 3 | INFO | Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i przelicz | panel: `inspector`, tab: `parametry`, focus: `geometria_slupa` |
 | `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierścień SN wymaga punktu normalnie otwartego (NOP) | panel: `sld`, modal: `set_normal_open_point` |
+| `topology.lv_segment_open_end` | TOPOLOGY | 3 | WARNING | Odcinek nN kończy się na szynie, do której nic nie jest przyłączone — koniec otwarty bez odbioru; dołącz odbiór nN w projekcji nN stacji albo usuń odcinek | panel: `sld` |
+| `topology.segment_open_end` | TOPOLOGY | 3 | WARNING | Odcinek kończy się na szynie, do której nic nie jest przyłączone — koniec otwarty bez stacji odbiorczej; zakończ odcinek stacją SN/nN albo usuń odcinek | panel: `sld` |
 | `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `catalog.binding_invalid` | CATALOGS | 1 | BLOCKER | Wiązanie katalogowe ma niewłaściwą postać albo nie niesie identyfikatora pozycji katalogowej | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
@@ -251,20 +253,20 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 71 |
+| WARNING | 73 |
 | INFO | 8 |
-| **Razem** | **187** |
+| **Razem** | **189** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
-| TOPOLOGY | 7 |
+| TOPOLOGY | 9 |
 | CATALOGS | 55 |
 | STATIONS | 38 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 29 |
-| **Razem** | **187** |
+| **Razem** | **189** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

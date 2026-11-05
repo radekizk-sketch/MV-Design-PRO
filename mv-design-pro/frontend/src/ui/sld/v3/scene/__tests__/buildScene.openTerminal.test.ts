@@ -21,8 +21,12 @@
  *     kończy się DOTYKIEM słupka terminalnego (`kind==='openTerminal'`).
  *  c) `port_probe` (§11.3) przechodzi — słupek jest legalnym zakończeniem;
  *     PO USUNIĘCIU słupka i `port_probe`, i `openTerminalGaps` gryzą.
- *  d) Etykieta „koniec otwarty" WYŁĄCZNIE na L2 (konwencja `terminationLabels`
- *     F10.1/§18.6).
+ *  d) Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (nowy kanon; dawniej: etykieta
+ *     „koniec otwarty" wyłącznie na L2): koniec bez stacji odbiorczej to jawny
+ *     BRAK MODELU, więc podpis „koniec otwarty · brak stacji odbiorczej" stoi od
+ *     L1, a słupek na każdym LOD. Intencja zachowana: L0 zdejmuje podpisy, nie
+ *     znak końca; podpis stoi wyłącznie przy odcinku, który predykat gotowości
+ *     (`odcinkiBezOdbioru`, W065/W066) uznaje za koniec bez odbioru.
  *  e) Determinizm: dwa wywołania ⇒ identyczny JSON.
  *  f) Fixtura referencyjna (substrate, wszystkie ciągi zakończone stacjami)
  *     nie dostaje ŻADNEGO słupka (zero fabrykacji znaku końca).
@@ -34,7 +38,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
+import { odcinkiBezOdbioru } from '../../../../shared/odcinkiBezOdbioru';
 import {
+  OPEN_TERMINAL_LABEL_TEXT,
   allOpenTerminalsMarked,
   allSceneGeometryOnGrid,
   allSceneSegmentEndpointsAnchored,
@@ -100,12 +106,17 @@ describe('§16-v3 bieg otwarty — ciąg główny bez stacji (openTerminal.enm)'
     });
   }
 
-  it('etykieta „koniec otwarty" WYŁĄCZNIE na L2 (konwencja §18.6/F10.1)', () => {
+  it('podpis braku stacji odbiorczej od L1 (L0 zdejmuje podpis, słupek zostaje) — przy odcinku z predykatu gotowości', () => {
     const labelsAt = (lod: SceneLod) =>
-      buildSceneV3(openTerminalEnm, lod).labels.filter((l) => l.text === 'koniec otwarty');
+      buildSceneV3(openTerminalEnm, lod).labels.filter((l) => l.text === OPEN_TERMINAL_LABEL_TEXT);
     expect(labelsAt(2)).toHaveLength(1);
-    expect(labelsAt(1)).toHaveLength(0);
+    expect(labelsAt(1)).toHaveLength(1);
     expect(labelsAt(0)).toHaveLength(0);
+    const otwarte = odcinkiBezOdbioru(openTerminalEnm);
+    for (const lod of LODS) {
+      expect(ticksOf(buildSceneV3(openTerminalEnm, lod))).toHaveLength(1);
+    }
+    expect(labelsAt(1).map((l) => l.ownerRef.replace(/#open-terminal-label$/, ''))).toEqual([...otwarte]);
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON (każdy LOD)', () => {

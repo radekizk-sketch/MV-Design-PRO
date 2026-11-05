@@ -26,6 +26,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
+import { nazwaStacjiSn } from '../../../../../test/sldStacje';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { useAppStateStore } from '../../../../app-state';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
@@ -84,7 +85,7 @@ function lewyKlikW(snapshot: EnergyNetworkModel, selektor: string, lod: SceneLod
   useSelectionStore.getState().clearSelection();
   const { container, unmount } = render(
     <>
-      <SldCanvasV3Workspace width={800} height={600} lodOverride={lod} />
+      <SldCanvasV3Workspace width={1600} height={1000} lodOverride={lod} />
       <InspektorKanwyTestowy />
     </>,
   );
@@ -113,11 +114,12 @@ type Przypadek = {
   readonly obiektAkcjiPola?: () => string;
 };
 
+/** Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obiekt stacji na L0 = jej nazwa (blok zwinięty
+ *  skasowano; pomocnik `test/sldStacje`). Kanwy tego pliku mają 1600×1000 — na 800×600 plan
+ *  czytelności zdejmuje nazwy wszystkich 52 stacji, więc stacja nie miałaby uchwytu. */
 function selektorStacji(): string {
-  const scene = buildSceneV3(enm52, 0);
-  const i = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
-  const testId = scene.symbols[i]?.meta?.testId ?? `sld-v3-symbol-${i}`;
-  return `[data-hit-for="${testId}"][data-hit-role="obrys"]`;
+  const stacja = nazwaStacjiSn(buildSceneV3(enm52, 0));
+  return `[data-hit-klasa="etykieta"][data-hit-role="obrys"][data-hit-owner-ref="${stacja!.label.ownerRef}"]`;
 }
 
 function poleWylacznika() {
@@ -176,7 +178,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
         useSnapshotStore.setState({ snapshot: p.snapshot() });
         const { container } = render(
           <>
-            <SldCanvasV3Workspace width={800} height={600} lodOverride={p.lod} />
+            <SldCanvasV3Workspace width={1600} height={1000} lodOverride={p.lod} />
             <InspektorKanwyTestowy />
           </>,
         );
@@ -211,7 +213,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
   it('menu tła × akcja nawigacyjna — zaznaczenie bez zmian (tło nie jest obiektem)', () => {
     useNetworkBuildStore.setState({ openRouteSurface: vi.fn() } as never);
     useSnapshotStore.setState({ snapshot: enmGpz });
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} lodOverride={2} />);
     useSelectionStore.getState().selectElement({ id: KABEL, type: 'LineBranch', name: KABEL });
     // Najpierw menu OBIEKTU zamknięte bez akcji, potem menu tła — ref obiektu nie może przeżyć.
     fireEvent.contextMenu(uchwyt(container, selektorWylacznikaPola()), { clientX: 120, clientY: 80 });
@@ -223,7 +225,7 @@ describe('UX-04 — akcja z menu obiektu zaznacza ten obiekt (inspektor = karta)
   it('uzbrojona paleta OZE × akcja z menu stacji — stacja nie jest „zrzucana", uzbrojenie zostaje', () => {
     useNetworkBuildStore.setState({ openRouteSurface: vi.fn() } as never);
     useSnapshotStore.setState({ snapshot: enm52 });
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
     const menuNarzedzi = screen.queryByTestId('sld-v3-toolbar-menu-toggle');
     if (menuNarzedzi && screen.queryByTestId('sld-v3-toolbar-menu') === null) fireEvent.click(menuNarzedzi);
     fireEvent.click(screen.getByTestId('der-palette-btn-PV'));

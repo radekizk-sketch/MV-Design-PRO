@@ -29,6 +29,7 @@ import {
 } from '../../canvas/camera';
 import { SLD_CANVAS_DOCK_INSETS } from '../../canvas/toolbarLayout';
 import { MIN_SYMBOL_SCREEN_PX, SYMBOL_DEFS } from '../../symbols/defs';
+import { odcinkiBezOdbioru } from '../../../../shared/odcinkiBezOdbioru';
 import { buildSceneV3, OPEN_TERMINAL_LABEL_TEXT, type SceneLod, type SceneV3 } from '../buildScene';
 import {
   magistralaPrzyRamieGaps,
@@ -67,10 +68,16 @@ const FIKSTURY: Readonly<Record<string, () => EnergyNetworkModel>> = {
 
 const LODS: readonly SceneLod[] = [0, 1, 2];
 const sceny = new Map<string, Readonly<Record<SceneLod, SceneV3>>>();
+const migawki = new Map<string, EnergyNetworkModel>();
+function migawka(nazwa: string): EnergyNetworkModel {
+  const gotowa = migawki.get(nazwa) ?? FIKSTURY[nazwa]();
+  migawki.set(nazwa, gotowa);
+  return gotowa;
+}
 function scenyFikstury(nazwa: string): Readonly<Record<SceneLod, SceneV3>> {
   const gotowe = sceny.get(nazwa);
   if (gotowe) return gotowe;
-  const enm = FIKSTURY[nazwa]();
+  const enm = migawka(nazwa);
   const wynik = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) };
   sceny.set(nazwa, wynik);
   return wynik;
@@ -90,7 +97,7 @@ describe('przegląd sieci — jedna kompozycja: iloczyn fikstura × LOD', () => 
       it(`${nazwa} L${lod}: brak bloków zwiniętych, wyrocznie (b)–(e) czyste`, () => {
         const scena = scenyFikstury(nazwa)[lod];
         expect(scena.symbols.some((s) => (s.symbolId as string).endsWith('Collapsed'))).toBe(false);
-        expect(przegladSceneGaps(scena)).toEqual([]);
+        expect(przegladSceneGaps(scena, migawka(nazwa))).toEqual([]);
       });
     }
   }
@@ -271,6 +278,36 @@ describe('przegląd sieci — iniekcje (każda wyrocznia łapie swój defekt)', 
     expect(zakonczeniaTorowGaps(bezSlupka).length).toBeGreaterThan(0);
     const bezPodpisu = { ...s[1], labels: s[1].labels.filter((l) => l.text !== OPEN_TERMINAL_LABEL_TEXT) };
     expect(zakonczeniaTorowGaps(bezPodpisu).length).toBeGreaterThan(0);
+  });
+
+  it('(d) para rysunek ↔ gotowość: koniec domknięty odbiorem w modelu przy słupku → luka; koniec otwarty bez słupka → luka', () => {
+    const nazwa = 'przegladGpz1s1p0st';
+    const s = scenyFikstury(nazwa)[1];
+    const enm = migawka(nazwa);
+    const slupek = s.segments.find((g) => g.meta?.kind === 'openTerminal');
+    expect(slupek, 'fikstura ma koniec otwarty').toBeTruthy();
+    const ref = (slupek!.meta!.ownerRef ?? '').replace(/#open-terminal$/, '');
+    expect(zakonczeniaTorowGaps(s, enm)).toEqual([]);
+    // Iniekcja 1: model domyka koniec odbiorem, rysunek dalej stawia słupek.
+    const odcinek = (enm.branches ?? []).find((b) => b.ref_id === ref) as { to_bus_ref?: string } | undefined;
+    const domkniety = { ...enm, loads: [...(enm.loads ?? []), { ref_id: 'L/test', bus_ref: odcinek!.to_bus_ref }] };
+    expect(zakonczeniaTorowGaps(s, domkniety).some((g) => g.opis.includes('ma odbiór'))).toBe(true);
+    // Iniekcja 2: rysunek gubi słupek końca, który gotowość zgłasza.
+    const bezSlupka = { ...s, segments: s.segments.filter((g) => g !== slupek) };
+    expect(zakonczeniaTorowGaps(bezSlupka, enm).some((g) => g.opis.includes('bez słupka końca'))).toBe(true);
+  });
+
+  it('podpis braku stacji odbiorczej wyłącznie przy odcinku z predykatu gotowości (scena z modelu domkniętego)', () => {
+    const enm = migawka('przegladGpz1s1p0st');
+    const otwarte = [...odcinkiBezOdbioru(enm)];
+    expect(otwarte.length).toBeGreaterThan(0);
+    const odcinek = (enm.branches ?? []).find((b) => b.ref_id === otwarte[0]) as { to_bus_ref?: string };
+    const domkniety = {
+      ...enm,
+      loads: [...(enm.loads ?? []), { ref_id: 'L/test', bus_ref: odcinek.to_bus_ref }],
+    } as EnergyNetworkModel;
+    const scena = buildSceneV3(domkniety, 1);
+    expect(scena.labels.filter((l) => l.text === OPEN_TERMINAL_LABEL_TEXT && l.ownerRef.startsWith(otwarte[0]))).toEqual([]);
   });
 
   it('(e) wielokropek w nazwie → luka; nazwa szersza od rezerwacji → luka', () => {

@@ -3,8 +3,9 @@
  * `menuBudowyNaKanwie.test.tsx` i sondy odbioru `scripts/sld_v3_acceptance.mjs`
  * (`menu_chain_probe`): sonda i test mierzą to samo, jedną funkcją.
  *
- * „Realne wejście kontynuacji" = obiekt kanwy klasy `stacja`, którego temat menu to stacja,
- * ORAZ punkt startu ciągu z TEGO SAMEGO rozstrzygnięcia, którego użyje kreator
+ * „Realne wejście kontynuacji" = obiekt kanwy, którego temat menu to stacja (karta
+ * PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: po kasacji bloku zwiniętego L0 jest nim nazwa stacji —
+ * wiersze pasma nazw z kotwicą w stacji; dawniej symbol klasy `stacja`), ORAZ punkt startu ciągu z TEGO SAMEGO rozstrzygnięcia, którego użyje kreator
  * (`resolveTrunkStartAvailability` → `buildSldOperationContext`, predykaty parami S95-START).
  *
  * Role stacji wyprowadzone z TOPOLOGII modelu, niezależnie od predykatu pod testem:
@@ -59,7 +60,8 @@ export interface WejscieObszaru {
   readonly busRef?: string;
 }
 
-/** Refy stacji z REALNYM wejściem kontynuacji ciągu na kanwie (kolejność obszarów sceny). */
+/** Refy stacji z REALNYM wejściem kontynuacji ciągu na kanwie (kolejność obszarów sceny, każda
+ *  stacja raz — kilka wierszy nazwy jednej stacji to jedno wejście). */
 export function stacjeZWejsciemKontynuacji(
   obszary: readonly WejscieObszaru[],
   model: EnergyNetworkModel,
@@ -68,12 +70,12 @@ export function stacjeZWejsciemKontynuacji(
 ): string[] {
   const refy: string[] = [];
   for (const { area, busRef } of obszary) {
-    if (area.klasa !== 'stacja') continue;
     const wynik = resolveCanvasMenuSubject(
       { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind, busRef },
       indexModelu,
     );
     if (wynik.stan !== 'temat' || wynik.temat.menuKind !== 'station') continue;
+    if (refy.includes(wynik.temat.modelRef)) continue;
     if (resolveTrunkStartAvailability(model, widoki, 'station', wynik.temat.modelRef)?.['continue-trunk'] === true) {
       refy.push(wynik.temat.modelRef);
     }

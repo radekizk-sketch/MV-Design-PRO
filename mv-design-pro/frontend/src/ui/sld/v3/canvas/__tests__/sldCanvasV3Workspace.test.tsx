@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { nazwaStacjiSn, uchwytStacji } from '../../../../../test/sldStacje';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
@@ -129,26 +130,26 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     expect(selected?.id).toBe(scene.symbols[0].meta?.ownerRef);
     // F8b-1 B: typ selekcji pochodzi teraz z elementKind (nie zawsze
     // 'DescriptiveElement' — patrz test dedykowany niżej).
-    // KD-5: pierwszym symbolem sceny L0 jest ZWINIĘTY BLOK GPZ
-    // (`elementKind: 'station'`), a nie aparat pola GPZ (dawniej odłącznik →
-    // 'Switch'). Intencja testu (klik → selekcja z id z `ownerRef` i typem z
-    // `elementKind`) bez zmian; oczekiwanie wyprowadzamy ze sceny, żeby test
-    // nie przybijał kolejności symboli.
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: blok zwinięty GPZ (dawny pierwszy symbol L0,
+    // `elementKind: 'station'`) skasowano — pierwszym symbolem sceny jest znów aparat pola
+    // GPZ. Intencja testu (klik → selekcja z id z `ownerRef` i typem z `elementKind`) bez
+    // zmian; oczekiwanie wyprowadzamy ze sceny, żeby test nie przybijał kolejności symboli.
     expect(selected?.type).toBe(elementTypeForKind(scene.symbols[0].meta?.elementKind));
-    expect(selected?.type).toBe('Station');
   });
 
   describe('F8b-1 B — selekcja z realnym typem (elementKind → ElementType v2)', () => {
-    it('klik w symbol L0 (stationCollapsed) → SelectedElement.type = "Station", id = station ref', () => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obiekt stacji na L0 = jej nazwa (blok
+    // `stationCollapsed` skasowano; pomocnik `test/sldStacje`). Kanwa 1600×1000 — na 800×600
+    // plan czytelności zdejmuje nazwy wszystkich 52 stacji.
+    it('klik w nazwę stacji na L0 → SelectedElement.type = "Station", id = station ref', () => {
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 0);
-      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
-      expect(stationIndex).toBeGreaterThanOrEqual(0);
-      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      const stacja = nazwaStacjiSn(buildSceneV3(enm, 0));
+      expect(stacja).toBeTruthy();
+      const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
+      fireEvent.click(uchwytStacji(container, stacja!.stationRef)!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Station');
-      expect(selected?.id).toBe(scene.symbols[stationIndex].meta?.ownerRef);
+      expect(selected?.id).toBe(stacja!.stationRef);
     });
 
     it('elementTypeForKind: mapowanie na CAŁĄ małą unię PreviewElementKind + fallback undefined dla nieznanego/braku', () => {
@@ -164,12 +165,11 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
 
     it('S9-4 (audyt P-6): klik w TŁO arkusza CZYŚCI zaznaczenie — pusty arkusz nie jest obiektem', () => {
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 0);
-      const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
-      const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+      const stacja = nazwaStacjiSn(buildSceneV3(enm, 0));
+      const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} />);
       // Najpierw REALNE zaznaczenie (żeby było co czyścić — inaczej test
       // przechodziłby na pustym stanie i niczego nie dowodził).
-      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
+      fireEvent.click(uchwytStacji(container, stacja!.stationRef)!);
       expect(useSelectionStore.getState().selectedElement).not.toBeNull();
 
       // Klik w korzeń kanwy = tło: cały rysunek jest bierny, więc w
@@ -207,17 +207,25 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
     expect(container.querySelector('[data-testid="sld-canvas-v3"]')).toBeNull();
   });
 
-  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → symbol stationCollapsed (L0) ma nakładkę koloru (stroke != base)', () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: na L0 stację rysuje ta sama kompozycja co na
+  // L1/L2 (blok `stationCollapsed` skasowano), więc nośnikiem stanu zasilania stacji jest
+  // jej szyna SN. Intencja bez zmian: element stacji na L0 dostaje kolor nakładki.
+  it('GPZ + stacje ciągu głównego są energizowane (topologia od źródła przez zamknięte łączniki) → szyna stacji SN (L0) ma nakładkę koloru (stroke != base)', () => {
     useSnapshotStore.setState({ snapshot: enm });
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
+    const busIndex = scene.segments.findIndex(
+      (s) => s.meta?.elementKind === 'bus' && (s.meta.ownerRef ?? '').startsWith('stn/'),
+    );
+    expect(busIndex, 'scena L0 ma szynę stacji SN').toBeGreaterThanOrEqual(0);
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-    // Nakładka rysuje stroke NA GLIFIE (potomek grupy), nie na samej grupie —
-    // wystarczy, że jakiś potomek ma stroke ustawiony na kolor akcentu (nie
-    // wartość bazową V3_STROKE_BASE '#E8EEF4') LUB wygaszenia ('#5B6B76') —
-    // dowód, że nakładka faktycznie coś wpisała (nie mono-only).
-    const strokedDescendant = stationGroup!.querySelector('[stroke="#2ECC71"], [stroke="#5B6B76"]');
+    const busTestId = scene.segments[busIndex].meta?.testId ?? `sld-v3-segment-${busIndex}`;
+    const wezelSzyny = container.querySelector(`[data-testid="${busTestId}"]`);
+    expect(wezelSzyny, 'szyna stacji narysowana').toBeTruthy();
+    // Nakładka wpisuje stroke na węzeł szyny albo jego potomka: kolor akcentu (nie wartość
+    // bazowa V3_STROKE_BASE '#E8EEF4') LUB wygaszenia ('#5B6B76') — dowód, że nakładka
+    // faktycznie coś wpisała (nie mono-only).
+    const kolor = '[stroke="#2ECC71"], [stroke="#5B6B76"]';
+    const strokedDescendant = wezelSzyny!.matches(kolor) ? wezelSzyny : wezelSzyny!.querySelector(kolor);
     expect(strokedDescendant).toBeTruthy();
   });
 

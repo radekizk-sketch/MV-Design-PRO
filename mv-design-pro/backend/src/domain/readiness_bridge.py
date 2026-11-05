@@ -83,6 +83,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Funkcja 67N bez potwierdzonego źródła napięcia zerowego 3U₀" == ten sam warunek (jedna
     # reguła `enm.zrodlo_napiecia_zerowego`, decyzja właściciela 2026-10-29).
     "W064": "bay.earth_fault_u0_source_unconfirmed",
+    # „Koniec odcinka bez odbioru" == ten sam warunek (jedno źródło predykatu
+    # `enm/odcinki_bez_odbioru.py`, karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA).
+    "W065": "topology.segment_open_end",
+    "W066": "topology.lv_segment_open_end",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",

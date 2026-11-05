@@ -30,6 +30,7 @@ import { useAppStateStore } from '../../../../app-state';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
+import { uchwytStacji } from '../../../../../test/sldStacje';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 import { sceneBoxToCameraWorld } from '../SldCanvasV3';
@@ -87,11 +88,17 @@ function uchwyt(container: HTMLElement, scene: SceneV3, predykat: (s: SceneV3['s
   return el;
 }
 
+/** Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: obiekt stacji na rysunku = jej nazwa — ten sam wiersz
+ *  na L0/L1/L2 (blok zwinięty L0 skasowano; pomocnik `test/sldStacje`). Intencja testów kadru
+ *  (dwuklik/klik w STACJĘ) bez zmian. */
+function uchwytNazwyStacji(container: HTMLElement, ref: string): Element {
+  const el = uchwytStacji(container, ref);
+  if (!el) throw new Error(`brak obszaru trafienia nazwy stacji ${ref}`);
+  return el;
+}
+
 function dwuklikStacji(container: HTMLElement, ref: string): void {
-  const lod = poziom(container);
-  fireEvent.doubleClick(
-    uchwyt(container, sceny[lod], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref),
-  );
+  fireEvent.doubleClick(uchwytNazwyStacji(container, ref));
 }
 
 function otworzMenu(): HTMLElement {
@@ -123,10 +130,14 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
     expect(viewBox(container)).toBe(kadrSieci);
   });
 
-  it('rozwinięcie zwiniętego GPZ klikiem (KD-5) jest poleceniem widoku: „Wstecz" wraca do kadru sieci', () => {
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: dawny blok zwinięty GPZ (klik = rozwinięcie, KD-5)
+  // skasowano — GPZ ma na L0 tę samą kompozycję co na L1/L2, a wejście w jego wnętrze to ten
+  // sam dwuklik w nazwę co dla każdej stacji. Intencja bez zmian: wejście w GPZ jest
+  // poleceniem widoku, które „Wstecz" cofa do kadru sieci.
+  it('dwuklik w nazwę GPZ jest poleceniem widoku: „Wstecz" wraca do kadru sieci', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     const kadrSieci = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[0], (s) => s.symbolId === 'gpzCollapsed'));
+    dwuklikStacji(container, sceny[2].meta.gpzId!);
     expect(poziom(container)).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('sld-v3-poprzedni-widok')).not.toBeDisabled();
     fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
@@ -173,7 +184,7 @@ describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
 describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kliku', () => {
   const inny = () => porzadek.find((r) => r !== STACJA && r !== sceny[2].meta.gpzId)!;
   const stacjaL0 = (c: HTMLElement, ref: string) =>
-    uchwyt(c, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+    uchwytNazwyStacji(c, ref);
   const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) => e.id);
 
   it('pierwszy klik w stację, drugi klik i dwuklik w przesunięty pod kursor węzeł sąsiada → kadr i zaznaczenie TEJ stacji', () => {
@@ -316,7 +327,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
 
   it('dwuklik stacji kadruje na całej kanwie; klik pola w kadrze pokazuje pole w inspektorze, a kadr zostaje DOKŁADNIE ten sam', () => {
     const { container } = renderZInspektorem();
-    const cel = uchwyt(container, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === STACJA);
+    const cel = uchwytNazwyStacji(container, STACJA);
     fireEvent.click(cel, { detail: 1 });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', STACJA);
     fireEvent.doubleClick(cel, { detail: 2 });
@@ -344,7 +355,7 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
     });
     expect(ref, 'fikstura ma stację w pasie dawnej szuflady').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+    fireEvent.click(uchwytNazwyStacji(container, ref), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
@@ -354,15 +365,13 @@ describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
   it('klik stacji widocznej na lewo od pasa: widok bez zmian', () => {
     const { container } = renderZInspektorem();
     const granica = SZEROKOSC - DAWNA_SZEROKOSC_SZUFLADY_PX;
-    // GPZ pominięty: klik w zwinięty blok GPZ rozwija go (KD-5) — to polecenie widoku.
     const ref = porzadek.find((r) => {
-      if (r === sceny[2].meta.gpzId) return false;
       const e = naEkranie(container, r);
       return e.left >= 40 && e.right <= granica - 40;
     });
     expect(ref, 'fikstura ma stację na lewo od pasa').toBeTruthy();
     const przed = viewBox(container);
-    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+    fireEvent.click(uchwytNazwyStacji(container, ref), {
       detail: 1,
     });
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
@@ -616,7 +625,7 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
     return el;
   };
   function dwuklikNatywny(c: HTMLElement, ref: string): void {
-    const el = uchwyt(c, sceny[poziom(c)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+    const el = uchwytNazwyStacji(c, ref);
     fireEvent.click(el, { detail: 1 });
     fireEvent.click(el, { detail: 2 });
     fireEvent.doubleClick(el, { detail: 2 });

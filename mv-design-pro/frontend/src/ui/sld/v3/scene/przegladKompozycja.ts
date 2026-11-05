@@ -23,6 +23,7 @@
  *      (warunek, na którym plan etykiet kanwy opiera rezygnację ze skracania);
  *  (f) kadr po dopasowaniu — w teście (wyrocznia kamery należy do warstwy kanwy).
  */
+import { odcinkiBezOdbioru } from '../../../shared/odcinkiBezOdbioru';
 import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY, measureTextWidth } from '../core/text';
 import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, smallestSymbolExtent, type SymbolId } from '../symbols/defs';
@@ -219,8 +220,11 @@ export function magistralaPrzyRamieGaps(scene: SceneV3): readonly PrzegladGap[] 
 
 /** (d) Każdy koniec toru: port, inny odcinek albo słupek końca; od L1 słupek
  *  niesie podpis braku stacji odbiorczej (trafienie → menu odcinka z akcją
- *  „Zakończ odcinek stacją SN/nN"). */
-export function zakonczeniaTorowGaps(scene: SceneV3): readonly PrzegladGap[] {
+ *  „Zakończ odcinek stacją SN/nN"). Z migawką ENM wyrocznia sprawdza też parę
+ *  predykatów rysunek ↔ gotowość: słupek końca stoi DOKŁADNIE przy narysowanych
+ *  odcinkach, które predykat gotowości `odcinkiBezOdbioru` (W065/W066) uznaje za
+ *  koniec bez odbioru. */
+export function zakonczeniaTorowGaps(scene: SceneV3, snapshot?: unknown): readonly PrzegladGap[] {
   const gaps: PrzegladGap[] = [];
   for (const g of sceneSegmentEndpointGaps(scene)) {
     const seg = scene.segments[g.segmentIndex];
@@ -228,6 +232,25 @@ export function zakonczeniaTorowGaps(scene: SceneV3): readonly PrzegladGap[] {
   }
   for (const g of openTerminalGaps(scene)) {
     gaps.push({ wyrocznia: 'd', opis: `${g.reason} @(${g.x},${g.y})` });
+  }
+  if (snapshot !== undefined) {
+    const otwarte = odcinkiBezOdbioru(snapshot);
+    const slupki = new Set(
+      scene.segments
+        .filter((seg) => seg.meta?.kind === 'openTerminal')
+        .map((seg) => (seg.meta?.ownerRef ?? '').replace(/#open-terminal$/, '')),
+    );
+    for (const ref of slupki) {
+      if (!otwarte.has(ref)) {
+        gaps.push({ wyrocznia: 'd', opis: `${ref}: słupek końca przy odcinku, który ma odbiór (gotowość nie zgłasza końca otwartego)` });
+      }
+    }
+    const narysowane = new Set(scene.segments.map((seg) => seg.meta?.ownerRef).filter((r): r is string => !!r));
+    for (const ref of otwarte) {
+      if (narysowane.has(ref) && !slupki.has(ref)) {
+        gaps.push({ wyrocznia: 'd', opis: `${ref}: koniec bez odbioru wg gotowości narysowany bez słupka końca` });
+      }
+    }
   }
   if (scene.meta.lod >= 1) {
     const podpisy = new Set(
@@ -264,13 +287,13 @@ export function nazwyBezWielokropkaGaps(scene: SceneV3): readonly PrzegladGap[] 
   return gaps;
 }
 
-/** Komplet wyroczni jednej sceny (b–e). */
-export function przegladSceneGaps(scene: SceneV3): readonly PrzegladGap[] {
+/** Komplet wyroczni jednej sceny (b–e); z migawką ENM także para rysunek ↔ gotowość (d). */
+export function przegladSceneGaps(scene: SceneV3, snapshot?: unknown): readonly PrzegladGap[] {
   return [
     ...rowneZejsciaGaps(scene),
     ...ramaStrefyGpzGaps(scene),
     ...magistralaPrzyRamieGaps(scene),
-    ...zakonczeniaTorowGaps(scene),
+    ...zakonczeniaTorowGaps(scene, snapshot),
     ...nazwyBezWielokropkaGaps(scene),
   ];
 }

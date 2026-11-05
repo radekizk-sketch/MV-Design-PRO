@@ -41,6 +41,7 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { at } from '../../../../../test/arrayAt';
 
 import type { EnergyNetworkModel, SelectionHint } from '../../../../../types/enm';
+import { nazwyStacji } from '../../../../../test/sldStacje';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import { SldCanvasV3, sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
@@ -339,18 +340,15 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
     useSelectionStore.getState().clearSelection();
   });
 
-  /** Stacja wybrana deterministycznie: OSTATNIA w porządku refów. Symbole
-   *  stacji jako całości żyją na poziomie przeglądu (L1/L2 rozkładają stację
-   *  na pola), więc ref bierzemy stamtąd — kotwica i kadr działają na
-   *  wszystkich trzech poziomach. */
+  /** Stacja wybrana deterministycznie: OSTATNIA w porządku refów. Karta
+   *  PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: stację jako całość reprezentuje na rysunku
+   *  jej nazwa (blok zwinięty L0 skasowano; ta sama kompozycja na L0/L1/L2), więc
+   *  ref bierzemy z wierszy nazw (pomocnik `test/sldStacje`) — kotwica i kadr
+   *  działają na wszystkich trzech poziomach. */
   function refOstatniejStacji(): string {
-    const scene = buildSceneV3(enmDuza, 0);
-    const refyStacji = [...scene.symbols]
-      .filter((s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef)
-      .map((s) => s.meta!.ownerRef!)
-      .sort();
+    const refyStacji = nazwyStacji(buildSceneV3(enmDuza, 0)).map((n) => n.stationRef).sort();
     const ref = at(refyStacji, -1)!;
-    expect(ref, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
+    expect(ref, 'fixtura ma nazwy stacji na poziomie przeglądu').toBeTruthy();
     return ref;
   }
   const poziomZDom = (container: HTMLElement): SceneLod =>

@@ -1526,9 +1526,9 @@ for (const lod of LODS) {
     const zwiniete = scene.symbols.filter((s) => String(s.symbolId).endsWith('Collapsed')).length;
     const pozycje =
       lod === 0 ? pozycjeKompozycjiGaps({ 0: scene, 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) }) : [];
-    const przeglad = przegladSceneGaps(scene);
+    const przeglad = przegladSceneGaps(scene, enm);
     check(
-      'jedna_kompozycja_probe (PRZEGLAD-SIECI): zero bloków zwiniętych; pozycje pól i aparatów ciągłości L0=L1=L2; zejścia sekcji równe; rama GPZ obejmuje treść bez nadmiaru; magistrala nie biegnie krawędzią ramy; każdy koniec toru z portem/słupkiem/podpisem braku; nazwy bez wielokropka',
+      'jedna_kompozycja_probe (PRZEGLAD-SIECI): zero bloków zwiniętych; pozycje pól i aparatów ciągłości L0=L1=L2; zejścia sekcji równe; rama GPZ obejmuje treść bez nadmiaru; magistrala nie biegnie krawędzią ramy; każdy koniec toru z portem/słupkiem/podpisem braku; słupek końca ⇔ koniec bez odbioru wg gotowości (W065/W066); nazwy bez wielokropka',
       zwiniete === 0 && pozycje.length === 0 && przeglad.length === 0,
       `zwiniete=${zwiniete} pozycje=${pozycje.length} luki=${przeglad.length}${przeglad.length ? ' np. ' + przeglad[0].opis : pozycje.length ? ' np. ' + pozycje[0].opis : ''}`,
     );

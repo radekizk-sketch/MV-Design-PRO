@@ -1387,6 +1387,20 @@
       }
     },
     {
+      "area": "TOPOLOGY",
+      "code": "topology.lv_segment_open_end",
+      "fix_navigation": {
+        "panel": "sld"
+      }
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "topology.segment_open_end",
+      "fix_navigation": {
+        "panel": "sld"
+      }
+    },
+    {
       "area": "STATIONS",
       "code": "transformer.bay_missing",
       "fix_navigation": {
@@ -1589,7 +1603,7 @@
       }
     }
   ],
-  "count": 187,
+  "count": 189,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1678,6 +1692,11 @@
     },
     {
       "action_type": "OPEN_MODAL",
+      "modal_type": "insert_station_on_segment_sn",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
       "modal_type": "przepnij_element_na_pole",
       "panel": null
     },
@@ -1749,6 +1768,8 @@
     "W057": "bay.settlement_core_missing",
     "W063": "bay.apparatus_designation_duplicate",
     "W064": "bay.earth_fault_u0_source_unconfirmed",
+    "W065": "topology.segment_open_end",
+    "W066": "topology.lv_segment_open_end",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

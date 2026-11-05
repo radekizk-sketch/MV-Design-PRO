@@ -244,6 +244,10 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'source.connection_missing': 'zwarcia',
   // TOPOLOGY (:518-553, :670-687)
   'trunk.terminal_missing': 'wspolne',
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (W065/W066): koniec odcinka bez odbioru — topologia
+  // sieci, wspólna dla każdego celu obliczeń (jak magistrala bez terminala).
+  'topology.segment_open_end': 'wspolne',
+  'topology.lv_segment_open_end': 'wspolne',
   'trunk.segment_missing': 'wspolne',
   'trunk.segment_length_missing': 'wspolne',
   'trunk.segment_length_invalid': 'wspolne',

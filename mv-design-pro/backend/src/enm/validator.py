@@ -79,6 +79,11 @@ from .models import (
     SwitchBranch,
     Transformer,
 )
+from .odcinki_bez_odbioru import (
+    KOD_WALIDATORA_KONIEC_OTWARTY,
+    KOD_WALIDATORA_KONIEC_OTWARTY_NN,
+    konce_otwarte,
+)
 from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
@@ -426,6 +431,8 @@ class ENMValidator:
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
         self._check_rodzaj_stacji(enm, issues)
+        # PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: odcinek, którego koniec nie zasila niczego (W065/W066)
+        self._check_odcinki_bez_odbioru(enm, issues)
         # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany w polu, które nie jest istniejące (W049)
         self._check_gaz_fluorowany(enm, issues)
         # Karta UX-04/POLE-LINIOWE-WZORZEC: szablon pola niezgodny z polem (W050–W052)
@@ -2079,6 +2086,62 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_odcinki_bez_odbioru(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W065 / W066: koniec odcinka bez odbioru, SN / pasmo nN (karta PRZEGLAD-SIECI).
+
+        Predykat `enm.odcinki_bez_odbioru.konce_otwarte` (ten sam, którego lustro rysuje słupek
+        końca na schemacie). Poziom IMPORTANT (kanon: WARNING), nie blokada: odcinek bez odbioru
+        jest fizycznie poprawny (kabel jałowy — prąd ładowania w rozpływie, impedancja odcinka
+        w zwarciu), brakuje natomiast informacji projektowej, dokąd prowadzi. Akcja naprawcza
+        odcinka SN: formularz `insert_station_on_segment_sn` (ta sama operacja co pozycja menu
+        odcinka „Zakończ odcinek stacją SN/nN"); odcinek w paśmie nN — wskazanie odcinka (odbiór
+        nN dołącza się w projekcji nN stacji). Model nie ma flagi „koniec otwarty celowo",
+        więc kod nie ma akcji wyciszenia.
+        """
+        konce = konce_otwarte(enm)
+        if not konce:
+            return
+        galezie = {g.ref_id: g for g in enm.branches}
+        napiecia = poziom_pol(enm).napiecia
+        for koniec in konce:
+            galaz = galezie[koniec.odcinek_ref]
+            nn = w_pasmie_nn(napiecia.get(koniec.szyna_ref))
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_KONIEC_OTWARTY_NN if nn else KOD_WALIDATORA_KONIEC_OTWARTY,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{opis_obiektu(galaz, 'Odcinek')} kończy się na szynie "
+                        f"„{koniec.szyna_ref}”, do której nic nie jest przyłączone — koniec "
+                        f"otwarty bez {'odbioru nN' if nn else 'stacji odbiorczej'}. Obliczenia traktują go jako odcinek "
+                        "jałowy (prąd ładowania w rozpływie, impedancja odcinka w zwarciu)."
+                    ),
+                    element_refs=[koniec.odcinek_ref, koniec.szyna_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Dołącz odbiór nN na końcu odcinka w projekcji nN stacji albo usuń "
+                        "odcinek."
+                        if nn
+                        else "Zakończ odcinek stacją SN/nN albo usuń odcinek."
+                    ),
+                    fix_action=(
+                        FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT",
+                            element_ref=koniec.odcinek_ref,
+                        )
+                        if nn
+                        else FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=koniec.odcinek_ref,
+                            modal_type="insert_station_on_segment_sn",
+                            payload_hint={"segment_ref": koniec.odcinek_ref},
+                        )
+                    ),
+                )
+            )
 
     def _check_gaz_fluorowany(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """W049: gaz fluorowany (SF₆) w polu albo aparacie pola, który nie jest istniejący.
