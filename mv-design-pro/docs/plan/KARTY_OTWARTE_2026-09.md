@@ -1470,6 +1470,45 @@ karta pola GPZ: tabela aparatów 4 kolumny bez przewijania przy 420 px i przy 34
 `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed: te same ścieżki
 w `3975ecb15`), nowe `gpz-pole-aparaty-{ciemny,jasny}.png` (inspektor 340 px) i odświeżone
 `k6-stacja-*`, `k6-pole-*`; materiał B-02, bez werdyktu.
+
+**Commit 16 (2026-11-05) — INSPEKTOR-POLA-DOMKNIECIE: opis bez powtórzeń, jedno źródło
+zabezpieczenia pola, braki z nazwą (punkty 1 i 3 karty oraz uwagi architekta a–d).** (1) Jedna
+funkcja `ui/shared/opisBezPowtorzen.ts` (rodzaj, rola i nazwa obiektu nadrzędnego, granica słowa,
+bez wielkości liter): tabela pól stacji K6 (kolumny Nr · Pole · Rola · Stan — nazwa zaczynająca
+się etykietą roli obejmuje kolumnę roli `colSpan`, `WierszTabeli.polaczone`; wybrane scalenie, nie
+pusta komórka — pusta komórka czytałaby się jak brak danej, a scalona daje nazwie szerokość dwóch
+kolumn przy 340 px), komórka i nagłówek karty aparatu pola (zdejmuje też nazwę pola: „Aparat Pole
+liniowe GPZ 1.1” → „Wyłącznik”), konfigurator stacji — tabela pól (Oznaczenie · Typ) i tabela
+źródeł (Nazwa · Rodzaj). Inwentarz klasy (grep kolumn nazwa + rodzaj/rola w inspektorze
+i konfiguratorach): tabele karty K6 (pola stacji, aparaty pola, przyłączenia — odcinek ma nazwę
+własną, sekcje szyn — sekcja nie niesie rodzaju), `StationConfigBaysCard`,
+`StationConfigDerSourcesCard`; `StationConfigProtectionCard` (Pole · Typ zabezpieczenia) i
+`StationConfigTopologyCard` (identyfikator portu · rodzaj portu) nie stawiają obok siebie nazwy
+i jej rodzaju — bez zmian; tabela pól konfiguratora GPZ (`TabelaPolSn`) jest na drzewie
+katalogu, nie na tej gałęzi. (3) Jedna funkcja odczytu `ui/shared/zabezpieczeniePola.ts`:
+funkcje WYMAGANE przez wzorzec (`Bay.protection_codes`) odróżnione od sterownika PRZYPISANEGO
+(`Bay.protection_ref` → `ProtectionAssignment`, a bez niego sterownik, którego `breaker_ref` jest
+aparatem pola — zabezpieczenie źródła nN i `add_relay` wskazaniem wyłącznika zapisują tylko
+`breaker_ref`); konsumenci: karta pola K6, oznaczenie zabezpieczeń na kanwie
+(`resolveBayProtectionMarking`), inspektor ui2, lista przekaźników i znacznik „Z” konfiguratora
+stacji. Brak sterownika przy funkcjach wymaganych — jedno zdanie („Brak sterownika — wzorzec pola
+wymaga funkcji 51, 50, 51N, 67N”) z akcją „dodaj zabezpieczenie” (`add_relay` z `bay_ref`).
+`opisPolaSn.ts` konfiguratora GPZ (drzewo katalogu, niezacommitowane zmiany innego wykonawcy) nie
+dał się przenieść cherry-pickiem — zależy od łańcucha 26 commitów gałęzi katalogu i od plików
+skasowanych tutaj; jego `zabezpieczeniePola`/`TEKST_BRAKU_STEROWNIKA` przy scaleniu przechodzą na
+funkcję wspólną (kształt `SterownikPola` zgodny). Karty pola i stacji: każdy wiersz, który może być
+pusty, ma `WierszKarty.brakPl` (czego brakuje i jak to uzupełnić — „bez numeru dyspozytorskiego —
+nadaj numer”, „na szynie, bez pola”, „bez typu”); brak z edycją jest przyciskiem kreatora edycji;
+test parytetu wymaga opisu przy każdym braku tych kart. (a) Lista „Odcinki na zacisku pola”:
+liczba w wierszu etykiety, pozycje w osobnym `dd` na całą szerokość. (d) Jeden układ wiersza
+w całym inspektorze (karta K6, stan i telemetria aparatu, wyniki elementu, węzeł): etykieta nigdy
+nie łamie się w połowie, wartość przechodzi pod etykietę. Testy: opis × granica słowa × wielkość
+liter; zabezpieczenie: wymagane × sterownik (7 wariantów) × rola × aparat oraz parytet
+konsumentów; renderer: scalenie × pozycja, brak × opis × edycja × tryb, akcja × tryb, lista;
+karta: nazwa × rola × rodzaj stacji × numer; panel: natywny klik w kanwę → „dodaj
+zabezpieczenie” → `add_relay` z `bay_ref`; 7 iniekcji czerwonych. Punkt 2 karty (odcinek bez
+wskazania pola tworzy pole, reguła walidatora) — NIE wykonany w tym commicie; inwentarz i sonda
+w meldunku wykonawcy.
 ---
 
 ## LICZBY-PL

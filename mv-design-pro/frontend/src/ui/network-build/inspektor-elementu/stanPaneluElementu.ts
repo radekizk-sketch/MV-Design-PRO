@@ -47,6 +47,7 @@ import { useSldActionExecutor } from '../../sld/shared/sldActionExecutor';
 import {
   buildKartaTechniczna,
   type CelWierszaTabeli,
+  type AkcjaWiersza,
   type EdycjaWiersza,
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
@@ -180,6 +181,9 @@ export interface StanPaneluElementu {
   readonly edytuj: ((edycja: EdycjaWiersza) => void) | null;
   /** Otwarcie karty aparatu z wiersza tabeli aparatów pola (`wskazanieAparatuPola`). */
   readonly otworzAparat: (cel: CelWierszaTabeli) => void;
+  /** Operacja usuwająca brak z wiersza karty (kreator `add_relay` z `bay_ref`); `null` poza
+   *  trybem edycji modelu — jak `edytuj`. */
+  readonly wykonajAkcjeWiersza: ((akcja: AkcjaWiersza) => void) | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -243,6 +247,10 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
         value: edycja.wartosc,
         source: 'inspektor_karta',
       }),
+    [openOperationForm],
+  );
+  const wykonajAkcjeWiersza = useCallback(
+    (akcja: AkcjaWiersza) => openOperationForm(akcja.operacja, { ...akcja.kontekst }),
     [openOperationForm],
   );
 
@@ -326,6 +334,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     konfiguracja,
     karta,
     edytuj: edycjaDozwolona ? edytuj : null,
+    wykonajAkcjeWiersza: edycjaDozwolona ? wykonajAkcjeWiersza : null,
     otworzAparat,
   };
 }

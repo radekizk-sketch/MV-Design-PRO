@@ -28,7 +28,6 @@ import type {
   EnergyNetworkModel,
   Generator,
   Measurement,
-  ProtectionAssignment,
   Source,
   GPZSection,
   Substation,
@@ -59,6 +58,14 @@ import {
 import { pola, polaNnStacji, polaSnStacji, stacjaPola, zaciskPola } from '../../shared/polaStacji';
 import { podpisStacjiPl, rodzajStacji, TYPY_STACJI_BEZ_RODZAJU } from '../../shared/rodzajStacji';
 import { szynyStacji } from '../../shared/szynyStacji';
+import { nazwaZaczynaSieOpisem, opisBezPowtorzen } from '../../shared/opisBezPowtorzen';
+import {
+  AKCJA_DODANIA_ZABEZPIECZENIA_PL,
+  brakZabezpieczenia,
+  OPERACJA_DODANIA_ZABEZPIECZENIA,
+  tekstZabezpieczeniaPola,
+  zabezpieczeniePola,
+} from '../../shared/zabezpieczeniePola';
 import {
   refyTransformatorowBlokowych,
   selectStationDistributionTransformers,
@@ -73,7 +80,6 @@ import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/st
 import { symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import { ROLA_SYMBOLU_PL } from './identyfikatorAparatu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
-import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Kontrakt karty
@@ -112,11 +118,24 @@ export interface EdycjaWiersza {
   readonly wartosc: string;
 }
 
+/** Operacja modelu, która usuwa brak w wierszu (np. „dodaj zabezpieczenie” — kreator `add_relay`
+ *  przypięty do pola). Pokazywana tylko w trybie edycji modelu, jak przycisk „Zmień”. */
+export interface AkcjaWiersza {
+  readonly operacja: 'add_relay';
+  readonly kontekst: Readonly<Record<string, string>>;
+  readonly etykietaPl: string;
+}
+
 export interface WierszKarty {
   readonly klucz: string;
   readonly etykieta: string;
-  /** `null` = brak danej w modelu (UI: „brak danych"). */
+  /** `null` = brak danej w modelu; UI pokazuje `brakPl` (co brakuje i jak to uzupełnić). */
   readonly wartosc: string | null;
+  /** Opis braku: czego brakuje i jak to uzupełnić. Karty pola i stacji podają go przy każdym
+   *  wierszu, który może być pusty (test `kartaTechnicznaElementu.braki.test.ts`); bez niego
+   *  renderer pokazuje ogólne „brak danych”. Wiersz z edycją robi z braku przycisk edycji. */
+  readonly brakPl?: string;
+  readonly akcja?: AkcjaWiersza;
   /** Lista pozycji (odpływy, odbiory…) — pusta lista to FAKT „brak w modelu", nie brak danych. */
   readonly lista?: readonly string[];
   /** Źródło danej, gdy różni się od źródła sekcji (np. nadpisanie projektanta). */
@@ -147,6 +166,10 @@ export interface WierszTabeli {
   readonly komorki: Readonly<Record<string, string | null>>;
   /** Karta otwierana klikiem w wiersz; brak = wiersz bez przejścia. */
   readonly cel?: CelWierszaTabeli;
+  /** Kolumny, których treść zawiera już komórka poprzedniej kolumny (nazwa pola zaczynająca się
+   *  etykietą roli — `opisBezPowtorzen`): renderer scala je z nią (`colSpan`), więc informacja
+   *  stoi raz, a nazwa ma szerokość obu kolumn. Wartość w `komorki` zostaje (dane, testy). */
+  readonly polaczone?: readonly string[];
 }
 
 export interface TabelaKarty {
@@ -192,7 +215,7 @@ export interface KartaTechniczna {
 }
 
 /** Pozycje katalogów potrzebne karcie (nazwa typu, zdolność wyłączalna aparatu). Brak katalogu
- *  (błąd pobrania) = puste mapy — karta pokazuje wtedy dane z modelu i „brak danych". */
+ *  (błąd pobrania) = puste mapy — karta pokazuje wtedy dane z modelu i opis braku. */
 export interface KatalogiKarty {
   readonly aparatySn: ReadonlyMap<string, MVApparatusType>;
   readonly transformatory: ReadonlyMap<string, { readonly name: string }>;
@@ -239,7 +262,8 @@ function typKatalogowy(nazwa: string | null | undefined, ref: unknown): string |
 /**
  * Pola WYMAGANE karty per rodzaj (klucze wierszy i tabel). Przypięte testem parytetu
  * (`__tests__/kartaTechnicznaElementu.parytet.test.ts`): z fikstury pełnej każde pole ma wartość,
- * z fikstury bez danych każde pole JEST na karcie i pokazuje „brak danych".
+ * z fikstury bez danych każde pole JEST na karcie i pokazuje opis braku (karty pola i stacji —
+ * czego brakuje i jak to uzupełnić; test `kartaTechnicznaElementu.braki.test.ts`).
  */
 export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]>> = {
   stacja: [
@@ -273,7 +297,6 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'szyna',
     'tabela:aparaty',
     'zabezpieczenie',
-    'funkcje_zabezpieczen',
     'przekladniki',
     'przylaczenie',
   ],
@@ -360,7 +383,7 @@ function wiersz(
   klucz: string,
   etykieta: string,
   wartosc: string | null,
-  dodatki: Partial<Pick<WierszKarty, 'zrodloPl' | 'edycja' | 'lista'>> = {},
+  dodatki: Partial<Pick<WierszKarty, 'zrodloPl' | 'edycja' | 'lista' | 'brakPl' | 'akcja'>> = {},
 ): WierszKarty {
   return { klucz, etykieta, wartosc, ...dodatki };
 }
@@ -410,16 +433,6 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   UNBALANCE_CT: 'Przekładnik niezrównoważenia baterii',
   PHASE_TO_PHASE_VT: 'Przekładnik napięciowy międzyfazowy',
 };
-
-const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {
-  overcurrent: 'nadprądowe',
-  earth_fault: 'ziemnozwarciowe',
-  directional_overcurrent: 'nadprądowe kierunkowe',
-  distance: 'odległościowe',
-  differential: 'różnicowe',
-  custom: 'inne (definicja użytkownika)',
-};
-
 
 /** Etykieta trybu regulacji — słownik nastawy modelu, potem jeden słownik wartości kodowych
  *  karty katalogowej (`ConverterType.control_mode`); kod spoza obu — jawne zdanie, nie kod. */
@@ -629,10 +642,11 @@ function aparatyPola(ix: IndeksModelu, bay: Bay): AparatPola[] {
 /** Identyfikacja aparatu w tabeli aparatów pola: rodzaj z oznaczeniem rekordu, a dla gałęzi
  *  aparatu — jej nazwa, poprzedzona rodzajem tylko wtedy, gdy nazwa go nie zaczyna
  *  („Wyłącznik · Q5”, ale „Wyłącznik pola SN 3”, nie „Wyłącznik · Wyłącznik pola SN 3”). */
-function identyfikacjaAparatuPola(a: AparatPola): string {
+function identyfikacjaAparatuPola(a: AparatPola, bay: Bay | null): string {
   if (!a.galaz) return `${a.rodzajPl}${a.urzadzenie?.designation ? ` ${a.urzadzenie.designation}` : ''}`;
-  const nazwa = publicTechnicalLabel(a.galaz.name, a.rodzajPl);
-  return nazwa.toLocaleLowerCase('pl').startsWith(a.rodzajPl.toLocaleLowerCase('pl')) ? nazwa : `${a.rodzajPl} · ${nazwa}`;
+  // Nazwa gałęzi aparatu bywa pochodną nazwy pola („Aparat Pole liniowe GPZ 1.1”) — pole nazywa
+  // już karta (nagłówek, wiersz „Pole”), więc opis zdejmuje je z nazwy (`opisBezPowtorzen`).
+  return opisBezPowtorzen({ rodzaj: a.rodzajPl, nazwa: publicTechnicalLabel(a.galaz.name, a.rodzajPl), nadrzedne: [nazwaPola(bay)] });
 }
 
 function aparatGlowny(aparaty: readonly AparatPola[]): AparatPola | null {
@@ -703,18 +717,35 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
   return stan ? POLOZENIE_PL[stan] : null;
 }
 
-function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
-  const refy = new Set(aparaty.map((a) => a.ref));
-  for (const a of aparaty) if (a.galaz) refy.add(a.galaz.ref_id);
-  const przypisane = (ix.model.protection_assignments ?? []).filter(
-    (pa) => refy.has(pa.breaker_ref) || (bay.protection_ref && pa.ref_id === bay.protection_ref),
-  );
-  if (przypisane.length > 0) {
-    return przypisane
-      .map((pa) => `${publicTechnicalLabel(pa.name, 'Zabezpieczenie')} (${etykietaZeSlownika(RODZAJ_ZABEZPIECZENIA_PL, pa.device_type)})`)
-      .join(', ');
+/**
+ * Zabezpieczenie pola — JEDNA funkcja odczytu (`ui/shared/zabezpieczeniePola`), ta sama co oznaczenie
+ * zabezpieczeń na kanwie i inspektor ui2. Sterownik przypisany: jeden wiersz z funkcjami z nastaw
+ * i (gdy wzorzec pola je podaje) wiersz funkcji wymaganych przez wzorzec. Brak sterownika przy
+ * funkcjach wymaganych: jedno zdanie z akcją „dodaj zabezpieczenie” (`add_relay` z `bay_ref`).
+ * Pole pomiaru napięcia (rola bez zabezpieczenia w torze) — bez wiersza.
+ */
+function wierszeZabezpieczeniaPola(ix: IndeksModelu, bay: Bay): WierszKarty[] {
+  const stan = zabezpieczeniePola(ix.model, bay);
+  const tekst = tekstZabezpieczeniaPola(stan);
+  if (tekst === null) return [];
+  // Brak sterownika to brak danej modelu (`wartosc: null`), nazwany zdaniem i z akcją naprawczą —
+  // nigdy wartość zastępcza.
+  const wiersze: WierszKarty[] = [
+    brakZabezpieczenia(stan)
+      ? wiersz('zabezpieczenie', 'Zabezpieczenie', null, {
+          brakPl: tekst,
+          akcja: {
+            operacja: OPERACJA_DODANIA_ZABEZPIECZENIA,
+            kontekst: { bay_ref: bay.ref_id },
+            etykietaPl: AKCJA_DODANIA_ZABEZPIECZENIA_PL,
+          },
+        })
+      : wiersz('zabezpieczenie', 'Zabezpieczenie', tekst),
+  ];
+  if (stan.rodzaj === 'sterownik' && stan.wymagane.length > 0) {
+    wiersze.push(wiersz('funkcje_wymagane', 'Wymagane przez wzorzec pola', stan.wymagane.join(', ')));
   }
-  return null;
+  return wiersze;
 }
 
 /** Polska nazwa rodzaju przekładnika (słownik ENM `measurement_type`) — bez kodu CT/VT w UI. */
@@ -788,23 +819,24 @@ function wierszeTabliczki(tr: Transformer, katalogi: KatalogiKarty, edytowalne: 
   const nazwaKat = tr.catalog_ref ? katalogi.transformatory.get(tr.catalog_ref)?.name ?? null : null;
   const z = (klucz: string) => nadpisanie(tr, klucz);
   const napiecia = liczba(tr.uhv_kv) !== null || liczba(tr.ulv_kv) !== null
-    ? `${zapisLiczby(tr.uhv_kv, 'kV') ?? BRAK_DANYCH_PL} / ${zapisLiczby(tr.ulv_kv, 'kV') ?? BRAK_DANYCH_PL}`
+    ? `${zapisLiczby(tr.uhv_kv, 'kV') ?? 'bez Uₙ GN'} / ${zapisLiczby(tr.ulv_kv, 'kV') ?? 'bez Uₙ DN'}`
     : null;
+  // Brak wartości tabliczki: dane tabliczki pochodzą z typu katalogowego — transformator bez typu
+  // mówi „przypisz typ katalogowy”, typ bez tej wartości — „brak w typie katalogowym”.
+  const brakTabliczki = tr.catalog_ref ? 'brak w typie katalogowym' : 'bez typu katalogowego — przypisz typ';
   return [
-    wiersz('tr_typ', 'Typ katalogowy', typKatalogowy(nazwaKat, tr.catalog_ref)),
-    wiersz('tr_sn', 'Moc znamionowa Sₙ', zapisLiczby(tr.sn_mva, 'MVA'), { zrodloPl: z('sn_mva') }),
-    wiersz('tr_napiecia', 'Napięcia Uₙ GN / DN', napiecia, { zrodloPl: z('uhv_kv') ?? z('ulv_kv') }),
-    wiersz('tr_uk', 'Napięcie zwarcia uₖ', zapisLiczby(tr.uk_percent, '%'), { zrodloPl: z('uk_percent') }),
-    wiersz('tr_pk', 'Straty obciążeniowe Pₖ', zapisLiczby(tr.pk_kw, 'kW'), { zrodloPl: z('pk_kw') }),
-    wiersz('tr_p0', 'Straty jałowe P₀', zapisLiczby(tr.p0_kw, 'kW'), { zrodloPl: z('p0_kw') }),
-    wiersz('tr_i0', 'Prąd jałowy i₀', zapisLiczby(tr.i0_percent, '%'), { zrodloPl: z('i0_percent') }),
-    wiersz('tr_grupa', 'Grupa połączeń', napis(tr.vector_group), { zrodloPl: z('vector_group') }),
-    wiersz(
-      'tr_zaczepy',
-      'Przełącznik zaczepów',
-      zaczepyPl(tr),
-      edytowalne && !tr.tap_changer ? { edycja: edycja(tr.ref_id, 'tap_position', tr.tap_position) } : {},
-    ),
+    wiersz('tr_typ', 'Typ katalogowy', typKatalogowy(nazwaKat, tr.catalog_ref), { brakPl: 'nie przypisano — przypisz typ z katalogu' }),
+    wiersz('tr_sn', 'Moc znamionowa Sₙ', zapisLiczby(tr.sn_mva, 'MVA'), { zrodloPl: z('sn_mva'), brakPl: brakTabliczki }),
+    wiersz('tr_napiecia', 'Napięcia Uₙ GN / DN', napiecia, { zrodloPl: z('uhv_kv') ?? z('ulv_kv'), brakPl: brakTabliczki }),
+    wiersz('tr_uk', 'Napięcie zwarcia uₖ', zapisLiczby(tr.uk_percent, '%'), { zrodloPl: z('uk_percent'), brakPl: brakTabliczki }),
+    wiersz('tr_pk', 'Straty obciążeniowe Pₖ', zapisLiczby(tr.pk_kw, 'kW'), { zrodloPl: z('pk_kw'), brakPl: brakTabliczki }),
+    wiersz('tr_p0', 'Straty jałowe P₀', zapisLiczby(tr.p0_kw, 'kW'), { zrodloPl: z('p0_kw'), brakPl: brakTabliczki }),
+    wiersz('tr_i0', 'Prąd jałowy i₀', zapisLiczby(tr.i0_percent, '%'), { zrodloPl: z('i0_percent'), brakPl: brakTabliczki }),
+    wiersz('tr_grupa', 'Grupa połączeń', napis(tr.vector_group), { zrodloPl: z('vector_group'), brakPl: brakTabliczki }),
+    wiersz('tr_zaczepy', 'Przełącznik zaczepów', zaczepyPl(tr), {
+      ...(edytowalne && !tr.tap_changer ? { edycja: edycja(tr.ref_id, 'tap_position', tr.tap_position) } : {}),
+      brakPl: edytowalne && !tr.tap_changer ? 'bez położenia zaczepu — ustaw zaczep' : brakTabliczki,
+    }),
   ];
 }
 
@@ -826,7 +858,7 @@ function wierszeSekcjiGpz(ix: IndeksModelu, sekcje: readonly GPZSection[]): Wier
       komorki: {
         nazwa: nazwaObiektuPl(sekcja.name, 'sekcja', { numer: i + 1, liczba: posortowane.length }),
         szyna: szyna ? nazwaObiektuPl(szyna.name, 'szyna', miejsceWKolekcji(ix.model.buses, szyna)) : nazwaObiektuPl(null, 'szyna', { spozaModelu: true }),
-        un: szyna ? zapisLiczby(szyna.voltage_kv, 'kV') : null,
+        un: szyna ? zapisLiczby(szyna.voltage_kv, 'kV') ?? 'szyna bez Uₙ' : 'bez szyny',
       },
     };
   });
@@ -957,14 +989,21 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     id: 'identyfikacja',
     tytul: 'Identyfikacja',
     wiersze: [
-      wiersz('oznaczenie', 'Oznaczenie', napis(stacja.designation)),
-      wiersz('nazwa', 'Nazwa', napis(stacja.name), { edycja: edycja(stacja.ref_id, 'name', stacja.name) }),
+      wiersz('oznaczenie', 'Oznaczenie', napis(stacja.designation), { brakPl: 'stacja bez oznaczenia — nadaje je konfigurator stacji' }),
+      wiersz('nazwa', 'Nazwa', napis(stacja.name), {
+        edycja: edycja(stacja.ref_id, 'name', stacja.name),
+        brakPl: 'stacja bez nazwy — nadaj nazwę',
+      }),
       wiersz('rodzaj', 'Rodzaj', rodzajPl),
       // Rodzaj topologiczny nie dotyczy GPZ ani rozdzielnicy nN — wiersz bez treści dla
       // inżyniera nie trafia na kartę (zamiast „nie dotyczy — …”).
-      ...(bezRodzaju ? [] : [wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa)]),
-      wiersz('wykonanie', 'Wykonanie', stacja.construction_type ? WYKONANIE_STACJI_PL[stacja.construction_type] ?? null : null),
-      wiersz('kod', 'Kod na schemacie', tozsamosc.code),
+      ...(bezRodzaju
+        ? []
+        : [wiersz('podstawa_rodzaju', 'Podstawa rodzaju', podstawa, { brakPl: 'rodzaju nie rozpoznano z topologii stacji' })]),
+      wiersz('wykonanie', 'Wykonanie', stacja.construction_type ? WYKONANIE_STACJI_PL[stacja.construction_type] ?? null : null, {
+        brakPl: 'nie określono — wykonanie wybiera konfigurator stacji',
+      }),
+      wiersz('kod', 'Kod na schemacie', tozsamosc.code, { brakPl: 'stacja bez kodu na schemacie' }),
     ],
   };
 
@@ -980,19 +1019,24 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     .filter((s): s is string => s !== null);
   const wierszePol: WierszTabeli[] = polaSn.map((bay) => {
     const glowny = aparatGlowny(aparatyPola(ix, bay));
+    const pole = nazwaPola(bay) ?? 'Pole';
+    const rola = fieldRoleLabelPl(bay.field_role || bay.bay_role);
     return {
       klucz: bay.ref_id,
       komorki: {
-        nr: napis(bay.bay_number),
-        pole: nazwaPola(bay),
-        rola: fieldRoleLabelPl(bay.field_role || bay.bay_role),
-        stan: glowny ? stanAparatu(ix, glowny, bay) : null,
+        nr: napis(bay.bay_number) ?? 'bez numeru',
+        pole,
+        rola,
+        stan: glowny ? stanAparatu(ix, glowny, bay) ?? 'brak położenia w modelu' : 'bez aparatu głównego',
       },
+      // Nazwa zaczynająca się etykietą roli („Pole liniowe wejściowe 1” — rola „Pole liniowe
+      // wejściowe”) niesie rolę: komórka nazwy obejmuje kolumnę roli zamiast ją powtarzać.
+      ...(nazwaZaczynaSieOpisem(pole, rola) ? { polaczone: ['rola'] } : {}),
     };
   });
   // Kolumna „Nr” tylko, gdy którekolwiek pole ma numer w modelu — kolumna pusta we wszystkich
   // wierszach nie zajmuje szerokości inspektora.
-  const zNumerami = wierszePol.some((w) => w.komorki.nr !== null);
+  const zNumerami = polaSn.some((b) => napis(b.bay_number) !== null);
   const rodziny = [...new Set(polaSn.map((b) => napis(b.switchgear_family_ref)).filter((r): r is string => r !== null))];
   const generatorySn = (model.generators ?? []).filter(
     (g) => g.station_ref === stacja.ref_id && g.connection_variant === 'block_transformer',
@@ -1012,9 +1056,11 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
         klucz: 'pola_sn',
         podpis: 'Pola rozdzielnicy SN',
         zwarta: true,
+        // Nr przed nazwą (numer dyspozytorski to klucz wiersza rozdzielnicy), a nazwa i rola obok
+        // siebie — komórka nazwy może objąć kolumnę roli (`polaczone`).
         kolumny: [
-          { klucz: 'pole', etykieta: 'Pole' },
           ...(zNumerami ? [{ klucz: 'nr', etykieta: 'Nr' }] : []),
+          { klucz: 'pole', etykieta: 'Pole' },
           { klucz: 'rola', etykieta: 'Rola' },
           { klucz: 'stan', etykieta: 'Stan' },
         ],
@@ -1056,7 +1102,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
         wPasmieNn(ix.szyny.get(l.bus_ref)?.voltage_kv)
         && (szynyWlasne.has(l.bus_ref) || rekord(l.meta)?.station_ref === stacja.ref_id),
     )
-    .map((l) => `${publicTechnicalLabel(l.name, 'Odbiór')} · ${zapisLiczby(l.p_mw, 'MW') ?? BRAK_DANYCH_PL}`);
+    .map((l) => `${publicTechnicalLabel(l.name, 'Odbiór')} · ${zapisLiczby(l.p_mw, 'MW') ?? 'bez mocy czynnej'}`);
   const zrodlaNn = (model.generators ?? [])
     .filter((g) => g.station_ref === stacja.ref_id && g.connection_variant !== 'block_transformer')
     .map((g) => opisGeneratora(g));
@@ -1078,6 +1124,15 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     const zacisk = zaciskPola(bay);
     if (zacisk) terminalDoPola.set(zacisk, bay);
   }
+  // Pole bez własnego zacisku (pole GPZ zbudowane bez aparatury pól liniowych) przyłącza odcinek
+  // na swojej szynie — odcinek należy do niego, gdy niesie pochodzenie z tego pola
+  // (`meta.origin_bay_ref`), a koniec leży w punkcie przyłączenia pola (reguła R1 zajętości pól,
+  // `backend/src/enm/zajetosc_pol.py` — ten sam warunek).
+  const poleBezZaciskuOdcinka = (galaz: Branch, szyna: string): Bay | undefined => {
+    const ref = rekord(galaz.meta)?.origin_bay_ref;
+    const bay = typeof ref === 'string' ? polaSn.find((b) => b.ref_id === ref) : undefined;
+    return bay && !zaciskPola(bay) && bay.bus_ref === szyna ? bay : undefined;
+  };
   const przylaczenia: SekcjaKarty = {
     id: 'przylaczenia',
     tytul: 'Przyłączenia',
@@ -1098,8 +1153,10 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
           komorki: {
             odcinek: nazwaGalezi(ix, galaz),
             typ: `${RODZAJ_GALEZI_PL[galaz.type]}${typOdcinka(galaz) ? ` ${typOdcinka(galaz)}` : ''}`,
-            dlugosc: dlugoscOdcinka(galaz),
-            pole: nazwaPola(terminalDoPola.get(szynaWlasna)),
+            dlugosc: dlugoscOdcinka(galaz) ?? 'bez długości',
+            // Odcinek wprost na szynie sekcji (bez zacisku pola) — luka modelu nazwana wprost
+            // (walidator ENM: gałąź na szynie sekcji bez pola stacji).
+            pole: nazwaPola(terminalDoPola.get(szynaWlasna) ?? poleBezZaciskuOdcinka(galaz, szynaWlasna)) ?? 'na szynie, bez pola',
           },
         })),
         pustaPl: 'Do stacji nie przyłączono odcinków.',
@@ -1129,13 +1186,13 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
 }
 
 function opisGeneratora(g: Generator): string {
-  return `${publicTechnicalLabel(g.name, 'Źródło')} · ${formatGeneratorTypeLabelPl(g.gen_type ?? null)} · ${zapisLiczby(g.p_mw, 'MW') ?? BRAK_DANYCH_PL}`;
+  return `${publicTechnicalLabel(g.name, 'Źródło')} · ${formatGeneratorTypeLabelPl(g.gen_type ?? null)} · ${zapisLiczby(g.p_mw, 'MW') ?? 'bez mocy czynnej'}`;
 }
 
 function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTechniczna {
   const aparaty = aparatyPola(ix, bay);
   const zacisk = zaciskPola(bay);
-  const odcinki = zacisk ? odcinkiPrzySzynach(ix, new Set([zacisk])).map(({ galaz }) => `${nazwaGalezi(ix, galaz)} · ${typOdcinka(galaz) ?? RODZAJ_GALEZI_PL[galaz.type]} · ${dlugoscOdcinka(galaz) ?? BRAK_DANYCH_PL}`) : [];
+  const odcinki = zacisk ? odcinkiPrzySzynach(ix, new Set([zacisk])).map(({ galaz }) => `${nazwaGalezi(ix, galaz)} · ${typOdcinka(galaz) ?? RODZAJ_GALEZI_PL[galaz.type]} · ${dlugoscOdcinka(galaz) ?? 'bez długości'}`) : [];
   const stacjaRef = stacjaPola(ix.model, bay.ref_id);
   const kierunek = bay.outgoing_destination_ref ? nazwaStacji(ix, bay.outgoing_destination_ref) : null;
   const sekcje: SekcjaKarty[] = [
@@ -1143,15 +1200,24 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
       id: 'identyfikacja',
       tytul: 'Identyfikacja',
       wiersze: [
-        wiersz('nazwa', 'Nazwa', napis(bay.name), { edycja: edycja(bay.ref_id, 'name', bay.name) }),
-        wiersz('numer', 'Numer pola', napis(bay.bay_number), { edycja: edycja(bay.ref_id, 'bay_number', bay.bay_number) }),
+        wiersz('nazwa', 'Nazwa', napis(bay.name), {
+          edycja: edycja(bay.ref_id, 'name', bay.name),
+          brakPl: 'pole bez nazwy — nadaj nazwę',
+        }),
+        wiersz('numer', 'Numer pola', napis(bay.bay_number), {
+          edycja: edycja(bay.ref_id, 'bay_number', bay.bay_number),
+          brakPl: 'bez numeru dyspozytorskiego — nadaj numer',
+        }),
         wiersz('rola', 'Rola', fieldRoleLabelPl(bay.field_role || bay.bay_role)),
-        wiersz('stacja', 'Stacja', nazwaStacji(ix, stacjaRef)),
-        wiersz('szyna', 'Szyna', opisSzyny(ix, bay.bus_ref)),
+        wiersz('stacja', 'Stacja', nazwaStacji(ix, stacjaRef), { brakPl: 'pole poza stacją modelu' }),
+        wiersz('szyna', 'Szyna', opisSzyny(ix, bay.bus_ref), { brakPl: 'pole bez szyny w modelu' }),
         wiersz('skrot', 'Nazwa odpływu', napis(bay.feeder_short_name), {
           edycja: edycja(bay.ref_id, 'feeder_short_name', bay.feeder_short_name),
+          brakPl: 'bez nazwy odpływu — nadaj nazwę',
         }),
-        ...(bay.outgoing_destination_ref ? [wiersz('kierunek', 'Kierunek (stacja docelowa)', kierunek)] : []),
+        ...(bay.outgoing_destination_ref
+          ? [wiersz('kierunek', 'Kierunek (stacja docelowa)', kierunek, { brakPl: 'stacja docelowa spoza modelu' })]
+          : []),
       ],
     },
     {
@@ -1196,15 +1262,18 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
           ],
           wiersze: aparaty.map((a) => {
             const zn = znamionaAparatu(a, katalogi);
+            // Brak liczby znamionowej mówi, skąd ją wziąć: aparat bez typu katalogowego — „bez typu”
+            // (przypisanie typu w karcie aparatu), typ bez tej wartości — „brak w typie”.
+            const brakLiczby = zn.typ ? 'brak w typie' : 'bez typu';
             return {
               klucz: a.ref,
               komorki: {
-                aparat: identyfikacjaAparatuPola(a),
-                ur: zapisLiczby(zn.liczby.ur, ''),
-                ir: zapisLiczby(zn.liczby.ir, '', 0),
+                aparat: identyfikacjaAparatuPola(a, bay),
+                ur: zapisLiczby(zn.liczby.ur, '') ?? brakLiczby,
+                ir: zapisLiczby(zn.liczby.ir, '', 0) ?? brakLiczby,
                 // Aparat niełączeniowy albo rodzaj bez zdolności wyłączalnej (z definicji normy)
-                // — „nie dotyczy”; łącznik, któremu jej brakuje — brak danych (`null`).
-                ik: zn.liczby.ik !== null ? zapisLiczby(zn.liczby.ik, '') : !a.lacznik || zn.ikNieDotyczy ? 'nie dotyczy' : null,
+                // — „nie dotyczy”; łącznik, któremu jej brakuje — opis braku.
+                ik: zn.liczby.ik !== null ? zapisLiczby(zn.liczby.ik, '') : !a.lacznik || zn.ikNieDotyczy ? 'nie dotyczy' : brakLiczby,
               },
               cel: { rodzaj: 'aparat', poleRef: bay.ref_id, aparatRef: a.ref },
             };
@@ -1218,12 +1287,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
       id: 'zabezpieczenia',
       tytul: 'Zabezpieczenie i pomiary',
       wiersze: [
-        wiersz('zabezpieczenie', 'Zabezpieczenie', zabezpieczeniaPola(ix, bay, aparaty)),
-        wiersz(
-          'funkcje_zabezpieczen',
-          'Funkcje zabezpieczeniowe',
-          (bay.protection_codes ?? []).length > 0 ? (bay.protection_codes ?? []).join(', ') : null,
-        ),
+        ...wierszeZabezpieczeniaPola(ix, bay),
         lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
       ],
     },
@@ -1264,9 +1328,13 @@ function kartaAparatu(
 ): KartaTechniczna {
   const zn = znamionaAparatu(aparat, katalogi);
   const rola = rolaRekordu(aparat);
-  const nazwa = aparat.galaz
-    ? publicTechnicalLabel(aparat.galaz.name, aparat.rodzajPl)
-    : `${aparat.rodzajPl}${aparat.urzadzenie?.designation ? ` ${aparat.urzadzenie.designation}` : ''}`;
+  // Aparat pola: opis bez powtórzeń (rodzaj raz, bez nazwy pola, którą karta podaje w wierszu
+  // „Pole”); łącznik toru bez pola — nazwa gałęzi jak dotąd.
+  const nazwa = bay
+    ? identyfikacjaAparatuPola(aparat, bay)
+    : aparat.galaz
+      ? publicTechnicalLabel(aparat.galaz.name, aparat.rodzajPl)
+      : aparat.rodzajPl;
   const lacznikToru = !bay;
   const galaz = aparat.galaz;
   const identyfikacja: WierszKarty[] = lacznikToru && galaz

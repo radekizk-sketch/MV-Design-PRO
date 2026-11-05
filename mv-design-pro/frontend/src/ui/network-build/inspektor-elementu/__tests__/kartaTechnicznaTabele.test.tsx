@@ -105,3 +105,122 @@ describe('wiersz z celem × wywołanie otwarcia', () => {
     expect(screen.getByText('Wyłącznik Q1')).toBeInTheDocument();
   });
 });
+
+// Opis bez powtórzeń (decyzja architekta pkt 1): kolumny objęte komórką poprzedniej
+// (`WierszTabeli.polaczone`) — iloczyn: scalenie {brak · rola} × pozycja kolumny {środek · ostatnia}.
+describe('wiersz tabeli × kolumny scalone', () => {
+  function tabelaPol(polaczone: readonly string[] | undefined, kolumny: readonly string[]): TabelaKarty {
+    return {
+      klucz: 'pola_sn',
+      podpis: 'Pola',
+      zwarta: true,
+      kolumny: kolumny.map((k) => ({ klucz: k, etykieta: k })),
+      wiersze: [
+        {
+          klucz: 'pole-1',
+          komorki: { pole: 'Pole liniowe wejściowe 1', rola: 'Pole liniowe wejściowe', stan: 'zamknięty' },
+          ...(polaczone ? { polaczone } : {}),
+        },
+      ],
+      pustaPl: 'Brak.',
+    };
+  }
+  it.each([
+    [undefined, ['pole', 'rola', 'stan'], ['pole', 'rola', 'stan'], [1, 1, 1]],
+    [['rola'], ['pole', 'rola', 'stan'], ['pole', 'stan'], [2, 1]],
+    [['stan'], ['pole', 'rola', 'stan'], ['pole', 'rola'], [1, 2]],
+  ] as const)('scalone %j: komórki %j, rozpiętości %j', (polaczone, kolumny, widoczne, rozpietosci) => {
+    render(<KartaTechnicznaElementu karta={karta({ id: 's', tytul: 'Rozdzielnica', wiersze: [], tabele: [tabelaPol(polaczone, kolumny)] })} onEdytuj={null} />);
+    const komorki = within(screen.getByTestId('inspektor-karta-wiersz-pola_sn')).getAllByRole('cell');
+    expect(komorki.map((k) => k.getAttribute('data-kolumna'))).toEqual(widoczne);
+    expect(komorki.map((k) => Number(k.getAttribute('colspan') ?? '1'))).toEqual(rozpietosci);
+    // Nazwa pola raz — rola nie stoi drugi raz w wierszu, gdy scalona.
+    const tekst = screen.getByTestId('inspektor-karta-wiersz-pola_sn').textContent ?? '';
+    expect(tekst.split('Pole liniowe wejściowe').length - 1).toBe(polaczone?.includes('rola') ? 1 : 2);
+  });
+});
+
+// Brak w karcie pola i stacji (decyzja architekta pkt 3, uwaga b): opis braku zamiast „brak
+// danych”; brak z edycją jest przyciskiem, akcja wiersza (dodaj zabezpieczenie) — tylko w trybie
+// edycji. Iloczyn: wiersz {z wartością · brak z opisem · brak bez opisu} × edycja {jest · brak}
+// × tryb {edycja modelu · tylko odczyt}; lista {pusta · z pozycjami}.
+describe('wiersz karty × brak × edycja × tryb', () => {
+  const EDYCJA = { elementRef: 'bay/1', parametr: 'bay_number', wartosc: '' } as const;
+  const AKCJA = { operacja: 'add_relay', kontekst: { bay_ref: 'bay/1' }, etykietaPl: 'dodaj zabezpieczenie' } as const;
+  for (const wartosc of ['07', null] as const) {
+    for (const brakPl of ['bez numeru dyspozytorskiego — nadaj numer', undefined] as const) {
+      for (const zEdycja of [true, false]) {
+        for (const tryb of ['edycja', 'odczyt'] as const) {
+          it(`wartość=${wartosc ?? 'brak'} opis=${brakPl ? 'jest' : 'brak'} edycja=${zEdycja} tryb=${tryb}`, () => {
+            const onEdytuj = vi.fn();
+            render(
+              <KartaTechnicznaElementu
+                karta={karta({
+                  id: 's',
+                  tytul: 'Identyfikacja',
+                  wiersze: [{ klucz: 'numer', etykieta: 'Numer pola', wartosc, ...(brakPl ? { brakPl } : {}), ...(zEdycja ? { edycja: EDYCJA } : {}) }],
+                })}
+                onEdytuj={tryb === 'edycja' ? onEdytuj : null}
+              />,
+            );
+            const pokazane = screen.getByTestId('inspektor-karta-wartosc-numer').textContent;
+            expect(pokazane).toBe(wartosc ?? brakPl ?? 'brak danych');
+            const przycisk = screen.queryByTestId('inspektor-karta-zmien-numer');
+            const edytowalny = zEdycja && tryb === 'edycja';
+            expect(przycisk !== null).toBe(edytowalny);
+            if (!przycisk) return;
+            // Brak z edycją: opis braku JEST przyciskiem (bez osobnego „Zmień”).
+            expect(przycisk.textContent).toBe(wartosc === null ? pokazane : 'Zmień');
+            fireEvent.click(przycisk);
+            expect(onEdytuj).toHaveBeenCalledWith(EDYCJA);
+          });
+        }
+      }
+    }
+  }
+
+  it.each(['edycja', 'odczyt'] as const)('akcja wiersza (dodaj zabezpieczenie) — tryb %s', (tryb) => {
+    const onAkcja = vi.fn();
+    render(
+      <KartaTechnicznaElementu
+        karta={karta({
+          id: 'zab',
+          tytul: 'Zabezpieczenie i pomiary',
+          wiersze: [{ klucz: 'zabezpieczenie', etykieta: 'Zabezpieczenie', wartosc: null, brakPl: 'Brak sterownika — wzorzec pola wymaga funkcji 51, 50', akcja: AKCJA }],
+        })}
+        onEdytuj={tryb === 'edycja' ? vi.fn() : null}
+        onAkcja={onAkcja}
+      />,
+    );
+    expect(screen.getByTestId('inspektor-karta-wartosc-zabezpieczenie')).toHaveTextContent('Brak sterownika — wzorzec pola wymaga funkcji 51, 50');
+    const akcja = screen.queryByTestId('inspektor-karta-akcja-zabezpieczenie');
+    expect(akcja !== null).toBe(tryb === 'edycja');
+    if (!akcja) return;
+    expect(akcja).toHaveTextContent('dodaj zabezpieczenie');
+    fireEvent.click(akcja);
+    expect(onAkcja).toHaveBeenCalledWith(AKCJA);
+  });
+
+  // Uwaga architekta (a): liczba stoi w wierszu etykiety, pozycje listy niżej w osobnym `dd`
+  // na całą szerokość — nie w tym samym elemencie co liczba.
+  it.each([[[]], [['Odcinek z pola GPZ · YAKXS 3×120/16 · 0,5 km']], [['A', 'B']]] as const)('lista %j: liczba w wierszu etykiety, pozycje osobno', (pozycje) => {
+    render(
+      <KartaTechnicznaElementu
+        karta={karta({
+          id: 'p',
+          tytul: 'Przyłączenie',
+          wiersze: [{ klucz: 'przylaczenie', etykieta: 'Odcinki na zacisku pola', wartosc: pozycje.length ? String(pozycje.length) : 'brak w modelu', lista: pozycje }],
+        })}
+        onEdytuj={null}
+      />,
+    );
+    const wartosc = screen.getByTestId('inspektor-karta-wartosc-przylaczenie');
+    expect(wartosc.textContent).toBe(pozycje.length ? String(pozycje.length) : 'brak w modelu');
+    const lista = screen.queryByTestId('inspektor-karta-lista-przylaczenie');
+    expect(lista !== null).toBe(pozycje.length > 0);
+    if (!lista) return;
+    expect(lista.closest('dd')).not.toBe(wartosc.closest('dd'));
+    expect(lista.closest('dd')).toHaveClass('mvd-kt-lista-pozycje');
+    expect(within(lista).getAllByRole('listitem').map((li) => li.textContent)).toEqual([...pozycje]);
+  });
+});

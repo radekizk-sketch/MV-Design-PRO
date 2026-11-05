@@ -70,6 +70,7 @@ import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
+import { tekstZabezpieczeniaPola, zabezpieczeniePola } from '../../ui/shared/zabezpieczeniePola';
 import {
   etykietaPozycjiNormalnej,
   opisLacznikowPortow,
@@ -388,7 +389,11 @@ function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWla
   ]);
 }
 
-function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
+function wlasciwosciPola(el: Bay, model: EnergyNetworkModel): WierszWlasciwosci[] {
+  // JEDNA funkcja odczytu zabezpieczenia pola (`ui/shared/zabezpieczeniePola`) — ta sama co karta
+  // pola K6: sterownik przypisany albo brak sterownika z funkcjami wymaganymi przez wzorzec.
+  const zabezpieczenie = zabezpieczeniePola(model, el);
+  const wymagane = zabezpieczenie.rodzaj === 'sterownik' ? zabezpieczenie.wymagane : [];
   return bezNulli([
     // Nazwa roli z kanonu słownictwa ról pól (karta #141), nigdy surowy kod roli.
     wr('Rola pola', fieldRoleLabelPl(el.bay_role)),
@@ -396,10 +401,8 @@ function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
     w('Numer pola', el.bay_number ?? null),
     w('Nazwa odpływu', el.feeder_short_name ?? null),
     w('Kierunek (stacja docelowa)', el.outgoing_destination_ref ?? null),
-    w(
-      'Funkcje zabezpieczeniowe',
-      el.protection_codes && el.protection_codes.length > 0 ? el.protection_codes.join(', ') : null,
-    ),
+    w('Zabezpieczenie', tekstZabezpieczeniaPola(zabezpieczenie)),
+    w('Wymagane przez wzorzec pola', wymagane.length > 0 ? wymagane.join(', ') : null),
   ]);
 }
 
@@ -548,7 +551,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
-      return wlasciwosciPola(element as unknown as Bay);
+      return wlasciwosciPola(element as unknown as Bay, model);
     case 'wezel':
       return wlasciwosciWezla(element as unknown as Junction);
     case 'punkt_rozgalezienia':

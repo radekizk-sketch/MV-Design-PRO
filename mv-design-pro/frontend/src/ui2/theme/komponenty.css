@@ -261,8 +261,10 @@
   gap: 2px;
   margin: 0;
 }
-/* Wiersz etykieta–wartość; wartość dłuższa niż reszta wiersza (np. podstawa rodzaju stacji)
-   przechodzi pod etykietę na całą szerokość zamiast zawijać się w wąskiej kolumnie. */
+/* Wiersz etykieta–wartość — JEDEN układ w całym inspektorze (karta techniczna K6, stan i telemetria
+   aparatu, wyniki elementu): etykieta nigdy nie łamie się w połowie; gdy etykieta i wartość nie
+   mieszczą się obok siebie w szerokości kontenera, wartość przechodzi POD etykietę (całą
+   wartością — `flex-shrink: 0`), zamiast ściskać etykietę do wąskiej kolumny. */
 .mvd-kt-wiersz {
   display: flex;
   flex-wrap: wrap;
@@ -272,12 +274,16 @@
 }
 .mvd-kt-etykieta {
   flex: 0 0 auto;
-  max-width: 45%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--mvd-muted);
 }
 .mvd-kt-wartosc {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
+  max-width: 100%;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: baseline;
@@ -289,11 +295,21 @@
 .mvd-kt-brak {
   color: var(--mvd-muted);
 }
-.mvd-kt-lista {
+/* Pozycje listy (odcinki na zacisku pola, odpływy…) pod wierszem etykieta–liczba, na całą
+   szerokość, wyrównane do lewej. */
+.mvd-kt-lista-pozycje {
   flex: 1 0 100%;
+  margin: 0;
+}
+.mvd-kt-lista {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+/* Brak z edycją jest przyciskiem: opis braku otwiera kreator uzupełnienia parametru. */
+.mvd-kt-brak-akcja {
+  text-align: right;
+  text-decoration: underline dotted;
 }
 .mvd-kt-zrodlo-wiersza,
 .mvd-kt-zrodlo {

@@ -288,13 +288,37 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
     );
     expect(liczbyWJednejLinii, `liczby znamionowe w jednej linii (${szer} px)`).toBe(true);
     pomiar[`wysokosc_tabeli_aparatow_${nazwa}_px`] = Math.round((await tabelaAparatow.boundingBox())?.height ?? -1);
+    // Uwaga architekta (d): etykiety wierszy karty nigdy nie łamią się w połowie — jedna linia
+    // przy każdej szerokości inspektora (wartość przechodzi pod etykietę, nie etykieta się łamie).
+    const etykietyLamane = await inspektor.locator('.mvd-kt-etykieta').evaluateAll((etykiety) =>
+      etykiety
+        .filter((el) => {
+          const wysokoscLinii = parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.4;
+          return el.getBoundingClientRect().height > wysokoscLinii * 1.5;
+        })
+        .map((el) => el.textContent),
+    );
+    expect(etykietyLamane, `etykiety w jednej linii (${szer} px)`).toEqual([]);
+    // Uwaga architekta (c): komórka aparatu nie powtarza nazwy pola z nagłówka karty.
+    const nazwaPola = (await page.getByTestId('inspektor-element-etykieta').textContent())?.trim() ?? '';
+    const aparaty = await tabelaAparatow.locator('td[data-kolumna="aparat"]').allTextContents();
+    expect(aparaty.filter((t) => nazwaPola && t.includes(nazwaPola)), 'aparat bez nazwy pola').toEqual([]);
+    // Uwaga architekta (a): liczba odcinków w wierszu etykiety, pozycje listy pod nią.
+    const przylaczenie = karta.getByTestId('inspektor-karta-pole-przylaczenie');
+    if ((await przylaczenie.count()) > 0) {
+      const [etykieta, liczba] = await Promise.all([
+        przylaczenie.locator('.mvd-kt-etykieta').boundingBox(),
+        przylaczenie.getByTestId('inspektor-karta-wartosc-przylaczenie').boundingBox(),
+      ]);
+      expect(Math.abs((etykieta?.y ?? 0) - (liczba?.y ?? 1e6)), `liczba w wierszu etykiety (${szer} px)`).toBeLessThan(6);
+    }
+    for (const [motyw, plik] of [['dark_scada', 'ciemny'], ['light_technical', 'jasny']] as const) {
+      await ustawMotyw(page, motyw);
+      await page.waitForTimeout(300);
+      await inspektor.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-pole-aparaty-${szer}-${plik}.png`) });
+    }
+    await ustawMotyw(page, 'dark_scada');
   }
-  for (const [motyw, plik] of [['dark_scada', 'gpz-pole-aparaty-ciemny.png'], ['light_technical', 'gpz-pole-aparaty-jasny.png']] as const) {
-    await ustawMotyw(page, motyw);
-    await page.waitForTimeout(300);
-    await inspektor.screenshot({ path: resolve(KATALOG_ZRZUTOW, plik) });
-  }
-  await ustawMotyw(page, 'dark_scada');
   // Klik w wiersz wyłącznika → karta aparatu z typem katalogowym (szczegóły na żądanie).
   const przyciskAparatu = tabelaAparatow.getByTestId('inspektor-karta-otworz-aparaty').filter({ hasText: 'Wyłącznik' }).first();
   await przyciskAparatu.click();

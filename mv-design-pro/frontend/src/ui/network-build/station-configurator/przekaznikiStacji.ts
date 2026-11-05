@@ -8,34 +8,30 @@
  * Kolejność deterministyczna: kolejność pól stacji. Funkcje to kody ANSI/IEC nastaw
  * (`settings[].function_type`) bez powtórzeń, w kolejności nastaw.
  */
-import type { ProtectionAssignment } from '../../../types/enm';
-import {
-  ETYKIETA_RODZAJU_ZABEZPIECZENIA,
-  kodFunkcjiZabezpieczenia,
-} from '../../shared/etykietyZabezpieczen';
+import type { Bay, ProtectionAssignment } from '../../../types/enm';
+import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../shared/etykietyZabezpieczen';
 import type { ProtectionRow } from './cards/StationConfigProtectionCard';
+import { kodyFunkcjiSterownika, przypisanieZabezpieczeniaPola } from '../../shared/zabezpieczeniePola';
 
 export interface PoleZabezpieczenia {
   readonly oznaczenie: string;
-  readonly protectionRef: string | null | undefined;
+  readonly pole: Bay;
 }
 
 export function przekaznikiStacji(
   zabezpieczenia: readonly ProtectionAssignment[],
   pola: readonly PoleZabezpieczenia[],
 ): readonly ProtectionRow[] {
-  const poRef = new Map(zabezpieczenia.map((z) => [z.ref_id, z] as const));
   const wiersze: ProtectionRow[] = [];
   for (const pole of pola) {
-    const zabezpieczenie = pole.protectionRef ? poRef.get(pole.protectionRef) : undefined;
+    // Predykat powiązania pola ze sterownikiem z JEDNEGO źródła (`ui/shared/zabezpieczeniePola`).
+    const zabezpieczenie = przypisanieZabezpieczeniaPola({ protection_assignments: [...zabezpieczenia] }, pole.pole);
     if (!zabezpieczenie) continue;
     wiersze.push({
       relayId: zabezpieczenie.ref_id,
       bayDesignation: pole.oznaczenie,
       typePl: ETYKIETA_RODZAJU_ZABEZPIECZENIA[zabezpieczenie.device_type],
-      functionsPl: [
-        ...new Set(zabezpieczenie.settings.map((n) => kodFunkcjiZabezpieczenia(n.function_type))),
-      ],
+      functionsPl: kodyFunkcjiSterownika(zabezpieczenie),
       settingsCount: zabezpieczenie.settings.length,
       enabled: zabezpieczenie.is_enabled,
     });

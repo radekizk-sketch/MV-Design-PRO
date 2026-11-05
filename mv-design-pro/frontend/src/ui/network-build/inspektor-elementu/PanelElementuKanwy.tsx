@@ -136,9 +136,9 @@ export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikow
           )}
           <dl className="flex flex-col gap-1">
             {wyniki.metryki.map((metryka) => (
-              <div key={metryka.code} className="mvd-kafel-kv-row" data-testid={`inspektor-wynik-${metryka.code}`}>
-                <dt className="mvd-kafel-kv-label">{metryka.label}</dt>
-                <dd className="mvd-kafel-kv-value mvd-num">{metryka.value}</dd>
+              <div key={metryka.code} className="mvd-kt-wiersz" data-testid={`inspektor-wynik-${metryka.code}`}>
+                <dt className="mvd-kt-etykieta">{metryka.label}</dt>
+                <dd className="mvd-kt-wartosc mvd-num">{metryka.value}</dd>
               </div>
             ))}
           </dl>
@@ -150,9 +150,9 @@ export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikow
 
 function Wiersz({ etykieta, wartosc, testId }: { readonly etykieta: string; readonly wartosc: string | null; readonly testId: string }): JSX.Element {
   return (
-    <div className="mvd-kafel-kv-row">
-      <dt className="mvd-kafel-kv-label">{etykieta}</dt>
-      <dd data-testid={testId} className="mvd-kafel-kv-value" style={wartosc === null ? { color: 'var(--mvd-muted)' } : undefined}>
+    <div className="mvd-kt-wiersz">
+      <dt className="mvd-kt-etykieta">{etykieta}</dt>
+      <dd data-testid={testId} className="mvd-kt-wartosc" style={wartosc === null ? { color: 'var(--mvd-muted)' } : undefined}>
         {wartosc ?? 'brak danych w modelu'}
       </dd>
     </div>
@@ -209,33 +209,34 @@ export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
 /**
  * Karta #135 × GPZ-PARYTET cz. 2: położenie łącznika z MODELU (ten sam rachunek co glif
  * kanwy), telemetria (tryb, komunikacja, uzależnienie, chwila zmiany) WYŁĄCZNIE z rekordu
- * źródła runtime; brak rekordu = „brak telemetrii", nigdy wartość domyślna.
+ * źródła runtime; brak rekordu = „brak telemetrii", nigdy wartość domyślna. Układ wierszy ten sam
+ * co karta techniczna K6 (`mvd-kt-wiersz`: etykieta w jednej linii, wartość obok albo pod nią).
  */
 export function SekcjaStanuAparatu({ stan }: { readonly stan: DaneElementuKanwy['apparatusState'] }): JSX.Element {
   const polozenie = stan?.actualState ? POLOZENIE_LACZNIKA_PL[stan.actualState] : BRAK_POLOZENIA_W_MODELU;
   return (
     <section data-testid="inspektor-stan-aparatu" aria-label="Stan i telemetria aparatu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Stan i telemetria aparatu</h4>
-      <dl className="flex flex-col gap-1">
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Położenie łącznika (model)</dt>
-          <dd data-testid="inspektor-aparat-stan" className="mvd-kafel-kv-value">{polozenie}</dd>
+      <dl className="mvd-kt-wiersze">
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Położenie łącznika (model)</dt>
+          <dd data-testid="inspektor-aparat-stan" className="mvd-kt-wartosc">{polozenie}</dd>
         </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Tryb sterowania</dt>
-          <dd data-testid="inspektor-aparat-tryb" className="mvd-kafel-kv-value">{controlModeLabel(stan?.controlMode ?? null)}</dd>
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Tryb sterowania</dt>
+          <dd data-testid="inspektor-aparat-tryb" className="mvd-kt-wartosc">{controlModeLabel(stan?.controlMode ?? null)}</dd>
         </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Komunikacja</dt>
-          <dd data-testid="inspektor-aparat-komunikacja" className="mvd-kafel-kv-value">{communicationOkLabel(stan?.communicationOk ?? null)}</dd>
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Komunikacja</dt>
+          <dd data-testid="inspektor-aparat-komunikacja" className="mvd-kt-wartosc">{communicationOkLabel(stan?.communicationOk ?? null)}</dd>
         </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Uzależnienie operacyjne</dt>
-          <dd data-testid="inspektor-aparat-uzaleznienie" className="mvd-kafel-kv-value">{interlockBlockedLabel(stan?.interlockBlocked ?? null)}</dd>
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Uzależnienie operacyjne</dt>
+          <dd data-testid="inspektor-aparat-uzaleznienie" className="mvd-kt-wartosc">{interlockBlockedLabel(stan?.interlockBlocked ?? null)}</dd>
         </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Ostatnia zmiana</dt>
-          <dd data-testid="inspektor-aparat-zmiana" className="mvd-kafel-kv-value mvd-num">{stan?.lastChangeAt ?? BRAK_TELEMETRII}</dd>
+        <div className="mvd-kt-wiersz">
+          <dt className="mvd-kt-etykieta">Ostatnia zmiana</dt>
+          <dd data-testid="inspektor-aparat-zmiana" className="mvd-kt-wartosc mvd-num">{stan?.lastChangeAt ?? BRAK_TELEMETRII}</dd>
         </div>
       </dl>
     </section>
@@ -339,7 +340,7 @@ export function PanelElementuKanwy({
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
-      {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} onOtworz={stan.otworzAparat} />}
+      {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} onOtworz={stan.otworzAparat} onAkcja={stan.wykonajAkcjeWiersza} />}
       {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
       {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
       {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}

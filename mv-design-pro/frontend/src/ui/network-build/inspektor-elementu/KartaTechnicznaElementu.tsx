@@ -1,6 +1,7 @@
 /**
  * K6 (Z-12) — render karty technicznej obiektu (`ui/sld/shared/kartaTechnicznaElementu.ts`)
- * w prawym inspektorze. Sekcje w kolejności pracy projektanta; brak danej = „brak danych";
+ * w prawym inspektorze. Sekcje w kolejności pracy projektanta; brak danej = opis braku z modelu
+ * (`WierszKarty.brakPl`: czego brakuje i jak to uzupełnić; brak z edycją jest przyciskiem);
  * źródło danych przy danych tabliczki i znamionowych. Tabele (pola rozdzielnicy, przyłączenia,
  * aparaty pola) mają jeden wiersz na obiekt z nagłówkiem kolumn; tabela zwarta mieści się
  * w szerokości inspektora (komórki zawijają się, liczby nie — jednostka w nagłówku), inna przewija
@@ -14,6 +15,7 @@ import type { JSX } from 'react';
 
 import {
   BRAK_DANYCH_PL,
+  type AkcjaWiersza,
   type CelWierszaTabeli,
   type EdycjaWiersza,
   type KartaTechniczna,
@@ -26,28 +28,39 @@ import { useNetworkBuildStore } from '../networkBuildStore';
 function WierszDanych({
   wiersz,
   onEdytuj,
+  onAkcja,
 }: {
   readonly wiersz: WierszKarty;
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
+  readonly onAkcja: ((akcja: AkcjaWiersza) => void) | null;
 }): JSX.Element {
   const brak = wiersz.wartosc === null;
   const edycja = onEdytuj && wiersz.edycja ? wiersz.edycja : null;
+  const akcja = onAkcja && wiersz.akcja ? wiersz.akcja : null;
+  const tekstBraku = wiersz.brakPl ?? BRAK_DANYCH_PL;
   return (
     <div className="mvd-kt-wiersz" data-testid={`inspektor-karta-pole-${wiersz.klucz}`} data-brak={brak ? 'true' : 'false'}>
       <dt className="mvd-kt-etykieta">{wiersz.etykieta}</dt>
       <dd className="mvd-kt-wartosc">
-        <span className={brak ? 'mvd-kt-brak' : undefined} data-testid={`inspektor-karta-wartosc-${wiersz.klucz}`}>
-          {wiersz.wartosc ?? BRAK_DANYCH_PL}
-        </span>
-        {wiersz.lista && wiersz.lista.length > 0 && (
-          <ul className="mvd-kt-lista" data-testid={`inspektor-karta-lista-${wiersz.klucz}`}>
-            {wiersz.lista.map((pozycja, i) => (
-              <li key={`${i}-${pozycja}`}>{pozycja}</li>
-            ))}
-          </ul>
+        {brak && edycja ? (
+          // Brak z edycją jest akcją: opis braku („bez numeru dyspozytorskiego — nadaj numer”)
+          // otwiera kreator edycji tego parametru — zamiast opisu i osobnego „Zmień”.
+          <button
+            type="button"
+            className="mvd-kt-odnosnik mvd-kt-brak mvd-kt-brak-akcja"
+            data-testid={`inspektor-karta-zmien-${wiersz.klucz}`}
+            aria-label={`Uzupełnij: ${wiersz.etykieta}`}
+            onClick={() => onEdytuj?.(edycja)}
+          >
+            <span data-testid={`inspektor-karta-wartosc-${wiersz.klucz}`}>{tekstBraku}</span>
+          </button>
+        ) : (
+          <span className={brak ? 'mvd-kt-brak' : undefined} data-testid={`inspektor-karta-wartosc-${wiersz.klucz}`}>
+            {wiersz.wartosc ?? tekstBraku}
+          </span>
         )}
         {wiersz.zrodloPl && <span className="mvd-kt-zrodlo-wiersza">źródło: {wiersz.zrodloPl}</span>}
-        {edycja && (
+        {edycja && !brak && (
           <button
             type="button"
             className="mvd-btn mvd-kt-zmien"
@@ -58,7 +71,28 @@ function WierszDanych({
             Zmień
           </button>
         )}
+        {akcja && (
+          <button
+            type="button"
+            className="mvd-btn mvd-kt-zmien"
+            data-testid={`inspektor-karta-akcja-${wiersz.klucz}`}
+            onClick={() => onAkcja?.(akcja)}
+          >
+            {akcja.etykietaPl}
+          </button>
+        )}
       </dd>
+      {/* Lista pozycji pod parą etykieta–liczba, na całą szerokość karty: liczba stoi w wierszu
+          etykiety, pozycje niżej (bez samotnej liczby w osobnej linii). */}
+      {wiersz.lista && wiersz.lista.length > 0 && (
+        <dd className="mvd-kt-lista-pozycje">
+          <ul className="mvd-kt-lista" data-testid={`inspektor-karta-lista-${wiersz.klucz}`}>
+            {wiersz.lista.map((pozycja, i) => (
+              <li key={`${i}-${pozycja}`}>{pozycja}</li>
+            ))}
+          </ul>
+        </dd>
+      )}
     </div>
   );
 }
@@ -118,12 +152,17 @@ function TabelaDanych({
             {tabela.wiersze.map((w) => (
               <tr key={w.klucz} data-testid={`inspektor-karta-wiersz-${tabela.klucz}`} data-klucz={w.klucz}>
                 {tabela.kolumny.map((k, i) => {
+                  // Kolumna objęta komórką poprzedniej (`WierszTabeli.polaczone`) — bez własnej komórki.
+                  if (w.polaczone?.includes(k.klucz)) return null;
+                  let rozpietosc = 1;
+                  while (w.polaczone?.includes(tabela.kolumny[i + rozpietosc]?.klucz ?? '')) rozpietosc += 1;
                   const wartosc = w.komorki[k.klucz] ?? null;
                   const tekst = <span className={wartosc === null ? 'mvd-kt-brak' : undefined}>{wartosc ?? BRAK_DANYCH_PL}</span>;
                   const cel = i === 0 && onOtworz && w.cel ? w.cel : null;
                   return (
                     <td
                       key={k.klucz}
+                      colSpan={rozpietosc > 1 ? rozpietosc : undefined}
                       data-kolumna={k.klucz}
                       data-brak={wartosc === null ? 'true' : 'false'}
                       className={k.liczbowa ? 'mvd-kt-liczba' : undefined}
@@ -183,10 +222,12 @@ function Sekcja({
   sekcja,
   onEdytuj,
   onOtworz,
+  onAkcja,
 }: {
   readonly sekcja: SekcjaKarty;
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
   readonly onOtworz: ((cel: CelWierszaTabeli) => void) | null;
+  readonly onAkcja: ((akcja: AkcjaWiersza) => void) | null;
 }): JSX.Element {
   const idNaglowka = `inspektor-karta-${sekcja.id}-tytul`;
   return (
@@ -212,7 +253,7 @@ function Sekcja({
           {sekcja.wiersze.length > 0 && (
             <dl className="mvd-kt-wiersze">
               {sekcja.wiersze.map((w) => (
-                <WierszDanych key={w.klucz} wiersz={w} onEdytuj={onEdytuj} />
+                <WierszDanych key={w.klucz} wiersz={w} onEdytuj={onEdytuj} onAkcja={onAkcja} />
               ))}
             </dl>
           )}
@@ -234,17 +275,20 @@ export function KartaTechnicznaElementu({
   karta,
   onEdytuj,
   onOtworz,
+  onAkcja,
 }: {
   readonly karta: KartaTechniczna;
   /** `null` — tryb bez edycji modelu (wyniki, tylko do odczytu): przyciski „Zmień" ukryte. */
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
   /** Otwarcie karty obiektu z wiersza tabeli (aparat pola); brak — wiersze bez przejścia. */
   readonly onOtworz?: ((cel: CelWierszaTabeli) => void) | null;
+  /** Operacja usuwająca brak (np. „dodaj zabezpieczenie”) — tylko w trybie edycji modelu. */
+  readonly onAkcja?: ((akcja: AkcjaWiersza) => void) | null;
 }): JSX.Element {
   return (
     <div className="mvd-kt" data-testid="inspektor-karta" data-rodzaj-karty={karta.rodzaj}>
       {karta.sekcje.map((s) => (
-        <Sekcja key={s.id} sekcja={s} onEdytuj={onEdytuj} onOtworz={onOtworz ?? null} />
+        <Sekcja key={s.id} sekcja={s} onEdytuj={onEdytuj} onOtworz={onOtworz ?? null} onAkcja={onEdytuj ? onAkcja ?? null : null} />
       ))}
     </div>
   );

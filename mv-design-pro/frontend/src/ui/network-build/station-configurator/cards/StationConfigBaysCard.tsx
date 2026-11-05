@@ -12,6 +12,7 @@
  */
 
 import type { HvFuseItem } from '../../station-der/audit2-api';
+import { nazwaZaczynaSieOpisem } from '../../../shared/opisBezPowtorzen';
 import { fieldRoleLabelPl } from '../../../sld/v2/station-rozdzielnia/contract';
 
 export interface StationConfigBayRow {
@@ -91,8 +92,17 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                 data-testid={`station-config-bay-row-${b.bayId}`}
                 className="border-b border-scada-border/40"
               >
-                <td className="font-mono">{b.designation}</td>
-                <td>{fieldRoleLabelPl(b.bayRole)}</td>
+                {/* Oznaczenie będące nazwą pola zaczynającą się rolą („Pole liniowe wejściowe 1”)
+                    niesie rolę — komórka obejmuje kolumnę „Typ” zamiast powtarzać rolę
+                    (`opisBezPowtorzen`, ta sama reguła co tabela pól karty stacji K6). */}
+                {nazwaZaczynaSieOpisem(b.designation, fieldRoleLabelPl(b.bayRole)) ? (
+                  <td colSpan={2} data-testid={`station-config-bay-designation-${b.bayId}`}>{b.designation}</td>
+                ) : (
+                  <>
+                    <td className="font-mono" data-testid={`station-config-bay-designation-${b.bayId}`}>{b.designation}</td>
+                    <td>{fieldRoleLabelPl(b.bayRole)}</td>
+                  </>
+                )}
                 <td>{b.attachedObjectPl ?? <span className="italic text-scada-muted">—</span>}</td>
                 <td className="text-center font-mono text-[10px]">
                   <span className={b.hasEquipment ? 'text-status-ok' : 'text-scada-muted'}>A</span>

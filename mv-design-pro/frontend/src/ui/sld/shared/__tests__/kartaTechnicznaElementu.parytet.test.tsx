@@ -492,7 +492,14 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
         }
         expect(wiersz.wartosc, `${rodzaj}: ${pole} ma wartość zastępczą „${wiersz.wartosc}"`).toBeNull();
         expect(element).toHaveAttribute('data-brak', 'true');
-        expect(within(element).getByTestId(`inspektor-karta-wartosc-${pole}`)).toHaveTextContent(BRAK_DANYCH_PL);
+        // Karty pola i stacji: każdy brak nazywa, czego brakuje i jak to uzupełnić — nigdy ogólne
+        // „brak danych” (decyzja architekta pkt 3). Pozostałe rodzaje: opis braku, gdy model go
+        // podaje, inaczej „brak danych”.
+        if (rodzaj === 'pole' || rodzaj === 'stacja') {
+          expect(wiersz.brakPl, `${rodzaj}: ${pole} bez opisu braku`).toBeTruthy();
+          expect(wiersz.brakPl).not.toMatch(/brak danych/u);
+        }
+        expect(within(element).getByTestId(`inspektor-karta-wartosc-${pole}`)).toHaveTextContent(wiersz.brakPl ?? BRAK_DANYCH_PL);
       }
     });
   });
@@ -505,7 +512,7 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
   it('stacja, dane pełne: zwarta tabela pól — pole, nr, rola, stan; reszta na karcie pola i aparatu', () => {
     const k = karta('stacja', 'pelne');
     const pola = tabele(k).get('tabela:pola_sn')!;
-    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Pole', 'Nr', 'Rola', 'Stan']);
+    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Nr', 'Pole', 'Rola', 'Stan']);
     expect(pola.zrodloPl ?? null).toBeNull();
     const pole01 = pola.wiersze.find((r) => r.klucz === 'bay-in')!;
     expect(pole01.komorki).toEqual({
@@ -520,8 +527,10 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
     const pole = wiersze(karta('pole', 'pelne'));
     expect(pole.get('rola')!.wartosc).toBeTruthy();
-    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01 (nadprądowe)');
-    expect(pole.get('funkcje_zabezpieczen')!.wartosc).toBe('50, 51');
+    // Jedno źródło zabezpieczenia pola (`zabezpieczeniePola`): sterownik przypisany (tu przez
+    // wyłącznik pola) z funkcjami z nastaw, obok funkcje wymagane przez wzorzec pola.
+    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01: bez nastaw funkcji');
+    expect(pole.get('funkcje_wymagane')!.wartosc).toBe('50, 51');
     const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
     expect(aparaty.wiersze.find((r) => r.klucz === 'cb-in')!.komorki).toMatchObject({ ur: '24', ir: '630', ik: '20' });
     expect(wiersze(karta('aparat', 'pelne')).get('typ')?.wartosc).toBe('VD4 24 kV 630 A 20 kA');

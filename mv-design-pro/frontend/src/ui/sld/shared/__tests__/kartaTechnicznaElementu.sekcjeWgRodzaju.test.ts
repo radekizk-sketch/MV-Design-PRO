@@ -36,7 +36,11 @@ function szyna(ref_id: string, voltage_kv: number, name: string) {
   return { ref_id, id: ref_id, name, voltage_kv, tags: [], meta: {} };
 }
 
-function model(rodzaj: RodzajStacji, tresc: Tresc, opcje: { numerPola?: string | null } = {}): EnergyNetworkModel {
+function model(
+  rodzaj: RodzajStacji,
+  tresc: Tresc,
+  opcje: { numerPola?: string | null; nazwaPola?: string } = {},
+): EnergyNetworkModel {
   const zNn = tresc === 'transformator_nn';
   return {
     header: { name: 'sekcje karty wg rodzaju stacji' },
@@ -56,7 +60,7 @@ function model(rodzaj: RodzajStacji, tresc: Tresc, opcje: { numerPola?: string |
       {
         ref_id: 'bay/l1',
         id: 'bay/l1',
-        name: 'Pole liniowe L1',
+        name: opcje.nazwaPola ?? 'Pole liniowe L1',
         substation_ref: ST,
         bus_ref: 'bus/sn',
         terminal_bus_ref: 'bus/zacisk',
@@ -231,7 +235,8 @@ describe('tabela aparatów pola: Aparat · Uᵣ · Iᵣ · Iₖ, szczegóły w k
     const t = kartaPolaZAparatami().sekcje.flatMap((s) => s.tabele ?? []).find((x) => x.klucz === 'aparaty')!;
     const wgKlucza = new Map(t.wiersze.map((w) => [w.klucz, w]));
     expect(wgKlucza.get('dev/cb')?.komorki).toEqual({ aparat: 'Wyłącznik Q1', ur: '24', ir: '630', ik: '20' });
-    expect(wgKlucza.get('dev/cb2')?.komorki).toEqual({ aparat: 'Wyłącznik Q2', ur: null, ir: null, ik: null });
+    // Brak liczby znamionowej nazywa, skąd ją wziąć: aparat bez typu katalogowego — „bez typu”.
+    expect(wgKlucza.get('dev/cb2')?.komorki).toEqual({ aparat: 'Wyłącznik Q2', ur: 'bez typu', ir: 'bez typu', ik: 'bez typu' });
     expect(wgKlucza.get('dev/ds')?.komorki.ik).toBe('nie dotyczy');
     expect(wgKlucza.get('dev/ct')?.komorki.ik).toBe('nie dotyczy');
     for (const w of t.wiersze) {
@@ -246,6 +251,11 @@ describe('tabela aparatów pola × droga aparatu w modelu', () => {
     ['nazwa bez rodzaju', 'Q5', 'Wyłącznik · Q5'],
     ['nazwa zaczyna się rodzajem', 'Wyłącznik pola SN 3', 'Wyłącznik pola SN 3'],
     ['nazwa zaczyna się rodzajem małą literą', 'wyłącznik Q7', 'wyłącznik Q7'],
+    // Uwaga architekta (c): nazwa gałęzi aparatu pochodna nazwy pola — pole nazywa karta, więc
+    // opis zdejmuje nazwę pola (ta sama funkcja `opisBezPowtorzen`, co rodzaj i rola).
+    ['nazwa pochodna nazwy pola', 'Aparat Pole liniowe L1', 'Wyłącznik'],
+    ['nazwa pola w środku nazwy', 'Odłącznik Pole liniowe L1 Q0', 'Wyłącznik · Odłącznik Q0'],
+    ['nazwa innego pola', 'Aparat Pole liniowe L10', 'Wyłącznik · Aparat Pole liniowe L10'],
   ] as const)('gałąź aparatu z `equipment_refs` (%s): wiersz z nazwą gałęzi i celem karty aparatu', (_opis, nazwa, oczekiwana) => {
     const m = model('mv_lv', 'szyny_sn') as unknown as Record<string, unknown[]>;
     const galaz = { ref_id: 'br/q5', id: 'br/q5', name: nazwa, type: 'breaker', from_bus_ref: 'bus/sn', to_bus_ref: 'bus/zacisk', status: 'closed' };
@@ -257,6 +267,13 @@ describe('tabela aparatów pola × droga aparatu w modelu', () => {
     expect(t.wiersze.map((w) => [w.komorki.aparat, w.cel])).toEqual([
       [oczekiwana, { rodzaj: 'aparat', poleRef: 'bay/l1', aparatRef: 'br/q5' }],
     ]);
+    // Karta aparatu (klik w wiersz) — nagłówek z tego samego opisu, pole w wierszu „Pole”.
+    const kartaAparatu = buildKartaTechniczna(
+      { ...m, branches: [galaz], bays: [{ ...(m.bays[0] as Record<string, unknown>), equipment_refs: ['br/q5'] }] } as unknown as EnergyNetworkModel,
+      { kind: 'apparatus', elementId: 'br/q5' } as DaneElementuKanwy,
+    )!;
+    expect(kartaAparatu.rodzaj).toBe('aparat');
+    expect(kartaAparatu.nazwa).toBe(oczekiwana);
   });
 });
 
@@ -282,7 +299,7 @@ describe('przyłączenia × rodzaj stacji × położenie odcinka', () => {
       const t = zOdcinkami(rodzaj).sekcje.find((s) => s.id === 'przylaczenia')!.tabele![0];
       expect(t.wiersze.map((w) => [w.klucz, w.komorki.pole])).toEqual([
         ['kabel/zacisk', 'Pole liniowe L1'],
-        ['kabel/sekcja', null],
+        ['kabel/sekcja', 'na szynie, bez pola'],
       ]);
     });
   }
@@ -291,15 +308,44 @@ describe('przyłączenia × rodzaj stacji × położenie odcinka', () => {
 describe('tabela pól stacji × numer pola', () => {
   it.each([
     ['żadne pole nie ma numeru', null, ['Pole', 'Rola', 'Stan']],
-    ['pole ma numer', '07', ['Pole', 'Nr', 'Rola', 'Stan']],
+    ['pole ma numer', '07', ['Nr', 'Pole', 'Rola', 'Stan']],
   ] as const)('%s → kolumny %j', (_opis, numer, kolumny) => {
     const k = kartaStacji(model('mv_lv', 'szyny_sn', { numerPola: numer }));
     const tabela = k.sekcje.find((s) => s.id === 'rozdzielnica_sn')!.tabele!.find((t) => t.klucz === 'pola_sn')!;
     expect(tabela.kolumny.map((c) => c.etykieta)).toEqual(kolumny);
-    expect(tabela.wiersze[0].komorki.nr).toBe(numer);
+    expect(tabela.wiersze[0].komorki.nr).toBe(numer ?? 'bez numeru');
     // Rola słowami kanonu ról pól (`FIELD_ROLE_LABEL_PL`), nie kodem modelu.
     expect(tabela.wiersze[0].komorki.rola).toBe('Pole liniowe wyjściowe');
   });
+});
+
+// Opis bez powtórzeń (decyzja architekta pkt 1): nazwa pola zaczynająca się etykietą roli niesie
+// rolę — komórka nazwy obejmuje kolumnę roli (`polaczone`). Iloczyn: nazwa {zaczyna się rolą,
+// inna, rola bez granicy słowa} × rodzaj stacji {GPZ, SN/nN} × numer {jest, brak}; kolumna „Nr”
+// zawsze przed „Pole”, więc scalane kolumny sąsiadują.
+describe('tabela pól stacji × nazwa pola × rola (opis bez powtórzeń)', () => {
+  const przypadki = [
+    ['Pole liniowe wyjściowe 1', true],
+    ['pole liniowe wyjściowe', true],
+    ['Pole liniowe wyjściowe2', false],
+    ['Pole liniowe L1', false],
+  ] as const;
+  for (const rodzaj of ['gpz', 'mv_lv'] as const) {
+    for (const numer of ['07', null] as const) {
+      for (const [nazwa, scalona] of przypadki) {
+        it(`${rodzaj} · nr ${numer ?? 'brak'} · „${nazwa}” → rola ${scalona ? 'scalona z nazwą' : 'osobno'}`, () => {
+          const k = kartaStacji(model(rodzaj, 'szyny_sn', { numerPola: numer, nazwaPola: nazwa }));
+          const tabela = k.sekcje.find((s) => s.id === 'rozdzielnica_sn')!.tabele!.find((t) => t.klucz === 'pola_sn')!;
+          const [wiersz] = tabela.wiersze;
+          expect(wiersz.komorki.pole).toBe(nazwa);
+          expect(wiersz.komorki.rola).toBe('Pole liniowe wyjściowe');
+          expect(wiersz.polaczone ?? []).toEqual(scalona ? ['rola'] : []);
+          const klucze = tabela.kolumny.map((c) => c.klucz);
+          expect(klucze.indexOf('rola')).toBe(klucze.indexOf('pole') + 1);
+        });
+      }
+    }
+  }
 });
 
 describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
