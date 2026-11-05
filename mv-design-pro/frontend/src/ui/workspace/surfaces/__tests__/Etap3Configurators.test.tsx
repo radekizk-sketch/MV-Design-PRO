@@ -172,6 +172,23 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       return operacja;
     };
 
+    it('nagłówek: nazwa w jednym wierszu (ucięta, pełna w podpowiedzi), podtytuł w osobnym wierszu pod nią', () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, SEKCJE) });
+      otworz();
+      const naglowek = screen.getByTestId('gpz-naglowek');
+      const nazwa = screen.getByTestId('gpz-naglowek-nazwa');
+      const podtytul = screen.getByTestId('gpz-naglowek-podtytul');
+      // Panel boczny 280–420 px: kontener NIE jest wierszem flex (nazwa i podtytuł obok siebie
+      // łamały nazwę „GPZ 15 kV” na dwa wiersze); nazwa nie łamie się, podtytuł jest blokiem pod nią.
+      expect(naglowek.className).not.toMatch(/\bflex\b/);
+      expect(nazwa.className).toMatch(/\bwhitespace-nowrap\b/);
+      expect(nazwa.className).toMatch(/\btruncate\b/);
+      expect(nazwa).toHaveAttribute('title', 'GPZ');
+      expect(nazwa.nextElementSibling).toBe(podtytul);
+      expect(podtytul.tagName).toBe('P');
+      expect(podtytul).toHaveTextContent('Główny Punkt Zasilający · konfiguracja 4/4');
+    });
+
     it('renderuje 5 kart konfiguracyjnych z polskimi etykietami', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       for (const etykieta of ['Identyfikacja', 'Sieć zasilająca', 'Transformator 110/SN', 'Sekcje SN', 'Pola SN']) {
@@ -541,10 +558,31 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         { ref_id: 'pole-5', name: 'Pole 5', bay_role: 'OUT', bus_ref: 'gpz/s2', substation_ref: 'inna', equipment_refs: [], tags: [], meta: {} },
       ]);
       useSnapshotStore.setState({
-        snapshot: { ...snap, branches: [{ id: 'sp', ref_id: 'gpz/sprz', name: 'Sprzęgło SN', type: 'bus_coupler', tags: [], meta: {} }] } as never,
+        snapshot: {
+          ...snap,
+          branches: [{
+            id: 'sp', ref_id: 'gpz/sprz', name: 'Sprzęgło SN', type: 'bus_coupler', from_bus_ref: 'gpz/s1',
+            to_bus_ref: 'gpz/s2', status: 'closed', normal_state: 'open', tags: [], meta: {},
+          }],
+        } as never,
       });
       otworz('bays');
-      expect(screen.getByTestId('tabela-pol-sn-sekcja-gpz/s1')).toHaveTextContent('Sprzęgło: Sprzęgło SN');
+      // Jedno zdanie sprzęgła z modelu (sekcja po drugiej stronie, stan NORMALNY), bez nazwy gałęzi
+      // powtarzającej słowo „Sprzęgło”.
+      expect(screen.getByTestId('tabela-pol-sn-sprzeglo-sekcji-gpz/s1')).toHaveTextContent(
+        'Sprzęgło z sekcją 2 · normalnie otwarte',
+      );
+      expect(screen.getByTestId('tabela-pol-sn-sprzeglo-sekcji-gpz/s2')).toHaveTextContent(
+        'Sprzęgło z sekcją 1 · normalnie otwarte',
+      );
+      expect(screen.getByTestId('tabela-pol-sn-sekcja-gpz/s1')).not.toHaveTextContent('Sprzęgło SN');
+      // Pole liniowe bez odcinka i sterownika nazywa każdy brak z akcją naprawczą.
+      expect(screen.getByTestId('tabela-pol-sn-napraw-odejscie-pole-1')).toHaveTextContent('Bez odejścia');
+      // Aparat z modelu pola (`field-view`) — tu nieodczytany, więc nie „nieprzypisany”.
+      expect(screen.getByTestId('tabela-pol-sn-aparat-pole-1')).toHaveTextContent('Aparat: model pola w odczycie');
+      expect(screen.getByTestId('tabela-pol-sn-napraw-zabezpieczenie-pole-1')).toHaveTextContent('Brak sterownika');
+      expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-1')).not.toHaveTextContent('Brak danych');
+      expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-1')).not.toHaveTextContent('—');
       expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-1')).toHaveTextContent('Pole liniowe wyjściowe');
       expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-2')).toHaveTextContent('Pole baterii kondensatorów');
       expect(screen.queryByTestId('tabela-pol-sn-wiersz-pole-5')).not.toBeInTheDocument();

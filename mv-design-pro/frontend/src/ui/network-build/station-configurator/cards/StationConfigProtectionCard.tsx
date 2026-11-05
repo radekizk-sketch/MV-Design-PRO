@@ -68,8 +68,11 @@ export function StationConfigProtectionCard(
   // w katalogu backendu, wiec zapisany wybor byl referencja donikad — dobor
   // przekladnika (V12K-255) widzial „typ nieznany katalogowi".
   const [typyVt, setTypyVt] = useState<readonly VTCatalogType[] | null>(null);
+  // Katalog potrzebny do wyboru (edycja) albo do NAZWY wybranego przekładnika (odczyt) — w UI
+  // nie ma identyfikatorów katalogu.
+  const potrzebnyKatalogVt = Boolean(onChangeVt) || relays.some((r) => Boolean(r.vtCatalogRef));
   useEffect(() => {
-    if (!onChangeVt) return;
+    if (!potrzebnyKatalogVt) return;
     let aktualne = true;
     void fetchVtTypes()
       .then((typy) => {
@@ -81,7 +84,7 @@ export function StationConfigProtectionCard(
     return () => {
       aktualne = false;
     };
-  }, [onChangeVt]);
+  }, [potrzebnyKatalogVt]);
 
   return (
     <div data-testid="station-config-protection" className="flex flex-col gap-2 text-xs">
@@ -130,7 +133,7 @@ export function StationConfigProtectionCard(
                         onChange={(e) => onChangeVt(r.bayDesignation, e.target.value || null)}
                         className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
                       >
-                        <option value="">—</option>
+                        <option value="">bez przekładnika napięciowego</option>
                         {(typyVt ?? []).map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.name}
@@ -139,7 +142,10 @@ export function StationConfigProtectionCard(
                       </select>
                     ) : (
                       <span className="text-[10px] text-scada-muted">
-                        {r.vtCatalogRef ?? '—'}
+                        {r.vtCatalogRef
+                          ? (typyVt ?? []).find((v) => v.id === r.vtCatalogRef)?.name
+                            ?? (typyVt === null ? 'przekładnik z katalogu' : 'pozycja spoza katalogu przekładników')
+                          : 'bez przekładnika napięciowego'}
                       </span>
                     )}
                   </td>

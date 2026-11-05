@@ -238,7 +238,8 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
     expect(screen.getByText('2500')).toBeInTheDocument();
   });
 
-  it('null power renderuje MISSING_DASH ("—") nie "0,00"', () => {
+  // KD6 (kontrakt prezentacji §10): brak mocy nazywa obiekt brakujący — bez gołego „—”.
+  it('null power mówi „moc nieustalona w modelu”, nie „0,00”', () => {
     render(
       <StationConfigDerSourcesCard
         stationId="station_1"
@@ -247,6 +248,6 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
     );
     const row = screen.getByTestId('der-row-der_1');
     expect(row.textContent).not.toContain('0,00');
-    expect(row.textContent).toContain('—');
+    expect(row.textContent).toContain('moc nieustalona w modelu');
   });
 });

@@ -91,7 +91,7 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
         </div>
         <div>
           <span className="text-scada-muted">Napięcie SN: </span>
-          <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv !== null ? `${snVoltageKv} kV` : 'brak danych'}</span>
+          <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv !== null ? `${snVoltageKv} kV` : 'stacja bez szyny SN w modelu'}</span>
         </div>
         <div>
           <span className="text-scada-muted">Poziomy nN: </span>
@@ -100,7 +100,7 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
               {nnVoltageLevels.join(' / ')} kV
             </span>
           ) : (
-            <span className="italic text-scada-muted">—</span>
+            <span className="italic text-scada-muted">stacja bez szyn nN w modelu</span>
           )}
           {nnVoltageLevels.length > 1 && (
             <span className="ml-2 text-[10px] text-status-ok">

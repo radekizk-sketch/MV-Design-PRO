@@ -82,8 +82,8 @@ export function StationConfigTopologyCard(
                 >
                   <td className="font-mono text-[10px]">{p.portId}</td>
                   <td>{PORT_KIND_LABELS_PL[p.kind]}</td>
-                  <td className="text-right font-mono">{p.nominalVoltageKv ?? 'brak danych'}</td>
-                  <td>{p.bayDesignation ?? '—'}</td>
+                  <td className="text-right font-mono">{p.nominalVoltageKv ?? 'szyna portu bez napięcia w modelu'}</td>
+                  <td>{p.bayDesignation ?? 'port bez pola'}</td>
                   <td>
                     {p.occupiedByLabelPl ?? (
                       <span className="italic text-status-ok">wolny do kontynuacji ciągu SN</span>

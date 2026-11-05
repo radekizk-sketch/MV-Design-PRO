@@ -10,6 +10,7 @@
  * `useUpdateStationAudit2Config` (React Query, optimistic updates).
  */
 
+import { powiazanyObiektPola } from '../../network-build/cards/opisPolaSn';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../app-state';
@@ -494,7 +495,9 @@ function deriveStationBayRows(
       bayId: bay.ref_id,
       designation: bayDesignation(bay, index),
       bayRole: bay.bay_role ?? null,
-      attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
+      // Obiekt na zacisku pola z modelu (odejście i stacja docelowa, transformator, bateria,
+      // zespół, źródło, sprzęgło) — dawniej surowy identyfikator `outgoing_destination_ref`.
+      attachedObjectPl: powiazanyObiektPola(snapshot, bay) ?? undefined,
       hasEquipment,
       hasProtection: Boolean(bay.protection_ref),
       // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.

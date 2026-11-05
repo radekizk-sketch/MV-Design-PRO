@@ -19,22 +19,35 @@
  * Rola „Pole sprzęgła" jest oferowana przy co najmniej dwóch sekcjach: kreator dostaje szynę sekcji
  * sąsiedniej (`coupled_bus_ref`) i stan normalny; sekcję po drugiej stronie i stan zmienia się
  * w kreatorze. `add_sn_bay` z rolą sprzęgła tworzy łącznik `bus_coupler` między szynami sekcji
- * (w GPZ także odwołania sekcji `left/right_coupler_ref`). Wiersz pola sprzęgła pokazuje sekcję
- * po drugiej stronie i stan normalny; sprzęgło bez pola (budowa GPZ) pokazuje nagłówek sekcji.
+ * (w GPZ także odwołania sekcji `left/right_coupler_ref`). Wiersz pola sprzęgła i nagłówek sekcji
+ * (sprzęgło bez pola — budowa GPZ) mówią to samo zdanie z jednego źródła (`opisSprzegla`):
+ * „Sprzęgło z sekcją 2 · normalnie otwarte”, stan normalny z modelu.
+ *
+ * Wiersz pola (kontrakt prezentacji §10, KD6 — każda informacja ma znaczenie i akcję): odejście
+ * (odcinek i stacja docelowa), aparat główny (pozycja katalogu) i zabezpieczenie (kody funkcji
+ * sterownika) z modelu (`pozycjeOpisuPola`). Brak jest nazwany („Bez odejścia”, „Aparat
+ * nieprzypisany”, „Brak sterownika”) i jest przyciskiem, który otwiera kartę pola E-11 — to samo
+ * wejście co „Konfiguruj” — z fokusem na miejscu, które brak naprawia.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { Bay, EnergyNetworkModel } from '../../../types/enm';
 import { useActiveCaseId } from '../../app-state/store';
-import { fetchMvApparatusTypes, fetchSwitchgearFamilies } from '../../catalog/api';
-import { STAN_DANYCH_WYPOSAZENIA_PL } from '../../field/wyposazeniePola';
-import { useFieldReadModel } from '../../field/useFieldReadModel';
-import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { ROLE_OPCJE, type RolaPola } from '../../../ui2/kreatory/pole/polaSnModel';
+import { OpisPolaSnWiersze } from './OpisPolaSnWiersze';
+import {
+  czyPotrzebneNazwyKatalogu,
+  lacznikSprzeglaPola,
+  opisSprzegla,
+  pozycjeOpisuPola,
+  type FokusPola,
+} from './opisPolaSn';
+import { useNazwyKatalogowSn } from './useNazwyKatalogowSn';
 
 export interface SekcjaTabeliPol {
   /** Szyna sekcji (pola sekcji = pola tej stacji na tej szynie). */
@@ -42,8 +55,8 @@ export interface SekcjaTabeliPol {
   readonly etykieta: string;
   /** Sekcja GPZ (`GPZSection.section_id`) — kontekst kreatora pola; `undefined` dla stacji SN/nN. */
   readonly gpzSectionId?: string;
-  /** Sprzęgła sekcji z modelu (opis do nagłówka; bez edycji). */
-  readonly sprzegla?: readonly string[];
+  /** Łączniki sprzęgieł sekcji z modelu (`left/right_coupler_ref`) — opis w nagłówku sekcji. */
+  readonly sprzeglaRefs?: readonly string[];
 }
 
 export interface TabelaPolSnProps {
@@ -78,18 +91,36 @@ export function opisSprzeglaPola(
   sekcje: readonly SekcjaTabeliPol[],
 ): string | null {
   if (pole.bay_role !== 'COUPLER') return null;
-  const sprzeglo = (snapshot?.branches ?? []).find(
-    (g) => g.type === 'bus_coupler' && (pole.equipment_refs ?? []).includes(g.ref_id),
+  const sprzeglo = lacznikSprzeglaPola(snapshot, pole);
+  if (!sprzeglo) return 'Pole sprzęgła bez łącznika sprzęgła w modelu';
+  return opisSprzegla(snapshot, sprzeglo, pole.bus_ref, sekcje);
+}
+
+/**
+ * Sprzęgła w nagłówku sekcji: łączniki z `sprzeglaRefs`, których nie pokazuje już wiersz pola
+ * sprzęgła tej sekcji (jedno zdanie raz, w miejscu pola, a bez pola — w nagłówku).
+ */
+export function sprzeglaNaglowkaSekcji(
+  snapshot: EnergyNetworkModel | null,
+  sekcja: SekcjaTabeliPol,
+  polaTejSekcji: readonly Bay[],
+  sekcje: readonly SekcjaTabeliPol[],
+): { readonly ref: string; readonly opis: string }[] {
+  const wPolach = new Set(
+    polaTejSekcji.filter((p) => p.bay_role === 'COUPLER').flatMap((p) => p.equipment_refs ?? []),
   );
-  if (!sprzeglo || !('from_bus_ref' in sprzeglo)) return 'Brak sprzęgła między sekcjami';
-  const druga = sprzeglo.from_bus_ref === pole.bus_ref ? sprzeglo.to_bus_ref : sprzeglo.from_bus_ref;
-  const nazwaDrugiej =
-    sekcje.find((s) => s.busRef === druga)?.etykieta ??
-    (snapshot?.buses ?? []).find((b) => b.ref_id === druga)?.name ??
-    'sekcja bez nazwy';
-  const stanNormalny = 'normal_state' in sprzeglo ? sprzeglo.normal_state : undefined;
-  const stan = (stanNormalny ?? sprzeglo.status) === 'open' ? 'normalnie otwarte' : 'normalnie zamknięte';
-  return `Łączy z: ${nazwaDrugiej} · ${stan}`;
+  const galezie = snapshot?.branches ?? [];
+  return (sekcja.sprzeglaRefs ?? [])
+    .filter((ref) => !wPolach.has(ref))
+    .map((ref) => {
+      const galaz = galezie.find((g) => g.ref_id === ref);
+      return {
+        ref,
+        opis: galaz
+          ? opisSprzegla(snapshot, galaz, sekcja.busRef, sekcje)
+          : 'Sprzęgło sekcji wskazane przez sekcję nie występuje w modelu',
+      };
+    });
 }
 
 /** Obiekt fizyczny pola BKR/ZU z modelu: bateria na zacisku pola, zespół wskazujący pole. */
@@ -109,11 +140,6 @@ export function obiektPola(
   return null;
 }
 
-/** Skrót stanu danych wyposażenia — pierwsza część etykiety z `STAN_DANYCH_WYPOSAZENIA_PL`. */
-function stanWyposazeniaKrotko(pelny: string): string {
-  return pelny.split(' — ')[0];
-}
-
 const TEKST = 'text-[length:var(--mvd-font-size-data)]';
 const PRZYCISK = `rounded border border-scada-border px-1.5 py-0.5 ${TEKST} text-scada-text hover:bg-scada-surface`;
 const POLE_WYBORU = `rounded border border-scada-border bg-scada-surface px-1 py-0.5 ${TEKST} text-scada-text`;
@@ -124,41 +150,32 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
   const activeCaseId = useActiveCaseId();
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
+  // Aparaty pierwotne z MODELU POLA (backend składa je z rekordu pola albo łączników gałęzi).
   const { itemsByBayRef } = useFieldReadModel();
+  const urzadzeniaPola = (pole: Bay) =>
+    itemsByBayRef.get(pole.ref_id)?.canonical_model.base_model.primary_devices ?? null;
 
   const [rolaNowego, setRolaNowego] = useState<Record<string, RolaPola>>({});
   const [doUsuniecia, setDoUsuniecia] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
 
-  // Nazwy wyrobów z katalogu backendu (rodzina rozdzielnicy, aparat pola) — w UI nie ma identyfikatorów.
-  const [nazwyWyrobow, setNazwyWyrobow] = useState<ReadonlyMap<string, string>>(new Map());
-  useEffect(() => {
-    let anulowano = false;
-    Promise.all([fetchSwitchgearFamilies(), fetchMvApparatusTypes()])
-      .then(([rodziny, aparaty]) => {
-        if (anulowano) return;
-        const mapa = new Map<string, string>();
-        for (const r of Array.isArray(rodziny) ? rodziny : []) mapa.set(r.switchgear_family_ref, r.family_name);
-        for (const a of Array.isArray(aparaty) ? aparaty : []) mapa.set(a.id, a.name);
-        setNazwyWyrobow(mapa);
-      })
-      .catch(() => {
-        if (!anulowano) setNazwyWyrobow(new Map());
-      });
-    return () => {
-      anulowano = true;
-    };
-  }, []);
 
-  const wyrob = (pole: Bay): string => {
-    const rodzina = pole.switchgear_family_ref ? nazwyWyrobow.get(pole.switchgear_family_ref) : undefined;
-    const aparat = pole.apparatus_catalog_ref ? nazwyWyrobow.get(pole.apparatus_catalog_ref) : undefined;
-    return rodzina ?? aparat ?? MISSING_DASH;
-  };
+  /** Brak w wierszu → karta pola E-11 (wejście „Konfiguruj”) z fokusem na miejscu naprawy. */
+  const otworzKartePola = (pole: Bay, fokus?: FokusPola) =>
+    openRouteSurface('E-11', {
+      entityRef: pole.ref_id,
+      subjectKind: 'helper_context',
+      ...(fokus ? { payload: { fokus } } : {}),
+    });
 
   const polaWgSekcji = useMemo(
     () => sekcje.map((s) => ({ sekcja: s, pola: polaSekcji(snapshot, stationRef, s.busRef) })),
     [sekcje, snapshot, stationRef],
+  );
+
+  // Nazwy wyrobów z katalogu backendu (rodzina rozdzielnicy, aparat pola) — w UI nie ma identyfikatorów.
+  const nazwyWyrobow = useNazwyKatalogowSn(
+    czyPotrzebneNazwyKatalogu(polaWgSekcji.flatMap((s) => s.pola), urzadzeniaPola),
   );
 
   const roleDodawania = roleDodawanegoPola(sekcje.length);
@@ -234,9 +251,12 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
               </button>
             </div>
           </div>
-          {sekcja.sprzegla && sekcja.sprzegla.length > 0 ? (
-            <p className="mt-0.5 text-scada-muted">Sprzęgło: {sekcja.sprzegla.join(', ')}</p>
-          ) : null}
+          {sprzeglaNaglowkaSekcji(snapshot, sekcja, pola, sekcje).map((s) => (
+            <p key={s.ref} data-testid={`tabela-pol-sn-sprzeglo-sekcji-${sekcja.busRef}`}
+              data-sprzeglo-ref={s.ref} className="mt-0.5 text-scada-text">
+              {s.opis}
+            </p>
+          ))}
           {pola.length === 0 ? (
             <p data-testid={`tabela-pol-sn-pusta-${sekcja.busRef}`} className="py-1 text-scada-muted">
               Sekcja nie ma pól w modelu.
@@ -247,7 +267,6 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
                 {pola.map((pole, i) => {
                   const obiekt = obiektPola(snapshot, pole);
                   const sprzeglo = opisSprzeglaPola(snapshot, pole, sekcje);
-                  const stan = itemsByBayRef.get(pole.ref_id)?.canonical_model.base_model.equipment_data_state;
                   return (
                     <tr
                       key={pole.ref_id}
@@ -256,17 +275,16 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
                     >
                       <td className="mvd-num w-6 py-1 pr-1 text-scada-muted">{i + 1}</td>
                       <td className="py-1 pr-1">
-                        <div className="text-scada-text">{pole.name || MISSING_DASH}</div>
+                        <div className="text-scada-text">{pole.name || 'Pole bez nazwy'}</div>
                         <div data-testid={`tabela-pol-sn-rola-pola-${pole.ref_id}`} className="text-scada-muted">
                           {fieldRoleLabelPl(pole.field_role ?? pole.bay_role)}
                         </div>
-                        <div className="text-scada-muted">
-                          {wyrob(pole)}
-                          {' · '}
-                          <span title={stan ? STAN_DANYCH_WYPOSAZENIA_PL[stan] : undefined}>
-                            {stan ? stanWyposazeniaKrotko(STAN_DANYCH_WYPOSAZENIA_PL[stan]) : 'wyposażenie: brak odczytu'}
-                          </span>
-                        </div>
+                        <OpisPolaSnWiersze
+                          pozycje={pozycjeOpisuPola(snapshot, pole, urzadzeniaPola(pole), nazwyWyrobow)}
+                          prefiks="tabela-pol-sn"
+                          poleRef={pole.ref_id}
+                          onNapraw={(fokus) => otworzKartePola(pole, fokus)}
+                        />
                         {sprzeglo ? (
                           <div data-testid={`tabela-pol-sn-sprzeglo-${pole.ref_id}`} className="text-scada-text">
                             {sprzeglo}
@@ -318,8 +336,7 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
                               type="button"
                               data-testid={`tabela-pol-sn-konfiguruj-${pole.ref_id}`}
                               className={PRZYCISK}
-                              onClick={() =>
-                                openRouteSurface('E-11', { entityRef: pole.ref_id, subjectKind: 'helper_context' })}
+                              onClick={() => otworzKartePola(pole)}
                             >
                               Konfiguruj
                             </button>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
 import type { TransformerType } from '../../catalog/types';
 
-import { MISSING_DASH, formatPolishValue } from '../../shared/formatPolishValue';
+import { formatPolishValue } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveCaseId } from '../../app-state/store';
 import { buildCatalogBinding } from '../../catalog/catalogBinding';
@@ -131,9 +131,10 @@ export function transformatoryGpzZrodla(
 }
 
 /** Liczba w formaterze wspólnym: wartości całkowite bez zbędnych zer, ułamkowe do `maks`
- * miejsc (kontrakt prezentacji §10 pkt 7). */
-function liczba(wartosc: number | null | undefined, jednostka = '', maks = 3): string {
-  if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) return MISSING_DASH;
+ * miejsc (kontrakt prezentacji §10 pkt 7). Brak wartości mówi, czego brakuje (`brak`) —
+ * bez gołego „—” (KD6). */
+function liczba(wartosc: number | null | undefined, brak: string, jednostka = '', maks = 3): string {
+  if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) return brak;
   let miejsca = 0;
   while (miejsca < maks && Math.abs(wartosc * 10 ** miejsca - Math.round(wartosc * 10 ** miejsca)) > 1e-9) {
     miejsca += 1;
@@ -176,19 +177,19 @@ export function polaZasilania(zrodlo: Source): PoleZasilania[] {
 
 /**
  * Sekcje GPZ jako sekcje tabeli pól: szyna sekcji, nazwa, sekcja GPZ (kontekst kreatora pola)
- * i sprzęgła sekcji z modelu (`left/right_coupler_ref` → nazwa gałęzi).
+ * i łączniki sprzęgieł sekcji z modelu (`left/right_coupler_ref`) — opis sprzęgła składa tabela
+ * z modelu (`opisSprzegla`: sekcja po drugiej stronie i stan normalny), nie z nazwy gałęzi.
  */
-export function sekcjeTabeliPolGpz(stacja: Substation, galezie: readonly { ref_id: string; name: string }[]): SekcjaTabeliPol[] {
-  const nazwaGalezi = new Map(galezie.map((g) => [g.ref_id, g.name || g.ref_id]));
+export function sekcjeTabeliPolGpz(stacja: Substation): SekcjaTabeliPol[] {
   return [...(stacja.gpz_sections ?? [])]
     .sort((a, b) => a.order - b.order)
     .map((s) => ({
       busRef: s.bus_ref,
       etykieta: s.name || s.section_id,
       gpzSectionId: s.section_id,
-      sprzegla: [s.left_coupler_ref, s.right_coupler_ref]
-        .filter((r): r is string => typeof r === 'string' && r.length > 0)
-        .map((r) => nazwaGalezi.get(r) ?? r),
+      sprzeglaRefs: [s.left_coupler_ref, s.right_coupler_ref].filter(
+        (r): r is string => typeof r === 'string' && r.length > 0,
+      ),
     }));
 }
 
@@ -318,15 +319,23 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     return ok;
   };
 
+  const nazwaGpz = gpz.stacja?.name || gpz.zrodlo?.name || 'GPZ 110/SN';
+
   return (
     <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-3">
-      <div className="mb-2 flex items-baseline gap-3">
-        <h2 className="text-base font-semibold text-scada-text">
-          {gpz.stacja?.name || gpz.zrodlo?.name || 'GPZ 110/SN'}
+      {/* Nazwa w jednym wierszu (długa — ucięta z pełną nazwą w podpowiedzi), podtytuł pod nią:
+          układ panelu bocznego 280–420 px i powierzchni szerokiej jest ten sam. */}
+      <div data-testid="gpz-naglowek" className="mb-2 min-w-0">
+        <h2
+          data-testid="gpz-naglowek-nazwa"
+          title={nazwaGpz}
+          className="truncate whitespace-nowrap text-base font-semibold text-scada-text"
+        >
+          {nazwaGpz}
         </h2>
-        <span className={`${TEKST} text-scada-muted`}>
+        <p data-testid="gpz-naglowek-podtytul" className={`${TEKST} text-scada-muted`}>
           Główny Punkt Zasilający · konfiguracja {kompletnosc.done}/{kompletnosc.total}
-        </span>
+        </p>
       </div>
 
       <nav role="tablist" className="flex shrink-0 flex-wrap border-b border-scada-border">
@@ -419,14 +428,14 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                         />
                       </td>
                     ) : (
-                      <td data-testid="gpz-supply-un" className="mvd-num text-scada-text">{liczba(napiecieSzynyZrodla)}</td>
+                      <td data-testid="gpz-supply-un" className="mvd-num text-scada-text">{liczba(napiecieSzynyZrodla, 'szyna źródła bez napięcia w modelu')}</td>
                     )}
-                    <td className="pl-1 text-scada-muted">kV</td>
+                    <td className="pl-1 text-scada-muted">{stronaWnWModelu || napiecieSzynyZrodla !== null ? 'kV' : ''}</td>
                   </tr>
                   {unDoZmiany !== null && (
                     <tr data-testid="gpz-supply-un-typ">
                       <th className="py-0.5 pr-3 text-left font-normal text-scada-muted">
-                        Typ transformatora 110/SN dla U<sub>n</sub> = {liczba(unDoZmiany)} kV
+                        Typ transformatora 110/SN dla U<sub>n</sub> = {liczba(unDoZmiany, 'napięcie nieustalone')} kV
                       </th>
                       <td colSpan={2}>
                         {typyDlaUn.length > 0 ? (
@@ -443,7 +452,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                           </select>
                         ) : (
                           <span data-testid="gpz-supply-un-typ-brak" className="text-scada-muted">
-                            Katalog nie ma transformatora o napięciach {liczba(unDoZmiany)}/{liczba(napiecieSn)} kV.
+                            Katalog nie ma transformatora o napięciach {liczba(unDoZmiany, 'napięcie nieustalone')}/{liczba(napiecieSn, 'SN nieustalone')} kV.
                           </span>
                         )}
                       </td>
@@ -567,7 +576,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             {!gpz.stacja ? brakGpz : (
               <TabelaPolSn
                 stationRef={gpz.stacja.ref_id}
-                sekcje={sekcjeTabeliPolGpz(gpz.stacja, snapshot?.branches ?? [])}
+                sekcje={sekcjeTabeliPolGpz(gpz.stacja)}
               />
             )}
           </div>
@@ -583,13 +592,13 @@ function PlytaTransformatora({ transformator }: { transformator: Transformer }):
   return (
     <>
       <td data-testid={`gpz-transformer-plate-${transformator.ref_id}`} className="mvd-num text-right text-scada-text">
-        {liczba(transformator.sn_mva, 'MVA')}
+        {liczba(transformator.sn_mva, 'S_n poza tabliczką', 'MVA')}
       </td>
-      <td className="mvd-num text-right text-scada-text">{liczba(transformator.uk_percent, '%')}</td>
+      <td className="mvd-num text-right text-scada-text">{liczba(transformator.uk_percent, 'u_k poza tabliczką', '%')}</td>
       <td className="mvd-num text-right text-scada-text">
-        {liczba(transformator.uhv_kv)}/{liczba(transformator.ulv_kv)}
+        {liczba(transformator.uhv_kv, 'U_WN poza tabliczką')}/{liczba(transformator.ulv_kv, 'U_SN poza tabliczką')}
       </td>
-      <td className="pl-2 text-scada-text">{transformator.vector_group || MISSING_DASH}</td>
+      <td className="pl-2 text-scada-text">{transformator.vector_group || 'grupa poza tabliczką — wybierz typ z katalogu'}</td>
     </>
   );
 }

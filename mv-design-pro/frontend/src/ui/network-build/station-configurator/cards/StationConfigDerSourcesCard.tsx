@@ -10,7 +10,6 @@
 
 import { useMemo } from 'react';
 
-import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
   getNcRfgOperator,
   getConnectionSideLabelPl,
@@ -105,13 +104,13 @@ function buildRow(
     : null;
   const voltagePl = blockTransformer
     ? `${blockTransformer.hv_kv.toLocaleString('pl-PL')}/${blockTransformer.lv_kv.toLocaleString('pl-PL')} kV`
-    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : MISSING_DASH;
+    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : 'napięcie przyłączenia nieustalone w modelu';
   return {
     der,
     connectionSidePl: getConnectionSideLabelPl(der.connection_side),
     voltagePl,
     blockTransformerPl,
-    profilePl: profile?.operator_name_pl ?? MISSING_DASH,
+    profilePl: profile?.operator_name_pl ?? 'bez profilu wymagań operatora',
   };
 }
 
@@ -209,7 +208,7 @@ export function StationConfigDerSourcesCard(
                   </td>
                   <td className="px-2 py-1.5 text-scada-muted">{connectionSidePl}</td>
                   <td className="px-2 py-1.5 text-right text-scada-text">
-                    {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : MISSING_DASH}
+                    {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : 'moc nieustalona w modelu'}
                   </td>
                   <td className="px-2 py-1.5 text-scada-muted">
                     <div data-testid={`der-voltage-${der.id}`}>{voltagePl}</div>

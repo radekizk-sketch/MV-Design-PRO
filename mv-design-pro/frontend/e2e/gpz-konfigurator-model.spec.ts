@@ -24,6 +24,9 @@
  *  7. oznaczenie stacji z karty „Identyfikacja" i napięcie Un strony WN z karty „Sieć
  *     zasilająca" (`update_gpz_hv_voltage`): niezgodne z transformatorem 110/SN → odmowa
  *     z wyjaśnieniem, model bez zmian, a karta proponuje typ o tym napięciu (tu: brak w katalogu).
+ *  8. wiersz pola w karcie „Pola SN": odejście (odcinek i cel ciągu), aparat i zabezpieczenie
+ *     z modelu; brak („Brak sterownika") otwiera kartę pola E-11 z fokusem, a jej akcja —
+ *     kreator zabezpieczenia przypięty do pola.
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -286,7 +289,44 @@ test('GPZ: nowa sekcja z nową szyną i sprzęgło do niej z „Dodaj pole" — 
 
   await expect(page.getByTestId('gpz-configurator-surface')).toBeVisible({ timeout: 20000 });
   await page.getByTestId('gpz-card-tab-bays').click();
-  await expect(page.getByTestId(`tabela-pol-sn-sprzeglo-${pole.ref_id}`)).toContainText('Łączy z: Sekcja 3 · normalnie otwarte');
+  // Jedno zdanie sprzęgła z modelu w wierszu pola i w nagłówku sekcji po drugiej stronie
+  // (bez podwójnego „Sprzęgło: Sprzęgło …”).
+  await expect(page.getByTestId(`tabela-pol-sn-sprzeglo-${pole.ref_id}`)).toHaveText('Sprzęgło z sekcją 3 · normalnie otwarte');
+  await expect(
+    page.locator(`[data-testid="tabela-pol-sn-sprzeglo-sekcji-${trzecia.bus_ref}"][data-sprzeglo-ref]`).filter({ hasText: 'z sekcją 2' }),
+  ).toHaveText('Sprzęgło z sekcją 2 · normalnie otwarte');
+});
+
+test('GPZ: wiersz pola mówi odejście, aparat i zabezpieczenie z modelu; brak otwiera kartę pola z fokusem', async ({ page, request }) => {
+  test.setTimeout(240000);
+  const seed = await siecGpz(request, 2);
+  const model = await enm(request, seed.caseId);
+  const pola = model.bays!.filter((b) => b.substation_ref === seed.stacjaRef);
+  const pole11 = pola.find((b) => b.name === 'Pole liniowe GPZ 1.1')!;
+  const pole21 = pola.find((b) => b.name === 'Pole liniowe GPZ 2.1')!;
+
+  await otworzSchemat(page, seed);
+  await menuZrodla(page, seed.zrodloRef, 'open-source');
+  await page.getByTestId('gpz-card-tab-bays').click();
+  // Pole 1.1: kabel „Odcinek 1” z ziarna kończy się odbiorem (bez stacji); wyłącznik z katalogu.
+  await expect(page.getByTestId(`tabela-pol-sn-odejscie-${pole11.ref_id}`)).toHaveText(
+    'Odejście: kabel Odcinek 1 → koniec ciągu bez stacji',
+  );
+  await expect(page.getByTestId(`tabela-pol-sn-aparat-${pole11.ref_id}`)).toContainText('Aparat: ');
+  await expect(page.getByTestId(`tabela-pol-sn-aparat-${pole11.ref_id}`)).not.toContainText('nieprzypisany');
+  await expect(page.getByTestId(`tabela-pol-sn-aparat-${pole11.ref_id}`)).toHaveAttribute('data-brak', 'false');
+  await expect(page.getByTestId(`tabela-pol-sn-wiersz-${pole11.ref_id}`)).not.toContainText('Brak danych');
+  // Pole 2.1 bez odcinka; żadne pole nie ma sterownika — braki nazwane z akcją.
+  await expect(page.getByTestId(`tabela-pol-sn-napraw-odejscie-${pole21.ref_id}`)).toHaveText(
+    'Bez odejścia · wyprowadź odcinek z pola',
+  );
+  await page.getByTestId(`tabela-pol-sn-napraw-zabezpieczenie-${pole21.ref_id}`).click();
+  await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('bay-configurator-surface').locator('h2')).toHaveText('Pole liniowe GPZ 2.1');
+  await expect(page.getByTestId(`karta-pola-zabezpieczenie-${pole21.ref_id}`)).toHaveAttribute('data-wyroznione', 'true');
+  // Akcja naprawcza karty pola: kreator zabezpieczenia przypięty do pola.
+  await page.getByTestId(`karta-pola-napraw-zabezpieczenie-${pole21.ref_id}`).click();
+  await expect(page.getByTestId('mvd-kreator-przekaznik-anuluj')).toBeVisible({ timeout: 20000 });
 });
 
 test('GPZ: oznaczenie stacji i Un strony WN — zapis, odmowa z wyjaśnieniem, model bez zmian', async ({ page, request }) => {

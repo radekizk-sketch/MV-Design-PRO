@@ -200,7 +200,8 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(screen.queryByTestId('bay-fuse-brak-pasma-b9')).toBeNull();
     });
 
-    it('pokazuje dash gdy brak fuse w polu', () => {
+    // KD6 (kontrakt prezentacji §10): brak bezpiecznika nazwany wprost, bez gołego „—”.
+    it('pokazuje „bez bezpiecznika” gdy brak fuse w polu', () => {
       render(
         <StationConfigBaysCard
           bays={[
@@ -219,7 +220,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
         />,
       );
       const fuseCell = screen.getByTestId('bay-fuse-b2');
-      expect(fuseCell.textContent).toContain('—');
+      expect(fuseCell.textContent).toBe('bez bezpiecznika');
     });
   });
 

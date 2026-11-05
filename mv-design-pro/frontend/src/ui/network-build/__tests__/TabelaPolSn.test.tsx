@@ -3,8 +3,10 @@
  *
  * Iloczyn cech: sekcja {z polami, bez pól} × pole {tej stacji, innej stacji na tej samej szynie}
  * × rola {BKR z baterią / bez, ZU z zespołem / bez, inna} × akcja {Dodaj pole z rolą, Konfiguruj,
- * Usuń → Tak / Nie, odmowa backendu, Dodaj obiekt BKR / ZU} × kontekst sekcji {GPZ, stacja}.
- * Każda akcja ma trafić w istniejącą operację albo ekran z kontekstem (bez nowych formularzy).
+ * Usuń → Tak / Nie, odmowa backendu, Dodaj obiekt BKR / ZU, napraw braku {odejście, aparat,
+ * zabezpieczenie}} × kontekst sekcji {GPZ, stacja} × sprzęgło sekcji {w polu sprzęgła tej sekcji,
+ * bez pola, ref bez gałęzi}. Każda akcja ma trafić w istniejącą operację albo ekran z kontekstem
+ * (bez nowych formularzy); wiersz pola nie zna gołego „—” ani „Brak danych” (KD6).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -16,28 +18,30 @@ import {
   polaSekcji,
   roleDodawanegoPola,
   sekcjaSasiednia,
+  sprzeglaNaglowkaSekcji,
 } from '../cards/TabelaPolSn';
 
 const executeDomainOperation = vi.fn();
 const openOperationForm = vi.fn();
 const openRouteSurface = vi.fn();
 let currentSnapshot: Record<string, unknown> = {};
+/** Aparaty pierwotne modelu pola (`field-view`) per pole; pole spoza mapy — model nieodczytany. */
+let aparatyPol: Record<string, unknown[]> = {};
 
 vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (selector: (state: unknown) => unknown) =>
     selector({ snapshot: currentSnapshot, executeDomainOperation }),
 }));
 vi.mock('../../app-state/store', () => ({ useActiveCaseId: () => 'case-1' }));
-vi.mock('../networkBuildStore', () => ({
-  useNetworkBuildStore: (selector: (state: unknown) => unknown) => selector({ openOperationForm, openRouteSurface }),
-}));
 vi.mock('../../field/useFieldReadModel', () => ({
   useFieldReadModel: () => ({
-    itemsByBayRef: new Map([
-      ['pole-wy', { canonical_model: { base_model: { equipment_data_state: 'MODEL' } } }],
-      ['pole-bkr', { canonical_model: { base_model: { equipment_data_state: 'PROPOZYCJA' } } }],
-    ]),
+    itemsByBayRef: new Map(
+      Object.entries(aparatyPol).map(([ref, primary_devices]) => [ref, { canonical_model: { base_model: { primary_devices } } }]),
+    ),
   }),
+}));
+vi.mock('../networkBuildStore', () => ({
+  useNetworkBuildStore: (selector: (state: unknown) => unknown) => selector({ openOperationForm, openRouteSurface }),
 }));
 vi.mock('../../catalog/api', () => ({
   fetchSwitchgearFamilies: () => Promise.resolve([{ switchgear_family_ref: 'rodzina-1', family_name: 'Rozdzielnica X' }]),
@@ -53,10 +57,28 @@ beforeEach(() => {
   executeDomainOperation.mockResolvedValue({ error: null });
   openOperationForm.mockReset();
   openRouteSurface.mockReset();
+  aparatyPol = {
+    'pole-wy': [{ kind: 'CB', catalog_ref: 'aparat-1' }],
+    'pole-bkr': [],
+  };
   currentSnapshot = {
     buses: [{ ref_id: 'zacisk-bkr', voltage_kv: 15 }],
+    substations: [{ ref_id: 'st-2', name: 'S-2', station_type: 'mv_lv', bus_refs: ['st-2/sn'], transformer_refs: [] }],
+    branches: [
+      { ref_id: 'sp-13', type: 'bus_coupler', from_bus_ref: 's1', to_bus_ref: 's3', status: 'closed' },
+      { ref_id: 'q-wy', type: 'breaker', from_bus_ref: 's1', to_bus_ref: 'zacisk-wy', status: 'closed', catalog_ref: 'aparat-1' },
+      { ref_id: 'k-wy', name: 'Odcinek 1', type: 'cable', from_bus_ref: 'zacisk-wy', to_bus_ref: 'st-2/sn', status: 'closed' },
+    ],
+    protection_assignments: [
+      { ref_id: 'zab-wy', name: 'Zab', breaker_ref: 'q-wy', device_type: 'overcurrent', is_enabled: true, settings: [{ function_type: 'overcurrent_51' }, { function_type: 'earth_fault_51N' }] },
+    ],
     bays: [
-      pole('pole-wy', 'OUT', { switchgear_family_ref: 'rodzina-1' }),
+      pole('pole-wy', 'OUT', {
+        switchgear_family_ref: 'rodzina-1',
+        terminal_bus_ref: 'zacisk-wy',
+        equipment_refs: ['q-wy'],
+        protection_ref: 'zab-wy',
+      }),
       pole('pole-bkr', 'BKR', { terminal_bus_ref: 'zacisk-bkr', apparatus_catalog_ref: 'aparat-1' }),
       pole('pole-zu', 'ZU', { terminal_bus_ref: 'zacisk-zu' }),
       // Pole innej stacji na szynie o tym samym refie nie należy do tej rozdzielnicy.
@@ -69,7 +91,7 @@ beforeEach(() => {
 });
 
 const SEKCJE = [
-  { busRef: 's1', etykieta: 'Sekcja 1', gpzSectionId: 'sek-1', sprzegla: ['Sprzęgło S1-S2'] },
+  { busRef: 's1', etykieta: 'Sekcja 1', gpzSectionId: 'sek-1', sprzeglaRefs: ['sp-13'] },
   { busRef: 's3', etykieta: 'Sekcja 3' },
 ];
 
@@ -80,19 +102,63 @@ describe('TabelaPolSn — pola z modelu', () => {
     const wiersze = within(s1).getAllByTestId(/^tabela-pol-sn-wiersz-/).map((w) => w.getAttribute('data-testid'));
     expect(wiersze).toEqual(['tabela-pol-sn-wiersz-pole-wy', 'tabela-pol-sn-wiersz-pole-bkr', 'tabela-pol-sn-wiersz-pole-zu']);
     expect(screen.getByTestId('tabela-pol-sn-pusta-s3')).toHaveTextContent('Sekcja nie ma pól w modelu.');
-    expect(s1).toHaveTextContent('Sprzęgło: Sprzęgło S1-S2');
+    expect(screen.getByTestId('tabela-pol-sn-sprzeglo-sekcji-s1')).toHaveTextContent(
+      'Sprzęgło z sekcją 3 · normalnie zamknięte',
+    );
   });
 
-  it('rola z kanonu, wyrób z katalogu (bez identyfikatorów), stan wyposażenia z odczytu pól', async () => {
+  it('wiersz pola: odejście, aparat i zabezpieczenie z modelu (nazwy katalogu, bez identyfikatorów)', async () => {
     render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
     expect(screen.getByTestId('tabela-pol-sn-rola-pola-pole-wy')).toHaveTextContent('Pole liniowe wyjściowe');
     expect(screen.getByTestId('tabela-pol-sn-rola-pola-pole-bkr')).toHaveTextContent('Pole baterii kondensatorów');
-    await waitFor(() => expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-wy')).toHaveTextContent('Rozdzielnica X'));
-    expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-wy')).toHaveTextContent('Dane z katalogu');
-    expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-bkr')).toHaveTextContent('Wyłącznik Y 630 A');
-    expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-bkr')).toHaveTextContent('Propozycja');
-    expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-zu')).toHaveTextContent('wyposażenie: brak odczytu');
-    expect(screen.getByTestId('tabela-pol-sn-wiersz-pole-zu')).not.toHaveTextContent('rodzina-1');
+    expect(screen.getByTestId('tabela-pol-sn-odejscie-pole-wy')).toHaveTextContent('Odejście: kabel Odcinek 1 → stacja S-2');
+    await waitFor(() =>
+      expect(screen.getByTestId('tabela-pol-sn-aparat-pole-wy')).toHaveTextContent(
+        'Aparat: Wyłącznik Y 630 A · rozdzielnica Rozdzielnica X',
+      ),
+    );
+    expect(screen.getByTestId('tabela-pol-sn-zabezpieczenie-pole-wy')).toHaveTextContent('Zabezpieczenie: 51, 51N');
+    const wiersz = screen.getByTestId('tabela-pol-sn-wiersz-pole-wy');
+    expect(wiersz).not.toHaveTextContent(/aparat-1|rodzina-1|q-wy|zab-wy/);
+    expect(wiersz).not.toHaveTextContent('—');
+    expect(wiersz).not.toHaveTextContent('Brak danych');
+    // Pole BKR z pozycją katalogu w rekordzie pola, ale bez aparatu w modelu pola: aparat nazwany
+    // brakiem — rekord pola nie udaje aparatu.
+    expect(screen.getByTestId('tabela-pol-sn-napraw-aparat-pole-bkr')).toHaveTextContent('Aparat nieprzypisany');
+    expect(screen.queryByTestId('tabela-pol-sn-odejscie-pole-bkr')).not.toBeInTheDocument();
+    // Pole, którego model pola jeszcze nie odczytano, nie jest „nieprzypisane”.
+    expect(screen.getByTestId('tabela-pol-sn-aparat-pole-zu')).toHaveTextContent('Aparat: model pola w odczycie');
+    expect(screen.queryByTestId('tabela-pol-sn-napraw-aparat-pole-zu')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['odejscie', 'pole-zu-out', 'Bez odejścia · wyprowadź odcinek z pola'],
+    ['aparat', 'pole-zu-out', 'Aparat nieprzypisany · przypisz aparat z katalogu'],
+    ['zabezpieczenie', 'pole-zu-out', 'Brak sterownika · dodaj zabezpieczenie'],
+  ])('brak „%s” → karta pola E-11 (wejście „Konfiguruj”) z fokusem na miejscu naprawy', (fokus, ref, tekst) => {
+    currentSnapshot = { ...currentSnapshot, bays: [pole(ref, 'OUT')] };
+    aparatyPol = { [ref]: [] };
+    render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
+    const przycisk = screen.getByTestId(`tabela-pol-sn-napraw-${fokus}-${ref}`);
+    expect(przycisk).toHaveTextContent(tekst);
+    fireEvent.click(przycisk);
+    expect(openRouteSurface).toHaveBeenCalledWith('E-11', {
+      entityRef: ref,
+      subjectKind: 'helper_context',
+      payload: { fokus },
+    });
+  });
+
+  it('sprzęgło nagłówka: pominięte, gdy pokazuje je wiersz pola sprzęgła tej sekcji; ref bez gałęzi nazwany', () => {
+    const sekcja = { busRef: 's1', etykieta: 'Sekcja 1', sprzeglaRefs: ['sp-13', 'sp-brak'] };
+    const polaZeSprzeglem = [pole('pole-sp', 'COUPLER', { equipment_refs: ['sp-13'] })] as never[];
+    expect(sprzeglaNaglowkaSekcji(currentSnapshot as never, sekcja, polaZeSprzeglem, SEKCJE)).toEqual([
+      { ref: 'sp-brak', opis: 'Sprzęgło sekcji wskazane przez sekcję nie występuje w modelu' },
+    ]);
+    expect(sprzeglaNaglowkaSekcji(currentSnapshot as never, sekcja, [], SEKCJE).map((s) => s.opis)).toEqual([
+      'Sprzęgło z sekcją 3 · normalnie zamknięte',
+      'Sprzęgło sekcji wskazane przez sekcję nie występuje w modelu',
+    ]);
   });
 
   it('polaSekcji: filtr stacja × szyna', () => {
@@ -217,9 +283,9 @@ describe('TabelaPolSn — Konfiguruj i Usuń', () => {
 describe('TabelaPolSn — opis pola sprzęgła z modelu', () => {
   const sprzeglo = pole('pole-sp', 'COUPLER', { equipment_refs: ['sp-1'] });
   it.each([
-    ['open', undefined, 'Łączy z: Sekcja 3 · normalnie otwarte'],
-    ['closed', 'open', 'Łączy z: Sekcja 3 · normalnie zamknięte'],
-    [undefined, 'open', 'Łączy z: Sekcja 3 · normalnie otwarte'],
+    ['open', undefined, 'Sprzęgło z sekcją 3 · normalnie otwarte'],
+    ['closed', 'open', 'Sprzęgło z sekcją 3 · normalnie zamknięte'],
+    [undefined, 'open', 'Sprzęgło z sekcją 3 · normalnie otwarte'],
   ])('stan normalny %s (stan bieżący %s) → %s', (normal, status, opis) => {
     const snap = {
       ...currentSnapshot,
@@ -230,7 +296,7 @@ describe('TabelaPolSn — opis pola sprzęgła z modelu', () => {
 
   it('pole sprzęgła bez gałęzi sprzęgła mówi to wprost; inne pole — brak opisu', () => {
     expect(opisSprzeglaPola({ ...currentSnapshot, branches: [] } as never, sprzeglo as never, SEKCJE)).toBe(
-      'Brak sprzęgła między sekcjami',
+      'Pole sprzęgła bez łącznika sprzęgła w modelu',
     );
     expect(opisSprzeglaPola(currentSnapshot as never, pole('x', 'OUT') as never, SEKCJE)).toBeNull();
   });
@@ -242,6 +308,6 @@ describe('TabelaPolSn — opis pola sprzęgła z modelu', () => {
       branches: [{ ref_id: 'sp-1', type: 'bus_coupler', from_bus_ref: 's1', to_bus_ref: 's3', status: 'open', normal_state: 'open' }],
     };
     render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
-    expect(screen.getByTestId('tabela-pol-sn-sprzeglo-pole-sp')).toHaveTextContent('Łączy z: Sekcja 3 · normalnie otwarte');
+    expect(screen.getByTestId('tabela-pol-sn-sprzeglo-pole-sp')).toHaveTextContent('Sprzęgło z sekcją 3 · normalnie otwarte');
   });
 });

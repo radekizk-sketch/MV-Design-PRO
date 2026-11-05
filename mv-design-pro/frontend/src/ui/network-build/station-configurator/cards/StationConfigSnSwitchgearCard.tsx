@@ -60,7 +60,7 @@ export function StationConfigSnSwitchgearCard(
       <div className="grid grid-cols-2 gap-2">
         <div>
           <div className="text-scada-muted">Napięcie znamionowe</div>
-          <div className="font-mono text-scada-text">{nominalVoltageKv !== null ? `${nominalVoltageKv} kV` : 'brak danych'}</div>
+          <div className="font-mono text-scada-text">{nominalVoltageKv !== null ? `${nominalVoltageKv} kV` : 'stacja bez szyny SN w modelu'}</div>
         </div>
         <div>
           <div className="text-scada-muted">Prąd znamionowy</div>
@@ -91,7 +91,7 @@ export function StationConfigSnSwitchgearCard(
         <div>
           <div className="text-scada-muted">Sprzęgło sekcyjne</div>
           <div className={hasCoupler ? 'text-status-ok' : 'text-scada-muted italic'}>
-            {hasCoupler ? '✓ obecne' : 'brak'}
+            {hasCoupler ? '✓ obecne' : 'brak sprzęgła w modelu stacji'}
           </div>
         </div>
         <div>

@@ -80,7 +80,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
               <th className="text-left">Powiązany obiekt</th>
               <th className="text-center">A/Z/P</th>
               <th className="text-left">Status</th>
-              <th className="text-left">HV fuse</th>
+              <th className="text-left">Bezpiecznik SN</th>
               <th className="text-right">Akcje</th>
             </tr>
           </thead>
@@ -93,7 +93,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
               >
                 <td className="font-mono">{b.designation}</td>
                 <td>{fieldRoleLabelPl(b.bayRole)}</td>
-                <td>{b.attachedObjectPl ?? <span className="italic text-scada-muted">—</span>}</td>
+                <td>{b.attachedObjectPl ?? <span className="italic text-scada-muted">zacisk pola bez obiektu w modelu</span>}</td>
                 <td className="text-center font-mono text-[10px]">
                   <span className={b.hasEquipment ? 'text-status-ok' : 'text-scada-muted'}>A</span>
                   /
@@ -110,7 +110,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                       onChange={(e) => onChangeHvFuse(b.bayId, e.target.value || null)}
                       className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
                     >
-                      <option value="">—</option>
+                      <option value="">bez bezpiecznika</option>
                       {hvFuses.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.nominal_voltage_kv}kV/{f.nominal_current_a}A · {f.class.replace('_', '-')}
@@ -146,7 +146,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                       <span className="text-status-error">nieznany</span>
                     );
                   })() : (
-                    <span className="text-scada-muted">—</span>
+                    <span className="text-scada-muted">bez bezpiecznika</span>
                   )}
                 </td>
                 <td className="text-right">

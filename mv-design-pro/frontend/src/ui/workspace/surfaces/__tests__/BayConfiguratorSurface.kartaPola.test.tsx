@@ -18,6 +18,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAppStateStore } from '../../../app-state';
 import { wyczyscPamiecKataloguPola } from '../../../field/useKatalogPola';
 import type { FieldReadModelItem, FieldReadModelResponse } from '../../../field/useFieldReadModel';
+import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import type { EnergyNetworkModel, Port } from '../../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
@@ -25,7 +26,7 @@ import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 
 let licznikPrzypadku = 0;
 
-function surface(entityRef: string | null): WorkspaceSurfaceDescriptor {
+function surface(entityRef: string | null, payload: Record<string, unknown> = {}): WorkspaceSurfaceDescriptor {
   return {
     surfaceId: 'karta-pola',
     screenCode: 'E-11',
@@ -35,7 +36,7 @@ function surface(entityRef: string | null): WorkspaceSurfaceDescriptor {
     entityType: 'sn_bay',
     parentSurfaceId: null,
     tabId: null,
-    routeState: { route: 'unknown', payload: {} },
+    routeState: { route: 'unknown', payload },
     breadcrumbs: [],
     supportsMiniSld: true,
     sizeClass: 'C',
@@ -216,6 +217,8 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
   });
   afterEach(() => {
     vi.unstubAllGlobals();
+    // jsdom nie ma `scrollIntoView` — testy fokusu podstawiają je na prototypie.
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   });
 
   it('pole spoza modelu: jawny komunikat, bez sekcji i bez zapytań o katalog', async () => {
@@ -392,5 +395,74 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       { bay_ref: 'bay_ref_1', mode: 'wyczysc' },
     );
     expect(await screen.findByTestId('wyposazenie-pola-wynik')).toHaveAttribute('data-stan', 'BRAK_DANYCH');
+  });
+
+  // Powiązania pola (KD6): odejście, aparat, zabezpieczenie z modelu; brak = akcja naprawcza
+  // wykonywana tu istniejącą operacją. Iloczyn: brak {odejście, aparat, zabezpieczenie} ×
+  // wejście {bez fokusu, z fokusem z tabeli pól GPZ}; kliki natywne (userEvent).
+  it('powiązania pola: braki nazwane, odejście → kreator magistrali z pola, zabezpieczenie → kreator przekaźnika pola', async () => {
+    podstawFetch({ pole: item(null, null) });
+    ustawModel(null, 15);
+    const user = userEvent.setup();
+    render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+    const powiazania = screen.getByTestId('karta-pola-powiazania');
+    expect(within(powiazania).getByTestId('karta-pola-napraw-odejscie-bay_ref_1')).toHaveTextContent(
+      'Bez odejścia · wyprowadź odcinek z pola',
+    );
+    expect(within(powiazania).getByTestId('karta-pola-napraw-zabezpieczenie-bay_ref_1')).toHaveTextContent(
+      'Brak sterownika · dodaj zabezpieczenie',
+    );
+    // Aparat z modelu pola (wyłącznik z pozycją katalogu) — nazwany rodzajem, bez akcji.
+    await waitFor(() =>
+      expect(within(powiazania).getByTestId('karta-pola-aparat-bay_ref_1')).toHaveTextContent('Aparat: wyłącznik z katalogu'),
+    );
+    expect(powiazania).not.toHaveTextContent('Brak danych');
+
+    await user.click(screen.getByTestId('karta-pola-napraw-odejscie-bay_ref_1'));
+    let formularz = useNetworkBuildStore.getState().activeSurface;
+    expect(formularz?.routeState.payload?.operation).toBe('continue_trunk_segment_sn');
+    expect(formularz?.routeState.payload?.context).toEqual({ field_ref: 'bay_ref_1', terminal_name: 'Pole liniowe 1' });
+
+    await user.click(screen.getByTestId('karta-pola-napraw-zabezpieczenie-bay_ref_1'));
+    formularz = useNetworkBuildStore.getState().activeSurface;
+    expect(formularz?.routeState.payload?.operation).toBe('add_relay');
+    expect(formularz?.routeState.payload?.context).toEqual({ bay_ref: 'bay_ref_1' });
+  });
+
+  it.each(['odejscie', 'zabezpieczenie'] as const)(
+    'fokus „%s” z tabeli pól GPZ: pozycja wyróżniona i przewinięta do widoku',
+    async (fokus) => {
+      podstawFetch({ pole: item(null, null) });
+      ustawModel(null, 15);
+      const przewin = vi.fn();
+      Element.prototype.scrollIntoView = przewin;
+      render(<BayConfiguratorSurface surface={surface('bay-1', { fokus })} />);
+      expect(screen.getByTestId(`karta-pola-${fokus}-bay_ref_1`)).toHaveAttribute('data-wyroznione', 'true');
+      expect(przewin).toHaveBeenCalled();
+      expect(screen.getByTestId('karta-pola-wyposazenie')).not.toHaveAttribute('data-wyroznione');
+    },
+  );
+
+  it('fokus „aparat”: przewinięcie do edytora wyposażenia pola (miejsce `set_bay_equipment`)', async () => {
+    podstawFetch({ pole: item(null, null) });
+    ustawModel(null, 15);
+    const przewiniete: Element[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      przewiniete.push(this);
+    };
+    render(<BayConfiguratorSurface surface={surface('bay-1', { fokus: 'aparat' })} />);
+    const edytor = screen.getByTestId('karta-pola-wyposazenie');
+    expect(edytor).toHaveAttribute('data-wyroznione', 'true');
+    expect(przewiniete).toContain(edytor);
+    // Pozycja aparatu w powiązaniach jest wyróżniona razem z edytorem.
+    expect(screen.getByTestId('karta-pola-aparat-bay_ref_1')).toHaveAttribute('data-wyroznione', 'true');
+  });
+
+  it('nieznany fokus w ładunku: nic nie jest wyróżnione', () => {
+    podstawFetch({ pole: item(null, null) });
+    ustawModel(null, 15);
+    render(<BayConfiguratorSurface surface={surface('bay-1', { fokus: 'cokolwiek' })} />);
+    expect(screen.getByTestId('karta-pola-powiazania').querySelector('[data-wyroznione]')).toBeNull();
+    expect(screen.getByTestId('karta-pola-wyposazenie')).not.toHaveAttribute('data-wyroznione');
   });
 });
