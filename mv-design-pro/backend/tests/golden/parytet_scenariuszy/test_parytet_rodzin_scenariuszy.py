@@ -26,6 +26,12 @@ Trzy testy:
   „Porównanie z progami: Obciążenie 134,74 % przekracza limit 100,0 %."). Dotkliwość,
   ranking, napięcia, przepływy, iteracje NR, liczniki i kolejność bez zmian; pozostałe
   27 hashy bez zmian.
+- Karta PROZA-BEZ-SYMBOLI-ASCII (2026-11-05): ``kontyngencje_n1/pierscien/pelny``
+  2ef1a570… → bb6484ae…. Widok N-1 sprzed karty (``b83f2e70b~1``) porównany liść po liściu
+  z drzewem karty: 169 liści, 2 różne, oba tekstowe, zbiór kluczy identyczny —
+  ``kontyngencje[1].przeciazenia[0].slad_kryterium[0..1].tekst`` (symbole ``I_od``,
+  ``I_r,od`` … jako segmenty wzoru ``$I_{od}$``, ``$I_{r,od}$``). Liczby, dotkliwość,
+  ranking i kolejność bez zmian; pozostałe hashe bez zmian.
 - Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (2026-10-21): cztery hashe rodziny D6 —
   ``nastawy/promieniowa/ln1_bb`` 13b31430… → 4d2557f9…, ``nastawy/promieniowa/
   ln1_bb_niestandardowe`` 83f9eb21… → 05c6aeb7…, ``nastawy/rozgalezienie/ln1_bb``
