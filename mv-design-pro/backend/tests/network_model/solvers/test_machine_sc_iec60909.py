@@ -504,5 +504,5 @@ def test_prad_znamionowy_niedodatni_to_odmowa_nie_krotnosc_zero():
             liczba_jednostek=1,
         )
     )
-    with pytest.raises(ValueError, match="Maszyna „Silnik bledny”: prąd znamionowy I_r"):
+    with pytest.raises(ValueError, match="Maszyna „Silnik bledny”: prąd znamionowy -?[0-9]"):
         compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)

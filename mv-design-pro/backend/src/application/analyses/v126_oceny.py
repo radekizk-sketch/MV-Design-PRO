@@ -140,15 +140,16 @@ _BEZ_WYDANIA = "wydanie i jednostka redakcyjna niepotwierdzone w programie"
 Z_NAPIECIE_PRACY = ZalozenieKryterium(
     "Z-1",
     "napięcia trwałej pracy ogranicznika",
-    "U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć "
-    "izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3.",
+    "Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego: przy doziemieniu "
+    "długotrwałym (sieć izolowana i kompensowana) równe przepięciu dorywczemu, przy doziemieniu "
+    "wyłączanym równe napięciu najwyższemu sieci podzielonemu przez √3.",
     f"Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 ({_BEZ_WYDANIA}).",
 )
 Z_PRZEPIECIE_DORYWCZE = ZalozenieKryterium(
     "Z-2",
     "wytrzymałości ogranicznika na przepięcie dorywcze",
     "Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze "
-    f"{format_liczba(_PROG_TOV_S)} s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia "
+    f"{format_liczba(_PROG_TOV_S)} s nie mniejsza od przepięcia dorywczego; zakłada się wyłączenie doziemienia "
     f"w czasie nie dłuższym niż {format_liczba(_PROG_TOV_S)} s (dłuższy czas wymaga krzywej "
     "TOV(t) producenta).",
     f"Reguła z praktyki IEC 60099-5 ({_BEZ_WYDANIA}).",
@@ -158,7 +159,8 @@ Z_PRZEPIECIE_DORYWCZE = ZalozenieKryterium(
 Z_MARGINES_IZOLACJI = ZalozenieKryterium(
     "Z-3",
     "marginesu ochrony izolacji",
-    "Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż "
+    "Margines ochrony izolacji (nadwyżka poziomu BIL nad napięciem obniżonym ogranicznika, "
+    "w procentach napięcia obniżonego) nie mniejszy niż "
     f"{format_liczba(_PROG_MARGINESU_BIL_PCT)} %.",
     "Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu "
     f"nie jest potwierdzona w programie; {_BEZ_WYDANIA}).",
@@ -168,15 +170,16 @@ Z_MARGINES_IZOLACJI = ZalozenieKryterium(
 Z_NAPIECIE_DOTYKOWE = ZalozenieKryterium(
     "Z-4",
     "napięcia dotykowego rażeniowego",
-    "Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego "
-    "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg).",
+    "Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego, zależnego od "
+    "rezystywności i współczynnika warstwy powierzchniowej oraz czasu trwania zwarcia "
+    "(ciało 70 kg).",
     f"Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka ({_BEZ_WYDANIA}).",
 )
 Z_NAPIECIE_KROKOWE = ZalozenieKryterium(
     "Z-5",
     "napięcia krokowego",
-    "Napięcie krokowe uziomu nie większe od dopuszczalnego "
-    "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg).",
+    "Napięcie krokowe uziomu nie większe od dopuszczalnego, zależnego od rezystywności "
+    "i współczynnika warstwy powierzchniowej oraz czasu trwania zwarcia (ciało 70 kg).",
     f"Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka ({_BEZ_WYDANIA}).",
 )
 Z_PRAD_RESZTKOWY = ZalozenieKryterium(
@@ -195,8 +198,10 @@ Z_PRAD_RESZTKOWY = ZalozenieKryterium(
 Z_ENERGIA_REZYSTORA = ZalozenieKryterium(
     "Z-7",
     "obciążalności cieplnej rezystora punktu neutralnego",
-    "Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie "
-    "większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne).",
+    "Energia wydzielona w rezystorze w czasie wyłączenia doziemienia (kwadrat prądu "
+    "doziemienia razy rezystancja razy czas wyłączenia) nie większa od energii znamionowej "
+    "(kwadrat prądu znamionowego razy rezystancja razy czas znamionowy; kryterium "
+    "adiabatyczne).",
     f"Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 ({_BEZ_WYDANIA}).",
 )
 Z_METODA_DETEKCJI = ZalozenieKryterium(
@@ -274,12 +279,14 @@ PODSTAWA_OBWIEDNI_TRV = PodstawaWymagania(
     dokument="IEC 62271-100",
     status="NIEUSTALONE",
     uwagi_pl=(
-        "obwiednia wytrzymałości wyłącznika (parametry u_c, t_3 dla napięcia znamionowego "
+        "obwiednia wytrzymałości wyłącznika (wartość szczytowa i czas narastania napięcia "
+        "powrotnego dla napięcia znamionowego "
         "i współczynnika pierwszego bieguna) nie jest daną programu"
     ),
 )
 BRAK_OBWIEDNI_TRV_PL = (
-    "Tabele parametrów obwiedni wytrzymałości wyłącznika na napięcie powrotne (u_c, t_3) "
+    "Tabele parametrów obwiedni wytrzymałości wyłącznika na napięcie powrotne (wartość "
+    "szczytowa i czas narastania) "
     "IEC 62271-100 dla napięcia znamionowego wyłącznika — do wprowadzenia do programu z "
     "podstawą (wydanie, tablica)."
 )
@@ -537,7 +544,7 @@ _ZAKRES_IZOLACJI = ZakresWaznosci(
     opis_pl=(
         "Ogranicznik przepięć jednego miejsca zainstalowania; przepięcie dorywcze przy "
         "doziemieniu z współczynnika zwarcia doziemnego sieci; poziom izolacji z typoszeregu "
-        "IEC 60071-1 dla napięcia najwyższego U_m."
+        "IEC 60071-1 dla napięcia najwyższego urządzenia."
     ),
     wykluczenia=(
         "przepięcia łączeniowe i odległość ochronna ogranicznika od aparatu",
@@ -584,9 +591,12 @@ def oceny_izolacji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 wynik=_liczba(w.get("mcov_kv")),
                 limit=_liczba(w.get("mcov_required_kv")),
                 limit_pl=(
-                    "U_c,wym = U_TOV (doziemienie długotrwałe)"
+                    "wymagane napięcie trwałej pracy równe przepięciu dorywczemu (doziemienie długotrwałe)"
                     if dlugotrwale
-                    else "U_c,wym = U_m/√3 (doziemienie wyłączane)"
+                    else (
+                        "wymagane napięcie trwałej pracy równe napięciu najwyższemu sieci "
+                        "przez √3 (doziemienie wyłączane)"
+                    )
                 ),
             ),
             _Porownanie(
@@ -603,7 +613,10 @@ def oceny_izolacji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 jednostka="kV",
                 wynik=_liczba(w.get("tov_10s_kv")),
                 limit=_liczba(w.get("predicted_tov_kv")),
-                limit_pl="U_TOV = k·U_m/√3",
+                limit_pl=(
+                    "przepięcie dorywcze: współczynnik zwarcia doziemnego razy napięcie "
+                    "najwyższe sieci przez √3"
+                ),
                 dotyczy=not dlugotrwale,
                 powod_stosowalnosci_pl=(
                     "sieć izolowana albo kompensowana pracuje z doziemieniem długotrwale — "
@@ -704,7 +717,7 @@ def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             jednostka="V",
             wynik=_liczba(ladunek.get("u_touch_calculated_v")),
             limit=_liczba(ladunek.get("u_touch_allowable_v")),
-            limit_pl="U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
+            limit_pl="dopuszczalne napięcie dotykowe wg IEEE 80 dla ciała 70 kg",
             braki=brak,
         ),
         _Porownanie(
@@ -718,7 +731,7 @@ def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             jednostka="V",
             wynik=_liczba(ladunek.get("u_step_calculated_v")),
             limit=_liczba(ladunek.get("u_step_allowable_v")),
-            limit_pl="U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
+            limit_pl="dopuszczalne napięcie krokowe wg IEEE 80 dla ciała 70 kg",
             braki=brak,
         ),
     )
@@ -905,7 +918,7 @@ def _porownanie_rezystora(
         jednostka="J",
         wynik=wynik,
         limit=limit,
-        limit_pl="E_n = I_n²·R·t_n (prąd i czas znamionowy rezystora z modelu)",
+        limit_pl=("energia znamionowa rezystora z prądu i czasu znamionowego z modelu"),
         braki=() if brak is None else (brak,),
     )
 
@@ -1014,7 +1027,7 @@ def oceny_trv(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
     przedmiot = Przedmiot(
         element_ref=None,
         nazwa_pl="Wyłącznik sieci SN",
-        opis_pl="Wyłącznik o napięciu znamionowym U_r przerywający prąd zwarciowy",
+        opis_pl="Wyłącznik o napięciu znamionowym przerywający prąd zwarciowy",
     )
     return [
         ocen_kryterium(
@@ -1138,7 +1151,7 @@ def oceny_rozruchu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 relacja="NIE_MNIEJ",
                 wielkosc_pl="moment rozruchowy silnika",
                 symbol_latex=r"M_r",
-                jednostka="p.u. (M_n)",
+                jednostka="p.u. (moment znamionowy)",
                 wynik=_liczba(w.get("torque_start_pu")),
                 limit=_liczba(w.get("load_start_torque_pu")),
                 limit_pl="moment obciążenia przy rozruchu z danych napędu",

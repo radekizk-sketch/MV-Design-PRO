@@ -132,7 +132,7 @@ def test_z_q_min_z_c_min_i_sk_min(u_kv: float, sk_max: float, sk_min: float) -> 
         and wpis_min["sk3_mva"] == sk_min
     )
     assert wpis_min["rx_ratio_zrodlo"] == "MODEL_MIN" and wpis_min["rx_ratio"] == 0.2
-    assert "c_min" in wpis_min["formula"] and "zalozenie" not in wpis_min
+    assert r"c_{\min}" in wpis_min["formula"] and "zalozenie" not in wpis_min
     assert "zalozenie" not in wpis_max
 
 
@@ -211,7 +211,7 @@ def test_zrodlo_z_samym_ik_max_jest_policzalne() -> None:
     assert map_enm_to_network_graph(enm).get_grid_sc_sources()
     assert _ik_biegu(enm, "MAX") == pytest.approx(9600.0, rel=1e-9)
     wpis = build_grid_source_trace(enm)[0]
-    assert wpis["tryb"] == "PRAD_ZWARCIOWY" and "I''_kQ" in wpis["formula"]
+    assert wpis["tryb"] == "PRAD_ZWARCIOWY" and "I''_{kQ}" in wpis["formula"]
 
 
 def test_sekwencja_zerowa_idzie_za_z_q_scenariusza() -> None:

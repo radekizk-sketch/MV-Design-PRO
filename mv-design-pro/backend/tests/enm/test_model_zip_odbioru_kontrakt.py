@@ -108,14 +108,16 @@ def test_etykiety_wspolczynnikow_zip_sa_po_polsku_i_nazywaja_wielkosc() -> None:
         nazwa: etykieta
         for nazwa, etykieta, _jednostka in MATERIALIZATION_CONTRACTS["OBCIAZENIE"].ui_fields
     }
-    assert etykiety["a_p"] == "Udział stałoimpedancyjny P (a_P)"
-    assert etykiety["b_p"] == "Udział stałoprądowy P (b_P)"
-    assert etykiety["c_p"] == "Udział stałomocowy P (c_P)"
-    assert etykiety["a_q"] == "Udział stałoimpedancyjny Q (a_Q)"
-    assert etykiety["b_q"] == "Udział stałoprądowy Q (b_Q)"
-    assert etykiety["c_q"] == "Udział stałomocowy Q (c_Q)"
-    assert etykiety["k_pf"] == "Wrażliwość częstotliwościowa P (k_pf)"
-    assert etykiety["k_qf"] == "Wrażliwość częstotliwościowa Q (k_qf)"
+    # Karta PROZA-BEZ-SYMBOLI-ASCII: etykieta nazywa wielkość słowami, bez symbolu ASCII.
+    assert etykiety["a_p"] == "Udział stałoimpedancyjny mocy czynnej"
+    assert etykiety["b_p"] == "Udział stałoprądowy mocy czynnej"
+    assert etykiety["c_p"] == "Udział stałomocowy mocy czynnej"
+    assert etykiety["a_q"] == "Udział stałoimpedancyjny mocy biernej"
+    assert etykiety["b_q"] == "Udział stałoprądowy mocy biernej"
+    assert etykiety["c_q"] == "Udział stałomocowy mocy biernej"
+    assert etykiety["k_pf"] == "Wrażliwość częstotliwościowa mocy czynnej"
+    assert etykiety["k_qf"] == "Wrażliwość częstotliwościowa mocy biernej"
+    assert not any("_" in etykieta for etykieta in etykiety.values())
 
 
 def test_domyslne_kontraktu_sa_domyslnymi_solvera() -> None:

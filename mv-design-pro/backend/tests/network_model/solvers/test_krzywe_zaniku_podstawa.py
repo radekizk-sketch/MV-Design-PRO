@@ -155,7 +155,7 @@ def test_interpolacja_q_mowi_wprost_ze_pkt_9_1_2_jej_nie_przewiduje() -> None:
     for tekst in (zapis["podstawa_reguly_pl"], wywod, dowod):
         assert "pkt 9.1.2" in tekst and "nie przewiduje" in tekst, tekst
     assert "q ≤ 1" in zapis["podstawa_reguly_pl"]
-    assert "po t_min" in zapis["podstawa_reguly_pl"]
+    assert "po czasie zwłoki" in zapis["podstawa_reguly_pl"]
 
 
 def test_interpolacja_mu_cytuje_zezwolenie_pkt_9_1_1() -> None:

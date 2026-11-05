@@ -18,6 +18,7 @@
 
 import { useState } from 'react';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 import type { KrokWywodu } from './SladWywodu';
 import { WZORZEC_STRINGS } from './strings';
 
@@ -79,7 +80,9 @@ function KrokiSekcji({ kroki, testId }: { kroki: readonly KrokWywodu[]; testId: 
           {krok.latex ? (
             <MathBlock latex={krok.latex} />
           ) : (
-            <code className="mvd-num">{krok.tekst}</code>
+            <code className="mvd-num">
+              <TekstZWzorami tekst={krok.tekst} />
+            </code>
           )}
         </li>
       ))}

@@ -746,8 +746,8 @@ def _validate_katalogowy_k_sc(k_sc: float | None, *, kontekst: str) -> None:
     if not math.isfinite(k_sc) or k_sc <= 0:
         odmowa_twarda(
             "KAT-T-003",
-            "Współczynnik udziału zwarciowego k_sc musi być liczbą skończoną > 0, "
-            f"otrzymano k_sc={k_sc!r} ({kontekst}).",
+            "Współczynnik udziału zwarciowego musi być liczbą skończoną > 0, "
+            f"otrzymano {k_sc!r} ({kontekst}).",
         )
 
 
@@ -764,26 +764,28 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
         if len(point) != 3:
             odmowa_twarda(
                 "KAT-T-005",
-                "Punkt krzywej P-Q musi mieć 3 wartości (p_mw, q_min_mvar, q_max_mvar), "
+                "Punkt krzywej P-Q musi mieć 3 wartości (moc czynna w MW, minimalna i maksymalna "
+                "moc bierna w Mvar), "
                 f"otrzymano: {point!r}.",
             )
         p_mw, q_min_mvar, q_max_mvar = point
         if p_mw < 0:
             odmowa_twarda(
                 "KAT-T-006",
-                f"Moc czynna punktu krzywej P-Q musi być >= 0, otrzymano p_mw={p_mw}.",
+                f"Moc czynna punktu krzywej P-Q musi być ≥ 0, otrzymano {p_mw} MW.",
             )
         if q_min_mvar > q_max_mvar:
             odmowa_twarda(
                 "KAT-T-007",
-                "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
-                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw}).",
+                "Punkt krzywej P-Q wymaga minimalnej mocy biernej nie większej od maksymalnej, "
+                f"otrzymano {q_min_mvar} Mvar > {q_max_mvar} Mvar (przy mocy czynnej "
+                f"{p_mw} MW).",
             )
         if prev_p is not None and p_mw <= prev_p:
             odmowa_twarda(
                 "KAT-T-008",
-                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po p_mw, "
-                f"otrzymano p_mw={p_mw} po p_mw={prev_p}.",
+                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po mocy czynnej, "
+                f"otrzymano {p_mw} MW po {prev_p} MW.",
             )
         prev_p = p_mw
 
@@ -841,7 +843,7 @@ def _validate_float_range(field_name: str, value: tuple[float, float] | None) ->
     if lo > hi:
         odmowa_twarda(
             "KAT-T-010",
-            f"Zakres nastawialności {field_name} wymaga min <= max, "
+            f"Zakres nastawialności {field_name} wymaga minimum nie większego od maksimum, "
             f"otrzymano min={lo} > max={hi}.",
         )
 
@@ -2089,7 +2091,8 @@ class ConverterType:
                     "KAT-T-017",
                     f"Naruszenie hierarchii mocy karty falownika: "
                     f"{lower_name}={lower} > {upper_name}={upper} "
-                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)",
+                    "(wymagane: moc zainstalowana ≥ moc znamionowa AC ≥ moc przyłączeniowa "
+                    "≥ moc osiągalna)",
                 )
 
     def to_dict(self) -> dict[str, Any]:
@@ -2258,15 +2261,21 @@ class BESSBatteryType:
         if self.capacity_kwh <= 0:
             odmowa_twarda(
                 "KAT-T-018",
-                f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).",
+                f"{self.id}: pojemność energetyczna musi być > 0 (jest {self.capacity_kwh} kWh).",
             )
         if self.nominal_voltage_dc_v <= 0:
             odmowa_twarda(
                 "KAT-T-019",
-                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v}).",
+                f"{self.id}: napięcie znamionowe DC musi być > 0 (jest {self.nominal_voltage_dc_v} V).",
             )
         if self.c_rate <= 0:
-            odmowa_twarda("KAT-T-020", f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+            odmowa_twarda(
+                "KAT-T-020",
+                (
+                    f"{self.id}: współczynnik szybkości ładowania i rozładowania musi być > 0 "
+                    f"(jest {self.c_rate})."
+                ),
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -5337,14 +5346,14 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("p_kw", "P [kW]", "kW"),
             ("q_kvar", "Q [kvar]", "kvar"),
             ("cos_phi", "cos φ", ""),
-            ("a_p", "Udział stałoimpedancyjny P (a_P)", ""),
-            ("b_p", "Udział stałoprądowy P (b_P)", ""),
-            ("c_p", "Udział stałomocowy P (c_P)", ""),
-            ("a_q", "Udział stałoimpedancyjny Q (a_Q)", ""),
-            ("b_q", "Udział stałoprądowy Q (b_Q)", ""),
-            ("c_q", "Udział stałomocowy Q (c_Q)", ""),
-            ("k_pf", "Wrażliwość częstotliwościowa P (k_pf)", ""),
-            ("k_qf", "Wrażliwość częstotliwościowa Q (k_qf)", ""),
+            ("a_p", "Udział stałoimpedancyjny mocy czynnej", ""),
+            ("b_p", "Udział stałoprądowy mocy czynnej", ""),
+            ("c_p", "Udział stałomocowy mocy czynnej", ""),
+            ("a_q", "Udział stałoimpedancyjny mocy biernej", ""),
+            ("b_q", "Udział stałoprądowy mocy biernej", ""),
+            ("c_q", "Udział stałomocowy mocy biernej", ""),
+            ("k_pf", "Wrażliwość częstotliwościowa mocy czynnej", ""),
+            ("k_qf", "Wrażliwość częstotliwościowa mocy biernej", ""),
         ),
     ),
     CatalogNamespace.KOMPENSATOR_SN.value: MaterializationContract(
@@ -5494,7 +5503,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("control_mode", "Tryb sterowania", ""),
             ("cos_phi_min", "cos φ min", ""),
             ("cos_phi_max", "cos φ max", ""),
-            ("k_sc", "k_sc (udział zwarciowy)", ""),
+            ("k_sc", "Współczynnik udziału zwarciowego", ""),
         ),
         pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
     ),
@@ -5516,7 +5525,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("p_charge_kw", "Pład [kW]", "kW"),
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),
-            ("k_sc", "k_sc (udział zwarciowy)", ""),
+            ("k_sc", "Współczynnik udziału zwarciowego", ""),
         ),
         pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
     ),
@@ -5638,7 +5647,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
             ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
             ("kind", "Technologia", ""),
-            ("k_sc", "k_sc (udział zwarciowy)", ""),
+            ("k_sc", "Współczynnik udziału zwarciowego", ""),
         ),
         pola_opcjonalne=(
             "droop_p_f_percent",

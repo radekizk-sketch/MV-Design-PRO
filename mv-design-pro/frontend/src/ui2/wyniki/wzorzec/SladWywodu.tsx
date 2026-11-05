@@ -4,7 +4,8 @@
  * zasadę; ślad obliczeń wszędzie, dostępny na żądanie/klik, bez przeładowania
  * ekranu"). Kroki wywodu przychodzą Z BACKENDU jako `{tekst, latex}` —
  * komponent WYŁĄCZNIE renderuje: krok z `latex` przez KaTeX (`MathBlock`,
- * fail-safe fallback do tekstu), krok tekstowy monospace. ZERO fizyki,
+ * fail-safe fallback do tekstu), krok tekstowy monospace, segment `$…$` prozy
+ * składa KaTeX (`TekstZWzorami`, karta PROZA-BEZ-SYMBOLI-ASCII). ZERO fizyki,
  * ZERO arytmetyki w UI.
  *
  * Wzorzec interakcji: zwinięty przycisk „Pokaż ślad obliczeń" → rozwinięta
@@ -13,6 +14,7 @@
 
 import { useState } from 'react';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 import { WZORZEC_STRINGS } from './strings';
 
 /** Krok wywodu z backendu: tekst zawsze, latex dla kroków ze wzorem. */
@@ -51,7 +53,9 @@ export function SladWywodu({ kroki, testIdPrefix }: SladWywoduProps) {
                 {krok.latex ? (
                   <MathBlock latex={krok.latex} />
                 ) : (
-                  <code className="mvd-num">{krok.tekst}</code>
+                  <code className="mvd-num">
+                    <TekstZWzorami tekst={krok.tekst} />
+                  </code>
                 )}
               </li>
             ))}

@@ -510,7 +510,7 @@ class TestGeneratorShortCircuitSources:
         assert len(trace) == 1
         assert trace[0]["key"] == "k_sc_zalozenie_pv1"
         assert trace[0]["result"] == {"k_sc": 1.1}
-        assert "1,1 przyjęte" in trace[0]["substitution"]
+        assert "1,1 przyjęty" in trace[0]["substitution"]
         assert "conv-pv-test" in trace[0]["substitution"]
 
     def test_pv_inverter_with_explicit_k_sc_from_catalog_changes_result(self):
@@ -560,7 +560,7 @@ class TestGeneratorShortCircuitSources:
         trace = graph.k_sc_assumptions_trace
         assert len(trace) == 1
         assert "DANE NIEPOPRAWNE" in trace[0]["notes"]
-        assert "k_sc=0.0" in trace[0]["substitution"]
+        assert "niesie wartość 0.0" in trace[0]["substitution"]
 
     @pytest.mark.parametrize(
         ("k_sc_zla_wartosc", "opis"),

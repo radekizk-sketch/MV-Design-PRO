@@ -49,7 +49,9 @@ class TestOcenSwzNierozstrzygalne:
         )
         assert result.status == SwzStatus.NIEROZSTRZYGALNE
         assert result.ia_wymagane_a is None
-        assert "G-D2" in result.przyczyna_pl
+        # Przyczyna nazywa granicę zweryfikowanego zakresu słowami — bez kryptonimu karty.
+        assert "bez ekstrapolacji" in result.przyczyna_pl
+        assert "G-D2" not in result.przyczyna_pl
 
     def test_mcb_missing_class_undecided(self) -> None:
         result = ocen_swz(

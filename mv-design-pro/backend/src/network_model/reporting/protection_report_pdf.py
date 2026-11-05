@@ -37,6 +37,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
 )
+from network_model.reporting.zapis_symboli import odcinki
 
 # Check for reportlab availability at import time
 try:
@@ -131,9 +132,18 @@ def export_protection_coordination_to_pdf(
         """Draw text at current y position."""
         nonlocal y
         font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
-        c.setFont(font_name, font_size)
-        c.drawString(x, y, text)
+        rysuj_odcinki(x, y, text, font_name, font_size)
         y -= line_height
+
+    def rysuj_odcinki(x: float, y_tekstu: float, text: str, font_name: str, size: int) -> None:
+        """Tekst z segmentami symboli `$X_{s}$` — indeks dolny mniejszym, obniżonym krojem."""
+        biezace_x = x
+        for odcinek in odcinki(text):
+            rozmiar = size * 0.7 if odcinek.indeks_dolny else size
+            obnizenie = size * 0.25 if odcinek.indeks_dolny else 0.0
+            c.setFont(font_name, rozmiar)
+            c.drawString(biezace_x, y_tekstu - obnizenie, odcinek.tekst)
+            biezace_x += c.stringWidth(odcinek.tekst, font_name, rozmiar)
 
     def draw_table_row(
         values: list[str],
@@ -148,13 +158,14 @@ def export_protection_coordination_to_pdf(
         font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         current_x = x
         for i, val in enumerate(values):
-            text = str(val)[:25]  # Truncate long text
+            text = str(val)
+            if "$" not in text:
+                text = text[:25]  # Truncate long text (segment symbolu nie jest przycinany)
             if colors and i < len(colors) and colors[i]:
                 c.setFillColor(HexColor(colors[i]))
             else:
                 c.setFillColor(HexColor("#000000"))
-            c.setFont(font_name, font_size)
-            c.drawString(current_x, y, text)
+            rysuj_odcinki(current_x, y, text, font_name, font_size)
             current_x += col_widths[i]
         c.setFillColor(HexColor("#000000"))  # Reset color
         y -= line_height
@@ -253,14 +264,14 @@ def export_protection_coordination_to_pdf(
     # 5) SENSITIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Czułość — iloraz I_min / I_s", left_margin, font_size=14, bold=True)
+    draw_text("Czułość — iloraz $I_{min}$ / $I_{s}$", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
     sensitivity_checks = result.get("sensitivity_checks", [])
     if sensitivity_checks:
         sens_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
-            ["Urządzenie", "I_min [A]", "I_s [A]", "Iloraz", "Wymagany"],
+            ["Urządzenie", "$I_{min}$ [A]", "$I_{s}$ [A]", "Iloraz", "Wymagany"],
             sens_cols,
             left_margin,
             bold=True,
@@ -294,14 +305,23 @@ def export_protection_coordination_to_pdf(
     # 6) SELECTIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Selektywność czasowa — odstęp t_nad − t_pod", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Selektywność czasowa — odstęp $t_{nad}$ − $t_{pod}$", left_margin, font_size=14, bold=True
+    )
     y -= 3 * mm
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
         sel_cols = [30 * mm, 30 * mm, 22 * mm, 22 * mm, 22 * mm, 25 * mm]
         draw_table_row(
-            ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"],
+            [
+                "Podrzędne",
+                "Nadrzędne",
+                "$t_{pod}$ [s]",
+                "$t_{nad}$ [s]",
+                "Odstęp [s]",
+                "Wymagany [s]",
+            ],
             sel_cols,
             left_margin,
             bold=True,
@@ -346,14 +366,14 @@ def export_protection_coordination_to_pdf(
     # 7) OVERLOAD CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Przeciążalność — iloraz I_s / I_rob", left_margin, font_size=14, bold=True)
+    draw_text("Przeciążalność — iloraz $I_{s}$ / $I_{rob}$", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
     overload_checks = result.get("overload_checks", [])
     if overload_checks:
         ovl_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
-            ["Urządzenie", "I_rob [A]", "I_s [A]", "Iloraz", "Wymagany"],
+            ["Urządzenie", "$I_{rob}$ [A]", "$I_{s}$ [A]", "Iloraz", "Wymagany"],
             ovl_cols,
             left_margin,
             bold=True,
@@ -394,7 +414,7 @@ def export_protection_coordination_to_pdf(
     if tcc_curves:
         tcc_cols = [40 * mm, 30 * mm, 30 * mm, 30 * mm]
         draw_table_row(
-            ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"], tcc_cols, left_margin, bold=True
+            ["Urządzenie", "Typ krzywej", "$I_{s}$ [A]", "TMS"], tcc_cols, left_margin, bold=True
         )
         y -= 2 * mm
 

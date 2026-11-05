@@ -24,6 +24,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from werdykt.zapis_latex import ZapisLatex
+
 # =============================================================================
 # VERDICT TYPES
 # =============================================================================
@@ -209,7 +211,7 @@ def build_trace_step(
     inputs: dict[str, Any],
     calculation: dict[str, Any] | None = None,
     outputs: dict[str, Any] | None = None,
-    formula: str | None = None,
+    formula: ZapisLatex | None = None,
 ) -> dict[str, Any]:
     """
     Build a WHITE-BOX trace step with consistent structure.

@@ -71,6 +71,7 @@ from application.protection_settings.engine import (
     SPZAnalysisResult,
 )
 from network_model.pochodne import a_na_ka
+from werdykt import format_liczba
 
 from .base import (
     CheckStatus,
@@ -257,7 +258,7 @@ class LineIDoublePrimeReferencePattern:
 
         if analysis_result is None:
             if input_data is None:
-                raise ValueError("Musisz podać input_data, analysis_result lub fixture_file")
+                raise ValueError("Musisz podać dane wejściowe, wynik analizy albo plik fikstury")
 
             trace_steps.append(
                 build_trace_step(
@@ -394,7 +395,7 @@ class LineIDoublePrimeReferencePattern:
         trace_steps.append(
             build_trace_step(
                 step="check_window",
-                description_pl="Sprawdzenie okna nastaw [I_min, I_max]",
+                description_pl="Sprawdzenie okna nastaw (od dolnej do górnej granicy)",
                 inputs={
                     "i_min_a": setting_window.i_min_a,
                     "i_max_a": setting_window.i_max_a,
@@ -482,15 +483,17 @@ class LineIDoublePrimeReferencePattern:
         if not setting_window.window_valid:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Selektywność wyznacza dolną granicę konfliktu: I_min = "
-                f"{instantaneous.i_min_selectivity_a:.1f} A (k_b={instantaneous.k_b}). "
+                "Selektywność wyznacza dolną granicę konfliktu: dolna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_min_selectivity_a)} A (współczynnik bezpieczeństwa "
+                f"{format_liczba(instantaneous.k_b)}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Selektywność spełniona: I_min = {instantaneous.i_min_selectivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
+                "Selektywność spełniona: dolna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_min_selectivity_a)} A (współczynnik bezpieczeństwa "
+                f"{format_liczba(instantaneous.k_b)})"
             )
 
         return build_check(
@@ -516,15 +519,17 @@ class LineIDoublePrimeReferencePattern:
         if limituje:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Czułość wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_sensitivity_a:.1f} A (k_b={instantaneous.k_b}). "
+                "Czułość wyznacza górną granicę konfliktu: górna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_max_sensitivity_a)} A (współczynnik "
+                f"bezpieczeństwa {format_liczba(instantaneous.k_b)}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Czułość spełniona: I_max = {instantaneous.i_max_sensitivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
+                "Czułość spełniona: górna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_max_sensitivity_a)} A (współczynnik "
+                f"bezpieczeństwa {format_liczba(instantaneous.k_b)})"
             )
 
         return build_check(
@@ -549,15 +554,17 @@ class LineIDoublePrimeReferencePattern:
         if limituje:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Kryterium cieplne wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_thermal_a:.1f} A (k_bth={instantaneous.k_bth}). "
+                "Kryterium cieplne wyznacza górną granicę konfliktu: górna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_max_thermal_a)} A (współczynnik bezpieczeństwa "
+                f"cieplny {format_liczba(instantaneous.k_bth)}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Kryterium cieplne spełnione: I_max = {instantaneous.i_max_thermal_a:.1f} A "
-                f"(k_bth={instantaneous.k_bth}, zadziałanie chwilowe 0,05 s)"
+                "Kryterium cieplne spełnione: górna granica okna nastaw "
+                f"{format_liczba(instantaneous.i_max_thermal_a)} A (współczynnik bezpieczeństwa "
+                f"cieplny {format_liczba(instantaneous.k_bth)}, zadziałanie chwilowe 0,05 s)"
             )
 
         return build_check(
@@ -575,8 +582,8 @@ class LineIDoublePrimeReferencePattern:
         if not setting_window.window_valid:
             status: CheckStatus = "FAIL"
             desc = setting_window.conflict_pl or (
-                f"Okno nastaw sprzeczne: I_min ({setting_window.i_min_a:.1f} A) > "
-                f"I_max ({setting_window.i_max_a:.1f} A)"
+                f"Okno nastaw sprzeczne: dolna granica {format_liczba(setting_window.i_min_a)} A > "
+                f"górna granica {format_liczba(setting_window.i_max_a)} A"
             )
         else:
             window_width = setting_window.i_max_a - setting_window.i_min_a
@@ -587,15 +594,16 @@ class LineIDoublePrimeReferencePattern:
             if relative_width < NARROW_WINDOW_THRESHOLD:
                 status = "WARN"
                 desc = (
-                    f"Okno nastaw wąskie: [{setting_window.i_min_a:.1f}, "
-                    f"{setting_window.i_max_a:.1f}] A, szerokość względna = "
-                    f"{relative_width*100:.1f}% < {NARROW_WINDOW_THRESHOLD*100}%"
+                    f"Okno nastaw wąskie: od {format_liczba(setting_window.i_min_a)} A do "
+                    f"{format_liczba(setting_window.i_max_a)} A, szerokość względna "
+                    f"{format_liczba(relative_width * 100)} % < "
+                    f"{format_liczba(NARROW_WINDOW_THRESHOLD * 100)} %"
                 )
             else:
                 status = "PASS"
                 desc = (
-                    f"Okno nastaw prawidłowe: [{setting_window.i_min_a:.1f}, "
-                    f"{setting_window.i_max_a:.1f}] A"
+                    f"Okno nastaw prawidłowe: od {format_liczba(setting_window.i_min_a)} A do "
+                    f"{format_liczba(setting_window.i_max_a)} A"
                 )
 
         return build_check(
@@ -623,16 +631,18 @@ class LineIDoublePrimeReferencePattern:
         if spz.spz_allowed:
             status: CheckStatus = "PASS"
             desc = (
-                f"SPZ dozwolone: wymagana wytrzymałość {a_na_ka(spz.i_th_required_a):.2f} kA "
-                f"<= dostępna {a_na_ka(spz.i_th_available_a):.2f} kA w cyklu "
-                f"{spz.total_fault_time_s:.2f} s"
+                "SPZ dozwolone: wymagana wytrzymałość "
+                f"{format_liczba(a_na_ka(spz.i_th_required_a))} kA ≤ dostępna "
+                f"{format_liczba(a_na_ka(spz.i_th_available_a))} kA w cyklu "
+                f"{format_liczba(spz.total_fault_time_s)} s"
             )
         else:
             status = "FAIL"
             desc = (
                 f"SPZ powinno być zablokowane: wymagana wytrzymałość "
-                f"{a_na_ka(spz.i_th_required_a):.2f} kA > dostępna "
-                f"{a_na_ka(spz.i_th_available_a):.2f} kA w cyklu {spz.total_fault_time_s:.2f} s"
+                f"{format_liczba(a_na_ka(spz.i_th_required_a))} kA > dostępna "
+                f"{format_liczba(a_na_ka(spz.i_th_available_a))} kA w cyklu "
+                f"{format_liczba(spz.total_fault_time_s)} s"
             )
 
         return build_check(
@@ -689,10 +699,16 @@ class LineIDoublePrimeReferencePattern:
 
         if local_generation.ryzyko_blokady_zsz:
             status: CheckStatus = "WARN"
-            desc = f"Ryzyko blokady ZSZ: wkład E-L {udzial*100:.1f}% >= próg {prog*100:.1f}%"
+            desc = (
+                "Ryzyko blokady ZSZ: wkład generacji lokalnej "
+                f"{format_liczba(udzial * 100)} % ≥ próg {format_liczba(prog * 100)} %"
+            )
         else:
             status = "PASS"
-            desc = f"Brak ryzyka blokady ZSZ: wkład E-L {udzial*100:.1f}% < próg {prog*100:.1f}%"
+            desc = (
+                "Brak ryzyka blokady ZSZ: wkład generacji lokalnej "
+                f"{format_liczba(udzial * 100)} % < próg {format_liczba(prog * 100)} %"
+            )
 
         return build_check(
             name_pl="Generacja lokalna (E-L)",
@@ -747,15 +763,17 @@ class LineIDoublePrimeReferencePattern:
         """Build Polish summary of validation result."""
         if verdict == "ZGODNE":
             return (
-                f"Wzorzec ZGODNY. Okno nastaw I>>: [{setting_window.i_min_a:.1f}, "
-                f"{setting_window.i_max_a:.1f}] A. Zalecana nastawa: "
-                f"{artifacts['recommended_setting_primary_a']:.1f} A. Wszystkie kryteria "
+                "Wzorzec ZGODNY. Okno nastaw I>>: od "
+                f"{format_liczba(setting_window.i_min_a)} A do "
+                f"{format_liczba(setting_window.i_max_a)} A. Zalecana nastawa: "
+                f"{format_liczba(artifacts['recommended_setting_primary_a'])} A. Wszystkie kryteria "
                 f"(selektywność, czułość, cieplne, SPZ) spełnione."
             )
         elif verdict == "GRANICZNE":
             return (
-                f"Wzorzec GRANICZNY. Okno nastaw I>>: [{setting_window.i_min_a:.1f}, "
-                f"{setting_window.i_max_a:.1f}] A. Kryteria spełnione z ograniczeniami — "
+                "Wzorzec GRANICZNY. Okno nastaw I>>: od "
+                f"{format_liczba(setting_window.i_min_a)} A do "
+                f"{format_liczba(setting_window.i_max_a)} A. Kryteria spełnione z ograniczeniami — "
                 "wąskie okno, blokada SPZ lub ryzyko blokady ZSZ od generacji lokalnej."
             )
         else:  # NIEZGODNE

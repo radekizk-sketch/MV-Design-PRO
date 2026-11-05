@@ -817,18 +817,19 @@ def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
     linie = [
         f"Doziemienie sieci ({doziemienie.get('tryb_pl')}): "
         f"{doziemienie.get('charakter_pl')} = {_fmt_liczba(doziemienie.get('prad_a'))} A"
-        f" | I_C={_fmt_liczba(doziemienie.get('i_c_a'))} A"
-        f" | I_L={_fmt_liczba(doziemienie.get('i_l_a'))} A"
-        f" | I_w={_fmt_liczba(doziemienie.get('i_w_a'))} A"
+        f" | prąd pojemnościowy sieci {_fmt_liczba(doziemienie.get('i_c_a'))} A"
+        f" | prąd dławika {_fmt_liczba(doziemienie.get('i_l_a'))} A"
+        f" | prąd czynny {_fmt_liczba(doziemienie.get('i_w_a'))} A"
         + (
-            f" | v={_fmt_liczba(doziemienie.get('rozstrojenie'))}"
+            f" | rozstrojenie {_fmt_liczba(doziemienie.get('rozstrojenie'))}"
             if doziemienie.get("rozstrojenie") is not None
             else ""
         ),
-        f"Napięcia przy doziemieniu: U0={_fmt_liczba(doziemienie.get('u0_v'))} V"
-        f" | U_b={_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
-        f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
-        f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
+        "Napięcia przy doziemieniu: składowa zerowa "
+        f"{_fmt_liczba(doziemienie.get('u0_v'))} V"
+        f" | faza B {_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
+        f" | faza C {_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
+        f" | współczynnik zwarcia doziemnego {_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
         f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
         # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
         *(
@@ -877,6 +878,7 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
                 or raw_result.get("short_circuit_type"),
                 "I_dyn": {
                     "symbol": "I_dyn",
+                    "symbol_latex": r"I_{\mathrm{dyn}}",
                     "label_pl": "Prąd dynamiczny do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ip_a")),
                     "source_field": "ip_a",
@@ -884,6 +886,7 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
                 },
                 "I_th": {
                     "symbol": "I_th",
+                    "symbol_latex": r"I_{\mathrm{th}}",
                     "label_pl": "Prąd cieplny zastępczy do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ith_a")),
                     "source_field": "ith_a",
@@ -899,8 +902,14 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
         "standard_basis": "IEC 60909",
         "scope": "SC3F",
         "symbols": {
-            "I_dyn": "Prąd dynamiczny porównywany z wytrzymałością dynamiczną aparatury.",
-            "I_th": "Prąd cieplny zastępczy porównywany z wytrzymałością cieplną aparatury.",
+            "I_dyn": {
+                "symbol_latex": r"I_{\mathrm{dyn}}",
+                "opis_pl": "Prąd dynamiczny porównywany z wytrzymałością dynamiczną aparatury.",
+            },
+            "I_th": {
+                "symbol_latex": r"I_{\mathrm{th}}",
+                "opis_pl": "Prąd cieplny zastępczy porównywany z wytrzymałością cieplną aparatury.",
+            },
         },
         "rows": rows,
     }

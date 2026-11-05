@@ -19,6 +19,8 @@ import copy
 import dataclasses
 import hashlib
 import json
+from pathlib import Path
+from typing import Any
 
 from network_model.catalog.mv_shunt_capacitor_catalog import (
     _SOURCE as _ZRODLO_BATERII_REFERENCYJNE,
@@ -195,6 +197,28 @@ PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
+#: Karta PROZA-BEZ-SYMBOLI-ASCII (2026-11-05): noty katalogu przekształtników (``note``,
+#: ``verification_note``) nazywają wielkości słowami zamiast symboli ASCII (``S_n``, ``U_n``,
+#: ``I_AC,nom``). Zmiana WYŁĄCZNIE tekstu — sonda zrzutu kanonicznego HEAD → karta: 58 różnic (40 poza polami karty projekcji),
+#: każda w polu tekstowym ``note``/``verification_note``, zero liczb, kluczy i typów. Ogniwo
+#: łańcucha cofa 40 tekstów spoza pól karty z fikstury `noty_katalogu_przed_proza_bez_symboli.json`.
+ODCISK_PO_PROZIE_BEZ_SYMBOLI = "436157b6b3caa3823fbc13d0a324729c4e2faf77ee9f2b8ba637f28765df9270"
+_NOTY_PRZED_PROZA = Path(__file__).with_name("noty_katalogu_przed_proza_bez_symboli.json")
+
+
+def _cofnij_proze_bez_symboli(zrzut: dict[str, object]) -> int:
+    """Cofa zmiany tekstu not karty PROZA-BEZ-SYMBOLI-ASCII; zwraca liczbę cofniętych not."""
+    wpisy = json.loads(_NOTY_PRZED_PROZA.read_text(encoding="utf-8"))
+    for wpis in wpisy:
+        wezel: Any = zrzut
+        *droga, ostatni = wpis["sciezka"]
+        for krok in droga:
+            wezel = wezel[krok]
+        assert wezel[ostatni] != wpis["przed"], wpis["sciezka"]
+        wezel[ostatni] = wpis["przed"]
+    return len(wpisy)
+
+
 def _wytnij_pola_baterii_bkr(zrzut: dict[str, object]) -> int:
     """Cofa zmiany karty UX-04/POLE-BKR-MODEL w zrzucie; zwraca liczbę zmienionych pozycji."""
     zmienione = 0
@@ -269,6 +293,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_PROZIE_BEZ_SYMBOLI
+    assert _cofnij_proze_bez_symboli(zrzut) == 40
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]

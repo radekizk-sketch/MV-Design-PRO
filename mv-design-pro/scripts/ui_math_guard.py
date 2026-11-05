@@ -99,7 +99,6 @@ PINY_BACKENDU: dict[str, int] = {
     "analysis/sanity_bounds/power_flow_bounds.py": 2,
     "analysis/sensitivity/builder.py": 2,
     "analysis/ssci_stability/models.py": 6,
-    "api/analysis_run_exports.py": 11,
     "api/catalog.py": 2,
     "api/enm.py": 1,
     "api/execution_runs.py": 1,
@@ -129,9 +128,6 @@ PINY_BACKENDU: dict[str, int] = {
     "application/analyses/protection/sanity_checks/rules.py": 1,
     "application/analyses/ssci_stability/service.py": 1,
     "application/analyses/state_estimation/service.py": 2,
-    "application/analyses/swz/werdykt.py": 19,
-    "application/analyses/swz/werdykt_tt_it.py": 24,
-    "application/analyses/v126_oceny.py": 22,
     "application/analyses/v126_wzory.py": 3,
     "application/analyses/wniosek_osd.py": 1,
     "application/analyses/wytrzymalosc_cieplna_przewodow.py": 3,
@@ -145,7 +141,6 @@ PINY_BACKENDU: dict[str, int] = {
     "application/project_archive/service.py": 1,
     "application/protection_settings/batch_run.py": 1,
     "application/protection_settings/engine.py": 13,
-    "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py": 20,
     "application/solvers/lv_temperature_correction.py": 1,
     "application/solvers/solver_capability_registry.py": 2,
     "application/station_templates/templates/wiatrowe.py": 2,
@@ -169,7 +164,6 @@ PINY_BACKENDU: dict[str, int] = {
     "enm/domain_operations_v2.py": 6,
     "enm/domain_ops_models.py": 5,
     "enm/dynamika_modele.py": 5,
-    "enm/mapping.py": 21,
     "enm/scenariusze.py": 6,
     "enm/slownik_komunikatow.py": 10,
     "enm/tolerancja_nn.py": 1,
@@ -186,15 +180,12 @@ PINY_BACKENDU: dict[str, int] = {
     "network_model/catalog/lv_disconnection_times_iec60364_4_41.py": 9,
     "network_model/catalog/mv_auxiliary_catalog.py": 4,
     "network_model/catalog/mv_benchmark_catalog.py": 1,
-    "network_model/catalog/mv_converter_catalog.py": 21,
     "network_model/catalog/mv_switch_catalog.py": 3,
     "network_model/catalog/mv_transformer_catalog.py": 5,
     "network_model/catalog/mv_zespol_uziemiajacy_catalog.py": 3,
-    "network_model/catalog/niezmienniki_katalogu.py": 33,
     "network_model/catalog/repository.py": 2,
     "network_model/catalog/resolver.py": 1,
     "network_model/catalog/switchgear/families.py": 1,
-    "network_model/catalog/types.py": 25,
     "network_model/core/autorytet_wyniku_zwarciowego.py": 2,
     "network_model/core/bateria_kondensatorow.py": 1,
     "network_model/core/branch.py": 5,
@@ -203,8 +194,6 @@ PINY_BACKENDU: dict[str, int] = {
     "network_model/core/ybus.py": 1,
     "network_model/core/zdolnosci_wkladu_zwarciowego.py": 4,
     "network_model/pochodne/pasma_napieciowe.py": 1,
-    "network_model/reporting/protection_report_docx.py": 10,
-    "network_model/reporting/protection_report_pdf.py": 10,
     "network_model/solvers/cable_ampacity_derating.py": 8,
     "network_model/solvers/cable_voltage_drop.py": 10,
     "network_model/solvers/conductor_thermal_withstand.py": 7,
@@ -229,10 +218,8 @@ PINY_BACKENDU: dict[str, int] = {
     "network_model/solvers/fault_loop_iec60364.py": 8,
     "network_model/solvers/frt_hvrt/contracts.py": 3,  # rdzeń B-01
     "network_model/solvers/grid_source_preview.py": 2,
-    "network_model/solvers/machine_sc_iec60909.py": 27,
     "network_model/solvers/ncrfg_ptpiree/engine.py": 24,  # rdzeń B-01
     "network_model/solvers/parametry_linii_napowietrznej.py": 16,
-    "network_model/solvers/petla_zwarcia_tt_it.py": 22,
     "network_model/solvers/phase_state_sn.py": 2,  # rdzeń B-01
     "network_model/solvers/power_flow_inverter.py": 6,
     "network_model/solvers/power_flow_newton_internal.py": 1,  # rdzeń B-01
@@ -571,6 +558,14 @@ def _literaly_identyfikatorow(drzewo: ast.Module, pomin: set[int]) -> None:
                 _stale(element)
 
     for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.Dict):
+            # Klucz struktury danych (`{"I_dyn": {...}}`, `{"I_k": [...]}`): wartością jest
+            # obiekt albo lista — klucz to nazwa pola zapisu JSON, nie tekst dla projektanta.
+            for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True):
+                if klucz is not None and isinstance(
+                    wartosc, ast.Dict | ast.List | ast.Tuple | ast.DictComp | ast.ListComp
+                ):
+                    _stale(klucz)
         if isinstance(wezel, ast.Compare):
             for operand in (wezel.left, *wezel.comparators):
                 _stale(operand)

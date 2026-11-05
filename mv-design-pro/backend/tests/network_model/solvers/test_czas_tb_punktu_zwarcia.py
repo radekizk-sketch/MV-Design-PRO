@@ -370,7 +370,10 @@ def test_czas_wlasny_roboczy_przenosi_sie_na_pochodzenie_tb() -> None:
     zrodlo, _ = _zrodlo_tb({"a": 0.30})
     assert zrodlo["czas_wlasny_pochodzenie"] == "PROPOZYCJA"
     assert zrodlo["wartosc_robocza"] is True and zrodlo["jakosc"] == "ESTIMATED"
-    assert "Czas własny wyłącznika jest wartością roboczą, więc t_b też" in zrodlo["opis_pl"]
+    assert (
+        "Czas własny wyłącznika jest wartością roboczą, więc czas przerwania prądu też"
+        in zrodlo["opis_pl"]
+    )
 
 
 def test_pola_nie_przy_szynie_punktu_nie_wplywaja_na_inne_punkty() -> None:
@@ -551,7 +554,7 @@ def test_wklady_t_min_i_zrodlo_z_tego_samego_rozstrzygniecia_co_wiersz_biegu(rod
     (wklad,) = dane["contributions"]
     assert wklad["mu"] == pytest.approx(_mu_reczne(wklad["ratio_ik_ir"], tb_s), abs=1e-9)
 
-    prefiks = "Czas t_min (= t_b punktu zwarcia): "
+    prefiks = "Czas minimalny wywodu równy czasowi przerwania prądu punktu zwarcia. "
     zdania = [k["tekst"] for k in dane["wywod"] if k["tekst"].startswith(prefiks)]
     zdania_sekcji = [
         k["tekst"] for k in dane["wywod_sekcje"][0]["kroki"] if k["tekst"].startswith(prefiks)

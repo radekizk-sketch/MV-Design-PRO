@@ -78,7 +78,7 @@ def test_z_q_rowna_sie_c_max_u2_przez_sk(u_kv: float, sk_mva: float, pasmo: str)
     assert wpis["c"] == c_max and wpis["pasmo_c"] == pasmo
     assert wpis["sk3_mva"] == sk_mva and wpis["u_nq_kv"] == u_kv
     assert wpis["rx_ratio_zrodlo"] == "MODEL"
-    assert "eq. 6" in wpis["formula"]
+    assert "wzór 6" in wpis["formula"]
     assert wpis["z_q_ohm"] == {"re": z_q.real, "im": z_q.imag}
 
 

@@ -401,7 +401,7 @@ def test_dowod_sc3f_ta_sama_definicja_co_slad(topologia: str, tb_s: float | None
     # wartości robocze parametrów maszyny (np. liczba par biegunów p bez tabliczki) — to inna
     # dana przyjęta, niezależna od t_b.
     ostrzezenia = " ".join(wynik.proof_sc3f.summary.warnings)
-    zdanie_tb = "czasie wyłączenia t_b będącym wartością roboczą"
+    zdanie_tb = "czasie wyłączenia będącym wartością roboczą"
     if tb_s is None:
         assert zdanie_tb in ostrzezenia and wiersz["tb_zrodlo"]["opis_pl"] in ostrzezenia
     else:

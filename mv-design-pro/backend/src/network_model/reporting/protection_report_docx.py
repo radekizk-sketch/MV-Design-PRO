@@ -37,6 +37,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
 )
+from network_model.reporting.zapis_symboli import odcinki
 
 # Check for python-docx availability
 try:
@@ -47,6 +48,16 @@ try:
     _DOCX_AVAILABLE = True
 except ImportError:
     _DOCX_AVAILABLE = False
+
+
+def _wypelnij(paragraf: Any, tekst: str, *, bold: bool = False) -> None:
+    """Tekst z segmentami symboli `$X_{s}$` → przebiegi akapitu; indeks dolny atrybutem
+    `subscript` (zapis wzoru formatu DOCX, nie ASCII `X_s`)."""
+    for odcinek in odcinki(tekst):
+        przebieg = paragraf.add_run(odcinek.tekst)
+        przebieg.bold = bold or None
+        if odcinek.indeks_dolny:
+            przebieg.font.subscript = True
 
 
 def _format_value(value: Any) -> str:
@@ -156,8 +167,7 @@ def export_protection_coordination_to_docx(
 
         hdr_cells = dev_table.rows[0].cells
         for i, h in enumerate(NAGLOWKI_NASTAW_PL):
-            hdr_cells[i].text = h
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            _wypelnij(hdr_cells[i].paragraphs[0], h, bold=True)
 
         for dev in sorted_devices:
             for wiersz in wiersze_nastaw_urzadzenia(dev):
@@ -173,7 +183,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SENSITIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Czułość — iloraz I_min / I_s", level=1)
+    _wypelnij(doc.add_heading(level=1), "Czułość — iloraz $I_{min}$ / $I_{s}$")
 
     sensitivity_checks = result.get("sensitivity_checks", [])
     if sensitivity_checks:
@@ -184,11 +194,10 @@ def export_protection_coordination_to_docx(
         sens_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "I_min [A]", "I_s [A]", "Iloraz", "Wymagany"]
+        headers = ["Urządzenie", "$I_{min}$ [A]", "$I_{s}$ [A]", "Iloraz", "Wymagany"]
         hdr_cells = sens_table.rows[0].cells
         for i, h in enumerate(headers):
-            hdr_cells[i].text = h
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            _wypelnij(hdr_cells[i].paragraphs[0], h, bold=True)
 
         # Data
         for check in sorted_sens_checks:
@@ -208,7 +217,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SELECTIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Selektywność czasowa — odstęp t_nad − t_pod", level=1)
+    _wypelnij(doc.add_heading(level=1), "Selektywność czasowa — odstęp $t_{nad}$ − $t_{pod}$")
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
@@ -222,11 +231,17 @@ def export_protection_coordination_to_docx(
         sel_table.style = "Table Grid"
 
         # Header
-        headers = ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Odstęp [s]", "Wymagany [s]"]
+        headers = [
+            "Podrzędne",
+            "Nadrzędne",
+            "$t_{pod}$ [s]",
+            "$t_{nad}$ [s]",
+            "Odstęp [s]",
+            "Wymagany [s]",
+        ]
         hdr_cells = sel_table.rows[0].cells
         for i, h in enumerate(headers):
-            hdr_cells[i].text = h
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            _wypelnij(hdr_cells[i].paragraphs[0], h, bold=True)
 
         # Data
         for check in sorted_sel_checks:
@@ -250,7 +265,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # OVERLOAD CHECKS
     # ==========================================================================
-    doc.add_heading("Przeciążalność — iloraz I_s / I_rob", level=1)
+    _wypelnij(doc.add_heading(level=1), "Przeciążalność — iloraz $I_{s}$ / $I_{rob}$")
 
     overload_checks = result.get("overload_checks", [])
     if overload_checks:
@@ -261,11 +276,10 @@ def export_protection_coordination_to_docx(
         ovl_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "I_rob [A]", "I_s [A]", "Iloraz", "Wymagany"]
+        headers = ["Urządzenie", "$I_{rob}$ [A]", "$I_{s}$ [A]", "Iloraz", "Wymagany"]
         hdr_cells = ovl_table.rows[0].cells
         for i, h in enumerate(headers):
-            hdr_cells[i].text = h
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            _wypelnij(hdr_cells[i].paragraphs[0], h, bold=True)
 
         # Data
         for check in sorted_ovl_checks:
@@ -297,11 +311,10 @@ def export_protection_coordination_to_docx(
         tcc_table.style = "Table Grid"
 
         # Header
-        headers = ["Urządzenie", "Typ krzywej", "I_s [A]", "TMS"]
+        headers = ["Urządzenie", "Typ krzywej", "$I_{s}$ [A]", "TMS"]
         hdr_cells = tcc_table.rows[0].cells
         for i, h in enumerate(headers):
-            hdr_cells[i].text = h
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
+            _wypelnij(hdr_cells[i].paragraphs[0], h, bold=True)
 
         # Data
         for curve in sorted_tcc_curves:

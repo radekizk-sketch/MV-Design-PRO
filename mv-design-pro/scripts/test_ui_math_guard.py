@@ -567,7 +567,9 @@ def test_iniekcja_golego_indeksu_w_kopii_realnego_modulu_czerwieni_main(
     for wzgledna in ("application/analyses/v126_katalog.py",):
         kopia = backend_src / wzgledna
         kopia.parent.mkdir(parents=True)
-        kopia.write_text((guard.BACKEND_SRC / wzgledna).read_text(encoding="utf-8"), encoding="utf-8")
+        kopia.write_text(
+            (guard.BACKEND_SRC / wzgledna).read_text(encoding="utf-8"), encoding="utf-8"
+        )
         kopie_py.append(kopia)
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
@@ -672,14 +674,20 @@ def test_adnotacja_zapis_latex_z_innego_modulu(
     ("kod", "trafienia"),
     [
         # zmienna z adnotacją przed rozgałęzieniem — każde przypisanie niesie wzór
-        ("def f(a):\n    s: ZapisLatex\n    if a:\n        s = 'I_k'\n    else:\n        s = 'I_b'\n", 0),
+        (
+            "def f(a):\n    s: ZapisLatex\n    if a:\n        s = 'I_k'\n    else:\n        s = 'I_b'\n",
+            0,
+        ),
         ("def f(a):\n    s = 'I_k'\n", 1),
         # krotka celów: wszystkie z adnotacją — wzór; jeden bez — proza
         ("def f():\n    r: ZapisLatex\n    x: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 0),
         ("def f():\n    r: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 2),
         # wartość zwracana funkcji `-> ZapisLatex`; zagnieżdżona funkcja ma własny typ zwrotu
         ("def f() -> ZapisLatex:\n    return 'I_k'\n", 0),
-        ("def f() -> ZapisLatex:\n    def g() -> str:\n        return 'prąd I_k'\n    return 'I_k'\n", 1),
+        (
+            "def f() -> ZapisLatex:\n    def g() -> str:\n        return 'prąd I_k'\n    return 'I_k'\n",
+            1,
+        ),
         # parametr funkcji zagnieżdżonej i wartość domyślna parametru
         ("def f():\n    def g(s: ZapisLatex) -> None: ...\n    g('I_k')\n", 0),
         ("def f(s: ZapisLatex = 'I_k') -> None: ...\n", 0),
@@ -709,7 +717,9 @@ def test_adnotacja_zapis_latex_zmiennych_i_zwrotu(
         ("x = {'I_k': 'prąd I_k'}\n", 2),
     ],
 )
-def test_identyfikator_z_mocy_skladni(monkeypatch, tmp_path: Path, kod: str, trafienia: int) -> None:
+def test_identyfikator_z_mocy_skladni(
+    monkeypatch, tmp_path: Path, kod: str, trafienia: int
+) -> None:
     src = _src_z_modulami(monkeypatch, tmp_path, modul=kod)
     assert len(guard.skanuj_py(src / "modul.py")) == trafienia
 
@@ -769,3 +779,18 @@ def test_piny_backendu_rdzeni_b01_oznaczone_i_w_pomiarze() -> None:
     assert any(jest_rdzeniem_b01(w) for w in guard.PINY_BACKENDU) == any(
         jest_rdzeniem_b01(w) for w in pomiar
     )
+
+
+def test_skanuj_py_klucz_struktury_danych_jest_identyfikatorem(tmp_path: Path) -> None:
+    """Klucz słownika, którego wartością jest obiekt albo lista (`{"I_dyn": {...}}`), to nazwa
+    pola zapisu JSON — poza skanem; ten sam klucz z wartością tekstową (opis wielkości) i sama
+    wartość tekstowa z symbolem ASCII są skanowane (iloczyn: wartość dict/list/str × klucz/proza).
+    """
+    plik = tmp_path / "eksport.py"
+    plik.write_text(
+        "A = {'I_dyn': {'symbol_latex': 'I_{dyn}'}, 'I_th': [1, 2], 'I_k': ({'a': 1},)}\n"
+        "B = {'I_dyn': 'Prąd dynamiczny'}\n"
+        "C = {'opis': {'k': 'prąd I_th aparatu'}}\n",
+        encoding="utf-8",
+    )
+    assert [numer for numer, _linia, _powod in guard.skanuj_py(plik)] == [2, 3]

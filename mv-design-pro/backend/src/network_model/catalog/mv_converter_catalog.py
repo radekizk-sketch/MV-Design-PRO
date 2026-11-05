@@ -561,7 +561,7 @@ def _karta_pv(
 
 
 _NOTA_Q_SMA = (
-    "|Q| = 0,6·S_n: karta podaje moc czynną przy cos φ = 0,8 równą 0,8·S_n "
+    "moduł mocy biernej równy 0,6 mocy pozornej znamionowej: karta podaje moc czynną przy cos φ = 0,8 równą 0,8 mocy pozornej znamionowej "
     "(„Nominal AC power at cos φ = 0.8”)"
 )
 
@@ -577,8 +577,8 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         q_mvar=1.32,
         zrodlo=_ZRODLO_SMA_SC2200,
         nota=(
-            "Karta: S_n = 2200 kVA przy cos φ = 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy "
-            "cos φ = 0,8, U_n = 385 V (308–462 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "Karta: moc pozorna znamionowa = 2200 kVA przy cos φ = 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy "
+            "cos φ = 0,8, napięcie znamionowe = 385 V (308–462 V), prąd AC znamionowy i maksymalny = 3300 A, cos φ "
             "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
         ),
         nota_q=_NOTA_Q_SMA,
@@ -594,8 +594,8 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         q_mvar=1.485,
         zrodlo=_ZRODLO_SMA_SC2200,
         nota=(
-            "Karta: S_n = 2475 kVA przy cos φ = 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy "
-            "cos φ = 0,8, U_n = 434 V (347–521 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "Karta: moc pozorna znamionowa = 2475 kVA przy cos φ = 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy "
+            "cos φ = 0,8, napięcie znamionowe = 434 V (347–521 V), prąd AC znamionowy i maksymalny = 3300 A, cos φ "
             "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
         ),
         nota_q=_NOTA_Q_SMA,
@@ -612,8 +612,8 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
             q_mvar=q_mvar,
             zrodlo=_ZRODLO_SMA_SC_UP,
             nota=(
-                f"Karta: S_n = {kva} kVA przy cos φ = 1 (35 °C), {p08_kw} kW przy cos φ = 0,8, "
-                f"U_n = {un_v} V, I_AC,nom = 3850 A (35 °C), cos φ regulowany 0,8 "
+                f"Karta: moc pozorna znamionowa = {kva} kVA przy cos φ = 1 (35 °C), {p08_kw} kW przy cos φ = 0,8, "
+                f"napięcie znamionowe = {un_v} V, prąd AC znamionowy = 3850 A (35 °C), cos φ regulowany 0,8 "
                 "przewzbudzenie – 0,8 niedowzbudzenie. Moc > 3150 kVA: transformator blokowy "
                 "wymaga pozycji powyżej typoszeregu normatywnego (zablokowany danymi)."
             ),
@@ -638,11 +638,11 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         pn_ac_mw=0.3,
         zrodlo=_ZRODLO_HUAWEI_330KTL,
         nota=(
-            "Karta: P_n,AC = 300 kW, S_max = 330 kVA, P_max (cos φ = 1) = 330 kW, U_n = 800 V "
-            "(3W + PE), I_n = 216,6 A, I_max = 238,2 A, cos φ regulowany 0,8 LG – 0,8 LD."
+            "Karta: moc czynna znamionowa AC = 300 kW, moc pozorna maksymalna = 330 kVA, moc czynna maksymalna (cos φ = 1) = 330 kW, napięcie znamionowe = 800 V "
+            "(3W + PE), prąd znamionowy = 216,6 A, prąd maksymalny = 238,2 A, cos φ regulowany 0,8 LG – 0,8 LD."
         ),
         nota_q=(
-            "|Q| = 0,6·S_max: zakres cos φ 0,8 LG – 0,8 LD przy mocy pozornej maksymalnej "
+            "moduł mocy biernej równy 0,6 mocy pozornej maksymalnej: zakres cos φ 0,8 LG – 0,8 LD przy mocy pozornej maksymalnej "
             "(interpretacja — karta nie podaje Q wprost)"
         ),
     ),
@@ -673,8 +673,8 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW.extend(
                 "0,8 przewzbudzenie – 0,8 niedowzbudzenie."
             ),
             nota_q=(
-                "|Q| = 0,6·S_n: cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie "
-                "w granicy mocy pozornej S_n (przy mocy znamionowej cos φ = 1 — moc bierną "
+                "moduł mocy biernej równy 0,6 mocy pozornej znamionowej: cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie "
+                "w granicy mocy pozornej znamionowej (przy mocy znamionowej cos φ = 1 — moc bierną "
                 "uzyskuje się kosztem mocy czynnej; interpretacja, instrukcja nie podaje Q "
                 "wprost)"
             ),
@@ -739,7 +739,7 @@ CONVERTER_PV_NN_KOPIE_KART: list[dict[str, Any]] = [
         catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
         control_mode="STALY_COS_PHI",
         note=(
-            "Kopia karty: P_ac,r = 10 000 W, moc maksymalna 10 000 VA, I_ac,nom = 14,4 A, sieć "
+            "Kopia karty: moc czynna znamionowa AC = 10 000 W, moc maksymalna 10 000 VA, prąd AC znamionowy = 14,4 A, sieć "
             "3-NPE 400 V / 230 V albo 380 V / 220 V (+20 % / −30 %), 50/60 Hz, cos φ 0–1 "
             "ind./poj. Karta dotyczy wariantu 10.0-3-M-OS (rynek australijski) — przyjęcie tych "
             "danych dla wersji standardowej 10.0-3-M jest interpretacją, niepotwierdzoną. "
@@ -954,10 +954,10 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
         catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
         note=(
             "Kopia dokumentu producenta: moc znamionowa turbiny 3,075 MW (rozdz. 1); "
-            "generator synchroniczny z magnesami trwałymi P_N = 3,3 MW, S_N = 3880 kVA "
-            "(cos φ 0,85), f_N = 145 Hz, stojan 3 × 710 V przy 1450 obr./min, gwiazda "
-            "(tab. 3-1); przekształtnik pełnej mocy S_N = 3800 kVA, strona sieci 650 V, "
-            "strona generatora 710 V, I_N = 3440 A (tab. 3-2); zdolność bierna cos φ = 0,87 "
+            "generator synchroniczny z magnesami trwałymi moc czynna znamionowa = 3,3 MW, moc pozorna znamionowa = 3880 kVA "
+            "(cos φ 0,85), częstotliwość znamionowa = 145 Hz, stojan 3 × 710 V przy 1450 obr./min, gwiazda "
+            "(tab. 3-1); przekształtnik pełnej mocy moc pozorna znamionowa = 3800 kVA, strona sieci 650 V, "
+            "strona generatora 710 V, prąd znamionowy = 3440 A (tab. 3-2); zdolność bierna cos φ = 0,87 "
             "poj./ind. po stronie nN transformatora (rys. 9-1). Moc biernej w Mvar dokument nie "
             "podaje (pola puste). Udział zwarciowy i profil dynamiczny — brak w dokumencie. "
             "Wykluczona z doboru szablonu do czasu dokumentu z kanału producenta."
@@ -993,12 +993,12 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
         catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
         note=(
             "Kopia dokumentu producenta, alternatywa 1 generatora: synchroniczny z magnesami "
-            "trwałymi, f_N 0–200 Hz, stojan 3 × 710 V przy prędkości znamionowej, 12 biegunów, "
+            "trwałymi, częstotliwość znamionowa 0–200 Hz, stojan 3 × 710 V przy prędkości znamionowej, 12 biegunów, "
             "gwiazda (tab. 3-1); przekształtnik pełnej mocy, strona sieci 650 V, strona "
             "generatora do 710 V zależnie od prędkości (rozdz. 3.2); moc znamionowa turbiny "
             "3,3 MW (rozdz. 1). Zdolność bierna niesymetryczna: cos φ = 0,863 przy "
             "przewzbudzeniu i 0,933 przy niedowzbudzeniu po stronie nN transformatora "
-            "(rys. 9-2) — kontrakt ma jedno pole cos φ_min, więc zostaje puste. S_n "
+            "(rys. 9-2) — kontrakt ma jedno pole minimalny cos φ, więc zostaje puste. Moc pozorna znamionowa "
             "wyprowadzona (3,3 / 0,863), nie z karty. Mocy znamionowej generatora dokument nie "
             "podaje. Udział zwarciowy i profil dynamiczny — brak w dokumencie. Wykluczona "
             "z doboru szablonu do czasu dokumentu z kanału producenta."
@@ -1015,7 +1015,7 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
                 "field_name": "sn_mva",
                 "quality": "ESTIMATED",
                 "source_ref": _ZRODLO_VESTAS_V112_3_3,
-                "note": "wyprowadzona: P_n 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
+                "note": "wyprowadzona: moc znamionowa 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
                 "podaje mocy pozornej przekształtnika",
             },
         },
@@ -1045,12 +1045,12 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
         catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
         note=(
             "Kopia dokumentu producenta, alternatywa 2 generatora: asynchroniczny klatkowy, "
-            "f_N 0–100 Hz, stojan 3 × 750 V przy prędkości znamionowej, 4/6 biegunów, gwiazda "
+            "częstotliwość znamionowa 0–100 Hz, stojan 3 × 750 V przy prędkości znamionowej, 4/6 biegunów, gwiazda "
             "albo trójkąt (tab. 3-1), za przekształtnikiem pełnej mocy — strona sieci 650 V "
             "(rozdz. 3.2). Napięcie przekształtnika po stronie generatora: dokument podaje "
             "„do 710 V” wspólnie dla obu alternatyw, co przeczy stojanowi 750 V alternatywy 2 — "
-            "pole zostaje puste (sprzeczność dokumentu, nie wybór). Zdolność bierna i S_n — jak "
-            "w alternatywie 1 (rys. 9-2; S_n wyprowadzona 3,3 / 0,863). Udział zwarciowy "
+            "pole zostaje puste (sprzeczność dokumentu, nie wybór). Zdolność bierna i moc pozorna znamionowa — jak "
+            "w alternatywie 1 (rys. 9-2; moc pozorna znamionowa wyprowadzona 3,3 / 0,863). Udział zwarciowy "
             "pochodzi z przekształtnika, nie z impedancji maszyny klatkowej; dokument go nie "
             "deklaruje. Wykluczona z doboru szablonu do czasu dokumentu z kanału producenta."
         ),
@@ -1071,7 +1071,7 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
                 "field_name": "sn_mva",
                 "quality": "ESTIMATED",
                 "source_ref": _ZRODLO_VESTAS_V112_3_3,
-                "note": "wyprowadzona: P_n 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
+                "note": "wyprowadzona: moc znamionowa 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie "
                 "podaje mocy pozornej przekształtnika",
             },
         },
@@ -1106,10 +1106,10 @@ CONVERTER_WIND_NN_VESTAS_V112: list[dict[str, Any]] = [
             "Deklaracja (dokument nieodczytany): turbina 3450 kW, wirnik 112 m; generator "
             "asynchroniczny klatkowy VND SFIG V2 – DASG 560/6M, 750 V, 1450 obr./min, "
             "izolacja H, IP54; przekształtnik pełnej mocy Vestas — strona generatora 750 V AC, "
-            "strona sieci 650 V AC, S_n 4,4 MVA, U_DC 1150 V, 50/60 Hz po stronie sieci. "
+            "strona sieci 650 V AC, moc pozorna znamionowa 4,4 MVA, napięcie DC 1150 V, 50/60 Hz po stronie sieci. "
             "Transformator blokowy tej konfiguracji (suchy 4000 kVA, 0,65/33 kV, Dyn5) nie "
             "wchodzi do katalogu: 33 kV nie jest napięciem sieci polskiej, a deklaracja nie "
-            "podaje u_k ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy "
+            "podaje napięcie zwarcia ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy "
             "i profil dynamiczny — brak w deklaracji (pola puste)."
         ),
         card_field_status=_reference_card_field_status(

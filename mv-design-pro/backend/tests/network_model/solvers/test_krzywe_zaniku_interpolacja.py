@@ -245,9 +245,9 @@ def test_wagi_interpolacji_nie_sa_zamienione() -> None:
 @pytest.mark.parametrize("zly", [0.0, -0.1, float("nan"), float("inf")], ids=repr)
 def test_t_min_niefizyczny_to_odmowa_nie_krzywa(zly: float) -> None:
     """Dawne `_krzywa` dawało dla NaN cicho krzywą 0,25 s; teraz niefizyczne t_min = błąd."""
-    with pytest.raises(ValueError, match="Minimalny czas zwłoki t_min"):
+    with pytest.raises(ValueError, match="Minimalny czas zwłoki"):
         slad_mu(7.25, zly)
-    with pytest.raises(ValueError, match="Minimalny czas zwłoki t_min"):
+    with pytest.raises(ValueError, match="Minimalny czas zwłoki"):
         slad_q(1.0, zly)
 
 
@@ -285,8 +285,8 @@ def test_wywod_poza_zakresem_nazywa_krzywa_brzegowa() -> None:
     ponizej = kroki_krzywej_zaniku(slad_mu(7.25, 0.01))
     powyzej = kroki_krzywej_zaniku(slad_mu(7.25, 0.4))
     assert len(ponizej) == len(powyzej) == 1
-    assert "poniżej najkrótszej krzywej normy — krzywa t_min = 0,02 s" in ponizej[0]["tekst"]
-    assert "krzywa normy dla t_min ≥ 0,25 s" in powyzej[0]["tekst"]
+    assert "poniżej najkrótszej krzywej normy — krzywa 0,02 s" in ponizej[0]["tekst"]
+    assert "krzywa normy dla czasu zwłoki od 0,25 s" in powyzej[0]["tekst"]
 
 
 # ── Korpus golden: w węzłach i poza zakresem bit w bit, pomiędzy węzłami interpolacja ────

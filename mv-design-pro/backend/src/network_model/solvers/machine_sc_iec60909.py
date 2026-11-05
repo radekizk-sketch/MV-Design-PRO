@@ -50,6 +50,7 @@ from network_model.solvers.short_circuit_core import (
     build_zbus,
     odmowa_wezla_zwarcia_spoza_grafu,
 )
+from werdykt.zapis_latex import ZapisLatex
 
 _SQRT3 = math.sqrt(3.0)
 
@@ -158,20 +159,20 @@ class PodstawaRegulyKrzywej:
 def _podstawy_regul() -> dict[tuple[str, str], PodstawaRegulyKrzywej]:
     mu, q = NORMA_KRZYWYCH_ZANIKU["mu"], NORMA_KRZYWYCH_ZANIKU["q"]
     ponizej = (
-        "interpretacja inżynierska: norma nie podaje krzywych dla t_min < 0,02 s, przyjęto "
-        "krzywą t_min = 0,02 s"
+        "interpretacja inżynierska: norma nie podaje krzywych dla minimalnego czasu zwłoki "
+        "krótszego niż 0,02 s, przyjęto krzywą 0,02 s"
     )
     return {
         ("mu", REGULA_WEZEL): PodstawaRegulyKrzywej(
             PODSTAWA_NORMA,
             mu,
-            f"wartość krzywej węzła t_min ({mu})",
+            f"wartość krzywej węzła czasu zwłoki ({mu})",
             "krzywa normy, IEC 60909-0:2016 pkt 9.1.1",
         ),
         ("mu", REGULA_POWYZEJ_ZAKRESU): PodstawaRegulyKrzywej(
             PODSTAWA_NORMA,
             mu,
-            f"krzywa normy dla t_min ≥ 0,25 s ({mu})",
+            f"krzywa normy dla czasu zwłoki od 0,25 s ({mu})",
             "krzywa normy dla czasu zwłoki od 0,25 s, IEC 60909-0:2016 pkt 9.1.1",
         ),
         ("mu", REGULA_PONIZEJ_ZAKRESU): PodstawaRegulyKrzywej(
@@ -190,19 +191,19 @@ def _podstawy_regul() -> dict[tuple[str, str], PodstawaRegulyKrzywej]:
         ("mu", REGULA_BEZ_ZANIKU): PodstawaRegulyKrzywej(
             PODSTAWA_NORMA,
             mu,
-            f"μ = 1 przy każdym t_min dla I″k/I_r ≤ 2, zwarcie odległe od generatora ({mu})",
+            f"μ = 1 przy każdym czasie zwłoki dla krotności I″k względem prądu znamionowego ≤ 2, zwarcie odległe od generatora ({mu})",
             "zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1",
         ),
         ("q", REGULA_WEZEL): PodstawaRegulyKrzywej(
             PODSTAWA_NORMA,
             q,
-            f"wartość krzywej węzła t_min ({q})",
+            f"wartość krzywej węzła czasu zwłoki ({q})",
             "krzywa normy, IEC 60909-0:2016 pkt 9.1.2",
         ),
         ("q", REGULA_POWYZEJ_ZAKRESU): PodstawaRegulyKrzywej(
             PODSTAWA_NORMA,
             q,
-            f"krzywa normy dla t_min ≥ 0,25 s ({q})",
+            f"krzywa normy dla czasu zwłoki od 0,25 s ({q})",
             "krzywa normy dla czasu zwłoki od 0,25 s, IEC 60909-0:2016 pkt 9.1.2",
         ),
         ("q", REGULA_PONIZEJ_ZAKRESU): PodstawaRegulyKrzywej(
@@ -215,7 +216,7 @@ def _podstawy_regul() -> dict[tuple[str, str], PodstawaRegulyKrzywej]:
             PODSTAWA_ZALOZENIE_INZYNIERSKIE,
             q,
             "interpretacja inżynierska: IEC 60909-0:2016 pkt 9.1.2 nie przewiduje interpolacji "
-            "między krzywymi q; przyjęto interpolację liniową po t_min między krzywymi "
+            "między krzywymi q; przyjęto interpolację liniową po czasie zwłoki między krzywymi "
             f"sąsiednich węzłów, spójną z krzywymi {q} (q ≤ 1)",
             "interpolacja liniowa po czasie zwłoki: interpretacja inżynierska, IEC 60909-0:2016 "
             "pkt 9.1.2 jej nie przewiduje",
@@ -224,7 +225,7 @@ def _podstawy_regul() -> dict[tuple[str, str], PodstawaRegulyKrzywej]:
             PODSTAWA_ZALOZENIE_INZYNIERSKIE,
             q,
             f"interpretacja inżynierska: wzór (69) nie jest określony dla m ≤ 0 (ln m) — "
-            f"przyjęto q = 1, brak dodatkowego zaniku, zachowawczo dla I_b ({q})",
+            f"przyjęto q = 1, brak dodatkowego zaniku, zachowawczo dla prądu wyłączeniowego ({q})",
             "interpretacja inżynierska: m niedodatnie, q = 1, IEC 60909-0:2016 pkt 9.1.2",
         ),
     }
@@ -331,7 +332,7 @@ def _slad_krzywej(
         # t_min = t_b punktu jest rozstrzygnięte i sprawdzone przed rdzeniem (karta
         # TB-WARTOSC-ROBOCZA); niefizyczna liczba tutaj to błąd wołającego, nie krzywa.
         raise ValueError(
-            f"Minimalny czas zwłoki t_min = {t_min_s!r} s nie jest dodatnią liczbą skończoną — "
+            f"Minimalny czas zwłoki {t_min_s!r} s nie jest dodatnią liczbą skończoną — "
             f"krzywej {wielkosc} ({NORMA_KRZYWYCH_ZANIKU[wielkosc]}) nie da się wyznaczyć."
         )
 
@@ -380,7 +381,7 @@ def _slad_krzywej(
                 waga=waga,
                 wynik=dolny.wartosc + waga * (gorny.wartosc - dolny.wartosc),
             )
-    raise AssertionError(f"t_min = {t_min_s!r} s poza pokryciem węzłów krzywej {wielkosc}")
+    raise AssertionError(f"Czas zwłoki {t_min_s!r} s poza pokryciem węzłów krzywej {wielkosc}")
 
 
 def slad_mu(ratio_ik_ir: float, t_min_s: float) -> SladKrzywejZaniku:
@@ -463,7 +464,7 @@ def _wzor_wezla_latex(slad: SladKrzywejZaniku, wezel: WezelKrzywejZaniku, symbol
     """Wzór krzywej węzła z podstawieniem i wynikiem (z notą przycięcia do [0; 1])."""
     if slad.wielkosc == "mu":
         a, b, c = wezel.wspolczynniki
-        wzor = (
+        wzor: ZapisLatex = (
             rf"{symbol} = {a:.2f} + {b:.2f}\,e^{{-{c:.2f}\,I''_k/I_r}}"
             rf" = {a:.2f} + {b:.2f}\,e^{{-{c:.2f} \cdot {slad.argument:.2f}}}"
         )
@@ -522,13 +523,13 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
     )
     if slad.regula != REGULA_INTERPOLACJA:
         zakres = {
-            REGULA_WEZEL: f"krzywa normy t_min = {_t_pl(dolny.t_min_s)} s",
+            REGULA_WEZEL: f"krzywa normy dla czasu zwłoki {_t_pl(dolny.t_min_s)} s",
             REGULA_PONIZEJ_ZAKRESU: (
-                f"t_min = {_t_pl(slad.t_min_s)} s poniżej najkrótszej krzywej normy — "
-                f"krzywa t_min = {_t_pl(dolny.t_min_s)} s"
+                f"czas zwłoki {_t_pl(slad.t_min_s)} s poniżej najkrótszej krzywej normy — "
+                f"krzywa {_t_pl(dolny.t_min_s)} s"
             ),
             REGULA_POWYZEJ_ZAKRESU: (
-                f"t_min = {_t_pl(slad.t_min_s)} s, krzywa normy dla t_min ≥ "
+                f"czas zwłoki {_t_pl(slad.t_min_s)} s, krzywa normy dla czasu zwłoki od "
                 f"{_t_pl(dolny.t_min_s)} s"
             ),
         }[slad.regula]
@@ -547,21 +548,21 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
     return (
         {
             "tekst": (
-                f"{nazwa} — krzywa normy węzła t_min = {t_1} s ({argument}, {podstawa.norma}): "
+                f"{nazwa} — krzywa normy węzła czasu zwłoki {t_1} s ({argument}, {podstawa.norma}): "
                 f"{znak}({t_1} s) = {dolny.wartosc:.3f}"
             ),
             "latex": _wzor_wezla_latex(slad, dolny, rf"{symbol}_{{{indeks_1}}}"),
         },
         {
             "tekst": (
-                f"{nazwa} — krzywa normy węzła t_min = {t_2} s ({argument}, {podstawa.norma}): "
+                f"{nazwa} — krzywa normy węzła czasu zwłoki {t_2} s ({argument}, {podstawa.norma}): "
                 f"{znak}({t_2} s) = {gorny.wartosc:.3f}"
             ),
             "latex": _wzor_wezla_latex(slad, gorny, rf"{symbol}_{{{indeks_2}}}"),
         },
         {
             "tekst": (
-                f"{nazwa}: t_min = {_t_pl(slad.t_min_s)} s leży między krzywymi normy "
+                f"{nazwa}: czas zwłoki {_t_pl(slad.t_min_s)} s leży między krzywymi normy "
                 f"{t_1} s i {t_2} s — {podstawa.opis_pl}; waga = {slad.waga:.4f}, "
                 f"{znak} = {slad.wynik:.3f}"
             ),
@@ -686,7 +687,9 @@ def zdanie_zalozenia_krzywej_pl(wpis: Mapping[str, Any]) -> str:
     nazywa rodzaj, nigdy identyfikator.
     """
     symbol = "μ" if wpis.get("wielkosc") == "mu" else "q"
-    argument_pl = "I″k/I_r" if wpis.get("wielkosc") == "mu" else "m"
+    argument_pl = (
+        "krotność I″k względem prądu znamionowego" if wpis.get("wielkosc") == "mu" else "m"
+    )
     jednostka = "" if wpis.get("wielkosc") == "mu" else " MW"
     maszyna = opis_rodzaju_i_nazwy("maszyna", wpis.get("source_name"))
     # Wpis z `zalozenia_krzywych_wkladow` zawsze niesie liczby — brak klucza to błąd programu
@@ -695,7 +698,7 @@ def zdanie_zalozenia_krzywej_pl(wpis: Mapping[str, Any]) -> str:
     argument = f"{float(wpis['argument']):.4g}".replace(".", ",")
     wynik = f"{float(wpis['wynik']):.4f}".replace(".", ",")
     return (
-        f"{symbol} = {wynik} ({maszyna}, t_min = {t_min} s, {argument_pl} = {argument}{jednostka})"
+        f"{symbol} = {wynik} ({maszyna}, czas zwłoki {t_min} s, {argument_pl} = {argument}{jednostka})"
         f" — {wpis.get('podstawa_reguly_pl')}"
     )
 
@@ -711,7 +714,7 @@ def zdanie_zalozen_zaniku_ib_pl(wpisy: Iterable[Mapping[str, Any]]) -> str | Non
     if not zdania:
         return None
     return (
-        "Prąd wyłączeniowy I_b stoi na założeniach inżynierskich krzywych zaniku "
+        "Prąd wyłączeniowy stoi na założeniach inżynierskich krzywych zaniku "
         "(IEC 60909-0:2016 pkt 9.1): " + "; ".join(zdania) + "."
     )
 
@@ -1006,8 +1009,8 @@ def compute_machine_contributions(
             # (μ = 1 — „maszyna daleka") za NIEFIZYCZNY prąd znamionowy: dług nazwany
             # w zapadce `solver_input_substitute_guard`, zdjęty kartą SC-IB-ITH-ZRODLA.
             raise ValueError(
-                f"{opis_rodzaju_i_nazwy('Maszyna', m.name)}: prąd znamionowy I_r = {ir_a!r} A nie jest "
-                f"dodatni — krotności I″k/I_r krzywej μ ({NORMA_KRZYWYCH_ZANIKU['mu']}) nie da się "
+                f"{opis_rodzaju_i_nazwy('Maszyna', m.name)}: prąd znamionowy {ir_a!r} A nie jest "
+                f"dodatni — krotności I″k względem prądu znamionowego krzywej μ ({NORMA_KRZYWYCH_ZANIKU['mu']}) nie da się "
                 "wyznaczyć; popraw moc i napięcie znamionowe maszyny."
             )
         ratio = i_zaciski_a / ir_a
@@ -1080,7 +1083,10 @@ def compute_machine_contributions(
         },
         "i_base_a": i_base_k,
         "ikss_total_a": ikss_total_a,
-        "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+        "partial_formula": (
+            r"I_{\mathrm{partial},m} = \frac{c\,Z_{mk}}{Z_{kk}\,Z_m}\,I_{\mathrm{base}}"
+            r"\quad\left(\text{zwarcie na zaciskach: } \frac{c\,U_n}{\sqrt{3}\,Z''}\right)"
+        ),
         "n_synchronous": len(sync),
         "n_asynchronous": len(asyn),
         "n_dfig": sum(1 for m in asyn if getattr(m, "wind_type_3", False)),
@@ -1093,7 +1099,7 @@ def compute_machine_contributions(
         **slad_z_f,
         "dfig_assumption": (
             "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny "
-            "asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+            "asynchronicznej za impedancją zwarciową silnika (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
         ),
     }
     return MachineShortCircuitResult(

@@ -289,10 +289,10 @@ def _kryterium_prad_rcd(
         podstawa=_PODSTAWA_WYMAGANIA_TT,
         stosowalnosc=Stosowalnosc(
             dotyczy=True,
-            powod_pl="układ TT: wyłącznik różnicowoprądowy zadziała dopiero, gdy prąd doziemny osiągnie I_Δn",
+            powod_pl="układ TT: wyłącznik różnicowoprądowy zadziała dopiero, gdy prąd doziemny osiągnie prąd różnicowy znamionowy",
         ),
         wynik=WynikKryterium(
-            wielkosc_pl="prąd zwarcia doziemnego minimalny (pętla przez R_A i R_B)",
+            wielkosc_pl="prąd zwarcia doziemnego minimalny (pętla przez uziom instalacji i uziom roboczy)",
             symbol_latex="I_{d,min}",
             wartosc=_w(wynik.ik_min_a, _J_A),
             punkt_krytyczny_pl=f"punkt „{punkt}”",
@@ -300,7 +300,7 @@ def _kryterium_prad_rcd(
         ),
         limit=LimitKryterium(
             wartosc=_w(rcd.i_delta_n_a, _J_A),
-            podstawa=_podstawa_rekordu_rcd(rcd, "prąd różnicowy znamionowy I_Δn"),
+            podstawa=_podstawa_rekordu_rcd(rcd, "prąd różnicowy znamionowy"),
             zakres_stosowalnosci_pl=f"wyłącznik różnicowoprądowy „{rcd.nazwa}” najbliższy punktowi",
         ),
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
@@ -308,14 +308,26 @@ def _kryterium_prad_rcd(
             f"pętla doziemna TT w punkcie „{punkt}”", dane_przyjete_petli(wynik, punkt)
         ),
         zakres_waznosci=_zakres(
-            "TT", "Pętla doziemna TT: trasa + transformator + sieć zasilająca + R_B + R_A"
+            "TT",
+            (
+                "Pętla doziemna TT: trasa, transformator, sieć zasilająca, uziom roboczy "
+                "i uziom instalacji"
+            ),
         ),
         slad=_slad(
             wynik,
             "compute_ik",
-            f"I_d,min = {format_liczba(wynik.ik_min_a)} A z |Z_s| = {format_liczba(abs(wynik.z_loop_ohm))} Ω",
+            (
+                f"prąd doziemny minimalny {format_liczba(wynik.ik_min_a)} A przy module "
+                f"impedancji pętli {format_liczba(abs(wynik.z_loop_ohm))} Ω"
+            ),
         ),
     )
+
+
+_KOLUMNA_5IDN = "5 × prąd różnicowy znamionowy"
+_KOLUMNA_2IDN = "2 × prąd różnicowy znamionowy"
+_KOLUMNA_IDN = "1 × prąd różnicowy znamionowy"
 
 
 def czas_wylaczenia_rcd_dla_pradu(rcd: RcdNaTrasie, i_d_a: float) -> tuple[float | None, str]:
@@ -330,16 +342,16 @@ def czas_wylaczenia_rcd_dla_pradu(rcd: RcdNaTrasie, i_d_a: float) -> tuple[float
     """
     krotnosc = i_d_a / rcd.i_delta_n_a
     kandydaci: list[tuple[float, float | None, str]] = [
-        (5.0, rcd.t_a_5idn_s, "5·I_Δn"),
-        (2.0, rcd.t_a_2idn_s, "2·I_Δn"),
-        (1.0, rcd.t_a_s, "I_Δn"),
+        (5.0, rcd.t_a_5idn_s, _KOLUMNA_5IDN),
+        (2.0, rcd.t_a_2idn_s, _KOLUMNA_2IDN),
+        (1.0, rcd.t_a_s, _KOLUMNA_IDN),
     ]
     for prog, czas, kolumna in kandydaci:
         if krotnosc >= prog and czas is not None:
             return czas, kolumna
     if krotnosc >= 1.0:
-        return None, "I_Δn"
-    return None, "poniżej I_Δn"
+        return None, _KOLUMNA_IDN
+    return None, "poniżej prądu różnicowego znamionowego"
 
 
 def _kryterium_czas_rcd(
@@ -363,7 +375,7 @@ def _kryterium_czas_rcd(
             wartosc=_w(t_a, _J_S),
             punkt_krytyczny_pl=(
                 f"prąd doziemny minimalny {format_liczba(wynik.ik_min_a)} A = "
-                f"{format_liczba(wynik.ik_min_a / rcd.i_delta_n_a)} × I_Δn"
+                f"{format_liczba(wynik.ik_min_a / rcd.i_delta_n_a)} × prąd różnicowy znamionowy"
             ),
             metoda="DEKLARACJA",
         )
@@ -400,7 +412,11 @@ def _kryterium_czas_rcd(
         slad=_slad(
             wynik,
             "napiecie_dotykowe_rcd",
-            f"RCD „{rcd.nazwa}”: I_Δn = {format_liczba(rcd.i_delta_n_a)} A, t_a = {format_liczba(rcd.t_a_s) if rcd.t_a_s is not None else 'brak'} s",
+            (
+                f"RCD „{rcd.nazwa}”: prąd różnicowy znamionowy "
+                f"{format_liczba(rcd.i_delta_n_a)} A, czas wyłączenia "
+                + (f"{format_liczba(rcd.t_a_s)} s" if rcd.t_a_s is not None else "brak")
+            ),
         ),
         braki_dodatkowe=(
             ()
@@ -447,14 +463,20 @@ def _kryterium_napiecie_dotykowe_tt(
         ),
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"U_dotyk = R_A · I_Δn w punkcie „{punkt}”"),
+        dowod=_dowod_obliczenia(
+            "napięcie dotykowe jako iloczyn rezystancji uziomu instalacji i prądu "
+            f"różnicowego znamionowego w punkcie „{punkt}”"
+        ),
         zakres_waznosci=_zakres(
             "TT", "Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD"
         ),
         slad=_slad(
             wynik,
             "napiecie_dotykowe_rcd",
-            f"U_dotyk = {format_liczba(r_a_ohm)} Ω · {format_liczba(rcd.i_delta_n_a)} A = {format_liczba(wynik.tt_it.u_dotyk_v)} V",
+            (
+                f"napięcie dotykowe {format_liczba(r_a_ohm)} Ω · "
+                f"{format_liczba(rcd.i_delta_n_a)} A = {format_liczba(wynik.tt_it.u_dotyk_v)} V"
+            ),
         ),
         braki_dodatkowe=(_BRAK_LIMITU_TT_PL,) if limit is None else (),
     )
@@ -483,7 +505,7 @@ def _kryterium_pierwsze_zwarcie_it(
     braki: list[str] = []
     if wynik_k is None:
         braki.append(
-            "Rezystancja uziomu instalacji odbiorczej R_A w punkcie (pole odbioru nN) — bez niej "
+            "Rezystancja uziomu instalacji odbiorczej w punkcie (pole odbioru nN) — bez niej "
             "napięcie dotykowe pierwszego zwarcia nie jest liczone"
         )
     if limit is None:
@@ -507,7 +529,10 @@ def _kryterium_pierwsze_zwarcie_it(
         wynik=wynik_k,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"I_d = 3·ω·C_e·U_0 sieci IT ({format_liczba(i_d1_a)} A)"),
+        dowod=_dowod_obliczenia(
+            "prąd pojemnościowy pierwszego zwarcia z pojemności doziemnej i napięcia fazowego "
+            f"sieci IT ({format_liczba(i_d1_a)} A)"
+        ),
         zakres_waznosci=_zakres(
             "IT",
             "Pierwsze zwarcie doziemne IT: pojemności doziemne wszystkich odcinków sieci zasilanej z transformatora",
@@ -515,7 +540,10 @@ def _kryterium_pierwsze_zwarcie_it(
         slad=_slad(
             wynik,
             "prad_pierwszego_zwarcia_it",
-            f"I_d = {format_liczba(i_d1_a)} A, C_e = {format_liczba(c_e_f * 1e6)} µF",
+            (
+                f"prąd pierwszego zwarcia {format_liczba(i_d1_a)} A, pojemność doziemna "
+                f"{format_liczba(c_e_f * 1e6)} µF"
+            ),
         ),
         braki_dodatkowe=tuple(braki),
     )
@@ -552,16 +580,23 @@ def _kryterium_drugie_zwarcie_it(
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
         dowod=_dowod_obliczenia(
-            f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie „{punkt}”", dane_przyjete_petli(wynik, punkt)
+            (
+                "prąd drugiego zwarcia z połowy napięcia międzyprzewodowego i modułu impedancji "
+                f"pętli w punkcie „{punkt}”"
+            ),
+            dane_przyjete_petli(wynik, punkt),
         ),
         zakres_waznosci=_zakres(
             "IT",
-            "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie napędowe U_LL/2",
+            "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie napędowe równe połowie napięcia międzyprzewodowego",
         ),
         slad=_slad(
             wynik,
             "prad_drugiego_zwarcia_it",
-            f"I_d2,min = {format_liczba(wynik.ik_min_a)} A z |Z_s| = {format_liczba(abs(wynik.z_loop_ohm))} Ω",
+            (
+                f"prąd drugiego zwarcia minimalny {format_liczba(wynik.ik_min_a)} A przy module "
+                f"impedancji pętli {format_liczba(abs(wynik.z_loop_ohm))} Ω"
+            ),
         ),
         braki_dodatkowe=(_BRAK_WARUNKOW_IT_DRUGIE_PL,) if limit is None else (),
     )
