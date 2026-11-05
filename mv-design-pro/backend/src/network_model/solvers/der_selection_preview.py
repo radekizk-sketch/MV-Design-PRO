@@ -47,6 +47,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
+from werdykt import format_liczba
 
 # ---------------------------------------------------------------------------
 # Wspólny epsilon porównań doborowych mocy, prądu i spadku napięcia (reprezentacja binarna).
@@ -680,13 +681,14 @@ def propose_mv_field_apparatus(
                     "napiecie_aparatu_za_niskie",
                     (
                         (
-                            f"Napięcie znamionowe aparatu {candidate.un_kv:g} kV poniżej napięcia "
-                            f"najwyższego sieci {u_s:g} kV (sieć {data.system_voltage_kv:g} kV, "
-                            "IEC 60038)."
+                            f"Napięcie znamionowe aparatu {format_liczba(candidate.un_kv)} kV "
+                            f"poniżej napięcia najwyższego sieci {format_liczba(u_s)} kV "
+                            f"(sieć {format_liczba(data.system_voltage_kv)} kV, IEC 60038)."
                         )
                         if u_s is not None
                         else (
-                            f"Sieć {data.system_voltage_kv:g} kV nie ma napięcia najwyższego "
+                            f"Sieć {format_liczba(data.system_voltage_kv)} kV nie ma napięcia "
+                            "najwyższego "
                             "w tablicach IEC 60038 — poziomu izolacji aparatu nie da się potwierdzić."
                         )
                     ),

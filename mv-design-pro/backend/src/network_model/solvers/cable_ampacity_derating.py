@@ -116,9 +116,10 @@ class WspolczynnikiObciazalnosci:
         return (
             f"Obciążalność skorygowana dla warunków: {self.etykieta_pl}; "
             f"współczynnik gruntu {format_liczba(self.f_grunt, cyfry=6)}, wiązki "
-            f"{format_liczba(self.f_wiazka, cyfry=6)}, grupy {format_liczba(self.f_grupa, cyfry=6)}, "
+            f"{format_liczba(self.f_wiazka, cyfry=6)}, "
+            f"grupy {format_liczba(self.f_grupa, cyfry=6)}, "
             f"iloczyn {format_liczba(self.iloczyn, miejsca=4)}. "
-            f"Podstawa: {self.podstawa}."
+            f"Podstawa: {self.podstawa.rstrip('.')}."
         )
 
 
@@ -356,20 +357,24 @@ class WspolczynnikiObciazalnosciNN:
                 "Obciążalność Iz przyjęta dla WARUNKÓW ODNIESIENIA normy "
                 "PN-HD 60364-5-52 (bez korekty); w rzeczywistej instalacji może być mniejsza."
             )
-        opis_srodowiska = (
-            f"powietrze {self.temperatura_c:g}°C"
-            if self.srodowisko == "powietrze"
-            else (
-                f"grunt {self.temperatura_c:g}°C, rezystywność "
-                f"{self.rezystywnosc_gruntu_km_w:g} K·m/W"
+        if self.srodowisko == "powietrze":
+            opis_srodowiska = f"powietrze {format_liczba(self.temperatura_c)}°C"
+        else:
+            # Ułożenie w gruncie wymaga rezystywności — odmowa przy budowie warunków.
+            rezystywnosc = self.rezystywnosc_gruntu_km_w
+            assert rezystywnosc is not None
+            opis_srodowiska = (
+                f"grunt {format_liczba(self.temperatura_c)}°C, rezystywność "
+                f"{format_liczba(rezystywnosc)} K·m/W"
             )
-        )
         return (
             f"Obciążalność długotrwała skorygowana dla: {opis_srodowiska}, izolacja "
             f"{self.izolacja}, {self.liczba_obwodow} obwód(ów); "
-            f"współczynnik temperatury {self.f_temperatura:g}, "
-            f"rezystywności cieplnej gruntu {self.f_rezystywnosc_gruntu:g}, "
-            f"grupowania {self.f_grupowanie:g}, iloczyn {self.iloczyn:.4f}."
+            f"współczynnik temperatury {format_liczba(self.f_temperatura, cyfry=6)}, "
+            f"rezystywności cieplnej gruntu "
+            f"{format_liczba(self.f_rezystywnosc_gruntu, cyfry=6)}, "
+            f"grupowania {format_liczba(self.f_grupowanie, cyfry=6)}, "
+            f"iloczyn {format_liczba(self.iloczyn, miejsca=4)}."
         )
 
 

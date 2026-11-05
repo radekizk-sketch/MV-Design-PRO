@@ -221,7 +221,9 @@ def test_dfig_modeled_as_asynchronous_with_crowbar_label():
     assert res.white_box["n_dfig"] == 1
     assert "crowbar" in res.white_box["dfig_assumption"].lower()
     assert _dfig().white_box()["wind_type_3"] is True
-    assert "DFIG" in str(_dfig().white_box()["model"])
+    # Model nazwany słowami projektanta: maszyna dwustronnie zasilana ze zwieraczem wirnika.
+    model = str(_dfig().white_box()["model"])
+    assert "dwustronnie zasilana" in model and "zwieracz wirnika" in model
 
 
 def test_dfig_partial_identical_to_squirrel_cage():

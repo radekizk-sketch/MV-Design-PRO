@@ -23,11 +23,14 @@ dzieje sie TUTAJ, na granicy kontraktu.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
-
-from werdykt.zapis_latex import IdentyfikatorKontraktu
+from typing import TYPE_CHECKING, Any
 
 from .tozsamosc import TozsamoscBiegu, kwantyzuj
+
+if TYPE_CHECKING:
+    # Tylko adnotacja: rdzeń dynamiki jest liściem grafu importów (bez `werdykt`, który
+    # wciąga pydantic) — `test_granica_pakietu` pilnuje tego w czasie wykonania.
+    from werdykt.zapis_latex import IdentyfikatorKontraktu
 
 
 @dataclass(frozen=True)
