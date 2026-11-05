@@ -1734,6 +1734,20 @@ def lista_scenariuszy(klucz: str) -> list[OperatingScenario]:
     return wynik
 
 
+def stany_scenariuszy(klucz: str) -> dict[str, StanScenariusza]:
+    """Bieżąca rewizja i flaga usunięcia KAŻDEGO scenariusza projektu (po identyfikatorze) —
+    wejście odcisku świeżości (`application.result_freshness.StanBiezacyModelu.odcisk_wejsc`)."""
+    katalog = katalog_scenariuszy(klucz)
+    if not katalog.is_dir():
+        return {}
+    wynik: dict[str, StanScenariusza] = {}
+    for plik in sorted(katalog.glob("*.json")):
+        stan = stan_scenariusza(klucz, plik.stem)
+        if stan is not None:
+            wynik[plik.stem] = stan
+    return wynik
+
+
 def ma_scenariusze(klucz: str) -> bool:
     """Predykat „projekt ma juz wlasne scenariusze" — JEDEN dla decyzji o
     przeniesieniu katalogu w migracji klucza (CV-1) i dla zabezpieczenia w

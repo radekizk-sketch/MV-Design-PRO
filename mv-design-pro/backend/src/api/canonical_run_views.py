@@ -24,6 +24,7 @@ from application.analysis_run import build_trace_summary
 from application.dynamika.opis_wyniku import oceny_biegu_dynamiki, opis_wyniku_dynamiki
 from application.result_freshness import (
     FreshnessVerdict,
+    ResultFreshness,
     StanBiezacyModelu,
     swiezosc_biegu_kanonicznego,
 )
@@ -99,7 +100,6 @@ def build_analysis_run_summary(run: CanonicalRun) -> dict[str, Any]:
         "analysis_type": run.analysis_type,
         "status": run.status,
         "result_status": run.result_status,
-        "results_valid": run.result_status == "VALID",
         "created_at": run.created_at.isoformat(),
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "input_hash": run.input_hash,
@@ -177,6 +177,25 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
                 },
             }
         ],
+    }
+
+
+def pola_swiezosci_biegu(run: CanonicalRun, stan: StanBiezacyModelu) -> dict[str, Any]:
+    """Werdykt świeżości JEDNEGO biegu dla przeglądarki — ta sama funkcja co status przypadku
+    (`swiezosc_biegu_kanonicznego`) i ten sam odcisk wejść (`StanBiezacyModelu.odcisk_wejsc`).
+
+    Zastępuje dawne `results_valid = run.result_status == "VALID"` — pole o wartości
+    domyślnej, której nic nie zmieniało, więc „ważność wyniku" była zawsze prawdą. Nagłówek
+    ekranu analizy pokazuje ten werdykt i pobiera go ponownie, gdy odcisk wejść przypadku
+    (znacznik powłoki) się zmieni — jedno źródło obu wskaźników.
+    """
+    werdykt = swiezosc_biegu_kanonicznego(run, stan)
+    return {
+        "result_freshness": werdykt.status.value,
+        "result_freshness_reason": werdykt.reason.value,
+        "result_freshness_reason_pl": werdykt.reason_pl,
+        "results_valid": werdykt.status == ResultFreshness.FRESH,
+        "odcisk_wejsc_swiezosci": stan.odcisk_wejsc(str(run.case_id)),
     }
 
 

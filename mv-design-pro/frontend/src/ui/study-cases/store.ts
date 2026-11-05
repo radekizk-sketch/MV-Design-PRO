@@ -362,3 +362,17 @@ export function useSortedCases(): StudyCaseListItem[] {
     [...state.cases].sort((a, b) => a.name.localeCompare(b.name, 'pl'))
   );
 }
+
+/**
+ * Ponowny odczyt werdyktu aktywnego przypadku po zapisie WEJŚCIA oceny świeżości, które nie
+ * jest modelem (scenariusz nazwany: zwarciowy, dynamiki; wybór zabezpieczeń przypadku).
+ * Serwer zmienia wtedy `odcisk_wejsc_swiezosci` przypadku, a nagłówki ekranów analiz i lista
+ * biegów pobierają swoje werdykty ponownie właśnie po zmianie odcisku (karta
+ * EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN). Bez projektu w zasięgu — nic (brak danej).
+ */
+export function odswiezWerdyktAktywnegoPrzypadku(): void {
+  const { projectId, loadActiveCase } = useStudyCasesStore.getState();
+  if (projectId) {
+    void loadActiveCase(projectId);
+  }
+}

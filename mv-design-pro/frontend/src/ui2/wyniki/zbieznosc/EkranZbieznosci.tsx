@@ -143,6 +143,7 @@ export function EkranZbieznosci() {
           <FreshnessBadge
             rewizjaDanej={swiezosc.rewizjaDanych!}
             rewizjaModelu={swiezosc.rewizjaModelu!}
+            przyczynaSerwera={swiezosc.przyczynaSerwera}
             testId="mvd-zbieznosc-swiezosc"
           />
         )}

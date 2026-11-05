@@ -44,7 +44,7 @@ export function EkranAnalizy({
   wierszDecyzyjny,
   rodzajWiersza,
 }: EkranAnalizyProps) {
-  const { analizaPL, runId, rewizjaModelu, rewizjaDanych, caseId } = naglowek;
+  const { analizaPL, runId, rewizjaModelu, rewizjaDanych, caseId, przyczynaSerwera } = naglowek;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
   // V12K-264: przyczyny unieważnienia pokazujemy TYLKO wtedy, gdy wynik faktycznie
   // jest nieaktualny i wiadomo, o który wariant pracy zapytać. Panel przy aktualnym
@@ -61,6 +61,7 @@ export function EkranAnalizy({
           <FreshnessBadge
             rewizjaDanej={rewizjaDanych}
             rewizjaModelu={rewizjaModelu}
+            przyczynaSerwera={przyczynaSerwera}
             onPrzelicz={onPrzelicz}
           />
         )}

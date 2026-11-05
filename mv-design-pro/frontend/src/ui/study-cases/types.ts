@@ -99,6 +99,13 @@ export interface StatusWynikowPrzypadku {
   result_status_reason_pl: string;
   /** Rewizja modelu, na której policzono wynik (`null` = brak wyniku). */
   rewizja_biegu: number | null;
+  /**
+   * Odcisk wejść oceny świeżości (model, katalog, wybór zabezpieczeń przypadku, scenariusze
+   * nazwane) — `null`, gdy model przypadku niezidentyfikowany. Ten sam odcisk niesie werdykt
+   * biegu (`/api/analysis-runs/{id}`): nagłówek ekranu analizy pobiera werdykt ponownie, gdy
+   * odcisk przypadku się zmieni. Opcjonalny dla odpowiedzi sprzed pola.
+   */
+  odcisk_wejsc_swiezosci?: string | null;
   /** Bieżąca rewizja modelu (`null` = model przypadku niedostępny). */
   rewizja_biezaca: number | null;
   /** Które zmiany unieważniły wynik (puste dla FRESH i NONE). */
@@ -303,6 +310,15 @@ export interface ExecutionRun {
   project_id?: string | null;
   scenario_ref?: { scenario_id: string; revision: number } | null;
   result_status?: string | null;
+  /**
+   * Werdykt świeżości TEGO biegu z serwera (lista biegów przypadku) — ta sama funkcja co
+   * status przypadku (`swiezosc_biegu_kanonicznego`) — oraz odcisk wejść, na których go
+   * wydano. Brak pola = werdykt nieoceniony w tej odpowiedzi (np. odpytywanie biegu w toku);
+   * predykat `swiezoscBiegu` wraca wtedy do werdyktu przypadku.
+   */
+  result_freshness?: StudyCaseResultStatus | null;
+  result_freshness_reason_pl?: string | null;
+  odcisk_wejsc_swiezosci?: string | null;
 }
 
 /**

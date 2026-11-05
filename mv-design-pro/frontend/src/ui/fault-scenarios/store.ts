@@ -15,6 +15,7 @@ import type {
   ScenarioSldOverlay,
 } from './types';
 import * as api from './api';
+import { odswiezWerdyktAktywnegoPrzypadku } from '../study-cases/store';
 
 interface FaultScenariosState {
   studyCaseId: string | null;
@@ -111,6 +112,7 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
         isModalOpen: false,
         editingScenarioId: null,
       }));
+      odswiezWerdyktAktywnegoPrzypadku();
       return scenario;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd tworzenia scenariusza';
@@ -133,6 +135,7 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
         isModalOpen: false,
         editingScenarioId: null,
       }));
+      odswiezWerdyktAktywnegoPrzypadku();
       return updated;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd aktualizacji scenariusza';
@@ -150,6 +153,7 @@ export const useFaultScenariosStore = create<FaultScenariosState>((set, get) => 
         selectedScenarioId: state.selectedScenarioId === scenarioId ? null : state.selectedScenarioId,
         isLoading: false,
       }));
+      odswiezWerdyktAktywnegoPrzypadku();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd usuwania scenariusza';
       set({ error: message, isLoading: false });

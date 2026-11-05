@@ -13159,6 +13159,17 @@
       ],
       "title": "Model Revision"
      },
+     "odcisk_wejsc_swiezosci": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odcisk Wejsc Swiezosci"
+     },
      "postep": {
       "anyOf": [
        {
@@ -13179,6 +13190,39 @@
        }
       ],
       "title": "Project Id"
+     },
+     "result_freshness": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Freshness"
+     },
+     "result_freshness_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Freshness Reason"
+     },
+     "result_freshness_reason_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Freshness Reason Pl"
      },
      "result_status": {
       "anyOf": [
@@ -15099,6 +15143,17 @@
       "title": "Name",
       "type": "string"
      },
+     "odcisk_wejsc_swiezosci": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odcisk Wejsc Swiezosci"
+     },
      "result_status": {
       "$ref": "#/components/schemas/ResultFreshness"
      },
@@ -15155,6 +15210,7 @@
      "rewizja_biegu",
      "rewizja_biezaca",
      "zmiany_od_biegu",
+     "odcisk_wejsc_swiezosci",
      "id",
      "name",
      "description",
@@ -15191,6 +15247,17 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "odcisk_wejsc_swiezosci": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odcisk Wejsc Swiezosci"
      },
      "project_id": {
       "title": "Project Id",
@@ -15256,6 +15323,7 @@
      "rewizja_biegu",
      "rewizja_biezaca",
      "zmiany_od_biegu",
+     "odcisk_wejsc_swiezosci",
      "id",
      "project_id",
      "name",

@@ -54,7 +54,21 @@ export interface AnalysisRunContract {
   analysisType: string | null;
   status: string | null;
   resultStatus: string | null;
+  /** Ważność wyniku = werdykt świeżości biegu z serwera (`results_valid` = FRESH). */
   resultsValid: boolean | null;
+  /**
+   * Werdykt świeżości TEGO biegu z serwera (`result_freshness`) — ta sama funkcja co status
+   * przypadku w powłoce (`swiezosc_biegu_kanonicznego`). `null` = serwer go nie podał.
+   */
+  resultFreshness: 'NONE' | 'FRESH' | 'OUTDATED' | null;
+  /** Zdanie przyczyny werdyktu po polsku (`result_freshness_reason_pl`). */
+  resultFreshnessReasonPl: string | null;
+  /**
+   * Odcisk wejść oceny świeżości (model, katalog, wybór zabezpieczeń przypadku, scenariusze
+   * nazwane) w chwili werdyktu — porównywany z odciskiem przypadku (`StudyCase`), żeby
+   * pobrać werdykt ponownie po zmianie, która nie rusza rewizji modelu.
+   */
+  odciskWejscSwiezosci: string | null;
   createdAt: string | null;
   finishedAt: string | null;
   inputHash: string | null;
@@ -468,6 +482,12 @@ function normalizeAnalysisRunContract(payload: unknown): AnalysisRunContract {
     status: normalizeString(raw.status),
     resultStatus: normalizeString(raw.result_status),
     resultsValid: typeof raw.results_valid === 'boolean' ? raw.results_valid : null,
+    resultFreshness:
+      raw.result_freshness === 'NONE' || raw.result_freshness === 'FRESH' || raw.result_freshness === 'OUTDATED'
+        ? raw.result_freshness
+        : null,
+    resultFreshnessReasonPl: normalizeString(raw.result_freshness_reason_pl),
+    odciskWejscSwiezosci: normalizeString(raw.odcisk_wejsc_swiezosci),
     createdAt: normalizeString(raw.created_at),
     finishedAt: normalizeString(raw.finished_at),
     inputHash: normalizeString(raw.input_hash),
@@ -492,15 +512,40 @@ async function fetchAnalysisRunContract(runId: string): Promise<AnalysisRunContr
   return normalizeAnalysisRunContract(await response.json());
 }
 
-function ensureAnalysisRunContract(runId: string): Promise<AnalysisRunContract> {
+/**
+ * Kontrakt z pamięci podręcznej jest ważny, gdy wołający nie podał odcisku wejść świeżości
+ * albo odcisk kontraktu jest równy podanemu (inaczej werdykt świeżości opisuje stan sprzed
+ * zmiany — trzeba go pobrać ponownie).
+ */
+function kontraktAktualnyWzgledemOdcisku(
+  contract: AnalysisRunContract | undefined,
+  odciskWejsc: string | null | undefined,
+): contract is AnalysisRunContract {
+  if (!contract) return false;
+  return odciskWejsc == null || contract.odciskWejscSwiezosci === odciskWejsc;
+}
+
+function ensureAnalysisRunContract(
+  runId: string,
+  odciskWejsc?: string | null,
+): Promise<AnalysisRunContract> {
   const cached = contractCache.get(runId);
-  if (cached) {
+  if (kontraktAktualnyWzgledemOdcisku(cached, odciskWejsc)) {
     return Promise.resolve(cached);
   }
 
   const pending = pendingContracts.get(runId);
   if (pending) {
-    return pending;
+    // Żądanie w locie mogło wyjść przed zmianą wejść świeżości — jego werdykt opisuje stan
+    // sprzed zmiany; wtedy pobieramy ponownie (bez drugiej pamięci podręcznej).
+    return pending.then((contract) =>
+      kontraktAktualnyWzgledemOdcisku(contract, odciskWejsc)
+        ? contract
+        : fetchAnalysisRunContract(runId).then((swiezy) => {
+            contractCache.set(runId, swiezy);
+            return swiezy;
+          }),
+    );
   }
 
   const request = fetchAnalysisRunContract(runId)
@@ -537,10 +582,19 @@ export function resolveSurfaceRunId(
   return normalizeString(runIdOgladany);
 }
 
-export function useAnalysisRunContract(runId: string | null): AnalysisRunContractState {
+/**
+ * Kontrakt przebiegu. `odciskWejsc` (opcjonalny) — odcisk wejść świeżości przypadku
+ * (`StudyCase.odcisk_wejsc_swiezosci`): gdy różni się od odcisku kontraktu w pamięci, kontrakt
+ * jest pobierany ponownie (werdykt świeżości biegu po zmianie wyboru zabezpieczeń przypadku
+ * albo scenariusza nazwanego, przy tej samej rewizji modelu).
+ */
+export function useAnalysisRunContract(
+  runId: string | null,
+  odciskWejsc?: string | null,
+): AnalysisRunContractState {
   const [state, setState] = useState<AnalysisRunContractState>(() => ({
     data: runId ? contractCache.get(runId) ?? null : null,
-    isLoading: Boolean(runId && !contractCache.has(runId)),
+    isLoading: Boolean(runId && !kontraktAktualnyWzgledemOdcisku(contractCache.get(runId), odciskWejsc)),
     error: null,
   }));
 
@@ -555,7 +609,7 @@ export function useAnalysisRunContract(runId: string | null): AnalysisRunContrac
     }
 
     const cached = contractCache.get(runId);
-    if (cached) {
+    if (kontraktAktualnyWzgledemOdcisku(cached, odciskWejsc)) {
       setState({
         data: cached,
         isLoading: false,
@@ -571,7 +625,7 @@ export function useAnalysisRunContract(runId: string | null): AnalysisRunContrac
       error: null,
     }));
 
-    ensureAnalysisRunContract(runId)
+    ensureAnalysisRunContract(runId, odciskWejsc)
       .then((contract) => {
         if (cancelled) {
           return;
@@ -598,7 +652,7 @@ export function useAnalysisRunContract(runId: string | null): AnalysisRunContrac
     return () => {
       cancelled = true;
     };
-  }, [runId]);
+  }, [runId, odciskWejsc]);
 
   return state;
 }

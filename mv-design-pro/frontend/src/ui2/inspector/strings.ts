@@ -35,6 +35,7 @@ export const INSPECTOR_STRINGS = {
   // Świeżość
   przelicz: 'Przelicz',
   aktualne: 'aktualne',
+  nieaktualne: 'nieaktualne',
 
   // Powiązania — nagłówki kierunków
   powiazaniaWchodzace: 'Wchodzące',

@@ -30,6 +30,7 @@ import {
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import { useSelectionStore } from '../../../ui/selection/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { odswiezWerdyktAktywnegoPrzypadku } from '../../../ui/study-cases/store';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { PanelCoSieZmienilo, useSwiezoscNaglowka, type SwiezoscNaglowka } from '../../freshness';
@@ -310,6 +311,9 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
       // jednym scenariuszem: ponowny odczyt listy przypadku z serwera.
       if (!listaOdczytana) setOdswiezenieScenariuszy((n) => n + 1);
       setScenariuszId(zapisany.scenario_id);
+      // Scenariusz nazwany jest wejściem oceny świeżości biegów — werdykt przypadku
+      // (odcisk wejść) trzeba odczytać ponownie.
+      odswiezWerdyktAktywnegoPrzypadku();
     },
     [caseId, scenariuszeWpis],
   );
@@ -637,13 +641,17 @@ function Wynik({
   onPokazNaSchemacie: (ref: string) => void;
 }) {
   const w = wynik.wlasnosci_biegu;
-  const { rewizjaModelu, rewizjaDanych, caseId } = swiezosc;
+  const { rewizjaModelu, rewizjaDanych, caseId, przyczynaSerwera } = swiezosc;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
   return (
     <div className="mvd-dynamika-wynik" data-testid="mvd-dynamika-wynik">
       {maSwiezosc && (
         <div className="mvd-dynamika-swiezosc" data-testid="mvd-dynamika-swiezosc">
-          <FreshnessBadge rewizjaDanej={rewizjaDanych} rewizjaModelu={rewizjaModelu} />
+          <FreshnessBadge
+            rewizjaDanej={rewizjaDanych}
+            rewizjaModelu={rewizjaModelu}
+            przyczynaSerwera={przyczynaSerwera}
+          />
         </div>
       )}
       {maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych, rewizjaModelu) && (

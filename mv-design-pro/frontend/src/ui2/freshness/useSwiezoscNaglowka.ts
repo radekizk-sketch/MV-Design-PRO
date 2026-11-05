@@ -30,6 +30,14 @@
  *  - `caseId` — aktywny wariant pracy z `useAppStateStore`; bez niego panel
  *    przyczyn nie ma czego zapytać.
  *
+ *  - `przyczynaSerwera` (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN) — werdykt TEGO
+ *    biegu z serwera (`/api/analysis-runs/{id}`: `result_freshness`, ta sama funkcja co
+ *    status przypadku w powłoce), przepuszczony przez JEDEN predykat `swiezoscBiegu`.
+ *    Zmiana grupy nastaw, nadpisania nastaw przypadku albo scenariusza nazwanego biegu
+ *    nie rusza rewizji modelu — samo porównanie rewizji zostawiało nagłówek „aktualny"
+ *    przy powłoce „nieaktualne". Kontrakt biegu jest pobierany ponownie, gdy odcisk wejść
+ *    aktywnego przypadku (`odcisk_wejsc_swiezosci`) różni się od odcisku werdyktu.
+ *
  * BRAK DANEJ ZOSTAJE BRAKIEM: gdy którakolwiek rewizja jest nieznana, hook zwraca
  * `undefined` i wspólny wzorzec po prostu NIE pokazuje znacznika — tak jak dotąd.
  * Nigdy nie podstawiamy zera ani rewizji bieżącej, bo „aktualne" byłoby wtedy
@@ -37,8 +45,10 @@
  */
 
 import { useAppStateStore } from '../../ui/app-state/store';
+import { useStudyCasesStore } from '../../ui/study-cases/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useAnalysisRunContract } from '../../ui/workspace/analysisRunContract';
+import { swiezoscBiegu } from '../wyniki/kontekst/swiezoscBiegu';
 
 export interface SwiezoscNaglowka {
   /** Bieżąca rewizja modelu (undefined = nieznana). */
@@ -47,6 +57,12 @@ export interface SwiezoscNaglowka {
   readonly rewizjaDanych?: number;
   /** Aktywny wariant pracy — źródło dziennika zmian. */
   readonly caseId?: string;
+  /**
+   * Wynik nieaktualny z orzeczenia serwera przy tej samej rewizji modelu (zmiana wyboru
+   * zabezpieczeń przypadku albo scenariusza nazwanego) — zdanie przyczyny po polsku.
+   * `undefined` = serwer nie orzekł nieaktualności albo rozstrzyga porównanie rewizji.
+   */
+  readonly przyczynaSerwera?: string;
 }
 
 /**
@@ -58,13 +74,31 @@ export function useSwiezoscNaglowka(runId: string | null | undefined): SwiezoscN
   // po prostu się nie renderuje (brak danej zostaje brakiem, nie awarią).
   const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
   const caseId = useAppStateStore((s) => s.activeCaseId);
-  const { data } = useAnalysisRunContract(runId ?? null);
+  const przypadek = useStudyCasesStore((s) => s.activeCase);
+  const przypadekBiegu = przypadek && przypadek.id === caseId ? przypadek : null;
+  const odciskWejsc = przypadekBiegu?.odcisk_wejsc_swiezosci ?? null;
+  const { data } = useAnalysisRunContract(runId ?? null, odciskWejsc);
 
   const rewizjaDanych = data?.analysisCaseContext?.rewizjaModelu ?? undefined;
+  // Werdykt biegu rozstrzyga w predykacie tylko, gdy wydano go na bieżących wejściach
+  // przypadku (odciski równe) — kontrakt w trakcie ponownego pobrania opisuje stan sprzed zmiany.
+  const swiezosc = swiezoscBiegu(
+    {
+      model_revision: typeof rewizjaDanych === 'number' ? rewizjaDanych : null,
+      result_freshness: data?.resultFreshness ?? null,
+      result_freshness_reason_pl: data?.resultFreshnessReasonPl ?? null,
+      odcisk_wejsc_swiezosci: data?.odciskWejscSwiezosci ?? null,
+    },
+    typeof rewizjaModelu === 'number' ? rewizjaModelu : null,
+    przypadekBiegu,
+  );
+  const przyczynaSerwera =
+    swiezosc.przyczyna === 'werdykt-serwera' ? swiezosc.przyczynaPl ?? undefined : undefined;
 
   return {
     rewizjaModelu: typeof rewizjaModelu === 'number' ? rewizjaModelu : undefined,
     rewizjaDanych: typeof rewizjaDanych === 'number' ? rewizjaDanych : undefined,
     caseId: caseId ?? undefined,
+    ...(przyczynaSerwera !== undefined ? { przyczynaSerwera } : {}),
   };
 }

@@ -49,6 +49,8 @@ przypadku obliczeniowego (`status_wynikow_przypadku`).
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -65,6 +67,7 @@ from enm.scenariusze import (
     czy_scenariusz_przypadku,
     rewizja_wyboru_przypadku,
     rewizja_wyboru_z_opcji,
+    stany_scenariuszy,
 )
 from enm.scenariusze import stan_scenariusza as stan_scenariusza_z_magazynu
 from enm.store import get_enm, has_enm
@@ -366,6 +369,33 @@ class StanBiezacyModelu:
         if case_id not in self.wybory_przypadkow:
             self.wybory_przypadkow[case_id] = rewizja_wyboru_przypadku(self.klucz, case_id)
         return self.wybory_przypadkow[case_id]
+
+    def odcisk_wejsc(self, case_id: str) -> str | None:
+        """Odcisk WEJŚĆ oceny świeżości przypadku: rewizja i odcisk modelu, odcisk katalogu,
+        rewizja wyboru zabezpieczeń przypadku i rewizje scenariuszy nazwanych projektu.
+
+        JEDNO źródło dla nagłówka ekranów analiz i znacznika powłoki (karta
+        EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): oba pokazują werdykt TEJ SAMEJ funkcji
+        (`swiezosc_biegu_kanonicznego`), a ten odcisk mówi przeglądarce, kiedy werdykt
+        trzeba pobrać ponownie — zmiana modelu, grupy nastaw, nadpisania nastaw albo
+        scenariusza nazwanego zmienia odcisk, nawet gdy rewizja modelu stoi w miejscu.
+        `None` — model przypadku niezidentyfikowany (uczciwy brak, jak `klucz`).
+        """
+        if self.klucz is None:
+            return None
+        tresc = {
+            "rewizja_modelu": self.rewizja,
+            "hash_modelu": self.hash_sha256,
+            "odcisk_katalogu": self.odcisk_katalogu,
+            "wybor_przypadku": self.rewizja_wyboru(case_id),
+            "scenariusze": {
+                scenario_id: [stan.rewizja, stan.usuniety]
+                for scenario_id, stan in stany_scenariuszy(self.klucz).items()
+                if not czy_scenariusz_przypadku(scenario_id)
+            },
+        }
+        tekst = json.dumps(tresc, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
 
     @staticmethod
     def dla_przypadku(

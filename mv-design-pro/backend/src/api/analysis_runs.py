@@ -30,6 +30,7 @@ from api.canonical_run_views import (
     build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
+    pola_swiezosci_biegu,
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
@@ -49,6 +50,7 @@ from application.proof_engine.pakiet_nastaw import (
     zbuduj_pakiet_nastaw,
 )
 from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi_migawki
+from application.result_freshness import StanBiezacyModelu
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -101,9 +103,18 @@ def list_analysis_runs(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    uow_factory: Callable[[], Any] | None = Depends(get_uow_factory),
 ) -> dict[str, Any]:
+    # Stan bieżący modelu raz na przypadek (lista biegów projektu dotyka kilku przypadków).
+    stany: dict[str, StanBiezacyModelu] = {}
+
+    def _stan(case_id: str) -> StanBiezacyModelu:
+        if case_id not in stany:
+            stany[case_id] = StanBiezacyModelu.dla_przypadku(case_id, uow_factory)
+        return stany[case_id]
+
     items = [
-        build_analysis_run_summary(run)
+        {**build_analysis_run_summary(run), **pola_swiezosci_biegu(run, _stan(str(run.case_id)))}
         for run in list_canonical_runs_for_project(
             str(project_id),
             analysis_type=analysis_type,
@@ -115,7 +126,9 @@ def list_analysis_runs(
 
 
 @router.get("/analysis-runs/{run_id}")
-def get_analysis_run(run_id: str) -> dict[str, Any]:
+def get_analysis_run(
+    run_id: str, uow_factory: Callable[[], Any] | None = Depends(get_uow_factory)
+) -> dict[str, Any]:
     try:
         parsed_run_id = UUID(run_id)
     except ValueError as exc:
@@ -123,7 +136,9 @@ def get_analysis_run(run_id: str) -> dict[str, Any]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Nie znaleziono obliczenia {run_id}",
         ) from exc
-    return canonicalize_json(build_analysis_run_detail(_require_canonical_run(parsed_run_id)))
+    run = _require_canonical_run(parsed_run_id)
+    stan = StanBiezacyModelu.dla_przypadku(str(run.case_id), uow_factory)
+    return canonicalize_json({**build_analysis_run_detail(run), **pola_swiezosci_biegu(run, stan)})
 
 
 @router.get("/analysis-runs/{run_id}/snapshot")

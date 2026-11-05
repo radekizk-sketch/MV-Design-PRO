@@ -10,9 +10,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.canonical_run_views import pola_swiezosci_biegu
 from api.klucz_twin_dep import KluczTwin
 from api.odmowa_http import OdmowaHttpError
 from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
+from application.result_freshness import StanBiezacyModelu
 from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
@@ -80,6 +82,14 @@ class RunResponse(BaseModel):
     # Karta DYNAMIKA-W-TLE: postęp biegu w toku (pomiar wykonawcy w tle; `None` — bieg
     # nie jest liczony w tym procesie albo jego wykonawca nie mierzy postępu).
     postep: PostepResponse | None = None
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: werdykt świeżości TEGO biegu z tej samej
+    # funkcji co status przypadku (`swiezosc_biegu_kanonicznego`) i odcisk wejść, na których
+    # go wydano — lista biegów przypadku. `None` = odpowiedź bez oceny (np. odpytywanie biegu
+    # w toku); przeglądarka wraca wtedy do werdyktu przypadku.
+    result_freshness: str | None = None
+    result_freshness_reason: str | None = None
+    result_freshness_reason_pl: str | None = None
+    odcisk_wejsc_swiezosci: str | None = None
 
 
 class ScenarioRefResponse(BaseModel):
@@ -248,13 +258,26 @@ def create_run(
     "/api/execution/study-cases/{case_id}/runs",
     response_model=RunListResponse,
 )
-def list_runs(case_id: str) -> dict[str, Any]:
+def list_runs(case_id: str, http_request: Request) -> dict[str, Any]:
     _parse_uuid(case_id, "case_id")
     runs = list_canonical_runs_for_case(case_id)
+    # Jeden stan modelu przypadku na całą listę; werdykt każdego biegu z tej samej funkcji
+    # co status przypadku i nagłówek ekranu analizy (`pola_swiezosci_biegu`).
+    stan = StanBiezacyModelu.dla_przypadku(
+        case_id, getattr(http_request.app.state, "uow_factory", None)
+    )
     return {
-        "runs": [run.to_execution_dict() for run in runs],
+        "runs": [_rekord_listy_biegow(run, stan) for run in runs],
         "count": len(runs),
     }
+
+
+def _rekord_listy_biegow(run: CanonicalRun, stan: StanBiezacyModelu) -> dict[str, Any]:
+    """Rekord biegu listy + werdykt świeżości (bez `results_valid` — kontrakt listy biegów
+    przypadku niesie status maszynowy razem z przyczyną, nie samą flagę)."""
+    pola = pola_swiezosci_biegu(run, stan)
+    pola.pop("results_valid")
+    return {**run.to_execution_dict(), **pola}
 
 
 def _stan_biegu_z_postepem(run: CanonicalRun) -> dict[str, Any]:

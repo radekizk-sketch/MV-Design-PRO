@@ -55,7 +55,9 @@ STATUS_BIEGU_Z_WYNIKIEM = "FINISHED"
 
 
 def werdykt_statusu_przypadku(
-    case_id: UUID | str, uow_factory: Callable[[], Any] | None
+    case_id: UUID | str,
+    uow_factory: Callable[[], Any] | None,
+    stan: StanBiezacyModelu | None = None,
 ) -> FreshnessVerdict:
     """Werdykt swiezosci WYNIKOW PRZYPADKU: status + przyczyna + lista zmian.
 
@@ -71,7 +73,8 @@ def werdykt_statusu_przypadku(
     cokolwiek policzono.
     """
     referencja = str(case_id)
-    stan = StanBiezacyModelu.dla_przypadku(referencja, uow_factory)
+    if stan is None:
+        stan = StanBiezacyModelu.dla_przypadku(referencja, uow_factory)
     with canonical_run_repository_scope() as repozytorium:
         biegi = [
             bieg
@@ -97,7 +100,12 @@ def pola_statusu_przypadku(
     powiekszony o `results_valid` — jawna flage kontraktu HTTP wyprowadzona z tego
     SAMEGO statusu (nie z drugiego warunku, ktory „dzis sie zgadza”).
     """
-    werdykt = werdykt_statusu_przypadku(case_id, uow_factory)
+    stan = StanBiezacyModelu.dla_przypadku(str(case_id), uow_factory)
+    werdykt = werdykt_statusu_przypadku(case_id, uow_factory, stan)
     pola = werdykt.to_overlay_fields()
     pola["results_valid"] = werdykt.status == ResultFreshness.FRESH
+    # Odcisk wejść świeżości — ten sam, który niesie werdykt pojedynczego biegu
+    # (`/api/analysis-runs/{id}`): nagłówek ekranu analizy pobiera werdykt biegu ponownie,
+    # gdy odcisk przypadku się zmieni (jedno źródło nagłówka i znacznika powłoki).
+    pola["odcisk_wejsc_swiezosci"] = stan.odcisk_wejsc(str(case_id))
     return pola
