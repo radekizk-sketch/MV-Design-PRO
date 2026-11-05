@@ -44,6 +44,10 @@ import {
 } from '../../../ui/shared/sterownikZabezpieczen';
 import { NASTAWY_STRINGS as T } from './stringsNastaw';
 import { ObwodWtornyPrzekladnika } from './ObwodWtornyPrzekladnika';
+import { zdanieSwiezosci } from '../../wyniki/kontekst/kontekstWyniku';
+import { rekordyZiemnozwarciowe } from '../../wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { TabelaOcenyZiemnozwarciowej } from '../../wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
+import { useOcenaZiemnozwarciowaAktywnegoBiegu } from '../../wyniki/koordynacja/useOcenaZiemnozwarciowa';
 
 /** Numery grup nastaw sterownika (lustro `NUMERY_GRUP_NASTAW` backendu). */
 export const NUMERY_GRUP_NASTAW = [1, 2, 3, 4] as const;
@@ -274,6 +278,9 @@ export function EdytorNastawZabezpieczenia({
     sterownik?.bay_ref ? (s.snapshot?.bays?.find((b) => b.ref_id === sterownik.bay_ref) ?? null) : null,
   );
   const galezie = useSnapshotStore((s) => s.snapshot?.branches);
+  // Ocena funkcji ziemnozwarciowych tego sterownika z aktywnego biegu oceny zabezpieczeń
+  // (ten sam rekord co sekcja oceny E-28 i raport) — po zmianie nastaw z oznaczeniem świeżości.
+  const ocenaZiemna = useOcenaZiemnozwarciowaAktywnegoBiegu();
 
   const aktywna = sterownik ? numerGrupyEfektywnej(sterownik) : 1;
   const [grupa, setGrupa] = useState<number>(aktywna);
@@ -605,6 +612,23 @@ export function EdytorNastawZabezpieczenia({
                 </li>
               ))}
             </ul>
+          ) : null}
+          {ocenaZiemna && rekordyZiemnozwarciowe(ocenaZiemna.wynik, sterownik.ref_id).length > 0 ? (
+            <div className="mvd-edytor-nastaw-ziemne" data-testid={`${testid}-ziemne`}>
+              <h5>{T.ziemneTytul}</h5>
+              {ocenaZiemna.nieaktualnyPowodPl || ocenaZiemna.swiezosc?.stan === 'nieaktualny' ? (
+                <p className="mvd-edytor-nastaw-braki" role="status" data-testid={`${testid}-ziemne-nieaktualny`}>
+                  <strong>{T.ziemneNieaktualna}:</strong>{' '}
+                  {ocenaZiemna.nieaktualnyPowodPl ?? zdanieSwiezosci(ocenaZiemna.swiezosc!)}
+                </p>
+              ) : null}
+              <TabelaOcenyZiemnozwarciowej
+                wynik={ocenaZiemna.wynik}
+                urzadzenieRef={sterownik.ref_id}
+                testid={`${testid}-ziemne-tabela`}
+                bezNaglowka
+              />
+            </div>
           ) : null}
           {nastawy?.ct_ref ? <ObwodWtornyPrzekladnika ctRef={nastawy.ct_ref} testid={`${testid}-obwod`} /> : null}
         </div>

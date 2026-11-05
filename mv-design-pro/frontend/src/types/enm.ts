@@ -33,6 +33,10 @@ export interface GroundingConfig {
   type: TypPunktuNeutralnego;
   r_ohm?: number | null;
   x_ohm?: number | null;
+  /** Prąd czynny wymuszenia automatyki AWSC [A] (rezystor równoległy do dławika, strona
+   *  pierwotna) — wyłącznie przy `petersen_coil`; `null` = punkt neutralny bez AWSC.
+   *  Lustro `enm.models.GroundingConfig.awsc_prad_wymuszenia_a`. */
+  awsc_prad_wymuszenia_a?: number | null;
 }
 
 export interface BusLimits {
@@ -1129,6 +1133,12 @@ export interface Substation extends ENMElement {
    *  jednosekcyjna ALBO stacja bez rozdzielnicy nN (`station_type` inny niż
    *  `rozdzielnica_nn`). Mirror backendowego `Substation.nn_sections`. */
   nn_sections?: NnSection[] | null;
+  /** Rezystancja uziemienia stacji R_E [Ω] (PN-EN 50522; pomiar albo projekt uziomu);
+   *  `null` = nieznana — ocena uziemienia podaje R_E,max = U_Tp(t_F)/I_E. */
+  uziom_rezystancja_ohm?: number | null;
+  /** Współczynnik redukcyjny r uziomu ∈ (0; 1] (ekrany kabli, linki odgromowe); `null` =
+   *  nieznany — ocena przyjmuje r = 1 (dana przyjęta). */
+  uziom_wspolczynnik_redukcji?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1644,10 +1654,6 @@ export interface BayEarthFaultPath {
   closure_path_elements: string[];
   transformer_contribution_ref?: string | null;
   grounding_device_ref?: string | null;
-  /** V12K-230: rezystancja uziomu [Ohm] — wspolautor pradu doziemnego. */
-  earth_electrode_resistance_ohm?: number | null;
-  /** Wspolczynnik podzialu pradu powrotnego przez ziemie. */
-  earth_return_split_factor?: number | null;
 }
 
 export interface BayProofBinding {

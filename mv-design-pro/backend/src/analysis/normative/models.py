@@ -35,8 +35,8 @@ class NormativeConfig:
     #: Jedno zrodlo prawdy: `analysis.normative.kryteria_napiecia` (karta W3-J).
     voltage_warn_pct: float = KRYTERIUM_OSTRZEZENIE_PROCENT
     voltage_fail_pct: float = KRYTERIUM_PRZEKROCZENIE_PROCENT
-    touch_voltage_warn_v: float | None = None
-    touch_voltage_fail_v: float | None = None
+    earth_potential_warn_v: float | None = None
+    earth_potential_fail_v: float | None = None
     selectivity_required: bool = True
     standard_ref: str = "IEC/PN-EN — user configured"
     earth_current_warn_a: float | None = None
@@ -46,12 +46,12 @@ class NormativeConfig:
         return {
             "earth_current_fail_a": self.earth_current_fail_a,
             "earth_current_warn_a": self.earth_current_warn_a,
+            "earth_potential_fail_v": self.earth_potential_fail_v,
+            "earth_potential_warn_v": self.earth_potential_warn_v,
             "loading_fail_pct": self.loading_fail_pct,
             "loading_warn_pct": self.loading_warn_pct,
             "selectivity_required": self.selectivity_required,
             "standard_ref": self.standard_ref,
-            "touch_voltage_fail_v": self.touch_voltage_fail_v,
-            "touch_voltage_warn_v": self.touch_voltage_warn_v,
             "voltage_fail_pct": self.voltage_fail_pct,
             "voltage_warn_pct": self.voltage_warn_pct,
         }

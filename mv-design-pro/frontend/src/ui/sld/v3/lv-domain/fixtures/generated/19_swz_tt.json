@@ -631,6 +631,7 @@
         "hv_bus_ref": "sn",
         "lv_bus_ref": "T1_zacisk",
         "lv_neutral": {
+          "awsc_prad_wymuszenia_a": null,
           "r_ohm": 2.0,
           "type": "directly_grounded",
           "x_ohm": null
@@ -656,7 +657,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "dda414347917d2723980dff8a6144239729ade5817af9c349d59eb55de73ebc4",
+  "projection_hash": "2e27e26009b4469458725c234cf06c2ddbec587b793bb347d3de7db712ac4b7a",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

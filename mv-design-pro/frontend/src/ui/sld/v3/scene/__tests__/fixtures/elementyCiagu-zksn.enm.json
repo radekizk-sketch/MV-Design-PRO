@@ -6344,7 +6344,9 @@
         "tags": [],
         "transformer_refs": [
           "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -6369,7 +6371,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/68ac9ff70674fa86039f9a70c3a683fe/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -6394,7 +6398,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/825dd01827860a6bbea74fd1fe138487/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -6419,7 +6425,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/a5f8be9c1b6264cdd998ece632d0fb11/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -6444,7 +6452,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/6158c2950b46f59fa12ba32db33a383f/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       },
       {
         "bus_refs": [
@@ -6469,7 +6479,9 @@
         "tags": [],
         "transformer_refs": [
           "stn/6075a765b1c19e8835e225fb7a891c12/transformer"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       }
     ],
     "transformers": [

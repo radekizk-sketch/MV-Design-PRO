@@ -15,6 +15,7 @@ import type {
   PominieteUrzadzenie,
 } from '../../../ui/protection-coordination/types';
 import type { WiarygodnoscOceny } from '../../../ui/protection-comparison/types';
+import type { WynikOcenyZiemnozwarciowej } from './ocenaZiemnozwarciowa';
 
 /** Ocena urządzenia modelu w punkcie zwarcia jego strefy. */
 export interface OcenaUrzadzeniaWPunkcie {
@@ -67,6 +68,9 @@ export interface WynikOcenyZabezpieczen {
   odmowy: OdmowaUrzadzenia[];
   pominiete: PominieteUrzadzenie[];
   summary: PodsumowanieOceny;
+  /** Funkcje ziemnozwarciowe i uziemienia stacji z obliczenia doziemnego tego biegu
+   *  (`null` — bieg zapisany przed oceną ziemnozwarciową). */
+  ziemnozwarciowe?: WynikOcenyZiemnozwarciowej | null;
   created_at: string;
   result_status: 'NONE' | 'FRESH' | 'OUTDATED';
   result_status_reason_pl: string;

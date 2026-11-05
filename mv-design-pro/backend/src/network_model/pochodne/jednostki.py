@@ -230,3 +230,15 @@ def simens_na_mikrosimens(admitancja_s: float) -> float:
     catalog/mv_benchmark_catalog.py:147 — tam operand to wyrażenie `(b_pu /
     zb)`, nie goła nazwa, więc wołający przekazuje już-policzoną wartość)."""
     return admitancja_s * 1e6
+
+
+def simens_na_milisimens(admitancja_s: float) -> float:
+    """Admitancja: S -> mS, x * 1000.0 (nastawy zabezpieczeń admitancyjnych Y0>, G0>, B0>
+    w mS — `application/analyses/protection/ocena_ziemnozwarciowa.py`)."""
+    return admitancja_s * 1000.0
+
+
+def w_na_kw(moc_w: float) -> float:
+    """Moc: W -> kW, x / 1000.0 (nastawa zabezpieczenia mocy zerowej P0> w kW —
+    `application/analyses/protection/ocena_ziemnozwarciowa.py`)."""
+    return moc_w / 1000.0

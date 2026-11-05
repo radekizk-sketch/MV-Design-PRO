@@ -104,6 +104,9 @@ class TransformerZeroSeqModel:
         z0_pu: impedancja zerowa w per-unit na S_base — szeregowa (SERIES_THROUGH)
             albo bocznikowa (HV/LV_SHUNT_GROUND). None dla OPEN.
         trace: ślad WHITE BOX (lista kroków — wzór + podstawienie).
+        zn3_hv_pu / zn3_lv_pu: składnik 3·Z_N punktu neutralnego strony (per-unit na S_base
+            i napięciu strony) zawarty w ``z0_pu`` — karta EWALUATORY-ZIEMNOZWARCIOWE:
+            obliczenie doziemne podmienia go na 3·(Z_N‖R_W) w stanie wymuszenia AWSC.
     """
 
     connection: ZeroSeqConnection
@@ -111,6 +114,8 @@ class TransformerZeroSeqModel:
     lv_winding: WindingZeroSeq
     z0_pu: complex | None
     trace: list[dict]
+    zn3_hv_pu: complex = 0j
+    zn3_lv_pu: complex = 0j
 
 
 #: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
@@ -153,7 +158,12 @@ def _neutral_grounded_and_zn(
             "uziemia uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
             "konfigurację."
         )
-    blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
+    blad = blad_konfiguracji_uziemienia(
+        grounding.type,
+        grounding.r_ohm,
+        grounding.x_ohm,
+        awsc_prad_a=grounding.awsc_prad_wymuszenia_a,
+    )
     if blad is not None:
         raise OdmowaDanychError(
             f"{opis_trafo}: uziemienie punktu neutralnego (uzwojenie {_STRONA_PL[side]}) — "
@@ -334,6 +344,8 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         lv_winding=lv_winding,
         z0_pu=z0_pu,
         trace=tracer.to_list(),
+        zn3_hv_pu=zn_hv_pu,
+        zn3_lv_pu=zn_lv_pu,
     )
 
 

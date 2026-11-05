@@ -27,17 +27,22 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
     NAGLOWKI_NASTAW_PL,
+    NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
     nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
     powod_braku_pl,
+    rekordy_ziemnozwarciowe,
     uzasadnienia_sprawdzen,
+    wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
     zdania_funkcji_nieocenianych,
+    zdanie_ziemnozwarciowe,
 )
 
 # Check for reportlab availability at import time
@@ -446,7 +451,39 @@ def export_protection_coordination_to_pdf(
         y -= line_height
 
     # ==========================================================================
-    # 9) FOOTER
+    # 9) GROUND-FAULT PROTECTION AND STATION EARTHING (ta sama treść co DOCX)
+    # ==========================================================================
+    y -= section_spacing
+    y = check_page_break(30 * mm)
+    draw_text(NAGLOWEK_ZIEMNOZWARCIOWYCH_PL, left_margin, font_size=14, bold=True)
+    y -= 3 * mm
+    rekordy_zz = rekordy_ziemnozwarciowe(result.get("ziemnozwarciowe"))
+    if rekordy_zz:
+        zz_cols = [40 * mm, 24 * mm, 30 * mm, 22 * mm, 22 * mm, 30 * mm]
+        draw_table_row(list(NAGLOWKI_ZIEMNOZWARCIOWYCH_PL), zz_cols, left_margin, bold=True)
+        y -= 2 * mm
+        for rekord in rekordy_zz:
+            y = check_page_break(line_height)
+            wiersz_zz = wiersz_ziemnozwarciowy(rekord)
+            draw_table_row(
+                [textwrap.shorten(w, 24, placeholder="…") for w in wiersz_zz],
+                zz_cols,
+                left_margin,
+                font_size=7,
+            )
+        for rekord in rekordy_zz:
+            for fragment in textwrap.wrap(zdanie_ziemnozwarciowe(rekord), width=110):
+                y = check_page_break(line_height)
+                c.setFont("DejaVuSans-Oblique", 8)
+                c.drawString(left_margin + 4 * mm, y, fragment)
+                y -= line_height
+    else:
+        c.setFont("DejaVuSans-Oblique", 10)
+        c.drawString(left_margin, y, "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie")
+        y -= line_height
+
+    # ==========================================================================
+    # 10) FOOTER
     # ==========================================================================
     y = check_page_break(20 * mm)
     y -= section_spacing

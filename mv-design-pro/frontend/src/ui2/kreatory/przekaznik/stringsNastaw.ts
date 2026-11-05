@@ -64,4 +64,6 @@ export const NASTAWY_STRINGS = {
   obwodUsunAparat: 'Usuń aparat',
   obwodZapisz: 'Zapisz obwód wtórny',
   obwodBladZapisu: 'Nie udało się zapisać obwodu wtórnego przekładnika.',
+  ziemneTytul: 'Ocena funkcji ziemnozwarciowych — aktywny bieg oceny zabezpieczeń',
+  ziemneNieaktualna: 'Wynik nieaktualny',
 } as const;

@@ -75,6 +75,7 @@ from .bateria_kondensatorow import (
     odmowa_parametrow_baterii,
     zapisz_tabliczke_baterii,
 )
+from .catalog_completion import pola_tabliczki_galezi
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
@@ -191,7 +192,7 @@ from .tor_pola import (
     pola_z_zaciskiem_szyny,
     wolne_pole_szyny,
 )
-from .uziemienie import blad_konfiguracji_uziemienia
+from .uziemienie import POLA_UZIOMU_STACJI, blad_konfiguracji_uziemienia, odmowa_uziomu_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
@@ -3221,54 +3222,13 @@ def _apply_materialized_branch_fields(
         if value is not None:
             target[key] = float(value)
 
-    for key in (
-        "cross_section_mm2",
-        "return_conductor_cross_section_mm2",
-        "return_conductor_r_ohm_per_km_20c",
-        # Karta P0.6 (G-05): reaktancja zyly powrotnej PE/PEN — analogiczny gap do
-        # rezystancji powyzej (patrz komentarz przy kontrakcie materializacji KABEL_NN).
-        "return_conductor_x_ohm_per_km",
-        "return_conductor_jth_1s_a_per_mm2",
-        "return_conductor_ith_1s_a",
-        # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur, ktora
-        # uzasadnia wspolczynnik k. Bez przepisania na galaz kryterium cieplne
-        # dostawaloby je wylacznie z recznej edycji modelu.
-        "jth_1s_a_per_mm2",
-        "ith_1s_a",
-    ):
-        value = materialized_params.get(key)
-        if value is not None:
-            target[key] = float(value)
-
-    temperatura_robocza = materialized_params.get("max_temperature_c")
-    if temperatura_robocza is not None:
-        target["operating_temperature_c"] = float(temperatura_robocza)
-    temperatura_zwarciowa = materialized_params.get("short_circuit_temperature_c")
-    if temperatura_zwarciowa is not None:
-        target["short_circuit_temperature_c"] = float(temperatura_zwarciowa)
-    izolacja = materialized_params.get("insulation_type")
-    if isinstance(izolacja, str) and izolacja.strip():
-        target["insulation"] = izolacja.strip().upper()
-
-    # Karta F-K1 faza 7: ODNIESIENIE NORMOWE danych cieplnych. Pole `thermal_source_ref`
-    # bylo w modelu, w grafie i w dowodzie od fazy 6, ale zaden kontrakt go nie
-    # wypelnial — dowod pokazywal „zrodlo: —", czyli pole bez dostawcy. Pierwszenstwo
-    # ma odniesienie DEDYKOWANE cieplu (linie napowietrzne), w drugiej kolejnosci
-    # metadana jakosci calego rekordu katalogu (kable).
-    for klucz_zrodla in ("thermal_source_reference", "source_reference"):
-        zrodlo = materialized_params.get(klucz_zrodla)
-        if isinstance(zrodlo, str) and zrodlo.strip():
-            target["thermal_source_ref"] = zrodlo.strip()
-            break
-
-    number_of_cores = materialized_params.get("number_of_cores")
-    if number_of_cores is not None:
-        target["number_of_cores"] = int(number_of_cores)
-
-    for key in ("conductor_material", "return_conductor_material"):
-        value = materialized_params.get(key)
-        if isinstance(value, str) and value.strip():
-            target[key] = value.strip().upper()
+    # Dane materiałowe i cieplne (F-K1 fazy 3/6/7: przekrój, dane cieplne żył, para temperatur
+    # uzasadniająca k, izolacja, odniesienie normowe danych cieplnych) — JEDEN zapis z uzupełnieniem
+    # na granicy ENM (`catalog_completion.pola_tabliczki_galezi`), żeby gałąź zmaterializowana
+    # operacją i gałąź uzupełniona na granicy niosły te same dane tego samego przewodu.
+    target.update(
+        pola_tabliczki_galezi(materialized_params, pola_kabla=target.get("type") != "line_overhead")
+    )
 
     # Karta LINIA-110: tabliczka przewodu linii 110 kV nie niesie impedancji linii — R′, X′,
     # B′ i Z′0 liczy solver z geometrii słupa (dana projektu albo wartość robocza rejestru).
@@ -4548,8 +4508,19 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
         if isinstance(grounding_payload.get("x_ohm"), int | float):
             grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
+        awsc_payload = grounding_payload.get("awsc_prad_wymuszenia_a")
+        if awsc_payload is not None:
+            if isinstance(awsc_payload, bool) or not isinstance(awsc_payload, int | float):
+                return _error_response(
+                    "Prąd wymuszenia AWSC punktu neutralnego GPZ musi być liczbą [A].",
+                    "source.invalid_grounding",
+                )
+            grounding_config["awsc_prad_wymuszenia_a"] = float(awsc_payload)
         blad_uziemienia_gpz = blad_konfiguracji_uziemienia(
-            grounding_type, grounding_config.get("r_ohm"), grounding_config.get("x_ohm")
+            grounding_type,
+            grounding_config.get("r_ohm"),
+            grounding_config.get("x_ohm"),
+            awsc_prad_a=grounding_config.get("awsc_prad_wymuszenia_a"),
         )
         if blad_uziemienia_gpz is not None:
             return _error_response(
@@ -5882,7 +5853,17 @@ def _build_neutral_grounding(
     # R/X istotne tylko dla uziemienia przez rezystor/cewkę (impedancyjne).
     r_ohm = _as_positive_float(earthing_block.get(f"{side}_r_ohm"))
     x_ohm = _as_positive_float(earthing_block.get(f"{side}_x_ohm"))
-    blad = blad_konfiguracji_uziemienia(grounding_type, r_ohm, x_ohm)
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd wymuszenia AWSC zespołu uziemiającego strony.
+    awsc_surowy = earthing_block.get(f"{side}_awsc_prad_wymuszenia_a")
+    awsc_a: float | None = None
+    if awsc_surowy is not None:
+        if isinstance(awsc_surowy, bool) or not isinstance(awsc_surowy, int | float):
+            return (
+                None,
+                f"Punkt neutralny strony {strona}: prąd wymuszenia AWSC musi być liczbą [A].",
+            )
+        awsc_a = float(awsc_surowy)
+    blad = blad_konfiguracji_uziemienia(grounding_type, r_ohm, x_ohm, awsc_prad_a=awsc_a)
     if blad is not None:
         return None, f"Punkt neutralny strony {strona}: {blad}."
     config: dict[str, Any] = {"type": grounding_type}
@@ -5890,6 +5871,8 @@ def _build_neutral_grounding(
         config["r_ohm"] = r_ohm
     if x_ohm is not None:
         config["x_ohm"] = x_ohm
+    if awsc_a is not None:
+        config["awsc_prad_wymuszenia_a"] = awsc_a
     return config, None
 
 
@@ -5966,7 +5949,10 @@ def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any]
                 "transformer.invalid_neutral_grounding",
             )
         blad = blad_konfiguracji_uziemienia(
-            config.get("type"), config.get("r_ohm"), config.get("x_ohm")
+            config.get("type"),
+            config.get("r_ohm"),
+            config.get("x_ohm"),
+            awsc_prad_a=config.get("awsc_prad_wymuszenia_a"),
         )
         if blad is not None:
             return _error_response(
@@ -9377,21 +9363,25 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     # Left segment
     left_length = length_km * ratio
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": seg_left_id,
-            "name": _nazwa_polowki_odcinka(segment, 1),
-            "type": seg_type,
-            "from_bus_ref": from_bus_ref,
-            "to_bus_ref": switch_bus_ref,
-            "length_km": left_length,
-            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
-            "catalog_ref": segment.get("catalog_ref"),
-            "status": "closed",
-        },
-    )
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: połówki odcinka niosą WSZYSTKIE dane elektryczne
+    # i katalogowe odcinka źródłowego (ta sama reguła `_copy_split_segment_fields` co podział
+    # przy wstawieniu stacji i podział odcinka nN). Dawniej przenosiły wyłącznie R′/X′ i
+    # identyfikator katalogu: gubiły B′ (ładowanie linii w rozpływie), R′0/X′0/B′0 (sieć
+    # zerowa — za wyłącznikiem sekcyjnym węzły traciły drogę prądu zerowego), obciążalność
+    # i dane cieplne, choć przewód jest fizycznie ten sam.
+    left_data: dict[str, Any] = {
+        "ref_id": seg_left_id,
+        "name": _nazwa_polowki_odcinka(segment, 1),
+        "type": seg_type,
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": switch_bus_ref,
+        "length_km": left_length,
+        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "status": "closed",
+    }
+    _copy_split_segment_fields(left_data, segment)
+    result = create_branch(new_enm, left_data)
     new_enm = result.enm
     created.append(seg_left_id)
 
@@ -9437,21 +9427,19 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     # Right segment
     right_length = length_km * (1.0 - ratio)
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": seg_right_id,
-            "name": _nazwa_polowki_odcinka(segment, 2),
-            "type": seg_type,
-            "from_bus_ref": switch_bus2_ref,
-            "to_bus_ref": to_bus_ref,
-            "length_km": right_length,
-            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
-            "catalog_ref": segment.get("catalog_ref"),
-            "status": "closed",
-        },
-    )
+    right_data: dict[str, Any] = {
+        "ref_id": seg_right_id,
+        "name": _nazwa_polowki_odcinka(segment, 2),
+        "type": seg_type,
+        "from_bus_ref": switch_bus2_ref,
+        "to_bus_ref": to_bus_ref,
+        "length_km": right_length,
+        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "status": "closed",
+    }
+    _copy_split_segment_fields(right_data, segment)
+    result = create_branch(new_enm, right_data)
     new_enm = result.enm
     created.append(seg_right_id)
 
@@ -10974,6 +10962,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
                 # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
                 "station_type",
+                # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (R_E i współczynnik r) — dana
+                # projektowa oceny uziemienia; kontrola wartości niżej.
+                *POLA_UZIOMU_STACJI,
             },
             # Bateria kondensatorów: nazwa i stan łącznika baterii (`status`). Qn/Un zmienia
             # WYŁĄCZNIE przypisanie innej pozycji katalogu (`assign_catalog_to_element`) —
@@ -11009,6 +11000,11 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         odmowa_baterii = odmowa_parametrow_baterii(enm, {**current_element, **parameters})
         if odmowa_baterii is not None:
             return _error_response(odmowa_baterii, "params.invalid_value")
+
+    if coll == "substations":
+        odmowa_uziomu = odmowa_uziomu_stacji(parameters)
+        if odmowa_uziomu is not None:
+            return _error_response(odmowa_uziomu, "params.invalid_value")
 
     # Deklaracja rodzaju stacji: zmiana wyłącznie w obrębie stacji SN/nN (deklaracja funkcji
     # `mv_lv` albo rodzaj topologiczny) — rozdzielnia źródłowa i rozdzielnica nN mają inną

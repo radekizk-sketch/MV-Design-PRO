@@ -98,6 +98,8 @@ function model(wariant: Wariant): EnergyNetworkModel {
         station_type: 'mv_lv',
         designation: jesli('ST-01/2026'),
         construction_type: jesli('kontenerowa'),
+        uziom_rezystancja_ohm: jesli(2.5),
+        uziom_wspolczynnik_redukcji: jesli(0.6),
         bus_refs: ['bus-sn', 'bus-nn'],
         transformer_refs: ['tr-1'],
         tags: [],
@@ -302,6 +304,7 @@ function model(wariant: Wariant): EnergyNetworkModel {
         ik3_min_ka: jesli(6.93),
         rx_ratio_min: jesli(0.12),
         catalog_ref: jesli('siec-110-250'),
+        neutral_grounding: jesli({ type: 'petersen_coil' as const, x_ohm: 52.0, r_ohm: 520.0, awsc_prad_wymuszenia_a: 10.0 }),
         tags: [],
         meta: {},
       },
@@ -472,12 +475,13 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     expect(lista!.join(' ')).not.toMatch(/\b(CT|VT)\b/);
   });
 
-  it('kolejność sekcji stacji: Identyfikacja, Rozdzielnica SN, Transformator, Strona nN, Przyłączenia', () => {
+  it('kolejność sekcji stacji: Identyfikacja, Rozdzielnica SN, Transformator, Strona nN, Uziemienie, Przyłączenia', () => {
     expect(karta('stacja', 'pelne').sekcje.map((s) => s.id)).toEqual([
       'identyfikacja',
       'rozdzielnica_sn',
       'transformator',
       'strona_nn',
+      'uziemienie_stacji',
       'przylaczenia',
     ]);
   });
@@ -498,5 +502,50 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     const sekcja = k.sekcje.find((s) => s.id === 'transformator')!;
     expect(sekcja.pustaPl).toBe('Stacja nie ma transformatora w modelu.');
     expect(sekcja.wiersze).toHaveLength(0);
+  });
+
+  // Dane ocen ziemnozwarciowych (karta EWALUATORY-ZIEMNOZWARCIOWE). ILOCZYN: sposób pracy
+  // punktu neutralnego {izolowany, rezystor, dławik z AWSC, dławik bez AWSC, brak konfiguracji} —
+  // wiersze R_N/X_N tylko przy punkcie impedancyjnym, AWSC tylko przy dławiku.
+  it.each([
+    ['isolated', undefined, ['pn_typ']],
+    ['resistor_grounded', undefined, ['pn_typ', 'pn_r', 'pn_x']],
+    ['petersen_coil', 10, ['pn_typ', 'pn_r', 'pn_x', 'pn_awsc']],
+    ['petersen_coil', null, ['pn_typ', 'pn_r', 'pn_x', 'pn_awsc']],
+    [null, undefined, ['pn_typ']],
+  ] as const)('sieć zasilająca, punkt neutralny %s (AWSC %s): wiersze %j', (typ, awsc, klucze) => {
+    const snapshot = model('pelne');
+    const zmieniona = {
+      ...snapshot,
+      sources: snapshot.sources.map((s) => ({
+        ...s,
+        neutral_grounding: typ === null ? null : { type: typ, r_ohm: 12.0, x_ohm: 52.0, awsc_prad_wymuszenia_a: awsc },
+      })),
+    };
+    const k = buildKartaTechniczna(zmieniona as EnergyNetworkModel, { kind: 'grid_source', elementId: 'src-1' } as DaneElementuKanwy, KATALOGI)!;
+    const sekcja = k.sekcje.find((s) => s.id === 'punkt_neutralny')!;
+    expect(sekcja.wiersze.map((w) => w.klucz)).toEqual(klucze);
+    const w = wiersze(k);
+    expect(w.get('pn_typ')!.wartosc).toEqual(typ === null ? null : expect.any(String));
+    if (typ === 'petersen_coil') {
+      expect(w.get('pn_r')!.etykieta).toBe('Rezystancja strat dławika R_N');
+      expect(w.get('pn_awsc')!.wartosc).toBe(awsc === null ? 'bez AWSC' : '10 A');
+    }
+    if (typ === 'resistor_grounded') expect(w.get('pn_r')!.etykieta).toBe('Rezystancja rezystora R_N');
+  });
+
+  it('stacja: uziom z wartością edytowalną; bez danej — wyjaśnienie, co przyjmie ocena', () => {
+    for (const wariant of ['pelne', 'brak'] as const) {
+      const w = wiersze(karta('stacja', wariant));
+      for (const [klucz, pole] of [['uziom_re', 'uziom_rezystancja_ohm'], ['uziom_r', 'uziom_wspolczynnik_redukcji']] as const) {
+        expect(w.get(klucz)!.edycja?.parametr, klucz).toBe(pole);
+        if (wariant === 'pelne') expect(w.get(klucz)!.zrodloPl).toBeNull();
+      }
+      if (wariant === 'brak') {
+        expect(w.get('uziom_re')!.zrodloPl).toContain('Rₑ,max = U_Tp(t_F)/I_E');
+        expect(w.get('uziom_r')!.zrodloPl).toContain('r = 1');
+      }
+    }
+    expect(wiersze(karta('stacja', 'pelne')).get('uziom_re')!.wartosc).toBe('2,5 Ω');
   });
 });

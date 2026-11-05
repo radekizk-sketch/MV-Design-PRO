@@ -11162,7 +11162,7 @@
     "type": "object"
    },
    "ProtectionResultResponse": {
-    "description": "Wynik biegu oceny zabezpieczeń nadprądowych z modelu.\n\n``evaluations`` — oceny par (urządzenie modelu, punkt zwarcia w strefie) z rekordem\nwerdyktu wyjaśnialnego; ``odmowy`` — urządzenia wstrzymane nazwanymi brakami z akcjami\nnaprawczymi; ``pominiete`` — urządzenia, których ocena nadprądowa nie dotyczy (z\nprzyczyną); ``nastawy`` — rozwiązane nastawy urządzeń (jednostki, przekładnia, zakresy\nkatalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu.",
+    "description": "Wynik biegu oceny zabezpieczeń nadprądowych z modelu.\n\n``evaluations`` — oceny par (urządzenie modelu, punkt zwarcia w strefie) z rekordem\nwerdyktu wyjaśnialnego; ``odmowy`` — urządzenia wstrzymane nazwanymi brakami z akcjami\nnaprawczymi; ``pominiete`` — urządzenia, których ocena nadprądowa nie dotyczy (z\nprzyczyną); ``nastawy`` — rozwiązane nastawy urządzeń (jednostki, przekładnia, zakresy\nkatalogu); ``strefy`` — strefy urządzeń wyznaczone z topologii modelu;\n``ziemnozwarciowe`` — ocena funkcji ziemnozwarciowych (51N, 67N, Yo>, Go>, Bo>, 32N, 59N,\nZAWSC) i uziemień stacji z obliczenia zwarcia doziemnego sieci SN: rekordy werdyktu\nwyjaśnialnego (``oceny``, ``odmowy``, ``uziemienia``), wynik solvera (``doziemienie``,\n``wyniki_uziemien``); ``None`` — bieg sprzed tej oceny.",
     "properties": {
      "created_at": {
       "title": "Created At",
@@ -11258,6 +11258,18 @@
       "additionalProperties": true,
       "title": "Summary",
       "type": "object"
+     },
+     "ziemnozwarciowe": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ziemnozwarciowe"
      },
      "zmiany_od_biegu": {
       "items": {

@@ -469,6 +469,17 @@ def susceptancja_z_pojemnosci_s_per_km(
     return 2 * math.pi * czestotliwosc_hz * pojemnosc_nf_per_km * 1e-9
 
 
+def susceptancja_zerowa_z_reguly_pradu_pojemnosciowego_s_per_km(dzielnik_reguly: float) -> float:
+    """Susceptancja zerowa B′0 [S/km] z reguły praktycznej prądu pojemnościowego linii
+    napowietrznej SN I_C ≈ U_n·l/d [A] (U_n w kV, l w km, d — dzielnik reguły: 300 dla linii
+    bez przewodu odgromowego przy 50 Hz).
+
+    Prąd pojemnościowy sieci przy doziemieniu metalicznym I_C = 3·B′0·l·U_n/√3 = √3·B′0·l·U_n
+    (U_n w V). Przyrównanie do reguły daje B′0 = 1/(d·√3·1000) — 1000 to przelicznik kV→V
+    w mianowniku (wartość robocza ESTIMATED: `network_model/catalog/wartosci_robocze.py`)."""
+    return 1.0 / (dzielnik_reguly * math.sqrt(3.0) * 1000.0)
+
+
 # =============================================================================
 # Rodzina I — udział mocy w bazie znamionowej, q = Q/Pn (karta S-3 W6-0)
 # =============================================================================

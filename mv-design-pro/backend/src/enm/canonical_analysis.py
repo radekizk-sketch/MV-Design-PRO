@@ -195,6 +195,9 @@ from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 if TYPE_CHECKING:
     # Import leniwy w ciele funkcji (warstwa aplikacji importuje ten moduł) — tu tylko typ.
     from application.analyses.protection.ocena_nadpradowa import WynikOceny
+    from application.analyses.protection.ocena_ziemnozwarciowa import (
+        WynikOcenyZiemnozwarciowej,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -2206,20 +2209,49 @@ def ocen_zabezpieczenia_biegu(
     )
 
 
+def ocen_zabezpieczenia_ziemnozwarciowe_biegu(
+    model: EnergyNetworkModel, sc_run: CanonicalRun
+) -> WynikOcenyZiemnozwarciowej:
+    """JEDNA ścieżka oceny zabezpieczeń ziemnozwarciowych i uziemień stacji na biegu zwarciowym.
+
+    Funkcje i nastawy z ``model`` (D-21), topologia stref z grafu migawki biegu (ten sam graf co
+    ocena nadprądowa). Fizyka sieci zerowej — solver ``network_model.solvers.doziemienie_sn``
+    (zwarcie doziemne zależne od sposobu pracy punktu neutralnego); ten sam wynik zasila
+    zabezpieczenia i prąd uziomowy stacji (PN-EN 50522).
+    """
+    from application.analyses.protection.ocena_ziemnozwarciowa import (
+        ocen_zabezpieczenia_ziemnozwarciowe,
+    )
+    from enm.mapping import map_enm_to_network_graph
+
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(sc_run.snapshot))
+    return ocen_zabezpieczenia_ziemnozwarciowe(
+        model,
+        graph,
+        odniesienie=f"obliczenie zwarcia doziemnego sieci SN (migawka {sc_run.snapshot_hash[:12]})",
+    )
+
+
 def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
-    """Bieg oceny zabezpieczeń nadprądowych — INTERPRETACJA, zero fizyki poza rdzeniami.
+    """Bieg oceny zabezpieczeń nadprądowych i ziemnozwarciowych — INTERPRETACJA, fizyka
+    wyłącznie w solverach (rozpływ prądu zwarciowego biegu SC, solver doziemień SN).
 
     Urządzenia i nastawy pochodzą z MIGAWKI MODELU biegu (``protection_assignments``,
     decyzja D-21) — przypadek nie przechowuje nastaw, a szablon przypadku przestał być
     źródłem urządzeń (karta BIEG-ZABEZPIECZEN-Z-MODELU). Topologia strefy i prąd
     przekaźnika pochodzą z biegu zwarciowego źródłowego (``options["sc_run_id"]``): graf jego
     migawki i rozpływ prądu zwarciowego na gałęzie punktu (``pobierz_rozplyw_biegu``). JEDNA
-    ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``.
+    ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``;
+    funkcje ziemnozwarciowe i uziemienia stacji — ``ocen_zabezpieczenia_ziemnozwarciowe_biegu``
+    (pole wyniku ``ziemnozwarciowe``, kroki śladu sieci zerowej, solvera i uziemień).
 
     `create_run` zwalidował istnienie, rodzaj, status, rodzaj zwarcia i projekt biegu
     źródłowego (`_validate_protection_sc_reference`). ``uow_factory`` wołającego trafia
     wyłącznie do rozpływu na żądanie biegu z opcjami audytu 2 (jak przy samym biegu SC).
     """
+    from application.analyses.protection.ocena_ziemnozwarciowa import (
+        kroki_sladu_ziemnozwarciowego,
+    )
     from domain.protection_analysis import (
         ProtectionEvaluation,
         ProtectionResult,
@@ -2239,6 +2271,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
 
     model = EnergyNetworkModel.model_validate(run.snapshot)
     wynik = ocen_zabezpieczenia_biegu(model, sc_run, uow_factory=uow_factory)
+    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(model, sc_run)
     pozycje_katalogu = {n.urzadzenie_ref: n.pozycja_katalogu for n in wynik.nastawy}
 
     evaluations = tuple(
@@ -2282,6 +2315,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             skipped_devices_count=len(wynik.pominiete),
         ),
         created_at=run.created_at,
+        ziemnozwarciowe=ziemne.to_dict(),
     )
     kroki: list[ProtectionTraceStep] = []
     for nastawy in wynik.nastawy:
@@ -2338,6 +2372,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
                 },
             )
         )
+    kroki.extend(ProtectionTraceStep(**krok) for krok in kroki_sladu_ziemnozwarciowego(ziemne))
     trace = ProtectionTrace(
         run_id=str(run.id),
         sc_run_id=str(sc_run.id),

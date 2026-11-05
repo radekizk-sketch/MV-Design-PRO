@@ -347,10 +347,16 @@ def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
 
 
 def _seed_case_3p15mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: str) -> None:
-    """Jak ``_seed_case_3p15mva``, ale kabel MV traci ``cross_section_mm2`` PO
-    materializacji (symuluje tor zapisany zanim to pole zaczęło być
-    materializowane — nadal PRZECHODZI walidację modelu, bo pole jest
-    opcjonalne, więc to REALNY, osiągalny stan magazynu, nie fikcja testu)."""
+    """Jak ``_seed_case_3p15mva``, ale kabel MV nie ma ``cross_section_mm2`` i jego tabliczki
+    nie da się odtworzyć: pozycja katalogu, z której go zmaterializowano, nie istnieje już
+    w katalogu (np. pozycja projektu usunięta). Nadal PRZECHODZI walidację modelu (pole
+    opcjonalne), więc to REALNY, osiągalny stan magazynu.
+
+    Karta EWALUATORY-ZIEMNOZWARCIOWE: dawny wariant tego seedu (kabel z ISTNIEJĄCĄ pozycją
+    katalogu, który zgubił przekrój po materializacji) jest dziś naprawiany na granicy ENM —
+    uzupełnienie katalogu przywraca przekrój z tabliczki (`catalog_completion
+    .pola_tabliczki_galezi`), tak jak przywracało R′/X′; brak przekroju zostaje wyłącznie tam,
+    gdzie tabliczki nie ma skąd wziąć."""
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
@@ -360,6 +366,12 @@ def _seed_case_3p15mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: s
     for branch in result["snapshot"].get("branches", []):
         if branch.get("type") == "cable":
             branch["cross_section_mm2"] = None
+            branch["catalog_ref"] = "cable-pozycja-usunieta-z-katalogu"
+            branch["materialized_params"] = {
+                **(branch.get("materialized_params") or {}),
+                "catalog_item_id": "cable-pozycja-usunieta-z-katalogu",
+                "cross_section_mm2": None,
+            }
     set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
 
 

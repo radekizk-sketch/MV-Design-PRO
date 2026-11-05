@@ -194,6 +194,44 @@
         "U"
       ]
     },
+    "32N": {
+      "ansi": "32N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "kW",
+          "klucz": "prog_p0_kw",
+          "nazwa_pl": "próg mocy czynnej składowej zerowej w kierunku linii (strona pierwotna)",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg rozruchowy napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "ziemnozwarciowe watometryczne (moc czynna składowej zerowej w kierunku linii)",
+      "ocena": "ZIEMNOZWARCIOWA",
+      "oznaczenie_pl": "Po>",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0",
+        "3U0"
+      ]
+    },
     "46": {
       "ansi": "46",
       "nastawy": [
@@ -411,7 +449,7 @@
         }
       ],
       "nazwa_pl": "ziemnozwarciowe bezzwłoczne (prąd zerowy)",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "Io>>",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -541,7 +579,7 @@
         }
       ],
       "nazwa_pl": "ziemnozwarciowe zwłoczne (prąd zerowy)",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "Io>",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -599,7 +637,7 @@
         }
       ],
       "nazwa_pl": "nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "U0>",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -832,7 +870,7 @@
         }
       ],
       "nazwa_pl": "ziemnozwarciowe kierunkowe (wejścia Io i U0)",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "Io> kierunkowe",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -1163,6 +1201,44 @@
         "SYGNAL"
       ]
     },
+    "Bo>": {
+      "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "mS",
+          "klucz": "prog_b0_ms",
+          "nazwa_pl": "próg susceptancji zerowej w kierunku linii (strona pierwotna)",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg rozruchowy napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "ziemnozwarciowe susceptancyjne (kierunkowe, sieć z izolowanym punktem neutralnym)",
+      "ocena": "ZIEMNOZWARCIOWA",
+      "oznaczenie_pl": "Bo>",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0",
+        "3U0"
+      ]
+    },
     "Go>": {
       "ansi": null,
       "nastawy": [
@@ -1170,7 +1246,7 @@
           "dodatnia": true,
           "jednostka": "mS",
           "klucz": "prog_g0_ms",
-          "nazwa_pl": "próg konduktancji zerowej",
+          "nazwa_pl": "próg konduktancji zerowej w kierunku linii (strona pierwotna)",
           "typ": "LICZBA",
           "wartosci": []
         },
@@ -1192,7 +1268,7 @@
         }
       ],
       "nazwa_pl": "ziemnozwarciowe konduktancyjne",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "Go>",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -1336,7 +1412,7 @@
           "dodatnia": true,
           "jednostka": "mS",
           "klucz": "prog_y0_ms",
-          "nazwa_pl": "próg admitancji zerowej",
+          "nazwa_pl": "próg modułu admitancji zerowej (strona pierwotna)",
           "typ": "LICZBA",
           "wartosci": []
         },
@@ -1358,7 +1434,7 @@
         }
       ],
       "nazwa_pl": "ziemnozwarciowe admitancyjne",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "Yo>",
       "rodzaj": "ZABEZPIECZENIE",
       "wejscia_opcjonalne": [],
@@ -1388,7 +1464,7 @@
         }
       ],
       "nazwa_pl": "automatyka wymuszania składowej czynnej prądu ziemnozwarciowego",
-      "ocena": null,
+      "ocena": "ZIEMNOZWARCIOWA",
       "oznaczenie_pl": "ZAWSC",
       "rodzaj": "AUTOMATYKA",
       "wejscia_opcjonalne": [],

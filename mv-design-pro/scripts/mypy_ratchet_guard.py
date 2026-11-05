@@ -263,7 +263,11 @@ BACKEND = ROOT / "backend"
 # 3: zmienna `cb` uzyta dla dwoch typow; `ocena_nadpradowa.py` 1: `breaker_ref` `str | None`
 # w `OcenaPunktu`), a kasacja dawnej struktury zabezpieczen zdjela 3 bledy i 1 plik. Po naprawie
 # (osobna zmienna wylacznika obwodu; wylacznik zawezony przekazywany do `_ocena_punktu`) 163/19.
-BASELINE_ERRORS = 163
+# Karta EWALUATORY-ZIEMNOZWARCIOWE (pomiar 2026-11-05, `mypy src` na bazie 4c94c52ba: 163/19,
+# na drzewie karty: 161/19): kasacja mostu `ground_fault_bridge` i przepisanie dowodu
+# uziemienia na wynik solvera doziemien zdjely 2 bledy `proof_generator.py` (39 -> 37); nowy
+# solver `doziemienie_sn.py` i raport PDF bez bledow typow.
+BASELINE_ERRORS = 161
 BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")

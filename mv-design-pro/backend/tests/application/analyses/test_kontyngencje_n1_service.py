@@ -982,8 +982,20 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `zrodlo_u0_ref` pól (27 liści) przeszły do sterowników pól `protection_assignments`
     # (`bay_ref`, `funkcje`, `aktywna_grupa` — 54 liście). Enumeracja kontyngencji, dotkliwości
     # i ranking identyczne.
+    # 2026-11-05 (karta EWALUATORY-ZIEMNOZWARCIOWE, połówki odcinka po wstawieniu łącznika
+    # sekcyjnego niosą dane przewodu źródłowego — `_copy_split_segment_fields`): gn01 bez zmiany,
+    # gn03 c1a30de4… → 3218479f…. Pełne widoki z kodu bazy `4c94c52ba` (`git archive`) i po
+    # karcie porównane liść po liściu: modelu wejściowego 421 → 515 liści — połówki
+    # „Magistrala 01 — odcinek 02 (1)/(2)" dostały tabliczkę kabla (I_r 230 A, B′, R′0/X′0,
+    # dane cieplne), których dawniej nie miały; widoku 339 → 299 liści, 0 nowych kluczy, 54
+    # liście różne: z `kryteria_pominiete` znikło 8 pozycji „Brak prądu znamionowego
+    # (obciążalności) gałęzi w modelu" (BRANCH_LOADING obu połówek w kontyngencjach), reszta to
+    # przesunięcie indeksów listy oraz `context.snapshot_hash` i `input_hash`. Kryterium
+    # obciążalności połówek jest teraz oceniane (0 przeciążeń); enumeracja kontyngencji,
+    # podsumowanie i kolejność rankingu identyczne, w rekordach rankingu mniejszy licznik
+    # `kryteria_pominiete`.
     "gn01_promieniowa": "fa645cd8b1e44e46ebb6c7ad3c8886d699ba2230f19c859e8740a02ccadd1ce6",
-    "gn03_pierscien": "c1a30de457e5befd7dce52b9ccbc466ca9d101118e6a4a5202103a02d66b29e4",
+    "gn03_pierscien": "3218479ffece82541cf18a56a81d503835bd01a29483eed4c209f0ef814b9c3f",
 }
 
 

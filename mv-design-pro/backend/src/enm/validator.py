@@ -3081,7 +3081,14 @@ class ENMValidator:
             return trafo.lv_neutral or GroundingConfig(type="directly_grounded")
 
         def _ta_sama(a: GroundingConfig, b: GroundingConfig) -> bool:
-            return (a.type, a.r_ohm, a.x_ohm) == (b.type, b.r_ohm, b.x_ohm)
+            # AWSC (karta EWALUATORY-ZIEMNOZWARCIOWE) jest częścią sposobu pracy punktu
+            # neutralnego — opis bez AWSC przy fizyce z AWSC to ta sama sprzeczność.
+            return (a.type, a.r_ohm, a.x_ohm, a.awsc_prad_wymuszenia_a) == (
+                b.type,
+                b.r_ohm,
+                b.x_ohm,
+                b.awsc_prad_wymuszenia_a,
+            )
 
         fizyka = [_uziemienie_sn(t) for t in z_droga] or [GroundingConfig(type="isolated")]
         if any(_ta_sama(opis, f) for f in fizyka):
@@ -3171,7 +3178,9 @@ class ENMValidator:
             cfg = source.neutral_grounding
             if cfg is None:
                 continue
-            blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+            blad = blad_konfiguracji_uziemienia(
+                cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+            )
             if blad is not None:
                 issues.append(
                     ValidationIssue(
@@ -3278,7 +3287,9 @@ class ENMValidator:
             ):
                 if cfg is None:
                     continue
-                blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+                blad = blad_konfiguracji_uziemienia(
+                    cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+                )
                 if blad is not None:
                     issues.append(
                         ValidationIssue(

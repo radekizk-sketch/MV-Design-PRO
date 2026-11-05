@@ -162,7 +162,7 @@ def test_p19_limits_and_not_evaluated() -> None:
     proof = _make_proof(
         proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
         key_results={
-            "u_touch_v": ProofValue.create("U_d", 120.0, "V", "u_touch_v"),
+            "u_e_v": ProofValue.create("U_E", 120.0, "V", "u_e_v"),
         },
         target_id="EARTH",
         document_id="00000000-0000-0000-0000-000000000401",
@@ -175,14 +175,14 @@ def test_p19_limits_and_not_evaluated() -> None:
 
     report_warn = evaluator.evaluate(
         [proof],
-        NormativeConfig(touch_voltage_warn_v=100.0, touch_voltage_fail_v=150.0),
+        NormativeConfig(earth_potential_warn_v=100.0, earth_potential_fail_v=150.0),
     )
     item_warn = next(item for item in report_warn.items if item.rule_id == "NR_P19_001")
     assert item_warn.status == NormativeStatus.WARNING
 
     report_fail = evaluator.evaluate(
         [proof],
-        NormativeConfig(touch_voltage_warn_v=100.0, touch_voltage_fail_v=110.0),
+        NormativeConfig(earth_potential_warn_v=100.0, earth_potential_fail_v=110.0),
     )
     item_fail = next(item for item in report_fail.items if item.rule_id == "NR_P19_001")
     assert item_fail.status == NormativeStatus.FAIL

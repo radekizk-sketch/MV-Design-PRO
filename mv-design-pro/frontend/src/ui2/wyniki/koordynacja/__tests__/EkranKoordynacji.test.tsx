@@ -25,6 +25,7 @@ import { EkranKoordynacji } from '../EkranKoordynacji';
 import { useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
+import { rekordyZiemnozwarciowe } from '../ocenaZiemnozwarciowa';
 
 const DONE_SC_RUN = {
   id: 'run-sc-1',
@@ -460,6 +461,29 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
     expect(odmowy).toHaveTextContent('Zabezpieczenie Q9:');
     expect(odmowy).toHaveTextContent('Dodaj przekładnik prądowy przy wyłączniku.');
     await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uzupelnij-relay-q9'));
+    expect(openRouteSurface).toHaveBeenCalledWith('E-27');
+  });
+
+  // Karta EWALUATORY-ZIEMNOZWARCIOWE: ta sama sekcja niesie oceny funkcji ziemnozwarciowych
+  // i uziemień stacji z PRAWDZIWEGO wyniku biegu (pole `ziemnozwarciowe`); odmowa prowadzi do
+  // edycji nastaw w modelu. Klik natywny.
+  it('wynik oceny niesie tabelę zwarć doziemnych; odmowa funkcji doziemnej prowadzi do edycji w modelu', async () => {
+    const user = userEvent.setup();
+    kontekstOceny([biegOceny('ocena-stara', '2026-09-01T10:00:00Z')]);
+    const openRouteSurface = vi.fn();
+    useNetworkBuildStore.setState({ openRouteSurface } as never);
+    mockOceny({});
+    render(<EkranKoordynacji />);
+    const rekordy = rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe);
+    expect(rekordy.length).toBeGreaterThan(0);
+    const tabela = await screen.findByTestId('mvd-ocena-zabezpieczen-ziemne');
+    const wiersze = within(tabela).getAllByTestId('mvd-ocena-zabezpieczen-ziemne-wiersz');
+    expect(wiersze.map((w) => w.dataset.kryterium)).toEqual(rekordy.map((r) => r.kryterium));
+    wiersze.forEach((w, i) => {
+      expect(w).toHaveTextContent(rekordy[i].ocena.etykieta.etykieta_pl);
+      expect(w).toHaveTextContent(rekordy[i].zdanie_pl);
+    });
+    await user.click(within(tabela).getAllByTestId('mvd-ocena-zabezpieczen-ziemne-uzupelnij')[0]);
     expect(openRouteSurface).toHaveBeenCalledWith('E-27');
   });
 });

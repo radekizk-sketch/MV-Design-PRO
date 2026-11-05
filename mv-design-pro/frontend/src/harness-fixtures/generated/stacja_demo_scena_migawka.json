@@ -1090,7 +1090,9 @@
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
       "station_type": "gpz",
       "tags": [],
-      "transformer_refs": []
+      "transformer_refs": [],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -1115,7 +1117,9 @@
       "tags": [],
       "transformer_refs": [
         "stn/684df5fd0b6bdc2f779f62c4db799e50/transformer"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     }
   ],
   "transformers": [

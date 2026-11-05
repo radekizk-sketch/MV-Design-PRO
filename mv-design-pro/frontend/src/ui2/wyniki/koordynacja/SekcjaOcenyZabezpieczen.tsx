@@ -13,7 +13,9 @@
  *    serwera jako daną wejściową — zmiana nastaw w modelu czyni wynik nieaktualnym; nowy bieg
  *    oceny staje się aktywnym biegiem rodziny,
  *  - pokazuje oceny z rekordem werdyktu wyjaśnialnego, odmowy z akcją naprawczą (droga do
- *    edycji w modelu, E-27) i pominięte z przyczyną.
+ *    edycji w modelu, E-27) i pominięte z przyczyną,
+ *  - pokazuje oceny funkcji ziemnozwarciowych i uziemień stacji tego samego biegu
+ *    (`TabelaOcenyZiemnozwarciowej`, pole wyniku `ziemnozwarciowe`).
  * ZERO fizyki w UI — wszystkie liczby z backendu.
  */
 
@@ -37,6 +39,7 @@ import {
   type WynikOcenyZabezpieczen,
 } from './ocenaZabezpieczenApi';
 import { KOORDYNACJA_STRINGS as T } from './strings';
+import { TabelaOcenyZiemnozwarciowej } from './TabelaOcenyZiemnozwarciowej';
 
 type Wariant = 'max' | 'min';
 type Stan = 'wczytywanie' | 'bezczynny' | 'wToku' | 'blad';
@@ -253,6 +256,11 @@ export function SekcjaOcenyZabezpieczen({
               </ul>
             </div>
           ) : null}
+          <TabelaOcenyZiemnozwarciowej
+            wynik={wynik.ziemnozwarciowe}
+            onUzupelnij={doEdycji}
+            testid="mvd-ocena-zabezpieczen-ziemne"
+          />
           {wynik.pominiete.length > 0 ? (
             <div data-testid="mvd-ocena-zabezpieczen-pominiete">
               <h4>{T.ocenaPominieteTytul}</h4>

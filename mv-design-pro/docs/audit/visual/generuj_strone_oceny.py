@@ -63,6 +63,15 @@ class Seria:
 #: jest dokladnie tym defektem, ktory ta mapa zastapila.
 MAPA_SERII: tuple[Seria, ...] = (
     Seria(
+        "zabezpieczenia-ziemnozwarciowe",
+        "Ocena zabezpieczeń ziemnozwarciowych i uziemienia stacji",
+        "Funkcja 67N ustawiona w karcie nastaw pola GPZ (sieć kompensowana z wymuszeniem AWSC "
+        "25 A, uziom GPZ R_E = 2,5 Ω): tabela ocen ziemnozwarciowych biegu oceny zabezpieczeń "
+        "(czułość, selektywność, odmowy z brakami, napięcie uziomowe i krokowe) oraz ta sama "
+        "tabela zawężona do sterownika w szczegółach karty nastaw. Zrzuty żywej aplikacji "
+        "z e2e, w obu motywach.",
+    ),
+    Seria(
         "flow-ekspert",
         "Flow projektanta — ekrany bieżącego programu kart",
         "Komplet ekranów, na których ocenia się kolejne karty: bilans CT/VT, zaczepy "

@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **186** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -162,7 +162,6 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `bay.settlement_core_missing` | STATIONS | 3 | WARNING | Pole wymaga pomiaru rozliczeniowego i analizatora jakości energii (wytwórca ≥ 200 kW albo odbiorca > 4 MW), a przekładnik prądowy nie ma rdzenia rozliczeniowego | panel: `inspector`, tab: `pola` |
 | `bay.switching_execution_insulation_mismatch` | STATIONS | 3 | WARNING | Wykonanie łączników pola nie jest dopuszczone w izolacji rozdzielnicy — łącznik trójpołożeniowy przy szynie wymaga izolacji gazowej bez gazów fluorowanych albo stało-powietrznej | panel: `inspector`, tab: `pola` |
 | `bay.ufls_in_bay_with_generation` | STATIONS | 3 | WARNING | Pole z generacją ma samoczynne częstotliwościowe odciążenie — SCO nie uruchamia się w liniach z jednostkami wytwórczymi | panel: `inspector`, tab: `pola` |
-| `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
 | `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
@@ -251,20 +250,20 @@ Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 71 |
+| WARNING | 70 |
 | INFO | 8 |
-| **Razem** | **187** |
+| **Razem** | **186** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
-| STATIONS | 38 |
+| STATIONS | 37 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 29 |
-| **Razem** | **187** |
+| **Razem** | **186** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

@@ -137,6 +137,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         # Karta UX-04/POLE-LINIOWE-WZORZEC: rdzenie CT i uzwojenia VT jako listy
         # (`Measurement.rdzenie` / `uzwojenia`; brak = tabliczka niedostarczona).
         "measurements": ("rdzenie", "uzwojenia"),
+        # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (R_E, współczynnik r) — test odcisku:
+        # `test_uziom_stacji_i_awsc_poza_odciskiem_gdy_none` niżej.
+        "substations": ("uziom_rezystancja_ohm", "uziom_wspolczynnik_redukcji"),
         # Karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie —
         # to samo prawo; test odcisku: `tests/enm/test_bateria_kondensatorow_model.py`
         # (bateria bez pól karty i z polami `None` haszuje jak przed kartą).
@@ -218,3 +221,58 @@ def test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none() -> None:
     )
     assert compute_enm_hash(z_blokiem) != compute_enm_hash(bez_bloku)
     assert compute_input_hash(z_blokiem) != compute_input_hash(bez_bloku)
+
+
+def test_uziom_stacji_i_awsc_poza_odciskiem_gdy_none() -> None:
+    """Karta EWALUATORY-ZIEMNOZWARCIOWE: stacja bez danych uziomu i punkt neutralny bez AWSC
+    haszują jak zapis sprzed karty (kluczy nie było — pole płaskie stacji i pole SŁOWNIKA
+    punktu neutralnego źródła, `_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE`); podana dana zmienia
+    odcisk wejścia i migawki (zmienia wynik oceny uziemienia i obliczenia doziemnego)."""
+    from enm.hash import _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE
+    from enm.models import GroundingConfig, Substation
+
+    assert _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE["sources"] == {
+        "neutral_grounding": ("awsc_prad_wymuszenia_a",)
+    }
+    assert _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE["transformers"] == {
+        "hv_neutral": ("awsc_prad_wymuszenia_a",),
+        "lv_neutral": ("awsc_prad_wymuszenia_a",),
+    }
+
+    def model(
+        *, rezystancja: float | None = None, r: float | None = None, awsc: float | None = None
+    ) -> EnergyNetworkModel:
+        enm = _enm(
+            neutral_grounding=GroundingConfig(
+                type="petersen_coil", x_ohm=80.0, awsc_prad_wymuszenia_a=awsc
+            )
+        )
+        enm.substations.append(
+            Substation(
+                ref_id="st1",
+                name="GPZ",
+                station_type="gpz",
+                bus_refs=["b1"],
+                uziom_rezystancja_ohm=rezystancja,
+                uziom_wspolczynnik_redukcji=r,
+            )
+        )
+        return enm
+
+    bez = model()
+    migawka = bez.model_dump(mode="json")
+    sprzed_karty = bez.model_dump(mode="json")
+    for stacja in sprzed_karty["substations"]:
+        stacja.pop("uziom_rezystancja_ohm")
+        stacja.pop("uziom_wspolczynnik_redukcji")
+    for zrodlo in sprzed_karty["sources"]:
+        zrodlo["neutral_grounding"].pop("awsc_prad_wymuszenia_a")
+    assert hash_migawki_enm(migawka) == hash_migawki_enm(sprzed_karty)
+    assert compute_enm_hash(bez) == hash_migawki_enm(sprzed_karty)
+    # Migawka wołającego nietknięta (reguła słownika zagnieżdżonego pracuje na kopii).
+    assert "awsc_prad_wymuszenia_a" in migawka["sources"][0]["neutral_grounding"]
+
+    for z_danymi in (model(rezystancja=0.5), model(r=0.6), model(awsc=25.0)):
+        assert compute_input_hash(z_danymi) != compute_input_hash(bez)
+        assert compute_enm_hash(z_danymi) != compute_enm_hash(bez)
+        assert compute_enm_hash(z_danymi) == hash_migawki_enm(z_danymi.model_dump(mode="json"))

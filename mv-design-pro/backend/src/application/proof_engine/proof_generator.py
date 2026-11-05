@@ -3590,92 +3590,56 @@ class ProofGenerator:
         data: EarthingGroundFaultInput,
         artifact_id: UUID | None = None,
     ) -> ProofDocument:
-        """
-        Generuje dowód P19: Doziemienia / uziemienia SN.
+        """Dowód uziemienia stacji SN: prąd uziomowy (PN-EN 50522 tablica 1), napięcie uziomowe
+        i rezystancja dopuszczalna. PREZENTACJA wyniku solvera doziemień SN — generator nie
+        liczy żadnej wielkości (NOT-A-SOLVER): każda liczba przychodzi w ``data``.
 
-        Braki danych → ostrzeżenia + NOT COMPUTED (BINDING).
+        Braki danych są jawne: R_E nieznane → U_E „—" i ostrzeżenie; U_Tp(t_F) — treści normy
+        w repozytorium brak (decyzja O-74 pkt 3) → R_E,max bez wartości liczbowej.
         """
         if artifact_id is None:
             artifact_id = uuid4()
 
         warnings: list[str] = []
-        steps: list[ProofStep] = []
-        step_number = 0
-
-        i_earth_from_voltage = None
-        if data.u0_v is None or data.z_e_ohm is None:
-            warnings.append("Brak danych do obliczenia prądu doziemnego (U_0 lub Z_E).")
-        elif data.z_e_ohm == 0:
-            warnings.append("Impedancja uziemienia Z_E = 0 Ω — brak obliczeń I_E.")
-        else:
-            i_earth_from_voltage = data.u0_v / data.z_e_ohm
-
-        i_earth_from_distribution = None
-        if data.i_u_a is None or data.i_p_a is None:
-            warnings.append("Brak danych do rozdziału prądu doziemnego (I_u lub I_p).")
-        else:
-            i_earth_from_distribution = data.i_u_a + data.i_p_a
-
-        i_earth = i_earth_from_voltage
-        if i_earth is None:
-            i_earth = i_earth_from_distribution
-
-        step_number += 1
-        steps.append(
-            cls._create_earth_current_step(
-                step_number=step_number,
-                u0_v=data.u0_v,
-                z_e_ohm=data.z_e_ohm,
-                i_earth=i_earth_from_voltage,
+        if data.wspolczynnik_r_przyjety:
+            warnings.append(
+                "Współczynnik redukcyjny r nieznany — przyjęto r = 1 (zachowawczo, cały prąd "
+                "zwarcia wraca przez uziom stacji)."
             )
+        if data.napiecie_uziomowe_v is None:
+            warnings.append(
+                "Rezystancja uziemienia stacji R_E nieznana — napięcie uziomowe U_E nieobliczone; "
+                "wymagana rezystancja R_E,max w kroku 3."
+            )
+        if data.czas_trwania_zwarcia_s is None:
+            warnings.append(
+                "Czas trwania zwarcia t_F nieustalony — żadna funkcja ziemnozwarciowa modelu nie "
+                "wyłącza zwarcia w tym punkcie."
+            )
+        warnings.append(
+            "Dopuszczalne napięcie dotykowe U_Tp(t_F) (PN-EN 50522, rysunek 4) — treści normy "
+            "brak w repozytorium; ocena bez werdyktu (brak podstawy limitu)."
         )
 
-        step_number += 1
-        steps.append(
-            cls._create_earth_distribution_step(
-                step_number=step_number,
-                i_u_a=data.i_u_a,
-                i_p_a=data.i_p_a,
-                i_earth=i_earth_from_distribution,
-            )
-        )
-
-        u_touch = None
-        if data.i_u_a is None or data.r_u_ohm is None:
-            warnings.append("Brak danych do obliczenia napięcia dotykowego (I_u lub R_u).")
-        else:
-            u_touch = data.i_u_a * data.r_u_ohm
-            warnings.append("Napięcie dotykowe obliczone w trybie UPROSZCZONYM (informacyjnie).")
-            step_number += 1
-            steps.append(
-                cls._create_earth_touch_step(
-                    step_number=step_number,
-                    i_u_a=data.i_u_a,
-                    r_u_ohm=data.r_u_ohm,
-                    u_touch=u_touch,
-                )
-            )
-
+        steps = [
+            cls._create_earth_current_step(step_number=1, data=data),
+            cls._create_earth_voltage_step(step_number=2, data=data),
+            cls._create_earth_resistance_limit_step(step_number=3, data=data),
+        ]
         unit_checks_passed = all(step.unit_check.passed for step in steps)
-
-        computed_status = "COMPUTED" if i_earth is not None else "NOT COMPUTED"
+        computed_status = "COMPUTED" if data.napiecie_uziomowe_v is not None else "R_E NIEZNANE"
 
         key_results: dict[str, ProofValue] = {
-            "i_earth_a": cls._value_or_missing("I_{E}", i_earth, "A", "i_earth_a"),
+            "i_earth_a": ProofValue.create("I_{E}", data.prad_uziomowy_a, "A", "i_earth_a"),
+            "u_e_v": cls._value_or_missing("U_{E}", data.napiecie_uziomowe_v, "V", "u_e_v"),
+            "t_f_s": cls._value_or_missing("t_{F}", data.czas_trwania_zwarcia_s, "s", "t_f_s"),
             "earthing_mode": cls._status_value(
-                r"\text{tryb uziemienia}",
-                data.earthing_mode or "—",
-                "earthing_mode",
+                r"\text{sposób pracy punktu neutralnego}", data.sposob_pl, "earthing_mode"
             ),
             "computed_status": cls._status_value(
-                r"\text{status obliczeń}",
-                computed_status,
-                "computed_status",
+                r"\text{status obliczeń}", computed_status, "computed_status"
             ),
         }
-
-        if u_touch is not None:
-            key_results["u_touch_v"] = ProofValue.create("U_{d}", u_touch, "V", "u_touch_v")
 
         summary = ProofSummary(
             key_results=key_results,
@@ -3683,21 +3647,19 @@ class ProofGenerator:
             total_steps=len(steps),
             warnings=tuple(warnings),
         )
-
         header = ProofHeader(
             project_name=data.project_name,
             case_name=data.case_name,
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
-            fault_location=data.fault_location,
-            fault_type=data.fault_type,
+            fault_location=f"{data.stacja_pl} — szyna {data.punkt_pl}",
+            fault_type="1F-Z",
             element_kind="EARTHING_SN",
         )
-
         return ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-            title_pl="Dowód: doziemienia i uziemienia SN",
+            title_pl=f"Dowód: uziemienie stacji {data.stacja_pl} przy zwarciu doziemnym SN",
             header=header,
             steps=steps,
             summary=summary,
@@ -4684,80 +4646,60 @@ class ProofGenerator:
 
     @classmethod
     def _create_earth_current_step(
-        cls,
-        *,
-        step_number: int,
-        u0_v: float | None,
-        z_e_ohm: float | None,
-        i_earth: float | None,
+        cls, *, step_number: int, data: EarthingGroundFaultInput
     ) -> ProofStep:
         equation = EQ_EARTH_001
-        input_values = (
-            cls._value_or_missing("U_{0}", u0_v, "V", "u0_v"),
-            cls._value_or_missing("Z_{E}", z_e_ohm, "Ω", "z_e_ohm"),
-        )
-
-        if u0_v is None or z_e_ohm is None or z_e_ohm == 0:
-            substitution = r"I_{E} = \frac{U_{0}}{Z_{E}}\quad\text{(brak danych)}"
-            result = cls._value_or_missing("I_{E}", None, "A", "i_earth_a")
-        else:
-            substitution = (
-                f"I_{{E}} = \\frac{{{u0_v:.4f}}}{{{z_e_ohm:.4f}}}" f" = {i_earth:.4f}\\,\\text{{A}}"
+        r = data.wspolczynnik_r
+        i_odn = data.prad_odniesienia_a
+        i_e = data.prad_uziomowy_a
+        if data.prad_dlawika_a is not None:
+            odniesienie = (
+                f"\\sqrt{{{data.prad_dlawika_a:.4f}^2 + {data.prad_zwarcia_a:.4f}^2}}"
+                f" = {i_odn:.4f}\\,\\text{{A}}"
             )
-            result = ProofValue.create("I_{E}", i_earth, "A", "i_earth_a")
-
-        unit_check = UnitVerifier.verify_step(
-            equation.equation_id,
-            [("U_{0}", "V"), ("Z_{E}", "Ω")],
-            "A",
+        else:
+            odniesienie = f"{i_odn:.4f}\\,\\text{{A}}"
+        substitution = (
+            f"{data.wzor_pradu_latex};\\quad I_{{odn}} = {odniesienie};\\quad "
+            f"I_{{E}} = {r:.4f} \\cdot {i_odn:.4f} = {i_e:.4f}\\,\\text{{A}}"
         )
-
+        input_values: tuple[ProofValue, ...] = (
+            ProofValue.create("r", r, "—", "earth_reduction_factor"),
+            ProofValue.create("I_{odn}", i_odn, "A", "i_ref_a"),
+        )
         return ProofStep(
             step_id=ProofStep.generate_step_id(
                 ProofType.EARTHING_GROUND_FAULT_SN.value, step_number
             ),
             step_number=step_number,
-            title_pl=equation.name_pl,
+            title_pl=f"{equation.name_pl} — {data.sposob_pl}",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={
-                "U_{0}": "u0_v",
-                "Z_{E}": "z_e_ohm",
-                "I_{E}": "i_earth_a",
-            },
+            result=ProofValue.create("I_{E}", i_e, "A", "i_earth_a"),
+            unit_check=UnitVerifier.verify_step(
+                equation.equation_id, [("r", "—"), ("I_{odn}", "A")], "A"
+            ),
+            source_keys={"r": "earth_reduction_factor", "I_{odn}": "i_ref_a", "I_{E}": "i_earth_a"},
         )
 
     @classmethod
-    def _create_earth_distribution_step(
-        cls,
-        *,
-        step_number: int,
-        i_u_a: float | None,
-        i_p_a: float | None,
-        i_earth: float | None,
+    def _create_earth_voltage_step(
+        cls, *, step_number: int, data: EarthingGroundFaultInput
     ) -> ProofStep:
         equation = EQ_EARTH_002
-        input_values = (
-            cls._value_or_missing("I_{u}", i_u_a, "A", "i_u_a"),
-            cls._value_or_missing("I_{p}", i_p_a, "A", "i_p_a"),
-        )
-
-        if i_u_a is None or i_p_a is None:
-            substitution = r"I_{E} = I_{u} + I_{p}\quad\text{(brak danych)}"
-            result = cls._value_or_missing("I_{E}", None, "A", "i_earth_a")
+        r_e = data.rezystancja_uziomu_ohm
+        u_e = data.napiecie_uziomowe_v
+        i_e = data.prad_uziomowy_a
+        if r_e is None or u_e is None:
+            substitution = (
+                r"U_{E} = R_{E} \cdot I_{E}\quad\text{(rezystancja } R_{E} \text{ nieznana)}"
+            )
         else:
-            substitution = f"I_{{E}} = {i_u_a:.4f} + {i_p_a:.4f}" f" = {i_earth:.4f}\\,\\text{{A}}"
-            result = ProofValue.create("I_{E}", i_earth, "A", "i_earth_a")
-
-        unit_check = UnitVerifier.verify_step(
-            equation.equation_id,
-            [("I_{u}", "A"), ("I_{p}", "A")],
-            "A",
-        )
-
+            substitution = (
+                f"U_{{E}} = {r_e:.4f}\\,\\text{{Ω}} \\cdot {i_e:.4f}\\,\\text{{A}}"
+                f" = {u_e:.4f}\\,\\text{{V}}"
+            )
         return ProofStep(
             step_id=ProofStep.generate_step_id(
                 ProofType.EARTHING_GROUND_FAULT_SN.value, step_number
@@ -4765,45 +4707,33 @@ class ProofGenerator:
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
-            input_values=input_values,
+            input_values=(
+                cls._value_or_missing("R_{E}", r_e, "Ω", "r_e_ohm"),
+                ProofValue.create("I_{E}", i_e, "A", "i_earth_a"),
+            ),
             substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
-            source_keys={
-                "I_{u}": "i_u_a",
-                "I_{p}": "i_p_a",
-                "I_{E}": "i_earth_a",
-            },
+            result=cls._value_or_missing("U_{E}", u_e, "V", "u_e_v"),
+            unit_check=UnitVerifier.verify_step(
+                equation.equation_id, [("R_{E}", "Ω"), ("I_{E}", "A")], "V"
+            ),
+            source_keys={"R_{E}": "r_e_ohm", "I_{E}": "i_earth_a", "U_{E}": "u_e_v"},
         )
 
     @classmethod
-    def _create_earth_touch_step(
-        cls,
-        *,
-        step_number: int,
-        i_u_a: float,
-        r_u_ohm: float,
-        u_touch: float,
+    def _create_earth_resistance_limit_step(
+        cls, *, step_number: int, data: EarthingGroundFaultInput
     ) -> ProofStep:
         equation = EQ_EARTH_003
-        input_values = (
-            ProofValue.create("I_{u}", i_u_a, "A", "i_u_a"),
-            ProofValue.create("R_{u}", r_u_ohm, "Ω", "r_u_ohm"),
+        t_f = data.czas_trwania_zwarcia_s
+        czas = (
+            f"t_{{F}} = {t_f:.4f}\\,\\text{{s}}"
+            if t_f is not None
+            else r"t_{F}\ \text{nieustalone}"
         )
-
         substitution = (
-            f"U_{{d}} = {i_u_a:.4f}\\,\\text{{A}} \\cdot "
-            f"{r_u_ohm:.4f}\\,\\text{{Ω}} = {u_touch:.4f}\\,\\text{{V}}"
+            f"R_{{E,max}} = \\frac{{U_{{Tp}}(t_{{F}})}}{{{data.prad_uziomowy_a:.4f}\\,\\text{{A}}}}"
+            f";\\quad {czas};\\quad U_{{Tp}}\\ \\text{{— brak treści normy w repozytorium}}"
         )
-
-        result = ProofValue.create("U_{d}", u_touch, "V", "u_touch_v")
-
-        unit_check = UnitVerifier.verify_step(
-            equation.equation_id,
-            [("I_{u}", "A"), ("R_{u}", "Ω")],
-            "V",
-        )
-
         return ProofStep(
             step_id=ProofStep.generate_step_id(
                 ProofType.EARTHING_GROUND_FAULT_SN.value, step_number
@@ -4811,14 +4741,21 @@ class ProofGenerator:
             step_number=step_number,
             title_pl=equation.name_pl,
             equation=equation,
-            input_values=input_values,
+            input_values=(
+                cls._value_or_missing("U_{Tp}", None, "V", "u_tp_v"),
+                cls._value_or_missing("t_{F}", t_f, "s", "t_f_s"),
+                ProofValue.create("I_{E}", data.prad_uziomowy_a, "A", "i_earth_a"),
+            ),
             substitution_latex=substitution,
-            result=result,
-            unit_check=unit_check,
+            result=cls._value_or_missing("R_{E,max}", None, "Ω", "r_e_max_ohm"),
+            unit_check=UnitVerifier.verify_step(
+                equation.equation_id, [("U_{Tp}", "V"), ("I_{E}", "A")], "Ω"
+            ),
             source_keys={
-                "I_{u}": "i_u_a",
-                "R_{u}": "r_u_ohm",
-                "U_{d}": "u_touch_v",
+                "U_{Tp}": "u_tp_v",
+                "t_{F}": "t_f_s",
+                "I_{E}": "i_earth_a",
+                "R_{E,max}": "r_e_max_ohm",
             },
         )
 

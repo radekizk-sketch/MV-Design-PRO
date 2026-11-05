@@ -37,6 +37,11 @@ import {
 import { NASTAWY_STRINGS as T } from '../stringsNastaw';
 import migawkaSceny from '../../../../harness-fixtures/generated/koordynacja_scena_migawka.json';
 import widokSceny from '../../../../harness-fixtures/generated/koordynacja_scena_widok_zabezpieczen.json';
+import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
+import type { WynikOcenyZabezpieczen } from '../../../wyniki/koordynacja/ocenaZabezpieczenApi';
+import { rekordyZiemnozwarciowe } from '../../../wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 
 const MIGAWKA = migawkaSceny as unknown as EnergyNetworkModel;
 const WIDOK = widokSceny as unknown as {
@@ -372,5 +377,85 @@ describe('edytor na danych sieci złotej', () => {
   it('sterownika nie ma w modelu — jawny komunikat', () => {
     renderuj(undefined, 'nie-istnieje');
     expect(screen.getByTestId('edytor-brak')).toHaveTextContent(T.brakSterownika);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta EWALUATORY-ZIEMNOZWARCIOWE: ocena funkcji ziemnozwarciowych sterownika z AKTYWNEGO biegu
+// oceny zabezpieczeń (PRAWDZIWY wynik biegu sieci złotej, pole `ziemnozwarciowe`). ILOCZYN:
+// {brak biegu, bieg świeży, bieg nieaktualny} × {sterownik z rekordami, sterownik bez rekordów}.
+// ---------------------------------------------------------------------------
+
+describe('karta nastaw — ocena zwarć doziemnych aktywnego biegu', () => {
+  const WYNIK_OCENY = wynikOcenySceny as unknown as WynikOcenyZabezpieczen;
+  const REF_ZIEMNY = WYNIK_OCENY.ziemnozwarciowe!.odmowy[0].urzadzenie_ref;
+  const NASTAWY_ZIEMNEGO = WIDOK.assignments.find((a) => a.device_id === REF_ZIEMNY)?.nastawy ?? undefined;
+
+  function bieg(wynik: unknown = WYNIK_OCENY) {
+    ustawBiegOgladany('ocena-1', { dolozDoRejestru: 'PROTECTION' });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/protection-runs/ocena-1/results') {
+        return { ok: true, status: 200, json: async () => wynik } as Response;
+      }
+      return { ok: false, status: 404, json: async () => ({}) } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    wyczyscKontekstWyniku();
+    useExecutionRunsStore.setState({ runs: [] });
+  });
+
+  it('bieg świeży: rekordy WYŁĄCZNIE tego sterownika, ze zdaniem wyjaśnienia i brakami', async () => {
+    const user = userEvent.setup();
+    bieg();
+    renderuj(NASTAWY_ZIEMNEGO, REF_ZIEMNY);
+    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
+    const blok = await screen.findByTestId('edytor-ziemne');
+    const rekordy = rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe, REF_ZIEMNY);
+    expect(rekordy.length).toBeGreaterThan(0);
+    const wiersze = within(blok).getAllByTestId('edytor-ziemne-tabela-wiersz');
+    expect(wiersze).toHaveLength(rekordy.length);
+    expect(wiersze.every((w) => w.dataset.urzadzenie === REF_ZIEMNY)).toBe(true);
+    wiersze.forEach((w, i) => expect(w).toHaveTextContent(rekordy[i].zdanie_pl));
+    expect(within(blok).getAllByTestId('edytor-ziemne-tabela-braki').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('edytor-ziemne-nieaktualny')).not.toBeInTheDocument();
+  });
+
+  it('bieg nieaktualny: przyczyna z serwera nad tabelą', async () => {
+    const user = userEvent.setup();
+    bieg({
+      ...WYNIK_OCENY,
+      result_status: 'OUTDATED',
+      result_status_reason_pl: 'Model zmienił się od biegu (zmiana nastaw zabezpieczenia).',
+    });
+    renderuj(NASTAWY_ZIEMNEGO, REF_ZIEMNY);
+    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
+    expect(await screen.findByTestId('edytor-ziemne-nieaktualny')).toHaveTextContent(
+      'zmiana nastaw zabezpieczenia',
+    );
+  });
+
+  it('sterownik bez rekordów doziemnych i brak biegu — karta nie pokazuje oceny, której nie ma', async () => {
+    const user = userEvent.setup();
+    const fetchMock = bieg();
+    renderuj();
+    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/protection-runs/ocena-1/results')).toBe(true),
+    );
+    expect(rekordyZiemnozwarciowe(WYNIK_OCENY.ziemnozwarciowe, REF)).toHaveLength(0);
+    expect(screen.queryByTestId('edytor-ziemne')).not.toBeInTheDocument();
+    // Brak biegu rodziny „Zabezpieczenia" w rejestrze przypadku: brak oceny do pokazania.
+    cleanup();
+    wyczyscKontekstWyniku();
+    useExecutionRunsStore.setState({ runs: [] });
+    renderuj(NASTAWY_ZIEMNEGO, REF_ZIEMNY);
+    await user.click(screen.getByTestId('edytor-szczegoly-przelacz'));
+    expect(screen.queryByTestId('edytor-ziemne')).not.toBeInTheDocument();
   });
 });

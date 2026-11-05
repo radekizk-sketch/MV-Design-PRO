@@ -13,6 +13,7 @@
  */
 
 import type { BrakNastaw, NastawyUrzadzeniaWidok } from '../protection/nastawyModelu';
+import type { WynikOcenyZiemnozwarciowej } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 
 /**
  * Fakt pary w punkcie zwarcia — kto zadziała (backend `StanPary`), nie ocena. Opis po polsku
@@ -212,6 +213,8 @@ export interface CoordinationResult {
   pominiete: PominieteUrzadzenie[];
   pary: ParaSelektywnosci[];
   odmowy_par: OdmowaPary[];
+  /** Funkcje ziemnozwarciowe i uziemienia stacji (ta sama ocena co bieg oceny zabezpieczeń). */
+  ziemnozwarciowe?: WynikOcenyZiemnozwarciowej | null;
   pf_run_id?: string | null;
   sc_run_id?: string | null;
   sc_run_id_min?: string | null;
@@ -428,6 +431,7 @@ export const LABELS = {
     sensitivity: 'Czułość',
     selectivity: 'Selektywność',
     overload: 'Przeciążalność',
+    ziemne: 'Zwarcia doziemne',
     tcc: 'Wykres TCC',
     trace: 'Ślad obliczeń',
   },

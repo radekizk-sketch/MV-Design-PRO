@@ -675,14 +675,19 @@ def test_jednostki_naprawde_istnieje_i_niesie_rodzine_j() -> None:
         "mikrosimens_na_simens",
         "mikrosimens_na_simens_ybus",
         "simens_na_mikrosimens",
+        "simens_na_milisimens",
+        "w_na_kw",
     ):
         assert f"def {nazwa}(" in tekst, f"jednostki.py powinno definiować {nazwa}"
     wzorce = zlicz_wzorce(ast.parse(tekst))
-    # Pin: dokladnie 20 funkcji, kazda z JEDNA operacja rodziny J na WLASNYM
+    # Pin: dokladnie 22 funkcje, kazda z JEDNA operacja rodziny J na WLASNYM
     # parametrze (§0.1 karty) — precyzyjny pin silniejszy niz luzny prog,
-    # zgodnie z regula "deklaracja bez testu = falszywa pewnosc".
-    assert wzorce.get("J_skalowanie_jednostek", 0) == 20, (
-        "jednostki.py powinno nieść dokladnie 20 wystapien ksztaltu rodziny J "
+    # zgodnie z regula "deklaracja bez testu = falszywa pewnosc". 20 -> 22 (karta
+    # EWALUATORY-ZIEMNOZWARCIOWE, 2026-11-05): `simens_na_milisimens` i `w_na_kw` —
+    # skalowanie nastaw zabezpieczen admitancyjnych (mS) i mocy zerowej (kW) przeniesione
+    # z `ocena_ziemnozwarciowa.py` do pakietu `pochodne`.
+    assert wzorce.get("J_skalowanie_jednostek", 0) == 22, (
+        "jednostki.py powinno nieść dokladnie 22 wystapienia ksztaltu rodziny J "
         "(kazda funkcja skaluje WLASNY parametr, ktorego nazwa konczy sie "
         "tokenem jednostki) — zmiana liczby funkcji wymaga aktualizacji pinu"
     )

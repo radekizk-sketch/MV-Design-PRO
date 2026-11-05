@@ -78,6 +78,12 @@ class GroundingConfig(BaseModel):
     type: TypPunktuNeutralnego
     r_ohm: float | None = None
     x_ohm: float | None = None
+    #: Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd czynny wymuszenia automatyki AWSC (rezystor
+    #: wymuszający równoległy do dławika, strona pierwotna, A) — wyłącznie przy dławiku
+    #: (``petersen_coil``); predykat ``enm.uziemienie.blad_konfiguracji_uziemienia``. Rezystor
+    #: R_W = U_n/(√3·I_W) dołączany po zwłoce automatyki ZAWSC (nastawa funkcji w sterowniku).
+    #: ``None`` = punkt neutralny bez AWSC.
+    awsc_prad_wymuszenia_a: float | None = None
 
 
 #: Zbiór faz przyłączenia elementu (karta W5-D, decyzja F-1 `CANONICAL_TWIN_ARCHITECTURE.md`):
@@ -1358,6 +1364,15 @@ class Substation(ENMElement):
     # stacje bez rozdzielnicy nN (station_type inny niż "rozdzielnica_nn") mają
     # zawsze pustą listę i walidują się identycznie jak przed dodaniem pola.
     nn_sections: list[NnSection] = []
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (PN-EN 50522) — dana projektowa.
+    # `uziom_rezystancja_ohm` = rezystancja uziemienia R_E [Ω] (pomiar albo projekt uziomu);
+    # `None` = nieznana — ocena podaje wtedy R_E,max = U_Tp(t_F)/I_E, gdzie I_E = r·I_odn
+    # (I_odn — prąd odniesienia PN-EN 50522 tabl. 1 z solvera doziemień).
+    # `uziom_wspolczynnik_redukcji` = współczynnik redukcyjny r ∈ (0; 1] (ekrany kabli, linki);
+    # `None` = nieznany — ocena przyjmuje r = 1 zachowawczo (dana przyjęta, ESTIMATED).
+    # Addytywne, poza odciskiem przy `None` (`enm/hash.py`).
+    uziom_rezystancja_ohm: float | None = Field(default=None, gt=0)
+    uziom_wspolczynnik_redukcji: float | None = Field(default=None, gt=0, le=1)
 
 
 class GPZSection(BaseModel):
@@ -2041,14 +2056,6 @@ class BayEarthFaultPath(BaseModel):
     closure_path_elements: list[str] = []
     transformer_contribution_ref: str | None = None
     grounding_device_ref: str | None = None
-    # EARTHING-1 (most produkcyjny SC_1F -> uziemienia): dane PROJEKTOWE uziomu
-    # potrzebne do napiec dotykowego/krokowego (PN-EN 50522). Addytywne, None =
-    # dana niedostarczona (ZERO zgadywania — brak => readiness fix-action,
-    # pack nie liczy). Nie sa fizyka: to wejscie projektowe (rezystancja uziomu
-    # z pomiaru rezystywnosci gruntu; wspolczynnik podzialu r z torow powrotnych
-    # ekran/OPGW). Prad doziemny I''k1 pochodzi z solvera SC_1F.
-    earth_electrode_resistance_ohm: float | None = None  # R_u = Z_E [Ω]
-    earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
 class BayProofBinding(BaseModel):

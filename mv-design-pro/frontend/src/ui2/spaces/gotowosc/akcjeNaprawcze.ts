@@ -134,7 +134,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
   'earthing.neutral_grounding_inconsistent': EDYCJA,
-  'earthing.electrode_data_missing': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),

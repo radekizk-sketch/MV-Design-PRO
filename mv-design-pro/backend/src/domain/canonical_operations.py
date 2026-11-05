@@ -1221,7 +1221,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "grounding": KsztaltObiektu(
-            pola=frozenset({"r_ohm", "type", "x_ohm"}),
+            pola=frozenset({"awsc_prad_wymuszenia_a", "r_ohm", "type", "x_ohm"}),
         ),
         "manual_equivalent": KsztaltObiektu(
             pola=frozenset(
@@ -1401,6 +1401,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1448,6 +1449,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }
@@ -1594,6 +1596,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1642,6 +1645,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }
@@ -3250,19 +3254,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "którego w bibliotece nie ma — dane katalogu wymagają poprawy"
         ),
         fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
-    ),
-    # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
-    "earthing.electrode_data_missing": ReadinessCodeSpec(
-        code="earthing.electrode_data_missing",
-        area=ReadinessArea.STATIONS,
-        priority=3,
-        level=ReadinessLevel.WARNING,
-        message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
-        fix_navigation={
-            "panel": "inspector",
-            "tab": "uziemienie",
-            "focus": "earth_electrode",
-        },
     ),
     # Study Case / Analysis
     "study_case.missing_base_snapshot": ReadinessCodeSpec(

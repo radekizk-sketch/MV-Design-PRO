@@ -456,6 +456,50 @@ def przekladnik_pradowy(enm: object, ref: str | None) -> PrzekladnikPradowy | No
     return None
 
 
+def przekladnik_pradu_zerowego(enm: object, sterownik: object) -> PrzekladnikPradowy | None:
+    """Przekładnik wejścia ``3I0`` sterownika — przekładnia prądu zerowego dla nastaw funkcji
+    ziemnozwarciowych (karta EWALUATORY-ZIEMNOZWARCIOWE).
+
+    Układ Holmgreena: przekładnia przekładników fazowych ``ct_ref`` (suma prądów wtórnych).
+    Przekładnik Ferrantiego: ``i0_ct_ref`` — encja ``measurements`` (przekładnik prądowy)
+    albo aparat pola rodzaju ``CORE_BALANCE_CT`` z przekładnią ``przekladnia`` („100/1").
+    ``None`` — wejście nieprzypięte albo przekładnia nieustalona (wołający nazywa brak)."""
+    from enm.nazwy_elementow import nazwa_elementu
+
+    wejscia = _pole(sterownik, "wejscia") or {}
+    aparaty = wejscia_funkcji_w_aparacie(wejscia).get("3I0")
+    if not aparaty:
+        return None
+    ref = aparaty[0]
+    if _pole(wejscia, "i0_uklad") == "HOLMGREEN":
+        return przekladnik_pradowy(enm, ref)
+    z_pomiaru = przekladnik_pradowy(enm, ref)
+    if z_pomiaru is not None:
+        return z_pomiaru
+    for pole in _lista(enm, "bays"):
+        for aparat in _lista(pole, "primary_devices"):
+            if _pole(aparat, "device_ref") != ref or _pole(aparat, "kind") != "CORE_BALANCE_CT":
+                continue
+            przekladnia = _napis(_pole(aparat, "przekladnia"))
+            rdzen = _przekladnia_rdzenia(przekladnia) if przekladnia else None
+            if rdzen is None:
+                return None
+            return PrzekladnikPradowy(
+                ref=ref,
+                nazwa=str(
+                    _pole(aparat, "designation")
+                    or f"przekładnik Ferrantiego pola {nazwa_elementu(pole, 'bays')}"
+                ),
+                zrodlo="APARAT_POLA",
+                ratio_primary=rdzen[0],
+                ratio_secondary=rdzen[1],
+                accuracy_class=None,
+                burden_va=None,
+                catalog_ref=_napis(_pole(aparat, "catalog_ref")),
+            )
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Pisarz: sterownik pola z zestawu funkcji szablonu
 # ---------------------------------------------------------------------------

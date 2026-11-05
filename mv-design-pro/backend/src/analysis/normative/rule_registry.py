@@ -55,13 +55,13 @@ RULES: tuple[NormativeRule, ...] = (
     ),
     NormativeRule(
         rule_id="NR_P19_001",
-        title_pl="Napięcie dotykowe",
+        title_pl="Napięcie uziomowe",
         proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-        key="u_touch_v",
+        key="u_e_v",
     ),
     NormativeRule(
         rule_id="NR_P19_002",
-        title_pl="Prąd doziemny",
+        title_pl="Prąd uziomowy",
         proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
         key="i_earth_a",
     ),

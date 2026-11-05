@@ -10,8 +10,8 @@ Pakiety dowodowe:
 - P16: Losses Proof (P, Q losses)
 - P17: Voltage Drop (VDROP) — standalone pack: vdrop.py (2026-05, V12K-015)
 - P18: Branch Loading - w proof_generator.py (Protection)
-- P19: Earthing / Ground Fault SN — standalone pack: earthing_ground_fault_sn.py
-       (2026-05, V12K-015)
+- P19: Uziemienie stacji SN przy zwarciu doziemnym — earthing_ground_fault_sn.py; prezentuje
+       wynik solvera doziemień SN z biegu zabezpieczeń (karta EWALUATORY-ZIEMNOZWARCIOWE)
 - SC Asymmetrical: 1F-Z, 2F, 2F-Z (§4.1 blocker resolution)
 - SC3F (symmetrical): zwarcie trójfazowe + rozbicie maszynowe μ/q/i_b (G-SCM F2, V12K-054)
 - Protection Settings: I>/I>> (Hoppel method, IRiESD)
@@ -19,9 +19,9 @@ Pakiety dowodowe:
 """
 
 from application.proof_engine.packs.earthing_ground_fault_sn import (
-    EarthingGroundFaultPackInput,
-    generate_earthing_ground_fault_pack,
+    dowody_uziemien_biegu,
     serialize_earthing_pack,
+    wejscie_z_rekordu,
 )
 from application.proof_engine.packs.p14_power_flow import (
     P14PowerFlowInput,
@@ -74,8 +74,8 @@ __all__ = [
     "VDROPPackTransformerBoundary",
     "generate_vdrop_pack",
     "serialize_vdrop_pack",
-    # Earthing / Ground Fault SN pack (V12K-015, 2026-05)
-    "EarthingGroundFaultPackInput",
-    "generate_earthing_ground_fault_pack",
+    # Uziemienie stacji SN (prezentacja wyniku solvera doziemień SN)
+    "dowody_uziemien_biegu",
     "serialize_earthing_pack",
+    "wejscie_z_rekordu",
 ]

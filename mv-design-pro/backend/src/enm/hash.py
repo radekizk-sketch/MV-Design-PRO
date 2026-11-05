@@ -153,6 +153,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # listy. `None` = tabliczka niedostarczona (każdy przekładnik sprzed karty) — poza odciskiem;
     # podana lista jest treścią modelu (dobór obciążenia obwodów wtórnych).
     "measurements": ("rdzenie", "uzwojenia"),
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (R_E, współczynnik r). `None` = dana
+    # nieznana (stacja sprzed karty) — poza odciskiem; podana zmienia ocenę uziemienia.
+    "substations": ("uziom_rezystancja_ohm", "uziom_wspolczynnik_redukcji"),
     # + karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie
     # (układ połączeń, stopnie, tolerancja pojemności, dławik ograniczający, rezystory
     # rozładowcze). `None` = parametr nienadany przez projektanta (rozstrzyga typ katalogowy
@@ -266,6 +269,15 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
             "zrodlo_zaczepu",
         )
     },
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd czynny wymuszenia AWSC zespołu uziemiającego
+    # (`GroundingConfig.awsc_prad_wymuszenia_a`) — pole SŁOWNIKA (nie listy) punktu neutralnego.
+    # `None` = punkt neutralny bez automatyki wymuszania składowej czynnej (każdy zapis sprzed
+    # karty) — poza odciskiem; podany prąd zmienia wynik obliczenia doziemnego, więc odcisk.
+    "sources": {"neutral_grounding": ("awsc_prad_wymuszenia_a",)},
+    "transformers": {
+        "hv_neutral": ("awsc_prad_wymuszenia_a",),
+        "lv_neutral": ("awsc_prad_wymuszenia_a",),
+    },
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
@@ -316,6 +328,11 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
                 )
                 for el in elementy
             ]
+        elif isinstance(elementy, dict):
+            # Pole-SŁOWNIK zagnieżdżony (punkt neutralny `GroundingConfig`) — ta sama reguła
+            # co dla elementów listy; nowy słownik, nie mutacja migawki wołającego.
+            pola_none = zagniezdzone_none.get(lista, ())
+            item[lista] = {k: v for k, v in elementy.items() if not (k in pola_none and v is None)}
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
     if pelna:

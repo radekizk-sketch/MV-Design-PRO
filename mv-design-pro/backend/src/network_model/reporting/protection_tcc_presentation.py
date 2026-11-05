@@ -151,8 +151,10 @@ def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str
     return wiersze
 
 
-#: Nagłówek sekcji raportu z funkcjami sterowników, których produkt nie ocenia.
-NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL = "Funkcje bez oceny (status: nie oceniono)"
+#: Nagłówek sekcji raportu z funkcjami sterowników spoza oceny nadprądowej fazowej — każda
+#: z powodem: ocenia ją inna ocena (ziemnozwarciowa — sekcja niżej, LoM) albo produkt jej nie
+#: ocenia (status: nie oceniono).
+NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL = "Funkcje poza oceną nadprądową fazową"
 
 
 def zdania_funkcji_nieocenianych(urzadzenia: list[dict[str, Any]]) -> list[str]:
@@ -221,3 +223,61 @@ def wiersze_podsumowania_pl(
         ),
         ("Urządzenia bez ilorazu przeciążalności:", str(przeciazalnosc["bez_wartosci"])),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Ocena zabezpieczeń ziemnozwarciowych i uziemień stacji (karta EWALUATORY-ZIEMNOZWARCIOWE)
+# ---------------------------------------------------------------------------
+
+NAGLOWEK_ZIEMNOZWARCIOWYCH_PL = "Zabezpieczenia ziemnozwarciowe i uziemienia stacji"
+NAGLOWKI_ZIEMNOZWARCIOWYCH_PL: tuple[str, ...] = (
+    "Urządzenie",
+    "Funkcja",
+    "Kryterium",
+    "Wynik",
+    "Wymagane",
+    "Ocena",
+)
+
+
+def _wielkosc(wielkosc: Any) -> str:
+    if not isinstance(wielkosc, dict) or wielkosc.get("wartosc") is None:
+        return NIE_DOTYCZY
+    wartosc = float(wielkosc["wartosc"])
+    return f"{wartosc:.4g} {wielkosc.get('jednostka', '')}".strip()
+
+
+def rekordy_ziemnozwarciowe(ziemne: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Rekordy sekcji w kolejności raportu: oceny funkcji, uziemienia stacji, odmowy."""
+    if not ziemne:
+        return []
+    return [*ziemne.get("oceny", []), *ziemne.get("uziemienia", []), *ziemne.get("odmowy", [])]
+
+
+def wiersz_ziemnozwarciowy(rekord: dict[str, Any]) -> tuple[str, str, str, str, str, str]:
+    """Wiersz tabeli raportu: urządzenie, funkcja, kryterium (nazwa z rekordu ewaluatora —
+    lista zamknięta `KRYTERIA_ZIEMNOZWARCIOWE`), wynik, wartość wymagana, ocena (etykieta
+    statusu z rekordu werdyktu). Liczby z rekordu — zero liczenia."""
+    ocena = rekord["ocena"]
+    wynik = (ocena.get("wynik") or {}).get("wartosc")
+    limit = (ocena.get("limit") or {}).get("wartosc")
+    return (
+        str(rekord["nazwa_urzadzenia_pl"]),
+        str(rekord.get("etykieta_pl") or NIE_DOTYCZY),
+        str(rekord["kryterium_pl"]),
+        _wielkosc(wynik),
+        _wielkosc(limit),
+        str(ocena["etykieta"]["etykieta_pl"]),
+    )
+
+
+def zdanie_ziemnozwarciowe(rekord: dict[str, Any]) -> str:
+    """Zdanie wyjaśnienia rekordu (co oceniono, wynik, limit z podstawą, margines, przyczyna);
+    przy ocenie wstrzymanej — braki z akcją naprawczą."""
+    zdanie = str(rekord["ocena"]["wyjasnienie"]["zdanie_pl"])
+    braki = [f"{b['komunikat_pl']} {b['akcja_naprawcza_pl']}" for b in rekord.get("braki") or []]
+    if rekord.get("czego_brakuje_pl"):
+        braki.append(str(rekord["czego_brakuje_pl"]))
+    if braki:
+        zdanie = f"{zdanie} Brakuje: {' '.join(braki)}"
+    return f"{rekord['nazwa_urzadzenia_pl']}: {zdanie}"

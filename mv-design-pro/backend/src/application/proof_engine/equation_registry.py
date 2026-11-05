@@ -2075,87 +2075,103 @@ EQ_LE_004 = EquationDefinition(
 
 EQ_EARTH_001 = EquationDefinition(
     equation_id="EQ_EARTH_001",
-    name_pl="Prąd doziemny",
-    standard_ref="IEC 60909 (1F-Z) / praktyka inżynierska",
-    latex=r"I_{E} = \frac{U_{0}}{Z_{E}}",
+    name_pl="Prąd uziomowy",
+    standard_ref="PN-EN 50522:2011, tablica 1 (prądy miarodajne dla uziemień)",
+    latex=r"I_{E} = r \cdot I_{odn}",
     symbols=(
         SymbolDefinition(
             symbol="I_{E}",
             unit="A",
-            description_pl="Prąd doziemny",
+            description_pl="Prąd uziomowy (prąd wpływający do uziomu stacji)",
             mapping_key="i_earth_a",
         ),
         SymbolDefinition(
-            symbol="U_{0}",
-            unit="V",
-            description_pl="Napięcie zerowe",
-            mapping_key="u0_v",
+            symbol="r",
+            unit="—",
+            description_pl="Współczynnik redukcyjny (udział prądu powracającego przez uziom)",
+            mapping_key="earth_reduction_factor",
         ),
         SymbolDefinition(
-            symbol="Z_{E}",
-            unit="Ω",
-            description_pl="Impedancja uziemienia",
-            mapping_key="z_e_ohm",
+            symbol="I_{odn}",
+            unit="A",
+            description_pl=(
+                "Prąd odniesienia wiersza tablicy 1: I_C (sieć izolowana), √(I_L² + I_Res²) albo "
+                "I_Res (sieć kompensowana z dławikiem w stacji albo poza nią), I″k1 (punkt "
+                "neutralny uziemiony małą impedancją) — z rozwiązania sieci zerowej solvera"
+            ),
+            mapping_key="i_ref_a",
         ),
     ),
-    unit_derivation="V / Ω = A",
+    unit_derivation="— · A = A",
 )
 
 EQ_EARTH_002 = EquationDefinition(
     equation_id="EQ_EARTH_002",
-    name_pl="Rozdział prądu doziemnego",
-    standard_ref="praktyka inżynierska",
-    latex=r"I_{E} = I_{u} + I_{p}",
+    name_pl="Napięcie uziomowe",
+    standard_ref="PN-EN 50522:2011, p. 3.4.10 (napięcie uziomowe)",
+    latex=r"U_{E} = R_{E} \cdot I_{E}",
     symbols=(
+        SymbolDefinition(
+            symbol="U_{E}",
+            unit="V",
+            description_pl="Napięcie uziomowe",
+            mapping_key="u_e_v",
+        ),
+        SymbolDefinition(
+            symbol="R_{E}",
+            unit="Ω",
+            description_pl="Rezystancja uziemienia stacji",
+            mapping_key="r_e_ohm",
+        ),
         SymbolDefinition(
             symbol="I_{E}",
             unit="A",
-            description_pl="Prąd doziemny",
+            description_pl="Prąd uziomowy",
             mapping_key="i_earth_a",
         ),
-        SymbolDefinition(
-            symbol="I_{u}",
-            unit="A",
-            description_pl="Prąd przez uziom",
-            mapping_key="i_u_a",
-        ),
-        SymbolDefinition(
-            symbol="I_{p}",
-            unit="A",
-            description_pl="Prąd przez pozostałe ścieżki",
-            mapping_key="i_p_a",
-        ),
     ),
-    unit_derivation="A + A = A",
+    unit_derivation="Ω · A = V",
 )
 
 EQ_EARTH_003 = EquationDefinition(
     equation_id="EQ_EARTH_003",
-    name_pl="Napięcie dotykowe (UPROSZCZONE)",
-    standard_ref="UPROSZCZONE",
-    latex=r"U_{d} = I_{u} \cdot R_{u}",
+    name_pl="Rezystancja uziemienia dopuszczalna",
+    standard_ref="PN-EN 50522:2011, rysunek 4 (U_Tp w funkcji t_F) — treści normy brak w repozytorium",
+    latex=r"R_{E,max} = \frac{U_{Tp}(t_{F})}{I_{E}}",
     symbols=(
         SymbolDefinition(
-            symbol="U_{d}",
-            unit="V",
-            description_pl="Napięcie dotykowe (uproszczone)",
-            mapping_key="u_touch_v",
-        ),
-        SymbolDefinition(
-            symbol="I_{u}",
-            unit="A",
-            description_pl="Prąd przez uziom",
-            mapping_key="i_u_a",
-        ),
-        SymbolDefinition(
-            symbol="R_{u}",
+            symbol="R_{E,max}",
             unit="Ω",
-            description_pl="Rezystancja uziemienia stanowiska",
-            mapping_key="r_u_ohm",
+            description_pl="Największa rezystancja uziemienia, przy której U_E ≤ U_Tp(t_F)",
+            mapping_key="r_e_max_ohm",
+        ),
+        SymbolDefinition(
+            symbol="U_{Tp}",
+            unit="V",
+            description_pl="Dopuszczalne napięcie dotykowe dla czasu trwania zwarcia t_F",
+            mapping_key="u_tp_v",
+        ),
+        SymbolDefinition(
+            symbol="t_{F}",
+            unit="s",
+            description_pl=(
+                "Czas trwania zwarcia — najszybsza funkcja ziemnozwarciowa modelu wyłączająca "
+                "zwarcie"
+            ),
+            mapping_key="t_f_s",
+        ),
+        SymbolDefinition(
+            symbol="I_{E}",
+            unit="A",
+            description_pl="Prąd uziomowy",
+            mapping_key="i_earth_a",
         ),
     ),
-    unit_derivation="A · Ω = V",
-    notes="Krok wyłącznie informacyjny (UPROSZCZONE).",
+    unit_derivation="V / A = Ω",
+    notes=(
+        "Krzywa U_Tp(t_F) to dane właściciela (decyzja O-74 pkt 3) — do ich dostarczenia "
+        "R_E,max ma postać ilorazu z prądem uziomowym z obliczenia, bez wartości liczbowej."
+    ),
 )
 
 
@@ -3714,9 +3730,9 @@ LOSS_STEP_ORDER: list[str] = [
 
 # Step order for P19 (BINDING)
 EARTH_STEP_ORDER: list[str] = [
-    "EQ_EARTH_001",  # Prąd doziemny
-    "EQ_EARTH_002",  # Rozdział prądu doziemnego
-    "EQ_EARTH_003",  # Napięcie dotykowe (uproszczone)
+    "EQ_EARTH_001",  # Prąd uziomowy
+    "EQ_EARTH_002",  # Napięcie uziomowe
+    "EQ_EARTH_003",  # Rezystancja uziemienia dopuszczalna
 ]
 
 # Step order for Q(U) proof (BINDING) — P11.1b + P11.1c
@@ -3871,14 +3887,17 @@ FROZEN_IDS: dict[str, list[str]] = {
         # `i2t_ka2s` ZOSTAJE zamrozony — czyta go zywe EQ_SC3F_015 (`idyn_ka` jest
         # zamrozony w sekcji SC3F).
         "i2t_ka2s",
-        # P19
-        "u0_v",
-        "z_e_ohm",
+        # P19 (karta EWALUATORY-ZIEMNOZWARCIOWE: dowód prezentuje wynik solvera doziemień SN —
+        # klucze dawnego dowodu liczącego I_E = U0/Z_E i U_d = I_u·R_u poza solverem zeszły
+        # razem z nim: `u0_v`, `z_e_ohm`, `i_u_a`, `i_p_a`, `r_u_ohm`, `u_touch_v`)
         "i_earth_a",
-        "i_u_a",
-        "i_p_a",
-        "r_u_ohm",
-        "u_touch_v",
+        "earth_reduction_factor",
+        "i_ref_a",
+        "r_e_ohm",
+        "u_e_v",
+        "r_e_max_ohm",
+        "u_tp_v",
+        "t_f_s",
         # P14 (Power Flow)
         "converged",
         "max_mismatch_pu",

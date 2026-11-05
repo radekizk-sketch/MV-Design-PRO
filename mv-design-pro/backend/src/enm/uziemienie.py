@@ -25,6 +25,7 @@ CO TU JEST (moduł-liść: wyłącznie stdlib, importowany przez ``enm/models.py
 
 from __future__ import annotations
 
+import math
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
@@ -34,7 +35,11 @@ KLUCZE_META_STACJI_USUWANE: tuple[str, ...] = ("grounding", "zero_sequence")
 
 
 def blad_konfiguracji_uziemienia(
-    typ: str | None, r_ohm: float | None, x_ohm: float | None
+    typ: str | None,
+    r_ohm: float | None,
+    x_ohm: float | None,
+    *,
+    awsc_prad_a: float | None = None,
 ) -> str | None:
     """Komunikat błędu spójności konfiguracji punktu neutralnego albo ``None``.
 
@@ -46,7 +51,29 @@ def blad_konfiguracji_uziemienia(
     Treść trafia do projektanta (karta #142): pole formularza nazwane jak w kreatorze
     źródła (``ui2/kreatory/zrodlo/strings.ts`` ``uziemienieR``/``uziemienieX``), bez
     nazwy pola kontraktu.
+
+    Karta EWALUATORY-ZIEMNOZWARCIOWE: automatyka wymuszania składowej czynnej (AWSC) dołącza
+    rezystor RÓWNOLEGLE do dławika — istnieje wyłącznie przy ``petersen_coil`` i ma dodatni
+    prąd wymuszenia I_W [A]. AWSC przy innym sposobie pracy albo I_W ≤ 0 — odmowa nazwana
+    (ten sam predykat czyta walidator, operacje domenowe i budowniczy obliczenia doziemnego).
     """
+    if awsc_prad_a is not None:
+        if typ != "petersen_coil":
+            return (
+                "automatyka wymuszania składowej czynnej (AWSC) działa wyłącznie przy punkcie "
+                "neutralnym uziemionym przez dławik (cewkę Petersena) — usuń prąd wymuszenia "
+                "albo zmień sposób pracy punktu neutralnego"
+            )
+        if (
+            isinstance(awsc_prad_a, bool)
+            or not isinstance(awsc_prad_a, int | float)
+            or not math.isfinite(awsc_prad_a)
+            or not awsc_prad_a > 0
+        ):
+            return (
+                "prąd wymuszenia AWSC w polu „Prąd wymuszenia AWSC” musi być skończoną liczbą "
+                "dodatnią [A] — nie wolno przyjąć prądu wymuszenia równego zeru ani ujemnego"
+            )
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (
             "uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω] w polu "
@@ -57,6 +84,35 @@ def blad_konfiguracji_uziemienia(
             "cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω] w polu "
             "„X cewki” — nie wolno przyjąć X_N = 0"
         )
+    return None
+
+
+#: Karta EWALUATORY-ZIEMNOZWARCIOWE: pola uziomu stacji (`Substation`) edytowalne przez
+#: `update_element_parameters` — jeden zbiór dla listy dopuszczonych kluczy i walidacji.
+POLA_UZIOMU_STACJI: tuple[str, ...] = ("uziom_rezystancja_ohm", "uziom_wspolczynnik_redukcji")
+
+
+def odmowa_uziomu_stacji(parametry: dict[str, Any]) -> str | None:
+    """Zdanie odmowy zapisu danych uziomu stacji albo ``None`` (ten sam przedział co model:
+    R_E > 0 Ω, r ∈ (0; 1]; ``None`` zdejmuje daną)."""
+    rezystancja = parametry.get("uziom_rezystancja_ohm")
+    if "uziom_rezystancja_ohm" in parametry and rezystancja is not None:
+        if (
+            isinstance(rezystancja, bool)
+            or not isinstance(rezystancja, int | float)
+            or not math.isfinite(rezystancja)
+            or rezystancja <= 0
+        ):
+            return "Rezystancja uziemienia stacji R_E musi być liczbą dodatnią [Ω]."
+    r = parametry.get("uziom_wspolczynnik_redukcji")
+    if "uziom_wspolczynnik_redukcji" in parametry and r is not None:
+        if (
+            isinstance(r, bool)
+            or not isinstance(r, int | float)
+            or not math.isfinite(r)
+            or not 0 < r <= 1
+        ):
+            return "Współczynnik redukcyjny r uziomu stacji musi leżeć w przedziale (0; 1]."
     return None
 
 

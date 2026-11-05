@@ -317,12 +317,19 @@ def test_selektywnosc_wymagany_odstep_z_kryteriow(
 
 @pytest.mark.parametrize("wymagany", [1.5, 40.0, 60.0])
 def test_czulosc_wymagany_iloraz_z_kryteriow(biegi: dict[str, str], wymagany: float) -> None:
-    """Q2: I_min ≈ 7970 A / 180 A ≈ 44,3 — iloraz z biegu minimalnego niezależny od kryterium,
-    wymagany z konfiguracji (także powyżej ilorazu), bez werdyktu."""
+    """Q2: I_min ≈ 7626 A / 180 A ≈ 42,4 — iloraz z biegu minimalnego niezależny od kryterium,
+    wymagany z konfiguracji (także powyżej ilorazu), bez werdyktu.
+
+    Pomiar 2026-11-05 (karta EWALUATORY-ZIEMNOZWARCIOWE): dawne 7970 A / 44,3 liczono z połówkami
+    odcinka za wyłącznikiem Q2 BEZ pary temperatur (wstawienie łącznika sekcyjnego gubiło dane
+    cieplne przewodu), więc zwarcie minimalne brało ich rezystancję w 20 °C zamiast w temperaturze
+    zwarciowej przewodu θ_k = 250 °C z katalogu (IEC 60909, R_θ = R20·[1 + 0,004·(θ_k − 20 °C)],
+    `application/solvers/lv_temperature_correction.py`) — inaczej niż dla identycznego kabla
+    obok. Połówki niosą teraz dane przewodu źródłowego."""
     _q1, q2 = _refy()
     wynik = _koordynuj(biegi, config=CoordinationConfig(sensitivity_ratio_required=wymagany))
     czulosc = {c["device_id"]: c for c in wynik["sensitivity_checks"]}
-    assert czulosc[q2]["ratio"] == pytest.approx(44.3, abs=0.1)
+    assert czulosc[q2]["ratio"] == pytest.approx(42.36, abs=0.01)
     assert czulosc[q2]["required_ratio"] == wymagany
     assert czulosc[q2]["nazwa_punktu_pl"] == "Stacja S02"
     assert "verdict" not in czulosc[q2]

@@ -117,9 +117,13 @@ ETYKIETY_WARTOSCI_WYBORU: dict[str, str] = {
 
 #: Identyfikator ewaluatora funkcji w warstwie analiz. ``NADPRADOWA_IEC_60255`` — ocena
 #: i czas zadziałania z rdzenia IEC 60255 (`application.analyses.protection.ocena_nadpradowa`);
-#: ``LOM`` — ocena ochrony od pracy wyspowej (`application.analyses.ochrona_lom`). Funkcja bez
-#: ewaluatora (``None``) ma w każdej ocenie status NIE_OCENIONO z wyjaśnieniem.
-OcenaFunkcji = Literal["NADPRADOWA_IEC_60255", "LOM"]
+#: ``LOM`` — ocena ochrony od pracy wyspowej (`application.analyses.ochrona_lom`);
+#: ``ZIEMNOZWARCIOWA`` — ocena przy zwarciu doziemnym z rozpływu składowej zerowej solvera
+#: doziemień SN (`network_model.solvers.doziemienie_sn`,
+#: `application.analyses.protection.ocena_ziemnozwarciowa`) w każdym sposobie pracy punktu
+#: neutralnego. Funkcja bez ewaluatora (``None``) ma w każdej ocenie status NIE_OCENIONO
+#: z wyjaśnieniem.
+OcenaFunkcji = Literal["NADPRADOWA_IEC_60255", "LOM", "ZIEMNOZWARCIOWA"]
 
 
 @dataclass(frozen=True)
@@ -190,6 +194,10 @@ _NASTAWY_NAPIECIOWE: tuple[SchematNastawy, ...] = (
 )
 _NASTAWY_CZESTOTLIWOSCI: tuple[SchematNastawy, ...] = (_liczba("prog_hz", "próg", "Hz"), _ZWLOKA)
 _TYLKO_ZWLOKA: tuple[SchematNastawy, ...] = (_ZWLOKA,)
+#: Próg rozruchu napięciowego funkcji ziemnozwarciowych admitancyjnych i watometrycznych —
+#: napięcie zerowe U0 w % U0n, gdzie U0n = Un/√3 (pełne przesunięcie punktu neutralnego przy
+#: zwarciu metalicznym w sieci z izolowanym punktem neutralnym).
+_PROG_ROZRUCHU_U0 = _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n")
 
 
 _WPISY: tuple[FunkcjaEaz, ...] = (
@@ -240,7 +248,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3I0",),
         wejscia_opcjonalne=(),
         nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "50N",
@@ -252,7 +260,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3I0",),
         wejscia_opcjonalne=(),
         nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "67N",
@@ -265,7 +273,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3I0", "3U0"),
         wejscia_opcjonalne=(),
         nastawy=_NASTAWY_STOPNIA_PRADOWEGO + _NASTAWY_KIERUNKU,
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "Yo>",
@@ -278,11 +286,11 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3I0", "3U0"),
         wejscia_opcjonalne=(),
         nastawy=(
-            _liczba("prog_y0_ms", "próg admitancji zerowej", "mS"),
-            _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n"),
+            _liczba("prog_y0_ms", "próg modułu admitancji zerowej (strona pierwotna)", "mS"),
+            _PROG_ROZRUCHU_U0,
             _ZWLOKA,
         ),
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "Go>",
@@ -296,11 +304,53 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3I0", "3U0"),
         wejscia_opcjonalne=(),
         nastawy=(
-            _liczba("prog_g0_ms", "próg konduktancji zerowej", "mS"),
-            _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n"),
+            _liczba(
+                "prog_g0_ms", "próg konduktancji zerowej w kierunku linii (strona pierwotna)", "mS"
+            ),
+            _PROG_ROZRUCHU_U0,
             _ZWLOKA,
         ),
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
+    ),
+    FunkcjaEaz(
+        "Bo>",
+        "Bo>",
+        None,
+        "ziemnozwarciowe susceptancyjne (kierunkowe, sieć z izolowanym punktem neutralnym)",
+        "ZABEZPIECZENIE",
+        f"{_IR} II.4.5.4.2.1 pkt 2 (zabezpieczenie ziemnozwarciowe — kryterium wg sposobu "
+        "pracy punktu neutralnego); numer IEEE C37.2 nie jest znormalizowany",
+        wejscia_wymagane=("3I0", "3U0"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba(
+                "prog_b0_ms", "próg susceptancji zerowej w kierunku linii (strona pierwotna)", "mS"
+            ),
+            _PROG_ROZRUCHU_U0,
+            _ZWLOKA,
+        ),
+        ocena="ZIEMNOZWARCIOWA",
+    ),
+    FunkcjaEaz(
+        "32N",
+        "Po>",
+        "32N",
+        "ziemnozwarciowe watometryczne (moc czynna składowej zerowej w kierunku linii)",
+        "ZABEZPIECZENIE",
+        f"IEEE C37.2 (32N — kierunkowe mocy składowej zerowej); {_IR} II.4.5.4.2.1 pkt 2 "
+        "(kryterium wg sposobu pracy punktu neutralnego)",
+        wejscia_wymagane=("3I0", "3U0"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba(
+                "prog_p0_kw",
+                "próg mocy czynnej składowej zerowej w kierunku linii (strona pierwotna)",
+                "kW",
+            ),
+            _PROG_ROZRUCHU_U0,
+            _ZWLOKA,
+        ),
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "32",
@@ -349,7 +399,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3U0",),
         wejscia_opcjonalne=(),
         nastawy=(_liczba("prog_u0_proc", "próg napięcia zerowego", "% U0n"), _ZWLOKA),
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "81U",
@@ -635,7 +685,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         wejscia_wymagane=("3U0",),
         wejscia_opcjonalne=(),
         nastawy=(_liczba("prog_u0_proc", "próg napięcia zerowego", "% U0n"), _ZWLOKA),
-        ocena=None,
+        ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(
         "BT",

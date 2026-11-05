@@ -64,7 +64,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -209,7 +209,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -358,7 +358,7 @@
           },
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           },
           {
             "funkcja": "63",
@@ -516,7 +516,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -661,7 +661,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -810,7 +810,7 @@
           },
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           },
           {
             "funkcja": "63",
@@ -968,7 +968,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -1113,7 +1113,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -1262,7 +1262,7 @@
           },
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           },
           {
             "funkcja": "63",
@@ -1420,7 +1420,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -1565,7 +1565,7 @@
         "funkcje_nieoceniane": [
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           }
         ],
         "gotowe": false,
@@ -1714,7 +1714,7 @@
           },
           {
             "funkcja": "51N",
-            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+            "powod_pl": "Funkcję Io> (51N) ocenia ocena zabezpieczeń ziemnozwarciowych (rozpływ składowej zerowej przy zwarciu doziemnym), nie ocena nadprądowa fazowa — wynik w sekcji ocen ziemnozwarciowych tego biegu."
           },
           {
             "funkcja": "63",

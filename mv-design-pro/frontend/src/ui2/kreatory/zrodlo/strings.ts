@@ -34,6 +34,11 @@ export const ZRODLO_STRINGS = {
   uziemienie: 'Uziemienie punktu neutralnego',
   uziemienieR: 'R uziemienia',
   uziemienieX: 'X cewki',
+  uziemienieRDlawika: 'R strat dławika',
+  uziemienieRDlawikaPomoc: 'Rezystancja strat czynnych dławika (opcjonalna). Wyznacza składową czynną prądu zwarcia doziemnego i konduktancję zerową pola uszkodzonego; bez niej straty są pominięte.',
+  awscPrad: 'Prąd wymuszenia AWSC',
+  awscPradPomoc: 'Prąd czynny rezystora automatyki wymuszania składowej czynnej, dołączanego równolegle do dławika po zwłoce automatyki ZAWSC (opcjonalny). Puste pole — sieć bez AWSC.',
+  awscBrak: 'bez AWSC',
   uziemienieZTransformatora: (grupa: string | null): string => (grupa
     ? `Przy równoważniku sieci 110 kV punkt neutralny sieci SN jest punktem neutralnym uzwojenia SN transformatorów 110/SN (grupa ${grupa}) — opis wynika z grupy połączeń. Sieć SN uziemioną przez transformator uziemiający opisz równoważnikiem na szynach SN z R0/X0.`
     : 'Przy równoważniku sieci 110 kV punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN — wybierz transformator z katalogu.'),

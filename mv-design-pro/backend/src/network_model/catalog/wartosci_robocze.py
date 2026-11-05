@@ -54,6 +54,8 @@ from network_model.core.voltage_factor import (
 from network_model.pochodne import (
     moc_pozorna_z_czynnej_mva,
     moc_znamionowa_maszyny_asynchronicznej_mw,
+    simens_na_mikrosimens,
+    susceptancja_zerowa_z_reguly_pradu_pojemnosciowego_s_per_km,
 )
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
@@ -1284,6 +1286,76 @@ ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
     "(IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej "
     "żyły powrotnej"
 )
+
+#: Karta EWALUATORY-ZIEMNOZWARCIOWE: pojemność doziemna gałęzi bez B′0 w danych — propozycja
+#: dla obliczenia doziemnego SN (prąd pojemnościowy, zabezpieczenia ziemnozwarciowe). Katalog
+#: kabli i linii SN nie podaje B′0 żadnej pozycji; bez propozycji sieć izolowana i kompensowana
+#: zbudowana z katalogu nie miałaby drogi prądu zerowego (zasada nr 4). Propozycja NIE wchodzi do
+#: sieci zerowej zwarć IEC 60909 (tamte liczby i odciski bez zmian) — wyłącznie do obliczenia
+#: doziemnego, z daną przyjętą ESTIMATED.
+ZALOZENIE_B0_KABLA_POLE_PROMIENIOWE = (
+    "B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność "
+    "doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); "
+    "producent nie podaje pojemności doziemnej tej pozycji"
+)
+#: Reguła praktyczna I_C ≈ U_n·l/300 [A] (U_n w kV, l w km) prądu pojemnościowego linii
+#: napowietrznej SN bez przewodu odgromowego ⇒ B′0 = 1/(300·√3·1000) S/km przy 50 Hz.
+DZIELNIK_REGULY_PRADU_POJEMNOSCIOWEGO_LINII: Final = 300.0
+B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM: Final = (
+    susceptancja_zerowa_z_reguly_pradu_pojemnosciowego_s_per_km(
+        DZIELNIK_REGULY_PRADU_POJEMNOSCIOWEGO_LINII
+    )
+)
+ZALOZENIE_B0_LINII_NAPOWIETRZNEJ = (
+    f"B′0 = {simens_na_mikrosimens(B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM):.3f} µS/km — założenie inżynierskie: "
+    "reguła praktyczna prądu pojemnościowego linii napowietrznej SN bez przewodu odgromowego "
+    "I_C ≈ U_n·l/300 A (U_n w kV, l w km) przy 50 Hz; geometria zawieszenia przewodów nie jest "
+    "daną modelu"
+)
+#: Częstotliwość, dla której reguła praktyczna linii napowietrznej podaje B′0.
+CZESTOTLIWOSC_REGULY_B0_HZ: Final = 50.0
+IZOLACJE_POLA_PROMIENIOWEGO: Final = frozenset({"XLPE", "EPR"})
+
+
+def b0_robocze_galezi(
+    galaz: Mapping[str, Any], *, czestotliwosc_hz: float
+) -> tuple[float, str] | None:
+    """Propozycja B′0 [S/km] gałęzi bez susceptancji zerowej w danych — ``(wartość, założenie)``.
+
+    Kabel: wyłącznie z ekranem żył (``return_conductor_cross_section_mm2``) i izolacją
+    polimerową — wtedy B′0 = B′1 z danych gałęzi; kabel papierowy (pole niepromieniowe) albo bez
+    B′1 — brak propozycji. Linia napowietrzna: reguła praktyczna przy 50 Hz; przy innej
+    częstotliwości — brak propozycji. Gałąź z B′0 w danych nie dostaje propozycji."""
+    if galaz.get("b0_siemens_per_km") is not None:
+        return None
+    rodzaj = galaz.get("type")
+    if rodzaj == "cable":
+        b1 = galaz.get("b_siemens_per_km")
+        if (
+            galaz.get("return_conductor_cross_section_mm2") is not None
+            and galaz.get("insulation") in IZOLACJE_POLA_PROMIENIOWEGO
+            and isinstance(b1, int | float)
+            and b1 > 0
+        ):
+            return float(b1), ZALOZENIE_B0_KABLA_POLE_PROMIENIOWE
+        return None
+    if rodzaj == "line_overhead" and czestotliwosc_hz == CZESTOTLIWOSC_REGULY_B0_HZ:
+        return B0_LINII_NAPOWIETRZNEJ_SN_S_PER_KM, ZALOZENIE_B0_LINII_NAPOWIETRZNEJ
+    return None
+
+
+def dana_przyjeta_b0(*, wartosc: float, zalozenie: str, miejsce_pl: str) -> DanaPrzyjeta:
+    """Propozycja B′0 jako dana przyjęta werdyktu (§3c pkt 4) — jakość ESTIMATED."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"B′0 ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=simens_na_mikrosimens(wartosc), jednostka="µS/km"),
+        powod_pl=(
+            f"{zalozenie}. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo "
+            "pomiar prądu pojemnościowego)."
+        ),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
 
 #: Pola składowej zerowej gałęzi objęte daną przyjętą (kolejność stała — determinizm).
 POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
