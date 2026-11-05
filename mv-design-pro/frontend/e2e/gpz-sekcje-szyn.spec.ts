@@ -300,10 +300,11 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   await przyciskAparatu.click();
   pomiar.klikniecia_do_karty_aparatu = 1;
   await expect(karta).toHaveAttribute('data-rodzaj-karty', 'aparat');
-  await expect(karta.getByTestId('inspektor-karta-wartosc-typ')).toHaveAttribute('data-brak', 'false');
+  await expect(karta.getByTestId('inspektor-karta-pole-typ')).toHaveAttribute('data-brak', 'false');
 
-  // Powrót do karty GPZ tą samą drogą (wiersz GPZ w drzewie projektu).
-  await page.getByTestId('project-tree').getByTestId(`model-tree-row-${gpz.ref_id}`).click();
+  // Powrót do karty GPZ natywnym klikiem w blok GPZ na kanwie (drzewo projektu nie ma wiersza
+  // stacji GPZ — grupy „GPZ i zasilanie” i „Pola GPZ”).
+  await kliknijGpz(page, gpz.ref_id);
   await expect(karta).toHaveAttribute('data-rodzaj-karty', 'stacja', { timeout: 30000 });
 
   // 2. „Konfiguruj GPZ” — jedno kliknięcie do karty „Sekcje SN” konfiguratora GPZ.

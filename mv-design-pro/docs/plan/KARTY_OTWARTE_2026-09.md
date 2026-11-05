@@ -1458,7 +1458,18 @@ SN (`szynyStacji`, lustro `enm.tor_pola.szyny_stacji`); scena z oględzin nie mi
 backendu). Spec GPZ dostał odcinek wyprowadzony z pola GPZ (`continue_trunk_segment_sn`
 z `field_ref`): liczba wierszy równa ENM, kolumna „Pole stacji” niesie nazwę pola; test jednostkowy
 iloczynu rodzaj stacji {GPZ, SN/nN} × odcinek {na zacisku pola · na szynie sekcji · wewnątrz
-stacji}. (6) „Strona nN” w GPZ przy potrzebach własnych — bez zmian (model niesie treść). POMIAR_15
+stacji}. (6) „Strona nN” w GPZ przy potrzebach własnych — bez zmian (model niesie treść). Przy okazji: komórka aparatu
+gałęzi nie powtarza rodzaju, gdy nazwa gałęzi się nim zaczyna („Wyłącznik pola SN 3”, nie
+„Wyłącznik · Wyłącznik pola SN 3”). Pomiar (e2e GPZ, 1600×1000, realny backend): przed (`3975ecb15`,
+scena bez odcinka) — karta GPZ 714 px, tabela pól 3 kolumny z „Aparat główny”, tabela aparatów
+pola 6 kolumn z przewijaniem w poziomie (szerokości przewijania wtedy nie mierzono); po (scena
+z odcinkiem z pola GPZ) — 5 sekcji, karta 783 px (zasilanie 5 kolumn i wiersz przyłączenia),
+„Sekcje szyn” 179 px, tabela pól 3 kolumny (Pole · Rola · Stan), 1 wiersz przyłączeń równy ENM;
+karta pola GPZ: tabela aparatów 4 kolumny bez przewijania przy 420 px i przy 340 px (wysokość
+92 px w obu), 1 kliknięcie z wiersza do karty aparatu z typem katalogowym. Zrzuty
+`docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed: te same ścieżki
+w `3975ecb15`), nowe `gpz-pole-aparaty-{ciemny,jasny}.png` (inspektor 340 px) i odświeżone
+`k6-stacja-*`, `k6-pole-*`; materiał B-02, bez werdyktu.
 ---
 
 ## LICZBY-PL
