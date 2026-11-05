@@ -6135,9 +6135,9 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "fe0b40e8a027ef105d54cf39451f511f368c78d6f8ebab31fdce3ab957931dc9",
+   "hash_sha256": "ac97b6516ed3c71273c974d7789e89929910587ecf6efb6d3d457ae3f4bf1327",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
-   "revision": 16,
+   "revision": 11,
    "updated_at": "2026-08-06T00:00:00Z"
   },
   "junctions": [],
