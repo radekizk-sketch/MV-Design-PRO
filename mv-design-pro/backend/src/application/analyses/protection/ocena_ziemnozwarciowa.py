@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from application.analyses.protection.coordination.models import CoordinationConfig
@@ -52,6 +52,17 @@ from application.analyses.protection.ocena_nadpradowa import (
     strefa_urzadzenia,
     zdania_brakow,
 )
+from application.analyses.protection.rodziny_eaz import (
+    RODZINA_KODU,
+    RODZINY_EAZ,
+    SposobPracyPunktuNeutralnego,
+    WymaganieWspolczynnika,
+    podstawa_u0_roboczego,
+    sprawdz_wartosci_wiersza,
+    wymaganie_k_b,
+    wymaganie_k_c,
+    wymaganie_k_c_opor,
+)
 from enm.assembler import wezly_bez_impedancji_do_odniesienia
 from enm.mapping import ref_to_graph_id, sklad_sieci_doziemnej
 from enm.models import EnergyNetworkModel, ProtectionAssignment
@@ -61,6 +72,7 @@ from enm.zabezpieczenie import (
     brakujace_wejscia,
     nastawy_funkcji,
     nazwa_sterownika,
+    numer_grupy_efektywnej,
     przekladnik_pradu_zerowego,
 )
 from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, etykieta_funkcji_eaz
@@ -84,8 +96,11 @@ from network_model.solvers.doziemienie_sn import (
     PODSTAWA_PRADU_UZIOMOWEGO,
     STAN_PO_AWSC,
     STAN_PRZED,
+    WZOR_MNOZNIKA_RF_LATEX,
+    WZOR_RF_Z_MNOZNIKA_LATEX,
     DaneUziomuStacji,
     PunktDoziemienia,
+    SkladowaSieciZerowej,
     StanWymuszenia,
     StrefaPomiaru,
     WejscieDoziemienia,
@@ -94,6 +109,7 @@ from network_model.solvers.doziemienie_sn import (
     WynikPunktuDoziemienia,
     WynikUziemieniaStacji,
     oblicz_doziemienie,
+    rezystancja_przejscia_dla_mnoznika,
     uziemienia_stacji,
 )
 from network_model.solvers.short_circuit_core import build_zbus
@@ -174,7 +190,21 @@ _OPIS_WIELKOSCI: dict[str, str] = {
     "U0": "napięcie przesunięcia punktu neutralnego U0 w % U0n",
 }
 #: Funkcje z rozruchem napięciowym U0 (nastawa ``prog_u0_proc``) obok wielkości decydującej.
-_Z_ROZRUCHEM_U0 = frozenset({"MODUL_Y0", "G0", "B0", "P0"})
+#: 67N (``RZUT_PRADU``) ma rozruch U0> w algorytmie przekaźnika (korekta właściciela 3); bez
+#: nastawy ocena przyjmuje wartość roboczą z IRiESD ENEA II.4.5.4.1.5 (dana przyjęta).
+_Z_ROZRUCHEM_U0 = frozenset({"MODUL_Y0", "G0", "B0", "P0", "RZUT_PRADU"})
+#: Wykładnik skalowania wielkości decydującej z rezystancją przejścia: moduły prądów i napięć
+#: ~ m, moc P0 ~ m², admitancja Y0 = 3I0/(−U0) nie zależy od R_F (``mnoznik_rezystancji_
+#: przejscia`` solvera).
+_WYKLADNIK_RF: dict[str, int] = {
+    "PRAD": 1,
+    "RZUT_PRADU": 1,
+    "U0": 1,
+    "P0": 2,
+    "MODUL_Y0": 0,
+    "G0": 0,
+    "B0": 0,
+}
 
 #: Rodzaje kryteriów rekordu oceny → nazwa kryterium dla projektanta (lista ZAMKNIĘTA — rekord
 #: spoza niej to błąd kontraktu, `RekordOcenyZiemnozwarciowej.__post_init__`; nazwa jedzie
@@ -185,9 +215,13 @@ KRYTERIA_ZIEMNOZWARCIOWE: dict[str, str] = {
     "SELEKTYWNOSC": "selektywność",
     "ROZRUCH_U0": "rozruch napięciowy U0",
     "STOPNIOWANIE_CZASOWE": "stopniowanie czasowe",
-    "NAPIECIE_UZIOMOWE": "napięcie uziomowe U_E",
+    "NAPIECIE_UZIOMOWE": "warunek wystarczający U_E ≤ U_Tp",
     "REZYSTANCJA_DOPUSZCZALNA": "rezystancja uziemienia dopuszczalna",
     "NAPIECIE_KROKOWE": "napięcie krokowe",
+    "NAPIECIE_DOTYKOWE": "napięcie dotykowe spodziewane U_T",
+    "WSPOLCZYNNIK_CZULOSCI": "współczynnik czułości k_c",
+    "WSPOLCZYNNIK_CZULOSCI_OPOR": "współczynnik czułości przy doziemieniu oporowym",
+    "WSPOLCZYNNIK_ODSTROJENIA": "współczynnik bezpieczeństwa nastawy k_b",
     "ODMOWA": "ocena wstrzymana",
 }
 
@@ -229,6 +263,11 @@ class FunkcjaZiemnozwarciowa:
     stopien: StopienNastaw | None
     przekladnia_3i0: tuple[float, float] | None
     braki: tuple[PozycjaGotowosci, ...]
+    #: nastawy przyjęte przez ocenę (wartość robocza bez nastawy w modelu, ESTIMATED)
+    przyjete: tuple[DanaPrzyjeta, ...] = ()
+    #: grupa nastaw efektywna (numer) i nazwa pola sterownika — identyfikacja wiersza
+    grupa: int | None = None
+    pole_pl: str | None = None
 
     @property
     def etykieta_pl(self) -> str:
@@ -345,6 +384,20 @@ def _braki_nastaw(kod: str, nastawy: Mapping[str, Any], *, nazwa: str) -> list[P
             kat = nastawy.get("kat_charakterystyczny_deg")
             if isinstance(kat, bool) or not isinstance(kat, int | float):
                 brak("kąt charakterystyczny", "brak kąta charakterystycznego")
+            if nastawy.get("tryb_kryterium") not in (None, "RZUT", "SEKTOR"):
+                brak("tryb kryterium kierunkowego", "tryb kryterium spoza listy (rzut, sektor)")
+            polowa = nastawy.get("polowa_sektora_deg")
+            if polowa is not None and not (
+                _liczba_dodatnia(polowa) is not None and float(polowa) <= 90.0
+            ):
+                brak(
+                    "połowa szerokości sektora",
+                    "połowa szerokości sektora poza przedziałem (0°; 90°]",
+                )
+            if nastawy.get("prog_u0_proc") is not None and (
+                _liczba_dodatnia(nastawy.get("prog_u0_proc")) is None
+            ):
+                brak("próg rozruchowy napięcia zerowego U₀", "próg U₀> nie jest liczbą dodatnią")
         return braki
     if _liczba_dodatnia(nastawy.get(_KLUCZ_PROGU[rodzaj])) is None:
         brak(
@@ -533,9 +586,21 @@ def funkcje_ziemnozwarciowe(
                     stopien=stopien,
                     przekladnia_3i0=przekladnia,
                     braki=tuple(braki),
+                    grupa=numer_grupy_efektywnej(sterownik),
+                    pole_pl=_nazwa_pola(enm, sterownik),
                 )
             )
     return wynik
+
+
+def _nazwa_pola(enm: EnergyNetworkModel, sterownik: ProtectionAssignment) -> str | None:
+    """Nazwa pola sterownika (z modelu) — identyfikacja wiersza tabeli oceny."""
+    if not sterownik.bay_ref:
+        return None
+    for pole in enm.bays:
+        if pole.ref_id == sterownik.bay_ref:
+            return nazwa_elementu(pole, "bays")
+    return None
 
 
 def _nazwa_aparatu(enm: EnergyNetworkModel, breaker_ref: str) -> str:
@@ -728,10 +793,16 @@ def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float
     if rodzaj == "RZUT_PRADU":
         if pole.kat_phi0_deg is None:
             return 0.0
-        kat = pole.kat_phi0_deg + (180.0 if f.nastawy.get("kierunek") == "DO_SZYN" else 0.0)
-        return abs(pole.prad_3i0_a) * math.cos(
-            math.radians(kat - float(f.nastawy["kat_charakterystyczny_deg"]))
+        odchylenie = odchylenie_kierunku_deg(f, pole)
+        assert odchylenie is not None
+        wartosc = (
+            abs(pole.prad_3i0_a)
+            if tryb_kryterium(f) == "SEKTOR"
+            else abs(pole.prad_3i0_a) * math.cos(math.radians(odchylenie))
         )
+        # Poza sektorem działania przekaźnik nie działa: dodatnia wielkość poza sektorem nie jest
+        # wielkością działania (0), ujemny rzut zostaje (prąd w kierunku przeciwnym — nazwany).
+        return wartosc if abs(odchylenie) <= polowa_sektora_deg(f) else min(wartosc, 0.0)
     if rodzaj == "U0":
         return pole.u0_proc
     if pole.admitancja_y0_s is None:
@@ -745,8 +816,121 @@ def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float
     return w_na_kw(pole.moc_p0_w)
 
 
+def tryb_kryterium(f: FunkcjaZiemnozwarciowa) -> str:
+    """Tryb kryterium 67N z nastaw (``RZUT`` bez nastawy — kryterium rzutu)."""
+    return str(f.nastawy.get("tryb_kryterium") or "RZUT")
+
+
+def polowa_sektora_deg(f: FunkcjaZiemnozwarciowa) -> float:
+    """Połowa szerokości sektora 67N z nastaw (bez nastawy 90° — półpłaszczyzna rzutu)."""
+    wartosc = f.nastawy.get("polowa_sektora_deg")
+    return float(wartosc) if isinstance(wartosc, int | float) else 90.0
+
+
+def os_charakterystyki_deg(f: FunkcjaZiemnozwarciowa) -> float:
+    """Oś działania względem −U0: kąt charakterystyczny, obrócony o 180° dla kierunku do szyn."""
+    kat = float(f.nastawy["kat_charakterystyczny_deg"]) + (
+        180.0 if f.nastawy.get("kierunek") == "DO_SZYN" else 0.0
+    )
+    return (kat + 180.0) % 360.0 - 180.0
+
+
+def odchylenie_kierunku_deg(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float | None:
+    """Kąt prądu 3I0 względem osi działania w [−180°; 180°) (``None`` — prąd zerowy)."""
+    if pole.kat_phi0_deg is None:
+        return None
+    return (pole.kat_phi0_deg - os_charakterystyki_deg(f) + 180.0) % 360.0 - 180.0
+
+
+@dataclass(frozen=True)
+class Warunek67N:
+    """Jeden warunek algorytmu 67N przy jednym zwarciu: wartość, nastawa, zapas."""
+
+    klucz: Literal["U0", "SEKTOR", "PROG"]
+    opis_pl: str
+    warunek_latex: str
+    wartosc: float
+    nastawa: float
+    jednostka: str
+    zapas: float
+    spelniony: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "klucz": self.klucz,
+            "opis_pl": self.opis_pl,
+            "warunek_latex": self.warunek_latex,
+            "wartosc": self.wartosc,
+            "nastawa": self.nastawa,
+            "jednostka": self.jednostka,
+            "zapas": self.zapas,
+            "spelniony": self.spelniony,
+        }
+
+
+def warunki_67n(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> tuple[Warunek67N, ...]:
+    """Warunki algorytmu przekaźnika 67N liczone OSOBNO (korekta właściciela 3): rozruch
+    napięciowy U0 ≥ U0>, kierunek |φ0 − φ_os| ≤ połowa sektora, próg (rzut albo moduł 3I0
+    w sektorze) ≥ I0>. Zadziałanie = koniunkcja; warunek rozstrzygający — pierwszy niespełniony,
+    a gdy wszystkie spełnione, ten o najmniejszym zapasie względnym. Prąd zerowy: kierunek
+    nieokreślony — odchylenie 180° (warunek niespełniony)."""
+    prog_u0 = float(f.nastawy["prog_u0_proc"])
+    polowa = polowa_sektora_deg(f)
+    odchylenie = odchylenie_kierunku_deg(f, pole)
+    odch = 180.0 if odchylenie is None else abs(odchylenie)
+    wielkosc = wielkosc_decydujaca(f, pole)
+    rzut = tryb_kryterium(f) == "RZUT"
+    return (
+        Warunek67N(
+            klucz="U0",
+            opis_pl="rozruch napięciowy U₀ ≥ U₀>",
+            warunek_latex=r"U_0 \ge U_{0>}",
+            wartosc=pole.u0_proc,
+            nastawa=prog_u0,
+            jednostka="%",
+            zapas=pole.u0_proc - prog_u0,
+            spelniony=pole.u0_proc >= prog_u0,
+        ),
+        Warunek67N(
+            klucz="SEKTOR",
+            opis_pl="kierunek: prąd 3I₀ w sektorze działania",
+            warunek_latex=r"|\varphi_0 - \varphi_{os}| \le \Delta\varphi",
+            wartosc=odch,
+            nastawa=polowa,
+            jednostka="°",
+            zapas=polowa - odch,
+            spelniony=odch <= polowa,
+        ),
+        Warunek67N(
+            klucz="PROG",
+            opis_pl=(
+                "rzut 3I₀ na oś charakterystyki ≥ I₀>" if rzut else "moduł 3I₀ w sektorze ≥ I₀>"
+            ),
+            warunek_latex=(
+                r"3I_0\cos(\varphi_0 - \varphi_{os}) \ge I_{0>}" if rzut else r"|3I_0| \ge I_{0>}"
+            ),
+            wartosc=wielkosc,
+            nastawa=f.prog,
+            jednostka="A",
+            zapas=wielkosc - f.prog,
+            spelniony=wielkosc >= f.prog,
+        ),
+    )
+
+
+def warunek_rozstrzygajacy(warunki: Sequence[Warunek67N]) -> Warunek67N:
+    """Pierwszy niespełniony warunek albo — gdy działa — warunek o najmniejszym zapasie
+    względnym (zapas / nastawa)."""
+    for w in warunki:
+        if not w.spelniony:
+            return w
+    return min(warunki, key=lambda w: w.zapas / w.nastawa if w.nastawa else math.inf)
+
+
 def rusza(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> bool:
     """Rozruch funkcji: wielkość decydująca ≥ próg (i U0 ≥ próg rozruchu, gdy funkcja go ma)."""
+    if f.rodzaj == "RZUT_PRADU":
+        return all(w.spelniony for w in warunki_67n(f, pole))
     if wielkosc_decydujaca(f, pole) < f.prog:
         return False
     if f.rodzaj in _Z_ROZRUCHEM_U0:
@@ -1186,9 +1370,22 @@ class WynikOcenyZiemnozwarciowej:
     #: uziemienia stacji (PN-EN 50522) z tego samego rozwiązania sieci zerowej
     uziemienia: tuple[RekordOcenyZiemnozwarciowej, ...] = ()
     wyniki_uziemien: tuple[WynikUziemieniaStacji, ...] = ()
+    #: jeden wiersz na funkcję w zestawie kolumn jej rodziny (``rodziny_eaz.RODZINY_EAZ``)
+    wiersze: tuple[dict[str, Any], ...] = ()
+    #: pasek „Sieć” (dane stałe każdej sieci zerowej) i „Przypadek doziemienia”
+    siec: tuple[dict[str, Any], ...] = ()
+    przypadek: Mapping[str, Any] | None = None
+    #: jeden wiersz na stację: I_E, R_E, U_E, U_T, U_Tp, R_E,max, napięcie krokowe
+    wiersze_uziemien: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "rodziny": [r.to_dict() for r in RODZINY_EAZ.values()],
+            "wiersze": list(self.wiersze),
+            "siec": list(self.siec),
+            "przypadek": dict(self.przypadek) if self.przypadek is not None else None,
+            "wiersze_uziemien": list(self.wiersze_uziemien),
+            "przypisy_uziemien": dict(PRZYPISY_UZIEMIEN_PL),
             "funkcje": [f.to_dict() for f in self.funkcje],
             "oceny": [r.to_dict() for r in self.oceny],
             "odmowy": [r.to_dict() for r in self.odmowy],
@@ -1281,13 +1478,15 @@ def ocen_funkcje(
     """
     cti = CoordinationConfig().get_minimum_grading_margin_s()
     rekordy: list[RekordOcenyZiemnozwarciowej] = []
-    gotowe = [f for f in funkcje if not f.braki and f.wezel_pomiaru is not None]
+    gotowe = przygotuj_funkcje(
+        [f for f in funkcje if not f.braki and f.wezel_pomiaru is not None], obliczenie
+    )
     wymuszenie_min = _czasy_wymuszenia(gotowe, obliczenie, obliczenie.wynik_min)
     wymuszenie_max = _czasy_wymuszenia(gotowe, obliczenie, obliczenie.wynik_max)
-    dane = obliczenie.dane_przyjete
     dzialania_min: dict[str, list[DzialaniePunktu]] = {}
     for f in gotowe:
         assert f.wezel_pomiaru is not None
+        dane = obliczenie.dane_przyjete + f.przyjete
         skladowa = _skladowa_wezla(obliczenie.wynik_min, obliczenie.punkty, f.wezel_pomiaru)
         if skladowa is None:
             rekordy.append(
@@ -1599,11 +1798,651 @@ def _stopniowanie(
     return rekordy
 
 
+# ---------------------------------------------------------------------------
+# 5a. Wiersze rodzin: k_b, k_c, rzut w polu i poza, R_F,max, wykres wskazowy
+# ---------------------------------------------------------------------------
+
+
+def sposob_pracy_skladowej(skladowa: SkladowaSieciZerowej) -> SposobPracyPunktuNeutralnego:
+    """Sposób pracy punktu neutralnego sieci zerowej z typów punktów neutralnych modelu."""
+    typy = {typ for _, typ in skladowa.punkty_neutralne}
+    if typy & {"resistor_grounded", "directly_grounded"}:
+        return "UZIEMIONY_REZYSTOR"
+    if "petersen_coil" in typy:
+        return "KOMPENSOWANY_AWSC" if skladowa.ma_awsc else "KOMPENSOWANY"
+    return "IZOLOWANY"
+
+
+ETYKIETY_SPOSOBU_PRACY_PL: dict[str, str] = {
+    "IZOLOWANY": "izolowany",
+    "KOMPENSOWANY": "skompensowany",
+    "KOMPENSOWANY_AWSC": "skompensowany z AWSC",
+    "UZIEMIONY_REZYSTOR": "uziemiony przez rezystor",
+}
+
+
+def _skladowa_obliczenia(obliczenie: ObliczenieDoziemne, numer: int) -> SkladowaSieciZerowej:
+    for skladowa in obliczenie.wynik_min.skladowe:
+        if skladowa.numer == numer:
+            return skladowa
+    raise KeyError(numer)
+
+
+def przygotuj_funkcje(
+    funkcje: Sequence[FunkcjaZiemnozwarciowa], obliczenie: ObliczenieDoziemne
+) -> list[FunkcjaZiemnozwarciowa]:
+    """Wartości robocze nastaw algorytmu 67N bez nastawy w modelu (zasada NR 4): U0> — górna
+    granica zakresu IRiESD ENEA II.4.5.4.1.5 dla sposobu pracy punktu neutralnego sieci pola,
+    jako dana przyjęta ESTIMATED. Idempotentna (nastawa już obecna — bez zmian)."""
+    wynik: list[FunkcjaZiemnozwarciowa] = []
+    for f in funkcje:
+        if (
+            f.kod == "67N"
+            and f.wezel_pomiaru is not None
+            and _liczba_dodatnia(f.nastawy.get("prog_u0_proc")) is None
+        ):
+            numer = _skladowa_wezla(obliczenie.wynik_min, obliczenie.punkty, f.wezel_pomiaru)
+            if numer is not None:
+                sposob = sposob_pracy_skladowej(_skladowa_obliczenia(obliczenie, numer))
+                wartosc, zdanie = podstawa_u0_roboczego(sposob)
+                f = replace(
+                    f,
+                    nastawy={**f.nastawy, "prog_u0_proc": wartosc},
+                    przyjete=f.przyjete
+                    + (
+                        DanaPrzyjeta(
+                            nazwa_pl=f"próg U₀> funkcji {f.etykieta_pl} ({f.nazwa_urzadzenia_pl})",
+                            wartosc=Wielkosc(wartosc=wartosc, jednostka="%"),
+                            powod_pl=zdanie,
+                            jakosc=FieldQuality.ESTIMATED,
+                        ),
+                    ),
+                )
+        wynik.append(f)
+    return wynik
+
+
+def _rf_max_pola(f: FunkcjaZiemnozwarciowa, punkt: WynikPunktuDoziemienia) -> float | None:
+    """R_F,max przy zwarciu w punkcie (jeden stan): każdy warunek wielkości skalowanej
+    m^n (n z ``_WYKLADNIK_RF``) wyznacza mnożnik wymagany (próg/wartość)^(1/n); warunek
+    niezależny od R_F (admitancja, kierunek) niespełniony przy R_F = 0 — ``None``."""
+    pole = punkt.pole(f.klucz)
+    if f.rodzaj == "RZUT_PRADU" and not warunki_67n(f, pole)[1].spelniony:
+        return None
+    warunki: list[tuple[float, float, int]] = [
+        (wielkosc_decydujaca(f, pole), f.prog, _WYKLADNIK_RF[f.rodzaj])
+    ]
+    if f.rodzaj in _Z_ROZRUCHEM_U0:
+        warunki.append((pole.u0_proc, float(f.nastawy["prog_u0_proc"]), 1))
+    mnoznik = 0.0
+    for wartosc, prog, wykladnik in warunki:
+        if wykladnik == 0:
+            if wartosc < prog:
+                return None
+            continue
+        if wartosc <= 0:
+            return None
+        mnoznik = max(mnoznik, (prog / wartosc) ** (1.0 / wykladnik))
+    r_f = rezystancja_przejscia_dla_mnoznika(punkt, mnoznik)
+    return None if r_f is None or math.isinf(r_f) else r_f
+
+
+def _rf_max_funkcji(
+    f: FunkcjaZiemnozwarciowa, obliczenie: ObliczenieDoziemne, w_strefie: Sequence[DzialaniePunktu]
+) -> tuple[float | None, str | None]:
+    """R_F,max funkcji = minimum po punktach strefy; w punkcie — większa z wartości stanów
+    przed i po wymuszeniu AWSC (funkcja wykrywa w którymkolwiek). ``(None, punkt)`` — w punkcie
+    funkcja nie wykrywa doziemienia nawet metalicznego."""
+    najmniejsza: tuple[float, str] | None = None
+    for d in w_strefie:
+        wartosci: list[float] = []
+        for stan in (STAN_PRZED, STAN_PO_AWSC):
+            punkt = obliczenie.wynik_min.punkt(d.punkt_ref, stan)
+            if punkt is None or (stan == STAN_PO_AWSC and d.t_wymuszenia_s is None):
+                continue
+            r_f = _rf_max_pola(f, punkt)
+            if r_f is not None:
+                wartosci.append(r_f)
+        if not wartosci:
+            return None, d.nazwa_pl
+        kandydat = (max(wartosci), d.nazwa_pl)
+        if najmniejsza is None or kandydat[0] < najmniejsza[0]:
+            najmniejsza = kandydat
+    return (najmniejsza[0], najmniejsza[1]) if najmniejsza else (None, None)
+
+
+#: Doziemienie oporowe IRiESD ENEA II.4.5.4.1.4 ppkt 2: składowa zerowa napięcia = 50 %
+#: napięcia fazowego sieci.
+U0_DOZIEMIENIA_OPOROWEGO_PROC = 50.0
+
+
+def _k_c_opor(
+    f: FunkcjaZiemnozwarciowa, obliczenie: ObliczenieDoziemne, w_strefie: Sequence[DzialaniePunktu]
+) -> tuple[float | None, str | None]:
+    """Najmniejszy k_c przy doziemieniu oporowym (U0 w miejscu pomiaru = 50 % U0n): wielkość
+    decydująca liniowa w I0f skalowana mnożnikiem m = 50 %/U0(R_F = 0). Punkty, w których U0
+    przy zwarciu metalicznym nie przekracza 50 %, nie mają takiego doziemienia (pominięte)."""
+    najmniejszy: tuple[float, str] | None = None
+    for d in w_strefie:
+        punkt = obliczenie.wynik_min.punkt(d.punkt_ref, STAN_PRZED)
+        if punkt is None:
+            continue
+        pole = punkt.pole(f.klucz)
+        if pole.u0_proc <= U0_DOZIEMIENIA_OPOROWEGO_PROC:
+            continue
+        m = U0_DOZIEMIENIA_OPOROWEGO_PROC / pole.u0_proc
+        k = wielkosc_decydujaca(f, pole) * m / f.prog
+        if najmniejszy is None or k < najmniejszy[0]:
+            najmniejszy = (k, d.nazwa_pl)
+    return (najmniejszy[0], najmniejszy[1]) if najmniejszy else (None, None)
+
+
+def _wskaz(
+    f: FunkcjaZiemnozwarciowa, pole: WielkosciPola, rola: str, punkt_pl: str
+) -> dict[str, Any]:
+    kat = pole.kat_phi0_deg if pole.kat_phi0_deg is not None else 0.0
+    modul = abs(pole.prad_3i0_a)
+    warunki = warunki_67n(f, pole)
+    return {
+        "rola": rola,
+        "punkt_pl": punkt_pl,
+        "modul_a": modul,
+        "kat_deg": kat,
+        "re_a": modul * math.cos(math.radians(kat)),
+        "im_a": modul * math.sin(math.radians(kat)),
+        "wielkosc_a": wielkosc_decydujaca(f, pole),
+        "u0_proc": pole.u0_proc,
+        "warunki": [w.to_dict() for w in warunki],
+        "rozstrzygajacy": warunek_rozstrzygajacy(warunki).klucz,
+        "dziala": all(w.spelniony for w in warunki),
+    }
+
+
+def tryb_pl(f: FunkcjaZiemnozwarciowa) -> str:
+    """Zapis trybu kryterium 67N dla inżyniera (cos φ, sin φ, sektorowy)."""
+    if tryb_kryterium(f) == "SEKTOR":
+        return "sektorowy"
+    kat = float(f.nastawy["kat_charakterystyczny_deg"])
+    if abs(kat) < 1e-9:
+        return "cos φ"
+    if abs(abs(kat) - 90.0) < 1e-9:
+        return "sin φ"
+    return "rzut"
+
+
+def wykres_wskazowy_67n(
+    f: FunkcjaZiemnozwarciowa, wskazy: Sequence[dict[str, Any]]
+) -> dict[str, Any]:
+    """Dane wykresu wskazowego 67N — WYŁĄCZNIE z algorytmu oceny: układ odniesienia −U0 (0°),
+    oś działania, granice sektora (wersory), próg jako odcinek prostopadły do osi (tryb rzutu)
+    albo łuk o promieniu I0> (tryb sektorowy), wskazy 3I0 w polu i poza polem w amperach.
+    Ekran wyłącznie mnoży przez skalę rysunku."""
+    os_deg = os_charakterystyki_deg(f)
+    polowa = polowa_sektora_deg(f)
+    u = (math.cos(math.radians(os_deg)), math.sin(math.radians(os_deg)))
+    v = (-u[1], u[0])
+    granice = [
+        [
+            math.cos(math.radians(os_deg + znak * polowa)),
+            math.sin(math.radians(os_deg + znak * polowa)),
+        ]
+        for znak in (-1.0, 1.0)
+    ]
+    skala = max([f.prog, *(w["modul_a"] for w in wskazy)]) * 1.2
+    wykres: dict[str, Any] = {
+        "os_deg": os_deg,
+        "os": list(u),
+        "granice": granice,
+        "polowa_sektora_deg": polowa,
+        "tryb": tryb_kryterium(f),
+        "tryb_pl": tryb_pl(f),
+        "prog_a": f.prog,
+        "prog_u0_proc": float(f.nastawy["prog_u0_proc"]),
+        "skala_a": skala,
+        "wskazy": list(wskazy),
+    }
+    if tryb_kryterium(f) == "RZUT":
+        dl = skala if polowa >= 90.0 - 1e-9 else min(f.prog * math.tan(math.radians(polowa)), skala)
+        wykres["prog_odcinek"] = [
+            [f.prog * u[0] - dl * v[0], f.prog * u[1] - dl * v[1]],
+            [f.prog * u[0] + dl * v[0], f.prog * u[1] + dl * v[1]],
+        ]
+    else:
+        wykres["prog_luk"] = {
+            "promien_a": f.prog,
+            "od": [f.prog * granice[0][0], f.prog * granice[0][1]],
+            "do": [f.prog * granice[1][0], f.prog * granice[1][1]],
+            "duzy_luk": polowa > 90.0,
+        }
+    return wykres
+
+
+def _wartosc(
+    wartosc: float | None,
+    jednostka: str,
+    *,
+    spelnia: bool | None = None,
+    powod_pl: str | None = None,
+    tekst: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "wartosc": wartosc,
+        "jednostka": jednostka,
+        "spelnia": spelnia,
+        "powod_pl": powod_pl,
+        "tekst": tekst,
+    }
+
+
+_KOLEJNOSC_STANU = {
+    "NIE_SPELNIA": 0,
+    "NIEJEDNOZNACZNY": 1,
+    "BRAK_PODSTAWY": 2,
+    "BRAK_DOWODU": 3,
+    "NIE_OCENIONO": 4,
+    "SPELNIA": 5,
+}
+
+
+def stan_wiersza(rekordy: Sequence[RekordOcenyZiemnozwarciowej]) -> tuple[str, str | None]:
+    """Stan wiersza = najgorszy status rekordów funkcji (NIE_DOTYCZY pominięte) i zdanie
+    rekordu, który go wyznacza (podpowiedź stanu)."""
+    istotne = [r for r in rekordy if r.ocena.status_maszynowy != "NIE_DOTYCZY"]
+    if not istotne:
+        return "NIE_OCENIONO", None
+    najgorszy = min(istotne, key=lambda r: _KOLEJNOSC_STANU.get(r.ocena.status_maszynowy, 4))
+    return najgorszy.ocena.status_maszynowy, najgorszy.ocena.wyjasnienie.zdanie_pl
+
+
+def _rekord_wspolczynnika(
+    f: FunkcjaZiemnozwarciowa,
+    *,
+    kryterium: str,
+    opis: str,
+    symbol: str,
+    wartosc: float,
+    wymaganie: WymaganieWspolczynnika,
+    wzor_latex: str,
+    punkt_pl: str,
+    obliczenie: ObliczenieDoziemne,
+    odniesienie: str,
+    c: float,
+) -> RekordOcenyZiemnozwarciowej:
+    dane = obliczenie.dane_przyjete + f.przyjete
+    if wymaganie.przyjete:
+        dane = dane + (
+            DanaPrzyjeta(
+                nazwa_pl=f"wymagany {wymaganie.symbol} funkcji {f.etykieta_pl}",
+                wartosc=Wielkosc(wartosc=wymaganie.wartosc, jednostka="1"),
+                powod_pl=wymaganie.uzasadnienie_pl,
+                jakosc=FieldQuality.ESTIMATED,
+            ),
+        )
+    return _rekord_liczbowy(
+        f,
+        kryterium=kryterium,
+        opis_przedmiotu=opis,
+        opis_kryterium=f"{opis}: {wymaganie.symbol} nie mniejszy niż wymagany",
+        warunek_latex=wzor_latex,
+        relacja="NIE_MNIEJ",
+        wielkosc_pl=opis,
+        symbol=symbol,
+        wartosc=wartosc,
+        jednostka="1",
+        limit=wymaganie.wartosc,
+        podstawa=wymaganie.podstawa,
+        punkt_pl=punkt_pl,
+        c=c,
+        awsc=False,
+        odniesienie=odniesienie,
+        dane=dane,
+        punkty=(),
+        dodatkowe={"wymaganie": wymaganie.to_dict()},
+    )
+
+
+def _maks_poza(d: DzialaniePunktu) -> float:
+    return max([d.wartosc_przed] + ([d.wartosc_po] if d.wartosc_po is not None else []))
+
+
+def wiersze_funkcji(
+    funkcje: Sequence[FunkcjaZiemnozwarciowa],
+    rekordy: Sequence[RekordOcenyZiemnozwarciowej],
+    obliczenie: ObliczenieDoziemne | None,
+    *,
+    odniesienie: str,
+    wymagania: Mapping[str, float] | None = None,
+) -> tuple[list[RekordOcenyZiemnozwarciowej], list[dict[str, Any]]]:
+    """Rekordy współczynników k_b, k_c, k_c(U0 = 50 %) i kierunku oraz JEDEN wiersz na funkcję
+    w zestawie kolumn jej rodziny (``RODZINY_EAZ``). Wiersz niesie wyłącznie wartości
+    z backendu; stan wiersza = najgorszy status rekordów funkcji, pełne wyjaśnienie zostaje
+    w rekordach (``kryteria``)."""
+    nowe: list[RekordOcenyZiemnozwarciowej] = []
+    wiersze: list[dict[str, Any]] = []
+    gotowe = (
+        {
+            f.klucz: f
+            for f in przygotuj_funkcje(
+                [f for f in funkcje if not f.braki and f.wezel_pomiaru is not None], obliczenie
+            )
+        }
+        if obliczenie is not None
+        else {}
+    )
+    wymuszenie_min = (
+        _czasy_wymuszenia(list(gotowe.values()), obliczenie, obliczenie.wynik_min)
+        if obliczenie
+        else {}
+    )
+    wymuszenie_max = (
+        _czasy_wymuszenia(list(gotowe.values()), obliczenie, obliczenie.wynik_max)
+        if obliczenie
+        else {}
+    )
+    for surowa in funkcje:
+        f = gotowe.get(surowa.klucz, surowa)
+        rodzina = RODZINA_KODU[f.kod]
+        wpis = FUNKCJE_EAZ[f.kod]
+        wartosci: dict[str, dict[str, Any]] = {}
+        wymagane: dict[str, Any] = {}
+        wzory: list[dict[str, str]] = []
+        wykres: dict[str, Any] | None = None
+        warunki: dict[str, Any] | None = None
+        skladowa = (
+            _skladowa_wezla(obliczenie.wynik_min, obliczenie.punkty, f.wezel_pomiaru)
+            if obliczenie is not None and f.wezel_pomiaru is not None and f.klucz in gotowe
+            else None
+        )
+        if obliczenie is not None and skladowa is not None:
+            sposob = sposob_pracy_skladowej(_skladowa_obliczenia(obliczenie, skladowa))
+            dmin = dzialania_funkcji(f, obliczenie.wynik_min, wymuszenie_min, skladowa)
+            dmax = dzialania_funkcji(f, obliczenie.wynik_max, wymuszenie_max, skladowa)
+            w_strefie = dmin if f.rodzaj == "U0" else [d for d in dmin if d.w_strefie]
+            poza = [d for d in dmax if not d.w_strefie] if f.rodzaj != "U0" else []
+            jedn = _JEDNOSTKA[f.rodzaj]
+            if f.rodzaj != "U0":
+                wartosci["prog"] = _wartosc(f.prog, jedn)
+            if f.rodzaj in _Z_ROZRUCHEM_U0 or f.rodzaj == "U0":
+                prog_u0 = float(f.nastawy["prog_u0_proc"])
+                wartosci["u0_prog"] = _wartosc(
+                    prog_u0,
+                    "%",
+                    powod_pl=f.przyjete[0].powod_pl if f.przyjete else None,
+                )
+            if f.rodzaj == "RZUT_PRADU":
+                wartosci["charakterystyka"] = _wartosc(
+                    os_charakterystyki_deg(f),
+                    "°",
+                    tekst=(
+                        f"{liczba_pl(os_charakterystyki_deg(f))} ± "
+                        f"{liczba_pl(polowa_sektora_deg(f))} ({tryb_pl(f)})"
+                    ),
+                )
+            najgorszy = max(w_strefie, key=_klucz_najgorszy) if w_strefie else None
+            najgorszy_poza = max(poza, key=lambda d: (_maks_poza(d), d.punkt_ref)) if poza else None
+            if najgorszy is not None:
+                dz = najgorszy.wartosc
+                klucz_dz = "rzut_w" if f.rodzaj == "RZUT_PRADU" else "dz"
+                wartosci[klucz_dz] = _wartosc(
+                    dz, "%" if f.rodzaj == "U0" else jedn, spelnia=dz >= f.prog
+                )
+                wartosci["t"] = _wartosc(najgorszy.t_zadzialania_s, "s")
+                k_c_wym = wymaganie_k_c(f.kod, sposob, wymagania)
+                if k_c_wym is not None:
+                    k_c = dz / f.prog
+                    wartosci["k_c"] = _wartosc(k_c, "1", spelnia=k_c >= k_c_wym.wartosc)
+                    wymagane["k_c"] = k_c_wym.to_dict()
+                    wzor = (
+                        rf"k_c = \frac{{{_SYMBOL[f.rodzaj]}_{{dz,min}}}}{{{_SYMBOL[f.rodzaj]}_s}}"
+                        rf" = \frac{{{liczba_pl(dz)}}}{{{liczba_pl(f.prog)}}} = {liczba_pl(k_c)}"
+                        rf" \ge {liczba_pl(k_c_wym.wartosc)}"
+                    )
+                    wzory.append({"symbol_latex": "k_c", "wzor_latex": wzor})
+                    nowe.append(
+                        _rekord_wspolczynnika(
+                            f,
+                            kryterium="WSPOLCZYNNIK_CZULOSCI",
+                            opis="współczynnik czułości przy doziemieniu metalicznym w polu",
+                            symbol="k_c",
+                            wartosc=k_c,
+                            wymaganie=k_c_wym,
+                            wzor_latex=r"k_c = \frac{"
+                            + _SYMBOL[f.rodzaj]
+                            + r"_{dz,min}}{"
+                            + _SYMBOL[f.rodzaj]
+                            + r"_s} \ge k_{c,wym}",
+                            punkt_pl=f"zwarcie w punkcie {najgorszy.nazwa_pl}",
+                            obliczenie=obliczenie,
+                            odniesienie=odniesienie,
+                            c=obliczenie.c_min,
+                        )
+                    )
+                k_opor_wym = wymaganie_k_c_opor(f.kod, wymagania)
+                if k_opor_wym is not None:
+                    k_opor, punkt_opor = _k_c_opor(f, obliczenie, w_strefie)
+                    if k_opor is None:
+                        wartosci["k_c_opor"] = _wartosc(
+                            None,
+                            "1",
+                            powod_pl="U₀ przy doziemieniu metalicznym nie przekracza 50 % — "
+                            "doziemienie oporowe w tej definicji nie występuje",
+                        )
+                    else:
+                        wartosci["k_c_opor"] = _wartosc(
+                            k_opor, "1", spelnia=k_opor >= k_opor_wym.wartosc
+                        )
+                        wymagane["k_c_opor"] = k_opor_wym.to_dict()
+                        nowe.append(
+                            _rekord_wspolczynnika(
+                                f,
+                                kryterium="WSPOLCZYNNIK_CZULOSCI_OPOR",
+                                opis="współczynnik czułości przy doziemieniu oporowym "
+                                "(U₀ = 50 % napięcia fazowego)",
+                                symbol=r"k_{c,opor}",
+                                wartosc=k_opor,
+                                wymaganie=k_opor_wym,
+                                wzor_latex=(
+                                    r"k_{c,opor} = \frac{" + _SYMBOL[f.rodzaj] + r"\cdot "
+                                    r"\frac{50\,\%}{U_0}}{" + _SYMBOL[f.rodzaj] + r"_s} "
+                                    r"\ge k_{c,opor,wym}"
+                                ),
+                                punkt_pl=f"zwarcie w punkcie {punkt_opor}",
+                                obliczenie=obliczenie,
+                                odniesienie=odniesienie,
+                                c=obliczenie.c_min,
+                            )
+                        )
+                r_f_max, punkt_rf = _rf_max_funkcji(f, obliczenie, w_strefie)
+                wartosci["r_f_max"] = _wartosc(
+                    r_f_max,
+                    "Ω",
+                    spelnia=None if r_f_max is not None else False,
+                    powod_pl=(
+                        None
+                        if r_f_max is not None
+                        else f"funkcja nie wykrywa doziemienia metalicznego w punkcie {punkt_rf}"
+                    ),
+                )
+                wzory.append(
+                    {
+                        "symbol_latex": "R_{F,max}",
+                        "wzor_latex": WZOR_MNOZNIKA_RF_LATEX
+                        + r";\quad "
+                        + WZOR_RF_Z_MNOZNIKA_LATEX,
+                    }
+                )
+            if najgorszy_poza is not None:
+                wl_wartosc = _maks_poza(najgorszy_poza)
+                if f.rodzaj == "RZUT_PRADU":
+                    wartosci["rzut_poza"] = _wartosc(wl_wartosc, jedn, spelnia=wl_wartosc < f.prog)
+                    punkt_poza = obliczenie.wynik_max.punkt(najgorszy_poza.punkt_ref, STAN_PRZED)
+                    assert punkt_poza is not None
+                    wartosci["wl"] = _wartosc(abs(punkt_poza.pole(f.klucz).prad_3i0_a), "A")
+                else:
+                    wartosci["wl"] = _wartosc(wl_wartosc, jedn, spelnia=wl_wartosc < f.prog)
+                k_b_wym = wymaganie_k_b(rodzina, wymagania)
+                if k_b_wym is not None:
+                    wymagane["k_b"] = k_b_wym.to_dict()
+                    if wl_wartosc > 0:
+                        k_b = f.prog / wl_wartosc
+                        wartosci["k_b"] = _wartosc(k_b, "1", spelnia=k_b >= k_b_wym.wartosc)
+                        wzory.append(
+                            {
+                                "symbol_latex": "k_b",
+                                "wzor_latex": (
+                                    rf"k_b = \frac{{{_SYMBOL[f.rodzaj]}_s}}"
+                                    rf"{{{_SYMBOL[f.rodzaj]}_{{wł,max}}}} = "
+                                    rf"\frac{{{liczba_pl(f.prog)}}}{{{liczba_pl(wl_wartosc)}}}"
+                                    rf" = {liczba_pl(k_b)} \ge {liczba_pl(k_b_wym.wartosc)}"
+                                ),
+                            }
+                        )
+                        nowe.append(
+                            _rekord_wspolczynnika(
+                                f,
+                                kryterium="WSPOLCZYNNIK_ODSTROJENIA",
+                                opis="współczynnik bezpieczeństwa nastawy wobec doziemienia "
+                                "poza polem",
+                                symbol="k_b",
+                                wartosc=k_b,
+                                wymaganie=k_b_wym,
+                                wzor_latex=r"k_b = \frac{"
+                                + _SYMBOL[f.rodzaj]
+                                + r"_s}{"
+                                + _SYMBOL[f.rodzaj]
+                                + r"_{wł,max}} \ge k_{b,wym}",
+                                punkt_pl=f"zwarcie poza polem w punkcie {najgorszy_poza.nazwa_pl}",
+                                obliczenie=obliczenie,
+                                odniesienie=odniesienie,
+                                c=obliczenie.c_max,
+                            )
+                        )
+                    else:
+                        wartosci["k_b"] = _wartosc(
+                            None,
+                            "1",
+                            powod_pl=(
+                                "przy doziemieniu poza polem wielkość działania nie jest dodatnia "
+                                "(prąd w kierunku przeciwnym do kierunku działania) — odstrojenie "
+                                "zapewnia kierunek, k_b nie dotyczy"
+                            ),
+                            tekst="kierunek",
+                        )
+            if f.rodzaj == "RZUT_PRADU" and najgorszy is not None:
+                przed_w = obliczenie.wynik_min.punkt(najgorszy.punkt_ref, najgorszy.stan_decydujacy)
+                assert przed_w is not None
+                wskazy = [
+                    _wskaz(f, przed_w.pole(f.klucz), "W_POLU", najgorszy.nazwa_pl),
+                ]
+                if najgorszy_poza is not None:
+                    przed_p = obliczenie.wynik_max.punkt(najgorszy_poza.punkt_ref, STAN_PRZED)
+                    assert przed_p is not None
+                    wskazy.append(
+                        _wskaz(f, przed_p.pole(f.klucz), "POZA_POLEM", najgorszy_poza.nazwa_pl)
+                    )
+                wykres = wykres_wskazowy_67n(f, wskazy)
+                warunki = {w["rola"]: w["warunki"] for w in wskazy}
+        rekordy_f = [
+            r
+            for r in [*rekordy, *nowe]
+            if r.urzadzenie_ref == f.urzadzenie_ref and r.funkcja_ref == f.funkcja_ref
+        ]
+        stan, przyczyna = stan_wiersza(rekordy_f)
+        sprawdz_wartosci_wiersza(rodzina, set(wartosci))
+        braki = list(surowa.braki)
+        wiersze.append(
+            {
+                "rodzina": rodzina,
+                "urzadzenie_ref": f.urzadzenie_ref,
+                "funkcja_ref": f.funkcja_ref,
+                "kod": f.kod,
+                "ansi": wpis.ansi or f.kod,
+                "oznaczenie_pl": wpis.oznaczenie_pl,
+                "etykieta_pl": f.etykieta_pl,
+                "pole_pl": f.pole_pl or f.nazwa_urzadzenia_pl,
+                "sterownik_pl": f.nazwa_urzadzenia_pl,
+                "grupa": f.grupa,
+                "stan": stan,
+                "przyczyna_pl": przyczyna,
+                "wartosci": wartosci,
+                "wymagania": wymagane,
+                "wzory": wzory,
+                "warunki_67n": warunki,
+                "wykres_wskazowy": wykres,
+                "kryteria": [r.ocena.kryterium_id for r in rekordy_f],
+                "braki": [b.to_dict() for b in braki],
+                "braki_pl": list(zdania_brakow(braki, z_funkcja=False)) if braki else [],
+            }
+        )
+    return nowe, wiersze
+
+
+def dane_sieci(
+    funkcje: Sequence[FunkcjaZiemnozwarciowa], obliczenie: ObliczenieDoziemne
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Pasek „Sieć” (stałe dane każdej sieci zerowej: punkt neutralny, I_C, v, I_res, AWSC)
+    i pasek „Przypadek doziemienia” (R_F, rodzaj, c, U0 i prąd doziemny — zależą od przypadku;
+    korekta właściciela 4)."""
+    zawsc = [
+        (f, _skladowa_wezla(obliczenie.wynik_min, obliczenie.punkty, f.wezel_pomiaru))
+        for f in funkcje
+        if f.kod == "ZAWSC" and not f.braki and f.wezel_pomiaru is not None
+    ]
+    prady_awsc = {
+        b.element_ref: b.punkt_neutralny.awsc_prad_a
+        for b in obliczenie.wejscie_max.boczniki
+        if b.punkt_neutralny is not None and b.punkt_neutralny.awsc_prad_a is not None
+    }
+    siec: list[dict[str, Any]] = []
+    for skladowa in obliczenie.wynik_min.skladowe:
+        sposob = sposob_pracy_skladowej(skladowa)
+        prady_f = [
+            abs(p.prad_doziemny_a)
+            for p in obliczenie.wynik_max.punkty
+            if p.skladowa == skladowa.numer and p.stan == STAN_PRZED
+        ]
+        i_w = [prady_awsc[r] for r, _ in skladowa.punkty_neutralne if r in prady_awsc]
+        t_w = [float(f.zwloka_s) for f, n in zawsc if n == skladowa.numer and f.zwloka_s]
+        siec.append(
+            {
+                "numer": skladowa.numer,
+                "sposob": sposob,
+                "sposob_pl": ETYKIETY_SPOSOBU_PRACY_PL[sposob],
+                "prad_pojemnosciowy_a": skladowa.prad_pojemnosciowy_a,
+                "prad_dlawikow_a": skladowa.prad_dlawikow_a if skladowa.prad_dlawikow_a else None,
+                "rozstrojenie_proc": (
+                    None if skladowa.rozstrojenie is None else skladowa.rozstrojenie * 100.0
+                ),
+                "prad_resztkowy_a": (
+                    max(prady_f) if sposob.startswith("KOMPENSOWANY") and prady_f else None
+                ),
+                "awsc_prad_a": max(i_w) if i_w else None,
+                "awsc_czas_s": max(t_w) if t_w else None,
+            }
+        )
+    punkty = [p for p in obliczenie.wynik_min.punkty if p.stan == STAN_PRZED]
+    przypadek = {
+        "r_f_ohm": obliczenie.wynik_min.r_f_ohm,
+        "rodzaj": "METALICZNE" if obliczenie.wynik_min.r_f_ohm == 0 else "PRZEZ_REZYSTANCJE",
+        "c_min": obliczenie.c_min,
+        "c_max": obliczenie.c_max,
+        "u0_min_proc": min((p.u0_punktu_proc for p in punkty), default=None),
+        "u0_max_proc": max((p.u0_punktu_proc for p in punkty), default=None),
+        "prad_doziemny_max_a": max(
+            (abs(p.prad_doziemny_a) for p in obliczenie.wynik_max.punkty), default=None
+        ),
+        "stany_awsc": sorted({p.stan for p in obliczenie.wynik_min.punkty}),
+        "liczba_punktow": len(punkty),
+    }
+    return siec, przypadek
+
+
 def ocen_zabezpieczenia_ziemnozwarciowe(
     enm: EnergyNetworkModel,
     graph: NetworkGraph,
     *,
     odniesienie: str,
+    wymagania: Mapping[str, float] | None = None,
 ) -> WynikOcenyZiemnozwarciowej:
     """JEDNA ścieżka oceny zabezpieczeń ziemnozwarciowych modelu (bieg ``protection_sn``)."""
     funkcje = funkcje_ziemnozwarciowe(enm, graph)
@@ -1619,7 +2458,13 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
         if f.braki
     ]
     if not any(pasmo_napieciowe(s.voltage_kv) == "SN" for s in enm.buses):
-        return WynikOcenyZiemnozwarciowej(tuple(funkcje), (), tuple(odmowy), None)
+        return WynikOcenyZiemnozwarciowej(
+            tuple(funkcje),
+            (),
+            tuple(odmowy),
+            None,
+            wiersze=tuple(wiersze_funkcji(funkcje, odmowy, None, odniesienie=odniesienie)[1]),
+        )
     try:
         obliczenie = oblicz_siec_doziemna(enm, graph, funkcje)
     except (OdmowaDanychError, ValueError) as blad:
@@ -1644,7 +2489,13 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
             for f in funkcje
             if not f.braki
         )
-        return WynikOcenyZiemnozwarciowej(tuple(funkcje), (), tuple(odmowy), None)
+        return WynikOcenyZiemnozwarciowej(
+            tuple(funkcje),
+            (),
+            tuple(odmowy),
+            None,
+            wiersze=tuple(wiersze_funkcji(funkcje, odmowy, None, odniesienie=odniesienie)[1]),
+        )
     if obliczenie.wynik_min.punkty_bez_drogi_zerowej:
         nazwy = ", ".join(n for _, n in obliczenie.wynik_min.punkty_bez_drogi_zerowej)
         odmowy.append(
@@ -1670,6 +2521,11 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
             )
         )
     rekordy, dzialania = ocen_funkcje(funkcje, obliczenie, odniesienie=odniesienie)
+    wspolczynniki, wiersze = wiersze_funkcji(
+        funkcje, [*rekordy, *odmowy], obliczenie, odniesienie=odniesienie, wymagania=wymagania
+    )
+    rekordy = [*rekordy, *wspolczynniki]
+    siec, przypadek = dane_sieci(funkcje, obliczenie)
     oceny = [r for r in rekordy if r.kryterium != "ODMOWA"]
     odmowy.extend(r for r in rekordy if r.kryterium == "ODMOWA")
     odmowy.extend(_braki_awsc(enm, funkcje, obliczenie))
@@ -1683,6 +2539,10 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
         obliczenie,
         uziemienia=tuple(uziemienia),
         wyniki_uziemien=wyniki_uziemien,
+        wiersze=tuple(wiersze),
+        siec=tuple(siec),
+        przypadek=przypadek,
+        wiersze_uziemien=tuple(wiersze_uziemien(uziemienia)),
     )
 
 
@@ -1700,8 +2560,25 @@ PODSTAWA_U_TP = PodstawaWymagania(
     uwagi_pl=(
         "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — "
         "dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez "
-        "werdyktu"
+        "werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest "
+        "NIEZWERYFIKOWANE z treścią normy"
     ),
+)
+#: Napięcie uziomowe U_E (potencjał uziomu względem ziemi odniesienia) to NIE napięcie dotykowe
+#: U_T (różnica potencjałów ręka–stopy na powierzchni gruntu). U_T jest częścią U_E (U_T ≤ U_E),
+#: więc U_E ≤ U_Tp(t_F) jest warunkiem WYSTARCZAJĄCYM; jego niespełnienie nie oznacza
+#: przekroczenia U_Tp — wymaga wyznaczenia U_T z rozkładu potencjału (geometria uziomu).
+WARUNEK_WYSTARCZAJACY_UE_PL = (
+    "Warunek wystarczający: napięcie uziomowe U_E = R_E·I_E nie większe niż dopuszczalne "
+    "napięcie dotykowe U_Tp(t_F). Napięcie dotykowe spodziewane U_T jest częścią napięcia "
+    "uziomowego (U_T ≤ U_E), więc spełnienie warunku wystarcza bez wyznaczania U_T; "
+    "niespełnienie nie oznacza przekroczenia U_Tp — wymaga wyznaczenia U_T z rozkładu potencjału"
+)
+KOD_NAPIECIE_DOTYKOWE_BEZ_GEOMETRII = "uziemienie.napiecie_dotykowe_brak_geometrii"
+BRAK_GEOMETRII_DOTYKOWE_PL = (
+    "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu "
+    "(geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest "
+    "napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
 )
 KOD_NAPIECIE_KROKOWE_BEZ_GEOMETRII = "uziemienie.napiecie_krokowe_brak_geometrii"
 BRAK_GEOMETRII_UZIOMU_PL = (
@@ -1862,10 +2739,7 @@ def ocen_uziemienia_stacji(
                 kryterium_id=f"uziemienie.{w.stacja_ref}.napiecie_uziomowe",
                 przedmiot=przedmiot,
                 kryterium=Kryterium(
-                    opis_pl=(
-                        "Napięcie uziomowe U_E = R_E·I_E nie większe niż napięcie dotykowe "
-                        f"dopuszczalne U_Tp(t_F); {czas_pl}"
-                    ),
+                    opis_pl=f"{WARUNEK_WYSTARCZAJACY_UE_PL}; {czas_pl}",
                     warunek_latex=r"U_E = R_E\cdot I_E \le U_{Tp}(t_F)",
                     relacja="NIE_WIECEJ",
                 ),
@@ -1924,8 +2798,124 @@ def ocen_uziemienia_stacji(
                 dodatkowe=wspolne,
             )
         )
+        rekordy.append(_rekord_napiecia_dotykowego(w))
         rekordy.append(_rekord_napiecia_krokowego(w))
     return wyniki, rekordy
+
+
+def _rekord_napiecia_dotykowego(w: WynikUziemieniaStacji) -> RekordOcenyZiemnozwarciowej:
+    """Napięcie dotykowe spodziewane U_T bez geometrii uziomu — NIE_OCENIONO, bez liczby
+    (U_T ≠ U_E: rekord nigdy nie podstawia napięcia uziomowego)."""
+    from application.ocena_niewykonana import ocena_niewykonana
+    from werdykt import ClaimKind, EvidenceTier
+
+    ocena = ocena_niewykonana(
+        kryterium_id=f"uziemienie.{w.stacja_ref}.napiecie_dotykowe",
+        przedmiot=Przedmiot(
+            element_ref=w.stacja_ref,
+            nazwa_pl=w.nazwa_pl,
+            opis_pl=f"Uziom stacji {w.nazwa_pl} — napięcie dotykowe spodziewane U_T",
+        ),
+        opis_kryterium_pl=(
+            "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)"
+        ),
+        podstawa=PODSTAWA_U_TP,
+        powod_stosowalnosci_pl="stacja z węzłem SN w sieci z drogą prądu zerowego",
+        rodzaj_twierdzenia=ClaimKind.STATIC_CALCULATION,
+        poziom=EvidenceTier.UNVALIDATED_MODEL,
+        status_modelu="NIE_DOTYCZY",
+        zakres_waznosci=ZakresWaznosci(
+            rodzaj_analizy="SHORT_CIRCUIT",
+            opis_pl="Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+        ),
+        powod_braku_niepewnosci_pl="ocena się nie odbyła — niepewność nie dotyczy",
+        czego_brakuje=(BRAK_GEOMETRII_DOTYKOWE_PL,),
+        przyczyna="BRAK_DANYCH",
+        akcja_naprawcza_pl=METODA_NAPIECIA_KROKOWEGO_PL.replace("krokowe", "dotykowe").replace(
+            "krokowych", "dotykowych"
+        ),
+    )
+    return RekordOcenyZiemnozwarciowej(
+        urzadzenie_ref=w.stacja_ref,
+        nazwa_urzadzenia_pl=w.nazwa_pl,
+        funkcja_ref=None,
+        kod=None,
+        kryterium="NAPIECIE_DOTYKOWE",
+        ocena=ocena,
+        dodatkowe={
+            "kod_braku": KOD_NAPIECIE_DOTYKOWE_BEZ_GEOMETRII,
+            "czego_brakuje_pl": BRAK_GEOMETRII_DOTYKOWE_PL,
+        },
+    )
+
+
+def wiersze_uziemien(
+    uziemienia: Sequence[RekordOcenyZiemnozwarciowej],
+) -> list[dict[str, Any]]:
+    """Jeden wiersz na stację (tabela uziemień, osobna od tabel EAZ): I_E, R_E, U_E, U_T,
+    U_Tp(t_F), R_E,max, napięcie krokowe — U_E i U_T w osobnych kolumnach (korekta
+    właściciela 6). Wartości bez podstawy albo bez danych są ``None`` z kodem przypisu; przypis
+    (zdanie) jest jeden na tabelę (``przypisy``)."""
+    stacje: dict[str, list[RekordOcenyZiemnozwarciowej]] = {}
+    for r in uziemienia:
+        stacje.setdefault(r.urzadzenie_ref, []).append(r)
+    wiersze: list[dict[str, Any]] = []
+    for ref, rekordy in stacje.items():
+        glowny = next(
+            r for r in rekordy if r.kryterium in ("NAPIECIE_UZIOMOWE", "REZYSTANCJA_DOPUSZCZALNA")
+        )
+        d = glowny.dodatkowe
+        stan, przyczyna = stan_wiersza(rekordy)
+        wiersze.append(
+            {
+                "stacja_ref": ref,
+                "stacja_pl": glowny.nazwa_urzadzenia_pl,
+                "punkt_pl": d["nazwa_punktu_pl"],
+                "sposob_pl": d["sposob_pl"],
+                "prad_uziomowy_a": d["prad_uziomowy_a"],
+                "wspolczynnik_r": d["wspolczynnik_r"],
+                "wspolczynnik_r_przyjety": d["wspolczynnik_r_przyjety"],
+                "rezystancja_uziomu_ohm": d["rezystancja_uziomu_ohm"],
+                "napiecie_uziomowe_v": d["napiecie_uziomowe_v"],
+                "t_f_s": d["t_f_s"],
+                # Wielkości bez podstawy albo bez danych — ``None`` z kodem przypisu:
+                "napiecie_dotykowe_v": None,
+                "napiecie_dotykowe_dopuszczalne_v": None,
+                "rezystancja_maksymalna_ohm": None,
+                "napiecie_krokowe_v": None,
+                "przypisy_kolumn": {
+                    "napiecie_dotykowe_v": "GEOMETRIA",
+                    "napiecie_krokowe_v": "GEOMETRIA",
+                    "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+                    "rezystancja_maksymalna_ohm": "U_TP",
+                    **(
+                        {"rezystancja_uziomu_ohm": "R_E", "napiecie_uziomowe_v": "R_E"}
+                        if d["rezystancja_uziomu_ohm"] is None
+                        else {}
+                    ),
+                },
+                "wzor_pradu_latex": d["wzor_latex"],
+                "r_e_max_latex": d["r_e_max_latex"],
+                "stan": stan,
+                "przyczyna_pl": przyczyna,
+                "kryteria": [r.ocena.kryterium_id for r in rekordy],
+            }
+        )
+    return wiersze
+
+
+#: Przypisy tabeli uziemień — jedno zdanie na rodzaj braku (pod tabelą, raz).
+PRZYPISY_UZIEMIEN_PL: dict[str, str] = {
+    "GEOMETRIA": (
+        "U_T i napięcie krokowe wymagają rozkładu potencjału na powierzchni gruntu (geometria "
+        "uziomu, rezystywność gruntu, PN-EN 50522) — model ich nie niesie."
+    ),
+    "U_TP": (
+        "Krzywa dopuszczalnego napięcia dotykowego U_Tp(t_F) (PN-EN 50522) nie jest treścią "
+        "repozytorium — bez niej U_Tp i R_E,max = U_Tp/I_E pozostają bez liczby."
+    ),
+    "R_E": "Rezystancja uziemienia stacji R_E nieznana — U_E nieobliczone.",
+}
 
 
 def _rekord_napiecia_krokowego(w: WynikUziemieniaStacji) -> RekordOcenyZiemnozwarciowej:

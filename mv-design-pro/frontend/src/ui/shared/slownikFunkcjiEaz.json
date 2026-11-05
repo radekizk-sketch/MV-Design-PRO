@@ -11,7 +11,9 @@
     "IEC_VI": "IEC bardzo odwrotna (VI)",
     "IEEE_EI": "IEEE skrajnie odwrotna (EI)",
     "IEEE_MI": "IEEE umiarkowanie odwrotna (MI)",
-    "IEEE_VI": "IEEE bardzo odwrotna (VI)"
+    "IEEE_VI": "IEEE bardzo odwrotna (VI)",
+    "RZUT": "rzut 3I₀ na oś charakterystyki",
+    "SEKTOR": "moduł 3I₀ w sektorze działania"
   },
   "funkcje": {
     "21": {
@@ -865,6 +867,33 @@
           "jednostka": "°",
           "klucz": "kat_charakterystyczny_deg",
           "nazwa_pl": "kąt charakterystyczny",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg rozruchowy napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "tryb_kryterium",
+          "nazwa_pl": "tryb kryterium kierunkowego",
+          "typ": "WYBOR",
+          "wartosci": [
+            "RZUT",
+            "SEKTOR"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "°",
+          "klucz": "polowa_sektora_deg",
+          "nazwa_pl": "połowa szerokości sektora działania (±)",
           "typ": "LICZBA",
           "wartosci": []
         }

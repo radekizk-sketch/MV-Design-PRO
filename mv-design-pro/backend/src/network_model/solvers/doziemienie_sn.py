@@ -182,6 +182,13 @@ class WynikPunktuDoziemienia:
     u0_punktu_proc: float
     pola: tuple[WielkosciPola, ...]
     prady_punktow_neutralnych_a: tuple[tuple[str, complex], ...]
+    #: Impedancja pętli zwarcia doziemnego BEZ rezystancji przejścia ``Z1,kk + Z2,kk + Z0,kk``
+    #: (p.u.) i impedancja bazowa punktu — wejście przeliczenia wyniku na inną rezystancję
+    #: przejścia (``mnoznik_rezystancji_przejscia``); rozwiązanie jest liniowe w I0f.
+    z_petli_pu: complex = 0j
+    z_base_ohm: float = 0.0
+    #: rezystancja przejścia, przy której policzono ten wynik (wejście solvera)
+    r_f_ohm: float = 0.0
 
     def pole(self, strefa_ref: str) -> WielkosciPola:
         for wielkosci in self.pola:
@@ -204,6 +211,8 @@ class WynikPunktuDoziemienia:
                 {"element_ref": ref, "prad_a": _zespolona(prad)}
                 for ref, prad in self.prady_punktow_neutralnych_a
             ],
+            "z_petli_pu": _zespolona(self.z_petli_pu),
+            "z_base_ohm": self.z_base_ohm,
         }
 
 
@@ -349,7 +358,7 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
             {
                 "key": "punkty_bez_drogi_zerowej",
                 "title": "Punkty bez drogi prądu zerowego do ziemi",
-                "formula_latex": r"\sum_{s \in 	ext{składowa}} y_s = 0",
+                "formula_latex": r"\sum_{s \in \text{składowa}} y_s = 0",
                 "inputs": {"punkty": [ref for ref, _ in bez_drogi]},
                 "substitution": (
                     "Część sieci bez pojemności doziemnej i bez uziemionego punktu neutralnego "
@@ -494,7 +503,8 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
             )
         for stan, z0, y_zmienione in stany:
             z_f_pu = wejscie.r_f_ohm / punkt.z_base_ohm
-            mianownik = punkt.z1_pu + punkt.z2_pu + z0[punkt.indeks, punkt.indeks] + 3.0 * z_f_pu
+            z_petli = complex(punkt.z1_pu + punkt.z2_pu + z0[punkt.indeks, punkt.indeks])
+            mianownik = z_petli + 3.0 * z_f_pu
             if mianownik == 0:
                 raise OdmowaDanychError(
                     f"Zerowa impedancja pętli zwarcia doziemnego w punkcie {punkt.nazwa_pl}"
@@ -566,6 +576,9 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
                 u0_punktu_proc=float(abs(v0[punkt.indeks]) * 100.0),
                 pola=tuple(pola),
                 prady_punktow_neutralnych_a=prady_neutralne,
+                z_petli_pu=z_petli,
+                z_base_ohm=punkt.z_base_ohm,
+                r_f_ohm=wejscie.r_f_ohm,
             )
             wyniki.append(wynik)
             slad.append(
@@ -604,6 +617,64 @@ def oblicz_doziemienie(wejscie: WejscieDoziemienia) -> WynikDoziemienia:
         slad=tuple(slad),
         punkty_bez_drogi_zerowej=bez_drogi,
     )
+
+
+# ---------------------------------------------------------------------------
+# Rezystancja przejścia: przeliczenie wyniku punktu na inne R_F (WHITE BOX)
+# ---------------------------------------------------------------------------
+
+#: Mnożnik wielkości pola przy zmianie rezystancji przejścia. Rozwiązanie jest liniowe w I0f,
+#: a I0f = c/(Z_p + 3R_F/Z_b): każdy prąd 3I0 pola i każde napięcie U0 skaluje się zespolonym
+#: ilorazem I0f(R_F)/I0f(R_F,obl) — moduły mnożnikiem m, kąty (φ0 = arg 3I0 − arg(−U0)) bez
+#: zmiany, admitancja Y0 = 3I0/(−U0) bez zmiany, moc P0 mnożnikiem m².
+WZOR_MNOZNIKA_RF_LATEX = (
+    r"m(R_F) = \frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\quad "
+    r"Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk}"
+)
+WZOR_RF_Z_MNOZNIKA_LATEX = (
+    r"\frac{3R_F}{Z_b} = -\mathrm{Re}\,Z_p + "
+    r"\sqrt{\rho^2 - (\mathrm{Im}\,Z_p)^2},\quad \rho = \frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+)
+
+
+def mnoznik_rezystancji_przejscia(punkt: WynikPunktuDoziemienia, r_f_ohm: float) -> float:
+    """Mnożnik ``m`` modułów prądów 3I0 i napięć U0 wyniku ``punkt`` przy rezystancji przejścia
+    ``r_f_ohm`` zamiast tej, z którą wynik policzono (``punkt.r_f_ohm``)."""
+    if not (r_f_ohm >= 0 and math.isfinite(r_f_ohm)):
+        raise OdmowaDanychError(f"Rezystancja przejścia R_F = {r_f_ohm!r} Ω musi być ≥ 0")
+    if punkt.z_base_ohm <= 0:
+        raise OdmowaDanychError(
+            f"Wynik punktu {punkt.nazwa_pl} nie niesie impedancji bazowej — przeliczenie na inną "
+            "rezystancję przejścia niemożliwe"
+        )
+    obl = abs(punkt.z_petli_pu + 3.0 * punkt.r_f_ohm / punkt.z_base_ohm)
+    nowa = abs(punkt.z_petli_pu + 3.0 * r_f_ohm / punkt.z_base_ohm)
+    if nowa == 0:
+        raise OdmowaDanychError(
+            f"Zerowa impedancja pętli zwarcia doziemnego w punkcie {punkt.nazwa_pl}"
+        )
+    return obl / nowa
+
+
+def rezystancja_przejscia_dla_mnoznika(
+    punkt: WynikPunktuDoziemienia, mnoznik: float
+) -> float | None:
+    """Rezystancja przejścia R_F ≥ 0, przy której moduły wielkości punktu są ``mnoznik`` razy
+    wartości obliczonej (odwrotność ``mnoznik_rezystancji_przejscia``).
+
+    ``m(R_F)`` maleje monotonicznie z R_F (Re Z_p ≥ 0 — sieć bierna), więc rozwiązanie jest
+    jedno: ``None`` — mnożnik nieosiągalny dla R_F ≥ 0 (większy niż przy R_F = 0, czyli warunek
+    nie jest spełniony nawet przy zwarciu metalicznym); ``math.inf`` — mnożnik ≤ 0 (warunek
+    spełniony przy każdej rezystancji przejścia)."""
+    if mnoznik <= 0:
+        return math.inf
+    m_zero = mnoznik_rezystancji_przejscia(punkt, 0.0)
+    if mnoznik > m_zero:
+        return None
+    rho = abs(punkt.z_petli_pu + 3.0 * punkt.r_f_ohm / punkt.z_base_ohm) / mnoznik
+    z = punkt.z_petli_pu
+    trzy_r_pu = -z.real + math.sqrt(max(rho * rho - z.imag * z.imag, 0.0))
+    return max(trzy_r_pu, 0.0) * punkt.z_base_ohm / 3.0
 
 
 # ---------------------------------------------------------------------------

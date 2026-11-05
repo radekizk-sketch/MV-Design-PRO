@@ -95,12 +95,18 @@ def test_bieg_niesie_ocene_ziemnozwarciowa_i_uziemienia(app_client: Any, sposob:
         assert rekord["zdanie_pl"].strip()
         assert rekord["ocena"]["wyjasnienie"]["zdanie_pl"].strip()
     # Uziemienie GPZ: prąd uziomowy z solvera, limit U_Tp bez podstawy w repo → BRAK_PODSTAWY.
-    uziemienia = [r for r in ziemne["uziemienia"] if r["kryterium"] != "NAPIECIE_KROKOWE"]
+    # Napięcie krokowe i napięcie dotykowe spodziewane U_T (≠ napięcie uziomowe U_E) wymagają
+    # geometrii uziomu — NIE_OCENIONO bez liczby (karta EKRANY-EAZ-ZIEMNOZWARCIOWE, korekta 6).
+    bez_geometrii = {"NAPIECIE_KROKOWE", "NAPIECIE_DOTYKOWE"}
+    uziemienia = [r for r in ziemne["uziemienia"] if r["kryterium"] not in bez_geometrii]
     assert uziemienia
     assert {r["status"] for r in uziemienia} == {"BRAK_PODSTAWY"}
     assert all(r["prad_uziomowy_a"] > 0 for r in uziemienia)
     krokowe = [r for r in ziemne["uziemienia"] if r["kryterium"] == "NAPIECIE_KROKOWE"]
     assert krokowe and {r["status"] for r in krokowe} == {"NIE_OCENIONO"}
+    dotykowe = [r for r in ziemne["uziemienia"] if r["kryterium"] == "NAPIECIE_DOTYKOWE"]
+    assert dotykowe and {r["status"] for r in dotykowe} == {"NIE_OCENIONO"}
+    assert all(r["ocena"]["wynik"] is None for r in dotykowe)
 
     slad = app_client.get(f"/api/protection-runs/{run_id}/trace")
     assert slad.status_code == 200, slad.text

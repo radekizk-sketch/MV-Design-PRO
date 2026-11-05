@@ -97,6 +97,10 @@ KRZYWE_CZASOWE: tuple[str, ...] = (
 JEDNOSTKI_PROGU_PRADOWEGO: tuple[str, ...] = ("A_WTORNY", "A_PIERWOTNY")
 #: Kierunek działania funkcji kierunkowej (67, 67N) względem pola.
 KIERUNKI_DZIALANIA: tuple[str, ...] = ("DO_LINII", "DO_SZYN")
+#: Tryb kryterium kierunkowego 67N (algorytm przekaźnika): ``RZUT`` — rzut 3I0 na oś
+#: charakterystyki ≥ próg (kąt φ_ch = 0° — kryterium cos φ, φ_ch = 90° — sin φ), ``SEKTOR`` —
+#: moduł 3I0 ≥ próg wewnątrz sektora φ_ch ± połowa szerokości.
+TRYBY_KRYTERIUM_KIERUNKOWEGO: tuple[str, ...] = ("RZUT", "SEKTOR")
 
 #: Etykieta KAŻDEJ wartości wyboru nastaw (krzywe, strona progu, kierunek) — jedno źródło dla
 #: oceny (komunikaty, ślad), karty pola i edytora nastaw (lustro `slownikFunkcjiEaz.json`).
@@ -113,6 +117,8 @@ ETYKIETY_WARTOSCI_WYBORU: dict[str, str] = {
     "A_PIERWOTNY": "A po stronie pierwotnej przekładnika",
     "DO_LINII": "w stronę linii",
     "DO_SZYN": "w stronę szyn",
+    "RZUT": "rzut 3I₀ na oś charakterystyki",
+    "SEKTOR": "moduł 3I₀ w sektorze działania",
 }
 
 #: Identyfikator ewaluatora funkcji w warstwie analiz. ``NADPRADOWA_IEC_60255`` — ocena
@@ -198,6 +204,15 @@ _TYLKO_ZWLOKA: tuple[SchematNastawy, ...] = (_ZWLOKA,)
 #: napięcie zerowe U0 w % U0n, gdzie U0n = Un/√3 (pełne przesunięcie punktu neutralnego przy
 #: zwarciu metalicznym w sieci z izolowanym punktem neutralnym).
 _PROG_ROZRUCHU_U0 = _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n")
+#: Nastawy algorytmu kierunkowego 67N poza stopniem prądowym i kierunkiem: rozruch napięciowy
+#: U0>, tryb kryterium i połowa szerokości sektora działania. Wszystkie trzy są opcjonalne —
+#: bez nich ocena przyjmuje wartość roboczą (U0> z zakresu IRiESD ENEA II.4.5.4.1.5, tryb
+#: ``RZUT``, sektor ±90°) jawnie, jako daną przyjętą (zasada NR 4).
+_NASTAWY_ALGORYTMU_67N: tuple[SchematNastawy, ...] = (
+    _PROG_ROZRUCHU_U0,
+    _wybor("tryb_kryterium", "tryb kryterium kierunkowego", TRYBY_KRYTERIUM_KIERUNKOWEGO),
+    _liczba("polowa_sektora_deg", "połowa szerokości sektora działania (±)", "°"),
+)
 
 
 _WPISY: tuple[FunkcjaEaz, ...] = (
@@ -272,7 +287,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         f"{_IR} II.4.5.4.2.1 pkt 2, II.4.5.4.2.2 pkt 2, II.4.5.4.2.3 pkt 2",
         wejscia_wymagane=("3I0", "3U0"),
         wejscia_opcjonalne=(),
-        nastawy=_NASTAWY_STOPNIA_PRADOWEGO + _NASTAWY_KIERUNKU,
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO + _NASTAWY_KIERUNKU + _NASTAWY_ALGORYTMU_67N,
         ocena="ZIEMNOZWARCIOWA",
     ),
     FunkcjaEaz(

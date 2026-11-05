@@ -76,6 +76,42 @@
         "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej)."
       },
       {
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "kierunek_rzutu": "ZGODNY",
+        "kod": "67N",
+        "kryterium": "ROZRUCH_U0",
+        "kryterium_pl": "rozruch napięciowy U0",
+        "limit_pl": "15 % U0n",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "% U0n",
+              "wartosc": 15.0
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 100,8 % U0n wobec wymaganych ≥ 15 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +85,8 % U0n, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +572 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "% U0n",
+              "wartosc": 100.80350096796221
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wynik_pl": "rzut na kierunek działania: 100,8 % U0n",
+        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 100,8 % U0n wobec wymaganych ≥ 15 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +85,8 % U0n, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +572 % wartości granicznej)."
+      },
+      {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "kierunek_rzutu": null,
@@ -110,6 +146,114 @@
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
         "wynik_pl": "0,5 s",
         "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +150 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_CZULOSCI",
+        "kryterium_pl": "współczynnik czułości k_c",
+        "limit_pl": "1,5",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.5
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: k_c nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu metalicznym w polu: 16,07 wobec wymaganych ≥ 1,5 wg pkt II.4.5.4.1.4 ppkt 1 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +14,57, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +971,2 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 16.068429360371372
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wynik_pl": "16,07",
+        "zdanie_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: k_c nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu metalicznym w polu: 16,07 wobec wymaganych ≥ 1,5 wg pkt II.4.5.4.1.4 ppkt 1 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +14,57, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +971,2 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_CZULOSCI_OPOR",
+        "kryterium_pl": "współczynnik czułości przy doziemieniu oporowym",
+        "limit_pl": "1,2",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.2
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): k_c,opor nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): 7,97 wobec wymaganych ≥ 1,2 wg pkt II.4.5.4.1.4 ppkt 2 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +6,77, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +564,2 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 7.970174252915237
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wynik_pl": "7,97",
+        "zdanie_pl": "współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): k_c,opor nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): 7,97 wobec wymaganych ≥ 1,2 wg pkt II.4.5.4.1.4 ppkt 2 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +6,77, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +564,2 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_ODSTROJENIA",
+        "kryterium_pl": "współczynnik bezpieczeństwa nastawy k_b",
+        "limit_pl": "1,2",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.2
+            }
+          },
+          "status_maszynowy": "NIE_SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 0.17304893670626909
+            }
+          }
+        },
+        "status": "NIE_SPELNIA",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wynik_pl": "0,173",
+        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -167,6 +311,283 @@
         "zdanie_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       }
     ],
+    "przypadek": {
+      "c_max": 1.1,
+      "c_min": 1.0,
+      "liczba_punktow": 11,
+      "prad_doziemny_max_a": 118.78556086388662,
+      "r_f_ohm": 0.0,
+      "rodzaj": "METALICZNE",
+      "stany_awsc": [
+        "PRZED_WYMUSZENIEM"
+      ],
+      "u0_max_proc": 101.84232385759606,
+      "u0_min_proc": 100.80350096796221
+    },
+    "przypisy_uziemien": {
+      "GEOMETRIA": "U_T i napięcie krokowe wymagają rozkładu potencjału na powierzchni gruntu (geometria uziomu, rezystywność gruntu, PN-EN 50522) — model ich nie niesie.",
+      "R_E": "Rezystancja uziemienia stacji R_E nieznana — U_E nieobliczone.",
+      "U_TP": "Krzywa dopuszczalnego napięcia dotykowego U_Tp(t_F) (PN-EN 50522) nie jest treścią repozytorium — bez niej U_Tp i R_E,max = U_Tp/I_E pozostają bez liczby."
+    },
+    "rodziny": [
+      {
+        "id": "ZEROWOPRADOWE",
+        "kody": [
+          "51N",
+          "50N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "prąd własny pola przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "3I₀ dz. [A]",
+            "opis_pl": "prąd 3I₀ w polu przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe bezkierunkowe (51N, 50N)"
+      },
+      {
+        "id": "KIERUNKOWE_67N",
+        "kody": [
+          "67N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "charakterystyka",
+            "naglowek_pl": "φ_ch ± sektor [°]",
+            "opis_pl": "kąt charakterystyczny względem −U₀, połowa szerokości sektora i tryb kryterium"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "moduł prądu własnego pola przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_poza",
+            "naglowek_pl": "rzut poza [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_w",
+            "naglowek_pl": "rzut w polu [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe kierunkowe (67N)"
+      },
+      {
+        "id": "ADMITANCYJNE",
+        "kody": [
+          "Yo>",
+          "Go>",
+          "Bo>"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "nastawa [mS]",
+            "opis_pl": "próg admitancji, konduktancji albo susceptancji"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "poza polem [mS]",
+            "opis_pl": "wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "w polu [mS]",
+            "opis_pl": "wielkość przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Admitancyjne (Y₀>, G₀>, B₀>)"
+      },
+      {
+        "id": "WATOMETRYCZNE",
+        "kody": [
+          "32N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "P₀> [kW]",
+            "opis_pl": "próg mocy czynnej składowej zerowej"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "P₀ poza [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "P₀ w polu [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Watometryczne (32N)"
+      },
+      {
+        "id": "ZEROWONAPIECIOWE",
+        "kody": [
+          "59N",
+          "ZAWSC"
+        ],
+        "kolumny": [
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "U₀ min [%]",
+            "opis_pl": "najmniejsze U₀ w miejscu pomiaru przy doziemieniu"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowonapięciowe i automatyka wymuszania (59N, ZAWSC)"
+      }
+    ],
+    "siec": [
+      {
+        "awsc_czas_s": null,
+        "awsc_prad_a": null,
+        "numer": 0,
+        "prad_dlawikow_a": null,
+        "prad_pojemnosciowy_a": 105.04619017962473,
+        "prad_resztkowy_a": null,
+        "rozstrojenie_proc": null,
+        "sposob": "IZOLOWANY",
+        "sposob_pl": "izolowany"
+      }
+    ],
     "uziemienia": [
       {
         "etykieta_pl": null,
@@ -190,7 +611,7 @@
           "wynik": {
             "wartosc": {
               "jednostka": "A",
-              "wartosc": 116.63384655138493
+              "wartosc": 116.6338465513849
             }
           }
         },
@@ -198,6 +619,33 @@
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
         "wynik_pl": "116,6 A",
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 116,6 A."
+      },
+      {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "limit": null,
+          "status_maszynowy": "NIE_OCENIONO",
+          "wyjasnienie": {
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null
+        },
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
       },
       {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
@@ -225,6 +673,1567 @@
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
         "wynik_pl": null,
         "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
+      }
+    ],
+    "wiersze": [
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.STOPNIOWANIE_CZASOWE:sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.1",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 80.34214680185686
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.17304893670626909
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 16.068429360371372
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 7.970174252915237
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 1306.8566765618796
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 28.893560949680563
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{80,3421}{5} = 16,0684 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{28,8936} = 0,173049 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.STOPNIOWANIE_CZASOWE:sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.1",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 80,34 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +78,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +3917 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "90 ± 90 (sin φ)",
+            "wartosc": 90.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 40.17004048291957
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 19.924923289959235
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 538.9714244039332
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -28.257504506475396
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 80.34008096583914
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 15.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 28.257651626183467
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 110.8838510647584,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 95.8838510647584
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 179.81511349511368,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -89.81511349511368
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -28.257504506475396,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -30.257504506475396
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 100.80350096796221,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 85.80350096796221
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 0.4108797778508233,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 89.58912022214918
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 80.34008096583914,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 78.34008096583914
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              1.0,
+              0.0
+            ],
+            [
+              -1.0,
+              1.2246467991473532e-16
+            ]
+          ],
+          "os": [
+            6.123233995736766e-17,
+            1.0
+          ],
+          "os_deg": 90.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              96.41057616222822,
+              1.999999999999994
+            ],
+            [
+              -96.41057616222822,
+              2.0000000000000058
+            ]
+          ],
+          "prog_u0_proc": 15.0,
+          "skala_a": 96.41057616222822,
+          "tryb": "RZUT",
+          "tryb_pl": "sin φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": 80.34008096583914,
+              "kat_deg": 89.58912022214918,
+              "modul_a": 80.34214680185686,
+              "punkt_pl": "Zacisk odpływowy Pole liniowe GPZ 1.1",
+              "re_a": 0.5761450629227366,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 100.80350096796221,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 100.80350096796221,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 85.80350096796221
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 0.4108797778508233,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 89.58912022214918
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 80.34008096583914,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 78.34008096583914
+                }
+              ],
+              "wielkosc_a": 80.34008096583914
+            },
+            {
+              "dziala": false,
+              "im_a": -28.257504506475396,
+              "kat_deg": -90.18488650488634,
+              "modul_a": 28.257651626183467,
+              "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
+              "re_a": -0.09118384326106191,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 110.8838510647584,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 110.8838510647584,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 95.8838510647584
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 179.81511349511368,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -89.81511349511368
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -28.257504506475396,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -30.257504506475396
+                }
+              ],
+              "wielkosc_a": -28.257504506475396
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{80,3401}{2} = 40,17 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.2",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 36,12 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −31,12 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −622,5 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 73.91418649532275
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.1384144943781255
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 14.78283729906455
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 7.332501925584357
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 1201.5591002981278
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 36.12338449426277
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{73,9142}{5} = 14,7828 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{36,1234} = 0,138414 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.2",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 73,91 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +71,91 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.2 (przed wymuszeniem składowej czynnej), względnie +3596 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "90 ± 90 (sin φ)",
+            "wartosc": 90.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 36.95615105735725
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 18.33078747389082
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 538.6113861784244
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -35.32806124271248
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 73.9123021147145
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 15.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 35.3283562512512
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 110.8838510647584,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 95.8838510647584
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 179.76585035155688,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -89.76585035155688
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -35.32806124271248,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -37.32806124271248
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 100.80350096796221,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 85.80350096796221
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 0.4091277762900063,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 89.59087222371
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 73.9123021147145,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 71.9123021147145
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              1.0,
+              0.0
+            ],
+            [
+              -1.0,
+              1.2246467991473532e-16
+            ]
+          ],
+          "os": [
+            6.123233995736766e-17,
+            1.0
+          ],
+          "os_deg": 90.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              88.6970237943873,
+              1.9999999999999947
+            ],
+            [
+              -88.6970237943873,
+              2.0000000000000053
+            ]
+          ],
+          "prog_u0_proc": 15.0,
+          "skala_a": 88.6970237943873,
+          "tryb": "RZUT",
+          "tryb_pl": "sin φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": 73.9123021147145,
+              "kat_deg": 89.59087222371,
+              "modul_a": 73.91418649532275,
+              "punkt_pl": "Zacisk odpływowy Pole liniowe GPZ 1.2",
+              "re_a": 0.5277891326293094,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 100.80350096796221,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 100.80350096796221,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 85.80350096796221
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 0.4091277762900063,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 89.59087222371
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 73.9123021147145,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 71.9123021147145
+                }
+              ],
+              "wielkosc_a": 73.9123021147145
+            },
+            {
+              "dziala": false,
+              "im_a": -35.32806124271248,
+              "kat_deg": -90.2341496484431,
+              "modul_a": 35.3283562512512,
+              "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
+              "re_a": -0.1443753665838398,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 110.8838510647584,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 110.8838510647584,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 95.8838510647584
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 179.76585035155688,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -89.76585035155688
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -35.32806124271248,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -37.32806124271248
+                }
+              ],
+              "wielkosc_a": -35.32806124271248
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{73,9123}{2} = 36,9562 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.3",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 53,91 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −48,91 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 2, względnie −978,2 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 57.80545643109621
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.09274773295116315
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 11.561091286219241
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 5.734469128157382
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 937.8977114976897
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 53.90967348638892
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{57,8055}{5} = 11,5611 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{53,9097} = 0,0927477 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.3",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 57,81 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +55,81 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.3 (przed wymuszeniem składowej czynnej), względnie +2790 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "90 ± 90 (sin φ)",
+            "wartosc": 90.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 28.902529885977472
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 14.336074446046965
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 538.4866159993175
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -53.04602781974797
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 57.805059771954944
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 15.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 53.04828521593506
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 110.8838510647584,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 95.8838510647584
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 179.4714240622606,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -89.47142406226061
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -53.04602781974797,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -55.04602781974797
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 15.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 100.80350096796221,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 85.80350096796221
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 0.21225708464464788,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 89.78774291535535
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 57.805059771954944,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 55.805059771954944
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              1.0,
+              0.0
+            ],
+            [
+              -1.0,
+              1.2246467991473532e-16
+            ]
+          ],
+          "os": [
+            6.123233995736766e-17,
+            1.0
+          ],
+          "os_deg": 90.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              69.36654771731546,
+              1.9999999999999958
+            ],
+            [
+              -69.36654771731546,
+              2.0000000000000044
+            ]
+          ],
+          "prog_u0_proc": 15.0,
+          "skala_a": 69.36654771731546,
+          "tryb": "RZUT",
+          "tryb_pl": "sin φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": 57.805059771954944,
+              "kat_deg": 89.78774291535535,
+              "modul_a": 57.80545643109621,
+              "punkt_pl": "Zacisk odpływowy Pole liniowe GPZ 1.3",
+              "re_a": 0.21414473628432287,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 100.80350096796221,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 100.80350096796221,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 85.80350096796221
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 0.21225708464464788,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 89.78774291535535
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 57.805059771954944,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 55.805059771954944
+                }
+              ],
+              "wielkosc_a": 57.805059771954944
+            },
+            {
+              "dziala": false,
+              "im_a": -53.04602781974797,
+              "kat_deg": -90.5285759377394,
+              "modul_a": 53.04828521593506,
+              "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
+              "re_a": -0.48938420256325127,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 110.8838510647584,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 15.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 110.8838510647584,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 95.8838510647584
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 179.4714240622606,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -89.47142406226061
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -53.04602781974797,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -55.04602781974797
+                }
+              ],
+              "wielkosc_a": -53.04602781974797
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{57,8051}{2} = 28,9025 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "59N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n).",
+            "nazwa_braku_pl": "próg napięcia przesunięcia punktu neutralnego U₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej.",
+            "nazwa_braku_pl": "zwłoka czasowa"
+          }
+        ],
+        "braki_pl": [
+          "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola."
+        ],
+        "etykieta_pl": "U0> (59N)",
+        "funkcja_ref": "59N",
+        "grupa": 1,
+        "kod": "59N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.sn/56c60428083632fed7e5daf111007841/bay/sterownik.59N"
+        ],
+        "oznaczenie_pl": "U0>",
+        "pole_pl": "Pole pomiarowe",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWONAPIECIOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole pomiarowe — GPZ 15 kV",
+        "urzadzenie_ref": "sn/56c60428083632fed7e5daf111007841/bay/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Zabezpieczenie odejścia ST1",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Zabezpieczenie odejścia ST1) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 10,62 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Zabezpieczenie odejścia ST1 zapisane w modelu sieci projektu” (margines −5,622 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −112,4 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Zabezpieczenie odejścia ST1",
+        "urzadzenie_ref": "sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 97.36786342210846
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.4707076833451113
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 19.47357268442169
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 9.622158422549914
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 1572.1291278406682
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.3
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 10.62230377134958
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{97,3679}{5} = 19,4736 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{10,6223} = 0,470708 \\ge 1,2"
+          }
+        ]
+      }
+    ],
+    "wiersze_uziemien": [
+      {
+        "kryteria": [
+          "uziemienie.gpz/a685c5ceea811d86f06692c9c39ae620/substation.rezystancja_dopuszczalna",
+          "uziemienie.gpz/a685c5ceea811d86f06692c9c39ae620/substation.napiecie_dotykowe",
+          "uziemienie.gpz/a685c5ceea811d86f06692c9c39ae620/substation.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 116.6338465513849,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 116,6 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Szyna GPZ S1 15 kV",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{116,634\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "GPZ 15 kV",
+        "stacja_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/substation",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
       }
     ],
     "wyniki_uziemien": []
@@ -306,6 +2315,42 @@
         "zdanie_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej)."
       },
       {
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "kierunek_rzutu": "ZGODNY",
+        "kod": "67N",
+        "kryterium": "ROZRUCH_U0",
+        "kryterium_pl": "rozruch napięciowy U0",
+        "limit_pl": "20 % U0n",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "% U0n",
+              "wartosc": 20.0
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 99,33 % U0n wobec wymaganych ≥ 20 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +79,33 % U0n, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +396,7 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "% U0n",
+              "wartosc": 99.33209154857818
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wynik_pl": "rzut na kierunek działania: 99,33 % U0n",
+        "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 99,33 % U0n wobec wymaganych ≥ 20 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +79,33 % U0n, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +396,7 % wartości granicznej)."
+      },
+      {
         "etykieta_pl": "Io> (51N)",
         "funkcja_ref": "51N",
         "kierunek_rzutu": null,
@@ -340,6 +2385,114 @@
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
         "wynik_pl": "0,5 s",
         "zdanie_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV działa co najmniej o odstęp CTI później niż zabezpieczenie Zabezpieczenie odejścia ST1 (jego najszybsza funkcja ziemnozwarciowa) przy każdym zwarciu doziemnym w strefie Zabezpieczenie odejścia ST1, przy którym działają oba (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Odstęp czasów zadziałania nadrzędnego i podrzędnego: 0,5 s wobec wymaganych ≥ 0,2 s wg CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s „Założenia koordynacji zabezpieczeń projektu (odstęp czasowy selektywności)” (margines +0,3 s, punkt: zwarcie w punkcie Węzeł łącznika 2, względnie +150 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_CZULOSCI",
+        "kryterium_pl": "współczynnik czułości k_c",
+        "limit_pl": "1,5",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.5
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: k_c nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu metalicznym w polu: 5,812 wobec wymaganych ≥ 1,5 wg pkt II.4.5.4.1.4 ppkt 1 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +4,312, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +287,5 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 5.811825265088675
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wynik_pl": "5,812",
+        "zdanie_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: k_c nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu metalicznym w polu: 5,812 wobec wymaganych ≥ 1,5 wg pkt II.4.5.4.1.4 ppkt 1 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +4,312, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +287,5 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_CZULOSCI_OPOR",
+        "kryterium_pl": "współczynnik czułości przy doziemieniu oporowym",
+        "limit_pl": "1,2",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.2
+            }
+          },
+          "status_maszynowy": "SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): k_c,opor nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): 2,925 wobec wymaganych ≥ 1,2 wg pkt II.4.5.4.1.4 ppkt 2 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +1,725, punkt: zwarcie w punkcie Węzeł łącznika, względnie +143,8 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 2.9254519735177107
+            }
+          }
+        },
+        "status": "SPELNIA",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wynik_pl": "2,925",
+        "zdanie_pl": "współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): k_c,opor nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Współczynnik czułości przy doziemieniu oporowym (U₀ = 50 % napięcia fazowego): 2,925 wobec wymaganych ≥ 1,2 wg pkt II.4.5.4.1.4 ppkt 2 (s. 51) „IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej” (margines +1,725, punkt: zwarcie w punkcie Węzeł łącznika, względnie +143,8 % wartości granicznej)."
+      },
+      {
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "kierunek_rzutu": null,
+        "kod": "51N",
+        "kryterium": "WSPOLCZYNNIK_ODSTROJENIA",
+        "kryterium_pl": "współczynnik bezpieczeństwa nastawy k_b",
+        "limit_pl": "1,2",
+        "nazwa_urzadzenia_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "limit": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 1.2
+            }
+          },
+          "status_maszynowy": "NIE_SPELNIA",
+          "wyjasnienie": {
+            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
+          },
+          "wynik": {
+            "wartosc": {
+              "jednostka": "1",
+              "wartosc": 0.17841013517747287
+            }
+          }
+        },
+        "status": "NIE_SPELNIA",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wynik_pl": "0,1784",
+        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -435,6 +2588,284 @@
         "zdanie_pl": "Czułość, selektywność i czas działania funkcji ZAWSC przy zwarciu doziemnym (punkt neutralny z AWSC) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Punkt neutralny sieci SN ma rezystor wymuszania składowej czynnej (AWSC), a w sieci nie ma czynnej automatyki ZAWSC z nastawami — chwila załączenia wymuszenia jest nieznana, więc stan po wymuszeniu nie wchodzi do oceny funkcji. Dodaj w polu punktu neutralnego sterownik z automatyką ZAWSC i nastawami (próg U0, zwłoka)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       }
     ],
+    "przypadek": {
+      "c_max": 1.1,
+      "c_min": 1.0,
+      "liczba_punktow": 11,
+      "prad_doziemny_max_a": 37.182400529431646,
+      "r_f_ohm": 0.0,
+      "rodzaj": "METALICZNE",
+      "stany_awsc": [
+        "PO_WYMUSZENIU_AWSC",
+        "PRZED_WYMUSZENIEM"
+      ],
+      "u0_max_proc": 99.97468193354997,
+      "u0_min_proc": 99.70034514773617
+    },
+    "przypisy_uziemien": {
+      "GEOMETRIA": "U_T i napięcie krokowe wymagają rozkładu potencjału na powierzchni gruntu (geometria uziomu, rezystywność gruntu, PN-EN 50522) — model ich nie niesie.",
+      "R_E": "Rezystancja uziemienia stacji R_E nieznana — U_E nieobliczone.",
+      "U_TP": "Krzywa dopuszczalnego napięcia dotykowego U_Tp(t_F) (PN-EN 50522) nie jest treścią repozytorium — bez niej U_Tp i R_E,max = U_Tp/I_E pozostają bez liczby."
+    },
+    "rodziny": [
+      {
+        "id": "ZEROWOPRADOWE",
+        "kody": [
+          "51N",
+          "50N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "prąd własny pola przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "3I₀ dz. [A]",
+            "opis_pl": "prąd 3I₀ w polu przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe bezkierunkowe (51N, 50N)"
+      },
+      {
+        "id": "KIERUNKOWE_67N",
+        "kody": [
+          "67N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "charakterystyka",
+            "naglowek_pl": "φ_ch ± sektor [°]",
+            "opis_pl": "kąt charakterystyczny względem −U₀, połowa szerokości sektora i tryb kryterium"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "moduł prądu własnego pola przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_poza",
+            "naglowek_pl": "rzut poza [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_w",
+            "naglowek_pl": "rzut w polu [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe kierunkowe (67N)"
+      },
+      {
+        "id": "ADMITANCYJNE",
+        "kody": [
+          "Yo>",
+          "Go>",
+          "Bo>"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "nastawa [mS]",
+            "opis_pl": "próg admitancji, konduktancji albo susceptancji"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "poza polem [mS]",
+            "opis_pl": "wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "w polu [mS]",
+            "opis_pl": "wielkość przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Admitancyjne (Y₀>, G₀>, B₀>)"
+      },
+      {
+        "id": "WATOMETRYCZNE",
+        "kody": [
+          "32N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "P₀> [kW]",
+            "opis_pl": "próg mocy czynnej składowej zerowej"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "P₀ poza [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "P₀ w polu [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Watometryczne (32N)"
+      },
+      {
+        "id": "ZEROWONAPIECIOWE",
+        "kody": [
+          "59N",
+          "ZAWSC"
+        ],
+        "kolumny": [
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "U₀ min [%]",
+            "opis_pl": "najmniejsze U₀ w miejscu pomiaru przy doziemieniu"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowonapięciowe i automatyka wymuszania (59N, ZAWSC)"
+      }
+    ],
+    "siec": [
+      {
+        "awsc_czas_s": null,
+        "awsc_prad_a": 25.0,
+        "numer": 0,
+        "prad_dlawikow_a": 107.64765740017884,
+        "prad_pojemnosciowy_a": 105.04619017962474,
+        "prad_resztkowy_a": 9.972876294185292,
+        "rozstrojenie_proc": 2.476498401422931,
+        "sposob": "KOMPENSOWANY_AWSC",
+        "sposob_pl": "skompensowany z AWSC"
+      }
+    ],
     "uziemienia": [
       {
         "etykieta_pl": null,
@@ -442,7 +2873,7 @@
         "kierunek_rzutu": null,
         "kod": null,
         "kryterium": "NAPIECIE_UZIOMOWE",
-        "kryterium_pl": "napięcie uziomowe U_E",
+        "kryterium_pl": "warunek wystarczający U_E ≤ U_Tp",
         "limit_pl": null,
         "nazwa_urzadzenia_pl": "GPZ 15 kV",
         "ocena": {
@@ -453,7 +2884,7 @@
           "limit": null,
           "status_maszynowy": "BRAK_PODSTAWY",
           "wyjasnienie": {
-            "zdanie_pl": "Napięcie uziomowe U_E = R_E·I_E nie większe niż napięcie dotykowe dopuszczalne U_Tp(t_F); t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V."
+            "zdanie_pl": "Warunek wystarczający: napięcie uziomowe U_E = R_E·I_E nie większe niż dopuszczalne napięcie dotykowe U_Tp(t_F). Napięcie dotykowe spodziewane U_T jest częścią napięcia uziomowego (U_T ≤ U_E), więc spełnienie warunku wystarcza bez wyznaczania U_T; niespełnienie nie oznacza przekroczenia U_Tp — wymaga wyznaczenia U_T z rozkładu potencjału; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V."
           },
           "wynik": {
             "wartosc": {
@@ -465,7 +2896,34 @@
         "status": "BRAK_PODSTAWY",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
         "wynik_pl": "64,64 V",
-        "zdanie_pl": "Napięcie uziomowe U_E = R_E·I_E nie większe niż napięcie dotykowe dopuszczalne U_Tp(t_F); t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V."
+        "zdanie_pl": "Warunek wystarczający: napięcie uziomowe U_E = R_E·I_E nie większe niż dopuszczalne napięcie dotykowe U_Tp(t_F). Napięcie dotykowe spodziewane U_T jest częścią napięcia uziomowego (U_T ≤ U_E), więc spełnienie warunku wystarcza bez wyznaczania U_T; niespełnienie nie oznacza przekroczenia U_Tp — wymaga wyznaczenia U_T z rozkładu potencjału; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V."
+      },
+      {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "GPZ 15 kV",
+        "ocena": {
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "limit": null,
+          "status_maszynowy": "NIE_OCENIONO",
+          "wyjasnienie": {
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null
+        },
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
       },
       {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
@@ -493,6 +2951,1565 @@
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
         "wynik_pl": null,
         "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
+      }
+    ],
+    "wiersze": [
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.STOPNIOWANIE_CZASOWE:sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.1",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 29.059126325443376
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.17841013517747287
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 5.811825265088675
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 2.9254519735177107
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 4659.468306039263
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 28.025313668566348
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{29,0591}{5} = 5,81183 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{28,0253} = 0,17841 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.STOPNIOWANIE_CZASOWE:sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.1",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,587 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,587 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +329,4 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "0 ± 90 (cos φ)",
+            "wartosc": 0.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 4.293692701757439
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 2.161281734240704
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 3196.2180613290316
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -0.08919420675688523
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 8.587385403514878
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 20.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 27.641068104535147
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 108.46435930061938,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 88.46435930061938
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 90.18488650488615,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -0.18488650488615122
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -0.08919420675688523,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -2.0891942067568854
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 99.33209154857818,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 79.33209154857818
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 72.81162446271885,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 17.188375537281146
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 8.587385403514878,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 6.587385403514878
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              6.123233995736766e-17,
+              -1.0
+            ],
+            [
+              6.123233995736766e-17,
+              1.0
+            ]
+          ],
+          "os": [
+            1.0,
+            0.0
+          ],
+          "os_deg": 0.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              2.0,
+              -34.87095159053205
+            ],
+            [
+              2.0,
+              34.87095159053205
+            ]
+          ],
+          "prog_u0_proc": 20.0,
+          "skala_a": 34.87095159053205,
+          "tryb": "RZUT",
+          "tryb_pl": "cos φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": -27.761297425184864,
+              "kat_deg": -72.81162446271885,
+              "modul_a": 29.059126325443376,
+              "punkt_pl": "Zacisk końcowy Kabel odejścia ST1",
+              "re_a": 8.587385403514878,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 99.33209154857818,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 99.33209154857818,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 79.33209154857818
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 72.81162446271885,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 17.188375537281146
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 8.587385403514878,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 6.587385403514878
+                }
+              ],
+              "wielkosc_a": 8.587385403514878
+            },
+            {
+              "dziala": false,
+              "im_a": -27.640924194987242,
+              "kat_deg": -90.18488650488615,
+              "modul_a": 27.641068104535147,
+              "punkt_pl": "Zacisk końcowy Kabel pola 3",
+              "re_a": -0.08919420675688523,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 108.46435930061938,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 108.46435930061938,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 88.46435930061938
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 90.18488650488615,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -0.18488650488615122
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -0.08919420675688523,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -2.0891942067568854
+                }
+              ],
+              "wielkosc_a": -0.08919420675688523
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{8,58739}{2} = 4,29369 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.2",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 35,04 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −30,04 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −600,8 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 35.079982834823625
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.14270268932330554
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 7.015996566964725
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 3.538478365710931
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5833.311945768156
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 35.03788207293037
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{35,08}{5} = 7,016 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{35,0379} = 0,142703 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.2",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,523 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,523 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel pola 2 (przed wymuszeniem składowej czynnej), względnie +326,2 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "0 ± 90 (cos φ)",
+            "wartosc": 0.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 4.261550722150344
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 2.1492891124991593
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 3172.295850492916
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -0.14122508809837309
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 8.523101444300687
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 20.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 34.55748956354434
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 108.46435930061938,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 88.46435930061938
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 90.23414964844308,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -0.23414964844307917
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -0.14122508809837309,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -2.141225088098373
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 99.1386104681623,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 79.1386104681623
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 75.93857607501741,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 14.061423924982591
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 8.523101444300687,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 6.523101444300687
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              6.123233995736766e-17,
+              -1.0
+            ],
+            [
+              6.123233995736766e-17,
+              1.0
+            ]
+          ],
+          "os": [
+            1.0,
+            0.0
+          ],
+          "os_deg": 0.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              2.0,
+              -42.09597940178835
+            ],
+            [
+              2.0,
+              42.09597940178835
+            ]
+          ],
+          "prog_u0_proc": 20.0,
+          "skala_a": 42.09597940178835,
+          "tryb": "RZUT",
+          "tryb_pl": "cos φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": -34.02883979012037,
+              "kat_deg": -75.93857607501741,
+              "modul_a": 35.079982834823625,
+              "punkt_pl": "Zacisk końcowy Kabel pola 2",
+              "re_a": 8.523101444300687,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 99.1386104681623,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 99.1386104681623,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 79.1386104681623
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 75.93857607501741,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 14.061423924982591
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 8.523101444300687,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 6.523101444300687
+                }
+              ],
+              "wielkosc_a": 8.523101444300687
+            },
+            {
+              "dziala": false,
+              "im_a": -34.55720099210825,
+              "kat_deg": -90.23414964844308,
+              "modul_a": 34.55748956354434,
+              "punkt_pl": "Zacisk końcowy Kabel pola 3",
+              "re_a": -0.14122508809837309,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 108.46435930061938,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 108.46435930061938,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 88.46435930061938
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 90.23414964844308,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -0.23414964844307917
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -0.14122508809837309,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -2.141225088098373
+                }
+              ],
+              "wielkosc_a": -0.14122508809837309
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{8,5231}{2} = 4,26155 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe GPZ 1.3",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 52,61 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −47,61 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −952,2 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 50.269514838379685
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.09503514441426203
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 10.053902967675937
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 5.09812316956192
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 8814.591693012939
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.8
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 52.612115558059216
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{50,2695}{5} = 10,0539 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{52,6121} = 0,0950351 \\ge 1,2"
+          }
+        ]
+      },
+      {
+        "ansi": "67N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> kierunkowe (67N)",
+        "funkcja_ref": "67N",
+        "grupa": 1,
+        "kod": "67N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.ROZRUCH_U0",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
+        ],
+        "oznaczenie_pl": "Io> kierunkowe",
+        "pole_pl": "Pole liniowe GPZ 1.3",
+        "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,17 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,17 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel pola 3 (przed wymuszeniem składowej czynnej), względnie +308,5 % wartości granicznej).",
+        "rodzina": "KIERUNKOWE_67N",
+        "stan": "SPELNIA",
+        "sterownik_pl": "Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV",
+        "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik",
+        "wartosci": {
+          "charakterystyka": {
+            "jednostka": "°",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": "0 ± 90 (cos φ)",
+            "wartosc": 0.0
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": "przy doziemieniu poza polem wielkość działania nie jest dodatnia (prąd w kierunku przeciwnym do kierunku działania) — odstrojenie zapewnia kierunek, k_b nie dotyczy",
+            "spelnia": null,
+            "tekst": "kierunek",
+            "wartosc": null
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 4.085168153394392
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 2.071503025375894
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 2.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 3020.8625524553795
+          },
+          "rzut_poza": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": -0.48130143656981506
+          },
+          "rzut_w": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 8.170336306788784
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.5
+          },
+          "u0_prog": {
+            "jednostka": "%",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 20.0
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 52.17212927652198
+          }
+        },
+        "warunki_67n": {
+          "POZA_POLEM": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 109.05247151497852,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 89.05247151497852
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": false,
+              "wartosc": 90.52857593773894,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": -0.5285759377389354
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": false,
+              "wartosc": -0.48130143656981506,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": -2.481301436569815
+            }
+          ],
+          "W_POLU": [
+            {
+              "jednostka": "%",
+              "klucz": "U0",
+              "nastawa": 20.0,
+              "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "spelniony": true,
+              "wartosc": 98.60396300056307,
+              "warunek_latex": "U_0 \\ge U_{0>}",
+              "zapas": 78.60396300056307
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "spelniony": true,
+              "wartosc": 80.64618587698352,
+              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "zapas": 9.353814123016477
+            },
+            {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "spelniony": true,
+              "wartosc": 8.170336306788784,
+              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "zapas": 6.1703363067887835
+            }
+          ]
+        },
+        "wykres_wskazowy": {
+          "granice": [
+            [
+              6.123233995736766e-17,
+              -1.0
+            ],
+            [
+              6.123233995736766e-17,
+              1.0
+            ]
+          ],
+          "os": [
+            1.0,
+            0.0
+          ],
+          "os_deg": 0.0,
+          "polowa_sektora_deg": 90.0,
+          "prog_a": 2.0,
+          "prog_odcinek": [
+            [
+              2.0,
+              -62.60655513182637
+            ],
+            [
+              2.0,
+              62.60655513182637
+            ]
+          ],
+          "prog_u0_proc": 20.0,
+          "skala_a": 62.60655513182637,
+          "tryb": "RZUT",
+          "tryb_pl": "cos φ",
+          "wskazy": [
+            {
+              "dziala": true,
+              "im_a": -49.601106103796155,
+              "kat_deg": -80.64618587698352,
+              "modul_a": 50.269514838379685,
+              "punkt_pl": "Zacisk końcowy Kabel pola 3",
+              "re_a": 8.170336306788784,
+              "rola": "W_POLU",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 98.60396300056307,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 98.60396300056307,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 78.60396300056307
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": true,
+                  "wartosc": 80.64618587698352,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": 9.353814123016477
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": true,
+                  "wartosc": 8.170336306788784,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": 6.1703363067887835
+                }
+              ],
+              "wielkosc_a": 8.170336306788784
+            },
+            {
+              "dziala": false,
+              "im_a": -52.169909163935465,
+              "kat_deg": -90.52857593773894,
+              "modul_a": 52.17212927652198,
+              "punkt_pl": "Zacisk końcowy Kabel pola 2",
+              "re_a": -0.48130143656981506,
+              "rola": "POZA_POLEM",
+              "rozstrzygajacy": "SEKTOR",
+              "u0_proc": 109.05247151497852,
+              "warunki": [
+                {
+                  "jednostka": "%",
+                  "klucz": "U0",
+                  "nastawa": 20.0,
+                  "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "spelniony": true,
+                  "wartosc": 109.05247151497852,
+                  "warunek_latex": "U_0 \\ge U_{0>}",
+                  "zapas": 89.05247151497852
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "spelniony": false,
+                  "wartosc": 90.52857593773894,
+                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "zapas": -0.5285759377389354
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "spelniony": false,
+                  "wartosc": -0.48130143656981506,
+                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "zapas": -2.481301436569815
+                }
+              ],
+              "wielkosc_a": -0.48130143656981506
+            }
+          ]
+        },
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0\\cos(\\varphi_0-\\varphi_{ch})_{dz,min}}{3I_0\\cos(\\varphi_0-\\varphi_{ch})_s} = \\frac{8,17034}{2} = 4,08517 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          }
+        ]
+      },
+      {
+        "ansi": "59N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniego progu (napięcie przesunięcia punktu neutralnego U0 w % U0n).",
+            "nazwa_braku_pl": "próg napięcia przesunięcia punktu neutralnego U₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV w karcie pola.",
+            "funkcja": "59N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV: brak dodatniej zwłoki czasowej.",
+            "nazwa_braku_pl": "zwłoka czasowa"
+          }
+        ],
+        "braki_pl": [
+          "Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola."
+        ],
+        "etykieta_pl": "U0> (59N)",
+        "funkcja_ref": "59N",
+        "grupa": 1,
+        "kod": "59N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.sn/f08415cf9528654b19c6a9d76da8dcbb/bay/sterownik.59N"
+        ],
+        "oznaczenie_pl": "U0>",
+        "pole_pl": "Pole pomiarowe",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWONAPIECIOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole pomiarowe — GPZ 15 kV",
+        "urzadzenie_ref": "sn/f08415cf9528654b19c6a9d76da8dcbb/bay/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [],
+        "braki_pl": [],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.CZULOSC",
+          "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.SELEKTYWNOSC",
+          "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.WSPOLCZYNNIK_CZULOSCI",
+          "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.WSPOLCZYNNIK_CZULOSCI_OPOR",
+          "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Zabezpieczenie odejścia ST1",
+        "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Zabezpieczenie odejścia ST1) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 10,3 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Zabezpieczenie odejścia ST1 zapisane w modelu sieci projektu” (margines −5,303 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −106,1 % wartości granicznej).",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_SPELNIA",
+        "sterownik_pl": "Zabezpieczenie odejścia ST1",
+        "urzadzenie_ref": "sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik",
+        "wartosci": {
+          "dz": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 14.563175597900413
+          },
+          "k_b": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 0.4852905947478947
+          },
+          "k_c": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 2.9126351195800826
+          },
+          "k_c_opor": {
+            "jednostka": "1",
+            "powod_pl": null,
+            "spelnia": true,
+            "tekst": null,
+            "wartosc": 1.461122211880798
+          },
+          "prog": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 5.0
+          },
+          "r_f_max": {
+            "jednostka": "Ω",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 1863.2518495378729
+          },
+          "t": {
+            "jednostka": "s",
+            "powod_pl": null,
+            "spelnia": null,
+            "tekst": null,
+            "wartosc": 0.3
+          },
+          "wl": {
+            "jednostka": "A",
+            "powod_pl": null,
+            "spelnia": false,
+            "tekst": null,
+            "wartosc": 10.303105096437047
+          }
+        },
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {
+          "k_b": {
+            "przyjete": true,
+            "stan_zrodla": "WSKAZANE",
+            "symbol": "k_b",
+            "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+            "wartosc": 1.2,
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+          },
+          "k_c": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+            "wartosc": 1.5,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)"
+          },
+          "k_c_opor": {
+            "przyjete": false,
+            "stan_zrodla": "ZWERYFIKOWANE",
+            "symbol": "k_c,opor",
+            "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+            "wartosc": 1.2,
+            "zrodlo_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)"
+          }
+        },
+        "wzory": [
+          {
+            "symbol_latex": "k_c",
+            "wzor_latex": "k_c = \\frac{3I_0_{dz,min}}{3I_0_s} = \\frac{14,5632}{5} = 2,91264 \\ge 1,5"
+          },
+          {
+            "symbol_latex": "R_{F,max}",
+            "wzor_latex": "m(R_F) = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{|Z_p + 3R_F/Z_b|},\\quad Z_p = Z_{1,kk} + Z_{2,kk} + Z_{0,kk};\\quad \\frac{3R_F}{Z_b} = -\\mathrm{Re}\\,Z_p + \\sqrt{\\rho^2 - (\\mathrm{Im}\\,Z_p)^2},\\quad \\rho = \\frac{|Z_p + 3R_{F,obl}/Z_b|}{m}"
+          },
+          {
+            "symbol_latex": "k_b",
+            "wzor_latex": "k_b = \\frac{3I_0_s}{3I_0_{wł,max}} = \\frac{5}{10,3031} = 0,485291 \\ge 1,2"
+          }
+        ]
+      }
+    ],
+    "wiersze_uziemien": [
+      {
+        "kryteria": [
+          "uziemienie.gpz/faf191e734581c52caa6945df15cc258/substation.napiecie_uziomowe",
+          "uziemienie.gpz/faf191e734581c52caa6945df15cc258/substation.napiecie_dotykowe",
+          "uziemienie.gpz/faf191e734581c52caa6945df15cc258/substation.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": 64.64118523626595,
+        "prad_uziomowy_a": 129.2823704725319,
+        "przyczyna_pl": "Warunek wystarczający: napięcie uziomowe U_E = R_E·I_E nie większe niż dopuszczalne napięcie dotykowe U_Tp(t_F). Napięcie dotykowe spodziewane U_T jest częścią napięcia uziomowego (U_T ≤ U_E), więc spełnienie warunku wystarcza bez wyznaczania U_T; niespełnienie nie oznacza przekroczenia U_Tp — wymaga wyznaczenia U_T z rozkładu potencjału; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ 15 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): napięcie uziomowe U_E: 64,64 V.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "rezystancja_maksymalna_ohm": "U_TP"
+        },
+        "punkt_pl": "Szyna GPZ S1 15 kV",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{129,282\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": 0.5,
+        "sposob_pl": "sieć kompensowana, dławik w tej stacji",
+        "stacja_pl": "GPZ 15 kV",
+        "stacja_ref": "gpz/faf191e734581c52caa6945df15cc258/substation",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot\\sqrt{I_L^2 + I_{Res}^2}"
       }
     ],
     "wyniki_uziemien": []

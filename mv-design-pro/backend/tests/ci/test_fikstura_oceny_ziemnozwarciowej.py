@@ -104,6 +104,14 @@ def _wariant(sposob: str, rezystancja_ohm: float | None) -> dict[str, Any]:
         "doziemienie": {},
         "wyniki_uziemien": [],
         "funkcje": [],
+        # Tabele rodzin (karta EKRANY-EAZ-ZIEMNOZWARCIOWE): rejestr kolumn, wiersz na funkcję,
+        # paski „Sieć” i „Przypadek doziemienia”, wiersz uziemienia stacji z przypisami.
+        "rodziny": wynik["rodziny"],
+        "wiersze": wynik["wiersze"],
+        "siec": wynik["siec"],
+        "przypadek": wynik["przypadek"],
+        "wiersze_uziemien": wynik["wiersze_uziemien"],
+        "przypisy_uziemien": wynik["przypisy_uziemien"],
     }
 
 
@@ -128,9 +136,9 @@ def test_fikstura_niesie_kazdy_rodzaj_kryterium() -> None:
         for wariant in (_wariant("IZOLOWANY", None), _wariant("KOMPENSOWANY_AWSC", 0.5))
         for r in [*wariant["oceny"], *wariant["uziemienia"], *wariant["odmowy"]]
     }
-    # ROZRUCH_U0 — funkcje admitancyjne z rozruchem napięciowym (scena ich nie nastawia;
-    # rekord przypina test iloczynu `test_ocena_ziemnozwarciowa_iloczyn.py`).
-    assert rodzaje == set(KRYTERIA_ZIEMNOZWARCIOWE) - {"ROZRUCH_U0"}
+    # ROZRUCH_U0 niesie także 67N (rozruch U₀> algorytmu przekaźnika, karta
+    # EKRANY-EAZ-ZIEMNOZWARCIOWE) — scena z 67N ma więc każdy rodzaj kryterium.
+    assert rodzaje == set(KRYTERIA_ZIEMNOZWARCIOWE)
 
 
 if __name__ == "__main__":

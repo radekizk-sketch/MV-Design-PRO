@@ -120,7 +120,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Karta OCHRONA-JEDNO-ZRODLO: 166/20 → 163/19 — pomiar `mypy_ratchet_guard` na drzewie karty
     # (167/21 przed naprawą: 4 błędy karty w 2 plikach naprawione u źródła, a skasowanie starej
     # struktury nastaw zdjęło 3 błędy i 1 plik; opis przy `BASELINE_*` w guardzie).
-    assert modul.BASELINE_ERRORS == 163
+    # Karta EWALUATORY-ZIEMNOZWARCIOWE: 163/19 → 161/19 (guard obniżony w tej karcie, metatest
+    # pozostał na 163 — para rozjechana; pomiar `mypy_ratchet_guard` 2026-11-05 na drzewie karty
+    # EKRANY-EAZ-ZIEMNOZWARCIOWE: 161 błędów w 19 plikach).
+    assert modul.BASELINE_ERRORS == 161
     assert modul.BASELINE_FILES == 19
 
 

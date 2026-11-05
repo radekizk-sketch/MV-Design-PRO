@@ -2142,7 +2142,10 @@ EQ_EARTH_003 = EquationDefinition(
         SymbolDefinition(
             symbol="R_{E,max}",
             unit="Ω",
-            description_pl="Największa rezystancja uziemienia, przy której U_E ≤ U_Tp(t_F)",
+            description_pl=(
+                "Największa rezystancja uziemienia, przy której spełniony jest warunek "
+                "wystarczający U_E ≤ U_Tp(t_F) (napięcie dotykowe U_T jest częścią U_E)"
+            ),
             mapping_key="r_e_max_ohm",
         ),
         SymbolDefinition(
@@ -2170,7 +2173,11 @@ EQ_EARTH_003 = EquationDefinition(
     unit_derivation="V / A = Ω",
     notes=(
         "Krzywa U_Tp(t_F) to dane właściciela (decyzja O-74 pkt 3) — do ich dostarczenia "
-        "R_E,max ma postać ilorazu z prądem uziomowym z obliczenia, bez wartości liczbowej."
+        "R_E,max ma postać ilorazu z prądem uziomowym z obliczenia, bez wartości liczbowej. "
+        "R_E,max wynika z warunku WYSTARCZAJĄCEGO U_E ≤ U_Tp: napięcie uziomowe U_E nie jest "
+        "napięciem dotykowym U_T (U_T ≤ U_E); większe R_E wymaga wyznaczenia U_T z rozkładu "
+        "potencjału. Odwołanie do rysunku 4 i pkt 5.4.3 PN-EN 50522 niezweryfikowane z treścią "
+        "normy."
     ),
 )
 

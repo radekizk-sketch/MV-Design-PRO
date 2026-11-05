@@ -6502,6 +6502,13 @@
               "kat_deg": 179.997301507,
               "modul": 8662.22272995,
               "re": -8662.22272035
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.58985754,
+              "kat_deg": -89.9967558228,
+              "modul": 4029.589864,
+              "re": 0.228161716788
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -6553,6 +6560,13 @@
               "kat_deg": 179.997301507,
               "modul": 8662.22272995,
               "re": -8662.22272035
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.58985754,
+              "kat_deg": -89.9967558228,
+              "modul": 4029.589864,
+              "re": 0.228161716788
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -6604,6 +6618,13 @@
               "kat_deg": 179.99872567,
               "modul": 8662.13762138,
               "re": -8662.13761923
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.6006507,
+              "kat_deg": -89.9963635811,
+              "modul": 4029.60065882,
+              "re": 0.255748613786
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.1 V (100 % U0n)",
@@ -6655,6 +6676,13 @@
               "kat_deg": 179.99872567,
               "modul": 8662.13762138,
               "re": -8662.13761923
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.6006507,
+              "kat_deg": -89.9963635811,
+              "modul": 4029.60065882,
+              "re": 0.255748613786
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.1 V (100 % U0n)",
@@ -6706,6 +6734,13 @@
               "kat_deg": 179.995876432,
               "modul": 8662.30783691,
               "re": -8662.30781447
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.52026183,
+              "kat_deg": -89.9934394462,
+              "modul": 4029.52028825,
+              "re": 0.461393226344
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -6757,6 +6792,13 @@
               "kat_deg": 179.998754432,
               "modul": 8662.13590226,
               "re": -8662.13590021
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.6002627,
+              "kat_deg": -89.9963174406,
+              "modul": 4029.60027103,
+              "re": 0.258993640311
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.1 V (100 % U0n)",
@@ -6808,6 +6850,13 @@
               "kat_deg": 179.996596291,
               "modul": 8662.26485617,
               "re": -8662.26484089
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.56276108,
+              "kat_deg": -89.9955779251,
+              "modul": 4029.56277308,
+              "re": 0.311000717384
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -6859,6 +6908,13 @@
               "kat_deg": 179.996596291,
               "modul": 8662.26485617,
               "re": -8662.26484089
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.56276108,
+              "kat_deg": -89.9955779251,
+              "modul": 4029.56277308,
+              "re": 0.311000717384
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -6910,6 +6966,13 @@
               "kat_deg": 179.996596291,
               "modul": 8662.26485617,
               "re": -8662.26484089
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.56276108,
+              "kat_deg": -89.9955779251,
+              "modul": 4029.56277308,
+              "re": 0.311000717384
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -6961,6 +7024,13 @@
               "kat_deg": 179.996596291,
               "modul": 8662.26485617,
               "re": -8662.26484089
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.56276108,
+              "kat_deg": -89.9955779251,
+              "modul": 4029.56277308,
+              "re": 0.311000717384
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7012,6 +7082,13 @@
               "kat_deg": 179.996056422,
               "modul": 8662.29709248,
               "re": -8662.29707196
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.53229301,
+              "kat_deg": -89.9940627553,
+              "modul": 4029.53231464,
+              "re": 0.417558143342
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7063,6 +7140,13 @@
               "kat_deg": 179.996056422,
               "modul": 8662.29709248,
               "re": -8662.29707196
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.53229301,
+              "kat_deg": -89.9940627553,
+              "modul": 4029.53231464,
+              "re": 0.417558143342
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7114,6 +7198,13 @@
               "kat_deg": 179.996056422,
               "modul": 8662.29709248,
               "re": -8662.29707196
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.53229301,
+              "kat_deg": -89.9940627553,
+              "modul": 4029.53231464,
+              "re": 0.417558143342
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7165,6 +7256,13 @@
               "kat_deg": 179.996056422,
               "modul": 8662.29709248,
               "re": -8662.29707196
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.53229301,
+              "kat_deg": -89.9940627553,
+              "modul": 4029.53231464,
+              "re": 0.417558143342
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7216,6 +7314,13 @@
               "kat_deg": 179.996236395,
               "modul": 8662.2863475,
               "re": -8662.28632881
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.54338657,
+              "kat_deg": -89.9946269378,
+              "modul": 4029.54340429,
+              "re": 0.377881015616
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7267,6 +7372,13 @@
               "kat_deg": 179.996236395,
               "modul": 8662.2863475,
               "re": -8662.28632881
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.54338657,
+              "kat_deg": -89.9946269378,
+              "modul": 4029.54340429,
+              "re": 0.377881015616
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7318,6 +7430,13 @@
               "kat_deg": 179.996236395,
               "modul": 8662.2863475,
               "re": -8662.28632881
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.54338657,
+              "kat_deg": -89.9946269378,
+              "modul": 4029.54340429,
+              "re": 0.377881015616
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7369,6 +7488,13 @@
               "kat_deg": 179.996236395,
               "modul": 8662.2863475,
               "re": -8662.28632881
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.54338657,
+              "kat_deg": -89.9946269378,
+              "modul": 4029.54340429,
+              "re": 0.377881015616
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.3 V (100 % U0n)",
@@ -7420,6 +7546,13 @@
               "kat_deg": 179.997315896,
               "modul": 8662.22187022,
               "re": -8662.22186071
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.59026054,
+              "kat_deg": -89.9967704017,
+              "modul": 4029.59026694,
+              "re": 0.227136412354
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -7471,6 +7604,13 @@
               "kat_deg": 179.997315896,
               "modul": 8662.22187022,
               "re": -8662.22186071
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.59026054,
+              "kat_deg": -89.9967704017,
+              "modul": 4029.59026694,
+              "re": 0.227136412354
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -7522,6 +7662,13 @@
               "kat_deg": 179.997315896,
               "modul": 8662.22187022,
               "re": -8662.22186071
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.59026054,
+              "kat_deg": -89.9967704017,
+              "modul": 4029.59026694,
+              "re": 0.227136412354
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -7573,6 +7720,13 @@
               "kat_deg": 179.997315896,
               "modul": 8662.22187022,
               "re": -8662.22186071
+            },
+            "z_base_ohm": 2.25,
+            "z_petli_pu": {
+              "im": -4029.59026054,
+              "kat_deg": -89.9967704017,
+              "modul": 4029.59026694,
+              "re": 0.227136412354
             }
           },
           "substitution": "I_F = 2.866 A; |U0| = 8662.2 V (100 % U0n)",
@@ -9938,6 +10092,283 @@
         "zdanie_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       }
     ],
+    "przypadek": {
+      "c_max": 1.1,
+      "c_min": 1.0,
+      "liczba_punktow": 22,
+      "prad_doziemny_max_a": 3.15216328832,
+      "r_f_ohm": 0.0,
+      "rodzaj": "METALICZNE",
+      "stany_awsc": [
+        "PRZED_WYMUSZENIEM"
+      ],
+      "u0_max_proc": 100.023715229,
+      "u0_min_proc": 100.021729899
+    },
+    "przypisy_uziemien": {
+      "GEOMETRIA": "U_T i napięcie krokowe wymagają rozkładu potencjału na powierzchni gruntu (geometria uziomu, rezystywność gruntu, PN-EN 50522) — model ich nie niesie.",
+      "R_E": "Rezystancja uziemienia stacji R_E nieznana — U_E nieobliczone.",
+      "U_TP": "Krzywa dopuszczalnego napięcia dotykowego U_Tp(t_F) (PN-EN 50522) nie jest treścią repozytorium — bez niej U_Tp i R_E,max = U_Tp/I_E pozostają bez liczby."
+    },
+    "rodziny": [
+      {
+        "id": "ZEROWOPRADOWE",
+        "kody": [
+          "51N",
+          "50N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "prąd własny pola przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "3I₀ dz. [A]",
+            "opis_pl": "prąd 3I₀ w polu przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe bezkierunkowe (51N, 50N)"
+      },
+      {
+        "id": "KIERUNKOWE_67N",
+        "kody": [
+          "67N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "I₀> [A]",
+            "opis_pl": "nastawa progu prądu zerowego (strona pierwotna)"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "charakterystyka",
+            "naglowek_pl": "φ_ch ± sektor [°]",
+            "opis_pl": "kąt charakterystyczny względem −U₀, połowa szerokości sektora i tryb kryterium"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "3I₀,wł [A]",
+            "opis_pl": "moduł prądu własnego pola przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_poza",
+            "naglowek_pl": "rzut poza [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu poza polem (maksimum)"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "rzut_w",
+            "naglowek_pl": "rzut w polu [A]",
+            "opis_pl": "rzut 3I₀ na oś charakterystyki przy doziemieniu w polu (minimum strefy)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "k_c_opor",
+            "naglowek_pl": "k_c (U₀ = 50 %)",
+            "opis_pl": "współczynnik czułości przy doziemieniu oporowym, przy którym U₀ = 50 % napięcia fazowego"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowoprądowe kierunkowe (67N)"
+      },
+      {
+        "id": "ADMITANCYJNE",
+        "kody": [
+          "Yo>",
+          "Go>",
+          "Bo>"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "nastawa [mS]",
+            "opis_pl": "próg admitancji, konduktancji albo susceptancji"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "poza polem [mS]",
+            "opis_pl": "wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "w polu [mS]",
+            "opis_pl": "wielkość przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Admitancyjne (Y₀>, G₀>, B₀>)"
+      },
+      {
+        "id": "WATOMETRYCZNE",
+        "kody": [
+          "32N"
+        ],
+        "kolumny": [
+          {
+            "klucz": "prog",
+            "naglowek_pl": "P₀> [kW]",
+            "opis_pl": "próg mocy czynnej składowej zerowej"
+          },
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "wl",
+            "naglowek_pl": "P₀ poza [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "k_b",
+            "naglowek_pl": "k_b",
+            "opis_pl": "współczynnik bezpieczeństwa nastawy: nastawa / wielkość przy doziemieniu poza polem"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "P₀ w polu [kW]",
+            "opis_pl": "moc P₀ przy doziemieniu w polu (minimum)"
+          },
+          {
+            "klucz": "k_c",
+            "naglowek_pl": "k_c",
+            "opis_pl": "współczynnik czułości przy doziemieniu metalicznym w polu: wielkość / nastawa"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Watometryczne (32N)"
+      },
+      {
+        "id": "ZEROWONAPIECIOWE",
+        "kody": [
+          "59N",
+          "ZAWSC"
+        ],
+        "kolumny": [
+          {
+            "klucz": "u0_prog",
+            "naglowek_pl": "U₀> [%]",
+            "opis_pl": "próg rozruchu napięciowego w % U₀n"
+          },
+          {
+            "klucz": "dz",
+            "naglowek_pl": "U₀ min [%]",
+            "opis_pl": "najmniejsze U₀ w miejscu pomiaru przy doziemieniu"
+          },
+          {
+            "klucz": "t",
+            "naglowek_pl": "t [s]",
+            "opis_pl": "czas zadziałania w punkcie decydującym czułości"
+          },
+          {
+            "klucz": "r_f_max",
+            "naglowek_pl": "R_F,max [Ω]",
+            "opis_pl": "największa rezystancja przejścia, przy której funkcja wykrywa doziemienie w każdym punkcie pola"
+          }
+        ],
+        "nazwa_pl": "Zerowonapięciowe i automatyka wymuszania (59N, ZAWSC)"
+      }
+    ],
+    "siec": [
+      {
+        "awsc_czas_s": null,
+        "awsc_prad_a": null,
+        "numer": 1,
+        "prad_dlawikow_a": null,
+        "prad_pojemnosciowy_a": 2.86489609581,
+        "prad_resztkowy_a": null,
+        "rozstrojenie_proc": null,
+        "sposob": "IZOLOWANY",
+        "sposob_pl": "izolowany"
+      }
+    ],
     "uziemienia": [
       {
         "etykieta_pl": null,
@@ -10063,7 +10494,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10107,7 +10538,7 @@
             ],
             "przyczyna_pl": "kryterium nie ma limitu z podstawą",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -10170,6 +10601,112 @@
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ Wschód) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A."
       },
       {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kod_braku": "uziemienie.napiecie_dotykowe_brak_geometrii",
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "GPZ Wschód",
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.napiecie_dotykowe",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "ocena się nie odbyła — niepewność nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NORMA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
+            "nazwa_pl": "GPZ Wschód",
+            "opis_pl": "Uziom stacji GPZ Wschód — napięcie dotykowe spodziewane U_T"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "stacja z węzłem SN w sieci z drogą prądu zerowego",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            ],
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ Wschód) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": []
+          }
+        },
+        "punkty": [],
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (GPZ Wschód) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+      },
+      {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
@@ -10220,7 +10757,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10246,12 +10783,12 @@
           "wyjasnienie": {
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
             ],
             "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem)",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
             ],
             "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (GPZ Wschód) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
@@ -10399,7 +10936,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10443,7 +10980,7 @@
             ],
             "przyczyna_pl": "kryterium nie ma limitu z podstawą",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -10506,6 +11043,112 @@
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S02) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A."
       },
       {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kod_braku": "uziemienie.napiecie_dotykowe_brak_geometrii",
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Stacja S02",
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.napiecie_dotykowe",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "ocena się nie odbyła — niepewność nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NORMA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+            "nazwa_pl": "Stacja S02",
+            "opis_pl": "Uziom stacji Stacja S02 — napięcie dotykowe spodziewane U_T"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "stacja z węzłem SN w sieci z drogą prądu zerowego",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            ],
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": []
+          }
+        },
+        "punkty": [],
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+      },
+      {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
@@ -10556,7 +11199,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10582,12 +11225,12 @@
           "wyjasnienie": {
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
             ],
             "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem)",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
             ],
             "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
@@ -10735,7 +11378,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10779,7 +11422,7 @@
             ],
             "przyczyna_pl": "kryterium nie ma limitu z podstawą",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -10842,6 +11485,112 @@
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S04) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A."
       },
       {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kod_braku": "uziemienie.napiecie_dotykowe_brak_geometrii",
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Stacja S04",
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.napiecie_dotykowe",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "ocena się nie odbyła — niepewność nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NORMA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+            "nazwa_pl": "Stacja S04",
+            "opis_pl": "Uziom stacji Stacja S04 — napięcie dotykowe spodziewane U_T"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "stacja z węzłem SN w sieci z drogą prądu zerowego",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            ],
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": []
+          }
+        },
+        "punkty": [],
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+      },
+      {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
@@ -10892,7 +11641,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -10918,12 +11667,12 @@
           "wyjasnienie": {
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
             ],
             "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem)",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
             ],
             "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
@@ -11071,7 +11820,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -11115,7 +11864,7 @@
             ],
             "przyczyna_pl": "kryterium nie ma limitu z podstawą",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -11178,6 +11927,112 @@
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S03) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A."
       },
       {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kod_braku": "uziemienie.napiecie_dotykowe_brak_geometrii",
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Stacja S03",
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.napiecie_dotykowe",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "ocena się nie odbyła — niepewność nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NORMA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+            "nazwa_pl": "Stacja S03",
+            "opis_pl": "Uziom stacji Stacja S03 — napięcie dotykowe spodziewane U_T"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "stacja z węzłem SN w sieci z drogą prądu zerowego",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            ],
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": []
+          }
+        },
+        "punkty": [],
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+      },
+      {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
@@ -11228,7 +12083,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -11254,12 +12109,12 @@
           "wyjasnienie": {
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
             ],
             "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem)",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
             ],
             "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
@@ -11407,7 +12262,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -11451,7 +12306,7 @@
             ],
             "przyczyna_pl": "kryterium nie ma limitu z podstawą",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Magistrala GPZ (1) (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -11514,6 +12369,112 @@
         "zdanie_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S01) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A."
       },
       {
+        "czego_brakuje_pl": "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu.",
+        "etykieta_pl": null,
+        "funkcja_ref": null,
+        "kierunek_rzutu": null,
+        "kod": null,
+        "kod_braku": "uziemienie.napiecie_dotykowe_brak_geometrii",
+        "kryterium": "NAPIECIE_DOTYKOWE",
+        "kryterium_pl": "napięcie dotykowe spodziewane U_T",
+        "limit_pl": null,
+        "nazwa_urzadzenia_pl": "Stacja S01",
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F)",
+            "relacja": "LOGICZNE",
+            "warunek_latex": "",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.napiecie_dotykowe",
+          "limit": null,
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "ocena się nie odbyła — niepewność nie dotyczy",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4",
+            "jednostka_redakcyjna": null,
+            "rodzaj": "NORMA",
+            "status": "NIEUSTALONE",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
+            "wydanie": null
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          ],
+          "przedmiot": {
+            "element_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+            "nazwa_pl": "Stacja S01",
+            "opis_pl": "Uziom stacji Stacja S01 — napięcie dotykowe spodziewane U_T"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "stacja z węzłem SN w sieci z drogą prądu zerowego",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            ],
+            "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Rozkład potencjału na powierzchni gruntu wokół uziomu stacji",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": []
+          }
+        },
+        "punkty": [],
+        "status": "NIE_OCENIONO",
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+        "wynik_pl": null,
+        "zdanie_pl": "Napięcie dotykowe spodziewane U_T nie większe niż dopuszczalne U_Tp(t_F) (Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Napięcie dotykowe spodziewane U_T zależy od rozkładu potencjału na powierzchni gruntu (geometria elektrod uziomu, rezystywność gruntu) — model ich nie niesie; U_T nie jest napięciem uziomowym U_E i nie zastępuje go żadna liczba z modelu). Akcja naprawcza: wyznacz napięcie dotykowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć dotykowych w stacji."
+      },
+      {
         "czego_brakuje_pl": "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem.",
         "etykieta_pl": null,
         "funkcja_ref": null,
@@ -11564,7 +12525,7 @@
             "jednostka_redakcyjna": null,
             "rodzaj": "NORMA",
             "status": "NIEUSTALONE",
-            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu",
+            "uwagi_pl": "treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy",
             "wydanie": null
           },
           "powody_niepelnosci": [
@@ -11590,12 +12551,12 @@
           "wyjasnienie": {
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem."
             ],
             "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem)",
             "zastrzezenia": [
-              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu).",
+              "Podstawa „PN-EN 50522:2011 — dopuszczalne napięcie dotykowe U_Tp(t_F), rysunek 4” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (treść normy (krzywa U_Tp w funkcji czasu trwania zwarcia) nie jest w repozytorium — dane właściciela (decyzja O-74 pkt 3); do ich dostarczenia ocena podaje liczby bez werdyktu. Odwołanie do rysunku 4 i do warunku U_E ≤ U_Tp (pkt 5.4.3) jest NIEZWERYFIKOWANE z treścią normy).",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
             ],
             "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
@@ -11618,6 +12579,943 @@
         "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
         "wynik_pl": null,
         "zdanie_pl": "Napięcie krokowe przy zwarciu doziemnym w stacji (Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brakuje geometrii uziomu stacji (rozmieszczenie i głębokość elektrod) oraz rezystywności gruntu — model ich nie niesie, a napięcie krokowe zależy od rozkładu potencjału na powierzchni gruntu; liczba bez geometrii byłaby zgadywaniem). Akcja naprawcza: wyznacz napięcie krokowe obliczeniem rozkładu potencjału na powierzchni gruntu z modelem uziomu (geometria elektrod, rezystywność gruntu — PN-EN 50522) albo pomiarem napięć krokowych w stacji."
+      }
+    ],
+    "wiersze": [
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wejściowe 1",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S02",
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wyjściowe 2",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S02",
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole transformatorowe 3",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole transformatorowe 3 — Stacja S02",
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wejściowe 1",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S04",
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wyjściowe 2",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S04",
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole transformatorowe 3",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole transformatorowe 3 — Stacja S04",
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wejściowe 1",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S03",
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wyjściowe 2",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S03",
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole transformatorowe 3",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole transformatorowe 3 — Stacja S03",
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wejściowe 1",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wejściowe 1 — Stacja S01",
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole liniowe wyjściowe 2",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole liniowe wyjściowe 2 — Stacja S01",
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      },
+      {
+        "ansi": "51N",
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wejscia",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01: brak dodatniego progu rozruchowego prądu zerowego.",
+            "nazwa_braku_pl": "próg rozruchowy 3I₀"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01: próg bez zadeklarowanej strony przekładnika (wtórna albo pierwotna).",
+            "nazwa_braku_pl": "strona przekładnika progu (wtórna albo pierwotna)"
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy funkcji Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_nastawy",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01: brak charakterystyki czasowej.",
+            "nazwa_braku_pl": "charakterystyka czasowa"
+          },
+          {
+            "akcja_naprawcza_pl": "Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń.",
+            "funkcja": "51N",
+            "kod": "zabezpieczenia.ziemnozwarciowe.brak_wylacznika",
+            "komunikat_pl": "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć.",
+            "nazwa_braku_pl": null
+          }
+        ],
+        "braki_pl": [
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0).",
+          "Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola.",
+          "Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń."
+        ],
+        "etykieta_pl": "Io> (51N)",
+        "funkcja_ref": "51N",
+        "grupa": 1,
+        "kod": "51N",
+        "kryteria": [
+          "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik.51N"
+        ],
+        "oznaczenie_pl": "Io>",
+        "pole_pl": "Pole transformatorowe 3",
+        "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "rodzina": "ZEROWOPRADOWE",
+        "stan": "NIE_OCENIONO",
+        "sterownik_pl": "Sterownik · Pole transformatorowe 3 — Stacja S01",
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik",
+        "wartosci": {},
+        "warunki_67n": null,
+        "wykres_wskazowy": null,
+        "wymagania": {},
+        "wzory": []
+      }
+    ],
+    "wiersze_uziemien": [
+      {
+        "kryteria": [
+          "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.rezystancja_dopuszczalna",
+          "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.napiecie_dotykowe",
+          "uziemienie.gpz/5124d8b30e8b81a51280d601e490d2a9/substation.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 3.15210072163,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (GPZ Wschód) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Szyna GPZ S1 15 kV",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{3,1521\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "GPZ Wschód",
+        "stacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
+      },
+      {
+        "kryteria": [
+          "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.rezystancja_dopuszczalna",
+          "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.napiecie_dotykowe",
+          "uziemienie.stn/01bb98b8035012aa5698e4fc47869f83/station.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 3.15213005417,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S02) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Stacja S02",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{3,15213\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "Stacja S02",
+        "stacja_ref": "stn/01bb98b8035012aa5698e4fc47869f83/station",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
+      },
+      {
+        "kryteria": [
+          "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.rezystancja_dopuszczalna",
+          "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.napiecie_dotykowe",
+          "uziemienie.stn/a19ee8b69c3cea6d38f563ade02b3523/station.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 3.15215388049,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S04) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Stacja S04",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{3,15215\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "Stacja S04",
+        "stacja_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/station",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
+      },
+      {
+        "kryteria": [
+          "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.rezystancja_dopuszczalna",
+          "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.napiecie_dotykowe",
+          "uziemienie.stn/c843b440108cbcd0ade67891d02c462a/station.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 3.15214520549,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S03) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Stacja S03",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{3,15215\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "Stacja S03",
+        "stacja_ref": "stn/c843b440108cbcd0ade67891d02c462a/station",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
+      },
+      {
+        "kryteria": [
+          "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.rezystancja_dopuszczalna",
+          "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.napiecie_dotykowe",
+          "uziemienie.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station.napiecie_krokowe"
+        ],
+        "napiecie_dotykowe_dopuszczalne_v": null,
+        "napiecie_dotykowe_v": null,
+        "napiecie_krokowe_v": null,
+        "napiecie_uziomowe_v": null,
+        "prad_uziomowy_a": 3.15210854721,
+        "przyczyna_pl": "Rezystancja uziemienia stacji R_E nieznana — wymagana rezystancja R_E,max = U_Tp(t_F)/I_E z prądem uziomowym I_E = r·I_odn z obliczenia; t_F nieustalone — żadna funkcja ziemnozwarciowa modelu nie wyłącza zwarcia w tym punkcie (praca z doziemieniem albo sygnalizacja) (Stacja S01) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd uziomowy I_E = r·I_odn (mianownik R_E,max): 3,152 A.",
+        "przypisy_kolumn": {
+          "napiecie_dotykowe_dopuszczalne_v": "U_TP",
+          "napiecie_dotykowe_v": "GEOMETRIA",
+          "napiecie_krokowe_v": "GEOMETRIA",
+          "napiecie_uziomowe_v": "R_E",
+          "rezystancja_maksymalna_ohm": "U_TP",
+          "rezystancja_uziomu_ohm": "R_E"
+        },
+        "punkt_pl": "Stacja S01",
+        "r_e_max_latex": "R_{E,max} = \\frac{U_{Tp}(t_F)}{I_E} = \\frac{U_{Tp}(t_F)}{3,15211\\,\\mathrm{A}}",
+        "rezystancja_maksymalna_ohm": null,
+        "rezystancja_uziomu_ohm": null,
+        "sposob_pl": "sieć z izolowanym punktem neutralnym",
+        "stacja_pl": "Stacja S01",
+        "stacja_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/station",
+        "stan": "BRAK_PODSTAWY",
+        "t_f_s": null,
+        "wspolczynnik_r": 1.0,
+        "wspolczynnik_r_przyjety": true,
+        "wzor_pradu_latex": "I_E = r\\cdot I_C"
       }
     ],
     "wyniki_uziemien": [

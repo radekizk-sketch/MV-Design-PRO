@@ -3620,6 +3620,10 @@ class ProofGenerator:
             "Dopuszczalne napięcie dotykowe U_Tp(t_F) (PN-EN 50522, rysunek 4) — treści normy "
             "brak w repozytorium; ocena bez werdyktu (brak podstawy limitu)."
         )
+        warnings.append(
+            "Napięcie uziomowe U_E nie jest napięciem dotykowym U_T: U_E ≤ U_Tp(t_F) to warunek "
+            "wystarczający (U_T ≤ U_E); U_T wymaga rozkładu potencjału (geometria uziomu)."
+        )
 
         steps = [
             cls._create_earth_current_step(step_number=1, data=data),
