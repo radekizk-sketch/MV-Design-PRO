@@ -4692,7 +4692,9 @@ class ProofGenerator:
         u_e = data.napiecie_uziomowe_v
         i_e = data.prad_uziomowy_a
         if r_e is None or u_e is None:
-            substitution = r"U_{E} = R_{E} \cdot I_{E}\quad\text{(rezystancja } R_{E} \text{ nieznana)}"
+            substitution = (
+                r"U_{E} = R_{E} \cdot I_{E}\quad\text{(rezystancja } R_{E} \text{ nieznana)}"
+            )
         else:
             substitution = (
                 f"U_{{E}} = {r_e:.4f}\\,\\text{{Ω}} \\cdot {i_e:.4f}\\,\\text{{A}}"

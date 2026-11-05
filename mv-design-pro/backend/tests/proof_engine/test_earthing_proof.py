@@ -133,7 +133,9 @@ def test_kompensowana_z_dlawikiem_w_stacji_prad_odniesienia_z_dlawikiem() -> Non
     assert rekord["prad_dlawika_a"] > 5 * rekord["prad_zwarcia_a"]
     (dowod,) = _dowody(ziemne)
     i_e = dowod.summary.key_results["i_earth_a"].value
-    assert i_e == pytest.approx(_R * (rekord["prad_dlawika_a"] ** 2 + rekord["prad_zwarcia_a"] ** 2) ** 0.5)
+    assert i_e == pytest.approx(
+        _R * (rekord["prad_dlawika_a"] ** 2 + rekord["prad_zwarcia_a"] ** 2) ** 0.5
+    )
     assert i_e > 5 * _R * rekord["prad_zwarcia_a"]
 
 
@@ -141,8 +143,10 @@ def test_determinizm_i_identyfikator_artefaktu() -> None:
     ziemne = _ziemnozwarciowe("REZYSTOR", True, True)
     (d1,) = _dowody(ziemne)
     (d2,) = _dowody(ziemne)
-    assert d1.artifact_id == d2.artifact_id == artefakt_uziemienia(
-        "bieg-testowy", _rekord_uziemienia(ziemne)["stacja_ref"]
+    assert (
+        d1.artifact_id
+        == d2.artifact_id
+        == artefakt_uziemienia("bieg-testowy", _rekord_uziemienia(ziemne)["stacja_ref"])
     )
     j1, j2 = json.loads(export_to_json(d1)), json.loads(export_to_json(d2))
     for j in (j1, j2):

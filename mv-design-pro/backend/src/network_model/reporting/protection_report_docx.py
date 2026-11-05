@@ -38,9 +38,9 @@ from network_model.reporting.protection_tcc_presentation import (
     powod_braku_pl,
     rekordy_ziemnozwarciowe,
     uzasadnienia_sprawdzen,
+    wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
-    wiersz_ziemnozwarciowy,
     zdania_funkcji_nieocenianych,
     zdanie_ziemnozwarciowe,
 )

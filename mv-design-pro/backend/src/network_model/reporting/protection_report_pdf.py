@@ -38,9 +38,9 @@ from network_model.reporting.protection_tcc_presentation import (
     powod_braku_pl,
     rekordy_ziemnozwarciowe,
     uzasadnienia_sprawdzen,
+    wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
-    wiersz_ziemnozwarciowy,
     zdania_funkcji_nieocenianych,
     zdanie_ziemnozwarciowe,
 )
@@ -479,9 +479,7 @@ def export_protection_coordination_to_pdf(
                 y -= line_height
     else:
         c.setFont("DejaVuSans-Oblique", 10)
-        c.drawString(
-            left_margin, y, "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie"
-        )
+        c.drawString(left_margin, y, "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie")
         y -= line_height
 
     # ==========================================================================

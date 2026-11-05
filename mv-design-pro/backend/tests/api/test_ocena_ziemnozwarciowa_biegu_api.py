@@ -81,7 +81,10 @@ def test_bieg_niesie_ocene_ziemnozwarciowa_i_uziemienia(app_client: Any, sposob:
     ).to_dict()
     assert ziemne["doziemienie"]["punkty"] == oczekiwane["doziemienie"]["punkty"]
     assert ziemne["wyniki_uziemien"] == oczekiwane["wyniki_uziemien"]
-    klucz = lambda r: (r["urzadzenie_ref"], r["kod"], r["kryterium"], r.get("punkt_ref"))  # noqa: E731
+
+    def klucz(r: dict[str, Any]) -> tuple[Any, ...]:
+        return (r["urzadzenie_ref"], r["kod"], r["kryterium"], r.get("punkt_ref"))
+
     assert sorted(map(klucz, ziemne["oceny"])) == sorted(map(klucz, oczekiwane["oceny"]))
 
     kody = {r["kod"] for r in ziemne["oceny"]}
