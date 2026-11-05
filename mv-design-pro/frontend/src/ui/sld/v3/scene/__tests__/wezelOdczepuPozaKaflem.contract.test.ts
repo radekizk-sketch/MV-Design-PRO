@@ -13,7 +13,7 @@
  *  (c) koniec odcinka toru leżący na kaflu jest portem symbolu tego kafla;
  *  (d) opis pola ∩ symbol, opis pola ∩ inny napis, opis pola ∩ przewód — zero.
  *
- * Iloczyn cech: fikstura (58 plików z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
+ * Iloczyn cech: fikstura (59 plików z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
  * plus macierz W1c pól stacji) × LOD {0, 1, 2} × wyrocznia (a)–(d). Iniekcje: kropka i odczep
  * przesunięte na port wyłącznika, opis nałożony na symbol, napis i przewód.
  */
@@ -171,8 +171,8 @@ function naruszenia(scena: SceneV3): string[] {
 const SCENY = FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const));
 
 describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura × LOD', () => {
-  it('kontrola wejścia: 58 fikstur i macierz W1c', () => {
-    expect(FIKSTURY).toHaveLength(59);
+  it('kontrola wejścia: 59 fikstur i macierz W1c', () => {
+    expect(FIKSTURY).toHaveLength(60);
   });
 
   it.each(SCENY)('%s L%i', (_nazwa, lod, enm) => {

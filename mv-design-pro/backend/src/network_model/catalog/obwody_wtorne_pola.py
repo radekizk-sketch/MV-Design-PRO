@@ -90,6 +90,8 @@ RODZAJ_APARATU_WEJSCIA: dict[str, str] = {
     "RDZEN_CT": "CT",
     "UZWOJENIE_VT": "VT",
     "PRZEKLADNIK_FERRANTIEGO": "CORE_BALANCE_CT",
+    "PRZEKLADNIK_NIEZROWNOWAZENIA": "UNBALANCE_CT",
+    "PRZEKLADNIK_MIEDZYFAZOWY": "PHASE_TO_PHASE_VT",
 }
 
 _ZW: StatusWeryfikacji = "ZWERYFIKOWANE_NA_RYSUNKU"
@@ -101,10 +103,19 @@ class WejscieFunkcjiEaz(BaseModel):
     """Źródło wielkości pomiarowej albo sygnału wejściowego funkcji EAZ.
 
     ``RDZEN_CT`` / ``UZWOJENIE_VT`` — aparat szablonu (``aparat`` = oznaczenie, ``numer`` =
-    numer rdzenia/uzwojenia jak na rysunku, od 1); ``PRZEKLADNIK_FERRANTIEGO`` — aparat
+    numer rdzenia/uzwojenia jak na rysunku, od 1); ``PRZEKLADNIK_FERRANTIEGO``,
+    ``PRZEKLADNIK_NIEZROWNOWAZENIA`` (połączenie międzygwiazdowe baterii, Z.16) i
+    ``PRZEKLADNIK_MIEDZYFAZOWY`` (przekładnik napięciowy międzyfazowy baterii, Z.16) — aparat
     szablonu (bez numeru); ``SYGNAL`` — sygnał pola (``sygnal`` = nazwa z `SygnalPola`)."""
 
-    rodzaj: Literal["RDZEN_CT", "UZWOJENIE_VT", "PRZEKLADNIK_FERRANTIEGO", "SYGNAL"]
+    rodzaj: Literal[
+        "RDZEN_CT",
+        "UZWOJENIE_VT",
+        "PRZEKLADNIK_FERRANTIEGO",
+        "PRZEKLADNIK_NIEZROWNOWAZENIA",
+        "PRZEKLADNIK_MIEDZYFAZOWY",
+        "SYGNAL",
+    ]
     aparat: str | None = None
     numer: int | None = Field(default=None, ge=1)
     sygnal: str | None = None
@@ -708,6 +719,242 @@ OBWODY_WTORNE_WYKONANIA_POLA: dict[str, ObwodyWtornePola] = {
     wykonanie: _obwody_wykonania(wykonanie) for wykonanie in ("Z10", "Z11_1", "Z11")
 }
 
+
+# ---------------------------------------------------------------------------
+# Karta POLA-GPZ-SZABLONY: obwody wtórne pól GPZ spoza pola liniowego — wg ODCZYTU TEKSTOWEGO
+# rysunków Zeszytu 1 (`docs/zrodla/ODCZYT_ENEA_H5_SPECYFIKACJA.md` §10 Z.7, §11 Z.12, §14 Z.16;
+# `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`). Pliki PDF Zeszytu 1 nie są dostępne
+# w środowisku pracy karty, więc status każdego powiązania to co najwyżej „odczyt tekstu"
+# (`ODCZYT_TEKSTU`), a przypisanie rdzenia do funkcji, którego odczyt nie podaje wprost —
+# „interpretacja" z uzasadnieniem. Lista funkcji = lista funkcji odczytu rysunku; funkcja
+# spoza odczytu (np. SZR łącznika szyn — §13 tekstu, nie rysunek Z.12) nie wchodzi.
+# ---------------------------------------------------------------------------
+
+_UWAGA_NAPEDU_Q1_ODCZYT = (
+    "odczyt §15: górny aparat pola (styk, styk uziemiający, napęd w kwadracie na kreskowanym "
+    "sprzężeniu) ma ten sam kształt na Z.7, Z.10–Z.17; rodzaj napędu odczytany z kształtu "
+    "znaku na Z.10 (s.89) i przeniesiony na to pole"
+)
+
+
+def _napedy_pola_gpz(lacznik_trojpolozeniowy: tuple[str, ...]) -> list[NapedAparatuPola]:
+    return [
+        NapedAparatuPola(
+            aparat="Q0",
+            rodzaj_aparatu="CB",
+            naped="SILNIKOWY",
+            weryfikacja=_OT,
+            uwaga="odczyt rysunku: wyłącznik z napędem silnikowym M",
+        ),
+        *(
+            NapedAparatuPola(
+                aparat=oznaczenie,
+                rodzaj_aparatu="THREE_POSITION_SWITCH",
+                naped="ZASOBNIKOWY_RECZNY",
+                weryfikacja=_IN,
+                uwaga=_UWAGA_NAPEDU_Q1_ODCZYT,
+            )
+            for oznaczenie in lacznik_trojpolozeniowy
+        ),
+    ]
+
+
+def _sygnaly_pola_gpz(*dodatkowe: SygnalPola) -> list[SygnalPola]:
+    """Sygnały pola GPZ spoza pola liniowego: obwody wyłączające OW1, OW2 (odczyt Z.7 i Z.16
+    — „wyzwalacze OW1/OW2/ZW”), blokowanie ZS i pobudzenie LRW rozdzielni."""
+    return [
+        *(
+            SygnalPola(
+                nazwa=nazwa,
+                kierunek="WYJSCIE",
+                obwod="WYLACZNIK",
+                sterownik_pola=True,
+                znaczenie_pl=f"obwód wyłączający {nazwa[-1]} wyłącznika",
+                weryfikacja=_IN,
+                uwaga="skrót ruchowy (obwód wyłączający), standard go nie rozwija",
+            )
+            for nazwa in ("OW1", "OW2")
+        ),
+        SygnalPola(
+            nazwa="Blokowanie ZS",
+            kierunek="WYJSCIE",
+            obwod="OKREZNY",
+            znaczenie_pl="sygnał blokowania logicznego zabezpieczenia szyn",
+            weryfikacja=_OT,
+        ),
+        SygnalPola(
+            nazwa="Pobudzenie LRW",
+            kierunek="WYJSCIE",
+            obwod="OKREZNY",
+            znaczenie_pl="pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni",
+            weryfikacja=_OT,
+        ),
+        *dodatkowe,
+    ]
+
+
+def _zabezpieczenie(
+    funkcja: str,
+    blok: str,
+    wejscia: list[WejscieFunkcjiEaz],
+    *,
+    wyjscia: tuple[str, ...] = ("OW1", "OW2"),
+    wylacznik: str | None = "Q0",
+    weryfikacja: StatusWeryfikacji = _OT,
+    uwaga: str | None = None,
+) -> PowiazanieFunkcjiEaz:
+    return PowiazanieFunkcjiEaz(
+        funkcja=funkcja,
+        blok_rysunku=blok,
+        wejscia=wejscia,
+        wyjscia=list(wyjscia),
+        wylacznik=wylacznik,
+        weryfikacja=weryfikacja,
+        uwaga=uwaga,
+    )
+
+
+def _wspolpraca_z_rozdzielnia(rdzen: int) -> list[PowiazanieFunkcjiEaz]:
+    """ZS i LRW z rdzenia zabezpieczeniowego nadprądowego pola (odczyt: „ZS, LRW”)."""
+    return [
+        _zabezpieczenie(
+            "ZS", "ZS", [_ct("T1", rdzen, _OT)], wyjscia=("Blokowanie ZS",), wylacznik=None
+        ),
+        _zabezpieczenie(
+            "50BF", "LRW", [_ct("T1", rdzen, _OT)], wyjscia=("OW1", "OW2", "Pobudzenie LRW")
+        ),
+    ]
+
+
+_OBWODY_Z7 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.7 s.86 — wg odczytu tekstowego",
+    napedy=_napedy_pola_gpz(("Q1",)),
+    powiazania=[
+        _zabezpieczenie("51", "I>", [_ct("T1", 4, _OT)]),
+        _zabezpieczenie("50", "I>>", [_ct("T1", 4, _OT)]),
+        *_wspolpraca_z_rozdzielnia(4),
+        _zabezpieczenie(
+            "87T",
+            "zabezpieczenie różnicowe TR",
+            [_ct("T1", 3, _OT)],
+            wyjscia=("OW1", "OW2", "Wył. od zab. TR"),
+        ),
+        _zabezpieczenie(
+            "90",
+            "ARN",
+            [
+                _ct("T1", 2, _OT),
+                _vt(
+                    "T3",
+                    2,
+                    _IN,
+                    "odczyt podaje dla uzwojenia II wyłącznie moc i klasę (7,5 VA kl. 0,5); "
+                    "regulacja napięcia mierzy napięcie strony SN — uzwojenie pomiarowe II",
+                ),
+            ],
+            wyjscia=("Regulacja zaczepów",),
+            wylacznik=None,
+        ),
+    ],
+    sygnaly=_sygnaly_pola_gpz(
+        SygnalPola(
+            nazwa="Wył. od zab. TR",
+            kierunek="WYJSCIE",
+            obwod="OKREZNY",
+            znaczenie_pl="wyłączenie pól z generacją i strony 110 kV od zabezpieczeń transformatora",
+            weryfikacja=_IN,
+            uwaga="obwód okrężny pól liniowych Z.11/Z.11.1 („wył. od zab. TR”) — nadajnik w polu TR",
+        ),
+        SygnalPola(
+            nazwa="Regulacja zaczepów",
+            kierunek="WYJSCIE",
+            obwod="NADRZEDNY",
+            znaczenie_pl="polecenia regulatora napięcia do napędu przełącznika zaczepów",
+            weryfikacja=_IN,
+            uwaga="odczyt Z.6/Z.7: blok ARN steruje napędem przełącznika zaczepów transformatora",
+        ),
+    ),
+    obwody_przekladnikow=[
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T1",
+            numer=1,
+            odbiornik_pl="pomiar bilansowy, analizator jakości energii",
+            weryfikacja=_OT,
+        ),
+        PrzypisanieObwoduPrzekladnika(aparat="T3", numer=1, odbiornik_pl=None, weryfikacja=_OT),
+        PrzypisanieObwoduPrzekladnika(aparat="T3", numer=3, odbiornik_pl=None, weryfikacja=_OT),
+    ],
+)
+
+_OBWODY_Z12 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.12 s.92 — wg odczytu tekstowego",
+    napedy=_napedy_pola_gpz(("Q1", "Q2")),
+    powiazania=[
+        _zabezpieczenie("51", "I>", [_ct("T1", 1, _OT)]),
+        _zabezpieczenie("50", "I>>", [_ct("T1", 1, _OT)]),
+        _zabezpieczenie("51N", "zab. ziemnozwarciowe", [_ct("T1", 2, _OT)]),
+        *_wspolpraca_z_rozdzielnia(1),
+    ],
+    sygnaly=_sygnaly_pola_gpz(),
+)
+
+_OBWODY_Z16 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.16 s.96 — wg odczytu tekstowego",
+    napedy=_napedy_pola_gpz(("Q1",)),
+    powiazania=[
+        _zabezpieczenie("51", "I>", [_ct("T1", 2, _OT)]),
+        _zabezpieczenie("50", "I>>", [_ct("T1", 2, _OT)]),
+        _zabezpieczenie(
+            "51N",
+            "zab. ziemnozwarciowe",
+            [
+                _ct(
+                    "T1",
+                    3,
+                    _IN,
+                    "odczyt podaje rdzenie II i III jako 15 VA 5P20 bez przypisania funkcji; "
+                    "rdzeń III przyjęty dla zabezpieczenia ziemnozwarciowego",
+                )
+            ],
+        ),
+        _zabezpieczenie(
+            "60N",
+            "Ir>",
+            [
+                WejscieFunkcjiEaz(
+                    rodzaj="PRZEKLADNIK_NIEZROWNOWAZENIA", aparat="T6", weryfikacja=_OT
+                )
+            ],
+        ),
+        _zabezpieczenie(
+            "59",
+            "U>",
+            [
+                WejscieFunkcjiEaz(
+                    rodzaj="PRZEKLADNIK_MIEDZYFAZOWY",
+                    aparat="T4",
+                    weryfikacja=_IN,
+                    uwaga="odczyt: dwa przekładniki SN/0,1 kl. 3P L1-L2 i L2-L3 „do rozładowania/"
+                    "pomiaru” — pomiar napięcia baterii dla U>",
+                )
+            ],
+        ),
+        *_wspolpraca_z_rozdzielnia(2),
+    ],
+    sygnaly=_sygnaly_pola_gpz(),
+    obwody_przekladnikow=[
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T1", numer=1, odbiornik_pl="pomiar bilansowy (UPB-K)", weryfikacja=_OT
+        ),
+    ],
+)
+
+#: Obwody wtórne wzorców pól GPZ spoza pola liniowego (klucz = rysunek Zeszytu 1).
+OBWODY_WTORNE_POL_GPZ: dict[str, ObwodyWtornePola] = {
+    "Z7": _OBWODY_Z7,
+    "Z12": _OBWODY_Z12,
+    "Z16": _OBWODY_Z16,
+}
 
 #: Pola rekordu aparatu pola wyprowadzane z obwodów wtórnych wzorca (`powiazania_aparatow_pola`).
 POLA_POWIAZAN_APARATU = ("naped", "funkcje_eaz_zasilane", "funkcje_eaz_wylaczajace")

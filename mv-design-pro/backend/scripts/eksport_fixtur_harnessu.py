@@ -5088,6 +5088,23 @@ def _pole_liniowe_gpz(sekcja_staly: int | None) -> dict[str, Any]:
     )
 
 
+def _pola_gpz_szablonow() -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ 110/15 kV z polami Z.7, Z.12, Z.16 i Z.17 w sekcji 1
+    (`zbuduj_gpz_pola_szablonow`) — migawka + widoki logiczne odpowiedzi operacji."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_pola_szablonow
+
+    model = EnergyNetworkModel.model_validate(zbuduj_gpz_pola_szablonow())
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -5232,6 +5249,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         for sekcja in (1, 2)
     },
     "pole_liniowe_z11_gpz_odgalezienie": lambda: _pole_liniowe_gpz(None),
+    "pola_gpz_szablonow": _pola_gpz_szablonow,
 }
 
 

@@ -40,6 +40,8 @@ from typing import Any
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
+    BAY_TEMPLATES_GPZ_POLA,
+    BayTemplate,
     szablon_pola_liniowego_gpz,
 )
 
@@ -343,3 +345,46 @@ def zbuduj_gpz_pole_liniowe_z11() -> dict[str, Any]:
         },
         sekcje_pomiaru_napiecia=(1,),
     )
+
+
+def dodaj_pole_gpz_z_szablonu(
+    enm: dict[str, Any], sekcja: str, szablon: BayTemplate
+) -> tuple[dict[str, Any], str]:
+    """Karta POLA-GPZ-SZABLONY: pole rozdzielni SN GPZ w sekcji ``sekcja`` z szablonu pola GPZ
+    (`BAY_TEMPLATES_GPZ_POLA`) — ścieżką użytkownika: `add_sn_bay` z rolą szablonu i aparatem
+    wyłącznikowym, potem `set_bay_equipment` w trybie szablonu. Zwraca model i ref pola."""
+    stacja = next(s for s in enm["substations"] if s.get("gpz_sections"))
+    szyna = next(
+        sek["bus_ref"] for sek in stacja["gpz_sections"] if sek.get("section_id") == sekcja
+    )
+    przed = {b["ref_id"] for b in enm["bays"]}
+    zadanie: dict[str, Any] = {
+        "bus_ref": szyna,
+        "station_ref": stacja["ref_id"],
+        "bay_role": szablon.bay_role,
+    }
+    if szablon.bay_role == "MEASUREMENT":
+        zadanie.update({"apparatus_kind": "MEASUREMENT", "funkcja_pomiaru": "NAPIECIA_SZYN"})
+    else:
+        zadanie["apparatus_kind"] = "CB"
+    enm = ok(op(enm, "add_sn_bay", zadanie))
+    pole_ref = next(b["ref_id"] for b in enm["bays"] if b["ref_id"] not in przed)
+    enm = ok(
+        op(
+            enm,
+            "set_bay_equipment",
+            {"bay_ref": pole_ref, "mode": "szablon", "bay_template_ref": szablon.template_id},
+        )
+    )
+    return enm, pole_ref
+
+
+def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ ``gpz_110kv`` (dwie sekcje, po dwa pola liniowe Z.10),
+    w sekcji 1 — pole transformatora Z.7, łącznika szyn Z.12, baterii kondensatorów Z.16
+    i pomiaru napięcia Z.17 z szablonów pól GPZ (kolejność `BAY_TEMPLATES_GPZ_POLA`)."""
+    enm = zbuduj_gpz_110kv()
+    sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
+    for szablon in BAY_TEMPLATES_GPZ_POLA:
+        enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+    return enm

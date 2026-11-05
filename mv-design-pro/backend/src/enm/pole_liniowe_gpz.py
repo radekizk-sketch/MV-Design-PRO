@@ -574,6 +574,12 @@ _NAZWA_PRZEKLADNIKA_PL = {
     "UZWOJENIE_VT": "przekładnika napięciowego",
 }
 _RODZAJ_OBWODU_PL = {"RDZEN_CT": "rdzeń", "UZWOJENIE_VT": "uzwojenie"}
+#: Wejścia z przekładnika bez numeru obwodu (obejmuje obwód albo ma jedno uzwojenie).
+_NAZWA_PRZEKLADNIKA_BEZ_NUMERU_PL = {
+    "PRZEKLADNIK_FERRANTIEGO": "przekładnik Ferrantiego",
+    "PRZEKLADNIK_NIEZROWNOWAZENIA": "przekładnik niezrównoważenia baterii",
+    "PRZEKLADNIK_MIEDZYFAZOWY": "przekładnik napięciowy międzyfazowy",
+}
 
 
 def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str, Any]]) -> str:
@@ -582,11 +588,14 @@ def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str,
     if wejscie.rodzaj == "SYGNAL":
         return f"sygnał „{wejscie.sygnal}”"
     aparat = aparaty.get(str(wejscie.aparat))
-    if wejscie.rodzaj == "PRZEKLADNIK_FERRANTIEGO":
+    if wejscie.rodzaj in _NAZWA_PRZEKLADNIKA_BEZ_NUMERU_PL:
+        nazwa = f"{_NAZWA_PRZEKLADNIKA_BEZ_NUMERU_PL[wejscie.rodzaj]} {wejscie.aparat}"
         if aparat is None or aparat.get("kind") != RODZAJ_APARATU_WEJSCIA[wejscie.rodzaj]:
-            return f"przekładnik Ferrantiego {wejscie.aparat} — brak aparatu w polu"
+            return f"{nazwa} — brak aparatu w polu"
+        if wejscie.rodzaj != "PRZEKLADNIK_FERRANTIEGO":
+            return nazwa
         przekladnia = aparat.get("przekladnia")
-        return f"przekładnik Ferrantiego {wejscie.aparat}" + (
+        return nazwa + (
             f", przekładnia {przekladnia}" if przekladnia else ", przekładnia nieopisana"
         )
     rodzaj_pl = _RODZAJ_OBWODU_PL[wejscie.rodzaj]

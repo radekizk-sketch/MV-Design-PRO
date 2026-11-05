@@ -1334,6 +1334,55 @@ def get_all_ct_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
+    def _ct_typu_ogolnego_osd(
+        type_id: str,
+        name: str,
+        ratio_primary_a: float,
+        ith_ka_1s: float,
+        rdzenie: list[tuple[str, float, str, float | None, list[str]]],
+        opis_rysunku: str,
+        uwaga: str,
+    ) -> dict:
+        """Typ ogólny OSD przekładnika pola GPZ wg odczytu rysunku Zeszytu 1 (karta
+        POLA-GPZ-SZABLONY). Pola skalarne opisują rdzeń I; Ith z szeregu IEC 62271-200."""
+        pierwszy = rdzenie[0]
+        return {
+            "id": type_id,
+            "name": name,
+            "params": {
+                "ratio_primary_a": ratio_primary_a,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": pierwszy[2],
+                "burden_va": pierwszy[1],
+                "ith_ka_1s": ith_ka_1s,
+                **({"fs_safety_factor": pierwszy[3]} if pierwszy[3] is not None else {}),
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": przekladnia,
+                        "moc_va": moc,
+                        "klasa": klasa,
+                        "fs": fs,
+                        "przeznaczenie": przeznaczenie,
+                    }
+                    for przekladnia, moc, klasa, fs, przeznaczenie in rdzenie
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — wg odczytu "
+                        f"rysunku ({opis_rysunku}); IEC 61869-2; IEC 62271-200 (szereg "
+                        "wytrzymałości rozdzielnicy SN)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z odczytu rysunku standardu (przekładnia, moc, klasa "
+                        "rdzeni). Pola skalarne opisują rdzeń I. " + uwaga
+                    ),
+                ),
+            },
+        }
+
     source_reference = (
         "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) "
         "/ IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)"
@@ -1637,6 +1686,53 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
+        # Karta POLA-GPZ-SZABLONY: przekładniki pól GPZ spoza pola liniowego — wg odczytu
+        # rysunków Zeszytu 1 (`docs/zrodla/ODCZYT_ENEA_H5_SPECYFIKACJA.md` §10, §11, §14). Tor
+        # transformatora i łącznika szyn: przekładnia zależna od mocy transformatora (uwaga
+        # rysunku: 1000/5 — 110/15 kV ≤ 25 MVA, 1600/5 — 40 MVA, 800/5 — 110/20 kV ≤ 25 MVA,
+        # 1200/5 — 40 MVA); pozycja niesie wariant 1000/5, inny wybiera projektant.
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_1000_5_5_5_5_z7",
+            "CT 1000/5/5/5/5 A, 4 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.7)",
+            1000.0,
+            20.0,
+            [
+                ("1000/5", 10.0, "0,2S", 5.0, ["ROZLICZENIE", "JAKOSC_ENERGII"]),
+                ("1000/5", 10.0, "0,2", 5.0, ["POMIAR", "REGULACJA"]),
+                ("1000/5", 15.0, "5P20", None, ["ROZNICOWE"]),
+                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+            ],
+            "Z.7 s.86: rdzeń I pomiar bilansowy i analizator jakości energii, rdzeń II pomiary "
+            "lokalne i regulacja napięcia, rdzeń III zabezpieczenie różnicowe transformatora, "
+            "rdzeń IV zabezpieczenia nadprądowe",
+            verification_note,
+        ),
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_1000_5_5_z12",
+            "CT 1000/5/5 A, 2 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.12)",
+            1000.0,
+            20.0,
+            [
+                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ("1000/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+            ],
+            "Z.12 s.92: rdzeń I zabezpieczenia nadprądowe I>, I>>, rdzeń II zabezpieczenie "
+            "ziemnozwarciowe",
+            verification_note,
+        ),
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_100_5_5_5_z16",
+            "CT 100/5/5/5 A, 3 rdzenie (typ ogólny OSD, wg odczytu Zeszytu 1 Z.16)",
+            100.0,
+            16.0,
+            [
+                ("100/5", 10.0, "0,2S", 5.0, ["POMIAR"]),
+                ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+            ],
+            "Z.16 s.96: rdzeń I pomiar bilansowy, rdzenie II i III zabezpieczenia",
+            verification_note,
+        ),
         {
             "id": "ct_2000_5_10p10_30va_arteche",
             "name": "CT 2000/5 A kl. 10P10 30 VA",
