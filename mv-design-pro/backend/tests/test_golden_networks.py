@@ -51,7 +51,7 @@ class TestGN01SNProsta:
                 "source_name": "GPZ Główne",
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
-                "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-500mva-rx010"},
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -67,7 +67,7 @@ class TestGN01SNProsta:
                         "rodzaj": "KABEL",
                         "dlugosc_m": length,
                         "name": f"Odcinek {i}",
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )
@@ -96,7 +96,9 @@ class TestGN01SNProsta:
                     ],
                     "transformer": {
                         "create": True,
-                        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                        "transformer_catalog_binding": {
+                            "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                        },
                     },
                     "nn_block": {"outgoing_feeders_nn_count": 2},
                 },
@@ -130,7 +132,7 @@ class TestGN02SNODG:
             "add_grid_source_sn",
             {
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -144,7 +146,7 @@ class TestGN02SNODG:
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": length,
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )
@@ -171,7 +173,9 @@ class TestGN02SNODG:
                     ],
                     "transformer": {
                         "create": True,
-                        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                        "transformer_catalog_binding": {
+                            "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                        },
                     },
                     "nn_block": {"outgoing_feeders_nn_count": 2},
                 },
@@ -193,7 +197,7 @@ class TestGN02SNODG:
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": 150,
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )
@@ -212,7 +216,7 @@ class TestGN03SNRingNOP:
             "add_grid_source_sn",
             {
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -226,7 +230,7 @@ class TestGN03SNRingNOP:
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": length,
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )
@@ -243,7 +247,7 @@ class TestGN03SNRingNOP:
                 {
                     "segment_id": branches[1]["ref_id"],
                     "insert_at": {"mode": "RATIO", "value": 0.5},
-                    "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                    "catalog_binding": {"catalog_item_id": "sw-ls-schneider-rm6-17kv-400a"},
                 },
             )
             enm = r["snapshot"]
@@ -260,7 +264,7 @@ class TestGN03SNRingNOP:
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": 400,
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )
@@ -293,7 +297,7 @@ class TestRepeatability:
                 {
                     "voltage_kv": 15.0,
                     "sk3_mva": 500.0,
-                    "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                    "catalog_binding": {"catalog_item_id": "src-gpz-15kv-500mva-rx010"},
                 },
             )
             assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -305,7 +309,7 @@ class TestRepeatability:
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": 250,
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     },
                 },
             )

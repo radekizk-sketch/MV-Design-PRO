@@ -362,7 +362,10 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
                 {"field_role": "MEASUREMENT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
             # Bez bloku odpływów nN: stacja BEZ odbiorów (kontrakty TR2W-BEZ-POLA T7 — „zero
             # rekordów Load"; z odpływami magazyn modelu dokłada odbiory katalogowe).
         },
@@ -413,7 +416,7 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
             "supply": {
                 "from_bus_ref": szyna_odplywu_3,
                 "length_m": 50,
-                "catalog_ref": "kab_nn_4x120_al",
+                "catalog_binding": {"catalog_item_id": "kab_nn_4x120_al"},
             },
         },
     )
@@ -422,7 +425,10 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
     )
     b.operacja(
         "add_nn_section_coupler",
-        {"station_ref": rozdzielnica["ref_id"], "catalog_ref": "cb_nn_630a"},
+        {
+            "station_ref": rozdzielnica["ref_id"],
+            "catalog_binding": {"catalog_item_id": "cb_nn_630a"},
+        },
     )
     rozdzielnica = next(
         s for s in b.migawka()["substations"] if s.get("station_type") == "rozdzielnica_nn"
@@ -479,7 +485,10 @@ def _stacja_b2(b: KlientBudowy, segment_ref: str, nazwa: str) -> dict[str, Any]:
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "LINIA_ODG"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )

@@ -116,7 +116,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )
@@ -129,7 +129,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
                 "bus_ref": stacja["bus_refs"][0],
                 "station_ref": stacja["ref_id"],
                 "bay_role": rola,
-                "catalog_ref": APARAT_POLA,
+                "catalog_binding": {"catalog_item_id": APARAT_POLA},
             },
         )
     pola_stacji = [b for b in enm["bays"] if b["substation_ref"] == stacja["ref_id"]]
@@ -315,7 +315,7 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
             "source_name": "GPZ",
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-300mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-300mva-rx010"},
             "switchgear_family_ref": rodzina,
         },
     )
@@ -505,7 +505,11 @@ def test_wkladka_z_katalogu_wkladek_trafia_do_aparatu_fuse(siec: Any, tryb: str)
     else:
         wynik = _wykonaj(
             _pole_z_bezpiecznikami(enm, pola["TR"]),
-            {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_15},
+            {
+                "bay_ref": pola["TR"],
+                "mode": "wkladka",
+                "catalog_binding": {"catalog_item_id": WKLADKA_15},
+            },
         )
     assert wynik.get("error") is None, wynik.get("error")
     assert _wkladki(wynik["snapshot"], pola["TR"]) == [WKLADKA_15]
@@ -535,9 +539,13 @@ def test_tryb_wkladka_usuwa_wskazanie(siec: Any) -> None:
     enm, pola, _ = siec
     z_wkladka = _wykonaj(
         _pole_z_bezpiecznikami(enm, pola["TR"]),
-        {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_15},
+        {
+            "bay_ref": pola["TR"],
+            "mode": "wkladka",
+            "catalog_binding": {"catalog_item_id": WKLADKA_15},
+        },
     )["snapshot"]
-    wynik = _wykonaj(z_wkladka, {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": None})
+    wynik = _wykonaj(z_wkladka, {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_binding": None})
     assert wynik.get("error") is None, wynik.get("error")
     assert _wkladki(wynik["snapshot"], pola["TR"]) == [None]
     assert wynik["wyposazenie_pola"]["stan_danych"] == "PROPOZYCJA"
@@ -584,7 +592,11 @@ def test_odmowy_wkladki_sa_atomowe(siec: Any, tryb: str, wskazanie: object, kod:
             z_bezpiecznikami = _z_napieciem_szyny_pola(z_bezpiecznikami, pola["TR"], 20.0)
         _odmowa(
             z_bezpiecznikami,
-            {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": wskazanie},
+            {
+                "bay_ref": pola["TR"],
+                "mode": "wkladka",
+                "catalog_binding": {"catalog_item_id": wskazanie},
+            },
             kod,
         )
 
@@ -594,7 +606,11 @@ def test_wkladka_wyzszego_napiecia_jest_przyjeta(siec: Any) -> None:
     enm, pola, _ = siec
     wynik = _wykonaj(
         _pole_z_bezpiecznikami(enm, pola["TR"]),
-        {"bay_ref": pola["TR"], "mode": "wkladka", "catalog_ref": WKLADKA_20},
+        {
+            "bay_ref": pola["TR"],
+            "mode": "wkladka",
+            "catalog_binding": {"catalog_item_id": WKLADKA_20},
+        },
     )
     assert wynik.get("error") is None, wynik.get("error")
     assert _wkladki(wynik["snapshot"], pola["TR"]) == [WKLADKA_20]
@@ -614,7 +630,11 @@ def test_tryb_wkladka_bez_bezpiecznikow_w_polu(siec: Any, wskazanie: object) -> 
     for migawka in (enm, katalogowe):
         _odmowa(
             migawka,
-            {"bay_ref": pola["IN"], "mode": "wkladka", "catalog_ref": wskazanie},
+            {
+                "bay_ref": pola["IN"],
+                "mode": "wkladka",
+                "catalog_binding": {"catalog_item_id": wskazanie},
+            },
             "bay_equipment.fuse_missing",
         )
 
@@ -623,7 +643,7 @@ def test_tryb_wkladka_w_polu_nn_jest_odmowa(siec: Any) -> None:
     enm, _, pole_nn = siec
     _odmowa(
         enm,
-        {"bay_ref": pole_nn, "mode": "wkladka", "catalog_ref": WKLADKA_15},
+        {"bay_ref": pole_nn, "mode": "wkladka", "catalog_binding": {"catalog_item_id": WKLADKA_15}},
         "bay_equipment.bay_not_mv",
     )
 
@@ -753,7 +773,7 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "source_name": "GPZ",
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-300mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-300mva-rx010"},
             "switchgear_family_ref": "ZPUE_WLOSZCZOWA__TPM",
         },
     )

@@ -74,14 +74,13 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "cable_laying_conditions.environment": "Środowisko ułożenia",  # odcinek-nn/strings.ts srodowisko
     "cable_laying_conditions.insulation": "Izolacja żyły",  # odcinek-nn/strings.ts izolacja
     "cable_laying_conditions.soil_thermal_resistivity_km_w": "Rezystywność cieplna gruntu",  # odcinek-nn/strings.ts rezystywnoscGruntu
-    "assign_catalog_to_element:catalog_item_id": "Identyfikator pozycji katalogowej",  # przypisanie-katalogu/strings.ts identyfikator
-    "assign_catalog_to_element:catalog_namespace": "Przestrzeń katalogowa",  # przypisanie-katalogu/strings.ts przestrzen
-    "add_grid_source_sn:catalog_ref": "Typ źródła z katalogu",  # zrodlo/strings.ts katalogPole
-    "add_nn_cable_segment:catalog_ref": "Typ kabla",  # odcinek-nn/strings.ts kabel
-    "add_nn_section_coupler:catalog_ref": "Typ aparatu sprzęgła",  # rozdzielnica-nn/strings.ts sprzegloTyp
-    "add_shunt_compensator_sn:catalog_ref": "Typ baterii z katalogu",  # kompensator/strings.ts typKatalog
-    "add_surge_arrester_sn:catalog_ref": "Typ ogranicznika z katalogu",  # ogranicznik/strings.ts typKatalog
-    "add_zespol_uziemiajacy_sn:catalog_ref": "Typ transformatora uziemiającego",  # zespol-uziemiajacy/strings.ts typTransformatora
+    "assign_catalog_to_element:catalog_binding": "Identyfikator pozycji katalogowej",  # przypisanie-katalogu/strings.ts identyfikator
+    "add_grid_source_sn:catalog_binding": "Typ źródła z katalogu",  # zrodlo/strings.ts katalogPole
+    "add_nn_cable_segment:catalog_binding": "Typ kabla",  # odcinek-nn/strings.ts kabel
+    "add_nn_section_coupler:catalog_binding": "Typ aparatu sprzęgła",  # rozdzielnica-nn/strings.ts sprzegloTyp
+    "add_shunt_compensator_sn:catalog_binding": "Typ baterii z katalogu",  # kompensator/strings.ts typKatalog
+    "add_surge_arrester_sn:catalog_binding": "Typ ogranicznika z katalogu",  # ogranicznik/strings.ts typKatalog
+    "add_zespol_uziemiajacy_sn:catalog_binding": "Typ transformatora uziemiającego",  # zespol-uziemiajacy/strings.ts typTransformatora
     "add_zespol_uziemiajacy_sn:dlawik.stan_odlacznika": "Odłącznik dławika",  # zespol-uziemiajacy/strings.ts odlacznikDlawika
     "add_zespol_uziemiajacy_sn:dlawik.i_nastawy_a": "Nastawa dławika [A]",  # zespol-uziemiajacy/strings.ts nastawaDlawika
     "add_zespol_uziemiajacy_sn:dlawik.awsc": "Rezystor wymuszający AWSC",  # zespol-uziemiajacy/strings.ts awsc
@@ -95,11 +94,12 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_zespol_uziemiajacy_sn:wylaczenie_od_transformatorow_refs": "Wyłączenie od transformatorów WN/SN",  # zespol-uziemiajacy/strings.ts wylaczenieOdTr
     "add_sn_bay:bay_role": "Rola pola",  # pole/strings.ts rola
     "catalog_ref": "Typ z katalogu",  # magistrala/strings.ts typKatalog
-    "connect_secondary_ring_sn:catalog_ref": "Typ odcinka pierścienia",  # pierscien/strings.ts typKatalog
-    "insert_branch_pole_on_segment_sn:catalog_ref": "Typ słupa z katalogu",  # slup-odgalezny/strings.ts typKatalog
-    "insert_section_switch_sn:catalog_ref": "Aparat łącznika z katalogu",  # lacznik/strings.ts typKatalog
-    "insert_zksn_on_segment_sn:catalog_ref": "Wariant ZKSN z katalogu",  # zksn/strings.ts typKatalog
-    "start_branch_segment_sn:catalog_ref": "Typ odcinka z katalogu",  # odgalezienie/strings.ts typKatalog
+    "catalog_binding": "Typ z katalogu",  # magistrala/strings.ts typKatalog
+    "connect_secondary_ring_sn:catalog_binding": "Typ odcinka pierścienia",  # pierscien/strings.ts typKatalog
+    "insert_branch_pole_on_segment_sn:catalog_binding": "Typ słupa z katalogu",  # slup-odgalezny/strings.ts typKatalog
+    "insert_section_switch_sn:catalog_binding": "Aparat łącznika z katalogu",  # lacznik/strings.ts typKatalog
+    "insert_zksn_on_segment_sn:catalog_binding": "Wariant ZKSN z katalogu",  # zksn/strings.ts typKatalog
+    "start_branch_segment_sn:catalog_binding": "Typ odcinka z katalogu",  # odgalezienie/strings.ts typKatalog
     "cease_generation_time_s": "Czas zaprzestania generacji na polecenie (T12) [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "complete_bay_template_ref": "Katalogowe pole rodziny",  # stacja/strings.ts polaSzablon
     "connection_variant": "Sposób przyłączenia",  # zrodlo-oze/strings.ts wariant
@@ -108,8 +108,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
     "data_umowy_przylaczeniowej": "Data umowy przyłączeniowej (wersje warstw profilu)",  # ui2/oze/ncrfg/strings.ts dataUmowy
     "deklaracje_modulu": "Deklaracje modułu (testy T05, T10–T13, T16–T20)",  # ui2/oze/ncrfg/strings.ts deklaracjeTytul
-    "der_topology.block_transformer:catalog_ref": "Transformator blokowy",  # zrodlo-oze/strings.ts doborPropTr (krok Dobór toru SN)
-    "der_topology.mv_field_configuration:cable_catalog_ref": "Kabel SN",  # zrodlo-oze/strings.ts doborPropKabel (krok Dobór toru SN)
+    "der_topology.block_transformer:catalog_binding": "Transformator blokowy",  # zrodlo-oze/strings.ts doborPropTr (krok Dobór toru SN)
+    "der_topology.mv_field_configuration:cable_catalog_binding": "Kabel SN",  # zrodlo-oze/strings.ts doborPropKabel (krok Dobór toru SN)
     "device_class": "Rodzaj aparatu",  # aparat-nn (wybór: wyłącznik / rozłącznik, bezpiecznik)
     "connect_secondary_ring_sn:dlugosc_m": "Długość odcinka",  # pierscien/strings.ts dlugosc
     "dlugosc_m": "Długość odcinka",  # magistrala/strings.ts dlugosc
@@ -228,9 +228,9 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_nn_switch_device:to_bus_ref": "Szyna do",  # aparat-nn/strings.ts szynaDo
     "connect_secondary_ring_sn:to_bus_ref": "Zacisk B",  # pierscien/strings.ts zaciskB
     "add_grid_source_sn:transformer_count": "Transformatory 110/SN",  # zrodlo/strings.ts liczbaTrafo
-    "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
-    "insert_station_on_segment_sn:transformer_catalog_ref": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
-    "transformer_catalog_ref": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog
+    "add_grid_source_sn:transformer_catalog_binding": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
+    "insert_station_on_segment_sn:transformer_catalog_binding": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
+    "transformer_catalog_binding": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog
     "transformer_sn_mva": "Moc znamionowa Sn",  # zrodlo/strings.ts transformatorSn
     "tryb_pracy": "Tryb pracy przyłącza",  # ui2/spaces/projekt/strings.ts osdTrybPracy
     "u_max_czas_s": "U> — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW

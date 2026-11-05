@@ -61,7 +61,7 @@ def _build_base_network_with_line_catalog() -> dict:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 120,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             }
         },
     )
@@ -111,8 +111,10 @@ def test_catalog_bind_unblocks_analysis() -> None:
         "assign_catalog_to_element",
         {
             "element_ref": branch_ref,
-            "catalog_item_id": "cable-tfk-yakxs-3x120",
-            "catalog_item_version": "v1",
+            "catalog_binding": {
+                "catalog_item_id": "cable-tfk-yakxs-3x120",
+                "catalog_item_version": "v1",
+            },
         },
     )["snapshot"]
 
@@ -137,8 +139,10 @@ def test_catalog_version_change_creates_new_snapshot() -> None:
         "assign_catalog_to_element",
         {
             "element_ref": branch_ref,
-            "catalog_item_id": "cable-tfk-yakxs-3x120",
-            "catalog_item_version": "v1",
+            "catalog_binding": {
+                "catalog_item_id": "cable-tfk-yakxs-3x120",
+                "catalog_item_version": "v1",
+            },
         },
     )["snapshot"]
 
@@ -148,8 +152,10 @@ def test_catalog_version_change_creates_new_snapshot() -> None:
         "assign_catalog_to_element",
         {
             "element_ref": branch_ref,
-            "catalog_item_id": "cable-tfk-yakxs-3x120",
-            "catalog_item_version": "v2",
+            "catalog_binding": {
+                "catalog_item_id": "cable-tfk-yakxs-3x120",
+                "catalog_item_version": "v2",
+            },
         },
     )["snapshot"]
 

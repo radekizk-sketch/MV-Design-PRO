@@ -130,7 +130,7 @@ def siec_magistrali(
             "source_name": "GPZ Wschód",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": KATALOG_ZRODLA,
+            "catalog_binding": {"catalog_item_id": KATALOG_ZRODLA},
         },
     )
     enm = operacja(
@@ -141,7 +141,7 @@ def siec_magistrali(
                 "rodzaj": "KABEL",
                 "dlugosc_m": 900,
                 "name": "Magistrala GPZ",
-                "catalog_ref": KATALOG_KABLA,
+                "catalog_binding": {"catalog_item_id": KATALOG_KABLA},
             }
         },
     )
@@ -156,7 +156,10 @@ def siec_magistrali(
             {"field_role": "LINIA_OUT"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
-        "transformer": {"create": True, "transformer_catalog_ref": KATALOG_TRAFO},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": KATALOG_TRAFO},
+        },
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
     if len(stacje) < 2:
@@ -241,7 +244,7 @@ def dodaj_zabezpieczenie_nadpradowe(
             "segment_id": odcinek_ref,
             "insert_at": {"mode": "RATIO", "value": POLOZENIE_WYLACZNIKA},
             "switch_type": "WYLACZNIK",
-            "catalog_ref": KATALOG_APARATU,
+            "catalog_binding": {"catalog_item_id": KATALOG_APARATU},
             "switch_name": nazwa_wylacznika,
         },
     )
@@ -260,7 +263,7 @@ def dodaj_zabezpieczenie_nadpradowe(
         "add_ct",
         {
             "breaker_ref": wylacznik,
-            "catalog_ref": KATALOG_PRZEKLADNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKLADNIKA},
             "ratio_primary_a": 600.0,
             "ratio_secondary_a": 5.0,
             "accuracy_class": "5P20",
@@ -278,7 +281,7 @@ def dodaj_zabezpieczenie_nadpradowe(
             "breaker_ref": wylacznik,
             "ct_ref": wynik_ct["selection_hint"]["element_id"],
             "relay_type": "NADPRADOWY",
-            "catalog_ref": KATALOG_PRZEKAZNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKAZNIKA},
             "name": nazwa_zabezpieczenia,
             "settings": nastawy,
         },

@@ -58,7 +58,7 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
         "add_ct",
         {
             "field_ref": pole["ref_id"],
-            "catalog_ref": KATALOG_PRZEKLADNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKLADNIKA},
             "ratio_primary_a": 600.0,
             "ratio_secondary_a": 5.0,
             "accuracy_class": "5P20",
@@ -73,7 +73,7 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
         {
             "field_ref": pole["ref_id"],
             "relay_type": "NADPRADOWY",
-            "catalog_ref": KATALOG_PRZEKAZNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKAZNIKA},
             "name": NAZWA_ZABEZPIECZENIA_POLA,
             "settings": NASTAWY_Q2,
         },

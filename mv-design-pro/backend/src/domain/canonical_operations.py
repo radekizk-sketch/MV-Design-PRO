@@ -147,7 +147,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("segment_id",),
         optional_fields=(
-            "catalog_binding",
             "construction_type",
             "designation",
             "dry_run",
@@ -395,13 +394,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Przypisanie typu katalogowego do elementu",
         target_layer="Domain / Catalog",
         required_fields=("element_ref",),
-        optional_fields=(
-            "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_namespace",
-            "catalog_ref",
-        ),
+        optional_fields=("catalog_binding",),
         creates_elements=False,
     ),
     "update_element_parameters": OperationSpec(
@@ -627,7 +620,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "ct_ref",
             "field_ref",
             "name",
-            "protection",
             "relay_type",
             "settings",
             "vt_ref",
@@ -700,8 +692,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=(
             "branch_ports_count",
             "catalog_binding",
-            "catalog_namespace",
-            "catalog_version",
             "insert_at",
             "materialized_params",
             "name",
@@ -719,8 +709,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=(
             "branch_ports_count",
             "catalog_binding",
-            "catalog_namespace",
-            "catalog_version",
             "insert_at",
             "materialized_params",
             "name",
@@ -920,7 +908,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik) w torze nN",
         target_layer="Domain / NetworkModel",
         required_fields=("from_bus_ref", "to_bus_ref"),
-        optional_fields=("device_class", "catalog_ref", "catalog_binding", "name"),
+        optional_fields=("device_class", "catalog_binding", "name"),
         creates_elements=True,
     ),
     "add_nn_rcd": OperationSpec(
@@ -932,7 +920,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("load_ref",),
-        optional_fields=("catalog_ref", "catalog_binding", "name"),
+        optional_fields=("catalog_binding", "name"),
         creates_elements=True,
     ),
     "add_nn_section_coupler": OperationSpec(
@@ -941,7 +929,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN (RGnN)",
         target_layer="Domain / NetworkModel",
         required_fields=("station_ref",),
-        optional_fields=("catalog_ref", "catalog_binding", "name"),
+        optional_fields=("catalog_binding", "name"),
         creates_elements=True,
     ),
     "split_nn_segment": OperationSpec(
@@ -1090,6 +1078,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "vector_group",
                         }
                     ),
+                    zagniezdzone={
+                        "catalog_binding": _WIAZANIE_KATALOGOWE,
+                    },
                 ),
                 "mv_field_configuration": KsztaltObiektu(
                     pola=frozenset(
@@ -1112,6 +1103,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     ),
                     zagniezdzone={
                         "apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
+                        "cable_catalog_binding": _WIAZANIE_KATALOGOWE,
                         "cable_laying_conditions": KsztaltObiektu(
                             pola=frozenset(
                                 {"f_grunt", "f_grupa", "f_wiazka", "opis_pl", "set_name"}
@@ -1267,9 +1259,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     },
     "add_relay": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
-        "protection": KsztaltObiektu(
-            pola=frozenset({"catalog_item_id", "catalog_item_version", "catalog_ref"}),
-        ),
     },
     "add_shunt_compensator_sn": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1286,7 +1275,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "add_transformer_sn_nn": {
-        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
     },
     "add_ups_nn": {
         "source_field": KsztaltObiektu(
@@ -1457,12 +1446,15 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "segment": KsztaltObiektu(
             pola=frozenset(
                 {
+                    "b0_siemens_per_km",
                     "bus_name",
                     "catalog_binding",
                     "dlugosc_m",
                     "name",
+                    "r0_ohm_per_km",
                     "rodzaj",
                     "screen_bonding",
+                    "x0_ohm_per_km",
                     "zero_sequence",
                 }
             ),
@@ -1487,7 +1479,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
     },
     "insert_station_on_segment_sn": {
-        "catalog_binding": _WIAZANIE_KATALOGOWE,
         "insert_at": KsztaltObiektu(
             pola=frozenset({"mode", "value"}),
         ),
@@ -1651,12 +1642,15 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "segment": KsztaltObiektu(
             pola=frozenset(
                 {
+                    "b0_siemens_per_km",
                     "bus_name",
                     "catalog_binding",
                     "dlugosc_m",
                     "name",
+                    "r0_ohm_per_km",
                     "rodzaj",
                     "screen_bonding",
+                    "x0_ohm_per_km",
                     "zero_sequence",
                 }
             ),
@@ -3672,6 +3666,21 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Wiązanie katalogowe ma niewłaściwą postać albo nie niesie "
             "identyfikatora pozycji katalogowej"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "catalog.binding_key_alias": ReadinessCodeSpec(
+        code="catalog.binding_key_alias",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Pozycję katalogu wskazano kluczem zastępczym — pozycję wskazuje wyłącznie "
+            "wiązanie katalogowe z identyfikatorem pozycji"
         ),
         fix_navigation={
             "panel": "inspector",

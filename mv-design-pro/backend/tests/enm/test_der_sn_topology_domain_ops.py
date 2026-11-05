@@ -163,7 +163,6 @@ def _der_sn_payload(
             # Strona wtórna 0,4 kV to sieć nN falownika: tolerancja +6 % (wiersz nN tabeli 1
             # IEC 60909-0) wybiera c węzłów tej sieci i c_max we wzorze K_T bloku.
             "lv_voltage_tolerance": "PLUS_6",
-            "catalog_ref": tr_bloku,
             "catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",
                 "catalog_item_id": tr_bloku,
@@ -210,7 +209,6 @@ def _der_sn_payload(
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
-                "cable_catalog_ref": _CABLE,
                 "cable_catalog_binding": {
                     "catalog_namespace": "KABEL_SN",
                     "catalog_item_id": _CABLE,

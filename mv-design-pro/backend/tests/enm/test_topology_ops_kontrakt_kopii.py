@@ -82,7 +82,7 @@ def _model_z_gpz() -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     )
 
@@ -91,7 +91,13 @@ def _model_z_odcinkiem() -> dict[str, Any]:
     return _wykonaj(
         _model_z_gpz(),
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
+            }
+        },
     )
 
 
@@ -113,12 +119,18 @@ def _payload_gpz(_: dict[str, Any]) -> dict[str, Any]:
     return {
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
-        "catalog_ref": REF_ZRODLO,
+        "catalog_binding": {"catalog_item_id": REF_ZRODLO},
     }
 
 
 def _payload_odcinka(_: dict[str, Any]) -> dict[str, Any]:
-    return {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}}
+    return {
+        "segment": {
+            "rodzaj": "KABEL",
+            "dlugosc_m": 500.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL},
+        }
+    }
 
 
 def _payload_stacji_na_koncu(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +150,7 @@ def _payload_lacznika_sekcyjnego(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "segment_id": str(odcinek["ref_id"]),
         "insert_at": {"mode": "RATIO", "value": 0.5},
-        "catalog_ref": REF_LACZNIK_SEKCYJNY,
+        "catalog_binding": {"catalog_item_id": REF_LACZNIK_SEKCYJNY},
     }
 
 
@@ -397,7 +409,9 @@ class TestIzolacjaOperacjiDomenowej:
         pole = _pole_sn_ref(snapshot)
 
         wynik = execute_domain_operation(
-            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "REF-OC-100"}
+            snapshot,
+            "add_relay",
+            {"field_ref": pole, "catalog_binding": {"catalog_item_id": "REF-OC-100"}},
         )
 
         assert wynik.get("error")

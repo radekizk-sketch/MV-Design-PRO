@@ -360,7 +360,7 @@ def _gpz(_: Kontekst) -> dict[str, Any]:
             "rx_ratio": 0.1,
         },
         "transformer_count": 1,
-        "transformer_catalog_ref": TRANSFORMATOR_WN_SN,
+        "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_WN_SN},
     }
 
 
@@ -495,7 +495,10 @@ KROKI: tuple[Krok, ...] = (
                 {"field_role": "MEASUREMENT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
     ),
@@ -562,7 +565,10 @@ KROKI: tuple[Krok, ...] = (
                 "nn_voltage_kv": 0.4,
             },
             "nn_earthing": {"lv_system": "TN-C-S"},
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
         },
     ),
     Krok(
@@ -645,7 +651,7 @@ KROKI: tuple[Krok, ...] = (
             "bus_ref": _szyna_sn_stacji(k),
             "bay_role": "OUT",
             "field_name": "Pole liniowe L3",
-            "catalog_ref": APARAT_SN,
+            "catalog_binding": {"catalog_item_id": APARAT_SN},
         },
     ),
     Krok(
@@ -704,9 +710,12 @@ KROKI: tuple[Krok, ...] = (
                 "bus_refs"
             ][0],
             "name": "Zespół uziemiający GPZ",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
-            "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY", "i_nastawy_a": 120.0},
-            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+            "dlawik": {
+                "catalog_binding": {"catalog_item_id": "DL_40_400A_15KV_CIAGLY"},
+                "i_nastawy_a": 120.0,
+            },
+            "rezystor": {"catalog_binding": {"catalog_item_id": "REZ_200A_15KV"}},
         },
     ),
     Krok(
@@ -867,7 +876,7 @@ KROKI: tuple[Krok, ...] = (
         lambda k: {
             "field_ref": _pole_stacji(k, "IN"),
             "ct_ref": k.wskazany("ct"),
-            "catalog_ref": PRZEKAZNIK,
+            "catalog_binding": {"catalog_item_id": PRZEKAZNIK},
             "settings": NASTAWY_ZABEZPIECZENIA,
         },
     ),
@@ -897,7 +906,7 @@ KROKI: tuple[Krok, ...] = (
         lambda k: {
             "hv_bus_ref": k.utworzone("o3")[0],
             "lv_bus_ref": _rozdzielnica(k)["bus_refs"][0],
-            "transformer_catalog_ref": TRANSFORMATOR_630,
+            "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
         },
     ),
     Krok(
@@ -908,7 +917,7 @@ KROKI: tuple[Krok, ...] = (
             "station_ref": _rozdzielnica(k)["ref_id"],
             "bus_nn_ref": _rozdzielnica(k)["bus_refs"][0],
             "field_name": "Odpływ F1",
-            "catalog_ref": APARAT_NN,
+            "catalog_binding": {"catalog_item_id": APARAT_NN},
         },
     ),
     Krok(
@@ -918,7 +927,7 @@ KROKI: tuple[Krok, ...] = (
         lambda k: {
             "from_bus_ref": _zacisk_odplywu_nn(k, k.wskazany("odplyw_nn")),
             "length_m": 80.0,
-            "catalog_ref": KABEL_NN,
+            "catalog_binding": {"catalog_item_id": KABEL_NN},
             "name": "Kabel nN K1",
         },
     ),
@@ -936,7 +945,7 @@ KROKI: tuple[Krok, ...] = (
             "from_bus_ref": k.galaz(lambda g: g.get("name") == "Kabel nN K1")["to_bus_ref"],
             "to_bus_ref": k.stacja(lambda s: s.get("name") == "RGnN-2")["bus_refs"][0],
             "device_class": "fuse",
-            "catalog_ref": APARAT_NN,
+            "catalog_binding": {"catalog_item_id": APARAT_NN},
             "name": "Bezpiecznik złącza Z1",
         },
     ),
@@ -944,7 +953,10 @@ KROKI: tuple[Krok, ...] = (
         "sprzeglo_nn",
         "add_nn_section_coupler",
         "druga sekcja szyn rozdzielnicy RGnN-1 ze sprzęgłem",
-        lambda k: {"station_ref": _rozdzielnica(k)["ref_id"], "catalog_ref": APARAT_NN},
+        lambda k: {
+            "station_ref": _rozdzielnica(k)["ref_id"],
+            "catalog_binding": {"catalog_item_id": APARAT_NN},
+        },
     ),
     Krok(
         "podzial_nn",

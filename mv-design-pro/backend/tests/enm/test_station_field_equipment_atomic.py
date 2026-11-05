@@ -61,7 +61,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_250,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
         },
     )
     snap = _op(
@@ -71,7 +71,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -83,16 +83,16 @@ def _wyposazenie(**over: Any) -> dict[str, Any]:
     """Wyposażenie pola: payload `add_ct`/`add_vt`/`add_relay` bez `bay_ref`."""
     dane: dict[str, Any] = {
         "ct": {
-            "catalog_ref": CT_REF,
+            "catalog_binding": {"catalog_item_id": CT_REF},
             "ratio_primary_a": 400.0,
             "ratio_secondary_a": 5.0,
         },
         "vt": {
-            "catalog_ref": VT_REF,
+            "catalog_binding": {"catalog_item_id": VT_REF},
             "ratio_primary_v": 15000.0,
             "ratio_secondary_v": 100.0,
         },
-        "relay": {"catalog_ref": RELAY_REF, "relay_type": "NADPRADOWY"},
+        "relay": {"catalog_binding": {"catalog_item_id": RELAY_REF}, "relay_type": "NADPRADOWY"},
     }
     dane.update(over)
     return dane
@@ -110,7 +110,10 @@ def _insert_payload(segment_ref: str, sn_fields: list[dict[str, Any]]) -> dict[s
         },
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+        },
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 
@@ -271,7 +274,7 @@ def test_invalid_ct_ratio_aborts_whole_station_operation() -> None:
         [
             {
                 "field_role": "LINIA_IN",
-                "equipment": _wyposazenie(ct={"catalog_ref": CT_REF}),
+                "equipment": _wyposazenie(ct={"catalog_binding": {"catalog_item_id": CT_REF}}),
             },
             {"field_role": "LINIA_OUT"},
             {"field_role": "TRANSFORMATOROWE"},
@@ -311,7 +314,7 @@ def test_sequential_path_still_works_without_equipment_field() -> None:
         "add_ct",
         {
             "bay_ref": field_ref,
-            "catalog_ref": CT_REF,
+            "catalog_binding": {"catalog_item_id": CT_REF},
             "ratio_primary_a": 400.0,
             "ratio_secondary_a": 5.0,
         },
@@ -321,7 +324,7 @@ def test_sequential_path_still_works_without_equipment_field() -> None:
         "add_vt",
         {
             "bay_ref": field_ref,
-            "catalog_ref": VT_REF,
+            "catalog_binding": {"catalog_item_id": VT_REF},
             "ratio_primary_v": 15000.0,
             "ratio_secondary_v": 100.0,
         },
@@ -329,7 +332,11 @@ def test_sequential_path_still_works_without_equipment_field() -> None:
     snapshot = _op(
         snapshot,
         "add_relay",
-        {"bay_ref": field_ref, "catalog_ref": RELAY_REF, "relay_type": "NADPRADOWY"},
+        {
+            "bay_ref": field_ref,
+            "catalog_binding": {"catalog_item_id": RELAY_REF},
+            "relay_type": "NADPRADOWY",
+        },
     )
 
     assert len(_pomiary(snapshot, "CT")) == 1
@@ -364,7 +371,7 @@ def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
         "add_ct",
         {
             "bay_ref": field_ref,
-            "catalog_ref": CT_REF,
+            "catalog_binding": {"catalog_item_id": CT_REF},
             "ratio_primary_a": 400.0,
             "ratio_secondary_a": 5.0,
         },
@@ -374,7 +381,7 @@ def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
         "add_vt",
         {
             "bay_ref": field_ref,
-            "catalog_ref": VT_REF,
+            "catalog_binding": {"catalog_item_id": VT_REF},
             "ratio_primary_v": 15000.0,
             "ratio_secondary_v": 100.0,
         },
@@ -382,14 +389,18 @@ def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
     sekwencyjnie = _op(
         sekwencyjnie,
         "add_relay",
-        {"bay_ref": field_ref, "catalog_ref": RELAY_REF, "relay_type": "NADPRADOWY"},
+        {
+            "bay_ref": field_ref,
+            "catalog_binding": {"catalog_item_id": RELAY_REF},
+            "relay_type": "NADPRADOWY",
+        },
     )
 
     def istotne(snapshot: dict[str, Any]) -> Any:
         pomiary = [
             {
                 "typ": m["measurement_type"],
-                "catalog_ref": m["catalog_ref"],
+                "catalog_binding": {"catalog_item_id": m["catalog_ref"]},
                 "bay_ref": m["bay_ref"],
                 "rating": m["rating"],
             }
@@ -397,7 +408,7 @@ def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
         ]
         zabezpieczenia = [
             {
-                "catalog_ref": p["catalog_ref"],
+                "catalog_binding": {"catalog_item_id": p["catalog_ref"]},
                 "device_type": p["device_type"],
                 "breaker_ref": p["breaker_ref"],
                 "ct_ref": p["ct_ref"],
@@ -452,7 +463,7 @@ def test_append_station_invalid_equipment_aborts_whole_operation() -> None:
             "sn_fields": [
                 {
                     "field_role": "LINIA_IN",
-                    "equipment": _wyposazenie(vt={"catalog_ref": VT_REF}),
+                    "equipment": _wyposazenie(vt={"catalog_binding": {"catalog_item_id": VT_REF}}),
                 }
             ],
         },

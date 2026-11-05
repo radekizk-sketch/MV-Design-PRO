@@ -419,7 +419,7 @@ def test_operacja_domenowa_przez_trase(
                     "payload": {
                         "voltage_kv": 15.0,
                         "sk3_mva": 250.0,
-                        "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                        "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
                     },
                 }
             },

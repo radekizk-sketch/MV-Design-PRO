@@ -128,7 +128,7 @@ def _stacja_z_odplywem_nn() -> tuple[dict, str, str]:
             "sn_fields": ["IN", "OUT"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )

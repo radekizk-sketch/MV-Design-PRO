@@ -83,14 +83,20 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": ZRODLO,
+            "catalog_binding": {"catalog_item_id": ZRODLO},
         },
     )
     odp = _operacja(
         klient,
         case_id,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 400,
+                "catalog_binding": {"catalog_item_id": KABEL},
+            }
+        },
     )
     segmenty = odp["snapshot"]["corridors"][0]["ordered_segment_refs"]
     # Wyposażenie pola (CT + przekaźnik z NASTAWAMI) powstaje w TEJ SAMEJ
@@ -100,12 +106,12 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
             "field_role": "LINIA_IN",
             "equipment": {
                 "ct": {
-                    "catalog_ref": CT,
+                    "catalog_binding": {"catalog_item_id": CT},
                     "ratio_primary_a": 400.0,
                     "ratio_secondary_a": 5.0,
                 },
                 "relay": {
-                    "catalog_ref": PRZEKAZNIK,
+                    "catalog_binding": {"catalog_item_id": PRZEKAZNIK},
                     "relay_type": "NADPRADOWY",
                     "settings": [
                         {
@@ -603,8 +609,7 @@ def test_zmiana_pozycji_katalogu_zachowuje_wartosci_projektanta(klient: TestClie
     else:
         payload = {
             "element_ref": aparat_ref,
-            "catalog_item_id": inna,
-            "catalog_namespace": "APARAT_SN",
+            "catalog_binding": {"catalog_item_id": inna, "catalog_namespace": "APARAT_SN"},
         }
     _operacja(klient, case_id, operacja, payload)
     model = klient.get(f"/api/cases/{case_id}/enm").json()

@@ -35,7 +35,11 @@ def _empty_enm() -> dict[str, Any]:
 def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, Any]:
     if name == "add_grid_source_sn":
         payload = {
-            **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            **(
+                {"catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250}}
+                if "catalog_ref" not in payload
+                else {}
+            ),
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -63,7 +67,7 @@ def _trunk_z_nazwanym_odcinkiem() -> tuple[dict[str, Any], str]:
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
                 "name": "Magistrala północna",
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )

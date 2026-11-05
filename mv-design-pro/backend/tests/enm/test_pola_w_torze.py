@@ -107,7 +107,10 @@ def _wciecie(
                 "insert_at": {"value": 0.5},
                 "station": {"name": nazwa, "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": sn_fields,
-                "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+                },
                 "nn_block": {"outgoing_feeders_nn_count": nn_feeders},
             },
         )
@@ -125,7 +128,7 @@ def _koniec_ciagu(sn_fields: list[str], *, nazwa: str = "Stacja Brzozowa") -> di
                 "endpoint_bus_ref": koniec,
                 "station": {"name": nazwa, "station_type": "terminal"},
                 "field_apparatus_catalog_ref": APARAT,
-                "transformer": {"transformer_catalog_ref": TRAFO},
+                "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                 "nn_voltage_kv": 0.4,
                 "sn_fields": [{"field_role": r} for r in sn_fields],
             },
@@ -318,7 +321,11 @@ def test_transformator_na_szynie_stacji_przechodzi_przez_wolne_pole_tr() -> None
         op(
             enm,
             "add_transformer_sn_nn",
-            {"hv_bus_ref": szyna, "lv_voltage_kv": 0.4, "transformer_catalog_ref": TRAFO},
+            {
+                "hv_bus_ref": szyna,
+                "lv_voltage_kv": 0.4,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
         )
     )
     nowy = next(t for t in wynik["transformers"] if t["ref_id"].startswith("tr/"))
@@ -336,7 +343,7 @@ def test_transformator_na_szynie_stacji_bez_wolnego_pola_tr_to_nazwana_odmowa() 
         {
             "hv_bus_ref": _stacja(enm, "Stacja Lipowa")["bus_refs"][0],
             "lv_voltage_kv": 0.4,
-            "transformer_catalog_ref": TRAFO,
+            "transformer_catalog_binding": {"catalog_item_id": TRAFO},
         },
     )
     assert wynik.get("error_code") == "tor.field_missing"
@@ -353,7 +360,11 @@ def test_transformator_na_szynie_bez_pol_bez_zmian() -> None:
         op(
             enm,
             "add_transformer_sn_nn",
-            {"hv_bus_ref": koniec, "lv_voltage_kv": 0.4, "transformer_catalog_ref": TRAFO},
+            {
+                "hv_bus_ref": koniec,
+                "lv_voltage_kv": 0.4,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
         )
     )
     assert any(t["hv_bus_ref"] == koniec for t in wynik["transformers"])
@@ -890,8 +901,8 @@ def test_ocena_nadpradowa_ma_punkt_na_zacisku_pola_z_wierszem_szyny_stacji(rola:
 @pytest.mark.parametrize(
     "transformator",
     [
-        {"transformer_catalog_ref": TRAFO},
-        {"catalog_ref": TRAFO},
+        {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
+        {"catalog_binding": {"catalog_item_id": TRAFO}},
         {
             "catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",
@@ -971,7 +982,10 @@ def test_brak_pola_toru_bez_wspolnego_aparatu_to_nazwana_odmowa_bez_skutku(
             "station_type": "inline",
             "insert_at": {"value": 0.5},
             "station": {"name": "Stacja Jodłowa", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-            "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         }
         kod = "station.insert.field_apparatus_ref_missing"
@@ -979,7 +993,7 @@ def test_brak_pola_toru_bez_wspolnego_aparatu_to_nazwana_odmowa_bez_skutku(
         payload = {
             "endpoint_bus_ref": _odcinki(enm)[-1]["to_bus_ref"],
             "station": {"name": "Stacja Jodłowa", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": TRAFO},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
             "nn_voltage_kv": 0.4,
         }
         kod = "station.append.field_apparatus_ref_missing"
@@ -1059,7 +1073,10 @@ def test_stacja_z_bloku_rmu_prowadzi_tor_przez_jednostke_liniowa_w_roli_wejsciow
                 "switchgear": {"switchgear_family_ref": blok.switchgear_family_ref},
             },
             "sn_fields": pola,
-            "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )

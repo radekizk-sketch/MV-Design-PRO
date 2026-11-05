@@ -189,7 +189,11 @@ def test_warunki_na_kablu_nn_kieruja_do_operacji_nn() -> None:
     odpowiedz = execute_domain_operation(
         enm,
         "add_nn_cable_segment",
-        {"from_bus_ref": szyna, "length_m": 30.0, "catalog_ref": "kab_nn_4x120_al"},
+        {
+            "from_bus_ref": szyna,
+            "length_m": 30.0,
+            "catalog_binding": {"catalog_item_id": "kab_nn_4x120_al"},
+        },
     )
     enm = _po(odpowiedz)
     kabel_nn = next(b for b in enm["branches"] if b.get("type") == "cable")

@@ -97,7 +97,7 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_250,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
         },
     )
     for _ in range(2):
@@ -108,7 +108,7 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 500.0,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 }
             },
         )
@@ -120,7 +120,7 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
             "segment_id": segment_id,
             "field_apparatus_catalog_ref": CATALOG_FIELD_APPARATUS,
             "station": {"name": "Stacja S1", "station_type": "inline", "nn_voltage_kv": 0.4},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_block": {"outgoing_feeders_nn_count": liczba_odplywow_nn},
             # Tolerancja sieci nN (+6 %, wiersz nN tabeli 1 IEC 60909-0) — bez niej zwarcie
             # w sieci z wyspą nN liczy się na wartości roboczej +10 % (założenie biegu

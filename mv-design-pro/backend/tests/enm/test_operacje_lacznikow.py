@@ -483,7 +483,11 @@ def _theta(z_lacznikiem: bool = True) -> tuple[dict[str, Any], str, tuple[str, s
             {
                 "from_bus_ref": szyna_gpz,
                 "to_bus_ref": koniec,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": KABEL},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": KABEL},
+                },
             },
         )
         (kabel_pierscienia,) = (
@@ -523,7 +527,7 @@ def _wstaw_otwarty(enm: dict[str, Any], odcinek: str, **dodatkowe: Any) -> dict[
         {
             "segment_id": odcinek,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             "normal_state": "open",
             **dodatkowe,
         },
@@ -567,7 +571,7 @@ def test_wstawienie_punktu_podzialu_w_pierscien_zamyka_poprzedni() -> None:
             {
                 "segment_id": pierscien["ref_id"],
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "catalog_ref": ROZLACZNIK,
+                "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             },
         ),
         "set_normal_open_point",
@@ -584,7 +588,7 @@ def test_wstawienie_punktu_podzialu_w_theta_wymaga_wskazania() -> None:
         {
             "segment_id": odcinek,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             "normal_state": "open",
         },
         "nop.previous_ambiguous",
@@ -610,7 +614,7 @@ def test_wstawienie_punktu_podzialu_w_theta_wymaga_wskazania() -> None:
         {
             "segment_id": odcinek,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             "normal_state": "open",
             "close_ref": odcinek,
         },
@@ -655,7 +659,7 @@ def test_wstawienie_lacznika_z_jawna_pozycja_normalna() -> None:
         {
             "segment_id": _kable(enm)[0]["ref_id"],
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             "normal_state": "open",
         },
     )
@@ -672,7 +676,7 @@ def test_wstawienie_lacznika_z_jawna_pozycja_normalna() -> None:
         {
             "segment_id": _kable(enm)[0]["ref_id"],
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
         },
     )
     nowy = next(
@@ -687,7 +691,7 @@ def test_wstawienie_lacznika_z_jawna_pozycja_normalna() -> None:
         {
             "segment_id": _kable(enm)[0]["ref_id"],
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
             "normal_state": "zamkniety",
         },
         "switch.normal_state_invalid",

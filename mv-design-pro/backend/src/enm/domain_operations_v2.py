@@ -345,7 +345,7 @@ def _catalog_binding_from_payload(
     konsekwencją tego, JAKI element operacja tworzy — ta sama wartość wybiera akcesor
     katalogu w materializacji i trafia do migawki; ładunek jej nie podstawia.
     """
-    odczyt = odczytaj_wiazanie(payload, klucz, opis_pl=opis_pl)
+    odczyt = odczytaj_wiazanie(payload, klucz, opis_pl=opis_pl, przestrzen_rodzaju=namespace)
     if odczyt.kod_bledu is not None:
         return None, _error_response(odczyt.komunikat_pl or opis_pl, odczyt.kod_bledu)
     if not odczyt.wskazuje:
@@ -388,7 +388,9 @@ def _wiazanie_w_przestrzeni(binding: object, namespace: str) -> dict[str, Any] |
     """
     if not isinstance(binding, dict):
         return None
-    return {**copy.deepcopy(binding), "catalog_namespace": namespace}
+    # Niezgodną przestrzeń wiązania odrzuca materializacja (`odmowa_przestrzeni`) — tu
+    # przestrzeń rodzaju wchodzi tylko wtedy, gdy wiązanie jej nie deklaruje.
+    return {"catalog_namespace": namespace, **copy.deepcopy(binding)}
 
 
 def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
@@ -6685,7 +6687,13 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # voltage matching (MV-side BESS/FW vs LV-side PV decision).
     # Karta JEDEN-KLUCZ-KATALOGU: pozycję wskazuje WYŁĄCZNIE `catalog_binding` (dawne
     # `catalog_ref` i `materialized_params.catalog_item_id` były drugą i trzecią drogą).
-    odczyt_wiazania = odczytaj_wiazanie(payload, opis_pl=f"Źródło {technology}")
+    # Przestrzeń = rodzaj źródła (technologia); wiązanie deklarujące inną to odmowa nazwana
+    # `catalog.namespace_mismatch` (ta sama funkcja co brama API), nie cicha zamiana.
+    odczyt_wiazania = odczytaj_wiazanie(
+        payload,
+        opis_pl=f"Źródło {technology}",
+        przestrzen_rodzaju=_PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO[technology],
+    )
     if odczyt_wiazania.kod_bledu is not None:
         return _error_response(
             odczyt_wiazania.komunikat_pl or f"Źródło {technology}", odczyt_wiazania.kod_bledu
@@ -6698,9 +6706,8 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         )
 
     # JEDNA przestrzeń katalogu: wybiera pozycję do materializacji tabliczki i jest
-    # znacznikiem pochodzenia w migawce. Payload może ją zadeklarować (kreator OZE
-    # wysyła „CONVERTER"), ale deklaracja nie ma wpływu na to, gdzie szukamy ani co
-    # zapisujemy — inaczej model niósłby kategorię, z której nic nie pochodzi.
+    # znacznikiem pochodzenia w migawce. Wiązanie może ją zadeklarować wyłącznie zgodnie
+    # z rodzajem źródła — inną odrzuca odczyt wiązania wyżej.
     przestrzen_katalogu = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO[technology]
 
     # W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER po stronie SN.

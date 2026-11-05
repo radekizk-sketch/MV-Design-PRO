@@ -228,11 +228,11 @@ def _zastosuj_gpz_pod_blokada(
         "name_pl": template.name_pl,
         "source_name": template.name_pl,
         "voltage_kv": voltage_kv,
-        "catalog_ref": source_ref,
+        "catalog_binding": {"catalog_item_id": source_ref},
         "sections_count": _GPZ_SECTIONS_COUNT,
         "line_fields_per_section": line_fields_per_section,
         "gpz_line_field_apparatus": {
-            "catalog_ref": apparatus_ref,
+            "catalog_binding": {"catalog_item_id": apparatus_ref},
             "apparatus_kind": "BREAKER",
         },
         # Bez opisu uziemienia na równoważniku SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0
@@ -357,7 +357,9 @@ def _zastosuj_szablon_pod_blokada(
     # blokadą E063 (układ sieci nN transformatora), którą kontrola modelu nazywa wprost.
     if isinstance(overrides.get("nn_earthing"), dict):
         station_spec["nn_earthing"] = dict(overrides["nn_earthing"])
-    transformer_spec: dict[str, Any] = {"transformer_catalog_ref": transformer_ref}
+    transformer_spec: dict[str, Any] = {
+        "transformer_catalog_binding": {"catalog_item_id": transformer_ref}
+    }
     if parametry.transformer_count >= 2:
         # Liczba transformatorów szablonu (`transformer_count`, np. „2×630 kVA") trafia do
         # modelu jako liczba identycznych jednostek pola transformatorowego (`n_parallel`,
@@ -453,7 +455,7 @@ def _zastosuj_szablon_pod_blokada(
                     "station_ref": station_ref,
                     "field_role": "OUTGOING",
                     "field_name": f"Odpływ {pasmo_napieciowe(nn_voltage_kv)} {i + 2}",
-                    "catalog_ref": cb_catalog or "cb_nn_400a",
+                    "catalog_binding": {"catalog_item_id": cb_catalog or "cb_nn_400a"},
                 },
             )
             if feeder_result.get("error"):
@@ -487,7 +489,7 @@ def _zastosuj_szablon_pod_blokada(
                 payload={
                     "bus_nn_ref": nn_bus_ref,
                     "feeder_ref": feeder_ref,
-                    "catalog_ref": load_catalog_ref,
+                    "catalog_binding": {"catalog_item_id": load_catalog_ref},
                     "load_kind": "SKUPIONY",
                     "connection_type": "TROJFAZOWY",
                     "active_power_kw": load_kw,
@@ -531,7 +533,7 @@ def _zastosuj_szablon_pod_blokada(
             connection_variant = der_spec.connection_variant_options[0]
             der_payload = {
                 "source_technology": der_spec.kind,
-                "catalog_ref": der_catalog,
+                "catalog_binding": {"catalog_item_id": der_catalog},
                 "connection_variant": connection_variant,
                 "station_ref": station_ref,
                 "power_setpoint_mw": jednostka.p_mw_each,
@@ -599,7 +601,7 @@ def _zastosuj_szablon_pod_blokada(
                 op_name="add_ct",
                 payload={
                     "field_ref": measurement_field_ref,
-                    "catalog_ref": ct_catalog_ref,
+                    "catalog_binding": {"catalog_item_id": ct_catalog_ref},
                     "ratio_primary_a": ct_ratio[0],
                     "ratio_secondary_a": ct_ratio[1],
                     "purpose": "metering",
@@ -629,7 +631,7 @@ def _zastosuj_szablon_pod_blokada(
                 op_name="add_vt",
                 payload={
                     "field_ref": measurement_field_ref,
-                    "catalog_ref": vt_catalog_ref,
+                    "catalog_binding": {"catalog_item_id": vt_catalog_ref},
                     "ratio_primary_v": vt_ratio[0],
                     "ratio_secondary_v": vt_ratio[1],
                     "purpose": "metering",
@@ -660,7 +662,10 @@ def _zastosuj_szablon_pod_blokada(
             shunt_result = execute_domain_operation(
                 enm_dict=enm_dict,
                 op_name="add_shunt_compensator_sn",
-                payload={"bus_ref": sn_bus_ref, "catalog_ref": shunt_catalog_ref},
+                payload={
+                    "bus_ref": sn_bus_ref,
+                    "catalog_binding": {"catalog_item_id": shunt_catalog_ref},
+                },
             )
             if shunt_result.get("error"):
                 raise TemplateApplyError(
@@ -866,7 +871,7 @@ def _zabuduj_stacje_w_odgalezieniu(
         {
             "segment_id": target_segment_id,
             "insert_at": {"mode": "RATIO", "value": insert_at_ratio},
-            "catalog_ref": punkt_catalog_ref,
+            "catalog_binding": {"catalog_item_id": punkt_catalog_ref},
         },
     )
     enm_dict = wynik_punktu.get("snapshot") or enm_dict
@@ -1262,14 +1267,12 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
         "lv_switchgear_variant": "none",
         "has_block_transformer": True,
         "block_transformer": {
-            "catalog_ref": tor.transformator_ref,
             "catalog_binding": _catalog_binding("TRAFO_SN_NN", tor.transformator_ref),
         },
         "mv_bus_ref": sn_bus_ref,
         "mv_field_configuration": {
             "switching_device": tor.lacznik_pola,
             "cable_length_km": tor.dlugosc_kabla_km,
-            "cable_catalog_ref": tor.kabel_ref,
             "cable_catalog_binding": _catalog_binding("KABEL_SN", tor.kabel_ref),
             "apparatus_catalog_binding": _catalog_binding("APARAT_SN", tor.aparat_ref),
         },

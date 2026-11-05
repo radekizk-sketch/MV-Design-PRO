@@ -37,7 +37,7 @@ def siec_z_przekladnikami() -> tuple[dict[str, Any], str, str, str]:
         "add_ct",
         {
             "field_ref": pole,
-            "catalog_ref": REF_CT,
+            "catalog_binding": {"catalog_item_id": REF_CT},
             "ratio_primary_a": 400.0,
             "ratio_secondary_a": 5.0,
         },
@@ -48,7 +48,7 @@ def siec_z_przekladnikami() -> tuple[dict[str, Any], str, str, str]:
         "add_vt",
         {
             "field_ref": pole,
-            "catalog_ref": REF_VT,
+            "catalog_binding": {"catalog_item_id": REF_VT},
             "ratio_primary_v": 15000.0,
             "ratio_secondary_v": 100.0,
         },
@@ -156,7 +156,7 @@ def test_zmiana_typu_vt_to_usuniecie_i_dodanie(siec_z_przekladnikami: Any) -> No
         "add_vt",
         {
             "field_ref": pole,
-            "catalog_ref": "vt_20kv_fz_100_3_05_3p_siemens",
+            "catalog_binding": {"catalog_item_id": "vt_20kv_fz_100_3_05_3p_siemens"},
             "ratio_primary_v": 11547.0,
             "ratio_secondary_v": 57.7,
         },

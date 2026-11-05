@@ -250,7 +250,7 @@ def _siec_z_zksn(stan: str) -> tuple[dict[str, Any], str]:
         "insert_zksn_on_segment_sn",
         {
             "segment_id": _kable(enm)[0]["ref_id"],
-            "catalog_ref": ZKSN,
+            "catalog_binding": {"catalog_item_id": ZKSN},
             "branch_ports_count": 2,
             "switch_state": stan,
         },

@@ -331,8 +331,8 @@ def _siec_z_zespolem(susceptancja: str) -> tuple[dict[str, Any], dict[str, str]]
         op_name="add_zespol_uziemiajacy_sn",
         payload={
             "bus_ref": szyny["GPZ"],
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
-            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+            "rezystor": {"catalog_binding": {"catalog_item_id": "REZ_200A_15KV"}},
         },
     )
     assert not wynik.get("error"), wynik.get("error")

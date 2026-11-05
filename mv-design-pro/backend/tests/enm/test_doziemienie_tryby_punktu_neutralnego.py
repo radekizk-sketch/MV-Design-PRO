@@ -262,7 +262,7 @@ def _z_odcinkami(migawka: dict[str, Any], odcinki: tuple[tuple[str, int], ...]) 
         odcinek = {
             "rodzaj": rodzaj,
             "dlugosc_m": dlugosc,
-            "catalog_ref": zu.KABEL_SN if kabel else LINIA_SN,
+            "catalog_binding": {"catalog_item_id": zu.KABEL_SN if kabel else LINIA_SN},
             "zero_sequence": {
                 "b0_siemens_per_km": zu.B0_KABLA_S_PER_KM if kabel else B0_LINII_S_PER_KM
             },

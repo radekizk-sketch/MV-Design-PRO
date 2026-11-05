@@ -88,7 +88,7 @@ def test_lancuch_rgnn_kabel_podrozdzielnica_odbior() -> None:
             "supply": {
                 "from_bus_ref": bus1,
                 "length_m": 80.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
                 "name": "Kabel RGnN-1 → RGnN-2",
             },
         },
@@ -150,7 +150,11 @@ def test_add_nn_cable_segment_odrzuca_nieistniejaca_pozycje_katalogowa() -> None
     wynik = _blad(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN + LITEROWKA},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN + LITEROWKA},
+        },
     )
     assert wynik["error_code"] == "catalog.item_not_found"
 
@@ -172,7 +176,11 @@ def test_add_nn_cable_segment_length_m_zero_odrzucony_kodem_wartosci_niepoprawne
     wynik = _blad(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 0.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 0.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     assert wynik["error_code"] == "nn.cable_length_invalid"
 
@@ -184,7 +192,11 @@ def test_add_nn_cable_segment_length_m_jawne_przechodzi_bez_zmian() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 42.5, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 42.5,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     kabel = wynik["snapshot"]["branches"][-1]
     assert kabel["length_km"] == pytest.approx(0.0425)
@@ -196,7 +208,11 @@ def test_add_nn_cable_segment_tworzy_nowa_szyne_gdy_brak_to_bus_ref() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 25.5, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 25.5,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     utworzone = wynik["changes"]["created_element_ids"]
@@ -218,7 +234,12 @@ def test_add_nn_cable_segment_do_istniejacej_szyny_tej_samej_woltowosci() -> Non
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "to_bus_ref": bus2, "length_m": 15.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "to_bus_ref": bus2,
+            "length_m": 15.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     assert wynik["changes"]["created_element_ids"] == [snap["branches"][-1]["ref_id"]]
@@ -239,7 +260,7 @@ def test_add_nn_cable_segment_odrzuca_niezgodnosc_napiec() -> None:
             "from_bus_ref": bus1,
             "to_bus_ref": bus_069,
             "length_m": 15.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
         },
     )
     assert wynik["error_code"] == "nn.cable_voltage_mismatch"
@@ -253,7 +274,7 @@ def test_add_nn_cable_segment_odrzuca_szyne_poza_pasmem_nn() -> None:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 100.0,
-            "catalog_ref": REF_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO_SN},
         },
     )
     snap = wynik["snapshot"]
@@ -262,7 +283,11 @@ def test_add_nn_cable_segment_odrzuca_szyne_poza_pasmem_nn() -> None:
     wynik = _blad(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus_sn, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus_sn,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     assert wynik["error_code"] == "nn.cable_from_bus_not_nn"
 
@@ -278,7 +303,7 @@ def test_add_nn_cable_segment_n_parallel_dzieli_impedancje_w_grafie() -> None:
         {
             "from_bus_ref": bus1,
             "length_m": 100.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             "name": "Pojedynczy",
         },
     )
@@ -290,7 +315,7 @@ def test_add_nn_cable_segment_n_parallel_dzieli_impedancje_w_grafie() -> None:
         {
             "from_bus_ref": bus1,
             "length_m": 100.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             "n_parallel": 2,
             "name": "Podwojny",
         },
@@ -323,7 +348,12 @@ def test_add_nn_cable_segment_n_parallel_nieobecny_rowny_jawnemu_1() -> None:
         _wykonaj(
             snap,
             "add_nn_cable_segment",
-            {"from_bus_ref": bus1, "length_m": 50.0, "catalog_ref": REF_KABEL_NN, "name": "Brak"},
+            {
+                "from_bus_ref": bus1,
+                "length_m": 50.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+                "name": "Brak",
+            },
         )["snapshot"],
         "Brak",
     )
@@ -334,7 +364,7 @@ def test_add_nn_cable_segment_n_parallel_nieobecny_rowny_jawnemu_1() -> None:
             {
                 "from_bus_ref": bus1,
                 "length_m": 50.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
                 "n_parallel": 1,
                 "name": "Jawne1",
             },
@@ -388,7 +418,7 @@ def test_add_nn_distribution_board_z_zasileniem_bledne_propaguje_blad() -> None:
             "supply": {
                 "from_bus_ref": "nie-istnieje",
                 "length_m": 10.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             },
         },
     )
@@ -405,7 +435,11 @@ def _dwie_szyny_nn(snap: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     bus2 = snap["branches"][-1]["to_bus_ref"]
@@ -423,7 +457,7 @@ def test_add_nn_switch_device_switch_i_fuse() -> None:
             "from_bus_ref": bus1,
             "to_bus_ref": bus2,
             "device_class": "switch",
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
         },
     )
     snap = wynik["snapshot"]
@@ -447,7 +481,7 @@ def test_add_nn_switch_device_switch_i_fuse() -> None:
             "from_bus_ref": bus1,
             "to_bus_ref": bus3,
             "device_class": "fuse",
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
         },
     )
     bezpiecznik = wynik["snapshot"]["branches"][-1]
@@ -464,7 +498,11 @@ def test_add_nn_switch_device_odrzuca_rozne_pasma_napiecia() -> None:
     wynik = _blad(
         snap,
         "add_nn_switch_device",
-        {"from_bus_ref": bus1, "to_bus_ref": bus_069, "catalog_ref": REF_APARAT_NN},
+        {
+            "from_bus_ref": bus1,
+            "to_bus_ref": bus_069,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
+        },
     )
     assert wynik["error_code"] == "nn.switch_voltage_mismatch"
 
@@ -475,7 +513,11 @@ def test_add_nn_switch_device_odrzuca_samopetle() -> None:
     wynik = _blad(
         snap,
         "add_nn_switch_device",
-        {"from_bus_ref": bus1, "to_bus_ref": bus1, "catalog_ref": REF_APARAT_NN},
+        {
+            "from_bus_ref": bus1,
+            "to_bus_ref": bus1,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
+        },
     )
     assert wynik["error_code"] == "nn.switch_self_loop"
 
@@ -499,7 +541,9 @@ def test_add_nn_section_coupler_tworzy_sekcje_i_sprzeglo() -> None:
     bus1 = stacja["bus_refs"][0]
 
     wynik = _wykonaj(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     snap = wynik["snapshot"]
     stacja = _stacja(snap)
@@ -517,7 +561,9 @@ def test_add_nn_section_coupler_tworzy_sekcje_i_sprzeglo() -> None:
 
     # Druga sekcja dokłada się na końcu (order rosnący).
     wynik = _wykonaj(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     snap = wynik["snapshot"]
     sekcje = sorted(_stacja(snap)["nn_sections"], key=lambda s: s["order"])
@@ -531,7 +577,7 @@ def test_add_nn_section_coupler_odrzuca_stacje_zlego_typu() -> None:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 100.0,
-            "catalog_ref": REF_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO_SN},
         },
     )["snapshot"]
     stacje_gpz = [s for s in snap["substations"] if s.get("station_type") == "gpz"]
@@ -539,7 +585,10 @@ def test_add_nn_section_coupler_odrzuca_stacje_zlego_typu() -> None:
     wynik = _blad(
         snap,
         "add_nn_section_coupler",
-        {"station_ref": stacje_gpz[0]["ref_id"], "catalog_ref": REF_APARAT_NN},
+        {
+            "station_ref": stacje_gpz[0]["ref_id"],
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
+        },
     )
     assert wynik["error_code"] == "nn.coupler_station_wrong_type"
 
@@ -553,14 +602,18 @@ def test_add_nn_section_coupler_odrzuca_sekcje_bez_pola_order() -> None:
     station_ref = stacja["ref_id"]
 
     wynik = _wykonaj(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     snap = wynik["snapshot"]
     stacja = _stacja(snap)
     del stacja["nn_sections"][0]["order"]  # symuluje dane uszkodzone/spoza operacji domenowych
 
     wynik = _blad(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     assert wynik["error_code"] == "nn.section_order_missing"
 
@@ -576,7 +629,12 @@ def test_split_nn_segment_zachowuje_sume_dlugosci() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -612,7 +670,11 @@ def test_split_nn_segment_odrzuca_zly_zakres(split_at_m: float) -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -633,7 +695,12 @@ def test_split_nn_segment_odrzuca_odcinek_bez_wymaganego_pola(brakujace_pole: st
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment = _branch_by_name(snap, "Odcinek")
@@ -649,7 +716,12 @@ def test_merge_nn_segments_odwraca_split() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -697,7 +769,12 @@ def test_merge_nn_segments_odrzuca_odcinek_bez_wymaganego_pola(brakujace_pole: s
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -727,7 +804,12 @@ def test_merge_nn_segments_odrzuca_rozne_parametry_na_km() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -753,7 +835,12 @@ def test_merge_nn_segments_odrzuca_gdy_wspolna_szyna_ma_inne_przylacza() -> None
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": "Odcinek"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Odcinek",
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -795,14 +882,24 @@ def test_merge_nn_segments_odrzuca_rozne_pozycje_katalogowe() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 50.0, "catalog_ref": REF_KABEL_NN, "name": "A"},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 50.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "A",
+        },
     )
     snap = wynik["snapshot"]
     bus_mid = snap["branches"][-1]["to_bus_ref"]
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus_mid, "length_m": 30.0, "catalog_ref": REF_KABEL_NN_2, "name": "B"},
+        {
+            "from_bus_ref": bus_mid,
+            "length_m": 30.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN_2},
+            "name": "B",
+        },
     )
     snap = wynik["snapshot"]
     a = _branch_by_name(snap, "A")
@@ -831,7 +928,11 @@ def test_set_nn_cable_laying_conditions_zapisuje_i_czysci_meta() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 20.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -875,7 +976,11 @@ def test_set_nn_cable_laying_conditions_wymaga_pola_w_payloadzie() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 20.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -892,7 +997,11 @@ def test_set_nn_cable_laying_conditions_odrzuca_nieznana_kombinacje() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 20.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -924,7 +1033,11 @@ def test_set_nn_cable_laying_conditions_odrzuca_stara_skladnie_sn() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 20.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     segment_ref = snap["branches"][-1]["ref_id"]
@@ -975,7 +1088,11 @@ def test_usuniecie_kabla_nn_zostawia_szyne_konca_a_potem_usuwa_lisc() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     kabel_ref = snap["branches"][-1]["ref_id"]
@@ -999,14 +1116,22 @@ def test_usuniecie_zacisku_nn_kasuje_kaskada_dolaczone_galezie() -> None:
     snap = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )["snapshot"]
     kabel_ref = snap["branches"][-1]["ref_id"]
     bus2 = snap["branches"][-1]["to_bus_ref"]
     snap = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus2, "length_m": 5.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus2,
+            "length_m": 5.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )["snapshot"]
     kabel_dalej = snap["branches"][-1]["ref_id"]
 
@@ -1031,7 +1156,7 @@ def test_usuniecie_szyny_czysci_liste_szyn_i_sekcje_stacji() -> None:
     snap = _wykonaj(
         snap,
         "add_nn_section_coupler",
-        {"station_ref": stacja["ref_id"], "catalog_ref": REF_APARAT_NN},
+        {"station_ref": stacja["ref_id"], "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )["snapshot"]
     stacja = _stacja(snap)
     sekcja_2 = max(stacja["nn_sections"], key=lambda s: s["order"])["bus_ref"]
@@ -1051,7 +1176,11 @@ def test_usuniecie_szyny_czysci_liste_szyn_stacji_ktora_zostaje() -> None:
     snap = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )["snapshot"]
     bus2 = snap["branches"][-1]["to_bus_ref"]
     _stacja(snap)["bus_refs"].append(bus2)
@@ -1074,7 +1203,7 @@ def test_copy_nn_feeder_kopiuje_poddrzewo_z_wiazaniami_katalogowymi() -> None:
         {
             "from_bus_ref": bus1,
             "to_bus_ref": bus2,
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
             "name": "Aparat odpływowy",
         },
     )
@@ -1087,7 +1216,7 @@ def test_copy_nn_feeder_kopiuje_poddrzewo_z_wiazaniami_katalogowymi() -> None:
         {
             "from_bus_ref": bus2,
             "length_m": 15.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             "name": "Kabel odpływu",
         },
     )
@@ -1124,7 +1253,7 @@ def test_copy_nn_feeder_kopiuje_odbior_z_przemapowanym_feeder_ref() -> None:
         {
             "from_bus_ref": bus1,
             "to_bus_ref": bus2,
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
             "name": "Aparat odpływowy",
         },
     )
@@ -1164,7 +1293,11 @@ def test_copy_nn_feeder_wymaga_aparatu_laczeniowego() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     snap = wynik["snapshot"]
     kabel_ref = snap["branches"][-1]["ref_id"]
@@ -1183,7 +1316,7 @@ def test_copy_nn_feeder_odrzuca_sprzeglo_sekcji() -> None:
     snap = _wykonaj(
         snap,
         "add_nn_section_coupler",
-        {"station_ref": stacja["ref_id"], "catalog_ref": REF_APARAT_NN},
+        {"station_ref": stacja["ref_id"], "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )["snapshot"]
     sekcje = sorted(_stacja(snap)["nn_sections"], key=lambda s: s["order"])
     sprzeglo_ref = sekcje[1]["coupler_ref"]
@@ -1209,7 +1342,11 @@ def test_add_nn_cable_segment_podbija_rewizje_i_input_hash() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     model_po = EnergyNetworkModel.model_validate(wynik["snapshot"])
 
@@ -1235,7 +1372,12 @@ def _odcinek_nn(snap: dict[str, Any], name: str = "Odcinek") -> tuple[dict[str, 
     snap = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": name},
+        {
+            "from_bus_ref": bus1,
+            "length_m": 100.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": name,
+        },
     )["snapshot"]
     return snap, snap["branches"][-1]["ref_id"]
 
@@ -1295,11 +1437,15 @@ def test_add_nn_section_coupler_melduje_sekcje_bez_kolejnosci() -> None:
     snap = _board()
     station_ref = _stacja(snap)["ref_id"]
     snap = _wykonaj(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )["snapshot"]
     _stacja(snap)["nn_sections"][-1].pop("order")
     wynik = _blad(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     assert wynik["error_code"] == "nn.section_order_missing"
 
@@ -1311,11 +1457,15 @@ def test_add_nn_section_coupler_melduje_kolejnosc_sekcji_nie_calkowita(order: An
     snap = _board()
     station_ref = _stacja(snap)["ref_id"]
     snap = _wykonaj(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )["snapshot"]
     _stacja(snap)["nn_sections"][-1]["order"] = order
     wynik = _blad(
-        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": station_ref, "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     assert wynik["error_code"] == "nn.section_order_missing"
 
@@ -1342,7 +1492,10 @@ def test_add_nn_cable_segment_bez_n_parallel_nie_zapisuje_liczby() -> None:
 def test_add_nn_cable_segment_melduje_brak_lub_zla_dlugosc(length_m: Any, kod: str) -> None:
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
-    payload: dict[str, Any] = {"from_bus_ref": bus1, "catalog_ref": REF_KABEL_NN}
+    payload: dict[str, Any] = {
+        "from_bus_ref": bus1,
+        "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+    }
     if length_m is not None:
         payload["length_m"] = length_m
     wynik = _blad(snap, "add_nn_cable_segment", payload)

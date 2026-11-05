@@ -93,11 +93,14 @@ class EdgeSpec:
 
 
 def _segment_z_kategoria(segment: dict[str, Any], catalog_namespace: str | None) -> dict[str, Any]:
-    """Segment operacji budowy odcinka z jawną kategorią katalogu (``catalog_binding``), gdy
-    jest podana — inaczej segment bez zmian (ten sam ładunek, te same identyfikatory)."""
-    if catalog_namespace is None:
-        return segment
-    return {**segment, "catalog_binding": {"catalog_namespace": catalog_namespace}}
+    """Segment operacji budowy odcinka: pozycja katalogu WYŁĄCZNIE w wiązaniu
+    ``catalog_binding`` (karta JEDEN-KLUCZ-KATALOGU), z jawną kategorią katalogu, gdy jest
+    podana. Wejście niesie ``catalog_ref`` specyfikacji kompilatora (``EdgeSpec``)."""
+    wynik = {k: v for k, v in segment.items() if k != "catalog_ref"}
+    wiazanie: dict[str, Any] = {"catalog_item_id": segment["catalog_ref"]}
+    if catalog_namespace is not None:
+        wiazanie["catalog_namespace"] = catalog_namespace
+    return {**wynik, "catalog_binding": wiazanie}
 
 
 def _nazwa_krawedzi(krawedz: EdgeSpec) -> str:
@@ -404,7 +407,7 @@ def dodaj_generator_pv(
         {
             "bus_ref": bus_ref,
             "p_mw": p_mw,
-            "catalog_ref": catalog_ref,
+            "catalog_binding": {"catalog_item_id": catalog_ref},
             "control_mode": "REGULACJA_NAPIECIA",
             "u_set_pu": u_set_pu,
             "name": name or "Generator",
@@ -441,7 +444,7 @@ def dodaj_generator_pq(
             "bus_ref": bus_ref,
             "p_mw": p_mw,
             "q_mvar": q_mvar,
-            "catalog_ref": catalog_ref,
+            "catalog_binding": {"catalog_item_id": catalog_ref},
             "name": name or "Generator",
         },
     )
@@ -455,7 +458,10 @@ def dodaj_bocznik(
     name: str | None = None,
 ) -> dict[str, Any]:
     """Bateria kondensatorów SN wprost na szynie (`add_shunt_compensator_sn`)."""
-    payload: dict[str, Any] = {"bus_ref": bus_ref, "catalog_ref": catalog_ref}
+    payload: dict[str, Any] = {
+        "bus_ref": bus_ref,
+        "catalog_binding": {"catalog_item_id": catalog_ref},
+    }
     if name:
         payload["name"] = name
     return wykonaj(enm, "add_shunt_compensator_sn", payload)
@@ -494,7 +500,7 @@ def dodaj_transformator(
     dolnej (wiersz nN tabeli 1 IEC 60909-0), podawana operacji `add_transformer_sn_nn`
     (ten sam predykat zapisu); `None` = brak deklaracji.
     """
-    payload: dict[str, Any] = {"transformer_catalog_ref": catalog_ref}
+    payload: dict[str, Any] = {"transformer_catalog_binding": {"catalog_item_id": catalog_ref}}
     if lv_voltage_tolerance is not None:
         payload["lv_voltage_tolerance"] = lv_voltage_tolerance
     if hv_bus_ref is not None:

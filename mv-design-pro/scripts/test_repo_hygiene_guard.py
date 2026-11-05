@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import repo_hygiene_guard as guard
 
 
@@ -176,3 +177,41 @@ def test_e2e_catalog_ref_w_operacji_nn_nadal_naruszeniem(tmp_path: Path) -> None
     assert _reguly(guard.check_legacy_catalog_payloads(root)) == [
         "legacy catalog_ref payload field in active frontend types/e2e"
     ]
+
+
+@pytest.mark.parametrize(
+    "linia",
+    [
+        "  catalog_ref: KABEL,\n",
+        '  "catalog_ref": KABEL,\n',
+        "  'catalog_ref': KABEL,\n",
+        "  catalog_ref?: string | null;\n",
+    ],
+)
+def test_zamiennik_catalog_ref_w_kazdym_zapisie_wykryty(tmp_path: Path, linia: str) -> None:
+    """Karta JEDEN-KLUCZ-KATALOGU: klucz w cudzysłowie i opcjonalny w typie nie omija reguły."""
+    root = _spec_e2e(tmp_path, "await op(request, caseId, 'add_ct', {\n" + linia + "});\n")
+    assert _reguly(guard.check_legacy_catalog_payloads(root)) == [
+        "legacy catalog_ref payload field in active frontend types/e2e"
+    ]
+
+
+def test_pole_modelu_ze_znacznikiem_przepuszczone_i_przypiete(tmp_path: Path) -> None:
+    """``set_bay_equipment.devices[].catalog_ref`` — pole modelu; znacznik przypięty liczbą."""
+    linia = f"  {{ kind: 'CB', catalog_ref: APARAT }}, // {guard.ZNACZNIK_POLA_MODELU}\n"
+    root = _spec_e2e(tmp_path, "const urzadzenia = [\n" + linia + "];\n")
+    assert guard.check_legacy_catalog_payloads(root) == []
+    root2 = _spec_e2e(tmp_path / "drugi", "const urzadzenia = [\n" + linia * 2 + "];\n")
+    assert _reguly(guard.check_legacy_catalog_payloads(root2)) == [
+        "model field marker over the pinned count",
+        "model field marker over the pinned count",
+    ]
+
+
+def test_wiazanie_roli_nie_jest_zamiennikiem(tmp_path: Path) -> None:
+    root = _spec_e2e(
+        tmp_path,
+        "await op(request, caseId, 'add_transformer_sn_nn', {\n"
+        "  transformer_catalog_binding: { catalog_item_id: TR },\n});\n",
+    )
+    assert guard.check_legacy_catalog_payloads(root) == []

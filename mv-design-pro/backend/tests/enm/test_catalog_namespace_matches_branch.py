@@ -37,7 +37,7 @@ def _siec_ze_stacja() -> dict:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": ZRODLO,
+            "catalog_binding": {"catalog_item_id": ZRODLO},
         },
     )
     snapshot = _op(

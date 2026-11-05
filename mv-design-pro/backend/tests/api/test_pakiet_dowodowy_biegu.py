@@ -506,7 +506,7 @@ def _seed_enm_rozplyw(
             "voltage_setpoint_kv": 15.5,
             "deadband_kv": 0.2,
             "controlled_bus_ref": "b-sn",
-            "catalog_ref": "tc_oltc_110sn_19_125",
+            "catalog_binding": {"catalog_item_id": "tc_oltc_110sn_19_125"},
         }
 
     odbior = {

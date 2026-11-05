@@ -157,7 +157,7 @@ class TestNapiecieDolneTypuZgodneZSzynamiSn:
     @staticmethod
     def _wynik(sn_kv: float, typ: str, droga: str) -> dict:
         wskazanie: dict[str, object] = (
-            {"transformer_catalog_ref": typ}
+            {"transformer_catalog_binding": {"catalog_item_id": typ}}
             if droga == "ref"
             else {
                 "transformer_catalog_binding": {

@@ -252,7 +252,7 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
         payload: dict[str, Any] = {
             "source_name": "GPZ Proweniencja",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 1,
             "gpz_sections": [
                 {
@@ -285,7 +285,10 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": [pole],
                 "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
-                "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
+                },
             },
         )
     if tor == "koniec_ciagu":
@@ -308,7 +311,10 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 },
                 "sn_fields": [pole_konca],
                 "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
-                "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
+                },
             },
         )
     raise AssertionError(f"Nieznany tor budowy pola: {tor}")

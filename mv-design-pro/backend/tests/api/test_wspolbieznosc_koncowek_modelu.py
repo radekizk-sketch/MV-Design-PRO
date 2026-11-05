@@ -225,7 +225,7 @@ def _utworz_wytworce(app_client, case_id: str, station_ref: str, nazwa: str) -> 
             "source_technology": "PV",
             "power_setpoint_mw": 0.5,
             "connection_variant": "nn_side",
-            "catalog_ref": KATALOG_PV_NN,
+            "catalog_binding": {"catalog_item_id": KATALOG_PV_NN},
             "source_name": nazwa,
             "nc_rfg_module": "B",
         },

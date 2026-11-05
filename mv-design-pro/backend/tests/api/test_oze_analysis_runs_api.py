@@ -43,7 +43,7 @@ def _augmented_enm(pozycja: tuple[str, float] = _KARTA_PRODUCENTA):
         update={
             "q_mvar": 0.5,
             "limits": GenLimits(q_min_mvar=-0.9, q_max_mvar=0.9),
-            "catalog_ref": catalog_ref,
+            "catalog_binding": {"catalog_item_id": catalog_ref},
             "materialized_params": {"sn_mva": sn_mva},
         }
     )

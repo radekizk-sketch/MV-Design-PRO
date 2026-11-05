@@ -126,43 +126,43 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `add_generator_sn` | Dodanie generatora synchronicznego wprost na szynę SN/WN (bez przekształtnika) | `bus_ref`, `p_mw` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `control_mode`, `dry_run`, `manual_params`, `name`, `q_max_mvar`, `q_min_mvar`, `q_mvar`, `source_name`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_generator_sn` |
+| `add_generator_sn` | Dodanie generatora synchronicznego wprost na szynę SN/WN (bez przekształtnika) | `bus_ref`, `p_mw` | `catalog_binding`, `control_mode`, `dry_run`, `manual_params`, `name`, `q_max_mvar`, `q_min_mvar`, `q_mvar`, `source_name`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_generator_sn` |
 | `add_gpz_section` | Dodanie sekcji szyn GPZ (strona SN lub WN) do stacji GPZ | `substation_ref` | `bus_ref`, `line_field_name`, `name`, `order`, `section_id`, `side` | tak | `enm/domain_operations.py::add_gpz_section` |
-| `add_grid_source_sn` | Dodanie źródła zasilania sieciowego (GPZ) do sieci SN | `voltage_kv` | `catalog_binding`, `catalog_ref`, `gpz_coupler_name`, `gpz_line_field_apparatus`, `gpz_line_field_name`, `gpz_section_name`, `gpz_sections`, `grounding`, `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `line_fields_per_section`, `lv_voltage_tolerance`, `manual_equivalent`, `manufacturer_ref`, `name_pl`, `overrides`, `parameter_source`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `sections_count`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `solution_ref`, `source_id`, `source_mode`, `source_name`, `switchgear_family_ref`, `transformer_catalog_binding`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_count`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_sn_mva`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `transformer_{order}_name`, `u_set_pu`, `x0_ohm`, `x_ohm`, `z0_z1_ratio`, `zero_sequence`, `zespoly_uziemiajace` | tak | `enm/domain_operations.py::add_grid_source_sn` |
-| `add_load_sn` | Dodanie odbioru wprost na wskazaną szynę (bez pośredniej stacji SN/nN) | `bus_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `p_mw`, `phases`, `q_mvar`, `reactive_power_kvar`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_load_sn` |
-| `add_shunt_compensator_sn` | Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN | — | `bus_nn_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `name`, `status` | tak | `enm/domain_operations_v2.py::add_shunt_compensator_sn` |
-| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
-| `add_surge_arrester_sn` | Dodanie ogranicznika przepięć w polu SN | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `field_ref`, `station_ref` | tak | `enm/domain_operations_v2.py::add_surge_arrester_sn` |
-| `add_zespol_uziemiajacy_sn` | Dodanie albo przekonfigurowanie zespołu uziemiającego sieci SN (transformator uziemiający z dławikiem gaszącym, rezystorem albo układem równoległym) | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dlawik`, `dry_run`, `name`, `odbior_pw_ref`, `rezystor`, `spz`, `uziemienie_bezposrednie`, `wylaczenie_od_transformatorow_refs`, `zespol_ref` | tak | `enm/domain_operations_v2.py::add_zespol_uziemiajacy_sn` |
+| `add_grid_source_sn` | Dodanie źródła zasilania sieciowego (GPZ) do sieci SN | `voltage_kv` | `catalog_binding`, `gpz_coupler_name`, `gpz_line_field_apparatus`, `gpz_line_field_name`, `gpz_section_name`, `gpz_sections`, `grounding`, `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `line_fields_per_section`, `lv_voltage_tolerance`, `manual_equivalent`, `manufacturer_ref`, `name_pl`, `overrides`, `parameter_source`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `sections_count`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `solution_ref`, `source_id`, `source_mode`, `source_name`, `switchgear_family_ref`, `transformer_catalog_binding`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_count`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_sn_mva`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `transformer_{order}_name`, `u_set_pu`, `x0_ohm`, `x_ohm`, `z0_z1_ratio`, `zero_sequence`, `zespoly_uziemiajace` | tak | `enm/domain_operations.py::add_grid_source_sn` |
+| `add_load_sn` | Dodanie odbioru wprost na wskazaną szynę (bez pośredniej stacji SN/nN) | `bus_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `c_p`, `c_q`, `catalog_binding`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `p_mw`, `phases`, `q_mvar`, `reactive_power_kvar`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_load_sn` |
+| `add_shunt_compensator_sn` | Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN | — | `bus_nn_ref`, `bus_ref`, `catalog_binding`, `dry_run`, `name`, `status` | tak | `enm/domain_operations_v2.py::add_shunt_compensator_sn` |
+| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
+| `add_surge_arrester_sn` | Dodanie ogranicznika przepięć w polu SN | — | `bay_ref`, `bus_ref`, `catalog_binding`, `dry_run`, `field_ref`, `station_ref` | tak | `enm/domain_operations_v2.py::add_surge_arrester_sn` |
+| `add_zespol_uziemiajacy_sn` | Dodanie albo przekonfigurowanie zespołu uziemiającego sieci SN (transformator uziemiający z dławikiem gaszącym, rezystorem albo układem równoległym) | — | `bay_ref`, `bus_ref`, `catalog_binding`, `dlawik`, `dry_run`, `name`, `odbior_pw_ref`, `rezystor`, `spz`, `uziemienie_bezposrednie`, `wylaczenie_od_transformatorow_refs`, `zespol_ref` | tak | `enm/domain_operations_v2.py::add_zespol_uziemiajacy_sn` |
 | `append_station_on_endpoint` | Dołączenie stacji na końcu istniejącego ciągu SN | — | `construction_type`, `designation`, `dry_run`, `endpoint_bus_ref`, `field_apparatus_catalog_ref`, `nn_block`, `nn_earthing`, `nn_voltage_kv`, `run_ref`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `switchgear`, `transformer` | tak | `enm/domain_operations.py::append_station_on_endpoint` |
 | `close_switch` | Zamknięcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::close_switch` |
-| `connect_secondary_ring_sn` | Zamknięcie pierścienia wtórnego | `from_bus_ref`, `to_bus_ref` | `catalog_binding`, `dlugosc_m`, `ring_name`, `segment` | tak | `enm/domain_operations.py::connect_secondary_ring_sn` |
-| `continue_trunk_segment_sn` | Kontynuacja segmentu magistrali SN | — | `catalog_binding`, `dlugosc_m`, `field_ref`, `from_terminal_id`, `segment`, `terminal_id`, `trunk_id` | tak | `enm/domain_operations.py::continue_trunk_segment_sn` |
+| `connect_secondary_ring_sn` | Zamknięcie pierścienia wtórnego | `from_bus_ref`, `to_bus_ref` | `dlugosc_m`, `ring_name`, `segment` | tak | `enm/domain_operations.py::connect_secondary_ring_sn` |
+| `continue_trunk_segment_sn` | Kontynuacja segmentu magistrali SN | — | `dlugosc_m`, `field_ref`, `from_terminal_id`, `segment`, `terminal_id`, `trunk_id` | tak | `enm/domain_operations.py::continue_trunk_segment_sn` |
 | `delete_gpz_section` | Usunięcie sekcji szyn GPZ ze stacji | `substation_ref`, `section_id` | `side` | nie | `enm/domain_operations.py::delete_gpz_section` |
-| `insert_branch_pole_on_segment_sn` | Wstawienie słupa odgałęźnego na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `catalog_namespace`, `catalog_ref`, `catalog_version`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_branch_pole_on_segment_sn` |
-| `insert_section_switch_sn` | Wstawienie łącznika sekcyjnego na segmencie SN | `segment_id` | `catalog_binding`, `catalog_ref`, `close_ref`, `insert_at`, `normal_state`, `switch_name`, `switch_type` | tak | `enm/domain_operations.py::insert_section_switch_sn` |
-| `insert_station_on_segment_sn` | Wstawienie stacji na istniejącym segmencie SN | `segment_id` (albo `segment_ref`) | `catalog_binding`, `construction_type`, `designation`, `dry_run`, `field_apparatus_catalog_ref`, `insert_at`, `name`, `name_pl`, `nn_block`, `nn_earthing`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `transformer` | tak | `enm/domain_operations.py::insert_station_on_segment_sn` |
-| `insert_zksn_on_segment_sn` | Wstawienie złącza kablowego SN (ZK-SN) na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `catalog_namespace`, `catalog_ref`, `catalog_version`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_zksn_on_segment_sn` |
+| `insert_branch_pole_on_segment_sn` | Wstawienie słupa odgałęźnego na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_branch_pole_on_segment_sn` |
+| `insert_section_switch_sn` | Wstawienie łącznika sekcyjnego na segmencie SN | `segment_id` | `catalog_binding`, `close_ref`, `insert_at`, `normal_state`, `switch_name`, `switch_type` | tak | `enm/domain_operations.py::insert_section_switch_sn` |
+| `insert_station_on_segment_sn` | Wstawienie stacji na istniejącym segmencie SN | `segment_id` (albo `segment_ref`) | `construction_type`, `designation`, `dry_run`, `field_apparatus_catalog_ref`, `insert_at`, `name`, `name_pl`, `nn_block`, `nn_earthing`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `transformer` | tak | `enm/domain_operations.py::insert_station_on_segment_sn` |
+| `insert_zksn_on_segment_sn` | Wstawienie złącza kablowego SN (ZK-SN) na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_zksn_on_segment_sn` |
 | `open_switch` | Otwarcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::open_switch` |
 | `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
 | `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola, usunięcie wyposażenia albo wskazanie wkładki bezpiecznikowej SN | `bay_ref`, `mode` | `bay_template_ref`, `catalog_ref`, `devices` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
 | `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
-| `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
+| `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
 | `update_gpz_section` | Aktualizacja sekcji szyn GPZ (nazwa, kolejność, sprzęgła) | `substation_ref`, `section_id` | `side`, `updates` | nie | `enm/domain_operations.py::update_gpz_section` |
 
 ### Stacja SN/nN i strona nN stacji (`station_nn`, 3)
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `add_nn_load` | Dodanie obciążenia na szynie nN | `feeder_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `bus_nn_ref`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `earth_electrode_r_ohm`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `phases`, `reactive_power_kvar`, `source_mode`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_nn_load` |
-| `add_nn_outgoing_field` | Dodanie pola nN z jawną intencją odpływu albo pola źródłowego | `bus_nn_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `feeder_role`, `field_name`, `field_role`, `source_field_kind`, `station_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_nn_outgoing_field` |
-| `add_transformer_sn_nn` | Dodanie transformatora SN/nN | — | `catalog_binding`, `hv_bus_ref`, `hv_voltage_kv`, `lv_bus_ref`, `lv_voltage_kv`, `lv_voltage_tolerance`, `pk_kw`, `sn_mva`, `station_ref`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `uhv_kv`, `uk_percent`, `ulv_kv`, `vector_group` | tak | `enm/domain_operations.py::add_transformer_sn_nn` |
+| `add_nn_load` | Dodanie obciążenia na szynie nN | `feeder_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `bus_nn_ref`, `c_p`, `c_q`, `catalog_binding`, `connection_type`, `cos_phi`, `earth_electrode_r_ohm`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `phases`, `reactive_power_kvar`, `source_mode`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_nn_load` |
+| `add_nn_outgoing_field` | Dodanie pola nN z jawną intencją odpływu albo pola źródłowego | `bus_nn_ref` | `catalog_binding`, `feeder_role`, `field_name`, `field_role`, `source_field_kind`, `station_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_nn_outgoing_field` |
+| `add_transformer_sn_nn` | Dodanie transformatora SN/nN | — | `hv_bus_ref`, `hv_voltage_kv`, `lv_bus_ref`, `lv_voltage_kv`, `lv_voltage_tolerance`, `pk_kw`, `sn_mva`, `station_ref`, `transformer_catalog_binding`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `uhv_kv`, `uk_percent`, `ulv_kv`, `vector_group` | tak | `enm/domain_operations.py::add_transformer_sn_nn` |
 
 ### Źródła, wytwórcy i wiązania katalogowe (`oze_nn`, 7)
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `add_converter_source` | Dodanie źródła przekształtnikowego PV, BESS lub FW | `source_technology`, `connection_variant` | `battery_catalog_ref`, `bess_mode`, `block_transformer_catalog_ref`, `block_transformer_lv_voltage_tolerance`, `blocking_transformer_ref`, `bus_nn_ref`, `catalog_binding`, `catalog_ref`, `control_mode`, `cos_phi`, `data_umowy_przylaczeniowej`, `deklaracje_modulu`, `der_topology`, `dry_run`, `existing_field_ref`, `frequency_droop_percent`, `has_hvrt_curve`, `has_lvrt_curve`, `lfsm_deadband_hz`, `loadability_pu`, `materialized_params`, `modul_istniejacy`, `mv_bus_ref`, `nastawy_zabezpieczen`, `nc_rfg_module`, `placement`, `power_setpoint_mw`, `q_max_mvar`, `q_min_mvar`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_slope_pu_per_pu`, `quantity`, `simultaneity_factor`, `sn_connection_bus_ref`, `soc_max_percent`, `soc_min_percent`, `source_field`, `source_name`, `station_ref`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_converter_source` |
+| `add_converter_source` | Dodanie źródła przekształtnikowego PV, BESS lub FW | `source_technology`, `connection_variant` | `battery_catalog_ref`, `bess_mode`, `block_transformer_catalog_ref`, `block_transformer_lv_voltage_tolerance`, `blocking_transformer_ref`, `bus_nn_ref`, `catalog_binding`, `control_mode`, `cos_phi`, `data_umowy_przylaczeniowej`, `deklaracje_modulu`, `der_topology`, `dry_run`, `existing_field_ref`, `frequency_droop_percent`, `has_hvrt_curve`, `has_lvrt_curve`, `lfsm_deadband_hz`, `loadability_pu`, `materialized_params`, `modul_istniejacy`, `mv_bus_ref`, `nastawy_zabezpieczen`, `nc_rfg_module`, `placement`, `power_setpoint_mw`, `q_max_mvar`, `q_min_mvar`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_slope_pu_per_pu`, `quantity`, `simultaneity_factor`, `sn_connection_bus_ref`, `soc_max_percent`, `soc_min_percent`, `source_field`, `source_name`, `station_ref`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_converter_source` |
 | `add_genset_nn` | Dodanie zespołu prądotwórczego na szynie nN | `bus_nn_ref`, `genset_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_genset_nn` |
 | `add_ups_nn` | Dodanie zasilacza UPS na szynie nN | `bus_nn_ref`, `ups_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_ups_nn` |
 | `dodaj_karte_widmowa_projektu` | Dodanie karty widmowej urządzenia do katalogu projektu | `karta` | — | nie | `enm/domain_operations_v2.py::dodaj_karte_widmowa_projektu` |
@@ -174,9 +174,9 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `add_ct` | Dodanie przekładnika prądowego (CT) | — | `accuracy_class`, `bay_ref`, `breaker_ref`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `field_ref`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_a`, `ratio_secondary_a` | tak | `enm/domain_operations_v2.py::add_ct` |
-| `add_relay` | Dodanie przekaźnika zabezpieczeniowego | — | `bay_ref`, `breaker_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `ct_ref`, `field_ref`, `name`, `protection`, `relay_type`, `settings`, `vt_ref` | tak | `enm/domain_operations_v2.py::add_relay` |
-| `add_vt` | Dodanie przekładnika napięciowego (VT) | `field_ref` (albo `bay_ref`) | `accuracy_class`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_v`, `ratio_secondary_v`, `vt_uzwojenie` | tak | `enm/domain_operations_v2.py::add_vt` |
+| `add_ct` | Dodanie przekładnika prądowego (CT) | — | `accuracy_class`, `bay_ref`, `breaker_ref`, `burden_va`, `catalog_binding`, `connection`, `field_ref`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_a`, `ratio_secondary_a` | tak | `enm/domain_operations_v2.py::add_ct` |
+| `add_relay` | Dodanie przekaźnika zabezpieczeniowego | — | `bay_ref`, `breaker_ref`, `catalog_binding`, `ct_ref`, `field_ref`, `name`, `relay_type`, `settings`, `vt_ref` | tak | `enm/domain_operations_v2.py::add_relay` |
+| `add_vt` | Dodanie przekładnika napięciowego (VT) | `field_ref` (albo `bay_ref`) | `accuracy_class`, `burden_va`, `catalog_binding`, `connection`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_v`, `ratio_secondary_v`, `vt_uzwojenie` | tak | `enm/domain_operations_v2.py::add_vt` |
 | `set_measurement_secondary_circuit` | Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku | `measurement_ref` (albo `ref_id`), `obwod_wtorny` | `vt_uzwojenie` | nie | `enm/domain_operations_v2.py::set_measurement_secondary_circuit` |
 | `update_protection_settings` | Zapis nastaw zabezpieczenia w modelu sieci | `protection_ref`, `settings` | — | nie | `enm/domain_operations_v2.py::update_protection_settings` |
 
@@ -184,7 +184,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
+| `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
 | `delete_element` | Usunięcie elementu z modelu sieci | `element_ref` | — | nie | `enm/domain_operations.py::delete_element` |
 | `refresh_snapshot` | Odświeżenie koperty odpowiedzi bez modyfikacji modelu | — | — | nie | `enm/domain_operations.py::refresh_snapshot` |
 | `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
@@ -194,11 +194,11 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `add_nn_cable_segment` | Dodanie odcinka kabla nN od szyny/pola do nowej lub istniejącej szyny nN | `from_bus_ref` (albo `from_ref`), `length_m` | `cable_laying_conditions`, `catalog_binding`, `catalog_ref`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name`, `to_bus_ref` | tak | `enm/domain_operations_v2.py::add_nn_cable_segment` |
+| `add_nn_cable_segment` | Dodanie odcinka kabla nN od szyny/pola do nowej lub istniejącej szyny nN | `from_bus_ref` (albo `from_ref`), `length_m` | `cable_laying_conditions`, `catalog_binding`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name`, `to_bus_ref` | tak | `enm/domain_operations_v2.py::add_nn_cable_segment` |
 | `add_nn_distribution_board` | Dodanie podrozdzielnicy/rozdzielnicy nN (RGnN) z szyną główną | `voltage_kv` | `construction_type`, `designation`, `name`, `supply` | tak | `enm/domain_operations_v2.py::add_nn_distribution_board` |
-| `add_nn_rcd` | Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji odbioru (ochrona przez samoczynne wyłączenie w układzie TT/IT) | `load_ref` | `catalog_binding`, `catalog_ref`, `name` | tak | `enm/domain_operations_v2.py::add_nn_rcd` |
-| `add_nn_section_coupler` | Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN (RGnN) | `station_ref` | `catalog_binding`, `catalog_ref`, `name` | tak | `enm/domain_operations_v2.py::add_nn_section_coupler` |
-| `add_nn_switch_device` | Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik) w torze nN | `from_bus_ref`, `to_bus_ref` | `catalog_binding`, `catalog_ref`, `device_class`, `name` | tak | `enm/domain_operations_v2.py::add_nn_switch_device` |
+| `add_nn_rcd` | Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji odbioru (ochrona przez samoczynne wyłączenie w układzie TT/IT) | `load_ref` | `catalog_binding`, `name` | tak | `enm/domain_operations_v2.py::add_nn_rcd` |
+| `add_nn_section_coupler` | Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN (RGnN) | `station_ref` | `catalog_binding`, `name` | tak | `enm/domain_operations_v2.py::add_nn_section_coupler` |
+| `add_nn_switch_device` | Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik) w torze nN | `from_bus_ref`, `to_bus_ref` | `catalog_binding`, `device_class`, `name` | tak | `enm/domain_operations_v2.py::add_nn_switch_device` |
 | `copy_nn_feeder` | Kopia poddrzewa odpływu nN (od aparatu odpływowego w dół) | `feeder_apparatus_ref` | `name` | tak | `enm/domain_operations_v2.py::copy_nn_feeder` |
 | `merge_nn_segments` | Scalenie dwóch odcinków kabla nN tego samego typu przez szynę pośrednią | `segment_a_ref`, `segment_b_ref` | — | tak | `enm/domain_operations_v2.py::merge_nn_segments` |
 | `set_nn_cable_laying_conditions` | Zapis warunków ułożenia odcinka kabla nN (meta, bez fizyki) | `segment_ref`, `cable_laying_conditions` | — | nie | `enm/domain_operations_v2.py::set_nn_cable_laying_conditions` |
@@ -212,54 +212,55 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 
 | Operacja | Obiekt | Klucze |
 |---|---|---|
-| `add_converter_source` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_converter_source` | `der_topology` | `block_transformer`, `connection_level`, `connection_method`, `has_block_transformer`, `has_manufacturer_lv_switchgear`, `inverter_output_voltage_kv`, `lv_switchgear_variant`, `mv_bus_ref`, `mv_field_configuration`, `simultaneity_factor` |
-| `add_converter_source` | `der_topology.block_transformer` | `catalog_binding`, `catalog_ref`, `loadability_pu`, `lv_voltage_tolerance`, `primary_voltage_kv`, `rated_power_mva`, `secondary_voltage_kv`, `uk_percent`, `vector_group` |
-| `add_converter_source` | `der_topology.mv_field_configuration` | `apparatus_catalog_binding`, `bay_template_ref`, `cable_catalog_binding`, `cable_catalog_ref`, `cable_head`, `cable_laying_conditions`, `cable_length_km`, `cable_screen_bonding`, `ct`, `earthing_switch`, `field_name`, `protection_relay`, `surge_arrester`, `switching_device`, `vt` |
-| `add_converter_source` | `der_topology.mv_field_configuration.apparatus_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `der_topology.block_transformer` | `catalog_binding`, `loadability_pu`, `lv_voltage_tolerance`, `primary_voltage_kv`, `rated_power_mva`, `secondary_voltage_kv`, `uk_percent`, `vector_group` |
+| `add_converter_source` | `der_topology.block_transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `der_topology.mv_field_configuration` | `apparatus_catalog_binding`, `bay_template_ref`, `cable_catalog_binding`, `cable_head`, `cable_laying_conditions`, `cable_length_km`, `cable_screen_bonding`, `ct`, `earthing_switch`, `field_name`, `protection_relay`, `surge_arrester`, `switching_device`, `vt` |
+| `add_converter_source` | `der_topology.mv_field_configuration.apparatus_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `der_topology.mv_field_configuration.cable_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_converter_source` | `der_topology.mv_field_configuration.cable_laying_conditions` | `f_grunt`, `f_grupa`, `f_wiazka`, `opis_pl`, `set_name` |
 | `add_converter_source` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
-| `add_converter_source` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_ct` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_generator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_ct` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_generator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_generator_sn` | `manual_params` | `q_max_mvar`, `q_min_mvar`, `rated_kv`, `rated_mva` |
 | `add_genset_nn` | `genset_spec` | `fuel_type`, `operation_mode`, `power_factor`, `rated_power_kw`, `rated_voltage_kv`, `source_name` |
 | `add_genset_nn` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
-| `add_genset_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_grid_source_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_grid_source_sn` | `gpz_line_field_apparatus` | `apparatus_kind`, `catalog_binding`, `catalog_item_id`, `catalog_ref` |
-| `add_grid_source_sn` | `gpz_line_field_apparatus.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_genset_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `gpz_line_field_apparatus` | `apparatus_kind`, `catalog_binding` |
+| `add_grid_source_sn` | `gpz_line_field_apparatus.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `grounding` | `r_ohm`, `type`, `x_ohm` |
 | `add_grid_source_sn` | `manual_equivalent` | `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `sn_voltage_kv`, `u_set_pu`, `voltage_hv_kv`, `x0_ohm`, `x_ohm`, `z0_z1_ratio` |
-| `add_grid_source_sn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `zero_sequence` | `enabled`, `r0_ohm`, `x0_ohm`, `z0_z1_ratio` |
-| `add_load_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_load_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_nn_cable_segment` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
-| `add_nn_cable_segment` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_distribution_board` | `supply` | `cable_laying_conditions`, `catalog_binding`, `catalog_ref`, `from_bus_ref`, `from_ref`, `length_m`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name` |
+| `add_nn_cable_segment` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_distribution_board` | `supply` | `cable_laying_conditions`, `catalog_binding`, `from_bus_ref`, `from_ref`, `length_m`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name` |
 | `add_nn_distribution_board` | `supply.cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
-| `add_nn_distribution_board` | `supply.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_load` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_outgoing_field` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_rcd` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_section_coupler` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_nn_switch_device` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_relay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_relay` | `protection` | `catalog_item_id`, `catalog_item_version`, `catalog_ref` |
-| `add_shunt_compensator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_sn_bay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_surge_arrester_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_transformer_sn_nn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_distribution_board` | `supply.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_load` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_outgoing_field` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_rcd` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_section_coupler` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_switch_device` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_relay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_shunt_compensator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_sn_bay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_surge_arrester_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_transformer_sn_nn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_ups_nn` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
-| `add_ups_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_ups_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `add_ups_nn` | `ups_spec` | `backup_time_min`, `battery_type`, `operation_mode`, `rated_power_kw`, `source_name` |
-| `add_vt` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_zespol_uziemiajacy_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_zespol_uziemiajacy_sn` | `dlawik` | `awsc`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `i_nastawy_a`, `stan_odlacznika` |
+| `add_vt` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_zespol_uziemiajacy_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_zespol_uziemiajacy_sn` | `dlawik` | `awsc`, `catalog_binding`, `i_nastawy_a`, `stan_odlacznika` |
 | `add_zespol_uziemiajacy_sn` | `dlawik.awsc` | `czas_zalaczenia_s`, `czas_zwloki_s`, `i_wymuszany_a`, `strona` |
-| `add_zespol_uziemiajacy_sn` | `dlawik.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_zespol_uziemiajacy_sn` | `rezystor` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `stan_odlacznika` |
-| `add_zespol_uziemiajacy_sn` | `rezystor.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_zespol_uziemiajacy_sn` | `dlawik.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `add_zespol_uziemiajacy_sn` | `rezystor` | `catalog_binding`, `stan_odlacznika` |
+| `add_zespol_uziemiajacy_sn` | `rezystor.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `append_station_on_endpoint` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `append_station_on_endpoint` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
 | `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
@@ -269,21 +270,18 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `append_station_on_endpoint` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `append_station_on_endpoint` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
-| `append_station_on_endpoint` | `transformer` | `catalog_binding`, `catalog_ref`, `create`, `n_parallel`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
-| `append_station_on_endpoint` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `assign_catalog_to_element` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `connect_secondary_ring_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `connect_secondary_ring_sn` | `segment` | `catalog_binding`, `catalog_ref`, `dlugosc_m`, `rodzaj`, `screen_bonding` |
-| `connect_secondary_ring_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `continue_trunk_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `continue_trunk_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
-| `continue_trunk_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `append_station_on_endpoint` | `transformer` | `create`, `n_parallel`, `transformer_catalog_binding`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
+| `append_station_on_endpoint` | `transformer.transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `assign_catalog_to_element` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `connect_secondary_ring_sn` | `segment` | `catalog_binding`, `dlugosc_m`, `rodzaj`, `screen_bonding` |
+| `connect_secondary_ring_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `continue_trunk_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
+| `continue_trunk_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `continue_trunk_segment_sn` | `segment.zero_sequence` | `b0_siemens_per_km`, `r0_ohm_per_km`, `x0_ohm_per_km` |
-| `insert_branch_pole_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_branch_pole_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `insert_branch_pole_on_segment_sn` | `insert_at` | `mode`, `value` |
-| `insert_section_switch_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_section_switch_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `insert_section_switch_sn` | `insert_at` | `mode`, `value` |
-| `insert_station_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `insert_station_on_segment_sn` | `insert_at` | `mode`, `value` |
 | `insert_station_on_segment_sn` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `insert_station_on_segment_sn` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
@@ -294,15 +292,14 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `insert_station_on_segment_sn` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
-| `insert_station_on_segment_sn` | `transformer` | `catalog_binding`, `create`, `n_parallel`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
-| `insert_station_on_segment_sn` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `insert_zksn_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_station_on_segment_sn` | `transformer` | `create`, `n_parallel`, `transformer_catalog_binding`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
+| `insert_station_on_segment_sn` | `transformer.transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
+| `insert_zksn_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `insert_zksn_on_segment_sn` | `insert_at` | `mode`, `value` |
 | `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `placement` |
 | `set_nn_cable_laying_conditions` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
-| `start_branch_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `start_branch_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
-| `start_branch_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `start_branch_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
+| `start_branch_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `materialize`, `snapshot_mapping_version` |
 | `start_branch_segment_sn` | `segment.zero_sequence` | `b0_siemens_per_km`, `r0_ohm_per_km`, `x0_ohm_per_km` |
 <!-- GENEROWANE:ksztalty-ladunku:KONIEC -->
 
@@ -387,7 +384,9 @@ API. Krok oznaczony „odmowa nazwana” pokazuje odmowę z kodem — model zost
         "rx_ratio": 0.1
       },
       "transformer_count": 1,
-      "transformer_catalog_ref": "tr-wn-sn-110-15-25mva-yd11"
+      "transformer_catalog_binding": {
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11"
+      }
     }
   }
 }
@@ -544,7 +543,9 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
       ],
       "transformer": {
         "create": true,
-        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+        "transformer_catalog_binding": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+        }
       },
       "nn_block": {
         "outgoing_feeders_nn_count": 2
@@ -693,7 +694,9 @@ Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 1; zdarzenia:
       },
       "transformer": {
         "create": true,
-        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+        "transformer_catalog_binding": {
+          "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+        }
       }
     }
   }
@@ -882,7 +885,9 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia:
       "bus_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_bus",
       "bay_role": "OUT",
       "field_name": "Pole liniowe L3",
-      "catalog_ref": "sw-cb-abb-vd4-17kv-630a"
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a"
+      }
     }
   }
 }
@@ -993,13 +998,19 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
     "payload": {
       "bus_ref": "gpz/32abcfb31cf95f951fb979573f45eca2/section/001/bus_sn",
       "name": "Zespół uziemiający GPZ",
-      "catalog_ref": "TU_ZNYN11_15KV_PW160",
+      "catalog_binding": {
+        "catalog_item_id": "TU_ZNYN11_15KV_PW160"
+      },
       "dlawik": {
-        "catalog_ref": "DL_40_400A_15KV_CIAGLY",
+        "catalog_binding": {
+          "catalog_item_id": "DL_40_400A_15KV_CIAGLY"
+        },
         "i_nastawy_a": 120.0
       },
       "rezystor": {
-        "catalog_ref": "REZ_200A_15KV"
+        "catalog_binding": {
+          "catalog_item_id": "REZ_200A_15KV"
+        }
       }
     }
   }
@@ -1435,7 +1446,9 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
     "payload": {
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000",
       "ct_ref": "ct/0837f8bce764193b7bffcddcfc80f1c8/measurement",
-      "catalog_ref": "REF-OC-100",
+      "catalog_binding": {
+        "catalog_item_id": "REF-OC-100"
+      },
       "settings": [
         {
           "function_type": "overcurrent_51",
@@ -1524,7 +1537,9 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
     "payload": {
       "hv_bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "lv_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
-      "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+      "transformer_catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+      }
     }
   }
 }
@@ -1545,7 +1560,9 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
       "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
       "bus_nn_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
       "field_name": "Odpływ F1",
-      "catalog_ref": "cb_nn_630a"
+      "catalog_binding": {
+        "catalog_item_id": "cb_nn_630a"
+      }
     }
   }
 }
@@ -1565,7 +1582,9 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
     "payload": {
       "from_bus_ref": "nn/da470729eec76c081755f9dde7dcc1f0/feeder_bus",
       "length_m": 80.0,
-      "catalog_ref": "kab_nn_4x120_al",
+      "catalog_binding": {
+        "catalog_item_id": "kab_nn_4x120_al"
+      },
       "name": "Kabel nN K1"
     }
   }
@@ -1606,7 +1625,9 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
       "from_bus_ref": "nn/a4123adfdaaa269d3381db688ef11b44/cable_bus",
       "to_bus_ref": "nn/a5f367b2ac8880036ad52060287b0d8e/board_bus",
       "device_class": "fuse",
-      "catalog_ref": "cb_nn_630a",
+      "catalog_binding": {
+        "catalog_item_id": "cb_nn_630a"
+      },
       "name": "Bezpiecznik złącza Z1"
     }
   }
@@ -1626,7 +1647,9 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
     "idempotency_key": "przyklad-48",
     "payload": {
       "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
-      "catalog_ref": "cb_nn_630a"
+      "catalog_binding": {
+        "catalog_item_id": "cb_nn_630a"
+      }
     }
   }
 }

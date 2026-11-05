@@ -438,7 +438,9 @@ def test_get_field_view_czyta_pola_typowane_rekordu(uow_factory):
     payload = _enm_with_bay()
     pole = payload["bays"][0]
     pole["switchgear_family_ref"] = "rodzina-testowa"
-    pole["surge_arresters"] = [{"device_ref": "ogr-1", "catalog_ref": "ogr_kat"}]
+    pole["surge_arresters"] = [
+        {"device_ref": "ogr-1", "catalog_binding": {"catalog_item_id": "ogr_kat"}}
+    ]
     payload["bays"].append(
         {
             "ref_id": "bay_bez_rodziny",

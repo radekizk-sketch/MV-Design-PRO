@@ -25,7 +25,7 @@ def _add_gpz(enm_dict: dict) -> dict:
         payload={
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )
     assert result.get("snapshot") is not None
@@ -148,7 +148,7 @@ class TestCatalogMaterializationPersistence:
             op_name="assign_catalog_to_element",
             payload={
                 "element_ref": branch_ref,
-                "catalog_item_id": None,
+                "catalog_binding": None,
             },
         )
 

@@ -89,7 +89,10 @@ def _stacja(segment: str) -> dict[str, Any]:
             {"field_role": "LINIA_OUT"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
-        "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+        },
     }
 
 

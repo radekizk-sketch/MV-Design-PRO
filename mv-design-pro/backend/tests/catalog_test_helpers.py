@@ -48,11 +48,13 @@ def gpz_payload(
         "voltage_kv": voltage_kv,
         "sk3_mva": sk3_mva,
         "rx_ratio": rx_ratio,
-        "catalog_ref": gpz_catalog_ref(
-            voltage_kv=voltage_kv,
-            sk3_mva=sk3_mva,
-            rx_ratio=rx_ratio,
-        ),
+        "catalog_binding": {
+            "catalog_item_id": gpz_catalog_ref(
+                voltage_kv=voltage_kv,
+                sk3_mva=sk3_mva,
+                rx_ratio=rx_ratio,
+            )
+        },
         # Karta GPZ-MODEL: równoważnik z katalogu ZRODLO_SN stoi na szynach SN GPZ —
         # granica zasilania SN, transformatory 110/SN poza modelem (dawna para
         # `hv_voltage_kv` + `transformer_sn_mva` budowała ślepe transformatory).

@@ -286,7 +286,10 @@ def _add_trunk_station(
 
     ``trafo_n_parallel`` ≥ 2 — identyczne jednostki pola transformatorowego (``n_parallel``,
     Σ S_n w kontroli O-53 i Z/n w solverze)."""
-    transformer: dict[str, Any] = {"create": True, "transformer_catalog_ref": trafo_ref}
+    transformer: dict[str, Any] = {
+        "create": True,
+        "transformer_catalog_binding": {"catalog_item_id": trafo_ref},
+    }
     if trafo_n_parallel >= 2:
         transformer["n_parallel"] = trafo_n_parallel
     return _op(
@@ -344,7 +347,6 @@ def _add_der(
             "connection_variant": "nn_side",
             "station_ref": station_ref,
             "bus_nn_ref": nn_ref,
-            "catalog_ref": catalog_ref,
             "catalog_binding": {
                 "catalog_namespace": catalog_namespace,
                 "catalog_item_id": catalog_ref,
@@ -436,7 +438,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "rx_ratio": 0.1,
             },
             "transformer_count": 1,
-            "transformer_catalog_ref": _GPZ_WN_SN_TRANSFORMER_REF,
+            "transformer_catalog_binding": {"catalog_item_id": _GPZ_WN_SN_TRANSFORMER_REF},
         },
     )
 
@@ -476,7 +478,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                     "rodzaj": rodzaj,
                     "dlugosc_m": length_m,
                     "name": f"Magistrala {idx + 1}",
-                    "catalog_ref": cat_ref,
+                    "catalog_binding": {"catalog_item_id": cat_ref},
                 },
             },
         )
@@ -533,7 +535,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 180,
-                    "catalog_ref": _CABLE_REF,
+                    "catalog_binding": {"catalog_item_id": _CABLE_REF},
                 },
             },
         )
@@ -576,7 +578,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                     ],
                     "transformer": {
                         "create": True,
-                        "transformer_catalog_ref": _TRAFO_STANDARD,
+                        "transformer_catalog_binding": {"catalog_item_id": _TRAFO_STANDARD},
                     },
                     "nn_block": {"outgoing_feeders_nn_count": 2},
                 },
@@ -716,7 +718,6 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "switch_type": "ROZLACZNIK",
                 "normal_state": "open",
                 "switch_name": "Łącznik sekcyjny NO (rezerwa)",
-                "catalog_ref": _NOP_SWITCH_REF,
                 "catalog_binding": {
                     "catalog_namespace": _NOP_SWITCH_NAMESPACE,
                     "catalog_item_id": _NOP_SWITCH_REF,
@@ -768,7 +769,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": _CABLE_REF,
+                    "catalog_binding": {"catalog_item_id": _CABLE_REF},
                 },
                 "ring_name": "Rezerwa pierścieniowa (odcinek NOP)",
             },

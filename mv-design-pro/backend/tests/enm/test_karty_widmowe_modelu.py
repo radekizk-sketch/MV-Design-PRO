@@ -69,17 +69,23 @@ def _siec(napiecie_nn_kv: float, trafo: str) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": h.REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": h.REF_ZRODLO},
         },
     )
     snapshot = h._wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": h.REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": h.REF_KABEL},
+            }
+        },
     )
     payload = h._payload_stacji(str(snapshot["branches"][-1]["to_bus_ref"]), h._blok_nn())
     payload["nn_voltage_kv"] = napiecie_nn_kv
-    payload["transformer"]["transformer_catalog_ref"] = trafo
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": trafo}
     return h._wykonaj(snapshot, "append_station_on_endpoint", payload)
 
 
@@ -103,7 +109,7 @@ def _zrodlo_z_karty(technologia: str, typ: str, napiecie: float, trafo: str) -> 
             "station_ref": h._stacja_ref(snapshot),
             "bus_nn_ref": _szyna_nn(snapshot, napiecie),
             "source_name": f"Źródło {technologia}",
-            "catalog_ref": typ,
+            "catalog_binding": {"catalog_item_id": typ},
         },
     )
 
@@ -384,7 +390,10 @@ def test_przypisanie_tego_samego_typu_przematerializowuje_modele() -> None:
     wynik = execute_domain_operation(
         zwiazany,
         "assign_catalog_to_element",
-        {"element_ref": ref, "catalog_item_id": TYP_PV, "catalog_namespace": "ZRODLO_NN_PV"},
+        {
+            "element_ref": ref,
+            "catalog_binding": {"catalog_item_id": TYP_PV, "catalog_namespace": "ZRODLO_NN_PV"},
+        },
     )
     assert not wynik.get("error"), wynik.get("error")
     assert _generator(wynik["snapshot"])["modele_widmowe"] == przed
@@ -397,8 +406,10 @@ def test_przypisanie_innego_typu_jest_odmowa_nazwana() -> None:
         "assign_catalog_to_element",
         {
             "element_ref": ref,
-            "catalog_item_id": "conv-pv-nn-0p5mw-0p8kv",
-            "catalog_namespace": "ZRODLO_NN_PV",
+            "catalog_binding": {
+                "catalog_item_id": "conv-pv-nn-0p5mw-0p8kv",
+                "catalog_namespace": "ZRODLO_NN_PV",
+            },
         },
     )
     assert wynik.get("error_code") == "der_bindings.karta_widmowa_innego_urzadzenia", wynik
@@ -692,13 +703,19 @@ def _model_z_linia() -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": h.REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": h.REF_ZRODLO},
         },
     )
     return h._wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "LINIA", "dlugosc_m": 1000.0, "catalog_ref": LINIA_SN}},
+        {
+            "segment": {
+                "rodzaj": "LINIA",
+                "dlugosc_m": 1000.0,
+                "catalog_binding": {"catalog_item_id": LINIA_SN},
+            }
+        },
     )
 
 

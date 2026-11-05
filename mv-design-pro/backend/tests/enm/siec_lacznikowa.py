@@ -71,7 +71,7 @@ def _gpz(sekcje: int = 1) -> dict[str, Any]:
         "source_name": "GPZ Lacznikowy",
         "sk3_mva": 300.0,
         "rx_ratio": 0.1,
-        "catalog_ref": "src-gpz-15kv-300mva-rx010",
+        "catalog_binding": {"catalog_item_id": "src-gpz-15kv-300mva-rx010"},
     }
     if sekcje > 1:
         ladunek["sections_count"] = sekcje
@@ -83,7 +83,13 @@ def _odcinki(enm: dict[str, Any], dlugosci: list[int]) -> dict[str, Any]:
         enm = wykonaj(
             enm,
             "continue_trunk_segment_sn",
-            {"segment": {"rodzaj": "KABEL", "dlugosc_m": dlugosc, "catalog_ref": KABEL}},
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": dlugosc,
+                    "catalog_binding": {"catalog_item_id": KABEL},
+                }
+            },
         )
     return enm
 
@@ -100,7 +106,7 @@ def _wstaw_lacznik(enm: dict[str, Any], segment: str) -> tuple[dict[str, Any], s
         {
             "segment_id": segment,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": ROZLACZNIK,
+            "catalog_binding": {"catalog_item_id": ROZLACZNIK},
         },
     )
     nowe = [
@@ -124,7 +130,11 @@ def pierscien_z_nop() -> SiecLacznikowa:
         {
             "from_bus_ref": szyna_gpz,
             "to_bus_ref": koniec,
-            "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": KABEL},
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 400,
+                "catalog_binding": {"catalog_item_id": KABEL},
+            },
         },
     )
     enm = wykonaj(enm, "set_normal_open_point", {"switch_ref": lacznik_a})
@@ -162,7 +172,7 @@ def bezpiecznik_nn() -> SiecLacznikowa:
             "from_bus_ref": szyny[0],
             "to_bus_ref": szyny[1],
             "device_class": "fuse",
-            "catalog_ref": APARAT_NN,
+            "catalog_binding": {"catalog_item_id": APARAT_NN},
         },
     )
     (bezpiecznik,) = (b["ref_id"] for b in enm["branches"] if b["ref_id"] not in przed)

@@ -189,7 +189,10 @@ class KlientBudowy:
                     {"field_role": "LINIA_OUT"},
                     {"field_role": "TRANSFORMATOROWE"},
                 ],
-                "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+                },
                 "nn_block": {"outgoing_feeders_nn_count": nn_odplywy},
             },
         )
@@ -230,7 +233,6 @@ class KlientBudowy:
                 "switch_type": "ROZLACZNIK",
                 "normal_state": stan,
                 "switch_name": nazwa,
-                "catalog_ref": LACZNIK_SEKCYJNY,
                 "catalog_binding": wiazanie("APARAT_SN", LACZNIK_SEKCYJNY),
             },
         )

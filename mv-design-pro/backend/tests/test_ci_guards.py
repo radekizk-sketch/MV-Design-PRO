@@ -120,7 +120,7 @@ class TestSnapshotDeterminism:
             "voltage_kv": 15.0,
             "source_name": "GPZ Test",
             "sk3_mva": 500.0,
-            "catalog_ref": "src-gpz-15kv-500mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-500mva-rx010"},
         }
 
         result1 = execute_domain_operation(enm, "add_grid_source_sn", payload)
@@ -136,7 +136,7 @@ class TestSnapshotDeterminism:
         enm = _empty_enm()
         payload = {
             "voltage_kv": 15.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         }
         result = execute_domain_operation(enm, "add_grid_source_sn", payload)
         assert result.get("error") is None, result.get("error")
@@ -168,7 +168,7 @@ class TestReadinessCodes:
             "add_grid_source_sn",
             {
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             },
         )
         assert result.get("error") is None, result.get("error")

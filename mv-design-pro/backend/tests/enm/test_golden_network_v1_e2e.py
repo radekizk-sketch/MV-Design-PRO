@@ -80,7 +80,7 @@ def _continue_trunk(enm_dict: dict, dlugosc_m: int = 320) -> dict:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": dlugosc_m,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -214,7 +214,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )
@@ -249,7 +249,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 210,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -280,7 +280,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )
@@ -304,7 +304,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 140,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -325,7 +325,7 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
         payload={
             "segment_id": ring_segment_ref,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+            "catalog_binding": {"catalog_item_id": "sw-ls-schneider-rm6-17kv-400a"},
         },
     )
     _assert_step_ok(r8, "Krok 8: insert_section_switch_sn")

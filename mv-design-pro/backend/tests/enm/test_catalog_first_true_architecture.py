@@ -26,7 +26,7 @@ def _seed_with_segment(rodzaj: str = "LINIA_NAPOWIETRZNA") -> tuple[dict, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )["snapshot"]
     s2 = execute_domain_operation(
@@ -36,7 +36,7 @@ def _seed_with_segment(rodzaj: str = "LINIA_NAPOWIETRZNA") -> tuple[dict, str]:
             "segment": {
                 "rodzaj": rodzaj,
                 "dlugosc_m": 600,
-                "catalog_ref": catalog_ref,
+                "catalog_binding": {"catalog_item_id": catalog_ref},
             },
         },
     )["snapshot"]
@@ -49,7 +49,7 @@ def test_insert_branch_pole_on_overhead_line() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"}},
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
@@ -72,7 +72,7 @@ def test_continue_trunk_segment_accepts_explicit_zero_sequence_data() -> None:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )["snapshot"]
     resp = execute_domain_operation(
@@ -82,7 +82,7 @@ def test_continue_trunk_segment_accepts_explicit_zero_sequence_data() -> None:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 600,
-                "catalog_ref": CATALOG_KABEL_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
                 "zero_sequence": {"r0_ohm_per_km": 0.74, "x0_ohm_per_km": 0.31},
             },
         },
@@ -98,7 +98,7 @@ def test_reject_insert_branch_pole_on_cable() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"}},
     )
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -108,7 +108,7 @@ def test_insert_zksn_on_cable() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A"},
+        {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"}},
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
@@ -133,7 +133,7 @@ def test_reject_insert_zksn_on_overhead_line() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A"},
+        {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"}},
     )
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -146,7 +146,11 @@ def test_refresh_snapshot_drops_legacy_zksn_switch_state_copy() -> None:
     legacy = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
+        {
+            "segment_id": seg_id,
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
+            "branch_ports_count": 2,
+        },
     )["snapshot"]
     legacy["branch_points"][0]["switch_state"] = "closed"
 
@@ -172,7 +176,7 @@ def test_branch_from_branch_pole_branch_port() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"}},
     )["snapshot"]
     bp = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "branch_pole")
 
@@ -184,7 +188,7 @@ def test_branch_from_branch_pole_branch_port() -> None:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 100,
-                "catalog_ref": CATALOG_LINIA_ODG,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINIA_ODG},
             },
         },
     )
@@ -197,7 +201,11 @@ def test_start_branch_segment_accepts_explicit_zero_sequence_data() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12", "switch_state": "closed"},
+        {
+            "segment_id": seg_id,
+            "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
+            "switch_state": "closed",
+        },
     )["snapshot"]
     bp = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "branch_pole")
 
@@ -209,7 +217,7 @@ def test_start_branch_segment_accepts_explicit_zero_sequence_data() -> None:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 100,
-                "catalog_ref": CATALOG_LINIA_ODG,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINIA_ODG},
                 "zero_sequence": {"r0_ohm_per_km": 1.11, "x0_ohm_per_km": 1.37},
             },
         },
@@ -230,7 +238,11 @@ def test_branch_from_zksn_branch_1_port() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
+        {
+            "segment_id": seg_id,
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
+            "branch_ports_count": 2,
+        },
     )["snapshot"]
     zksn = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "zksn")
 
@@ -239,7 +251,11 @@ def test_branch_from_zksn_branch_1_port() -> None:
         "start_branch_segment_sn",
         {
             "from_ref": f"{zksn['ref_id']}.BRANCH_1",
-            "segment": {"rodzaj": "KABEL", "dlugosc_m": 80, "catalog_ref": CATALOG_KABEL_SN},
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 80,
+                "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
+            },
         },
     )
     assert resp.get("error") in (None, "")
@@ -254,7 +270,7 @@ def test_branch_point_ports_are_electrically_connected_to_main_node() -> None:
         "insert_zksn_on_segment_sn",
         {
             "segment_id": seg_id,
-            "catalog_ref": "ZKSN-2P-630A",
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
             "branch_ports_count": 2,
             "switch_state": "closed",
         },
@@ -291,7 +307,7 @@ def test_branch_point_split_preserves_zero_sequence_segment_data() -> None:
         "insert_branch_pole_on_segment_sn",
         {
             "segment_id": seg_id,
-            "catalog_ref": "SLUP-ODG-12",
+            "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
             "switch_state": "closed",
         },
     )

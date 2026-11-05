@@ -183,7 +183,7 @@ def test_dwa_transformatory_z_tej_samej_szyny_hv_auto_lv_bez_kolizji() -> None:
         "add_transformer_sn_nn",
         {
             **wspolny_payload,
-            "transformer_catalog_ref": "bench_ieee14bus_br15",
+            "transformer_catalog_binding": {"catalog_item_id": "bench_ieee14bus_br15"},
             "transformer_tap_step_percent": 6.0,
         },
     )

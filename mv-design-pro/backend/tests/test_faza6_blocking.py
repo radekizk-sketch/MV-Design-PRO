@@ -45,7 +45,7 @@ def _enm_with_source() -> dict:
         payload={
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )
     assert result.get("snapshot") is not None, "add_grid_source_sn musi zwrócić snapshot"
@@ -65,7 +65,7 @@ def _minimal_network() -> dict:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             }
         },
     )
@@ -95,7 +95,7 @@ class TestAllOperationsReturnSnapshot:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         assert result.get("snapshot") is not None, "snapshot nie może być None"
@@ -113,7 +113,7 @@ class TestAllOperationsReturnSnapshot:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 }
             },
         )
@@ -164,7 +164,7 @@ class TestSnapshotChangesAfterOperation:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         fp_after = _snapshot_fingerprint(result["snapshot"])
@@ -180,7 +180,7 @@ class TestSnapshotChangesAfterOperation:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 }
             },
         )
@@ -203,7 +203,7 @@ class TestSnapshotChangesAfterOperation:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         changes = result.get("changes", {})
@@ -345,7 +345,7 @@ class TestNoUnhandledException:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         assert "error" in result, "Drugie dodanie GPZ powinno zwrócić error"
@@ -420,7 +420,7 @@ class TestFullDesignPath:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         assert result.get("snapshot") is not None
@@ -437,7 +437,7 @@ class TestFullDesignPath:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -456,7 +456,7 @@ class TestFullDesignPath:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -489,7 +489,7 @@ class TestFullDesignPath:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         r_after_gpz = execute_domain_operation(r_gpz["snapshot"], "refresh_snapshot", {})
@@ -532,7 +532,7 @@ class TestResponseEnvelopeCompleteness:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": CATALOG_ZRODLO_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             },
         )
         for field in self.REQUIRED_FIELDS:

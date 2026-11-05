@@ -43,7 +43,7 @@ def _add_gpz(enm_dict: dict) -> dict:
         payload={
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )
     assert result.get("snapshot") is not None
@@ -59,7 +59,7 @@ def _add_segment_with_catalog(enm_dict: dict) -> dict:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
-                "catalog_ref": CATALOG_KABEL_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
             },
         },
     )
@@ -121,7 +121,7 @@ class TestCatalogGateContinueTrunk:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": CATALOG_KABEL_SN,
+                    "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
                 },
             },
         )
@@ -197,7 +197,7 @@ class TestCatalogGateStartBranch:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": CATALOG_KABEL_SN,
+                    "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
                 },
             },
         )
@@ -259,7 +259,7 @@ class TestCatalogGateInsertStation:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": CATALOG_TRAFO_SN_NN,
+                    "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_SN_NN},
                 },
             },
         )
@@ -288,7 +288,7 @@ class TestCatalogGateInsertStation:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": CATALOG_TRAFO_SN_NN,
+                    "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_SN_NN},
                 },
             },
         )
@@ -408,7 +408,7 @@ class TestCatalogGateDeterminism:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
-                "catalog_ref": CATALOG_KABEL_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
             },
         }
 
@@ -489,7 +489,7 @@ def _add_overhead_line_with_catalog(enm_dict: dict) -> dict:
             "segment": {
                 "rodzaj": "LINIA",
                 "dlugosc_m": 800,
-                "catalog_ref": CATALOG_LINIA_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINIA_SN},
             },
         },
     )
@@ -542,7 +542,7 @@ class TestCatalogGateInsertBranchPole:
             payload={
                 "segment_id": seg_ref,
                 "name": "Słup rozgałęźny SN",
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "insert_at": {"mode": "RATIO", "value": 0.5},
             },
         )
@@ -637,7 +637,7 @@ class TestCatalogGateInsertZKSN:
                 # ZKSN ma WŁASNY katalog obiektów (mv_branch_points) — pozycja
                 # aparatu łączeniowego nie jest pozycją punktu rozgałęzienia.
                 "segment_id": seg_ref,
-                "catalog_ref": CATALOG_ZKSN,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZKSN},
                 "insert_at": {"mode": "RATIO", "value": 0.5},
                 "switch_state": "closed",
             },
@@ -688,7 +688,7 @@ class TestCatalogGateInsertSectionSwitch:
             payload={
                 "segment_id": seg_ref,
                 "switch_type": "ROZLACZNIK",
-                "catalog_ref": CATALOG_APARAT_SN,
+                "catalog_binding": {"catalog_item_id": CATALOG_APARAT_SN},
             },
         )
         assert result.get("snapshot") is not None, f"Błąd: {result.get('error')}"

@@ -42,7 +42,7 @@ def _empty_enm() -> dict[str, Any]:
 
 def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, Any]:
     if name == "add_grid_source_sn" and "catalog_ref" not in payload:
-        payload = {**payload, "catalog_ref": CATALOG_ZRODLO_250}
+        payload = {**payload, "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250}}
     result = execute_domain_operation(snap, name, payload)
     err = result.get("error")
     assert not err, f"Operacja '{name}' zwróciła błąd: {err} (code={result.get('error_code')})"
@@ -60,7 +60,7 @@ def _build_gpz_with_segment_500m() -> tuple[dict[str, Any], str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -75,7 +75,7 @@ def _exec_dry_run(snap: dict[str, Any], seg_id: str, **kwargs: Any) -> dict[str,
         "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "dry_run": True,
         "station": {"name": "Stacja", "station_type": "inline", "nn_voltage_kv": 0.4},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+        "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
         **kwargs,
     }
     return execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)

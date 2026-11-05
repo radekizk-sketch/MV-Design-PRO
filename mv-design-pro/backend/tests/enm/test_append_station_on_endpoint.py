@@ -53,7 +53,11 @@ def _empty_enm() -> dict[str, Any]:
 def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, Any]:
     if name == "add_grid_source_sn":
         payload = {
-            **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            **(
+                {"catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250}}
+                if "catalog_ref" not in payload
+                else {}
+            ),
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -80,7 +84,7 @@ def _build_gpz_with_endpoint() -> tuple[dict[str, Any], str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -146,7 +150,7 @@ def test_dry_run_does_not_mutate_original() -> None:
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "dry_run": True,
         },
@@ -200,7 +204,7 @@ def test_rejects_endpoint_not_free() -> None:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -316,7 +320,7 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja Pełna", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
         },
     )
@@ -375,7 +379,7 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
                     "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
                 },
             },
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "sn_fields": [
                 {
@@ -462,7 +466,7 @@ def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() 
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -501,7 +505,7 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
                     "switchgear_family_ref": "ZPUE_CANONICAL_RMU",
                 },
             },
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "sn_fields": [
                 {
@@ -561,7 +565,7 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 250.0,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -597,7 +601,7 @@ def test_endpoint_append_updates_existing_line_run_with_station() -> None:
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "run_ref": run_ref,
             "station": {"name": "Stacja W Ciągu", "station_type": "inline"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
         },
     )
@@ -778,7 +782,7 @@ def test_endpoint_append_pv_nn_block_materializes_source_and_nn_fields() -> None
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja PV append", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_block": _pv_nn_block(),
         },
@@ -843,7 +847,7 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja uziem append", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_earthing": {
                 "lv_system": "TN-S",
@@ -881,7 +885,7 @@ def test_endpoint_append_nn_earthing_niesie_tolerancje_sieci_nn(
             "endpoint_bus_ref": endpoint,
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja tolerancja", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": tolerancja},
         },
@@ -911,7 +915,7 @@ def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja PW append", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_block": {"nn_configuration": "LOAD_NN", "outgoing_feeders_nn_count": 1},
             "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.8},
@@ -941,7 +945,7 @@ def test_endpoint_append_station_auxiliary_bez_q_i_cosphi_odrzucone() -> None:
             "endpoint_bus_ref": endpoint,
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja PW append bez cosphi", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_block": {"nn_configuration": "LOAD_NN", "outgoing_feeders_nn_count": 1},
             # Ani reactive_power_kvar, ani cos_phi — moc bierna nierozstrzygalna.
@@ -970,7 +974,10 @@ def test_endpoint_append_parallel_transformers_aggregate_impedance() -> None:
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja 2xTR append", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630, "n_parallel": 2},
+            "transformer": {
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+                "n_parallel": 2,
+            },
             "nn_voltage_kv": 0.4,
         },
     )
@@ -999,7 +1006,7 @@ def test_endpoint_append_without_nn_earthing_leaves_transformer_neutral_unset() 
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja bez uziem", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
         },
     )
@@ -1026,7 +1033,7 @@ def test_endpoint_append_load_nn_block_creates_fields_without_generator() -> Non
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja LOAD append", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
             "nn_voltage_kv": 0.4,
             "nn_block": {
                 "outgoing_feeders_nn_count": 3,
@@ -1072,7 +1079,7 @@ def test_zly_ref_katalogowy_konczy_operacje_bledem_zamiast_wstrzykiwac_impedancj
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja z literowka", "station_type": "terminal"},
             "transformer": {
-                "transformer_catalog_ref": "trafo-ktorego-nie-ma",
+                "transformer_catalog_binding": {"catalog_item_id": "trafo-ktorego-nie-ma"},
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,
@@ -1105,7 +1112,7 @@ def test_fizyka_transformatora_pochodzi_z_katalogu_a_nie_z_tabliczki_w_payloadzi
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja katalogowa", "station_type": "terminal"},
             "transformer": {
-                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,
@@ -1141,7 +1148,7 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja pomiarowa", "station_type": "terminal"},
             "transformer": {
-                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,

@@ -136,24 +136,24 @@ PRZYCZYNA_WARIANTU: dict[str, str] = {
 
 def _zespol(wariant: str, sekcja: int) -> dict[str, Any] | None:
     """Ładunek zespołu uziemiającego sekcji (``add_grid_source_sn.zespoly_uziemiajace``)."""
-    dlawik = {"catalog_ref": DLAWIK, "i_nastawy_a": I_NASTAWY_A}
+    dlawik = {"catalog_binding": {"catalog_item_id": DLAWIK}, "i_nastawy_a": I_NASTAWY_A}
     if wariant in ("izolowany", "uzwojenie_tr"):
         return None
-    zespol: dict[str, Any] = {"sekcja": sekcja, "catalog_ref": TU}
+    zespol: dict[str, Any] = {"sekcja": sekcja, "catalog_binding": {"catalog_item_id": TU}}
     if wariant == "dlawik":
         zespol["dlawik"] = dlawik
     elif wariant.startswith("dlawik_awsc"):
         zespol["dlawik"] = {**dlawik, "awsc": {"i_wymuszany_a": I_AWSC_A}}
     elif wariant == "rezystor":
-        zespol["rezystor"] = {"catalog_ref": REZYSTOR}
+        zespol["rezystor"] = {"catalog_binding": {"catalog_item_id": REZYSTOR}}
     elif wariant == "dlawik_rezystor":
         zespol["dlawik"] = dlawik
-        zespol["rezystor"] = {"catalog_ref": REZYSTOR}
+        zespol["rezystor"] = {"catalog_binding": {"catalog_item_id": REZYSTOR}}
     elif wariant == "bezposrednie":
         zespol["uziemienie_bezposrednie"] = True
     elif wariant == "sprzeczny":
         zespol["uziemienie_bezposrednie"] = True
-        zespol["rezystor"] = {"catalog_ref": REZYSTOR}
+        zespol["rezystor"] = {"catalog_binding": {"catalog_item_id": REZYSTOR}}
     else:
         raise AssertionError(wariant)
     return zespol
@@ -177,7 +177,7 @@ def _gpz(sekcje: int, zespoly: list[dict[str, Any]]) -> dict[str, Any]:
                 "rx_ratio": 0.1,
             },
             "transformer_count": sekcje,
-            "transformer_catalog_ref": TRAFO_WN_SN,
+            "transformer_catalog_binding": {"catalog_item_id": TRAFO_WN_SN},
             "zespoly_uziemiajace": zespoly,
         },
     )
@@ -872,7 +872,7 @@ def _z_magistrala(migawka: dict[str, Any], dlugosci_m: tuple[int, ...]) -> dict[
         odcinek = {
             "rodzaj": "KABEL",
             "dlugosc_m": dlugosc,
-            "catalog_ref": KABEL_SN,
+            "catalog_binding": {"catalog_item_id": KABEL_SN},
             "zero_sequence": {"b0_siemens_per_km": B0_KABLA_S_PER_KM},
         }
         wynik = execute_domain_operation(
@@ -1108,8 +1108,12 @@ def test_prad_awsc_roboczy_tylko_gdy_awsc_zalaczony(stan_awsc: str) -> None:
         [
             {
                 "sekcja": 1,
-                "catalog_ref": TU,
-                "dlawik": {"catalog_ref": DLAWIK, "i_nastawy_a": I_NASTAWY_A, "awsc": {}},
+                "catalog_binding": {"catalog_item_id": TU},
+                "dlawik": {
+                    "catalog_binding": {"catalog_item_id": DLAWIK},
+                    "i_nastawy_a": I_NASTAWY_A,
+                    "awsc": {},
+                },
             }
         ],
     )
@@ -1139,9 +1143,9 @@ def test_nastawa_dlawika_robocza_w_danych_bocznika() -> None:
         [
             {
                 "sekcja": 1,
-                "catalog_ref": TU,
-                "dlawik": {"catalog_ref": DLAWIK},
-                "rezystor": {"catalog_ref": REZYSTOR},
+                "catalog_binding": {"catalog_item_id": TU},
+                "dlawik": {"catalog_binding": {"catalog_item_id": DLAWIK}},
+                "rezystor": {"catalog_binding": {"catalog_item_id": REZYSTOR}},
             }
         ],
     )

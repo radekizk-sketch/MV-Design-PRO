@@ -66,7 +66,7 @@ def test_wstawienie_stacji_klasa_transformatora_i_szyny_z_napiec(
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
     payload["station"]["nn_voltage_kv"] = napiecie_dolne
-    payload["transformer"]["transformer_catalog_ref"] = katalog
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": katalog}
     wynik = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
     assert wynik.get("error") is None, wynik.get("error")
     (transformator,) = _nowe(wynik["snapshot"], snap, "transformers")
@@ -90,7 +90,7 @@ def _stacja_wstawiona(napiecie_dolne: float, katalog: str) -> tuple[dict[str, An
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
     payload["station"]["nn_voltage_kv"] = napiecie_dolne
-    payload["transformer"]["transformer_catalog_ref"] = katalog
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": katalog}
     wynik = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
     assert wynik.get("error") is None, wynik.get("error")
     (transformator,) = _nowe(wynik["snapshot"], snap, "transformers")
@@ -142,7 +142,7 @@ def test_dolaczenie_stacji_klasa_szyny_strony_dolnej_z_napiecia(
             "station": {"name": "Stacja K", "station_type": "terminal"},
             "nn_voltage_kv": napiecie_dolne,
             "field_apparatus_catalog_ref": APARAT_SN,
-            "transformer": {"transformer_catalog_ref": katalog},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": katalog}},
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )
@@ -211,7 +211,7 @@ def test_nazwy_gpz_formatuja_napiecie_przez_g(napiecie_sn: float) -> None:
         {
             "voltage_kv": napiecie_sn,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert wynik.get("error") is None, wynik.get("error")

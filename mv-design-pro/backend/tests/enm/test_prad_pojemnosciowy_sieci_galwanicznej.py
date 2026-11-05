@@ -75,7 +75,7 @@ def _model(sprzeglo: str, transformatory: int, bateria: str) -> EnergyNetworkMod
                 "rx_ratio": 0.1,
             },
             "transformer_count": transformatory,
-            "transformer_catalog_ref": TRAFO_WN_SN,
+            "transformer_catalog_binding": {"catalog_item_id": TRAFO_WN_SN},
             "zespoly_uziemiajace": [_zespol("dlawik", 1), _zespol("dlawik", 2)],
         },
     )

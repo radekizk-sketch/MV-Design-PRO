@@ -152,7 +152,7 @@ def _odcinek(
             "segment": {
                 "rodzaj": rodzaj,
                 "dlugosc_m": dlugosc_m,
-                "catalog_ref": catalog_ref,
+                "catalog_binding": {"catalog_item_id": catalog_ref},
                 **nazwa,
             },
         },
@@ -305,7 +305,11 @@ def test_polowki_przy_punkcie_rozgalezienia_dziedzicza_nazwe_nadana_przez_ciag(
     snap = _gpz()
     snap, odcinek = _odcinek(snap, rodzaj, catalog_ref, 600.0)
     nazwa = _galaz(snap, odcinek)["name"]
-    snap = op(snap, operacja, {"segment_id": odcinek, "catalog_ref": catalog_punktu})
+    snap = op(
+        snap,
+        operacja,
+        {"segment_id": odcinek, "catalog_binding": {"catalog_item_id": catalog_punktu}},
+    )
     assert _polowki(snap, odcinek) == [
         f"{nazwa} - do punktu rozgałęzienia",
         f"{nazwa} - za punktem rozgałęzienia",
@@ -679,7 +683,7 @@ def test_sekcja_nn_nazywa_sie_od_nazwy_stacji(nazwa_stacji: str, oczekiwana: str
     wynik = _wykonaj(
         snap,
         "add_nn_section_coupler",
-        {"station_ref": stacja["ref_id"], "catalog_ref": REF_APARAT_NN},
+        {"station_ref": stacja["ref_id"], "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
     )
     sekcje = sorted(_stacja(wynik["snapshot"])["nn_sections"], key=lambda s: s["order"])
     szyna = _szyna(wynik["snapshot"], sekcje[-1]["bus_ref"])
@@ -697,7 +701,7 @@ def test_kopia_odplywu_nn_nazywa_kopie_od_nazw_albo_opisu_rodzaju(bez_nazw: bool
         {
             "from_bus_ref": bus1,
             "to_bus_ref": bus2,
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
             "name": "Aparat odpływowy",
         },
     )["snapshot"]
@@ -705,7 +709,12 @@ def test_kopia_odplywu_nn_nazywa_kopie_od_nazw_albo_opisu_rodzaju(bez_nazw: bool
     snap = _wykonaj(
         snap,
         "add_nn_cable_segment",
-        {"from_bus_ref": bus2, "length_m": 15.0, "catalog_ref": REF_KABEL_NN, "name": "Kabel K"},
+        {
+            "from_bus_ref": bus2,
+            "length_m": 15.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "Kabel K",
+        },
     )["snapshot"]
     kabel = _branch_by_name(snap, "Kabel K")
     snap["loads"].append(

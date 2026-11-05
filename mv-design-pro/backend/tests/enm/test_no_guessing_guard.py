@@ -49,7 +49,7 @@ def _build_gpz_plus_segments(n_segments=2):
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 }
             },
         )
@@ -119,7 +119,11 @@ class TestNoDefaultLengthBranch:
                 "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "name": "Stacja testowa",
                 "station_type": "branch",
-                "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    }
+                },
                 "station": {"nn_voltage_kv": 0.4},
             },
         )
@@ -170,7 +174,7 @@ class TestNoAutoDetectBranchSource:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 300,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -259,7 +263,7 @@ class TestNoAutoDetectRingEndpoints:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -436,7 +440,7 @@ class TestCatalogMaterializationResolution:
             op_name="assign_catalog_to_element",
             payload={
                 "element_ref": cable_ref,
-                "catalog_item_id": catalog_id,
+                "catalog_binding": {"catalog_item_id": catalog_id},
             },
         )
 
@@ -487,7 +491,7 @@ class TestSecondaryConnectorDetection:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -522,7 +526,7 @@ class TestSecondaryConnectorDetection:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )

@@ -183,7 +183,7 @@ def projekt(app_client, projekt_i_przypadek):
         "add_vt",
         {
             "bay_ref": "bay-01",
-            "catalog_ref": VT_19,
+            "catalog_binding": {"catalog_item_id": VT_19},
             "ratio_primary_v": 11547.0,
             "ratio_secondary_v": 57.7,
         },

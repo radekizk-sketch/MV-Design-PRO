@@ -191,6 +191,12 @@ jobs:
       - name: Transformer Catalog Voltage Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/transformer_catalog_voltage_guard.py
+      # Karta JEDEN-KLUCZ-KATALOGU: kontrakt operacji nie ogłasza zamiennika klucza obok
+      # wiązania katalogowego (ta sama reguła `zamienniki_klucza`, którą operacja i brama API
+      # odrzucają zamiennik w ładunku). Importuje kontrakt operacji (scipy) — venv backendu.
+      - name: Klucz Katalogu Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/klucz_katalogu_guard.py
       - name: Fix Action Completeness Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/fix_action_completeness_guard.py

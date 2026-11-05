@@ -337,7 +337,7 @@ def test_nazwa_zrodla_gpz_jest_ziarnem_identyfikatorow():
                 "source_name": nazwa,
                 "sk3_mva": 300.0,
                 "rx_ratio": 0.1,
-                "catalog_ref": "src-gpz-15kv-300mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-300mva-rx010"},
             },
         )
         assert wynik.get("error") is None, wynik.get("error")

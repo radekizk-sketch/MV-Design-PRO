@@ -237,7 +237,7 @@ def test_bus_name_rozne_wywolania_z_tej_samej_szyny_bez_kolizji() -> None:
             "segment": {
                 "rodzaj": "LINIA",
                 "dlugosc_m": 250.0,
-                "catalog_ref": CATALOG_LINE,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE},
                 "bus_name": "BUS-3A",
             },
         },
@@ -255,7 +255,7 @@ def test_bus_name_rozne_wywolania_z_tej_samej_szyny_bez_kolizji() -> None:
             "segment": {
                 "rodzaj": "LINIA",
                 "dlugosc_m": 250.0,
-                "catalog_ref": CATALOG_LINE,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE},
                 "bus_name": "BUS-3B",
             },
         },

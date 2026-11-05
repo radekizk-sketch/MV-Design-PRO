@@ -66,7 +66,7 @@ def op(snap: dict, name: str, payload: dict) -> dict:
     if name == "add_grid_source_sn" and "catalog_ref" not in payload:
         payload = {
             **payload,
-            "catalog_ref": _source_catalog_ref(payload.get("sk3_mva")),
+            "catalog_binding": {"catalog_item_id": _source_catalog_ref(payload.get("sk3_mva"))},
         }
     result = execute_domain_operation(snap, name, payload)
     err = result.get("error")
@@ -78,7 +78,7 @@ def op(snap: dict, name: str, payload: dict) -> dict:
 _STATION_CATALOG_PAYLOAD = {
     # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-    "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+    "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
     "station": {"nn_voltage_kv": 0.4},
 }
 
@@ -144,7 +144,11 @@ class TestE2E1MultiObjectFeeder:
         s = op(
             s,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 350.0, "catalog_ref": CATALOG_ZRODLO_350},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 350.0,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_350},
+            },
         )
         s = op(
             s,
@@ -153,7 +157,7 @@ class TestE2E1MultiObjectFeeder:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 800,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -171,7 +175,7 @@ class TestE2E1MultiObjectFeeder:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 600,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -183,7 +187,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id2,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "name": "Słup T2",
             },
         )
@@ -201,13 +205,21 @@ class TestE2E1MultiObjectFeeder:
         s = op(
             s,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_250},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
+            },
         )
         s = op(
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 1200, "catalog_ref": CATALOG_CABLE_240},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 1200,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_240},
+                },
             },
         )
 
@@ -217,7 +229,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN T1",
@@ -234,7 +246,11 @@ class TestE2E1MultiObjectFeeder:
         s = op(
             s,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 300.0, "catalog_ref": CATALOG_ZRODLO_300},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 300.0,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_300},
+            },
         )
 
         # Odcinek napowietrzny
@@ -245,7 +261,7 @@ class TestE2E1MultiObjectFeeder:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 500,
-                    "catalog_ref": CATALOG_LINE_35,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_35},
                 },
             },
         )
@@ -262,7 +278,7 @@ class TestE2E1MultiObjectFeeder:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 800,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -277,7 +293,11 @@ class TestE2E1MultiObjectFeeder:
         s = op(
             s,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 200.0, "catalog_ref": CATALOG_ZRODLO_200},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 200.0,
+                "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_200},
+            },
         )
         s = op(
             s,
@@ -286,7 +306,7 @@ class TestE2E1MultiObjectFeeder:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 3000,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -298,7 +318,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "name": "Słup A",
             },
         )
@@ -311,7 +331,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": segs[0],
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "name": "Słup B",
             },
         )
@@ -342,7 +362,7 @@ class TestE2E2BranchFromStation:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -362,7 +382,11 @@ class TestE2E2BranchFromStation:
             "start_branch_segment_sn",
             {
                 "from_bus_ref": branch_bus,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert result.get("snapshot") is not None, result.get("error")
@@ -380,7 +404,13 @@ class TestE2E2BranchFromStation:
         s2 = op(
             s2,
             "continue_trunk_segment_sn",
-            {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": CATALOG_CABLE_70}},
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                }
+            },
         )
         s2 = op(
             s2,
@@ -399,7 +429,11 @@ class TestE2E2BranchFromStation:
             "start_branch_segment_sn",
             {
                 "from_bus_ref": s2["substations"][-1]["bus_refs"][0],
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert result.get("snapshot") is None
@@ -414,7 +448,11 @@ class TestE2E2BranchFromStation:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
         seg_id = _find_segment(s, "cable")
@@ -429,7 +467,11 @@ class TestE2E2BranchFromStation:
             "start_branch_segment_sn",
             {
                 "from_ref": f"{sub_ref}.BRANCH",
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 150,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert result.get("snapshot") is None
@@ -447,7 +489,11 @@ class TestE2E2BranchFromStation:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
         seg_id = _find_segment(s, "cable")
@@ -465,7 +511,11 @@ class TestE2E2BranchFromStation:
             {
                 "from_ref": f"{field_ref}.BRANCH",
                 "from_bus_ref": terminal_bus_ref,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 150,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert not result.get("error"), f"Błąd: {result.get('error')}"
@@ -481,7 +531,11 @@ class TestE2E2BranchFromStation:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
 
@@ -493,7 +547,11 @@ class TestE2E2BranchFromStation:
             "start_branch_segment_sn",
             {
                 "from_ref": f"{invalid_bus_ref}.BRANCH",
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 150,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert result.get("snapshot") is None
@@ -507,7 +565,11 @@ class TestE2E2BranchFromStation:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
 
@@ -518,7 +580,11 @@ class TestE2E2BranchFromStation:
             "start_branch_segment_sn",
             {
                 "from_bus_ref": invalid_bus_ref,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 150,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert result.get("snapshot") is None
@@ -542,7 +608,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 800,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -553,7 +619,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "name": "Słup T-A",
             },
         )
@@ -570,7 +636,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 200,
-                    "catalog_ref": CATALOG_LINE_35,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_35},
                 },
             },
         )
@@ -594,7 +660,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -604,7 +670,7 @@ class TestE2E3BranchFromBranchPole:
         result = execute_domain_operation(
             s,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"}},
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -618,7 +684,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 1000,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -628,7 +694,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
             },
         )
 
@@ -644,7 +710,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 100,
-                    "catalog_ref": CATALOG_LINE_35,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_35},
                 },
             },
         )
@@ -658,7 +724,7 @@ class TestE2E3BranchFromBranchPole:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 100,
-                    "catalog_ref": CATALOG_LINE_35,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_35},
                 },
             },
         )
@@ -678,7 +744,11 @@ class TestE2E4BranchFromZKSN:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 1000, "catalog_ref": CATALOG_CABLE_240},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 1000,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_240},
+                },
             },
         )
 
@@ -688,7 +758,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-A",
@@ -704,7 +774,11 @@ class TestE2E4BranchFromZKSN:
             "start_branch_segment_sn",
             {
                 "from_ref": f"{zksn_ref}.BRANCH_1",
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 300, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 300,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
         assert not result.get("error"), f"Błąd: {result.get('error')}"
@@ -724,7 +798,7 @@ class TestE2E4BranchFromZKSN:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 600,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -734,7 +808,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "open",
             },
@@ -749,7 +823,11 @@ class TestE2E4BranchFromZKSN:
             "start_branch_segment_sn",
             {
                 "from_ref": f"{zksn_ref}.BRANCH_2",
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_70},
+                },
             },
         )
         assert not result.get("error"), f"Błąd: {result.get('error')}"
@@ -767,7 +845,7 @@ class TestE2E4BranchFromZKSN:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 500,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -776,7 +854,11 @@ class TestE2E4BranchFromZKSN:
         result = execute_domain_operation(
             s,
             "insert_zksn_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
+            {
+                "segment_id": seg_id,
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
+                "branch_ports_count": 2,
+            },
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -793,7 +875,7 @@ class TestE2E4BranchFromZKSN:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 800,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -803,7 +885,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_cable,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 1,
                 "switch_state": "closed",
             },
@@ -817,7 +899,7 @@ class TestE2E4BranchFromZKSN:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 600,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -827,7 +909,7 @@ class TestE2E4BranchFromZKSN:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_overhead,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
             },
         )
 
@@ -855,7 +937,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -873,7 +955,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "pk_kw": 6.5,
                 "uhv_kv": 15.0,
                 "ulv_kv": 0.4,
-                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
             },
         )
         # Transformer add may fail due to missing station ref, but readiness is always present
@@ -888,7 +970,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
 
@@ -936,7 +1022,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
 
@@ -951,7 +1041,9 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "name": "Stacja PV za transformatorem",
                 "station_type": "terminal",
                 "station": {"nn_voltage_kv": 0.4},
-                "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+                "transformer": {
+                    "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}
+                },
                 "nn_block": {
                     "nn_configuration": "PV_INVERTER",
                     "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
@@ -1027,7 +1119,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 1500, "catalog_ref": CATALOG_CABLE_150},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 1500,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_150},
+                },
             },
         )
         seg_id = _find_segment(s, "cable")
@@ -1036,7 +1132,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -1069,7 +1165,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "continue_trunk_segment_sn",
             {
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 2000, "catalog_ref": CATALOG_CABLE_240},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 2000,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_240},
+                },
             },
         )
 
@@ -1080,7 +1180,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": cable_seg,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-Centrum",
@@ -1094,7 +1194,11 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "start_branch_segment_sn",
             {
                 "from_ref": f"{zksn['ref_id']}.BRANCH_1",
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 400,
+                    "catalog_binding": {"catalog_item_id": CATALOG_CABLE_120},
+                },
             },
         )
 
@@ -1106,7 +1210,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 1000,
-                    "catalog_ref": CATALOG_LINE_70,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
                 },
             },
         )
@@ -1118,7 +1222,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": overhead_seg,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "name": "Słup-Odgałęźny-A",
             },
         )
@@ -1133,7 +1237,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 150,
-                    "catalog_ref": CATALOG_LINE_35,
+                    "catalog_binding": {"catalog_item_id": CATALOG_LINE_35},
                 },
             },
         )

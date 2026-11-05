@@ -33,7 +33,7 @@ def _napiecie_szyny(snapshot: dict[str, Any]) -> float:
 
 
 ZRODLA: dict[str, dict[str, Any]] = {
-    "katalog": {"catalog_ref": "bench_ozepvbess_pv2"},
+    "katalog": {"catalog_binding": {"catalog_item_id": "bench_ozepvbess_pv2"}},
     "reczna_z_napieciem": {
         "manual_params": {"rated_mva": 2.0, "rated_kv": 15.0, "q_min_mvar": -1.0, "q_max_mvar": 1.2}
     },
@@ -123,7 +123,7 @@ def test_referencja_katalogowa_wygrywa_z_deklaracja_reczna() -> None:
         {
             "bus_ref": _szyna_sn_ref(snapshot),
             "p_mw": 0.5,
-            "catalog_ref": "nie-ma-takiego-typu",
+            "catalog_binding": {"catalog_item_id": "nie-ma-takiego-typu"},
             "manual_params": {"rated_mva": 2.0},
         },
     )

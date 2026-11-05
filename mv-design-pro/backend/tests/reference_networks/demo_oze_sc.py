@@ -120,7 +120,6 @@ def _add_der_sn_block(
                 # Tolerancja napięcia sieci nN po stronie przekształtnika (wiersz nN tabeli 1
                 # IEC 60909-0) — K_T bloku i c węzła nN z tej samej deklaracji.
                 "lv_voltage_tolerance": "PLUS_6",
-                "catalog_ref": _TR_BLOCK,
                 "catalog_binding": {
                     "catalog_namespace": _TR_BLOCK_NS,
                     "catalog_item_id": _TR_BLOCK,
@@ -146,7 +145,6 @@ def _add_der_sn_block(
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
-                "cable_catalog_ref": _CABLE_SN,
                 "cable_catalog_binding": {
                     "catalog_namespace": _CABLE_SN_NS,
                     "catalog_item_id": _CABLE_SN,
@@ -298,7 +296,7 @@ def _attach_ders(
             {
                 "technology": tech,
                 "variant": variant,
-                "catalog_ref": cat,
+                "catalog_binding": {"catalog_item_id": cat},
                 "power_mw": power,
                 "source_name": name,
                 "generator_refs": generator_refs,
@@ -326,7 +324,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
             "source_name": "GPZ Demonstracyjny 15 kV",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _GPZ_SOURCE_REF,
+            "catalog_binding": {"catalog_item_id": _GPZ_SOURCE_REF},
         },
     )
 
@@ -349,7 +347,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
                     "rodzaj": rodzaj,
                     "dlugosc_m": length_m,
                     "name": f"Magistrala {idx + 1}",
-                    "catalog_ref": cat_ref,
+                    "catalog_binding": {"catalog_item_id": cat_ref},
                 },
             },
         )
@@ -398,7 +396,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
                 "station_name": f"Stacja S{i + 1}",
                 "config_key": config["key"],
                 "config_label_pl": config["label_pl"],
-                "transformer_catalog_ref": config["trafo"],
+                "transformer_catalog_binding": {"catalog_item_id": config["trafo"]},
                 "sn_bus_ref": _sn_bus_ref(enm, station_ref),
                 "nn_bus_ref": _nn_bus_ref(enm, station_ref),
                 "der": der_records,

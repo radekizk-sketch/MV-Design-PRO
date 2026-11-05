@@ -50,7 +50,6 @@ def _build_source_plus_segments(segment_lengths_m: list[int]) -> dict:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": SOURCE_ID,
             "catalog_binding": SOURCE_BINDING,
         },
     )
@@ -63,7 +62,6 @@ def _build_source_plus_segments(segment_lengths_m: list[int]) -> dict:
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
                     "name": f"Odcinek {idx + 1}",
-                    "catalog_ref": CABLE_ID,
                     "catalog_binding": CABLE_BINDING,
                 },
                 "catalog_binding": CABLE_BINDING,
@@ -98,7 +96,7 @@ def test_sequence_continue_continue_insert_station_then_branch():
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": TRAFO_ID,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO_ID},
                 "catalog_binding": TRAFO_BINDING,
             },
             "catalog_binding": TRAFO_BINDING,
@@ -127,7 +125,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 150,
-                "catalog_ref": CABLE_ID,
                 "catalog_binding": CABLE_BINDING,
             },
             "catalog_binding": CABLE_BINDING,
@@ -172,7 +169,6 @@ def test_sequence_edit_delete_continue_trunk():
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 190,
-                "catalog_ref": CABLE_ID,
                 "catalog_binding": CABLE_BINDING,
             },
             "catalog_binding": CABLE_BINDING,
@@ -192,8 +188,7 @@ def test_sequence_reject_clear_and_reassign_catalog_keeps_snapshot_contract_vali
         "assign_catalog_to_element",
         {
             "element_ref": target_segment_ref,
-            "catalog_item_id": None,
-            "catalog_namespace": "KABEL_SN",
+            "catalog_binding": None,
         },
     )
     assert clear_result.get("error_code") == "catalog.clear_forbidden"
@@ -214,9 +209,11 @@ def test_sequence_reject_clear_and_reassign_catalog_keeps_snapshot_contract_vali
         "assign_catalog_to_element",
         {
             "element_ref": target_segment_ref,
-            "catalog_item_id": ALT_CABLE_ID,
-            "catalog_namespace": ALT_CABLE_BINDING["catalog_namespace"],
-            "catalog_item_version": "2024.1",
+            "catalog_binding": {
+                "catalog_item_id": ALT_CABLE_ID,
+                "catalog_namespace": ALT_CABLE_BINDING["catalog_namespace"],
+                "catalog_item_version": "2024.1",
+            },
         },
     )
 

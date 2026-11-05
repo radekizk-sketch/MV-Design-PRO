@@ -33,7 +33,10 @@ _KONFIGURACJA = {
     "station_type": "inline",
     "station": {"station_type": "inline", "station_name": "Stacja wzorcowa"},
     "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
-    "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+    "transformer": {
+        "create": True,
+        "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
+    },
     "nn_block": {"outgoing_feeders_nn_count": 2},
 }
 

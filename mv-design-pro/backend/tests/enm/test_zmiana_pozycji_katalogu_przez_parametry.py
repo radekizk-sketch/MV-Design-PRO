@@ -51,7 +51,13 @@ def _siec() -> dict[str, Any]:
     wynik = execute_domain_operation(
         wynik["snapshot"],
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 120, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 120,
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
+            }
+        },
     )
     assert wynik.get("error") is None, wynik.get("error")
     enm: dict[str, Any] = wynik["snapshot"]

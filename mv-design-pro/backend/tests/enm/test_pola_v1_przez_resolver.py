@@ -102,7 +102,7 @@ def _gpz_z_koncem_ciagu() -> tuple[dict[str, Any], str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             # Aparat pola liniowego GPZ wskazany JAWNIE (brama katalogowa).
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
@@ -123,7 +123,7 @@ def _gpz_z_koncem_ciagu() -> tuple[dict[str, Any], str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINIA,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINIA},
             }
         },
     )
@@ -145,7 +145,7 @@ def _gpz(pole_ref: str | None, rodzina_ref: str | None) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "source_name": "GPZ Klasy",
         "voltage_kv": 15.0,
-        "catalog_ref": CATALOG_ZRODLO_SN,
+        "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         "sections_count": 1,
         "gpz_sections": [{"order": 0, "name": "Sekcja A", "bays": [bay]}],
     }
@@ -168,7 +168,10 @@ def _wciecie(pole_ref: str | None, rodzina_ref: str | None) -> dict[str, Any]:
         "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
         "sn_fields": [pole],
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
+        },
     }
 
 
@@ -183,7 +186,7 @@ def _koniec_ciagu(pole_ref: str | None, rodzina_ref: str | None, endpoint: str) 
         "endpoint_bus_ref": endpoint,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
         "station": {"name": "Stacja Końcowa", "station_type": "terminal"},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO},
+        "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
         "nn_voltage_kv": 0.4,
         "sn_fields": [pole],
     }

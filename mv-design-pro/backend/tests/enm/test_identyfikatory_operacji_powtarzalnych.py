@@ -62,7 +62,11 @@ def _siec_z_odplywem() -> tuple[dict[str, Any], str]:
     wynik = execute_domain_operation(
         snapshot,
         "add_nn_cable_segment",
-        {"from_bus_ref": szyna, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": szyna,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     assert not wynik.get("error"), wynik.get("error")
     snapshot = wynik["snapshot"]
@@ -70,7 +74,11 @@ def _siec_z_odplywem() -> tuple[dict[str, Any], str]:
     wynik = execute_domain_operation(
         snapshot,
         "add_nn_cable_segment",
-        {"from_bus_ref": zacisk, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        {
+            "from_bus_ref": zacisk,
+            "length_m": 10.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
     )
     assert not wynik.get("error"), wynik.get("error")
     snapshot = wynik["snapshot"]
@@ -81,7 +89,7 @@ def _siec_z_odplywem() -> tuple[dict[str, Any], str]:
         {
             "from_bus_ref": zacisk,
             "to_bus_ref": koniec,
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
             "name": "Aparat odpływu",
         },
     )

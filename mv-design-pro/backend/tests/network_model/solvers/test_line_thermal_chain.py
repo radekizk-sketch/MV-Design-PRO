@@ -175,7 +175,7 @@ def _pusty_enm() -> dict[str, Any]:
 def _operacja(snapshot: dict[str, Any], nazwa: str, payload: dict[str, Any]) -> dict[str, Any]:
     if nazwa == "add_grid_source_sn":
         payload = {
-            "catalog_ref": CATALOG_ZRODLO_250,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -200,7 +200,7 @@ def _model_z_linia_napowietrzna() -> dict[str, Any]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 800.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -385,7 +385,7 @@ def test_wstawienie_stacji_na_odcinku_zachowuje_dane_cieplne_obu_polowek() -> No
             # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja SN/nN", "station_type": "inline", "nn_voltage_kv": 0.4},
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
         },
     )
     assert not wynik.get("error"), f"{wynik.get('error')} ({wynik.get('error_code')})"

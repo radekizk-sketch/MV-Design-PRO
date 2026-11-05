@@ -129,12 +129,18 @@ def _zasiej_ciag(klient: TestClient, case_id: str) -> str:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": REF_ZRODLO,
+                "catalog_binding": {"catalog_item_id": REF_ZRODLO},
             },
         ),
         (
             "continue_trunk_segment_sn",
-            {"segment": {"rodzaj": "KABEL", "dlugosc_m": 120.0, "catalog_ref": REF_KABEL}},
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 120.0,
+                    "catalog_binding": {"catalog_item_id": REF_KABEL},
+                }
+            },
         ),
     ):
         odpowiedz = klient.post(

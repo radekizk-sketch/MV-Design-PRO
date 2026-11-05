@@ -122,7 +122,6 @@ def _der_sn_payload(
                 "rated_power_mva": block_rated_power_mva,
                 "primary_voltage_kv": block_primary_kv,
                 "secondary_voltage_kv": block_secondary_kv,
-                "catalog_ref": block_tr_ref,
                 "catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": block_tr_ref,
@@ -147,7 +146,6 @@ def _der_sn_payload(
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
-                "cable_catalog_ref": _CABLE,
                 "cable_catalog_binding": {
                     "catalog_namespace": "KABEL_SN",
                     "catalog_item_id": _CABLE,

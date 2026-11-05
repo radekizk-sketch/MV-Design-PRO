@@ -66,7 +66,7 @@ def test_hv_bus_ref_i_hv_voltage_kv_naraz_odrzucone() -> None:
             "hv_bus_ref": bus_slack,
             "hv_voltage_kv": 345.0,
             "lv_voltage_kv": 345.0,
-            "transformer_catalog_ref": _KATALOG,
+            "transformer_catalog_binding": {"catalog_item_id": _KATALOG},
         },
     )
     assert wynik.get("error_code") == "transformer.hv_bus_ambiguous", wynik
@@ -77,7 +77,11 @@ def test_dwie_nowe_szyny_naraz_odrzucone() -> None:
     wynik = execute_domain_operation(
         enm,
         "add_transformer_sn_nn",
-        {"hv_voltage_kv": 345.0, "lv_voltage_kv": 345.0, "transformer_catalog_ref": _KATALOG},
+        {
+            "hv_voltage_kv": 345.0,
+            "lv_voltage_kv": 345.0,
+            "transformer_catalog_binding": {"catalog_item_id": _KATALOG},
+        },
     )
     assert wynik.get("error_code") == "transformer.buses_missing", wynik
 

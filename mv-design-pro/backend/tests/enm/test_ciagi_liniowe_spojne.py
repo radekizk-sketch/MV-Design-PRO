@@ -124,7 +124,10 @@ def _ladunek_podzialu(operacja: str, segment_ref: str) -> dict[str, Any]:
             "station": {"station_type": "B", "name": "Stacja P", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "LINIA_OUT"}],
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
         }
     if operacja == "insert_section_switch_sn":
         return {
@@ -192,7 +195,10 @@ def _z_stacja_koncowa(snap: dict[str, Any]) -> tuple[dict[str, Any], str]:
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {"station_type": "A", "name": "Stacja K", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
         },
     )
     po = wynik["snapshot"]
@@ -219,7 +225,10 @@ def test_stacja_koncowa_nie_tworzy_listy_stacji_ciagu(z_run_ref: bool) -> None:
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {"station_type": "A", "name": "Stacja K", "nn_voltage_kv": 0.4},
             "nn_earthing": {"lv_system": "TN-C-S"},
-            "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_630},
+            },
         },
     )["snapshot"]
     assert po["line_runs"] == snap["line_runs"]

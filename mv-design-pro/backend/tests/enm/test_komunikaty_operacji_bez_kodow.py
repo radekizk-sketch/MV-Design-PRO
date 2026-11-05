@@ -1273,7 +1273,7 @@ def _dwie_szyny_nn(
         {
             "from_bus_ref": szyna_nn,
             "length_m": 30.0,
-            "catalog_ref": "kab_nn_yaky_4x150_al",
+            "catalog_binding": {"catalog_item_id": "kab_nn_yaky_4x150_al"},
             "name": "Kabel odpływu 1",
         },
     )
@@ -1339,7 +1339,7 @@ def _przypadki(
                 "from_bus_ref": szyna_a,
                 "to_bus_ref": szyna_b,
                 "device_class": "rozlacznik_x",
-                "catalog_ref": "x",
+                "catalog_binding": {"catalog_item_id": "x"},
             },
         ),
         (
@@ -1362,7 +1362,7 @@ def _przypadki(
                 slownik.nazwa_pola("length_m", "add_nn_cable_segment"),
             ),
             stan_nn,
-            {"from_bus_ref": szyna_nn, "catalog_ref": "x"},
+            {"from_bus_ref": szyna_nn, "catalog_binding": {"catalog_item_id": "x"}},
         ),
         (
             PrzypadekBledu(
@@ -1510,7 +1510,7 @@ def test_rozbieznosc_tabliczki_nazywa_pola_tabliczki() -> None:
 
 _LITEROWKA = "-literowka-ktorej-nie-ma"
 _TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
-_STACJA_TR = {"create": True, "transformer_catalog_ref": _TRAFO}
+_STACJA_TR = {"create": True, "transformer_catalog_binding": {"catalog_item_id": _TRAFO}}
 
 #: Brama katalogowa API (przed operacją) — iloczyn: tor bramy × rodzaj błędu (brak
 #: katalogu, pozycja spoza katalogu, zła grupa katalogu, wiązanie wytwórcy, referencja
@@ -1524,7 +1524,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
     ),
     (
         "add_transformer_sn_nn",
-        {"transformer_catalog_ref": _TRAFO + _LITEROWKA},
+        {"transformer_catalog_binding": {"catalog_item_id": _TRAFO + _LITEROWKA}},
         "catalog.item_not_found",
         (),
     ),
@@ -1542,7 +1542,10 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
     ),
     (
         "add_transformer_sn_nn",
-        {"catalog_ref": _TRAFO, "transformer_tap_changer_catalog_ref": "zaczep" + _LITEROWKA},
+        {
+            "catalog_binding": {"catalog_item_id": _TRAFO},
+            "transformer_tap_changer_catalog_ref": "zaczep" + _LITEROWKA,
+        },
         "catalog.item_not_found",
         (),
     ),
@@ -1593,7 +1596,7 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
                     "apparatus_catalog_ref": APARAT_SN,
                     "equipment": {
                         "ct": {
-                            "catalog_ref": "ct" + _LITEROWKA,
+                            "catalog_binding": {"catalog_item_id": "ct" + _LITEROWKA},
                             "ratio_primary_a": 400.0,
                             "ratio_secondary_a": 5.0,
                         }

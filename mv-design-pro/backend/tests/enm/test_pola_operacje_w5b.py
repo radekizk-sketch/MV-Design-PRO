@@ -99,7 +99,7 @@ def _stacja_konca(sn_fields: list[dict[str, Any]] | None = None) -> dict[str, An
             "station": {"name": "Stacja końca", "station_type": "terminal", "nn_voltage_kv": 0.4},
             "sn_fields": sn_fields or [{"field_role": "LINIA_IN"}, {"field_role": "POMIAROWE"}],
             "field_apparatus_catalog_ref": APARAT_SN,
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
     )
@@ -180,7 +180,7 @@ def test_stacja_konca_ciagu_identyfikatory_pol_i_transformator_na_zacisku_pola_t
             "station": {"name": "Stacja K", "station_type": "terminal", "nn_voltage_kv": 0.4},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "LINIA_ODG"}],
             "field_apparatus_catalog_ref": APARAT_SN,
-            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO}},
         },
     )
     assert not wynik.get("error"), wynik.get("error")
@@ -211,7 +211,7 @@ def test_pola_zksn_jako_rekordy_punktu_rozgalezienia() -> None:
         "insert_zksn_on_segment_sn",
         {
             "segment_id": segment_ref,
-            "catalog_ref": "ZKSN-2P-630A",
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
             "branch_ports_count": 1,
             "switch_state": "closed",
             "insert_at": {"mode": "RATIO", "value": 0.5},
@@ -324,7 +324,7 @@ def test_przypisanie_katalogu_polu_sn_idzie_na_aparat_pola() -> None:
     wynik = execute_domain_operation(
         snap,
         "assign_catalog_to_element",
-        {"element_ref": rekord["ref_id"], "catalog_item_id": APARAT_SN},
+        {"element_ref": rekord["ref_id"], "catalog_binding": {"catalog_item_id": APARAT_SN}},
     )
     assert not wynik.get("error"), wynik.get("error")
     nowy = wynik["snapshot"]
@@ -354,8 +354,7 @@ def test_przypisanie_katalogu_polu_odmowy(
         "assign_catalog_to_element",
         {
             "element_ref": rekord["ref_id"],
-            "catalog_item_id": pozycja,
-            "catalog_namespace": przestrzen,
+            "catalog_binding": {"catalog_item_id": pozycja, "catalog_namespace": przestrzen},
         },
     )
     assert wynik.get("error_code") == kod, wynik.get("error")
@@ -371,7 +370,7 @@ def test_przypisanie_katalogu_polu_nn_bez_aparatu_trafia_do_promocji() -> None:
     nowy = _op(
         snap,
         "assign_catalog_to_element",
-        {"element_ref": rekord["ref_id"], "catalog_item_id": APARAT_NN},
+        {"element_ref": rekord["ref_id"], "catalog_binding": {"catalog_item_id": APARAT_NN}},
     )
     assert pole(nowy, rekord["ref_id"])["meta"]["catalog_binding"]["catalog_item_id"] == APARAT_NN
     model, _ = przygotuj_model_po_odczycie(EnergyNetworkModel.model_validate(nowy))
@@ -397,7 +396,7 @@ def test_add_nn_outgoing_field_z_catalog_ref_zapisuje_wiazanie_dla_promocji(rola
             "station_ref": stacja["ref_id"],
             "bus_nn_ref": szyna_nn,
             "field_role": rola,
-            "catalog_ref": APARAT_NN,
+            "catalog_binding": {"catalog_item_id": APARAT_NN},
         },
     )
     assert not wynik.get("error"), wynik.get("error")
@@ -444,7 +443,7 @@ def test_usuniecie_pola_z_zaleznosciami_to_odmowa(zaleznosc: str) -> None:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": segment_ref,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 1,
                 "switch_state": "closed",
                 "insert_at": {"mode": "RATIO", "value": 0.5},
@@ -504,7 +503,7 @@ def test_kaskada_punktu_rozgalezienia_zabiera_pola_zksn() -> None:
         "insert_zksn_on_segment_sn",
         {
             "segment_id": segment_ref,
-            "catalog_ref": "ZKSN-2P-630A",
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
             "branch_ports_count": 2,
             "switch_state": "closed",
             "insert_at": {"mode": "RATIO", "value": 0.5},
@@ -531,7 +530,9 @@ def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
     źródło jest słusznie odmówione, a test ćwiczy numerację drugiego, DOPUSZCZALNEGO źródła."""
     baza, segment_ref, _ = _build_trunk_with_segment()
     ladunek = _insert_payload(segment_ref, SKLAD_POL)
-    ladunek["transformer"]["transformer_catalog_ref"] = "tr-sn-nn-15-04-1250kva-dyn11"
+    ladunek["transformer"]["transformer_catalog_binding"] = {
+        "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11"
+    }
     snap = _op(baza, "insert_station_on_segment_sn", ladunek)
     stacja = _stacja(snap)
     transformator = next(
@@ -543,7 +544,7 @@ def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
         {
             "source_technology": "PV",
             "connection_variant": "block_transformer",
-            "catalog_ref": "conv-pv-0.5mw-15kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-0.5mw-15kv"},
             "station_ref": stacja["ref_id"],
             "blocking_transformer_ref": transformator["ref_id"],
             "bus_nn_ref": transformator["hv_bus_ref"],
@@ -567,7 +568,7 @@ def test_pole_zrodla_przeksztaltnika_na_szynie_sn_ma_aparat_w_torze() -> None:
         {
             "source_technology": "PV",
             "connection_variant": "block_transformer",
-            "catalog_ref": "conv-pv-0.5mw-15kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-0.5mw-15kv"},
             "station_ref": stacja["ref_id"],
             "blocking_transformer_ref": transformator["ref_id"],
             "bus_nn_ref": transformator["hv_bus_ref"],
@@ -711,7 +712,7 @@ def _odejscie(snap: dict[str, Any], field_ref: str, nazwa: str) -> dict[str, Any
                 "rodzaj": "LINIA",
                 "dlugosc_m": 35.0,
                 "name": nazwa,
-                "catalog_ref": "bench_cigrelv_l-main-01",
+                "catalog_binding": {"catalog_item_id": "bench_cigrelv_l-main-01"},
                 "bus_name": nazwa,
             },
         },
@@ -751,9 +752,26 @@ def test_kaskada_usuniecia_zabiera_przekladniki_i_zabezpieczenia_pola(usuwany: s
     stacja = _stacja(snap)
     rekord = _pole_sn(snap, "LINIA_ODG")
     for op, ladunek in (
-        ("add_ct", {"catalog_ref": CT_REF, "ratio_primary_a": 400.0, "ratio_secondary_a": 5.0}),
-        ("add_vt", {"catalog_ref": VT_REF, "ratio_primary_v": 15000.0, "ratio_secondary_v": 100.0}),
-        ("add_relay", {"catalog_ref": RELAY_REF, "relay_type": "NADPRADOWY"}),
+        (
+            "add_ct",
+            {
+                "catalog_binding": {"catalog_item_id": CT_REF},
+                "ratio_primary_a": 400.0,
+                "ratio_secondary_a": 5.0,
+            },
+        ),
+        (
+            "add_vt",
+            {
+                "catalog_binding": {"catalog_item_id": VT_REF},
+                "ratio_primary_v": 15000.0,
+                "ratio_secondary_v": 100.0,
+            },
+        ),
+        (
+            "add_relay",
+            {"catalog_binding": {"catalog_item_id": RELAY_REF}, "relay_type": "NADPRADOWY"},
+        ),
     ):
         snap = _op(snap, op, {"bay_ref": rekord["ref_id"], **ladunek})
     assert snap["measurements"] and snap["protection_assignments"]

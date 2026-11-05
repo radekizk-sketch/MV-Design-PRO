@@ -54,7 +54,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_250,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
         },
     )
     snap = _op(
@@ -64,7 +64,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -87,7 +87,10 @@ def _insert_payload(segment_ref: str, **extra: Any) -> dict[str, Any]:
             {"field_role": "LINIA_OUT"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
-        "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+        },
         "nn_block": {"outgoing_feeders_nn_count": 1},
         **extra,
     }

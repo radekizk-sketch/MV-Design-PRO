@@ -73,7 +73,7 @@ def _wstaw(enm: dict[str, Any], odcinek_nazwa: str, typ: str, nazwa: str, pola: 
         "station_type": typ,
         "insert_at": {"value": 0.5},
         "station": {"name": nazwa, "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+        "transformer": {"create": True, "transformer_catalog_binding": {"catalog_item_id": TRAFO}},
     }
     if pola is not None:
         payload["sn_fields"] = pola
@@ -89,7 +89,7 @@ def _dolacz(enm: dict[str, Any], koniec: str, nazwa: str, typ: str, role: list[s
                 "endpoint_bus_ref": koniec,
                 "station": {"name": nazwa, "station_type": typ},
                 "field_apparatus_catalog_ref": APARAT,
-                "transformer": {"transformer_catalog_ref": TRAFO},
+                "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                 "nn_voltage_kv": 0.4,
                 "sn_fields": [{"field_role": rola} for rola in role],
             },
@@ -202,9 +202,9 @@ def zbuduj_gpz_110kv() -> dict[str, Any]:
                 "manual_equivalent": dict(ZRODLO_110KV),
                 "sections_count": 2,
                 "transformer_count": 2,
-                "transformer_catalog_ref": TRAFO_WN_SN,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO_WN_SN},
                 "line_fields_per_section": 2,
-                "gpz_line_field_apparatus": {"catalog_ref": APARAT},
+                "gpz_line_field_apparatus": {"catalog_binding": {"catalog_item_id": APARAT}},
             },
         )
     )

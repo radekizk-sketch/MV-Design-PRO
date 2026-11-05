@@ -72,7 +72,7 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
             "source_name": "GPZ Referencyjny",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -88,7 +88,7 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
                     "name": f"Odcinek {i}",
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -125,7 +125,9 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
                 ],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
                 "nn_block": {"outgoing_feeders_nn_count": 2},
             },
@@ -165,7 +167,7 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
             "source_name": "GPZ Odgalezienie",
             "sk3_mva": 200.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-200mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-200mva-rx010"},
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -180,7 +182,7 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -217,7 +219,9 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
                 ],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
                 "nn_block": {"outgoing_feeders_nn_count": 2},
             },
@@ -240,7 +244,7 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 150,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -277,7 +281,7 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
             "source_name": "GPZ Pierscien",
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-300mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-300mva-rx010"},
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -292,7 +296,7 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -308,7 +312,7 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
             {
                 "segment_id": branches[1]["ref_id"],
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                "catalog_binding": {"catalog_item_id": "sw-ls-schneider-rm6-17kv-400a"},
             },
         )
         assert result.get("error") is None, f"insert_switch failed: {result.get('error')}"
@@ -326,7 +330,7 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 400,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -382,7 +386,7 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             "source_name": "GPZ OZE",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -396,7 +400,7 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 600,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -437,7 +441,7 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             # każde źródło osobno, a budowniczy po zmianie reguły cicho gubił BESS.
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11"},
             },
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },

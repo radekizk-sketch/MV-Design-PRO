@@ -91,14 +91,20 @@ def _ciag_sn(klient: TestClient, case_id: str) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     )
     wynik = _operacja(
         klient,
         case_id,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
+            }
+        },
     )
     snapshot = wynik["snapshot"]
     wynik = _operacja(
@@ -111,7 +117,10 @@ def _ciag_sn(klient: TestClient, case_id: str) -> dict[str, Any]:
             "nn_voltage_kv": 0.4,
             "sn_fields": [{"field_role": "LINIA_IN"}],
             "field_apparatus_catalog_ref": REF_APARAT_SN,
-            "transformer": {"create": True, "transformer_catalog_ref": REF_TRAFO},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )

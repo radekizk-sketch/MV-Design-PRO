@@ -17,7 +17,7 @@ def test_extract_catalog_binding_prefers_nested_transformer_contract_over_root_b
                 "snapshot_mapping_version": "1.0",
             },
             "transformer": {
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )
@@ -96,7 +96,7 @@ def test_validate_and_materialize_catalog_binding_accepts_fw_converter_catalog()
         "add_converter_source",
         {
             "source_technology": "FW",
-            "catalog_ref": "conv-wind-nn-2mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-wind-nn-2mw-0p4kv"},
         },
     )
 
@@ -132,7 +132,7 @@ def test_validate_and_materialize_catalog_binding_accepts_segment_catalog_ref_wi
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 200.0,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             }
         },
     )
@@ -146,7 +146,7 @@ def test_validate_and_materialize_catalog_binding_accepts_transformer_catalog_re
     error, solver_fields = validate_and_materialize_catalog_binding(
         "add_transformer_sn_nn",
         {
-            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
         },
     )
 
@@ -160,7 +160,7 @@ def test_validate_catalog_binding_accepts_zksn_catalog_ref_from_branch_point_cat
         "insert_zksn_on_segment_sn",
         {
             "segment_id": "seg-1",
-            "catalog_ref": "ZKSN-2P-630A",
+            "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
             "catalog_namespace": "mv_branch_points",
         },
     )
@@ -174,7 +174,7 @@ def test_validate_catalog_binding_rejects_unknown_branch_point_catalog_ref():
         "insert_branch_pole_on_segment_sn",
         {
             "segment_id": "seg-1",
-            "catalog_ref": "BRAK-TAKIEGO-SLUPA",
+            "catalog_binding": {"catalog_item_id": "BRAK-TAKIEGO-SLUPA"},
             "catalog_namespace": "mv_branch_points",
         },
     )

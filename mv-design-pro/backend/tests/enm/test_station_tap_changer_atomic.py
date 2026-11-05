@@ -65,7 +65,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_250,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_250},
         },
     )
     snap = _op(
@@ -75,7 +75,7 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 500.0,
-                "catalog_ref": CATALOG_LINE_70,
+                "catalog_binding": {"catalog_item_id": CATALOG_LINE_70},
             },
         },
     )
@@ -120,7 +120,11 @@ def test_insert_station_sets_tap_changer_in_same_snapshot() -> None:
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(
         segment_ref,
-        {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630, **ZACZEPY_DETC},
+        {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+            **ZACZEPY_DETC,
+        },
     )
 
     result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
@@ -157,7 +161,11 @@ def test_tap_changer_uses_canonical_field_not_parallel_one() -> None:
         "insert_station_on_segment_sn",
         _insert_payload(
             segment_ref,
-            {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630, **ZACZEPY_DETC},
+            {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+                **ZACZEPY_DETC,
+            },
         ),
     )
     trafo = _transformator(result["snapshot"])
@@ -184,7 +192,11 @@ def test_tap_changer_parity_with_separate_update_operation() -> None:
         "insert_station_on_segment_sn",
         _insert_payload(
             segment_ref,
-            {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630, **ZACZEPY_DETC},
+            {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+                **ZACZEPY_DETC,
+            },
         ),
     )
     assert razem.get("error") is None, razem.get("error")
@@ -195,7 +207,8 @@ def test_tap_changer_parity_with_separate_update_operation() -> None:
         copy.deepcopy(snap),
         "insert_station_on_segment_sn",
         _insert_payload(
-            segment_ref, {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630}
+            segment_ref,
+            {"create": True, "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
         ),
     )
     assert osobno_stacja.get("error") is None, osobno_stacja.get("error")
@@ -225,7 +238,8 @@ def test_update_element_parameters_accepts_canonical_tap_changer() -> None:
         copy.deepcopy(snap),
         "insert_station_on_segment_sn",
         _insert_payload(
-            segment_ref, {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630}
+            segment_ref,
+            {"create": True, "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
         ),
     )
     trafo_ref = _transformator(stacja["snapshot"])["ref_id"]
@@ -274,7 +288,7 @@ def test_invalid_tap_changer_fails_whole_station_operation() -> None:
             segment_ref,
             {
                 "create": True,
-                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
                 # Typ regulacji spoza kontraktu domenowego — walidacja modelu
                 # ENM musi odrzucić CAŁĄ operację.
                 "transformer_regulation_type": "TYP_KTOREGO_NIE_MA",
@@ -292,7 +306,8 @@ def test_station_without_regulation_is_bit_identical_to_before() -> None:
     """Payload bez regulacji nie zmienia modelu o bit (zgodność wsteczna)."""
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(
-        segment_ref, {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630}
+        segment_ref,
+        {"create": True, "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630}},
     )
 
     a = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
@@ -327,7 +342,7 @@ def test_append_station_sets_tap_changer_in_same_snapshot() -> None:
             "field_apparatus_catalog_ref": APARAT_SN,
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
                 **ZACZEPY_DETC,
             },
             "nn_block": {"outgoing_feeders_nn_count": 1},

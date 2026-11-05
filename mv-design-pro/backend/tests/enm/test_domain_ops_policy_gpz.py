@@ -64,7 +64,7 @@ def test_policy_accepts_catalog_grid_source_with_multisection_payload():
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "rx_ratio": 0.10,
-        "catalog_ref": CATALOG_ZRODLO_SN,
+        "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         "sections_count": 2,
         "line_fields_per_section": 12,
         "gpz_sections": [

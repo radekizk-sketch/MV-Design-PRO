@@ -96,13 +96,23 @@ def _substrat(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": "src-gpz-15kv-250mva-rx010"},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
+        },
     )
     magistrala = _operacja(
         klient,
         case_id,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
+            }
+        },
     )
     segmenty = magistrala["corridors"][0]["ordered_segment_refs"]
     return _operacja(
@@ -154,7 +164,7 @@ def test_kazda_operacja_pola_nn_podnosi_rewizje_dokladnie_raz(klient: TestClient
             "station_ref": stacja_ref,
             "bus_nn_ref": szyna_nn,
             "field_name": "Odpływ testu rewizji",
-            "catalog_ref": "cb_nn_630a",
+            "catalog_binding": {"catalog_item_id": "cb_nn_630a"},
         },
     )
     pole = next(b for b in po_polu["bays"] if b.get("name") == "Odpływ testu rewizji")
@@ -167,7 +177,7 @@ def test_kazda_operacja_pola_nn_podnosi_rewizje_dokladnie_raz(klient: TestClient
             "active_power_kw": 20.0,
             "cos_phi": 0.9,
             "load_name": "Odbiór testu rewizji",
-            "catalog_ref": "load_przem_75kw",
+            "catalog_binding": {"catalog_item_id": "load_przem_75kw"},
         },
     )
     _operacja(

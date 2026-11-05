@@ -177,7 +177,10 @@ def test_galaz_lacznika_110kv_wiaze_sie_z_typem_minimalnym(gpz: dict[str, Any], 
         _op(
             enm,
             "assign_catalog_to_element",
-            {"element_ref": lacznik, "catalog_item_id": inny, "catalog_namespace": "APARAT_SN"},
+            {
+                "element_ref": lacznik,
+                "catalog_binding": {"catalog_item_id": inny, "catalog_namespace": "APARAT_SN"},
+            },
         )
     )
     assert _galaz(po, lacznik)["catalog_ref"] == inny

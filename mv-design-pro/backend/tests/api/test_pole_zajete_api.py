@@ -59,7 +59,12 @@ def _op(klient: TestClient, case_id: str, nazwa: str, payload: dict[str, Any]) -
 
 
 def _odcinek(dlugosc_m: int, nazwa: str) -> dict[str, Any]:
-    return {"rodzaj": "KABEL", "dlugosc_m": dlugosc_m, "catalog_ref": KABEL, "name": nazwa}
+    return {
+        "rodzaj": "KABEL",
+        "dlugosc_m": dlugosc_m,
+        "catalog_binding": {"catalog_item_id": KABEL},
+        "name": nazwa,
+    }
 
 
 def _siec(klient: TestClient, case_id: str) -> dict[str, Any]:
@@ -70,10 +75,10 @@ def _siec(klient: TestClient, case_id: str) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             "sections_count": 1,
             "line_fields_per_section": 2,
-            "gpz_line_field_apparatus": {"catalog_ref": APARAT},
+            "gpz_line_field_apparatus": {"catalog_binding": {"catalog_item_id": APARAT}},
         },
     )
     pole_gpz = next(
@@ -97,7 +102,10 @@ def _siec(klient: TestClient, case_id: str) -> dict[str, Any]:
             "insert_at": {"value": 0.5},
             "station": {"name": "Stacja Olchowa", "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
-            "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
         },
     )
 

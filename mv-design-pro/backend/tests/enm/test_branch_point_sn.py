@@ -50,7 +50,7 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )["snapshot"]
     s2 = execute_domain_operation(
@@ -60,7 +60,7 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 1000,
-                "catalog_ref": "line-base-al-st-70",
+                "catalog_binding": {"catalog_item_id": "line-base-al-st-70"},
             }
         },
     )["snapshot"]
@@ -76,13 +76,19 @@ def _seed_with_cable_segment() -> tuple[dict, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
         },
     )["snapshot"]
     s2 = execute_domain_operation(
         s1,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
+            }
+        },
     )["snapshot"]
     seg_id = next(b["ref_id"] for b in s2["branches"] if b["type"] == "cable")
     return s2, seg_id
@@ -256,7 +262,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SLUP-ODG-12",
+                "catalog_binding": {"catalog_item_id": "SLUP-ODG-12"},
                 "catalog_namespace": "mv_branch_points",
             },
         )
@@ -287,7 +293,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -335,7 +341,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 1,
                 "switch_state": "closed",
                 "insert_at": {"mode": "RATIO", "value": 1},
@@ -366,7 +372,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 1,
                 "switch_state": "closed",
                 "insert_at": {"mode": "RATIO", "value": 1},
@@ -414,7 +420,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         result = execute_domain_operation(
             snapshot,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "AFL-SLUP"}},
         )
         snap = result["snapshot"]
 
@@ -481,7 +487,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         first = execute_domain_operation(
             snapshot,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "AFL-SLUP"}},
         )
         assert first.get("error") in (None, "")
         right_segment = next(
@@ -493,7 +499,10 @@ class TestDomainOperationsBranchPointSchemaValid:
         second = execute_domain_operation(
             first["snapshot"],
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": right_segment["ref_id"], "catalog_ref": "AFL-SLUP"},
+            {
+                "segment_id": right_segment["ref_id"],
+                "catalog_binding": {"catalog_item_id": "AFL-SLUP"},
+            },
         )
         assert second.get("error") in (None, "")
 
@@ -513,7 +522,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         result = execute_domain_operation(
             snapshot,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "AFL-SLUP"}},
         )
         assert result.get("error") in (None, "")
         snap = result["snapshot"]
@@ -537,7 +546,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         inserted = execute_domain_operation(
             snapshot,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "AFL-SLUP"}},
         )
         assert inserted.get("error") in (None, "")
         bp = inserted["snapshot"]["branch_points"][0]
@@ -551,7 +560,7 @@ class TestDomainOperationsBranchPointSchemaValid:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 300,
-                    "catalog_ref": "line-base-al-st-70",
+                    "catalog_binding": {"catalog_item_id": "line-base-al-st-70"},
                 },
             },
         )
@@ -595,7 +604,7 @@ class TestDomainOperationsBranchPointSchemaValid:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 100,
-                    "catalog_ref": "line-base-al-st-70",
+                    "catalog_binding": {"catalog_item_id": "line-base-al-st-70"},
                 },
             },
         )
@@ -606,7 +615,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         inserted = execute_domain_operation(
             snapshot,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "AFL-SLUP"},
+            {"segment_id": seg_id, "catalog_binding": {"catalog_item_id": "AFL-SLUP"}},
         )
         assert inserted.get("error") in (None, "")
         bp = inserted["snapshot"]["branch_points"][0]
@@ -619,7 +628,7 @@ class TestDomainOperationsBranchPointSchemaValid:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 120,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -634,7 +643,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P-630A",
+                "catalog_binding": {"catalog_item_id": "ZKSN-2P-630A"},
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -650,7 +659,7 @@ class TestDomainOperationsBranchPointSchemaValid:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 120,
-                    "catalog_ref": "line-base-al-st-70",
+                    "catalog_binding": {"catalog_item_id": "line-base-al-st-70"},
                 },
             },
         )

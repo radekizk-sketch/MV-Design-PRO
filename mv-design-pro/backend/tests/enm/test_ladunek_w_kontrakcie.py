@@ -157,7 +157,7 @@ def test_dyspozytor_melduje_sciezke_klucza_obcego_obiektu(
 _GPZ = {
     "voltage_kv": 15.0,
     "sk3_mva": 250.0,
-    "catalog_ref": "src-gpz-15kv-250mva-rx010",
+    "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
 }
 
 

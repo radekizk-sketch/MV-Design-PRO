@@ -68,12 +68,15 @@ def _bez_naglowka(model: dict) -> dict:
 _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ("PV", "nn_auto"): (
         0.63,
-        {"catalog_ref": "conv-pv-nn-0p5mw-0p4kv", "power_setpoint_mw": 0.5},
+        {
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
+            "power_setpoint_mw": 0.5,
+        },
     ),
     ("PV", "nn_jawna"): (
         0.63,
         {
-            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
             "bus_nn_ref": "station/1/nn_bus",
         },
@@ -81,7 +84,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ("PV", "dedykowany"): (
         0.063,
         {
-            "catalog_ref": "pv_inv_system_1000",
+            "catalog_binding": {"catalog_item_id": "pv_inv_system_1000"},
             "power_setpoint_mw": 1.0,
             "block_transformer_catalog_ref": TR_1250,
             "sn_connection_bus_ref": "station/1/sn_bus",
@@ -90,7 +93,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ("BESS", "nn_auto"): (
         0.63,
         {
-            "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-bess-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
             "battery_catalog_ref": BATERIA,
         },
@@ -98,7 +101,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ("BESS", "nn_jawna"): (
         0.63,
         {
-            "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-bess-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
             "bus_nn_ref": "station/1/nn_bus",
         },
@@ -106,7 +109,7 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ("BESS", "dedykowany"): (
         0.063,
         {
-            "catalog_ref": "conv-bess-nn-2mw-0p69kv",
+            "catalog_binding": {"catalog_item_id": "conv-bess-nn-2mw-0p69kv"},
             "power_setpoint_mw": 2.0,
             "block_transformer_catalog_ref": TR_3150,
             "sn_connection_bus_ref": "station/1/sn_bus",
@@ -115,12 +118,15 @@ _ZRODLA: dict[tuple[str, str], tuple[float, dict]] = {
     ),
     ("FW", "nn_auto"): (
         2.5,
-        {"catalog_ref": "conv-wind-nn-2mw-0p4kv", "power_setpoint_mw": 2.0},
+        {
+            "catalog_binding": {"catalog_item_id": "conv-wind-nn-2mw-0p4kv"},
+            "power_setpoint_mw": 2.0,
+        },
     ),
     ("FW", "nn_jawna"): (
         2.5,
         {
-            "catalog_ref": "conv-wind-nn-2mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-wind-nn-2mw-0p4kv"},
             "power_setpoint_mw": 2.0,
             "bus_nn_ref": "station/1/nn_bus",
         },
@@ -410,7 +416,7 @@ def test_brama_i_operacja_jednym_predykatem_istniejacy_transformator(
             "source_technology": "PV",
             "connection_variant": "block_transformer",
             "station_ref": "station/1",
-            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
             "power_setpoint_mw": 0.5,
             "blocking_transformer_ref": "station/1/tr",
             "block_transformer_catalog_ref": "pozycja-ignorowana",

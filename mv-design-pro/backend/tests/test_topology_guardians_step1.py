@@ -59,7 +59,7 @@ def _build_radial_with_segments(segment_count: int) -> dict:
                 "source_name": "GPZ-A",
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
-                "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-500mva-rx010"},
             },
         ),
         "add_grid_source_sn",
@@ -75,7 +75,7 @@ def _build_radial_with_segments(segment_count: int) -> dict:
                         "rodzaj": "KABEL",
                         "dlugosc_m": 100 + i,
                         "name": f"Segment {i+1}",
-                        "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                     }
                 },
             ),
@@ -121,7 +121,7 @@ def test_topology_ring_8_stations_with_nop() -> None:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 250,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         ),
@@ -137,7 +137,7 @@ def test_topology_ring_8_stations_with_nop() -> None:
             {
                 "segment_id": target_segment,
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                "catalog_binding": {"catalog_item_id": "sw-ls-schneider-rm6-17kv-400a"},
             },
         ),
         "insert_section_switch_sn",
@@ -179,7 +179,7 @@ def test_topology_two_rings_two_sources() -> None:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 280,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         ),
@@ -197,7 +197,7 @@ def test_topology_two_rings_two_sources() -> None:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 190,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         ),
@@ -250,7 +250,7 @@ def test_topology_split_insert_idempotent() -> None:
         ],
         "transformer": {
             "create": True,
-            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
         },
         "nn_block": {"outgoing_feeders_nn_count": 2},
     }

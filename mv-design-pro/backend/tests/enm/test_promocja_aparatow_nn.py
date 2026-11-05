@@ -409,7 +409,7 @@ def test_po_promocji_ct_przylacza_sie_do_szyny_odplywu() -> None:
         "add_ct",
         {
             "field_ref": "nn/legacy/outgoing-1",
-            "catalog_ref": "ct_400_5_5p20_15va_abb",
+            "catalog_binding": {"catalog_item_id": "ct_400_5_5p20_15va_abb"},
             "ratio_primary_a": 400.0,
             "ratio_secondary_a": 5.0,
         },

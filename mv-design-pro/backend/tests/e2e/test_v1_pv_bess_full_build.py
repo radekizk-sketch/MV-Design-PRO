@@ -118,7 +118,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert r.get("error") is None, f"KROK 1 (GPZ): {r.get('error')}"
@@ -134,7 +134,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
                     "name": f"Magistrala odcinek {i}",
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -163,7 +163,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-1250kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11"},
             },
         },
     )
@@ -199,7 +199,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             # sumuje je (Σ 2750 kVA > 2500 kVA jednej jednostki; 2 × 2500 kVA wystarcza).
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-2500kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-2500kva-dyn11"},
                 "n_parallel": 2,
             },
         },
@@ -218,7 +218,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 180,
                 "name": "Odgałęzienie 1",
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -236,7 +236,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 220,
                 "name": "Odgałęzienie 2",
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -306,7 +306,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "bus_nn_ref": nn_bus_st1,
             "source_technology": "BESS",
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-bess-nn-0p5mw-0p4kv"},
             "source_name": "BESS-S1",
             "power_setpoint_mw": 0.05,
         },
@@ -339,7 +339,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "bus_nn_ref": nn_bus_st2,
             "source_technology": "PV",
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
             "source_name": "PV-S2",
             "power_setpoint_mw": 0.05,
         },
@@ -359,7 +359,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             # Turbina wiatrowa nN — RZECZYWISTA pozycja katalogu (0,4 kV / 2 MW /
             # 2,2 MVA). Dawny „conv-fw-1.0mw-15kv" nie istniał, a payload deklarował
             # dla niego 0,4 kV — czyli tabliczkę sprzeczną z własnym identyfikatorem.
-            "catalog_ref": "conv-wind-nn-2mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-wind-nn-2mw-0p4kv"},
             "source_name": "FW-S2",
             "power_setpoint_mw": 0.05,
         },
@@ -540,7 +540,7 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -552,11 +552,13 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
         "add_converter_source",
         {
             "source_technology": technology,
-            "catalog_ref": {
-                "PV": "conv-pv-nn-0p5mw-0p4kv",
-                "BESS": "conv-bess-nn-0p5mw-0p4kv",
-                "FW": "conv-fw-1.0mw-15kv",
-            }[technology],
+            "catalog_binding": {
+                "catalog_item_id": {
+                    "PV": "conv-pv-nn-0p5mw-0p4kv",
+                    "BESS": "conv-bess-nn-0p5mw-0p4kv",
+                    "FW": "conv-fw-1.0mw-15kv",
+                }[technology]
+            },
             # brak connection_variant
         },
     )

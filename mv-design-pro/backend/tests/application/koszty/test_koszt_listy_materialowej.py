@@ -30,7 +30,12 @@ def _cennik() -> object:
 
 
 def _poz(element: str, ref: str | None, ilosc: object, jednostka: str) -> dict[str, object]:
-    return {"element": element, "catalog_ref": ref, "ilosc": ilosc, "jednostka": jednostka}
+    return {
+        "element": element,
+        "catalog_binding": {"catalog_item_id": ref},
+        "ilosc": ilosc,
+        "jednostka": jednostka,
+    }
 
 
 def test_wycenione() -> None:

@@ -69,7 +69,7 @@ def _payload(name: str, *, with_oltc: bool, setpoint_kv: float = 15.5) -> dict:
             "voltage_setpoint_kv": setpoint_kv,
             "deadband_kv": 0.2,
             "controlled_bus_ref": "b_sn",
-            "catalog_ref": "tc_oltc_110sn_19_125",
+            "catalog_binding": {"catalog_item_id": "tc_oltc_110sn_19_125"},
         }
     return {
         "header": {

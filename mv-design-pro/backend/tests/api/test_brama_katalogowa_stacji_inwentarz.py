@@ -98,13 +98,19 @@ def _ciag_sn() -> tuple[dict[str, Any], str, str]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     )
     snapshot = _wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
+            }
+        },
     )
     odcinek = snapshot["branches"][-1]
     return snapshot, str(odcinek["to_bus_ref"]), str(odcinek["ref_id"])
@@ -119,22 +125,28 @@ def _blok_stacji() -> dict[str, Any]:
                 "apparatus_catalog_ref": REF_APARAT_SN,
                 "equipment": {
                     "ct": {
-                        "catalog_ref": REF_CT,
+                        "catalog_binding": {"catalog_item_id": REF_CT},
                         "ratio_primary_a": 400.0,
                         "ratio_secondary_a": 5.0,
                     },
                     "vt": {
-                        "catalog_ref": REF_VT,
+                        "catalog_binding": {"catalog_item_id": REF_VT},
                         "ratio_primary_v": 15000.0,
                         "ratio_secondary_v": 100.0,
                     },
-                    "relay": {"catalog_ref": REF_PRZEKAZNIK, "relay_type": "NADPRADOWY"},
+                    "relay": {
+                        "catalog_binding": {"catalog_item_id": REF_PRZEKAZNIK},
+                        "relay_type": "NADPRADOWY",
+                    },
                 },
             },
             {"field_role": "TRANSFORMATOROWE", "apparatus_catalog_ref": REF_APARAT_SN},
         ],
         "field_apparatus_catalog_ref": REF_APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": REF_TRAFO},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
+        },
         "nn_block": {
             "nn_configuration": "PV_INVERTER",
             "source_converter_catalog_ref": REF_FALOWNIK_PV,
@@ -190,7 +202,9 @@ class PozycjaInwentarza:
 
 
 def _zepsuj_transformer_catalog_ref(payload: dict[str, Any]) -> None:
-    payload["transformer"]["transformer_catalog_ref"] = REF_TRAFO + LITEROWKA
+    payload["transformer"]["transformer_catalog_binding"] = {
+        "catalog_item_id": REF_TRAFO + LITEROWKA
+    }
 
 
 def _zepsuj_transformer_catalog_ref_alias(payload: dict[str, Any]) -> None:
@@ -420,7 +434,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
                 "payload": {
                     "voltage_kv": 15.0,
                     "sk3_mva": 250.0,
-                    "catalog_ref": REF_ZRODLO,
+                    "catalog_binding": {"catalog_item_id": REF_ZRODLO},
                 },
             }
         },
@@ -434,7 +448,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
                     "segment": {
                         "rodzaj": "KABEL",
                         "dlugosc_m": 500.0,
-                        "catalog_ref": REF_KABEL,
+                        "catalog_binding": {"catalog_item_id": REF_KABEL},
                     }
                 },
             }
@@ -583,7 +597,7 @@ def test_kazda_technologia_zrodla_nn_materializuje_sie_z_katalogu(
     )
     payload["nn_block"]["nn_configuration"] = konfiguracja
     payload["nn_block"]["source_converter_catalog_ref"] = ref_katalogu
-    payload["transformer"]["transformer_catalog_ref"] = ref_transformatora
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": ref_transformatora}
 
     blad, _ = validate_and_materialize_catalog_binding("append_station_on_endpoint", payload)
     assert blad is None, blad

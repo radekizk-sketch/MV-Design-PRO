@@ -310,7 +310,7 @@ def test_tryb_sn_bez_transformatorow_rownowaznik_na_sekcji_1(
     [
         {"transformer_count": 1},
         {"transformer_count": 3},
-        {"transformer_catalog_ref": TRANSFORMATOR_WN_SN},
+        {"transformer_catalog_binding": {"catalog_item_id": TRANSFORMATOR_WN_SN}},
         {"transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN)},
         {"hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0},
     ],
@@ -806,7 +806,7 @@ def test_transformator_zasilajacy_gpz_nie_jest_transformatorem_blokowym(
     ladunek: dict[str, Any] = {
         "source_technology": technologia,
         "connection_variant": "block_transformer",
-        "catalog_ref": katalog,
+        "catalog_binding": {"catalog_item_id": katalog},
         "station_ref": _gpz(migawka)["ref_id"],
     }
     if wskazanie == "jawne":
@@ -842,7 +842,7 @@ def test_szyna_nn_stacji_gpz_nie_jest_strona_dolna_transformatora_zasilajacego(
             "source_technology": "PV",
             "power_setpoint_mw": 0.5,
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
         },
     )
     assert wynik.get("error_code") == "station.nn_bus_missing", wynik

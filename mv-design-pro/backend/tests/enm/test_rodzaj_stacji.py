@@ -182,7 +182,10 @@ def _wstaw(
             "station": {"station_type": typ, "sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, **stacja},
             "nn_earthing": {"lv_system": "TN-C-S"},
             "sn_fields": [{"field_role": r} for r in pola],
-            "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )

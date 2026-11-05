@@ -718,7 +718,7 @@ def _dodaj_transformator(**pola: Any) -> dict[str, Any]:
     return execute_domain_operation(
         _migawka(_build_mv_lv_enm("Z", tolerancja="PLUS_6")),
         "add_transformer_sn_nn",
-        {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11", **pola},
+        {"transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"}, **pola},
     )
 
 
@@ -750,7 +750,7 @@ def test_zapis_tolerancji_przy_tworzeniu_transformatora_trafia_do_enm(wartosc: s
             {
                 "hv_voltage_kv": 110.0,
                 "lv_bus_ref": N1,
-                "transformer_catalog_ref": "tr-wn-sn-110-15-10mva-yd11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-wn-sn-110-15-10mva-yd11"},
                 "lv_voltage_tolerance": "PLUS_6",
             },
             "pasmo",

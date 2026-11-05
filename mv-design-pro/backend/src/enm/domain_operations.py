@@ -173,8 +173,10 @@ from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
 from .wiazanie_katalogowe import (
     KOD_ZAMIENNIKA_KLUCZA,
+    PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
+    odmowa_przestrzeni,
     zamienniki_klucza_w_ladunku,
 )
 from .zajetosc_pol import (
@@ -365,7 +367,7 @@ def _branch_point_materialized_params(
         **catalog_params,
         **payload_params,
         "catalog_item_id": catalog_ref,
-        "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
+        "catalog_namespace": PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
         "has_transformer": False,
         "route_ports": _branch_point_route_ports(branch_point_type, branch_ports_count),
     }
@@ -533,20 +535,6 @@ def wspolczynnik_podzialu(
     return wspolczynnik
 
 
-def _extract_catalog_binding_item_id(catalog_binding: object) -> str | None:
-    """Odczytaj kanoniczne ``catalog_item_id`` wiązania (``CatalogBinding``).
-
-    Dawny zamiennik ``item_id`` skasowany: brama katalogowa API czyta wiązanie
-    ``CatalogBinding.from_dict`` (bez zamienników), więc wiązanie z samym ``item_id``
-    handler przyjmował, a brama odrzucała — dwa predykaty jednej danej."""
-    if not isinstance(catalog_binding, dict):
-        return None
-    binding_item = catalog_binding.get("catalog_item_id")
-    if isinstance(binding_item, str) and binding_item.strip():
-        return binding_item.strip()
-    return None
-
-
 def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
     """Odczytaj ``catalog_namespace`` wiązania (zamiennik ``namespace`` skasowany — jw.)."""
     if not isinstance(catalog_binding, dict):
@@ -667,10 +655,16 @@ def _normalize_gpz_line_field_apparatus(payload: dict[str, Any]) -> dict[str, An
     if not isinstance(raw, dict):
         return None
 
-    # Karta JEDEN-KLUCZ-KATALOGU: jedyny odczyt wiązania; zamiennik klucza odrzuca
-    # kontrola zamienników kontraktu (`zamienniki_klucza_w_ladunku`) przed handlerem.
+    # Karta JEDEN-KLUCZ-KATALOGU: jedyny odczyt wiązania (ten sam co brama API), w przestrzeni
+    # rodzaju aparatu; odmowa odczytu (zamiennik, wiązanie bez pozycji, niezgodna przestrzeń)
+    # wraca do handlera jako odpowiedź błędu.
     binding = raw.get("catalog_binding")
-    catalog_ref = odczytaj_wiazanie(raw, opis_pl="Aparat pól liniowych GPZ").pozycja
+    odczyt = odczytaj_wiazanie(
+        raw, opis_pl="Aparat pól liniowych GPZ", przestrzen_rodzaju="APARAT_SN"
+    )
+    if odczyt.kod_bledu is not None:
+        return _error_response(odczyt.komunikat_pl or "", odczyt.kod_bledu)
+    catalog_ref = odczyt.pozycja
     if catalog_ref is None:
         return None
     binding_payload = _build_catalog_binding_payload(
@@ -837,7 +831,6 @@ KOD_TRANSFORMATOR_POZA_GRANICA_SN = "source.transformer_requires_hv_equivalent"
 KLUCZE_TRANSFORMATOROW_GPZ: tuple[str, ...] = (
     "hv_voltage_kv",
     "transformer_catalog_binding",
-    "transformer_catalog_ref",
     "transformer_control_mode",
     "transformer_controlled_bus_ref",
     "transformer_count",
@@ -2867,10 +2860,14 @@ def _build_catalog_binding_payload(
     default_namespace: str,
     default_version: str | None = None,
 ) -> dict[str, Any]:
-    """Znormalizuj binding do jednego kanonicznego kontraktu."""
+    """Znormalizuj binding do jednego kanonicznego kontraktu.
+
+    Przestrzeń = przestrzeń RODZAJU elementu (``default_namespace``); niezgodną przestrzeń
+    wiązania odrzuca wcześniej ``odmowa_przestrzeni`` (karta JEDEN-KLUCZ-KATALOGU).
+    """
     binding = catalog_binding if isinstance(catalog_binding, dict) else {}
     return {
-        "catalog_namespace": (_extract_catalog_binding_namespace(binding) or default_namespace),
+        "catalog_namespace": default_namespace,
         "catalog_item_id": catalog_ref,
         "catalog_item_version": (
             _extract_catalog_binding_version(binding) or default_version or "legacy"
@@ -2892,6 +2889,15 @@ def _materialize_catalog_payload(
     # dawne `_get_catalog_safe` (karta #151) zamieniało błąd programu w komunikat
     # „nie udało się załadować repozytorium katalogowego".
     catalog = katalog_biezacy()
+
+    # Jedno źródło prawdy przestrzeni (ta sama funkcja co brama API i operacje V2).
+    odmowa = odmowa_przestrzeni(
+        _extract_catalog_binding_namespace(catalog_binding),
+        default_namespace,
+        opis_pl="Pozycja katalogu",
+    )
+    if odmowa is not None:
+        return _error_response(odmowa.komunikat_pl or "", odmowa.kod_bledu or "")
 
     binding_payload = _build_catalog_binding_payload(
         catalog_ref,
@@ -3917,6 +3923,7 @@ def _require_catalog_ref(
     opis_pl: str,
     pole_pl: str,
     klucz: str = "catalog_binding",
+    przestrzen_rodzaju: str | None = None,
 ) -> str | dict[str, Any]:
     """Pozycja katalogu z wiązania ``wezel[klucz]`` albo odpowiedź błędu.
 
@@ -3927,7 +3934,7 @@ def _require_catalog_ref(
     brak wiązania = ``catalog.ref_required``. ``opis_pl`` nazywa element po polsku,
     ``pole_pl`` — pole formularza, w którym projektant wybiera pozycję katalogu.
     """
-    odczyt = odczytaj_wiazanie(wezel, klucz, opis_pl=opis_pl)
+    odczyt = odczytaj_wiazanie(wezel, klucz, opis_pl=opis_pl, przestrzen_rodzaju=przestrzen_rodzaju)
     if odczyt.kod_bledu is not None:
         return _error_response(odczyt.komunikat_pl or opis_pl, odczyt.kod_bledu)
     if odczyt.pozycja is None:
@@ -4452,6 +4459,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "zu.transformer_not_found",
             )
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
+    if line_field_apparatus is not None and "error_code" in line_field_apparatus:
+        return line_field_apparatus
     if line_field_apparatus is not None:
         # BRAMA KATALOGOWA aparatu pola liniowego stacji zasilającej (dług 7
         # z V12K-315): dotąd `_apply_catalog_metadata` wpisywał aparatowi
@@ -8371,6 +8380,7 @@ def _insert_branch_point_on_segment_sn(
         payload,
         opis_pl="ZKSN" if branch_point_type == "zksn" else "Słup rozgałęźny SN",
         pole_pl=pole("catalog_binding", f"insert_{branch_point_type}_on_segment_sn"),
+        przestrzen_rodzaju=PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
     )
     if isinstance(bp_catalog_ref, dict):
         return bp_catalog_ref
@@ -8611,8 +8621,9 @@ def _insert_branch_point_on_segment_sn(
             "parent_segment_id": segment_id,
             "bus_ref": bp_bus_ref,
             "catalog_ref": bp_catalog_ref,
-            "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
-            "catalog_version": payload.get("catalog_version"),
+            # Karta JEDEN-KLUCZ-KATALOGU: przestrzeń = rodzaj elementu, wersja z wiązania.
+            "catalog_namespace": PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
+            "catalog_version": _extract_catalog_binding_version(payload.get("catalog_binding")),
             "source_mode": payload.get("source_mode") or "KATALOG",
             "ports": {
                 "MAIN_IN": port_main_in,
@@ -9805,7 +9816,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     }
     materialization = _materialize_catalog_payload(
         catalog_ref=standalone_catalog,
-        catalog_binding=payload.get("catalog_binding"),
+        catalog_binding=payload.get("transformer_catalog_binding"),
         default_namespace="TRAFO_SN_NN",
     )
     if isinstance(materialization, dict):
@@ -10029,7 +10040,6 @@ def _aparat_glowny_pola(enm: dict[str, Any], rekord: dict[str, Any]) -> str | No
 def _przypisz_katalog_pola(
     enm: dict[str, Any],
     field_ref: str,
-    payload: dict[str, Any],
     *,
     clear_catalog: bool,
     catalog_item_id: str | None,
@@ -10048,11 +10058,7 @@ def _przypisz_katalog_pola(
     rekord = pole_modelu(enm, field_ref)
     assert rekord is not None  # `_find_element` znalazł rekord w `bays`
     oczekiwana = "APARAT_NN" if czy_pole_nn(enm, rekord) else "APARAT_SN"
-    przestrzen = (
-        payload.get("catalog_namespace")
-        or _extract_catalog_binding_namespace(catalog_binding)
-        or oczekiwana
-    )
+    przestrzen = _extract_catalog_binding_namespace(catalog_binding) or oczekiwana
     if przestrzen != oczekiwana:
         return _error_response(
             f"{_nazwa_pola_w_modelu(enm, field_ref)}: kategoria katalogu "
@@ -10060,14 +10066,20 @@ def _przypisz_katalog_pola(
             f"aparatu z kategorii {nazwa_kategorii_katalogu(oczekiwana)}.",
             "catalog.namespace_mismatch",
         )
-    wersja = _extract_catalog_binding_version(catalog_binding) or payload.get(
-        "catalog_item_version"
-    )
+    wersja = _extract_catalog_binding_version(catalog_binding)
     aparat_ref = _aparat_glowny_pola(enm, rekord)
     zaktualizowane = [field_ref]
     if aparat_ref is not None:
         wynik = assign_catalog_to_element(
-            enm, {**payload, "element_ref": aparat_ref, "catalog_namespace": przestrzen}
+            enm,
+            {
+                "element_ref": aparat_ref,
+                "catalog_binding": (
+                    None
+                    if clear_catalog
+                    else {**(catalog_binding or {}), "catalog_namespace": przestrzen}
+                ),
+            },
         )
         if wynik.get("error"):
             return wynik
@@ -10116,17 +10128,23 @@ def _przypisz_katalog_pola(
 
 
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Przypisz katalog do elementu."""
+    """Przypisz katalog do elementu.
+
+    Karta JEDEN-KLUCZ-KATALOGU: pozycję wskazuje WYŁĄCZNIE wiązanie ``catalog_binding``
+    (``catalog_item_id``, opcjonalnie ``catalog_namespace``/``catalog_item_version``) —
+    dawne trzy drogi (``catalog_item_id``/``catalog_ref`` na wierzchu ładunku obok wiązania,
+    ``catalog_namespace``/``catalog_item_version`` obok wiązania) skasowane; ich obecność to
+    odmowa ``catalog.binding_key_alias`` (``zamienniki_klucza_w_ladunku``). Odpięcie pozycji:
+    ``catalog_binding: null``.
+    """
     element_ref = payload.get("element_ref")
     legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
-    clear_catalog = "catalog_item_id" in payload and payload.get("catalog_item_id") is None
+    clear_catalog = "catalog_binding" in payload and payload.get("catalog_binding") is None
     catalog_binding = payload.get("catalog_binding")
-    catalog_item_id_raw = payload.get("catalog_item_id")
-    catalog_item_id = (
-        catalog_item_id_raw
-        or _extract_catalog_binding_item_id(catalog_binding)
-        or payload.get("catalog_ref")
-    )
+    odczyt = odczytaj_wiazanie(payload, opis_pl="Przypisanie typu z katalogu")
+    if odczyt.kod_bledu is not None:
+        return _error_response(odczyt.komunikat_pl or "", odczyt.kod_bledu)
+    catalog_item_id = odczyt.pozycja
 
     if not element_ref:
         return _error_response(
@@ -10135,7 +10153,7 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
     if not clear_catalog and not catalog_item_id:
         return _error_response(
-            f"Uzupełnij pole {pole('catalog_item_id', 'assign_catalog_to_element')} — "
+            f"Uzupełnij pole {pole('catalog_binding', 'assign_catalog_to_element')} — "
             "wskaż pozycję katalogu.",
             "catalog.item_missing",
         )
@@ -10152,7 +10170,6 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         return _przypisz_katalog_pola(
             enm,
             element_ref,
-            payload,
             clear_catalog=clear_catalog,
             catalog_item_id=str(catalog_item_id) if catalog_item_id else None,
             catalog_binding=catalog_binding,
@@ -10183,10 +10200,8 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if isinstance(meta, dict):
             meta.pop("catalog_item_version", None)
     else:
-        catalog_namespace = (
-            payload.get("catalog_namespace")
-            or _extract_catalog_binding_namespace(catalog_binding)
-            or _infer_catalog_namespace_for_element(target_element)
+        catalog_namespace = odczyt.przestrzen or _infer_catalog_namespace_for_element(
+            target_element
         )
         if coll == "shunt_capacitors" and catalog_namespace != KATEGORIA_KATALOGU_BATERII:
             return _error_response(
@@ -10206,9 +10221,7 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "catalog.namespace_mismatch",
             )
 
-        catalog_item_version = _extract_catalog_binding_version(catalog_binding) or payload.get(
-            "catalog_item_version"
-        )
+        catalog_item_version = odczyt.wersja
         effective_catalog_version = (
             catalog_item_version.strip()
             if isinstance(catalog_item_version, str) and catalog_item_version.strip()

@@ -69,7 +69,7 @@ def _add_grid_source(enm_dict: dict) -> dict:
         payload={
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
 
@@ -85,7 +85,7 @@ def _continue_trunk(enm_dict: dict, **extra_payload) -> dict:
         "segment": {
             "rodzaj": "KABEL",
             "dlugosc_m": 500,
-            "catalog_ref": "cable-tfk-yakxs-3x120",
+            "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
         },
     }
     payload.update(extra_payload)
@@ -224,7 +224,7 @@ class TestAddGridSourceSNDuplicate:
             op_name="add_grid_source_sn",
             payload={
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
                 "source_id": "gpz-a",
                 "source_name": "GPZ A 110/15 kV",
             },
@@ -236,7 +236,7 @@ class TestAddGridSourceSNDuplicate:
             op_name="add_grid_source_sn",
             payload={
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
                 "source_id": "gpz-b",
                 "source_name": "GPZ B 110/15 kV",
             },
@@ -262,7 +262,7 @@ class TestAddGridSourceSNDuplicate:
             op_name="add_grid_source_sn",
             payload={
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
                 "source_id": "gpz-a",
                 "source_name": "GPZ A 110/15 kV",
             },
@@ -274,7 +274,7 @@ class TestAddGridSourceSNDuplicate:
             op_name="add_grid_source_sn",
             payload={
                 "voltage_kv": 15.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
                 "source_id": "gpz-a",
                 "source_name": "GPZ A powtórzony",
             },
@@ -428,7 +428,9 @@ class TestFullV1Sequence:
                 "sn_fields": ["IN", "OUT", "FEEDER"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -448,7 +450,7 @@ class TestFullV1Sequence:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -496,7 +498,9 @@ class TestInsertStationCreatesStructure:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -558,7 +562,9 @@ class TestInsertStationCreatesStructure:
                 "sn_fields": ["IN", "OUT", "TR"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -596,7 +602,9 @@ class TestInsertStationCreatesStructure:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -897,7 +905,9 @@ class TestNnFieldAdapters:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -950,7 +960,9 @@ class TestNnFieldAdapters:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1021,7 +1033,9 @@ class TestNnFieldAdapters:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1077,7 +1091,9 @@ class TestNnFieldAdapters:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1180,7 +1196,7 @@ class TestNnFieldAdapters:
             {
                 "source_technology": "BESS",
                 "connection_variant": "block_transformer",
-                "catalog_ref": "conv-bess-1mw-2mwh-15kv",
+                "catalog_binding": {"catalog_item_id": "conv-bess-1mw-2mwh-15kv"},
                 "station_ref": "stn/test/station",
             },
         )
@@ -1228,7 +1244,7 @@ class TestNnFieldAdapters:
             {
                 "source_technology": "BESS",
                 "connection_variant": "block_transformer",
-                "catalog_ref": "conv-bess-1mw-2mwh-15kv",
+                "catalog_binding": {"catalog_item_id": "conv-bess-1mw-2mwh-15kv"},
                 "station_ref": "stn/multi/station",
             },
         )
@@ -1263,7 +1279,7 @@ class TestNnFieldAdapters:
                 {
                     "source_technology": "PV",
                     "connection_variant": fe_variant,
-                    "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                    "catalog_binding": {"catalog_item_id": "conv-pv-nn-0p5mw-0p4kv"},
                     "station_ref": "stn/test/station",
                     "bus_nn_ref": "stn/test/nn_bus",
                 },
@@ -1336,7 +1352,7 @@ class TestDeterministicIds100x:
             "sn_fields": ["IN", "OUT"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         }
 
@@ -1442,7 +1458,9 @@ class TestPermutationInvarianceSNFields:
                     "sn_fields": list(perm),
                     "transformer": {
                         "create": True,
-                        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                        "transformer_catalog_binding": {
+                            "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                        },
                     },
                 },
             )
@@ -1506,7 +1524,9 @@ class TestPVBESSTransformerGate:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1596,7 +1616,9 @@ class TestPVBESSTransformerGate:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1657,7 +1679,9 @@ class TestPVBESSTransformerGate:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1797,7 +1821,7 @@ class TestAssignCatalog:
             op_name="assign_catalog_to_element",
             payload={
                 "element_ref": target_branch["ref_id"],
-                "catalog_ref": "cable-base-xlpe-al-3c-240",
+                "catalog_binding": {"catalog_item_id": "cable-base-xlpe-al-3c-240"},
             },
         )
 
@@ -1879,7 +1903,9 @@ class TestStationTypeBPassthrough:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -1963,7 +1989,9 @@ class TestStationTypeCBranch:
                 "sn_fields": ["IN", "OUT", "FEEDER"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -2007,7 +2035,9 @@ class TestStationTypeCBranch:
                 "sn_fields": ["IN", "OUT", "FEEDER"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -2057,7 +2087,9 @@ class TestStationTypeDSectional:
                 "sn_fields": ["IN", "OUT", "COUPLER"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -2181,7 +2213,9 @@ class TestInsertStationFieldTemplateBinding:
                 ],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -2324,7 +2358,7 @@ class TestLegacyAliasRejected:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -2362,7 +2396,9 @@ class TestDomainEventsOrder:
                 "sn_fields": ["IN", "OUT"],
                 "transformer": {
                     "create": True,
-                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    },
                 },
             },
         )
@@ -2431,7 +2467,7 @@ class TestConnectRing:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )

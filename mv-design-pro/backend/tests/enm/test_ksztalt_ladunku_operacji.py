@@ -97,7 +97,13 @@ def _z_odcinkiem() -> dict[str, Any]:
     wynik = execute_domain_operation(
         _z_gpz(),
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
+            }
+        },
     )
     assert wynik.get("snapshot") is not None, wynik.get("error")
     return wynik["snapshot"]

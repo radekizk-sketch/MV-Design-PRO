@@ -124,7 +124,6 @@ def _der_sn_payload() -> dict:
                 "rated_power_mva": 1.0,
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": 0.4,
-                "catalog_ref": _TR_BLOCK,
                 "catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": _TR_BLOCK,
@@ -150,7 +149,6 @@ def _der_sn_payload() -> dict:
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
-                "cable_catalog_ref": _CABLE,
                 "cable_catalog_binding": {
                     "catalog_namespace": "KABEL_SN",
                     "catalog_item_id": _CABLE,
@@ -261,7 +259,6 @@ def _der_payload_3p15mva(*, cable_ref: str, laying_conditions: object | None) ->
         "rated_power_mva": 3.15,
         "primary_voltage_kv": 15.0,
         "secondary_voltage_kv": 0.69,
-        "catalog_ref": _TR_BLOCK_3P15MVA,
         "catalog_binding": {
             "catalog_namespace": "TRAFO_SN_NN",
             "catalog_item_id": _TR_BLOCK_3P15MVA,
@@ -271,7 +268,7 @@ def _der_payload_3p15mva(*, cable_ref: str, laying_conditions: object | None) ->
         },
     }
     field = topology["mv_field_configuration"]
-    field["cable_catalog_ref"] = cable_ref
+    field["cable_catalog_binding"] = {"catalog_item_id": cable_ref}
     field["cable_catalog_binding"]["catalog_item_id"] = cable_ref
     if laying_conditions is not None:
         field["cable_laying_conditions"] = laying_conditions

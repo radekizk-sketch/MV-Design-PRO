@@ -96,6 +96,7 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
       'catalog.item_id_missing',
       'catalog.binding_required',
       'catalog.binding_invalid',
+      'catalog.binding_key_alias',
       'catalog.namespace_missing',
       'catalog.namespace_required',
       'catalog.unknown_namespace',

@@ -90,7 +90,7 @@ def _siec_bazowa() -> tuple[dict[str, Any], str, str]:
             "segment_id": odcinek_gpz,
             "insert_at": {"mode": "RATIO", "value": POLOZENIE_WYLACZNIKA},
             "switch_type": "WYLACZNIK",
-            "catalog_ref": KATALOG_APARATU,
+            "catalog_binding": {"catalog_item_id": KATALOG_APARATU},
             "switch_name": "Wyłącznik liniowy testu",
         },
     )
@@ -102,7 +102,7 @@ def _siec_bazowa() -> tuple[dict[str, Any], str, str]:
         "add_ct",
         {
             "breaker_ref": wylacznik,
-            "catalog_ref": KATALOG_PRZEKLADNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKLADNIKA},
             "ratio_primary_a": 600.0,
             "ratio_secondary_a": 5.0,
             "accuracy_class": "5P20",
@@ -136,7 +136,7 @@ def _add_relay(
             "breaker_ref": wylacznik,
             "ct_ref": przekladnik,
             "relay_type": "NADPRADOWY",
-            "catalog_ref": KATALOG_PRZEKAZNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKAZNIKA},
             "name": "Zabezpieczenie testu",
             "settings": nastawy,
         },

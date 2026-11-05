@@ -68,11 +68,11 @@ def _magistrala(
         "add_grid_source_sn",
         {
             "voltage_kv": voltage_kv,
-            "catalog_ref": source_ref,
+            "catalog_binding": {"catalog_item_id": source_ref},
             "sections_count": 1,
             "line_fields_per_section": 1,
             "gpz_line_field_apparatus": {
-                "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "catalog_binding": {"catalog_item_id": "sw-cb-abb-vd4-17kv-630a"},
                 "apparatus_kind": "BREAKER",
             },
         },

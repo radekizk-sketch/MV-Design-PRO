@@ -171,7 +171,7 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
-        "catalog_ref": REF_ZRODLO,
+        "catalog_binding": {"catalog_item_id": REF_ZRODLO},
     }
     payload.update(nadpisania)
     return payload
@@ -182,7 +182,6 @@ def _payload_odcinka(rodzaj: str, ref: str, przestrzen: str) -> dict[str, Any]:
         "segment": {
             "rodzaj": rodzaj,
             "dlugosc_m": 500.0,
-            "catalog_ref": ref,
             "catalog_binding": _wiazanie(przestrzen, ref),
         }
     }
@@ -194,12 +193,12 @@ def _payload_pola_sn() -> dict[str, Any]:
         "apparatus_catalog_ref": REF_APARAT_SN,
         "equipment": {
             "ct": {
-                "catalog_ref": REF_CT,
+                "catalog_binding": {"catalog_item_id": REF_CT},
                 "ratio_primary_a": 400.0,
                 "ratio_secondary_a": 5.0,
             },
-            "vt": {"catalog_ref": REF_VT},
-            "relay": {"catalog_ref": REF_PRZEKAZNIK},
+            "vt": {"catalog_binding": {"catalog_item_id": REF_VT}},
+            "relay": {"catalog_binding": {"catalog_item_id": REF_PRZEKAZNIK}},
         },
     }
 
@@ -215,7 +214,7 @@ def _payload_stacji(operacja: str = "insert_station_on_segment_sn") -> dict[str,
         **miejsce,
         "station": {"name_pl": "ST", "station_type": "STACJA_SN_NN", "sn_voltage_kv": 15.0},
         "transformer": {
-            "transformer_catalog_ref": REF_TRAFO,
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
             "transformer_regulation_type": "OLTC",
             "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
         },
@@ -234,19 +233,17 @@ def _payload_konwertera_der_sn() -> dict[str, Any]:
         "station_ref": "st-1",
         "source_technology": "PV",
         "connection_variant": "block_transformer",
-        "catalog_ref": REF_FALOWNIK_PV,
+        "catalog_binding": {"catalog_item_id": REF_FALOWNIK_PV},
         "source_field": {"catalog_binding": _wiazanie("APARAT_NN", REF_APARAT_NN)},
         "der_topology": {
             "connection_level": "sn",
             "has_block_transformer": True,
             "block_transformer": {
-                "catalog_ref": REF_TRAFO_BLOKOWY,
                 "catalog_binding": _wiazanie("TRAFO_SN_NN", REF_TRAFO_BLOKOWY),
             },
             "mv_field_configuration": {
                 "switching_device": "CB",
                 "apparatus_catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN),
-                "cable_catalog_ref": REF_KABEL_DER,
                 "cable_catalog_binding": _wiazanie("KABEL_SN", REF_KABEL_DER),
                 "cable_length_km": 0.05,
             },
@@ -402,7 +399,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: _payload_zrodla(
             gpz_line_field_apparatus={
                 "apparatus_kind": "BREAKER",
-                "catalog_ref": REF_APARAT_SN,
+                "catalog_binding": {"catalog_item_id": REF_APARAT_SN},
             }
         ),
         lambda p: _zepsuj_klucz(p, "gpz_line_field_apparatus", "catalog_ref"),
@@ -417,7 +414,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "catalog_ref",
         lambda: {
             "segment_id": "seg-1",
-            "catalog_ref": REF_SLUP_ODG,
+            "catalog_binding": {"catalog_item_id": REF_SLUP_ODG},
             "catalog_namespace": PRZESTRZEN_PUNKTU_POSREDNIEGO,
         },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
@@ -427,7 +424,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "catalog_ref",
         lambda: {
             "segment_id": "seg-1",
-            "catalog_ref": REF_ZKSN,
+            "catalog_binding": {"catalog_item_id": REF_ZKSN},
             "catalog_namespace": PRZESTRZEN_PUNKTU_POSREDNIEGO,
         },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
@@ -435,7 +432,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "insert_section_switch_sn",
         "catalog_ref",
-        lambda: {"segment_id": "seg-1", "catalog_ref": REF_APARAT_SN},
+        lambda: {"segment_id": "seg-1", "catalog_binding": {"catalog_item_id": REF_APARAT_SN}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -448,7 +445,10 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_transformer_sn_nn",
         "transformer_catalog_ref",
-        lambda: {"hv_bus_ref": "bus-1", "transformer_catalog_ref": REF_TRAFO},
+        lambda: {
+            "hv_bus_ref": "bus-1",
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
+        },
         lambda p: _zepsuj_klucz(p, "transformer_catalog_ref"),
     ),
     IniekcjaBramy(
@@ -456,7 +456,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "transformer_tap_changer_catalog_ref",
         lambda: {
             "hv_bus_ref": "bus-1",
-            "transformer_catalog_ref": REF_TRAFO,
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
             "transformer_regulation_type": "OLTC",
             "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
         },
@@ -470,7 +470,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "transformer.catalog_ref",
         lambda: {
             **_payload_stacji("append_station_on_endpoint"),
-            "transformer": {"catalog_ref": REF_TRAFO},
+            "transformer": {"catalog_binding": {"catalog_item_id": REF_TRAFO}},
         },
         lambda p: _zepsuj_klucz(p, "transformer", "catalog_ref"),
     ),
@@ -478,7 +478,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_ct",
         "catalog_ref",
-        lambda: {"field_ref": "f-1", "catalog_ref": REF_CT},
+        lambda: {"field_ref": "f-1", "catalog_binding": {"catalog_item_id": REF_CT}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -490,7 +490,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_vt",
         "catalog_ref",
-        lambda: {"field_ref": "f-1", "catalog_ref": REF_VT},
+        lambda: {"field_ref": "f-1", "catalog_binding": {"catalog_item_id": REF_VT}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -502,7 +502,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_relay",
         "catalog_ref",
-        lambda: {"field_ref": "f-1", "catalog_ref": REF_PRZEKAZNIK},
+        lambda: {"field_ref": "f-1", "catalog_binding": {"catalog_item_id": REF_PRZEKAZNIK}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -541,7 +541,11 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_nn_outgoing_field",
         "catalog_ref",
-        lambda: {"station_ref": "st-1", "bus_nn_ref": "nn-bus-1", "catalog_ref": "cb_nn_630a"},
+        lambda: {
+            "station_ref": "st-1",
+            "bus_nn_ref": "nn-bus-1",
+            "catalog_binding": {"catalog_item_id": "cb_nn_630a"},
+        },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -564,7 +568,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             "bus_nn_ref": "nn-bus-1",
             "source_technology": "PV",
             "connection_variant": "nn_side",
-            "catalog_ref": REF_FALOWNIK_PV,
+            "catalog_binding": {"catalog_item_id": REF_FALOWNIK_PV},
         },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
@@ -577,7 +581,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             "station_ref": "st-1",
             "source_technology": "PV",
             "connection_variant": "block_transformer",
-            "catalog_ref": REF_FALOWNIK_PV,
+            "catalog_binding": {"catalog_item_id": REF_FALOWNIK_PV},
             "block_transformer_catalog_ref": REF_TRAFO_BLOKOWY,
             "sn_connection_bus_ref": "bus-sn-1",
         },
@@ -624,7 +628,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
                 **_payload_konwertera_der_sn()["der_topology"],
                 "mv_field_configuration": {
                     **_payload_konwertera_der_sn()["der_topology"]["mv_field_configuration"],
-                    "cable_catalog_ref": None,
+                    "cable_catalog_binding": None,
                 },
             },
         },
@@ -657,7 +661,9 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "add_grid_source_sn",
         "zespoly_uziemiajace[].catalog_ref",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[{"sekcja": 1, "catalog_ref": "TU_ZNYN11_15KV_PW160"}]
+            zespoly_uziemiajace=[
+                {"sekcja": 1, "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"}}
+            ]
         ),
         lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "catalog_ref"),
     ),
@@ -683,8 +689,8 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             zespoly_uziemiajace=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
-                    "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+                    "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+                    "dlawik": {"catalog_binding": {"catalog_item_id": "DL_40_400A_15KV_CIAGLY"}},
                 }
             ]
         ),
@@ -697,7 +703,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             zespoly_uziemiajace=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
                     "dlawik": {
                         "catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")
                     },
@@ -713,8 +719,8 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             zespoly_uziemiajace=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
-                    "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+                    "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+                    "rezystor": {"catalog_binding": {"catalog_item_id": "REZ_200A_15KV"}},
                 }
             ]
         ),
@@ -727,7 +733,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
             zespoly_uziemiajace=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
                     "rezystor": {
                         "catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")
                     },
@@ -739,7 +745,10 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_zespol_uziemiajacy_sn",
         "catalog_ref",
-        lambda: {"bus_ref": "bus-1", "catalog_ref": "TU_ZNYN11_15KV_PW160"},
+        lambda: {
+            "bus_ref": "bus-1",
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+        },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -756,8 +765,8 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "dlawik.catalog_ref",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
-            "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+            "dlawik": {"catalog_binding": {"catalog_item_id": "DL_40_400A_15KV_CIAGLY"}},
         },
         lambda p: _zepsuj_klucz(p, "dlawik", "catalog_ref"),
     ),
@@ -766,7 +775,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "dlawik.catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
             "dlawik": {"catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")},
         },
         lambda p: _zepsuj_wiazanie(p, "dlawik"),
@@ -776,8 +785,8 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "rezystor.catalog_ref",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
-            "rezystor": {"catalog_ref": "REZ_200A_15KV"},
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+            "rezystor": {"catalog_binding": {"catalog_item_id": "REZ_200A_15KV"}},
         },
         lambda p: _zepsuj_klucz(p, "rezystor", "catalog_ref"),
     ),
@@ -786,7 +795,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "rezystor.catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
             "rezystor": {"catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")},
         },
         lambda p: _zepsuj_wiazanie(p, "rezystor"),
@@ -858,7 +867,11 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_nn_cable_segment",
         "catalog_ref",
-        lambda: {"from_bus_ref": "bus-nn-1", "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        lambda: {
+            "from_bus_ref": "bus-nn-1",
+            "length_m": 20.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+        },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -877,7 +890,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {
             "from_bus_ref": "bus-nn-1",
             "to_bus_ref": "bus-nn-2",
-            "catalog_ref": REF_APARAT_NN,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
         },
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
@@ -896,7 +909,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_nn_rcd",
         "catalog_ref",
-        lambda: {"load_ref": "load-nn-1", "catalog_ref": REF_RCD_NN},
+        lambda: {"load_ref": "load-nn-1", "catalog_binding": {"catalog_item_id": REF_RCD_NN}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -911,7 +924,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
     IniekcjaBramy(
         "add_nn_section_coupler",
         "catalog_ref",
-        lambda: {"station_ref": "st-nn-1", "catalog_ref": REF_APARAT_NN},
+        lambda: {"station_ref": "st-nn-1", "catalog_binding": {"catalog_item_id": REF_APARAT_NN}},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -929,7 +942,11 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "supply.catalog_ref",
         lambda: {
             "voltage_kv": 0.4,
-            "supply": {"from_bus_ref": "bus-nn-1", "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+            "supply": {
+                "from_bus_ref": "bus-nn-1",
+                "length_m": 20.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            },
         },
         lambda p: _zepsuj_klucz(p, "supply", "catalog_ref"),
     ),
@@ -1110,7 +1127,7 @@ INIEKCJE_HTTP: tuple[IniekcjaHttp, ...] = (
             "endpoint_bus_ref": str(snapshot["branches"][-1]["to_bus_ref"]),
             "station": {"name_pl": "ST", "station_type": "STACJA_SN_NN"},
             "transformer": {
-                "transformer_catalog_ref": REF_TRAFO,
+                "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
                 "transformer_regulation_type": "OLTC",
                 "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
             },
@@ -1124,7 +1141,7 @@ INIEKCJE_HTTP: tuple[IniekcjaHttp, ...] = (
         "catalog_ref",
         lambda snapshot: {
             "segment_id": str(snapshot["branches"][-1]["ref_id"]),
-            "catalog_ref": REF_ZKSN,
+            "catalog_binding": {"catalog_item_id": REF_ZKSN},
             "catalog_namespace": PRZESTRZEN_PUNKTU_POSREDNIEGO,
             "insert_at": {"mode": "RATIO", "value": 0.5},
         },
@@ -1150,14 +1167,20 @@ def test_produkcyjna_droga_zapisu_konczy_zle_referencje_kodem_422(
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": REF_ZRODLO,
+                "catalog_binding": {"catalog_item_id": REF_ZRODLO},
             },
         )
         snapshot = _operacja_api(
             klient,
             case_id,
             "continue_trunk_segment_sn",
-            {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500.0,
+                    "catalog_binding": {"catalog_item_id": REF_KABEL},
+                }
+            },
         )
     else:
         klient.get(f"/api/cases/{case_id}/enm")
@@ -1409,11 +1432,14 @@ def test_add_nn_outgoing_field_bez_catalog_ref_przechodzi_brame(payload: dict[st
     assert blad is None, f"Kreator 'Pole odpływowe nN' zostałby odrzucony bramą: {blad}"
     assert pola == {}
 
-    z_poprawna = {**payload, "catalog_ref": "cb_nn_630a"}
+    z_poprawna = {**payload, "catalog_binding": {"catalog_item_id": "cb_nn_630a"}}
     blad_ok, _ = validate_and_materialize_catalog_binding("add_nn_outgoing_field", z_poprawna)
     assert blad_ok is None, blad_ok
 
-    z_bledna_referencja = {**payload, "catalog_ref": "nie-istnieje-w-katalogu"}
+    z_bledna_referencja = {
+        **payload,
+        "catalog_binding": {"catalog_item_id": "nie-istnieje-w-katalogu"},
+    }
     blad2, _ = validate_and_materialize_catalog_binding(
         "add_nn_outgoing_field", z_bledna_referencja
     )

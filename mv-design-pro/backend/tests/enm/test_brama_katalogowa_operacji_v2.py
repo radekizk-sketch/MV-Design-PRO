@@ -130,7 +130,10 @@ def _payload_stacji(endpoint_bus_ref: str, nn_block: dict[str, Any]) -> dict[str
         "nn_voltage_kv": 0.4,
         "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
         "field_apparatus_catalog_ref": REF_APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": REF_TRAFO},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO},
+        },
         "nn_block": nn_block,
     }
 
@@ -143,13 +146,19 @@ def _siec_ze_stacja(nn_block: dict[str, Any] | None = None) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     )
     snapshot = _wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
+            }
+        },
     )
     odcinek = snapshot["branches"][-1]
     return _wykonaj(
@@ -212,7 +221,7 @@ def _payload_zrodla(
         "station_ref": _stacja_ref(snapshot),
         "bus_nn_ref": _szyna_nn_ref(snapshot),
         "source_name": f"Źródło {technologia}",
-        "catalog_ref": catalog_ref,
+        "catalog_binding": {"catalog_item_id": catalog_ref},
     }
     payload.update(nadpisania)
     return payload
@@ -252,7 +261,7 @@ class PrzypadekIniekcji:
 def _payload_ct(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "field_ref": _pole_sn_ref(snapshot),
-        "catalog_ref": REF_CT,
+        "catalog_binding": {"catalog_item_id": REF_CT},
         "ratio_primary_a": 400.0,
         "ratio_secondary_a": 5.0,
     }
@@ -274,7 +283,7 @@ def _payload_ct_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
 def _payload_vt(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "field_ref": _pole_sn_ref(snapshot),
-        "catalog_ref": REF_VT,
+        "catalog_binding": {"catalog_item_id": REF_VT},
         "ratio_primary_v": 15000.0,
         "ratio_secondary_v": 100.0,
     }
@@ -296,7 +305,7 @@ def _payload_vt_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
 def _payload_relay(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "field_ref": _pole_sn_ref(snapshot),
-        "catalog_ref": REF_PRZEKAZNIK,
+        "catalog_binding": {"catalog_item_id": REF_PRZEKAZNIK},
         "relay_type": "NADPRADOWY",
     }
 
@@ -315,7 +324,7 @@ def _payload_sn_bay(snapshot: dict[str, Any]) -> dict[str, Any]:
         "bus_ref": _szyna_sn_ref(snapshot),
         "bay_role": "OUT",  # rola modelu; kanoniczna `LINIA_OUT` → sn.bay_role_unknown
         "apparatus_kind": "BREAKER",
-        "catalog_ref": REF_APARAT_SN,
+        "catalog_binding": {"catalog_item_id": REF_APARAT_SN},
     }
 
 
@@ -329,7 +338,7 @@ def _payload_sn_bay_z_katalogu(snapshot: dict[str, Any]) -> dict[str, Any]:
         "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "complete_bay_template_ref": POLE_KATALOGOWE_SN,
-        "catalog_ref": REF_APARAT_SN,
+        "catalog_binding": {"catalog_item_id": REF_APARAT_SN},
     }
 
 
@@ -340,7 +349,7 @@ def _payload_nn_load(snapshot: dict[str, Any]) -> dict[str, Any]:
         # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
         # (FAB-D1 D5) — ten test sprawdza bramę katalogową, nie moc bierną.
         "cos_phi": 0.9,
-        "catalog_ref": REF_ODBIOR,
+        "catalog_binding": {"catalog_item_id": REF_ODBIOR},
     }
 
 
@@ -414,7 +423,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
                 "rated_power_mva": 1.0,
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": 0.4,
-                "catalog_ref": REF_TRAFO_BLOKOWY,
                 "catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": REF_TRAFO_BLOKOWY,
@@ -437,7 +445,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                 },
-                "cable_catalog_ref": REF_KABEL_DER,
                 "cable_catalog_binding": {
                     "catalog_namespace": "KABEL_SN",
                     "catalog_item_id": REF_KABEL_DER,
@@ -470,9 +477,9 @@ def _payload_zespol_uziemiajacy(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół Z.14 (dławik ‖ rezystor) na szynie SN."""
     return {
         "bus_ref": _szyna_sn_ref(snapshot),
-        "catalog_ref": REF_TU,
-        "dlawik": {"catalog_ref": REF_DLAWIK},
-        "rezystor": {"catalog_ref": REF_REZYSTOR},
+        "catalog_binding": {"catalog_item_id": REF_TU},
+        "dlawik": {"catalog_binding": {"catalog_item_id": REF_DLAWIK}},
+        "rezystor": {"catalog_binding": {"catalog_item_id": REF_REZYSTOR}},
     }
 
 
@@ -482,7 +489,7 @@ def _payload_odbior_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
         "bus_ref": _szyna_sn_ref(snapshot),
         "p_mw": 0.03,
         "cos_phi": 0.9,
-        "catalog_ref": REF_ODBIOR,
+        "catalog_binding": {"catalog_item_id": REF_ODBIOR},
     }
 
 
@@ -495,7 +502,7 @@ def _payload_generator_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "bus_ref": _szyna_sn_ref(snapshot),
         "p_mw": 0.5,
-        "catalog_ref": "bench_ozepvbess_pv2",
+        "catalog_binding": {"catalog_item_id": "bench_ozepvbess_pv2"},
         "control_mode": "REGULACJA_NAPIECIA",
         "u_set_pu": 1.0,
     }
@@ -517,7 +524,7 @@ def _payload_kabel_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "from_bus_ref": _szyna_nn_ref(snapshot),
         "length_m": 25.0,
-        "catalog_ref": REF_KABEL_NN,
+        "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
     }
 
 
@@ -550,7 +557,7 @@ def _payload_pole_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
         "station_ref": _stacja_ref(snapshot),
         "bus_nn_ref": _szyna_nn_ref(snapshot),
         "field_role": "OUTGOING",
-        "catalog_ref": REF_APARAT_NN,
+        "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
     }
 
 
@@ -573,7 +580,7 @@ def _payload_aparat_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "from_bus_ref": _szyna_nn_ref(snapshot),
         "to_bus_ref": _druga_szyna_nn_ref(snapshot),
-        "catalog_ref": REF_APARAT_NN,
+        "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
     }
 
 
@@ -595,7 +602,10 @@ def _odbior_nn_ref(snapshot: dict[str, Any]) -> str:
 
 
 def _payload_rcd_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
-    return {"load_ref": _odbior_nn_ref(snapshot), "catalog_ref": REF_RCD_NN}
+    return {
+        "load_ref": _odbior_nn_ref(snapshot),
+        "catalog_binding": {"catalog_item_id": REF_RCD_NN},
+    }
 
 
 def _payload_rcd_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -619,7 +629,10 @@ def _rozdzielnica_nn_ref(snapshot: dict[str, Any]) -> str:
 
 
 def _payload_sprzeglo_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
-    return {"station_ref": _rozdzielnica_nn_ref(snapshot), "catalog_ref": REF_APARAT_NN}
+    return {
+        "station_ref": _rozdzielnica_nn_ref(snapshot),
+        "catalog_binding": {"catalog_item_id": REF_APARAT_NN},
+    }
 
 
 def _payload_sprzeglo_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -687,7 +700,7 @@ def _payload_rozdzielnicy_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
         "supply": {
             "from_bus_ref": _szyna_nn_ref(snapshot),
             "length_m": 20.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
         },
     }
 
@@ -797,7 +810,7 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "add_converter_source",
         _payload_konwerter_der_sn,
         lambda p: p["der_topology"]["mv_field_configuration"].update(
-            {"cable_catalog_ref": REF_KABEL_DER + LITEROWKA, "cable_catalog_binding": None}
+            {"cable_catalog_binding": None}
         ),
     ),
     PrzypadekIniekcji(
@@ -1085,14 +1098,20 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     )
     snapshot = _operacja_api(
         klient,
         case_id,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
+            }
+        },
     )
     odcinek = snapshot["branches"][-1]
     return _operacja_api(
@@ -1353,7 +1372,7 @@ def _przygotowana_siec(przypadek: PrzypadekIniekcji) -> dict[str, Any]:
             {
                 "from_bus_ref": _szyna_nn_ref(snapshot),
                 "length_m": 20.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             },
         )
     if przypadek.operacja == "add_nn_section_coupler":
@@ -1419,7 +1438,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
             {
                 "from_bus_ref": _szyna_nn_ref(snapshot),
                 "length_m": 20.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             },
         )
     if przypadek.operacja == "add_nn_section_coupler":

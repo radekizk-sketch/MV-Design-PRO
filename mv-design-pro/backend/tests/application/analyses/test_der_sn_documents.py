@@ -100,7 +100,6 @@ def _der_sn_payload(power_mw: float = 0.998) -> dict[str, Any]:
                 "rated_power_mva": 1.0,
                 "primary_voltage_kv": 15.0,
                 "secondary_voltage_kv": 0.4,
-                "catalog_ref": _TR_BLOCK,
                 "catalog_binding": {
                     "catalog_namespace": "TRAFO_SN_NN",
                     "catalog_item_id": _TR_BLOCK,
@@ -126,7 +125,6 @@ def _der_sn_payload(power_mw: float = 0.998) -> dict[str, Any]:
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
                 },
-                "cable_catalog_ref": _CABLE,
                 "cable_catalog_binding": {
                     "catalog_namespace": "KABEL_SN",
                     "catalog_item_id": _CABLE,

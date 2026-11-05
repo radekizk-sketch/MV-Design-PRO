@@ -53,7 +53,7 @@ def _tor_atomowy(technologia: str) -> dict[str, Any]:
             "station_ref": h._stacja_ref(snapshot),
             "bus_nn_ref": _szyna_nn(snapshot, napiecie),
             "source_name": f"Źródło {technologia}",
-            "catalog_ref": typ,
+            "catalog_binding": {"catalog_item_id": typ},
         },
     )
 
@@ -66,13 +66,19 @@ def _tor_stacyjny(technologia: str) -> dict[str, Any]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": h.REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": h.REF_ZRODLO},
         },
     )
     snapshot = h._wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": h.REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": h.REF_KABEL},
+            }
+        },
     )
     payload = h._payload_stacji(
         str(snapshot["branches"][-1]["to_bus_ref"]),
@@ -83,7 +89,7 @@ def _tor_stacyjny(technologia: str) -> dict[str, Any]:
         ),
     )
     payload["nn_voltage_kv"] = napiecie
-    payload["transformer"]["transformer_catalog_ref"] = trafo
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": trafo}
     return h._wykonaj(snapshot, "append_station_on_endpoint", payload)
 
 

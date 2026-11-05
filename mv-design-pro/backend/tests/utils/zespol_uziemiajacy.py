@@ -70,7 +70,7 @@ def zespol_uziemiajacy_rekord(
     if wariant in ("dlawik", "dlawik_rezystor"):
         dl = _pozycja(get_all_arc_suppression_coil_records(), u_kv, dlawik_ref)
         rekord["dlawik"] = {
-            "catalog_ref": dl["id"],
+            "catalog_binding": {"catalog_item_id": dl["id"]},
             "catalog_namespace": PRZESTRZEN_DLAWIKA_GASZACEGO,
             "materialized_params": _parametry(dl),
             **({"i_nastawy_a": i_nastawy_a} if i_nastawy_a is not None else {}),
@@ -78,7 +78,7 @@ def zespol_uziemiajacy_rekord(
     if wariant in ("rezystor", "dlawik_rezystor"):
         rz = _pozycja(get_all_neutral_earthing_resistor_records(), u_kv, rezystor_ref)
         rekord["rezystor"] = {
-            "catalog_ref": rz["id"],
+            "catalog_binding": {"catalog_item_id": rz["id"]},
             "catalog_namespace": PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO,
             "materialized_params": _parametry(rz),
         }

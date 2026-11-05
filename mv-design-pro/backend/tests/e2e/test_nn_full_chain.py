@@ -410,7 +410,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": REF_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO_SN},
         },
     )
 
@@ -423,7 +423,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 300,
                 "name": "Magistrala SN 1",
-                "catalog_ref": REF_KABEL_SN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_SN},
             },
         },
     )
@@ -444,7 +444,10 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "ST-03"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
-            "transformer": {"create": True, "transformer_catalog_ref": REF_TRANSFORMATOR},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": REF_TRANSFORMATOR},
+            },
             # Wymagane przez walidator (E063 BLOCKER): stacja zasilająca odbiory nN
             # musi deklarować układ sieci nN. TN-C-S — dominujący układ dla stacji
             # SN/nN w Polsce (patrz komentarz `_LV_LOCAL_GROUND_CONNECTIONS` w
@@ -478,7 +481,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "supply": {
                 "from_bus_ref": rgnn_bus,
                 "length_m": 40.0,
-                "catalog_ref": REF_KABEL_NN,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
                 "name": "K1",
             },
         },
@@ -532,7 +535,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         {
             "from_bus_ref": skrzynka_bus,
             "length_m": 60.0,
-            "catalog_ref": REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
             "name": "K2",
         },
     )
@@ -562,7 +565,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             # dostałby 422 `catalog.ref_required`. Wzorzec zgodny z
             # `tests/api/test_brama_katalogowa_api_inwentarz.py::IniekcjaBramy
             # ("add_nn_outgoing_field", ...)`, który TEŻ wymaga catalog_ref.
-            "catalog_ref": "cb_nn_630a",
+            "catalog_binding": {"catalog_item_id": "cb_nn_630a"},
         },
     )
     feeder_k2 = r_field_k2["changes"]["created_element_ids"][0]
@@ -584,7 +587,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             # najbliższa silnikowi w dostępnym katalogu; P0 nie ma jeszcze
             # dedykowanej pozycji „silnik", zob. G-14/P1) jest uczciwe — żadna
             # wartość liczbowa nie jest z niej brana.
-            "catalog_ref": "load_przem_75kw",
+            "catalog_binding": {"catalog_item_id": "load_przem_75kw"},
         },
     )
     silnik_load_ref = r_load_k2["changes"]["created_element_ids"][0]
@@ -605,7 +608,12 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         client,
         case_id,
         "add_nn_cable_segment",
-        {"from_bus_ref": r1_bus, "length_m": 50.0, "catalog_ref": REF_KABEL_NN, "name": "K3"},
+        {
+            "from_bus_ref": r1_bus,
+            "length_m": 50.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "K3",
+        },
     )
     leaf_odbior_bus = r_k3_cable["snapshot"]["branches"][-1]["to_bus_ref"]
     r_field_k3 = _op(
@@ -616,7 +624,9 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "station_ref": r1_ref,
             "bus_nn_ref": leaf_odbior_bus,
             "field_name": "Odpływ K3 - Odbiór",
-            "catalog_ref": "cb_nn_630a",  # patrz komentarz przy K2 (ZNALEZISKO bramy)
+            "catalog_binding": {
+                "catalog_item_id": "cb_nn_630a"
+            },  # patrz komentarz przy K2 (ZNALEZISKO bramy)
         },
     )
     feeder_k3 = r_field_k3["changes"]["created_element_ids"][0]
@@ -629,7 +639,9 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "active_power_kw": 15.0,
             "cos_phi": 0.92,
             "load_name": "Odbiór K3",
-            "catalog_ref": "load_uslugi_30kw",  # patrz komentarz przy K2 (ZNALEZISKO bramy)
+            "catalog_binding": {
+                "catalog_item_id": "load_uslugi_30kw"
+            },  # patrz komentarz przy K2 (ZNALEZISKO bramy)
         },
     )
 
@@ -646,7 +658,12 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         client,
         case_id,
         "add_nn_cable_segment",
-        {"from_bus_ref": rgnn_bus, "length_m": 30.0, "catalog_ref": REF_KABEL_NN, "name": "K4"},
+        {
+            "from_bus_ref": rgnn_bus,
+            "length_m": 30.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "K4",
+        },
     )
     leaf_pv_bus = r_k4_cable["snapshot"]["branches"][-1]["to_bus_ref"]
     _op(
@@ -658,7 +675,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "bus_nn_ref": leaf_pv_bus,
             "source_technology": "PV",
             "connection_variant": "nn_side",
-            "catalog_ref": REF_PV,
+            "catalog_binding": {"catalog_item_id": REF_PV},
             "source_name": "PV-K4",
             "power_setpoint_mw": 0.15,
         },
@@ -669,7 +686,12 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         client,
         case_id,
         "add_nn_cable_segment",
-        {"from_bus_ref": rgnn_bus, "length_m": 25.0, "catalog_ref": REF_KABEL_NN, "name": "K5"},
+        {
+            "from_bus_ref": rgnn_bus,
+            "length_m": 25.0,
+            "catalog_binding": {"catalog_item_id": REF_KABEL_NN},
+            "name": "K5",
+        },
     )
     leaf_bess_bus = r_k5_cable["snapshot"]["branches"][-1]["to_bus_ref"]
     _op(
@@ -681,7 +703,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "bus_nn_ref": leaf_bess_bus,
             "source_technology": "BESS",
             "connection_variant": "nn_side",
-            "catalog_ref": REF_BESS,
+            "catalog_binding": {"catalog_item_id": REF_BESS},
             "source_name": "BESS-K5",
             "power_setpoint_mw": 0.05,
         },
@@ -1494,8 +1516,10 @@ class TestNnFullChain:
             "assign_catalog_to_element",
             {
                 "element_ref": _REFS["k2_cable_ref"],
-                "catalog_item_id": REF_KABEL_NN_MNIEJSZY,
-                "catalog_namespace": "KABEL_NN",
+                "catalog_binding": {
+                    "catalog_item_id": REF_KABEL_NN_MNIEJSZY,
+                    "catalog_namespace": "KABEL_NN",
+                },
             },
         )
 

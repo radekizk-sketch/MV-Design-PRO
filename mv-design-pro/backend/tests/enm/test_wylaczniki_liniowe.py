@@ -42,7 +42,7 @@ def _wstaw(enm: dict[str, Any], odcinek: str, rodzaj: str, nazwa: str) -> tuple[
             "segment_id": odcinek,
             "insert_at": {"mode": "RATIO", "value": POLOZENIE_WYLACZNIKA},
             "switch_type": rodzaj,
-            "catalog_ref": KATALOG_APARATU,
+            "catalog_binding": {"catalog_item_id": KATALOG_APARATU},
             "switch_name": nazwa,
         },
     )
@@ -123,7 +123,7 @@ def test_add_ct_przyjmuje_i_odrzuca_wg_tej_samej_reguly(
         "add_ct",
         {
             "breaker_ref": ref,
-            "catalog_ref": KATALOG_PRZEKLADNIKA,
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKLADNIKA},
             "ratio_primary_a": 600.0,
             "ratio_secondary_a": 5.0,
             "accuracy_class": "5P20",
@@ -148,7 +148,7 @@ def test_add_relay_przyjmuje_i_odrzuca_wg_tej_samej_reguly(
             "add_ct",
             {
                 "breaker_ref": ref,
-                "catalog_ref": KATALOG_PRZEKLADNIKA,
+                "catalog_binding": {"catalog_item_id": KATALOG_PRZEKLADNIKA},
                 "ratio_primary_a": 600.0,
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
@@ -160,7 +160,11 @@ def test_add_relay_przyjmuje_i_odrzuca_wg_tej_samej_reguly(
     wynik = execute_domain_operation(
         model,
         "add_relay",
-        {"breaker_ref": ref, "relay_type": "NADPRADOWY", "catalog_ref": KATALOG_PRZEKAZNIKA},
+        {
+            "breaker_ref": ref,
+            "relay_type": "NADPRADOWY",
+            "catalog_binding": {"catalog_item_id": KATALOG_PRZEKAZNIKA},
+        },
     )
     if powod is None:
         assert wynik.get("error") is None, wynik.get("error")

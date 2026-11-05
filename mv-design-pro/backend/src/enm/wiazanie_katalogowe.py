@@ -28,11 +28,18 @@ from typing import Any
 #: Klucz kanoniczny wiązania w węźle ładunku.
 KLUCZ_WIAZANIA = "catalog_binding"
 
+#: Przestrzeń katalogu punktów pośrednich SN (słup rozgałęźny, ZKSN) — własny katalog obiektów.
+PRZESTRZEN_PUNKTU_POSREDNIEGO_SN = "mv_branch_points"
+
 #: Kod odmowy ładunku z zamiennikiem klucza wiązania.
 KOD_ZAMIENNIKA_KLUCZA = "catalog.binding_key_alias"
 
 #: Kod odmowy wiązania bez identyfikatora pozycji albo o złym kształcie.
 KOD_WIAZANIA_NIEPOPRAWNEGO = "catalog.binding_invalid"
+
+#: Kod odmowy wiązania deklarującego przestrzeń katalogu inną niż przestrzeń RODZAJU
+#: elementu (ten sam kod co ``assign_catalog_to_element``).
+KOD_PRZESTRZENI_NIEZGODNEJ = "catalog.namespace_mismatch"
 
 #: Pola słownika wiązania (``CatalogBinding``) — jedyne klucze wewnątrz wiązania.
 POLA_WIAZANIA: frozenset[str] = frozenset(
@@ -52,14 +59,21 @@ ZAMIENNIKI_W_WIAZANIU: tuple[str, ...] = ("catalog_ref", "item_id", "namespace")
 def zamienniki_klucza(klucz_wiazania: str) -> tuple[str, ...]:
     """Zakazane zamienniki klucza wiązania na poziomie węzła ładunku.
 
-    ``catalog_binding`` → ``catalog_ref``, ``catalog_item_id``, ``catalog_item_version``;
+    ``catalog_binding`` → ``catalog_ref``, ``catalog_item_id``, ``catalog_item_version``,
+    ``catalog_namespace``, ``catalog_version`` (pola wiązania podane obok wiązania);
     ``<rola>_catalog_binding`` → ``<rola>_catalog_ref``, ``<rola>_catalog_item_id``.
     Funkcja jest też podstawą strażnika kontraktu operacji
     (``scripts/klucz_katalogu_guard.py``): kształt węzła z kluczem wiązania nie może
     zawierać żadnego z tych kluczy.
     """
     if klucz_wiazania == KLUCZ_WIAZANIA:
-        return ("catalog_ref", "catalog_item_id", "catalog_item_version")
+        return (
+            "catalog_ref",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "catalog_version",
+        )
     if not klucz_wiazania.endswith("_" + KLUCZ_WIAZANIA):
         raise ValueError(f"{klucz_wiazania!r} nie jest kluczem wiązania katalogowego")
     rola = klucz_wiazania[: -len("_" + KLUCZ_WIAZANIA)]
@@ -101,6 +115,30 @@ class OdczytWiazania:
         }
 
 
+def odmowa_przestrzeni(
+    przestrzen_wiazania: str | None, przestrzen_rodzaju: str, *, opis_pl: str = "Element"
+) -> OdczytWiazania | None:
+    """Odmowa :data:`KOD_PRZESTRZENI_NIEZGODNEJ`, gdy wiązanie deklaruje przestrzeń inną niż
+    przestrzeń rodzaju elementu; ``None`` — zgodna albo niezadeklarowana.
+
+    JEDNO źródło prawdy przestrzeni (karta JEDEN-KLUCZ-KATALOGU, V12K-316 dług 4): kategoria
+    katalogu wynika z RODZAJU tworzonego elementu. Dawniej brama API przyjmowała przestrzeń
+    z wiązania, a operacja nadpisywała ją przestrzenią rodzaju — para predykatów sprawdzała
+    pozycję w jednej kategorii, a materializowała w drugiej. Woła ją :func:`odczytaj_wiazanie`
+    (brama API i operacje V2) oraz materializacja operacji V1 (``_materialize_catalog_payload``).
+    """
+    if przestrzen_wiazania is None or przestrzen_wiazania == przestrzen_rodzaju:
+        return None
+    return OdczytWiazania(
+        kod_bledu=KOD_PRZESTRZENI_NIEZGODNEJ,
+        komunikat_pl=(
+            f"{opis_pl}: wiązanie deklaruje grupę katalogu „{przestrzen_wiazania}”, a element "
+            f"tego rodzaju bierze pozycję z grupy „{przestrzen_rodzaju}” — wskaż pozycję "
+            "z właściwej grupy albo pomiń grupę w wiązaniu."
+        ),
+    )
+
+
 def _tekst(wartosc: object) -> str | None:
     if isinstance(wartosc, str) and wartosc.strip():
         return wartosc.strip()
@@ -112,6 +150,7 @@ def odczytaj_wiazanie(
     klucz: str = KLUCZ_WIAZANIA,
     *,
     opis_pl: str = "Element",
+    przestrzen_rodzaju: str | None = None,
 ) -> OdczytWiazania:
     """Odczytaj wiązanie ``wezel[klucz]`` — jedyny odczyt pozycji katalogu ładunku.
 
@@ -121,6 +160,10 @@ def odczytaj_wiazanie(
     deklaracją drugiej drogi wskazania. Odmowa :data:`KOD_WIAZANIA_NIEPOPRAWNEGO`, gdy
     wiązanie nie jest słownikiem albo nie niesie ``catalog_item_id``. Węzeł bez
     klucza wiązania (albo z wartością ``None``) nie wskazuje pozycji.
+
+    ``przestrzen_rodzaju`` (przestrzeń katalogu RODZAJU elementu): wynik niesie tę przestrzeń,
+    a wiązanie deklarujące inną daje odmowę :data:`KOD_PRZESTRZENI_NIEZGODNEJ`
+    (:func:`odmowa_przestrzeni`).
     """
     if not isinstance(wezel, Mapping):
         return OdczytWiazania()
@@ -161,17 +204,23 @@ def odczytaj_wiazanie(
                 "„catalog_item_id”."
             ),
         )
+    przestrzen = _tekst(surowe.get("catalog_namespace"))
+    if przestrzen_rodzaju is not None:
+        odmowa = odmowa_przestrzeni(przestrzen, przestrzen_rodzaju, opis_pl=opis_pl)
+        if odmowa is not None:
+            return odmowa
+        przestrzen = przestrzen_rodzaju
     return OdczytWiazania(
         pozycja=pozycja,
         wersja=_tekst(surowe.get("catalog_item_version")),
-        przestrzen=_tekst(surowe.get("catalog_namespace")),
+        przestrzen=przestrzen,
     )
 
 
 def _jest_kluczem_wskazania(nazwa: str) -> bool:
     """Czy nazwa klucza jest drogą wskazania pozycji katalogu (wiązanie albo zamiennik)."""
     return (
-        nazwa in ("catalog_ref", "catalog_item_id", "catalog_item_version", KLUCZ_WIAZANIA)
+        nazwa in zamienniki_klucza(KLUCZ_WIAZANIA) + (KLUCZ_WIAZANIA,)
         or nazwa in ZAMIENNIKI_W_WIAZANIU
         or nazwa.endswith(("_catalog_ref", "_catalog_item_id", "_" + KLUCZ_WIAZANIA))
     )

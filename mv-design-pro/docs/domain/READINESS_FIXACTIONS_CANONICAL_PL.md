@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -86,6 +86,7 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `catalog.binding_invalid` | CATALOGS | 1 | BLOCKER | Wiązanie katalogowe ma niewłaściwą postać albo nie niesie identyfikatora pozycji katalogowej | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
+| `catalog.binding_key_alias` | CATALOGS | 1 | BLOCKER | Pozycję katalogu wskazano kluczem zastępczym — pozycję wskazuje wyłącznie wiązanie katalogowe z identyfikatorem pozycji | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_required` | CATALOGS | 1 | BLOCKER | Element techniczny wymaga wiązania z katalogiem | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_version_missing` | CATALOGS | 1 | BLOCKER | Brak wersji katalogu w wiązaniu elementu obliczeniowego | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.clear_forbidden` | CATALOGS | 1 | BLOCKER | Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast czyścić wiązanie wskaż pozycję zastępczą | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
@@ -245,21 +246,21 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 108 |
+| BLOCKER | 109 |
 | WARNING | 65 |
 | INFO | 9 |
-| **Razem** | **182** |
+| **Razem** | **183** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 20 |
 | TOPOLOGY | 7 |
-| CATALOGS | 55 |
+| CATALOGS | 56 |
 | STATIONS | 31 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **182** |
+| **Razem** | **183** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

@@ -124,7 +124,9 @@ def _payload_wciecia(
         "field_apparatus_catalog_ref": APARAT_SN,
         "sn_fields": sn_fields,
         "transformer": (
-            transformer if transformer is not None else {"transformer_catalog_ref": TRAFO_630}
+            transformer
+            if transformer is not None
+            else {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}}
         ),
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
@@ -581,7 +583,7 @@ def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )["snapshot"]
     substation = gpz_snapshot["substations"][0]
@@ -624,7 +626,7 @@ def test_add_sn_bay_przyjmuje_uklad_energii_na_stacji_koncowej() -> None:
             "endpoint_bus_ref": koniec,
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {"name": "Stacja końcowa", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
             "nn_voltage_kv": 0.4,
         },
@@ -743,7 +745,7 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_atrybuty() -> None
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )["snapshot"]
     substation = gpz_snapshot["substations"][0]
@@ -849,7 +851,7 @@ def test_stacja_koncowa_bez_deklaracji_utrwala_uklad_podstawowy() -> None:
             "endpoint_bus_ref": koniec,
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {"name": "Stacja abonencka", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "POMIAROWE"},
@@ -878,7 +880,7 @@ def test_stacja_koncowa_odmawia_nieznanego_rodzaju() -> None:
             "endpoint_bus_ref": koniec,
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {"name": "Stacja abonencka", "station_type": "terminal"},
-            "transformer": {"transformer_catalog_ref": TRAFO_630},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_630}},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "POMIAROWE", "rodzaj_pomiaru": "TARYFOWY"},

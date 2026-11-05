@@ -133,7 +133,7 @@ def _zastosuj_szablon(
     nn_kv = transformer_voltages_kv(transformator)[1] or 0.4
     # Ten sam kształt co `apply.py` (bez `sn_voltage_kv` — napięcie SN z topologii).
     station_spec = {"name": template.name_pl, "nn_voltage_kv": nn_kv}
-    transformer_spec = {"transformer_catalog_ref": transformator}
+    transformer_spec = {"transformer_catalog_binding": {"catalog_item_id": transformator}}
     nn_block = {"outgoing_feeders_nn_count": 2, "outgoing_feeders_nn": []}
     klasa = _klasa_przylaczenia(role)
     dziennik: list[dict[str, Any]] = []
@@ -564,7 +564,9 @@ def test_wciecie_w_odcinek_odmawia_ukladu_klasy_b_niezaleznie_od_drogi_wejscia()
                 {"field_role": "TRANSFORMATOROWE"},
                 {"field_role": "LINIA_OUT"},
             ],
-            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"}
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )
@@ -597,7 +599,9 @@ def test_wciecie_w_odcinek_przyjmuje_zlacze_z_petla_osd_i_pomiarem() -> None:
                 {"field_role": "POMIAROWE"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"}
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )
@@ -632,7 +636,11 @@ def test_brama_rozpoznaje_role_pomiarowa_takze_z_aliasu_skrotowego() -> None:
                 },
                 "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": alias}],
-                "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "transformer_catalog_binding": {
+                        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"
+                    }
+                },
                 "nn_block": {"outgoing_feeders_nn_count": 1},
             },
         )
@@ -691,7 +699,9 @@ def test_realny_zestaw_pol_szablonu_abonenckiego_jest_odrzucany_przez_wciecie() 
                 "nn_voltage_kv": 0.4,
             },
             "sn_fields": specyfikacje,
-            "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"}
+            },
             "nn_block": {"outgoing_feeders_nn_count": 1},
         },
     )

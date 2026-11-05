@@ -46,7 +46,7 @@ def _gpz(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
     """Równoważnik na szynach SN (katalog źródeł GPZ)."""
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
-        "catalog_ref": CATALOG_ZRODLO_SN,
+        "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
     }
     if grounding is not None:
         payload["grounding"] = grounding
@@ -66,7 +66,7 @@ def _gpz_wn(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
             "rx_ratio": 0.1,
         },
         "transformer_count": 1,
-        "transformer_catalog_ref": CATALOG_TRAFO_WN_SN,
+        "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_WN_SN},
     }
     if grounding is not None:
         payload["grounding"] = grounding
@@ -200,7 +200,11 @@ class TestKreatorZrodla:
 
 def _gpz_z_odcinkiem(screen_bonding: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     snap = _ok(_gpz(None))
-    segment: dict[str, Any] = {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": CATALOG_KABEL_SN}
+    segment: dict[str, Any] = {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 500,
+        "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
+    }
     if screen_bonding is not None:
         segment["screen_bonding"] = screen_bonding
     result = _op(snap, "continue_trunk_segment_sn", {"segment": segment})
@@ -227,7 +231,10 @@ def _stacja(snap: dict[str, Any], nn_earthing: dict[str, Any] | None) -> dict[st
             {"field_role": "LINIA_ODG"},
             {"field_role": "TRANSFORMATOROWE"},
         ],
-        "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+        },
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
     if nn_earthing is not None:
@@ -336,7 +343,7 @@ class TestEkranKabla:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 300,
-                    "catalog_ref": CATALOG_KABEL_SN,
+                    "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
                     "screen_bonding": "cross_bonded",
                 },
             },
@@ -354,7 +361,7 @@ class TestEkranKabla:
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 500,
-                    "catalog_ref": "line-base-al-st-70",
+                    "catalog_binding": {"catalog_item_id": "line-base-al-st-70"},
                     "screen_bonding": "both_ends",
                 }
             },
@@ -367,7 +374,7 @@ class TestEkranKabla:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 500,
-                    "catalog_ref": CATALOG_KABEL_SN,
+                    "catalog_binding": {"catalog_item_id": CATALOG_KABEL_SN},
                     "screen_bonding": "trzystronne",
                 }
             },
@@ -458,7 +465,7 @@ def test_kabel_nn_niesie_screen_bonding():
         {
             "from_bus_ref": szyna_nn["ref_id"],
             "length_m": 120,
-            "catalog_ref": "kab_nn_4x120_al",
+            "catalog_binding": {"catalog_item_id": "kab_nn_4x120_al"},
             "screen_bonding": "single_end",
         },
     )
@@ -475,7 +482,7 @@ def _transformator_na_gpz(**extra: Any) -> tuple[dict[str, Any], dict[str, Any]]
     payload: dict[str, Any] = {
         "hv_bus_ref": szyna_sn["ref_id"],
         "lv_voltage_kv": 0.4,
-        "transformer_catalog_ref": CATALOG_TRAFO_630,
+        "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
     }
     payload.update(extra)
     return _op(snap, "add_transformer_sn_nn", payload), snap

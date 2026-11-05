@@ -116,7 +116,7 @@ def _payload_atomowy(siec: dict[str, Any], c: Przypadek) -> dict[str, Any]:
         "station_ref": h._stacja_ref(siec),
         "bus_nn_ref": km._szyna_nn(siec, 0.4),
         "source_name": "Źródło PV",
-        "catalog_ref": c.typ,
+        "catalog_binding": {"catalog_item_id": c.typ},
         "quantity": c.n,
         "power_setpoint_mw": c.p_mw,
     }
@@ -183,13 +183,19 @@ def werdykt_stacyjny(c: Przypadek) -> str | None:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": h.REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": h.REF_ZRODLO},
         },
     )
     siec = h._wykonaj(
         siec,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": h.REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": h.REF_KABEL},
+            }
+        },
     )
     blok = h._blok_nn(nn_configuration="PV_INVERTER", source_converter_catalog_ref=c.typ)
     if c.cos_phi is not None:
@@ -200,7 +206,7 @@ def werdykt_stacyjny(c: Przypadek) -> str | None:
         blok["loadability_pu"] = c.k_obc
     payload = h._payload_stacji(str(siec["branches"][-1]["to_bus_ref"]), blok)
     payload["nn_voltage_kv"] = 0.4
-    payload["transformer"]["transformer_catalog_ref"] = c.tr
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": c.tr}
     return execute_domain_operation(siec, "append_station_on_endpoint", payload).get("error_code")
 
 
@@ -214,8 +220,7 @@ def werdykt_przypisanie(c: Przypadek) -> str | None:
         "assign_catalog_to_element",
         {
             "element_ref": generator["ref_id"],
-            "catalog_item_id": c.typ,
-            "catalog_namespace": "ZRODLO_NN_PV",
+            "catalog_binding": {"catalog_item_id": c.typ, "catalog_namespace": "ZRODLO_NN_PV"},
         },
     )
     return wynik.get("error_code")
@@ -312,7 +317,7 @@ def test_pin_nastawa_2mw_na_falowniku_1mw_jest_odmowa_w_kazdym_torze_z_nastawa()
             "station_ref": h._stacja_ref(siec),
             "bus_nn_ref": km._szyna_nn(siec, 0.8),
             "source_name": "PV",
-            "catalog_ref": "conv-pv-nn-1mw-0p8kv",
+            "catalog_binding": {"catalog_item_id": "conv-pv-nn-1mw-0p8kv"},
             "power_setpoint_mw": 2.0,
         },
     )
@@ -335,8 +340,10 @@ def test_pin_nastawa_2mw_na_falowniku_1mw_jest_odmowa_w_kazdym_torze_z_nastawa()
         "assign_catalog_to_element",
         {
             "element_ref": generator["ref_id"],
-            "catalog_item_id": "conv-pv-nn-1mw-0p8kv",
-            "catalog_namespace": "ZRODLO_NN_PV",
+            "catalog_binding": {
+                "catalog_item_id": "conv-pv-nn-1mw-0p8kv",
+                "catalog_namespace": "ZRODLO_NN_PV",
+            },
         },
     )
     assert przypisanie.get("error_code") == NASTAWA
@@ -401,7 +408,10 @@ def test_zmiana_transformatora_sprawdza_zasilane_zrodla(nowy_tr: str, kod: str |
     przypisanie = execute_domain_operation(
         snapshot,
         "assign_catalog_to_element",
-        {"element_ref": tr_ref, "catalog_item_id": nowy_tr, "catalog_namespace": "TRAFO_SN_NN"},
+        {
+            "element_ref": tr_ref,
+            "catalog_binding": {"catalog_item_id": nowy_tr, "catalog_namespace": "TRAFO_SN_NN"},
+        },
     )
     assert przypisanie.get("error_code") == kod, przypisanie.get("error")
     sn_nowego = {TR_1250: 1.25, "tr-sn-nn-15-04-400kva-dyn11": 0.4}[nowy_tr]
@@ -486,7 +496,7 @@ def _szyna_za_kablem_nn(siec: dict[str, Any]) -> tuple[dict[str, Any], str]:
         {
             "from_bus_ref": km._szyna_nn(siec, 0.4),
             "length_m": 25.0,
-            "catalog_ref": h.REF_KABEL_NN,
+            "catalog_binding": {"catalog_item_id": h.REF_KABEL_NN},
         },
     )
     koniec = [
@@ -555,7 +565,7 @@ def test_usuniecie_jednego_z_rownoleglych_transformatorow_sprawdza_zrodla(
         {
             "hv_bus_ref": tr1["hv_bus_ref"],
             "lv_bus_ref": tr1["lv_bus_ref"],
-            "transformer_catalog_ref": TR_1000,
+            "transformer_catalog_binding": {"catalog_item_id": TR_1000},
             "station_ref": stacja["ref_id"],
         },
     )
@@ -596,7 +606,7 @@ def test_usuniecie_transformatora_niezasilajacego_zrodla_nie_uruchamia_odmowy() 
         {
             "hv_bus_ref": tr1["hv_bus_ref"],
             "lv_voltage_kv": 0.4,
-            "transformer_catalog_ref": TR_1000,
+            "transformer_catalog_binding": {"catalog_item_id": TR_1000},
             "station_ref": stacja["ref_id"],
         },
     )
@@ -627,7 +637,11 @@ def test_raport_zgodnosci_ocenia_ten_sam_transformator_co_operacja() -> None:
     snapshot = h._wykonaj(
         snapshot,
         "add_transformer_sn_nn",
-        {"hv_bus_ref": hv_bus, "lv_voltage_kv": 0.4, "transformer_catalog_ref": TR_2500},
+        {
+            "hv_bus_ref": hv_bus,
+            "lv_voltage_kv": 0.4,
+            "transformer_catalog_binding": {"catalog_item_id": TR_2500},
+        },
     )
     nowy_tr = next(t for t in snapshot["transformers"] if t["ref_id"] != stary_tr)["ref_id"]
     snapshot = h._wykonaj(

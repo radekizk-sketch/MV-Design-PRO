@@ -415,6 +415,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.item_id_missing': KATALOG,
   'catalog.binding_required': KATALOG,
   'catalog.binding_invalid': KATALOG,
+  'catalog.binding_key_alias': KATALOG,
   'catalog.namespace_missing': KATALOG,
   'catalog.namespace_required': KATALOG,
   'catalog.unknown_namespace': KATALOG,

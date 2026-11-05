@@ -88,9 +88,6 @@ def rozbieznosci(
 #: test. Przyczyny merytoryczne — każdy z tych obiektów ma WŁASNĄ kontrolę kluczy albo
 #: kształt wyznacza dana, nie kod.
 OBIEKTY_BEZ_KSZTALTU: dict[str, str] = {
-    # `rozbieznosci_tabliczki` porównuje zadeklarowane dane tabliczki z KLUCZAMI POZYCJI
-    # KATALOGU (iteracja po kluczach pozycji) — zbiór kluczy wyznacza pozycja katalogu.
-    "add_converter_source.materialized_params": "klucze wyznacza pozycja katalogu",
     # Parametry elementu: handler sam odmawia kluczy spoza listy parametrów kolekcji
     # (`KOLEKCJE_Z_LISTA_PARAMETROW`) albo spoza pól kontraktu elementu
     # (`KOLEKCJE_Z_KONTRAKTEM_POL`, `params.key_not_allowed`).

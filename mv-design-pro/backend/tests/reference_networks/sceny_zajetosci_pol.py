@@ -54,7 +54,11 @@ def ok(odpowiedz: dict[str, Any]) -> dict[str, Any]:
 
 
 def odcinek(dlugosc_m: int = 300, nazwa: str | None = None) -> dict[str, Any]:
-    segment: dict[str, Any] = {"rodzaj": "KABEL", "dlugosc_m": dlugosc_m, "catalog_ref": KABEL}
+    segment: dict[str, Any] = {
+        "rodzaj": "KABEL",
+        "dlugosc_m": dlugosc_m,
+        "catalog_binding": {"catalog_item_id": KABEL},
+    }
     if nazwa:
         segment["name"] = nazwa
     return segment
@@ -65,12 +69,12 @@ def _gpz(*, z_zaciskami: bool, sekcje: int = 2) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
-        "catalog_ref": ZRODLO,
+        "catalog_binding": {"catalog_item_id": ZRODLO},
         "sections_count": sekcje,
         "line_fields_per_section": 2,
     }
     if z_zaciskami:
-        payload["gpz_line_field_apparatus"] = {"catalog_ref": APARAT}
+        payload["gpz_line_field_apparatus"] = {"catalog_binding": {"catalog_item_id": APARAT}}
     return ok(op(pusty.model_dump(mode="json"), "add_grid_source_sn", payload))
 
 
@@ -151,7 +155,10 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
                             "nn_voltage_kv": 0.4,
                         },
                         "sn_fields": pola_stacji,
-                        "transformer": {"create": True, "transformer_catalog_ref": TRAFO},
+                        "transformer": {
+                            "create": True,
+                            "transformer_catalog_binding": {"catalog_item_id": TRAFO},
+                        },
                     },
                 )
             )
@@ -165,7 +172,7 @@ def zbuduj_scene(rodzaj: str, stan: str) -> Scena:
                         "endpoint_bus_ref": koniec_ciagu(enm),
                         "station": {"name": "Stacja Brzozowa", "station_type": "terminal"},
                         "field_apparatus_catalog_ref": APARAT,
-                        "transformer": {"transformer_catalog_ref": TRAFO},
+                        "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                         "nn_voltage_kv": 0.4,
                         "sn_fields": [{"field_role": role[r]} for r in pola_stacji],
                     },

@@ -108,7 +108,7 @@ def _realny_enm() -> dict[str, Any]:
             "source_name": "GPZ pomiarowy",
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": _GPZ_SOURCE_REF,
+            "catalog_binding": {"catalog_item_id": _GPZ_SOURCE_REF},
         },
     )
     enm = op(
@@ -119,7 +119,7 @@ def _realny_enm() -> dict[str, Any]:
                 "rodzaj": "KABEL",
                 "dlugosc_m": 250,
                 "name": "Magistrala 1",
-                "catalog_ref": _CABLE_REF,
+                "catalog_binding": {"catalog_item_id": _CABLE_REF},
             }
         },
     )
@@ -144,7 +144,10 @@ def _realny_enm() -> dict[str, Any]:
                 {"field_role": "LINIA_OUT"},
                 {"field_role": "TRANSFORMATOROWE"},
             ],
-            "transformer": {"create": True, "transformer_catalog_ref": _TRAFO_STANDARD},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": _TRAFO_STANDARD},
+            },
             "nn_block": {"outgoing_feeders_nn_count": 2},
         },
     )

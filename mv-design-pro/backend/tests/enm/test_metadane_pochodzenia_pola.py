@@ -201,7 +201,10 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO},
+        },
         "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 

@@ -81,10 +81,10 @@ def zbuduj_etapy() -> list[Etap]:
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": ZRODLO,
+            "catalog_binding": {"catalog_item_id": ZRODLO},
             "sections_count": 1,
             "line_fields_per_section": 2,
-            "gpz_line_field_apparatus": {"catalog_ref": APARAT},
+            "gpz_line_field_apparatus": {"catalog_binding": {"catalog_item_id": APARAT}},
         },
     )
     enm = odpowiedz["snapshot"]
@@ -119,7 +119,7 @@ def zbuduj_etapy() -> list[Etap]:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 400,
-                    "catalog_ref": KABEL,
+                    "catalog_binding": {"catalog_item_id": KABEL},
                     "name": f"Odcinek {numer + 1}",
                 },
             },
@@ -137,7 +137,7 @@ def zbuduj_etapy() -> list[Etap]:
                 "endpoint_bus_ref": nowy_odcinek["to_bus_ref"],
                 "station": {"name": f"Stacja {numer + 1:02d}", "station_type": "terminal"},
                 "field_apparatus_catalog_ref": APARAT,
-                "transformer": {"transformer_catalog_ref": TRAFO},
+                "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO}},
                 "nn_voltage_kv": 0.4,
                 "sn_fields": list(_ROLE_POL_STACJI),
             },

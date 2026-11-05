@@ -144,7 +144,7 @@ def _siec(wariant: str, *, z0_wn: bool) -> dict[str, Any]:
             "sections_count": 1,
             "manual_equivalent": zastepcza,
             "transformer_count": 1,
-            "transformer_catalog_ref": zu.TRAFO_WN_SN,
+            "transformer_catalog_binding": {"catalog_item_id": zu.TRAFO_WN_SN},
             "zespoly_uziemiajace": [] if zespol is None else [zespol],
         },
     )
@@ -172,7 +172,7 @@ def _z_stacja_odbiorcza(migawka: dict[str, Any]) -> dict[str, Any]:
             "endpoint_bus_ref": koniec,
             "station": {"name": "Stacja Brzozowa", "station_type": "terminal"},
             "field_apparatus_catalog_ref": APARAT_POLA,
-            "transformer": {"transformer_catalog_ref": TRAFO_SN_NN},
+            "transformer": {"transformer_catalog_binding": {"catalog_item_id": TRAFO_SN_NN}},
             "nn_voltage_kv": 0.4,
             "sn_fields": [{"field_role": "LINIA_IN"}],
         },

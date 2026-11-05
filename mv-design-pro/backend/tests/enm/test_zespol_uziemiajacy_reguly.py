@@ -55,8 +55,8 @@ def _baza() -> dict[str, Any]:
 def _ladunek_rezystora(migawka: dict[str, Any], **zmiany: Any) -> dict[str, Any]:
     ladunek: dict[str, Any] = {
         "bus_ref": _szyny(migawka)[0],
-        "catalog_ref": TU,
-        "rezystor": {"catalog_ref": REZYSTOR},
+        "catalog_binding": {"catalog_item_id": TU},
+        "rezystor": {"catalog_binding": {"catalog_item_id": REZYSTOR}},
     }
     ladunek.update(zmiany)
     return ladunek
@@ -86,22 +86,29 @@ ODMOWY: dict[str, Any] = {
     },
     "zu.voltage_mismatch.tu": lambda m: _ladunek_rezystora(m, catalog_ref="TU_ZNYN11_20KV_PW160"),
     "zu.voltage_mismatch.rezystor": lambda m: _ladunek_rezystora(
-        m, rezystor={"catalog_ref": "REZ_200A_20KV"}
+        m, rezystor={"catalog_binding": {"catalog_item_id": "REZ_200A_20KV"}}
     ),
     "zu.voltage_mismatch.dlawik": lambda m: _ladunek_rezystora(
-        m, rezystor=None, dlawik={"catalog_ref": "DL_40_400A_20KV_CIAGLY"}
+        m, rezystor=None, dlawik={"catalog_binding": {"catalog_item_id": "DL_40_400A_20KV_CIAGLY"}}
     ),
     "zu.coil_setting_out_of_range": lambda m: _ladunek_rezystora(
-        m, rezystor=None, dlawik={"catalog_ref": DLAWIK, "i_nastawy_a": 500.0}
+        m,
+        rezystor=None,
+        dlawik={"catalog_binding": {"catalog_item_id": DLAWIK}, "i_nastawy_a": 500.0},
     ),
     "zu.payload_invalid.nastawa": lambda m: _ladunek_rezystora(
-        m, rezystor=None, dlawik={"catalog_ref": DLAWIK, "i_nastawy_a": -1.0}
+        m,
+        rezystor=None,
+        dlawik={"catalog_binding": {"catalog_item_id": DLAWIK}, "i_nastawy_a": -1.0},
     ),
     "zu.payload_invalid.strona_awsc": lambda m: _ladunek_rezystora(
-        m, rezystor=None, dlawik={"catalog_ref": DLAWIK, "awsc": {"strona": "trzecia"}}
+        m,
+        rezystor=None,
+        dlawik={"catalog_binding": {"catalog_item_id": DLAWIK}, "awsc": {"strona": "trzecia"}},
     ),
     "zu.payload_invalid.odlacznik": lambda m: _ladunek_rezystora(
-        m, rezystor={"catalog_ref": REZYSTOR, "stan_odlacznika": "uchylony"}
+        m,
+        rezystor={"catalog_binding": {"catalog_item_id": REZYSTOR}, "stan_odlacznika": "uchylony"},
     ),
     "zu.payload_invalid.spz": lambda m: _ladunek_rezystora(m, spz="tak"),
     "zu.direct_with_element": lambda m: _ladunek_rezystora(m, uziemienie_bezposrednie=True),
@@ -309,7 +316,7 @@ def _gpz_tr(sekcje: int, transformatory: int, zespoly: list[dict[str, Any]]) -> 
                 "rx_ratio": 0.1,
             },
             "transformer_count": transformatory,
-            "transformer_catalog_ref": TRAFO_WN_SN,
+            "transformer_catalog_binding": {"catalog_item_id": TRAFO_WN_SN},
             "zespoly_uziemiajace": zespoly,
         },
     )

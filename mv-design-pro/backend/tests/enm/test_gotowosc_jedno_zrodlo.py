@@ -59,7 +59,10 @@ def _stacja_z_transformatorem() -> dict[str, Any]:
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "TR"],
             "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
-            "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO_630},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_630},
+            },
         },
     )["snapshot"]
     zmigrowany, zmieniony = migruj(EnergyNetworkModel.model_validate(po_stacji))

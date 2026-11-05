@@ -21,7 +21,7 @@ def _gpz_110kv(transformer_count: int) -> dict:
             "rx_ratio": 0.1,
         },
         "transformer_count": transformer_count,
-        "transformer_catalog_ref": CATALOG_TRAFO_WN_SN,
+        "transformer_catalog_binding": {"catalog_item_id": CATALOG_TRAFO_WN_SN},
     }
 
 
@@ -39,7 +39,7 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
         payload={
             "source_name": "GPZ Konarzewo",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 2,
             "gpz_sections": [
                 {"order": 0, "name": "Sekcja A", "line_field_name": "Pole liniowe A"},
@@ -50,8 +50,8 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
             "zespoly_uziemiajace": [
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
-                    "rezystor": {"catalog_ref": "REZ_500A_15KV"},
+                    "catalog_binding": {"catalog_item_id": "TU_ZNYN11_15KV_PW160"},
+                    "rezystor": {"catalog_binding": {"catalog_item_id": "REZ_500A_15KV"}},
                 }
             ],
         },
@@ -138,7 +138,7 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
         payload={
             "source_name": "GPZ Wielopolowy",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 2,
             "line_fields_per_section": 12,
             "gpz_sections": [
@@ -267,7 +267,7 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
         payload={
             "source_name": "GPZ Edycja",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"}],
         },
@@ -330,7 +330,7 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
         payload={
             "source_name": "GPZ Referencyjny",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 1,
             "switchgear_family_ref": "ZPUE_WLOSZCZOWA__RELF",
             "manufacturer_ref": "ZPUE_WLOSZCZOWA",
@@ -393,7 +393,7 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
         payload={
             "source_name": "GPZ Klasyczny",
             "voltage_kv": 15.0,
-            "catalog_ref": CATALOG_ZRODLO_SN,
+            "catalog_binding": {"catalog_item_id": CATALOG_ZRODLO_SN},
             "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
         },

@@ -158,7 +158,7 @@ def _payload_gpz(
         "source_name": "Stacja zasilająca",
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
-        "catalog_ref": REF_ZRODLO_SN,
+        "catalog_binding": {"catalog_item_id": REF_ZRODLO_SN},
         "sections_count": sections_count,
         "line_fields_per_section": line_fields_per_section,
     }
@@ -196,7 +196,10 @@ def _blok_stacji(
             {"field_role": "TRANSFORMATOROWE", "apparatus_catalog_ref": REF_APARAT_SN},
         ],
         "field_apparatus_catalog_ref": REF_APARAT_SN,
-        "transformer": {"create": True, "transformer_catalog_ref": REF_TRAFO_630},
+        "transformer": {
+            "create": True,
+            "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO_630},
+        },
     }
     if nn_source_ref is not None:
         blok["nn_block"] = {
@@ -214,7 +217,13 @@ def _ciag_sn() -> tuple[dict[str, Any], str]:
     snapshot = _wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": REF_KABEL_SN}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_SN},
+            }
+        },
     )
     return snapshot, str(snapshot["branches"][-1]["ref_id"])
 
@@ -369,7 +378,13 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
     snapshot = _wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 600.0, "catalog_ref": REF_KABEL_SN}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 600.0,
+                "catalog_binding": {"catalog_item_id": REF_KABEL_SN},
+            }
+        },
     )
     assert tabliczki_znikad(snapshot) == []
     odcinek_kablowy = str(snapshot["branches"][-1]["ref_id"])
@@ -399,7 +414,7 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
             "segment_id": str(odcinki[-1]["ref_id"]),
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "switch_type": "ROZLACZNIK",
-            "catalog_ref": REF_APARAT_SN_ALT,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_SN_ALT},
         },
     )
     assert tabliczki_znikad(snapshot) == []
@@ -413,7 +428,7 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 400.0,
-                "catalog_ref": REF_LINIA_SN,
+                "catalog_binding": {"catalog_item_id": REF_LINIA_SN},
             },
         },
     )
@@ -425,7 +440,7 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
         "insert_branch_pole_on_segment_sn",
         {
             "segment_id": odcinek_napowietrzny,
-            "catalog_ref": REF_SLUP_ROZGALEZNY,
+            "catalog_binding": {"catalog_item_id": REF_SLUP_ROZGALEZNY},
             "insert_at": {"mode": "RATIO", "value": 0.5},
         },
     )
@@ -437,7 +452,7 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
         "insert_zksn_on_segment_sn",
         {
             "segment_id": str(kable[0]["ref_id"]),
-            "catalog_ref": REF_ZKSN,
+            "catalog_binding": {"catalog_item_id": REF_ZKSN},
             "insert_at": {"mode": "RATIO", "value": 0.5},
             "switch_state": "closed",
         },
@@ -548,7 +563,7 @@ def test_lacznik_sekcyjny_ze_zla_pozycja_jest_odrzucany_w_torze_domenowym() -> N
         {
             "segment_id": segment_ref,
             "switch_type": "ROZLACZNIK",
-            "catalog_ref": REF_APARAT_SN + LITEROWKA,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_SN + LITEROWKA},
         },
     )
 
@@ -566,7 +581,7 @@ def test_lacznik_sekcyjny_z_dobra_pozycja_niesie_tabliczke() -> None:
         {
             "segment_id": segment_ref,
             "switch_type": "ROZLACZNIK",
-            "catalog_ref": REF_APARAT_SN_ALT,
+            "catalog_binding": {"catalog_item_id": REF_APARAT_SN_ALT},
         },
     )
 
@@ -596,7 +611,7 @@ def test_punkt_rozgalezienia_ze_zla_pozycja_jest_odrzucany(operacja: str, ref: s
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 400.0,
-                    "catalog_ref": REF_LINIA_SN,
+                    "catalog_binding": {"catalog_item_id": REF_LINIA_SN},
                 }
             },
         )
@@ -607,7 +622,7 @@ def test_punkt_rozgalezienia_ze_zla_pozycja_jest_odrzucany(operacja: str, ref: s
         operacja,
         {
             "segment_id": segment_ref,
-            "catalog_ref": ref + LITEROWKA,
+            "catalog_binding": {"catalog_item_id": ref + LITEROWKA},
             "insert_at": {"mode": "RATIO", "value": 0.5},
         },
     )
@@ -669,7 +684,7 @@ def test_przypisanie_katalogu_bez_ustalonej_kategorii_jest_odrzucane() -> None:
     wynik = execute_domain_operation(
         snapshot,
         "assign_catalog_to_element",
-        {"element_ref": szyna["ref_id"], "catalog_item_id": REF_APARAT_SN},
+        {"element_ref": szyna["ref_id"], "catalog_binding": {"catalog_item_id": REF_APARAT_SN}},
     )
 
     assert wynik.get("error_code") == "catalog.namespace_required", wynik

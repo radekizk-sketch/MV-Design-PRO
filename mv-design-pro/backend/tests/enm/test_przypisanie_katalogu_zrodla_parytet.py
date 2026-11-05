@@ -42,7 +42,10 @@ def _przypisz(snapshot: dict[str, Any], ref: str, typ: str, przestrzen: str) -> 
     wynik = execute_domain_operation(
         snapshot,
         "assign_catalog_to_element",
-        {"element_ref": ref, "catalog_item_id": typ, "catalog_namespace": przestrzen},
+        {
+            "element_ref": ref,
+            "catalog_binding": {"catalog_item_id": typ, "catalog_namespace": przestrzen},
+        },
     )
     assert not wynik.get("error"), (wynik.get("error_code"), wynik.get("error"))
     return dict(wynik["snapshot"])
@@ -99,7 +102,7 @@ def test_przypisanie_typu_magazynu_zachowuje_pakiet_baterii() -> None:
             "station_ref": h._stacja_ref(snapshot),
             "bus_nn_ref": km._szyna_nn(snapshot, 0.69),
             "source_name": "Magazyn",
-            "catalog_ref": km.TYP_BESS,
+            "catalog_binding": {"catalog_item_id": km.TYP_BESS},
             "battery_catalog_ref": "bess_bat_lfp_2880kwh_1230vdc",
         },
     )
@@ -142,20 +145,26 @@ def _przed_stacja(
         {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": h.REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": h.REF_ZRODLO},
         },
     )
     snapshot = h._wykonaj(
         snapshot,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "catalog_ref": h.REF_KABEL}},
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500.0,
+                "catalog_binding": {"catalog_item_id": h.REF_KABEL},
+            }
+        },
     )
     payload = h._payload_stacji(
         str(snapshot["branches"][-1]["to_bus_ref"]),
         h._blok_nn(nn_configuration=konfiguracja, source_converter_catalog_ref=typ),
     )
     payload["nn_voltage_kv"] = napiecie_kv
-    payload["transformer"]["transformer_catalog_ref"] = trafo
+    payload["transformer"]["transformer_catalog_binding"] = {"catalog_item_id": trafo}
     return snapshot, payload
 
 
@@ -227,8 +236,7 @@ def test_przypisanie_typu_niezgodnego_z_torem_tworzenia_jest_odmowa(
         "assign_catalog_to_element",
         {
             "element_ref": generator["ref_id"],
-            "catalog_item_id": typ,
-            "catalog_namespace": przestrzen,
+            "catalog_binding": {"catalog_item_id": typ, "catalog_namespace": przestrzen},
         },
     )
     assert wynik.get("error_code") == kod, (wynik.get("error_code"), wynik.get("error"))
@@ -249,8 +257,10 @@ def test_przypisanie_do_generatora_wiatrowego_pozycji_pv_jest_odmowa() -> None:
         "assign_catalog_to_element",
         {
             "element_ref": generator["ref_id"],
-            "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
-            "catalog_namespace": "CONVERTER",
+            "catalog_binding": {
+                "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+                "catalog_namespace": "CONVERTER",
+            },
         },
     )
     assert wynik.get("error_code") == "converter.rodzaj_niezgodny", wynik.get("error")

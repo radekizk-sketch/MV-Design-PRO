@@ -235,7 +235,10 @@ def test_komunikat_awarii_wyposazenia_pola_nazywa_pole_nie_identyfikator() -> No
     snap, segment_ref, _ = _build_trunk_with_segment()
     payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
     payload["sn_fields"] = [
-        {"field_role": "LINIA_IN", "equipment": {"ct": {"catalog_ref": "ct-nie-istnieje"}}},
+        {
+            "field_role": "LINIA_IN",
+            "equipment": {"ct": {"catalog_binding": {"catalog_item_id": "ct-nie-istnieje"}}},
+        },
         {"field_role": "LINIA_OUT"},
         {"field_role": "TRANSFORMATOROWE"},
     ]
@@ -254,7 +257,7 @@ def test_szyny_tworzone_z_transformatorem_bez_fragmentu_identyfikatora() -> None
         {
             "hv_bus_ref": terminal_bus_ref,
             "lv_voltage_kv": 0.4,
-            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
         },
     )
     assert wynik.get("error") is None, wynik.get("error")
@@ -342,7 +345,7 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
                     "rx_ratio": 0.1,
                 },
                 "transformer_count": 1,
-                "transformer_catalog_ref": katalog,
+                "transformer_catalog_binding": {"catalog_item_id": katalog},
             },
         )
         assert wynik.get("error") is None, wynik.get("error")

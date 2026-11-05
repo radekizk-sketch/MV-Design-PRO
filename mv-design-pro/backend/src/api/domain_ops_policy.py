@@ -9,6 +9,7 @@ from enm.pole_katalogowe import czy_wybor_katalogowy
 from enm.slownik_komunikatow import opis_operacji, pole
 from enm.wiazanie_katalogowe import (
     KOD_ZAMIENNIKA_KLUCZA,
+    PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
     zamienniki_klucza_w_ladunku,
@@ -105,13 +106,28 @@ def _extract_binding_from_container(
     skasowane. Przestrzeń: zadeklarowana w wiązaniu, a bez niej — przestrzeń rodzaju
     elementu (ta sama, którą operacja podstawia materializacji).
     """
-    odczyt = odczytaj_wiazanie(container, klucz)
+    odczyt = odczytaj_wiazanie(container, klucz, przestrzen_rodzaju=namespace)
+    if odczyt.kod_bledu is not None:
+        raise _OdmowaWiazania(odczyt.kod_bledu, odczyt.komunikat_pl or "")
     if not odczyt.wskazuje:
         return None
     przestrzen = odczyt.przestrzen or namespace
     if not przestrzen:
         return None
     return odczyt.wiazanie(przestrzen, DEFAULT_CATALOG_VERSION)
+
+
+class _OdmowaWiazania(Exception):
+    """Odmowa odczytu wiązania (``odczytaj_wiazanie``) w bramie API — ten sam kod co operacja.
+
+    Zamiennik klucza, wiązanie bez pozycji i przestrzeń niezgodna z rodzajem elementu
+    (karta JEDEN-KLUCZ-KATALOGU) — ``validate_and_materialize_catalog_binding`` zamienia ją
+    w ``CatalogPolicyError`` z tym kodem."""
+
+    def __init__(self, kod: str, komunikat_pl: str) -> None:
+        super().__init__(kod)
+        self.kod = kod
+        self.komunikat_pl = komunikat_pl
 
 
 def _segment_namespace(segment: Any) -> str | None:
@@ -129,23 +145,13 @@ def _segment_namespace(segment: Any) -> str | None:
     return None
 
 
-def _explicit_namespace(payload: dict[str, Any]) -> str | None:
-    namespace = payload.get("catalog_namespace")
-    if isinstance(namespace, str) and namespace.strip():
-        return namespace.strip()
-    return None
-
-
 def _converter_namespace(payload: dict[str, Any]) -> str | None:
+    # Jedno źródło prawdy z operacją (`_PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO`).
+    from enm.domain_operations_v2 import _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO
+
     technology = payload.get("source_technology")
     if isinstance(technology, str):
-        normalized = technology.strip().upper()
-        if normalized == "PV":
-            return "ZRODLO_NN_PV"
-        if normalized == "BESS":
-            return "ZRODLO_NN_BESS"
-        if normalized == "FW":
-            return "CONVERTER"
+        return _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO.get(technology.strip().upper(), "CONVERTER")
     return "CONVERTER"
 
 
@@ -222,7 +228,7 @@ def _uses_manual_nn_load(payload: dict[str, Any]) -> bool:
 #: formularza w odmowie bramy („wybierz ją w polu …”). Odmowa nazywa pole, które projektant
 #: ma w formularzu; dawniej każda operacja dostawała ogólne „Typ z katalogu” (``catalog_ref``),
 #: także transformator, którego handler ``catalog_ref`` nie czyta.
-_POLE_POZYCJI_TRANSFORMATORA = "transformer_catalog_ref"
+_POLE_POZYCJI_TRANSFORMATORA = "transformer_catalog_binding"
 _OPERACJE_POZYCJI_TRANSFORMATORA = frozenset(
     {"add_transformer_sn_nn", "insert_station_on_segment_sn", "append_station_on_endpoint"}
 )
@@ -232,7 +238,7 @@ def pole_pozycji_katalogu(operation: str) -> str:
     """Klucz pola pozycji katalogu, które odmowa bramy każe wypełnić."""
     if operation in _OPERACJE_POZYCJI_TRANSFORMATORA:
         return _POLE_POZYCJI_TRANSFORMATORA
-    return "catalog_ref"
+    return "catalog_binding"
 
 
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -365,7 +371,7 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
     if operation in _OPERACJE_PUNKTU_POSREDNIEGO_SN:
         candidate = _extract_binding_from_container(
             payload,
-            namespace=_explicit_namespace(payload),
+            namespace=PRZESTRZEN_PUNKTU_POSREDNIEGO_SN,
         )
         return candidate
 
@@ -766,7 +772,7 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi(
         "assign_catalog_to_element",
-        "catalog_item_id",
+        "catalog_binding",
         "",
         False,
         "przestrzeń katalogu wynika z ELEMENTU modelu (`_infer_catalog_namespace_for_"
@@ -823,20 +829,6 @@ API_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
         "requires_catalog_binding",
     }
 )
-
-
-def _ref_z_wiazania(binding: Any) -> str | None:
-    """Identyfikator pozycji z wiązania (`odczytaj_wiazanie`) albo ``None``."""
-    return odczytaj_wiazanie({"catalog_binding": binding}).pozycja
-
-
-def _przestrzen_z_wiazania(binding: Any, domyslna: str) -> str:
-    """Przestrzeń z wiązania, a gdy jej nie podano — przestrzeń pozycji inwentarza."""
-    if isinstance(binding, dict):
-        namespace = binding.get("catalog_namespace")
-        if isinstance(namespace, str) and namespace.strip():
-            return namespace.strip()
-    return domyslna
 
 
 def _blad_pozycji_api(
@@ -914,11 +906,16 @@ def _referencje_dodatkowe(
     znalezione: list[tuple[str, str, str]] = []
 
     def _dodaj(opis_pl: str, domyslna_przestrzen: str, ref: Any, binding: Any = None) -> None:
-        referencja = _tekst_referencji(ref) or _ref_z_wiazania(binding)
+        # Przestrzeń = przestrzeń RODZAJU pozycji inwentarza; wiązanie deklarujące inną to
+        # odmowa nazwana (`odmowa_przestrzeni` — ta sama funkcja co operacja domenowa).
+        odczyt = odczytaj_wiazanie(
+            {"catalog_binding": binding}, opis_pl=opis_pl, przestrzen_rodzaju=domyslna_przestrzen
+        )
+        if odczyt.kod_bledu is not None:
+            raise _OdmowaWiazania(odczyt.kod_bledu, odczyt.komunikat_pl or "")
+        referencja = _tekst_referencji(ref) or odczyt.pozycja
         if referencja is not None:
-            znalezione.append(
-                (opis_pl, _przestrzen_z_wiazania(binding, domyslna_przestrzen), referencja)
-            )
+            znalezione.append((opis_pl, domyslna_przestrzen, referencja))
 
     if operation == "add_grid_source_sn":
         _dodaj(
@@ -1329,7 +1326,9 @@ def _validate_station_field_apparatus_bindings(
         if ref is None or ref in sprawdzone:
             continue
         sprawdzone.add(ref)
-        blad, _ = validate_and_materialize_catalog_binding("add_sn_bay", {"catalog_ref": ref})
+        blad, _ = validate_and_materialize_catalog_binding(
+            "add_sn_bay", {"catalog_binding": {"catalog_item_id": ref}}
+        )
         if blad is not None:
             return _blad_z_prefiksem(blad, f"Aparat pola SN nr {index}")
 
@@ -1337,7 +1336,7 @@ def _validate_station_field_apparatus_bindings(
     # referencji payloadu; bez tego sprawdzenia zostałaby ona poza bramą.
     if not pola and wspolny_ref is not None and wspolny_ref not in sprawdzone:
         blad, _ = validate_and_materialize_catalog_binding(
-            "add_sn_bay", {"catalog_ref": wspolny_ref}
+            "add_sn_bay", {"catalog_binding": {"catalog_item_id": wspolny_ref}}
         )
         if blad is not None:
             return _blad_z_prefiksem(blad, "Aparat pól SN stacji")
@@ -1377,7 +1376,7 @@ def _validate_station_nn_block_bindings(
 
     blad, _ = validate_and_materialize_catalog_binding(
         "add_converter_source",
-        {"catalog_ref": converter_ref, "source_technology": technologia},
+        {"catalog_binding": {"catalog_item_id": converter_ref}, "source_technology": technologia},
     )
     if blad is not None:
         return _blad_z_prefiksem(blad, "Źródło nN stacji")
@@ -1387,7 +1386,7 @@ def _validate_station_nn_block_bindings(
         protection_ref = _tekst_referencji(source_protection.get("device_catalog_ref"))
         if protection_ref is not None:
             blad, _ = validate_and_materialize_catalog_binding(
-                "add_relay", {"catalog_ref": protection_ref}
+                "add_relay", {"catalog_binding": {"catalog_item_id": protection_ref}}
             )
             if blad is not None:
                 return _blad_z_prefiksem(blad, "Zabezpieczenie źródła nN stacji")
@@ -1432,6 +1431,25 @@ def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any])
 
 
 def validate_and_materialize_catalog_binding(
+    operation: str,
+    payload: dict[str, Any],
+) -> tuple[CatalogPolicyError | None, dict[str, Any]]:
+    """Brama katalogowa API; odmowa odczytu wiązania (`_OdmowaWiazania`) = ten sam kod co
+    operacja domenowa."""
+    try:
+        return _validate_and_materialize_catalog_binding(operation, payload)
+    except _OdmowaWiazania as odmowa:
+        return (
+            CatalogPolicyError(
+                code=odmowa.kod,
+                message_pl=odmowa.komunikat_pl,
+                errors=[{"code": odmowa.kod, "message_pl": odmowa.komunikat_pl}],
+            ),
+            {},
+        )
+
+
+def _validate_and_materialize_catalog_binding(
     operation: str,
     payload: dict[str, Any],
 ) -> tuple[CatalogPolicyError | None, dict[str, Any]]:

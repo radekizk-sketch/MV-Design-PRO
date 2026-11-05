@@ -145,14 +145,32 @@ LEGACY_PAYLOAD_TARGETS = [
     "frontend/e2e",
 ]
 
+#: Klucz zamiennika wiązania w ładunku (karta JEDEN-KLUCZ-KATALOGU): klucz goły, w cudzysłowie
+#: (``"catalog_ref":``, ``'catalog_ref':``) i opcjonalny w typie (``catalog_ref?:``). Dawny
+#: wzorzec ``\bcatalog_ref\s*:`` omijały oba zapisy — e2e przeszły na klucz w cudzysłowie,
+#: a typ na ``catalog_ref?:``, i strażnik meldował czystość przy żywym zamienniku.
+_KLUCZ_ZAMIENNIKA = r"(?<![A-Za-z0-9_]){klucz}['\"]?\??\s*:"
+
+#: Znacznik linii z POLEM MODELU o nazwie ``catalog_ref`` (``set_bay_equipment.devices[]``
+#: — pole urządzenia pola w modelu, jedyna droga wskazania w tym węźle, nie zamiennik obok
+#: wiązania; ten sam wyjątek ma ``scripts/klucz_katalogu_guard.py``). Linia ze znacznikiem
+#: nie jest naruszeniem; liczba znaczników jest przypięta (``ZNACZNIKI_POLA_MODELU_MAX``),
+#: więc znacznik nie staje się furtką.
+ZNACZNIK_POLA_MODELU = "klucz-katalogu: pole modelu set_bay_equipment.devices"
+ZNACZNIKI_POLA_MODELU_MAX = 1
+
 LEGACY_PAYLOAD_PATTERNS = [
     (
-        re.compile(r"\bcatalog_ref\s*:"),
+        re.compile(_KLUCZ_ZAMIENNIKA.format(klucz="catalog_ref")),
         "legacy catalog_ref payload field in active frontend types/e2e",
     ),
     (
-        re.compile(r"\btransformer_catalog_ref\s*:"),
+        re.compile(_KLUCZ_ZAMIENNIKA.format(klucz="transformer_catalog_ref")),
         "legacy transformer_catalog_ref payload field in active frontend types/e2e",
+    ),
+    (
+        re.compile(_KLUCZ_ZAMIENNIKA.format(klucz="cable_catalog_ref")),
+        "legacy cable_catalog_ref payload field in active frontend types/e2e",
     ),
 ]
 
@@ -276,6 +294,18 @@ def check_legacy_catalog_payloads(root: Path = PROJECT_ROOT) -> list[Violation]:
         skip_comment_lines=True,
         skip_file_markers=E2E_SKIP_FILE_MARKERS,
     )
+    znaczniki = [v for v in violations if ZNACZNIK_POLA_MODELU in v.context]
+    violations = [v for v in violations if ZNACZNIK_POLA_MODELU not in v.context]
+    if len(znaczniki) > ZNACZNIKI_POLA_MODELU_MAX:
+        violations.extend(
+            Violation(
+                path=v.path,
+                line_no=v.line_no,
+                rule="model field marker over the pinned count",
+                context=v.context,
+            )
+            for v in znaczniki
+        )
 
     for path in _iter_target_files(root, LEGACY_PAYLOAD_TARGETS):
         if _should_skip_file(path, E2E_SKIP_FILE_MARKERS):

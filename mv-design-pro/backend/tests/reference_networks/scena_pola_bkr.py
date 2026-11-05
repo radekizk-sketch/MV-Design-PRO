@@ -169,7 +169,11 @@ def zbuduj_gpz_z_bkr(
     else:
         zacisk = szyna
     enm = ok(
-        op(enm, "add_shunt_compensator_sn", {"bus_ref": zacisk, "catalog_ref": BATERIA_KATALOG})
+        op(
+            enm,
+            "add_shunt_compensator_sn",
+            {"bus_ref": zacisk, "catalog_binding": {"catalog_item_id": BATERIA_KATALOG}},
+        )
     )
     if z_polem and rola_pola == "BKR":
         enm = ok(

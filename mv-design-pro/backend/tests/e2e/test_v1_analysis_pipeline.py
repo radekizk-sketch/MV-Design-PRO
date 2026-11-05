@@ -111,7 +111,7 @@ def _build_v1_network() -> dict:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -127,7 +127,7 @@ def _build_v1_network() -> dict:
                     "rodzaj": "KABEL",
                     "dlugosc_m": length,
                     "name": f"Odcinek {i}",
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -158,7 +158,7 @@ def _build_v1_network() -> dict:
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
-                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                "transformer_catalog_binding": {"catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11"},
             },
         },
     )
@@ -178,7 +178,7 @@ def _build_v1_network() -> dict:
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 180,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             },
         },
     )
@@ -429,7 +429,7 @@ class TestV1ReadinessPipeline:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             },
         )
         assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -442,7 +442,7 @@ class TestV1ReadinessPipeline:
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 300,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                    "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
                 },
             },
         )
@@ -469,7 +469,7 @@ class TestV1ReadinessPipeline:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
             },
         )
         assert r.get("error") is None, f"GPZ: {r.get('error')}"

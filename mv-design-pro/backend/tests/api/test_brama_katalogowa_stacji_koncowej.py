@@ -34,7 +34,7 @@ GPZ = {
         "payload": {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO,
+            "catalog_binding": {"catalog_item_id": REF_ZRODLO},
         },
     }
 }
@@ -46,7 +46,7 @@ MAGISTRALA = {
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
-                "catalog_ref": REF_KABEL,
+                "catalog_binding": {"catalog_item_id": REF_KABEL},
             }
         },
     }
@@ -142,7 +142,7 @@ def test_ta_sama_literowka_w_obu_torach_daje_ten_sam_blad_katalogu(klient: TestC
     _, odcinek_srodek = _zbuduj_ciag(klient, case_srodek)
 
     tabliczka = {
-        "transformer_catalog_ref": REF_TRAFO_LITEROWKA,
+        "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO_LITEROWKA},
         "sn_mva": 0.63,
         "uk_percent": 4.0,
         "pk_kw": 6.5,
@@ -181,7 +181,9 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
 
     odp = klient.post(
         f"/api/cases/{case_id}/enm/domain-ops",
-        json=_payload_stacji_koncowej(endpoint, {"transformer_catalog_ref": REF_TRAFO_LITEROWKA}),
+        json=_payload_stacji_koncowej(
+            endpoint, {"transformer_catalog_binding": {"catalog_item_id": REF_TRAFO_LITEROWKA}}
+        ),
     )
 
     assert odp.status_code == 422, odp.text
@@ -209,7 +211,7 @@ def test_poprawny_ref_przechodzi_i_daje_fizyke_z_katalogu(klient: TestClient) ->
             # Tabliczka w payloadzie jest CELOWO sprzeczna z katalogiem (uk 4,0 % vs 5,0 %):
             # fizyka ma pochodzić z katalogu, payload nie może jej wstrzyknąć (§10 kanonu).
             {
-                "transformer_catalog_ref": REF_TRAFO_KATALOG,
+                "transformer_catalog_binding": {"catalog_item_id": REF_TRAFO_KATALOG},
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,

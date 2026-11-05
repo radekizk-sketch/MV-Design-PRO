@@ -29,6 +29,11 @@ from pathlib import Path
 _WBUDOWANE_BEZ_ODCZYTU = frozenset({"isinstance", "len", "bool", "str", "id", "type", "repr"})
 #: Funkcje tworzące KOPIĘ ładunku — wynik przypisany do nazwy staje się aliasem.
 _KOPIUJACE = frozenset({"dict", "deepcopy"})
+#: Jedyny czytnik wiązania katalogowego ładunku: ``enm/wiazanie_katalogowe.py``
+#: ``odczytaj_wiazanie(wezel, klucz)`` — czyta ``wezel[klucz]`` jako wiązanie.
+_CZYTNIK_WIAZANIA = ("wiazanie_katalogowe", "odczytaj_wiazanie")
+#: Pola wiązania czytane przez ``odczytaj_wiazanie`` (``OdczytWiazania``).
+_POLA_CZYTANE_WIAZANIA = frozenset({"catalog_item_id", "catalog_item_version", "catalog_namespace"})
 
 
 @dataclass
@@ -210,6 +215,12 @@ class AnalizaEnm:
         """Odczyty nazwy ``parametr`` w ``fn``. ``zagniezdzony``: wartość wyjęta z ładunku
         (obiekt albo lista obiektów) — pętla po niej czyta ELEMENTY tym samym kształtem;
         pętla po samym ładunku (iteracja po kluczach) pozostaje użyciem dynamicznym."""
+        if (p.stem, fn.name) == _CZYTNIK_WIAZANIA and parametr == fn.args.args[0].arg:
+            # Jedyny odczyt wiązania (karta JEDEN-KLUCZ-KATALOGU): czyta klucz podany
+            # parametrem ``klucz`` (znacznik "W" — rozwiązywany w miejscu wywołania, z
+            # kształtem wiązania pod rozwiązanym kluczem). Sprawdzenie obecności zamienników
+            # klucza (``zamienniki_klucza``) to ODMOWA, nie odczyt — nie wchodzi do kontraktu.
+            return Odczyty(slownikowy=True, znaczniki={("W", "klucz")})
         klucz_pamieci = (p, fn.name, parametr, zagniezdzony)
         if klucz_pamieci in self._pamiec:
             return self._pamiec[klucz_pamieci]
@@ -434,38 +445,53 @@ class _AnalizaFunkcji:
             param = kw
         pod = self.a.odczyty(q, g, param, zagniezdzony=self.zagniezdzony)
         self.wynik.dolacz(pod)
-        self._znaczniki_wywolania(pod, wezel, g, self.wynik)
+        self._znaczniki_wywolania(pod, wezel, g, self.wynik, q)
         return True
 
     def _znaczniki_wywolania(
-        self, pod: Odczyty, wezel: ast.Call, g: ast.FunctionDef, cel: Odczyty
+        self, pod: Odczyty, wezel: ast.Call, g: ast.FunctionDef, cel: Odczyty, q: Path
     ) -> None:
-        """Klucze-parametry funkcji wywołanej (znaczniki) rozwiązane argumentami wywołania."""
+        """Klucze-parametry funkcji wywołanej (znaczniki) rozwiązane argumentami wywołania.
+
+        Znacznik "W" (klucz wiązania katalogowego): rozwiązany klucz dostaje pod sobą kształt
+        wiązania; parametr bieżącej funkcji przekazany dalej pozostaje znacznikiem "W".
+        Wartość domyślna parametru jest stałą modułu FUNKCJI WYWOŁANEJ (``q``), nie wołającej.
+        """
         gp = [x.arg for x in g.args.args]
-        for rodzaj, nazwa in pod.znaczniki:
+        for rodzaj, nazwa in sorted(pod.znaczniki):
             if rodzaj == "V":
                 for extra in wezel.args[len(gp) :]:
                     self._klucz(extra, cel)
                 continue
+            docel = Odczyty() if rodzaj == "W" else cel
             if nazwa in gp and gp.index(nazwa) < len(wezel.args):
-                self._klucz(wezel.args[gp.index(nazwa)], cel)
-                continue
-            kwargi = [k for k in wezel.keywords if k.arg == nazwa]
-            if kwargi:
-                self._klucz(kwargi[0].value, cel)
-                continue
-            domyslne = g.args.defaults
-            idx = gp.index(nazwa) - (len(gp) - len(domyslne)) if nazwa in gp else -1
-            tylko_nazwa = [x.arg for x in g.args.kwonlyargs]
-            domyslna_kw = (
-                g.args.kw_defaults[tylko_nazwa.index(nazwa)] if nazwa in tylko_nazwa else None
-            )
-            if 0 <= idx < len(domyslne):
-                self._klucz(domyslne[idx], cel)
-            elif domyslna_kw is not None:
-                self._klucz(domyslna_kw, cel)
+                self._klucz(wezel.args[gp.index(nazwa)], docel)
+            elif kwargi := [k for k in wezel.keywords if k.arg == nazwa]:
+                self._klucz(kwargi[0].value, docel)
             else:
-                cel.dynamiczne.add(f"znacznik {nazwa} @ {g.name}")
+                domyslne = g.args.defaults
+                idx = gp.index(nazwa) - (len(gp) - len(domyslne)) if nazwa in gp else -1
+                tylko_nazwa = [x.arg for x in g.args.kwonlyargs]
+                domyslna_kw = (
+                    g.args.kw_defaults[tylko_nazwa.index(nazwa)] if nazwa in tylko_nazwa else None
+                )
+                domyslna = domyslne[idx] if 0 <= idx < len(domyslne) else domyslna_kw
+                stala = self.a.napisy_stale(q, domyslna) if domyslna is not None else None
+                if stala is not None:
+                    docel.klucze |= stala
+                elif domyslna is not None:
+                    self._klucz(domyslna, docel)
+                else:
+                    cel.dynamiczne.add(f"znacznik {nazwa} @ {g.name}")
+            if rodzaj == "W":
+                cel.slownikowy = True
+                cel.dynamiczne |= docel.dynamiczne
+                cel.znaczniki |= {("W" if r == "P" else r, n) for r, n in docel.znaczniki}
+                for klucz in docel.klucze:
+                    cel.klucze.add(klucz)
+                    cel.zagniezdzone.setdefault(klucz, Odczyty()).dolacz(
+                        Odczyty(klucze=set(_POLA_CZYTANE_WIAZANIA), slownikowy=True)
+                    )
 
     def wykonaj(self) -> Odczyty:
         self._zbierz_aliasy()
@@ -750,7 +776,7 @@ class _AnalizaFunkcji:
                 if param is not None:
                     pod = self.a.odczyty(q, g, param, zagniezdzony=True)
                     wynik.dolacz(pod)
-                    self._znaczniki_wywolania(pod, r, g, wynik)
+                    self._znaczniki_wywolania(pod, r, g, wynik, q)
                     return wynik
             wynik.dynamiczne.add(f"przekazanie do {ast.unparse(f)} @ {self.fn.name}")
             return wynik

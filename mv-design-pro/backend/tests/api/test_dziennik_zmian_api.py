@@ -23,7 +23,7 @@ GPZ = {
         "payload": {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "catalog_binding": {"catalog_item_id": "src-gpz-15kv-250mva-rx010"},
         },
     }
 }
@@ -35,7 +35,7 @@ MAGISTRALA = {
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 500,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                "catalog_binding": {"catalog_item_id": "cable-tfk-yakxs-3x120"},
             }
         },
     }

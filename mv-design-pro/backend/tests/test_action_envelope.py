@@ -213,7 +213,7 @@ def test_create_branch_cable_with_catalog_ref_accepted() -> None:
             "from_node_id": "node-1",
             "to_node_id": "node-2",
             "branch_kind": "cable",
-            "catalog_ref": "CAT-CAB-YAKY-240",
+            "catalog_binding": {"catalog_item_id": "CAT-CAB-YAKY-240"},
         },
     )
 
