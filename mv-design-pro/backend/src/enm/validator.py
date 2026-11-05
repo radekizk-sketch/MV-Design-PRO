@@ -79,6 +79,7 @@ from .models import (
     SwitchBranch,
     Transformer,
 )
+from .nosniki_punktu_neutralnego import wyspy_z_wieloma_nosnikami
 from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
@@ -439,6 +440,8 @@ class ENMValidator:
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
         self._check_uziemienie_w5(enm, issues)
+        # D1 (karta POLA-GPZ-SZABLONY): jeden uziemiony nośnik punktu neutralnego w wyspie SN
+        self._check_jeden_nosnik_punktu_neutralnego(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -3081,7 +3084,14 @@ class ENMValidator:
             return trafo.lv_neutral or GroundingConfig(type="directly_grounded")
 
         def _ta_sama(a: GroundingConfig, b: GroundingConfig) -> bool:
-            return (a.type, a.r_ohm, a.x_ohm) == (b.type, b.r_ohm, b.x_ohm)
+            # AWSC (karta EWALUATORY-ZIEMNOZWARCIOWE) jest częścią sposobu pracy punktu
+            # neutralnego — opis bez AWSC przy fizyce z AWSC to ta sama sprzeczność.
+            return (a.type, a.r_ohm, a.x_ohm, a.awsc_prad_wymuszenia_a) == (
+                b.type,
+                b.r_ohm,
+                b.x_ohm,
+                b.awsc_prad_wymuszenia_a,
+            )
 
         fizyka = [_uziemienie_sn(t) for t in z_droga] or [GroundingConfig(type="isolated")]
         if any(_ta_sama(opis, f) for f in fizyka):
@@ -3135,6 +3145,62 @@ class ENMValidator:
             )
         )
 
+    def _check_jeden_nosnik_punktu_neutralnego(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E-W5-04 (decyzja architekta D1, karta POLA-GPZ-SZABLONY): dwa uziemione nośniki
+        punktu neutralnego w jednej wyspie galwanicznej SN. Predykat
+        ``enm.nosniki_punktu_neutralnego.wyspy_z_wieloma_nosnikami`` — ten sam czyta operacja
+        dodania pola zespołu uziemiającego (przeniesienie uziemienia ze źródła)."""
+        etykieta_pola = {
+            "neutral_grounding": "opis punktu neutralnego źródła",
+            "hv_neutral": "punkt neutralny uzwojenia górnego",
+            "lv_neutral": "punkt neutralny uzwojenia dolnego",
+        }
+        obiekty = {s.ref_id: s for s in enm.sources} | {t.ref_id: t for t in enm.transformers}
+        for _wyspa, nosniki in wyspy_z_wieloma_nosnikami(enm):
+            opisy = "; ".join(
+                f"{opis_obiektu(obiekty[n.element_ref], 'Źródło zasilania' if n.rodzaj == 'source' else 'Transformator')}"
+                f" — {etykieta_pola[n.pole]}: "
+                f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(n.typ, n.typ)}"
+                for n in nosniki
+            )
+            nadmiarowy = nosniki[1]
+            issues.append(
+                ValidationIssue(
+                    code="E-W5-04",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        "Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej "
+                        f"SN ({len(nosniki)}): {opisy}. Obliczenie zwarcia doziemnego połączyłoby "
+                        "je równolegle."
+                    ),
+                    element_refs=[n.element_ref for n in nosniki],
+                    wizard_step_hint="K1",
+                    suggested_fix=(
+                        "Pozostaw jeden uziemiony nośnik punktu neutralnego w wyspie SN: ustaw "
+                        "pozostałe na izolowany (źródło GPZ — gdy sieć uziemia transformator "
+                        "uziemiający pola zespołu uziemiającego) albo otwórz sprzęgło sekcji, "
+                        "jeżeli każda sekcja ma własny zespół uziemiający."
+                    ),
+                    fix_action=(
+                        FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=nadmiarowy.element_ref,
+                            modal_type="SourceModal",
+                            payload_hint={"required": nadmiarowy.pole},
+                        )
+                        if nadmiarowy.rodzaj == "source"
+                        else FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=nadmiarowy.element_ref,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": nadmiarowy.pole},
+                        )
+                    ),
+                )
+            )
+
     def _check_uziemienie_w5(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """W5-A: spojnosc jednej reprezentacji uziemienia punktu neutralnego.
 
@@ -3171,7 +3237,9 @@ class ENMValidator:
             cfg = source.neutral_grounding
             if cfg is None:
                 continue
-            blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+            blad = blad_konfiguracji_uziemienia(
+                cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+            )
             if blad is not None:
                 issues.append(
                     ValidationIssue(
@@ -3278,7 +3346,9 @@ class ENMValidator:
             ):
                 if cfg is None:
                     continue
-                blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+                blad = blad_konfiguracji_uziemienia(
+                    cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+                )
                 if blad is not None:
                     issues.append(
                         ValidationIssue(

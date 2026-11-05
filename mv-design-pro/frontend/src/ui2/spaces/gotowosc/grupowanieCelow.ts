@@ -348,6 +348,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'connection.power_flow_missing': 'zwarcia',
   'connection.power_limit_missing': 'zwarcia',
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
+  'earthing.multiple_grounded_neutrals_in_island': 'zwarcia',
   'nn.measurement.required_missing': 'zwarcia',
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',

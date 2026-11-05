@@ -153,7 +153,12 @@ def _neutral_grounded_and_zn(
             "uziemia uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
             "konfigurację."
         )
-    blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
+    blad = blad_konfiguracji_uziemienia(
+        grounding.type,
+        grounding.r_ohm,
+        grounding.x_ohm,
+        awsc_prad_a=grounding.awsc_prad_wymuszenia_a,
+    )
     if blad is not None:
         raise OdmowaDanychError(
             f"{opis_trafo}: uziemienie punktu neutralnego (uzwojenie {_STRONA_PL[side]}) — "

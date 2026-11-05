@@ -87,7 +87,7 @@ odczytu Zeszytu 1; **NZ** = niezweryfikowane / niezaimplementowane.
 | Z.13 | 93 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
 | Z.14 | 94 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
 | Z.15 | 95 | brak szablonu | porównanie wykonane (§4.4), implementacja D1: NZ |
-| Z.16 | 96 | `BAY_TEMPLATE_GPZ_BKR_Z16`, `_OBWODY_Z16` | dane: ZŹ |
+| Z.16 | 96 | `BAY_TEMPLATE_GPZ_BKR_Z16`, `_OBWODY_Z16` | dane: ZŹ; rysunek: przekładniki międzyfazowe T4/T5 na zaciskach baterii (glif `capacitorBank`) — poprawione 2026-11-05 (wcześniej odczep przekładnika napięciowego toru — rozbieżność z s.96); porównanie rysunku całego pola ze zrzutem: NZ |
 | Z.17 | 97 | `BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17` | sekwencja, tabliczka i zestaw funkcji: ZŹ (karta UX-04 2026-10-29, kontrola tej karty zgodna); relacje funkcja → uzwojenie zapisane w §4.5, w danych szablonu brak obwodów wtórnych (NZ) |
 
 Zgodności CAŁOŚCI (dane + rysunek SLD + ścieżka edycji) nie deklaruje się dla żadnego z pól
@@ -174,8 +174,10 @@ Reprezentacja zgodna z decyzją D1 i kartą zwarć doziemnych (drzewo `wt-ziemne
 dławik — `GroundingConfig(type="petersen_coil", x_ohm=…)`, rezystor — `resistor_grounded`
 z `r_ohm`, rezystor wymuszający AWSC (Z.13 po stronie wtórnej, Z.14 po stronie pierwotnej) —
 `GroundingConfig.awsc_prad_wymuszenia_a` karty EWALUATORY-ZIEMNOZWARCIOWE (drzewo `wt-ziemne`, w tym drzewie jeszcze nieobecne; predykat `blad_konfiguracji_uziemienia`).
-Implementacja szablonów Z.13–Z.15, operacji przeniesienia uziemienia i blokera walidatora: NZ
-(meldunek przekazania).
+Bloker walidatora E-W5-04 (dwa uziemione nośniki w wyspie galwanicznej SN) i pole AWSC
+`GroundingConfig.awsc_prad_wymuszenia_a` (przeniesione z karty zwarć doziemnych): wykonane
+2026-11-05. Szablony Z.13–Z.15 i operacja przeniesienia uziemienia: NZ. Brak w słowniku grup
+połączeń: ZNyn11 (§16) — `enm/grupa_polaczen.py` nie zna zygzaka po stronie górnej.
 
 ### 4.5. Z.17 (s.97) — relacje funkcja → uzwojenie (kontrola)
 

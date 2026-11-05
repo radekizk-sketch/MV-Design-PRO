@@ -230,7 +230,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `add_grid_source_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `gpz_line_field_apparatus` | `apparatus_kind`, `catalog_binding`, `catalog_item_id`, `catalog_ref` |
 | `add_grid_source_sn` | `gpz_line_field_apparatus.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_grid_source_sn` | `grounding` | `r_ohm`, `type`, `x_ohm` |
+| `add_grid_source_sn` | `grounding` | `awsc_prad_wymuszenia_a`, `r_ohm`, `type`, `x_ohm` |
 | `add_grid_source_sn` | `manual_equivalent` | `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `sn_voltage_kv`, `u_set_pu`, `voltage_hv_kv`, `x0_ohm`, `x_ohm`, `z0_z1_ratio` |
 | `add_grid_source_sn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `zero_sequence` | `enabled`, `r0_ohm`, `x0_ohm`, `z0_z1_ratio` |
@@ -257,10 +257,10 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `add_vt` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `append_station_on_endpoint` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `append_station_on_endpoint` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
-| `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `append_station_on_endpoint` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `catalog_bindings`, `equipment`, `equipment_refs`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station` | `construction_type`, `designation`, `name`, `nn_earthing`, `nn_voltage_kv`, `station_auxiliary`, `station_type`, `switchgear` |
-| `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `append_station_on_endpoint` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `append_station_on_endpoint` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
@@ -282,10 +282,10 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `insert_at` | `mode`, `value` |
 | `insert_station_on_segment_sn` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `insert_station_on_segment_sn` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
-| `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `insert_station_on_segment_sn` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `equipment`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station` | `construction_type`, `designation`, `name`, `name_pl`, `nn_earthing`, `nn_voltage_kv`, `sn_voltage_kv`, `station_auxiliary`, `station_name`, `station_type`, `switchgear` |
-| `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `insert_station_on_segment_sn` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `insert_station_on_segment_sn` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |

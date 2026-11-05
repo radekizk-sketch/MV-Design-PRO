@@ -585,6 +585,15 @@
     },
     {
       "area": "SOURCES",
+      "code": "earthing.multiple_grounded_neutrals_in_island",
+      "fix_navigation": {
+        "focus": "neutral_grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "SOURCES",
       "code": "earthing.neutral_grounding_inconsistent",
       "fix_navigation": {
         "focus": "neutral_grounding",
@@ -1589,7 +1598,7 @@
       }
     }
   ],
-  "count": 187,
+  "count": 188,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1716,6 +1725,7 @@
     "E-W5-01": "earthing.neutral_grounding_inconsistent",
     "E-W5-02": "transformer.vector_group_invalid",
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     "E001": "source.grid_supply_missing",
     "E009": "catalog.binding_missing",
     "E011": "catalog.wartosc_projektanta_niedopuszczalna",

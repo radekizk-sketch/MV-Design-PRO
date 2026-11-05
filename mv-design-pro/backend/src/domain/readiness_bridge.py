@@ -141,6 +141,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-W5-02": "transformer.vector_group_invalid",
     # Uziemienie uzwojenia bez wyprowadzonego punktu neutralnego.
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    # D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nosniki punktu neutralnego w jednej wyspie
+    # galwanicznej SN (`enm/nosniki_punktu_neutralnego.py`).
+    "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
 }

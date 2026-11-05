@@ -134,6 +134,9 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
   'earthing.neutral_grounding_inconsistent': EDYCJA,
+  // D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nośniki punktu neutralnego w wyspie SN —
+  // edycja nadmiarowego nośnika (źródło albo transformator uziemiający, `fix_action`).
+  'earthing.multiple_grounded_neutrals_in_island': EDYCJA,
   'earthing.electrode_data_missing': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),

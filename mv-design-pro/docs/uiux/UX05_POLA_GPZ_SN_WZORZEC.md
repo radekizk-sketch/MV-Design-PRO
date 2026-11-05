@@ -34,24 +34,33 @@ Porty: `rodzaje_aparatury.PORTY_APARATU_POLA`; symbol: `apparatusSequence.SYMBOL
 | przekładnik napięciowy (T3, T1 w Z.17) | `VT` | przyłącze | `qetVoltageTransformer` | Z.7, Z.17 |
 | złącze kablowe (GK, GK1) | `CABLE_HEAD` | wejście, wyjście | `qetCableHead` | Z.7, Z.16, Z.17 |
 | ogranicznik przepięć (F1) | `SURGE_ARRESTER` (`earthing_role = surge_ground`) | przyłącze | symbol kanoniczny | Z.7, Z.16 |
-| przekładnik napięciowy międzyfazowy (T4, T5) | `PHASE_TO_PHASE_VT` | faza A, faza B | symbol kanoniczny | Z.16 |
-| przekładnik niezrównoważenia (T6) | `UNBALANCE_CT` | obwód | symbol kanoniczny | Z.16 |
+| przekładnik napięciowy międzyfazowy (T4, T5) | `PHASE_TO_PHASE_VT` | faza A, faza B | znak w glifie baterii `capacitorBank` (dwa okręgi, L1-L2 po lewej, L2-L3 po prawej; poza osią toru) | Z.16 |
+| przekładnik niezrównoważenia (T6) | `UNBALANCE_CT` | obwód | okrąg na połączeniu punktów gwiazd w glifie baterii | Z.16 |
 
 ## 3. Gramatyka rysunku (stan i braki)
 
 - Opisy aparatów i przekładników stoją po LEWEJ stronie symbolu (werdykt właściciela B-02 dla
   pola liniowego); rozszerzenie `pasOpisowPrzekladnikowLewy` na kolumnę odgałęzienia prowadzi
   karta pola liniowego (drzewo `wt-pole`) — w tym drzewie jeszcze nieprzeniesione.
+- Przekładniki międzyfazowe T4/T5 pola Z.16 stoją na zaciskach baterii (s.96), nie w odczepie
+  toru: rysuje je glif baterii z liczby rekordów `PHASE_TO_PHASE_VT` pola
+  (`v2/model/bateriaPola.ts`, `BateriaPolaView.przekladnikiMiedzyfazowe`).
 - Pole łącznika szyn (Z.12) rysuje się pionowo: sekcja A u góry, B u dołu; łącznik
-  trójpołożeniowy uziemia stronę wyłącznika (sworzeń noża od strony wyłącznika na s.92). Stała
-  `PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA` jest dla Q2 błędna i nie ma
-  konsumentów — do poprawki razem z rysunkiem pionowym (decyzja architekta D3).
+  trójpołożeniowy uziemia stronę wyłącznika (sworzeń noża od strony wyłącznika na s.92). Błędna
+  stała `PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA` (bez konsumentów) skasowana;
+  rysunek pionowy i rekord pola związany z gałęzią `bus_coupler` (D3) — niewykonane.
 - Pole transformatora (Z.7) w wieży transformatora: ta sama gramatyka co pole liniowe
   (`compose/gpz.ts`, przewody z portów, węzeł odczepu poza kaflem) — decyzja D2, niewykonana.
 
 ## 4. Pola zespołu uziemiającego Z.13–Z.15
 
-Szablonów nie ma. Rozstrzygnięcie architekta D1: transformator uziemiający (ZNyn11, uzwojenie
+Szablonów nie ma (niewykonane). Wykonane: bloker walidatora E-W5-04 „dwa uziemione nośniki
+punktu neutralnego w jednej wyspie galwanicznej SN” (`backend/src/enm/nosniki_punktu_neutralnego.py`,
+test iloczynu `backend/tests/enm/test_jeden_nosnik_punktu_neutralnego.py`) i pole AWSC
+`GroundingConfig.awsc_prad_wymuszenia_a` z predykatem `blad_konfiguracji_uziemienia`. Brak do
+rozstrzygnięcia przy szablonach: grupa ZNyn11 (Zeszyt 1 §16) nie należy do słownika
+`enm/grupa_polaczen.py`, choć model składowej zerowej obsługuje zygzak po stronie górnej.
+Rozstrzygnięcie architekta D1: transformator uziemiający (ZNyn11, uzwojenie
 potrzeb własnych 400/230 V AC) jest elementem `Transformer` pola; dławik i rezystor rysuje się
 z nośnika punktu neutralnego `hv_neutral` (`GroundingConfig`: `petersen_coil` z X_N,
 `resistor_grounded` z R_N, rezystor wymuszający AWSC — `awsc_prad_wymuszenia_a` karty zwarć

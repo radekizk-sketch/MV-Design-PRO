@@ -206,11 +206,14 @@ RODZAJE_APARATOW_POLA_BKR: frozenset[str] = frozenset(
 #: wszystkie trzy fazy baterii).
 LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII = 2
 
-#: Port, który łącznik trójpołożeniowy uziemia w położeniu UZIEMIONY: strona odpływowa
-#: (tor w kierunku wyłącznika). Kabel uziemia się przez zamknięty wyłącznik (§13, druk s.25) —
-#: dlatego reguła blokad pola NIE traktuje zamkniętego wyłącznika przy uziemionym łączniku
-#: trójpołożeniowym jako naruszenia (``enm.interlock_rules``).
-PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA
+#: Łącznik trójpołożeniowy w położeniu UZIEMIONY uziemia STRONĘ WYŁĄCZNIKA (ENEA Zeszyt 1,
+#: Z.12 s.92: sworzeń noża od strony wyłącznika po obu stronach łącznika szyn). Kabel uziemia
+#: się przez zamknięty wyłącznik (§13, druk s.25) — reguła blokad pola NIE traktuje zamkniętego
+#: wyłącznika przy uziemionym łączniku trójpołożeniowym jako naruszenia (``enm.interlock_rules``).
+#: Dawna stała ``PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA`` była błędna dla Q2
+#: łącznika szyn (port ``wy`` Q2 leży na sekcji B) i nie miała konsumentów — skasowana (decyzja
+#: architekta D3, karta POLA-GPZ-SZABLONY); port uziemiany wynika z położenia łącznika względem
+#: wyłącznika w sekwencji aparatów pola.
 
 #: Położenia łącznika trójpołożeniowego (``BaySwitchState.actual_state``). Stan
 #: ``uziemiony`` jest WYŁĄCZNIE położeniem łącznika trójpołożeniowego.

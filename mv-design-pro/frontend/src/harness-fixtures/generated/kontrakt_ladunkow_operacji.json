@@ -376,6 +376,7 @@
         },
         "grounding": {
           "pola": [
+            "awsc_prad_wymuszenia_a",
             "r_ohm",
             "type",
             "x_ohm"
@@ -998,6 +999,7 @@
             "lv_system",
             "lv_voltage_tolerance",
             "neutral_point",
+            "{side}_awsc_prad_wymuszenia_a",
             "{side}_neutral_point",
             "{side}_r_ohm",
             "{side}_x_ohm"
@@ -1042,6 +1044,7 @@
                 "lv_system",
                 "lv_voltage_tolerance",
                 "neutral_point",
+                "{side}_awsc_prad_wymuszenia_a",
                 "{side}_neutral_point",
                 "{side}_r_ohm",
                 "{side}_x_ohm"
@@ -1416,6 +1419,7 @@
             "lv_system",
             "lv_voltage_tolerance",
             "neutral_point",
+            "{side}_awsc_prad_wymuszenia_a",
             "{side}_neutral_point",
             "{side}_r_ohm",
             "{side}_x_ohm"
@@ -1461,6 +1465,7 @@
                 "lv_system",
                 "lv_voltage_tolerance",
                 "neutral_point",
+                "{side}_awsc_prad_wymuszenia_a",
                 "{side}_neutral_point",
                 "{side}_r_ohm",
                 "{side}_x_ohm"
@@ -2611,7 +2616,7 @@
       "operacja": "add_grid_source_sn",
       "ladunek": {
         "grounding": {
-          "r_ohm": 1
+          "awsc_prad_wymuszenia_a": 1
         }
       },
       "obce": []
@@ -4004,6 +4009,26 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "nn_earthing": {
+          "mv_awsc_prad_wymuszenia_a": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_earthing": {
+          "_awsc_prad_wymuszenia_a": 1
+        }
+      },
+      "obce": [
+        "nn_earthing._awsc_prad_wymuszenia_a"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_earthing": {
           "mv_neutral_point": 1
         }
       },
@@ -4180,6 +4205,30 @@
       },
       "obce": [
         "station.nn_earthing[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "station": {
+          "nn_earthing": {
+            "mv_awsc_prad_wymuszenia_a": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "station": {
+          "nn_earthing": {
+            "_awsc_prad_wymuszenia_a": 1
+          }
+        }
+      },
+      "obce": [
+        "station.nn_earthing._awsc_prad_wymuszenia_a"
       ]
     },
     {
@@ -5329,6 +5378,26 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "nn_earthing": {
+          "mv_awsc_prad_wymuszenia_a": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_earthing": {
+          "_awsc_prad_wymuszenia_a": 1
+        }
+      },
+      "obce": [
+        "nn_earthing._awsc_prad_wymuszenia_a"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_earthing": {
           "mv_neutral_point": 1
         }
       },
@@ -5505,6 +5574,30 @@
       },
       "obce": [
         "station.nn_earthing[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "station": {
+          "nn_earthing": {
+            "mv_awsc_prad_wymuszenia_a": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "station": {
+          "nn_earthing": {
+            "_awsc_prad_wymuszenia_a": 1
+          }
+        }
+      },
+      "obce": [
+        "station.nn_earthing._awsc_prad_wymuszenia_a"
       ]
     },
     {

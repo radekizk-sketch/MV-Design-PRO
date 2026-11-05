@@ -34,7 +34,11 @@ KLUCZE_META_STACJI_USUWANE: tuple[str, ...] = ("grounding", "zero_sequence")
 
 
 def blad_konfiguracji_uziemienia(
-    typ: str | None, r_ohm: float | None, x_ohm: float | None
+    typ: str | None,
+    r_ohm: float | None,
+    x_ohm: float | None,
+    *,
+    awsc_prad_a: float | None = None,
 ) -> str | None:
     """Komunikat błędu spójności konfiguracji punktu neutralnego albo ``None``.
 
@@ -46,7 +50,28 @@ def blad_konfiguracji_uziemienia(
     Treść trafia do projektanta (karta #142): pole formularza nazwane jak w kreatorze
     źródła (``ui2/kreatory/zrodlo/strings.ts`` ``uziemienieR``/``uziemienieX``), bez
     nazwy pola kontraktu.
+
+    Karta EWALUATORY-ZIEMNOZWARCIOWE: automatyka wymuszania składowej czynnej (AWSC) dołącza
+    rezystor RÓWNOLEGLE do dławika — istnieje wyłącznie przy ``petersen_coil`` i ma dodatni
+    prąd wymuszenia I_W [A]. AWSC przy innym sposobie pracy albo I_W ≤ 0 — odmowa nazwana
+    (ten sam predykat czyta walidator, operacje domenowe i budowniczy obliczenia doziemnego).
     """
+    if awsc_prad_a is not None:
+        if typ != "petersen_coil":
+            return (
+                "automatyka wymuszania składowej czynnej (AWSC) działa wyłącznie przy punkcie "
+                "neutralnym uziemionym przez dławik (cewkę Petersena) — usuń prąd wymuszenia "
+                "albo zmień sposób pracy punktu neutralnego"
+            )
+        if (
+            isinstance(awsc_prad_a, bool)
+            or not isinstance(awsc_prad_a, int | float)
+            or not awsc_prad_a > 0
+        ):
+            return (
+                "prąd wymuszenia AWSC w polu „Prąd wymuszenia AWSC” musi być dodatni [A] — "
+                "nie wolno przyjąć I_W ≤ 0"
+            )
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (
             "uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω] w polu "

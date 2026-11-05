@@ -1208,7 +1208,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "grounding": KsztaltObiektu(
-            pola=frozenset({"r_ohm", "type", "x_ohm"}),
+            pola=frozenset({"awsc_prad_wymuszenia_a", "r_ohm", "type", "x_ohm"}),
         ),
         "manual_equivalent": KsztaltObiektu(
             pola=frozenset(
@@ -1388,6 +1388,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1436,6 +1437,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }
@@ -1582,6 +1584,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "lv_voltage_tolerance",
                     "neutral_point",
                     "{side}_neutral_point",
+                    "{side}_awsc_prad_wymuszenia_a",
                     "{side}_r_ohm",
                     "{side}_x_ohm",
                 }
@@ -1631,6 +1634,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                             "lv_voltage_tolerance",
                             "neutral_point",
                             "{side}_neutral_point",
+                            "{side}_awsc_prad_wymuszenia_a",
                             "{side}_r_ohm",
                             "{side}_x_ohm",
                         }
@@ -1898,6 +1902,23 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N "
             "albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "neutral_grounding",
+        },
+    ),
+    # D1 (karta POLA-GPZ-SZABLONY): walidator E-W5-04 — jeden uziemiony nosnik punktu
+    # neutralnego w wyspie galwanicznej SN (`enm/nosniki_punktu_neutralnego.py`).
+    "earthing.multiple_grounded_neutrals_in_island": ReadinessCodeSpec(
+        code="earthing.multiple_grounded_neutrals_in_island",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej SN — "
+            "pozostaw jeden (pozostałe izolowane) albo otwórz sprzęgło sekcji"
         ),
         fix_navigation={
             "panel": "inspector",
