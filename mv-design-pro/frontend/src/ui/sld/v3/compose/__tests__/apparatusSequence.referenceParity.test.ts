@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Reference Engine V1 — parytet ścieżki DANYCH pola z profilami referencyjnymi
  * (REFERENCE_ENGINE_SPEC_V1.md §8 pkt 2, V12K-060).

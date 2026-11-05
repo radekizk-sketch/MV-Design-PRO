@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Pole POMIAROWE na realnej scenie — oznacznik przekładnika napięciowego „TV"
  * (dyrektywa właściciela 2026-08-06; rejestr V12K-329).

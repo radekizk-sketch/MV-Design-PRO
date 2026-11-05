@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TR2W-BEZ-POLA — KOTWICA TOPOLOGICZNA kolumny transformatora bez pola roli TR
  * (karta naprawcza §0.C.2/§0.C.3; `REJESTR_KONFLIKTOW.md`, wiersz

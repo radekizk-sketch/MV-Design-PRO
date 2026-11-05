@@ -5,12 +5,14 @@ oraz SLD v3 (SLD_CAD_REBUILD_PLAN_V3, domyślna ścieżka renderu od F8a).
 Po pełnym wygaszeniu starego pipeline (Sugiyama + A* + ELK + V1 layoutPipeline) w PR-5c
 ten guard sprawdza, że nowy konstruktywny builder (`ui/sld/v2/`) ma:
 
-1. Wymagany szkielet katalogowy (theme/geometry/builder/viewport/lod/canvas/renderer/command/core/domain).
+1. Wymagany szkielet katalogowy (theme/geometry/viewport/lod/canvas/command/core/domain).
 2. Testy v2 są obecne (layoutEngine.substrate, ViewportController, LodPolicy, portAnchoredGeometry.substrate;
    dawny `renderers` skasowany z rendererami v2 — karta GPZ-PARYTET cz. 2).
 3. Brak importu wygaszonych modułów (Sugiyama, A*, ELK, sldCanonicalStyle, IndustrialAesthetics, layoutPipeline V1, SLDView).
 4. Brak importu wygaszonego pakietu `elkjs` w package.json.
-5. Brak fabrykacji ID/czasu w builder/ (crypto.randomUUID/Date.now/Math.random).
+5. (dawny: brak fabrykacji ID/czasu w `v2/builder/`) — katalog skasowany jako martwy
+   (BuildSequence bez konsumenta produkcyjnego, karta FIX-E2E-PELNE 2026-11-04);
+   powrót importu blokuje Guard 3 (`ui/sld/v2/builder` w FORBIDDEN_LEGACY_PATHS).
 6. Testy v3 są obecne (buildScene, camera, SldCanvasV3, layout, labels, route, symbols —
    REBUILD_PLAN_V3 §F8b-2; v2 pozostaje ZABLOKOWANY do usunięcia do §F8c, patrz plan).
 
@@ -34,7 +36,6 @@ RESET = "\033[0m"
 REQUIRED_V2_DIRS = [
     "ui/sld/v2/theme",
     "ui/sld/v2/geometry",
-    "ui/sld/v2/builder",
     "ui/sld/v2/viewport",
     "ui/sld/v2/lod",
     "ui/sld/v2/canvas",
@@ -84,6 +85,10 @@ FORBIDDEN_LEGACY_PATHS = [
     "ui/sld/InlineBranchObjectRenderer",
     "ui/sld/ConnectionRenderer",
     "ui/sld/JunctionDotLayer",
+    # Martwa sekwencja budowy PR-13/PR-14 (BuildSequence + visualFixtures) — jedyny
+    # konsument produkcyjny był w martwym BuildSidebar; skasowane razem
+    # (karta FIX-E2E-PELNE, 2026-11-04).
+    "ui/sld/v2/builder",
     # NOTE: `engine/sld-layout/` was the OLD V1 layout pipeline (Sugiyama/A*/ELK),
     # wygaszony w PR-5c. Po cutover §4 (commit 0baa9e8 „layout-engine foundation —
     # one truth") katalog ten jest NOWYM, kanonicznym silnikiem layoutu
@@ -151,31 +156,6 @@ def main() -> int:
                 violations.append(f"GUARD 4: wygaszony pakiet w package.json — {forbidden_pkg}")
         if not any(v.startswith("GUARD 4:") for v in violations):
             passed("GUARD 4: brak wygaszonych pakietów w package.json")
-
-    # Guard 5: brak fabrykacji ID/czasu w builder/
-    fabrications: list[tuple[Path, int, str]] = []
-    builder_dir = FRONTEND_SRC / "ui" / "sld" / "v2" / "builder"
-    if builder_dir.exists():
-        fab_pattern = re.compile(r"(crypto\.randomUUID|Date\.now\(\)|Math\.random\(\))")
-        for f in builder_dir.rglob("*.ts"):
-            try:
-                content = f.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, PermissionError):
-                continue
-            for line_no, line in enumerate(content.splitlines(), start=1):
-                stripped = line.strip()
-                if stripped.startswith("//") or stripped.startswith("*"):
-                    continue
-                m = fab_pattern.search(line)
-                if m:
-                    fabrications.append((f, line_no, m.group(1)))
-    if fabrications:
-        for f, ln, t in fabrications:
-            violations.append(
-                f"GUARD 5: fabrykacja ID/czasu w builder/ — {f.relative_to(REPO_ROOT)}:{ln} → {t}"
-            )
-    else:
-        passed("GUARD 5: brak fabrykacji ID/czasu w builder/")
 
     # Guard 6: testy v3 obecne
     for rel in REQUIRED_V3_TESTS:

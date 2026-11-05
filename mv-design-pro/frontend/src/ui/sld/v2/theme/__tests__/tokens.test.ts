@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * tokens.ts tests — snapToGrid + getDeviceStyle pure functions.
  *

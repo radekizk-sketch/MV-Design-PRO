@@ -87,6 +87,7 @@ from uuid import NAMESPACE_URL, uuid5
 from domain.fault_scenario import FaultMode, FaultScenario
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -1568,6 +1569,14 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
             if spec.fault_mode == FaultMode.IMPEDANCE
             else {}
         ),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC scenariusza (Z.13) — Z_N zespołu
+        # uziemiającego w biegu. Klucz WYŁĄCZNIE przy AWSC załączonej: payload i `input_hash`
+        # scenariuszy w stanie normalnym pozostają bajtowo te same.
+        **(
+            {KLUCZ_OPCJI_STANU_AWSC: spec.config.stan_awsc}
+            if spec.config.stan_awsc != "spoczynek"
+            else {}
+        ),
     }
 
 
@@ -1818,8 +1827,11 @@ def usun_wszystkie_scenariusze() -> None:
 # porównuje zapis z bieżącą rewizją wyboru TEGO przypadku — zmiana w przypadku B unieważnia
 # wyłącznie biegi przypadku B; model bazowy nie zmienia się nigdy.
 
-#: Prefiks identyfikatora scenariusza przypadku (`przypadek-<case_id>`).
-PREFIKS_SCENARIUSZA_PRZYPADKU = "przypadek-"
+#: Prefiks identyfikatora scenariusza przypadku (`zabezpieczenia-przypadku:<case_id>`). Prefiks
+#: jest ZASTRZEŻONY (zapis scenariusza nazwanego z nim jest odmową): dawny `przypadek-` był
+#: zwykłym słowem i kolidował z identyfikatorami scenariuszy nadanymi przez projektanta albo
+#: test (np. `przypadek-zu`), które bieg odrzucał jako wybór przypadku.
+PREFIKS_SCENARIUSZA_PRZYPADKU = "zabezpieczenia-przypadku:"
 #: Klucz opcji biegu z wyborem zabezpieczeń przypadku (obecny WYŁĄCZNIE, gdy przypadek ma
 #: wybór — opcje i `input_hash` biegów przypadków bez wyboru bajtowo bez zmian).
 KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU = "zabezpieczenia_przypadku"
@@ -1989,7 +2001,7 @@ def przemapuj_rejestry_z_archiwum(
     """Rejestry z archiwum sprawdzone i przemapowane na przypadki nowego projektu — BEZ zapisu.
 
     Przemapowanie dotyczy dwóch miejsc, w których scenariusz wskazuje przypadek: identyfikatora
-    wyboru zabezpieczeń przypadku (`przypadek-<case_id>`, w rejestrze i w każdej rewizji) oraz
+    wyboru zabezpieczeń przypadku (`zabezpieczenia-przypadku:<case_id>`, w rejestrze i w każdej rewizji) oraz
     `fault_spec.study_case_id` scenariusza zwarciowego. Odciski rewizji (`hash`) nie zmieniają
     się — treść scenariusza nie zawiera identyfikatora przypadku. Przypadek spoza mapy zostaje
     wprost (ta sama reguła co `case_id` biegów archiwum). Każda nieusunięta rewizja jest

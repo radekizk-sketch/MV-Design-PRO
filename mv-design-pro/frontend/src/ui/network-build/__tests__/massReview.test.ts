@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Mass Review — testy logiki przeglądów masowych.
  *

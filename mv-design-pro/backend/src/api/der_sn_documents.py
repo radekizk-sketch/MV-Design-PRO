@@ -22,6 +22,7 @@ import json
 from typing import Any
 
 from api.document_store import store_generated_document
+from api.grid_source_preview import kryterium_zwarciowe_odpowiedzi
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.der_sn_track import extract_der_sn_track, sum_apparent_power_mva
 from application.analyses.lista_materialowa import build_bom_view
@@ -29,6 +30,7 @@ from application.analyses.raport_zgodnosci import build_compliance_report_from_t
 from application.koszty.lista_materialowa import koszt_listy_materialowej
 from catalog.cenniki import aktualny_cennik
 from domain.execution import RunStatus
+from enm.models import EnergyNetworkModel
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from network_model.odmowa_danych import OdmowaDanychError
@@ -118,7 +120,9 @@ def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> 
     return float(wartosc)
 
 
-def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
+def _compute_d2_deviations(
+    track: Any, *, case_id: str, model: EnergyNetworkModel
+) -> list[dict[str, Any]] | None:
     """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy tor nie ma
     elementów do porównania.
 
@@ -127,6 +131,11 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     — raport pokazuje ją jako ⚠ „sekcja D2 nieoceniona" z powodem (karta #151: dawne
     ``except Exception`` → ``None`` chowało KAŻDY błąd, także programu, w cichym
     pominięciu sekcji). Inny wyjątek jest błędem programu i wybucha (500).
+
+    Kryterium wytrzymałości zwarciowej propozycji kabla (pakiet 6b) liczy się przy I″k i κ
+    szyny przyłączenia z najnowszego biegu zwarciowego przypadku i czasie trwania zwarcia
+    POLA toru (to samo rozstrzygnięcie co ocena cieplna aparatury pola) — pozycja
+    ``wytrzymalosc_zwarciowa_kabla`` niesie rekord kryterium (także NIE_OCENIONO z akcją).
 
     Reużywa kandydatów katalogu i doboru TR z kaskady toru DER-SN
     (``application.analyses.dobor_toru_der_sn``) oraz solvera doboru kabla. Porównuje: przekrój kabla, moc TR, grupę połączeń.
@@ -144,8 +153,12 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     try:
         from application.analyses.dobor_toru_der_sn import (
             cos_phi_doboru_kabla,
+            czas_trwania_zwarcia_nowego_pola,
+            czas_trwania_zwarcia_pola_toru,
             dobierz_transformator_blokowy,
             kandydaci_kabli_sn,
+            parametry_zwarciowe_doboru_kabla,
+            wejscie_zwarciowe_toru_der,
         )
         from domain.generator_validation import BEZ_REDUKCJI, JawneWejsciaKontroliMocy
         from network_model.solvers.der_selection_preview import (
@@ -205,6 +218,17 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         tr_current = rated_current_a(
             _zastosowana_wartosc(tr, "sn_mva", "transformatora"), float(sn_bus_kv)
         )
+        pole_ref = (track.pole or {}).get("ref_id")
+        zwarcie = wejscie_zwarciowe_toru_der(
+            case_id=case_id,
+            szyna_ref=track.mv_bus.get("ref_id"),
+            model=model,
+            czas_dla_pradu=(
+                (lambda prad_a: czas_trwania_zwarcia_pola_toru(model, str(pole_ref), prad_a))
+                if pole_ref
+                else (lambda _prad_a: czas_trwania_zwarcia_nowego_pola())
+            ),
+        )
         if tr_current is not None:
             # V12K-207 (F-K7): propozycję trzeba policzyć dla TYCH SAMYCH warunków
             # ułożenia, które przyjęto w doborze — inaczej raport zgłaszałby odstępstwo
@@ -220,6 +244,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     cos_phi=cos_phi_doboru_kabla(wejscia),
                     candidates=kandydaci_kabli_sn(),
                     derating=_cable_derating_from_model(cable),
+                    **parametry_zwarciowe_doboru_kabla(zwarcie),
                 )
             )
             if cable_result.proposal is not None:
@@ -231,6 +256,14 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                         "propozycja": round(cable_result.proposal.cross_section_mm2, 1),
                         "odstepstwo": abs(applied_cross - cable_result.proposal.cross_section_mm2)
                         > 1e-6,
+                    }
+                )
+            kryterium = kryterium_zwarciowe_odpowiedzi(cable_result, zwarcie)
+            if kryterium is not None:
+                deviations.append(
+                    {
+                        "parametr": "wytrzymalosc_zwarciowa_kabla",
+                        "kryterium": kryterium.model_dump(mode="json"),
                     }
                 )
         return deviations or None
@@ -260,7 +293,7 @@ def get_der_sn_compliance_report(
         track,
         run_status=run_status,
         readiness_codes=readiness_codes,
-        d2_deviations=_compute_d2_deviations(track),
+        d2_deviations=_compute_d2_deviations(track, case_id=case_id, model=get_enm(klucz)),
     )
     if zapisz_do_magazynu:
         _store(

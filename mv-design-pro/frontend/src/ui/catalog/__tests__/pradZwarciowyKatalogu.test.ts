@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Zapis prądu zwarciowego pozycji katalogu: liczba / „nie dotyczy” (rodzaj) / „brak danych”.
  *

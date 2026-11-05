@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Test parytetu (TODO-UI2 §1 p. 13): grupowanie celów wobec kanonicznego
  * rejestru kodów gotowości backendu (`READINESS_CODES`,

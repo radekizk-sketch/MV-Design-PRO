@@ -155,6 +155,7 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
+from enm.slownik_komunikatow import pole
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.catalog.wartosci_robocze import (
@@ -317,6 +318,22 @@ def _k2_dla_rodzaju(kind: str) -> float | None:
 # =============================================================================
 
 
+def _pole_warunkow(warunki: dict[str, Any], klucz: str, rodzaj: type[Any]) -> Any:
+    """Pole warunków ułożenia kabla nN albo odmowa danych po polsku z nazwą pola formularza.
+
+    Brak pola i wartość, której nie da się odczytać jako ``rodzaj``, to odmowa nazwana polem
+    (słownik pól operacji) — surowy klucz i tekst konwersji biblioteki nie trafiają do
+    uzasadnienia wiersza (`reason_pl`)."""
+    nazwa = pole(f"cable_laying_conditions.{klucz}")
+    wartosc = warunki.get(klucz)
+    if wartosc is None:
+        raise OdmowaDanychError(f"brak pola {nazwa}")
+    try:
+        return rodzaj(wartosc)
+    except (TypeError, ValueError) as exc:
+        raise OdmowaDanychError(f"pole {nazwa} ma niepoprawną wartość") from exc
+
+
 def _iz_katalogowe_kabla(cable: Cable) -> float | None:
     """Obciążalność długotrwała z karty typu kabla (materializacja katalogowa) [A]."""
     params = cable.materialized_params if isinstance(cable.materialized_params, dict) else None
@@ -341,12 +358,12 @@ def _wspolczynniki_ulozenia_kabla(cable: Cable) -> tuple[WspolczynnikiObciazalno
             "w rzeczywistej trasie obciążalność może być mniejsza.",
         )
     wspolczynniki = wspolczynniki_nn(
-        srodowisko=warunki["environment"],
-        izolacja=warunki["insulation"],
-        temperatura_c=float(warunki["ambient_temperature_c"]),
-        liczba_obwodow=int(warunki["circuit_count"]),
+        srodowisko=_pole_warunkow(warunki, "environment", str),
+        izolacja=_pole_warunkow(warunki, "insulation", str),
+        temperatura_c=_pole_warunkow(warunki, "ambient_temperature_c", float),
+        liczba_obwodow=_pole_warunkow(warunki, "circuit_count", int),
         rezystywnosc_gruntu_km_w=(
-            float(warunki["soil_thermal_resistivity_km_w"])
+            _pole_warunkow(warunki, "soil_thermal_resistivity_km_w", float)
             if warunki.get("soil_thermal_resistivity_km_w") is not None
             else None
         ),
@@ -370,7 +387,7 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
         }
     try:
         wspolczynniki, uzasadnienie = _wspolczynniki_ulozenia_kabla(cable)
-    except (KeyError, ValueError) as exc:
+    except (KeyError, ValueError, OdmowaDanychError) as exc:
         return {
             "branch_ref": cable.ref_id,
             "iz_katalogowe_a": iz_katalogowe,
@@ -832,6 +849,7 @@ def _build_row(
             ib_a=ib_a,
             iz_prime_a=iz_prime_a,
             ik_max_ka=None,  # dostarczone osobno niżej z biegu SC, gdy dostępny
+            rodzaj_obwodu=getattr(aparat_korzenia, "rodzaj_obwodu_nn", None),
         )
         dobor_status = wynik_dobor["status"]
         dobor_reason = wynik_dobor.get("reason_pl")
@@ -1025,6 +1043,7 @@ def _build_row(
                     u0_v=dobor_wejscie["u0_v"],
                     dane_przyjete_ik_max=dane_ik_max,
                     dane_przyjete_ik1_min=dane_ik1_min,
+                    rodzaj_obwodu=getattr(aparat_korzenia, "rodzaj_obwodu_nn", None),
                 )
                 kr_i = next(k for k in ocena.kryteria if k.nazwa == "Ib<=In<=Iz′")
                 kr_ii = next(k for k in ocena.kryteria if k.nazwa == "I2<=1,45·Iz′")

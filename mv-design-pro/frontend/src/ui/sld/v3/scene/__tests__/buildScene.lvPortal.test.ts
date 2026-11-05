@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PORTAL DOMENY nN — poziom SCENY (`buildSceneV3`), architektura LV Domain
  * Projection po B-02 (`docs/sld/PROJEKCJA_SN_NN_PORTAL_V1.md`).

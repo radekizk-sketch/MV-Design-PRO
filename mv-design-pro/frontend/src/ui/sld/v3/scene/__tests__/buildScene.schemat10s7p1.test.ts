@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 S7-P1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §S7-P1) — testy
  * pakowania interwałowego Rodziny B (kompaktyzacja pionowa + piony

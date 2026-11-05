@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ-PARYTET cz. 2 (pkt 1): znaki uzwojeń to klasa „glif transformatora" — KAŻDY symbol
  * `transformer2W` sceny niesie oznaczenie uzwojeń z grupy połączeń modelu, z tej samej

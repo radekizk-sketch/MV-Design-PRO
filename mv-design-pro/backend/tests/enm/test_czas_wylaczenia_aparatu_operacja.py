@@ -11,7 +11,6 @@ import itertools
 from typing import Any
 
 import pytest
-
 from enm.domain_operations import execute_domain_operation
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, FuseBranch, SwitchBranch
 
@@ -64,3 +63,29 @@ def test_zapis_czasu_wylaczenia(galaz: str, wartosc: Any) -> None:
     model = EnergyNetworkModel.model_validate(wynik["snapshot"])
     aparat = next(b for b in model.branches if b.ref_id == galaz)
     assert aparat.czas_wylaczenia_zwarcia_s == wartosc  # type: ignore[union-attr]
+
+
+RODZAJE: tuple[Any, ...] = ("odbiorczy", "rozdzielczy", None, "mieszany", 1)
+
+
+@pytest.mark.parametrize(("galaz", "wartosc"), list(itertools.product(GALEZIE, RODZAJE)))
+def test_zapis_rodzaju_obwodu_nn(galaz: str, wartosc: Any) -> None:
+    """Pakiet 9: rodzaj obwodu nN (wartość projektanta) — ta sama operacja i ten sam nośnik
+    (aparat obwodu) co przyjęty czas zwarcia. Iloczyn: gałąź {wyłącznik, bezpiecznik, kabel}
+    × wartość {odbiorczy, rozdzielczy, zdjęcie, spoza słownika, liczba}."""
+    wynik = execute_domain_operation(
+        _model(),
+        "update_element_parameters",
+        {"element_ref": galaz, "parameters": {"rodzaj_obwodu_nn": wartosc}},
+    )
+    if galaz == "cable":
+        assert wynik["error_code"] == "params.key_not_allowed"
+        return
+    if wartosc not in ("odbiorczy", "rozdzielczy", None):
+        assert wynik["error_code"] == "params.invalid_value"
+        assert "odbiorczy" in wynik["error"]
+        return
+    assert wynik.get("error") is None, wynik.get("error")
+    model = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    aparat = next(b for b in model.branches if b.ref_id == galaz)
+    assert aparat.rodzaj_obwodu_nn == wartosc  # type: ignore[union-attr]

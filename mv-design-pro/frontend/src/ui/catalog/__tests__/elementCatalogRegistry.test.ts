@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Element Catalog Registry Tests
  *

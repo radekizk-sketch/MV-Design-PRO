@@ -32,10 +32,11 @@ protection_settings/`, który 50N/51N NIE wyznacza — metoda dotyczy WYŁĄCZNI
 stopni fazowych, `ProtectionRequirementV0.i_pickup_51n_a/i_inst_50n_a` zostają
 `None` z definicji). Ogniwo 2 tego łańcucha (nastawy 50N/51N reagujące na
 grupę) zeszło razem z konsumentem, którego dowodziło; ogniwo 1 (fizyka
-zwarcia 1F reagująca na grupę połączeń, solver + `enm.mapping`) zostaje —
-`_run_1ph_on_lv`/`_hand_zt0_ohm_lv` są też dzielone z
-``test_vector_group_earth_fault_touch_voltage.py`` (dowód napięcia dotykowego
-na TEJ SAMEJ parze sieci).
+zwarcia 1F reagująca na grupę połączeń, solver + `enm.mapping`) zostaje.
+Dawny dowód napięcia dotykowego na tej parze sieci szedł przez most
+`ground_fault_bridge`, który nie miał producenta w ścieżce użytkownika — skasowany
+z mostem (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3); napięcie dotykowe liczy
+dziś analiza uziomu V12.6 z prądu zwarcia doziemnego podanego przez projektanta.
 """
 
 from __future__ import annotations

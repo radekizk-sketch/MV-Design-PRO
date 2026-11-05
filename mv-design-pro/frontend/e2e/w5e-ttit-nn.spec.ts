@@ -23,6 +23,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 import { katalogZrzutow } from './katalogZrzutow';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/w5e_ttit'));
@@ -97,7 +98,11 @@ async function zbudujSiecTt(request: APIRequestContext) {
 
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0, sk3_mva: 250.0, rx_ratio: 0.1,
-    catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID), hv_voltage_kv: 110.0, transformer_sn_mva: 25.0,
+    catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    // Równoważnik na szynach SN GPZ: bez kluczy transformatorów 110/SN (`hv_voltage_kv`,
+    // `transformer_*`) — od karty GPZ-MODEL backend ich odmawia
+    // (`source.transformer_requires_hv_equivalent`), bo moc zwarciowa na szynach SN już
+    // zawiera impedancję transformatorów. Intencja speca (GPZ SN zasilający ciąg) bez zmian.
   });
   let op: DomainOpResponse | null = null;
   for (const [idx, length] of [300, 250].entries()) {
@@ -204,6 +209,8 @@ async function otworzSchemat(page: Page, seed: Awaited<ReturnType<typeof zbudujS
 async function otworzPortalNn(page: Page): Promise<void> {
   const portal = page.locator('[data-testid="sld-v3-symbols"] [data-symbol-canon="lvPortal"]').first();
   await expect(portal).toBeVisible({ timeout: 30000 });
+  // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(portal);
   const box = await portal.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
@@ -258,6 +265,8 @@ for (const motyw of MOTYWY) {
     // wypaść w pustym polu między symbolem a etykietą, gdzie zdarzenie nie trafia w `<g>`.
     const etykieta = aparat.locator('text').first();
     await expect(etykieta).toBeVisible();
+    // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+    await czekajNaStabilnaGeometrie(etykieta);
     const box = await etykieta.boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.click(box!.x + Math.min(10, box!.width / 2), box!.y + box!.height / 2);

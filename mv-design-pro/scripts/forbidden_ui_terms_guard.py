@@ -37,6 +37,14 @@ FORBIDDEN_TERMS_IN_UI: dict[str, str] = {
     r"\bTODO\b": "TODO w literale UI-widocznym (dług widoczny użytkownikowi)",
     r"\bTODO-KARTA\b": "TODO-KARTA w literale UI-widocznym (odroczenie do karty — ZASADA NR 3)",
     r"patrz kart[aę]": "'patrz karta/kartę' w literale UI-widocznym (odesłanie do karty — ZASADA NR 3)",
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN pakiet 8 (dyrektywa właściciela): czas trwania
+    # zwarcia nigdy nie jest „nieustalony” — źródłem jest projektant, nastawy albo wartość
+    # robocza 1 s (IEC 62271-1 §4.7). Klasa: stan czasu słowem „nieustalony/nieznany” w obu
+    # szykach („czas … nieustalony”, „nieustalony czas”, „nieznany czas”).
+    r"\bczas\w*(?:\s+\w+){0,4}\s+nieustalon\w*|\bnieustalon\w*\s+czas\w*|\bnieznany\s+czas\w*": (
+        "czas zwarcia/wyłączenia jako „nieustalony” (pakiet 8: zawsze projektant, nastawy "
+        "albo wartość robocza 1 s IEC 62271-1)"
+    ),
 }
 
 STRING_LITERAL_RE = re.compile(

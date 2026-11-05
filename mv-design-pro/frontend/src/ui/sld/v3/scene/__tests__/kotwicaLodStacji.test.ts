@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA S9-10 — PIN NIEZMIENNIKA „JEDNA KOTWICA X STACJI MIĘDZY LOD"
  * (zlecony pomiar „X-drift pól L1/L2 (48 px)").

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TR2W-BEZ-POLA — transformator stacji SN/nN rysowany TAKŻE bez jawnego pola
  * roli TR (karta naprawcza; `REJESTR_KONFLIKTOW.md`, wiersz BUGI-PRODUKTU-E2E).

@@ -20,6 +20,7 @@
  * `e2e/sld-minimapa.spec.ts` (ta sama droga danych, zero równoległego seedu).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -103,6 +104,11 @@ async function utworzProjektISiec(request: APIRequestContext): Promise<{
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    // Pole liniowe GPZ z wyłącznikiem z katalogu. Od karty GEOMETRIA-STACJI aparat
+    // ciągłości pola na L0 pochodzi z REKORDU modelu (dawniej wyłącznik rysowany
+    // z konwencji w każdym polu); GPZ bez aparatury pól pokazuje sylwetkę braku danych.
+    // Intencja bramki („LOD nie ukrywa łączników toru") wymaga więc pola z łącznikiem.
+    gpz_line_field_apparatus: { catalog_binding: buildCatalogBinding('APARAT_SN', FIELD_APPARATUS_ID) },
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [400, 350, 300, 250].entries()) {
@@ -223,6 +229,8 @@ test('przeglad: GPZ jako zwiniety blok, klik rozwija uklad, nawigator dziedziczy
   expect(ksztaltyPrzed).toBeGreaterThan(0);
 
   // (4) KLIK NATYWNY w blok ⇒ ROZWINIĘCIE (kamera schodzi na poziom szczegółu).
+  // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(wezelBloku);
   const box = await wezelBloku.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);

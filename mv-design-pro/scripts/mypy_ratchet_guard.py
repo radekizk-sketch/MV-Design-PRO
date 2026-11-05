@@ -251,6 +251,11 @@ BACKEND = ROOT / "backend"
 # 169/22) i na drzewie scalonym (167/21); roznica zbiorow (plik, komunikat): scalone minus
 # program = 0, scalone minus UI/UX = 0, program minus scalone = dokladnie 2 bledy `assignment`
 # w `enm/catalog_completion.py`, zdjete przez karte W5-B (wyzej). Zero nowych.
+# Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (2026-10-30): 167/21 -> 163/21. POMIAR `mypy src`
+# na HEAD karty i na drzewie commitu (multizbior (plik, komunikat)): zniknely dokladnie 4 bledy
+# `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
+# — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
+# pliki zostaja (inne bledy). Zero nowych.
 # Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z karta UX-04/POLE-BKR-MODEL, 2026-10-29:
 # 167/21 -> 166/20. POMIAR `mypy_ratchet_guard`: drzewo bazowe karty (e4b778d35, pierwszy rodzic
 # scalenia) 171/22 przy progu 167/21 — karta wniosla 4 bledy i 1 plik: `enm/stan_obiektu_pola.py`
@@ -263,7 +268,10 @@ BACKEND = ROOT / "backend"
 # 3: zmienna `cb` uzyta dla dwoch typow; `ocena_nadpradowa.py` 1: `breaker_ref` `str | None`
 # w `OcenaPunktu`), a kasacja dawnej struktury zabezpieczen zdjela 3 bledy i 1 plik. Po naprawie
 # (osobna zmienna wylacznika obwodu; wylacznik zawezony przekazywany do `_ocena_punktu`) 163/19.
-BASELINE_ERRORS = 163
+# Scalenie karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN z galezia KD6/ZU (2026-11-05): POMIAR
+# `mypy_ratchet_guard` na drzewie scalonym 159/19 (obie galezie zdjely bledy rozlacznie:
+# 163/19 i 163/21 przy wspolnej bazie 167/21). Zero nowych.
+BASELINE_ERRORS = 159
 BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")

@@ -656,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "dda414347917d2723980dff8a6144239729ade5817af9c349d59eb55de73ebc4",
+  "projection_hash": "d44ae64413c11fff1d656fffff00a295e65ccfd5b88aea900dee6d89b135864c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1084,7 +1084,7 @@
                         "zakres_stosowalnosci_pl": "wyłącznik różnicowoprądowy „RCD-01” najbliższy punktowi"
                       },
                       "margines": {
-                        "definicja_latex": "m = x - x_{\\lim}",
+                        "definicja_latex": "\\Delta x = x - x_{\\lim}",
                         "niedefiniowalny": false,
                         "powod_pl": null,
                         "punkt_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
@@ -1237,7 +1237,7 @@
                         "zakres_stosowalnosci_pl": "obwód odbiorczy, pasmo U0 120<U0<=230"
                       },
                       "margines": {
-                        "definicja_latex": "m = x_{\\lim} - x",
+                        "definicja_latex": "\\Delta x = x_{\\lim} - x",
                         "niedefiniowalny": false,
                         "powod_pl": null,
                         "punkt_pl": "prąd doziemny minimalny 8,092 A = 269,7 × I_Δn",

@@ -11,7 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from grep_zero_guard import GRUPY, ROOT, sprawdz  # noqa: E402
+import re  # noqa: E402
+
+import pytest  # noqa: E402
+from grep_zero_guard import GRUPY, ROOT, load_config_lines, sprawdz, wymagany_literal  # noqa: E402
 
 INIEKCJE_KOD: tuple[tuple[str, str], ...] = (
     ("backend/src/enm/x.py", 'system = sub.meta["nn_earthing_system"]\n'),
@@ -104,6 +107,132 @@ def test_czerwona_iniekcja_w61() -> None:
         plik.unlink()
 
 
+@pytest.mark.parametrize(
+    ("wzorzec", "literal"),
+    [
+        # literal najwyzszego poziomu, przed nim i za nim elementy nieliteralne
+        (r"\bload_profile_ref\b", "load_profile_ref"),
+        # grupa opcjonalna z literalem — jej tresc NIE jest wymagana
+        (r"\b(ab_|cd_)?pole_x\s*[:=]", "pole_x"),
+        # powtorzenie: `\??` i `x*` nie sa wymagane, `\.` jest literalem kropki
+        (r"\b(bus|b)\??\.grounding\b", ".grounding"),
+        (r"abx*cd", "ab"),
+        # alternatywa na najwyzszym poziomie — zaden literal nie jest wymagany
+        (r"alfa|beta", None),
+        (r"(alfa|beta)", None),
+        # klasa znakow i dowolny znak przerywaja ciag
+        (r"ab[cd]efg", "efg"),
+        (r"ab.cdef", "cdef"),
+        # bez rozroznienia wielkosci liter literal nie jest filtrem
+        (r"(?i)load_profile_ref", None),
+        (r"\w+", None),
+    ],
+)
+def test_wymagany_literal(wzorzec: str, literal: str | None) -> None:
+    assert wymagany_literal(wzorzec) == literal
+
+
+_POLA = "field" + "_specs"
+
+#: Teksty dopasowan z iloczynu cech: kazda galaz alternatywy wzorcow konfiguracji, opcjonalny
+#: przedrostek obecny/nieobecny, cudzyslow pojedynczy/podwojny, odstep przed `=`/`:`.
+_DOPASOWANIA = (
+    *INIEKCJE_KOD,
+    # nazwa dawnego nosnika pol skladana z czesci — pilnuje jej `meta_field_specs_resurrection_guard`
+    ("x", 'meta["' + _POLA + '"]'),
+    ("x", "meta['nn_" + _POLA + "']"),
+    ("x", '"switchgear_' + _POLA + '" : 1'),
+    ("x", "nn_" + _POLA + " = 1"),
+    ("x", "obj.switchgear_" + _POLA),
+    ("x", "szynaSN?.grounding"),
+    ("x", "b.grounding"),
+    ("x", "neutral_grounding_mode = 'rezystor'"),
+    ("x", "collect_bays ("),
+    ("x", "_auto_populate_types"),
+    ("x", "AutoPopulateX"),
+    ("x", "/api/catalog/auto-populate"),
+    ("x", " inverter-types"),
+    ("x", "'nn_earthing_system':"),
+    ("x", "nn_earthing_system = 1"),
+)
+
+
+def test_kazde_dopasowanie_wzorca_zawiera_jego_literal() -> None:
+    """Filtr literalu jest warunkiem KONIECZNYM: kazde dopasowanie kazdego wzorca
+    konfiguracji (wszystkie grupy) zawiera literal wyznaczony dla wzorca — inaczej
+    `sprawdz` pominalby plik z naruszeniem. Kazdy wzorzec z literalem ma tu dopasowanie."""
+    wzorce = [
+        w
+        for grupa in GRUPY
+        for w in load_config_lines(ROOT / "config" / f"grep_zero_{grupa}patterns.txt")
+    ]
+    bez_przykladu = []
+    for wzorzec in wzorce:
+        literal = wymagany_literal(wzorzec)
+        if literal is None:
+            continue
+        trafienia = [
+            m.group(0)
+            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU)
+            for m in re.finditer(wzorzec, tekst)
+        ]
+        if not trafienia and not re.search(wzorzec, literal):
+            bez_przykladu.append(wzorzec)
+        for trafienie in trafienia + ([literal] if re.search(wzorzec, literal) else []):
+            assert literal in trafienie, (wzorzec, literal, trafienie)
+    # przyklady grupy `zu_` to iniekcje `INIEKCJE_ZU` (jedno zrodlo tekstow tej grupy);
+    # wzorce literalne bez przykladu w `_DOPASOWANIA` dopasowuja sam swoj literal (nazwa
+    # pliku, symbol) — ten przypadek pokrywa `re.search(wzorzec, literal)` wyzej
+    assert bez_przykladu == [], bez_przykladu
+
+
+INIEKCJE_ZU: tuple[tuple[str, str], ...] = (
+    # Przywrócona kolumna ORM konfiguracji stacji (bramka wskrzeszenia ścieżki ORM).
+    (
+        "backend/src/infrastructure/persistence/models.py",
+        "    mv_neutral_grounding_ref: Mapped[str | None] = mapped_column(String(64))\n",
+    ),
+    (
+        "backend/migrations/audit2_station_configs.sql",
+        "    mv_neutral_grounding_ref VARCHAR(64),\n",
+    ),
+    ("backend/src/api/audit2_catalogs.py", '@router.get("/mv-neutral-groundings")\n'),
+    ("backend/src/network_model/catalog/audit2_catalogs.py", "MV_NEUTRAL_GROUNDING_CATALOG = ()\n"),
+    ("backend/schemas/openapi_snapshot.json", '{"mv_neutral_grounding_ref": null}\n'),
+    (
+        "frontend/src/ui/network-build/station-der/catalogs.ts",
+        "export const mvNeutralGroundings = [];\n",
+    ),
+    ("frontend/e2e/audit2.spec.ts", "await wybierz('mng_petersen');\n"),
+)
+
+
+def test_czerwona_iniekcja_zu() -> None:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: każda postać skasowanej drugiej prawdy o uziemieniu
+    SN (kolumna ORM, migracja, końcówka, katalog, migawka kontraktu, front, e2e) jest czerwona."""
+    with tempfile.TemporaryDirectory() as katalog:
+        tmp = Path(katalog)
+        _drzewo_z_konfiguracja(tmp)
+        for rel in (
+            (ROOT / "config" / "grep_zero_zu_active_paths.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ):
+            rel = rel.strip()
+            if rel and not rel.startswith("#"):
+                (tmp / rel).mkdir(parents=True, exist_ok=True)
+        assert sprawdz(tmp, "zu_") == [], "czyste drzewo ma być zielone"
+        for rel, tresc in INIEKCJE_ZU:
+            plik = tmp / rel
+            plik.parent.mkdir(parents=True, exist_ok=True)
+            plik.write_text(tresc, encoding="utf-8")
+            naruszenia = sprawdz(tmp, "zu_")
+            assert any(
+                rel in n for n in naruszenia
+            ), f"iniekcja {rel!r} nie została wykryta: {naruszenia}"
+            plik.unlink()
+
+
 def test_realne_drzewo_jest_zielone() -> None:
     for grupa in GRUPY:
         naruszenia = sprawdz(ROOT, grupa)
@@ -113,5 +242,6 @@ def test_realne_drzewo_jest_zielone() -> None:
 if __name__ == "__main__":
     test_czerwona_iniekcja_kazdego_wzorca()
     test_czerwona_iniekcja_w61()
+    test_czerwona_iniekcja_zu()
     test_realne_drzewo_jest_zielone()
     print("test_grep_zero_guard: OK")

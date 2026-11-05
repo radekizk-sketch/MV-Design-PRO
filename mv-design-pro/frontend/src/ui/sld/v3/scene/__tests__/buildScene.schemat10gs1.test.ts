@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 GS-1 (V12K-137) — GRAMATYKA STACJI na L0: mini-RMU zamiast
  * kwadratu 16×16 (DOMKNIĘCIE GAP `S7_GAP_CROSSING_ZERO_2026-07` §10.4).

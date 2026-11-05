@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Pin układu paska zakładek warsztatu Wyników (karta V126-JEZYK, defekt ze
  * zrzutu 3/3 właściciela: pasek przelewał się poza kadr, kolumna treści zwinięta,

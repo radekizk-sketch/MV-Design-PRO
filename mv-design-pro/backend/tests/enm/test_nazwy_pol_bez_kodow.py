@@ -53,6 +53,8 @@ _ALIASY_MODELU = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: pole zespołu uziemiającego (ENEA Zeszyt 1 §16).
+    "ZU": "ZESPOL_UZIEMIAJACY",
     "BKR": "BATERIA_KONDENSATOROW",
 }
 

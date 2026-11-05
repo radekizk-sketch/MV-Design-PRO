@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
@@ -71,12 +71,13 @@ from enm.dane_przyjete_galezi import (
     dane_przyjete_galezi_punktow,
     dane_przyjete_galezi_wiersza,
 )
+from enm.doziemienie_sieci import KLUCZ_DOZIEMIENIA_SIECI, doziemienie_wiersza
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
-from enm.mapping import grid_source_graph_id
+from enm.mapping import BrakWynikuZerowego, grid_source_graph_id, ref_to_graph_id
 from enm.maszyny_robocze import parametry_robocze_maszyn_punktu, wyspy_wezlow_grafu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
@@ -141,6 +142,7 @@ from network_model.core.branch import Branch
 from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.uziemienie import KLUCZ_OPCJI_STANU_AWSC, StanAwsc
 from network_model.core.voltage_factor import DoborC
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -245,9 +247,11 @@ KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM = "sc.impedancja_zwarcia_poza_biegiem_zwa
 KOD_MODEL_NIE_PRZESZEDL_WALIDACJI = "enm.model_nie_przeszedl_walidacji"
 KOD_MODEL_BEZ_ZDOLNOSCI_ZWARCIOWEJ = "sc.model_bez_zdolnosci_zwarciowej"
 KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ = "sc.model_bez_skladowej_zerowej"
-#: Kody walidatora ENM, które odbierają modelowi zdolność zwarcia doziemnego (brak Z0 linii
-#: i źródeł) — to samo źródło, z którego walidator wyprowadza `short_circuit_1f`.
-_KODY_BRAKU_SKLADOWEJ_ZEROWEJ = ("W001", "W002")
+#: Kody walidatora ENM, które odbierają modelowi zdolność zwarcia doziemnego (brak Z0 linii)
+#: — to samo źródło, z którego walidator wyprowadza `short_circuit_1f`. Brak Z0 źródła
+#: (W002) nie odbiera zdolności (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3): węzły jego
+#: sieci zerowej dostają nazwaną przyczynę ``brak_danych`` w wierszu wyniku.
+_KODY_BRAKU_SKLADOWEJ_ZEROWEJ = ("W001",)
 #: Kody ograniczeń raportowych rozpływu (symetrycznego i niesymetrycznego).
 OGRANICZENIE_WEZLY_POZA_WYSPA = "unsolved_nodes_outside_slack_island"
 OGRANICZENIE_BRAK_ZBIEZNOSCI = "solver_non_convergence"
@@ -307,14 +311,27 @@ def etykiety_raportowe_pl(zrodlo: Mapping[str, Any]) -> dict[str, Any]:
     raportowalnosc = zrodlo.get("reporting_status")
     uzasadnienie = zrodlo.get("proof_status")
     ograniczenia = [str(wpis) for wpis in (zrodlo.get("reporting_limitations") or [])]
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 7: wiersz zwarcia doziemnego bez wyniku
+    # zerowego niesie NAZWANĄ przyczynę — opis ograniczenia „wynik niefizyczny" to wtedy
+    # wyjaśnienie tej przyczyny (np. sieć skompensowana poza zakresem IEC 60909), nie
+    # ogólnik o wartości nieskończonej.
+    brak_zerowej = zrodlo.get("brak_wyniku_zerowego")
+    opisy = OPISY_OGRANICZEN_RAPORTOWYCH_PL
+    wyjasnienie_zerowej = (
+        brak_zerowej.get("wyjasnienie") if isinstance(brak_zerowej, Mapping) else None
+    )
+    if isinstance(wyjasnienie_zerowej, Mapping) and wyjasnienie_zerowej.get("zdanie_pl"):
+        opisy = {
+            **opisy,
+            OGRANICZENIE_WYNIK_NIEFIZYCZNY: str(wyjasnienie_zerowej["zdanie_pl"]),
+        }
     return {
         "reporting_status_pl": (
             ETYKIETY_RAPORTOWALNOSCI_PL[str(raportowalnosc)] if raportowalnosc else None
         ),
         "proof_status_pl": ETYKIETY_UZASADNIENIA_PL[str(uzasadnienie)] if uzasadnienie else None,
         "reporting_limitations_pl": [
-            OPISY_OGRANICZEN_RAPORTOWYCH_PL[wpis] if _kod_ograniczenia(wpis) else wpis
-            for wpis in ograniczenia
+            opisy[wpis] if _kod_ograniczenia(wpis) else wpis for wpis in ograniczenia
         ],
     }
 
@@ -325,6 +342,11 @@ POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
 #: Pola wiersza zwarcia będące DANYMI WEJŚCIOWYMI biegu (nie wynikiem solvera) —
 #: jedyne liczby, które zostają w wierszu węzła bez impedancji do odniesienia.
 _KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v", "tk_s", "tb_s"})
+#: Klucze wiersza z danymi przyjętymi, z których liczono prąd punktu — wiersz bez wyniku ich
+#: nie niesie (``_oznacz_wiersz_bez_odniesienia``).
+_KLUCZE_DANYCH_LICZENIA_WIERSZA: frozenset[str] = frozenset(
+    {KLUCZ_WIERSZA_DANE_GALEZI, "parametry_robocze_maszyn"}
+)
 #: Poddrzewa śladu White Box wiersza — zerowane bez wykazu ścieżek (setki wpisów bez
 #: wartości diagnostycznej; wykaz `non_physical_fields` nazywa pola KONTRAKTU).
 _KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"white_box_trace", *KLUCZE_ROZPLYWU})
@@ -385,9 +407,18 @@ def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
     ``non_physical_reason`` (addytywne pole: DLACZEGO). Zero liczb solvera w takim
     wierszu to nie strata informacji — IEC 60909 nie definiuje dla niego Z_kk, a
     wartości oddane przez odwrócenie osobliwej macierzy są szumem biblioteki, nie
-    prądem zwarciowym (patrz ``_wezly_bez_impedancji_do_odniesienia``).
+    prądem zwarciowym (patrz ``NetworkGraph.wezly_bez_impedancji_do_odniesienia``).
     """
-    wyzerowany, pola = _zeruj_liczby_wyniku(payload, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA)
+    # Dane przyjęte, z których LICZONO prąd punktu (gałęzie z wartością roboczą, parametry
+    # robocze maszyn), nie dotyczą wiersza bez prądu — wiersz ich nie niesie (dawniej zerowanie
+    # liczb zostawiało w nich rekordy z wartością ``None``, których kontrakt danej przyjętej
+    # nie dopuszcza — konsument werdyktu, np. wniosek OSD, wywracał się na odczycie).
+    bez_danych_liczenia = {
+        k: v for k, v in payload.items() if k not in _KLUCZE_DANYCH_LICZENIA_WIERSZA
+    }
+    wyzerowany, pola = _zeruj_liczby_wyniku(
+        bez_danych_liczenia, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA
+    )
     wiersz: dict[str, Any] = wyzerowany
     ograniczenia = list(wiersz.get("reporting_limitations") or [])
     if OGRANICZENIE_WYNIK_NIEFIZYCZNY not in ograniczenia:
@@ -404,6 +435,23 @@ def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
             "non_physical_reason": POWOD_WEZEL_BEZ_ODNIESIENIA,
         }
     )
+    return wiersz
+
+
+def _oznacz_wiersz_bez_wyniku_zerowego(
+    payload: dict[str, Any], brak: BrakWynikuZerowego
+) -> dict[str, Any]:
+    """Wiersz zwarcia doziemnego w węźle bez drogi prądu zerowego przez małą impedancję.
+
+    Ten sam kształt co wiersz węzła bez impedancji do odniesienia (liczby wyniku → ``None``,
+    nieraportowalny), ale powód to NAZWANA przyczyna braku wyniku zerowego (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA): ``non_physical_reason`` = kod przyczyny
+    (``fault.zero_sequence_*``) i addytywne ``brak_wyniku_zerowego`` — status maszynowy
+    związany z wyjaśnieniem (kontrakt werdyktu wyjaśnialnego).
+    """
+    wiersz = _oznacz_wiersz_bez_odniesienia(payload)
+    wiersz["non_physical_reason"] = brak.kod
+    wiersz["brak_wyniku_zerowego"] = brak.to_dict()
     return wiersz
 
 
@@ -2339,7 +2387,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="nastawy_urzadzenia",
-                description_pl=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} z modelu",
+                description_pl=f"Nastawy zabezpieczenia {nastawy.oznaczenie_pl} z modelu",
                 inputs={"urzadzenie_ref": nastawy.urzadzenie_ref},
                 outputs=nastawy.to_dict(),
             )
@@ -2348,7 +2396,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             kroki.append(
                 ProtectionTraceStep(
                     step="strefa_urzadzenia",
-                    description_pl=f"Strefa zabezpieczenia {nastawy.nazwa_pl} z topologii modelu",
+                    description_pl=f"Strefa zabezpieczenia {nastawy.oznaczenie_pl} z topologii modelu",
                     inputs={"breaker_ref": nastawy.breaker_ref},
                     outputs=wynik.strefy[nastawy.urzadzenie_ref],
                 )
@@ -2358,7 +2406,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             ProtectionTraceStep(
                 step="ocena_punktu",
                 description_pl=(
-                    f"Zabezpieczenie {ocena.nazwa_urzadzenia_pl} — zwarcie w punkcie "
+                    f"Zabezpieczenie {ocena.oznaczenie_urzadzenia_pl} — zwarcie w punkcie "
                     f"{ocena.nazwa_punktu_pl}"
                 ),
                 inputs={
@@ -2381,7 +2429,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="odmowa_urzadzenia",
-                description_pl=f"Ocena zabezpieczenia {odmowa.nazwa_pl} wstrzymana",
+                description_pl=f"Ocena zabezpieczenia {odmowa.oznaczenie_pl} wstrzymana",
                 inputs={"urzadzenie_ref": odmowa.urzadzenie_ref},
                 outputs={
                     "braki": [b.to_dict() for b in odmowa.braki],
@@ -2491,6 +2539,12 @@ def _wynik_solvera_punktu(
     """
     if node_id in wejscie.wezly_bez_odniesienia:
         return None
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: węzeł bez drogi prądu zerowego przez małą
+    # impedancję (przyczyna nazwana — ``enm.mapping.zbuduj_siec_zerowa``) nie przechodzi przez
+    # rdzeń w zwarciu doziemnym: jego Z0 to kotwica numeryczna albo sieć izolowana /
+    # skompensowana, nie impedancja IEC 60909 (dawniej kotwica 1e6 dawała Ik1 > Ik3).
+    if node_id in wejscie.brak_wyniku_zerowego:
+        return None
     # Odmowa wejścia rdzenia (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami z grafu.
     with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
         czas_tb = czas_tb_punktu(
@@ -2509,6 +2563,138 @@ def _wynik_solvera_punktu(
             z_f_ohm=wejscie.impedancja_zwarcia,
         )
     return wynik, czas_tb
+
+
+def _doziemienie_sieci_wezla(
+    wejscie: WejscieZwarcia, node_id: str, wiersz: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """``doziemienie_sieci`` wiersza zwarcia jednofazowego węzła — JEDEN predykat dla biegu
+    i dla prądu uziomowego stacji (``zwarcia_doziemne_szyn``).
+
+    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): węzeł sieci SN niesie
+    doziemienie wg sposobu pracy punktu neutralnego (izolowany — I_C, kompensowany — I_res,
+    rezystor — I_F, bezpośredni — napięcia faz z Z1/Z2/Z0 rdzenia). ``None``: węzeł poza siecią
+    SN, bez impedancji do odniesienia albo z brakiem danych składowej zerowej (brak podstawy).
+    """
+    sekcja_sn = wejscie.sekcje_sn_wezlow.get(node_id)
+    brak_zerowej = wejscie.brak_wyniku_zerowego.get(node_id)
+    if (
+        sekcja_sn is None
+        or node_id in wejscie.wezly_bez_odniesienia
+        or (brak_zerowej is not None and brak_zerowej.przyczyna == "brak_danych")
+    ):
+        return None
+    return doziemienie_wiersza(
+        sekcja_sn, wejscie.stan_awsc, wiersz, z_f_ohm=wejscie.impedancja_zwarcia
+    )
+
+
+@dataclass(frozen=True)
+class ZwarcieDoziemneSzyny:
+    """Zwarcie jednofazowe z ziemią szyny modelu (scenariusz MAX, zwarcie metaliczne).
+
+    ``ikss_a`` — I″k1 rdzenia IEC 60909 (``None``: węzeł bez wyniku składowej zerowej —
+    sieć izolowana albo skompensowana, brak drogi, brak danych — albo bez impedancji do
+    odniesienia; przyczyna w ``brak_pl``). ``doziemienie`` — ``doziemienie_sieci`` węzła
+    (``_doziemienie_sieci_wezla``, ten sam co w wierszu biegu) albo ``None``. ``dane_przyjete``
+    — dane przyjęte I″k1 (JSON): te same trzy znaczniki co wiersz biegu (tolerancja sieci nN,
+    gałęzie z wartością roboczą impedancji, parametry robocze maszyn wyspy punktu)."""
+
+    bus_ref: str
+    nazwa_pl: str
+    ikss_a: float | None
+    doziemienie: dict[str, Any] | None
+    brak_pl: str | None
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
+
+
+def zwarcia_doziemne_szyn(
+    enm: EnergyNetworkModel,
+    bus_refs: Iterable[str],
+    *,
+    stan_awsc: StanAwsc = "spoczynek",
+) -> dict[str, ZwarcieDoziemneSzyny]:
+    """Zwarcie jednofazowe z ziemią szyn ``bus_refs`` liczone TĄ SAMĄ drogą co bieg zwarciowy.
+
+    Wejście z assemblera (``zloz_wejscie_zwarcia``: zwarcie 1F, scenariusz MAX, stan AWSC
+    ``stan_awsc``), punkt przez ``_wynik_solvera_punktu`` (jedyna droga biegu do rdzenia
+    IEC 60909) z c tabeli 1 dla pasma węzła, doziemienie sieci SN przez
+    ``_doziemienie_sieci_wezla``. Konsument: prąd uziomowy stacji analizy bezpieczeństwa
+    uziomu V12.6 (EN 50522 tab. 1). Szyna spoza modelu — wpis z przyczyną.
+
+    Raises:
+        OdmowaDanychError: odmowa danych wejścia zwarciowego (assembler, rdzeń).
+    """
+    wejscie = zloz_wejscie_zwarcia(
+        enm.model_dump(mode="json"),
+        {"fault_type": "1F", "scenario": "max", KLUCZ_OPCJI_STANU_AWSC: stan_awsc},
+    )
+    wezly: dict[str, str] = {}
+    wynik: dict[str, ZwarcieDoziemneSzyny] = {}
+    for bus_ref in sorted(set(bus_refs)):
+        node_id = ref_to_graph_id(bus_ref)
+        if node_id in wejscie.graph.nodes:
+            wezly[bus_ref] = node_id
+            continue
+        wynik[bus_ref] = ZwarcieDoziemneSzyny(
+            bus_ref=bus_ref,
+            nazwa_pl=SPOZA_MODELU,
+            ikss_a=None,
+            doziemienie=None,
+            brak_pl="Szyna nie należy do modelu sieci.",
+        )
+    dane_galezi = dane_przyjete_galezi_punktow(
+        wejscie.zalozenia,
+        wejscie.graph,
+        list(wezly.values()),
+        skladowe_zerowe=wejscie.skladowe_zerowe,
+    )
+    wyspy = wyspy_wezlow_grafu(wejscie.graph) if wejscie.graph.wartosci_robocze_maszyn else {}
+    for bus_ref, node_id in wezly.items():
+        nazwa = nazwa_elementu(wejscie.graph.nodes[node_id], "buses")
+        policzony = _wynik_solvera_punktu(
+            wejscie,
+            node_id,
+            c_factor=_dobor_c_punktu(wejscie, node_id).wartosc,
+            wklady=False,
+        )
+        wiersz: dict[str, Any] = policzony[0].to_dict() if policzony is not None else {}
+        brak_pl: str | None = None
+        if node_id in wejscie.wezly_bez_odniesienia:
+            brak_pl = (
+                "Węzeł bez impedancji do odniesienia — w jego wyspie nie ma źródła sieciowego "
+                "ani maszyny wirującej; zwarcie nie płynie."
+            )
+        elif node_id in wejscie.brak_wyniku_zerowego:
+            brak_pl = wejscie.brak_wyniku_zerowego[node_id].opis_pl
+        znaczniki: dict[str, Any] = {}
+        if wejscie.graph.nodes[node_id].tolerancja_nn_robocza:
+            znaczniki["tolerancja_nn_robocza"] = True
+        if node_id in dane_galezi:
+            znaczniki[KLUCZ_WIERSZA_DANE_GALEZI] = dane_galezi[node_id]
+        robocze_maszyn = parametry_robocze_maszyn_punktu(
+            wejscie.graph, node_id, wejscie.short_circuit_type, wyspy=wyspy
+        )
+        if robocze_maszyn:
+            znaczniki["parametry_robocze_maszyn"] = robocze_maszyn
+        ikss = wiersz.get("ikss_a")
+        wynik[bus_ref] = ZwarcieDoziemneSzyny(
+            bus_ref=bus_ref,
+            nazwa_pl=nazwa,
+            ikss_a=(
+                float(ikss)
+                if brak_pl is None and isinstance(ikss, int | float) and math.isfinite(ikss)
+                else None
+            ),
+            doziemienie=_doziemienie_sieci_wezla(wejscie, node_id, wiersz),
+            brak_pl=brak_pl,
+            dane_przyjete=tuple(
+                _dane_przyjete_punktu_rozplywu(
+                    znaczniki, wejscie.graph_nodes.get(node_id) or {}
+                ).get("dane_przyjete", ())
+            ),
+        )
+    return wynik
 
 
 def _zalozenie_czasu_tb_roboczego(
@@ -2837,6 +3023,17 @@ def _execute_short_circuit(
             ]
         if node_id in wezly_bez_odniesienia:
             payload = _oznacz_wiersz_bez_odniesienia(payload)
+        elif node_id in wejscie.brak_wyniku_zerowego:
+            payload = _oznacz_wiersz_bez_wyniku_zerowego(
+                payload, wejscie.brak_wyniku_zerowego[node_id]
+            )
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (warunek odbioru 2026-10-29): wiersz zwarcia
+        # jednofazowego węzła sieci SN niesie doziemienie wg sposobu pracy punktu neutralnego
+        # (izolowany — I_C, kompensowany — I_res, rezystor — I_F, bezpośredni — napięcia faz
+        # z Z1/Z2/Z0 rdzenia). Węzeł z brakiem danych składowej zerowej — bez (brak podstawy).
+        doziemienie_sieci = _doziemienie_sieci_wezla(wejscie, node_id, payload)
+        if doziemienie_sieci is not None:
+            payload[KLUCZ_DOZIEMIENIA_SIECI] = doziemienie_sieci
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
@@ -2920,10 +3117,24 @@ def _execute_short_circuit(
             if wejscie.zrodla_sieciowe_trace
             else {}
         ),
+        # Ślad WHITE BOX budowy sieci składowej zerowej (rozbicie macierzy Y0 po elementach:
+        # Z0 i B0 linii/kabli, źródła, baterie, transformatory z decyzją grupy połączeń) —
+        # addytywnie, WYŁĄCZNIE dla biegu doziemnego (1F, 2F+G); bieg 3F/2F bajt w bajt jak
+        # przed wpięciem. Liczby zespolone jako ``{"re", "im"}``.
+        **(
+            {"siec_zerowa": json_bezpieczny(list(wejscie.siec_zerowa_trace))}
+            if wejscie.siec_zerowa_trace
+            else {}
+        ),
         # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
         # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho. Karta
         # TB-WARTOSC-ROBOCZA: + `fault.czas_tb_wartosc_robocza` z listą punktów.
         **({"zalozenia": zalozenia_biegu} if zalozenia_biegu else {}),
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: stan AWSC przypadku — addytywnie, WYŁĄCZNIE gdy
+        # różny od stanu normalnego. Ślad punktów neutralnych SN (bocznik zespołu w OBU stanach
+        # AWSC, pominięte Z0 źródeł SN) jest częścią śladu sieci zerowej ``siec_zerowa`` — jedno
+        # źródło śladu, bez drugiej kopii tych samych kroków.
+        **({"stan_awsc": wejscie.stan_awsc} if wejscie.stan_awsc != "spoczynek" else {}),
         # Karta S-2 AUTORYTET: znaczniki pochodzenia k_sc WSZYSTKICH źródeł
         # falownikowych czynnych w grafie TEGO biegu (`ProweniencjaWynikuZwarciowego.
         # z_grafu`, zapisane przy asemblacji wejścia — `enm/assembler.py::
@@ -4268,8 +4479,32 @@ def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
     return item.get(KLUCZ_ROZPLYWU) is not None or bool(item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU))
 
 
+#: Kroki śladu solvera IEC 60909, których wzór (``formula_latex``) idzie do wyprowadzenia
+#: prądów punktu (karta KD6-SZCZEGOLY): klucz kroku → klucz wielkości.
+_KROKI_WZOROW_PRADOW: dict[str, str] = {"Ip": "ip", "Ith": "ith", "Ib": "ib"}
+
+
+def _sc_wyprowadzenie_pradow(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Współczynniki m, n i wzory i_p / I_th / I_b punktu z wiersza solvera (WHITE BOX).
+
+    Wzory pochodzą z kroków śladu TEGO wiersza (przypadek I_b — z maszynami albo odległy od
+    generatora — wybiera solver), liczby m, n z jego wyniku; ``None`` = solver ich nie podał.
+    """
+    wzory: dict[str, str] = {}
+    for krok in item.get("white_box_trace") or ():
+        klucz = _KROKI_WZOROW_PRADOW.get(str(krok.get("key")))
+        wzor = krok.get("formula_latex")
+        if klucz is not None and isinstance(wzor, str) and wzor and klucz not in wzory:
+            wzory[klucz] = wzor
+    return {
+        "m_factor": item.get("m_factor"),
+        "n_factor": item.get("n_factor"),
+        "wzory_pradow": wzory,
+    }
+
+
 def build_short_circuit_results(
-    run: CanonicalRun, *, include_rozplyw: bool = False
+    run: CanonicalRun, *, include_rozplyw: bool = False, include_wyprowadzenie: bool = False
 ) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
@@ -4289,6 +4524,9 @@ def build_short_circuit_results(
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
                 **_sc_pelny_bilans(item),
+                # Karta KD6-SZCZEGOLY: m, n i wzory prądów punktu — wyłącznie na żądanie
+                # konsumenta wyprowadzenia (wytrzymałość aparatury), lista bez zmian.
+                **(_sc_wyprowadzenie_pradow(item) if include_wyprowadzenie else {}),
                 # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
                 # (pole addytywne — starsze wyniki bez pola → None).
                 # V12K-281 (K13): lista wierszy zbiorczych domyślnie BEZ rozpływu —
@@ -4324,8 +4562,20 @@ def build_short_circuit_results(
                         "proof_status": item.get("proof_status")
                         or (run.raw_result or {}).get("proof_status"),
                         "reporting_limitations": item.get("reporting_limitations", []),
+                        "brak_wyniku_zerowego": item.get("brak_wyniku_zerowego"),
                     }
                 ),
+                # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: powód nieraportowalności i nazwana
+                # przyczyna braku wyniku zerowego — addytywnie, tylko gdy wiersz je niesie.
+                **{
+                    klucz: item[klucz]
+                    for klucz in (
+                        "non_physical_reason",
+                        "brak_wyniku_zerowego",
+                        KLUCZ_DOZIEMIENIA_SIECI,
+                    )
+                    if item.get(klucz) is not None
+                },
                 "proof_ref": item.get("proof_ref"),
                 "proof_binding": item.get("proof_binding"),
                 "dopuszczalnosc_raportowa": item.get("dopuszczalnosc_raportowa", True),
@@ -4338,9 +4588,10 @@ def build_short_circuit_results(
     rows.sort(key=lambda row: row["target_id"] or "")
     # CV-4.3 K7: ślad wyprowadzenia Z_Q źródeł sieciowych i założenia biegu (kody
     # gotowości) — addytywnie, dokładnie wtedy, gdy artefakt biegu je niesie (ekran
-    # wyników zwarć czyta `zrodla_sieciowe`/`zalozenia` z tej odpowiedzi).
+    # wyników zwarć czyta `zrodla_sieciowe`/`zalozenia` z tej odpowiedzi). Ślad sieci składowej
+    # zerowej (`siec_zerowa`) — tak samo, tylko bieg doziemny go niesie.
     odpowiedz: dict[str, Any] = {"run_id": str(run.id), "rows": rows}
-    for klucz in ("zrodla_sieciowe", "zalozenia"):
+    for klucz in ("zrodla_sieciowe", "siec_zerowa", "zalozenia"):
         wartosc = (run.raw_result or {}).get(klucz)
         if wartosc:
             odpowiedz[klucz] = wartosc
@@ -4458,9 +4709,15 @@ def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:
 
 
 def _typ_zwarcia_z_opcji(options: Mapping[str, Any]) -> str:
-    """Typ zwarcia biegu ('3F'/'1F'/'2F'/'2F+Z'…) z opcji — domyślnie '3F', ten sam
-    fallback co `enm.assembler._short_circuit_type_from_options`."""
-    return str(options.get("fault_type") or options.get("short_circuit_type") or "3F")
+    """Token rodzaju zwarcia biegu w zapisie kontraktu wyniku ('3F'/'1F'/'2F'/'2F+G').
+
+    Jedno źródło: parser opcji assemblera (`_short_circuit_type_from_options`) — ten sam,
+    z którego bieg bierze rodzaj zwarcia, więc pisownie wejściowe tego samego rodzaju
+    ('2FG', '2F+Z', 'SC_2F_G'…) dają jeden token. Do tej poprawki funkcja oddawała surowy
+    napis opcji: pasmo MIN/MAX nie parowało biegów 2FG zapisanych różną pisownią, a token
+    kotwicy ('2F+Z') różnił się od tokenu wierszy wyniku ('2F+G').
+    """
+    return _short_circuit_type_from_options(dict(options)).value
 
 
 @dataclass(frozen=True)

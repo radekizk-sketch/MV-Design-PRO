@@ -175,7 +175,16 @@ Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
     `network_model/pochodne`) wybiera komplet backendu — scalenie PR-478 z katalogiem
     (`c136c6bb..9d4b1afe`): 817 z 817 plików, 117 z 877 plików vitest i 1 z 8 budżetów; bramka
     3 211 s (pytest pod xdist 2 393 s, vitest 299 + 12 s, strażniki 456 s) — wtedy bramka kosztuje
-    tyle, co pełny bieg pod xdist plus strażniki. Powód (pomiar
+    tyle, co pełny bieg pod xdist plus strażniki. Pomiar 2026-10-29 po karcie SZYBKIE-TESTY-2
+    (pod blokadą `flock /tmp/claude-0/bieg_ciezki.lock`, `docs/plan/SZYBKIE_TESTY_2_POMIAR.md`):
+    pełny bieg backendu `-n 4 --dist loadfile` 41 029 testów 2 485 s przed i 41 037 testów 2 151 s
+    po (kolejność plików LPT z `tests/czasy_plikow.json`, sieci rejestru golden budowane raz na
+    proces i wydawane jako kopie — kolekcja jednego procesu 392 s → 98 s); bramka
+    `--baza 1465336df` (komplet backendu) 4 548 s, szczyt pamięci 5,7 GB; reguła skanu katalogu
+    (`scripts/skany_katalogow.py`) dokłada do wyboru 52 pliki testów, które czytają katalogi
+    frontu i dokumentacji. Zmiana korzenia grafu nadal wybiera komplet — podłoga to czas procesora
+    testów (~6 480 s / 4 rdzenie), więc „typowa bramka ≤ 15 min” jest osiągalna tylko dla zmian
+    liściowych. Powód (pomiar
     2026-09-25): cztery równoległe pełne regresje na maszynie z 4 CPU zajęły wszystkie rdzenie,
     każda trwała kilka razy dłużej niż sama, wykonawcy wyglądali na zawieszonych przez wiele godzin,
     a osierocone serwery e2e trzymały porty; pełna regresja w drzewie karty i tak nie jest dowodem

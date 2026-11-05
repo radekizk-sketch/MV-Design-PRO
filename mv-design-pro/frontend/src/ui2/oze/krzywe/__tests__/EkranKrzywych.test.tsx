@@ -81,7 +81,6 @@ function ustawKatalogGotowy() {
     device_withstand: [],
     pf_curves: [],
     block_transformers: [],
-    mv_neutral_groundings: [],
   });
 }
 
@@ -303,7 +302,6 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
         },
       ],
       block_transformers: [],
-      mv_neutral_groundings: [],
     });
     const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
     patchBindings.mockResolvedValue({});

@@ -512,8 +512,8 @@ def test_dowod_aparatury_pola_bierze_tk_z_czasu_wylaczenia_pola_przypadku(
 
 
 def json_tk_zrodlo(dowod: dict[str, Any]) -> dict[str, Any]:
-    """Pochodzenie t_k: uwaga dowodu (czas wyłączenia pola) i wpis wymagań wyniku."""
-    uwagi = [u for u in dowod["summary"]["warnings"] if "czas wyłączenia pola" in u]
+    """Pochodzenie t_k: uwaga dowodu (czas trwania zwarcia pola) i wpis wymagań wyniku."""
+    uwagi = [u for u in dowod["summary"]["warnings"] if "Czas trwania zwarcia t_k pola" in u]
     assert len(uwagi) == 1, dowod["summary"]["warnings"]
     from application.equipment_proof.wymagania_pola import ZRODLO_TK_CZAS_POLA
 

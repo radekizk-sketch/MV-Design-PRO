@@ -502,7 +502,7 @@ npm run test:watch
 # Run tests with coverage
 npm run test:coverage
 
-# Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
+# Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; every e2e/*.spec.ts file — 125 measured 2026-10-30; the vitest guard src/test/__tests__/ladowanieSpecowE2e.test.ts checks that each one loads)
 npm run test:e2e
 # One shard of the full suite — files assigned by measured spec times (LPT,
 # `scripts/e2e_shardy.py`, times in `e2e/czasy_specow.json`); CI runs 4 shards on 4 runners.

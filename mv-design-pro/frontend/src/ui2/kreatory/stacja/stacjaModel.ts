@@ -433,8 +433,8 @@ export function walidujFormularz(
       field: 'neutral_impedance_ohm',
       message:
         data.neutral_point === 'petersen_coil'
-          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
-          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika $X_N$ [Ω].'
+          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji $R_N$ [Ω].',
     });
   }
   // W5-E-TTIT: układ TT bez rezystancji uziomu stacji R_B = pętla doziemna niepoliczalna
@@ -446,7 +446,7 @@ export function walidujFormularz(
   ) {
     errors.push({
       field: 'neutral_impedance_ohm',
-      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji R_B [Ω] (punkt neutralny uziemiony bezpośrednio).',
+      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji $R_B$ [Ω] (punkt neutralny uziemiony bezpośrednio).',
     });
   }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {

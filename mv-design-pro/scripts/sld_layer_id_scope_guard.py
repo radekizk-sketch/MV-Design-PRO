@@ -5,7 +5,7 @@ SLD-LAYER-ID-SCOPE GUARD — `SldLayerId` tylko w warstwie renderera.
 BINDING RULE (PR-O konsolidacji UI - kierunek pkt 3):
 - `SldLayerId` (typ z `LodPolicy.ts`) jest niskopoziomową kategorią
   warstw renderera SldCanvasV2. Nie powinien przeciekać do warstwy UX
-  (LayerTogglePanel, BuildSidebar) ani do logiki domenowej.
+  (np. LayerTogglePanel) ani do logiki domenowej.
 - Komponenty UX MUSZĄ używać `LayerId` z `layerToggle.ts` + mapowanie
   przez `layerMapping.ts:mapLayerStateToRenderVisibility()`.
 
@@ -40,23 +40,14 @@ ALLOWED_DIR_PREFIXES = (
     "frontend/src/ui/sld/v2/__tests__/",
 )
 
-# Pliki indywidualnie wyłączone (legacy do migracji w future PR-ach):
-LEGACY_FILES = {
-    # LayersSection - panel warstw w build-sidebar, używa SldLayerId.
-    # Nieaktywny w produkcyjnym UI (tylko w testach jednostkowych
-    # BuildSidebar). Do migracji na LayerId + mapowanie w osobnym PR.
-    "frontend/src/ui/network-build/build-sidebar/LayersSection.tsx",
-    # DWA WPISY USUNIETE 2026-08-12 (karta ZAPADKI-ALLOWLIST-RESZTA, pozycja f
-    # — POMIAR PRZED NAPRAWA): check_legacy_files_freshness() zastala je jako
-    # sieroty — oba pliki istnieja, ale ZADEN juz nie odwoluje sie wprost do
-    # SldLayerId/DEFAULT_LAYER_VISIBILITY/LAYER_LABELS_PL (potwierdzone
-    # niezaleznym grep). BuildSidebar.tsx konsumuje LayersSection przez
-    # `LayersSectionProps`, nie przez surowy typ warstwy renderera. Usuniecie
-    # nie odslania naruszenia w glownej petli main() (scan_file() na obu
-    # plikach juz dzis zwraca []):
-    # "frontend/src/ui/network-build/build-sidebar/BuildSidebar.tsx",
-    # "frontend/src/ui/network-build/build-sidebar/__tests__/BuildSidebar.test.tsx".
-}
+# Pliki indywidualnie wyłączone — zbiór PUSTY (karta FIX-E2E-PELNE, 2026-11-04).
+# Ostatni wpis, `ui/network-build/build-sidebar/LayersSection.tsx`, był długiem
+# legacy bez konsumenta produkcyjnego (cały BuildSidebar żył tylko w testach
+# jednostkowych). Plik skasowano razem z BuildSidebar/BuilderSection/
+# NavigatorSection, więc wyjątek nie ma już przedmiotu. Każdy nowy wpis tutaj to
+# nowy dług: zapadka check_legacy_files_freshness() pilnuje, że wpis wskazuje
+# istniejący plik z realnym trafieniem.
+LEGACY_FILES: set[str] = set()
 
 # Wzorce wykrywające użycie typu/wartości SldLayerId
 LAYER_ID_PATTERN = re.compile(

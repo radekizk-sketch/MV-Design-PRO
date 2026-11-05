@@ -10,7 +10,7 @@ import type {
   ShortCircuitRow,
   TraceStep,
 } from '../results-inspector/types';
-import { TRACE_VALUE_LABELS, TRACE_VALUE_UNITS } from '../results-inspector/types';
+import { TRACE_VALUE_CODES, TRACE_VALUE_LABELS, TRACE_VALUE_UNITS } from '../results-inspector/types';
 import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
 import { MathRenderer } from './MathRenderer';
@@ -195,14 +195,16 @@ function textToLatex(value: string): string {
   return `\\text{${value.replace(/[\\_#%&{}]/g, ' ')}}`;
 }
 
+/**
+ * Rodzaj zwarcia kroku śladu po polsku — JEDNO źródło z ekranem wyników
+ * (`TRACE_VALUE_CODES.short_circuit_type`: kody `ShortCircuitType` backendu „3F", „2F",
+ * „2F+G", „1F"). Do tej poprawki osobna kopia znała „2FG" zamiast „2F+G", więc krok
+ * zwarcia dwufazowego z ziemią pokazywał surowy kod.
+ */
 function faultTypeLabel(value: unknown): string {
   const { wartosc } = rozpakujWartoscSladu(value);
-  const normalized = String(wartosc ?? '').toUpperCase();
-  if (normalized === '3F' || normalized === 'SC3F') return 'zwarcie trójfazowe';
-  if (normalized === '1F' || normalized === 'SC1F') return 'zwarcie jednofazowe doziemne';
-  if (normalized === '2F' || normalized === 'SC2F') return 'zwarcie dwufazowe';
-  if (normalized === '2FG' || normalized === 'SC2FG') return 'zwarcie dwufazowe doziemne';
-  return String(wartosc ?? 'nie podano');
+  const normalized = String(wartosc ?? '').trim().toUpperCase().replace(/^SC_?/, '');
+  return TRACE_VALUE_CODES.short_circuit_type[normalized] ?? String(wartosc ?? 'nie podano');
 }
 
 function traceValueLatex(key: string, value: unknown): string | null {

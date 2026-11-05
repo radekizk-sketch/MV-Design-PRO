@@ -85,28 +85,6 @@ def test_compute_adjustments_block_transformer_z():
     assert abs(z["x_pu"] - 0.0595168) < 1e-5
 
 
-def test_etykieta_uziemienia_nie_wyznacza_juz_stosunku_z0_z1():
-    """Karta K-Q — PIN KLASY po WSZYSTKICH czterech wariantach uziemienia.
-
-    Poprzedni pin utrwalal drabinke zgadnietych stalych (izolowana 100,
-    skompensowana 50, przez rezystor 5, bezposrednia 1) i meldowal ja w sladzie
-    jako „zastosowana". Zadna nie miala zrodla, a fizycznie stosunek Z0/Z1 zalezy
-    od pojemnosci doziemnej sieci, nastrojenia dlawika albo rezystora RAZEM z
-    impedancja petli. Impedancje kolejnosci zerowej niesie model
-    (`Source.z0_z1_ratio` / `r0_ohm` / `x0_ohm`), nie nazwa wariantu.
-    """
-    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
-        extensions = {
-            "sc_iec60909_extensions": {
-                "mv_neutral_grounding": {"grounding_type": grounding_type},
-            },
-        }
-        adj = compute_audit2_adjustments(extensions)
-        assert not hasattr(adj, "grounding_z0_z1_ratio"), grounding_type
-        assert "grounding_z0_z1_ratio" not in adj.to_dict(), grounding_type
-        assert adj.is_empty(), grounding_type
-
-
 def test_apply_to_network_model_passes_through_when_no_extensions():
     """Brak extensions -> empty applied dict."""
     graph = {"branches": {}, "buses": {}}
@@ -201,24 +179,6 @@ def test_apply_to_network_model_block_transformer_overrides_uk():
     assert branch.pk_kw == 25.0
     assert branch.p0_kw == 3.6
     assert "der_pv_001" in applied["block_transformer_z_changes"]
-
-
-def test_uziemienie_nie_dopisuje_juz_zgadnietego_z0_z1_do_grafu():
-    """Karta K-Q — PIN KLASY po WSZYSTKICH wariantach, takze na sciezce zapisu.
-
-    Poprzedni pin utrwalal wpisanie stalej 50,0 do `graph.z0_z1_ratio` i do
-    sladu. To bylo zgadniecie wchodzace do modelu przed solverem.
-    """
-    for grounding_type in ("isolated", "petersen_coil", "resistor_grounded", "directly_grounded"):
-        graph: dict = {"branches": {}}
-        extensions = {
-            "sc_iec60909_extensions": {
-                "mv_neutral_grounding": {"grounding_type": grounding_type},
-            },
-        }
-        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
-        assert "grounding_z0_z1_ratio" not in applied, grounding_type
-        assert "z0_z1_ratio" not in graph, grounding_type
 
 
 class _MockInverterSource:
@@ -350,7 +310,6 @@ def test_apply_to_network_model_combines_all_adjustments():
                     },
                 },
             ],
-            "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
         },
     }
     applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)

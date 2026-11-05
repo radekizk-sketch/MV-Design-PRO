@@ -16,12 +16,13 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
-import { useOtworzKonfiguracjeStacji, useZmienWartoscAparatu, WeryfikacjaAparatury } from './aparatura';
+import { useOtworzKonfiguracjeStacji, useParametryAparatu, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
@@ -69,8 +70,8 @@ export function EkranZwarc({
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
   // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
-  // Zasada nr 4 (V12K-351): wartość robocza aparatu → kreator edycji parametrów aparatu.
-  const zmienWartoscAparatu = useZmienWartoscAparatu();
+  // Zasada nr 4 (V12K-351): „Parametry aparatu” → kreator edycji parametrów aparatu.
+  const parametryAparatu = useParametryAparatu();
   // Zasada nr 4: sieć nN liczona na wartości roboczej tolerancji → kreator edycji pola
   // deklaracji elementu zasilającego (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
   const zmienTolerancjeNn = useZmienTolerancjeNn();
@@ -187,6 +188,14 @@ export function EkranZwarc({
         onOtworzDowod={onOtworzDowod}
       />
 
+      {/* Ślad budowy sieci składowej zerowej — właściwość CAŁEGO biegu 1F/2F+G (jak ślad Z_Q):
+          z tej macierzy pochodzi Z0 każdego punktu zwarcia. */}
+      <SladSieciZerowej
+        siecZerowa={wynik.siec_zerowa}
+        rodzajZwarcia={rows[0].fault_type}
+        szczegolyAudytowe={szczegolyAudytowe}
+      />
+
       {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak
           ślad Z_Q wyżej), oba scenariusze c_max/c_min JEDNEGO przypadku obok
           siebie, z proweniencją każdej strony. */}
@@ -205,9 +214,8 @@ export function EkranZwarc({
       <WeryfikacjaAparatury
         wiersz={wierszAktywny}
         runId={runId}
-        punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
-        onZmienWartosc={zmienWartoscAparatu}
+        onParametryAparatu={parametryAparatu}
       />
 
       <RozplywZwarciowy

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Czujnik ładunku na makietach wysyłki — rozróżnienie wysyłki od formularza i przyrostowość.
  *

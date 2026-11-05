@@ -203,6 +203,7 @@ function Probe() {
       <output data-testid="bieg-listy-przyczyna">{swBiegu?.przyczynaPl ?? ''}</output>
       <EkranAnalizy
         naglowek={{ analizaPL: 'Zwarcia', runId: RUN_ID, ...sw }}
+        szczegolyAudytowe={false}
         zalozenia={[]}
         kolumny={[]}
         wiersze={[]}

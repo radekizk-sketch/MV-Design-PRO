@@ -38,6 +38,7 @@ _ELEMENT_KEYS = (
     "loads",
     "generators",
     "shunt_capacitors",
+    "zespoly_uziemiajace",
     "substations",
     "bays",
     "junctions",
@@ -100,6 +101,12 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "parametry_z_geometrii",
         "normal_state",
         "stan_obiektu",
+        # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiety 6a, 8, 9): wartości projektanta
+        # na aparacie — przyjęty czas zwarcia i rodzaj obwodu nN. `None` = brak deklaracji
+        # (gałęzie sprzed atrybutów haszują jak przed kartą); nadana wartość zmienia wynik
+        # oceny cieplnej i SWZ, więc zmienia odcisk.
+        "czas_wylaczenia_zwarcia_s",
+        "rodzaj_obwodu_nn",
     ),
     # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
     # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
@@ -267,6 +274,11 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
         )
     },
 }
+#: Kolekcje elementow DODANE PO ZAMROZENIU odciskow: pusta kolekcja jest poza odciskiem
+#: (migawki sprzed karty haszuja bajtowo jak przed nia), niepusta — trescia modelu. Przypiete
+#: testem `tests/enm/test_hash_w5_uziemienie.py::test_pelny_odcisk_bez_danych_uziemienia_rowny_
+#: postaci_sprzed_karty` (hash bez zespolu = hash postaci sprzed karty, z kluczem i bez).
+_KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: tuple[str, ...] = ("zespoly_uziemiajace",)
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
 #: semantyczna — tam ich nigdy nie bylo) zachowuje jako `null`, wedlug tej samej zasady co
@@ -347,6 +359,12 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
                 for klucz, wartosc in payload["katalog_projektu"].items()
                 if klucz != "karty_widmowe"
             }
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: kolekcja zespołów uziemiających jest addytywna —
+    # model bez zespołu (pusta lista albo brak klucza) haszuje bajtowo jak przed kartą;
+    # zespół w modelu jest treścią sieci (zmienia składową zerową), więc zmienia odcisk.
+    for key in _KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE:
+        if key in payload and payload[key] == []:
+            del payload[key]
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             for item in payload[key]:
@@ -432,6 +450,17 @@ _SEMANTIC_INCLUDE_SHUNT_CAPACITOR = (
     "catalog_ref",
     "catalog_namespace",
 )
+_SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY = (
+    "ref_id",
+    "name",
+    "bus_ref",
+    "bay_ref",
+    "catalog_ref",
+    "catalog_namespace",
+    "dlawik",
+    "rezystor",
+    "uziemienie_bezposrednie",
+)
 _SEMANTIC_INCLUDE_BAY = (
     "ref_id",
     "name",
@@ -464,6 +493,18 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
     return wynik
 
 
+def _project_zespolu(item: dict[str, Any]) -> dict[str, Any]:
+    """Projekcja semantyczna zespołu: tożsamość, przyłączenie, katalog i RODZAJ elementów
+    punktu neutralnego (bez liczb — nastawa dławika czy R nie są semantyką)."""
+    wynik = _project(item, _SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY, "zespoly_uziemiajace")
+    for urzadzenie in ("dlawik", "rezystor"):
+        if isinstance(wynik.get(urzadzenie), dict):
+            wynik[urzadzenie] = {
+                k: wynik[urzadzenie].get(k) for k in ("catalog_ref", "catalog_namespace")
+            }
+    return wynik
+
+
 def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
@@ -487,6 +528,18 @@ def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
             _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
+        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sposób uziemienia punktu neutralnego jest
+        # semantyką sieci — zespół uziemiający z rodzajem elementów punktu neutralnego
+        # (obecność dławika/rezystora, ich katalog). Klucz WYŁĄCZNIE dla modelu z zespołem.
+        **(
+            {
+                "zespoly_uziemiajace": [
+                    _project_zespolu(z) for z in raw.get("zespoly_uziemiajace", [])
+                ]
+            }
+            if raw.get("zespoly_uziemiajace")
+            else {}
+        ),
         "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
         "substations": [
             _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")

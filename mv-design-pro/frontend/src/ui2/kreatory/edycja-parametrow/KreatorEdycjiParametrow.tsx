@@ -74,6 +74,7 @@ import {
   UKLADY_SIECI_NN,
   UZIEMIENIA_EKRANU_KABLA,
 } from '../../../types/uziemienie';
+import { RODZAJE_OBWODU_NN } from '../../../types/enm';
 import {
   formularzDanychModuluZModelu,
   zbudujPolaNcRfgGeneratora,
@@ -148,6 +149,9 @@ const SLOWNIKI_STATYCZNE: Readonly<Record<string, readonly OpcjaSlownika[]>> = {
     etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
   })),
   screen_bonding: UZIEMIENIA_EKRANU_KABLA.map((id) => ({ id, etykieta: `${id} — ${ETYKIETA_PL_UZIEMIENIA_EKRANU[id]}` })),
+  // Pakiet 9: rodzaj obwodu nN aparatu (`SwitchBranch/FuseBranch.rodzaj_obwodu_nn`) — jedna
+  // klasyfikacja dla I²t i SWZ; ten sam zbiór, który przyjmuje backend.
+  rodzaj_obwodu_nn: RODZAJE_OBWODU_NN.map((id) => ({ id, etykieta: `obwód ${id}` })),
 };
 
 /** Klucze parametrów, dla których kontrakt ma słownik wartości (pole = lista). */
@@ -179,6 +183,7 @@ const KLUCZE_TEKSTOWE: ReadonlySet<string> = new Set([
   'vector_group',
   'lv_earthing_system',
   'screen_bonding',
+  'rodzaj_obwodu_nn',
   'insulation',
   'conductor_material',
   'catalog_ref',
@@ -204,10 +209,15 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   return `${T.aparatBrak}.`;
 }
 
-/** Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. */
+/**
+ * Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. Symbol
+ * (i jednostka niosąca symbole bazy p.u.) to wzór `$…$` z pól `*_latex` rejestru — składa go
+ * `TekstZWzorami` pola; identyfikator `symbol` nie trafia na ekran (`ui_math_guard`).
+ */
 function etykietaParametruMaszyny(opis: ParametrMaszynyRejestru): string {
-  const jednostka = opis.jednostka === '1' ? '' : ` [${opis.jednostka}]`;
-  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} ${opis.symbol}${jednostka}`;
+  const jednostkaEkranu = opis.jednostka_latex !== '' ? `$${opis.jednostka_latex}$` : opis.jednostka;
+  const jednostka = opis.jednostka === '1' ? '' : ` [${jednostkaEkranu}]`;
+  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} $${opis.symbol_latex}$${jednostka}`;
 }
 
 /** Podpowiedź pola maszyny: co obliczenie przyjmie, gdy projektant nie poda wartości. */
@@ -263,8 +273,9 @@ export function KreatorEdycjiParametrow() {
   );
   const jestAparatSn = galaz?.catalog_namespace === NAMESPACE_APARAT_SN;
   const poleKontekstu = readString(context?.field);
-  // `overrides` (akcja naprawcza blokady E011 — wartość projektanta spoza bramy) wskazuje całą
-  // sekcję aparatu: kursor w pierwszym polu.
+  // `overrides` (akcja naprawcza blokady E011 — wartość projektanta spoza bramy — oraz
+  // „Parametry aparatu” ekranu wytrzymałości aparatury) wskazuje całą sekcję aparatu: kursor
+  // w pierwszym polu. Pojedynczy parametr wskazuje edycja wiersza w inspektorze elementu.
   const poleAparatuZKontekstu = !jestAparatSn
     ? null
     : jestParametremAparatuSn(poleKontekstu)
@@ -280,8 +291,9 @@ export function KreatorEdycjiParametrow() {
   // opisem wymogu, nie kluczem parametru (`continuous_path_to_source`) — przyjmujemy go
   // wyłącznie, gdy jest kluczem ze słownika kontraktu (jedno źródło: SLOWNIKI_STATYCZNE
   // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
-  // Parametr aparatu SN wskazany kontekstem (akcja „Zmień wartość" ekranu wytrzymałości)
-  // trafia do sekcji aparatu, nie do wiersza klucz → wartość.
+  // Parametr aparatu SN wskazany kontekstem (edycja wiersza w inspektorze elementu albo sekcja
+  // `overrides` z „Parametry aparatu” ekranu wytrzymałości) trafia do sekcji aparatu, nie do
+  // wiersza klucz → wartość.
   // Geometria słupa linii (akcja naprawcza `line.geometria_wartosc_robocza`) trafia do sekcji
   // linii 110 kV — to struktura, nie wartość wiersza klucz → wartość.
   const poleGeometriiZKontekstu =

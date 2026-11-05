@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 — testy SILNIKA ETYKIET (SCHEMAT-10 S2, V12K-135; audyt §1 D2/§3).
  * Silnik `declutterLabels` rozstrzyga kolizje deterministycznie po priorytecie

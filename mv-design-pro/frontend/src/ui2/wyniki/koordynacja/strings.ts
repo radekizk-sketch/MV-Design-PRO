@@ -80,9 +80,9 @@ export const KOORDYNACJA_STRINGS = {
   nastawyPodstawaCWariantuMin: 'Współczynnik c wariantu minimalnego',
   nastawyParametrDeltaT: 'Stopień zwłoki czasowej Δt [s]',
   nastawyParametrDeltaTZrodlo: 'IRiESD ENEA (domyślnie 0,3 s)',
-  nastawyParametrKb: 'Współczynnik bezpieczeństwa k_b',
+  nastawyParametrKb: 'Współczynnik bezpieczeństwa $k_b$',
   nastawyParametrKbZrodlo: 'Hoppel, typowo 1,2–1,5 (domyślnie 1,2)',
-  nastawyParametrKbth: 'Współczynnik korekcji cieplnej k_bth',
+  nastawyParametrKbth: 'Współczynnik korekcji cieplnej $k_{bth}$',
   nastawyParametrKbthZrodlo: 'Hoppel, wg długości odcinka (domyślnie 1,1)',
 
   // Wynik — tabela nastaw.
@@ -92,7 +92,7 @@ export const KOORDYNACJA_STRINGS = {
   nastawySekcjaZwloczna: 'I> — nastawa zwłoczna (czas określony)',
   nastawyPradNastawy: 'Prąd nastawy',
   nastawyCzasNastawy: 'Czas zadziałania',
-  nastawyCzulosc: 'Czułość (I_k2min/I>)',
+  nastawyCzulosc: 'Czułość ($I_{k2\\min}/I_{>}$)',
   nastawySekcjaBezzwloczna: 'I>> — nastawa bezzwłoczna',
   nastawyWarunekSelektywnosc: 'Warunek selektywności (min. dopuszczalne)',
   nastawyWarunekCieplny: 'Warunek wytrzymałości cieplnej (maks. dopuszczalne)',

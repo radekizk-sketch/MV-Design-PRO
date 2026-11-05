@@ -18,7 +18,7 @@
               "label": "Czas trwania zwarcia"
             }
           },
-          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "notes": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
           "substitution_latex": "t_k = 1\\ \\mathrm{s}"
         },
         {
@@ -57,7 +57,7 @@
               "label": "Czas trwania zwarcia"
             }
           },
-          "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "notes": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
           "substitution_latex": "t_k = 1\\ \\mathrm{s}"
         },
         {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KD-8 poz. 3, bramka 3 — KOMUNIKATY BLOKAD I OSTRZEŻEŃ SĄ CZYTELNE W OBU
  * MOTYWACH.

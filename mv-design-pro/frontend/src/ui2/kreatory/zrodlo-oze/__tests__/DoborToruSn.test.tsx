@@ -12,6 +12,11 @@ import type { ConverterType } from '../../../../ui/catalog/types';
 import { DoborToruSn } from '../DoborToruSn';
 import type { CableLayingConditions } from '../derSelectionApi';
 import { DANE_DER_SN_DOMYSLNE, type DerSnFormData } from '../zrodloOzeModel';
+import { uruchomObliczenie } from '../../../spaces/obliczenia/uruchomObliczenie';
+
+vi.mock('../../../spaces/obliczenia/uruchomObliczenie', () => ({
+  uruchomObliczenie: vi.fn(async () => true),
+}));
 
 const KONWERTER: ConverterType = {
   id: 'conv-pv-500',
@@ -457,5 +462,189 @@ describe('DoborToruSn — warunki ułożenia kabla (V12K-207)', () => {
     );
 
     expect(screen.queryByText(/Obciążalność po korekcie/)).toBeNull();
+  });
+});
+
+/**
+ * Pakiet 6b: kryterium wytrzymałości zwarciowej kabla — rekord backendu ZAWSZE widoczny.
+ * Iloczyn: stan rekordu {spełnione, nie oceniono bez biegu, niespełnione} × przypadek
+ * {aktywny, brak}. Żądanie niesie przypadek i szynę przyłączenia; akcja „Uruchom obliczenia
+ * zwarciowe” istnieje tylko przy braku prądu i aktywnym przypadku, a po biegu dobór liczy
+ * się ponownie (drugie wywołanie końcówki) — natywne kliki.
+ */
+const PODSTAWA = 'wartość robocza 1 s — znamionowy czas trwania zwarcia (IEC 62271-1 §4.7).';
+const REKORDY = {
+  spelnione: {
+    status: 'SPELNIA',
+    wyjasnienie: {
+      zdanie_pl:
+        'Kabel 50 mm²: prąd cieplny 19618 A przy czasie trwania zwarcia 1 s nie przekracza prądu dopuszczalnego żyły 21450 A.',
+      przyczyna_pl: null,
+      czego_brakuje: [],
+      zastrzezenia: [],
+    },
+    ikss_a: 19291.6,
+    kappa: 1.746,
+    fault_duration_s: 1,
+    fault_duration_source: 'wartosc_robocza',
+    fault_duration_basis_pl: PODSTAWA,
+    ith_a: 19618,
+    admissible_current_a: 21450,
+    margin_a: 1832,
+    action_pl: null,
+    short_circuit_run_id: 'bieg-1',
+    kompletnosc_dowodu: 'NIEPELNY',
+  },
+  nie_oceniono: {
+    status: 'NIE_OCENIONO',
+    wyjasnienie: {
+      zdanie_pl: 'Wytrzymałości zwarciowej kabla nie oceniono.',
+      przyczyna_pl: 'Przypadek nie ma zakończonego biegu zwarciowego.',
+      czego_brakuje: ['prąd zwarciowy początkowy I″k i współczynnik κ szyny przyłączenia'],
+      zastrzezenia: [],
+    },
+    ikss_a: null,
+    kappa: null,
+    fault_duration_s: 1,
+    fault_duration_source: 'wartosc_robocza',
+    fault_duration_basis_pl: PODSTAWA,
+    ith_a: null,
+    admissible_current_a: null,
+    margin_a: null,
+    action_pl: 'Uruchom obliczenia zwarciowe dla przypadku.',
+    short_circuit_run_id: null,
+    kompletnosc_dowodu: 'NIEPELNY',
+  },
+  niespelnione: {
+    status: 'NIE_SPELNIA',
+    wyjasnienie: {
+      zdanie_pl:
+        'Żaden kabel z katalogu nie wytrzyma prądu cieplnego 60000 A przez czas trwania zwarcia 1 s.',
+      przyczyna_pl: 'Prąd cieplny przekracza prąd dopuszczalny żyły każdego kandydata.',
+      czego_brakuje: [],
+      zastrzezenia: [],
+    },
+    ikss_a: 60000,
+    kappa: 1.8,
+    fault_duration_s: 1,
+    fault_duration_source: 'wartosc_robocza',
+    fault_duration_basis_pl: PODSTAWA,
+    ith_a: 60000,
+    admissible_current_a: null,
+    margin_a: null,
+    action_pl: 'Skróć czas wyłączenia zwarcia w polu przyłączenia.',
+    short_circuit_run_id: 'bieg-1',
+    kompletnosc_dowodu: 'NIEPELNY',
+  },
+} as const;
+
+describe('DoborToruSn — kryterium wytrzymałości zwarciowej kabla', () => {
+  beforeEach(() => {
+    (uruchomObliczenie as unknown as Mock).mockClear();
+  });
+
+  for (const stan of ['spelnione', 'nie_oceniono', 'niespelnione'] as const) {
+    for (const przypadek of ['aktywny', 'brak'] as const) {
+      it(`rekord ${stan} × przypadek ${przypadek}`, async () => {
+        const user = userEvent.setup();
+        odpowiedzDoboru = {
+          ...RESPONSE,
+          cable: { ...RESPONSE.cable, thermal_criterion: REKORDY[stan] },
+        };
+        render(
+          <DoborToruSn
+            converter={KONWERTER}
+            quantity={2}
+            snBusVoltageKv={15}
+            derSn={{ ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: 1.0 }}
+            onCableLengthChange={() => {}}
+            onVectorGroupChange={() => {}}
+            onLayingConditionsChange={() => {}}
+            onScreenBondingChange={() => {}}
+            onZastosuj={() => {}}
+            applied={false}
+            caseId={przypadek === 'aktywny' ? 'case-1' : null}
+            snBusRef={przypadek === 'aktywny' ? 'bus_sn' : null}
+          />,
+        );
+        await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+        const blok = await screen.findByTestId('mvd-kreator-oze-dobor-zwarciowe');
+        expect(blok.getAttribute('data-status')).toBe(REKORDY[stan].status);
+
+        // Żądanie niesie przypadek i szynę przyłączenia tylko wtedy, gdy są znane.
+        const zadanie = JSON.parse(String((wywolaniaDoboru()[0][1] as RequestInit).body));
+        if (przypadek === 'aktywny') {
+          expect([zadanie.case_id, zadanie.sn_bus_ref]).toEqual(['case-1', 'bus_sn']);
+        } else {
+          expect('case_id' in zadanie || 'sn_bus_ref' in zadanie).toBe(false);
+        }
+
+        // Wyjaśnienie werdyktu (zdanie, przyczyna, braki), podstawa czasu i akcja — 1:1
+        // z backendu; status maszynowy nie ma w UI własnej etykiety.
+        const { wyjasnienie } = REKORDY[stan];
+        expect(blok.textContent).toContain(wyjasnienie.zdanie_pl);
+        const przyczyna = screen.queryByTestId('mvd-kreator-oze-dobor-zwarciowe-wyjasnienie');
+        expect(przyczyna?.textContent ?? null).toBe(wyjasnienie.przyczyna_pl);
+        const braki = screen.queryByTestId('mvd-kreator-oze-dobor-zwarciowe-brakuje');
+        expect(braki?.textContent ?? null).toBe(
+          wyjasnienie.czego_brakuje.length > 0 ? `Brakuje: ${wyjasnienie.czego_brakuje.join('; ')}` : null,
+        );
+        expect(screen.getByTestId('mvd-kreator-oze-dobor-zwarciowe-podstawa-czasu').textContent).toBe(
+          PODSTAWA,
+        );
+        const akcja = screen.queryByTestId('mvd-kreator-oze-dobor-zwarciowe-akcja');
+        expect(akcja?.textContent ?? null).toBe(REKORDY[stan].action_pl);
+
+        const przycisk = screen.queryByTestId('mvd-kreator-oze-dobor-zwarciowe-uruchom');
+        const oczekiwanyPrzycisk = stan === 'nie_oceniono' && przypadek === 'aktywny';
+        expect(przycisk !== null).toBe(oczekiwanyPrzycisk);
+        if (!oczekiwanyPrzycisk) return;
+
+        odpowiedzDoboru = {
+          ...RESPONSE,
+          cable: { ...RESPONSE.cable, thermal_criterion: REKORDY.spelnione },
+        };
+        await user.click(przycisk!);
+        await waitFor(() =>
+          expect(
+            screen.getByTestId('mvd-kreator-oze-dobor-zwarciowe').getAttribute('data-status'),
+          ).toBe('SPELNIA'),
+        );
+        expect(uruchomObliczenie).toHaveBeenCalledWith('SC_3F');
+        expect(wywolaniaDoboru()).toHaveLength(2);
+        expect(screen.queryByTestId('mvd-kreator-oze-dobor-zwarciowe-uruchom')).toBeNull();
+      });
+    }
+  }
+
+  it('bieg zwarciowy nieudany → dobór nie jest powtarzany', async () => {
+    const user = userEvent.setup();
+    (uruchomObliczenie as unknown as Mock).mockResolvedValueOnce(false);
+    odpowiedzDoboru = {
+      ...RESPONSE,
+      cable: { ...RESPONSE.cable, thermal_criterion: REKORDY.nie_oceniono },
+    };
+    render(
+      <DoborToruSn
+        converter={KONWERTER}
+        quantity={2}
+        snBusVoltageKv={15}
+        derSn={{ ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: 1.0 }}
+        onCableLengthChange={() => {}}
+        onVectorGroupChange={() => {}}
+        onLayingConditionsChange={() => {}}
+        onScreenBondingChange={() => {}}
+        onZastosuj={() => {}}
+        applied={false}
+        caseId="case-1"
+        snBusRef="bus_sn"
+      />,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await user.click(await screen.findByTestId('mvd-kreator-oze-dobor-zwarciowe-uruchom'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-zwarciowe-uruchom')).not.toBeDisabled(),
+    );
+    expect(wywolaniaDoboru()).toHaveLength(1);
   });
 });

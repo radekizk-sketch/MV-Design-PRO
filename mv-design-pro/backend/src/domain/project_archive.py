@@ -237,7 +237,7 @@ class ScenariuszeSection:
 
     Każdy wpis to pełny rejestr scenariusza (`enm/scenariusze.py`: `scenario_id`, `wersja`,
     `rewizje` z nagrobkami) — scenariusze nazwane (zwarciowe, łączeniowe, dynamiczne, N-1)
-    i wybory zabezpieczeń przypadków (`przypadek-<case_id>`, ADR-022). Sekcja jest emitowana
+    i wybory zabezpieczeń przypadków (`zabezpieczenia-przypadku:<case_id>`, ADR-022). Sekcja jest emitowana
     WYŁĄCZNIE, gdy jest niepusta (`SEKCJE_EMITOWANE_GDY_NIEPUSTE`): archiwum projektu bez
     scenariuszy ma bajtowo tę samą treść i ten sam `archive_hash` co przed sekcją.
     """

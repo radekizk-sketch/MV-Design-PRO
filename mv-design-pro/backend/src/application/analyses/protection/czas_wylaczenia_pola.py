@@ -65,28 +65,32 @@ from application.analyses.aparaty_pol import (
     znajdz_stacje,
 )
 from application.analyses.protection.ocena_nadpradowa import (
+    ETYKIETY_KRZYWYCH_PL,
     czas_urzadzenia,
     rozwiaz_nastawy,
     streszczenie_brakow_nastaw,
     wylacznik_urzadzenia,
 )
 from enm.mapping import ref_to_graph_id
-from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
-from enm.nazwy_elementow import nazwa_elementu
+from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment, SwitchBranch
+from enm.nazwy_elementow import nazwa_elementu, oznaczenie_zabezpieczenia
 from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
-from enm.zabezpieczenie import nazwa_sterownika, sterownik_pola
+from enm.zabezpieczenie import sterownik_pola
 from network_model.catalog.wartosci_robocze import (
+    NAZWA_PROFILU_CZASU_PL,
     PARAMETR_CZAS_WLASNY,
+    PODSTAWA_PROFILU_CZASU_PL,
     WartoscRozstrzygnieta,
     liczba_pl,
+    rozstrzygnij_czas_trwania_zwarcia,
 )
 from network_model.core.czas_wylaczenia import (
     POCHODZENIE_TB_Z_POL,
     CzasWylaczeniaTb,
     czas_tb_roboczy,
 )
-from network_model.pochodne import ka_na_a
+from network_model.pochodne import a_na_ka, ka_na_a
 
 # ---------------------------------------------------------------------------
 # Kody gotowości i źródła — brak nazwany wprost
@@ -150,6 +154,20 @@ def _zalozenie_czasu_wlasnego(czas_wlasny: WartoscRozstrzygnieta) -> str:
     )
 
 
+def _opis_czasu_wlasnego(czas_wlasny: WartoscRozstrzygnieta) -> str:
+    """Jedno zdanie: skąd czas własny wyłącznika (pełny opis zostaje w ``zalozenia_pl``)."""
+    assert czas_wlasny.wartosc is not None
+    wartosc = f"{liczba_pl(czas_wlasny.wartosc)} s"
+    if czas_wlasny.pochodzenie == "PROPOZYCJA":
+        return (
+            f"{wartosc} — wartość robocza: {NAZWA_PROFILU_CZASU_PL} "
+            f"({PODSTAWA_PROFILU_CZASU_PL})"
+        )
+    if czas_wlasny.pochodzenie == "PROJEKTANT":
+        return f"{wartosc} — wartość nadana przez projektanta"
+    return f"{wartosc} — karta katalogowa"
+
+
 def czasy_wylaczenia_pol_stacji(
     *,
     enm: EnergyNetworkModel,
@@ -182,13 +200,164 @@ def czasy_wylaczenia_pol_stacji(
     # identyfikatorów, jak read-model pola.
     for bay in sorted(pola_stacji(enm, stacja.ref_id), key=lambda b: b.ref_id):
         ik_pola = ik_pol_ka.get(bay.ref_id)
-        wynik[bay.ref_id] = _czas_wylaczenia_pola(
+        wynik[bay.ref_id] = czas_trwania_zwarcia_pola(
             enm,
             bay,
             aparaty.get(bay.ref_id, []),
             ka_na_a(ik_pola) if ik_pola is not None else None,
         )
     return wynik
+
+
+#: Źródła czasu trwania zwarcia pola w odpowiedzi (``zrodlo``) — trójka rozstrzygnięcia
+#: ``rozstrzygnij_czas_trwania_zwarcia`` w słowniku tego widoku.
+ZRODLO_PROJEKTANT = "projektant"
+ZRODLO_WARTOSC_ROBOCZA = "wartosc_robocza"
+_ZRODLA_POLA = {
+    "projektant": ZRODLO_PROJEKTANT,
+    "nastawy": ZRODLO_NASTAWY_POLA,
+    "wartosc_robocza": ZRODLO_WARTOSC_ROBOCZA,
+}
+_TYPY_LACZNIKA_POLA = ("breaker", "switch", "disconnector")
+
+
+def wylacznik_czasu_pola(
+    enm: EnergyNetworkModel, bay: Bay, aparaty_pola: Sequence[AparatPola]
+) -> SwitchBranch | None:
+    """Łącznik pola, który niesie przyjęty czas zwarcia pola (``czas_wylaczenia_zwarcia_s``).
+
+    JEDNA reguła dla odczytu i dla edycji w widoku: wyłącznik otwierany przez czynny sterownik
+    pola, gdy leży w polu; inaczej łącznik pola w kolejności wyłącznik > rozłącznik >
+    odłącznik, w obrębie rodzaju — najmniejszy identyfikator (determinizm). ``None`` — pole
+    bez łącznika w modelu (aparat pola nie jest gałęzią łącznika).
+    """
+    w_polu = {a.aparat_ref for a in aparaty_pola}
+    laczniki = {
+        g.ref_id: g
+        for g in enm.branches
+        if isinstance(g, SwitchBranch) and g.ref_id in w_polu and g.type in _TYPY_LACZNIKA_POLA
+    }
+    wpis = _przypisanie_pola(enm, bay)
+    otwierany = wylacznik_urzadzenia(wpis) if wpis is not None else None
+    if otwierany is not None and otwierany in laczniki:
+        return laczniki[otwierany]
+    kolejnosc = sorted(
+        laczniki.values(), key=lambda g: (_TYPY_LACZNIKA_POLA.index(g.type), g.ref_id)
+    )
+    return kolejnosc[0] if kolejnosc else None
+
+
+def czas_trwania_zwarcia_pola(
+    enm: EnergyNetworkModel,
+    bay: Bay,
+    aparaty_pola: Sequence[AparatPola],
+    prad_a: float | None,
+) -> dict[str, Any]:
+    """Czas trwania zwarcia do oceny cieplnej pola — nigdy pusty (dyrektywa właściciela,
+    karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN pakiet 8).
+
+    Trójka (wartość, źródło, podstawa) z ``rozstrzygnij_czas_trwania_zwarcia``: wartość
+    projektanta na łączniku pola (``wylacznik_czasu_pola``) > czas z nastaw zabezpieczenia
+    pola i czasu własnego wyłącznika (``_czas_wylaczenia_pola``) > wartość robocza 1 s
+    (IEC 62271-1 §4.7, dana przyjęta ``ESTIMATED``). Zabezpieczenie pola NIE jest wymagane:
+    jego brak zmienia źródło czasu, nie blokuje oceny. Rozbicie z nastaw zostaje w odpowiedzi
+    (``czas_z_nastaw``) — także gdy czas pochodzi z innego źródła.
+
+    Konsumenci: widok wytrzymałości aparatury pól (I_th pola i kryterium cieplne), dowód
+    doboru aparatury (``czas_wylaczenia_pola_aparatu``), wymagania pola. t_b punktu zwarcia
+    NIE czyta tej funkcji — czas przerwania prądu ma własną wartość roboczą
+    (``czas_tb_z_pol_lokalnych``).
+    """
+    z_nastaw = _czas_wylaczenia_pola(enm, bay, aparaty_pola, prad_a)
+    lacznik = wylacznik_czasu_pola(enm, bay, aparaty_pola)
+    nazwa_lacznika = nazwa_elementu(lacznik, "branches") if lacznik is not None else None
+    opis_projektanta = (
+        f"przyjęty czas zwarcia na łączniku „{nazwa_lacznika}” pola"
+        if nazwa_lacznika is not None
+        else "przyjęty czas zwarcia na łączniku pola"
+    )
+    trojka = rozstrzygnij_czas_trwania_zwarcia(
+        czas_projektanta_s=lacznik.czas_wylaczenia_zwarcia_s if lacznik is not None else None,
+        opis_projektanta_pl=opis_projektanta,
+        czas_z_nastaw_s=_liczba_lub_brak(z_nastaw.get("t_clearing_s")),
+        opis_nastaw_pl=str(z_nastaw.get("powod_pl") or ""),
+    )
+    zrodlo = _ZRODLA_POLA[trojka.zrodlo]
+    wynik: dict[str, Any] = (
+        dict(z_nastaw)
+        if trojka.zrodlo == "nastawy"
+        else {
+            "czlon_nastawczy_s": None,
+            "czas_wlasny_wylacznika_s": None,
+            "czas_wlasny": None,
+            "zalozenia_pl": [],
+            "kody_gotowosci": [],
+        }
+    )
+    dana = trojka.dana_przyjeta(miejsce_pl=f"pole {nazwa_elementu(bay, 'bays')}")
+    wynik.update(
+        {
+            "t_clearing_s": round(trojka.wartosc_s, 6),
+            "zrodlo": zrodlo,
+            "podstawa_pl": trojka.podstawa_pl,
+            "powod_pl": (
+                z_nastaw.get("powod_pl") if trojka.zrodlo == "nastawy" else trojka.podstawa_pl
+            ),
+            "wylacznik_czasu_ref": lacznik.ref_id if lacznik is not None else None,
+            "wylacznik_czasu_nazwa": nazwa_lacznika,
+            "czas_projektanta_s": (
+                lacznik.czas_wylaczenia_zwarcia_s if lacznik is not None else None
+            ),
+            "czas_z_nastaw": z_nastaw,
+            "dana_przyjeta": dana.model_dump(mode="json") if dana is not None else None,
+        }
+    )
+    if trojka.zrodlo != "nastawy":
+        wynik["zalozenia_pl"] = [trojka.podstawa_pl]
+        # Zabezpieczenie PRZYPISANE, ale jego nastawy nie dają czasu (brak nastaw, prądu,
+        # wyłącznika) — to konkretny brak modelu z akcją: kod zostaje przy czasie roboczym.
+        # Bez przypisania kodu nie ma: zabezpieczenie nie jest wymagane do oceny cieplnej.
+        # Wartość projektanta zastępuje nastawy w ocenie cieplnej — wtedy kodu też nie ma.
+        przypisane = (
+            trojka.zrodlo == "wartosc_robocza" and z_nastaw.get("urzadzenie_ref") is not None
+        )
+        wynik["kody_gotowosci"] = list(z_nastaw.get("kody_gotowosci") or []) if przypisane else []
+        if przypisane and z_nastaw.get("braki_nastaw"):
+            wynik["braki_nastaw"] = z_nastaw["braki_nastaw"]
+    return wynik
+
+
+def czas_roboczy_bez_pola(powod_pl: str, *, miejsce_pl: str) -> dict[str, Any]:
+    """Czas trwania zwarcia dla wiersza bez pola w modelu (wpis konfiguracji stacji) — to samo
+    rozstrzygnięcie co pole: bez łącznika i nastaw zostaje wartość robocza 1 s."""
+    trojka = rozstrzygnij_czas_trwania_zwarcia(
+        czas_projektanta_s=None,
+        opis_projektanta_pl="przyjęty czas zwarcia na łączniku pola w modelu",
+        czas_z_nastaw_s=None,
+        opis_nastaw_pl=powod_pl,
+    )
+    dana = trojka.dana_przyjeta(miejsce_pl=miejsce_pl)
+    assert dana is not None
+    return {
+        "t_clearing_s": trojka.wartosc_s,
+        "zrodlo": _ZRODLA_POLA[trojka.zrodlo],
+        "podstawa_pl": trojka.podstawa_pl,
+        "powod_pl": trojka.podstawa_pl,
+        "czlon_nastawczy_s": None,
+        "czas_wlasny_wylacznika_s": None,
+        "czas_wlasny": None,
+        "zalozenia_pl": [trojka.podstawa_pl],
+        "kody_gotowosci": [],
+        "wylacznik_czasu_ref": None,
+        "wylacznik_czasu_nazwa": None,
+        "czas_projektanta_s": None,
+        "czas_z_nastaw": None,
+        "dana_przyjeta": dana.model_dump(mode="json"),
+    }
+
+
+def _liczba_lub_brak(wartosc: object) -> float | None:
+    return float(wartosc) if isinstance(wartosc, int | float) else None
 
 
 def _czas_wylaczenia_pola(
@@ -217,12 +386,15 @@ def _czas_wylaczenia_pola(
             "niewyznaczalny — czasu z innego pola ani stałej nie podstawiono.",
         )
 
-    nazwa_zabezpieczenia = nazwa_sterownika(enm, wpis)
+    # Zabezpieczenie nazwane przez miejsce, które chroni (karta KD6) — jeden helper nazw
+    # modelu; nazwa przypisania po słowie „zabezpieczenie” dawała „zabezpieczenia
+    # Zabezpieczenie pola …”.
+    oznaczenie = oznaczenie_zabezpieczenia(enm, wpis)
     nastawy = rozwiaz_nastawy(enm, wpis)
     if not nastawy.gotowe:
         return _bez_czasu(
             READINESS_BRAK_NASTAW,
-            streszczenie_brakow_nastaw(nastawy.nazwa_pl, nastawy.braki),
+            streszczenie_brakow_nastaw(nastawy.oznaczenie_pl, nastawy.braki),
             urzadzenie_ref=wpis.ref_id,
             braki_nastaw=[b.to_dict() for b in nastawy.braki],
         )
@@ -262,21 +434,27 @@ def _czas_wylaczenia_pola(
     if decydujacy is None:
         return _bez_czasu(
             READINESS_PONIZEJ_ROZRUCHU,
-            f"Prąd zwarciowy {prad_a:.1f} A nie przekracza progu rozruchowego "
-            f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+            f"Prąd zwarciowy {liczba_pl(round(prad_a, 1))} A nie przekracza progu rozruchowego "
+            f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
             f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała.",
             **slad,
         )
     czas_nastawy = float(decydujacy["t_s"])
-    krzywa_txt = str(decydujacy["krzywa"])
+    krzywa_txt = ETYKIETY_KRZYWYCH_PL[str(decydujacy["krzywa"])]
 
     ref_wylacznika = wylacznik_urzadzenia(wpis)
     wylacznik = next((a for a in aparaty_pola if a.aparat_ref == ref_wylacznika), None)
     pozycja_ref = wylacznik.catalog_ref if wylacznik is not None else None
     czas_wlasny = _czas_wlasny_aparatu(wylacznik) if wylacznik is not None else None
     opis_czlonu = (
-        f"Czas stopnia {decydujacy['etykieta_pl']} ({krzywa_txt}) zabezpieczenia "
-        f"{nazwa_zabezpieczenia} przy prądzie {prad_a:.1f} A"
+        f"Czas stopnia {decydujacy['etykieta_pl']} zabezpieczenia {oznaczenie}, "
+        f"charakterystyka: {krzywa_txt}, przy prądzie {liczba_pl(round(prad_a, 1))} A"
+    )
+    # Jedno zdanie o członie nastawczym (karta KD6-SZCZEGOLY pkt 4): funkcja, stopień, prąd.
+    opis_czlonu_krotki = (
+        f"{liczba_pl(czas_nastawy)} s — stopień {decydujacy['etykieta_pl']}, "
+        f"charakterystyka: {krzywa_txt}, zabezpieczenie {oznaczenie}, przy prądzie zwarciowym "
+        f"{liczba_pl(round(a_na_ka(prad_a), 2))} kA"
     )
     if czas_wlasny is None or czas_wlasny.wartosc is None:
         # Brak MODELU (nie parametru urządzenia): wyłącznik poza polem, aparat spoza
@@ -285,29 +463,30 @@ def _czas_wylaczenia_pola(
         # jest krótszy, więc dawałby wyższy limit cieplny). Człon zostaje jako ślad.
         if wylacznik is None:
             powod_braku = (
-                f"Wyłącznik otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie leży "
+                f"Wyłącznik otwierany przez zabezpieczenie {oznaczenie} nie leży "
                 "w tym polu, więc jego czasu własnego nie ma skąd odczytać"
             )
         elif czas_wlasny is None:
             powod_braku = (
-                f"Aparat otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie ma "
+                f"Aparat otwierany przez zabezpieczenie {oznaczenie} nie ma "
                 f"pozycji „{pozycja_ref}” w katalogu aparatów SN"
             )
         else:
             powod_braku = (
-                f"Zabezpieczenie {nazwa_zabezpieczenia} otwiera aparat, który nie wyłącza "
+                f"Zabezpieczenie {oznaczenie} otwiera aparat, który nie wyłącza "
                 f"zwarcia: {czas_wlasny.powod_braku_pl}"
             )
         return {
             **_bez_czasu(
                 READINESS_BRAK_CZASU_WLASNEGO,
-                f"{opis_czlonu} wynosi {czas_nastawy:.6g} s. {powod_braku} — czasu "
+                f"{opis_czlonu} wynosi {liczba_pl(czas_nastawy)} s. {powod_braku} — czasu "
                 "wyłączenia zwarcia nie da się złożyć, a sam człon nastawczy zaniżyłby "
                 "go i zawyżył limit cieplny aparatu.",
                 **slad,
             ),
             "zrodlo": ZRODLO_NASTAWY_POLA,
             "czlon_nastawczy_s": czas_nastawy,
+            "opis_czlonu_pl": opis_czlonu_krotki,
             "czas_wlasny_pozycja_ref": pozycja_ref,
             "czas_wlasny": czas_wlasny.to_dict() if czas_wlasny is not None else None,
             "zalozenia_pl": [_ZALOZENIE_PRADU_POLA],
@@ -327,6 +506,8 @@ def _czas_wylaczenia_pola(
         ),
         "czlon_nastawczy_s": czas_nastawy,
         "czas_wlasny_wylacznika_s": czas_wlasny.wartosc,
+        "opis_czlonu_pl": opis_czlonu_krotki,
+        "opis_czasu_wlasnego_pl": _opis_czasu_wlasnego(czas_wlasny),
         "czas_wlasny_pozycja_ref": pozycja_ref,
         "czas_wlasny": czas_wlasny.to_dict(),
         "zalozenia_pl": zalozenia,
@@ -420,17 +601,19 @@ def czas_tb_z_pol_lokalnych(
     nazwa = _nazwa_pola(pole.bay)
     t_b = float(czas["t_clearing_s"])
     opis = (
-        f"t_b = {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól lokalnych punktu zwarcia "
+        f"Czas przerwania prądu zwarciowego {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól "
+        "lokalnych punktu zwarcia "
         f"(pole {nazwa}, z {len(pola)} pól z aparatem przy szynie): człon nastawczy "
         f"{liczba_pl(float(czas['czlon_nastawczy_s']))} s ({str(czas['powod_pl']).rstrip('.')}) "
         f"+ czas własny wyłącznika {liczba_pl(float(czas['czas_wlasny_wylacznika_s']))} s "
         f"({czas_wlasny['opis_zrodla_pl'].rstrip('.')}). Charakterystykę sprawdzono przy "
-        f"prądzie I_k'' punktu zwarcia {rodzaj_zwarcia_pl} {liczba_pl(round(prad_a, 1))} A."
+        f"prądzie zwarciowym początkowym punktu zwarcia {rodzaj_zwarcia_pl} "
+        f"{liczba_pl(round(prad_a, 1))} A."
     )
     if robocza:
         opis += (
-            " Czas własny wyłącznika jest wartością roboczą, więc t_b też — zmień t_b "
-            "w scenariuszu zwarciowym albo nadaj czas własny wyłącznika, aby przeliczyć."
+            " Czas własny wyłącznika jest wartością roboczą, więc czas przerwania prądu też — "
+            "zmień go w scenariuszu zwarciowym albo nadaj czas własny wyłącznika, aby przeliczyć."
         )
     return CzasWylaczeniaTb(
         wartosc_s=t_b,

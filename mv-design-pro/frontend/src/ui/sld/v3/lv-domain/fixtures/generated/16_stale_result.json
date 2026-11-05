@@ -504,31 +504,29 @@
         "burden_va": null,
         "bus_ref": "T1_zacisk",
         "ct_arrangement": null,
+        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
         "ratio_primary": 2300.0,
         "ratio_secondary": 5.0,
-        "rdzenie": null,
         "ref_id": "CT-T1"
       }
     ],
     "missing_data": [],
     "protection_assignments": [
       {
-        "bay_ref": null,
+        "breaker_ref": "QF-T1",
         "ct_ref": "CT-T1",
+        "device_type": "overcurrent",
         "function_codes": [
-          "50",
-          "51"
+          "overcurrent_50",
+          "overcurrent_51"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie T1",
         "ref_id": "REL-T1",
-        "vt_ref": null,
-        "wylaczniki_refs": [
-          "QF-T1"
-        ]
+        "vt_ref": null
       }
     ],
     "root_bus_refs": [
@@ -961,14 +959,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-16_stale_result",
-    "model_hash": "005e891289fcd0b0a3e38400b484e7689328dd6c25dc0225796193476737186f",
+    "model_hash": "99410987d6e1e6b0e29f7eb44de67a0427a2ce3a25d878d04dab4556078ddd25",
     "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",
     "revision": 1,
-    "run_snapshot_hash": "dd7eb7ae0e7f1ab5c27efa52ce0ff4de8dbe9d67ea97f3fa548b6a2d9b4c3ecf",
+    "run_snapshot_hash": "85ce800ea76c22f5ba4d6a6e88de72cd2f34c3119412dff5a413a1b6935b25c6",
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "463c14d93bf41d1a39898140596067725c736d27a78eea2e5e307cba4b2bb1e7",
+  "projection_hash": "dda58cd7adfdf71826b1a0f0d6feaedf482e7822784e4d38eca40239e7251812",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1612,36 +1610,6 @@
       },
       "warnings": [
         {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel FU-21” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-01” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-02” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W001",
-          "element_ref": null,
-          "message": "Gałąź „Kabel QF-03” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
-          "code": "W002",
-          "element_ref": null,
-          "message": "Źródło zasilania „GPZ” nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
-          "severity": "IMPORTANT"
-        },
-        {
           "code": "W010",
           "element_ref": null,
           "message": "Generator przekształtnikowy „PV1” nie ma przypisanej pozycji katalogowej. Model pozostaje ogólnie użyteczny, ale obliczenia zwarciowe dla tego generatora są zablokowane w gotowości obliczeniowej do czasu przypisania typu z katalogu.",
@@ -1691,7 +1659,7 @@
     "result_signature": "sygnatura-16_stale_result",
     "run_finished_at": "2026-09-02T00:00:00+00:00",
     "run_id": "przebieg-16_stale_result",
-    "run_model_hash": "dd7eb7ae0e7f1ab5c27efa52ce0ff4de8dbe9d67ea97f3fa548b6a2d9b4c3ecf",
+    "run_model_hash": "85ce800ea76c22f5ba4d6a6e88de72cd2f34c3119412dff5a413a1b6935b25c6",
     "status": "OUTDATED",
     "voltage_profile": {
       "context": {
@@ -3089,12 +3057,12 @@
     {
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
-      "calculation_run_id": "9c5e2879-76a1-556c-9952-71f0897c02ac",
+      "calculation_run_id": "12c2ebd3-82fd-5031-97b0-3c32ac1297ea",
       "case_id": "fixture-16_stale_result",
-      "equivalent_id": "20232b60-81b2-5bb1-827f-29c3f7640adb",
+      "equivalent_id": "f671e0c0-f289-5f0c-af8e-76dbb145b913",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "005e891289fcd0b0a3e38400b484e7689328dd6c25dc0225796193476737186f",
+      "model_hash": "99410987d6e1e6b0e29f7eb44de67a0427a2ce3a25d878d04dab4556078ddd25",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",

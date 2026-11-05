@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta W5-B: pola SN stacji na kartach budowy sieci = rekordy `bays` stacji na szynie SN.
  * Iloczyn cech: {pole SN, pole nN, pole ZKSN, pole innej stacji} × {liczność, lista} oraz

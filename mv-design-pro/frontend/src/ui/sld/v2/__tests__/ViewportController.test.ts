@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PR-5 — Testy ViewportController.
  *

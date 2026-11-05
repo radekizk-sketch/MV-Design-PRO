@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD RECOVERY oracles (2026-07) — executable proof for the failures named in
  * SLD_FORENSIC_AUDIT.md / SLD_ELECTRICAL_SEMANTICS.md.

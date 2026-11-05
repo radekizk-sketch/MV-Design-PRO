@@ -30,6 +30,7 @@ from enm.models import (
     OverheadLine,
     Source,
     Transformer,
+    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 from enm.validator import ENMValidator, ReadinessResult
@@ -37,6 +38,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_materialized_params, gpz_source_record
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
 
 # ===========================================================================
 # Fixtures: ENM variants
@@ -70,24 +72,23 @@ def _valid_source(bus_ref: str = "bus_sn") -> Source:
     )
 
 
-def _valid_source_with_z0(bus_ref: str = "bus_sn") -> Source:
+def _zrodlo_wn_z_z0(bus_ref: str = "bus_wn") -> Source:
+    """Źródło sieci 110 kV za granicą modelu z jej impedancją zerową (§0 pkt 3 karty
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA: Z₀ i punkt neutralny źródła wyłącznie po stronie WN)."""
     return Source(
         **gpz_source_record(
-            ref_id="src_grid",
-            name="Zasilanie sieciowe",
+            ref_id="src_wn",
+            name="Sieć 110 kV",
             bus_ref=bus_ref,
-            voltage_kv=15.0,
-            sk3_mva=200.0,
+            voltage_kv=110.0,
+            sk3_mva=3000.0,
             rx_ratio=0.10,
             extra={
                 "r0_ohm": 0.5,
                 "x0_ohm": 1.5,
+                "neutral_grounding": GroundingConfig(type="directly_grounded"),
                 "materialized_params": {
-                    **gpz_materialized_params(
-                        voltage_kv=15.0,
-                        sk3_mva=200.0,
-                        rx_ratio=0.10,
-                    ),
+                    **gpz_materialized_params(voltage_kv=110.0, sk3_mva=3000.0, rx_ratio=0.10),
                     "r0_ohm": 0.5,
                     "x0_ohm": 1.5,
                 },
@@ -162,26 +163,24 @@ def _ready_enm_with_load() -> EnergyNetworkModel:
 def _ready_enm_with_z0() -> EnergyNetworkModel:
     """Valid ENM with Z0 data for SC_1F eligibility.
 
-    V12K-219: fixtura niesie też MODEL UZIEMIENIA punktu neutralnego. Same
-    impedancje zerowe gałęzi NIE wystarczają do zwarcia doziemnego — prąd
-    składowej zerowej musi mieć DROGĘ POWROTU, a wyznacza ją sposób pracy
-    punktu neutralnego (tu: sieć skompensowana dławikiem Petersena, typowa dla
-    krajowych sieci SN o znacznym udziale kabli). Przed tą poprawką fixtura
-    utrwalała niepełny kontrakt fizyczny „Z0 gałęzi wystarcza do SC_1F".
+    V12K-219: fixtura niesie też MODEL UZIEMIENIA punktu neutralnego — prąd składowej zerowej
+    musi mieć DROGĘ POWROTU wyznaczoną sposobem pracy punktu neutralnego. Karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: tę drogę daje zespół uziemiający na szynie SN
+    (tu: dławik gaszący, sieć skompensowana typowa dla krajowych sieci kablowych SN), nie
+    opis na źródle — źródło SN nie niesie składowej zerowej.
     """
     bus2 = Bus(ref_id="bus_sn2", name="Szyna SN2", voltage_kv=15.0)
     szyna = Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)
-    # W5-A: nośnikiem opisu punktu neutralnego sieci SN jest ŹRÓDŁO (równoważnik GPZ),
-    # nie szyna — `Bus.grounding` skasowane (intencja V12K-219 bez zmian).
-    zrodlo = _valid_source_with_z0().model_copy(
-        update={"neutral_grounding": GroundingConfig(type="petersen_coil", x_ohm=180.0)}
+    zespol = ZespolUziemiajacy.model_validate(
+        zespol_uziemiajacy_rekord("zu_1", "bus_sn", wariant="dlawik", i_nastawy_a=100.0)
     )
     return EnergyNetworkModel(
         header=_header("Ready with Z0"),
         buses=[szyna, bus2],
-        sources=[zrodlo],
+        sources=[_valid_source()],
         branches=[_valid_branch(with_z0=True, with_catalog=True)],
         loads=[_valid_load()],
+        zespoly_uziemiajace=[zespol],
     )
 
 
@@ -391,18 +390,42 @@ class TestEligibilityServiceReadyNetwork:
         sc2f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_2F)
         assert sc2f.status == EligibilityStatus.ELIGIBLE
 
-    def test_sc1f_ineligible_without_z0(self):
-        """SC_1F needs Z0 on sources. Ready ENM source has no Z0."""
-        enm = _ready_enm()
+    def test_sc1f_zrodlo_wn_bez_z0_ostrzezenie_nie_blokada(self):
+        """Źródło sieci 110 kV za granicą modelu bez Z0 — OSTRZEŻENIE SC_1F, nie blokada
+        (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: Z0 źródła nie decyduje o sieci SN;
+        węzły sieci zerowej źródła dostają w biegu nazwaną przyczynę ``brak_danych`` —
+        `tests/enm/test_skladowa_zerowa_zu.py`). Ten sam warunek co
+        `ENMValidator._compute_availability` (predykaty parami)."""
+        zrodlo = _zrodlo_wn_z_z0().model_copy(update={"r0_ohm": None, "x0_ohm": None})
+        zrodlo.materialized_params = {
+            k: v
+            for k, v in (zrodlo.materialized_params or {}).items()
+            if k not in {"r0_ohm", "x0_ohm"}
+        }
+        enm = EnergyNetworkModel(
+            header=_header("WN bez Z0"),
+            buses=[Bus(ref_id="bus_wn", name="Szyna 110 kV", voltage_kv=110.0)],
+            sources=[zrodlo],
+        )
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
         matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc1f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
-        assert sc1f.status == EligibilityStatus.INELIGIBLE
-        codes = [b.code for b in sc1f.blockers]
-        assert "ELIG_SC1_MISSING_Z0" in codes
+        assert "ELIG_SC1_MISSING_Z0" not in [b.code for b in sc1f.blockers]
+        (ostrzezenie,) = (w for w in sc1f.warnings if w.code == "ELIG_SC1_MISSING_Z0")
+        assert ostrzezenie.element_ref == zrodlo.ref_id
+        assert "brak danych" in ostrzezenie.message_pl
+
+    def test_zrodlo_sn_bez_z0_nie_blokuje_sc1f(self):
+        """Źródło w paśmie SN nie niesie składowej zerowej (mapowanie jej nie czyta — ten sam
+        predykat `impedancja_zerowa_zrodla_dozwolona`), więc jej brak nie jest blokadą."""
+        enm = _ready_enm()
+        readiness = _validate_and_readiness(enm)
+        matrix = EligibilityService().compute_matrix(enm=enm, readiness=readiness, case_id="c")
+        sc1f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
+        assert "ELIG_SC1_MISSING_Z0" not in [b.code for b in sc1f.blockers]
 
     def test_sc1f_eligible_with_z0(self):
         """SC_1F eligible when Z0 data available on branches and sources."""
@@ -748,25 +771,82 @@ class TestEligibilitySc1EarthingModel:
         )
         return next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
 
-    def test_brak_modelu_uziemienia_blokuje_sc1f(self):
+    def test_siec_sn_bez_punktu_uziemienia_jest_izolowana_i_nie_blokuje(self):
+        """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: sieć SN bez zespołu i bez uziemionego
+        uzwojenia jest siecią IZOLOWANĄ wyprowadzoną z modelu — zwarcie jednofazowe dostaje
+        nazwaną przyczynę braku drogi zerowej (wynik), nie blokadę braku danych."""
         row = self._sc1_row(_ready_enm())
-        assert row.status == EligibilityStatus.INELIGIBLE
-        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" in [b.code for b in row.blockers]
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [b.code for b in row.blockers]
 
-    def test_uziemienie_na_zrodle_odblokowuje_sc1f(self):
-        """Pierwsza z dwóch równoprawnych dróg: punkt neutralny ŹRÓDŁA (równoważnik GPZ).
-
-        W5-A: `Bus.grounding` skasowane — szyna nie jest nośnikiem uziemienia; intencja
-        testu (V12K-219: droga „sieć SN uziemiona po stronie zasilania") bez zmian.
-        """
-        bus = Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)
-        zrodlo = _valid_source().model_copy(
-            update={"neutral_grounding": GroundingConfig(type="petersen_coil", x_ohm=180.0)}
+    def test_zespol_bez_elementu_blokuje_sc1f_wskazujac_zespol(self):
+        enm = _ready_enm().model_copy(
+            update={
+                "zespoly_uziemiajace": [
+                    ZespolUziemiajacy(
+                        ref_id="zu_1",
+                        name="ZU GPZ",
+                        bus_ref="bus_sn",
+                        catalog_ref="TU_ZNYN11_15KV_PW160",
+                    )
+                ]
+            }
         )
+        row = self._sc1_row(enm)
+        blokada = next(b for b in row.blockers if b.code == "ELIG_SC1_EARTHING_MODEL_INCOMPLETE")
+        assert blokada.element_ref == "zu_1"
+        assert "ZU GPZ" in blokada.message_pl
+        assert blokada.fix_action is not None
+        assert blokada.fix_action.action_type == "NAVIGATE_TO_ELEMENT"
+
+    def test_zespol_z_dlawikiem_nie_blokuje_sc1f(self):
+        row = self._sc1_row(_ready_enm_with_z0())
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [b.code for b in row.blockers]
+
+    @pytest.mark.parametrize(
+        ("bez_katalogu", "czesc"),
+        [
+            ("catalog_ref", "transformator uziemiający"),
+            ("dlawik", "dławik gaszący"),
+        ],
+    )
+    def test_zespol_bez_pozycji_katalogu_blokuje_zwarcia(self, bez_katalogu, czesc):
+        """Catalog Binding Rule: część zespołu bez pozycji katalogu = E009 walidatora i blokada
+        gotowości zwarciowej (ten sam predykat `czesci_zespolu_bez_katalogu`)."""
+        rekord = zespol_uziemiajacy_rekord("zu_1", "bus_sn", wariant="dlawik")
+        if bez_katalogu == "catalog_ref":
+            rekord["catalog_ref"] = None
+        else:
+            rekord["dlawik"]["catalog_ref"] = None
+        enm = _ready_enm_with_z0().model_copy(
+            update={"zespoly_uziemiajace": [ZespolUziemiajacy.model_validate(rekord)]}
+        )
+        wynik = ENMValidator().validate(enm)
+        e009 = [i for i in wynik.issues if i.code == "E009" and i.element_refs == ["zu_1"]]
+        assert len(e009) == 1 and czesc in e009[0].message_pl
+        row = self._sc1_row(enm)
+        assert any(
+            b.code == "ELIG_SC3_MISSING_CATALOG_REF" and b.element_ref == "zu_1"
+            for b in row.blockers
+        )
+
+    def test_model_bez_sieci_sn_bez_punktu_neutralnego_blokuje_sc1f(self):
+        """Model wyłącznie WN: punkt neutralny opisuje źródło sieci zewnętrznej — bez opisu
+        zwarcie jednofazowe nie ma podstawy (V12K-219)."""
+        zrodlo = _zrodlo_wn_z_z0().model_copy(update={"neutral_grounding": None})
         enm = EnergyNetworkModel(
-            header=_header("Uziemienie na zrodle"),
-            buses=[bus],
+            header=_header("WN bez uziemienia"),
+            buses=[Bus(ref_id="bus_wn", name="Szyna 110 kV", voltage_kv=110.0)],
             sources=[zrodlo],
+        )
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" in [b.code for b in self._sc1_row(enm).blockers]
+
+    def test_uziemienie_zrodla_wn_odblokowuje_sc1f(self):
+        """Źródło sieci 110 kV z opisem punktu neutralnego — droga dozwolona wyłącznie po
+        stronie WN (§0 pkt 3)."""
+        enm = EnergyNetworkModel(
+            header=_header("WN z uziemieniem"),
+            buses=[Bus(ref_id="bus_wn", name="Szyna 110 kV", voltage_kv=110.0)],
+            sources=[_zrodlo_wn_z_z0()],
         )
         assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [
             b.code for b in self._sc1_row(enm).blockers

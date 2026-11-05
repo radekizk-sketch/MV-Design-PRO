@@ -432,7 +432,7 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     cieplna = _ocena(pole, "cieplna")
     assert cieplna["status_maszynowy"] == "SPELNIA"
     assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
-    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("T_k = 0.36 s")
+    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("czas wyłączenia 0,36 s")
     dane = _dane_przyjete(cieplna)
     assert [d["wartosc"] for d in dane] == [{"wartosc": 0.06, "jednostka": "s"}]
     assert dane[0]["jakosc"] == "ESTIMATED"
@@ -678,7 +678,12 @@ def test_zmiana_pozycji_katalogu_zachowuje_wartosci_projektanta(klient: TestClie
     assert [(w["key"], w["value"]) for w in galaz["overrides"]] == [("i_th_ka", 5.0)]
 
 
-def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient: TestClient):
+def test_pole_bez_nastaw_ocenia_cieplne_dla_czasu_roboczego_1_s(klient: TestClient):
+    """Pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (dyrektywa właściciela): pole, którego
+    nastawy nie dają czasu, ma kryterium cieplne rozstrzygnięte dla t = 1 s (wartość robocza
+    IEC 62271-1 §4.7, dana przyjęta), z komunikatem „Spełnione dla t = 1 s” — nie brak podstawy.
+    Dawny kod „czas wyłączenia nieustalony” nie istnieje; kod braku nastaw zostaje (sterownik
+    przypisany, nastawy niekompletne — konkretny brak modelu z akcją)."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
     run_id = _bieg(klient, case_id)
@@ -689,9 +694,226 @@ def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient:
 
     assert widok["pola"], "Stacja ma pola z aparatami — werdykt dynamiczny nadal powstaje"
     for pole in widok["pola"]:
-        assert pole["czas_wylaczenia"]["t_clearing_s"] is None
-        assert "aparatura.czas_wylaczenia_nieustalony" in pole["kody_gotowosci"]
-        # Kryterium dynamiczne rozstrzygnięte MIMO braku czasu.
+        czas = pole["czas_wylaczenia"]
+        assert (czas["t_clearing_s"], czas["zrodlo"]) == (1.0, "wartosc_robocza")
+        assert not any("nieustalon" in k for k in pole["kody_gotowosci"])
         assert pole["werdykt"]["i_dyn_ok"] is True
-        assert pole["werdykt"]["i_th_ok"] is None
-        assert _ocena(pole, "cieplna")["status_maszynowy"] == "BRAK_PODSTAWY"
+        assert pole["werdykt"]["i_th_ok"] is True
+        assert pole["komunikat_cieplny_pl"] == "Spełnione dla t = 1 s"
+        cieplna = _ocena(pole, "cieplna")
+        assert cieplna["status_maszynowy"] == "SPELNIA"
+        assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
+
+
+# --- Karta KD6-SZCZEGOLY: wyprowadzenie prądów i czasu pola z danych backendu ----------------
+
+
+def test_wyprowadzenie_pradow_pola_z_wiersza_biegu_i_sladu_solvera(klient: TestClient):
+    """Każde pole dostaje κ, m, n, T_k biegu i wzory i_p / I_th / I_b z TEGO SAMEGO wiersza
+    biegu (kroki śladu solvera), a wiersz z czasem pola — wzór limitu cieplnego. Lista wierszy
+    zwarciowych bez żądania wyprowadzenia pozostaje bez tych pól (kontrakt listy bez zmian)."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
+    assert odp.status_code == 200, odp.text
+    widok = odp.json()
+
+    from enm.canonical_analysis import get_run
+
+    run = get_run(UUID(run_id))
+    lista = build_short_circuit_results(run)["rows"]
+    assert all("wzory_pradow" not in w and "m_factor" not in w for w in lista)
+    wiersze = {
+        w["element_id"]: w
+        for w in build_short_circuit_results(run, include_wyprowadzenie=True)["rows"]
+        if w["fault_type"] == "3F"
+    }
+    for pole in widok["pola"]:
+        prady = pole["prady_pola"]
+        wiersz = wiersze[prady["punkt_ref"]]
+        wyprowadzenie = prady["wyprowadzenie"]
+        assert wyprowadzenie["kappa"] == wiersz["kappa"]
+        assert wyprowadzenie["m_factor"] == wiersz["m_factor"]
+        assert wyprowadzenie["n_factor"] == wiersz["n_factor"]
+        assert wyprowadzenie["tk_biegu_s"] == wiersz["tk_s"]
+        assert set(wyprowadzenie["wzory"]) == {"ip", "ith", "ib"}
+        assert wyprowadzenie["wzory"]["ith"] == r"I_{th} = I_{k}'' \cdot \sqrt{m + n}"
+        assert r"\kappa" in wyprowadzenie["wzory"]["ip"]
+        # Limit cieplny: wzór z tego samego źródła co warunek kryterium cieplnego.
+        warunek = _ocena(pole, "cieplna")["kryterium"]["warunek_latex"]
+        wzor = pole["wzor_limitu_cieplnego_latex"]
+        assert warunek.split(r"\le ", 1)[1] == wzor.split("= ", 1)[1]
+        # Karta KD6: symbol zapasu (lewa strona definicji marginesu rekordów pola) nie jest
+        # symbolem żadnego wzoru wyprowadzenia (m, n, κ, I_th…) — jeden symbol, jedna wielkość.
+        import re
+
+        symbole_wzorow = {
+            t
+            for w in [*wyprowadzenie["wzory"].values(), wzor]
+            for t in re.findall(r"\\[A-Za-z]+|[A-Za-z](?:_\{[^}]*\}|_[A-Za-z0-9])?", w)
+        }
+        for rodzaj in ("dynamiczna", "cieplna", "wylaczanie"):
+            margines = _ocena(pole, rodzaj)["margines"]
+            if margines is None or margines["definicja_latex"] is None:
+                continue
+            lewa = margines["definicja_latex"].split("=", 1)[0].strip()
+            assert lewa not in symbole_wzorow
+            assert not set(lewa.split()) & {"m", "n", r"\kappa"}
+
+
+def test_zdania_o_czasie_pola_sa_krotkie_i_z_tych_samych_danych(klient: TestClient):
+    """Jedno zdanie o członie nastawczym (stopień, charakterystyka, zabezpieczenie, prąd) i jedno
+    o czasie własnym (wartość robocza: profil i podstawa) — pełne uzasadnienie zostaje
+    w założeniach czasu, nie jest powtarzane."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+
+    pole = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())
+    czas = pole["czas_wylaczenia"]
+    assert czas["opis_czlonu_pl"].startswith("0,3 s — stopień ")
+    assert "(DT)" in czas["opis_czlonu_pl"]
+    ik_ka = round(pole["prady_pola"]["ik_ka"], 2)
+    assert czas["opis_czlonu_pl"].endswith(f"{str(ik_ka).replace('.', ',')} kA")
+    assert czas["opis_czasu_wlasnego_pl"] == (
+        "0,06 s — wartość robocza: profil typowy wyłącznika próżniowego SN "
+        "(IEC 62271-100: czas wyłączania deklaruje producent)"
+    )
+    assert len(czas["opis_czasu_wlasnego_pl"]) < len(czas["zalozenia_pl"][-1])
+
+
+def test_pole_bez_nastaw_nie_ma_zdan_o_czasie(klient: TestClient):
+    """Czas roboczy 1 s: brak zdań o członach nastaw (nie ma czego opisać) — zostaje podstawa
+    czasu (norma i sposób zmiany), a rozbicie z nastaw niesie powód braku czasu z nastaw."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
+    run_id = _bieg(klient, case_id)
+
+    widok = _wytrzymalosc(klient, case_id, station_ref, run_id).json()
+    for pole in widok["pola"]:
+        czas = pole["czas_wylaczenia"]
+        assert czas["t_clearing_s"] == 1.0
+        assert "opis_czlonu_pl" not in czas
+        assert "opis_czasu_wlasnego_pl" not in czas
+        assert "IEC 62271-1" in czas["podstawa_pl"]
+        assert czas["czas_z_nastaw"]["t_clearing_s"] is None
+        assert czas["czas_z_nastaw"]["powod_pl"]
+
+
+def _straznik_matematyki_ui() -> Any:
+    """Moduł ``scripts/ui_math_guard.py`` — jedno źródło wzorca gołego indeksu symbolu."""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    skrypty = Path(__file__).resolve().parents[3] / "scripts"
+
+    def _zaladuj(nazwa: str) -> Any:
+        spec = importlib.util.spec_from_file_location(nazwa, skrypty / f"{nazwa}.py")
+        assert spec is not None and spec.loader is not None
+        modul = importlib.util.module_from_spec(spec)
+        sys.modules[nazwa] = modul
+        spec.loader.exec_module(modul)
+        return modul
+
+    # Strażnik importuje `guard_parsowanie` z katalogu skryptów; moduł rejestrujemy wprost
+    # w `sys.modules`, bez dokładania `scripts/` do `sys.path` (to mogłoby przesłonić pakiet
+    # źródłowy — tests/ci/test_testy_nie_cieniuja_pakietow_zrodlowych.py).
+    if "guard_parsowanie" not in sys.modules:
+        _zaladuj("guard_parsowanie")
+    return _zaladuj("ui_math_guard")
+
+
+#: Pola tekstowe kontraktu, które NIE są prozą dla projektanta (identyfikatory, kody, statusy,
+#: jednostki, zapis LaTeX). Każde inne pole tekstowe odpowiedzi jest prozą.
+_POLA_NIE_PROZY = frozenset(
+    {
+        "pole",
+        "pole_ref",
+        "rola",
+        "zrodlo",
+        "aparat_ref",
+        "punkt_ref",
+        "kryterium_id",
+        "element_ref",
+        "relacja",
+        "status",
+        "status_maszynowy",
+        "rodzaj",
+        "jednostka",
+        "metoda",
+        "jakosc",
+        "pochodzenie",
+        "parametr",
+        "rodzaj_zrodla",
+        "run_id",
+        "krok",
+        "urzadzenie_ref",
+        "funkcja",
+        "krzywa",
+        "kod",
+        "kompletnosc",
+        "poziom",
+        "rodzaj_twierdzenia",
+        "status_modelu",
+        "status_danych",
+        "skala_rodzaj",
+        "czas_wlasny_pozycja_ref",
+        "catalog_ref",
+        "klucz",
+        "etykieta",
+        "typ_modulu",
+        "technologia",
+        "pole_nazwa",
+        "zabezpieczenie_ref",
+        "wersja_profilu",
+        # Wzory wyprowadzenia prądów pola — zapis LaTeX solvera (słownik ``wzory``).
+        "wzory",
+        # Komunikat zbiorczy jądra werdyktu konfiguratora stacji (``audit2_catalogs``) — widok
+        # aparatury pól go NIE wyświetla (V12K-353, przypięte w WeryfikacjaAparatury.test.tsx);
+        # jego proza należy do ekranu konfiguratora stacji, nie do tego widoku.
+        "komunikat_pl",
+        "werdykt",
+    }
+)
+
+
+def _proza_odpowiedzi(dane: Any, klucz: str = "") -> list[tuple[str, str]]:
+    """(ścieżka, tekst) każdej prozy odpowiedzi — pola spoza ``_POLA_NIE_PROZY`` i bez ``_latex``."""
+    wynik: list[tuple[str, str]] = []
+    if isinstance(dane, dict):
+        for k, v in dane.items():
+            if k.endswith("_latex") or k in _POLA_NIE_PROZY or k.endswith("_ref"):
+                continue
+            wynik.extend(_proza_odpowiedzi(v, f"{klucz}/{k}"))
+    elif isinstance(dane, list):
+        for i, v in enumerate(dane):
+            wynik.extend(_proza_odpowiedzi(v, f"{klucz}[{i}]"))
+    elif isinstance(dane, str):
+        wynik.append((klucz, dane))
+    return wynik
+
+
+@pytest.mark.parametrize("z_zabezpieczeniem", [True, False])
+def test_proza_widoku_aparatury_bez_symboli_ascii(klient: TestClient, z_zabezpieczeniem: bool):
+    """Karta KD6: każdy tekst odpowiedzi pokazywany w szczegółach aparatury pól (podstawy
+    znamion, zdania czasu, pochodzenie czasu przerwania prądu, ślady, braki, wartości robocze)
+    nazywa wielkości słowami — symbol wielkości przychodzi wyłącznie w polach ``*_latex``
+    i renderuje go MathRenderer. Wzorzec gołego indeksu z ``ui_math_guard`` (jedno źródło).
+    Iloczyn: pole z czasem z nastaw (zabezpieczenie) × pole bez nastaw (czas nieustalony)."""
+    straznik = _straznik_matematyki_ui()
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=z_zabezpieczeniem)
+    run_id = _bieg(klient, case_id)
+    widok = _wytrzymalosc(klient, case_id, station_ref, run_id).json()
+
+    proza = _proza_odpowiedzi(widok["pola"])
+    assert len(proza) > 20, "odpowiedź bez prozy — test niczego nie sprawdza"
+    naruszenia = [
+        (sciezka, tekst)
+        for sciezka, tekst in proza
+        if straznik.WZORZEC_GOLY_INDEKS.search(straznik.SEGMENT_WZORU_RE.sub(" ", tekst))
+    ]
+    assert naruszenia == [], "\n".join(f"{s}: {t}" for s, t in naruszenia)

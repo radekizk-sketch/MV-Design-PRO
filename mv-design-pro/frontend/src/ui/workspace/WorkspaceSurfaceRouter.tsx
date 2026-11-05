@@ -2572,7 +2572,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         )}
       </SectionCard>
 
-      <SectionCard title="Dostępne paczki uzasadnień" eyebrow="Lista 12 typów">
+      <SectionCard title="Dostępne paczki uzasadnień" eyebrow="Lista 11 typów">
         <div data-testid="proof-pack-list" className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           {PROOF_PACK_TYPES.map((pt) => (
             <div
@@ -2666,11 +2666,6 @@ const PROOF_PACK_TYPES = [
     id: 'PROTECTION_OVERCURRENT',
     labelPl: 'Zabezpieczenia nadprądowe',
     descriptionPl: 'IEC 60255 IDMT + selektywność (margines numeryczny).',
-  },
-  {
-    id: 'EARTHING_GROUND_FAULT_SN',
-    labelPl: 'Tor ziemnozwarciowy',
-    descriptionPl: 'Prądy ziemnozwarciowe w sieci SN izolowanej/skompensowanej.',
   },
 ];
 

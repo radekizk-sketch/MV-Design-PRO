@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta GEOMETRIA-STACJI (Z-03, Z-05, Z-07, Z-08, Z-06c) — schemat = rzeczywista elektryka
  * stacji i pól.

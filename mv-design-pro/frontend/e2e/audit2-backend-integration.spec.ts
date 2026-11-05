@@ -5,14 +5,15 @@
  *   poetry run uvicorn src.api.main:app --reload --port 8000
  *
  * Pokrywa scenariusze A-P (16 acceptance scenarios) zwiazane z audytem 2:
- *   A. GET /api/v1/catalog/audit2/snapshot zwraca 7 katalogow
+ *   A. GET /api/v1/catalog/audit2/snapshot zwraca 6 katalogow
  *   B. GET BESS modes: 9 trybow
  *   C. GET tap-changers: 4 pozycje (OLTC + DETC)
  *   D. GET HV fuses: 4 pozycje (klasy)
  *   E. GET device-withstand: 5 aparatow
  *   F. GET PF curves: 5 krzywych z parametrami
  *   G. GET block-transformers: 5 pozycji (PV/BESS/FW)
- *   H. GET MV neutral groundings: 5 typow
+ *   H. (usuniety — dawny katalog „MV neutral groundings" skasowany kartą UX-04/POLE-ZU-
+ *      SKLADOWA-ZEROWA; uziemienie sieci SN opisuje zespół uziemiający sekcji)
  *   I. POST validate-vt-grounding: petersen 1.5 -> FAIL
  *   J. POST validate-vt-grounding: petersen 1.9 -> OK
  *   K. POST validate-device-withstand: I_dyn 50 ka -> OK
@@ -49,7 +50,7 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     test.skip(!up, `Backend nie uruchomiony pod ${BACKEND_BASE}.`);
   });
 
-  test('A. snapshot zwraca 7 katalogow', async ({ request }) => {
+  test('A. snapshot zwraca 6 katalogow', async ({ request }) => {
     const res = await request.get(`${BACKEND_BASE}/api/v1/catalog/audit2/snapshot`);
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
@@ -59,7 +60,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(body).toHaveProperty('device_withstand');
     expect(body).toHaveProperty('pf_curves');
     expect(body).toHaveProperty('block_transformers');
-    expect(body).toHaveProperty('mv_neutral_groundings');
   });
 
   test('B. BESS modes: minimum 9 trybow', async ({ request }) => {
@@ -168,16 +168,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(mvToMv).toEqual([]);
   });
 
-  test('H. MV neutral groundings: 4 typy', async ({ request }) => {
-    const res = await request.get(`${BACKEND_BASE}/api/v1/catalog/audit2/mv-neutral-groundings`);
-    const body = await res.json();
-    const types = new Set(body.map((g: { grounding_type: string }) => g.grounding_type));
-    expect(types.has('isolated')).toBeTruthy();
-    expect(types.has('petersen_coil')).toBeTruthy();
-    expect(types.has('resistor_grounded')).toBeTruthy();
-    expect(types.has('directly_grounded')).toBeTruthy();
-  });
-
   test('I. validate-vt-grounding petersen 1.5 -> FAIL', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-vt-grounding`,
@@ -253,7 +243,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
   test('O. build-station-payload deterministic z DERs', async ({ request }) => {
     const payload = {
       station_id: 'station_e2e_001',
-      mv_neutral_grounding_ref: 'mng_petersen',
       tap_changer_refs: ['tc_oltc_110sn_19_125'],
       der_specs: [
         {
@@ -346,7 +335,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/${encodeURIComponent(stacja!.ref_id)}`,
       {
         data: {
-          mv_neutral_grounding_ref: 'mng_petersen',
           tap_changer_refs: [],
           der_specs: [
             {
@@ -458,7 +446,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/station-pf-test`,
       {
         data: {
-          mv_neutral_grounding_ref: 'mng_petersen',
           tap_changer_refs: [],
           der_specs: [],
           transformer_tap_changers: { tr_001: 'tc_oltc_110sn_19_125' },
@@ -584,7 +571,8 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     // od pojemnosci doziemnej sieci, nastrojenia dlawika/rezystora i impedancji
     // petli; niesie je model (Source.z0_z1_ratio / r0_ohm / x0_ohm), z ktorego
     // liczy SC1F. Asercja NEGATYWNA jest bramka regresji — drabinka stalych nie
-    // moze wrocic bocznymi drzwiami mimo mv_neutral_grounding_ref w konfiguracji.
+    // moze wrocic bocznymi drzwiami (sposob uziemienia SN niesie wylacznie zespol
+    // uziemiajacy sekcji w modelu — karta UX-04/POLE-ZU).
     expect(applied).not.toHaveProperty('grounding_z0_z1_ratio');
   });
 });

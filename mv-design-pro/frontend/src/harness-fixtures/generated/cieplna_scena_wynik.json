@@ -48,8 +48,8 @@
         "czas_wylaczenia": {
           "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
           "tk_s": 1.0,
-          "zrodlo": "zalozenie_przypadku",
-          "powod_pl": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "zrodlo": "wartosc_robocza",
+          "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
           "urzadzenie_ref": "f3f4e56c-097c-571c-a6f3-57c51f44ff8b",
           "urzadzenie_nazwa": "Sprzęgło Q1",
           "funkcja": null,
@@ -58,7 +58,17 @@
           "krzywa": null,
           "tms": null,
           "stala_a": null,
-          "stala_b": null
+          "stala_b": null,
+          "podstawa_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
+          "dana_przyjeta": {
+            "nazwa_pl": "czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku)",
+            "wartosc": {
+              "wartosc": 1.0,
+              "jednostka": "s"
+            },
+            "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
+            "jakosc": "ESTIMATED"
+          }
         },
         "i2t_a2s": null,
         "i2t_dopuszczalne_a2s": null,
@@ -67,7 +77,9 @@
         "powod_decyzji_pl": null,
         "zalecenia": [],
         "wrazliwosc": [],
-        "uzasadnienie_k": null
+        "uzasadnienie_k": null,
+        "prad_cieplny": null,
+        "dane_przyjete": []
       },
       {
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -85,8 +97,8 @@
         "czas_wylaczenia": {
           "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
           "tk_s": 1.0,
-          "zrodlo": "zalozenie_przypadku",
-          "powod_pl": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "zrodlo": "wartosc_robocza",
+          "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
           "urzadzenie_ref": "f3f4e56c-097c-571c-a6f3-57c51f44ff8b",
           "urzadzenie_nazwa": "Sprzęgło Q1",
           "funkcja": null,
@@ -95,7 +107,17 @@
           "krzywa": null,
           "tms": null,
           "stala_a": null,
-          "stala_b": null
+          "stala_b": null,
+          "podstawa_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
+          "dana_przyjeta": {
+            "nazwa_pl": "czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku)",
+            "wartosc": {
+              "wartosc": 1.0,
+              "jednostka": "s"
+            },
+            "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
+            "jakosc": "ESTIMATED"
+          }
         },
         "i2t_a2s": null,
         "i2t_dopuszczalne_a2s": null,
@@ -104,7 +126,30 @@
         "powod_decyzji_pl": null,
         "zalecenia": [],
         "wrazliwosc": [],
-        "uzasadnienie_k": null
+        "uzasadnienie_k": null,
+        "prad_cieplny": {
+          "ikss_a": 643.64107688,
+          "kappa": 1.86109846101,
+          "tk_s": 1.0,
+          "m": 0.066868867193,
+          "n": 1.0,
+          "ith_a": 664.812648765,
+          "wzor_latex": "I_{th} = I''_{k}\\sqrt{m + n}",
+          "wzor_m_latex": "m = \\frac{1}{2 f T_k \\ln(\\kappa - 1)}\\left(e^{4 f T_k \\ln(\\kappa - 1)} - 1\\right)",
+          "powod_pl": null,
+          "zalozenie_kappa_pl": "przyjęto κ punktu zwarcia (punkt „Szyna SN”) jako κ wkładu prądu w gałęzi — IEC 60909-0 §4.3.1 (κ punktu zwarcia) i IEC 60865-1 §5.8 (m z κ punktu); wynik biegu nie niesie κ dróg wkładu, a droga o mniejszym R/X niż zastępcze dałaby wyższe κ i większy prąd cieplny"
+        },
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "współczynnik udaru κ wkładu gałęzi",
+            "wartosc": {
+              "wartosc": 1.86109846101,
+              "jednostka": "1"
+            },
+            "powod_pl": "przyjęto κ punktu zwarcia (punkt „Szyna SN”) jako κ wkładu prądu w gałęzi — IEC 60909-0 §4.3.1 (κ punktu zwarcia) i IEC 60865-1 §5.8 (m z κ punktu); wynik biegu nie niesie κ dróg wkładu, a droga o mniejszym R/X niż zastępcze dałaby wyższe κ i większy prąd cieplny",
+            "jakosc": "ESTIMATED"
+          }
+        ]
       }
     ],
     "summary": {
@@ -140,6 +185,15 @@
         "jednostka": "1"
       },
       "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+      "jakosc": "ESTIMATED"
+    },
+    {
+      "nazwa_pl": "czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku)",
+      "wartosc": {
+        "wartosc": 1.0,
+        "jednostka": "s"
+      },
+      "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
       "jakosc": "ESTIMATED"
     }
   ]

@@ -223,9 +223,13 @@ def test_konsumenci_wiersza_biegu_jedna_wyspa(deklaracja: str, scenariusz: str) 
 @pytest.mark.parametrize("deklaracja", sorted(DEKLARACJE_TRAFO))
 def test_luk_elektryczny_i_wytrzymalosc_cieplna(deklaracja: str) -> None:
     robocza = DEKLARACJE_TRAFO[deklaracja] is None
+    # Jawny czas cieplny przypadku: test liczy WYŁĄCZNIE dane przyjęte tolerancji nN, więc czas
+    # trwania zwarcia przewodów nie może być tu wartością roboczą 1 s (pakiet 8 karty
+    # EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN — ta dopisałaby do widoku własną daną przyjętą).
     run = _bieg_zwarciowy(
         f"luk-{deklaracja}",
         _build_mv_lv_enm("Sieć", tolerancja=DEKLARACJE_TRAFO[deklaracja]),  # type: ignore[arg-type]
+        {"thermal_time_seconds": 1.0},
     )
     wiersze = run.raw_result["results"]
     wiersze_nn = [w for w in wiersze if w.get("tolerancja_nn_robocza")]

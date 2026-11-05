@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * topologyTree — unit tests on the tree extraction (root/trunk/laterals), on the real
  * >=52-station substrate (via the canonical reader bridge).

@@ -187,7 +187,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
     {
       data: {
-        mv_neutral_grounding_ref: null,
         tap_changer_refs: [],
         der_specs: [],
         bay_device_withstand: {

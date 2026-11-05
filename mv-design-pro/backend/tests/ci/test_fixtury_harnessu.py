@@ -658,6 +658,36 @@ def test_gotowosc_z_parametrami_rozni_sie_od_gotowosci_bez_parametrow() -> None:
             assert bez[kod] == "NIEPOTWIERDZONA", kod
 
 
+def test_parametr_wymagany_karty_jest_warunkiem_blokujacym_gotowosci() -> None:
+    """Predykaty parami (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3): parametr karty
+    katalogu oznaczony `wymagane` MUSI być warunkiem blokującym gotowości tego rodzaju, a
+    warunek parametru NIEBLOKUJĄCY nie może mieć na karcie pola wymaganego. Dawniej
+    `relay_methods` przestał blokować gotowość (zasada nr 4 — kryterium dostępności funkcji
+    jest NIE_OCENIONO), a karta dalej mówiła projektantowi „wymagane”. Odwrotna implikacja
+    nie obowiązuje: parametr z propozycją z modelu (U_r wyłącznika, widma z kart widmowych)
+    nie jest wymagany od projektanta, a jednak blokuje, gdy model go też nie niesie."""
+    katalog = {item["kod"]: item for item in eksport.katalog_analiz_v126()["items"]}
+    sprawdzone = 0
+    for analiza in eksport.gotowosc_v126_scena_akademickie()["analizy"]:
+        pola = katalog[analiza["kod"]]["dane"]["od_uzytkownika"]
+        for warunek in analiza["warunki"]:
+            klucz = warunek.get("klucz_parametru")
+            if not klucz:
+                continue
+            wymagane = [p for p in pola if _klucz_najwyzszy(p["klucz"]) == klucz and p["wymagane"]]
+            if not warunek["blokujacy"]:
+                assert wymagane == [], (analiza["kod"], klucz)
+            sprawdzone += 1
+        for pole in pola:
+            if not pole["wymagane"]:
+                continue
+            klucz = _klucz_najwyzszy(pole["klucz"])
+            assert any(
+                w.get("klucz_parametru") == klucz and w["blokujacy"] for w in analiza["warunki"]
+            ), (analiza["kod"], pole["klucz"])
+    assert sprawdzone >= 9
+
+
 #: Rodzaje POTWIERDZONE na sieci sceny, dla których scena ŚWIADOMIE nie niesie biegu —
 #: z powodem (uczciwość natychmiastowa 2026-09-23: liczby solvera harmonicznego
 #: niezwalidowanego nie są przypinane w fixturach; bieg z oceną niewykonaną sprawdzają

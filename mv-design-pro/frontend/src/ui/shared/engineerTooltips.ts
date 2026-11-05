@@ -136,7 +136,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
 
   // Aparatura pola SN — rozróżnienie funkcjonalne
   apparatus_breaker: {
-    text: 'Wyłącznik — łączy i przerywa prądy robocze ORAZ zwarciowe (pełna zdolność łączeniowa Icu/Ics). Wymagany w polach z funkcją zabezpieczeniową.',
+    text: 'Wyłącznik — łączy i przerywa prądy robocze ORAZ zwarciowe (znamionowy prąd wyłączalny zwarciowy I_sc wg IEC 62271-100 § 4.101). Wymagany w polach z funkcją zabezpieczeniową.',
     norm: 'PN-EN 62271-100',
   },
   apparatus_disconnector: {

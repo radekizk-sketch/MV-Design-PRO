@@ -146,20 +146,6 @@ def _evaluate_rule(
             target_id,
             config,
         )
-    if rule.rule_id == "NR_P19_001":
-        return _evaluate_touch_voltage_rule(
-            rule,
-            key_results.get("u_touch_v"),
-            target_id,
-            config,
-        )
-    if rule.rule_id == "NR_P19_002":
-        return _evaluate_earth_current_rule(
-            rule,
-            key_results.get("i_earth_a"),
-            target_id,
-            config,
-        )
     if rule.rule_id == "NR_P11_001":
         return _evaluate_availability_rule(
             rule,
@@ -282,110 +268,6 @@ def _evaluate_selectivity_rule(
         limit_value=None,
         limit_unit=None,
         margin=None,
-        why_pl=why_pl,
-        requires=(),
-    )
-
-
-def _evaluate_touch_voltage_rule(
-    rule: NormativeRule,
-    value: ProofValue | None,
-    target_id: str,
-    config: NormativeConfig,
-) -> NormativeItem:
-    if value is None or not _is_numeric(value.value):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
-
-    observed = float(value.value)
-    unit = value.unit
-    warn = config.touch_voltage_warn_v
-    fail = config.touch_voltage_fail_v
-
-    if warn is None and fail is None:
-        return NormativeItem(
-            rule_id=rule.rule_id,
-            title_pl=rule.title_pl,
-            severity=NormativeSeverity.INFO,
-            status=NormativeStatus.NOT_EVALUATED,
-            target_id=target_id,
-            observed_value=observed,
-            unit=unit,
-            limit_value=None,
-            limit_unit=unit,
-            margin=None,
-            why_pl="Brak limitów napięcia dotykowego w konfiguracji.",
-            requires=("touch_voltage_warn_v", "touch_voltage_fail_v"),
-        )
-
-    warn_value = warn if warn is not None else fail
-    fail_value = fail if fail is not None else warn
-    status, severity, limit = _threshold_status(observed, warn_value, fail_value)
-    margin = observed - limit
-    why_pl = _format_threshold_why(observed, limit, unit, status)
-
-    return NormativeItem(
-        rule_id=rule.rule_id,
-        title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
-        target_id=target_id,
-        observed_value=observed,
-        unit=unit,
-        limit_value=limit,
-        limit_unit=unit,
-        margin=margin,
-        why_pl=why_pl,
-        requires=(),
-    )
-
-
-def _evaluate_earth_current_rule(
-    rule: NormativeRule,
-    value: ProofValue | None,
-    target_id: str,
-    config: NormativeConfig,
-) -> NormativeItem:
-    if value is None or not _is_numeric(value.value):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
-
-    observed = float(value.value)
-    unit = value.unit
-    warn = config.earth_current_warn_a
-    fail = config.earth_current_fail_a
-
-    if warn is None and fail is None:
-        return NormativeItem(
-            rule_id=rule.rule_id,
-            title_pl=rule.title_pl,
-            severity=NormativeSeverity.INFO,
-            status=NormativeStatus.PASS,
-            target_id=target_id,
-            observed_value=observed,
-            unit=unit,
-            limit_value=None,
-            limit_unit=unit,
-            margin=None,
-            why_pl="Brak limitów prądu doziemnego — wynik informacyjny.",
-            requires=(),
-        )
-
-    warn_value = warn if warn is not None else fail
-    fail_value = fail if fail is not None else warn
-    status, severity, limit = _threshold_status(observed, warn_value, fail_value)
-    margin = observed - limit
-    why_pl = _format_threshold_why(observed, limit, unit, status)
-
-    return NormativeItem(
-        rule_id=rule.rule_id,
-        title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
-        target_id=target_id,
-        observed_value=observed,
-        unit=unit,
-        limit_value=limit,
-        limit_unit=unit,
-        margin=margin,
         why_pl=why_pl,
         requires=(),
     )

@@ -101,10 +101,9 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (185 kodów — pomiar `len(READINESS_CODES)` na drzewie
- * scalonym kart UX-04/POLE-BKR-MODEL i UX-04/POLE-LINIOWE-WZORZEC: 166 bazy + 8 kodów pola BKR
- * + 9 kodów `bay.*` + 2 kody stanu obiektu w katalogu). Brak wpisu dla kodu z rejestru jest
- * błędem wykrywanym testem klasy
+ * KOMPLETNA tabela kodów kanonu (196 kodów — pomiar `len(READINESS_CODES)` na drzewie
+ * scalonym kart UX-04/POLE-BKR-MODEL, UX-04/POLE-LINIOWE-WZORZEC i zespołu uziemiającego SN).
+ * Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -134,7 +133,24 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
   'earthing.neutral_grounding_inconsistent': EDYCJA,
-  'earthing.electrode_data_missing': EDYCJA,
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z danymi uziemienia pominiętymi
+  // w obliczeniach — edycja parametrów źródła (kasacja opisu punktu neutralnego i Z0).
+  'source.sn_neutral_data_ignored': EDYCJA,
+  // Zespół uziemiający SN (walidator E-ZU-*, W-ZU-*): każdy kod wskazuje element zespołu,
+  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, odbiór potrzeb
+  // własnych, pozycja katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
+  // zapisuje nastawę i dane producenta.
+  'earthing.zespol_bus_invalid': EDYCJA,
+  'earthing.zespol_neutral_undefined': EDYCJA,
+  'earthing.zespol_spz_without_resistor': EDYCJA,
+  'earthing.zespol_transformer_trip_missing': EDYCJA,
+  'earthing.zespol_auxiliary_load_missing': EDYCJA,
+  'earthing.network_grounding_warning': EDYCJA,
+  'earthing.zespol_direct_earthing': EDYCJA,
+  'earthing.zespol_voltage_mismatch': EDYCJA,
+  // Bocznik składowej zerowej zespołu z wartości roboczej (zasada nr 4): formularz
+  // parametrów zespołu — projektant wpisuje dane producenta albo nastawę dławika.
+  'zespol_uziemiajacy.wartosc_robocza': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),
@@ -352,7 +368,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'power_flow.unbalanced_no_zero_sequence_path': EDYCJA,
   'power_flow.unbalanced_shunt_admittance_omitted': EDYCJA,
   'power_flow.unbalanced_magnetising_branch_omitted': EDYCJA,
-  'power_flow.unbalanced_losses_self_impedance': EDYCJA,
   'power_flow.unbalanced_transformer_series_model': EDYCJA,
   'power_flow.unbalanced_zero_sequence_confined': EDYCJA,
   'power_flow.unbalanced_zero_sequence_via_source': EDYCJA,

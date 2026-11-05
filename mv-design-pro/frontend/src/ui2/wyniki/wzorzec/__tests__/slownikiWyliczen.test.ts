@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Słowniki wartości wyliczeniowych ekranów wyników (karta #145, §0 pkt 2).
  *

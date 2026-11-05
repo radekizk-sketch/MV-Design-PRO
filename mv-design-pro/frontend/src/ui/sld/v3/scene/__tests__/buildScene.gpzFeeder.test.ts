@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Feedery z pól GPZ — KANON DEDYKOWANYCH PÓL (dyrektywa właściciela,
  * 2026-07-17): z jednego pola liniowego NIGDY nie wychodzą dwa kable —

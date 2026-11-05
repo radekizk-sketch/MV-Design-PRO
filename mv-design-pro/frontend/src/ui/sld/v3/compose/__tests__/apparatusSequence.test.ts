@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F10.2 — testy `compose/apparatusSequence.ts` `apparatusIdentifiers`
  * (SLD_CAD_SPEC_V3 §19.1, V12K-035): identyfikator PER-APARAT (Q/QE/T),

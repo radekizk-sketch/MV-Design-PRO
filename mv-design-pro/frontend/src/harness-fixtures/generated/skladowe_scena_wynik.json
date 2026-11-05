@@ -5,101 +5,30 @@
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "target_name": "Szyna SN",
-      "ikss_ka": 0.0028127459119,
-      "ip_ka": 0.00795577146358,
-      "ith_ka": 0.00487691478032,
-      "sk_mva": 0.0730772824229,
-      "rk_ohm": 0.1082783283,
-      "xk_ohm": -10160.4763524,
-      "zk_ohm": 10160.476353,
-      "rx_ratio": -1.06568161319e-05,
-      "xr_ratio": -93836.6569923,
-      "kappa": 2.00003133154,
+      "ikss_ka": null,
+      "ip_ka": null,
+      "ith_ka": null,
+      "sk_mva": null,
+      "rk_ohm": null,
+      "xk_ohm": null,
+      "zk_ohm": null,
+      "rx_ratio": null,
+      "xr_ratio": null,
+      "kappa": null,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "tb_zrodlo": {
-        "wartosc_s": 0.1,
-        "pochodzenie": "PROPOZYCJA",
-        "wartosc_robocza": true,
-        "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
-        "ib_z_udzialem_maszyn": false
-      },
-      "parametry_robocze_maszyn": [
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "sn_mva",
-          "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-          "symbol": "S_rG",
-          "wartosc": 2.5,
-          "jednostka": "MVA",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "xd_subtransient_pu",
-          "nazwa_pl": "reaktancja podprzejściowa nasycona",
-          "symbol": "x″d",
-          "wartosc": 0.15,
-          "jednostka": "p.u. (S_rG, U_rG)",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "cos_phi",
-          "nazwa_pl": "znamionowy współczynnik mocy",
-          "symbol": "cos φ_r",
-          "wartosc": 0.8,
-          "jednostka": "1",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        }
-      ],
-      "ib_ka": 0.0028127459119,
-      "i_dc_ka": 0.00397915538951,
-      "ik_ka": 0.0028127459119,
-      "ik_thevenin_ka": 0.0028127459119,
-      "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842977745e-05,
-      "z1_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
-      },
-      "z2_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
-      },
-      "z0_ohm": {
-        "re": 1.2745363594e-09,
-        "im": -10162.601626
-      },
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
+      "ik_ka": null,
+      "ik_thevenin_ka": null,
+      "ik_inverters_ka": null,
+      "i2t_ka2s": null,
+      "z1_ohm": null,
+      "z2_ohm": null,
+      "z0_ohm": null,
       "branch_contributions": null,
       "branch_contributions_available": true,
       "fault_type": "1F",
@@ -111,8 +40,113 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
+      "non_physical_reason": "fault.zero_sequence_outside_iec60909",
+      "brak_wyniku_zerowego": {
+        "przyczyna": "poza_zakresem_iec60909",
+        "kod": "fault.zero_sequence_outside_iec60909",
+        "status": "NIE_DOTYCZY",
+        "wyjasnienie": {
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
+          "czego_brakuje": [],
+          "zastrzezenia": []
+        },
+        "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
+      },
       "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -122,19 +156,7 @@
         "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
-        "trace_step_refs": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10,
-          11
-        ],
+        "trace_step_refs": [],
         "method_basis": "IEC_60909",
         "requires_z0": true,
         "z0_source": "ENM_COMMITTED",
@@ -172,8 +194,8 @@
         "pochodzenie": "PROPOZYCJA",
         "wartosc_robocza": true,
         "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
         "ib_z_udzialem_maszyn": false
       },
       "parametry_robocze_maszyn": [
@@ -268,17 +290,17 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -315,8 +337,8 @@
         "pochodzenie": "PROPOZYCJA",
         "wartosc_robocza": true,
         "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)",
         "ib_z_udzialem_maszyn": false
       },
       "parametry_robocze_maszyn": [
@@ -411,17 +433,17 @@
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          23,
-          24,
-          25,
-          26,
-          27,
-          28,
-          29,
-          30,
-          31,
-          32,
-          33
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -438,101 +460,30 @@
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "target_name": "Stacja B SN",
-      "ikss_ka": 0.0028127459119,
-      "ip_ka": 0.00795577146358,
-      "ith_ka": 0.00487691478032,
-      "sk_mva": 0.0730772824229,
-      "rk_ohm": 0.1082783283,
-      "xk_ohm": -10160.4763524,
-      "zk_ohm": 10160.476353,
-      "rx_ratio": -1.06568161319e-05,
-      "xr_ratio": -93836.6569923,
-      "kappa": 2.00003133154,
+      "ikss_ka": null,
+      "ip_ka": null,
+      "ith_ka": null,
+      "sk_mva": null,
+      "rk_ohm": null,
+      "xk_ohm": null,
+      "zk_ohm": null,
+      "rx_ratio": null,
+      "xr_ratio": null,
+      "kappa": null,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "tb_zrodlo": {
-        "wartosc_s": 0.1,
-        "pochodzenie": "PROPOZYCJA",
-        "wartosc_robocza": true,
-        "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
-        "ib_z_udzialem_maszyn": false
-      },
-      "parametry_robocze_maszyn": [
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "sn_mva",
-          "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-          "symbol": "S_rG",
-          "wartosc": 2.5,
-          "jednostka": "MVA",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "xd_subtransient_pu",
-          "nazwa_pl": "reaktancja podprzejściowa nasycona",
-          "symbol": "x″d",
-          "wartosc": 0.15,
-          "jednostka": "p.u. (S_rG, U_rG)",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "cos_phi",
-          "nazwa_pl": "znamionowy współczynnik mocy",
-          "symbol": "cos φ_r",
-          "wartosc": 0.8,
-          "jednostka": "1",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        }
-      ],
-      "ib_ka": 0.0028127459119,
-      "i_dc_ka": 0.00397915538951,
-      "ik_ka": 0.0028127459119,
-      "ik_thevenin_ka": 0.0028127459119,
-      "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842977745e-05,
-      "z1_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
-      },
-      "z2_ohm": {
-        "re": 0.0541391635129,
-        "im": 1.06263679295
-      },
-      "z0_ohm": {
-        "re": 1.2745363594e-09,
-        "im": -10162.601626
-      },
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
+      "ik_ka": null,
+      "ik_thevenin_ka": null,
+      "ik_inverters_ka": null,
+      "i2t_ka2s": null,
+      "z1_ohm": null,
+      "z2_ohm": null,
+      "z0_ohm": null,
       "branch_contributions": null,
       "branch_contributions_available": true,
       "fault_type": "1F",
@@ -544,8 +495,113 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
+      "non_physical_reason": "fault.zero_sequence_outside_iec60909",
+      "brak_wyniku_zerowego": {
+        "przyczyna": "poza_zakresem_iec60909",
+        "kod": "fault.zero_sequence_outside_iec60909",
+        "status": "NIE_DOTYCZY",
+        "wyjasnienie": {
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
+          "czego_brakuje": [],
+          "zastrzezenia": []
+        },
+        "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
+      },
       "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -555,19 +611,7 @@
         "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
-        "trace_step_refs": [
-          34,
-          35,
-          36,
-          37,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44
-        ],
+        "trace_step_refs": [],
         "method_basis": "IEC_60909",
         "requires_z0": true,
         "z0_source": "ENM_COMMITTED",
@@ -585,101 +629,30 @@
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "target_name": "Stacja C SN",
-      "ikss_ka": 0.00281425466409,
-      "ip_ka": 0.00796330032695,
-      "ith_ka": 0.00501865538279,
-      "sk_mva": 0.0731164809546,
-      "rk_ohm": 2.93742408393,
-      "xk_ohm": -10155.0287875,
-      "zk_ohm": 10155.0292124,
-      "rx_ratio": -0.000289258075519,
-      "xr_ratio": -3457.12042163,
-      "kappa": 2.00085078783,
+      "ikss_ka": null,
+      "ip_ka": null,
+      "ith_ka": null,
+      "sk_mva": null,
+      "rk_ohm": null,
+      "xk_ohm": null,
+      "zk_ohm": null,
+      "rx_ratio": null,
+      "xr_ratio": null,
+      "kappa": null,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
-      "tb_s": 0.1,
-      "tb_zrodlo": {
-        "wartosc_s": 0.1,
-        "pochodzenie": "PROPOZYCJA",
-        "wartosc_robocza": true,
-        "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
-        "ib_z_udzialem_maszyn": false
-      },
-      "parametry_robocze_maszyn": [
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "sn_mva",
-          "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-          "symbol": "S_rG",
-          "wartosc": 2.5,
-          "jednostka": "MVA",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "xd_subtransient_pu",
-          "nazwa_pl": "reaktancja podprzejściowa nasycona",
-          "symbol": "x″d",
-          "wartosc": 0.15,
-          "jednostka": "p.u. (S_rG, U_rG)",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        },
-        {
-          "source_id": "gen_sync",
-          "source_name": "Generator synchroniczny",
-          "parametr": "cos_phi",
-          "nazwa_pl": "znamionowy współczynnik mocy",
-          "symbol": "cos φ_r",
-          "wartosc": 0.8,
-          "jednostka": "1",
-          "pochodzenie": "PROPOZYCJA",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
-          "wielkosci": [
-            "ikss",
-            "ip",
-            "ib",
-            "ith"
-          ]
-        }
-      ],
-      "ib_ka": 0.00281425466409,
-      "i_dc_ka": 0.00401628904957,
-      "ik_ka": 0.00281425466409,
-      "ik_thevenin_ka": 0.00281425466409,
-      "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.51869018513e-05,
-      "z1_ohm": {
-        "re": 0.755712041326,
-        "im": 1.92641924066
-      },
-      "z2_ohm": {
-        "re": 0.755712041326,
-        "im": 1.92641924066
-      },
-      "z0_ohm": {
-        "re": 1.42600000127,
-        "im": -10158.881626
-      },
+      "tb_s": null,
+      "ib_ka": null,
+      "i_dc_ka": null,
+      "ik_ka": null,
+      "ik_thevenin_ka": null,
+      "ik_inverters_ka": null,
+      "i2t_ka2s": null,
+      "z1_ohm": null,
+      "z2_ohm": null,
+      "z0_ohm": null,
       "branch_contributions": null,
       "branch_contributions_available": true,
       "fault_type": "1F",
@@ -691,8 +664,113 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
       ],
+      "non_physical_reason": "fault.zero_sequence_outside_iec60909",
+      "brak_wyniku_zerowego": {
+        "przyczyna": "poza_zakresem_iec60909",
+        "kod": "fault.zero_sequence_outside_iec60909",
+        "status": "NIE_DOTYCZY",
+        "wyjasnienie": {
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
+          "czego_brakuje": [],
+          "zastrzezenia": []
+        },
+        "elementy": []
+      },
+      "doziemienie_sieci": {
+        "tryb": "izolowany",
+        "tryb_pl": "punkt neutralny izolowany",
+        "charakter": "pojemnosciowy",
+        "charakter_pl": "prąd pojemnościowy sieci",
+        "prad_a": 2.6532,
+        "i_c_a": 2.6532,
+        "i_l_a": null,
+        "i_w_a": null,
+        "rozstrojenie": null,
+        "u_f_v": 8660.254,
+        "u0_v": 8660.254,
+        "u_faza_b_v": 15000.0,
+        "u_faza_c_v": 15000.0,
+        "wspolczynnik_k": 1.732051,
+        "z_f_ohm": null,
+        "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+        "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
+        "zastrzezenia_pl": [
+          "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
+        ],
+        "brak_pl": null,
+        "podwojne_doziemienie_pl": "Podwójne zwarcie doziemne (dwa doziemienia w różnych fazach i miejscach) opisuje IEC 60909-3; program go nie liczy — wynik dotyczy pojedynczego doziemienia.",
+        "slad": [
+          {
+            "key": "doziemienie_prad_pojemnosciowy",
+            "title": "Prąd pojemnościowy sieci galwanicznej",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "u_n_kv": 15.0,
+              "b0_s": 0.00010212,
+              "brak_b0_pl": null
+            },
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "i_c_a": 2.6532
+            }
+          },
+          {
+            "key": "doziemienie_prad_izolowany",
+            "title": "Prąd doziemienia — prąd pojemnościowy sieci",
+            "formula_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
+            "inputs": {
+              "i_c_a": 2.6532,
+              "i_l_a": null,
+              "i_w_a": null,
+              "z_f_ohm": null
+            },
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
+            "result": {
+              "prad_a": 2.6532,
+              "rozstrojenie": null
+            }
+          },
+          {
+            "key": "doziemienie_napiecia_faz",
+            "title": "Napięcia przy doziemieniu (impedancje podłużne pominięte)",
+            "formula_latex": "U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|",
+            "inputs": {
+              "u_f_v": 8660.25403784,
+              "y_s": {
+                "re": 0.0,
+                "im": 0.00030636
+              },
+              "z_f_ohm": null
+            },
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
+            "result": {
+              "u0_v": 8660.254,
+              "u_faza_b_v": 15000.0,
+              "u_faza_c_v": 15000.0
+            }
+          }
+        ],
+        "stan_awsc": "spoczynek",
+        "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
+        "dane_przyjete": [
+          {
+            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "wartosc": {
+              "wartosc": 1.2e-06,
+              "jednostka": "S/km"
+            },
+            "powod_pl": "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "jakosc": "ESTIMATED"
+          }
+        ],
+        "kompletnosc_dowodu": "NIEPELNY"
+      },
       "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_binding": {
         "reporting_status": "reportable",
@@ -702,19 +780,7 @@
         "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
-        "trace_step_refs": [
-          45,
-          46,
-          47,
-          48,
-          49,
-          50,
-          51,
-          52,
-          53,
-          54,
-          55
-        ],
+        "trace_step_refs": [],
         "method_basis": "IEC_60909",
         "requires_z0": true,
         "z0_source": "ENM_COMMITTED",
@@ -742,6 +808,279 @@
       "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
     }
   ],
+  "siec_zerowa": [
+    {
+      "key": "z0_line[cab_main_b]",
+      "title": "Gałąź Kabel SN 1: impedancja zerowa (szeregowa)",
+      "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
+      "inputs": {
+        "ref_id": "cab_main_b",
+        "r0_ohm_per_km": 0.42,
+        "x0_ohm_per_km": 0.31,
+        "length_km": 2.4
+      },
+      "substitution": "Z0 = 1.008 + j0.744 Ω (szereg Szyna SN↔Stacja B SN)",
+      "substitution_latex": null,
+      "result": {
+        "z0_ohm": {
+          "re": 1.008,
+          "im": 0.744
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "z0_line[line_b_c]",
+      "title": "Gałąź Linia SN 1: impedancja zerowa (szeregowa)",
+      "formula_latex": "Z_{0,line} = (r_0 + jx_0)\\cdot \\ell",
+      "inputs": {
+        "ref_id": "line_b_c",
+        "r0_ohm_per_km": 0.46,
+        "x0_ohm_per_km": 1.2,
+        "length_km": 3.1
+      },
+      "substitution": "Z0 = 1.426 + j3.72 Ω (szereg Stacja B SN↔Stacja C SN)",
+      "substitution_latex": null,
+      "result": {
+        "z0_ohm": {
+          "re": 1.426,
+          "im": 3.72
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "z0_source[src_gpz]",
+      "title": "Źródło System 110 kV: impedancja zerowa (bocznik do ziemi)",
+      "formula_latex": "Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
+      "inputs": {
+        "ref_id": "src_gpz",
+        "z0_ohm": {
+          "re": 0.6,
+          "im": 6.0
+        }
+      },
+      "substitution": "Z0 źródła = 0.6 + j6 Ω (bocznik do ziemi na szynie GPZ 110 kV)",
+      "substitution_latex": null,
+      "result": {
+        "z0_ohm": {
+          "re": 0.6,
+          "im": 6.0
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "z0_warunek_pojemnosci[1]",
+      "title": "Pojemności linii w składowej zerowej: warunek współczynnika zwarcia doziemnego (IEC 60909-0 pkt 5.2 f))",
+      "formula_latex": "k = \\max\\left(\\left|a^2 - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|,\\left|a - \\frac{Z_0 - Z_1}{2 Z_1 + Z_0}\\right|\\right),\\ Z_2 = Z_1;\\quad \\max_i k_i > 1{,}4 \\Rightarrow Y_{0,sh} = j B_0 \\ell",
+      "inputs": {
+        "galezie": [
+          {
+            "ref_id": "cab_main_b",
+            "nazwa_pl": "Kabel SN 1",
+            "b0_s": 9.84e-05,
+            "zrodlo_b0": "model"
+          },
+          {
+            "ref_id": "line_b_c",
+            "nazwa_pl": "Linia SN 1",
+            "b0_s": 3.72e-06,
+            "zrodlo_b0": "wartosc_robocza"
+          }
+        ],
+        "wezly": [],
+        "prog_k": 1.4
+      },
+      "substitution": "Sieć zerowa gałęzi Kabel SN 1, Linia SN 1: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+      "substitution_latex": null,
+      "result": {
+        "k_max": null,
+        "pojemnosci_w_y0": false
+      },
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+    },
+    {
+      "key": "tr_z0_parse[tr_hv_sn]",
+      "title": "Transformator TR 110/15: klasyfikacja uzwojeń (składowa zerowa)",
+      "formula_latex": "\\text{grupa połączeń} \\rightarrow (\\text{GN}, \\text{DN})",
+      "inputs": {
+        "ref_id": "tr_hv_sn",
+        "vector_group": "YNd11",
+        "hv_neutral": null,
+        "lv_neutral": null
+      },
+      "substitution": "GN: YN → gwiazda z uziemionym punktem neutralnym; DN: d → trójkąt",
+      "substitution_latex": null,
+      "result": {
+        "hv_winding": "grounded_wye",
+        "lv_winding": "delta",
+        "zn_hv_ohm": {
+          "re": 0.0,
+          "im": 0.0
+        },
+        "zn_lv_ohm": {
+          "re": 0.0,
+          "im": 0.0
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "tr_z0_zt[tr_hv_sn]",
+      "title": "Transformator TR 110/15: impedancja zerowa Z_T0",
+      "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
+      "inputs": {
+        "uk_percent": 12.0,
+        "pk_kw": 120.0,
+        "sn_mva": 25.0,
+        "s_base_mva": 100.0
+      },
+      "substitution": "Z_T0 = 0.0048 + j0.119904 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.479616 pu (na S_base = 100 MVA)",
+      "substitution_latex": null,
+      "result": {
+        "z_t0_pu_sn": {
+          "re": 0.0048,
+          "im": 0.119903961569
+        },
+        "z_t0_pu_base": {
+          "re": 0.0192,
+          "im": 0.479615846277
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "tr_z0_conn[tr_hv_sn]",
+      "title": "Transformator TR 110/15: połączenie sekwencji zerowej",
+      "formula_latex": "(\\text{GN},\\text{DN}) \\rightarrow \\text{połączenie},\\ Z_0 = Z_{T0} + 3Z_{N}",
+      "inputs": {
+        "hv_winding": "grounded_wye",
+        "lv_winding": "delta",
+        "z_t0_pu_base": {
+          "re": 0.0192,
+          "im": 0.479615846277
+        },
+        "zn_hv_3_pu": {
+          "re": 0.0,
+          "im": 0.0
+        },
+        "zn_lv_3_pu": {
+          "re": 0.0,
+          "im": 0.0
+        }
+      },
+      "substitution": "bocznik do ziemi po stronie GN: Z0 = 0.0192 + j0.479616 pu",
+      "substitution_latex": null,
+      "result": {
+        "connection": "hv_shunt_ground",
+        "z0_pu": {
+          "re": 0.0192,
+          "im": 0.479615846277
+        }
+      },
+      "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+    },
+    {
+      "key": "tr_z0_parse[tr_sn_nn]",
+      "title": "Transformator TR 15/0.4: klasyfikacja uzwojeń (składowa zerowa)",
+      "formula_latex": "\\text{grupa połączeń} \\rightarrow (\\text{GN}, \\text{DN})",
+      "inputs": {
+        "ref_id": "tr_sn_nn",
+        "vector_group": "Dyn11",
+        "hv_neutral": null,
+        "lv_neutral": "directly_grounded"
+      },
+      "substitution": "GN: D → trójkąt; DN: yn → gwiazda z uziemionym punktem neutralnym",
+      "substitution_latex": null,
+      "result": {
+        "hv_winding": "delta",
+        "lv_winding": "grounded_wye",
+        "zn_hv_ohm": {
+          "re": 0.0,
+          "im": 0.0
+        },
+        "zn_lv_ohm": {
+          "re": 0.0,
+          "im": 0.0
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "tr_z0_zt[tr_sn_nn]",
+      "title": "Transformator TR 15/0.4: impedancja zerowa Z_T0",
+      "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
+      "inputs": {
+        "uk_percent": 4.5,
+        "pk_kw": 6.5,
+        "sn_mva": 0.63,
+        "s_base_mva": 100.0
+      },
+      "substitution": "Z_T0 = 0.0103175 + j0.0438013 pu (na S_rT = 0.63 MVA); Z_T0 = 1.63769 + j6.95258 pu (na S_base = 100 MVA)",
+      "substitution_latex": null,
+      "result": {
+        "z_t0_pu_sn": {
+          "re": 0.0103174603175,
+          "im": 0.0438012558336
+        },
+        "z_t0_pu_base": {
+          "re": 1.63769211388,
+          "im": 6.95258029104
+        }
+      },
+      "notes": null
+    },
+    {
+      "key": "tr_z0_conn[tr_sn_nn]",
+      "title": "Transformator TR 15/0.4: połączenie sekwencji zerowej",
+      "formula_latex": "(\\text{GN},\\text{DN}) \\rightarrow \\text{połączenie},\\ Z_0 = Z_{T0} + 3Z_{N}",
+      "inputs": {
+        "hv_winding": "delta",
+        "lv_winding": "grounded_wye",
+        "z_t0_pu_base": {
+          "re": 1.63769211388,
+          "im": 6.95258029104
+        },
+        "zn_hv_3_pu": {
+          "re": 0.0,
+          "im": 0.0
+        },
+        "zn_lv_3_pu": {
+          "re": 0.0,
+          "im": 0.0
+        }
+      },
+      "substitution": "bocznik do ziemi po stronie DN: Z0 = 1.63769 + j6.95258 pu",
+      "substitution_latex": null,
+      "result": {
+        "connection": "lv_shunt_ground",
+        "z0_pu": {
+          "re": 1.63769211388,
+          "im": 6.95258029104
+        }
+      },
+      "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+    },
+    {
+      "key": "z0_numerical_reference",
+      "title": "Węzły bez drogi prądu zerowego: domknięcie macierzy, bez wyniku zwarcia",
+      "formula_latex": "Y_{0,ii} = 10^{6}\\ \\text{pu} \\Rightarrow \\text{blok rozprzężony, bez wyniku zwarcia doziemnego}",
+      "inputs": {
+        "wezly": [
+          "Stacja B SN",
+          "Stacja C SN",
+          "Szyna SN"
+        ]
+      },
+      "substitution": "Stacja B SN, Stacja C SN, Szyna SN: żaden element sieci nie łączy tych węzłów z ziemią w składowej zerowej; macierz Y0 dostaje w nich odniesienie numeryczne 10⁶ pu wyłącznie po to, by dała się odwrócić.",
+      "substitution_latex": null,
+      "result": {
+        "liczba_wezlow": 3
+      },
+      "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+    }
+  ],
   "zalozenia": [
     {
       "code": "inverter.k_sc_default_forbidden",
@@ -764,17 +1103,6 @@
       "scenariusz": "MAX",
       "punkty": [
         {
-          "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-          "element_id": "bus_sn_main",
-          "nazwa": "Szyna SN",
-          "wartosc_s": 0.1,
-          "pochodzenie": "PROPOZYCJA",
-          "wartosc_robocza": true,
-          "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-        },
-        {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "element_id": "bus_hv",
           "nazwa": "GPZ 110 kV",
@@ -782,8 +1110,8 @@
           "pochodzenie": "PROPOZYCJA",
           "wartosc_robocza": true,
           "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+          "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
         },
         {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -793,30 +1121,8 @@
           "pochodzenie": "PROPOZYCJA",
           "wartosc_robocza": true,
           "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-        },
-        {
-          "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "element_id": "bus_sn_b",
-          "nazwa": "Stacja B SN",
-          "wartosc_s": 0.1,
-          "pochodzenie": "PROPOZYCJA",
-          "wartosc_robocza": true,
-          "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-        },
-        {
-          "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-          "element_id": "bus_sn_c",
-          "nazwa": "Stacja C SN",
-          "wartosc_s": 0.1,
-          "pochodzenie": "PROPOZYCJA",
-          "wartosc_robocza": true,
-          "jakosc": "ESTIMATED",
-          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+          "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)"
         }
       ]
     }
@@ -869,7 +1175,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "67c4df9c40e78e7bbc663c8a793acc28c765081435f783fe734d7f500b2dd98e",
+      "result_hash": "ac3317d35064bc8208a79bb3448d4d6dee14dff0f4498db528f865b9e371cd2d",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -880,7 +1186,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "744734f2cf6f5084f9fee0a2872a226ce4715992d587d4d0efe293fdf5c2e5cd",
+      "catalog_fingerprint": "6e608d9590a99e84b2cdd832478aeec0ec5a3f4c5d2089d50799c296ba5e2f78",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
@@ -904,7 +1210,7 @@
     "breaking_time_seconds": {
       "wartosc": null,
       "pochodzenie": "punkt_zwarcia",
-      "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s))."
+      "opis_pl": "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s))."
     },
     "metoda": "IEC 60909",
     "scenariusz": "MAX"

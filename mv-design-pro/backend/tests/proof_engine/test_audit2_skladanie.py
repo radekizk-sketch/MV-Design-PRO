@@ -19,15 +19,15 @@ from application.proof_engine.packs.audit2_skladanie import (
     BRAK_MAGAZYNU,
     BRAK_PRZEKLADNIKOW,
     BRAK_PRZELACZNIKOW,
-    BRAK_UZIEMIENIA,
     BRAK_WYTRZYMALOSCI,
     BRAK_ZRODEL,
     KONFIGURACJA_NIEPOPRAWNA,
     MAGAZYN_SPOZA_MODELU,
     RODZAJE_DOWODOW,
     STACJA_BEZ_SZYN,
+    STACJA_BEZ_SZYN_SN,
+    STACJA_SPOZA_MODELU_UZIEMIENIE,
     TRANSFORMATOR_SPOZA_MODELU,
-    UZIEMIENIE_SPOZA_KATALOGU,
     ZRODLO_SPOZA_MODELU,
     moce_odbiorow_stacji_kw,
     zdolnosci_przeksztaltnika,
@@ -35,7 +35,9 @@ from application.proof_engine.packs.audit2_skladanie import (
     zloz_pakiety_projektu,
 )
 from enm.models import (
+    Bay,
     Bus,
+    DlawikGaszacy,
     EnergyNetworkModel,
     ENMHeader,
     Generator,
@@ -43,6 +45,7 @@ from enm.models import (
     Substation,
     TapChanger,
     Transformer,
+    ZespolUziemiajacy,
 )
 from network_model.catalog.types import ConverterKind, ConverterType
 
@@ -60,9 +63,20 @@ def _model(
     ulv_kv: float = 0.4,
     odbiory_mw: tuple[float, ...] = (1.0,),
     druga_stacja: bool = False,
+    szyna_sn_w_stacji: bool = True,
+    zespoly: tuple[ZespolUziemiajacy, ...] = (),
 ) -> EnergyNetworkModel:
+    # Sposób uziemienia punktu neutralnego SN przekładników czyta JEDYNA prawda modelu
+    # (`enm.uziemienie_sekcji`): szyna SN stacji + zespoły uziemiające na niej (karta
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA). Bez zespołu i bez uzwojenia z drogą zerową sieć jest
+    # izolowana.
     stacje = [
-        Substation(ref_id="st-A", name="Stacja Łąkowa", station_type="mv_lv", bus_refs=["bus-a"])
+        Substation(
+            ref_id="st-A",
+            name="Stacja Łąkowa",
+            station_type="mv_lv",
+            bus_refs=["bus-sn", "bus-a"] if szyna_sn_w_stacji else ["bus-a"],
+        )
     ]
     szyny = [
         Bus(ref_id="bus-sn", name="Szyna SN", voltage_kv=uhv_kv),
@@ -113,12 +127,16 @@ def _model(
         transformers=[transformator],
         generators=generatory,
         loads=odbiory,
+        zespoly_uziemiajace=list(zespoly),
     )
+
+
+def _zespol(ref_id: str = "zu-1", bus_ref: str = "bus-sn", **pola: Any) -> ZespolUziemiajacy:
+    return ZespolUziemiajacy(ref_id=ref_id, name=f"ZU {ref_id}", bus_ref=bus_ref, **pola)
 
 
 def _konfiguracja_pelna(**zmiany: Any) -> dict[str, Any]:
     konfiguracja: dict[str, Any] = {
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": [],
         "der_specs": [
             {
@@ -203,12 +221,6 @@ def test_pelna_konfiguracja_daje_piec_rodzajow_z_nazwami_z_modelu() -> None:
         ({"bay_device_withstand": {}}, RODZAJE_DOWODOW[3], BRAK_WYTRZYMALOSCI),
         ({"bay_vts": {}}, RODZAJE_DOWODOW[4], BRAK_PRZEKLADNIKOW),
         ({"bay_vts": {"Pole 01": ""}}, RODZAJE_DOWODOW[4], BRAK_PRZEKLADNIKOW),
-        ({"mv_neutral_grounding_ref": None}, RODZAJE_DOWODOW[4], BRAK_UZIEMIENIA),
-        (
-            {"mv_neutral_grounding_ref": "mng_z_innego_swiata"},
-            RODZAJE_DOWODOW[4],
-            UZIEMIENIE_SPOZA_KATALOGU,
-        ),
     ],
     ids=[
         "bess_brak_magazynu",
@@ -218,8 +230,6 @@ def test_pelna_konfiguracja_daje_piec_rodzajow_z_nazwami_z_modelu() -> None:
         "wytrzymalosc_brak_danych",
         "przekladniki_brak_przypisania",
         "przekladniki_wpis_wyczyszczony",
-        "przekladniki_brak_uziemienia",
-        "przekladniki_uziemienie_spoza_katalogu",
     ],
 )
 def test_rodzaj_bez_danych_jest_jawnym_brakiem_a_pozostale_zostaja(
@@ -467,3 +477,118 @@ def test_moce_odbiorow_stacja_bez_szyn_nie_ma_wpisu() -> None:
     assert moce_odbiorow_stacji_kw(None) == {}
     # Odbior o mocy zero zostaje w sumie jako 0.0 (klasa: or-lancuch gubiacy zero).
     assert moce_odbiorow_stacji_kw(_model(odbiory_mw=(0.0,))) == {"st-A": 0.0}
+
+
+# =============================================================================
+# Przekładniki × sposób uziemienia SN z JEDYNEJ prawdy modelu (karta
+# UX-04/POLE-ZU-SKLADOWA-ZEROWA). Iloczyn: wariant {izolowany, dławik, dławik+AWSC,
+# rezystor, bezpośrednie, zespół bez elementu} × sekcje {jedna, dwie różnie uziemione z polem
+# przypisanym / nieprzypisanym} × stacja {z szyną SN, bez szyny SN, spoza modelu}.
+# =============================================================================
+
+
+def _dowod_vt(pakiet: dict[str, Any]) -> dict[str, Any]:
+    return next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[4])
+
+
+@pytest.mark.parametrize(
+    ("zespoly", "typ"),
+    [
+        ((), "isolated"),
+        ((_zespol(dlawik=DlawikGaszacy(i_nastawy_a=100.0)),), "petersen_coil"),
+        # Z.13: w spoczynku sieć skompensowana, po załączeniu AWSC z rezystorem równolegle —
+        # oba stany wymagają F_v = 1,9; dowód ocenia stan najbardziej wymagający.
+        (
+            (
+                _zespol(
+                    dlawik=DlawikGaszacy(
+                        i_nastawy_a=100.0, awsc={"i_wymuszany_a": 30.0}  # type: ignore[arg-type]
+                    )
+                ),
+            ),
+            "petersen_coil",
+        ),
+        ((_zespol(rezystor={"r_ohm": 43.3}),), "resistor_grounded"),
+        (
+            (
+                _zespol(
+                    dlawik=DlawikGaszacy(i_nastawy_a=100.0),
+                    rezystor={"r_ohm": 43.3},  # type: ignore[arg-type]
+                ),
+            ),
+            "resistor_grounded",
+        ),
+        ((_zespol(uziemienie_bezposrednie=True),), "directly_grounded"),
+    ],
+    ids=["izolowany", "dlawik", "dlawik_awsc", "rezystor", "dlawik_rezystor", "bezposrednie"],
+)
+def test_dowod_przekladnika_czyta_wariant_uziemienia_z_modelu(
+    zespoly: tuple[ZespolUziemiajacy, ...], typ: str
+) -> None:
+    pakiet = _pakiet(_konfiguracja_pelna(), _model(zespoly=zespoly))
+    assert _dowod_vt(pakiet)["details"]["grounding_type"] == typ
+
+
+def test_zespol_za_otwartym_polem_nie_uziemia_sieci_dowod_widzi_siec_izolowana() -> None:
+    # ZU na zacisku pola za otwartym łącznikiem nie leży w sieci szyny SN (topologia).
+    model = _model(zespoly=(_zespol(bus_ref="bus-zu", dlawik=DlawikGaszacy(i_nastawy_a=50.0)),))
+    model.buses.append(Bus(ref_id="bus-zu", name="Zacisk pola ZU", voltage_kv=15.0))
+    pakiet = _pakiet(_konfiguracja_pelna(), model)
+    assert _dowod_vt(pakiet)["details"]["grounding_type"] == "isolated"
+
+
+def test_zespol_bez_elementu_punktu_neutralnego_to_brak_nazwany() -> None:
+    pakiet = _pakiet(_konfiguracja_pelna(), _model(zespoly=(_zespol(),)))
+    przyczyny = [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
+    assert any(
+        "Sposób uziemienia punktu neutralnego sieci SN jest nieokreślony" in p
+        and "brak elementu w punkcie neutralnym" in p
+        for p in przyczyny
+    ), przyczyny
+    assert RODZAJE_DOWODOW[4] not in _rodzaje(pakiet)[0]
+
+
+@pytest.mark.parametrize(
+    ("model", "przyczyna"),
+    [
+        (None, STACJA_SPOZA_MODELU_UZIEMIENIE),
+        ("bez_szyny_sn", STACJA_BEZ_SZYN_SN),
+    ],
+    ids=["model_brak", "stacja_bez_szyny_sn"],
+)
+def test_brak_sieci_sn_stacji_to_brak_nazwany_nie_wariant_domyslny(
+    model: str | None, przyczyna: str
+) -> None:
+    enm = None if model is None else _model(szyna_sn_w_stacji=False)
+    pakiet = _pakiet(_konfiguracja_pelna(), enm)
+    assert przyczyna in [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
+    assert RODZAJE_DOWODOW[4] not in _rodzaje(pakiet)[0]
+
+
+def _model_dwie_sekcje(*, pole_przypisane: bool) -> EnergyNetworkModel:
+    model = _model(zespoly=(_zespol(rezystor={"r_ohm": 43.3}),))  # type: ignore[arg-type]
+    model.buses.append(Bus(ref_id="bus-sn2", name="Szyna SN sekcja 2", voltage_kv=15.0))
+    model.substations[0].bus_refs.append("bus-sn2")
+    if pole_przypisane:
+        model.bays.append(
+            Bay(
+                ref_id="pole-01",
+                name="Pole 01",
+                bay_role="OUT",
+                substation_ref="st-A",
+                bus_ref="bus-sn2",
+            )
+        )
+    return model
+
+
+def test_dwie_sekcje_roznie_uziemione_pole_przypisane_czyta_swoja_sekcje() -> None:
+    # Sekcja 1 z rezystorem, sekcja 2 (sprzęgło otwarte — brak gałęzi) izolowana.
+    pakiet = _pakiet(_konfiguracja_pelna(), _model_dwie_sekcje(pole_przypisane=True))
+    assert _dowod_vt(pakiet)["details"]["grounding_type"] == "isolated"
+
+
+def test_dwie_sekcje_roznie_uziemione_pole_nieprzypisane_to_brak_nazwany() -> None:
+    pakiet = _pakiet(_konfiguracja_pelna(), _model_dwie_sekcje(pole_przypisane=False))
+    przyczyny = [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
+    assert any("różny sposób uziemienia" in p and "Pole 01" in p for p in przyczyny), przyczyny

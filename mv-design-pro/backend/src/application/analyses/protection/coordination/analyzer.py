@@ -272,7 +272,7 @@ class OvercurrentCoordinationAnalyzer:
                         required_ratio=wymagany,
                         notes_pl=(
                             (
-                                streszczenie_brakow_nastaw(odmowa.nazwa_pl, odmowa.braki)
+                                streszczenie_brakow_nastaw(odmowa.oznaczenie_pl, odmowa.braki)
                                 if odmowa is not None
                                 else ""
                             )
@@ -328,7 +328,7 @@ class OvercurrentCoordinationAnalyzer:
             slad.append(
                 {
                     "step": "czulosc",
-                    "description_pl": f"Czułość zabezpieczenia {n.nazwa_pl}",
+                    "description_pl": f"Czułość zabezpieczenia {n.oznaczenie_pl}",
                     "inputs": {
                         "punkty": [
                             {"punkt_ref": o.punkt_ref, "prad_przekaznika_a": o.prad_przekaznika_a}
@@ -411,7 +411,7 @@ class OvercurrentCoordinationAnalyzer:
             slad.append(
                 {
                     "step": "przeciazalnosc",
-                    "description_pl": f"Przeciążalność zabezpieczenia {n.nazwa_pl}",
+                    "description_pl": f"Przeciążalność zabezpieczenia {n.oznaczenie_pl}",
                     "inputs": {
                         "prad_roboczy_a": robocze.prad_a,
                         "galaz_ref": robocze.galaz_ref,

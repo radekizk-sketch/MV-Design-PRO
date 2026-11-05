@@ -43,6 +43,7 @@ from network_model.catalog.audit2_catalogs import (
     DEVICE_WITHSTAND_CATALOG,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.catalog.wartosci_robocze import liczba_pl
 from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
 from tests.utils.prad_cieplny import (
@@ -166,7 +167,10 @@ def test_kazde_pole_dostaje_wlasny_prad_z_biegu() -> None:
     assert drugie["prady_pola"]["ip_ka"] == 10.0
     assert _ocena(pierwsze, "dynamiczna")["wynik"]["wartosc"]["wartosc"] == 12.0
     assert _ocena(drugie, "dynamiczna")["wynik"]["wartosc"]["wartosc"] == 10.0
-    assert _ocena(drugie, "cieplna")["wynik"]["wartosc"]["wartosc"] == 4.0
+    # I_th pola przy czasie roboczym 1 s (pole bez nastaw) z I″k i κ TEGO pola.
+    assert _ocena(drugie, "cieplna")["wynik"]["wartosc"]["wartosc"] == pytest.approx(
+        drugie["prad_cieplny_pola"]["ith_ka"], rel=1e-12
+    )
 
 
 def test_werdykt_dynamiczny_powstaje_z_pozycji_katalogu_aparat_sn() -> None:
@@ -199,25 +203,29 @@ def test_werdykt_dynamiczny_powstaje_z_pozycji_katalogu_aparat_sn() -> None:
     assert ocena["wyjasnienie"]["zdanie_pl"]
 
 
-def test_bez_czasu_wylaczenia_kryterium_cieplne_ma_brak_podstawy() -> None:
-    """Brak czasu to NIE jest werdykt negatywny ani „spełnia" — to brak podstawy.
+def test_pole_bez_nastaw_ocenia_cieplne_dla_czasu_roboczego_1_s() -> None:
+    """Pole bez zabezpieczenia: kryterium cieplne rozstrzygnięte dla t = 1 s (wartość robocza
+    IEC 62271-1 §4.7), nie brak podstawy (pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN,
+    dyrektywa właściciela: „nie wymagaj przypisania zabezpieczenia”).
 
-    Kryterium dynamiczne czasu nie potrzebuje i musi być rozstrzygnięte mimo to
-    (inaczej brak jednej danej wygaszałby ocenę, którą da się zrobić).
+    Kryterium dynamiczne czasu nie potrzebuje i jest rozstrzygnięte tak samo jak dawniej.
     """
     pole = _widok()["pola"][0]
 
-    assert pole["czas_wylaczenia"]["t_clearing_s"] is None
-    assert pole["werdykt"]["i_th_ok"] is None
-    assert pole["werdykt"]["ok"] is False
-    assert "NIEUSTALONE" in pole["werdykt"]["message_pl"]
-    assert "aparatura.czas_wylaczenia_nieustalony" in pole["kody_gotowosci"]
+    czas = pole["czas_wylaczenia"]
+    assert (czas["t_clearing_s"], czas["zrodlo"]) == (1.0, "wartosc_robocza")
+    assert "IEC 62271-1" in czas["podstawa_pl"]
+    assert pole["werdykt"]["i_th_ok"] is True
+    assert pole["komunikat_cieplny_pl"] == "Spełnione dla t = 1 s"
+    assert "czas trwania zwarcia 1 s" in pole["komunikat_pl"]
+    assert not any("czas_wylaczenia" in k for k in pole["kody_gotowosci"])
     cieplna = _ocena(pole, "cieplna")
-    assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
-    assert cieplna["limit"] is None
-    assert cieplna["wynik"]["wartosc"] == {"wartosc": 5.0, "jednostka": "kA"}
-    assert any("Czas wyłączenia" in b for b in cieplna["wyjasnienie"]["czego_brakuje"])
+    assert cieplna["status_maszynowy"] == "SPELNIA"
+    assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
+    assert cieplna["limit"] is not None
     assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
+    for tekst in (pole["komunikat_pl"], czas["podstawa_pl"], czas["powod_pl"]):
+        assert "nieustalon" not in tekst.lower()
 
 
 #: Czas wyłączenia pola z nastaw jego sterownika (kształt ``czasy_wylaczenia_pol_stacji``).
@@ -240,7 +248,7 @@ def test_zapisana_konfiguracja_wskazuje_aparat_a_czas_jest_z_nastaw_pola(
     wyłączenia pola pochodzi WYŁĄCZNIE z nastaw sterownika pola (karta OCHRONA-JEDNO-ZRODLO
     pkt 4). Intencja dawnego testu (konfiguracja nadrzędna i jawnie oznaczona) zostaje dla
     APARATU; ręcznie wpisany czas (9 s) był drugą prawdą i jest ignorowany w obu wariantach:
-    ze sterownikiem (czas 0,5 s z nastaw) i bez sterownika (czas nieustalony, nigdy 9 s).
+    ze sterownikiem (czas 0,5 s z nastaw) i bez sterownika (wartość robocza 1 s, nigdy 9 s).
     """
     widok = _widok(
         bay_device_withstand={
@@ -269,8 +277,9 @@ def test_zapisana_konfiguracja_wskazuje_aparat_a_czas_jest_z_nastaw_pola(
         assert cieplna["limit"]["wartosc"]["wartosc"] == 25.0
         assert cieplna["limit"]["podstawa"]["rodzaj"] == "KATALOG_PRODUCENTA"
     else:
-        assert pierwsze["czas_wylaczenia"]["t_clearing_s"] is None
-        assert cieplna["status_maszynowy"] != "SPELNIA"
+        assert pierwsze["czas_wylaczenia"]["t_clearing_s"] == 1.0
+        assert pierwsze["czas_wylaczenia"]["zrodlo"] == "wartosc_robocza"
+        assert cieplna["status_maszynowy"] == "SPELNIA"
     # Pole nieskonfigurowane nadal jedzie z modelu — konfiguracja nie wygasza reszty.
     assert drugie["zrodlo"] == ZRODLO_MODEL
 
@@ -288,7 +297,7 @@ def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny(
     assert pole["znamiona"]["i_dyn_ka"] is None
     assert pole["werdykt"]["i_dyn_ok"] is None
     assert pole["werdykt"]["i_th_ok"] is None
-    assert "NIEUSTALONE" in pole["werdykt"]["message_pl"]
+    assert pole["werdykt"]["message_pl"].startswith("BRAK DANYCH:")
     assert READINESS_POZYCJA_BEZ_ZNAMION in pole["kody_gotowosci"]
     assert {_ocena(pole, r)["status_maszynowy"] for r in ("dynamiczna", "cieplna")} == {
         "BRAK_PODSTAWY"
@@ -344,7 +353,8 @@ def test_pole_bez_pradu_w_biegu_ma_nazwany_brak_a_nie_cudzy_prad() -> None:
     assert READINESS_BRAK_PRADU_POLA in drugie["kody_gotowosci"]
     assert drugie["prady_pola"]["ip_ka"] is None
     assert {o["status_maszynowy"] for o in drugie["oceny"]} == {"NIE_OCENIONO"}
-    assert "NIEUSTALONE" in drugie["komunikat_pl"]
+    assert drugie["komunikat_pl"].startswith("BRAK DANYCH:")
+    assert "Uruchom obliczenia zwarciowe" in drugie["komunikat_pl"]
 
 
 def test_nieznana_stacja_nie_udaje_pustej_stacji() -> None:
@@ -615,9 +625,19 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
     else:
         assert ocena["wynik"]["symbol_latex"] == symbol
         assert ocena["wynik"]["wartosc"] == {"wartosc": wartosc, "jednostka": "kA"}
-        # Rekord nazywa porównaną wielkość i normę — ekran pokazuje, CO porównano.
-        assert symbol.replace("''", "″") in ocena["wynik"]["wielkosc_pl"].replace("I″k", "I_k″")
-        assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le I_{{cu}}"
+        # Rekord nazywa porównaną wielkość SŁOWAMI (karta KD6: proza bez symbolu, symbol
+        # wyłącznie w polu ``symbol_latex``) — ekran pokazuje, CO porównano.
+        nazwa = (
+            "prąd wyłączeniowy symetryczny"
+            if symbol == "I_b"
+            else "spodziewany prąd zwarciowy początkowy"
+        )
+        assert ocena["wynik"]["wielkosc_pl"].startswith(nazwa)
+        # Znamię nazwane wg normy aparatu TEGO pasma (karta APARATURA-TABELA): wyłącznik
+        # i reklozer SN — I_sc (IEC 62271-100 § 4.101), wyłącznik nN — I_cu (IEC 60947-2),
+        # bezpiecznik — I_1 (IEC 60282-1). I_cu przy aparacie SN byłoby błędem normowym.
+        znamie = "I_{1}" if aparat == BEZPIECZNIK else "I_{sc}" if symbol == "I_b" else "I_{cu}"
+        assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le {znamie}"
         assert ocena["limit"]["wartosc"]["jednostka"] == "kA"
     if status in {"SPELNIA", "NIE_SPELNIA"}:
         assert ocena["margines"] is not None
@@ -775,8 +795,9 @@ def test_slad_wylaczania_niesie_tb_i_skladowa_nieokresowa_informacyjnie() -> Non
     pole = _pole_wyl(WYLACZNIK, _prady_wyl(ik=18.0, ib=17.0, tb=0.1, un=15.0, i_dc=3.25))
     opis = _ocena(pole, "wylaczanie")["slad"][0]["opis_pl"]
 
-    assert "t_b = 0.1 s" in opis
-    assert "i_DC(t_b) = 3.25 kA" in opis
+    # Proza słowami (karta KD6), liczby po polsku; symbole wyłącznie w polach ``*_latex``.
+    assert "chwila przerwania prądu 0,1 s" in opis
+    assert "składowa nieokresowa w chwili przerwania 3,25 kA" in opis
     assert "informacyjnie" in opis
 
 
@@ -835,53 +856,69 @@ def test_nazwa_punktu_z_jednego_predykatu_nazwy(
 # ---------------------------------------------------------------------------
 # Kolejność rozstrzygania kryterium cieplnego po wprowadzeniu I_th przy T_k pola
 #
-# Iloczyn cech: {czas pola: ustalony 0,5 s, nieustalony} × {wiersz biegu: z κ i T_k biegu,
-# bez κ (kształt spoza produkcji — obrona)} × {znamiona: wyłącznik z I_th, wyłącznik bez
-# znamion}. Reguła: brak podstawy limitu albo brak wspólnego T_k porównania → BRAK_PODSTAWY
-# (jak przed T_k pola); NIE_OCENIONO wyłącznie bez prądu pola (test wyżej); porównanie
-# wyłącznie I_th przy T_k pola z limitem przy T_k pola.
+# Iloczyn cech: {czas pola: z nastaw 0,5 s, wartość robocza 1 s (pole bez nastaw — pakiet 8
+# karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: czas trwania zwarcia nigdy nie jest pusty)} ×
+# {wiersz biegu: z κ i T_k biegu, bez κ (kształt spoza produkcji — obrona)} × {znamiona:
+# wyłącznik z I_th, wyłącznik bez znamion}. Reguła: brak podstawy limitu albo brak κ →
+# BRAK_PODSTAWY; NIE_OCENIONO wyłącznie bez prądu pola (test wyżej); porównanie wyłącznie
+# I_th przy T_k pola z limitem przy T_k pola, ze zdaniem „Spełnione dla t = … s”.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("aparat", [WYLACZNIK, WYLACZNIK_BEZ_ZNAMION])
 @pytest.mark.parametrize("z_kappa", [True, False], ids=["kappa", "bez_kappa"])
-@pytest.mark.parametrize("czas_ustalony", [True, False], ids=["czas", "bez_czasu"])
-def test_kolejnosc_rozstrzygania_cieplnego(aparat: str, z_kappa: bool, czas_ustalony: bool) -> None:
+@pytest.mark.parametrize("czas_z_nastaw", [True, False], ids=["nastawy", "robocza"])
+def test_kolejnosc_rozstrzygania_cieplnego(aparat: str, z_kappa: bool, czas_z_nastaw: bool) -> None:
     prady = _prady(5.0, 12.0, 5.1)
     if not z_kappa:
         prady = dataclasses.replace(prady, kappa=None)
     widok = _widok(
         enm=_enm(aparaty={"pole/in": aparat}),
         prady_pol={"pole/in": prady},
-        czasy_pol={"pole/in": _CZAS_Z_NASTAW} if czas_ustalony else {},
+        czasy_pol={"pole/in": _CZAS_Z_NASTAW} if czas_z_nastaw else {},
     )
     pole = widok["pola"][0]
     cieplna = _ocena(pole, "cieplna")
     cieplny = pole["prad_cieplny_pola"]
-    porownanie = czas_ustalony and z_kappa and aparat == WYLACZNIK
+    t_k = 0.5 if czas_z_nastaw else 1.0
+    assert pole["czas_wylaczenia"]["t_clearing_s"] == t_k
+    assert pole["czas_wylaczenia"]["zrodlo"] == (
+        "nastawy_pola" if czas_z_nastaw else "wartosc_robocza"
+    )
+    porownanie = z_kappa and aparat == WYLACZNIK
 
     if porownanie:
-        ith_pola = ith_normy(5.0, KAPPA_FIKSTURY, 0.5)
+        ith_pola = ith_normy(5.0, KAPPA_FIKSTURY, t_k)
         assert cieplny["ith_ka"] == pytest.approx(ith_pola, rel=1e-12)
         assert cieplna["wynik"]["wartosc"]["wartosc"] == cieplny["ith_ka"]
         assert cieplna["status_maszynowy"] == "SPELNIA"
         assert pole["werdykt"]["i_th_ok"] is True
+        assert pole["komunikat_cieplny_pl"] == f"Spełnione dla t = {liczba_pl(t_k)} s"
+        dane = cieplna["dowod"]["status_danych"]["dane_przyjete"]
+        czasy_przyjete = [d for d in dane if d["wartosc"] == {"wartosc": 1.0, "jednostka": "s"}]
+        if czas_z_nastaw:
+            assert czasy_przyjete == []
+        else:
+            # Wartość robocza czasu: dana przyjęta ESTIMATED z podstawą normową, dowód niepełny.
+            assert [d["jakosc"] for d in czasy_przyjete] == ["ESTIMATED"]
+            assert "IEC 62271-1" in czasy_przyjete[0]["powod_pl"]
+            assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
         return
     # Każda inna kombinacja: brak podstawy, nigdy „nie oceniono" ani porównanie mieszanych T_k.
     assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY", cieplna["wyjasnienie"]
     assert cieplna["limit"] is None
+    assert pole["komunikat_cieplny_pl"] is None
     brakuje = cieplna["wyjasnienie"]["czego_brakuje"]
-    if not czas_ustalony or not z_kappa:
+    if not z_kappa:
         # „—" z powodem: prąd cieplny pola nie istnieje, wynik rekordu to I_th BIEGU jawnie
         # opisany swoim T_k (nieporównywany).
         assert cieplny["ith_ka"] is None and cieplny["powod_pl"]
         assert cieplna["wynik"]["wartosc"]["wartosc"] == 5.1
         assert cieplna["wynik"]["symbol_latex"] == r"I_{th,bieg}"
-        assert f"T_k,bieg = {TK_BIEGU_FIKSTURY_S} s" in cieplna["wynik"]["wielkosc_pl"]
+        assert f"przy czasie cieplnym biegu {liczba_pl(TK_BIEGU_FIKSTURY_S)} s" in (
+            cieplna["wynik"]["wielkosc_pl"]
+        )
         assert pole["werdykt"] is None or pole["werdykt"]["i_th_ok"] is None
-    if not czas_ustalony:
-        assert any("test" == b or "Czas" in b or "czas" in b for b in brakuje), brakuje
-    elif not z_kappa:
         assert any("współczynnika κ" in b for b in brakuje), brakuje
     if aparat == WYLACZNIK_BEZ_ZNAMION:
-        assert any("nie niesie prądu krótkotrwałego I_th" in b for b in brakuje), brakuje
+        assert any("nie niesie znamionowego prądu krótkotrwałego" in b for b in brakuje), brakuje

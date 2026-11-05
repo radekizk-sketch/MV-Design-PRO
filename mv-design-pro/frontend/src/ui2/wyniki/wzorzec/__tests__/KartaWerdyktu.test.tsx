@@ -246,7 +246,7 @@ export function ocenaCzasuAktywacjiSpelniona(): OcenaKryterium {
     },
     margines: {
       wartosc: wielkosc(2, 'ms'),
-      definicja_latex: 'm = x_{\\lim} - x',
+      definicja_latex: '\\Delta x = x_{\\lim} - x',
       punkt_pl: null,
       skala: wielkosc(5, 'ms'),
       skala_rodzaj: 'TOLERANCJA',
@@ -290,7 +290,7 @@ export function ocenaCzasuAktywacjiNaruszona(): OcenaKryterium {
     wynik: baza.wynik === null ? null : { ...baza.wynik, wartosc: wielkosc(42, 'ms') },
     margines: {
       wartosc: wielkosc(-2, 'ms'),
-      definicja_latex: 'm = x_{\\lim} - x',
+      definicja_latex: '\\Delta x = x_{\\lim} - x',
       punkt_pl: null,
       skala: wielkosc(40, 'ms'),
       skala_rodzaj: 'LIMIT',
@@ -351,7 +351,7 @@ export function ocenaNapieciaNadObwiednia(): OcenaKryterium {
     },
     margines: {
       wartosc: wielkosc(0.125, 'p.u. (U_n)'),
-      definicja_latex: 'm = x(t^{*}) - x_{\\lim}(t^{*})',
+      definicja_latex: '\\Delta x = x(t^{*}) - x_{\\lim}(t^{*})',
       punkt_pl: 'punkt przyłączenia modułu',
       skala: wielkosc(0.5, 'p.u. (U_n)'),
       skala_rodzaj: 'LIMIT',
@@ -417,7 +417,7 @@ export function ocenaOdbudowyNiejednoznaczna(): OcenaKryterium {
     // procentowych („pp") — jednostka marginesu NIE jest jednostką wyniku.
     margines: {
       wartosc: wielkosc(2, 'pp'),
-      definicja_latex: 'm = x - x_{\\lim}',
+      definicja_latex: '\\Delta x = x - x_{\\lim}',
       punkt_pl: null,
       skala: wielkosc(90, 'pp'),
       skala_rodzaj: 'LIMIT',
@@ -544,7 +544,7 @@ export function ocenaPasmaNieDotyczy(): OcenaKryterium {
     },
     margines: {
       wartosc: wielkosc(0.5, 'Hz'),
-      definicja_latex: 'm = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)',
+      definicja_latex: '\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)',
       punkt_pl: null,
       skala: wielkosc(48, 'Hz'),
       skala_rodzaj: 'LIMIT',
@@ -581,7 +581,7 @@ export function ocenaBezPodstawyLimitu(): OcenaKryterium {
     limit: baza.limit === null ? null : { ...baza.limit, podstawa: podstawaNieustalona },
     margines: {
       wartosc: wielkosc(2, 'ms'),
-      definicja_latex: 'm = x_{\\lim} - x',
+      definicja_latex: '\\Delta x = x_{\\lim} - x',
       punkt_pl: null,
       skala: wielkosc(40, 'ms'),
       skala_rodzaj: 'LIMIT',
@@ -727,7 +727,7 @@ export function wymaganieSpelnione(): WynikWymagania {
     },
     margines: {
       wartosc: wielkosc(2, 'ms'),
-      definicja_latex: 'm = x_{\\lim} - x',
+      definicja_latex: '\\Delta x = x_{\\lim} - x',
       punkt_pl: null,
       skala: wielkosc(40, 'ms'),
       skala_rodzaj: 'LIMIT',

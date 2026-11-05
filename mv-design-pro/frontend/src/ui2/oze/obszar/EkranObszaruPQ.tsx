@@ -299,7 +299,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
   return (
     <section className="mvd-obszar-limity" data-testid="mvd-obszar-limity">
       <p className="mvd-obszar-limity-tytul">{OBSZAR_STRINGS.limityTytul}</p>
-      <p className="mvd-obszar-limity-opis">{OBSZAR_STRINGS.limityOpis}</p>
+      <p className="mvd-obszar-limity-opis"><TekstZWzorami tekst={OBSZAR_STRINGS.limityOpis} /></p>
 
       {generatory.length === 0 ? (
         <p className="mvd-obszar-limity-brak" data-testid="mvd-obszar-limity-brak-generatorow">

@@ -250,6 +250,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
       "id": "4970a196-8440-57d0-bd02-a7cb9e4b7527",
       "materialized_params": {
@@ -274,6 +275,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/406ec9c7de80233f6ff070bc72972037/sn_field_apparatus/002",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -374,6 +376,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
       "id": "639f1550-e5bf-5739-b6bc-811d2163d7aa",
       "materialized_params": null,
@@ -388,6 +391,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -399,6 +403,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
       "id": "726b6a20-e38a-581f-8ab2-42a5451b398b",
       "materialized_params": null,
@@ -413,6 +418,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -424,6 +430,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
       "id": "8474d406-8c1e-5ebf-9bbf-c22be811166d",
       "materialized_params": {
@@ -448,6 +455,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/406ec9c7de80233f6ff070bc72972037/sn_field_apparatus/001",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -461,6 +469,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
       "id": "982140ea-71ca-573d-9f62-93768af87fbe",
       "materialized_params": null,
@@ -475,6 +484,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1213,5 +1223,6 @@
       "ulv_kv": 0.8,
       "vector_group": "Dyn11"
     }
-  ]
+  ],
+  "zespoly_uziemiajace": []
 }

@@ -291,13 +291,13 @@ def _bledy_nazw(nazwy: Iterator[str]) -> list[str]:
 
 def _sieci_generatorow() -> list[tuple[str, Any]]:
     from tests.cgmes.golden_enm import build_golden_enm
-    from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+    from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
     from tests.golden.parytet_scenariuszy import harness as parytet
     from tests.reference_networks.demo_oze_sc import build_demo_oze_sc_network
     from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
 
     sieci: list[tuple[str, Any]] = [("golden_enm", build_golden_enm().model_dump(mode="json"))]
-    sieci += [(klucz, enm.model_dump(mode="json")) for klucz, enm in sieci_enm_rejestru()]
+    sieci += [(klucz, enm.model_dump(mode="json")) for klucz, enm in kopie_sieci_enm_rejestru()]
     sieci += [
         ("parytet/pierscien", parytet._pierscien().model_dump(mode="json")),
         ("parytet/napiecie", parytet._napiecie_graniczne().model_dump(mode="json")),

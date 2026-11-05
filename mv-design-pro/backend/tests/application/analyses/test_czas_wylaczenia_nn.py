@@ -12,7 +12,6 @@ import itertools
 from typing import Any
 
 import pytest
-
 from application.analyses.czas_wylaczenia_nn import czas_wylaczenia_obwodu_nn
 from application.proof_engine.lv_circuit_verification_binding import resolve_urzadzenie_ochronne
 from application.proof_engine.packs.lv_circuit_verification import UrzadzenieOchronneNn
@@ -152,8 +151,10 @@ def test_uklad_it_i_nieznany_biora_czasy_zachowawcze(uklad: str | None, oczekiwa
     assert czas.czas_s == oczekiwany
 
 
-def test_pasmo_32_63_a_dla_i2t_jest_obwodem_rozdzielczym() -> None:
-    # Obecność gniazd (próg 63 A) nie jest daną modelu: dla I²t zachowawczo czas dłuższy.
+def test_pasmo_32_63_a_dla_i2t_jest_obwodem_odbiorczym_jak_dla_swz() -> None:
+    # Pakiet 9: JEDNA klasyfikacja obwodu dla I²t i SWZ — aparat ≤ 63 A to obwód odbiorczy
+    # (wartość robocza, PN-HD 60364-4-41:2017 §411.3.2.2); dawniej I²t brał tu obwód
+    # rozdzielczy (5 s), a SWZ odbiorczy — ten sam obwód miał dwa rodzaje.
     galaz = FuseBranch(
         ref_id="ap",
         name="Bezpiecznik",
@@ -170,4 +171,6 @@ def test_pasmo_32_63_a_dla_i2t_jest_obwodem_rozdzielczym() -> None:
         u0_v=U0_V,
         miejsce_pl="o",
     )
-    assert czas.czas_s == 5.0
+    assert czas.czas_s == 0.4
+    assert czas.zrodlo == "wartosc_robocza"
+    assert "obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A" in czas.wyjasnienie_pl

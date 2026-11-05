@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SCHEMAT-10 S6 (V12K-137) — testy KOMPLETU 18 metryk layoutu
  * (`layoutMetricsReport` i składowe), WARUNKI_ODBIORU_S6 §3/§6/§11.

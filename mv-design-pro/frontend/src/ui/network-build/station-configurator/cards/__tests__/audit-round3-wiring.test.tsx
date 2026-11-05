@@ -243,6 +243,25 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
         if (url.includes('/api/catalog/vt-types')) {
           return { ok: true, status: 200, json: async () => TYPY_VT } as Response;
         }
+        if (url.endsWith('/_uziemienie-sn')) {
+          // Atrapa ODCZYTU MODELU backendu (karta UX-04/POLE-ZU): sieć SN pól stacji
+          // skompensowana — zespół uziemiający z dławikiem gaszącym w sekcji pola.
+          const body = JSON.parse(String(init?.body ?? '{}')) as { pola?: string[] };
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              station_id: 'st-1',
+              sekcje: [],
+              przyczyna_braku: null,
+              pola: (body.pola ?? []).map((oznaczenie) => ({
+                oznaczenie,
+                typ_punktu_neutralnego: 'petersen_coil',
+                przyczyna_braku: null,
+              })),
+            }),
+          } as Response;
+        }
         if (url.includes('/validate-vt-grounding')) {
           // Atrapa REGULY backendu: prog 1,9 dla sieci kompensowanej (V12K-256).
           const body = JSON.parse(String(init?.body ?? '{}')) as { voltage_factor?: number };
@@ -323,7 +342,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               vtCatalogRef: 'vt_20kv_100v_05_arteche', // realny typ katalogu, F_v 1,2
             },
           ]}
-          mvNeutralGroundingType="petersen_coil"
+          kontekstUziemienia={{ projectId: 'proj-1', stationId: 'st-1', rewizja: 1 }}
         />,
       );
 
@@ -371,7 +390,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               vtCatalogRef: 'vt_20kv_fz_100_3_05_3p_siemens', // realny typ, F_v 1,9
             },
           ]}
-          mvNeutralGroundingType="petersen_coil"
+          kontekstUziemienia={{ projectId: 'proj-1', stationId: 'st-1', rewizja: 1 }}
         />,
       );
 

@@ -364,6 +364,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "id": "9c9de57b-784e-50d3-b139-f349068caa56",
       "materialized_params": null,
@@ -390,6 +391,7 @@
       "parameter_source": null,
       "r_ohm": 0.0,
       "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -963,5 +965,6 @@
       "ulv_kv": 0.4,
       "vector_group": "Dyn11"
     }
-  ]
+  ],
+  "zespoly_uziemiajace": []
 }

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Designer Flow Contract — executable specification dla naturalnego flow
  * projektanta sieci SN opisanego w `docs/audit/AUDYT_SLD_DESIGNER_2026-05-19.md`.

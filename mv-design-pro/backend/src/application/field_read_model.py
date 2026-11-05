@@ -45,6 +45,7 @@ from enm.models import (
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
 from enm.zabezpieczenie import kody_funkcji_pola, ref_zrodla_u0_pola, sterownik_pola
 from enm.zrodlo_napiecia_zerowego import (
@@ -93,6 +94,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     transformers_by_bus = _group_transformers_by_bus(enm.transformers)
     sources_by_bus = _group_sources_by_bus(enm.sources)
     generators_by_bus = _group_generators_by_bus(enm.generators)
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: droga doziemna pola czyta uziemienie sieci
+    # SN z JEDYNEJ funkcji (`enm.uziemienie_sekcji`) — raz na model, po szynie pola.
+    sekcja_szyny = {szyna: sekcja for sekcja in uziemienie_sieci(enm) for szyna in sekcja.szyny}
 
     finished_runs = [run for run in list_runs_for_case(case_id) if run.status == "FINISHED"]
     # Karta OD-14: wynik pola wiąże najnowszy bieg zwarcia METALICZNEGO (IEC 60909); bieg przez
@@ -210,6 +214,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             measurements_by_bay=measurements_by_bay,
             transformers_by_bus=transformers_by_bus,
             sources_by_bus=sources_by_bus,
+            sekcja_szyny=sekcja_szyny,
             generators_by_bus=generators_by_bus,
             latest_sc_run_id=str(latest_sc_run.id) if latest_sc_run is not None else None,
             latest_pf_run_id=str(latest_pf_run.id) if latest_pf_run is not None else None,
@@ -273,6 +278,30 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
         },
         "fields": items,
     }
+
+
+def droga_doziemna_pola(enm: EnergyNetworkModel, bay_ref: str) -> BayEarthFaultPath | None:
+    """Droga doziemna pola ``bay_ref`` WPROST z modelu — bez warunku istnienia biegu.
+
+    Ta sama funkcja (`_build_earth_fault_path`) co sekcja wyników projektu read-modelu pól;
+    tam droga jest pokazywana obok wyników biegu, ale sama jest DANĄ MODELU (sposób uziemienia
+    sieci SN z `enm.uziemienie_sekcji`, łańcuch pomiarowy pola, źródła i transformatory przy
+    szynie). Dobór funkcji zabezpieczeń pola wytwórcy (`api/generators.py`) czyta ją tutaj —
+    przed tą kartą czytał ją z read-modelu pod nieistniejącym kluczem, więc fakty pola zawsze
+    dostawały „sposób uziemienia nieznany” (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)."""
+    bay = next((b for b in pola_wszystkich_stacji(enm) if b.ref_id == bay_ref), None)
+    if bay is None:
+        return None
+    sekcja_szyny = {szyna: sekcja for sekcja in uziemienie_sieci(enm) for szyna in sekcja.szyny}
+    return _build_earth_fault_path(
+        bay=bay,
+        measurement_chain=_build_measurement_chain(
+            bay, _group_measurements_by_bay(enm.measurements)
+        ),
+        sources_by_bus=_group_sources_by_bus(enm.sources),
+        transformers_by_bus=_group_transformers_by_bus(enm.transformers),
+        sekcja=sekcja_szyny.get(bay.bus_ref),
+    )
 
 
 def _group_measurements_by_bay(measurements: list[Measurement]) -> dict[str, list[Measurement]]:
@@ -887,6 +916,7 @@ def _build_project_results(
     measurements_by_bay: dict[str, list[Measurement]],
     transformers_by_bus: dict[str, list[Transformer]],
     sources_by_bus: dict[str, list[Source]],
+    sekcja_szyny: dict[str, UziemienieSekcji],
     generators_by_bus: dict[str, list[Generator]],
     latest_sc_run_id: str | None,
     latest_pf_run_id: str | None,
@@ -922,6 +952,7 @@ def _build_project_results(
         sources_by_bus=sources_by_bus,
         transformers_by_bus=transformers_by_bus,
         zrodlo_u0_potwierdzone=zrodlo_u0_potwierdzone,
+        sekcja=sekcja_szyny.get(bay.bus_ref),
     )
     proof_binding = BayProofBinding(
         proof_ref=f"proof:{bay.ref_id}:{run_ref}",
@@ -1095,22 +1126,48 @@ def _build_earth_fault_path(
     measurement_chain: BayMeasurementChain | None,
     sources_by_bus: dict[str, list[Source]],
     transformers_by_bus: dict[str, list[Transformer]],
+    sekcja: UziemienieSekcji | None,
     zrodlo_u0_potwierdzone: bool = False,
 ) -> BayEarthFaultPath | None:
-    """Ścieżka zwarcia doziemnego pola. Tor napięcia zerowego i prądu zerowego — z łańcucha
-    pomiarowego pola (encje `Measurement`), a gdy łańcuch go nie niesie — z potwierdzonego
-    źródła 3U₀ pola (`enm.zrodlo_napiecia_zerowego`: przekładnik Ferrantiego pola + powiązanie
-    z uzwojeniem otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17).
-    Jedna prawda o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
-    (`domain.der_protection_functions` — bez toru napięcia zerowego 67N jest kwestią otwartą)."""
+    """Droga doziemna pola. Pole sieci SN: sposób uziemienia i urządzenie uziemiające
+    (zespół uziemiający w ruchu) z JEDNEJ prawdy o uziemieniu sekcji (karta UX-04/POLE-ZU);
+    sekcja z odmową nazwaną (zespół bez elementu, sprzeczna deklaracja) → sposób nieznany
+    (`None`), nie domysł. Pole poza siecią SN (WN): opis punktu neutralnego źródła albo
+    transformatora przy szynie (sieć 110 kV za granicą modelu — `Source.neutral_grounding`).
+
+    Tor napięcia zerowego i prądu zerowego — z łańcucha pomiarowego pola (encje
+    `Measurement`), a gdy łańcuch go nie niesie — z potwierdzonego źródła 3U₀ pola
+    (`enm.zrodlo_napiecia_zerowego`: przekładnik Ferrantiego pola + powiązanie z uzwojeniem
+    otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17). Jedna prawda
+    o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
+    (`domain.der_protection_functions`)."""
+    punkty = sekcja.punkty_w_ruchu if sekcja is not None else ()
+    # Sieć SN ma ZAWSZE rozstrzygnięty sposób uziemienia (także „izolowany” — dana modelu,
+    # nie brak); `None` tylko dla pola poza siecią SN bez źródła, bez łańcucha pomiarowego
+    # i bez potwierdzonego źródła 3U₀.
     if (
-        measurement_chain is None
+        sekcja is None
+        and measurement_chain is None
         and not sources_by_bus.get(bay.bus_ref)
         and not zrodlo_u0_potwierdzone
     ):
         return None
     punkt_pola = punkt_przylaczenia_pola(bay)
     transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
+    zespoly = [p.element_ref for p in punkty if p.rodzaj == "zespol_uziemiajacy"]
+    if sekcja is not None:
+        tryb: TypPunktuNeutralnego | None = (
+            None if sekcja.odmowy else sekcja.typ_punktu_neutralnego("spoczynek")
+        )
+        elementy_drogi = [bay.bus_ref, *(p.element_ref for p in punkty)]
+    else:
+        tryb = _resolve_neutral_grounding_mode(
+            sources=sources_by_bus.get(bay.bus_ref, []),
+            transformers=transformers,
+        )
+        elementy_drogi = [bay.bus_ref] + [
+            source.ref_id for source in sources_by_bus.get(bay.bus_ref, [])
+        ]
     prad_zerowy = (
         measurement_chain.zero_sequence_current_source if measurement_chain is not None else "brak"
     )
@@ -1123,19 +1180,14 @@ def _build_earth_fault_path(
         if napiecie_zerowe == "brak":
             napiecie_zerowe = "otwarty_trojkat_vt"
     return BayEarthFaultPath(
-        neutral_grounding_mode=_resolve_neutral_grounding_mode(
-            sources=sources_by_bus.get(bay.bus_ref, []),
-            transformers=transformers,
-        ),
+        neutral_grounding_mode=tryb,
         zero_sequence_current_source=prad_zerowy,
         zero_sequence_voltage_source=napiecie_zerowe,
         closure_path_elements=sorted(
-            [bay.bus_ref]
-            + [source.ref_id for source in sources_by_bus.get(bay.bus_ref, [])]
-            + [transformer.ref_id for transformer in transformers]
+            set(elementy_drogi + [transformer.ref_id for transformer in transformers])
         ),
         transformer_contribution_ref=transformers[0].ref_id if transformers else None,
-        grounding_device_ref=None,
+        grounding_device_ref=zespoly[0] if zespoly else None,
     )
 
 
@@ -1144,10 +1196,11 @@ def _resolve_neutral_grounding_mode(
     sources: list[Source],
     transformers: list[Transformer],
 ) -> TypPunktuNeutralnego | None:
-    """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
-    `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
+    """Sposob pracy punktu neutralnego przy szynie pola POZA siecia SN — ten sam slownik
+    co `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
     Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
-    neutralnego zrodla (GPZ) na tej szynie."""
+    neutralnego zrodla (siec 110 kV za granica modelu) na tej szynie. Siec SN czyta
+    `enm.uziemienie_sekcji` (`_build_earth_fault_path`)."""
     for transformer in transformers:
         if transformer.hv_neutral is not None:
             return transformer.hv_neutral.type

@@ -570,6 +570,13 @@ DOZWOLONE: dict[str, tuple[int, str]] = {
         "analizy nie jest elementem modelu ENM, więc oznaczenie projektanta jest jego "
         "jedyną nazwą.",
     ),
+    "application/analyses/v126_oceny.py:oceny_rozruchu:argument:nazwa_pl:ref": (
+        2,
+        "`motor_ref` wiersza wyniku rozruchu to `motors[].ref` — „Oznaczenie silnika” wpisane "
+        "przez projektanta w formularzu parametrów analizy V12.6 (ta sama podstawa co wpis "
+        "`v126_gotowosc._warunki_silnikow`); silnik tej analizy nie jest elementem modelu ENM, "
+        "więc oznaczenie projektanta jest jego jedyną nazwą (przedmiot rekordu werdyktu).",
+    ),
     'application/xlsx_import/importer.py:XlsxNetworkImporter._zbuduj_rekordy:klucz:name:["id"]': (
         5,
         "Kolumna `id` arkuszy odcinków, transformatorów, źródeł, odbiorów i łączników XLSX to "

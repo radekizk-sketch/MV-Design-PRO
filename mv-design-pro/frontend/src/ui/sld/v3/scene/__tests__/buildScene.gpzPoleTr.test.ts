@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ-PARYTET cz. 3 (pkt 2): transformator GPZ wskazany przez pole TR modelu był pomijany
  * jako wieża, a pole TR w sekcji nie ma symbolu transformatora — transformator znikał

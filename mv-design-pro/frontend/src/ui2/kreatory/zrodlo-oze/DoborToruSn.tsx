@@ -24,9 +24,11 @@ import {
   fetchDerSelectionPreview,
   type CableLayingConditions,
   type CableLayingConditionsCatalog,
+  type CableThermalCriterion,
   type DerSelectionPreviewResponse,
   type ReactiveCharacter,
 } from './derSelectionApi';
+import { uruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { OPCJE_UZIEMIENIA_EKRANU, type UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { OZE_STRINGS as T } from './strings';
 import type { DerSnFormData } from './zrodloOzeModel';
@@ -56,6 +58,12 @@ export interface DoborToruSnProps {
   /** W5-A: deklaracja układu uziemienia ekranu kabla SN — jedzie do modelu razem z torem. */
   onScreenBondingChange: (value: UziemienieEkranuKabla | null) => void;
   onZastosuj: (response: DerSelectionPreviewResponse) => void;
+  /**
+   * Przypadek i szyna SN przyłączenia toru — z nich backend bierze I″k i κ najnowszego biegu
+   * zwarciowego do kryterium wytrzymałości zwarciowej kabla (rekord zawsze w odpowiedzi).
+   */
+  caseId?: string | null;
+  snBusRef?: string | null;
   applied: boolean;
   testid?: string;
 }
@@ -71,8 +79,11 @@ export function DoborToruSn({
   onScreenBondingChange,
   onZastosuj,
   applied,
+  caseId = null,
+  snBusRef = null,
   testid = 'mvd-kreator-oze-dobor',
 }: DoborToruSnProps) {
+  const [biegZwarc, setBiegZwarc] = useState(false);
   const [rezerwaTr, setRezerwaTr] = useState<number | null>(0.1);
   const [rezerwaKabel, setRezerwaKabel] = useState<number | null>(0.1);
   const [maxDeltaU, setMaxDeltaU] = useState<number | null>(2.0);
@@ -129,6 +140,8 @@ export function DoborToruSn({
         maxDeltaUPct: maxDeltaU ?? undefined,
         reactiveCharacter: charakterQ,
         layingConditions: wybraneWarunki,
+        caseId,
+        snBusRef,
       });
       const wynik = await fetchDerSelectionPreview(request);
       setResponse(wynik);
@@ -152,7 +165,21 @@ export function DoborToruSn({
     maxDeltaU,
     charakterQ,
     wybraneWarunki,
+    caseId,
+    snBusRef,
   ]);
+
+  // Akcja rekordu „nie oceniono”: bieg zwarciowy przypadku, po nim ponowny dobór (ten sam
+  // przycisk co „Zaproponuj dobór” — kryterium oceni się przy prądzie z nowego biegu).
+  const onUruchomZwarcia = useCallback(async () => {
+    setBiegZwarc(true);
+    try {
+      const ok = await uruchomObliczenie('SC_3F');
+      if (ok) await onZaproponuj();
+    } finally {
+      setBiegZwarc(false);
+    }
+  }, [onZaproponuj]);
 
   const zmienWarunki = useCallback(
     (nazwa: string) => {
@@ -407,10 +434,19 @@ export function DoborToruSn({
               ) : null}
             </>
           ) : null}
+          {response.cable?.thermal_criterion ? (
+            <KryteriumZwarciowe
+              kryterium={response.cable.thermal_criterion}
+              mozeUruchomic={Boolean(caseId)}
+              biegWToku={biegZwarc}
+              onUruchom={() => void onUruchomZwarcia()}
+              testid={`${testid}-zwarciowe`}
+            />
+          ) : null}
           {pole ? (
             <KreatorSiatka kolumny={2}>
               <RzadWartosci etykieta={T.doborPropPole} wartosc={`${pole.name}`} />
-              <RzadWartosci etykieta="Prąd znamionowy In" wartosc={`${pole.in_a} A`} />
+              <RzadWartosci etykieta="Prąd znamionowy $I_n$" wartosc={`${pole.in_a} A`} />
               <RzadWartosci
                 etykieta={T.doborProgPole}
                 wartosc={
@@ -462,5 +498,88 @@ export function DoborToruSn({
         testid={`${testid}-teoria`}
       />
     </>
+  );
+}
+
+/**
+ * Rekord kryterium wytrzymałości zwarciowej kabla — status ZAWSZE z wyjaśnieniem backendu,
+ * liczby z biegu (I″k, prąd cieplny, limit) i czas z podstawą; przy braku prądu — akcja
+ * „Uruchom obliczenia zwarciowe”. Zero liczenia w UI: liczby tylko formatowane.
+ */
+function KryteriumZwarciowe({
+  kryterium,
+  mozeUruchomic,
+  biegWToku,
+  onUruchom,
+  testid,
+}: {
+  kryterium: CableThermalCriterion;
+  mozeUruchomic: boolean;
+  biegWToku: boolean;
+  onUruchom: () => void;
+  testid: string;
+}) {
+  const brakPradu = kryterium.status === 'NIE_OCENIONO' && kryterium.ikss_a == null;
+  return (
+    <div data-testid={testid} data-status={kryterium.status}>
+      <KreatorSiatka kolumny={2}>
+        <RzadWartosci etykieta={T.doborZwarcioweTytul} wartosc={kryterium.wyjasnienie.zdanie_pl} />
+        {kryterium.fault_duration_s != null ? (
+          <RzadWartosci
+            etykieta={T.doborZwarcioweCzas}
+            wartosc={`${kryterium.fault_duration_s.toLocaleString('pl-PL')} s`}
+          />
+        ) : null}
+        {kryterium.ikss_a != null ? (
+          <RzadWartosci
+            etykieta={T.doborZwarcioweIk}
+            wartosc={`${kryterium.ikss_a.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} A`}
+          />
+        ) : null}
+        {kryterium.ith_a != null ? (
+          <RzadWartosci
+            etykieta={T.doborZwarcioweIth}
+            wartosc={`${kryterium.ith_a.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} A`}
+          />
+        ) : null}
+        {kryterium.admissible_current_a != null ? (
+          <RzadWartosci
+            etykieta={T.doborZwarcioweLimit}
+            wartosc={`${kryterium.admissible_current_a.toLocaleString('pl-PL', { maximumFractionDigits: 0 })} A`}
+          />
+        ) : null}
+      </KreatorSiatka>
+      {kryterium.wyjasnienie.przyczyna_pl ? (
+        <KreatorInfo>
+          <span data-testid={`${testid}-wyjasnienie`}>{kryterium.wyjasnienie.przyczyna_pl}</span>
+        </KreatorInfo>
+      ) : null}
+      {kryterium.wyjasnienie.czego_brakuje.length > 0 ? (
+        <p className="mvd-kreator-podpowiedz" data-testid={`${testid}-brakuje`}>
+          {T.doborZwarcioweBrakuje} {kryterium.wyjasnienie.czego_brakuje.join('; ')}
+        </p>
+      ) : null}
+      {kryterium.fault_duration_basis_pl ? (
+        <p className="mvd-kreator-podpowiedz" data-testid={`${testid}-podstawa-czasu`}>
+          {kryterium.fault_duration_basis_pl}
+        </p>
+      ) : null}
+      {kryterium.action_pl ? (
+        <KreatorInfo>
+          <span data-testid={`${testid}-akcja`}>{kryterium.action_pl}</span>
+        </KreatorInfo>
+      ) : null}
+      {brakPradu && mozeUruchomic ? (
+        <button
+          type="button"
+          className="mvd-kreator-btn"
+          onClick={onUruchom}
+          disabled={biegWToku}
+          data-testid={`${testid}-uruchom`}
+        >
+          {biegWToku ? T.doborUruchamianieZwarc : T.doborUruchomZwarcia}
+        </button>
+      ) : null}
+    </div>
   );
 }

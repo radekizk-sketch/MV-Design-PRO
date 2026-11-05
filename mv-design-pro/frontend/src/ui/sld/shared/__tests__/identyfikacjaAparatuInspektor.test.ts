@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Inspektor obiektu kanwy — identyfikacja pola i aparatu z MODELU (karta #135 (e)1; UI-02b:
  * dane z kanwy pokazuje prawy inspektor, dawny panel szczegółów kanwy skasowany).

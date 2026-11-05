@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F5a — wyrocznia §9 nomenklatury kierunków (SLD_CAD_SPEC_V3 §9,
  * WIĄŻĄCA). Syntetyczny ciąg: GPZ → S01 → S02 → S03 → S04, z odgałęzieniem

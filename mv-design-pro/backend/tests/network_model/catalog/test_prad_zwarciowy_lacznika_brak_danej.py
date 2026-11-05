@@ -299,7 +299,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert dynamiczna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert dynamiczna["limit"] is None
         assert any(
-            "nie niesie prądu szczytowego I_p" in b
+            "nie niesie znamionowego prądu szczytowego" in b
             for b in dynamiczna["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.pozycja_bez_znamion_wytrzymalosci" in pole["kody_gotowosci"]
@@ -312,25 +312,30 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert cieplna["limit"] is None
         assert any(
-            "nie niesie prądu krótkotrwałego I_th" in b
+            "nie niesie znamionowego prądu krótkotrwałego" in b
             for b in cieplna["wyjasnienie"]["czego_brakuje"]
         )
     elif rodzaj == "CIRCUIT_BREAKER":
         assert cieplna["status_maszynowy"] == "SPELNIA"
         assert cieplna["limit"]["wartosc"] == {"wartosc": icw, "jednostka": "kA"}
     if rodzaj in ("DISCONNECTOR", "LOAD_SWITCH", "EARTH_SWITCH"):
-        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie I_cu”.
+        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie znamienia”.
         assert wylaczanie["status_maszynowy"] == "NIE_DOTYCZY"
-        assert not any("I_cu" in b for b in wylaczanie["wyjasnienie"]["czego_brakuje"]), wylaczanie[
-            "wyjasnienie"
-        ]
+        assert not any(
+            "znamienia zdolności wyłączania" in b
+            for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
+        ), wylaczanie["wyjasnienie"]
         assert "aparatura.brak_zdolnosci_wylaczania" not in pole["kody_gotowosci"]
     elif ik is None:
         # Brak danej ≠ nie dotyczy: wyłącznik ma tę zdolność, karta jej nie podaje.
         assert wylaczanie["status_maszynowy"] == "NIE_OCENIONO"
         assert wylaczanie["limit"] is None
         assert any(
-            "nie niesie znamionowej zdolności wyłączania zwarciowej I_cu" in b
+            # Wyłącznik SN/WN: znamię I_sc wg IEC 62271-100 (karta APARATURA-TABELA), nie I_cu
+            # wyłącznika nN. Proza nazywa znamię słowami (karta KD6 — symbol wyłącznie z pól
+            # `*_latex`), więc rozróżnienie niesie nazwa znamienia IEC 62271-100.
+            "nie niesie znamienia zdolności wyłączania" in b
+            and "znamionowy prąd wyłączalny zwarciowy" in b
             for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.brak_zdolnosci_wylaczania" in pole["kody_gotowosci"]

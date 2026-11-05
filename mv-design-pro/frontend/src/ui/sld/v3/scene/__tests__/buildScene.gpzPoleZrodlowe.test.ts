@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe GPZ (`bay_role = 'OZE'`) było mapowane na odpływ
  * (`LINE_OUT`) i rysowane bez rodzaju źródła. Teraz rodzaj źródła pochodzi z przyłączonych

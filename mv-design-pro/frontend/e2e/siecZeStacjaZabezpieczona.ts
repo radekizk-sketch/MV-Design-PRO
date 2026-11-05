@@ -42,6 +42,11 @@ export type PradyPola = {
   ip_ka: number | null;
   ith_ka: number | null;
   ib_ka: number | null;
+  /** Wyprowadzenie z wiersza biegu (karta KD6-SZCZEGOLY): κ i wzory z kroków śladu solvera. */
+  wyprowadzenie?: {
+    kappa?: number;
+    wzory?: Partial<Record<'ip' | 'ith' | 'ib', string>>;
+  };
 };
 
 export type WidokWytrzymalosci = {
@@ -52,6 +57,7 @@ export type WidokWytrzymalosci = {
     pole_ref: string | null;
     zrodlo: 'model' | 'konfiguracja';
     komunikat_pl: string;
+    komunikat_cieplny_pl: string | null;
     prady_pola: PradyPola;
     /** Ślad I_th przy czasie wyłączenia pola (``solvers.wytrzymalosc_cieplna_pola``). */
     prad_cieplny_pola: {
@@ -65,11 +71,15 @@ export type WidokWytrzymalosci = {
     oceny: Array<{
       kryterium_id: string;
       status_maszynowy: string;
+      stosowalnosc: { dotyczy: boolean };
       wynik: { wartosc: { wartosc: number; jednostka: string } } | null;
+      margines: { wartosc: { wartosc: number } | null } | null;
     }>;
     czas_wylaczenia: {
-      zrodlo: string | null;
-      t_clearing_s: number | null;
+      zrodlo: 'projektant' | 'nastawy_pola' | 'wartosc_robocza';
+      t_clearing_s: number;
+      podstawa_pl: string;
+      wylacznik_czasu_ref: string | null;
       czlon_nastawczy_s: number | null;
       czas_wlasny_wylacznika_s: number | null;
     };
@@ -335,7 +345,7 @@ export function sprawdzPradyPolZBiegiem(widok: WidokWytrzymalosci, wiersze: Wier
     expect(pole.prady_pola.ip_ka).toBe(wiersz!.ip_ka);
     expect(pole.prady_pola.ith_ka).toBe(wiersz!.ith_ka);
     // Prąd cieplny przy T_k pola liczony z I_th TEGO wiersza biegu, a wielkość porównywana
-    // w ocenie cieplnej = ten prąd (czas pola nieustalony: brak porównania, „—" z powodem).
+    // w ocenie cieplnej = ten prąd (bez κ w wierszu: brak porównania, „—" z powodem).
     const cieplny = pole.prad_cieplny_pola;
     expect(cieplny.ith_biegu_ka).toBe(wiersz!.ith_ka);
     const cieplna = pole.oceny.find((o) => o.kryterium_id.endsWith('.cieplna'));

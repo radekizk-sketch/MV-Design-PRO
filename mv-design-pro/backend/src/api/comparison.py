@@ -222,14 +222,19 @@ def compare_runs(
         400: Project mismatch or analysis type mismatch
         404: Results not found for run
     """
-    try:
-        run_a_id = UUID(request.run_a_id)
-        run_b_id = UUID(request.run_b_id)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nieprawidłowy format UUID: {e}",
-        )
+    # Identyfikator spoza formatu UUID — odmowa nazwana stroną porównania; tekst biblioteki
+    # (`badly formed hexadecimal UUID string`) nie trafia do odpowiedzi.
+    identyfikatory: list[UUID] = []
+    for strona, surowy in (("A", request.run_a_id), ("B", request.run_b_id)):
+        try:
+            identyfikator = UUID(surowy)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Identyfikator biegu {strona} porównania nie jest poprawnym UUID.",
+            ) from e
+        identyfikatory.append(identyfikator)
+    run_a_id, run_b_id = identyfikatory
 
     service = ComparisonService(uow_factory)
 

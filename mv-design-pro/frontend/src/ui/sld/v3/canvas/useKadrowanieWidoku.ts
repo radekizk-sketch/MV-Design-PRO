@@ -66,6 +66,8 @@ export interface KomunikatKadru {
 export interface StanKameryWorkspace {
   readonly transform: ViewportTransform;
   readonly lod: SceneLod;
+  /** Viewport kanwy, w którym `transform` obowiązuje (para z jednego stanu kamery). */
+  readonly viewportSize: { readonly width: number; readonly height: number };
 }
 
 const NIE_NARYSOWANY = 'Zakres nie jest narysowany na schemacie na żadnym poziomie szczegółu.';
@@ -223,6 +225,7 @@ export function useKadrowanieWidoku(opcje: {
     const stos = dolozDoHistorii(historiaRef.current, {
       transform: teraz.transform,
       lod: teraz.lod,
+      viewportSize: teraz.viewportSize,
       sciezka: sciezkaRef.current,
       zaznaczenie: zaznaczeniePrzed ?? zaznaczenieWidokuRef.current.pobierz(),
       kurtyna: refyKurtynyRef.current,
@@ -309,7 +312,7 @@ export function useKadrowanieWidoku(opcje: {
   /** Odtworzenie wpisu historii: kamera, ścieżka, kurtyna i zaznaczenie. */
   const przywrocWpis = useCallback((wpis: WpisHistoriiKadru) => {
     seq.current += 1;
-    setPrzywrocenieKamery({ transform: wpis.transform, lod: wpis.lod, seq: seq.current });
+    setPrzywrocenieKamery({ transform: wpis.transform, lod: wpis.lod, viewportSize: wpis.viewportSize, seq: seq.current });
     sciezkaRef.current = wpis.sciezka;
     setSciezka(wpis.sciezka);
     refyKurtynyRef.current = wpis.kurtyna;

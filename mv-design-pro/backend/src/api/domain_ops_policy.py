@@ -767,6 +767,52 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_ref",
+        "TRANSFORMATOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].catalog_binding",
+        "TRANSFORMATOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "zespoly_uziemiajace[].dlawik.catalog_ref", "DLAWIK_GASZACY", True
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        "DLAWIK_GASZACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn",
+        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        "REZYSTOR_UZIEMIAJACY",
+        True,
+    ),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_binding", "DLAWIK_GASZACY", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_binding", "REZYSTOR_UZIEMIAJACY", True
+    ),
+    PozycjaBramyApi(
+        "add_zespol_uziemiajacy_sn", "rezystor.catalog_ref", "REZYSTOR_UZIEMIAJACY", True
+    ),
     # --- CV-4.3 K1: odbiór/generator wprost na szynie -----------------------
     PozycjaBramyApi("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
     PozycjaBramyApi("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
@@ -1049,6 +1095,39 @@ def _referencje_dodatkowe(
             or payload.get("catalog_ref"),
             payload.get("catalog_binding"),
         )
+
+    def _dodaj_zespol(zespol: dict[str, Any]) -> None:
+        # LUSTRO `enm.domain_operations_v2.add_zespol_uziemiajacy_sn`: przestrzenie wynikają
+        # z RODZAJU elementu (transformator uziemiający, dławik, rezystor), nie z wiązania.
+        _dodaj(
+            "Transformator uziemiający",
+            "TRANSFORMATOR_UZIEMIAJACY",
+            _ref_z_wiazania(zespol.get("catalog_binding"))
+            or zespol.get("catalog_item_id")
+            or zespol.get("catalog_ref"),
+            zespol.get("catalog_binding"),
+        )
+        for klucz, opis_pl, przestrzen in (
+            ("dlawik", "Dławik gaszący", "DLAWIK_GASZACY"),
+            ("rezystor", "Rezystor uziemiający", "REZYSTOR_UZIEMIAJACY"),
+        ):
+            urzadzenie = zespol.get(klucz)
+            if isinstance(urzadzenie, dict):
+                _dodaj(
+                    opis_pl,
+                    przestrzen,
+                    _ref_z_wiazania(urzadzenie.get("catalog_binding"))
+                    or urzadzenie.get("catalog_item_id")
+                    or urzadzenie.get("catalog_ref"),
+                    urzadzenie.get("catalog_binding"),
+                )
+
+    if operation == "add_zespol_uziemiajacy_sn":
+        _dodaj_zespol(payload)
+    if operation == "add_grid_source_sn" and isinstance(payload.get("zespoly_uziemiajace"), list):
+        for zespol in payload["zespoly_uziemiajace"]:
+            if isinstance(zespol, dict):
+                _dodaj_zespol(zespol)
 
     if operation == "add_surge_arrester_sn":
         _dodaj(

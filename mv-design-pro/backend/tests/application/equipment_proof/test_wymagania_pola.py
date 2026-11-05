@@ -1,12 +1,12 @@
 """t_k aparatu POLA w wymaganiach dowodu doboru aparatury (karta EDYTOR-DELT-SCENARIUSZA-
-ZABEZPIECZEN, znalezisko (a)): czas wyłączenia pola zastępuje czas cieplny biegu; czas pola
-nieustalony = brak t_k z powodem w uwadze, nigdy czas biegu w zastępstwie.
+ZABEZPIECZEN, znalezisko (a)): czas wyłączenia pola zastępuje czas cieplny biegu; pole bez czasu
+z nastaw ma wartość roboczą 1 s (IEC 62271-1 §4.7, pakiet 8) jako daną przyjętą dowodu.
 
 I_th wymagany = prąd cieplny przy TYM SAMYM t_k pola (``solvers.wytrzymalosc_cieplna_pola``,
 decyzja architekta rozszerzająca (a)): para (I_th, t_k) opisuje jeden stan.
 
-Iloczyn: czas pola {ustalony, nieustalony} × t_k biegu {obecny} → wymagania (t_k, I_th) + uwaga
-dowodu.
+Iloczyn: czas pola {z nastaw, wartość robocza} × t_k biegu {obecny} → wymagania (t_k, I_th)
++ uwaga dowodu + dana przyjęta.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ WYMAGANE_BIEGU = {
 }
 
 
-def _czas(t_clearing_s: float | None, powod: str) -> dict[str, object]:
+def _czas(t_clearing_s: float | None, powod: str, *, roboczy: bool = False) -> dict[str, object]:
     cieplny = prad_cieplny_pola(
         ikss_ka=8.0,
         kappa=1.557,
@@ -48,6 +48,18 @@ def _czas(t_clearing_s: float | None, powod: str) -> dict[str, object]:
         "czlon_nastawczy_s": 0.3 if t_clearing_s is not None else None,
         "czas_wlasny_wylacznika_s": 0.06 if t_clearing_s is not None else None,
         "powod_pl": powod,
+        "zrodlo": "wartosc_robocza" if roboczy else "nastawy_pola",
+        "podstawa_pl": powod,
+        "dana_przyjeta": (
+            {
+                "nazwa_pl": "czas trwania zwarcia (pole P-1)",
+                "wartosc": {"wartosc": 1.0, "jednostka": "s"},
+                "jakosc": "ESTIMATED",
+                "powod_pl": powod,
+            }
+            if roboczy
+            else None
+        ),
     }
 
 
@@ -85,19 +97,27 @@ def test_czas_pola_ustalony_zastepuje_tk_biegu_z_pochodzeniem() -> None:
     assert wymagane["ith_zrodlo"]["tk_pola_s"] == 0.36
     wynik = _dowod(wymagane)
     (ith,) = (c for c in wynik.result.checks if c.name == "Ith")
-    assert any("czas wyłączenia pola" in n for n in ith.notes)
+    assert any(n.startswith("Czas trwania zwarcia t_k pola:") for n in ith.notes)
     assert any("I_th = I″k·√(m + n)" in n for n in ith.notes)
     assert ith.required_value == wymagane["ith_ka"]
-    assert any("czas wyłączenia pola" in w for w in wynik.proof_document.summary.warnings)
+    assert any("Czas trwania zwarcia t_k pola" in w for w in wynik.proof_document.summary.warnings)
 
 
-def test_czas_pola_nieustalony_zdejmuje_tk_zamiast_czasu_biegu() -> None:
-    wymagane = wymagania_z_czasem_pola(
-        WYMAGANE_BIEGU, _czas(None, "Pole nie ma czynnego sterownika zabezpieczeń.")
+def test_pole_bez_nastaw_ma_czas_roboczy_1_s_jako_dana_przyjeta() -> None:
+    """Pole bez zabezpieczenia: t_k = 1 s wg IEC 62271-1 §4.7 (wartość robocza), I_th przy
+    tym czasie, sprawdzenie I_th rozstrzygnięte, a czas stoi w danych przyjętych dowodu."""
+    podstawa = (
+        "wartość robocza 1 s — znamionowy czas trwania zwarcia IEC 62271-1 §4.7; "
+        "pole nie ma zabezpieczenia"
     )
-    assert "tk_s" not in wymagane
-    assert "ith_ka" not in wymagane  # „—" z powodem, nie I_th biegu w zastępstwie
+    wymagane = wymagania_z_czasem_pola(WYMAGANE_BIEGU, _czas(1.0, podstawa, roboczy=True))
+    assert wymagane["tk_s"] == 1.0
+    assert wymagane["tk_zrodlo"]["zrodlo_czasu"] == "wartosc_robocza"
     wynik = _dowod(wymagane)
     (ith,) = (c for c in wynik.result.checks if c.name == "Ith")
-    assert ith.message_pl.startswith("Brak podstawy")
-    assert any("nie ma czynnego sterownika" in n for n in ith.notes)
+    assert not ith.message_pl.startswith("Brak podstawy")
+    assert any("IEC 62271-1" in n for n in ith.notes)
+    assert any(
+        d.wartosc is not None and d.wartosc.wartosc == 1.0 and d.wartosc.jednostka == "s"
+        for d in wynik.result.dane_przyjete
+    )

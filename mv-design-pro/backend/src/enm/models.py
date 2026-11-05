@@ -36,7 +36,11 @@ from network_model.core.bateria_kondensatorow import (
     sprzecznosc_parametrow_baterii,
 )
 from network_model.core.uziemienie import (
+    GrupaTransformatoraUziemiajacego,
+    RegulacjaDlawika,
     RolaUziemnika,
+    StanLacznikaPunktuNeutralnego,
+    StronaRezystoraAwsc,
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
@@ -70,9 +74,11 @@ class GroundingConfig(BaseModel):
     """Sposób pracy punktu neutralnego — JEDYNY typ w systemie (W5-A §1 p. 1).
 
     Nośniki: ``Transformer.hv_neutral``/``lv_neutral`` (punkt gwiazdowy uzwojenia
-    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny
-    sieci SN zasilanej z równoważnika GPZ). Zero kopii: ``Bus.grounding`` i
-    ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
+    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny sieci
+    110 kV albo nN za granicą modelu — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3).
+    Punkt neutralny sieci SN opisuje zespół uziemiający (``ZespolUziemiajacy``) albo
+    uzwojenie transformatora — ``enm/uziemienie_sekcji.py``. Zero kopii: ``Bus.grounding``
+    i ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
     """
 
     type: TypPunktuNeutralnego
@@ -415,13 +421,24 @@ class SwitchBranch(BranchBase):
     # własnego stanu dziedziczy stan pola — `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`
     # (jedno źródło). `None` = gałąź sprzed atrybutu. Rozstrzyga zakaz gazów fluorowanych.
     stan_obiektu: StanObiektu | None = None
-    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiet 6a): czas wyłączenia zwarcia obwodu
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiety 6a i 8): przyjęty czas zwarcia obwodu
     # chronionego tym aparatem — wartość PROJEKTANTA (zasada nr 4: nadpisanie wartości roboczej).
-    # Pierwszeństwo w `application.analyses.czas_wylaczenia_nn`: ta wartość > czas
-    # z charakterystyki aparatu przy prądzie zwarciowym obwodu > wartość robocza PN-HD 60364-4-41.
-    # `None` = brak deklaracji (poza odciskiem modelu). Zakres (0; 5] s — granica metody
+    # nN — `application.analyses.czas_wylaczenia_nn`: ta wartość > czas z charakterystyki aparatu
+    # przy prądzie zwarciowym obwodu > wartość robocza PN-HD 60364-4-41. SN (wyłącznik pola albo
+    # wyłącznik chroniący przewód) — `rozstrzygnij_czas_trwania_zwarcia`: ta wartość > czas
+    # z nastaw zabezpieczenia > wartość robocza 1 s IEC 62271-1 §4.7 (ocena cieplna aparatury
+    # pola, dowód doboru aparatury, kryterium cieplne przewodów SN, dobór kabla toru DER).
+    # `None` = brak deklaracji (poza odciskiem modelu, `enm.hash._POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). Zakres (0; 5] s — granica metody
     # adiabatycznej I²t (IEC 60949) i najdłuższy czas tablicy 41.1.
     czas_wylaczenia_zwarcia_s: float | None = Field(default=None, gt=0.0, le=5.0)
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiet 9): rodzaj obwodu nN chronionego tym
+    # aparatem — wartość PROJEKTANTA. JEDNA klasyfikacja dla I²t (czas wyłączenia,
+    # `application.analyses.czas_wylaczenia_nn`) i werdyktu SWZ (`application.analyses.swz`):
+    # ta wartość > aparat ≤ 63 A — obwód odbiorczy (wartość robocza ESTIMATED, PN-HD
+    # 60364-4-41:2017 §411.3.2.2) > aparat > 63 A — obwód rozdzielczy
+    # (`wartosci_robocze.rozstrzygnij_rodzaj_obwodu_nn`). `None` = brak deklaracji (poza
+    # odciskiem modelu, `enm.hash._POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`).
+    rodzaj_obwodu_nn: Literal["odbiorczy", "rozdzielczy"] | None = None
 
 
 class FuseBranch(BranchBase):
@@ -432,9 +449,17 @@ class FuseBranch(BranchBase):
     # chronionego tym aparatem — wartość PROJEKTANTA (zasada nr 4: nadpisanie wartości roboczej).
     # Pierwszeństwo w `application.analyses.czas_wylaczenia_nn`: ta wartość > czas
     # z charakterystyki aparatu przy prądzie zwarciowym obwodu > wartość robocza PN-HD 60364-4-41.
-    # `None` = brak deklaracji (poza odciskiem modelu). Zakres (0; 5] s — granica metody
+    # `None` = brak deklaracji (poza odciskiem modelu, `enm.hash._POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). Zakres (0; 5] s — granica metody
     # adiabatycznej I²t (IEC 60949) i najdłuższy czas tablicy 41.1.
     czas_wylaczenia_zwarcia_s: float | None = Field(default=None, gt=0.0, le=5.0)
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiet 9): rodzaj obwodu nN chronionego tym
+    # aparatem — wartość PROJEKTANTA. JEDNA klasyfikacja dla I²t (czas wyłączenia,
+    # `application.analyses.czas_wylaczenia_nn`) i werdyktu SWZ (`application.analyses.swz`):
+    # ta wartość > aparat ≤ 63 A — obwód odbiorczy (wartość robocza ESTIMATED, PN-HD
+    # 60364-4-41:2017 §411.3.2.2) > aparat > 63 A — obwód rozdzielczy
+    # (`wartosci_robocze.rozstrzygnij_rodzaj_obwodu_nn`). `None` = brak deklaracji (poza
+    # odciskiem modelu, `enm.hash._POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`).
+    rodzaj_obwodu_nn: Literal["odbiorczy", "rozdzielczy"] | None = None
 
 
 Branch = Annotated[
@@ -548,10 +573,11 @@ class Source(ENMElement):
     source_side: Literal["SN", "HV_110"] | None = None
     sn_voltage_kv: float | None = None
     voltage_hv_kv: float | None = None
-    # W5-A §1 p. 1: opis inżynierski punktu neutralnego sieci SN zasilanej z tego
-    # równoważnika (GPZ). Fizyka czyta, jak dotąd, `r0_ohm`/`x0_ohm` | `z0_z1_ratio`;
-    # kreator GPZ wyprowadza je z (Z_T0 + 3·Z_N) w `pochodne/skladowe_zerowe.py`
-    # i zapisuje OBA: opis i liczby (proweniencja `WYPROWADZONE` w `meta`).
+    # W5-A §1 p. 1 i karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): opis punktu
+    # neutralnego sieci za granicą modelu po stronie 110 kV (albo nN). Fizyka czyta
+    # `r0_ohm`/`x0_ohm` | `z0_z1_ratio` WYŁĄCZNIE dla źródła spoza pasma SN
+    # (`enm.uziemienie_sekcji.impedancja_zerowa_zrodla_dozwolona`); źródło na szynie SN
+    # z tymi danymi zgłasza walidator (W-W5-02), a operacja odmawia ich zapisu.
     neutral_grounding: GroundingConfig | None = None
     sk3_hv_mva: float | None = None
     sk3_mva: float | None = None
@@ -702,6 +728,123 @@ class ShuntCapacitor(ENMElement):
         if sprzecznosc is not None:
             raise ValueError(f"bateria {self.ref_id!r}: {sprzecznosc}")
         return self
+
+
+# ---------------------------------------------------------------------------
+# ZespolUziemiajacy (zespół uziemiający punktu neutralnego sieci SN — ENEA Z.13/Z.14/Z.15)
+# ---------------------------------------------------------------------------
+
+
+class RezystorWymuszajacyAwsc(BaseModel):
+    """Rezystor wymuszający składową czynną prądu doziemnego (AWSC, rysunek Z.13).
+
+    Zeszyt 1 §16: rezystor zabudowany po stronie wtórnej dławika (uzwojenie 500 V),
+    wymuszający po stronie pierwotnej prąd 20–40 A; strona pierwotna przy prądach > 40 A.
+    ``i_wymuszany_a`` = prąd czynny po stronie PIERWOTNEJ (ta wielkość wchodzi do Z_N
+    jako R_w = U_n/(√3·I_w) równolegle z X_L). Łącznik rezystora jest w stanie normalnym
+    otwarty (automatyka w spoczynku) — z natury urządzenia załączanego czasowo, więc model
+    nie niesie jego stanu: przypadek obliczeniowy wybiera stan ``stan_awsc`` scenariusza
+    zwarciowego (Case Immutability Rule; ``spoczynek`` albo ``zalaczony``). Czasy automatyki
+    są daną dla logiki łączeniowej i zabezpieczeń, nie dla fizyki Z_N.
+    """
+
+    i_wymuszany_a: Annotated[float, Field(gt=0)] | None = None
+    strona: StronaRezystoraAwsc | None = None
+    czas_zwloki_s: Annotated[float, Field(ge=0)] | None = None
+    czas_zalaczenia_s: Annotated[float, Field(gt=0)] | None = None
+
+
+class DlawikGaszacy(BaseModel):
+    """Dławik gaszący w punkcie neutralnym transformatora uziemiającego (Z.13, Z.14).
+
+    Zakres regulacji I_min–I_max (Zeszyt 1 §16: dobór na minimum 40–400 A, regulacja płynna
+    10–100 %), regulacja płynna albo zaczepowa, stan dostrojenia ``i_nastawy_a`` (prąd
+    indukcyjny nastawiony — wynik regulacji nadążnej albo położenie zaczepu). Brak nastawy
+    = wartość robocza ESTIMATED (środek zakresu), nigdy cicha domyślka. ``stan_odlacznika``
+    = odłącznik dławika (Zeszyt 1 §16: odłączenie dławika bez wyłączania transformatora
+    uziemiającego; Z.14: odłącznik każdej gałęzi).
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    i_min_a: Annotated[float, Field(gt=0)] | None = None
+    i_max_a: Annotated[float, Field(gt=0)] | None = None
+    regulacja: RegulacjaDlawika | None = None
+    liczba_zaczepow: Annotated[int, Field(ge=2)] | None = None
+    i_nastawy_a: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+    awsc: RezystorWymuszajacyAwsc | None = None
+
+
+class RezystorUziemiajacy(BaseModel):
+    """Rezystor uziemiający punkt neutralny (Z.14 gałąź rezystora, Z.15).
+
+    ``r_ohm`` — rezystancja [Ω], ``i_n_a`` — prąd znamionowy [A], ``t_s`` — dopuszczalny
+    czas przepływu prądu znamionowego [s]. ``stan_odlacznika`` — odłącznik gałęzi rezystora.
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    r_ohm: Annotated[float, Field(gt=0)] | None = None
+    i_n_a: Annotated[float, Field(gt=0)] | None = None
+    t_s: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+
+
+class ZespolUziemiajacy(ENMElement):
+    """Zespół uziemiający sieci SN: transformator uziemiający ZN z elementami punktu
+    neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — JEDYNY nośnik uziemienia punktu
+    neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora.
+
+    Element fizyczny na końcu toru pola ZU (port ``transformator_uziemiajacy`` szablonu pola):
+    ``bus_ref`` — szyna SN, do której przyłączony jest transformator uziemiający (przez
+    wyłącznik pola ZU modelowany jak każdy łącznik gałęzią ``SwitchBranch`` — stan łącznika
+    ZU wynika z topologii, nie z kopii w tym rekordzie); ``bay_ref`` — pole ZU.
+
+    Transformator uziemiający (``catalog_ref`` w przestrzeni ``TRANSFORMATOR_UZIEMIAJACY``):
+    grupa ZNyn, S_n, U_n, impedancja zerowa Z_0,TU = R_0 + jX_0 [Ω/fazę] i uzwojenie potrzeb
+    własnych 400/230 V (drugi port: ``odbior_pw_ref`` wskazuje odbiór potrzeb własnych stacji
+    zasilany z tego uzwojenia — Zeszyt 1 §27.1, potrzeby własne GPZ nie mają osobnego pola).
+    W składowej zgodnej i przeciwnej zygzak nie wnosi impedancji (prąd magnesujący pomijalny);
+    w składowej zerowej zespół jest bocznikiem Z_0 = Z_0,TU + 3·Z_N.
+
+    Punkt neutralny: ``dlawik`` (Z.13, z opcjonalnym ``awsc``), ``rezystor`` (Z.15) albo oba
+    równolegle (Z.14, każda gałąź z własnym odłącznikiem). ``uziemienie_bezposrednie`` —
+    punkt neutralny transformatora uziemiającego połączony wprost z ziemią (Z_N = 0; poza
+    rozwiązaniami dopuszczonymi przez Zeszyt 1 §16, ale fizycznie możliwe) — jawna deklaracja,
+    nigdy wniosek z braku elementów: zespół bez dławika, bez rezystora i bez tej deklaracji
+    jest brakiem MODELU z nazwaną przyczyną, a deklaracja razem z dławikiem lub rezystorem —
+    sprzecznością nazwaną. Wariant i Z_N wyprowadza ``enm.uziemienie_sekcji`` — nigdy kopia
+    w modelu.
+
+    Automatyka (dane reguł walidatora, logika operacji łączeniowych należy do osobnej karty):
+    ``spz`` — SPZ transformatora uziemiającego (Zeszyt 1 §26.9.6: wyłącznie w sieci uziemionej
+    przez rezystor); ``wylaczenie_od_transformatorow_refs`` — transformatory 110 kV/SN, których
+    każde automatyczne wyłączenie pola SN wyłącza ten zespół (IRiESD II.4.5.4.3.5: obowiązkowe
+    przy rezystorze).
+    """
+
+    bus_ref: str
+    bay_ref: str | None = None
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
+    materialized_params: dict | None = None
+    grupa_polaczen: GrupaTransformatoraUziemiajacego | None = None
+    u_n_kv: Annotated[float, Field(gt=0)] | None = None
+    s_n_kva: Annotated[float, Field(gt=0)] | None = None
+    r0_ohm: Annotated[float, Field(ge=0)] | None = None
+    x0_ohm: Annotated[float, Field(ge=0)] | None = None
+    s_pw_kva: Annotated[float, Field(gt=0)] | None = None
+    u_pw_kv: Annotated[float, Field(gt=0)] | None = None
+    odbior_pw_ref: str | None = None
+    dlawik: DlawikGaszacy | None = None
+    rezystor: RezystorUziemiajacy | None = None
+    uziemienie_bezposrednie: bool = False
+    spz: bool = False
+    wylaczenie_od_transformatorow_refs: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -2055,14 +2198,6 @@ class BayEarthFaultPath(BaseModel):
     closure_path_elements: list[str] = []
     transformer_contribution_ref: str | None = None
     grounding_device_ref: str | None = None
-    # EARTHING-1 (most produkcyjny SC_1F -> uziemienia): dane PROJEKTOWE uziomu
-    # potrzebne do napiec dotykowego/krokowego (PN-EN 50522). Addytywne, None =
-    # dana niedostarczona (ZERO zgadywania — brak => readiness fix-action,
-    # pack nie liczy). Nie sa fizyka: to wejscie projektowe (rezystancja uziomu
-    # z pomiaru rezystywnosci gruntu; wspolczynnik podzialu r z torow powrotnych
-    # ekran/OPGW). Prad doziemny I''k1 pochodzi z solvera SC_1F.
-    earth_electrode_resistance_ohm: float | None = None  # R_u = Z_E [Ω]
-    earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
 class BayProofBinding(BaseModel):
@@ -2260,6 +2395,9 @@ class EnergyNetworkModel(BaseModel):
     loads: list[Load] = []
     generators: list[Generator] = []
     shunt_capacitors: list[ShuntCapacitor] = []
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające SN (transformator ZN + dławik /
+    # rezystor / układ równoległy). Pusta lista poza odciskiem (`enm/hash.py`).
+    zespoly_uziemiajace: list[ZespolUziemiajacy] = []
     substations: list[Substation] = []
     bays: list[Bay] = []
     junctions: list[Junction] = []

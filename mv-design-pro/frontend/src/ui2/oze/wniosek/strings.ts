@@ -88,10 +88,10 @@ export const WNIOSEK_STRINGS = {
   // Wynik — sekcja zwarć
   zwarciaTytul: 'Zwarcia w punkcie przyłączenia',
   zwarciaWezel: 'Węzeł',
-  zwarciaIkss: "Początkowy prąd zwarciowy Ik''",
-  zwarciaSk: "Moc zwarciowa S_k''",
-  zwarciaIp: 'Prąd udarowy ip',
-  zwarciaIth: 'Prąd cieplny Ith',
+  zwarciaIkss: "Początkowy prąd zwarciowy $I_k''$",
+  zwarciaSk: "Moc zwarciowa $S_k''$",
+  zwarciaIp: 'Prąd udarowy $i_p$',
+  zwarciaIth: 'Prąd cieplny $I_{th}$',
   zwarciaRodzaj: 'Rodzaj zwarcia',
 
   // Wynik — sekcja zgodności

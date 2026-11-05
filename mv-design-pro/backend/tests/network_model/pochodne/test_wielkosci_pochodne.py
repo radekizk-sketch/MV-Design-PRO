@@ -5,7 +5,7 @@ oryginalnego wyrażenia z konkretnego pliku konsumenckiego (patrz docstring
 funkcji i inwentarz klasy w meldunku karty). Test tożsamości odtwarza TĘ
 SAMĄ kolejność działań zmiennoprzecinkowych inline i sprawdza ``==`` (bit w
 bit, NIE tolerancja) wobec wyniku funkcji — na wejściach z rejestru sieci
-(``tests/golden/registry.py`` przez harness ``sieci_enm_rejestru``) i na
+(``tests/golden/registry.py`` przez harness ``kopie_sieci_enm_rejestru``) i na
 wartościach brzegowych.
 
 Wejścia z rejestru: napięcia znamionowe szyn (``Bus.voltage_kv``) i moce
@@ -29,7 +29,7 @@ from network_model.pochodne.bateria_kondensatorow import (
     moc_z_admitancji_sekcji_mva,
 )
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
 
 # ---------------------------------------------------------------------------
 # Wejścia z rejestru sieci
@@ -38,7 +38,7 @@ from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
 
 def _napiecia_z_rejestru() -> list[float]:
     napiecia: set[float] = set()
-    for _, enm in sieci_enm_rejestru():
+    for _, enm in kopie_sieci_enm_rejestru():
         for bus in enm.buses:
             if bus.voltage_kv and bus.voltage_kv > 0:
                 napiecia.add(round(float(bus.voltage_kv), 6))
@@ -47,7 +47,7 @@ def _napiecia_z_rejestru() -> list[float]:
 
 def _moce_zwarciowe_z_rejestru() -> list[float]:
     moce: set[float] = set()
-    for _, enm in sieci_enm_rejestru():
+    for _, enm in kopie_sieci_enm_rejestru():
         for source in enm.sources:
             if source.sk3_mva and source.sk3_mva > 0:
                 moce.add(round(float(source.sk3_mva), 6))

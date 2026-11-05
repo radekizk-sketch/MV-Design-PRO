@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P30c: Multi-Edit Helpers Tests
  *

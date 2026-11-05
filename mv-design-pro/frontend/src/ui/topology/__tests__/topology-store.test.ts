@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Topology Store Tests — PR-9
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta techniczna aparatu — wielkości zwarciowe: „nie dotyczy” (rodzaj) odróżnione od
  * „brak danych” (wielkość właściwa rodzajowi, karta/model jej nie podaje).

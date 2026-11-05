@@ -426,6 +426,86 @@ def test_gdy_zaden_kabel_nie_wytrzyma_zwarcia_komunikat_wskazuje_wlasciwa_przycz
     assert result.error_pl is not None and "Wytrzymałość zwarciowa" in result.error_pl
 
 
+@pytest.mark.parametrize(
+    ("przypadek", "status", "przekroj_mm2"),
+    [
+        # Bez prądu zwarciowego: kandydat przechodzi na dwóch kryteriach, rekord mówi to wprost.
+        ("bez_danych_zwarciowych", "NIE_OCENIONO", 50.0),
+        # 12,5 kA / 0,5 s: 120 mm² wytrzymuje — propozycja z liczbami I_th i limitu.
+        ("propozycja_wytrzymuje", "SPELNIA", 120.0),
+        # 60 kA / 1 s: żaden kabel nie wytrzymuje — NIE_SPELNIA z akcją.
+        ("zaden_nie_wytrzymuje", "NIE_SPELNIA", None),
+        # Katalog bez Ith/Jth i bez materiału: nie ma czym sprawdzić — NIE_OCENIONO z akcją.
+        ("katalog_bez_wytrzymalosci", "NIE_OCENIONO", 50.0),
+        # Brak propozycji z innego powodu (obciążalność): nie ma czego sprawdzać zwarciowo.
+        ("brak_propozycji_obciazalnosc", "NIE_OCENIONO", None),
+    ],
+)
+def test_kryterium_zwarciowe_ma_rekord_w_kazdej_galezi_wyniku(
+    przypadek: str, status: str, przekroj_mm2: float | None
+) -> None:
+    """Rekord ``thermal_criterion`` w KAŻDEJ gałęzi ``propose_mv_cable`` — status
+    maszynowy zawsze z wyjaśnieniem; liczby (I_th, limit, zapas) tylko przy ocenie
+    rozstrzygniętej, akcja przy każdym braku oceny i przy niespełnieniu."""
+    prad = {
+        "bez_danych_zwarciowych": None,
+        "propozycja_wytrzymuje": (12500.0, 0.5),
+        "zaden_nie_wytrzymuje": (60000.0, 1.0),
+        "katalog_bez_wytrzymalosci": (12500.0, 0.5),
+        "brak_propozycji_obciazalnosc": (12500.0, 0.5),
+    }[przypadek]
+    kandydaci = (
+        _cable_candidates()
+        if przypadek == "katalog_bez_wytrzymalosci"
+        else _cable_candidates_z_danymi_cieplnymi()
+    )
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=5000.0 if przypadek == "brak_propozycji_obciazalnosc" else 140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=kandydaci,
+            max_delta_u_pct=5.0,
+            **(
+                {
+                    **prad_bez_skladowej_nieokresowej(prad[0]),
+                    "fault_duration_s": prad[1],
+                    "fault_duration_basis_pl": "czas z testu",
+                }
+                if prad is not None
+                else {}
+            ),
+        )
+    )
+    kryterium = result.thermal_criterion
+    assert kryterium is not None
+    assert kryterium.status == status
+    # Kontrakt werdyktu wyjaśnialnego §5: zdanie zawsze; przyczyna przy każdym statusie innym
+    # niż spełnione; lista braków przy braku oceny.
+    assert kryterium.wyjasnienie.zdanie_pl
+    assert (kryterium.wyjasnienie.przyczyna_pl is None) is (status == "SPELNIA")
+    assert bool(kryterium.wyjasnienie.czego_brakuje) is (status == "NIE_OCENIONO")
+    if przekroj_mm2 is None:
+        assert result.proposal is None
+    else:
+        assert result.proposal is not None
+        assert result.proposal.cross_section_mm2 == pytest.approx(przekroj_mm2)
+    if status == "SPELNIA":
+        assert kryterium.ith_a is not None and kryterium.admissible_current_a is not None
+        assert kryterium.admissible_current_a > kryterium.ith_a
+        assert kryterium.margin_a == pytest.approx(kryterium.admissible_current_a - kryterium.ith_a)
+        assert kryterium.action_pl is None
+        assert kryterium.fault_duration_basis_pl == "czas z testu"
+    else:
+        assert kryterium.admissible_current_a is None and kryterium.margin_a is None
+        oczekuje_akcji = przypadek != "brak_propozycji_obciazalnosc"
+        assert (kryterium.action_pl is not None) is oczekuje_akcji
+    if przypadek == "bez_danych_zwarciowych":
+        assert kryterium.ith_a is None
+        assert "Uruchom obliczenia zwarciowe" in str(kryterium.action_pl)
+
+
 # ---------------------------------------------------------------------------
 # Karta F-K5 / V12K-203 — CHARAKTER MOCY BIERNEJ jako parametr doboru toru DER.
 # Dlug z V12K-190: solver ΔU umial juz liczyc wzrost napiecia, ale dobor nie

@@ -69,7 +69,7 @@
       "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym Un"
     },
     "margines": {
-      "definicja_latex": "m = x_{\\lim} - x",
+      "definicja_latex": "\\Delta x = x_{\\lim} - x",
       "niedefiniowalny": false,
       "powod_pl": null,
       "punkt_pl": "koniec odcinka 1 (koniec budowanego ciągu)",
@@ -143,7 +143,7 @@
       "chwila_s": null,
       "metoda": "OBLICZENIE",
       "punkt_krytyczny_pl": "koniec odcinka 1 (koniec budowanego ciągu)",
-      "symbol_latex": "\\Delta U_{\\%,\\mathrm{ciąg}}",
+      "symbol_latex": "\\Delta U_{\\%,\\text{ciąg}}",
       "wartosc": {
         "jednostka": "%",
         "wartosc": 2.040496
@@ -344,7 +344,7 @@
         "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym Un"
       },
       "margines": {
-        "definicja_latex": "m = x_{\\lim} - x",
+        "definicja_latex": "\\Delta x = x_{\\lim} - x",
         "niedefiniowalny": false,
         "powod_pl": null,
         "punkt_pl": "koniec odcinka (odbiór skupiony na końcu)",

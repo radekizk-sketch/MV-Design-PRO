@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy czystych adapterów okna „Zdolność przyłączeniowa" (karta P2). Weryfikują:
  * dobór przebiegu rozpływu (LOAD_FLOW/DONE), etykiety węzłów (nazwa pierwszoplanowo),

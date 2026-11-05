@@ -40,7 +40,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Final, Literal, Protocol
+from typing import Any, Final, Literal, Protocol, cast
 
 from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     CZAS_TN_ROZDZIELCZY,
@@ -109,6 +109,10 @@ _ODNIESIENIE_PROFILU_CZASU = (
     "(np. ABB VD4 12 kV, karta 1VCP000267: łączny czas wyłączania 30–65 ms); IEC 62271-100 "
     "definiuje czas wyłączania, ale nie przypisuje mu wartości — deklaruje go producent"
 )
+#: Krótka nazwa profilu czasu własnego i jego podstawa — jedno zdanie o źródle czasu własnego
+#: w szczegółach pola (karta KD6-SZCZEGOLY pkt 4); pełne odniesienie niesie propozycja.
+NAZWA_PROFILU_CZASU_PL = "profil typowy wyłącznika próżniowego SN"
+PODSTAWA_PROFILU_CZASU_PL = "IEC 62271-100: czas wyłączania deklaruje producent"
 _ODNIESIENIE_T_TH = "IEC 62271-1:2017 p. 5.8 (wartość zalecana)"
 _ODNIESIENIE_I_DYN = "IEC 62271-1:2017 p. 5.7"
 _ODNIESIENIE_I_TH_Z_ICU = (
@@ -123,9 +127,15 @@ class OpisParametru:
     parametr: str
     nazwa_pl: str
     symbol: str
+    #: Ten sam symbol jako LaTeX — postać ekranowa (`MathInline`/`$…$`); `symbol` zostaje
+    #: identyfikatorem prozy śladu i raportu (`ui_math_guard`, karta UX-04/POLE-ZU).
+    symbol_latex: str
     jednostka: str
     dopuszczalne_od: float
     dopuszczalne_do: float
+    #: Jednostka jako LaTeX, gdy niesie symbole (`p.u.` na bazie `S_rG`, `U_rG`); pusta, gdy
+    #: jednostka jest zwykłym tekstem (`MVA`, `s`) — ekran pokazuje wtedy `jednostka`.
+    jednostka_latex: str = ""
     #: Parametr przyjmuje wyłącznie wartości całkowite (liczba par biegunów maszyny).
     calkowita: bool = False
 
@@ -137,6 +147,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_CZAS_WLASNY,
         nazwa_pl="czas własny wyłączania wyłącznika",
         symbol="t_b",
+        symbol_latex=r"t_b",
         jednostka="s",
         dopuszczalne_od=0.005,
         dopuszczalne_do=0.3,
@@ -145,6 +156,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_TH,
         nazwa_pl="prąd krótkotrwały wytrzymywany",
         symbol="I_k",
+        symbol_latex=r"I_k",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=100.0,
@@ -153,6 +165,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_T_TH,
         nazwa_pl="znamionowy czas trwania zwarcia",
         symbol="t_k",
+        symbol_latex=r"t_k",
         jednostka="s",
         dopuszczalne_od=0.1,
         dopuszczalne_do=5.0,
@@ -161,6 +174,7 @@ OPISY_PARAMETROW_APARATU_SN: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_I_DYN,
         nazwa_pl="prąd szczytowy wytrzymywany",
         symbol="I_p",
+        symbol_latex=r"I_p",
         jednostka="kA",
         dopuszczalne_od=0.1,
         dopuszczalne_do=250.0,
@@ -387,7 +401,8 @@ def _propozycja_i_th(karta: KartaAparatuSN) -> tuple[PropozycjaWartosci | None, 
         return None, (
             "prąd krótkotrwały wytrzymywany nie dotyczy tego rodzaju aparatu — w rozłączniku "
             "bezpiecznikowym zwarcie przerywa wkładka, która przepala się, a nie przewodzi "
-            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw)"
+            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje prądu "
+            "krótkotrwałego wytrzymywanego)"
         )
     icu = karta.breaking_capacity_ka
     if karta.device_kind.strip().upper() == RODZAJ_WYLACZNIK and icu is not None and icu > 0:
@@ -451,9 +466,10 @@ def _propozycja_i_dyn(i_th: WartoscRozstrzygnieta) -> tuple[PropozycjaWartosci |
             rodzaj_zrodla="NORMA",
             odniesienie=_ODNIESIENIE_I_DYN,
             uzasadnienie_pl=(
-                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową "
-                f"I_p = {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}·I_k dla 50 Hz z prądu "
-                f"krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
+                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową: "
+                f"prąd szczytowy równy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}-krotności prądu "
+                f"krótkotrwałego dla 50 Hz, z prądu krótkotrwałego {liczba_pl(i_th.wartosc)} kA "
+                f"{zrodlo_i_th}"
             ),
             wplyw_pl=(
                 "limit dynamiczny wynika z relacji normowej, nie z próby typu konkretnego "
@@ -679,7 +695,7 @@ def _liczba_c(wartosc: float) -> str:
 def opis_c_klasy_nn_pl(tolerancja: TolerancjaNapieciaNn) -> str:
     """c_max/c_min klasy tolerancji jednym zwrotem — liczby z JEDYNEJ tabeli (``voltage_factor``)."""
     c_max, c_min = c_wiersza_nn(tolerancja)
-    return f"c_max {_liczba_c(c_max)}, c_min {_liczba_c(c_min)}"
+    return f"współczynnik napięciowy maksymalny {_liczba_c(c_max)}, minimalny {_liczba_c(c_min)}"
 
 
 def _procent_pl(wartosc: float) -> str:
@@ -1298,6 +1314,195 @@ POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
     ("x0_ohm_per_km", "X′0"),
 )
 
+# Odcinek MODELU bez składowej zerowej (zasada nr 4): linia albo kabel, którego R′0/X′0 nie ma
+# ani w modelu, ani z pozycji katalogu (odcinek z importu, z parametrów ręcznych). Brak danej
+# urządzenia nie blokuje zwarć doziemnych ani rozpływu niesymetrycznego — obliczenie przyjmuje
+# wartość roboczą tą samą regułą wyprowadzenia co pozycje katalogu, z opisem źródła odcinka.
+ZALOZENIE_ODCINKA_R0_TRZY_R1 = (
+    "R′0 = 3·R′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_X0_TRZY_X1 = (
+    "X′0 = 3·X′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + R′ żyły powrotnej — wartość robocza odcinka bez składowej zerowej w modelu "
+    "(założenie inżynierskie: prąd składowej zerowej wraca wyłącznie żyłą powrotną, ekranem, "
+    "bez udziału ziemi)"
+)
+
+# Kabel nN bez składowej zerowej: żyła powrotna PE/PEN jest WSPÓLNA dla trzech faz (kabel
+# wielożyłowy), więc niesie prąd 3·I0 — w odróżnieniu od ekranów kabla SN (każda żyła fazowa ma
+# własny ekran, ekrany równolegle, każdy niesie I0). Ta sama impedancja pętli co analiza pętli
+# zwarcia nN (IEC 60364-4-41, ``fault_loop``): Z_pętli = Z_L + Z_PE ⇔ (2·Z1 + Z0)/3 przy
+# Z1 = Z_L, stąd Z0 = Z_L + 3·Z_PE. Reguła 3·R′1 dla kabla nN zaniżałaby R′0 (kabel 4-żyłowy
+# o równym przekroju: R′0 = 4·R′1) i zawyżała prąd zwarcia doziemnego — niebezpiecznie dla
+# sprawdzenia samoczynnego wyłączenia, więc bez danych żyły powrotnej wartości roboczej nie ma.
+ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + 3·R′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
+    "X′0 = X′1 + 3·X′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
+    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
+)
+
+# Susceptancja ZEROWA (pojemność doziemna) odcinka SN bez B′0 w modelu. Katalog kabli niesie
+# pojemność roboczą C′1 (materializacja: B′1 = 2πf·C′1 przy częstotliwości studium), katalog
+# linii — susceptancję B′1; pojemności doziemnej nie podaje żadna pozycja. Bez B′0 prąd
+# pojemnościowy sieci (I_C), rozstrojenie dławika, projekt uziemienia i bocznik pojemności
+# w sieci zerowej zwarć są nieoznaczalne — zasada nr 4: wartość robocza z relacji pierwszych
+# zasad, dana przyjęta ESTIMATED.
+#
+# Kabel SN: każda żyła ma własny ekran nad izolacją (pole promieniowe — budowa kabli SN wg
+# IEC 60502-2), więc jedyną pojemnością żyły jest pojemność żyła–ekran (ekran uziemiony):
+# macierz pojemności faz jest diagonalna, C′0 = C′1, stąd B′0 = B′1 (ta sama częstotliwość).
+# Linia SN bez przewodu odgromowego: metoda odbić zwierciadlanych daje
+# C′0/C′1 = ln(D/r) / (ln(D/r) + 3·ln(2h/D)); dla typowej geometrii słupów SN (wysokość
+# zawieszenia 8–11 m, odstęp faz 0,6–1,4 m, przewody 6–15 mm) solver parametrów linii tego
+# repozytorium (``network_model.solvers.parametry_linii_napowietrznej``) daje 0,34–0,45 —
+# wartość robocza B′0 = 0,4·B′1 (rozrzut ±15 % wobec geometrii rzeczywistej, jawnie w założeniu).
+#: Stosunek C′0/C′1 linii SN bez przewodu odgromowego (wartość robocza, uzasadnienie wyżej).
+STOSUNEK_B0_B1_LINII_SN: Final[float] = 0.4
+
+ZALOZENIE_ODCINKA_B0_KABEL_SN = (
+    "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; "
+    "jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1)"
+)
+ZALOZENIE_ODCINKA_B0_LINIA_SN = (
+    "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie "
+    "inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych "
+    "C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; "
+    "rozrzut ±15 % wobec geometrii rzeczywistej)"
+)
+
+#: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
+#: nie „wartością z katalogu” (``dana_przyjeta_z0``).
+ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
+    {
+        ZALOZENIE_ODCINKA_R0_TRZY_R1,
+        ZALOZENIE_ODCINKA_X0_TRZY_X1,
+        ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+        ZALOZENIE_ODCINKA_B0_KABEL_SN,
+        ZALOZENIE_ODCINKA_B0_LINIA_SN,
+    }
+)
+
+#: Pole susceptancji zerowej gałęzi i jego etykieta (dana przyjęta, ślad, komunikaty).
+POLE_B0: Final[str] = "b0_siemens_per_km"
+ETYKIETA_B0: Final[str] = "B′0"
+
+#: Jednostka pola składowej zerowej w danej przyjętej.
+JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {
+    "r0_ohm_per_km": "Ω/km",
+    "x0_ohm_per_km": "Ω/km",
+    POLE_B0: "S/km",
+}
+
+
+def wyprowadz_susceptancje_zerowa_sn(
+    *, kabel: bool, b1: float | None
+) -> tuple[tuple[str, float, str], ...]:
+    """B′0 odcinka SN do przyjęcia wartością roboczą: krotka (pole, wartość [S/km], założenie).
+
+    JEDNA reguła dla każdego konsumenta pojemności doziemnej (sieć zerowa zwarć, prąd
+    pojemnościowy sieci, projekt uziemienia V12.6, gotowość V12.6): kabel SN B′0 = B′1, linia
+    SN B′0 = 0,4·B′1. Pusta krotka, gdy B′1 nieznane albo niedodatnie — pojemności doziemnej
+    nie da się oprzeć na pojemności roboczej, której nie ma. Wołający stosuje regułę
+    WYŁĄCZNIE do odcinków pasma SN (nN i WN — odmowa nazwana u wołającego).
+    """
+    if b1 is None or b1 <= 0:
+        return ()
+    if kabel:
+        return ((POLE_B0, b1, ZALOZENIE_ODCINKA_B0_KABEL_SN),)
+    return ((POLE_B0, round(STOSUNEK_B0_B1_LINII_SN * b1, 15), ZALOZENIE_ODCINKA_B0_LINIA_SN),)
+
+
+def wyprowadz_skladowa_zerowa_kabla_nn(
+    *,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    x_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 kabla nN do przyjęcia wartością roboczą: R′0 = R′1 + 3·R′PE,
+    X′0 = X′1 + 3·X′PE (wyłącznie pola, których brak). Pusta krotka, gdy R′1 albo X′1
+    nieznane albo niedodatnie albo żyła powrotna bez rezystancji (dodatniej) i reaktancji
+    (nieujemnej) — reguły 3·R′1 dla kabla nN nie ma (zaniżone R′0, zawyżony prąd doziemny)."""
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    if r_zyly_powrotnej is None or r_zyly_powrotnej <= 0:
+        return ()
+    if x_zyly_powrotnej is None or x_zyly_powrotnej < 0:
+        return ()
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        wynik.append(
+            (
+                "r0_ohm_per_km",
+                round(r1 + 3.0 * r_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA,
+            )
+        )
+    if brak_x0:
+        wynik.append(
+            (
+                "x0_ohm_per_km",
+                round(x1 + 3.0 * x_zyly_powrotnej, 6),
+                ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA,
+            )
+        )
+    return tuple(wynik)
+
+
+def wyprowadz_skladowa_zerowa(
+    *,
+    kabel: bool,
+    r1: float | None,
+    x1: float | None,
+    r_zyly_powrotnej: float | None,
+    brak_r0: bool,
+    brak_x0: bool,
+    z_katalogu: bool,
+) -> tuple[tuple[str, float, str], ...]:
+    """Pola R′0/X′0 do przyjęcia wartością roboczą: krotki (pole, wartość [Ω/km], założenie).
+
+    JEDNA reguła wyprowadzenia dla pozycji katalogu (``mv_cable_line_catalog``) i dla odcinka
+    modelu bez składowej zerowej (``enm.skladowa_zerowa_odcinka``): R′0 = 3·R′1 (kabel ze
+    znaną żyłą powrotną: R′0 = R′1 + R′ żyły powrotnej), X′0 = 3·X′1 — wyłącznie pola, których
+    brak (``brak_r0`` / ``brak_x0``). ``z_katalogu`` wybiera opis źródła założenia. Pusta krotka, gdy R′1 albo
+    X′1 nieznane albo niedodatnie — wartości roboczej nie da się przyjąć (stosunek typowy
+    dotyczy przewodu o niezerowej impedancji zgodnej).
+    """
+    if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
+        return ()
+    trzy_r1, trzy_x1, zyla = (
+        (ZALOZENIE_R0_TRZY_R1, ZALOZENIE_X0_TRZY_X1, ZALOZENIE_R0_ZYLA_POWROTNA)
+        if z_katalogu
+        else (
+            ZALOZENIE_ODCINKA_R0_TRZY_R1,
+            ZALOZENIE_ODCINKA_X0_TRZY_X1,
+            ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA,
+        )
+    )
+    wynik: list[tuple[str, float, str]] = []
+    if brak_r0:
+        if kabel and r_zyly_powrotnej is not None and r_zyly_powrotnej > 0:
+            wynik.append(("r0_ohm_per_km", round(r1 + r_zyly_powrotnej, 6), zyla))
+        else:
+            wynik.append(("r0_ohm_per_km", round(3.0 * r1, 6), trzy_r1))
+    if brak_x0:
+        wynik.append(("x0_ohm_per_km", round(3.0 * x1, 6), trzy_x1))
+    return tuple(wynik)
+
 
 def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
     """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
@@ -1350,12 +1555,15 @@ def pola_z0_robocze(
 
 
 def dana_przyjeta_z0(
-    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+    *, pole: str, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
 ) -> DanaPrzyjeta:
-    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4); jednostka
+    z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km)."""
+    zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
-        nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
-        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=wartosc, jednostka=JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ[pole]),
         powod_pl=(
             f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
             "albo pomiar)."
@@ -1437,6 +1645,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_POZORNA_MASZYNY,
         nazwa_pl="moc pozorna znamionowa jednej maszyny",
         symbol="S_rG",
+        symbol_latex=r"S_{rG}",
         jednostka="MVA",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_POZORNA_MASZYNY_MAX_MVA,
@@ -1445,6 +1654,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
         nazwa_pl="moc znamionowa (mechaniczna) jednej maszyny",
         symbol="P_rM",
+        symbol_latex=r"P_{rM}",
         jednostka="MW",
         dopuszczalne_od=MOC_MASZYNY_MIN,
         dopuszczalne_do=MOC_ZNAMIONOWA_MASZYNY_MAX_MW,
@@ -1453,7 +1663,9 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_XD,
         nazwa_pl="reaktancja podprzejściowa nasycona",
         symbol="x″d",
+        symbol_latex=r"x''_{d}",
         jednostka="p.u. (S_rG, U_rG)",
+        jednostka_latex=r"\mathrm{p.u.}\ (S_{rG},\ U_{rG})",
         dopuszczalne_od=0.05,
         dopuszczalne_do=0.5,
     ),
@@ -1461,6 +1673,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_COS_PHI_MASZYNY,
         nazwa_pl="znamionowy współczynnik mocy",
         symbol="cos φ_r",
+        symbol_latex=r"\cos\varphi_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1469,6 +1682,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_PARY_BIEGUNOW,
         nazwa_pl="liczba par biegunów",
         symbol="p",
+        symbol_latex=r"p",
         jednostka="1",
         dopuszczalne_od=1.0,
         dopuszczalne_do=float(PARY_BIEGUNOW_MAX),
@@ -1478,6 +1692,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_KROTNOSC_I_LR,
         nazwa_pl="krotność prądu zablokowanego wirnika",
         symbol="I_LR/I_rM",
+        symbol_latex=r"I_{LR}/I_{rM}",
         jednostka="1",
         dopuszczalne_od=2.0,
         dopuszczalne_do=10.0,
@@ -1486,6 +1701,7 @@ OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
         parametr=PARAMETR_SPRAWNOSC,
         nazwa_pl="sprawność znamionowa",
         symbol="η_r",
+        symbol_latex=r"\eta_r",
         jednostka="1",
         dopuszczalne_od=0.5,
         dopuszczalne_do=1.0,
@@ -1682,6 +1898,8 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
                     "parametr": parametr,
                     "nazwa_pl": OPISY_PARAMETROW_MASZYNY[parametr].nazwa_pl,
                     "symbol": OPISY_PARAMETROW_MASZYNY[parametr].symbol,
+                    "symbol_latex": OPISY_PARAMETROW_MASZYNY[parametr].symbol_latex,
+                    "jednostka_latex": OPISY_PARAMETROW_MASZYNY[parametr].jednostka_latex,
                     "jednostka": OPISY_PARAMETROW_MASZYNY[parametr].jednostka,
                     "dopuszczalne_od": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_od,
                     "dopuszczalne_do": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_do,
@@ -2507,20 +2725,91 @@ def zaczep_rekordu_aparatu(aparat: Mapping[str, Any]) -> ZaczepRozstrzygniety | 
 # NAJDŁUŻSZY czas wyłączenia dopuszczony przez PN-HD 60364-4-41 dla danego obwodu — wartość
 # zachowawcza dla I²t (dłuższy czas = większa całka Joule'a).
 #
-# Rodzaj obwodu: obwód odbiorczy — aparat o prądzie znamionowym ≤ 32 A (§411.3.2.2: obwody
-# odbiorcze do 32 A zasilające odbiorniki na stałe; obwody z gniazdami do 63 A). Obecność gniazd
-# nie jest daną modelu, więc dla I²t pasmo 32–63 A przyjmuje się jako obwód rozdzielczy (czas
-# dłuższy, zachowawczo). Werdykt samoczynnego wyłączenia (``application.analyses.swz.werdykt``)
-# klasyfikuje to samo pasmo odwrotnie — jako obwód odbiorczy, bo dla SWZ zachowawczy jest czas
-# KRÓTSZY. Oba kierunki wynikają z tej samej reguły normy i są nazwane w wyjaśnieniu.
+# Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDNA klasyfikacja dla I²t i dla werdyktu SWZ
+# (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN, pakiet 9; ``rozstrzygnij_rodzaj_obwodu_nn``):
+# wartość projektanta na aparacie obwodu (``rodzaj_obwodu_nn``) > reguła prądu znamionowego
+# aparatu. Obwody odbiorcze sięgają 63 A (§411.3.2.2: do 63 A z gniazdami, do 32 A dla
+# odbiorników na stałe), więc aparat ≤ 63 A daje WARTOŚĆ ROBOCZĄ „obwód odbiorczy” (ESTIMATED
+# — obecność gniazd i rola obwodu nie są daną modelu), aparat > 63 A — obwód rozdzielczy z normy
+# (obwodu odbiorczego powyżej 63 A norma nie zna), aparat bez prądu znamionowego — wartość
+# robocza „obwód rozdzielczy” (ESTIMATED). Dawniej I²t brał próg 32 A, a SWZ 63 A: pasmo
+# 32–63 A było naraz obwodem rozdzielczym i odbiorczym.
 #
 # Układ IT: przy drugim zwarciu obowiązują warunki TN (części przewodzące połączone) albo TT
 # (uziemione indywidualnie) — §411.6.4; propozycja bierze czasy TN (dłuższe, zachowawczo).
 # Układ nieznany: najdłuższy czas tablicy (5 s, obwód rozdzielczy TN).
 
-PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A: Final[float] = 32.0
+#: Najwyższy prąd znamionowy aparatu obwodu odbiorczego wg PN-HD 60364-4-41:2017 §411.3.2.2.
+PROG_PRADU_OBWODU_ODBIORCZEGO_A: Final[float] = 63.0
 
 _ZRODLO_CZASU_NN_PL = "PN-HD 60364-4-41"
+_PODSTAWA_RODZAJU_OBWODU_PL = "PN-HD 60364-4-41:2017 §411.3.2.2"
+
+RodzajObwoduNn = Literal["odbiorczy", "rozdzielczy"]
+ZrodloRodzajuObwodu = Literal["projektant", "norma", "wartosc_robocza"]
+
+
+@dataclass(frozen=True)
+class RodzajObwoduRozstrzygniety:
+    """Rodzaj obwodu nN + źródło + uzasadnienie (wspólne dla I²t i SWZ)."""
+
+    rodzaj: RodzajObwoduNn
+    zrodlo: ZrodloRodzajuObwodu
+    uzasadnienie_pl: str
+
+    def dana_przyjeta(self, *, miejsce_pl: str) -> DanaPrzyjeta | None:
+        """Dana przyjęta (``ESTIMATED``) wyłącznie dla wartości roboczej."""
+        if self.zrodlo != "wartosc_robocza":
+            return None
+        return DanaPrzyjeta(
+            nazwa_pl=f"rodzaj obwodu ({miejsce_pl})",
+            wartosc=None,
+            powod_pl=self.uzasadnienie_pl,
+            jakosc=FieldQuality.ESTIMATED,
+        )
+
+
+def rozstrzygnij_rodzaj_obwodu_nn(
+    *, rodzaj_projektanta: str | None, in_a: float | None
+) -> RodzajObwoduRozstrzygniety:
+    """Rodzaj obwodu nN — JEDNO rozstrzygnięcie dla I²t (czas wyłączenia) i werdyktu SWZ.
+
+    ``rodzaj_projektanta`` — ``rodzaj_obwodu_nn`` aparatu obwodu (``None`` — brak deklaracji),
+    ``in_a`` — prąd znamionowy aparatu obwodu.
+    """
+    if rodzaj_projektanta is not None:
+        if rodzaj_projektanta not in ("odbiorczy", "rozdzielczy"):
+            raise ValueError(
+                "rodzaj obwodu nN musi być 'odbiorczy' albo 'rozdzielczy', otrzymano "
+                f"{rodzaj_projektanta!r}."
+            )
+        return RodzajObwoduRozstrzygniety(
+            cast(RodzajObwoduNn, rodzaj_projektanta),
+            "projektant",
+            f"obwód {rodzaj_projektanta} — wartość projektanta na aparacie obwodu",
+        )
+    if in_a is None:
+        return RodzajObwoduRozstrzygniety(
+            "rozdzielczy",
+            "wartosc_robocza",
+            "obwód rozdzielczy — wartość robocza: aparat obwodu bez prądu znamionowego; "
+            "zmień rodzaj obwodu na aparacie, gdy obwód jest odbiorczy",
+        )
+    if in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A:
+        return RodzajObwoduRozstrzygniety(
+            "odbiorczy",
+            "wartosc_robocza",
+            f"obwód odbiorczy — wartość robocza: aparat {in_a:g} A ≤ "
+            f"{PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A ({_PODSTAWA_RODZAJU_OBWODU_PL}); zmień rodzaj "
+            "obwodu na aparacie, gdy obwód jest rozdzielczy",
+        )
+    return RodzajObwoduRozstrzygniety(
+        "rozdzielczy",
+        "norma",
+        f"obwód rozdzielczy — aparat {in_a:g} A > {PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A "
+        f"({_PODSTAWA_RODZAJU_OBWODU_PL}: obwód odbiorczy do "
+        f"{PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A)",
+    )
 
 
 @dataclass(frozen=True)
@@ -2536,14 +2825,14 @@ class CzasWylaczeniaRoboczyNn:
 
 
 def czas_wylaczenia_roboczy_nn(
-    *, uklad: str | None, in_a: float | None, u0_v: float | None
+    *, uklad: str | None, rodzaj: RodzajObwoduRozstrzygniety, u0_v: float | None
 ) -> CzasWylaczeniaRoboczyNn:
     """Najdłuższy dopuszczalny czas wyłączenia obwodu nN wg PN-HD 60364-4-41 (propozycja).
 
     ``uklad`` — układ sieci nN z transformatora zasilającego (``TN-S``/``TN-C-S``/``TN-C``/
-    ``TT``/``IT`` albo ``None``), ``in_a`` — prąd znamionowy aparatu obwodu (``None`` — obwód
-    rozdzielczy), ``u0_v`` — napięcie fazowe względem ziemi (``None`` przy obwodzie odbiorczym —
-    pasmo nieznane, przyjmuje się czas obwodu rozdzielczego).
+    ``TT``/``IT`` albo ``None``), ``rodzaj`` — rodzaj obwodu z ``rozstrzygnij_rodzaj_obwodu_nn``
+    (ta sama klasyfikacja co werdykt SWZ), ``u0_v`` — napięcie fazowe względem ziemi (``None``
+    przy obwodzie odbiorczym — pasmo nieznane, przyjmuje się czas obwodu rozdzielczego).
     """
     uklad_tt = uklad == "TT"
     uklad_przyjety: Literal["TN", "TT"] = "TT" if uklad_tt else "TN"
@@ -2556,38 +2845,32 @@ def czas_wylaczenia_roboczy_nn(
         )
     else:
         opis_ukladu = f"układ {uklad}"
-    if (
-        uklad is not None
-        and in_a is not None
-        and in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A
-        and u0_v is not None
-        and u0_v > 50.0
-    ):
+    if uklad is not None and rodzaj.rodzaj == "odbiorczy" and u0_v is not None and u0_v > 50.0:
         pasmo = pasmo_dla_u0(u0_v)
         wpis = (TABLICA_TT_ODBIORCZE if uklad_tt else TABLICA_TN_ODBIORCZE)[pasmo]
         jednostka = "tablica 41.1"
-        rodzaj: Literal["odbiorczy", "rozdzielczy"] = "odbiorczy"
+        rodzaj_czasu: RodzajObwoduNn = "odbiorczy"
         opis_obwodu = (
-            f"obwód odbiorczy (aparat {in_a:g} A ≤ {PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A:g} A), "
-            f"U0 {u0_v:.0f} V (pasmo {pasmo.replace('<=', '≤')} V)"
+            f"{rodzaj.uzasadnienie_pl}, U0 {u0_v:.0f} V (pasmo {pasmo.replace('<=', '≤')} V)"
         )
     else:
         wpis = CZAS_TT_ROZDZIELCZY if uklad_tt else CZAS_TN_ROZDZIELCZY
         jednostka = "§411.3.2.4" if uklad_tt else "§411.3.2.3"
-        rodzaj = "rozdzielczy"
-        opis_obwodu = "obwód rozdzielczy" + (
-            f" (aparat {in_a:g} A > {PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A:g} A — obecność "
-            "gniazd nie jest daną modelu, dla I²t przyjęto czas dłuższy)"
-            if in_a is not None and in_a > PROG_PRADU_OBWODU_ODBIORCZEGO_I2T_A
-            else (
-                " (aparat bez prądu znamionowego albo pasmo napięcia nieznane)"
-                if uklad is not None
-                else ""
+        rodzaj_czasu = "rozdzielczy"
+        if uklad is None:
+            opis_obwodu = rodzaj.uzasadnienie_pl
+        elif rodzaj.rodzaj == "odbiorczy":
+            # Obwód odbiorczy bez pasma napięcia względem ziemi: tablica 41.1 nie daje czasu,
+            # więc przyjmuje się czas obwodu rozdzielczego (dłuższy, zachowawczo dla I²t).
+            opis_obwodu = (
+                f"{rodzaj.uzasadnienie_pl}; pasmo napięcia względem ziemi nieznane — przyjęto "
+                "czas obwodu rozdzielczego"
             )
-        )
+        else:
+            opis_obwodu = rodzaj.uzasadnienie_pl
     return CzasWylaczeniaRoboczyNn(
         czas_s=wpis.czas_s,
-        rodzaj_obwodu=rodzaj,
+        rodzaj_obwodu=rodzaj_czasu,
         uklad_przyjety=uklad_przyjety,
         jednostka_redakcyjna=f"{_ZRODLO_CZASU_NN_PL} {jednostka}",
         podstawa_tabeli_pl=wpis.podstawa,
@@ -2610,3 +2893,171 @@ def dana_przyjeta_czasu_wylaczenia_nn(
         powod_pl=czas.uzasadnienie_pl,
         jakosc=FieldQuality.ESTIMATED,
     )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: czas trwania zwarcia do oceny cieplnej SN (karta EDYTOR-DELT-SCENARIUSZA-
+# ZABEZPIECZEN, pakiet 8 — dyrektywa właściciela: kryterium cieplne bez stanu „nieustalony”)
+# ---------------------------------------------------------------------------
+#
+# Ocena cieplna aparatury pola SN, prąd cieplny pola I_th, dowód doboru aparatury, kryterium
+# cieplne przewodów SN i dobór kabla toru DER potrzebują czasu trwania zwarcia T_k. Czas NIE
+# jest nigdy pusty. JEDNO rozstrzygnięcie (``rozstrzygnij_czas_trwania_zwarcia``), w kolejności:
+#   1. wartość projektanta w modelu — ``czas_wylaczenia_zwarcia_s`` wyłącznika pola (ten sam
+#      atrybut aparatu co czas wyłączenia obwodu nN, pakiet 6a: jeden atrybut dla obu dziedzin);
+#   2. czas z nastaw zabezpieczenia i czasu własnego wyłącznika (człon nastawczy + czas własny);
+#   3. czas cieplny przypadku obliczeniowego, gdy przypadek go jawnie podaje (wyłącznie
+#      kryterium przewodów — parametr scenariusza zwarciowego jest daną projektanta);
+#   4. wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej
+#      (IEC 62271-1 / PN-EN 62271-1 §4.7), jakość ``ESTIMATED``, wpis w danych
+#      przyjętych — ocena na niej ma kompletność dowodu ``NIEPELNY``.
+
+CZAS_TRWANIA_ZWARCIA_ROBOCZY_S: Final[float] = 1.0
+PODSTAWA_CZASU_TRWANIA_ZWARCIA_PL: Final[str] = (
+    "znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7"
+)
+
+ZrodloCzasuZwarcia = Literal["projektant", "nastawy", "przypadek", "wartosc_robocza"]
+
+
+@dataclass(frozen=True)
+class CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia [s] + źródło + podstawa jednym zdaniem (trójka rozstrzygnięcia)."""
+
+    wartosc_s: float
+    zrodlo: ZrodloCzasuZwarcia
+    podstawa_pl: str
+
+    @property
+    def robocza(self) -> bool:
+        return self.zrodlo == "wartosc_robocza"
+
+    def dana_przyjeta(self, *, miejsce_pl: str) -> DanaPrzyjeta | None:
+        """Dana przyjęta (``ESTIMATED``) dla wartości roboczej; ``None`` dla pozostałych źródeł."""
+        if not self.robocza:
+            return None
+        return DanaPrzyjeta(
+            nazwa_pl=f"czas trwania zwarcia ({miejsce_pl})",
+            wartosc=Wielkosc(wartosc=self.wartosc_s, jednostka="s"),
+            powod_pl=self.podstawa_pl,
+            jakosc=FieldQuality.ESTIMATED,
+        )
+
+
+def rozstrzygnij_czas_trwania_zwarcia(
+    *,
+    czas_projektanta_s: float | None,
+    opis_projektanta_pl: str,
+    czas_z_nastaw_s: float | None,
+    opis_nastaw_pl: str,
+    czas_przypadku_s: float | None = None,
+    opis_przypadku_pl: str = "",
+) -> CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia do oceny cieplnej — JEDNO miejsce pierwszeństwa źródeł.
+
+    Projektant > nastawy zabezpieczenia > czas przypadku (jawny) > wartość robocza 1 s
+    (IEC 62271-1 §4.7). Wynik nigdy nie jest pusty; ``podstawa_pl`` nazywa źródło zdaniem,
+    a dla wartości roboczej — normę i sposób jej zmiany w modelu (powód braku czasu z nastaw
+    zostaje w rozbiciu z nastaw i w kodzie gotowości wołającego, nie w tym zdaniu).
+    """
+    if czas_projektanta_s is not None:
+        return CzasTrwaniaZwarcia(
+            float(czas_projektanta_s),
+            "projektant",
+            f"wartość nadana przez projektanta ({opis_projektanta_pl})",
+        )
+    if czas_z_nastaw_s is not None:
+        return CzasTrwaniaZwarcia(float(czas_z_nastaw_s), "nastawy", opis_nastaw_pl)
+    if czas_przypadku_s is not None:
+        return CzasTrwaniaZwarcia(float(czas_przypadku_s), "przypadek", opis_przypadku_pl)
+    return CzasTrwaniaZwarcia(
+        CZAS_TRWANIA_ZWARCIA_ROBOCZY_S,
+        "wartosc_robocza",
+        (
+            f"wartość robocza {liczba_pl(CZAS_TRWANIA_ZWARCIA_ROBOCZY_S)} s — "
+            f"{PODSTAWA_CZASU_TRWANIA_ZWARCIA_PL}. Zmień przyjęty czas zwarcia "
+            f"({opis_projektanta_pl}), gdy znasz czas wyłączenia."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Niezawodność elementów sieci SN (analiza niezawodności V12.6, karta UX-04/
+# POLE-ZU-SKLADOWA-ZEROWA odcinek 3). Model ENM nie niesie danych niezawodnościowych
+# elementów; intensywność uszkodzeń i czas odnowy są założeniem inżynierskim (bez numeru
+# normy — IEEE Std 1366 definiuje WYŁĄCZNIE sposób liczenia wskaźników, nie dane elementów),
+# jawnym jako dana przyjęta ESTIMATED. Projektant zastępuje każdą wartość parametrem
+# ``reliability_data`` analizy (zasada nr 4 pkt 3). Dawny katalog „reliability-defaults”
+# API niósł dodatkowy wiersz transformatora SN/nN (0,008/rok, 48 h), którego most nigdy nie
+# czytał — fantom usunięty; katalog czyta odtąd TEN rejestr.
+# ---------------------------------------------------------------------------
+
+ElementNiezawodnosci = Literal["linia_napowietrzna_sn", "kabel_sn", "aparat_sn"]
+
+
+@dataclass(frozen=True)
+class PropozycjaNiezawodnosci:
+    """Wartość robocza niezawodności jednego rodzaju elementu (λ i czas odnowy)."""
+
+    element: ElementNiezawodnosci
+    nazwa_pl: str
+    #: Intensywność uszkodzeń: na km i rok (linia, kabel) albo na rok (aparat).
+    intensywnosc_uszkodzen: float
+    jednostka_intensywnosci: str
+    na_km: bool
+    czas_odnowy_h: float
+    odniesienie: str
+
+
+_ODNIESIENIE_NIEZAWODNOSCI = (
+    "założenie inżynierskie: wartość typowa praktyki eksploatacji sieci SN (rząd wielkości "
+    "spotykany w statystykach awaryjności operatorów), bez wartości normowej — IEEE Std 1366 "
+    "definiuje sposób liczenia wskaźników SAIDI/SAIFI/CAIDI/MAIFI, nie dane elementów"
+)
+
+PROPOZYCJE_NIEZAWODNOSCI: Mapping[ElementNiezawodnosci, PropozycjaNiezawodnosci] = {
+    "linia_napowietrzna_sn": PropozycjaNiezawodnosci(
+        element="linia_napowietrzna_sn",
+        nazwa_pl="linia napowietrzna SN",
+        intensywnosc_uszkodzen=0.08,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=3.5,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "kabel_sn": PropozycjaNiezawodnosci(
+        element="kabel_sn",
+        nazwa_pl="linia kablowa SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/(km·rok)",
+        na_km=True,
+        czas_odnowy_h=12.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+    "aparat_sn": PropozycjaNiezawodnosci(
+        element="aparat_sn",
+        nazwa_pl="aparat łączeniowy SN",
+        intensywnosc_uszkodzen=0.015,
+        jednostka_intensywnosci="1/rok",
+        na_km=False,
+        czas_odnowy_h=4.0,
+        odniesienie=_ODNIESIENIE_NIEZAWODNOSCI,
+    ),
+}
+
+#: Udział przerw krótkich (MAIFI) w liczbie przerw długich (SAIFI) — założenie inżynierskie
+#: (sieć bez danych o samoczynnym ponownym załączaniu); MAIFI = 0,12·SAIFI jest daną przyjętą.
+UDZIAL_MAIFI_DO_SAIFI = 0.12
+ODNIESIENIE_MAIFI = (
+    "założenie inżynierskie: przerwy krótkie jako stały udział 0,12 przerw długich — model nie "
+    "niesie danych o samoczynnym ponownym załączaniu ani rejestru przerw krótkich"
+)
+
+
+def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
+    """Rodzaj elementu rejestru niezawodności dla rodzaju gałęzi ENM (jedno odwzorowanie)."""
+    if rodzaj_galezi == "line_overhead":
+        return "linia_napowietrzna_sn"
+    if rodzaj_galezi == "cable":
+        return "kabel_sn"
+    return "aparat_sn"

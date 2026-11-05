@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy `rozpakujWartoscSladu` (karta WB-2) — jedynego miejsca rozpakowania
  * surowej wartości kroku śladu WHITE BOX, zastępującego trzy (a po

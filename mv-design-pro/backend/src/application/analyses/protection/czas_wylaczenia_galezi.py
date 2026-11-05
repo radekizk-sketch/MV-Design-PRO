@@ -31,6 +31,7 @@ identyfikatorze, wiec dla tego samego modelu wynik jest identyczny.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +42,7 @@ from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _prad_galezi,
 )
 from application.analyses.protection.ocena_nadpradowa import (
+    ETYKIETY_KRZYWYCH_PL,
     NastawyUrzadzenia,
     czas_urzadzenia,
     rozwiaz_nastawy,
@@ -48,8 +50,10 @@ from application.analyses.protection.ocena_nadpradowa import (
     wylacznik_urzadzenia,
 )
 from enm.mapping import ref_to_graph_id
-from enm.models import EnergyNetworkModel
+from enm.models import EnergyNetworkModel, SwitchBranch
+from enm.nazwy_elementow import nazwa_elementu
 from enm.zabezpieczenie import aparaty_sterownika
+from network_model.catalog.wartosci_robocze import liczba_pl, rozstrzygnij_czas_trwania_zwarcia
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -355,7 +359,7 @@ def wyznacz_czasy_wylaczenia(
                 branch_id=branch_id,
                 tk_s=None,
                 zrodlo=ZRODLO_BRAK_NASTAW,
-                powod_pl=streszczenie_brakow_nastaw(nastawy.nazwa_pl, nastawy.braki),
+                powod_pl=streszczenie_brakow_nastaw(nastawy.oznaczenie_pl, nastawy.braki),
                 urzadzenie_ref=aparat_id,
                 urzadzenie_nazwa=nazwa_aparatu,
                 prad_galezi_a=prad_pokazany,
@@ -373,13 +377,13 @@ def wyznacz_czasy_wylaczenia(
                     (
                         f"Każdy wkład źródła do tej gałęzi to {NAZWA_WKLADU_POMINIETEGO}, "
                         f"więc prąd gałęzi nie przekracza progu rozruchowego "
-                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
                         f"{najczulszy.etykieta_pl} — to zabezpieczenie nie zadziała."
                     )
                     if pominieta
                     else (
-                        f"Prąd gałęzi {prad:.1f} A nie przekracza progu rozruchowego "
-                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"Prąd gałęzi {liczba_pl(round(prad, 1))} A nie przekracza progu rozruchowego "
+                        f"{liczba_pl(najczulszy.prog_pierwotny_a)} A najczulszego stopnia "
                         f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała."
                     )
                 ),
@@ -399,8 +403,10 @@ def wyznacz_czasy_wylaczenia(
             tk_s=decydujacy["t_s"],
             zrodlo=ZRODLO_NASTAWA,
             powod_pl=(
-                f"Czas stopnia {decydujacy['etykieta_pl']} ({decydujacy['krzywa']}) "
-                f"zabezpieczenia {nastawy.nazwa_pl} przy prądzie gałęzi {prad:.1f} A — "
+                f"Czas stopnia {decydujacy['etykieta_pl']} zabezpieczenia "
+                f"{nastawy.oznaczenie_pl}, charakterystyka: "
+                f"{ETYKIETY_KRZYWYCH_PL[str(decydujacy['krzywa'])]}, przy prądzie gałęzi "
+                f"{liczba_pl(round(prad, 1))} A — "
                 "najszybszy stopień, który ruszył."
             ),
             urzadzenie_ref=aparat_id,
@@ -429,42 +435,91 @@ def czasy_dla_modelu(
     )
 
 
-def mapa_tk_s_z_nastaw(czasy: dict[str, CzasWylaczeniaGalezi]) -> dict[str, float]:
-    """Czasy WYZNACZONE Z NASTAW — tylko one nadpisuja czas przypadku.
-
-    Galaz bez rozwiazanej nastawy jest w mapie NIEOBECNA: analiza cieplna uzyje dla
-    niej zalozonego czasu przypadku, a ``slad_czasu`` nazwie to wprost. Wpisanie tu
-    ``None`` odbieraloby projektantowi ocene, ktora ma prawo zrobic na wlasnym
-    zalozeniu normowym.
-    """
-    return {
-        branch_id: czas.tk_s for branch_id, czas in sorted(czasy.items()) if czas.tk_s is not None
+def czasy_projektanta_galezi(
+    *, model: EnergyNetworkModel, graph: NetworkGraph, czasy: Mapping[str, CzasWylaczeniaGalezi]
+) -> dict[str, tuple[float, str]]:
+    """Przyjęty czas zwarcia projektanta per gałąź: ``czas_wylaczenia_zwarcia_s`` wyłącznika
+    chroniącego gałąź (``znajdz_aparat_chroniacy`` — ten sam aparat, którego nastawy dają czas
+    gałęzi). Ten sam atrybut łącznika co czas pola SN i czas obwodu nN (pakiet 8)."""
+    po_grafie = {
+        ref_to_graph_id(g.ref_id): g
+        for g in model.branches
+        if isinstance(g, SwitchBranch) and g.czas_wylaczenia_zwarcia_s is not None
     }
+    wynik: dict[str, tuple[float, str]] = {}
+    for branch_id in sorted(czasy):
+        aparat_id = znajdz_aparat_chroniacy(graph, branch_id)
+        lacznik = po_grafie.get(aparat_id) if aparat_id is not None else None
+        if lacznik is not None and lacznik.czas_wylaczenia_zwarcia_s is not None:
+            wynik[branch_id] = (
+                float(lacznik.czas_wylaczenia_zwarcia_s),
+                f"przyjęty czas zwarcia na wyłączniku „{nazwa_elementu(lacznik, 'branches')}”",
+            )
+    return wynik
+
+
+#: Źródła czasu trwania zwarcia gałęzi spoza nastaw (``rozstrzygnij_czas_trwania_zwarcia``).
+ZRODLO_PROJEKTANT = "projektant"
+ZRODLO_WARTOSC_ROBOCZA = "wartosc_robocza"
 
 
 def slad_czasu(
-    czasy: dict[str, CzasWylaczeniaGalezi], *, tk_s_zalozony: float
+    czasy: dict[str, CzasWylaczeniaGalezi],
+    *,
+    tk_s_zalozony: float,
+    czas_przypadku_jawny: bool = True,
+    czasy_projektanta: Mapping[str, tuple[float, str]] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Pochodzenie czasu dla KAZDEJ galezi — nastawa albo jawne zalozenie przypadku.
+    """Pochodzenie czasu dla KAZDEJ galezi — JEDNO rozstrzygnięcie
+    ``rozstrzygnij_czas_trwania_zwarcia`` (pakiet 8): wartość projektanta na wyłączniku
+    chroniącym > nastawa zabezpieczenia > czas cieplny przypadku, gdy przypadek go jawnie
+    podaje (``czas_przypadku_jawny``) > wartość robocza 1 s (IEC 62271-1 §4.7, dana przyjęta
+    ``ESTIMATED`` w ``dana_przyjeta``).
 
     KLUCZOWY NIEZMIENNIK KARTY: zadna galaz nie moze pokazac czasu bez podania,
-    skad on jest. Czas z nastawy i czas zalozony przypadku wygladaja w tabeli tak
-    samo, wiec to ``zrodlo`` odroznia rozwiazana ochrone od zalozenia projektanta.
+    skad on jest — ``zrodlo`` i ``podstawa_pl`` odrozniaja nastawe od zalozenia.
     """
+    projektant = czasy_projektanta or {}
     wynik: dict[str, dict[str, Any]] = {}
     for branch_id, czas in sorted(czasy.items()):
-        if czas.tk_s is not None:
-            wynik[branch_id] = czas.to_dict()
-            continue
-        pozycja = czas.to_dict()
-        pozycja["tk_s"] = tk_s_zalozony
-        pozycja["zrodlo"] = ZRODLO_ZALOZENIE_PRZYPADKU
-        pozycja["powod_pl"] = (
-            f"{czas.powod_pl} Przyjęto założony czas przypadku obliczeniowego "
-            f"{tk_s_zalozony:g} s."
+        wartosc_projektanta, opis_projektanta = projektant.get(
+            branch_id, (None, "przyjęty czas zwarcia na wyłączniku chroniącym gałąź")
         )
+        trojka = rozstrzygnij_czas_trwania_zwarcia(
+            czas_projektanta_s=wartosc_projektanta,
+            opis_projektanta_pl=opis_projektanta,
+            czas_z_nastaw_s=czas.tk_s,
+            opis_nastaw_pl=czas.powod_pl,
+            czas_przypadku_s=tk_s_zalozony if czas_przypadku_jawny else None,
+            opis_przypadku_pl=(
+                f"{czas.powod_pl} Przyjęto założony czas przypadku obliczeniowego "
+                f"{liczba_pl(tk_s_zalozony)} s."
+            ),
+        )
+        pozycja = czas.to_dict()
+        pozycja["tk_s"] = trojka.wartosc_s
+        pozycja["podstawa_pl"] = trojka.podstawa_pl
+        pozycja["zrodlo"] = {
+            "projektant": ZRODLO_PROJEKTANT,
+            "nastawy": ZRODLO_NASTAWA,
+            "przypadek": ZRODLO_ZALOZENIE_PRZYPADKU,
+            "wartosc_robocza": ZRODLO_WARTOSC_ROBOCZA,
+        }[trojka.zrodlo]
+        if trojka.zrodlo != "nastawy":
+            pozycja["powod_pl"] = trojka.podstawa_pl
+        # Jedno założenie dla wszystkich gałęzi bez czasu (identyczny wpis — widok go scala);
+        # gałęzie nazywa ślad czasu pozycji, nie identyfikator grafu w nazwie danej.
+        dana = trojka.dana_przyjeta(
+            miejsce_pl="przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku"
+        )
+        pozycja["dana_przyjeta"] = dana.model_dump(mode="json") if dana is not None else None
         wynik[branch_id] = pozycja
     return wynik
+
+
+def mapa_tk_s(slad: Mapping[str, Mapping[str, Any]]) -> dict[str, float]:
+    """Czas trwania zwarcia KAŻDEJ gałęzi śladu (``slad_czasu`` — nigdy pusty)."""
+    return {branch_id: float(poz["tk_s"]) for branch_id, poz in sorted(slad.items())}
 
 
 def podsumowanie_czasow(slad: dict[str, dict[str, Any]]) -> dict[str, int]:

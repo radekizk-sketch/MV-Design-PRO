@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Parytet rejestru etykiet metryk z backendem (karta UI-02 PANEL-DOLNY, §0 pkt 2).
  *

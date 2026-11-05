@@ -73,6 +73,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "gpz_section_name",
             "gpz_sections",
             "grounding",
+            "zespoly_uziemiajace",
             "hv_voltage_kv",
             "line_fields_per_section",
             "lv_voltage_tolerance",
@@ -823,6 +824,33 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("side",),
         creates_elements=False,
     ),
+    "add_zespol_uziemiajacy_sn": OperationSpec(
+        canonical_name="add_zespol_uziemiajacy_sn",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Dodanie albo przekonfigurowanie zespołu uziemiającego sieci SN (transformator "
+            "uziemiający z dławikiem gaszącym, rezystorem albo układem równoległym)"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=(),
+        optional_fields=(
+            "bay_ref",
+            "bus_ref",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "dlawik",
+            "dry_run",
+            "name",
+            "odbior_pw_ref",
+            "rezystor",
+            "spz",
+            "uziemienie_bezposrednie",
+            "wylaczenie_od_transformatorow_refs",
+            "zespol_ref",
+        ),
+    ),
     "add_shunt_compensator_sn": OperationSpec(
         canonical_name="add_shunt_compensator_sn",
         category=OperationCategory.SN_NETWORK,
@@ -1091,6 +1119,41 @@ _WIAZANIE_KATALOGOWE = KsztaltObiektu(
 #: ``test_spec_operacji_rowna_odczytom_handlera.py``. Obiekt, którego odczytów analiza nie
 #: domyka (handler odczytuje klucze wyliczane w biegu), NIE ma tu kształtu — test wylicza
 #: takie obiekty z przyczyną. Czujnik ``klucze_spoza_kontraktu`` sprawdza każdy poziom.
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: urządzenia punktu neutralnego zespołu uziemiającego
+#: (`add_zespol_uziemiajacy_sn`; wpisy `add_grid_source_sn.zespoly_uziemiajace` są ładunkami
+#: tej samej operacji).
+_KSZTALT_DLAWIKA_GASZACEGO = KsztaltObiektu(
+    pola=frozenset(
+        {
+            "awsc",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "i_nastawy_a",
+            "stan_odlacznika",
+        }
+    ),
+    zagniezdzone={
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "awsc": KsztaltObiektu(
+            pola=frozenset({"czas_zalaczenia_s", "czas_zwloki_s", "i_wymuszany_a", "strona"})
+        ),
+    },
+)
+_KSZTALT_REZYSTORA_UZIEMIAJACEGO = KsztaltObiektu(
+    pola=frozenset(
+        {
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "stan_odlacznika",
+        }
+    ),
+    zagniezdzone={"catalog_binding": _WIAZANIE_KATALOGOWE},
+)
+
 KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_converter_source": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1325,6 +1388,11 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     },
     "add_shunt_compensator_sn": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_zespol_uziemiajacy_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "dlawik": _KSZTALT_DLAWIKA_GASZACEGO,
+        "rezystor": _KSZTALT_REZYSTORA_UZIEMIAJACEGO,
     },
     "add_sn_bay": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1915,6 +1983,103 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "parametry",
             "focus": "neutral_grounding",
         },
+    ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN (walidator E-ZU-*, W-ZU-*)
+    # i źródło SN z danymi uziemienia pominiętymi w obliczeniach (W-W5-02).
+    "source.sn_neutral_data_ignored": ReadinessCodeSpec(
+        code="source.sn_neutral_data_ignored",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Źródło na szynie SN niesie opis punktu neutralnego albo impedancję zerową — dane "
+            "pominięte; uziemienie sieci SN wynika z zespołu uziemiającego albo uzwojenia "
+            "transformatora"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "zero_sequence"},
+    ),
+    "earthing.zespol_bus_invalid": ReadinessCodeSpec(
+        code="earthing.zespol_bus_invalid",
+        area=ReadinessArea.STATIONS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Zespół uziemiający bez szyny SN w modelu — przyłącz go do szyny SN",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "bus_ref"},
+    ),
+    "earthing.zespol_neutral_undefined": ReadinessCodeSpec(
+        code="earthing.zespol_neutral_undefined",
+        area=ReadinessArea.STATIONS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Zespół uziemiający bez określonego elementu punktu neutralnego albo ze sprzeczną "
+            "deklaracją — wskaż dławik, rezystor albo uziemienie bezpośrednie"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "dlawik"},
+    ),
+    "earthing.zespol_spz_without_resistor": ReadinessCodeSpec(
+        code="earthing.zespol_spz_without_resistor",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl="SPZ zespołu uziemiającego dopuszczone wyłącznie przy rezystorze (§26.9.6)",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "spz"},
+    ),
+    "earthing.zespol_transformer_trip_missing": ReadinessCodeSpec(
+        code="earthing.zespol_transformer_trip_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Zespół z rezystorem bez wyłączenia od transformatorów WN/SN sieci "
+            "(IRiESD II.4.5.4.3.5)"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "wylaczenie_od_transformatorow_refs",
+        },
+    ),
+    "earthing.zespol_auxiliary_load_missing": ReadinessCodeSpec(
+        code="earthing.zespol_auxiliary_load_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "odbior_pw_ref"},
+    ),
+    "earthing.network_grounding_warning": ReadinessCodeSpec(
+        code="earthing.network_grounding_warning",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Uziemienie sieci SN poza zasadami §16: kilka zespołów na połączonej sieci albo "
+            "nastawa dławików w punkcie rezonansu"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "dlawik"},
+    ),
+    "earthing.zespol_direct_earthing": ReadinessCodeSpec(
+        code="earthing.zespol_direct_earthing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=("Uziemienie bezpośrednie punktu neutralnego sieci SN poza rozwiązaniami §16"),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "uziemienie_bezposrednie",
+        },
+    ),
+    "earthing.zespol_voltage_mismatch": ReadinessCodeSpec(
+        code="earthing.zespol_voltage_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl="Napięcie znamionowe typu zespołu uziemiającego inne niż napięcie sieci",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "catalog_ref"},
     ),
     "source.grid_supply_missing": ReadinessCodeSpec(
         code="source.grid_supply_missing",
@@ -3262,19 +3427,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
     ),
-    # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
-    "earthing.electrode_data_missing": ReadinessCodeSpec(
-        code="earthing.electrode_data_missing",
-        area=ReadinessArea.STATIONS,
-        priority=3,
-        level=ReadinessLevel.WARNING,
-        message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
-        fix_navigation={
-            "panel": "inspector",
-            "tab": "uziemienie",
-            "focus": "earth_electrode",
-        },
-    ),
     # Study Case / Analysis
     "study_case.missing_base_snapshot": ReadinessCodeSpec(
         code="study_case.missing_base_snapshot",
@@ -3377,27 +3529,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "transformator"},
     ),
-    # Pomiar W5-D (2026-09-16): FROZEN `power_flow_unbalanced.py` liczy straty gałęzi jako
-    # |I_φ|²·Z_s (impedancja WŁASNA), bez wyrazu wzajemnego Z_m·I_φ·ΣI_q* — dla obciążenia
-    # symetrycznego i Z0 = 3·Z1 (katalog) straty kabla są 5/3 strat NR (0,000687 vs
-    # 0,000412 MW na sieci testowej). Założenie NAZWANE w biegu, gdy jakakolwiek gałąź
-    # ma Z_m ≠ 0; korekta formuły to zmiana rdzenia FROZEN (B-01 — decyzja właściciela).
-    "power_flow.unbalanced_losses_self_impedance": ReadinessCodeSpec(
-        code="power_flow.unbalanced_losses_self_impedance",
-        area=ReadinessArea.ANALYSIS,
-        priority=4,
-        level=ReadinessLevel.WARNING,
-        message_pl=(
-            "Założenie biegu: straty gałęzi liczone z impedancji własnej |I|²·R_s — solver "
-            "BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone "
-            "(napięcia i prądy bez zmian)"
-        ),
-        fix_navigation={
-            "panel": "inspector",
-            "tab": "parametry",
-            "focus": "r0_ohm_per_km",
-        },
-    ),
     "power_flow.unbalanced_transformer_series_model": ReadinessCodeSpec(
         code="power_flow.unbalanced_transformer_series_model",
         area=ReadinessArea.ANALYSIS,
@@ -3446,15 +3577,20 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "grounding"},
     ),
-    # Brak składowej zerowej gałęzi (Z0): ten sam warunek, który walidator ENM zgłasza
-    # jako W001 (most `domain/readiness_bridge.py`). Do W5-D kanon nie miał tego kodu.
+    # Brak składowej zerowej gałęzi (Z0) bez podstawy wartości roboczej: ten sam warunek,
+    # który walidator ENM zgłasza jako W001 (most `domain/readiness_bridge.py`) — predykat
+    # `enm.skladowa_zerowa_galezi`. Odcinek bez R′0/X′0 z podstawą wartości roboczej (SN
+    # z dodatnimi R′1, X′1; kabel nN ze znaną żyłą powrotną PE/PEN) liczy się z wartością
+    # roboczą (kod `branch.z0_wartosc_robocza`, zasada nr 4) i tego kodu nie dostaje.
     "branch.zero_sequence_missing": ReadinessCodeSpec(
         code="branch.zero_sequence_missing",
         area=ReadinessArea.CATALOGS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ "
+            "Gałąź nie ma składowej zerowej (R0/X0), a wartości roboczej nie da się przyjąć "
+            "(SN: R′1 albo X′1 niedodatnie; nN: kabel bez danych żyły powrotnej PE/PEN albo "
+            "linia; WN albo napięcie szyny nieznane) — zwarcia doziemne i rozpływ "
             "niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog"
         ),
         fix_navigation={
@@ -3468,22 +3604,43 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # R′0 = R′1 + R′ żyły powrotnej) — pozycja niesie mapę `wartosci_robocze`, bieg zwarcia
     # doziemnego i rozpływu niesymetrycznego niesie założenie tego kodu
     # (`enm.dane_przyjete_galezi.zalozenia_z0_galezi`), a werdykty — daną przyjętą ESTIMATED.
-    # Brak danej producenta NIE blokuje obliczeń.
+    # Ta sama reguła obejmuje odcinek MODELU bez R′0/X′0 (import, parametry ręczne —
+    # `enm.skladowa_zerowa_galezi`). Brak danej producenta NIE blokuje obliczeń.
     "branch.z0_wartosc_robocza": ReadinessCodeSpec(
         code="branch.z0_wartosc_robocza",
         area=ReadinessArea.CATALOGS,
         priority=3,
         level=ReadinessLevel.INFO,
         message_pl=(
-            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej "
-            "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
-            "i przelicz"
+            "Składowa zerowa (R′0, X′0, B′0) odcinka z wartości roboczej (SN: R′0 = 3·R′1, "
+            "X′0 = 3·X′1; kabel nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE; pojemność doziemna "
+            "SN: kabel B′0 = B′1, linia napowietrzna B′0 = 0,4·B′1; katalog bez danej "
+            "producenta albo odcinek bez składowej zerowej w modelu) — wpisz wartość z karty "
+            "producenta albo z pomiaru w parametrach odcinka i przelicz"
         ),
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
             "focus": "r0_ohm_per_km",
         },
+    ),
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4 (zasada nr 4): bocznik składowej zerowej
+    # zespołu uziemiającego (Z_0,TU + 3·Z_N) z wartości roboczej — R0/X0 transformatora
+    # uziemiającego, zakres albo nastawa dławika, prąd AWSC, rezystancja rezystora z pozycji
+    # typowej katalogu. Bieg zwarcia doziemnego niesie założenie tego kodu
+    # (`enm.dane_przyjete_galezi.zalozenia_zespolow_uziemiajacych`), wiersze składowej sieci
+    # zerowej szyny zespołu — daną przyjętą ESTIMATED. Brak danej producenta NIE blokuje obliczeń.
+    "zespol_uziemiajacy.wartosc_robocza": ReadinessCodeSpec(
+        code="zespol_uziemiajacy.wartosc_robocza",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Impedancja zerowa zespołu uziemiającego z wartości roboczej (pozycja typowa "
+            "katalogu albo środek zakresu dławika) — wpisz dane producenta albo nastawę "
+            "w parametrach zespołu i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "dlawik"},
     ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt

@@ -29,7 +29,6 @@ class ProofType(StrEnum):
     LOAD_CURRENTS_OVERLOAD = "LOAD_CURRENTS_OVERLOAD"
     LOSSES_ENERGY = "LOSSES_ENERGY"
     PROTECTION_OVERCURRENT = "PROTECTION_OVERCURRENT"
-    EARTHING_GROUND_FAULT_SN = "EARTHING_GROUND_FAULT_SN"
     # Phase 4: rozszerzenie audytu 2 (eng.10/13/15/17/18/20 + B.1/B.5).
     AUDIT2_BESS_OPERATION_MODES = "AUDIT2_BESS_OPERATION_MODES"
     AUDIT2_TAP_CHANGER_PLAN = "AUDIT2_TAP_CHANGER_PLAN"
@@ -699,42 +698,3 @@ class LossesEnergyInput:
     )
     p_loss_const_kw: float | None = field(default=None, metadata={"mapping_key": "p_loss_kw"})
     duration_h: float | None = field(default=None, metadata={"mapping_key": "t_h"})
-
-
-# =============================================================================
-# Earthing / Ground Fault Input Types — P19
-# =============================================================================
-
-
-@dataclass
-class EarthingGroundFaultInput:
-    """
-    Dane wejściowe dla dowodu P19: Doziemienia / uziemienia SN.
-
-    Attributes:
-        project_name: Nazwa projektu
-        case_name: Nazwa przypadku obliczeniowego
-        run_timestamp: Czas uruchomienia
-        solver_version: Wersja solvera / źródła danych
-        fault_location: Lokalizacja zwarcia (opcjonalnie)
-        fault_type: Typ zwarcia (np. 1F-Z) (opcjonalnie)
-        earthing_mode: Opisowy tryb uziemienia (np. rezystor/cewka/izolowana)
-        u0_v: Napięcie zerowe U_0 [V]
-        z_e_ohm: Impedancja uziemienia Z_E [Ω]
-        i_u_a: Prąd przez uziom I_u [A]
-        i_p_a: Prąd przez pozostałe ścieżki I_p [A]
-        r_u_ohm: Rezystancja uziemienia stanowiska R_u [Ω]
-    """
-
-    project_name: str
-    case_name: str
-    run_timestamp: datetime
-    solver_version: str
-    fault_location: str | None = None
-    fault_type: str | None = None
-    earthing_mode: str | None = None
-    u0_v: float | None = None
-    z_e_ohm: float | None = None
-    i_u_a: float | None = None
-    i_p_a: float | None = None
-    r_u_ohm: float | None = None

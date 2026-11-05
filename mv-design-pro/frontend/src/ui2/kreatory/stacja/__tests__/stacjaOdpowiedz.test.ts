@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Odczyt odpowiedzi operacji stacyjnej (kreator stacji, krok 8).
  *

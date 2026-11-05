@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy API client'a audit2 (Phase 6 frontend).
  *
@@ -36,7 +37,6 @@ describe('audit2 API client', () => {
         device_withstand: [],
         pf_curves: [],
         block_transformers: [],
-        mv_neutral_groundings: [],
       }),
     });
 
@@ -44,7 +44,7 @@ describe('audit2 API client', () => {
     expect(snapshot).toHaveProperty('bess_operation_modes');
     expect(snapshot).toHaveProperty('tap_changers');
     expect(snapshot).toHaveProperty('hv_fuses');
-    expect(snapshot).toHaveProperty('mv_neutral_groundings');
+    expect(snapshot).toHaveProperty('block_transformers');
     expect(global.fetch).toHaveBeenCalledWith('/api/v1/catalog/audit2/snapshot');
   });
 

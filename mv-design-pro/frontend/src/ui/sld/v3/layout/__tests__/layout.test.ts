@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V3 F2 — wyrocznie potoku measure → bands → columns (SLD_CAD_SPEC_V3
  * §5.1–§5.3, §11). Wszystkie testy na SYNTETYKACH enumerowanych (pętle po

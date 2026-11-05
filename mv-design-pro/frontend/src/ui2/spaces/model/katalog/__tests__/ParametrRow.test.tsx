@@ -34,7 +34,10 @@ describe('ParametrRow', () => {
   it('renderuje symbol, etykietę, definicję z normą i wartość mono', () => {
     const { container } = render(<ParametrRow definicja={DEF_UK} wartosc={6} />);
     const text = container.textContent ?? '';
-    expect(text).toContain('uk');
+    // Symbol branżowy renderuje KaTeX (`ui_math_guard`, karta UX-04/ZU), nie tekst ASCII.
+    const symbol = container.querySelector('.mvd-katalog__param-symbol [data-testid="math-rendered"]');
+    expect(symbol?.getAttribute('data-latex')).toBe('u_k');
+    expect(container.querySelector('[data-testid="math-fallback"]')).toBeNull();
     expect(text).toContain('Napięcie zwarcia');
     expect(text).toContain('IEC 60076-1');
     expect(text).toContain('6,00 %');

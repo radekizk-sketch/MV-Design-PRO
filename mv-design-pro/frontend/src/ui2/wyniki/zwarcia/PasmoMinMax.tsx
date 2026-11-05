@@ -19,6 +19,7 @@
  * rewizji (`pasmoModel.ts`) to prezentacja, nie obliczenie.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { FreshnessBadge } from '../../inspector';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import {
@@ -38,6 +39,7 @@ import {
   swiezoscParyPasma,
   typZwarciaNaAnalysisType,
 } from './pasmoModel';
+import { SladSieciZerowej } from './SladSieciZerowej';
 import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { ZWARCIA_STRINGS } from './strings';
 
@@ -68,14 +70,14 @@ function BlokStronyPasma({
   szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const etykietaScenariusza = scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)';
+  const etykietaScenariusza = scenariusz === 'MAX' ? 'MAX ($c_{\\max}$)' : 'MIN ($c_{\\min}$)';
   if (!strona) {
     return (
       <div
         className="mvd-zwarcia-pasmo-strona mvd-zwarcia-pasmo-strona--brak"
         data-testid={`mvd-zwarcia-pasmo-brak-${scenariusz.toLowerCase()}`}
       >
-        <h4 className="mvd-zwarcia-pasmo-strona-tytul">{etykietaScenariusza}</h4>
+        <h4 className="mvd-zwarcia-pasmo-strona-tytul"><TekstZWzorami tekst={etykietaScenariusza} /></h4>
         <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.pasmoBrakScenariusz(scenariusz)}</p>
         {powodNiedostepnosciPl && (
           <p className="mvd-zwarcia-wklady-brak-desc">{powodNiedostepnosciPl}</p>
@@ -92,7 +94,7 @@ function BlokStronyPasma({
   const rewizja = strona.analysis_case_context.rewizja_modelu ?? null;
   return (
     <div className="mvd-zwarcia-pasmo-strona" data-testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}`}>
-      <h4 className="mvd-zwarcia-pasmo-strona-tytul">{etykietaScenariusza}</h4>
+      <h4 className="mvd-zwarcia-pasmo-strona-tytul"><TekstZWzorami tekst={etykietaScenariusza} /></h4>
       <p className="mvd-zwarcia-pasmo-prowenencja">
         {strona.zrodlo === 'biegu_zapisanego'
           ? ZWARCIA_STRINGS.pasmoProwenencjaZapisany
@@ -124,6 +126,13 @@ function BlokStronyPasma({
         zrodlaSieciowe={strona.wynik.zrodla_sieciowe}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
+      />
+      {/* Z0 źródła (Z0/Z1)·Z_Q zależy od scenariusza — każda strona pasma ma własny ślad Y0. */}
+      <SladSieciZerowej
+        siecZerowa={strona.wynik.siec_zerowa}
+        rodzajZwarcia={strona.wynik.rows[0]?.fault_type ?? null}
+        szczegolyAudytowe={szczegolyAudytowe}
+        testid={`mvd-zwarcia-pasmo-${scenariusz.toLowerCase()}-siec-zerowa`}
       />
     </div>
   );
@@ -163,7 +172,7 @@ function TrescGotowa({
 
   return (
     <>
-      <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.pasmoOpis}</p>
+      <p className="mvd-zwarcia-wklad-szczegol-opis"><TekstZWzorami tekst={ZWARCIA_STRINGS.pasmoOpis} /></p>
 
       {swiezosc && !swiezosc.zgodne && (
         <div className="mvd-zwarcia-pasmo-swiezosc" data-testid="mvd-zwarcia-pasmo-swiezosc">

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * POKRYCIE WARSTWY ZABEZPIECZENIOWEJ (Z7 audytu, V12K-220).
  *

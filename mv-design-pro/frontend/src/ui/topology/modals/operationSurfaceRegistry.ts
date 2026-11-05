@@ -188,6 +188,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'typ',
   ),
   entry(
+    'add_zespol_uziemiajacy_sn',
+    'KreatorZespoluUziemiajacegoSn',
+    'Dodaj zespół uziemiający SN',
+    'E-20',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    'uklad',
+  ),
+  entry(
     'add_converter_source',
     'KreatorZrodlaOze',
     'Dodaj źródło PV/BESS/FW z katalogu',

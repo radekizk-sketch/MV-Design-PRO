@@ -527,7 +527,7 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”; czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku) — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
           "uzasadnienie_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "dowod": {
@@ -561,6 +561,15 @@
               },
               "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
               "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku)",
+              "wartosc": {
+                "wartosc": 1.0,
+                "jednostka": "s"
+              },
+              "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
+              "jakosc": "ESTIMATED"
             }
           ],
           "kompletnosc_dowodu": "NIEPELNY"
@@ -578,7 +587,7 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”; czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku) — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
           "uzasadnienie_pl": "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "wniosek_pl": "Wymaganie spełnione: Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "dowod": {
@@ -611,6 +620,15 @@
                 "jednostka": "1"
               },
               "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "jakosc": "ESTIMATED"
+            },
+            {
+              "nazwa_pl": "czas trwania zwarcia (przewody SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku)",
+              "wartosc": {
+                "wartosc": 1.0,
+                "jednostka": "s"
+              },
+              "powod_pl": "wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7. Zmień przyjęty czas zwarcia (przyjęty czas zwarcia na wyłączniku chroniącym gałąź), gdy znasz czas wyłączenia.",
               "jakosc": "ESTIMATED"
             }
           ],
@@ -865,7 +883,7 @@
       "powod_pl": "Analiza koordynacji liczy charakterystyki i czasy, ale nie wystawia werdyktu selektywności na poziomie całego modelu — ocena należy do projektanta na ekranie koordynacji."
     },
     {
-      "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+      "kryterium_pl": "Wytrzymałość aparatury (zdolność wyłączania, Idyn, Ith) na całym modelu",
       "etap": "E4",
       "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },

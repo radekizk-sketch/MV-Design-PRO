@@ -45,6 +45,7 @@ def _model(
     branches: list[dict] | None = None,
     transformers: list[dict] | None = None,
     generators: list[dict] | None = None,
+    sources: list[dict] | None = None,
     napiecie_kv: float = 15.0,
 ) -> EnergyNetworkModel:
     return EnergyNetworkModel.model_validate(
@@ -57,8 +58,21 @@ def _model(
             "branches": branches or [],
             "transformers": transformers or [],
             "generators": generators or [],
+            "sources": sources or [],
         }
     )
+
+
+#: Zasilanie systemowe szyny A (S″_kQ = 250 MVA, R/X = 0,1) — impedancja Z_Q z modelu, bez
+#: której zdolność przyłączeniowa nie wyznacza impedancji zastępczej sieci (nazwany brak).
+_ZRODLO_A: dict = {
+    "ref_id": "SIEC-A",
+    "name": "Sieć zasilająca",
+    "bus_ref": _SZYNA_A,
+    "model": "short_circuit_power",
+    "sk3_mva": 250.0,
+    "rx_ratio": 0.1,
+}
 
 
 def _odcinek(rodzaj: str, **nadpisania: object) -> dict:
@@ -642,7 +656,9 @@ def test_moc_bierna_wytworcy_brak_jest_wylacznie_strukturalnym_zerem_agregatu() 
 
 
 def _wynik(rodzaj: V126AnalysisType, model: EnergyNetworkModel) -> dict:
-    wejscie = build_v126_input_from_enm(model)
+    # Rodzaj analizy idzie do mostu jak w API: impedancję zastępczą szyn most liczy wyłącznie
+    # dla analiz, które ją czytają (`ANALIZY_IMPEDANCJI_ZASTEPCZEJ`).
+    wejscie = build_v126_input_from_enm(model, analysis_type=rodzaj)
     return V126AcademicSolver().run(rodzaj, wejscie)["result"]
 
 
@@ -682,7 +698,7 @@ def test_zdolnosc_przylaczeniowa_melduje_brak_obciazalnosci_po_polsku() -> None:
     """
     wynik = _wynik(
         V126AnalysisType.HOSTING_CAPACITY,
-        _model(branches=[_odcinek("cable")]),
+        _model(branches=[_odcinek("cable")], sources=[_ZRODLO_A]),
     )
     for pozycja in wynik["hosting_capacity"]:
         assert "brak_danych" in pozycja
@@ -693,7 +709,7 @@ def test_zdolnosc_przylaczeniowa_bez_meldunku_gdy_obciazalnosc_jest() -> None:
     """Kontrola dwustronna dla szyny zasilanej elementem z obciążalnością."""
     wynik = _wynik(
         V126AnalysisType.HOSTING_CAPACITY,
-        _model(branches=[_odcinek("cable", rating={"in_a": 245.0})]),
+        _model(branches=[_odcinek("cable", rating={"in_a": 245.0})], sources=[_ZRODLO_A]),
     )
     pozycja = next(p for p in wynik["hosting_capacity"] if p["bus_ref"] == _SZYNA_B)
     assert "brak_danych" not in pozycja

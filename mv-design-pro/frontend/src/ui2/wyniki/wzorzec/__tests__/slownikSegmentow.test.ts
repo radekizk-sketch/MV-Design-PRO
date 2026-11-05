@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SŁOWNIK SEGMENTÓW REFERENCJI — czy „ZAMKNIĘTY" znaczy zamknięty (odbiór V126-JEZYK).
  *

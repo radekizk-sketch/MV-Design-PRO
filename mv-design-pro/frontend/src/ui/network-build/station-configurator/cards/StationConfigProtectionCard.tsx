@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
 import type { VTCatalogType } from '../../../catalog/types';
-import { WalidacjaVtPolaSekcja } from './WalidacjaVtPolaSekcja';
+import { WalidacjaVtPolaSekcja, type KontekstUziemieniaStacji } from './WalidacjaVtPolaSekcja';
 import { WalidacjaWytrzymalosciAparaturySekcja } from './WalidacjaWytrzymalosciAparaturySekcja';
 
 export interface ProtectionRow {
@@ -44,8 +44,9 @@ export interface DeviceWithstandRow {
 
 export interface StationConfigProtectionCardProps {
   readonly relays: readonly ProtectionRow[];
-  /** Naprawa eng.20: typ uziemienia neutralnego SN — wymagane do walidacji VT. */
-  readonly mvNeutralGroundingType?: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
+  /** Stacja projektu, z której modelu backend czyta sposób uziemienia sieci SN pól
+   *  (zgodność przekładników, karta UX-04/POLE-ZU); `null` — brak projektu albo stacji. */
+  readonly kontekstUziemienia?: KontekstUziemieniaStacji | null;
   /** Naprawa eng.18: lista aparatów do walidacji wytrzymałości. */
   readonly deviceWithstandRows?: readonly DeviceWithstandRow[];
   /** Phase 18: VT onChange (per bay). */
@@ -57,7 +58,7 @@ export function StationConfigProtectionCard(
 ): JSX.Element {
   const {
     relays,
-    mvNeutralGroundingType,
+    kontekstUziemienia,
     deviceWithstandRows,
     onChangeVt,
   } = props;
@@ -154,7 +155,7 @@ export function StationConfigProtectionCard(
           bayDesignation: r.bayDesignation,
           vtCatalogRef: r.vtCatalogRef ?? null,
         }))}
-        typUziemienia={mvNeutralGroundingType}
+        kontekst={kontekstUziemienia ?? null}
       />
 
       <WalidacjaWytrzymalosciAparaturySekcja pola={deviceWithstandRows ?? []} />

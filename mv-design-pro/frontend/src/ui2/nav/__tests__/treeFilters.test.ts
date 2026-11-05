@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { filtrujProblemy, zastosujFiltry } from '../treeFilters';
 import type { WezelDrzewa } from '../treeModel';

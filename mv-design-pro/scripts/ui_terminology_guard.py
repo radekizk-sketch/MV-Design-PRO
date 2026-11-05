@@ -155,6 +155,10 @@ NEW_IA_PATH_MARKER = "/ui2/"
 # (snake_case, np. `earthing.resistance_missing`, `run_id`). Identyfikatory
 # techniczne wolno pokazywać wyłącznie w strefie „szczegóły techniczne".
 NEW_IA_CODE_IDENT = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+#: Segment wzoru `$...$` (symbol `$t_b$`, `$\\cos\\varphi_n$`) to zapis LaTeX składany
+#: KaTeX-em przez `TekstZWzorami` (`ui_math_guard`), nie identyfikator kodowy — wycinany przed
+#: kontrolą `NEW_IA_CODE_IDENT` (ten sam wzorzec segmentu co `ui_math_guard.SEGMENT_WZORU_RE`).
+SEGMENT_WZORU = re.compile(r"\$\$?[^$]+\$\$?")
 
 
 def find_banned_terms(text: str, *, new_ia: bool = False) -> list[str]:
@@ -190,7 +194,7 @@ def scan_file(path: Path) -> list[Violation]:
             # to również kod interpolacji, nie tekst prezentacji, więc usuwamy.
             cleaned = re.sub(r"\$\{[^}]*$", "", cleaned)
             is_new_ia = NEW_IA_PATH_MARKER in path.as_posix()
-            if is_new_ia and NEW_IA_CODE_IDENT.search(cleaned):
+            if is_new_ia and NEW_IA_CODE_IDENT.search(SEGMENT_WZORU.sub(" ", cleaned)):
                 violations.append(
                     Violation(
                         file_path=normalize_path(path),

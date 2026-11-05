@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P30e: Field Definitions Tests (Context-Aware Property Grid)
  *

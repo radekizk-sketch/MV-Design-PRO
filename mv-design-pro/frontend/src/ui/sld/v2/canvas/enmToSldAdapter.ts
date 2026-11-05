@@ -2062,6 +2062,8 @@ function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescript
       return FIELD_ROLE.DER_FW;
     case 'BATERIA_KONDENSATOROW':
       return FIELD_ROLE.CAPACITOR_BANK;
+    case 'ZESPOL_UZIEMIAJACY':
+      return FIELD_ROLE.EARTHING_UNIT;
     default:
       return null;
   }
@@ -2092,6 +2094,10 @@ function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['
     // (`stationFieldRole`) — pole baterii rysowane jako odgałęźne.
     case 'BKR':
       return FIELD_ROLE.CAPACITOR_BANK;
+    // UX-04/POLE-ZU-SKLADOWA-ZEROWA: bez tej gałęzi `ZU` spadał w `?? FIELD_ROLE.LINE_BRANCH`
+    // — pole zespołu uziemiającego rysowane jako odgałęźne.
+    case 'ZU':
+      return FIELD_ROLE.EARTHING_UNIT;
     default:
       return null;
   }
@@ -2123,6 +2129,8 @@ function stationFieldDesignation(bay: Bay, role: FieldRole, index: number): stri
     // nie dana modelu; dana `bay_number`/`feeder_short_name` ma pierwszeństwo).
     case FIELD_ROLE.CAPACITOR_BANK:
       return 'BK';
+    case FIELD_ROLE.EARTHING_UNIT:
+      return 'ZU';
     default:
       return getString(bay.name) ?? `Pole SN ${index + 1}`;
   }

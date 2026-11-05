@@ -16,12 +16,14 @@
  *
  * PROWENIENCJA (karta FAB-L, 2026-09-05) — usunięto DRUGĄ KOPIĘ danych
  * katalogowych backendu i JEDNĄ klasę fizyki liczonej w UI:
- *   * `MV_NEUTRAL_GROUNDING_CATALOG` / `BESS_OPERATION_MODE_CATALOG` /
- *     `TAP_CHANGER_CATALOG` — czytane teraz WYŁĄCZNIE ze snapshotu audytu 2
- *     (`useAudit2CatalogSnapshot`, `audit2-api.ts::MvNeutralGroundingItem` /
- *     `BessOperationModeItem` / `TapChangerItem`), który backend już wystawia
- *     (`/api/v1/catalog/audit2/snapshot`). Selektory (`getMvNeutralGrounding`,
- *     `selectBessModesForPcs`, `selectTapChangersForTransformer`,
+ *   * `BESS_OPERATION_MODE_CATALOG` / `TAP_CHANGER_CATALOG` — czytane teraz
+ *     WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
+ *     `audit2-api.ts::BessOperationModeItem` / `TapChangerItem`), który backend
+ *     już wystawia (`/api/v1/catalog/audit2/snapshot`). Dawny katalog wariantów
+ *     uziemienia SN nie wrócił nawet do snapshotu: sposób
+ *     uziemienia punktu neutralnego SN niesie zespół uziemiający sekcji w modelu
+ *     (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Selektory
+ *     (`selectBessModesForPcs`, `selectTapChangersForTransformer`,
  *     `getTapChanger`) zostają jako funkcje CZYSTE, ale przyjmują katalog jako
  *     PARAMETR zamiast czytać statyk modułowy — wywołujący dostarcza snapshot.
  *   * `DER_FAULT_CURRENT_DATA_CATALOG` (R₁/X₁/R₂/X₂/R₀/X₀/Z₀·Z₁⁻¹/κ per

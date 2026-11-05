@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * E2 AUTO-LAYOUT — engine acceptance (DoD): DETERMINISM + PRESET REPRODUCTION.
  * The layout is geometry from the MODEL only (the canon companion), proven on G1 (2 tiers),

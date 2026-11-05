@@ -1320,6 +1320,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
         "id": "07e18f70-d718-501a-b331-aef2671cddd0",
         "materialized_params": {
@@ -1352,6 +1353,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -1539,6 +1541,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
         "id": "58d66974-da75-57d0-b238-79a1537fe9f7",
         "materialized_params": {
@@ -1571,6 +1574,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -1584,6 +1588,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
         "id": "7d95f85f-866c-5c95-a8c9-9b98b5e51b39",
         "materialized_params": null,
@@ -1594,6 +1599,7 @@
         "parameter_source": null,
         "r_ohm": null,
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -1779,6 +1785,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
         "id": "f7a85325-2172-5aa8-94e3-717149edb7b7",
         "materialized_params": {
@@ -1811,6 +1818,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -1824,6 +1832,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
         "id": "faf6b41e-660d-53b0-85b4-68a6a8dd99c8",
         "materialized_params": {
@@ -1856,6 +1865,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -2748,6 +2758,7 @@
         "transformer_refs": []
       }
     ],
-    "transformers": []
+    "transformers": [],
+    "zespoly_uziemiajace": []
   }
 }

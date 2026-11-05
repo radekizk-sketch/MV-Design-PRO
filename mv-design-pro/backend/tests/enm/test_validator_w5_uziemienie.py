@@ -73,13 +73,21 @@ def _tr(**over) -> Transformer:
 
 
 class TestEW501Zrodlo:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3: E-W5-01 źródła dotyczy WYŁĄCZNIE opisu
+    sieci za granicą modelu po stronie 110 kV (opis punktu neutralnego vs Z0 tej sieci).
+    Źródło na szynach SN nie opisuje uziemienia sieci SN — jego opis i Z0 są ostrzeżeniem
+    W-W5-02 (dane nie wchodzą do obliczeń), nigdy E-W5-01. Intencja dawnych przypadków
+    (predykat R_N/X_N, „izolowany” ze skończonym Z0, „uziemiony” bez Z0) zostaje po stronie
+    110 kV."""
+
     def test_rezystor_bez_rn_i_dlawik_bez_xn(self):
         for cfg in (
             GroundingConfig(type="resistor_grounded"),
             GroundingConfig(type="petersen_coil", r_ohm=1.0),
         ):
             m = _model(
-                buses=_szyny(), sources=[_zrodlo(neutral_grounding=cfg, r0_ohm=1.0, x0_ohm=2.0)]
+                buses=_szyny(),
+                sources=[_zrodlo(bus_ref="hv", neutral_grounding=cfg, r0_ohm=1.0, x0_ohm=2.0)],
             )
             problemy = _kody(m, "E-W5-01")
             assert len(problemy) == 1
@@ -87,41 +95,61 @@ class TestEW501Zrodlo:
             assert problemy[0].fix_action is not None
             assert problemy[0].fix_action.modal_type == "SourceModal"
 
-    def test_izolowany_ze_skonczonym_z0_po_stronie_sn(self):
+    def test_izolowany_ze_skonczonym_z0_po_stronie_110_kv(self):
         for liczby in ({"r0_ohm": 0.1, "x0_ohm": 0.8}, {"z0_z1_ratio": 3.0}):
             m = _model(
                 buses=_szyny(),
-                sources=[_zrodlo(neutral_grounding=GroundingConfig(type="isolated"), **liczby)],
+                sources=[
+                    _zrodlo(
+                        bus_ref="hv", neutral_grounding=GroundingConfig(type="isolated"), **liczby
+                    )
+                ],
             )
             assert len(_kody(m, "E-W5-01")) == 1
         # Bez liczb: izolowany jest spójny.
         m = _model(
-            buses=_szyny(), sources=[_zrodlo(neutral_grounding=GroundingConfig(type="isolated"))]
+            buses=_szyny(),
+            sources=[_zrodlo(bus_ref="hv", neutral_grounding=GroundingConfig(type="isolated"))],
         )
         assert _kody(m, "E-W5-01") == []
 
-    def test_uziemiony_bez_liczb_z0_po_stronie_sn(self):
-        m = _model(
-            buses=_szyny(),
-            sources=[
-                _zrodlo(neutral_grounding=GroundingConfig(type="resistor_grounded", r_ohm=12.0))
-            ],
-        )
+    def test_uziemiony_bez_liczb_z0_po_stronie_110_kv(self):
+        rezystor = GroundingConfig(type="resistor_grounded", r_ohm=12.0)
+        m = _model(buses=_szyny(), sources=[_zrodlo(bus_ref="hv", neutral_grounding=rezystor)])
         problemy = _kody(m, "E-W5-01")
         assert len(problemy) == 1 and "bez bocznika zerowego" in problemy[0].message_pl
         # Z liczbami — spójny.
         m = _model(
             buses=_szyny(),
-            sources=[
-                _zrodlo(
-                    neutral_grounding=GroundingConfig(type="resistor_grounded", r_ohm=12.0),
-                    z0_z1_ratio=3.0,
-                )
-            ],
+            sources=[_zrodlo(bus_ref="hv", neutral_grounding=rezystor, z0_z1_ratio=3.0)],
         )
         assert _kody(m, "E-W5-01") == []
 
-    def test_zrodlo_po_stronie_110_kv_nie_podlega_regule_opis_vs_liczby(self):
+    def test_zrodlo_sn_z_opisem_albo_z0_to_ostrzezenie_nie_blokada(self):
+        # Iloczyn: {opis: brak / izolowany / rezystor / dławik / bezpośrednio} × {Z0: brak /
+        # R0X0 / Z0Z1} na szynie SN — każda kombinacja z jakąkolwiek daną daje W-W5-02,
+        # żadna nie daje E-W5-01 (dane, których obliczenia nie czytają, nie blokują).
+        opisy = (
+            None,
+            GroundingConfig(type="isolated"),
+            GroundingConfig(type="resistor_grounded", r_ohm=12.0),
+            GroundingConfig(type="petersen_coil", x_ohm=40.0),
+            GroundingConfig(type="directly_grounded"),
+            GroundingConfig(type="resistor_grounded"),
+        )
+        for cfg in opisy:
+            for liczby in ({}, {"r0_ohm": 0.1, "x0_ohm": 0.8}, {"z0_z1_ratio": 3.0}):
+                m = _model(buses=_szyny(), sources=[_zrodlo(neutral_grounding=cfg, **liczby)])
+                assert _kody(m, "E-W5-01") == [], (cfg, liczby)
+                ostrzezenia = _kody(m, "W-W5-02")
+                if cfg is None and not liczby:
+                    assert ostrzezenia == []
+                    continue
+                assert len(ostrzezenia) == 1, (cfg, liczby)
+                assert ostrzezenia[0].element_refs == ["src"]
+                assert "nie wchodzą do obliczeń" in ostrzezenia[0].message_pl
+
+    def test_zrodlo_po_stronie_110_kv_podlega_regule_opis_vs_liczby(self):
         m = _model(
             buses=_szyny(),
             sources=[
@@ -133,17 +161,24 @@ class TestEW501Zrodlo:
                 )
             ],
         )
-        assert _kody(m, "E-W5-01") == []
+        # Sprzeczność opisu sieci 110 kV z jej Z0 — reguła opis/liczby obowiązuje (karta
+        # UX-04: opis źródła dotyczy właśnie sieci 110 kV), bez względu na stronę równoważnika.
+        assert len(_kody(m, "E-W5-01")) == 1
 
 
-class TestEW501DrogaZerowaSnRownowaznikaWn:
-    """Karta GPZ-MODEL: przy równoważniku 110 kV opis „uziemiony" punktu neutralnego SN
-    wymaga drogi składowej zerowej po stronie SN w transformatorze WN/SN modelu — tej
-    samej, którą czyta solver 1F (`build_transformer_zero_seq_model`).
+class TestEW501OpisSieci110NieOpisujeSn:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3 (przepisanie dawnej reguły „opis SN na
+    równoważniku 110 kV vs droga zerowa transformatora”): opis punktu neutralnego źródła
+    110 kV dotyczy sieci 110 kV, NIE sieci SN. Uziemienie sieci SN wynika z punktu
+    neutralnego uzwojenia SN transformatora WN/SN (albo zespołu uziemiającego) — jedna
+    prawda ``enm.uziemienie_sekcji``; sprzeczności „opis vs fizyka SN” nie ma, bo opisu SN na
+    źródle nie ma.
 
-    Iloczyn cech: {grupa TR WN/SN: Yd11 (SN trójkąt), YNd11 (SN trójkąt), Dyn11 (SN
-    gwiazda uziem.), YNyn0 (droga szeregowa), Yyn0 (gwiazda WN bez N — otwarte)} ×
-    {opis SN: uziemiony, izolowany} × {liczba TR: 1, 2 z różnymi grupami}."""
+    Iloczyn cech: {grupa TR WN/SN: Yd11, YNd11, Dyn11, YNyn0, Yyn0, Yd11+Dyn11} × {opis
+    sieci 110 kV: izolowana, rezystor, dławik, bezpośrednio} × {punkt neutralny SN uzwojenia:
+    brak opisu, rezystor 12 Ω}."""
+
+    GRUPY = (("Yd11",), ("YNd11",), ("Dyn11",), ("YNyn0",), ("Yyn0",), ("Yd11", "Dyn11"))
 
     @staticmethod
     def _tr_wn(ref: str, grupa: str, lv_neutral: GroundingConfig | None = None) -> Transformer:
@@ -176,64 +211,49 @@ class TestEW501DrogaZerowaSnRownowaznikaWn:
         typ: str,
         lv_neutral: GroundingConfig | None = None,
     ) -> EnergyNetworkModel:
+        z0 = {} if typ == "isolated" else {"z0_z1_ratio": 3.0}
         return _model(
             buses=_szyny(),
             transformers=[
                 self._tr_wn(f"tr{i}", g, lv_neutral) for i, g in enumerate(grupy, start=1)
             ],
             sources=[
-                _zrodlo(bus_ref="hv", source_side="HV_110", neutral_grounding=self._opis(typ))
+                _zrodlo(
+                    bus_ref="hv",
+                    source_side="HV_110",
+                    neutral_grounding=self._opis(typ),
+                    **z0,
+                )
             ],
         )
 
-    def test_uziemiony_bez_drogi_zerowej_sn_jest_blokada(self):
-        for typ in ("resistor_grounded", "petersen_coil", "directly_grounded"):
-            for grupy in (("Yd11",), ("YNd11",), ("Yyn0",), ("Yd11", "YNd11")):
-                problemy = _kody(self._model_wn(grupy, typ), "E-W5-01")
-                assert len(problemy) == 1, (typ, grupy)
-                assert "nie daje drogi składowej zerowej po stronie SN" in problemy[0].message_pl
-                assert problemy[0].element_refs[0] == "src"
-                assert set(problemy[0].element_refs[1:]) == {
-                    f"tr{i}" for i in range(1, len(grupy) + 1)
-                }
-                assert problemy[0].fix_action is not None
-                assert problemy[0].fix_action.modal_type == "SourceModal"
+    def test_opis_sieci_110_kv_spojny_z_jej_z0_nie_zalezy_od_strony_sn(self):
+        for typ in ("isolated", "resistor_grounded", "petersen_coil", "directly_grounded"):
+            for grupy in self.GRUPY:
+                assert _kody(self._model_wn(grupy, typ), "E-W5-01") == [], (typ, grupy)
 
-    def test_droga_zerowa_z_innym_uziemieniem_niz_opis_jest_blokada(self):
-        # Dyn11 bez konfiguracji punktu neutralnego: litera `n` = uziemienie bezpośrednie
-        # (Z_N = 0) — opis „rezystor 12 Ω” mówi co innego niż fizyka 1F.
-        problemy = _kody(self._model_wn(("Dyn11",), "resistor_grounded"), "E-W5-01")
-        assert len(problemy) == 1
-        assert "pracuje inaczej" in problemy[0].message_pl
-        # Ten sam typ, inna rezystancja — też sprzeczność.
-        inny_r = GroundingConfig(type="resistor_grounded", r_ohm=20.0)
-        problemy = _kody(self._model_wn(("Dyn11",), "resistor_grounded", inny_r), "E-W5-01")
-        assert len(problemy) == 1 and "R_N 20.0 Ω" in problemy[0].message_pl
+    def test_uziemienie_sieci_sn_z_uzwojenia_transformatora(self):
+        from enm.uziemienie_sekcji import uziemienie_szyny
 
-    def test_uziemiony_z_ta_sama_droga_zerowa_sn_jest_spojny(self):
+        oczekiwane = {
+            ("Yd11",): "izolowany",
+            ("YNd11",): "izolowany",
+            ("Yyn0",): "izolowany",
+            ("Dyn11",): "bezposrednie",
+            ("YNyn0",): "bezposrednie",
+            ("Yd11", "Dyn11"): "bezposrednie",
+        }
+        for typ in ("isolated", "directly_grounded"):
+            for grupy, wariant in oczekiwane.items():
+                sekcja = uziemienie_szyny(self._model_wn(grupy, typ), "sn")
+                assert sekcja is not None
+                assert sekcja.wariant() == wariant, (typ, grupy)
+        # Punkt neutralny SN uzwojenia Dyn11 przez rezystor 12 Ω — wariant „rezystor”, bez
+        # względu na opis sieci 110 kV.
         rezystor = GroundingConfig(type="resistor_grounded", r_ohm=12.0)
-        przypadki = (
-            (("Dyn11",), "resistor_grounded", rezystor),
-            (("YNyn0",), "directly_grounded", None),
-            (("Dyn11",), "directly_grounded", None),
-            # Wystarczy JEDEN transformator z drogą zerową SN o tym samym uziemieniu.
-            (("Yd11", "Dyn11"), "directly_grounded", None),
-        )
-        for grupy, typ, lv in przypadki:
-            assert _kody(self._model_wn(grupy, typ, lv), "E-W5-01") == [], (grupy, typ)
-
-    def test_izolowany_przy_trojkacie_sn_jest_spojny(self):
-        for grupy in (("Yd11",), ("YNd11",), ("Yyn0",), ("Yd11", "Yd11")):
-            assert _kody(self._model_wn(grupy, "isolated"), "E-W5-01") == [], grupy
-
-    def test_izolowany_przy_uziemionej_gwiezdzie_sn_jest_blokada(self):
-        # Reguła w OBIE strony: „izolowany” przy Dyn11/YNyn0 (litera `n`, uziemienie
-        # bezpośrednie w fizyce 1F) to ta sama sprzeczność opisu z fizyką.
-        for grupy in (("Dyn11",), ("YNyn0",), ("Yd11", "Dyn11")):
-            problemy = _kody(self._model_wn(grupy, "isolated"), "E-W5-01")
-            assert len(problemy) == 1, grupy
-            assert "opisany jako izolowany" in problemy[0].message_pl
-            assert "bezpośrednio uziemiony" in problemy[0].message_pl
+        for typ in ("isolated", "petersen_coil"):
+            sekcja = uziemienie_szyny(self._model_wn(("Dyn11",), typ, rezystor), "sn")
+            assert sekcja is not None and sekcja.wariant() == "rezystor", typ
 
     def test_most_do_kanonu_gotowosci(self):
         assert "E-W5-01" in ODWZOROWANIE_WALIDATOR_NA_KANON

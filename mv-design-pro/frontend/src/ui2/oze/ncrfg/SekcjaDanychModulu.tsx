@@ -5,6 +5,7 @@
  * generatora (zapis `update_element_parameters`). Każda kontrolka ↔ jedno pole kontraktu.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   ETYKIETY_POL_NASTAW,
   ETYKIETY_POL_WEJSCIA,
@@ -25,7 +26,7 @@ function BladPola({ komunikat, testid }: { komunikat?: string; testid: string })
   if (!komunikat) return null;
   return (
     <span className="mvd-ncrfg-pole-blad" role="alert" data-testid={testid}>
-      {komunikat}
+      <TekstZWzorami tekst={komunikat} />
     </span>
   );
 }
@@ -98,7 +99,7 @@ export function SekcjaDanychModulu({
         ))}
         {POLA_LICZBOWE_DEKLARACJI.map((pole) => (
           <label key={pole} className="mvd-ncrfg-dane-pole">
-            <span>{ETYKIETY_POL_WEJSCIA[pole]}</span>
+            <span><TekstZWzorami tekst={ETYKIETY_POL_WEJSCIA[pole]} /></span>
             <input
               inputMode="decimal"
               value={f.liczby[pole]}
@@ -126,7 +127,7 @@ export function SekcjaDanychModulu({
         <p className="mvd-ncrfg-opis">{T.nastawyOpis}</p>
         {POLA_NASTAW.map((pole) => (
           <label key={pole} className="mvd-ncrfg-dane-pole">
-            <span>{ETYKIETY_POL_NASTAW[pole]}</span>
+            <span><TekstZWzorami tekst={ETYKIETY_POL_NASTAW[pole]} /></span>
             <input
               inputMode="decimal"
               value={f.nastawy.wartosci[pole]}

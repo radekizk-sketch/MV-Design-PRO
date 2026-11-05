@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W2C-PLAN-ETYKIET — kontrakt planu etykiet APARATÓW BOCZNYCH (ES/VT/SA) pól SN.
  *

@@ -114,13 +114,19 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Scalenie gałęzi programu (partie 9–13) z gałęzią UI/UX: 169/22 → 167/21 — pomiar `mypy src`
     # na obu rodzicach i na drzewie scalonym; zdjęte dokładnie 2 błędy W5-B
     # (`enm/catalog_completion.py`), zero nowych względem żadnego z rodziców.
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: 167/21 → 163/21 — pomiar `mypy src` na HEAD
+    # karty i na drzewie commitu; zniknęły dokładnie 4 błędy `arg-type` skasowanego pakietu
+    # dowodowego P19 (opis przy `BASELINE_*` w guardzie), zero nowych.
     # Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z UX-04/POLE-BKR-MODEL: 167/21 → 166/20 —
     # pomiar `mypy_ratchet_guard` na pierwszym rodzicu (171/22, 4 błędy karty) i na drzewie
     # scalonym; zdjęte 4 błędy karty i 1 z `api/catalog.py`, zero nowych.
     # Karta OCHRONA-JEDNO-ZRODLO: 166/20 → 163/19 — pomiar `mypy_ratchet_guard` na drzewie karty
     # (167/21 przed naprawą: 4 błędy karty w 2 plikach naprawione u źródła, a skasowanie starej
     # struktury nastaw zdjęło 3 błędy i 1 plik; opis przy `BASELINE_*` w guardzie).
-    assert modul.BASELINE_ERRORS == 163
+    # Scalenie karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN z galezia KD6/ZU (2026-11-05): POMIAR
+    # `mypy_ratchet_guard` na drzewie scalonym 159/19 (obie galezie zdjely bledy rozlacznie:
+    # 163/19 i 163/21 przy wspolnej bazie 167/21). Zero nowych.
+    assert modul.BASELINE_ERRORS == 159
     assert modul.BASELINE_FILES == 19
 
 

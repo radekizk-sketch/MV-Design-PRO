@@ -35,10 +35,12 @@ ZRODLA DANYCH (plik:linia w kodzie zrodlowym, stan na 2026-07-25):
 - czas trwania zwarcia: DWA zrodla, w jawnej kolejnosci pierwszenstwa.
   (1) Czas WYZNACZONY Z NASTAW zabezpieczenia danej galezi -
   ``application/analyses/protection/czas_wylaczenia_galezi.czasy_dla_modelu``,
-  podany tu przez ``tk_s_by_branch`` (patrz wywolanie ``mapa_tk_s_z_nastaw``
-  nizej w tym module). Galaz bez rozwiazanej nastawy jest w tej mapie
-  NIEOBECNA - i to jest celowe.
-  (2) Fallback: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla calego
+  podany tu przez ``tk_s_by_branch`` (``mapa_tk_s(slad_czasu(...))`` nizej w tym
+  module). Pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: JEDNO rozstrzygnięcie
+  ``rozstrzygnij_czas_trwania_zwarcia`` — wartosc projektanta na wylaczniku chroniacym
+  (``czas_wylaczenia_zwarcia_s``) > nastawa > czas przypadku podany jawnie > wartosc
+  robocza 1 s (IEC 62271-1 §4.7, dana przyjeta).
+  (2) Czas przypadku: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla calego
   wyniku zwarciowego (parametr wejsciowy przypadku, wspolny dla calej sieci,
   uzyty tez do wyliczenia ``ith_a`` na poziomie wezla) -
   ``network_model/solvers/short_circuit_iec60909.py:102``. To jest czas
@@ -79,7 +81,8 @@ from application.analyses.prad_zwarciowy_galezi import (
 )
 from application.analyses.protection.czas_wylaczenia_galezi import (
     czasy_dla_modelu,
-    mapa_tk_s_z_nastaw,
+    czasy_projektanta_galezi,
+    mapa_tk_s,
     podsumowanie_czasow,
     slad_czasu,
 )
@@ -673,7 +676,15 @@ def _ocena_dla_przebiegu(
     graph = map_enm_to_network_graph(model)
 
     czasy = czasy_dla_modelu(model=model, graph=graph, sc_result=sc_result)
-    slad = slad_czasu(czasy, tk_s_zalozony=sc_result.tk_s)
+    # Pakiet 8: jedno rozstrzygnięcie czasu trwania zwarcia — wartość projektanta na wyłączniku
+    # chroniącym > nastawa > czas przypadku podany jawnie (parametr scenariusza zwarciowego)
+    # > wartość robocza 1 s (IEC 62271-1 §4.7).
+    slad = slad_czasu(
+        czasy,
+        tk_s_zalozony=sc_result.tk_s,
+        czas_przypadku_jawny=(run.options or {}).get("thermal_time_seconds") is not None,
+        czasy_projektanta=czasy_projektanta_galezi(model=model, graph=graph, czasy=czasy),
+    )
 
     # Katalog nie jest przekazywany: w sciezce produkcyjnej dane cieplne przychodza
     # NA GALEZI (przeniesione z materializacji katalogowej przez mapowanie ENM),
@@ -682,7 +693,7 @@ def _ocena_dla_przebiegu(
         sc_result,
         graph,
         None,
-        tk_s_by_branch=mapa_tk_s_z_nastaw(czasy),
+        tk_s_by_branch=mapa_tk_s(slad),
         slad_czasu_by_branch=slad,
     )
     return sc_result, widok, slad
@@ -721,7 +732,26 @@ def build_wytrzymalosc_cieplna_view(
         # kazde kryterium musi dac sie odniesc do zapisu normy (uwaga 14).
         "normy": [dict(pozycja) for pozycja in STANDARD_REFS],
         "ocena": widok.to_dict(),
-        **_dane_przyjete_biegu(run),
+        **_dane_przyjete_widoku(run, slad),
+    }
+
+
+def _dane_przyjete_widoku(
+    run: CanonicalRun, slad: Mapping[str, Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Dane przyjęte biegu + czas trwania zwarcia gałęzi przyjęty jako wartość robocza 1 s
+    (pakiet 8, ``slad_czasu``) — ocena na nim ma status danych ``UNVALIDATED_INPUT``."""
+    wynik = dict(_dane_przyjete_biegu(run))
+    czasy: list[dict[str, Any]] = []
+    for _, pozycja in sorted(slad.items()):
+        dana = pozycja.get("dana_przyjeta")
+        if dana and dict(dana) not in czasy:
+            czasy.append(dict(dana))
+    if not czasy:
+        return wynik
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [*wynik.get("dane_przyjete", []), *czasy],
     }
 
 

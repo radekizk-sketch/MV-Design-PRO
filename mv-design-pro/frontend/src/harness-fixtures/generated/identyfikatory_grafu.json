@@ -165,6 +165,10 @@
       "graph_id": "02d464e9-7e5f-5c48-8505-eb84b2c3e29f"
     },
     {
+      "ref_id": "nn/3821c319753930c3ae26e6814b072bb7/source_field/sterownik",
+      "graph_id": "0f6a116a-ec01-5c83-a11e-7df3538278fc"
+    },
+    {
       "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_bus",
       "graph_id": "0140065a-ebf9-507a-8623-1fc9121dc676"
     },
@@ -419,6 +423,10 @@
     {
       "ref_id": "tr_sn_nn",
       "graph_id": "158eec95-939b-5b35-97ad-9433334b5506"
+    },
+    {
+      "ref_id": "zu/babc9fdad264b7fe856505e0a58d788f/zespol",
+      "graph_id": "8e215649-3ed0-5e68-8611-c7012cfc7359"
     }
   ]
 }

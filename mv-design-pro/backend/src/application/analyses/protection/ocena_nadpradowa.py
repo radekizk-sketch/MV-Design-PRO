@@ -66,7 +66,7 @@ from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel, ProtectionAssignment
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, oznaczenie_zabezpieczenia
 from enm.tor_pola import szyna_raportowa
 from enm.zabezpieczenie import (
     PrzekladnikPradowy,
@@ -354,6 +354,9 @@ class NastawyUrzadzenia:
 
     urzadzenie_ref: str
     nazwa_pl: str
+    #: Zabezpieczenie w zdaniach po rzeczowniku „zabezpieczenie” (``oznaczenie_zabezpieczenia``,
+    #: karta KD6) — ``nazwa_pl`` zostaje etykietą urządzenia w listach i rekordach.
+    oznaczenie_pl: str
     breaker_ref: str | None
     ct_ref: str | None
     przekladnia_a: tuple[float, float] | None
@@ -422,6 +425,8 @@ class OcenaPunktu:
 
     urzadzenie_ref: str
     nazwa_urzadzenia_pl: str
+    #: Zabezpieczenie w zdaniach (``NastawyUrzadzenia.oznaczenie_pl``, karta KD6).
+    oznaczenie_urzadzenia_pl: str
     breaker_ref: str
     punkt_ref: str
     nazwa_punktu_pl: str
@@ -472,6 +477,9 @@ class OdmowaUrzadzenia:
 
     urzadzenie_ref: str
     nazwa_pl: str
+    #: Zabezpieczenie w zdaniach po rzeczowniku „zabezpieczenie” (``oznaczenie_zabezpieczenia``,
+    #: karta KD6) — ``nazwa_pl`` zostaje etykietą urządzenia w listach i rekordach.
+    oznaczenie_pl: str
     breaker_ref: str | None
     braki: tuple[PozycjaGotowosci, ...]
     ocena: OcenaKryterium
@@ -585,14 +593,14 @@ def wylacznik_urzadzenia(assignment: ProtectionAssignment) -> str | None:
 def _przekladnik(
     enm: EnergyNetworkModel, assignment: ProtectionAssignment
 ) -> tuple[PrzekladnikPradowy | None, list[PozycjaGotowosci]]:
-    nazwa = nazwa_sterownika(enm, assignment)
+    oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
     ct_ref = assignment.wejscia.ct_ref
     if not ct_ref:
         return None, [
             PozycjaGotowosci(
                 kod=KOD_BRAK_PRZEKLADNIKA,
                 komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma przypiętego przekładnika prądowego do wejścia "
+                    f"Zabezpieczenie {oznaczenie} nie ma przypiętego przekładnika prądowego do wejścia "
                     "prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
                 ),
                 akcja_naprawcza_pl=(
@@ -607,7 +615,7 @@ def _przekladnik(
             PozycjaGotowosci(
                 kod=KOD_PRZEKLADNIK_NIE_PRADOWY,
                 komunikat_pl=(
-                    f"Wejście prądów fazowych zabezpieczenia {nazwa} wskazuje aparat, który nie "
+                    f"Wejście prądów fazowych zabezpieczenia {oznaczenie} wskazuje aparat, który nie "
                     "jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
                 ),
                 akcja_naprawcza_pl="Wskaż w zabezpieczeniu przekładnik prądowy pola.",
@@ -751,7 +759,7 @@ def progi_stopnia(
 def _rozwiaz_stopien(
     *,
     nastawa: NastawaStopnia,
-    nazwa: str,
+    oznaczenie: str,
     ct: PrzekladnikPradowy,
     zdolnosc: DeviceCapability,
     profil_roboczy: bool = False,
@@ -780,38 +788,40 @@ def _rozwiaz_stopien(
         if not profil_roboczy:
             brak(kod, komunikat, akcja)
 
-    akcja_nastaw = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
+    akcja_nastaw = (
+        f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {oznaczenie} w karcie pola."
+    )
     if nastawa.prog is None or nastawa.prog <= 0:
         brak(
             KOD_BRAK_PROGU,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma dodatniego progu rozruchowego.",
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma dodatniego progu rozruchowego.",
             akcja_nastaw,
         )
     if nastawa.jednostka_progu is None:
         brak(
             KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
-            f"Próg stopnia {etykieta} zabezpieczenia {nazwa} nie ma zadeklarowanej jednostki "
+            f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} nie ma zadeklarowanej jednostki "
             "(strona wtórna albo pierwotna przekładnika).",
             akcja_nastaw,
         )
     if nastawa.krzywa is None:
         brak(
             KOD_BRAK_CHARAKTERYSTYKI,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma charakterystyki czasowej.",
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma charakterystyki czasowej.",
             akcja_nastaw,
         )
     elif nastawa.krzywa == "DT":
         if nastawa.zwloka_s is None or nastawa.zwloka_s <= 0:
             brak(
                 KOD_BRAK_ZWLOKI,
-                f"Stopień {etykieta} zabezpieczenia {nazwa} (czas niezależny) nie ma dodatniej "
+                f"Stopień {etykieta} zabezpieczenia {oznaczenie} (czas niezależny) nie ma dodatniej "
                 "zwłoki — wpisz czas nastawiony przekaźnika.",
                 akcja_nastaw,
             )
     elif nastawa.tms is None or nastawa.tms <= 0:
         brak(
             KOD_BRAK_MNOZNIKA,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} (charakterystyka zależna) nie ma "
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} (charakterystyka zależna) nie ma "
             "dodatniego mnożnika czasowego.",
             akcja_nastaw,
         )
@@ -867,7 +877,7 @@ def _rozwiaz_stopien(
     ):
         brak_zgodnosci(
             KOD_PROG_POZA_ZAKRESEM,
-            f"Próg stopnia {etykieta} zabezpieczenia {nazwa} po stronie wtórnej wynosi "
+            f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} po stronie wtórnej wynosi "
             f"{_liczba(wartosc_w_jednostce_zakresu)} {jednostka_zakresu_pl}, poza zakresem "
             f"przekaźnika {_liczba(minimum)}–{_liczba(maksimum)} {jednostka_zakresu_pl}.",
             f"Popraw próg stopnia {etykieta} albo przekładnię przekładnika pola.",
@@ -944,7 +954,7 @@ def _rozwiaz_stopien(
             zwloka_s=nastawa.zwloka_s if nastawa.krzywa == "DT" else None,
             slad={
                 "zrodlo_pl": (
-                    f"nastawa stopnia {etykieta} zapisana w modelu przy zabezpieczeniu {nazwa}"
+                    f"nastawa stopnia {etykieta} zapisana w modelu przy zabezpieczeniu {oznaczenie}"
                 ),
                 "wartosc_w_modelu": nastawa.prog,
                 "jednostka_w_modelu": nastawa.jednostka_progu,
@@ -970,6 +980,7 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
     ``funkcje_nieoceniane`` z wyjaśnieniem (NIE_OCENIONO, nigdy cisza).
     """
     nazwa = nazwa_sterownika(enm, assignment)
+    oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
     braki: list[PozycjaGotowosci] = []
     ct, braki_ct = _przekladnik(enm, assignment)
     braki.extend(braki_ct)
@@ -989,21 +1000,21 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
             PozycjaGotowosci(
                 kod=KOD_BRAK_STOPNI,
                 komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma nastaw stopni nadprądowych I> (51) ani "
+                    f"Zabezpieczenie {oznaczenie} nie ma nastaw stopni nadprądowych I> (51) ani "
                     "I>> (50)."
                 ),
-                akcja_naprawcza_pl=f"Wpisz nastawy stopni nadprądowych zabezpieczenia {nazwa}.",
+                akcja_naprawcza_pl=f"Wpisz nastawy stopni nadprądowych zabezpieczenia {oznaczenie}.",
             )
         )
     for nastawa in sorted(nastawy_oc, key=lambda n: FUNKCJE_OCENIANE.index(n.funkcja)):
         if ct is None or braki_ct or zdolnosc is None or braki_katalogu:
             # Bez przekładnika i zakresów katalogu stopień i tak zgłasza braki kompletności —
             # projektant widzi komplet tego, czego brakuje, nie tylko pierwszą przeszkodę.
-            braki.extend(_braki_kompletnosci(nastawa, nazwa))
+            braki.extend(_braki_kompletnosci(nastawa, oznaczenie))
             continue
         stopien, braki_stopnia = _rozwiaz_stopien(
             nastawa=nastawa,
-            nazwa=nazwa,
+            oznaczenie=oznaczenie,
             ct=ct,
             zdolnosc=zdolnosc,
             profil_roboczy=(
@@ -1023,6 +1034,7 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
     return NastawyUrzadzenia(
         urzadzenie_ref=assignment.ref_id,
         nazwa_pl=nazwa,
+        oznaczenie_pl=oznaczenie,
         breaker_ref=wylacznik_urzadzenia(assignment),
         ct_ref=assignment.wejscia.ct_ref,
         przekladnia_a=(
@@ -1093,17 +1105,17 @@ def _opis_wejscia_nasycenia(wejscie: CtBurdenInput | None) -> dict[str, Any] | N
     }
 
 
-def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGotowosci]:
+def _braki_kompletnosci(nastawa: NastawaStopnia, oznaczenie: str) -> list[PozycjaGotowosci]:
     """Braki kompletności stopnia niezależne od przekładnika i katalogu."""
     etykieta = ETYKIETY_FUNKCJI_PL[nastawa.funkcja]
-    akcja = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
+    akcja = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {oznaczenie} w karcie pola."
     wynik: list[PozycjaGotowosci] = []
     if nastawa.prog is None or nastawa.prog <= 0:
         wynik.append(
             PozycjaGotowosci(
                 kod=KOD_BRAK_PROGU,
                 komunikat_pl=(
-                    f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma dodatniego progu "
+                    f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma dodatniego progu "
                     "rozruchowego."
                 ),
                 akcja_naprawcza_pl=akcja,
@@ -1115,7 +1127,7 @@ def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGoto
             PozycjaGotowosci(
                 kod=KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
                 komunikat_pl=(
-                    f"Próg stopnia {etykieta} zabezpieczenia {nazwa} nie ma zadeklarowanej "
+                    f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} nie ma zadeklarowanej "
                     "jednostki (strona wtórna albo pierwotna przekładnika)."
                 ),
                 akcja_naprawcza_pl=akcja,
@@ -1127,7 +1139,7 @@ def _braki_kompletnosci(nastawa: NastawaStopnia, nazwa: str) -> list[PozycjaGoto
             PozycjaGotowosci(
                 kod=KOD_BRAK_CHARAKTERYSTYKI,
                 komunikat_pl=(
-                    f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma charakterystyki czasowej."
+                    f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma charakterystyki czasowej."
                 ),
                 akcja_naprawcza_pl=akcja,
                 funkcja=nastawa.funkcja,
@@ -1186,6 +1198,7 @@ def urzadzenia_nadpradowe(
     pominiete: list[PominieteUrzadzenie] = []
     for assignment in sorted(enm.protection_assignments, key=lambda a: a.ref_id):
         nazwa = nazwa_sterownika(enm, assignment)
+        oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
         ma_funkcje_oc = any(f.kod in FUNKCJE_OCENIANE and f.wlaczona for f in assignment.funkcje)
         if not ma_funkcje_oc:
             pominiete.append(
@@ -1194,7 +1207,7 @@ def urzadzenia_nadpradowe(
                     nazwa_pl=nazwa,
                     kod=POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
                     powod_pl=(
-                        f"Zabezpieczenie {nazwa} nie ma funkcji nadprądowych fazowych I>/I>> — "
+                        f"Zabezpieczenie {oznaczenie} nie ma funkcji nadprądowych fazowych I>/I>> — "
                         "ocena nadprądowa go nie dotyczy."
                     ),
                 )
@@ -1206,7 +1219,7 @@ def urzadzenia_nadpradowe(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nazwa,
                     kod=POMINIETE_WYLACZONE,
-                    powod_pl=f"Zabezpieczenie {nazwa} jest wyłączone z ruchu w modelu.",
+                    powod_pl=f"Zabezpieczenie {oznaczenie} jest wyłączone z ruchu w modelu.",
                 )
             )
             continue
@@ -1773,7 +1786,7 @@ def czas_urzadzenia(
 def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> PodstawaWymagania:
     return PodstawaWymagania(
         rodzaj="ZALOZENIE_PROJEKTOWE",
-        dokument=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} zapisane w modelu sieci projektu",
+        dokument=f"Nastawy zabezpieczenia {nastawy.oznaczenie_pl} zapisane w modelu sieci projektu",
         wydanie="model sieci biegu oceny (odcisk migawki w kopercie biegu)",
         jednostka_redakcyjna=(
             f"stopień {stopien.etykieta_pl}: próg {_liczba(stopien.wartosc_progu)} A "
@@ -1926,7 +1939,11 @@ def ocena_punktu_rekord(
 
 
 def odmowa_rekord(
-    *, urzadzenie_ref: str, nazwa_pl: str, braki: Sequence[PozycjaGotowosci]
+    *,
+    urzadzenie_ref: str,
+    nazwa_pl: str,
+    oznaczenie_pl: str,
+    braki: Sequence[PozycjaGotowosci],
 ) -> OcenaKryterium:
     """Rekord K ``NIE_OCENIONO`` urządzenia wstrzymanego nazwanymi brakami."""
     from application.ocena_niewykonana import ocena_niewykonana
@@ -1944,7 +1961,7 @@ def odmowa_rekord(
         ),
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
-            dokument=f"Nastawy zabezpieczenia {nazwa_pl} zapisane w modelu sieci projektu",
+            dokument=f"Nastawy zabezpieczenia {oznaczenie_pl} zapisane w modelu sieci projektu",
             status="NIEUSTALONE",
             uwagi_pl="nastawy albo dane toru pomiarowego niekompletne — patrz braki",
         ),
@@ -2186,7 +2203,7 @@ def ocen_zabezpieczenia(
                         kod=KOD_BRAK_PUNKTOW_W_STREFIE,
                         komunikat_pl=(
                             f"Bieg zwarciowy nie ma żadnego punktu zwarcia z prądem w strefie "
-                            f"zabezpieczenia {nastawy.nazwa_pl}."
+                            f"zabezpieczenia {nastawy.oznaczenie_pl}."
                         ),
                         akcja_naprawcza_pl=(
                             "Uruchom obliczenie zwarciowe obejmujące szyny strefy zabezpieczenia."
@@ -2198,12 +2215,14 @@ def ocen_zabezpieczenia(
                 OdmowaUrzadzenia(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nastawy.nazwa_pl,
+                    oznaczenie_pl=nastawy.oznaczenie_pl,
                     breaker_ref=wylacznik,
                     braki=tuple(braki),
                     kandydaci_naprawy=kandydaci,
                     ocena=odmowa_rekord(
                         urzadzenie_ref=assignment.ref_id,
                         nazwa_pl=nastawy.nazwa_pl,
+                        oznaczenie_pl=nastawy.oznaczenie_pl,
                         braki=braki,
                     ),
                 )
@@ -2261,11 +2280,13 @@ def ocen_zabezpieczenia(
                 OdmowaUrzadzenia(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nastawy.nazwa_pl,
+                    oznaczenie_pl=nastawy.oznaczenie_pl,
                     breaker_ref=wylacznik,
                     braki=tuple(unikalne),
                     ocena=odmowa_rekord(
                         urzadzenie_ref=assignment.ref_id,
                         nazwa_pl=nastawy.nazwa_pl,
+                        oznaczenie_pl=nastawy.oznaczenie_pl,
                         braki=unikalne,
                     ),
                 )
@@ -2308,6 +2329,7 @@ def _ocena_punktu(
     return OcenaPunktu(
         urzadzenie_ref=nastawy.urzadzenie_ref,
         nazwa_urzadzenia_pl=nastawy.nazwa_pl,
+        oznaczenie_urzadzenia_pl=nastawy.oznaczenie_pl,
         breaker_ref=wylacznik,
         punkt_ref=punkt,
         nazwa_punktu_pl=nazwa_punktu,

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedna mechanika wartości projektanta dla każdej rodziny rejestru (aparat SN, maszyna wirująca).
  * Iloczyn cech: {rodzina aparatu, rodzina maszyny} × {wartość nowa, niezmieniona, zmieniona,

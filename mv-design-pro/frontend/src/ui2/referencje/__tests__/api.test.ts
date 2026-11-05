@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Testy klienta Reference Engine V1 (mock fetch na kontrakcie HANDOFF §1.1 —
  * wzorzec `ui/enm-inspector/__tests__/referencePanel.test.tsx`).

@@ -20,6 +20,7 @@
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { isFuseBranch, isSwitchBranch, type Bay, type Branch } from '../src/types/enm';
 import { polaSnStacji } from '../src/ui/shared/polaStacji';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -153,8 +154,10 @@ async function zbudujSiecZeStacja(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
+    // Równoważnik na szynach SN GPZ: bez kluczy transformatorów 110/SN (`hv_voltage_kv`,
+    // `transformer_*`) — od karty GPZ-MODEL backend ich odmawia
+    // (`source.transformer_requires_hv_equivalent`), bo moc zwarciowa na szynach SN już
+    // zawiera impedancję transformatorów. Intencja speca (GPZ SN zasilający ciąg) bez zmian.
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -251,21 +254,6 @@ async function zoomujAzWidoczne(page: Page, selector: string, deltaY: number): P
   return target;
 }
 
-/** Geometria elementu stabilna = dwa kolejne odczyty bboxa identyczne (kamera
- *  po ficie, panele po pomiarze). Realny warunek zamiast sztywnego sleep. */
-async function czekajNaStabilnaGeometrie(page: Page, cel: Locator): Promise<void> {
-  let poprzedni = '';
-  for (let i = 0; i < 40; i += 1) {
-    const biezacy = await cel.evaluate((el) => {
-      const rect = (el as SVGGraphicsElement).getBoundingClientRect();
-      return `${Math.round(rect.x)}:${Math.round(rect.y)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
-    });
-    if (biezacy === poprzedni) return;
-    poprzedni = biezacy;
-    await page.waitForTimeout(250);
-  }
-}
-
 /**
  * NATYWNY prawy klik w aparat pola: punkt kliku wybrany sondą `elementFromPoint` tak, aby
  * celem trafienia był obszar trafień klasy „aparat" TEGO pola (`data-hit-owner-ref`) — nie
@@ -275,7 +263,7 @@ async function czekajNaStabilnaGeometrie(page: Page, cel: Locator): Promise<void
 async function prawyKlikAparatuPola(page: Page, bayRef: string): Promise<void> {
   const selektor = `[data-element-kind="apparatus"][data-owner-ref="${bayRef}"]`;
   const aparat = await zoomujAzWidoczne(page, selektor, -240);
-  await czekajNaStabilnaGeometrie(page, aparat);
+  await czekajNaStabilnaGeometrie(aparat);
   const punkt = await aparat.evaluate((el, ref) => {
     const rect = (el as SVGGraphicsElement).getBoundingClientRect();
     for (const fy of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {

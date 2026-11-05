@@ -1189,11 +1189,13 @@ function kartaAparatu(
   };
 }
 
-/** Czas wyłączenia zwarcia obwodu chronionego aparatem — wartość projektanta na gałęzi aparatu
+/** Przyjęty czas zwarcia obwodu chronionego aparatem — wartość projektanta na gałęzi aparatu
  *  (`update_element_parameters`, klucz `czas_wylaczenia_zwarcia_s`). Bez deklaracji backend
- *  bierze czas z charakterystyki aparatu albo wartość roboczą normy — wiersz mówi to wprost. */
+ *  bierze czas z nastaw zabezpieczenia albo charakterystyki aparatu, a bez nich wartość roboczą
+ *  normy (SN: 1 s IEC 62271-1 §4.7; nN: PN-HD 60364-4-41) — wiersz mówi to wprost. */
 function sekcjaCzasuWylaczenia(galaz: SwitchBranch | FuseBranch): SekcjaKarty {
   const czas = galaz.czas_wylaczenia_zwarcia_s ?? null;
+  const rodzaj = galaz.rodzaj_obwodu_nn ?? null;
   return {
     id: 'czas_wylaczenia',
     tytul: 'Wyłączenie zwarcia',
@@ -1202,11 +1204,25 @@ function sekcjaCzasuWylaczenia(galaz: SwitchBranch | FuseBranch): SekcjaKarty {
         'czas_wylaczenia_zwarcia',
         'Czas wyłączenia zwarcia',
         czas === null
-          ? 'z charakterystyki aparatu albo wartość robocza PN-HD 60364-4-41'
+          ? 'z nastaw albo charakterystyki aparatu; bez nich wartość robocza normy'
           : zapisLiczby(czas, 's'),
         {
           edycja: edycja(galaz.ref_id, 'czas_wylaczenia_zwarcia_s', czas),
           zrodloPl: czas === null ? 'wyznacza obliczenie' : 'wartość projektanta',
+        },
+      ),
+      // Pakiet 9: rodzaj obwodu nN — jedna klasyfikacja dla I²t i SWZ (wartość projektanta na
+      // aparacie; bez niej reguła prądu znamionowego aparatu z backendu).
+      wiersz(
+        'rodzaj_obwodu_nn',
+        'Rodzaj obwodu nN',
+        rodzaj === null
+          ? 'aparat ≤ 63 A — obwód odbiorczy (wartość robocza), > 63 A — rozdzielczy'
+          : `obwód ${rodzaj}`,
+        {
+          edycja: edycja(galaz.ref_id, 'rodzaj_obwodu_nn', rodzaj),
+          zrodloPl:
+            rodzaj === null ? 'PN-HD 60364-4-41:2017 §411.3.2.2' : 'wartość projektanta',
         },
       ),
     ],

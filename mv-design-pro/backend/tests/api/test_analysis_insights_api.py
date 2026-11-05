@@ -177,6 +177,92 @@ def test_coverage_is_deterministic(app_client) -> None:
     assert first == second
 
 
+#: Dane uziomu stacji (siatka 60 × 40 m) — prąd zwarcia doziemnego daje model.
+_UZIOM = {
+    "rho1_ohm_m": 100.0,
+    "length_m": 60.0,
+    "width_m": 40.0,
+    "mesh_spacing_m": 6.0,
+    "buried_depth_m": 0.6,
+    "rods_total_length_m": 40.0,
+    "split_factor": 0.65,
+    "fault_clearing_time_s": 0.5,
+    "surface_layer_rho_ohm_m": 2500.0,
+    "surface_layer_derating": 0.74,
+    "bus_ref": "bus_sn_main",
+}
+
+
+@pytest.mark.parametrize("nadpisanie_ka", (None, 4.0))
+def test_coverage_luke_uziemienia_zamyka_bieg_bezpieczenstwa_uziomu(
+    app_client, nadpisanie_ka: float | None
+) -> None:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5): luka uziemienia czytała skasowany
+    pakiet dowodu P19 bez producenta — nie do zamknięcia żadną pracą projektanta. Teraz
+    zamyka ją zakończony bieg bezpieczeństwa uziomu V12.6 (prąd z modelu albo nadpisany),
+    realną ścieżką: zlecenie biegu przez API → pokrycie tego samego przypadku."""
+    from tests.utils.biegi import uruchom_v126
+
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
+    przed = app_client.get(COVERAGE, params={"case_id": case_id}).json()["pokrycie"]
+    assert any("LUKA-UZIEMIENIE" in luka for luka in przed["critical_gaps"])
+    uziom = dict(_UZIOM)
+    if nadpisanie_ka is not None:
+        uziom["fault_current_ka"] = nadpisanie_ka
+    zlecenie = uruchom_v126(app_client, case_id, "earthing_safety", {"earthing": uziom})
+    assert zlecenie.status_code == 202, zlecenie.text
+    po = app_client.get(COVERAGE, params={"case_id": case_id}).json()["pokrycie"]
+    assert not any("LUKA-UZIEMIENIE" in luka for luka in po["critical_gaps"])
+    assert not any("uziomu stacji" in brak for brak in po["missing_items"])
+    assert po["total_score"] == pytest.approx(przed["total_score"] + 10.0)
+
+
+class _Bieg:
+    def __init__(self, analysis_type: str, status: str, raw_result: object) -> None:
+        self.analysis_type = analysis_type
+        self.status = status
+        self.raw_result = raw_result
+
+
+@pytest.mark.parametrize(
+    ("bieg", "oceniony"),
+    (
+        (
+            _Bieg(
+                "v126:earthing_safety",
+                "FINISHED",
+                {"result": {"result": {"gpr_kv": 1.2}}},
+            ),
+            True,
+        ),
+        # Wynik bez napięć rażeniowych (dane niekompletne) nie zamyka luki.
+        (
+            _Bieg(
+                "v126:earthing_safety",
+                "FINISHED",
+                {"result": {"result": {"status": "dane niekompletne", "gpr_kv": None}}},
+            ),
+            False,
+        ),
+        (_Bieg("v126:earthing_safety", "FAILED", None), False),
+        (
+            _Bieg(
+                "v126:neutral_earthing_design",
+                "FINISHED",
+                {"result": {"result": {"gpr_kv": 1.0}}},
+            ),
+            False,
+        ),
+        (_Bieg("short_circuit_sn", "FINISHED", {}), False),
+    ),
+)
+def test_predykat_oceny_uziomu(bieg: _Bieg, oceniony: bool) -> None:
+    from application.analyses.pokrycie_analiz import _uziom_oceniony
+
+    assert _uziom_oceniony([bieg]) is oceniony  # type: ignore[list-item]
+
+
 # --------------------------------------------------------------------------
 # Granica sieci — case_id (interpretacja bieżącego MODELU, nie biegu)
 # --------------------------------------------------------------------------

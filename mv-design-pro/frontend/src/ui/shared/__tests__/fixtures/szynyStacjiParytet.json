@@ -14501,6 +14501,220 @@
         }
       }
     },
+    "src/harness-fixtures/generated/doziemienie_sposoby_scena.json": {
+      "/bezposrednie/migawka/snapshot": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": false,
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": false
+          },
+          "stacja_pola": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation"
+          },
+          "stacje": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+                "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+              "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        },
+        "szyny": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn": "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": null,
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        }
+      },
+      "/izolowany/migawka/snapshot": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": false
+          },
+          "stacja_pola": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation"
+          },
+          "stacje": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+        },
+        "szyny": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn": "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": null
+        }
+      },
+      "/kompensowany/migawka/snapshot": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": false,
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": false
+          },
+          "stacja_pola": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation"
+          },
+          "stacje": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+                "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+              "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        },
+        "szyny": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn": "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": null,
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        }
+      },
+      "/rezystor/migawka/snapshot": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": false,
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": false
+          },
+          "stacja_pola": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "gpz/d9ed1ba8641f592d032d395502ccbff8/substation"
+          },
+          "stacje": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+                "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": [
+              "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
+              "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        },
+        "szyny": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": {
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn": "gpz/d9ed1ba8641f592d032d395502ccbff8/hv_section/001/bus_wn",
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
+            "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/substation": [
+            "gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001": null,
+          "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal"
+        }
+      }
+    },
     "src/harness-fixtures/generated/dynamika_scena_migawka.json": {
       "": {
         "pola": {

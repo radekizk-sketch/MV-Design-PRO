@@ -24,6 +24,7 @@ import {
   zbudujProjektZeStacja,
   ZWLOKA_51_S,
 } from './siecZeStacjaZabezpieczona';
+import { formatujWielkosc } from '../src/ui2/wyniki/zwarcia/aparatura/format';
 
 /** Aparat z katalogu wytrzymałości backendu (`DEVICE_WITHSTAND_CATALOG`). */
 const APARAT_ID = 'wstd_breaker_vacuum_15_25';
@@ -48,7 +49,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
 
   // Pole modelu, dla którego inżynier wskaże aparat ręcznie: konfiguracja jest
   // kluczowana oznaczeniem pola modelu — wpis bez pola modelu nie ma punktu
-  // zabudowy, więc nie ma też prądu (werdykt uczciwie nieustalony).
+  // zabudowy, więc nie ma też prądu (werdykt uczciwie bez oceny — brak prądu pola).
   const widokModelu = await widokZBiegu(request, kontekst, runId);
   const wierszPolaZabezpieczonego = widokModelu.pola.find(
     (p) => p.pole_ref === kontekst.poleZabezpieczoneRef,
@@ -61,7 +62,6 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
     {
       data: {
-        mv_neutral_grounding_ref: null,
         tap_changer_refs: [],
         der_specs: [],
         bay_device_withstand: {
@@ -146,12 +146,21 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${POLE}`)).toHaveAttribute(
     'data-zrodlo-czasu',
     'nastawy_pola',
   );
-  // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
+  // Prądy pola są w „Szczegółach obliczeń” (karta APARATURA-TABELA): natywny klik przełącznika
+  // wiersza, potem przełącznika szczegółów. Intencja przepisana (KD6-SZCZEGOLY pkt 4): słowny
+  // komunikat backendu powtarzał liczby tabeli, więc szczegóły go nie cytują — werdykt na
+  // ekranie wiąże z backendem atrybut wiersza (wyżej) i liczby tabeli kryteriów.
+  await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${POLE}`).click();
+  await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${POLE}`).click();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${POLE}`)).toBeVisible();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${POLE}`)).not.toContainText(
+    werdykt.message_pl,
+  );
+  // Prądy pola z punktem zabudowy jako daną maszynową.
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
     'data-punkt-ref',
     pradyPola.punkt_ref ?? '',
@@ -221,19 +230,63 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
     // ŹRÓDŁO aparatu widoczne jako dana maszynowa — inżynier musi wiedzieć,
     // że ocenia aparat z modelu, a nie z własnego wpisu.
     await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
-    // Werdykt na ekranie = werdykt backendu (cytat, nie własne słowa ekranu).
-    await expect(wiersz).toContainText(pole.komunikat_pl);
+    // Zapasy w wierszu = margines rekordu K TEGO pola z odpowiedzi backendu (nigdy kopia
+    // innego pola); brak marginesu = jawne „brak”, nie liczba.
+    for (const rodzaj of ['dynamiczna', 'cieplna', 'wylaczanie'] as const) {
+      const rekord = pole.oceny.find((o) => o.kryterium_id.endsWith(`.${rodzaj}`));
+      const m = rekord?.margines?.wartosc?.wartosc ?? null;
+      const oczekiwany =
+        rekord === undefined
+          ? 'brak oceny'
+          : !rekord.stosowalnosc.dotyczy
+            ? 'nie dotyczy'
+            : m === null
+              ? 'brak'
+              : formatujWielkosc(m, 'zapas');
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-zapas-wiersz-${pole.pole}-${rodzaj}`),
+      ).toHaveText(oczekiwany);
+    }
+    // Czas trwania zwarcia pola: zawsze liczba backendu (projektant, nastawy albo wartość
+    // robocza 1 s IEC 62271-1 — pakiet 8), bez t_b innego pola.
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`)).toHaveText(
+      formatujWielkosc(pole.czas_wylaczenia.t_clearing_s, 'czas'),
+    );
+    // Werdykt na ekranie = werdykt backendu przez zapasy rekordów K (wyżej). Intencja przepisana
+    // (KD6-SZCZEGOLY pkt 4): słowny komunikat pola nie jest cytowany w szczegółach.
+    await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole.pole}`).click();
+    await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole.pole}`).click();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${pole.pole}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`),
+    ).not.toContainText(pole.komunikat_pl);
     // Prąd TEGO pola (punkt zabudowy pola z biegu), nie jedna liczba stacji.
     await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${pole.pole}`)).toHaveAttribute(
       'data-punkt-ref',
       pole.prady_pola.punkt_ref ?? '',
     );
-    // Rozbicie czasu wyłączenia: oba człony przy werdykcie (WHITE BOX).
-    const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
-    await expect(czas).toHaveAttribute(
-      'data-zrodlo-czasu',
-      pole.czas_wylaczenia.zrodlo ?? 'nieustalony',
+    // Wyprowadzenie z realnego biegu (karta KD6-SZCZEGOLY): wzory i_p / I_th / I_b z kroków
+    // śladu solvera i κ z wiersza biegu — widok tylko je pokazuje.
+    const wyprowadzenie = pole.prady_pola.wyprowadzenie;
+    expect(Object.keys(wyprowadzenie?.wzory ?? {}).sort()).toEqual(['ib', 'ip', 'ith']);
+    for (const klucz of ['ip', 'ith', 'ib']) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-wzor-${pole.pole}-${klucz}`).locator('.katex'),
+      ).toBeVisible();
+    }
+    expect(wyprowadzenie?.kappa).toBeDefined();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-posrednia-${pole.pole}-kappa`)).toHaveText(
+      formatujWielkosc(wyprowadzenie?.kappa ?? Number.NaN, 'wspolczynnik'),
     );
+    // Wiersz cieplny: zdanie backendu („Spełnione dla t = 1 s”) przy rozstrzygniętym porównaniu.
+    if (pole.komunikat_cieplny_pl !== null) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-komunikat-cieplny-${pole.pole}`),
+      ).toHaveText(pole.komunikat_cieplny_pl);
+    }
+    // Źródło czasu jako dana maszynowa komórki Tk (rozbicie w szczegółach).
+    const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
+    await expect(czas).toHaveAttribute('data-zrodlo-czasu', pole.czas_wylaczenia.zrodlo);
   }
 });
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Predykat kluczy spoza kontraktu (TS) przypięty PARAMI do predykatu backendu.
  *

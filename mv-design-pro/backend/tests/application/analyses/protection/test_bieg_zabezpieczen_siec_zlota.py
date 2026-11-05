@@ -246,7 +246,8 @@ def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(model: EnergyNetwo
     assert len(wiersze_z) == 9
     assert fizyka(sc_bez.raw_result["results"]) == fizyka(wiersze_z)
     opisy_tb = [w["tb_zrodlo"]["opis_pl"] for w in wiersze_z if w.get("tb_zrodlo")]
-    assert any("Sterownik pola" in o for o in opisy_tb), "przyczyna t_b nazywa sterownik pola"
+    # Zabezpieczenie nazwane przez pole, które chroni (karta KD6, `oznaczenie_zabezpieczenia`).
+    assert any("abezpieczeni" in o and "pola „" in o for o in opisy_tb), opisy_tb
 
 
 def test_edycja_nastaw_nie_wymaga_ponownego_zwarcia(model: EnergyNetworkModel) -> None:

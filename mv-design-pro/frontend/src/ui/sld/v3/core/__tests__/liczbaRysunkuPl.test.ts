@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * V12K-235: JEDNA konwencja zapisu liczby na rysunku.
  *

@@ -301,6 +301,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "id": "0e50848b-2103-536b-a6c0-e405f44f6bb2",
       "materialized_params": {
@@ -325,6 +326,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -338,6 +340,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
       "id": "11cf45d2-e159-5866-81f6-1125c4340189",
       "materialized_params": null,
@@ -352,6 +355,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -447,6 +451,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
       "id": "5820484a-11fb-598c-b763-bac7b3be4486",
       "materialized_params": null,
@@ -461,6 +466,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -472,6 +478,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "id": "91484a7c-65b4-5330-9f53-83a57ec255bc",
       "materialized_params": {
@@ -496,6 +503,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/002",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -596,6 +604,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "id": "e6494478-71d1-5716-8cbe-c36f0e4686f5",
       "materialized_params": null,
@@ -616,6 +625,7 @@
       "parameter_source": null,
       "r_ohm": 0.0,
       "ref_id": "sn/3821c319753930c3ae26e6814b072bb7/source_field_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": null,
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -630,6 +640,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "id": "f45e070d-3458-547e-a144-6e48bf2141e3",
       "materialized_params": {
@@ -654,6 +665,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/000",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -935,7 +947,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "4cdeeda18c7923ebf04623054bdef4b02467d78723c30313c0e5fa5c9807423d",
+    "hash_sha256": "d50a4cdc45cea3e06695decd7e94dacfdb6dd8a2bc4cf1b0bee886c7bb185366",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1061,8 +1073,8 @@
     {
       "aktywna_grupa": 1,
       "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-      "catalog_namespace": "ZABEZPIECZENIE",
-      "catalog_ref": "EM_ETANGO_1250_V0",
+      "catalog_namespace": null,
+      "catalog_ref": null,
       "charakterystyki_ref": null,
       "funkcje": [
         {
@@ -1079,7 +1091,104 @@
           "kod": "51N",
           "ref": "51N",
           "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "048629a9-f609-51d1-90ef-397c1272bf36",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole liniowe wyjściowe 2",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "87T",
+          "ref": "87T",
+          "wlaczona": true
         },
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        },
+        {
+          "kod": "63",
+          "ref": "63",
+          "wlaczona": true
+        },
+        {
+          "kod": "26",
+          "ref": "26",
+          "wlaczona": true
+        },
+        {
+          "kod": "63P",
+          "ref": "63P",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "b3b88417-45a5-5cc7-b4dd-7ee4aef020f4",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole transformatorowe 3",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
+      "catalog_namespace": "ZABEZPIECZENIE",
+      "catalog_ref": "EM_ETANGO_1250_V0",
+      "charakterystyki_ref": null,
+      "funkcje": [
         {
           "kod": "81R",
           "ref": "81R",
@@ -1148,47 +1257,26 @@
           "numer": 1
         }
       ],
-      "id": "048629a9-f609-51d1-90ef-397c1272bf36",
+      "id": "071190f2-6c53-5ff5-b0e8-04d72617be89",
       "is_enabled": true,
       "macierz_wyzwolen": [
         {
           "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
-          ],
-          "funkcja_ref": "51",
-          "pobudza_spz": false
-        },
-        {
-          "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
-          ],
-          "funkcja_ref": "50",
-          "pobudza_spz": false
-        },
-        {
-          "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
-          ],
-          "funkcja_ref": "51N",
-          "pobudza_spz": false
-        },
-        {
-          "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
+            "sn/3821c319753930c3ae26e6814b072bb7/source_field_device"
           ],
           "funkcja_ref": "81R",
           "pobudza_spz": false
         },
         {
           "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
+            "sn/3821c319753930c3ae26e6814b072bb7/source_field_device"
           ],
           "funkcja_ref": "81U",
           "pobudza_spz": false
         },
         {
           "aparat_refs": [
-            "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/001"
+            "sn/3821c319753930c3ae26e6814b072bb7/source_field_device"
           ],
           "funkcja_ref": "81O",
           "pobudza_spz": false
@@ -1207,81 +1295,19 @@
           "catalog_namespace": "ZABEZPIECZENIE",
           "materialize": true,
           "snapshot_mapping_version": "1.0"
-        }
+        },
+        "field_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field"
       },
       "name": "Zabezpieczenie od pracy wyspowej pola wytwórcy",
       "overrides": [],
       "parameter_source": "CATALOG",
       "prad_znamionowy_wejscia_a": null,
-      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001/sterownik",
+      "ref_id": "nn/3821c319753930c3ae26e6814b072bb7/source_field/sterownik",
       "source_mode": "KATALOG",
-      "tags": [],
-      "wejscia": {
-        "ct_ref": null,
-        "ct_strony_2_refs": [],
-        "i0_ct_ref": null,
-        "i0_uklad": null,
-        "u0_uklad": null,
-        "u0_vt_ref": null,
-        "vt_ref": null
-      }
-    },
-    {
-      "aktywna_grupa": 1,
-      "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
-      "catalog_namespace": null,
-      "catalog_ref": null,
-      "charakterystyki_ref": null,
-      "funkcje": [
-        {
-          "kod": "87T",
-          "ref": "87T",
-          "wlaczona": true
-        },
-        {
-          "kod": "51",
-          "ref": "51",
-          "wlaczona": true
-        },
-        {
-          "kod": "50",
-          "ref": "50",
-          "wlaczona": true
-        },
-        {
-          "kod": "51N",
-          "ref": "51N",
-          "wlaczona": true
-        },
-        {
-          "kod": "63",
-          "ref": "63",
-          "wlaczona": true
-        },
-        {
-          "kod": "26",
-          "ref": "26",
-          "wlaczona": true
-        },
-        {
-          "kod": "63P",
-          "ref": "63P",
-          "wlaczona": true
-        }
+      "tags": [
+        "field_protection",
+        "catalog_bound"
       ],
-      "grupy_nastaw": [],
-      "id": "b3b88417-45a5-5cc7-b4dd-7ee4aef020f4",
-      "is_enabled": true,
-      "macierz_wyzwolen": [],
-      "materialized_params": null,
-      "meta": {},
-      "name": "Sterownik pola Pole transformatorowe 3",
-      "overrides": [],
-      "parameter_source": null,
-      "prad_znamionowy_wejscia_a": null,
-      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002/sterownik",
-      "source_mode": null,
-      "tags": [],
       "wejscia": {
         "ct_ref": null,
         "ct_strony_2_refs": [],
@@ -1456,5 +1482,6 @@
       "ulv_kv": 0.4,
       "vector_group": "Dyn11"
     }
-  ]
+  ],
+  "zespoly_uziemiajace": []
 }

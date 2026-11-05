@@ -321,6 +321,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.transformer_lv_not_nn_band': 'stacje',
   'apparatus.sn_catalog_missing': 'stacje',
   'apparatus.nn_catalog_missing': 'stacje',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN (STATIONS).
+  'earthing.zespol_bus_invalid': 'stacje',
+  'earthing.zespol_neutral_undefined': 'stacje',
+  'earthing.zespol_auxiliary_load_missing': 'stacje',
+  'earthing.network_grounding_warning': 'stacje',
+  'earthing.zespol_direct_earthing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
   'oze.transformer_required': 'rozplyw',
   'oze.nn_bus_required': 'rozplyw',
@@ -330,6 +336,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'protection.ct_required': 'zabezpieczenia',
   'protection.vt_required': 'zabezpieczenia',
   'protection.settings_incomplete': 'zabezpieczenia',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: automatyka zespołu uziemiającego (PROTECTION).
+  'earthing.zespol_spz_without_resistor': 'zabezpieczenia',
+  'earthing.zespol_transformer_trip_missing': 'zabezpieczenia',
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
@@ -348,6 +357,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'connection.power_flow_missing': 'zwarcia',
   'connection.power_limit_missing': 'zwarcia',
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z pominiętymi danymi uziemienia (SOURCES).
+  'source.sn_neutral_data_ignored': 'zwarcia',
   'nn.measurement.required_missing': 'zwarcia',
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
@@ -362,6 +373,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'branch.zero_sequence_missing': 'wspolne',
   // R′0/X′0 z wartości roboczej katalogu: zwarcia doziemne i rozpływ niesymetryczny.
   'branch.z0_wartosc_robocza': 'wspolne',
+  // Bocznik zespołu uziemiającego z wartości roboczej: zwarcia doziemne (CATALOGS).
+  'zespol_uziemiajacy.wartosc_robocza': 'wspolne',
+  'earthing.zespol_voltage_mismatch': 'wspolne',
   'cable.insulation_data_missing': 'wspolne',
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',
@@ -385,7 +399,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)
-  'earthing.electrode_data_missing': 'stacje',
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
@@ -434,7 +447,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',
   'power_flow.unbalanced_load_phases_unsupported': 'wspolne',
-  'power_flow.unbalanced_losses_self_impedance': 'wspolne',
   'power_flow.unbalanced_magnetising_branch_omitted': 'wspolne',
   'power_flow.unbalanced_no_zero_sequence_path': 'wspolne',
   'power_flow.unbalanced_requires_radial': 'wspolne',

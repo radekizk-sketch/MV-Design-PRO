@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy budowy ładunku parametrów projektowych (ui2/wyniki/akademickie/parametry.ts).
  *
@@ -22,7 +23,7 @@ describe('zbudujParametry — zero podstawiania za solver', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
   });
@@ -33,7 +34,7 @@ describe('zbudujParametry — zero podstawiania za solver', () => {
       pola: { energy_price_pln_per_kwh: '   ', discount_rate: '' },
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
   });
@@ -44,7 +45,7 @@ describe('zbudujParametry — zero podstawiania za solver', () => {
       pola: { energy_price_pln_per_kwh: '0,72', lcc_years: '25' },
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({ energy_price_pln_per_kwh: 0.72, lcc_years: 25 });
   });
@@ -55,7 +56,7 @@ describe('zbudujParametry — zero podstawiania za solver', () => {
       pola: { hosting_monte_carlo_n: 'dużo' },
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
   });
@@ -66,7 +67,7 @@ describe('zbudujParametry — zero podstawiania za solver', () => {
       pola: { energy_price_pln_per_kwh: '0,72' },
       uziom: { rho1_ohm_m: '100' },
       metody: ['wattmetric'],
-      wiersze: [{ ref: 'M1' }],
+      wiersze: { motors: [{ ref: 'M1' }] },
     });
     expect(parametry).toEqual({});
   });
@@ -77,11 +78,11 @@ describe('zbudujParametry — obiekt uziomu', () => {
     const parametry = zbudujParametry({
       rodzaj: 'earthing_safety',
       pola: {},
-      uziom: { gpz_ref: 'GPZ-1', rho1_ohm_m: '120', width_m: '' },
+      uziom: { bus_ref: 'bus/gpz-sn', rho1_ohm_m: '120', width_m: '' },
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
-    expect(parametry).toEqual({ earthing: { gpz_ref: 'GPZ-1', rho1_ohm_m: 120 } });
+    expect(parametry).toEqual({ earthing: { bus_ref: 'bus/gpz-sn', rho1_ohm_m: 120 } });
   });
 
   it('pusty uziom nie tworzy klucza `earthing`', () => {
@@ -90,7 +91,7 @@ describe('zbudujParametry — obiekt uziomu', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
     expect('earthing' in parametry).toBe(false);
@@ -99,15 +100,17 @@ describe('zbudujParametry — obiekt uziomu', () => {
 
 describe('zbudujParametry — metody detekcji i listy złożone', () => {
   it('zaznaczone metody trafiają jako lista; brak zaznaczeń = brak klucza', () => {
+    // Sposób uziemienia punktu neutralnego nie jest polem formularza (karta UX-04/POLE-ZU
+    // §0 pkt 4: solver czyta go z zespołu uziemiającego modelu) — wartość pozostała w stanie
+    // formularza NIE trafia do parametrów biegu, nie nadpisuje modelu.
     const zZaznaczeniem = zbudujParametry({
       rodzaj: 'earth_fault_detection',
       pola: { neutral_grounding: 'isolated' },
       uziom: {},
       metody: ['wattmetric', 'admittance'],
-      wiersze: [],
+      wiersze: {},
     });
     expect(zZaznaczeniem).toEqual({
-      neutral_grounding: 'isolated',
       relay_methods: ['wattmetric', 'admittance'],
     });
 
@@ -116,7 +119,7 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(bezZaznaczen).toEqual({});
   });
@@ -127,7 +130,7 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [{}, { ref: 'M1', bus_ref: 'SZYNA_1', rated_kw: '630' }, { ref: '' }],
+      wiersze: { motors: [{}, { ref: 'M1', bus_ref: 'SZYNA_1', rated_kw: '630' }, { ref: '' }] },
     });
     expect(parametry).toEqual({
       motors: [{ ref: 'M1', bus_ref: 'SZYNA_1', rated_kw: 630 }],
@@ -143,7 +146,7 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(silniki).toEqual({});
     expect('motors' in silniki).toBe(false);
@@ -153,7 +156,7 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [{}],
+      wiersze: { benchmark_references: [{}] },
     });
     expect(referencje).toEqual({});
     expect('benchmark_references' in referencje).toBe(false);
@@ -165,9 +168,9 @@ describe('zbudujParametry — metody detekcji i listy złożone', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [
+      wiersze: { benchmark_references: [
         { network: 'IEEE 14', test: 'rozpływ', reference: '1,05', calculated: '1,04', tolerance_percent: '2' },
-      ],
+      ] },
     });
     expect(parametry).toEqual({
       benchmark_references: [
@@ -182,7 +185,7 @@ describe('zestaw parametrów rodzaju', () => {
     expect(zestawParametrow('rodzaj_ktorego_nie_ma')).toEqual({
       pola: [],
       uziom: false,
-      lista: null,
+      listy: [],
       metodyDetekcji: false,
     });
     expect(maParametry('rodzaj_ktorego_nie_ma')).toBe(false);
@@ -218,7 +221,7 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [{ generator_ref: 'PV-1', rzad: '5', procent: '4,5' }],
+      wiersze: { harmonic_spectra: [{ generator_ref: 'PV-1', rzad: '5', procent: '4,5' }] },
     });
     expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5 } } });
   });
@@ -229,10 +232,10 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [
+      wiersze: { harmonic_spectra: [
         { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
         { generator_ref: 'PV-1', rzad: '7', procent: '2,1' },
-      ],
+      ] },
     });
     expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5, '7': 2.1 } } });
   });
@@ -243,10 +246,10 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [
+      wiersze: { harmonic_spectra: [
         { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
         { generator_ref: 'PV-2', rzad: '5', procent: '3,0' },
-      ],
+      ] },
     });
     expect(parametry).toEqual({
       harmonic_spectra: { 'PV-1': { '5': 4.5 }, 'PV-2': { '5': 3.0 } },
@@ -259,7 +262,7 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
     expect('harmonic_spectra' in parametry).toBe(false);
@@ -279,7 +282,7 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [wiersz],
+      wiersze: { harmonic_spectra: [wiersz] },
     });
     expect(parametry).toEqual({});
   });
@@ -290,10 +293,10 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [
+      wiersze: { harmonic_spectra: [
         { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
         { generator_ref: 'PV-1', rzad: '99', procent: '4,5' },
-      ],
+      ] },
     });
     expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5 } } });
   });
@@ -306,10 +309,10 @@ describe('zbudujParametry — liczba odbiorców per szyna (karta B-02)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [
+      wiersze: { customer_counts: [
         { bus_ref: 'bus_sn_b', liczba: '120' },
         { bus_ref: 'bus_sn_c', liczba: '35' },
-      ],
+      ] },
     });
     expect(parametry).toEqual({ customer_counts: { bus_sn_b: 120, bus_sn_c: 35 } });
   });
@@ -320,7 +323,7 @@ describe('zbudujParametry — liczba odbiorców per szyna (karta B-02)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [],
+      wiersze: {},
     });
     expect(parametry).toEqual({});
     expect('customer_counts' in parametry).toBe(false);
@@ -336,7 +339,7 @@ describe('zbudujParametry — liczba odbiorców per szyna (karta B-02)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [wiersz],
+      wiersze: { customer_counts: [wiersz] },
     });
     expect(parametry).toEqual({});
   });
@@ -350,8 +353,99 @@ describe('zbudujParametry — liczba odbiorców per szyna (karta B-02)', () => {
       pola: {},
       uziom: {},
       metody: [],
-      wiersze: [{ bus_ref: 'bus_sn_b', liczba: '-3' }, { bus_ref: 'bus_sn_c', liczba: '2,5' }],
+      wiersze: { customer_counts: [{ bus_ref: 'bus_sn_b', liczba: '-3' }, { bus_ref: 'bus_sn_c', liczba: '2,5' }] },
     });
     expect(parametry).toEqual({ customer_counts: { bus_sn_b: -3, bus_sn_c: 2.5 } });
+  });
+});
+
+describe('zbudujParametry — dane niezawodności elementów (karta UX-04, odcinek 3)', () => {
+  // Iloczyn cech: lista niezawodności × lista odbiorców tego samego rodzaju (dwie listy
+  // jednocześnie, każda pod własnym kluczem); wiersz pełny × wiersz z jedną wielkością ×
+  // wiersz bez elementu × wiersz bez wielkości; dwa wiersze tego samego elementu.
+  it('wiersz pełny trafia do mapy `reliability_data` jako liczby (przecinek dziesiętny)', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: { reliability_data: [{ element_ref: 'kabel_1', failure_rate_per_year: '0,04', mttr_h: '8' }] },
+    });
+    expect(parametry).toEqual({ reliability_data: { kabel_1: { failure_rate_per_year: 0.04, mttr_h: 8 } } });
+  });
+
+  it('obie listy rodzaju jadą razem, każda pod własnym kluczem', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: {
+        customer_counts: [{ bus_ref: 'bus_sn_b', liczba: '120' }],
+        reliability_data: [{ element_ref: 'kabel_1', mttr_h: '6' }],
+      },
+    });
+    expect(parametry).toEqual({
+      customer_counts: { bus_sn_b: 120 },
+      reliability_data: { kabel_1: { mttr_h: 6 } },
+    });
+  });
+
+  it('wiersz z jedną wielkością niesie TYLKO ją — druga zostaje wartością roboczą mostu', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: { reliability_data: [{ element_ref: 'kabel_1', failure_rate_per_year: '0,02', mttr_h: '' }] },
+    });
+    expect(parametry).toEqual({ reliability_data: { kabel_1: { failure_rate_per_year: 0.02 } } });
+  });
+
+  it('dwa wiersze tego samego elementu scalają się (późniejszy wpis wygrywa dla tej samej wielkości)', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: {
+        reliability_data: [
+          { element_ref: 'kabel_1', failure_rate_per_year: '0,02' },
+          { element_ref: 'kabel_1', mttr_h: '10' },
+        ],
+      },
+    });
+    expect(parametry).toEqual({ reliability_data: { kabel_1: { failure_rate_per_year: 0.02, mttr_h: 10 } } });
+  });
+
+  it.each([
+    ['bez elementu', { element_ref: '', failure_rate_per_year: '0,02', mttr_h: '8' }],
+    ['bez wielkości', { element_ref: 'kabel_1', failure_rate_per_year: '', mttr_h: '' }],
+    ['wielkości nienumeryczne', { element_ref: 'kabel_1', failure_rate_per_year: 'x', mttr_h: 'y' }],
+  ])('wiersz bez treści (%s) jest pomijany — brak klucza, wartości robocze mostu', (_opis, wiersz) => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: { reliability_data: [wiersz] },
+    });
+    expect(parametry).toEqual({});
+    expect('reliability_data' in parametry).toBe(false);
+  });
+
+  it('wiersze listy innego rodzaju nie trafiają do ładunku (lista spoza zestawu)', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'motor_starting',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: { reliability_data: [{ element_ref: 'kabel_1', mttr_h: '6' }] },
+    });
+    expect(parametry).toEqual({});
+  });
+
+  it('zestaw niezawodności deklaruje obie listy', () => {
+    expect(zestawParametrow('reliability_contingency').listy).toEqual(['customer_counts', 'reliability_data']);
   });
 });

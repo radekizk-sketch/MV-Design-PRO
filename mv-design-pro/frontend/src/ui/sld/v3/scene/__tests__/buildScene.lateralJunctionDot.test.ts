@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KROPKA-WEZLOWA (V12K-150, spec §22.1 / IEC 60617) — WYROCZNIA SCENY
  * PRODUKCYJNEJ: każde ELEKTRYCZNE ODGAŁĘZIENIE od osi toru (odczep lateralny

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * CAD Routing Contract tests — wymaganie #4 z /goal.
  */

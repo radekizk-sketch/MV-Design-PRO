@@ -23,6 +23,7 @@
  * sterowników — delta przypadku nad nastawami bazowymi modelu (`zabezpieczenia/`).
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import type { StudyCase, StudyCaseConfig } from '../../../ui/study-cases/types';
 import { CONFIG_FIELD_LABELS } from '../../../ui/study-cases/types';
 import { ListaZmianOdBiegu } from '../../freshness';
@@ -132,7 +133,7 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad, onZmianaPrzypadku }
       <section className="mvd-karta-sekcja mvd-karta-zalozenia" aria-label={T.sekcjaZalozenia}>
         <h4 className="mvd-karta-sekcja-tytul">{T.sekcjaZalozenia}</h4>
         <p className="mvd-karta-opis" data-testid="mvd-karta-zalozenie-c-nosnik">
-          {T.zalozenieCNosnik}
+          <TekstZWzorami tekst={T.zalozenieCNosnik} />
         </p>
       </section>
 

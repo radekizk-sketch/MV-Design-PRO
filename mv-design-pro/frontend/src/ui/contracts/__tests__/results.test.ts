@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for PR-15: Result Contract v1 — Overlay Adapter
  *

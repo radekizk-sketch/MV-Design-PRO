@@ -203,7 +203,6 @@ vi.mock('../../../../ui/network-build/station-der/audit2-api', () => ({
         },
       ],
       block_transformers: [],
-      mv_neutral_groundings: [],
     }),
 }));
 

@@ -72,7 +72,7 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
     },
     "results": {},
     # Rejestry magazynu scenariuszy — tożsamość wpisu to identyfikator scenariusza
-    # (scenariusze nazwane i wybory zabezpieczeń przypadków `przypadek-<case_id>`).
+    # (scenariusze nazwane i wybory zabezpieczeń przypadków `zabezpieczenia-przypadku:<case_id>`).
     "scenariusze": {"rejestry": "scenario_id"},
 }
 
@@ -693,6 +693,7 @@ _ETYKIETY_TYPOW_PL: dict[str, str] = {
     "loads": "Odbiory",
     "generators": "Generatory",
     "shunt_capacitors": "Baterie kondensatorów",
+    "zespoly_uziemiajace": "Zespoły uziemiające",
     "substations": "Stacje",
     "bays": "Pola rozdzielni",
     "junctions": "Złącza",

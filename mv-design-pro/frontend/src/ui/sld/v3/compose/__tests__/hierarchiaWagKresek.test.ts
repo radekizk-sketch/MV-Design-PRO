@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * S9-8 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`) — STOPNIOWANIE GRUBOŚCI
  * LINII WG RANGI TORU, mierzone TAM, GDZIE rysunek jest oglądany: NA EKRANIE.

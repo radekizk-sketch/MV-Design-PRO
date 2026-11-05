@@ -108,8 +108,8 @@ describe('EkranZwarc — t_b punktu: wartość robocza i „Zmień wartość"', 
     pochodzenie: 'PROPOZYCJA' as const,
     wartosc_robocza: true,
     jakosc: 'ESTIMATED' as const,
-    opis_pl: 't_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …).',
-    zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)',
+    opis_pl: 'Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …).',
+    zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalne opóźnienie 0,1 s)',
   };
 
   function ustawBieg(scenariuszId: string | undefined, robocze: boolean) {

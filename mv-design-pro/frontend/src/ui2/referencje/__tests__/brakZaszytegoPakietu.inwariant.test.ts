@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * STRAŻNIK KLASY „zaszyty pakiet referencyjny" (karta REF-PAKIET).
  *

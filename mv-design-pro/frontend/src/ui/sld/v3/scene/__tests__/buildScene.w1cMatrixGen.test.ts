@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W1c — MACIERZ GENERATYWNA: WYROCZNIE SILNIKA (RECENZJA_MACIERZ_WYPOSAZENIA_
  * 2026-07 uwagi 1/2/3/9/10/15/16/17/18). Dowód END-TO-END, że KAŻDA konfiguracja

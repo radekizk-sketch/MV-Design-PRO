@@ -67,7 +67,6 @@ w budowniczym zwarć — każda czerwieni parytet (testy `test_mutacja_*`).
 
 from __future__ import annotations
 
-import functools
 import itertools
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -89,7 +88,7 @@ from network_model.solvers.power_flow_newton_internal import (
 
 from tests.cgmes.golden_enm import build_golden_enm
 from tests.golden.parytet_scenariuszy import harness as parytet_scenariuszy
-from tests.golden.registry import REJESTR, StatusSieci, zbuduj_wszystkie
+from tests.golden.registry import REJESTR, StatusSieci, kopie_sieci_wpisu
 
 #: Najdłuższy łańcuch działań zmiennoprzecinkowych jednego stempla (zliczony w docstringu).
 DZIALANIA_NA_STEMPEL = 20
@@ -221,10 +220,10 @@ def assert_parytet(graf: NetworkGraph, opis: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@functools.cache
-def _sieci_wpisu(id_: str) -> tuple[Any, ...]:
-    """Sieci wpisu rejestru zbudowane raz na bieg (budowniczy nie mutują wyniku)."""
-    return tuple(zbuduj_wszystkie(id_))
+def _sieci_wpisu(id_: str) -> list[Any]:
+    """Sieci wpisu rejestru: niezależne kopie budowy wykonanej raz na proces (test mutujący
+    sieć nie zmienia sieci innego testu)."""
+    return kopie_sieci_wpisu(id_)
 
 
 def _sieci_rejestru() -> list[tuple[str, Callable[[], NetworkGraph]]]:

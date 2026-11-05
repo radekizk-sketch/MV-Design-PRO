@@ -329,6 +329,92 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             ),
             audit_ref="karta WYTRZYMALOSC-PRAD-POLA (2026-10)",
         ),
+        # Analizy specjalistyczne V12.6 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3): ocena
+        # kryteriów rekordami werdyktu wyjaśnialnego (`application/analyses/v126_oceny.py`).
+        # Rdzeń V12.6 nie ma wyroczni ani sieci referencyjnej — żadna zdolność nie jest
+        # dowodem regulacyjnym (kompletność dowodu NIEPELNY w każdym rekordzie).
+        CapabilityEvidence(
+            capability_id="v126.koordynacja_izolacji",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Koordynacja izolacji ograniczników przepięć: przepięcie dorywcze z "
+                "współczynnika zwarcia doziemnego sieci, napięcie trwałej pracy, wytrzymałość "
+                "na przepięcie dorywcze i margines ochrony wobec poziomu izolacji z typoszeregu "
+                "IEC 60071-1 — reguły doboru są założeniami inżynierskimi programu, a zgodności "
+                "z obliczeniem referencyjnym nie wykazano; wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.bezpieczenstwo_uziomu",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Napięcia rażenia uziomu kratowego wzorami przybliżonymi metody Sveraka "
+                "(IEEE 80) z danych uziomu podanych przez projektanta; wzory nie uwzględniają "
+                "gruntu dwuwarstwowego w rozkładzie potencjału, a zgodności z obliczeniem "
+                "polowym nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.projekt_uziemienia_punktu_neutralnego",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Prąd resztkowy dławika gaszącego i obciążalność cieplna rezystora punktu "
+                "neutralnego z modelu doziemienia sieci SN (impedancje podłużne sieci "
+                "pominięte wobec obwodu zerowego punktu neutralnego); zgodności z pomiarem "
+                "sieci nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.detekcja_doziemien",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Dostępność metody detekcji doziemień zalecanej dla sposobu pracy punktu "
+                "neutralnego w wyposażeniu przekaźnika zadeklarowanym przez projektanta — fakt "
+                "konfiguracyjny, bez symulacji zjawiska doziemienia."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.napiecie_powrotne",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Przebieg napięcia powrotnego z modelu obwodu o parametrach podanych przez "
+                "projektanta porównany z obwiednią modelową programu, nie z obwiednią tabel "
+                "IEC 62271-100 — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.rozruch_silnikow",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Zapad napięcia, czas utyku i moment rozruchowy silnika z impedancji źródła "
+                "szyny i charakterystyki momentu Klossa — impedancja widziana z szyny bez "
+                "sprzężenia całej sieci, bez walidacji z pomiarem rozruchu; wynik nie jest "
+                "dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
+        CapabilityEvidence(
+            capability_id="v126.walidacja_benchmarkowa",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Porównanie wartości policzonych z wartościami referencyjnymi sieci "
+                "odniesienia podanymi w danych biegu — tolerancję i pochodzenie wartości "
+                "referencyjnej deklaruje projektant; wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §7 (odcinek 3)",
+        ),
         CapabilityEvidence(
             capability_id="dynamika_rms.przebieg_czasowy",
             tier=EvidenceTier.UNVALIDATED_MODEL,

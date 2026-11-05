@@ -4,7 +4,12 @@
  * Konfiguruje środowisko testowe dla React komponentów.
  */
 
-import '@testing-library/jest-dom/vitest';
+// Dopasowania DOM (`toBeInTheDocument`, …) tylko w środowisku `jsdom`: plik testów
+// w środowisku `node` (komentarz wpisany regułą `scripts/srodowisko_testow.mjs`) nie ma
+// DOM, więc ładowanie dopasowań byłoby samym kosztem startu pliku.
+if (typeof document !== 'undefined') {
+  await import('@testing-library/jest-dom/vitest');
+}
 
 // jsdom nie ma ResizeObserver - mockujemy dla Recharts/innych bibliotek
 // używających ResponsiveContainer.

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 import { configDefaults } from 'vitest/config';
+import { IMPORT_POMOCNIKA_CZASU } from './scripts/budzety_czasu.mjs';
 
 const _dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,7 +44,6 @@ function realpathNodeModules(projectRoot: string): string {
 /** Tryb vitest (`--mode`) kroku sekwencyjnego testów budżetu czasu (para: `czasProcesora.ts`). */
 export const TRYB_BUDZETOW = 'budzety';
 
-const IMPORT_POMOCNIKA = /from\s+['"][^'"]*\/czasProcesora['"]/;
 const PLIK_TESTU = /\.(test|spec)\.tsx?$/;
 
 function plikiTestow(katalog: string): string[] {
@@ -57,7 +57,7 @@ function plikiTestow(katalog: string): string[] {
 /** Ścieżki (względem `korzenFrontendu`, separator `/`) plików testów budżetu czasu, posortowane. */
 export function plikiBudzetuCzasu(korzenFrontendu: string): string[] {
   return plikiTestow(join(korzenFrontendu, 'src'))
-    .filter((sciezka) => IMPORT_POMOCNIKA.test(readFileSync(sciezka, 'utf-8')))
+    .filter((sciezka) => IMPORT_POMOCNIKA_CZASU.test(readFileSync(sciezka, 'utf-8')))
     .map((sciezka) => relative(korzenFrontendu, sciezka).split(sep).join('/'))
     .sort();
 }

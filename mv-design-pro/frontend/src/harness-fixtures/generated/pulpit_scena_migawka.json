@@ -45,6 +45,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus_sn_c",
       "id": "221c82f7-0227-5180-898a-cce4558bc795",
       "materialized_params": null,
@@ -55,6 +56,7 @@
       "rated_current_a": 63.0,
       "rated_voltage_kv": 15.0,
       "ref_id": "fuse_c",
+      "rodzaj_obwodu_nn": null,
       "source_mode": null,
       "status": "open",
       "tags": [],
@@ -113,6 +115,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "bus_sn_main",
       "id": "3ae9d8b4-be06-5a45-97b6-509356fc0360",
       "materialized_params": null,
@@ -123,6 +126,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "sw_coupler",
+      "rodzaj_obwodu_nn": null,
       "source_mode": null,
       "stan_obiektu": null,
       "status": "closed",
@@ -481,5 +485,6 @@
       "ulv_kv": 0.4,
       "vector_group": "Dyn11"
     }
-  ]
+  ],
+  "zespoly_uziemiajace": []
 }

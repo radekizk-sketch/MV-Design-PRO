@@ -1001,6 +1001,8 @@ export function KreatorZrodlaOze() {
             onScreenBondingChange={zmienEkranKabla}
             onZastosuj={onZastosujDobor}
             applied={derSnZastosowany}
+            caseId={activeCaseId}
+            snBusRef={snBusRef ?? null}
           />
         </KreatorSekcja>
       ) : null}

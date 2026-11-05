@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ-MODEL — podpis kabla wychodzącego z GPZ nie leży na symbolach ani na
  * etykietach GPZ i nie jest odrzucany przez silnik etykiet (L2).

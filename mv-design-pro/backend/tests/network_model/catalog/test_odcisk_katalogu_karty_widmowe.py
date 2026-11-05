@@ -221,6 +221,26 @@ ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR = (
     "81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e"
 )
 _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
+#: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
+#: uziemiające). Dowód w teście niżej: zrzut BEZ tych przestrzeni daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna przestrzeń ani liść się nie
+#: zmieniły. Pełny odcisk katalogu domyślnego po karcie:
+#: e1626d8f87c56d793b33657338b5116084618b76e37989896fcec8c0274ce961.
+#: Po scaleniu z kartą UX-04/POLE-BKR-MODEL ogniwo stoi NA ``ODCISK_PO_BATERII_BKR`` (wycięcie
+#: trzech przestrzeni zespołu daje dokładnie odcisk po baterii BKR). Pełny odcisk katalogu
+#: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
+#: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
+ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
+#: Scalenie karty zespołu uziemiającego z kartami pola liniowego i BKR (pomiar na drzewie scalonym).
+ODCISK_PO_SCALENIU_ZESPOLU_I_POLA_LINIOWEGO = (
+    "b4d4b39d52e504472d62cd4bd2186c1b21e4819289c4156cf76c1ece86cd6933"
+)
+PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
+    "earthing_transformer_types": 2,
+    "arc_suppression_coil_types": 3,
+    "neutral_earthing_resistor_types": 4,
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -298,6 +318,12 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_ZESPOLU_I_POLA_LINIOWEGO
+    # Scalenie karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (zespół uziemiający) z łańcuchem kart pola
+    # liniowego i BKR: rozłączne przestrzenie katalogu — wycięcie przestrzeni zespołu
+    # uziemiającego daje odcisk scalenia pola liniowego i BKR.
+    for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
+        assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
     # Scalenie kart UX-04/POLE-LINIOWE-WZORZEC i UX-04/POLE-BKR-MODEL: rozłączne zmiany katalogu,
     # dowód obiema drogami. Droga A — cofnięcie baterii BKR daje odcisk karty pola liniowego.

@@ -22,11 +22,13 @@ rated_current_a`, spadek napięcia — przelicznik kabla wołany przez silnik.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from domain.generator_validation import BEZ_REDUKCJI
 from enm.der_sn_validation import rated_current_a
+from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
 from network_model.catalog.gazy_fluorowane import (
     czy_medium_z_gazem_fluorowanym,
@@ -35,8 +37,14 @@ from network_model.catalog.gazy_fluorowane import (
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.catalog.wartosci_robocze import (
+    CzasTrwaniaZwarcia,
+    ZrodloCzasuZwarcia,
+    rozstrzygnij_czas_trwania_zwarcia,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v
+from network_model.pochodne.jednostki import ka_na_a
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.cable_ampacity_derating import wspolczynniki_z_opisu
 from network_model.solvers.der_selection_preview import (
@@ -242,6 +250,182 @@ class OpisUlozeniaKabla:
 
 
 @dataclass(frozen=True)
+class WejscieZwarcioweToruDer:
+    """Wejście kryterium wytrzymałości zwarciowej kabla toru (karta EDYTOR-DELT-SCENARIUSZA-
+    ZABEZPIECZEN, pakiet 6b): I″k i κ szyny przyłączenia z biegu zwarciowego przypadku oraz
+    czas trwania zwarcia z ``rozstrzygnij_czas_trwania_zwarcia`` (projektant > nastawy >
+    wartość robocza 1 s). ``ikss_a``/``kappa`` ``None`` — prądu nie ma, ``powod_braku_pl``
+    mówi dlaczego (rekord kryterium NIE_OCENIONO z akcją, nie ciche pominięcie)."""
+
+    ikss_a: float | None
+    kappa: float | None
+    czas_s: float
+    zrodlo_czasu: str
+    podstawa_czasu_pl: str
+    powod_braku_pl: str | None
+    run_id: str | None = None
+    #: Dana przyjęta czasu (``ESTIMATED``) — wyłącznie przy wartości roboczej; ocena na niej
+    #: ma kompletność dowodu ``NIEPELNY`` (zasada nr 4, kontrakt werdyktu §3).
+    dana_przyjeta: dict[str, Any] | None = None
+
+    @property
+    def kompletnosc_dowodu(self) -> str:
+        return "NIEPELNY" if self.dana_przyjeta is not None else "PELNY"
+
+
+def czas_trwania_zwarcia_nowego_pola() -> CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia pola przyłączenia toru, którego jeszcze nie ma w modelu (podgląd
+    kreatora): bez łącznika i nastaw — wartość robocza 1 s (IEC 62271-1 §4.7). Po utworzeniu
+    pola ten sam czas zmienia projektant na łączniku pola (``czas_wylaczenia_zwarcia_s``)."""
+    return rozstrzygnij_czas_trwania_zwarcia(
+        czas_projektanta_s=None,
+        opis_projektanta_pl="przyjęty czas zwarcia na łączniku pola przyłączenia toru",
+        czas_z_nastaw_s=None,
+        opis_nastaw_pl="",
+    )
+
+
+def czas_trwania_zwarcia_pola_toru(
+    model: EnergyNetworkModel, pole_ref: str, prad_a: float | None
+) -> CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia ISTNIEJĄCEGO pola przyłączenia toru — to samo rozstrzygnięcie co
+    ocena cieplna aparatury pola (``czas_trwania_zwarcia_pola``: wartość projektanta na
+    łączniku pola > nastawy zabezpieczenia pola przy prądzie ``prad_a`` > wartość robocza 1 s).
+    Pola nie ma w modelu — jak pole nowe (wartość robocza)."""
+    from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
+    from application.analyses.protection.czas_wylaczenia_pola import czas_trwania_zwarcia_pola
+
+    bay = next((b for b in model.bays if b.ref_id == pole_ref), None)
+    if bay is None:
+        return czas_trwania_zwarcia_nowego_pola()
+    stacja = znajdz_stacje(model, bay.substation_ref) if bay.substation_ref else None
+    aparaty = aparaty_pol_stacji(model, stacja).get(bay.ref_id, []) if stacja is not None else []
+    czas = czas_trwania_zwarcia_pola(model, bay, aparaty, prad_a)
+    # Słownik widoku pola (``nastawy_pola``) → trójka rozstrzygnięcia (``nastawy``).
+    zrodlo = {"nastawy_pola": "nastawy"}.get(str(czas["zrodlo"]), str(czas["zrodlo"]))
+    return CzasTrwaniaZwarcia(
+        float(czas["t_clearing_s"]), cast(ZrodloCzasuZwarcia, zrodlo), str(czas["podstawa_pl"])
+    )
+
+
+def wejscie_zwarciowe_toru_der(
+    *,
+    case_id: str | None,
+    szyna_ref: str | None,
+    model: EnergyNetworkModel | None,
+    czas_dla_pradu: Callable[[float | None], CzasTrwaniaZwarcia],
+) -> WejscieZwarcioweToruDer:
+    """I″k i κ szyny przyłączenia toru z NAJNOWSZEGO zakończonego biegu zwarciowego
+    przypadku (scenariusz maksymalny, zwarcie metaliczne w zakresie IEC 60909 — prąd
+    maksymalny decyduje o wytrzymałości cieplnej) policzonego dla BIEŻĄCEJ wersji modelu.
+
+    ``czas_dla_pradu`` — czas trwania zwarcia przy prądzie I″k [A] szyny (``None`` = prądu
+    nie ma): nowe pole — ``czas_trwania_zwarcia_nowego_pola``, pole w modelu —
+    ``czas_trwania_zwarcia_pola_toru`` (nastawy zabezpieczenia zależą od prądu).
+
+    Każdy brak ma własny powód (przypadek nie wskazany, brak biegu, bieg nieaktualny, punkt
+    spoza biegu) — wołający przekazuje go do rekordu kryterium. Zero fizyki: odczyt wiersza
+    zapisanego biegu.
+    """
+    from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
+    from enm.canonical_analysis import (
+        build_short_circuit_results,
+        list_runs_for_case,
+        scenariusz_biegu_zwarciowego,
+    )
+    from enm.hash import compute_enm_hash
+    from enm.mapping import ref_to_graph_id
+
+    def _brak(powod_pl: str, run_id: str | None = None) -> WejscieZwarcioweToruDer:
+        czas = czas_dla_pradu(None)
+        return WejscieZwarcioweToruDer(
+            ikss_a=None,
+            kappa=None,
+            czas_s=czas.wartosc_s,
+            zrodlo_czasu=czas.zrodlo,
+            podstawa_czasu_pl=czas.podstawa_pl,
+            powod_braku_pl=powod_pl,
+            run_id=run_id,
+            dana_przyjeta=_dana_czasu(czas),
+        )
+
+    if not case_id or not szyna_ref:
+        return _brak(
+            "Dobór nie wskazuje przypadku obliczeniowego ani szyny przyłączenia toru — prądu "
+            "zwarciowego w miejscu przyłączenia nie ma z czego wziąć."
+        )
+    biegi = [
+        bieg
+        for bieg in list_runs_for_case(case_id)
+        if bieg.analysis_type == "short_circuit_sn"
+        and bieg.status == "FINISHED"
+        and bieg_w_zakresie_iec60909(bieg)
+        and scenariusz_biegu_zwarciowego(bieg) == "MAX"
+    ]
+    if not biegi:
+        return _brak(
+            "Przypadek nie ma zakończonego biegu zwarciowego (scenariusz maksymalny) — prądu "
+            "zwarciowego w miejscu przyłączenia toru jeszcze nie policzono."
+        )
+    bieg = max(biegi, key=lambda b: (b.created_at, str(b.id)))
+    if model is not None and bieg.snapshot_hash != compute_enm_hash(model):
+        return _brak(
+            "Najnowszy bieg zwarciowy przypadku policzono dla wcześniejszej wersji modelu — "
+            "jego prąd nie opisuje bieżącej sieci.",
+            str(bieg.id),
+        )
+    identyfikatory = {szyna_ref, ref_to_graph_id(szyna_ref)}
+    wiersz = next(
+        (
+            w
+            for w in build_short_circuit_results(bieg)["rows"]
+            if w.get("fault_type") == "3F"
+            and (w.get("element_id") in identyfikatory or w.get("target_id") in identyfikatory)
+        ),
+        None,
+    )
+    ik_ka = wiersz.get("ikss_ka") if wiersz is not None else None
+    kappa = wiersz.get("kappa") if wiersz is not None else None
+    if ik_ka is None or kappa is None:
+        return _brak(
+            "Bieg zwarciowy przypadku nie niesie prądu I″k i współczynnika κ zwarcia "
+            "trójfazowego dla szyny przyłączenia toru.",
+            str(bieg.id),
+        )
+    ikss_a = ka_na_a(float(ik_ka))
+    czas = czas_dla_pradu(ikss_a)
+    return WejscieZwarcioweToruDer(
+        ikss_a=ikss_a,
+        kappa=float(kappa),
+        czas_s=czas.wartosc_s,
+        zrodlo_czasu=czas.zrodlo,
+        podstawa_czasu_pl=czas.podstawa_pl,
+        powod_braku_pl=None,
+        run_id=str(bieg.id),
+        dana_przyjeta=_dana_czasu(czas),
+    )
+
+
+def _dana_czasu(czas: CzasTrwaniaZwarcia) -> dict[str, Any] | None:
+    dana = czas.dana_przyjeta(miejsce_pl="pole przyłączenia toru DER-SN (kabel toru)")
+    return dana.model_dump(mode="json") if dana is not None else None
+
+
+def parametry_zwarciowe_doboru_kabla(zwarcie: WejscieZwarcioweToruDer | None) -> dict[str, Any]:
+    """Pola zwarciowe ``CableSelectionInput`` z wejścia toru — JEDNO złożenie dla podglądu
+    kreatora i dokumentu zgodności (ta sama propozycja przy tych samych danych)."""
+    if zwarcie is None:
+        return {}
+    return {
+        "ikss_a": zwarcie.ikss_a,
+        "kappa": zwarcie.kappa,
+        "fault_duration_s": zwarcie.czas_s,
+        "fault_duration_basis_pl": zwarcie.podstawa_czasu_pl,
+        "short_circuit_unavailable_pl": zwarcie.powod_braku_pl,
+    }
+
+
+@dataclass(frozen=True)
 class WynikDoboruToruDerSn:
     """Wynik kaskady — WHITE BOX każdego kroku (próg, odrzuceni kandydaci z powodem).
     `kabel` i `aparat_pola` są `None`, gdy nie ma propozycji transformatora (kaskada kabla
@@ -269,12 +453,15 @@ def dobierz_tor_der_sn(
     maks_spadek_napiecia_pct: float = MAKS_SPADEK_NAPIECIA_KABLA_PCT,
     charakter_mocy_biernej: str = CHARAKTER_MOCY_BIERNEJ_DOMYSLNY,
     ulozenie: OpisUlozeniaKabla | None = None,
+    zwarcie: WejscieZwarcioweToruDer | None = None,
 ) -> WynikDoboruToruDerSn:
     """Kaskada: TR blokowy (S_wym = `moc_pozorna_mva`) → prąd SN zaproponowanego TR →
     kabel SN (obciążalność i ΔU) oraz aparat główny pola SN.
 
     `moc_pozorna_mva` liczy wołający regułą kontroli mocy O-53 (`domain.generator_validation`)
     — kreator: człon nastawy ΣP/cosφ, szablon: pełna reguła max(S_n,jedn·n, |P|/cosφ) z karty.
+    `zwarcie` — wejście kryterium wytrzymałości zwarciowej kabla (``wejscie_zwarciowe_toru_der``);
+    ``None`` = dobór bez przypadku: rekord kryterium NIE_OCENIONO z akcją (pakiet 6b).
     `OdmowaDanychError` — wejście poza dziedziną (także nieznany zestaw warunków ułożenia)."""
     transformator = dobierz_transformator_blokowy(
         moc_pozorna_mva=moc_pozorna_mva,
@@ -312,6 +499,7 @@ def dobierz_tor_der_sn(
             max_delta_u_pct=maks_spadek_napiecia_pct,
             reactive_character=charakter_mocy_biernej,
             derating=wspolczynniki,
+            **parametry_zwarciowe_doboru_kabla(zwarcie),
         )
     )
     aparat = propose_mv_field_apparatus(

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * overlayStore tests — Zustand state management for SLD overlay.
  *

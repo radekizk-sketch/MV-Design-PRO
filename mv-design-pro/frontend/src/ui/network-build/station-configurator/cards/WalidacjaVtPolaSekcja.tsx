@@ -17,19 +17,27 @@
  * ZERO REGUŁY I ZERO KATALOGU W PREZENTACJI: typy pochodzą z `/api/catalog/vt-types`,
  * werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`. Ten plik nic nie liczy
  * i niczego nie rozstrzyga — pokazuje odpowiedzi backendu i uczciwie nazywa braki.
+ *
+ * SPOSÓB UZIEMIENIA Z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Typ punktu
+ * neutralnego sieci SN pola nie pochodzi już z wyboru w konfiguratorze (katalog
+ * „wariantów uziemienia” audytu 2 był drugą prawdą obok modelu), tylko z backendu:
+ * `fetchUziemienieSnStacji` czyta zespół uziemiający sekcji pola (`enm.uziemienie_sekcji`)
+ * tą samą regułą co dowód zgodności przekładników w pakiecie dowodów. Pole bez
+ * ustalonego typu dostaje nazwaną przyczynę backendu — nigdy domysł.
  */
 
 import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
-import type { VTCatalogType } from '../../../catalog/types';
-import { validateVtGroundingApi } from '../../station-der/audit2-api';
+import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/audit2-api';
 
-export type TypUziemieniaSn =
-  | 'isolated'
-  | 'petersen_coil'
-  | 'resistor_grounded'
-  | 'directly_grounded';
+/** Stacja projektu, której model niesie uziemienie sieci SN pól. */
+export interface KontekstUziemieniaStacji {
+  readonly projectId: string;
+  readonly stationId: string;
+  /** Rewizja modelu — zmiana modelu (np. nowy zespół uziemiający) = nowe sprawdzenie. */
+  readonly rewizja: number | null;
+}
 
 export interface PoleZPrzekladnikiem {
   readonly bayDesignation: string;
@@ -46,12 +54,13 @@ interface WierszWerdyktu {
 
 export interface WalidacjaVtPolaSekcjaProps {
   readonly pola: readonly PoleZPrzekladnikiem[];
-  readonly typUziemienia?: TypUziemieniaSn;
+  /** `null` — brak aktywnego projektu albo stacji (uziemienia nie ma skąd odczytać). */
+  readonly kontekst: KontekstUziemieniaStacji | null;
 }
 
 export function WalidacjaVtPolaSekcja({
   pola,
-  typUziemienia,
+  kontekst,
 }: WalidacjaVtPolaSekcjaProps): JSX.Element | null {
   const [wiersze, setWiersze] = useState<readonly WierszWerdyktu[] | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
@@ -59,17 +68,45 @@ export function WalidacjaVtPolaSekcja({
   const zPrzekladnikiem = pola.filter((pole) => pole.vtCatalogRef);
   const klucz = zPrzekladnikiem.map((p) => `${p.bayDesignation}:${p.vtCatalogRef}`).join('|');
 
+  const projectId = kontekst?.projectId ?? null;
+  const stationId = kontekst?.stationId ?? null;
+  const rewizja = kontekst?.rewizja ?? null;
+
   useEffect(() => {
-    if (!typUziemienia || klucz === '') {
+    if (projectId === null || stationId === null || klucz === '') {
       setWiersze(null);
       return;
     }
     let aktualne = true;
     void (async () => {
       try {
-        const typy: VTCatalogType[] = await fetchVtTypes();
+        const [typy, uziemienie] = await Promise.all([
+          fetchVtTypes(),
+          fetchUziemienieSnStacji({
+            projectId,
+            stationId,
+            pola: zPrzekladnikiem.map((pole) => pole.bayDesignation),
+          }),
+        ]);
         const wyniki = await Promise.all(
           zPrzekladnikiem.map(async (pole): Promise<WierszWerdyktu> => {
+            const uziemieniePola = uziemienie.pola.find(
+              (wpis) => wpis.oznaczenie === pole.bayDesignation,
+            );
+            const typUziemienia = uziemieniePola?.typ_punktu_neutralnego ?? null;
+            if (typUziemienia === null) {
+              // Sposób uziemienia sieci SN pola nieustalony w modelu — brak podstawy
+              // sprawdzenia (nie „niezgodność”); przyczynę nazywa backend.
+              return {
+                bayDesignation: pole.bayDesignation,
+                nazwaTypu: null,
+                wspolczynnik: null,
+                ok: null,
+                komunikat:
+                  uziemieniePola?.przyczyna_braku
+                  ?? 'Sposobu uziemienia punktu neutralnego sieci SN pola nie ustalono.',
+              };
+            }
             const typ = typy.find((t) => t.id === pole.vtCatalogRef);
             if (!typ) {
               // TYP SPOZA KATALOGU BACKENDU — to nie jest „niezgodność", tylko brak
@@ -130,9 +167,9 @@ export function WalidacjaVtPolaSekcja({
     };
     // `klucz` opisuje komplet wejść (pole + typ) jako STRING — tablica obiektów
     // zmieniałaby tożsamość przy każdym renderze i zapętliła pobieranie.
-  }, [klucz, typUziemienia]);
+  }, [klucz, projectId, stationId, rewizja]);
 
-  if (!typUziemienia || klucz === '') return null;
+  if (klucz === '') return null;
 
   return (
     <div data-testid="vt-grounding-validation" className="space-y-1">
@@ -144,7 +181,13 @@ export function WalidacjaVtPolaSekcja({
           {blad}
         </p>
       )}
-      {blad === null && wiersze === null && (
+      {(projectId === null || stationId === null) && (
+        <p className="text-xs text-scada-grounded" data-testid="vt-walidacja-bez-projektu">
+          Sposób uziemienia sieci SN czytany jest z modelu projektu — wybierz aktywny projekt
+          i stację, aby sprawdzić zgodność przekładników.
+        </p>
+      )}
+      {projectId !== null && stationId !== null && blad === null && wiersze === null && (
         <p className="text-xs text-scada-muted">Sprawdzanie zgodności…</p>
       )}
       {wiersze?.map((wiersz) => (

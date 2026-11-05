@@ -6,6 +6,7 @@
  * „pozycja katalogowa nieodnaleziona" (bez zgadywania). Zero fizyki.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useEffect, useState } from 'react';
 
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
@@ -91,7 +92,7 @@ export function SekcjaMagazynu({ der, szczegolyAudytowe }: SekcjaMagazynuProps):
             </span>
           </div>
           <div className="mvd-oze-metryka">
-            <span>{PULPIT_STRINGS.magazynMoc}</span>
+            <span><TekstZWzorami tekst={PULPIT_STRINGS.magazynMoc} /></span>
             <span className="mvd-oze-num">{formatMw(dopasowanie.rekord.pmax_mw)}</span>
           </div>
           <div className="mvd-oze-metryka">

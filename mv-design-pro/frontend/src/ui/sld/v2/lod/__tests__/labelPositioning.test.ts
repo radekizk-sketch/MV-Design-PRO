@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * labelPositioning tests — P0.6 F3 foundation pure functions.
  */

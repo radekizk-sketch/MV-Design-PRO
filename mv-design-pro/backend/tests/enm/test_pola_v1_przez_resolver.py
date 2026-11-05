@@ -148,7 +148,6 @@ def _gpz(pole_ref: str | None, rodzina_ref: str | None) -> dict[str, Any]:
         "catalog_ref": CATALOG_ZRODLO_SN,
         "sections_count": 1,
         "gpz_sections": [{"order": 0, "name": "Sekcja A", "bays": [bay]}],
-        "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
     }
     if rodzina_ref:
         payload["switchgear_family_ref"] = rodzina_ref

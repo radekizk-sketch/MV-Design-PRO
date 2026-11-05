@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * layerMapping testy — most między LayerId (UX) a SldLayerId (renderer).
  *

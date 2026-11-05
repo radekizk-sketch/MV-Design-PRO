@@ -136,3 +136,22 @@ def etykieta(
         if pozycja.poziom == poziom and pozycja.status == status and pozycja.kompletnosc == klucz:
             return Etykieta(etykieta_pl=pozycja.etykieta_pl, semantyka=pozycja.semantyka)
     raise ValueError(f"Słownik etykiet nie ma pozycji dla statusu {status} na poziomie {poziom}.")
+
+
+#: Słowo wiersza kryterium ROZSTRZYGNIĘTEGO przy przyjętej wartości parametru (dyrektywa
+#: właściciela, karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: „Spełnione dla t = 1 s”) —
+#: wyłącznie statusy rozstrzygnięte; pozostałe statusy mówią etykietą tabeli §9 i wyjaśnieniem.
+_SLOWO_ROZSTRZYGNIECIA: tuple[tuple[StatusWerdyktu, str], ...] = (
+    ("SPELNIA", "Spełnione"),
+    ("NIE_SPELNIA", "Niespełnione"),
+)
+
+
+def zdanie_rozstrzygniecia(status: str, warunek_pl: str) -> str | None:
+    """Krótkie zdanie wiersza kryterium: słowo rozstrzygnięcia i warunek, dla którego je
+    wydano (``"dla t = 1 s"`` → „Spełnione dla t = 1 s”). ``None`` dla statusu
+    nierozstrzygniętego — wtedy wiersz mówi rekord werdyktu (etykieta §9 i wyjaśnienie)."""
+    for kod, slowo in _SLOWO_ROZSTRZYGNIECIA:
+        if kod == status:
+            return f"{slowo} {warunek_pl}"
+    return None

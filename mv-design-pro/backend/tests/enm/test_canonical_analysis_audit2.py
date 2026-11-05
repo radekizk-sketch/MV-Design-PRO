@@ -110,7 +110,6 @@ def _zapisz_projekt_i_konfiguracje(uow_factory, project_id: UUID, station_id: st
         uow.audit2_station_configs.upsert(
             project_id,
             station_id,
-            mv_neutral_grounding_ref="mng_petersen",
             tap_changer_refs=[],
             der_specs=[],
             transformer_tap_changers={"tr_001": "tc_oltc_110sn_19_125"},
@@ -137,10 +136,9 @@ def test_para_audit2_z_zapisana_konfiguracja_daje_rozszerzenia_ta_sama_fabryka(
 
     assert extensions is not None
     assert "tr_001" in extensions["power_flow_extensions"]["transformer_to_tap_changer"]
-    assert (
-        extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"]
-        == "petersen_coil"
-    )
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sposób uziemienia SN nie płynie z konfiguracji
+    # stacji — rozszerzenia zwarciowe bez bloków transformatorów są puste.
+    assert extensions["sc_iec60909_extensions"] == {}
 
 
 @pytest.mark.parametrize("analysis_type", ["PF", "short_circuit_sn"])
@@ -242,19 +240,8 @@ def test_assembler_nie_zna_bazy_a_wykonawcy_czytaja_ja_fabryka_wolajacego() -> N
 # 15,5 A z zakresu 1-30 A). Zakres nie mial zrodla — karta K-O usunela go z
 # frontendu, karta K-Q z backendu — wiec pin utrwalal fabrykacje wchodzaca do
 # fizyki. Ponizsze testy pilnuja stanu uczciwego: etykieta wariantu uziemienia
-# NIE wyznacza zadnego pradu zwarcia.
-
-
-def test_katalog_uziemienia_nie_niesie_zgadywanego_pradu_zwarcia() -> None:
-    """PIN KLASY po WSZYSTKICH pozycjach katalogu uziemienia SN."""
-    from network_model.catalog.audit2_catalogs import MV_NEUTRAL_GROUNDING_CATALOG
-
-    assert MV_NEUTRAL_GROUNDING_CATALOG, "katalog nie moze byc pusty"
-    for item in MV_NEUTRAL_GROUNDING_CATALOG:
-        serialized = item.to_dict()
-        assert "typical_ik1_a_range" not in serialized, item.id
-        assert "typical_ik1_a_min" not in serialized, item.id
-        assert "typical_ik1_a_max" not in serialized, item.id
+# NIE wyznacza zadnego pradu zwarcia. Sam katalog wariantow uziemienia SN skasowano
+# kartą UX-04/POLE-ZU-SKLADOWA-ZEROWA (druga prawda obok elementow modelu).
 
 
 def test_stan_fazowy_nie_ma_juz_domyslu_z_etykiety_uziemienia() -> None:

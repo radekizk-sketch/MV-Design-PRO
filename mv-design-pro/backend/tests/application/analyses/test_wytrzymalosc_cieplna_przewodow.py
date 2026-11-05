@@ -1000,3 +1000,48 @@ def test_ith_galezi_iloczyn_kappa_i_czasu(kappa: float, tk_z_nastaw: float | Non
     if kappa > 1.0:
         # Składowa nieokresowa podnosi I_th ponad I″k — dawne porównanie I″k zaniżało wynik.
         assert pozycja.prad_cieplny["ith_a"] > 5000.0
+
+
+# Pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: czas trwania zwarcia przewodu z JEDNEGO
+# rozstrzygnięcia (``rozstrzygnij_czas_trwania_zwarcia``). Iloczyn: źródło {projektant 3 s,
+# nastawy 0,1 s, wartość robocza 1 s} × wynik {spełnione: 1,5 kA, niespełnione: 30 kA}.
+# I_dop(t) = 8 kA·√(1 s / t): 25,3 kA (0,1 s), 8 kA (1 s), 4,62 kA (3 s).
+
+
+@pytest.mark.parametrize("prad_a", [1500.0, 30000.0], ids=["spelnione", "niespelnione"])
+@pytest.mark.parametrize("zrodlo", ["projektant", "nastawy", "wartosc_robocza"])
+def test_wynik_przewodu_idzie_za_czasem_z_rozstrzygniecia(zrodlo: str, prad_a: float) -> None:
+    from network_model.catalog.wartosci_robocze import rozstrzygnij_czas_trwania_zwarcia
+
+    trojka = rozstrzygnij_czas_trwania_zwarcia(
+        czas_projektanta_s=3.0 if zrodlo == "projektant" else None,
+        opis_projektanta_pl="przyjęty czas zwarcia na wyłączniku „Q1”",
+        czas_z_nastaw_s=0.1 if zrodlo in {"projektant", "nastawy"} else None,
+        opis_nastaw_pl="Czas stopnia I> zabezpieczenia gałęzi.",
+    )
+    assert trojka.zrodlo == zrodlo
+    graph = _graph_with_two_cables()
+    catalog = _catalog_with_cable_type()
+    sc_result = _sc_result(
+        tk_s=0.25,
+        kappa=1.0,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=prad_a,
+                direction="from_to",
+            ),
+        ],
+    )
+    view = build_conductor_thermal_withstand_view(
+        sc_result, graph, catalog, tk_s_by_branch={"cable_A": trojka.wartosc_s}
+    )
+    pozycja = next(item for item in view.items if item.branch_id == "cable_A")
+    assert pozycja.prad_cieplny is not None and pozycja.prad_cieplny["tk_s"] == trojka.wartosc_s
+    assert pozycja.status == ("PASS" if prad_a == 1500.0 else "FAIL")
+    assert (trojka.dana_przyjeta(miejsce_pl="przewody") is not None) is (
+        zrodlo == "wartosc_robocza"
+    )

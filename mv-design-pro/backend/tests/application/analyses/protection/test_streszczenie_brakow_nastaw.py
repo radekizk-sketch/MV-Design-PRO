@@ -87,7 +87,7 @@ def test_iloczyn_brak_stopnia_funkcja_kolejnosc(kod: str, funkcja: str, spoza_pr
 def test_pole_z_szablonu_bez_nastaw_jest_krotkie() -> None:
     """Realna ścieżka: sterowniki pól stacji sieci złotej G08 (szablon: 51, 50, 51N bez nastaw,
     bez przekładnika) — rozstrzygnięcie ``rozwiaz_nastawy`` i powód czasu wyłączenia pola.
-    Nazwa sterownika pada dwa razy (zdanie o przekładniku i zdanie o stopniach), a powód jest
+    Oznaczenie zabezpieczenia (karta KD6) pada dwa razy (zdanie o przekładniku i zdanie o stopniach), a powód jest
     co najmniej o połowę krótszy od sklejenia pełnych zdań."""
     enm = build_zabezpieczenia_magistrali_enm()
     z_szablonu = [s for s in enm.protection_assignments if s.bay_ref is not None]
@@ -95,19 +95,24 @@ def test_pole_z_szablonu_bez_nastaw_jest_krotkie() -> None:
     for sterownik in z_szablonu:
         nastawy = rozwiaz_nastawy(enm, sterownik)
         assert not nastawy.gotowe
-        tekst = streszczenie_brakow_nastaw(nastawy.nazwa_pl, nastawy.braki)
-        assert tekst.count(nastawy.nazwa_pl) == 2, tekst
+        tekst = streszczenie_brakow_nastaw(nastawy.oznaczenie_pl, nastawy.braki)
+        assert tekst.count(nastawy.oznaczenie_pl) == 2, tekst
         assert len(tekst) * 2 < len(" ".join(b.komunikat_pl for b in nastawy.braki)), tekst
         assert "I> (51) — brak progu rozruchowego" in tekst
     # Konsument: powód czasu wyłączenia pola niesie to samo streszczenie. Pola G08 bez aparatu
     # w modelu mają własny, wcześniejszy powód (brak aparatu) — tu liczą się pola z aparatem.
-    powody = [
-        c["powod_pl"]
+    # Pakiet 8: czas oceny cieplnej pola nigdy nie jest pusty — streszczenie niesie rozbicie
+    # Z NASTAW (``czas_z_nastaw``), a czas pola jest wartością roboczą 1 s.
+    czasy = [
+        c
         for stacja in enm.substations
         for c in czasy_wylaczenia_pol_stacji(
             enm=enm, station_ref=stacja.ref_id, ik_pol_ka={}
         ).values()
-        if c["t_clearing_s"] is None
+    ]
+    assert {c["t_clearing_s"] for c in czasy} == {1.0}
+    powody = [
+        c["czas_z_nastaw"]["powod_pl"] for c in czasy if c["czas_z_nastaw"]["t_clearing_s"] is None
     ]
     # Sześć pól SN dwóch stacji z aparatem i sterownikiem szablonu.
     assert sum("są niekompletne: I> (51)" in p for p in powody) == 6

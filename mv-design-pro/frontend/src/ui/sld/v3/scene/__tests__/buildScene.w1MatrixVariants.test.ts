@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * W1 — WYROCZNIA MACIERZY WYPOSAŻENIA POLA (RECENZJA_L2 §1/§6/§12/§15/§20,
  * V12K-145). BRAMKA FAZY W1: dowód END-TO-END, że łańcuch danych „konfiguracja

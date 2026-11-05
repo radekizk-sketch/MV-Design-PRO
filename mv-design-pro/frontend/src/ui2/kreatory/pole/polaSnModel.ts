@@ -44,7 +44,8 @@ export type RodzajPolaSzablonu =
   | 'transformatorowe'
   | 'pomiarowe'
   | 'sprzeglowe_podluzne'
-  | 'bateria_kondensatorow';
+  | 'bateria_kondensatorow'
+  | 'zespol_uziemiajacy';
 
 /** Rola pola → BayKind szablonu producenta (Reference Engine). */
 export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
@@ -59,6 +60,8 @@ export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
       return 'sprzeglowe_podluzne';
     case 'BKR':
       return 'bateria_kondensatorow';
+    case 'ZU':
+      return 'zespol_uziemiajacy';
     default:
       return 'liniowe_odplywowe'; // OUT / FEEDER / OZE
   }
@@ -108,7 +111,7 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
 };
 
 /** Kolejność ról w wyborze kreatora (najczęstsza rola dokładanego pola na początku). */
-const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'BKR'];
+const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'BKR', 'ZU'];
 
 /**
  * Opcje roli/aparatu = KONTRAKT DANYCH (warstwa modelu): `value` to kanoniczny kod

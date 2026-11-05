@@ -53,7 +53,6 @@ from application.proof_engine.proof_pack import (
     resolve_mv_design_pro_version,
 )
 from application.proof_engine.types import (
-    EarthingGroundFaultInput,
     EnergyProfilePoint,
     EquationDefinition,
     LoadCurrentsCounterfactualInput,
@@ -75,7 +74,6 @@ from application.proof_engine.unit_verifier import UnitVerifier
 __all__ = [
     # Types
     "EquationDefinition",
-    "EarthingGroundFaultInput",
     "EnergyProfilePoint",
     "LoadCurrentsCounterfactualInput",
     "LoadCurrentsInput",

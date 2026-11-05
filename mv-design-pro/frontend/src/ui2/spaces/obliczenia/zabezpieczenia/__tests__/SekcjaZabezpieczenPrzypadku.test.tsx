@@ -49,7 +49,7 @@ function zDrugaGrupa(): ProtectionAssignment {
 
 const STEROWNIK = zDrugaGrupa();
 
-function ustawModel(sterowniki: ProtectionAssignment[] | undefined) {
+function ustawModel(sterowniki: ProtectionAssignment[]) {
   const model: EnergyNetworkModel = {
     ...MIGAWKA,
     protection_assignments: sterowniki,
@@ -176,7 +176,7 @@ describe('Sekcja — nadpisania nastaw (iloczyn: grupa × nadpisanie)', () => {
 
   it('wybór zapisany wcześniej wraca do formularza; usunięcie nadpisania → PUT bez niego', async () => {
     magazyn.B = wybor('B', {
-      scenario_id: 'przypadek-B',
+      scenario_id: 'zabezpieczenia-przypadku:B',
       revision: 1,
       protection_groups: { [REF]: 2 },
       protection_overrides: { [REF]: { '51': { tms: 0.3 } } },
@@ -249,7 +249,8 @@ describe('Sekcja — przypadek A × przypadek B i stan zerowy', () => {
   });
 
   it('model bez sterowników → uczciwy stan zerowy, bez zapytania', async () => {
-    ustawModel(undefined);
+    // Kontrakt ENM: lista sterowników jest zawsze obecna; model bez sterowników ma listę pustą.
+    ustawModel([]);
     render(<SekcjaZabezpieczenPrzypadku caseId="A" />);
     expect(screen.getByTestId('mvd-zabezpieczenia-przypadku-brak-sterownikow')).toHaveTextContent(T.brakSterownikow);
     expect(fetchMock).not.toHaveBeenCalled();

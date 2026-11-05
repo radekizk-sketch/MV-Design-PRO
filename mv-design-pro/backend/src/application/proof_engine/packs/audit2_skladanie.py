@@ -11,8 +11,10 @@ miejscu backendu, dla KAZDEJ stacji z zapisana konfiguracja:
 * zdolnosci przeksztaltnika z karty katalogowej typu zrodla w modelu;
 * klasa transformatora z napiec modelu (`klasa_transformatora_przelacznika`), wymaganie
   regulacji automatycznej z trybu sterowania przelacznika w modelu;
-* wspolczynnik napieciowy przekladnika z katalogu typow VT, sposob uziemienia z katalogu
-  uziemien punktu neutralnego.
+* wspolczynnik napieciowy przekladnika z katalogu typow VT, sposob uziemienia punktu
+  neutralnego sieci SN pola z JEDYNEJ prawdy modelu (`enm.uziemienie_sekcji` — zespoly
+  uziemiajace i punkty neutralne uzwojen transformatorow; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA
+  skasowala dawny wybor wariantu z katalogu uziemien w konfiguracji stacji — druga prawde).
 
 BRAK DANYCH NIE JEST ZGODNOSCIA. Kazdy z pieciu rodzajow dowodu ma w pakiecie stacji albo
 co najmniej jeden dowod, albo co najmniej jeden jawny brak z przyczyna po polsku
@@ -29,17 +31,21 @@ import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from enm.models import EnergyNetworkModel, Generator, Substation, Transformer
+from enm.models import Bay, EnergyNetworkModel, Generator, Substation, Transformer
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
+from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
 from network_model.catalog import get_default_mv_catalog
-from network_model.catalog.audit2_catalogs import (
-    get_mv_neutral_grounding,
-    klasa_transformatora_przelacznika,
-)
+from network_model.catalog.audit2_catalogs import klasa_transformatora_przelacznika
 from network_model.catalog.types import ConverterType
+from network_model.core.uziemienie import (
+    STANY_AWSC,
+    UZIEMIENIA_WYMAGAJACE_FV_19,
+    TypPunktuNeutralnego,
+)
 from network_model.pochodne import mw_na_kw
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .audit2_validation import (
@@ -95,7 +101,6 @@ class BayDeviceWithstandSpec(BaseModel):
 
 
 class StationAudit2ConfigBody(BaseModel):
-    mv_neutral_grounding_ref: str | None = None
     tap_changer_refs: list[str] = Field(default_factory=list)
     der_specs: list[DerAudit2SpecPayload] = Field(default_factory=list)
     # Phase 8: per-transformer/bay mappings.
@@ -160,14 +165,30 @@ POLE_BEZ_OZNACZENIA = (
     "Wpis konfiguracji stacji nie ma oznaczenia pola — dowodu nie da się przypisać do pola."
 )
 BRAK_PRZEKLADNIKOW = "Konfiguracja stacji nie przypisuje przekładników napięciowych polom."
-BRAK_UZIEMIENIA = (
-    "Nie wybrano sposobu uziemienia punktu neutralnego sieci SN — zgodności przekładników "
-    "napięciowych nie da się ocenić."
+STACJA_SPOZA_MODELU_UZIEMIENIE = (
+    "Stacji nie ma w modelu sieci — sposobu uziemienia punktu neutralnego sieci SN nie da "
+    "się ustalić, a zgodności przekładników napięciowych nie da się ocenić."
 )
-UZIEMIENIE_SPOZA_KATALOGU = (
-    "Sposobu uziemienia punktu neutralnego wskazanego w konfiguracji stacji nie ma "
-    "w katalogu uziemień."
+STACJA_BEZ_SZYN_SN = (
+    "Stacja nie ma szyn SN w modelu sieci — sposobu uziemienia punktu neutralnego sieci SN "
+    "nie da się ustalić, a zgodności przekładników napięciowych nie da się ocenić."
 )
+
+
+def _pole_w_sekcjach_roznie_uziemionych(oznaczenie: str) -> str:
+    return (
+        f"Pole {oznaczenie} nie jest przypisane w modelu do sekcji szyn SN, a sekcje stacji "
+        "mają różny sposób uziemienia punktu neutralnego — przypisz pole do sekcji, aby "
+        "ocenić zgodność przekładnika napięciowego."
+    )
+
+
+def _sekcja_z_uziemieniem_nieokreslonym(odmowy: tuple[str, ...]) -> str:
+    return (
+        "Sposób uziemienia punktu neutralnego sieci SN jest nieokreślony — "
+        + " ".join(odmowy)
+        + " Zgodności przekładników napięciowych nie da się ocenić."
+    )
 
 
 def _magazyn_bez_trybow(nazwa: str) -> str:
@@ -273,6 +294,83 @@ class _Kontekst:
         }
         self.moce_odbiorow_kw = moce_odbiorow_stacji_kw(model)
         self.katalog = get_default_mv_catalog()
+        self.model = model
+        # Uziemienie punktu neutralnego każdej sieci SN — JEDNA funkcja modelu, liczona raz.
+        self.uziemienie: tuple[UziemienieSekcji, ...] = (
+            uziemienie_sieci(model) if model is not None else ()
+        )
+        self.poziom = poziom_pol(model) if model is not None else None
+
+
+def _oznaczenie_pola(pole: Bay) -> str | None:
+    """Oznaczenie pola tą samą regułą co konfigurator stacji (numer → skrót odpływu → nazwa)."""
+    # Lustro `bayDesignation` konfiguratora stacji (`??` — pierwsza wartość różna od
+    # braku): klucz wpisu `bay_vts` jest tym oznaczeniem, a nie nazwą elementu do zdania.
+    for oznaczenie in (pole.bay_number, pole.feeder_short_name, pole.name):
+        if oznaczenie is not None:
+            return oznaczenie
+    return None
+
+
+def _typ_dla_przekladnika(sekcja: UziemienieSekcji) -> TypPunktuNeutralnego:
+    """Typ punktu neutralnego sekcji dla doboru F_v przekładnika — stan AWSC najbardziej
+    wymagający: gdy w którymkolwiek stanie automatyki (spoczynek / załączona) sieć wymaga
+    F_v = 1,9 (IEC 61869-3 tab. 2), dowód ocenia ten stan; w pozostałych przypadkach oba
+    stany dają ten sam typ."""
+    typy = [sekcja.typ_punktu_neutralnego(stan) for stan in STANY_AWSC]  # type: ignore[arg-type]
+    for typ in typy:
+        if typ in UZIEMIENIA_WYMAGAJACE_FV_19:
+            return typ
+    return typy[0]
+
+
+def _sekcje_sn_stacji(ctx: _Kontekst, station_id: str) -> tuple[list[UziemienieSekcji], str | None]:
+    """Sieci SN (``enm.uziemienie_sekcji``) obejmujące szyny SN stacji albo nazwana przyczyna
+    braku (stacja spoza modelu, stacja bez szyn SN)."""
+    stacja = ctx.stacje.get(station_id)
+    if stacja is None or ctx.model is None:
+        return [], STACJA_SPOZA_MODELU_UZIEMIENIE
+    napiecia = {b.ref_id: b.voltage_kv for b in ctx.model.buses}
+    szyny_sn = {
+        s
+        for s in szyny_stacji(ctx.model, stacja, ctx.poziom)
+        if napiecia.get(s) and pasmo_napieciowe(napiecia[s]) == "SN"
+    }
+    sekcje = [u for u in ctx.uziemienie if szyny_sn & set(u.szyny)]
+    if not sekcje:
+        return [], STACJA_BEZ_SZYN_SN
+    return sekcje, None
+
+
+def uziemienie_pola_stacji(
+    ctx: _Kontekst, station_id: str, oznaczenie: str
+) -> tuple[TypPunktuNeutralnego | None, str | None]:
+    """Typ punktu neutralnego sieci SN pola ``oznaczenie`` stacji albo nazwana przyczyna braku.
+
+    Źródło: ``enm.uziemienie_sekcji`` (jedyna prawda o uziemieniu SN). Pole odnalezione
+    w modelu po oznaczeniu wskazuje swoją sekcję (szyna pola); pole nieodnalezione dziedziczy
+    typ stacji wyłącznie wtedy, gdy wszystkie sieci SN stacji mają ten sam typ.
+    """
+    sekcje, przyczyna = _sekcje_sn_stacji(ctx, station_id)
+    if przyczyna is not None:
+        return None, przyczyna
+    assert ctx.model is not None  # kontrakt `_sekcje_sn_stacji`: sekcje tylko z modelu
+    pola = [
+        p
+        for p in ctx.model.bays
+        if p.substation_ref == station_id and _oznaczenie_pola(p) == oznaczenie
+    ]
+    if len(pola) == 1:
+        sekcje_pola = [u for u in sekcje if pola[0].bus_ref in u.szyny]
+        if sekcje_pola:
+            sekcje = sekcje_pola
+    odmowy = tuple(o for u in sekcje for o in u.odmowy)
+    if odmowy:
+        return None, _sekcja_z_uziemieniem_nieokreslonym(odmowy)
+    typy = {_typ_dla_przekladnika(u) for u in sekcje}
+    if len(typy) != 1:
+        return None, _pole_w_sekcjach_roznie_uziemionych(oznaczenie)
+    return typy.pop(), None
 
 
 def _dowody_trybow_bess(
@@ -412,25 +510,25 @@ def _dowody_wytrzymalosci(
 
 
 def _dowody_przekladnikow(
-    cfg: StationAudit2ConfigBody, chwila: str
+    station_id: str, cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
 ) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
     # Pusty wpis to „bez przekładnika" (konfigurator zapisuje wyczyszczony wybór jako "").
     wpisy = sorted((pole, vt) for pole, vt in cfg.bay_vts.items() if vt)
     if not wpisy:
         return [], [BrakDanychDowodu(PRZEKLADNIKI, BRAK_PRZEKLADNIKOW)]
-    if not cfg.mv_neutral_grounding_ref:
-        return [], [BrakDanychDowodu(PRZEKLADNIKI, BRAK_UZIEMIENIA)]
-    uziemienie = get_mv_neutral_grounding(cfg.mv_neutral_grounding_ref)
-    if uziemienie is None:
-        return [], [BrakDanychDowodu(PRZEKLADNIKI, UZIEMIENIE_SPOZA_KATALOGU)]
     dowody: list[Audit2ProofResult] = []
     braki: list[BrakDanychDowodu] = []
     for pole, vt_ref in wpisy:
+        typ, przyczyna = uziemienie_pola_stacji(ctx, station_id, pole)
+        if typ is None:
+            assert przyczyna is not None  # kontrakt funkcji: brak typu ⇔ nazwana przyczyna
+            braki.append(BrakDanychDowodu(PRZEKLADNIKI, przyczyna))
+            continue
         try:
             spec = SpecDowoduUziemieniaPrzekladnika(
                 bay_designation=pole,
                 vt_voltage_factor=wspolczynnik_napieciowy_typu_vt(vt_ref),
-                grounding_type=uziemienie.grounding_type,
+                grounding_type=typ,
             )
         except ValidationError:
             braki.append(BrakDanychDowodu(PRZEKLADNIKI, POLE_BEZ_OZNACZENIA))
@@ -481,7 +579,7 @@ def zloz_pakiet_stacji(
         _dowody_planu_zaczepow(cfg, ctx, generated_at_iso),
         _dowod_eksportu(station_id, cfg, ctx, generated_at_iso),
         _dowody_wytrzymalosci(cfg, generated_at_iso),
-        _dowody_przekladnikow(cfg, generated_at_iso),
+        _dowody_przekladnikow(station_id, cfg, ctx, generated_at_iso),
     ):
         dowody.extend(czesc[0])
         braki.extend(czesc[1])
@@ -519,3 +617,34 @@ def zloz_pakiety_projektu(
         )
         for station_id in sorted(po_stacji)
     ]
+
+
+def uziemienie_sn_stacji(
+    model: EnergyNetworkModel | None, station_id: str, oznaczenia: Sequence[str]
+) -> dict[str, Any]:
+    """Uziemienie punktu neutralnego sieci SN stacji dla konfiguratora (karta
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA: konfigurator nie wybiera już uziemienia, czyta je z modelu).
+
+    ``sekcje`` — sieci SN obejmujące szyny stacji (``UziemienieSekcji.to_dict``: wariant
+    w obu stanach AWSC, punkty uziemienia, I_C, ΣI_L, rozstrojenie, odmowy, kompletność);
+    ``przyczyna_braku`` — nazwana przyczyna, gdy sekcji nie ma. ``pola`` — typ punktu
+    neutralnego dla pól ``oznaczenia`` tą samą regułą co dowód zgodności przekładników
+    (``uziemienie_pola_stacji``): każde pole ma typ albo nazwaną przyczynę — nigdy oba
+    i nigdy żadne (kolejność: oznaczenie rosnąco, bez powtórzeń)."""
+    ctx = _Kontekst(model)
+    sekcje, przyczyna = _sekcje_sn_stacji(ctx, station_id)
+    pola: list[dict[str, str | None]] = []
+    for oznaczenie in sorted(set(oznaczenia)):
+        typ, przyczyna_pola = uziemienie_pola_stacji(ctx, station_id, oznaczenie)
+        pola.append(
+            {
+                "oznaczenie": oznaczenie,
+                "typ_punktu_neutralnego": typ,
+                "przyczyna_braku": przyczyna_pola,
+            }
+        )
+    return {
+        "sekcje": [u.to_dict() for u in sekcje],
+        "przyczyna_braku": przyczyna,
+        "pola": pola,
+    }

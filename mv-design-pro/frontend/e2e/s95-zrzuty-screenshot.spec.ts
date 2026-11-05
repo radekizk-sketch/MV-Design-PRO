@@ -20,6 +20,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
+import { czekajNaStabilnaGeometrie, punktNaWierzchu } from './stabilnaGeometria';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -161,17 +162,38 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
     await page.keyboard.press('Escape');
 
     for (const wpis of KLASY) {
-      const uchwyt = page.locator(`[data-hit-klasa="${wpis.klasa}"][data-hit-role="obrys"]`).first();
-      if ((await uchwyt.count()) === 0) {
+      const uchwyty = page.locator(`[data-hit-klasa="${wpis.klasa}"][data-hit-role="obrys"]`);
+      const liczba = await uchwyty.count();
+      if (liczba === 0) {
         // Uczciwie: klasa nieobecna na tej scenie nie dostaje zrzutu-atrapy.
         continue;
       }
       // Klik NATYWNY myszą w rzeczywisty punkt uchwytu: `locator.click` odrzuca
       // cienkie kreski SVG jako „niewidoczne" (heurystyka aktorowalności), a to
       // jest dokładnie ten kształt, który karta S9-4 uczyniła klikalnym.
-      const box = await uchwyt.boundingBox();
-      if (!box) continue;
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+      // Spoczynek kadru po zamknięciu poprzedniego menu (klasa G karty FIX-E2E-PELNE).
+      await czekajNaStabilnaGeometrie(uchwyty.first());
+      // Punkt, w którym uchwyt jest NA WIERZCHU — pierwszy obiekt klasy, który go ma
+      // (obiekt przykryty innym albo poza kadrem otwierał dawniej menu TŁA albo cudze
+      // menu, a zrzut „menu klasy" dokumentował co innego). Żaden obiekt klasy
+      // klikalny = porażka, nie zrzut.
+      let punkt: { x: number; y: number } | null = null;
+      for (let i = 0; i < liczba && punkt === null; i += 1) {
+        punkt = await punktNaWierzchu(uchwyty.nth(i));
+      }
+      if (punkt === null) {
+        // Obiekt klasy poza kadrem (sonda 2026-10-30: aparat pola GPZ w x = 91 px, pod
+        // drzewem modelu lewego doku — dawny klik w środek prostokąta trafiał w wiersz
+        // drzewa i zrzut „menu aparatu" pokazywał co innego). Kadr całej sieci realnym
+        // skrótem Shift+F (karta K2), potem jeszcze raz ta sama sonda.
+        await page.keyboard.press('Shift+F');
+        await czekajNaStabilnaGeometrie(uchwyty.first());
+        for (let i = 0; i < liczba && punkt === null; i += 1) {
+          punkt = await punktNaWierzchu(uchwyty.nth(i));
+        }
+      }
+      expect(punkt, `żaden obiekt klasy ${wpis.klasa} (${liczba}) nie jest na wierzchu na kanwie`).not.toBeNull();
+      await page.mouse.click(punkt!.x, punkt!.y, { button: 'right' });
       const menu = page.getByRole('menu');
       if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
         // Obiekt świadomie bez menu (rysunek bez odpowiednika w modelu) —

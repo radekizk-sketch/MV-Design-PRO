@@ -28,3 +28,19 @@ Dyrektywa właściciela 2026-11-04: jedna konfiguracja zabezpieczeń w całym sy
 **Czas wyłączenia** — t_k pola = czas zadziałania z nastaw sterownika TEGO pola (rdzeń IEC 60255 przez `ocena_nadpradowa.czas_urzadzenia`) + czas własny wyłącznika z macierzy wyzwoleń (karta katalogowa albo wartość robocza 0,06 s z jawnym źródłem, zasada nr 4). Pole bez czynnego sterownika: czas nieustalony z powodem; ręczny czas z konfiguracji stacji w widoku wytrzymałości skasowany.
 
 **Funkcje bez ewaluatora** (ziemnozwarciowe 50N/51N/67N/Yo>/Go>/59N, kierunkowe 67/32, różnicowe 87T/87L, odległościowe 21, 46, 49, automatyka, blokady, technologiczne) — modelowane w pełni (nastawy ze schematu, wejścia 3I0/3U0), a ocena zwraca je w `funkcje_nieoceniane` z powodem (status nie oceniono); widoczne w edytorze nastaw i w raporcie koordynacji (sekcja „Funkcje bez oceny"). Ewaluatory ziemnozwarciowe — osobna karta solvera (wymaga rozkładu 3I0 w sieci izolowanej i kompensowanej, którego dziś nie ma).
+
+## Aktualizacja 2026-11-05 — czas trwania zwarcia i delty przypadku (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN)
+
+- Wybór zabezpieczeń przypadku (grupa nastaw albo nadpisanie) jest deltą scenariusza rozstrzyganą
+  w `EffectiveNetworkSnapshot`; nastawy BAZOWE zostają danymi ENM. Rewizja wyboru wchodzi do
+  opcji biegu, a predykat świeżości biegu porównuje ją z bieżącą rewizją wyboru przypadku.
+- Czas trwania zwarcia do oceny cieplnej SN ma JEDNO rozstrzygnięcie
+  (`network_model.catalog.wartosci_robocze.rozstrzygnij_czas_trwania_zwarcia`): wartość
+  projektanta na łączniku pola albo wyłączniku chroniącym (`czas_wylaczenia_zwarcia_s`) > czas
+  z nastaw zabezpieczenia i czasu własnego wyłącznika > czas cieplny przypadku, gdy przypadek go
+  jawnie podaje (wyłącznie przewody) > wartość robocza 1 s (IEC 62271-1 §4.7, `ESTIMATED`,
+  kompletność dowodu `NIEPELNY`). Przypisanie zabezpieczenia NIE jest wymagane do oceny cieplnej —
+  jego brak zmienia źródło czasu, nie blokuje oceny; kody gotowości z nastaw zostają wyłącznie
+  przy zabezpieczeniu przypisanym, którego nastawy nie dają czasu.
+- Ten sam atrybut aparatu niesie rodzaj obwodu nN (`rodzaj_obwodu_nn`) — jedna klasyfikacja dla
+  I²t i werdyktu SWZ. Oba atrybuty są poza odciskiem modelu, gdy nie mają wartości.

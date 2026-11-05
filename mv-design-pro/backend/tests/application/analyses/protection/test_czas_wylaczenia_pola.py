@@ -188,6 +188,18 @@ def _czas(**kwargs: Any) -> dict[str, Any]:
     return czasy_wylaczenia_pol_stacji(**parametry)[POLE]
 
 
+def _czas_nastaw(**kwargs: Any) -> dict[str, Any]:
+    """Rozbicie czasu Z NASTAW pola (``czas_z_nastaw``) — ślad ścieżki nastaw zabezpieczenia.
+
+    Od pakietu 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN czas trwania zwarcia pola nigdy
+    nie jest pusty: brak czasu z nastaw daje wartość roboczą 1 s (IEC 62271-1 §4.7), a sam
+    brak nastaw zostaje w rozbiciu z nastaw. Testy braków nastaw sprawdzają TO rozbicie
+    (intencja bez zmian: brak nastaw nigdy nie daje liczby z nastaw), a czas oceny cieplnej
+    przypina ``test_brak_czasu_z_nastaw_daje_czas_roboczy_1_s``.
+    """
+    return _czas(**kwargs)["czas_z_nastaw"]
+
+
 def test_czas_z_charakterystyki_niezaleznej_ma_rozbicie_white_box(czas_wlasny: None) -> None:
     """DT: człon nastawczy = zwłoka nastawiona; rozbicie widoczne w odpowiedzi."""
     czas = _czas()
@@ -291,7 +303,7 @@ def test_czas_wlasny_bierze_sie_tylko_z_wylacznika_otwieranego_przez_zabezpiecze
 def test_zabezpieczenie_otwierajace_rozlacznik_to_brak_modelu() -> None:
     """Zabezpieczenie otwiera aparat, który nie przerywa zwarcia — to brak MODELU, nie brak
     parametru: czasu własnego nie ma (nie dotyczy), czasu wyłączenia też, kod zostaje."""
-    czas = _czas(enm=_enm(drugi_aparat=True, breaker_ref="aparat/02"))
+    czas = _czas_nastaw(enm=_enm(drugi_aparat=True, breaker_ref="aparat/02"))
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_CZASU_WLASNEGO]
@@ -300,7 +312,7 @@ def test_zabezpieczenie_otwierajace_rozlacznik_to_brak_modelu() -> None:
 
 
 def test_wylacznik_spoza_pola_to_brak_modelu() -> None:
-    czas = _czas(enm=_enm(breaker_ref="aparat/obcy"))
+    czas = _czas_nastaw(enm=_enm(breaker_ref="aparat/obcy"))
 
     # Sterownik pola wyzwala (macierz wyzwoleń) aparat spoza pola ⇒ czasu własnego nie ma skąd
     # odczytać (brak MODELU) — wartość robocza czasu własnego tego nie maskuje, a czas innego
@@ -311,7 +323,7 @@ def test_wylacznik_spoza_pola_to_brak_modelu() -> None:
 
 
 def test_aparat_spoza_katalogu_to_brak_modelu() -> None:
-    czas = _czas(enm=_enm(aparat_katalog="nie-ma-takiej-pozycji"))
+    czas = _czas_nastaw(enm=_enm(aparat_katalog="nie-ma-takiej-pozycji"))
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_CZASU_WLASNEGO]
@@ -322,12 +334,15 @@ def test_kazde_pole_liczy_charakterystyke_przy_wlasnym_pradzie(czas_wlasny: None
     """Prąd jest PER POLE: pole bez wpisu w mapie prądów nie dostaje prądu innego pola."""
     wynik = czasy_wylaczenia_pol_stacji(enm=_enm(), station_ref="stn", ik_pol_ka={"inne": 8.0})
 
-    assert wynik[POLE]["t_clearing_s"] is None
+    assert wynik[POLE]["czas_z_nastaw"]["t_clearing_s"] is None
+    assert wynik[POLE]["czas_z_nastaw"]["kody_gotowosci"] == [READINESS_BRAK_PRADU]
+    # Czas oceny cieplnej nie jest pusty: wartość robocza, kod braku prądu przy zabezpieczeniu.
+    assert wynik[POLE]["t_clearing_s"] == 1.0
     assert wynik[POLE]["kody_gotowosci"] == [READINESS_BRAK_PRADU]
 
 
 def test_brak_nastaw_pola_daje_kod_gotowosci_zamiast_wartosci_zastepczej() -> None:
-    czas = _czas(enm=_enm(z_zabezpieczeniem=False))
+    czas = _czas_nastaw(enm=_enm(z_zabezpieczeniem=False))
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
@@ -336,14 +351,14 @@ def test_brak_nastaw_pola_daje_kod_gotowosci_zamiast_wartosci_zastepczej() -> No
 
 
 def test_zabezpieczenie_odstawione_nie_wyznacza_czasu() -> None:
-    czas = _czas(enm=_enm(is_enabled=False))
+    czas = _czas_nastaw(enm=_enm(is_enabled=False))
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
 
 
 def test_nastawa_bez_progu_rozruchowego_nie_daje_czasu() -> None:
-    czas = _czas(
+    czas = _czas_nastaw(
         enm=_enm(nastawy=[stopien("51", jednostka_progu="A_WTORNY", krzywa="DT", zwloka_s=0.3)])
     )
 
@@ -353,7 +368,7 @@ def test_nastawa_bez_progu_rozruchowego_nie_daje_czasu() -> None:
 
 def test_prad_ponizej_rozruchu_to_nie_jest_czas_zero() -> None:
     """Zabezpieczenie, które nie zadziała, nie „wyłącza w 0 s"."""
-    czas = _czas(ik_ka=0.2)
+    czas = _czas_nastaw(ik_ka=0.2)
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_PONIZEJ_ROZRUCHU]
@@ -361,7 +376,7 @@ def test_prad_ponizej_rozruchu_to_nie_jest_czas_zero() -> None:
 
 
 def test_brak_pradu_poczatkowego_nie_pozwala_sprawdzic_charakterystyki() -> None:
-    czas = _czas(ik_ka=None)
+    czas = _czas_nastaw(ik_ka=None)
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_PRADU]
@@ -385,7 +400,7 @@ def test_nastawy_niekompletne_to_nazwany_brak_a_nie_czas(model: Any, kod_braku: 
     nastaw pola z kodem jednej ścieżki oceny, nigdy czas z domyślnej przekładni albo
     progu czytanego jako pierwotny. Czerwony na bazie: próg 400 „A" bez przekładnika
     i bez strony był czytany jako prąd pierwotny i dawał czas 0,3 s."""
-    czas = _czas(enm=model())
+    czas = _czas_nastaw(enm=model())
 
     assert czas["t_clearing_s"] is None
     assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
@@ -422,3 +437,109 @@ def test_prog_bez_strony_przekladnika_odrzuca_model() -> None:
     prąd pierwotny i dawał czas 0,3 s."""
     with pytest.raises(ValueError, match="wymaga jednostki"):
         _enm(nastawy=[stopien("51", prog=5.0, krzywa="DT", zwloka_s=0.3)])
+
+
+# ---------------------------------------------------------------------------
+# Karta KD6: zdania o członie nastawczym — zabezpieczenie nazwane przez pole, które chroni,
+# charakterystyka słowami, liczby po polsku. Iloczyn: charakterystyka (DT, SI) × ścieżka
+# (czas złożony, brak czasu własnego — aparat spoza katalogu, rozłącznik zamiast wyłącznika).
+# ---------------------------------------------------------------------------
+
+_NASTAWA_SI = stopien("51", prog=400.0, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", tms=0.1)
+
+
+@pytest.mark.parametrize(
+    ("nastawy", "krzywa_pl"),
+    [(None, "czas niezależny (DT)"), ([_NASTAWA_SI], "IEC normalnie odwrotna (SI)")],
+    ids=["DT", "SI"],
+)
+@pytest.mark.parametrize("sciezka", ["zlozony", "aparat_spoza_katalogu", "rozlacznik"])
+def test_zdanie_czlonu_nazywa_pole_i_charakterystyke_bez_dublowania(
+    nastawy: list[Stopien] | None, krzywa_pl: str, sciezka: str
+) -> None:
+    model = {
+        "zlozony": {},
+        "aparat_spoza_katalogu": {"aparat_katalog": "nie-ma-takiej-pozycji"},
+        "rozlacznik": {"drugi_aparat": True, "breaker_ref": "aparat/02"},
+    }[sciezka]
+    czas = _czas_nastaw(enm=_enm(nastawy=nastawy, **model))
+
+    opis = czas["opis_czlonu_pl"]
+    assert f"stopień I> (51), charakterystyka: {krzywa_pl}, zabezpieczenie pola „P-01”" in opis
+    assert opis.endswith(", przy prądzie zwarciowym 8 kA")
+    for tekst in (opis, czas["powod_pl"]):
+        assert "Zabezpieczenie pola IN" not in tekst  # nazwa przypisania po rzeczowniku
+        assert "zabezpieczenia Zabezpieczenie" not in tekst
+        assert "zabezpieczenie Zabezpieczenie" not in tekst
+        assert "pola „P-01”" in tekst
+        assert "8000.0" not in tekst  # liczby po polsku, nie zapis kropkowy
+
+
+def test_zdanie_czlonu_oznaczenie_przez_wylacznik_macierzy_bez_bay_ref() -> None:
+    """Sterownik bez ``bay_ref`` (sterownik wyłącznika) — pole wskazane przez ``meta.bay_ref``
+    aparatu z macierzy wyzwoleń też nazywa zabezpieczenie przez pole."""
+    from enm.nazwy_elementow import oznaczenie_zabezpieczenia
+
+    enm = _enm()
+    enm.protection_assignments[0].bay_ref = None
+    assert oznaczenie_zabezpieczenia(enm, enm.protection_assignments[0]) == "pola „P-01”"
+    enm.branches[0].meta = {"station_ref": "stn"}
+    assert oznaczenie_zabezpieczenia(enm, enm.protection_assignments[0]) == (
+        "wyłącznika „Aparat pola SN 1”"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: czas trwania zwarcia pola NIGDY pusty.
+# Iloczyn: zabezpieczenie {brak, przypisane bez czasu z nastaw, przypisane z czasem} × wartość
+# projektanta na wyłączniku pola {brak, 2,5 s}. Źródło: projektant > nastawy > robocza 1 s.
+# ---------------------------------------------------------------------------
+
+
+def _z_czasem_projektanta(enm: EnergyNetworkModel, czas_s: float | None) -> EnergyNetworkModel:
+    if czas_s is None:
+        return enm
+    galezie = [
+        g.model_copy(update={"czas_wylaczenia_zwarcia_s": czas_s}) if g.ref_id == APARAT else g
+        for g in enm.branches
+    ]
+    return enm.model_copy(update={"branches": galezie})
+
+
+@pytest.mark.parametrize("czas_projektanta", [None, 2.5], ids=["bez_projektanta", "projektant"])
+@pytest.mark.parametrize("zabezpieczenie", ["brak", "bez_czasu", "z_czasem"])
+def test_brak_czasu_z_nastaw_daje_czas_roboczy_1_s(
+    czas_wlasny: None, zabezpieczenie: str, czas_projektanta: float | None
+) -> None:
+    model = {
+        "brak": {"z_zabezpieczeniem": False},
+        "bez_czasu": {"ct_ref": None},
+        "z_czasem": {},
+    }[zabezpieczenie]
+    czas = _czas(enm=_z_czasem_projektanta(_enm(**model), czas_projektanta))
+
+    assert isinstance(czas["t_clearing_s"], float)
+    assert czas["wylacznik_czasu_ref"] == APARAT
+    assert czas["czas_projektanta_s"] == czas_projektanta
+    if czas_projektanta is not None:
+        assert (czas["t_clearing_s"], czas["zrodlo"]) == (2.5, "projektant")
+        assert czas["dana_przyjeta"] is None
+        assert "Aparat pola SN 1" in czas["podstawa_pl"]
+    elif zabezpieczenie == "z_czasem":
+        assert (czas["t_clearing_s"], czas["zrodlo"]) == (0.35, "nastawy_pola")
+        assert czas["dana_przyjeta"] is None
+    else:
+        assert (czas["t_clearing_s"], czas["zrodlo"]) == (1.0, "wartosc_robocza")
+        assert "IEC 62271-1" in czas["podstawa_pl"]
+        dana = czas["dana_przyjeta"]
+        assert dana is not None and dana["jakosc"] == "ESTIMATED"
+    # Kod braku nastaw zostaje WYŁĄCZNIE przy przypisanym zabezpieczeniu, którego nastawy nie
+    # dają czasu — zabezpieczenie nie jest wymagane do oceny cieplnej.
+    if zabezpieczenie == "bez_czasu" and czas_projektanta is None:
+        assert czas["kody_gotowosci"] == [READINESS_BRAK_NASTAW]
+    elif zabezpieczenie != "z_czasem" or czas_projektanta is not None:
+        assert czas["kody_gotowosci"] == []
+    # Rozbicie z nastaw jest zawsze w odpowiedzi (WHITE BOX), także przy innym źródle.
+    assert "t_clearing_s" in czas["czas_z_nastaw"]
+    for tekst in (czas["podstawa_pl"], czas["powod_pl"]):
+        assert "nieustalon" not in tekst and "nieznany czas" not in tekst

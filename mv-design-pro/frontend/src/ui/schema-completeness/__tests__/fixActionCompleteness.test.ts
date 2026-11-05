@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { resolveFixActionSurface } from '../../../types/fixActionSurface';
 import { getOperationSurfaceByOp } from '../../topology/modals/operationSurfaceRegistry';

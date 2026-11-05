@@ -408,6 +408,11 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   SHUNT_CAPACITOR: [],
   BRANCH_POLE: [],
   ZKSN: [],
+  // Katalogi aparatów zespołu uziemiającego SN — przeglądane w kreatorze zespołu
+  // uziemiającego i w przeglądarce katalogu budowy sieci, bez zakładki tutaj.
+  EARTHING_TRANSFORMER: [],
+  ARC_SUPPRESSION_COIL: [],
+  NEUTRAL_EARTHING_RESISTOR: [],
   // PTPIREE_CERTIFICATE ma WŁASNĄ ścieżkę pobierania (strona serwerowa,
   // `fetchPtpireeGeneratorCertificatesPage` — patrz drugi `describe` niżej);
   // `fetchTypesByCategory` jej nie obsługuje w produkcji, więc pusta lista.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * HierarchyTree tests — pure ENM → Hierarchy builder.
  *

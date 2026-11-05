@@ -67,9 +67,13 @@ def _emitery_walidatora() -> set[tuple[Any, Any, Any]]:
         return None
 
     def wartosci_parametru(funkcja: ast.FunctionDef, nazwa: str) -> list[Any]:
+        """Literały parametru ze wszystkich wywołań funkcji pomocniczej W JEJ ZAKRESIE
+        (funkcja, w której jest zdefiniowana) — dwie funkcje pomocnicze o tej samej nazwie
+        w różnych metodach walidatora nie mieszają swoich wywołań."""
         indeks = [a.arg for a in funkcja.args.args].index(nazwa)
+        zakres: ast.AST = funkcja_nadrzedna(funkcja) or drzewo
         wynik: list[Any] = []
-        for wezel in ast.walk(drzewo):
+        for wezel in ast.walk(zakres):
             if isinstance(wezel, ast.Call) and getattr(wezel.func, "id", None) == funkcja.name:
                 if len(wezel.args) > indeks:
                     wynik.append(_literal(wezel.args[indeks]))

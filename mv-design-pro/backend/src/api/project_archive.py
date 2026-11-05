@@ -233,6 +233,6 @@ async def preview_archive(
             operating_cases_count=summary_data.get("operating_cases_count", 0),
             canonical_runs_count=summary_data.get("canonical_runs_count", 0),
             enm_models_count=summary_data.get("enm_models_count", 0),
-            scenariusze_count=summary_data.get("scenariusze_count", 0),
+            scenariusze_count=summary_data["scenariusze_count"],
         ),
     )

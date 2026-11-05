@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Light Technical Theme tokens — P0.7 partial (V12K-007).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5) — nakładka SWZ (`overlay.ts`
  * `buildSwzOverlayFromResponses`): budowniczy CZYSTY z

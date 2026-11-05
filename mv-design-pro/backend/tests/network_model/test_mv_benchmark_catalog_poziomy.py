@@ -21,9 +21,11 @@ import pytest
 from enm.models import Cable, OverheadLine
 from network_model.catalog.mv_benchmark_catalog import get_all_benchmark_line_records
 
-from tests.golden.parytet_assemblera.harness import sieci_enm_rejestru
+from tests.golden.parytet_assemblera.harness import kopie_sieci_enm_rejestru
 
-_BLIZNIAKI = [(klucz, enm) for klucz, enm in sieci_enm_rejestru() if klucz.startswith("B-BENCH/")]
+_BLIZNIAKI = [
+    (klucz, enm) for klucz, enm in kopie_sieci_enm_rejestru() if klucz.startswith("B-BENCH/")
+]
 
 
 def _rekordy_linii() -> dict[str, float]:

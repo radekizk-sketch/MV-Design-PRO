@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * K2 (§0.4) — historia kadrów „Poprzedni widok": stos ograniczony, bez
  * podwójnych wpisów tego samego kadru, zdejmowanie od wierzchu, operacje
@@ -20,6 +21,7 @@ import {
 const wpis = (n: number, lod: 0 | 1 | 2 = 0): WpisHistoriiKadru => ({
   transform: { scale: 1 + n / 100, translateX: n, translateY: -n },
   lod,
+  viewportSize: { width: 1322, height: 856 },
   sciezka: n === 0 ? [] : [{ cel: 'stacja', kontekst: [`stn/${n}`], etykieta: `Stacja ${n}` }],
   zaznaczenie: BEZ_ZAZNACZENIA,
   kurtyna: n === 0 ? null : [`stn/${n}`],

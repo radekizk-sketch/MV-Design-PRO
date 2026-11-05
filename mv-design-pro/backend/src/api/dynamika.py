@@ -44,6 +44,7 @@ from enm.scenariusze import (
     wczytaj_scenariusz,
     zapisz_scenariusz,
 )
+from enm.slownik_komunikatow import opis_pozycji_walidacji
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError
@@ -125,8 +126,11 @@ def post_scenariusz_dynamiki(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=[
-                {"pole": ".".join(str(c) for c in blad["loc"]), "komunikat": blad["msg"]}
-                for blad in exc.errors(include_url=False, include_context=False)
+                {
+                    "pole": ".".join(str(c) for c in blad["loc"]),
+                    "komunikat": opis_pozycji_walidacji(blad),
+                }
+                for blad in exc.errors(include_url=False)
             ],
         ) from exc
     if pola_stanowiska := pola_stanowiska_ustawione(harmonogram):

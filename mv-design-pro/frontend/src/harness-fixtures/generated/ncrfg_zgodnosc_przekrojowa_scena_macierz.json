@@ -35,7 +35,7 @@
     },
     "solver_version": "ncrfg-ptpiree-whitebox-2.0",
     "input_hash": "1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
-    "deterministic_hash": "47dba6489a2554fe4ed6735655271903cfc2a1859d7854a174ad5c02ccf88e38",
+    "deterministic_hash": "11bd155f1a7851c4bac1fe2d96a24f4692e9fcd12f959617eb1dc5b2c422e96c",
     "modules": [
       {
         "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -2734,7 +2734,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -2906,7 +2906,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -3078,7 +3078,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -3241,7 +3241,7 @@
                   "wartosc": 5.0,
                   "jednostka": "%/min"
                 },
-                "definicja_latex": "m = x - x_{\\lim}",
+                "definicja_latex": "\\Delta x = x - x_{\\lim}",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 5.0,
@@ -3407,7 +3407,7 @@
                   "wartosc": 5.0,
                   "jednostka": "min"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 10.0,
@@ -3577,7 +3577,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -3743,7 +3743,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -4042,7 +4042,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (P_n modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -6895,7 +6895,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "d2e57f972946be5fd6436919fed5daabdd15dd2b0f8a37ffb84a2d20e1fb2efd"
+          "odcisk_oceny": "3555c71eda8366767bf46a05753ee94c94bb95da36d0e077e10f84a090bfebc1"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:47"
@@ -6963,7 +6963,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "aaaf34285edf0444468e3b3b01c48d014751405952703928fc79d8c495850a9f"
+          "odcisk_oceny": "5d360a3b7337d66128c8ee1111c5476006520482f6d68213dbf624affd87980a"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:50"
@@ -7031,7 +7031,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "13c18903beea25d1b1bc98c6d7f5a2247c897bbc985fcabefb8d8ee79274a9ad"
+          "odcisk_oceny": "3569b726f6298b165ea04713d5c5299077829dfae3a00c9f95b07fc934a81e92"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:53"
@@ -7092,7 +7092,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "3f67c310fcddde1e1f30bcf2547e28603aa657a188ec3b18f65d55acb539cc3e"
+          "odcisk_oceny": "3d2b5213ef954254c6fd597bcd8c7589e8b0e26a5ff346a9b88c3e5e1139fa5e"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:56"
@@ -7160,7 +7160,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "ed758e120b20859ff09df2ff2836ecb6608baeeaac48b85a42691c5af266ef76"
+          "odcisk_oceny": "8587cd7d40d3992bfd16717a053ba71ff4d2081295687867723e023bc149528f"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:59"
@@ -7231,7 +7231,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "44da3ba9c57274d6ac5d78777d2eb9560e459ea6c650f1dc2fa814790be634ac"
+          "odcisk_oceny": "c32f7f6e961711b1fb1cd4fbd1ce4376b51d9539b047f5537e5816173e052428"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:62"
@@ -7302,7 +7302,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "c475694ecd3b5a767a6503713d27884c9a6913ddd89203fea5404c9418fac663"
+          "odcisk_oceny": "48ed2b8aee8aa712ab41c63ca8deb32e1fd9b718959944d85b09eeac6922848d"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:65"
@@ -7421,7 +7421,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "51fe5f09064f49aa32bce23259a8c1c9fd7a5ac43b7fc4fa31fd53f33a9284fd"
+          "odcisk_oceny": "42ca94cf64b069ecfef510d0b1746a1600b2c8fcbe1641a4e18cc47571a5bf4c"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:70"
@@ -11090,7 +11090,7 @@
                     "wartosc": 0.05,
                     "jednostka": "p.u. (U_n)"
                   },
-                  "definicja_latex": "m = x_{\\lim}(t^{*}) - x(t^{*})",
+                  "definicja_latex": "\\Delta x = x_{\\lim}(t^{*}) - x(t^{*})",
                   "punkt_pl": "nastawa U< = 0,8 p.u. (U_n) z czasem 1,5 s (źródło nastaw: Karta nastaw zabezpieczeń instalacji PV)",
                   "skala": {
                     "wartosc": 0.85,
@@ -11590,7 +11590,7 @@
                     "wartosc": 0.000749354005168,
                     "jednostka": "p.u. (P_n modułu)"
                   },
-                  "definicja_latex": "m = x_{\\lim} - x",
+                  "definicja_latex": "\\Delta x = x_{\\lim} - x",
                   "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
                   "skala": {
                     "wartosc": 0.33,

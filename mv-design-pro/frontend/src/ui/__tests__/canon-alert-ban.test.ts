@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Canon Guard: alert() / confirm() / prompt() BAN
  *

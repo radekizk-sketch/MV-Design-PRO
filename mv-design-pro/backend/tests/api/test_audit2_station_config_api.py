@@ -11,6 +11,7 @@ CRUD endpoints:
 from __future__ import annotations
 
 from urllib.parse import quote
+from uuid import UUID
 
 import pytest
 
@@ -29,6 +30,23 @@ def test_get_returns_404_when_no_config(app_client):
     assert res.status_code == 404
 
 
+#: Klucze odpowiedzi konfiguracji stacji — zamknięta lista kontraktu zapisu (karta
+#: UX-04/POLE-ZU-SKLADOWA-ZEROWA skasowała wybór sposobu uziemienia punktu neutralnego SN).
+KLUCZE_ODPOWIEDZI = (
+    "id",
+    "project_id",
+    "station_id",
+    "tap_changer_refs",
+    "der_specs",
+    "transformer_tap_changers",
+    "bay_hv_fuses",
+    "bay_vts",
+    "bay_device_withstand",
+    "created_at",
+    "updated_at",
+)
+
+
 def test_list_returns_empty_when_no_configs(app_client):
     pid = _create_project(app_client)
     res = app_client.get(f"/api/v1/projects/{pid}/audit2-station-config")
@@ -39,7 +57,6 @@ def test_list_returns_empty_when_no_configs(app_client):
 def test_put_creates_new_config(app_client):
     pid = _create_project(app_client)
     body = {
-        "mv_neutral_grounding_ref": "mng_petersen",
         "tap_changer_refs": ["tc_oltc_110sn_19_125"],
         "der_specs": [
             {
@@ -56,7 +73,9 @@ def test_put_creates_new_config(app_client):
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["mv_neutral_grounding_ref"] == "mng_petersen"
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: konfiguracja stacji nie niesie sposobu uziemienia
+    # punktu neutralnego SN (druga prawda skasowana) — tylko klucze kontraktu zapisu.
+    assert sorted(data) == sorted(KLUCZE_ODPOWIEDZI)
     assert data["tap_changer_refs"] == ["tc_oltc_110sn_19_125"]
     assert len(data["der_specs"]) == 1
     assert data["der_specs"][0]["der_id"] == "der_001"
@@ -67,7 +86,7 @@ def test_put_upserts_existing_config(app_client):
     # 1. Initial PUT
     res = app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-002",
-        json={"mv_neutral_grounding_ref": "mng_isolated", "tap_changer_refs": [], "der_specs": []},
+        json={"tap_changer_refs": [], "der_specs": []},
     )
     assert res.status_code == 200
     initial_id = res.json()["id"]
@@ -75,18 +94,17 @@ def test_put_upserts_existing_config(app_client):
     # 2. Second PUT — should UPDATE, not create new.
     res2 = app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-002",
-        json={"mv_neutral_grounding_ref": "mng_petersen", "tap_changer_refs": [], "der_specs": []},
+        json={"tap_changer_refs": ["tc_detc_snnn_5_25"], "der_specs": []},
     )
     assert res2.status_code == 200
     # ID nie zmienia sie po update
     assert res2.json()["id"] == initial_id
-    assert res2.json()["mv_neutral_grounding_ref"] == "mng_petersen"
+    assert res2.json()["tap_changer_refs"] == ["tc_detc_snnn_5_25"]
 
 
 def test_get_after_put_returns_config(app_client):
     pid = _create_project(app_client)
     body = {
-        "mv_neutral_grounding_ref": "mng_resistor_low",
         "tap_changer_refs": ["tc_detc_snnn_5_25"],
         "der_specs": [
             {
@@ -101,7 +119,7 @@ def test_get_after_put_returns_config(app_client):
     res = app_client.get(f"/api/v1/projects/{pid}/audit2-station-config/station-003")
     assert res.status_code == 200
     data = res.json()
-    assert data["mv_neutral_grounding_ref"] == "mng_resistor_low"
+    assert data["tap_changer_refs"] == ["tc_detc_snnn_5_25"]
     assert data["der_specs"][0]["bess_operation_mode_refs"] == [
         "mode_fcr_n",
         "mode_voltage_support",
@@ -112,7 +130,7 @@ def test_station_id_accepts_enm_reference_with_slashes(app_client):
     pid = _create_project(app_client)
     station_ref = "stn/e7ac9af3834811e633a6a98f1d3d4112/station"
     encoded_station_ref = quote(station_ref, safe="")
-    body = {"mv_neutral_grounding_ref": None, "tap_changer_refs": [], "der_specs": []}
+    body = {"tap_changer_refs": [], "der_specs": []}
 
     put_res = app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/{encoded_station_ref}",
@@ -134,7 +152,6 @@ def test_list_returns_multiple_stations(app_client):
         app_client.put(
             f"/api/v1/projects/{pid}/audit2-station-config/{sid}",
             json={
-                "mv_neutral_grounding_ref": "mng_petersen",
                 "tap_changer_refs": [],
                 "der_specs": [],
             },
@@ -152,7 +169,7 @@ def test_delete_removes_config(app_client):
     pid = _create_project(app_client)
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-D",
-        json={"mv_neutral_grounding_ref": None, "tap_changer_refs": [], "der_specs": []},
+        json={"tap_changer_refs": [], "der_specs": []},
     )
     # Delete
     res = app_client.delete(f"/api/v1/projects/{pid}/audit2-station-config/station-D")
@@ -175,7 +192,7 @@ def test_isolation_between_projects(app_client):
     pid2 = _create_project(app_client)
     app_client.put(
         f"/api/v1/projects/{pid1}/audit2-station-config/station-X",
-        json={"mv_neutral_grounding_ref": "mng_petersen", "tap_changer_refs": [], "der_specs": []},
+        json={"tap_changer_refs": [], "der_specs": []},
     )
 
     # Project 1 widzi config
@@ -195,7 +212,6 @@ def test_validate_all_projekt_bez_modelu_import_nieznany_to_brak_nie_zero(app_cl
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-real-loads",
         json={
-            "mv_neutral_grounding_ref": None,
             "tap_changer_refs": [],
             "der_specs": [
                 {"der_id": "der_1", "der_kind": "PV", "nominal_power_kw": 1000},
@@ -285,7 +301,6 @@ def test_validate_all_returns_pack_per_station(app_client):
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-V-A",
         json={
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [{"der_id": "der_001", "der_kind": "PV"}],
             "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
@@ -297,7 +312,6 @@ def test_validate_all_returns_pack_per_station(app_client):
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-V-B",
         json={
-            "mv_neutral_grounding_ref": "mng_isolated",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {},
@@ -392,7 +406,6 @@ def test_persistence_round_trip_complex_der_spec(app_client):
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-rt",
         json={
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": ["tc_oltc_110sn_19_125"],
             "der_specs": der_specs,
         },
@@ -415,12 +428,30 @@ def test_dowod_VT_nie_udaje_zgodnosci_dla_typu_spoza_katalogu(app_client):
     Test sprawdza OBIE galezie na jednym pakiecie: realny typ katalogowy z F_v 1,9
     przechodzi, typ nieistniejacy jest nazwany brakiem — inaczej bramka nie odroznialaby
     naprawy od fallbacku.
+
+    Sposób uziemienia SN dowodu czyta model projektu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA):
+    stacja z szyną SN bez zespołu uziemiającego — sieć izolowana (F_v 1,9 wymagane).
     """
+    from enm.klucz_twin import klucz_twin_projektu
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Substation
+    from enm.store import set_enm
+
     pid = _create_project(app_client)
+    set_enm(
+        klucz_twin_projektu(UUID(pid)),
+        EnergyNetworkModel(
+            header=ENMHeader(name="Dowód przekładników"),
+            buses=[Bus(ref_id="bus-sn", name="Szyna SN", voltage_kv=15.0)],
+            substations=[
+                Substation(
+                    ref_id="station-vt", name="Stacja VT", station_type="mv_lv", bus_refs=["bus-sn"]
+                )
+            ],
+        ),
+    )
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-vt",
         json={
-            "mv_neutral_grounding_ref": "mng_petersen",
             "tap_changer_refs": [],
             "der_specs": [],
             "transformer_tap_changers": {},
@@ -443,6 +474,7 @@ def test_dowod_VT_nie_udaje_zgodnosci_dla_typu_spoza_katalogu(app_client):
     }
 
     realny = dowody["POLE-REALNE"]
+    assert realny["details"]["grounding_type"] == "isolated"
     assert realny["pass_status"] is True
     assert realny["details"]["vt_voltage_factor"] == 1.9
 

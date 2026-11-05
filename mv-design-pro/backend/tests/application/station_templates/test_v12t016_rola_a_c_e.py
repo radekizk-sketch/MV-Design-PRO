@@ -75,7 +75,6 @@ def _magistrala(
                 "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "apparatus_kind": "BREAKER",
             },
-            "grounding": {"type": "isolated"},
         },
     )["snapshot"]
     odcinki: list[str] = []

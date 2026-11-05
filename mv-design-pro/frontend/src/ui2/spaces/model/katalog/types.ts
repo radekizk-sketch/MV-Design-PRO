@@ -52,6 +52,11 @@ export type TypWartosci = 'liczba' | 'tekst';
 export interface DefinicjaParametru {
   /** Symbol branżowy, np. „uk", „Sn", „In" (nomenklatura dozwolona). */
   symbol: string;
+  /**
+   * Ten sam symbol jako LaTeX (`u_k`, `I_{\Delta n}`) — ekran renderuje go `MathInline`
+   * (`ui_math_guard`, karta UX-04/ZU); `symbol` zostaje identyfikatorem (`data-pole`).
+   */
+  symbolLatex: string;
   /** Etykieta PL parametru (bez snake_case). */
   etykieta: string;
   /** Jednostka SI/branżowa, np. „kV", „Ω/km", „%". Pusta dla wielkości bezwymiarowych/tekstowych. */

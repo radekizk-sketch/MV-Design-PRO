@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Schemat nN — temat menu kontekstowego i operacje wykonywane wprost z menu (`operacjeNn.ts`).
  *

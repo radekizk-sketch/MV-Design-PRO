@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * BLOK-LATERAL-WLASNOSC — WYROCZNIE KARTY: etykieta należy do obiektu, KTÓRY
  * OPISUJE.

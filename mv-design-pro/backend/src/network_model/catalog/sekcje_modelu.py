@@ -233,6 +233,21 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "rezystory_rozladowcze_wewnetrzne",
             ),
         ),
+        "EarthingTransformerType": _mapa(
+            identyfikacja=(*_META, KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+            fundamental=("u_n_kv", "s_n_kva", "grupa_polaczen", "s_pw_kva", "u_pw_kv"),
+            short_circuit=("r0_ohm", "x0_ohm"),
+        ),
+        "ArcSuppressionCoilType": _mapa(
+            identyfikacja=(*_META, KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+            fundamental=("u_n_kv", "u_wtorne_v"),
+            short_circuit=("i_min_a", "i_max_a", "regulacja", "liczba_zaczepow"),
+        ),
+        "NeutralEarthingResistorType": _mapa(
+            identyfikacja=(*_META, KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+            fundamental=("u_n_kv",),
+            short_circuit=("r_ohm", "i_n_a", "t_s"),
+        ),
         "LoadType": _mapa(
             identyfikacja=(*_META, "profile_id"),
             fundamental=(
@@ -356,6 +371,12 @@ PRZESTRZENIE_Z_SEKCJAMI: Mapping[str, tuple[str, str]] = MappingProxyType(
         "GENERATOR_SN": ("SynchronousGeneratorType", "get_synchronous_generator_type"),
         "ZRODLO_SN": ("SourceSystemType", "get_source_system_type"),
         "KOMPENSATOR_SN": ("ShuntCapacitorType", "get_shunt_capacitor_type"),
+        "TRANSFORMATOR_UZIEMIAJACY": ("EarthingTransformerType", "get_earthing_transformer_type"),
+        "DLAWIK_GASZACY": ("ArcSuppressionCoilType", "get_arc_suppression_coil_type"),
+        "REZYSTOR_UZIEMIAJACY": (
+            "NeutralEarthingResistorType",
+            "get_neutral_earthing_resistor_type",
+        ),
         "OBCIAZENIE": ("LoadType", "get_load_type"),
         "TRAFO_SN_NN": ("TransformerType", "get_transformer_type"),
         "KABEL_SN": ("CableType", "get_cable_type"),
@@ -556,6 +577,27 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("dlawik_ograniczajacy", False, "dlawik_ograniczajacy", "dlawik_indukcyjnosc_mh"),
                 _s("rozladowanie", False, "rezystory_rozladowcze_wewnetrzne"),
             ),
+        },
+        "EarthingTransformerType": {
+            "fundamental": (
+                _s("parametry_znamionowe", True, "u_n_kv", "s_n_kva", "grupa_polaczen"),
+                _s("uzwojenie_potrzeb_wlasnych", False, "s_pw_kva", "u_pw_kv"),
+            ),
+            "short_circuit": (_s("impedancja_zerowa", True, "r0_ohm", "x0_ohm"),),
+        },
+        "ArcSuppressionCoilType": {
+            "fundamental": (
+                _s("napiecie_znamionowe", True, "u_n_kv"),
+                _s("uzwojenie_wtorne", False, "u_wtorne_v"),
+            ),
+            "short_circuit": (
+                _s("zakres_regulacji", True, "i_min_a", "i_max_a", "regulacja"),
+                _s("zaczepy", False, "liczba_zaczepow"),
+            ),
+        },
+        "NeutralEarthingResistorType": {
+            "fundamental": (_s("napiecie_znamionowe", True, "u_n_kv"),),
+            "short_circuit": (_s("parametry_znamionowe", True, "r_ohm", "i_n_a", "t_s"),),
         },
         "LoadType": {
             "fundamental": (

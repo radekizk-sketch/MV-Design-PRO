@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GPZ-PARYTET cz. 2 (pkt 2): stan łączników pola z modelu — iloczyn cech:
  * rola gałęzi {wyłącznik, odłącznik, rozłącznik, sprzęgło, bezpiecznik} × przynależność

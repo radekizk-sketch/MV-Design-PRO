@@ -169,6 +169,38 @@ describe('ElementCalculationProofPanel', () => {
     expect(renderedText).not.toContain('white-box');
   });
 
+  it.each([
+    ['3F', 'zwarcie trójfazowe'],
+    ['2F', 'zwarcie dwufazowe'],
+    ['1F', 'zwarcie jednofazowe (doziemne)'],
+    // Token wiersza i kroku śladu backendu (`ShortCircuitType.TWO_PHASE_GROUND.value`); dawna
+    // kopia słownika znała „2FG" i pokazywała ten kod surowo.
+    ['2F+G', 'zwarcie dwufazowe z ziemią'],
+  ])('rodzaj zwarcia kroku %s po polsku z jednego słownika', async (kod, opis) => {
+    const [krok, ...reszta] = tracePayload.white_box_trace;
+    mockAnalysisFetch({
+      ...tracePayload,
+      white_box_trace: [
+        { ...krok, inputs: { ...krok.inputs, short_circuit_type: { value: kod } } },
+        ...reszta,
+      ],
+    });
+    render(
+      <ElementCalculationProofPanel runId="run-1" selectedElement={{ id: 'bus-sn-1', name: 'Szyna SN 1', type: 'Bus' }} />,
+    );
+    await screen.findByTestId('element-proof-short-circuit-table');
+    // Asercja na ŹRÓDLE podanym do KaTeX (`data-latex` wyrenderowanego wzoru), nie na
+    // `textContent`: KaTeX w trybie tekstowym składa litery z akcentem ostrym (ó, ś, ć, ń, ź)
+    // z litery bazowej i osobnego znaku akcentu, a spacje oddaje jako U+00A0 — tekst węzła
+    // nie jest więc równy etykiecie, choć ekran pokazuje ją poprawnie.
+    await waitFor(() => {
+      const zrodla = screen
+        .getAllByTestId('math-rendered')
+        .map((wezel) => wezel.getAttribute('data-latex') ?? '');
+      expect(zrodla.some((zrodlo) => zrodlo.includes(`\\text{${opis}}`))).toBe(true);
+    });
+  });
+
   it('kontrakt pól kroku: LaTeX tylko z substitution_latex, proza substitution tekstem', async () => {
     // Iloczyn cech (karta DOWOD-CIEPLNY): krok z LaTeX-em podstawienia × krok z samą prozą.
     // Proza NIGDY nie idzie przez KaTeX (inaczej zdanie zlepia się w ciąg matematyczny),

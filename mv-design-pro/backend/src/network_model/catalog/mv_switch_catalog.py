@@ -34,8 +34,10 @@ KONWENCJE:
   "12/17,5/24 kV" JEST napieciem najwyzszym urzadzenia z definicji normy.
   ``None`` wylacznie tam, gdzie prad znamionowy pozycji nie wystepuje w
   zrodle producenta (patrz niespojnosci nizej).
-- i_cu_ka [kA] — znamionowa zdolnosc wylaczalna zwarciowa I_cu wg
-  IEC 62271-100. WYLACZNIE dla aparatow zdolnych wylaczac prady zwarciowe
+- i_cu_ka [kA] — znamionowa zdolnosc wylaczania zwarciowa aparatu SN: dla
+  wylacznika i reklozera znamionowy prad wylaczalny zwarciowy I_sc wg
+  IEC 62271-100 § 4.101, dla bezpiecznika I_1 wg IEC 60282-1 (symbol I_cu
+  nalezy do wylacznikow nN, IEC 60947-2; nazwa pola jest wspolna z katalogiem nN). WYLACZNIE dla aparatow zdolnych wylaczac prady zwarciowe
   (CIRCUIT_BREAKER, RECLOSER, FUSE). Dla LOAD_SWITCH/DISCONNECTOR/
   EARTH_SWITCH pole jest ZAWSZE None — te rodzaje aparatury NIE MAJA
   zdolnosci wylaczania zwarc z definicji normy (rozlacznik/odlacznik/

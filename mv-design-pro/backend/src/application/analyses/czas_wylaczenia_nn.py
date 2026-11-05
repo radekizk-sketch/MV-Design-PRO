@@ -34,6 +34,7 @@ from enm.models import FuseBranch, SwitchBranch
 from network_model.catalog.wartosci_robocze import (
     czas_wylaczenia_roboczy_nn,
     dana_przyjeta_czasu_wylaczenia_nn,
+    rozstrzygnij_rodzaj_obwodu_nn,
 )
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.protection_lv_curves import (
@@ -168,9 +169,12 @@ def czas_wylaczenia_obwodu_nn(
                 slad_charakterystyki=slad,
             )
         powod_bez_krzywej = zdanie
-    roboczy = czas_wylaczenia_roboczy_nn(
-        uklad=uklad, in_a=urzadzenie.in_a if urzadzenie is not None else None, u0_v=u0_v
+    # Rodzaj obwodu z JEDNEGO rozstrzygnięcia (pakiet 9) — ta sama klasyfikacja co werdykt SWZ.
+    rodzaj = rozstrzygnij_rodzaj_obwodu_nn(
+        rodzaj_projektanta=aparat.rodzaj_obwodu_nn if aparat is not None else None,
+        in_a=urzadzenie.in_a if urzadzenie is not None else None,
     )
+    roboczy = czas_wylaczenia_roboczy_nn(uklad=uklad, rodzaj=rodzaj, u0_v=u0_v)
     return CzasWylaczeniaNn(
         czas_s=roboczy.czas_s,
         zrodlo="wartosc_robocza",

@@ -8,6 +8,7 @@
  */
 
 import type { ReactiveCharacter } from '../../../ui/network-build/forms/cableVoltageDropApi';
+import type { WyjasnienieWerdyktu } from '../../wyniki/wzorzec/werdykt';
 
 export type { ReactiveCharacter };
 
@@ -37,6 +38,13 @@ export interface DerSelectionPreviewRequest {
    * optymistyczny. Nazwy zestawów i współczynniki pochodzą z backendu.
    */
   laying_conditions?: CableLayingConditions;
+  /**
+   * Przypadek i szyna SN przyłączenia toru: backend bierze z nich I″k i κ najnowszego biegu
+   * zwarciowego do kryterium wytrzymałości zwarciowej kabla. Bez nich (albo bez biegu)
+   * kryterium przychodzi jako rekord „nie oceniono” z akcją.
+   */
+  case_id?: string;
+  sn_bus_ref?: string;
 }
 
 /** Opis warunków ułożenia: nazwa zestawu albo współczynniki własne z opisem. */
@@ -115,6 +123,31 @@ export interface CableProposal {
   derating_total?: number;
 }
 
+/** Status maszynowy kryterium (kontrakt werdyktu) — zawsze z wyjaśnieniem backendu. */
+export type StatusKryteriumKabla = 'SPELNIA' | 'NIE_SPELNIA' | 'NIE_OCENIONO';
+
+/**
+ * Kryterium wytrzymałości zwarciowej kabla SN — rekord zawsze obecny: wyjaśnienie, liczby
+ * z biegu zwarciowego (I″k, κ), czas trwania zwarcia z podstawą, prąd cieplny, limit, zapas,
+ * akcja przy braku oceny. Wszystkie wartości liczy backend.
+ */
+export interface CableThermalCriterion {
+  status: StatusKryteriumKabla;
+  /** Wyjaśnienie werdyktu (kontrakt §5): zdanie, przyczyna, czego brakuje — z backendu. */
+  wyjasnienie: WyjasnienieWerdyktu;
+  ikss_a: number | null;
+  kappa: number | null;
+  fault_duration_s: number | null;
+  fault_duration_source: string | null;
+  fault_duration_basis_pl: string;
+  ith_a: number | null;
+  admissible_current_a: number | null;
+  margin_a: number | null;
+  action_pl: string | null;
+  short_circuit_run_id: string | null;
+  kompletnosc_dowodu: string;
+}
+
 export interface CableSelection {
   proposal: CableProposal | null;
   required_ampacity_a: number;
@@ -134,6 +167,7 @@ export interface CableSelection {
   derating_set?: string;
   derating_total?: number;
   derating_assumption_pl?: string;
+  thermal_criterion?: CableThermalCriterion | null;
 }
 
 export interface FieldApparatusProposal {

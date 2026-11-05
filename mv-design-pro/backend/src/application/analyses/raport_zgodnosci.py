@@ -163,6 +163,40 @@ def _cascade_items(track: DerSnTrack) -> list[dict[str, Any]]:
     return items
 
 
+#: Status maszynowy kryterium (kontrakt werdyktu) → status pozycji checklisty raportu.
+_STATUS_POZYCJI_KRYTERIUM = {
+    "SPELNIA": _STATUS_PASS,
+    "NIE_SPELNIA": _STATUS_FAIL,
+    "NIE_OCENIONO": _STATUS_WARN,
+}
+
+
+def _pozycja_wytrzymalosci_zwarciowej(kryterium: dict[str, Any]) -> dict[str, Any]:
+    """Pozycja kryterium wytrzymałości zwarciowej propozycji kabla: status maszynowy ZAWSZE
+    z wyjaśnieniem rekordu (zdanie, przyczyna, czego brakuje) i — przy braku oceny — akcją
+    (nie ciche pominięcie). Tekst pozycji składa się wyłącznie z wyjaśnienia backendu; status
+    pozycji checklisty to kod wyprowadzony ze statusu maszynowego."""
+    status = _STATUS_POZYCJI_KRYTERIUM[str(kryterium["status"])]
+    wyjasnienie = kryterium["wyjasnienie"]
+    czesci = [wyjasnienie["zdanie_pl"]]
+    if wyjasnienie.get("przyczyna_pl"):
+        czesci.append(wyjasnienie["przyczyna_pl"])
+    if wyjasnienie.get("czego_brakuje"):
+        czesci.append("Brakuje: " + "; ".join(wyjasnienie["czego_brakuje"]) + ".")
+    if kryterium.get("action_pl"):
+        czesci.append(kryterium["action_pl"])
+    czesci.append(f"Czas trwania zwarcia: {kryterium['fault_duration_basis_pl']}")
+    return {
+        "check_id": "d2.wytrzymalosc_zwarciowa_kabla",
+        "kategoria": "zgodnosc_D2",
+        "status": status,
+        "code": f"der_sn.d2.wytrzymalosc_zwarciowa.{str(kryterium['status']).lower()}",
+        "message_pl": " ".join(czesci),
+        "parametr": "wytrzymalosc_zwarciowa_kabla",
+        "kryterium": kryterium,
+    }
+
+
 def _d2_items(d2_deviations: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """Pozycje odstępstw od propozycji D2 (⚠). Zgodność ⇒ pozycja PASS."""
     if not d2_deviations:
@@ -183,6 +217,9 @@ def _d2_items(d2_deviations: list[dict[str, Any]] | None) -> list[dict[str, Any]
                     ),
                 }
             )
+            continue
+        if deviation.get("parametr") == "wytrzymalosc_zwarciowa_kabla":
+            items.append(_pozycja_wytrzymalosci_zwarciowej(deviation["kryterium"]))
             continue
         parametr = str(deviation.get("parametr") or "")
         zastosowano = deviation.get("zastosowano")

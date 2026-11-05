@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA ETYKIETA-STACJI-PRZELOTOWEJ — PARYTET lustra `rodzajStacji` z backendem
  * `enm.rodzaj_stacji` na KAŻDEJ stacji KAŻDEGO modelu ENM z fikstur generowanych (substrat

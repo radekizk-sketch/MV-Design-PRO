@@ -24,8 +24,10 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import nazwa_elementu
+from enm.uziemienie_sekcji import punkt_zespolu
 from enm.zabezpieczenie import aparaty_sterownika, brakujace_wejscia, kody_funkcji_sterownika
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.core.uziemienie import TYP_PUNKTU_NEUTRALNEGO_WARIANTU
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
@@ -83,7 +85,7 @@ class V2SwitchingStateSnapshot(BaseModel):
 
 class V2ZeroSequenceConfig(BaseModel):
     element_ref: str
-    element_kind: Literal["branch", "source", "transformer"]
+    element_kind: Literal["branch", "source", "transformer", "zespol_uziemiajacy"]
     r0: float | None = None
     x0: float | None = None
     b0: float | None = None
@@ -313,6 +315,31 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
                 quality_status=(
                     "pelna"
                     if source.r0_ohm is not None and source.x0_ohm is not None
+                    else "czesciowa"
+                ),
+            )
+        )
+
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający sieci SN jest nośnikiem składowej
+    # zerowej (bocznik Z_0,TU + 3·Z_N) — wariant punktu neutralnego z jedynej prawdy
+    # (`enm.uziemienie_sekcji.punkt_zespolu`); Z_0,TU z rekordu (wartość robocza — „czesciowa").
+    napiecia = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    for zespol in sorted(enm.zespoly_uziemiajace, key=lambda item: item.ref_id):
+        punkt = punkt_zespolu(zespol, napiecia.get(zespol.bus_ref) or 0.0)
+        configs.append(
+            V2ZeroSequenceConfig(
+                element_ref=zespol.ref_id,
+                element_kind="zespol_uziemiajacy",
+                r0=zespol.r0_ohm,
+                x0=zespol.x0_ohm,
+                grounding_type=(
+                    None
+                    if punkt.odmowa_pl is not None
+                    else TYP_PUNKTU_NEUTRALNEGO_WARIANTU[punkt.wariant("spoczynek")]
+                ),
+                quality_status=(
+                    "pelna"
+                    if punkt.odmowa_pl is None and not punkt.dane_przyjete()
                     else "czesciowa"
                 ),
             )

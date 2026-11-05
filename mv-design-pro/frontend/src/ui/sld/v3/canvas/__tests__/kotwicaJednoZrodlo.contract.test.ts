@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KARTA KLIK-ETYKIETA-KOTWICA — WYROCZNIA „JEDNO ORZECZENIE O KLIKNIĘTYM OBIEKCIE".
  *

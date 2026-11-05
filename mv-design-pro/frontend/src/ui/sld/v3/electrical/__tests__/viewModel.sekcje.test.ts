@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SZYNY-STACJI-LUSTRO (commit 2) — sekcja modelu widoku SLD = szyna GŁÓWNA (`szynaGlownaStacji`).
  * ILOCZYN CECH: rodzaj szyny {szyna główna, zacisk pola SN, szyna za aparatem pola nN

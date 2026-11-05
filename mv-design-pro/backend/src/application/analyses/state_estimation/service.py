@@ -262,11 +262,18 @@ def _parse_measurements(
         raw_sigma = raw.get("sigma")
         if raw_value is None or raw_sigma is None:
             raise OdmowaDanychError("Pomiar wymaga pól 'value' oraz 'sigma'.")
+        # Liczba z żądania projektanta — odmowa danych po polsku, nazwana polem; surowy tekst
+        # konwersji (`could not convert string to float`) nie trafia do odpowiedzi API.
         try:
             value = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise OdmowaDanychError("Wartość pomiaru („value”) musi być liczbą.") from exc
+        try:
             sigma = float(raw_sigma)
-        except ValueError as exc:  # liczba z żądania projektanta — odmowa danych
-            raise OdmowaDanychError(str(exc)) from exc
+        except (TypeError, ValueError) as exc:
+            raise OdmowaDanychError(
+                "Odchylenie standardowe pomiaru („sigma”) musi być liczbą."
+            ) from exc
         label = raw.get("label")
         label = str(label) if label is not None else None
 

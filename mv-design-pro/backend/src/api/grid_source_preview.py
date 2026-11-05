@@ -3,7 +3,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
-from application.analyses.dobor_toru_der_sn import OpisUlozeniaKabla, dobierz_tor_der_sn
+from api.klucz_twin_dep import klucz_twin_z_sciezki
+from application.analyses.dobor_toru_der_sn import (
+    OpisUlozeniaKabla,
+    WejscieZwarcioweToruDer,
+    czas_trwania_zwarcia_nowego_pola,
+    dobierz_tor_der_sn,
+    wejscie_zwarciowe_toru_der,
+)
 from application.analyses.ocena_doboru_magistrali import (
     OdcinekMagistrali,
     ocen_dobor_magistrali,
@@ -14,7 +21,8 @@ from domain.generator_validation import (
     blad_wejsc_kontroli_mocy,
     moc_pozorna_z_nastawy_mva,
 )
-from fastapi import APIRouter, HTTPException
+from enm.store import get_enm, has_enm
+from fastapi import APIRouter, HTTPException, Request
 from network_model.catalog.wartosci_robocze import (
     TolerancjaNnRozstrzygnieta,
     tolerancja_nn_napiecia,
@@ -52,6 +60,7 @@ from network_model.solvers.transformer_rated_currents import (
 )
 from pydantic import BaseModel, Field, model_validator
 from werdykt import OcenaKryterium
+from werdykt.kontrakt import WyjasnienieWerdyktu
 
 router = APIRouter(tags=["grid-source-preview"])
 
@@ -716,6 +725,29 @@ class CableProposalResponse(BaseModel):
     derating_total: float = 1.0
 
 
+class CableThermalCriterionResponse(BaseModel):
+    """Kryterium wytrzymałości zwarciowej kabla — rekord zawsze obecny: status
+    maszynowy z wyjaśnieniem, I″k i κ z biegu zwarciowego, czas z podstawą, I_th, limit,
+    zapas i akcja przy braku oceny."""
+
+    status: str
+    wyjasnienie: WyjasnienieWerdyktu
+    ikss_a: float | None = None
+    kappa: float | None = None
+    fault_duration_s: float | None = None
+    fault_duration_source: str | None = None
+    fault_duration_basis_pl: str = ""
+    ith_a: float | None = None
+    admissible_current_a: float | None = None
+    margin_a: float | None = None
+    action_pl: str | None = None
+    short_circuit_run_id: str | None = None
+    # Zasada nr 4: czas roboczy 1 s jest daną przyjętą (ESTIMATED), a ocena na nim ma
+    # kompletność dowodu NIEPELNY — odróżniona od oceny na czasie projektanta albo nastaw.
+    dane_przyjete: list[dict[str, Any]] = Field(default_factory=list)
+    kompletnosc_dowodu: str = "PELNY"
+
+
 class CableSelectionResponse(BaseModel):
     proposal: CableProposalResponse | None
     required_ampacity_a: float
@@ -733,6 +765,7 @@ class CableSelectionResponse(BaseModel):
     derating_set: str = NAZWA_WARUNKI_KATALOGOWE
     derating_total: float = 1.0
     derating_assumption_pl: str = ""
+    thermal_criterion: CableThermalCriterionResponse | None = None
 
 
 class FieldApparatusProposalResponse(BaseModel):
@@ -781,6 +814,11 @@ class DerSelectionPreviewRequest(BaseModel):
     # bit-identyczny z dotychczasowym), ale wtedy odpowiedź MÓWI, że takie założenie
     # przyjęto — dotąd nigdzie nie było napisane, dla jakich warunków obowiązuje dobór.
     laying_conditions: CableLayingConditionsRequest | None = None
+    # Pakiet 6b (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): przypadek i szyna SN przyłączenia
+    # toru — z nich I″k i κ najnowszego biegu zwarciowego do kryterium wytrzymałości zwarciowej
+    # kabla. Bez nich (albo bez biegu) kryterium jest rekordem NIE_OCENIONO z akcją.
+    case_id: str | None = None
+    sn_bus_ref: str | None = None
 
 
 class DerSelectionPreviewResponse(BaseModel):
@@ -803,6 +841,48 @@ def _rejected_response(
         )
         for item in rejected
     ]
+
+
+def _wejscie_zwarciowe_podgladu(
+    request: DerSelectionPreviewRequest, http_request: Request
+) -> WejscieZwarcioweToruDer:
+    """I″k i κ szyny przyłączenia z biegu przypadku; czas — pole przyłączenia jeszcze nie
+    istnieje, więc wartość robocza 1 s z jednego rozstrzygnięcia czasu (pakiet 8)."""
+    model = None
+    if request.case_id:
+        klucz = klucz_twin_z_sciezki(request.case_id, http_request)
+        model = get_enm(klucz) if has_enm(klucz) else None
+    return wejscie_zwarciowe_toru_der(
+        case_id=request.case_id,
+        szyna_ref=request.sn_bus_ref,
+        model=model,
+        czas_dla_pradu=lambda _prad_a: czas_trwania_zwarcia_nowego_pola(),
+    )
+
+
+def kryterium_zwarciowe_odpowiedzi(
+    wynik: Any, zwarcie: WejscieZwarcioweToruDer
+) -> CableThermalCriterionResponse | None:
+    """Jedna serializacja rekordu kryterium dla podglądu doboru i dokumentu zgodności toru."""
+    rekord = wynik.thermal_criterion
+    if rekord is None:
+        return None
+    return CableThermalCriterionResponse(
+        status=rekord.status,
+        wyjasnienie=rekord.wyjasnienie,
+        ikss_a=rekord.ikss_a,
+        kappa=rekord.kappa,
+        fault_duration_s=rekord.fault_duration_s,
+        fault_duration_source=zwarcie.zrodlo_czasu,
+        fault_duration_basis_pl=rekord.fault_duration_basis_pl,
+        ith_a=rekord.ith_a,
+        admissible_current_a=rekord.admissible_current_a,
+        margin_a=rekord.margin_a,
+        action_pl=rekord.action_pl,
+        short_circuit_run_id=zwarcie.run_id,
+        dane_przyjete=[zwarcie.dana_przyjeta] if zwarcie.dana_przyjeta is not None else [],
+        kompletnosc_dowodu=zwarcie.kompletnosc_dowodu,
+    )
 
 
 @router.get(
@@ -834,6 +914,7 @@ def list_cable_laying_conditions() -> CableLayingConditionsResponse:
 )
 def preview_der_selection(
     request: DerSelectionPreviewRequest,
+    http_request: Request,
 ) -> DerSelectionPreviewResponse:
     """Kaskadowy dobór toru DER-SN: TR blokowy → kabel SN → aparat pola SN.
 
@@ -854,6 +935,7 @@ def preview_der_selection(
     if odmowa is not None:
         raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
     laying = request.laying_conditions
+    zwarcie = _wejscie_zwarciowe_podgladu(request, http_request)
     sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(request.sum_active_power_mw, request.cos_phi)
     wynik = dobierz_tor_der_sn(
         moc_pozorna_mva=sum_apparent_power_mva,
@@ -879,6 +961,7 @@ def preview_der_selection(
             if laying is not None
             else None
         ),
+        zwarcie=zwarcie,
     )
     tr_result = wynik.transformator
 
@@ -945,6 +1028,7 @@ def preview_der_selection(
         derating_set=cable_result.derating_set,
         derating_total=cable_result.derating_total,
         derating_assumption_pl=cable_result.derating_assumption_pl,
+        thermal_criterion=kryterium_zwarciowe_odpowiedzi(cable_result, zwarcie),
     )
     field_response = FieldApparatusSelectionResponse(
         proposal=(

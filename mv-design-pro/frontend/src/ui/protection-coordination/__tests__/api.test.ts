@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Klient API koordynacji — kształt odpowiedzi jest SPRAWDZANY, nie zakładany (V12K-262).
  *

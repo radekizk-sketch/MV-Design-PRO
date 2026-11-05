@@ -1,3 +1,4 @@
+// @vitest-environment node
 /*
  * Testy cienkiego klienta `ui2/oze/api` (P47a): poprawne URL-e końcówek D1 +
  * katalogu konwerterów oraz jawny błąd przy odpowiedzi != 2xx. `fetch` mockowany.

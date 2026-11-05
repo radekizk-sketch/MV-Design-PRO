@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SLD V2 — Phase -1 Build Gate smoke test.
  *
@@ -6,7 +7,7 @@
  * symbole, że nie ma niezamierzonych importów z V1, i że adaptery
  * snapshot→props zwracają deterministyczne pustki dla pustego ENM-u.
  *
- * Test NIE testuje renderingu (to robią visualFixtures.test.ts) ani
+ * Test NIE testuje renderingu (to robią testy substratu geometrii) ani
  * decyzji LOD (LodPolicy.test.ts) — pełni rolę tripwire dla bramki
  * wejściowej Phase -1.
  */
@@ -21,7 +22,6 @@ import * as Tokens from '../theme/tokens';
 import * as Viewport from '../viewport/ViewportController';
 import * as Adapter from '../canvas/enmToSldAdapter';
 import * as Command from '../command/SldCommandService';
-import * as BuildSeq from '../builder/BuildSequence';
 
 describe('SLD V2 build gate — public API surface', () => {
   it('LodPolicy publiczne API', () => {
@@ -94,15 +94,6 @@ describe('SLD V2 build gate — public API surface', () => {
     expect(Command.SLD_MENU_REGISTRY).toBeDefined();
     expect(typeof Command.getMenuActions).toBe('function');
   });
-
-  it('BuildSequence publiczne API komend', () => {
-    expect(typeof BuildSeq.emptyBuildSequence).toBe('function');
-    expect(typeof BuildSeq.appendCommand).toBe('function');
-    expect(typeof BuildSeq.popLastCommand).toBe('function');
-    expect(typeof BuildSeq.validateCommand).toBe('function');
-    expect(typeof BuildSeq.tryApplyCommand).toBe('function');
-    expect(typeof BuildSeq.inferBuildPhase).toBe('function');
-  });
 });
 
 describe('SLD V2 build gate — invariant pustki adaptera', () => {
@@ -126,10 +117,5 @@ describe('SLD V2 build gate — invariant pustki adaptera', () => {
     expect(result.topologyRuns).toBeDefined();
     expect(result.sources).toBeDefined();
     expect(Object.keys(result).sort()).toEqual(['cableRuns', 'gpzs', 'powerFlow', 'sources', 'stations', 'supplyPath', 'topologyRuns']);
-  });
-
-  it('inferBuildPhase z pustej sekwencji daje NO_SOURCE', () => {
-    const empty = BuildSeq.emptyBuildSequence();
-    expect(BuildSeq.inferBuildPhase(empty)).toBe('NO_SOURCE');
   });
 });

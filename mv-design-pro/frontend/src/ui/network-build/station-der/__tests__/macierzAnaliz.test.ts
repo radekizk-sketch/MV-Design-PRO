@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Macierz analiz (E21-2, audyt E-21 pkt P5/P10).
  *

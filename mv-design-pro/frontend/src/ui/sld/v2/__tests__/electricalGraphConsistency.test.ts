@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Electrical Graph Consistency — Phase 7 (operator-grade SLD plan v2).
  *
