@@ -75,6 +75,7 @@ from .bateria_kondensatorow import (
     odmowa_parametrow_baterii,
     zapisz_tabliczke_baterii,
 )
+from .catalog_completion import pola_tabliczki_galezi
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
@@ -3221,54 +3222,13 @@ def _apply_materialized_branch_fields(
         if value is not None:
             target[key] = float(value)
 
-    for key in (
-        "cross_section_mm2",
-        "return_conductor_cross_section_mm2",
-        "return_conductor_r_ohm_per_km_20c",
-        # Karta P0.6 (G-05): reaktancja zyly powrotnej PE/PEN — analogiczny gap do
-        # rezystancji powyzej (patrz komentarz przy kontrakcie materializacji KABEL_NN).
-        "return_conductor_x_ohm_per_km",
-        "return_conductor_jth_1s_a_per_mm2",
-        "return_conductor_ith_1s_a",
-        # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur, ktora
-        # uzasadnia wspolczynnik k. Bez przepisania na galaz kryterium cieplne
-        # dostawaloby je wylacznie z recznej edycji modelu.
-        "jth_1s_a_per_mm2",
-        "ith_1s_a",
-    ):
-        value = materialized_params.get(key)
-        if value is not None:
-            target[key] = float(value)
-
-    temperatura_robocza = materialized_params.get("max_temperature_c")
-    if temperatura_robocza is not None:
-        target["operating_temperature_c"] = float(temperatura_robocza)
-    temperatura_zwarciowa = materialized_params.get("short_circuit_temperature_c")
-    if temperatura_zwarciowa is not None:
-        target["short_circuit_temperature_c"] = float(temperatura_zwarciowa)
-    izolacja = materialized_params.get("insulation_type")
-    if isinstance(izolacja, str) and izolacja.strip():
-        target["insulation"] = izolacja.strip().upper()
-
-    # Karta F-K1 faza 7: ODNIESIENIE NORMOWE danych cieplnych. Pole `thermal_source_ref`
-    # bylo w modelu, w grafie i w dowodzie od fazy 6, ale zaden kontrakt go nie
-    # wypelnial — dowod pokazywal „zrodlo: —", czyli pole bez dostawcy. Pierwszenstwo
-    # ma odniesienie DEDYKOWANE cieplu (linie napowietrzne), w drugiej kolejnosci
-    # metadana jakosci calego rekordu katalogu (kable).
-    for klucz_zrodla in ("thermal_source_reference", "source_reference"):
-        zrodlo = materialized_params.get(klucz_zrodla)
-        if isinstance(zrodlo, str) and zrodlo.strip():
-            target["thermal_source_ref"] = zrodlo.strip()
-            break
-
-    number_of_cores = materialized_params.get("number_of_cores")
-    if number_of_cores is not None:
-        target["number_of_cores"] = int(number_of_cores)
-
-    for key in ("conductor_material", "return_conductor_material"):
-        value = materialized_params.get(key)
-        if isinstance(value, str) and value.strip():
-            target[key] = value.strip().upper()
+    # Dane materiałowe i cieplne (F-K1 fazy 3/6/7: przekrój, dane cieplne żył, para temperatur
+    # uzasadniająca k, izolacja, odniesienie normowe danych cieplnych) — JEDEN zapis z uzupełnieniem
+    # na granicy ENM (`catalog_completion.pola_tabliczki_galezi`), żeby gałąź zmaterializowana
+    # operacją i gałąź uzupełniona na granicy niosły te same dane tego samego przewodu.
+    target.update(
+        pola_tabliczki_galezi(materialized_params, pola_kabla=target.get("type") != "line_overhead")
+    )
 
     # Karta LINIA-110: tabliczka przewodu linii 110 kV nie niesie impedancji linii — R′, X′,
     # B′ i Z′0 liczy solver z geometrii słupa (dana projektu albo wartość robocza rejestru).

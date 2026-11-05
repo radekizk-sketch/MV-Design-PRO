@@ -35,6 +35,7 @@ import type {
   Transformer,
 } from '../../../types/enm';
 import { isSwitchBranch } from '../../../types/enm';
+import { etykietaPunktuNeutralnegoPL } from '../../../types/uziemienie';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import {
@@ -224,6 +225,8 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'nn_odbiory',
     'nn_zrodla',
     'tabela:przylaczenia',
+    'uziom_re',
+    'uziom_r',
   ],
   pole: [
     'nazwa',
@@ -271,7 +274,7 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'tr_blokowy',
     'kabel_sn',
   ],
-  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min'],
+  siec_zasilajaca: ['nazwa', 'stacja', 'szyna', 'typ', 'sk_max', 'ik_max', 'rx_max', 'sk_min', 'ik_min', 'rx_min', 'pn_typ'],
   szyna: ['nazwa', 'napiecie', 'stacja', 'pola', 'galezie'],
 };
 
@@ -950,13 +953,38 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     ],
   };
 
+  // Uziom stacji (PN-EN 50522) — dana projektowa oceny uziemienia stacji z węzłem SN (ocena
+  // zabezpieczeń ziemnozwarciowych: prąd uziomowy I_E z obliczenia doziemnego). Brak danej nie
+  // blokuje oceny: R_E nieznana → ocena podaje wymaganą R_E,max, r nieznany → r = 1 przyjęte.
+  const uziemienie: SekcjaKarty[] = szynySn.length === 0 ? [] : [
+    {
+      id: 'uziemienie_stacji',
+      tytul: 'Uziemienie stacji',
+      wiersze: [
+        wiersz('uziom_re', 'Rezystancja uziemienia Rₑ', zapisLiczby(stacja.uziom_rezystancja_ohm, 'Ω'), {
+          edycja: edycja(stacja.ref_id, 'uziom_rezystancja_ohm', stacja.uziom_rezystancja_ohm),
+          zrodloPl: stacja.uziom_rezystancja_ohm == null
+            ? 'nieznana — ocena uziemienia podaje wymaganą Rₑ,max = U_Tp(t_F)/I_E'
+            : null,
+        }),
+        wiersz('uziom_r', 'Współczynnik redukcyjny r', zapisLiczby(stacja.uziom_wspolczynnik_redukcji, ''), {
+          edycja: edycja(stacja.ref_id, 'uziom_wspolczynnik_redukcji', stacja.uziom_wspolczynnik_redukcji),
+          zrodloPl: stacja.uziom_wspolczynnik_redukcji == null
+            ? 'nieznany — ocena przyjmuje r = 1 (założenie zachowawcze)'
+            : null,
+        }),
+      ],
+      zrodloPl: 'Dane uziomu stacji w modelu (pomiar albo projekt uziomu).',
+    },
+  ];
+
   return {
     rodzaj: 'stacja',
     rodzajPl,
     // K6 (Z-11): nazwa nagłówka z tej samej reguły co wiersz drzewa projektu.
     nazwa: nazwaStacjiJakWDrzewie(model, stacja),
     elementRef: stacja.ref_id,
-    sekcje: [identyfikacja, rozdzielnica, ...sekcjeTr, stronaNn, przylaczenia],
+    sekcje: [identyfikacja, rozdzielnica, ...sekcjeTr, stronaNn, ...uziemienie, przylaczenia],
   };
 }
 
@@ -1379,6 +1407,41 @@ function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
           wiersz('rx_min', 'Stosunek R/X (min.)', zapisLiczby(s.rx_ratio_min, ''), { zrodloPl: z('rx_ratio_min') }),
         ],
         zrodloPl: zrodloDanychElementuPl(s, null),
+      },
+      {
+        id: 'punkt_neutralny',
+        tytul: 'Punkt neutralny sieci SN',
+        wiersze: [
+          // Brak konfiguracji = „brak danych" (nie tekst zastępczy): ocena ziemnozwarciowa bez
+          // sposobu pracy punktu neutralnego odmawia z akcją naprawczą.
+          wiersz(
+            'pn_typ',
+            'Sposób pracy punktu neutralnego',
+            s.neutral_grounding?.type ? etykietaPunktuNeutralnegoPL(s.neutral_grounding.type) : null,
+          ),
+          ...(s.neutral_grounding?.type === 'resistor_grounded' || s.neutral_grounding?.type === 'petersen_coil'
+            ? [
+                wiersz(
+                  'pn_r',
+                  s.neutral_grounding.type === 'petersen_coil' ? 'Rezystancja strat dławika R_N' : 'Rezystancja rezystora R_N',
+                  zapisLiczby(s.neutral_grounding.r_ohm, 'Ω'),
+                ),
+                wiersz('pn_x', 'Reaktancja X_N', zapisLiczby(s.neutral_grounding.x_ohm, 'Ω')),
+              ]
+            : []),
+          ...(s.neutral_grounding?.type === 'petersen_coil'
+            ? [
+                wiersz(
+                  'pn_awsc',
+                  'Prąd wymuszenia AWSC',
+                  s.neutral_grounding.awsc_prad_wymuszenia_a != null
+                    ? zapisLiczby(s.neutral_grounding.awsc_prad_wymuszenia_a, 'A')
+                    : 'bez AWSC',
+                ),
+              ]
+            : []),
+        ],
+        zrodloPl: 'Konfiguracja punktu neutralnego sieci zasilającej w modelu (kreator źródła zasilania).',
       },
     ],
   };

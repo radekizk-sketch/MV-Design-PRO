@@ -163,6 +163,21 @@ export const KOORDYNACJA_STRINGS = {
   ocenaPominieteTytul: 'Zabezpieczenia, których ocena nadprądowa nie dotyczy',
   ocenaUzupelnij: 'Uzupełnij w modelu',
 
+  // Ocena funkcji ziemnozwarciowych i uziemień stacji (ten sam bieg / ta sama koordynacja).
+  ziemneTytul: 'Funkcje ziemnozwarciowe i uziemienie stacji',
+  ziemneOpis: 'Czułość, selektywność i czas działania funkcji 51N/50N, 67N, admitancyjnych '
+    + '(Yo>, Go>, Bo>), 32N, 59N i automatyki ZAWSC przy zwarciu doziemnym w strefie i poza nią '
+    + '(prądy i napięcia zerowe z obliczenia doziemnego zależnego od sposobu pracy punktu '
+    + 'neutralnego), oraz prąd uziomowy i napięcie uziomowe stacji (PN-EN 50522).',
+  ziemneBrak: 'Model nie ma funkcji ziemnozwarciowych ani stacji z węzłem SN w ocenie.',
+  ziemneKolUrzadzenie: 'Urządzenie',
+  ziemneKolFunkcja: 'Funkcja',
+  ziemneKolKryterium: 'Kryterium',
+  ziemneKolWynik: 'Wynik',
+  ziemneKolWymagane: 'Wymagane',
+  ziemneKolOcena: 'Ocena',
+  ziemneBrakuje: 'Brakuje:',
+
   // V12K-262 (kontynuacja): stan spoza kontraktu NIE MOŻE czytać się jak wynik.
   nastawyStanNieznany: 'Stan nierozpoznany — nie traktuj tej wartości jak wyznaczonej',
 } as const;

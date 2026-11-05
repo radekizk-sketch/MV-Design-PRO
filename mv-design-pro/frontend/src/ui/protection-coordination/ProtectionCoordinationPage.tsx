@@ -26,6 +26,8 @@ import {
   runCoordinationAnalysis,
 } from './api';
 import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
+import { rekordyZiemnozwarciowe } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
+import { TabelaOcenyZiemnozwarciowej } from '../../ui2/wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
@@ -41,7 +43,7 @@ import { TccInterpretationPanel } from './TccInterpretationPanel';
 import { useAppStateStore } from '../app-state/store';
 import { useBiegiKoordynacji, type BiegiKoordynacji } from './biegiKoordynacji';
 
-type TabId = 'summary' | 'sensitivity' | 'selectivity' | 'overload' | 'tcc' | 'trace';
+type TabId = 'summary' | 'sensitivity' | 'selectivity' | 'overload' | 'ziemne' | 'tcc' | 'trace';
 
 // =============================================================================
 // Kontekst
@@ -307,6 +309,7 @@ function TabNavigation({
     { id: 'sensitivity', label: LABELS.tabs.sensitivity, count: result.sensitivity_checks.length },
     { id: 'selectivity', label: LABELS.tabs.selectivity, count: result.selectivity_checks.length },
     { id: 'overload', label: LABELS.tabs.overload, count: result.overload_checks.length },
+    { id: 'ziemne', label: LABELS.tabs.ziemne, count: rekordyZiemnozwarciowe(result.ziemnozwarciowe).length },
     { id: 'tcc', label: LABELS.tabs.tcc },
     { id: 'trace', label: LABELS.tabs.trace, count: result.trace_steps.length },
   ];
@@ -447,6 +450,15 @@ export function ProtectionCoordinationPage() {
                     devices={result.devices}
                     onRowClick={doEdycjiNastaw}
                   />
+                )}
+                {activeTab === 'ziemne' && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <TabelaOcenyZiemnozwarciowej
+                      wynik={result.ziemnozwarciowe}
+                      onUzupelnij={doEdycjiNastaw}
+                      testid="coordination-ziemne"
+                    />
+                  </div>
                 )}
                 {activeTab === 'tcc' && (
                   <div className="flex flex-col gap-4 xl:flex-row">

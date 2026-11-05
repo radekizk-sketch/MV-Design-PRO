@@ -2233,14 +2233,17 @@ def ocen_zabezpieczenia_ziemnozwarciowe_biegu(
 
 
 def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
-    """Bieg oceny zabezpieczeń nadprądowych — INTERPRETACJA, zero fizyki poza rdzeniami.
+    """Bieg oceny zabezpieczeń nadprądowych i ziemnozwarciowych — INTERPRETACJA, fizyka
+    wyłącznie w solverach (rozpływ prądu zwarciowego biegu SC, solver doziemień SN).
 
     Urządzenia i nastawy pochodzą z MIGAWKI MODELU biegu (``protection_assignments``,
     decyzja D-21) — przypadek nie przechowuje nastaw, a szablon przypadku przestał być
     źródłem urządzeń (karta BIEG-ZABEZPIECZEN-Z-MODELU). Topologia strefy i prąd
     przekaźnika pochodzą z biegu zwarciowego źródłowego (``options["sc_run_id"]``): graf jego
     migawki i rozpływ prądu zwarciowego na gałęzie punktu (``pobierz_rozplyw_biegu``). JEDNA
-    ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``.
+    ścieżka oceny: ``application.analyses.protection.ocena_nadpradowa.ocen_zabezpieczenia``;
+    funkcje ziemnozwarciowe i uziemienia stacji — ``ocen_zabezpieczenia_ziemnozwarciowe_biegu``
+    (pole wyniku ``ziemnozwarciowe``, kroki śladu sieci zerowej, solvera i uziemień).
 
     `create_run` zwalidował istnienie, rodzaj, status, rodzaj zwarcia i projekt biegu
     źródłowego (`_validate_protection_sc_reference`). ``uow_factory`` wołającego trafia
@@ -2369,9 +2372,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
                 },
             )
         )
-    kroki.extend(
-        ProtectionTraceStep(**krok) for krok in kroki_sladu_ziemnozwarciowego(ziemne)
-    )
+    kroki.extend(ProtectionTraceStep(**krok) for krok in kroki_sladu_ziemnozwarciowego(ziemne))
     trace = ProtectionTrace(
         run_id=str(run.id),
         sc_run_id=str(sc_run.id),

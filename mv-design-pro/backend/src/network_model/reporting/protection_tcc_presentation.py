@@ -239,19 +239,6 @@ NAGLOWKI_ZIEMNOZWARCIOWYCH_PL: tuple[str, ...] = (
     "Ocena",
 )
 
-#: Kryterium rekordu → nazwa po polsku. Lista ZAMKNIĘTA (rekord spoza niej to błąd programu —
-#: KeyError, nie surowy kod w raporcie). Stopniowanie ma przyrostek ``:<urządzenie podrzędne>``.
-KRYTERIA_ZIEMNOZWARCIOWE_PL: dict[str, str] = {
-    "CZULOSC": "czułość",
-    "SELEKTYWNOSC": "selektywność",
-    "ROZRUCH_U0": "rozruch napięciowy U0",
-    "STOPNIOWANIE_CZASOWE": "stopniowanie czasowe",
-    "NAPIECIE_UZIOMOWE": "napięcie uziomowe U_E",
-    "REZYSTANCJA_DOPUSZCZALNA": "rezystancja uziemienia dopuszczalna",
-    "NAPIECIE_KROKOWE": "napięcie krokowe",
-    "ODMOWA": "ocena wstrzymana",
-}
-
 
 def _wielkosc(wielkosc: Any) -> str:
     if not isinstance(wielkosc, dict) or wielkosc.get("wartosc") is None:
@@ -268,16 +255,16 @@ def rekordy_ziemnozwarciowe(ziemne: dict[str, Any] | None) -> list[dict[str, Any
 
 
 def wiersz_ziemnozwarciowy(rekord: dict[str, Any]) -> tuple[str, str, str, str, str, str]:
-    """Wiersz tabeli raportu: urządzenie, funkcja, kryterium, wynik, wartość wymagana, ocena
-    (etykieta statusu z rekordu werdyktu). Liczby z rekordu — zero liczenia."""
+    """Wiersz tabeli raportu: urządzenie, funkcja, kryterium (nazwa z rekordu ewaluatora —
+    lista zamknięta `KRYTERIA_ZIEMNOZWARCIOWE`), wynik, wartość wymagana, ocena (etykieta
+    statusu z rekordu werdyktu). Liczby z rekordu — zero liczenia."""
     ocena = rekord["ocena"]
-    kryterium = str(rekord["kryterium"]).split(":", 1)[0]
     wynik = (ocena.get("wynik") or {}).get("wartosc")
     limit = (ocena.get("limit") or {}).get("wartosc")
     return (
         str(rekord["nazwa_urzadzenia_pl"]),
         str(rekord.get("etykieta_pl") or NIE_DOTYCZY),
-        KRYTERIA_ZIEMNOZWARCIOWE_PL[kryterium],
+        str(rekord["kryterium_pl"]),
         _wielkosc(wynik),
         _wielkosc(limit),
         str(ocena["etykieta"]["etykieta_pl"]),

@@ -177,6 +177,49 @@ def test_coverage_is_deterministic(app_client) -> None:
     assert first == second
 
 
+def _bieg_ochrony_doziemienia(case_id: str, sposob: str) -> str:
+    """Scena zwarć doziemnych (GPZ z uziemieniem punktu neutralnego) → bieg SC → bieg oceny
+    zabezpieczeń, który niesie uziemienie stacji z solvera doziemień."""
+    from enm.models import EnergyNetworkModel
+
+    from tests.reference_networks.scena_doziemienia import scena_z_nastawami
+
+    set_enm(case_id, EnergyNetworkModel.model_validate(scena_z_nastawami(sposob)))
+    sc = execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    )
+    assert sc.status == "FINISHED", sc.error_message
+    ochrona = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="protection_sn",
+            options={"sc_run_id": str(sc.id)},
+        ).id
+    )
+    assert ochrona.status == "FINISHED", ochrona.error_message
+    return str(ochrona.id)
+
+
+@pytest.mark.parametrize("sposob", ["IZOLOWANY", "KOMPENSOWANY", "REZYSTOR"])
+def test_coverage_z_biegiem_ochrony_niesie_dowod_uziemienia(app_client, sposob: str) -> None:
+    """Para: przypadek bez biegu oceny zabezpieczeń nazywa lukę uziemienia; bieg oceny
+    zabezpieczeń (uziemienie stacji z solvera doziemień) zamyka ją dowodem P19 na liczbach
+    biegu i podnosi pokrycie (karta EWALUATORY-ZIEMNOZWARCIOWE)."""
+    set_enm("c-bez-ochrony", build_golden_enm())
+    bez = app_client.get(COVERAGE, params={"case_id": "c-bez-ochrony"}).json()
+    assert any(g.startswith("LUKA-UZIEMIENIE") for g in bez["pokrycie"]["critical_gaps"])
+    assert bez["protection_run_id"] is None
+
+    run_id = _bieg_ochrony_doziemienia("c-ochrona", sposob)
+    z_biegiem = app_client.get(COVERAGE, params={"case_id": "c-ochrona"}).json()
+    assert z_biegiem["protection_run_id"] == run_id
+    widok = z_biegiem["pokrycie"]
+    assert not any(g.startswith("LUKA-UZIEMIENIE") for g in widok["critical_gaps"])
+    assert not any("uziemienie" in pozycja for pozycja in widok["missing_items"])
+    assert widok["total_score"] > bez["pokrycie"]["total_score"]
+
+
 # --------------------------------------------------------------------------
 # Granica sieci — case_id (interpretacja bieżącego MODELU, nie biegu)
 # --------------------------------------------------------------------------

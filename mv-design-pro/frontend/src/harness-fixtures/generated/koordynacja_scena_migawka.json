@@ -923,7 +923,7 @@
       "endpoint_b_port": null,
       "from_bus_ref": "bus/85e63a1b8329bf76b0e5ea7a360d025b/switch_node_2",
       "id": "0b9fff48-30da-5757-be0c-35832d118927",
-      "insulation": null,
+      "insulation": "XLPE",
       "ith_1s_a": null,
       "jth_1s_a_per_mm2": 94.0,
       "length_km": 0.441,
@@ -931,8 +931,7 @@
         "b0_siemens_per_km": null,
         "c_nf_per_km": 390.0,
         "catalog_item_id": "cable-tfk-yakxs-3x120",
-        "catalog_item_version": "2026.01",
-        "catalog_namespace": "KABEL_SN",
+        "catalog_item_version": "legacy",
         "conductor_material": "AL",
         "cross_section_mm2": 120.0,
         "frequency_hz": 50.0,
@@ -962,11 +961,13 @@
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
-      "meta": {},
+      "meta": {
+        "catalog_item_version": "legacy"
+      },
       "n_parallel": null,
       "name": "Magistrala GPZ (1) (2)",
       "number_of_cores": 3,
-      "operating_temperature_c": null,
+      "operating_temperature_c": 90.0,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r0_ohm_per_km": 1.330562,
@@ -984,11 +985,11 @@
       "return_conductor_r_ohm_per_km_20c": 1.077562,
       "return_conductor_x_ohm_per_km": null,
       "screen_bonding": null,
-      "short_circuit_temperature_c": null,
+      "short_circuit_temperature_c": 250.0,
       "source_mode": "KATALOG",
       "status": "closed",
       "tags": [],
-      "thermal_source_ref": null,
+      "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
       "to_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/000",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
@@ -1251,7 +1252,7 @@
       "endpoint_b_port": null,
       "from_bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "id": "40babe84-07af-5ac5-8db3-432b067ec769",
-      "insulation": null,
+      "insulation": "XLPE",
       "ith_1s_a": null,
       "jth_1s_a_per_mm2": 94.0,
       "length_km": 0.009,
@@ -1259,8 +1260,7 @@
         "b0_siemens_per_km": null,
         "c_nf_per_km": 390.0,
         "catalog_item_id": "cable-tfk-yakxs-3x120",
-        "catalog_item_version": "2026.01",
-        "catalog_namespace": "KABEL_SN",
+        "catalog_item_version": "legacy",
         "conductor_material": "AL",
         "cross_section_mm2": 120.0,
         "frequency_hz": 50.0,
@@ -1290,11 +1290,16 @@
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
-      "meta": {},
+      "meta": {
+        "catalog_item_version": "legacy",
+        "origin_apparatus_kind": "cable_head",
+        "origin_bay_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
+        "origin_port_role": "OUTGOING_HEAD"
+      },
       "n_parallel": null,
       "name": "Magistrala GPZ (1) (1)",
       "number_of_cores": 3,
-      "operating_temperature_c": null,
+      "operating_temperature_c": 90.0,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r0_ohm_per_km": 1.330562,
@@ -1312,11 +1317,11 @@
       "return_conductor_r_ohm_per_km_20c": 1.077562,
       "return_conductor_x_ohm_per_km": null,
       "screen_bonding": null,
-      "short_circuit_temperature_c": null,
+      "short_circuit_temperature_c": 250.0,
       "source_mode": "KATALOG",
       "status": "closed",
       "tags": [],
-      "thermal_source_ref": null,
+      "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
       "to_bus_ref": "bus/85e63a1b8329bf76b0e5ea7a360d025b/switch_node",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
@@ -1803,7 +1808,7 @@
       "endpoint_b_port": null,
       "from_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field_terminal/001",
       "id": "a8986532-e521-5cde-9c6e-48315e55d9ce",
-      "insulation": null,
+      "insulation": "XLPE",
       "ith_1s_a": null,
       "jth_1s_a_per_mm2": 94.0,
       "length_km": 0.0045,
@@ -1811,8 +1816,7 @@
         "b0_siemens_per_km": null,
         "c_nf_per_km": 390.0,
         "catalog_item_id": "cable-tfk-yakxs-3x120",
-        "catalog_item_version": "2026.01",
-        "catalog_namespace": "KABEL_SN",
+        "catalog_item_version": "legacy",
         "conductor_material": "AL",
         "cross_section_mm2": 120.0,
         "frequency_hz": 50.0,
@@ -1842,11 +1846,13 @@
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
-      "meta": {},
+      "meta": {
+        "catalog_item_version": "legacy"
+      },
       "n_parallel": null,
       "name": "Magistrala GPZ (2) (1) (1)",
       "number_of_cores": 3,
-      "operating_temperature_c": null,
+      "operating_temperature_c": 90.0,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r0_ohm_per_km": 1.330562,
@@ -1864,11 +1870,11 @@
       "return_conductor_r_ohm_per_km_20c": 1.077562,
       "return_conductor_x_ohm_per_km": null,
       "screen_bonding": null,
-      "short_circuit_temperature_c": null,
+      "short_circuit_temperature_c": 250.0,
       "source_mode": "KATALOG",
       "status": "closed",
       "tags": [],
-      "thermal_source_ref": null,
+      "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
       "to_bus_ref": "bus/3e1e898265680e8ac8b259ab59e21b41/switch_node",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
@@ -1960,7 +1966,7 @@
       "endpoint_b_port": null,
       "from_bus_ref": "bus/3e1e898265680e8ac8b259ab59e21b41/switch_node_2",
       "id": "d156415e-6fce-5c3c-96ce-4a6c62724a04",
-      "insulation": null,
+      "insulation": "XLPE",
       "ith_1s_a": null,
       "jth_1s_a_per_mm2": 94.0,
       "length_km": 0.2205,
@@ -1968,8 +1974,7 @@
         "b0_siemens_per_km": null,
         "c_nf_per_km": 390.0,
         "catalog_item_id": "cable-tfk-yakxs-3x120",
-        "catalog_item_version": "2026.01",
-        "catalog_namespace": "KABEL_SN",
+        "catalog_item_version": "legacy",
         "conductor_material": "AL",
         "cross_section_mm2": 120.0,
         "frequency_hz": 50.0,
@@ -1999,11 +2004,13 @@
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
       },
-      "meta": {},
+      "meta": {
+        "catalog_item_version": "legacy"
+      },
       "n_parallel": null,
       "name": "Magistrala GPZ (2) (1) (2)",
       "number_of_cores": 3,
-      "operating_temperature_c": null,
+      "operating_temperature_c": 90.0,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r0_ohm_per_km": 1.330562,
@@ -2021,11 +2028,11 @@
       "return_conductor_r_ohm_per_km_20c": 1.077562,
       "return_conductor_x_ohm_per_km": null,
       "screen_bonding": null,
-      "short_circuit_temperature_c": null,
+      "short_circuit_temperature_c": 250.0,
       "source_mode": "KATALOG",
       "status": "closed",
       "tags": [],
-      "thermal_source_ref": null,
+      "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
       "to_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/000",
       "type": "cable",
       "x0_ohm_per_km": 0.3,
@@ -2773,7 +2780,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "9dc30371b87ff230dee10941f942c99633109aa9d73e37780687da7f4c194ef0",
+    "hash_sha256": "75d41bd4f6f265908d2d3b67a823798f502adc48678430641ab2917d80b8acab",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -4184,7 +4191,9 @@
       "ref_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
       "station_type": "gpz",
       "tags": [],
-      "transformer_refs": []
+      "transformer_refs": [],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -4209,7 +4218,9 @@
       "tags": [],
       "transformer_refs": [
         "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -4234,7 +4245,9 @@
       "tags": [],
       "transformer_refs": [
         "stn/01bb98b8035012aa5698e4fc47869f83/transformer"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -4259,7 +4272,9 @@
       "tags": [],
       "transformer_refs": [
         "stn/c843b440108cbcd0ade67891d02c462a/transformer"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -4284,7 +4299,9 @@
       "tags": [],
       "transformer_refs": [
         "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     }
   ],
   "transformers": [

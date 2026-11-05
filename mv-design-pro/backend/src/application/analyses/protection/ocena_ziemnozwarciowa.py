@@ -169,6 +169,21 @@ _OPIS_WIELKOSCI: dict[str, str] = {
 #: Funkcje z rozruchem napięciowym U0 (nastawa ``prog_u0_proc``) obok wielkości decydującej.
 _Z_ROZRUCHEM_U0 = frozenset({"MODUL_Y0", "G0", "B0", "P0"})
 
+#: Rodzaje kryteriów rekordu oceny → nazwa kryterium dla projektanta (lista ZAMKNIĘTA — rekord
+#: spoza niej to błąd kontraktu, `RekordOcenyZiemnozwarciowej.__post_init__`; nazwa jedzie
+#: w rekordzie jako ``kryterium_pl`` — jedno źródło dla ekranu, karty pola i raportu).
+#: Stopniowanie czasowe niesie przyrostek pary (``STOPNIOWANIE_CZASOWE:<urządzenie dalsze>``).
+KRYTERIA_ZIEMNOZWARCIOWE: dict[str, str] = {
+    "CZULOSC": "czułość",
+    "SELEKTYWNOSC": "selektywność",
+    "ROZRUCH_U0": "rozruch napięciowy U0",
+    "STOPNIOWANIE_CZASOWE": "stopniowanie czasowe",
+    "NAPIECIE_UZIOMOWE": "napięcie uziomowe U_E",
+    "REZYSTANCJA_DOPUSZCZALNA": "rezystancja uziemienia dopuszczalna",
+    "NAPIECIE_KROKOWE": "napięcie krokowe",
+    "ODMOWA": "ocena wstrzymana",
+}
+
 KOD_BRAK_WEJSCIA = "zabezpieczenia.ziemnozwarciowe.brak_wejscia"
 KOD_BRAK_NASTAWY = "zabezpieczenia.ziemnozwarciowe.brak_nastawy"
 KOD_BRAK_PRZEKLADNIKA_3I0 = "zabezpieczenia.ziemnozwarciowe.brak_przekladni_3i0"
@@ -536,7 +551,7 @@ def _wartosci_json(wartosc: Any) -> Any:
         return {"re": float(wartosc.real), "im": float(wartosc.imag)}
     if isinstance(wartosc, dict):
         return {k: _wartosci_json(v) for k, v in wartosc.items()}
-    if isinstance(wartosc, (list, tuple)):
+    if isinstance(wartosc, list | tuple):
         return [_wartosci_json(v) for v in wartosc]
     if hasattr(wartosc, "item"):
         return _wartosci_json(wartosc.item())
@@ -877,6 +892,10 @@ class RekordOcenyZiemnozwarciowej:
     punkty: tuple[DzialaniePunktu, ...] = ()
     dodatkowe: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.kryterium.split(":", 1)[0] not in KRYTERIA_ZIEMNOZWARCIOWE:
+            raise ValueError(f"Kryterium spoza listy rodzajów oceny: {self.kryterium!r}")
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "urzadzenie_ref": self.urzadzenie_ref,
@@ -885,6 +904,7 @@ class RekordOcenyZiemnozwarciowej:
             "kod": self.kod,
             "etykieta_pl": etykieta_funkcji_eaz(self.kod) if self.kod else None,
             "kryterium": self.kryterium,
+            "kryterium_pl": KRYTERIA_ZIEMNOZWARCIOWE[self.kryterium.split(":", 1)[0]],
             "status": self.ocena.status_maszynowy,
             "zdanie_pl": self.ocena.wyjasnienie.zdanie_pl,
             "punkty": [p.to_dict() for p in self.punkty],
@@ -1889,7 +1909,9 @@ def kroki_sladu_ziemnozwarciowego(wynik: WynikOcenyZiemnozwarciowej) -> list[dic
                 "Sieć składowej zerowej z modelu: boczniki pojemnościowe B0 odcinków, punkty "
                 "neutralne źródeł i transformatorów (sposób pracy z modelu)"
             ),
-            "inputs": {"dane_przyjete": [d.model_dump(mode="json") for d in obliczenie.dane_przyjete]},
+            "inputs": {
+                "dane_przyjete": [d.model_dump(mode="json") for d in obliczenie.dane_przyjete]
+            },
             "outputs": {"slad_budowy": list(obliczenie.slad_budowy)},
         }
     )

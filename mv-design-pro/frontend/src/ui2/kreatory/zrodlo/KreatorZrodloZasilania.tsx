@@ -990,6 +990,28 @@ export function KreatorZrodloZasilania() {
               testid="mvd-kreator-zrodlo-uziemienie-ohm"
             />
           ) : null}
+          {dane.grounding_type === 'petersen_coil' ? (
+            <KreatorSiatka>
+              <PoleLiczbowe
+                etykieta={T.uziemienieRDlawika}
+                jednostka="Ω"
+                wartosc={dane.grounding_coil_r_ohm}
+                onZmiana={(v) => zmien('grounding_coil_r_ohm', v)}
+                pomoc={T.uziemienieRDlawikaPomoc}
+                blad={bladDlaPola('grounding_coil_r_ohm')}
+                testid="mvd-kreator-zrodlo-dlawik-r"
+              />
+              <PoleLiczbowe
+                etykieta={T.awscPrad}
+                jednostka="A"
+                wartosc={dane.awsc_prad_wymuszenia_a}
+                onZmiana={(v) => zmien('awsc_prad_wymuszenia_a', v)}
+                pomoc={T.awscPradPomoc}
+                blad={bladDlaPola('awsc_prad_wymuszenia_a')}
+                testid="mvd-kreator-zrodlo-awsc"
+              />
+            </KreatorSiatka>
+          ) : null}
           <KreatorInfo>{T.sprzegloNota}</KreatorInfo>
         </KreatorSekcja>
       ) : null}
@@ -1105,6 +1127,13 @@ export function KreatorZrodloZasilania() {
             testid="mvd-kreator-zrodlo-przeglad-trafo"
           />
           <RzadWartosci etykieta={T.uziemienie} wartosc={T.typyUziemienia.find((o) => o.id === dane.grounding_type)?.etykieta ?? dane.grounding_type} />
+          {dane.grounding_type === 'petersen_coil' ? (
+            <RzadWartosci
+              etykieta={T.awscPrad}
+              wartosc={dane.awsc_prad_wymuszenia_a !== null ? `${dane.awsc_prad_wymuszenia_a} A` : T.awscBrak}
+              testid="mvd-kreator-zrodlo-przeglad-awsc"
+            />
+          ) : null}
           <KreatorNastepnyKrok opis={T.nastepnyOpis} testid="mvd-kreator-zrodlo-nastepny" />
         </KreatorSekcja>
       ) : null}

@@ -67,10 +67,12 @@ def blad_konfiguracji_uziemienia(
         if (
             isinstance(awsc_prad_a, bool)
             or not isinstance(awsc_prad_a, int | float)
+            or not math.isfinite(awsc_prad_a)
             or not awsc_prad_a > 0
         ):
             return (
-                "prąd wymuszenia AWSC w polu „Prąd wymuszenia AWSC” musi być dodatni [A] — "
+                "prąd wymuszenia AWSC w polu „Prąd wymuszenia AWSC” musi być skończoną liczbą "
+                "dodatnią [A] — "
                 "nie wolno przyjąć I_W ≤ 0"
             )
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):

@@ -1366,7 +1366,8 @@ class Substation(ENMElement):
     nn_sections: list[NnSection] = []
     # Karta EWALUATORY-ZIEMNOZWARCIOWE: uziom stacji (PN-EN 50522) — dana projektowa.
     # `uziom_rezystancja_ohm` = rezystancja uziemienia R_E [Ω] (pomiar albo projekt uziomu);
-    # `None` = nieznana — ocena podaje wtedy R_E,max = U_Tp(t_F)/(r·I_E) z prądem I_E solvera.
+    # `None` = nieznana — ocena podaje wtedy R_E,max = U_Tp(t_F)/I_E, gdzie I_E = r·I_odn
+    # (I_odn — prąd odniesienia PN-EN 50522 tabl. 1 z solvera doziemień).
     # `uziom_wspolczynnik_redukcji` = współczynnik redukcyjny r ∈ (0; 1] (ekrany kabli, linki);
     # `None` = nieznany — ocena przyjmuje r = 1 zachowawczo (dana przyjęta, ESTIMATED).
     # Addytywne, poza odciskiem przy `None` (`enm/hash.py`).

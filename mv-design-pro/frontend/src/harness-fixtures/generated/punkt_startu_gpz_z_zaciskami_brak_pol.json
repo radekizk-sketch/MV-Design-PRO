@@ -930,7 +930,9 @@
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
         "station_type": "gpz",
         "tags": [],
-        "transformer_refs": []
+        "transformer_refs": [],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       }
     ],
     "transformers": []

@@ -89,6 +89,12 @@ export interface GridSourceFormData {
   grounding_type: TypPunktuNeutralnego;
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
+  /** Dławik (cewka Petersena): rezystancja strat czynnych R_N [Ω] — opcjonalna; brak = straty
+   *  pominięte w obliczeniu doziemnym (dana przyjęta R_N = 0 w wyjaśnieniu oceny). */
+  grounding_coil_r_ohm: number | null;
+  /** Dławik: prąd czynny wymuszenia automatyki AWSC [A] — opcjonalny; brak = bez AWSC.
+   *  Backend: `GroundingConfig.awsc_prad_wymuszenia_a`. */
+  awsc_prad_wymuszenia_a: number | null;
   thermal_time_s: number;
   /** Rodzina rozdzielnicy producenta (Reference Engine) — kompozycja pól ze szablonów. */
   switchgear_family_ref: string | null;
@@ -156,6 +162,8 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   grounding_type: 'resistor_grounded',
   grounding_r_ohm: 12,
   grounding_x_ohm: null,
+  grounding_coil_r_ohm: null,
+  awsc_prad_wymuszenia_a: null,
   thermal_time_s: 1,
   switchgear_family_ref: null,
   manufacturer_ref: null,
@@ -481,6 +489,12 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   if (data.grounding_type === 'petersen_coil' && (data.grounding_x_ohm === null || data.grounding_x_ohm <= 0)) {
     errors.push({ field: 'grounding_x_ohm', message: 'Cewka Petersena wymaga dodatniej reaktancji X.' });
   }
+  if (data.grounding_type === 'petersen_coil' && data.grounding_coil_r_ohm !== null && data.grounding_coil_r_ohm <= 0) {
+    errors.push({ field: 'grounding_coil_r_ohm', message: 'Rezystancja strat dławika musi być dodatnia (albo pusta — straty pominięte).' });
+  }
+  if (data.grounding_type === 'petersen_coil' && data.awsc_prad_wymuszenia_a !== null && data.awsc_prad_wymuszenia_a <= 0) {
+    errors.push({ field: 'awsc_prad_wymuszenia_a', message: 'Prąd wymuszenia AWSC musi być dodatni (albo pusty — sieć bez AWSC).' });
+  }
 
   // Regulacja zaczepów dotyczy transformatorów 110/SN — istnieją tylko w modelu
   // z równoważnikiem po stronie 110 kV (`transformatoryWModelu`).
@@ -652,11 +666,21 @@ function buildZeroSequence(data: GridSourceFormData) {
  *  (`types/uziemienie.ts`), bez własnego aliasu uziemienia sztywnego. Składowa dominująca tylko dla
  *  wariantów impedancyjnych; backend odrzuca brak R_N / X_N (predykat `blad_konfiguracji_uziemienia`). */
 function buildGrounding(data: GridSourceFormData) {
-  const grounding: { type: TypPunktuNeutralnego; r_ohm?: number | null; x_ohm?: number | null } = {
+  const grounding: {
+    type: TypPunktuNeutralnego;
+    r_ohm?: number | null;
+    x_ohm?: number | null;
+    awsc_prad_wymuszenia_a?: number;
+  } = {
     type: data.grounding_type,
   };
   if (data.grounding_type === 'resistor_grounded') grounding.r_ohm = data.grounding_r_ohm;
-  if (data.grounding_type === 'petersen_coil') grounding.x_ohm = data.grounding_x_ohm;
+  if (data.grounding_type === 'petersen_coil') {
+    grounding.x_ohm = data.grounding_x_ohm;
+    // Dane opcjonalne dławika — klucz tylko przy podanej wartości (zero fabrykacji).
+    if (data.grounding_coil_r_ohm !== null) grounding.r_ohm = data.grounding_coil_r_ohm;
+    if (data.awsc_prad_wymuszenia_a !== null) grounding.awsc_prad_wymuszenia_a = data.awsc_prad_wymuszenia_a;
+  }
   return grounding;
 }
 

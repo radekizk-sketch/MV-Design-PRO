@@ -2080,7 +2080,9 @@
         "transformer_refs": [
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/wn_sn"
-        ]
+        ],
+        "uziom_rezystancja_ohm": null,
+        "uziom_wspolczynnik_redukcji": null
       }
     ],
     "transformers": [

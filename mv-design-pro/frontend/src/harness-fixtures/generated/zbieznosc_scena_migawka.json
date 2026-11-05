@@ -380,7 +380,9 @@
       "tags": [],
       "transformer_refs": [
         "tr_sn_nn"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     },
     {
       "bus_refs": [
@@ -403,7 +405,9 @@
       "tags": [],
       "transformer_refs": [
         "tr_hv_sn"
-      ]
+      ],
+      "uziom_rezystancja_ohm": null,
+      "uziom_wspolczynnik_redukcji": null
     }
   ],
   "transformers": [
@@ -465,6 +469,7 @@
       "lv_bus_ref": "bus_nn",
       "lv_earthing_system": "TN-S",
       "lv_neutral": {
+        "awsc_prad_wymuszenia_a": null,
         "r_ohm": null,
         "type": "directly_grounded",
         "x_ohm": null

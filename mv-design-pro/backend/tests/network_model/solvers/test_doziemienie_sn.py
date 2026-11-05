@@ -66,7 +66,9 @@ U_F_V = U_N_V / math.sqrt(3)
 
 
 @cache
-def _scena(sposob: SposobPracy) -> tuple[dict[str, Any], list[FunkcjaZiemnozwarciowa], ObliczenieDoziemne]:
+def _scena(
+    sposob: SposobPracy,
+) -> tuple[dict[str, Any], list[FunkcjaZiemnozwarciowa], ObliczenieDoziemne]:
     enm = scena_z_nastawami(sposob)
     model = EnergyNetworkModel.model_validate(enm)
     graph = map_enm_to_network_graph(model)
@@ -168,9 +170,7 @@ def test_kirchhoff_sieci_zerowej_w_kazdym_punkcie(sposob: SposobPracy, wariant: 
 
 
 def _punkt(obliczenie: ObliczenieDoziemne, nazwa: str, stan: str = STAN_PRZED):
-    return next(
-        p for p in obliczenie.wynik_min.punkty if p.nazwa_pl == nazwa and p.stan == stan
-    )
+    return next(p for p in obliczenie.wynik_min.punkty if p.nazwa_pl == nazwa and p.stan == stan)
 
 
 @pytest.mark.parametrize(
@@ -327,7 +327,9 @@ def test_siec_bez_drogi_pradu_zerowego_nazywa_punkty() -> None:
         header=ENMHeader(name="bez drogi zerowej"),
         buses=[Bus(ref_id="b1", name="Szyna SN", voltage_kv=15.0)],
         sources=[
-            Source(ref_id="src", name="Źródło", bus_ref="b1", model="thevenin", r_ohm=0.1, x_ohm=1.0)
+            Source(
+                ref_id="src", name="Źródło", bus_ref="b1", model="thevenin", r_ohm=0.1, x_ohm=1.0
+            )
         ],
     )
     obliczenie = oblicz_siec_doziemna(model, map_enm_to_network_graph(model), [])
@@ -405,3 +407,82 @@ def test_wspolczynnik_r_spoza_przedzialu_to_odmowa() -> None:
                 )
             ],
         )
+
+
+# ---------------------------------------------------------------------------
+# Podział odcinka wyłącznikiem sekcyjnym — połówki niosą dane sieci zerowej
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("ulamek", [0.25, 0.5, 0.8])
+@pytest.mark.parametrize("dane", ["KATALOG", "PROJEKTANT"])
+def test_wylacznik_sekcyjny_nie_gubi_pojemnosci_ani_drogi_zerowej(ulamek: float, dane: str) -> None:
+    """`insert_section_switch_sn` dzieli kabel pola 3 (15 km) — dawniej połówki gubiły B′
+    i R′0/X′0/B′0 (przenosiły wyłącznie R′/X′), więc za wyłącznikiem znikała pojemność kabla
+    (prąd pojemnościowy sieci malał) i dane zerowe. Wyrocznia: I_C sieci po podziale równe
+    I_C przed (ta sama długość kabla), połówki z danymi kabla źródłowego, punkt za
+    wyłącznikiem ma drogę prądu zerowego. Iloczyn: miejsce podziału {¼, ½, ⅘} × pochodzenie
+    danych kabla {katalog, wartości wpisane przez projektanta — `update_element_parameters`}
+    × dana {B′, R′0, X′0, B′0, katalog, obciążalność}. Kabel z danymi katalogu odtwarza
+    materializacja pozycji katalogu po operacji; wartości projektanta niesie WYŁĄCZNIE kopia
+    danych odcinka źródłowego (iniekcja: połówka bez kopii traci je)."""
+    from tests.reference_networks.scena_doziemienia import zbuduj_scene
+    from tests.reference_networks.sceny_zajetosci_pol import ok, op
+
+    enm = zbuduj_scene("IZOLOWANY")
+    kabel = next(g for g in enm["branches"] if g.get("name") == "Kabel pola 3")
+    if dane == "PROJEKTANT":
+        enm = ok(
+            op(
+                enm,
+                "update_element_parameters",
+                {
+                    "element_ref": kabel["ref_id"],
+                    "parameters": {
+                        "b_siemens_per_km": 1.3e-4,
+                        "x0_ohm_per_km": 0.42,
+                        "b0_siemens_per_km": 1.25e-4,
+                    },
+                },
+            )
+        )
+        kabel = next(g for g in enm["branches"] if g["ref_id"] == kabel["ref_id"])
+        assert (kabel["b_siemens_per_km"], kabel["x0_ohm_per_km"]) == (1.3e-4, 0.42)
+    model_przed = EnergyNetworkModel.model_validate(enm)
+    przed = oblicz_siec_doziemna(model_przed, map_enm_to_network_graph(model_przed), [])
+    po_enm = ok(
+        op(
+            enm,
+            "insert_section_switch_sn",
+            {
+                "segment_id": kabel["ref_id"],
+                "insert_at": {"mode": "RATIO", "value": ulamek},
+                "catalog_ref": "sw-ls-ogolny-prozniowy-24kv-630a",
+            },
+        )
+    )
+    polowki = [
+        g
+        for g in po_enm["branches"]
+        if g["type"] == "cable" and str(g.get("name", "")).startswith("Kabel pola 3")
+    ]
+    assert len(polowki) == 2
+    assert sum(g["length_km"] for g in polowki) == pytest.approx(kabel["length_km"], rel=1e-12)
+    for g in polowki:
+        for klucz in (
+            "b_siemens_per_km",
+            "r0_ohm_per_km",
+            "x0_ohm_per_km",
+            "b0_siemens_per_km",
+            "catalog_ref",
+            "rating",
+        ):
+            assert g.get(klucz) == kabel.get(klucz), klucz
+    model_po = EnergyNetworkModel.model_validate(po_enm)
+    po = oblicz_siec_doziemna(model_po, map_enm_to_network_graph(model_po), [])
+    (skladowa_przed,) = przed.wynik_min.skladowe
+    (skladowa_po,) = po.wynik_min.skladowe
+    assert skladowa_po.prad_pojemnosciowy_a == pytest.approx(
+        skladowa_przed.prad_pojemnosciowy_a, rel=1e-12
+    )
+    assert po.wynik_min.punkty_bez_drogi_zerowej == ()

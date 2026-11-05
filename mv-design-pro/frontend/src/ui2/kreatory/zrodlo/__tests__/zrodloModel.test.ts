@@ -190,6 +190,48 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(rezystor.grounding).toEqual({ type: 'resistor_grounded', r_ohm: 12 });
   });
 
+  it('dławik: R strat i prąd wymuszenia AWSC jadą do kontraktu tylko podane (iloczyn: R × AWSC)', () => {
+    // Karta EWALUATORY-ZIEMNOZWARCIOWE: `GroundingConfig.r_ohm` dławika (straty czynne)
+    // i `awsc_prad_wymuszenia_a` — klucz wyłącznie przy podanej wartości (zero fabrykacji).
+    for (const r of [null, 6] as const) {
+      for (const awsc of [null, 25] as const) {
+        const payload = zbudujPayloadZrodla(daneKompletne({
+          grounding_type: 'petersen_coil',
+          grounding_x_ohm: 80,
+          grounding_coil_r_ohm: r,
+          awsc_prad_wymuszenia_a: awsc,
+        }));
+        expect(payload.grounding).toEqual({
+          type: 'petersen_coil',
+          x_ohm: 80,
+          ...(r !== null ? { r_ohm: r } : {}),
+          ...(awsc !== null ? { awsc_prad_wymuszenia_a: awsc } : {}),
+        });
+      }
+    }
+    // Dane dławika nie przeciekają do innego sposobu pracy (rezystor, izolowany).
+    const rezystor = zbudujPayloadZrodla(daneKompletne({
+      grounding_type: 'resistor_grounded', grounding_r_ohm: 17.3, grounding_coil_r_ohm: 6, awsc_prad_wymuszenia_a: 25,
+    }));
+    expect(rezystor.grounding).toEqual({ type: 'resistor_grounded', r_ohm: 17.3 });
+    const izolowany = zbudujPayloadZrodla(daneKompletne({
+      grounding_type: 'isolated', grounding_coil_r_ohm: 6, awsc_prad_wymuszenia_a: 25,
+    }));
+    expect(izolowany.grounding).toEqual({ type: 'isolated' });
+  });
+
+  it('dławik: R strat i prąd AWSC ≤ 0 to błąd nazwany pola; puste — dopuszczalne', () => {
+    const pola = (r: number | null, awsc: number | null) => walidujFormularz(daneKompletne({
+      grounding_type: 'petersen_coil', grounding_x_ohm: 80, grounding_coil_r_ohm: r, awsc_prad_wymuszenia_a: awsc,
+    })).map((b) => b.field);
+    expect(pola(null, null)).not.toContain('grounding_coil_r_ohm');
+    expect(pola(null, null)).not.toContain('awsc_prad_wymuszenia_a');
+    expect(pola(0, null)).toContain('grounding_coil_r_ohm');
+    expect(pola(null, -5)).toContain('awsc_prad_wymuszenia_a');
+    expect(pola(6, 25)).not.toContain('grounding_coil_r_ohm');
+    expect(pola(6, 25)).not.toContain('awsc_prad_wymuszenia_a');
+  });
+
   it('niesie parametry zwarciowe SN (sk3_mva + rx_ratio) i składową zerową', () => {
     const payload = zbudujPayloadZrodla(daneKompletne({ sk3_mva: 310, rx_ratio: 0.12 }));
     expect(payload.sk3_mva).toBe(310);

@@ -518,6 +518,31 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     );
     expect(screen.queryByTestId('mvd-kreator-zrodlo-uziemienie-z-transformatora')).toBeNull();
   });
+
+  it('dławik: R strat i prąd wymuszenia AWSC wpisane natywną klawiaturą trafiają do grounding zapisu', async () => {
+    // Karta EWALUATORY-ZIEMNOZWARCIOWE: AWSC i straty dławika są wejściem obliczenia doziemnego
+    // (konduktancja zerowa pola uszkodzonego, czas działania po wymuszeniu).
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-rozdzielnia"]') as HTMLElement,
+    );
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-awsc')).toBeNull();
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-uziemienie'), 'petersen_coil');
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-uziemienie-ohm'), '80');
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-dlawik-r'), '6');
+    await user.type(screen.getByTestId('mvd-kreator-zrodlo-awsc'), '25');
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    expect(screen.getByTestId('mvd-kreator-zrodlo-przeglad-awsc')).toHaveTextContent('25 A');
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      grounding: { type: 'petersen_coil', x_ohm: 80, r_ohm: 6, awsc_prad_wymuszenia_a: 25 },
+    });
+  });
 });
 
 /**

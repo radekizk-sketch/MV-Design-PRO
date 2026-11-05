@@ -36,7 +36,6 @@ from enm.models import EnergyNetworkModel
 from network_model.catalog.bay_templates import BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17
 from network_model.solvers.doziemienie_sn import STAN_PO_AWSC, STAN_PRZED, WielkosciPola
 
-from tests.reference_networks.sceny_zajetosci_pol import ok, op
 from tests.reference_networks.scena_doziemienia import (
     NASTAWY_51N_ODEJSCIA,
     SPOSOBY_PRACY,
@@ -48,6 +47,7 @@ from tests.reference_networks.scena_doziemienia import (
     ustaw_funkcje,
     zbuduj_scene,
 )
+from tests.reference_networks.sceny_zajetosci_pol import ok, op
 
 FUNKCJE = ("51N", "50N", "67N", "Yo>", "Go>", "Bo>", "32N")
 _PRADOWE = {"51N", "50N", "67N"}
@@ -102,11 +102,13 @@ def _pole1(enm: dict[str, Any]) -> str:
 def _sonda(sposob: SposobPracy, kod: str) -> tuple[float, float, float]:
     """(min w strefie przy c_min, max w strefie przy c_min, max poza strefą przy c_max) wielkości
     decydującej funkcji pola 1 — z surowego wyniku solvera."""
-    enm = ustaw_funkcje(_scena_bazowa(sposob), _pole1(_scena_bazowa(sposob)), {kod: _nastawy(kod, 1.0, sposob)})
+    enm = ustaw_funkcje(
+        _scena_bazowa(sposob), _pole1(_scena_bazowa(sposob)), {kod: _nastawy(kod, 1.0, sposob)}
+    )
     model = EnergyNetworkModel.model_validate(enm)
     graph = map_enm_to_network_graph(model)
     funkcje = funkcje_ziemnozwarciowe(model, graph)
-    (f,) = [x for x in funkcje if x.kod == kod and x.urzadzenie_ref == _pole1(enm)]
+    (f,) = (x for x in funkcje if x.kod == kod and x.urzadzenie_ref == _pole1(enm))
     obliczenie = oblicz_siec_doziemna(model, graph, funkcje)
     w_strefie = [
         _wielkosc(kod, p.pole(f.klucz), sposob)
@@ -154,13 +156,15 @@ def test_czulosc_i_selektywnosc_wg_wyroczni_solvera(
     rekordy = _rekordy(ziemne, pole1, kod)
 
     czulosc = rekordy["CZULOSC"]
-    assert czulosc["status"] == ("SPELNIA" if min_w >= prog else "NIE_SPELNIA"), czulosc["zdanie_pl"]
+    assert czulosc["status"] == ("SPELNIA" if min_w >= prog else "NIE_SPELNIA"), czulosc[
+        "zdanie_pl"
+    ]
     assert czulosc["prog"] == pytest.approx(prog)
     assert czulosc["wartosc"] == pytest.approx(min_w, rel=1e-9, abs=1e-12)
     selektywnosc = rekordy["SELEKTYWNOSC"]
-    assert selektywnosc["status"] == ("SPELNIA" if max_poza < prog else "NIE_SPELNIA"), (
-        selektywnosc["zdanie_pl"]
-    )
+    assert selektywnosc["status"] == (
+        "SPELNIA" if max_poza < prog else "NIE_SPELNIA"
+    ), selektywnosc["zdanie_pl"]
     # Miejsce zwarcia: punkty rekordu czułości to strefa pola 1 — z linią sąsiednią (ST1).
     nazwy_strefy = {p["nazwa_pl"] for p in czulosc["punkty"]}
     assert "Zacisk końcowy Kabel odejścia ST1" in nazwy_strefy
@@ -269,7 +273,9 @@ def test_59n_bez_zrodla_3u0_to_odmowa_nazwana_z_akcja() -> None:
     enm = _scena_awsc_z_zawsc(zrodlo_u0_pomiarowego=False)
     ziemne = _ocena(enm)
     sterownik = _sterownik_pomiarowy(enm)
-    assert not [r for r in ziemne["oceny"] if r["urzadzenie_ref"] == sterownik and r["kod"] == "59N"]
+    assert not [
+        r for r in ziemne["oceny"] if r["urzadzenie_ref"] == sterownik and r["kod"] == "59N"
+    ]
     odmowy = [r for r in ziemne["odmowy"] if r["urzadzenie_ref"] == sterownik and r["kod"] == "59N"]
     assert len(odmowy) == 1
     assert odmowy[0]["status"] == "NIE_OCENIONO"
@@ -326,3 +332,15 @@ def test_brak_nastaw_funkcji_to_odmowa_nazwana() -> None:
 def test_rekord_pola_stanu_przed_dla_sieci_bez_awsc() -> None:
     ziemne = _ocena(scena_z_nastawami("KOMPENSOWANY"))
     assert {r.get("stan") for r in ziemne["oceny"] if r["kryterium"] == "CZULOSC"} == {STAN_PRZED}
+
+
+def test_ewaluator_obejmuje_kazda_funkcje_ziemnozwarciowa_rejestru() -> None:
+    """Predykat parami: rejestr funkcji EAZ kieruje funkcję do oceny ziemnozwarciowej
+    (``ocena == "ZIEMNOZWARCIOWA"`` — ocena nadprądowa fazowa odsyła ją tu zdaniem
+    `powod_nieoceniania`), a ewaluator ocenia swoją listę. Obie listy MUSZĄ być równe — funkcja
+    dopisana do rejestru bez ewaluatora byłaby odesłana do sekcji, w której jej nie ma."""
+    from application.analyses.protection.ocena_ziemnozwarciowa import FUNKCJE_ZIEMNOZWARCIOWE
+    from enm.zabezpieczenie import FUNKCJE_EAZ
+
+    z_rejestru = {kod for kod, wpis in FUNKCJE_EAZ.items() if wpis.ocena == "ZIEMNOZWARCIOWA"}
+    assert set(FUNKCJE_ZIEMNOZWARCIOWE) == z_rejestru

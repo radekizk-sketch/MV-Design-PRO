@@ -488,6 +488,10 @@ def _branch_has_materialized_values(
             and not wartosc_projektanta(getattr(branch, key), existing.get(key))
         ):
             return False
+    # Dane materiałowe i cieplne gałęzi (para temperatur, izolacja, przekrój…) — predykat parą
+    # z zapisem w `_apply_materialized_branch_values`.
+    if not _pola_tabliczki_aktualne(branch, materialized, existing):
+        return False
     return bool(existing)
 
 
@@ -512,6 +516,87 @@ def _prad_tabliczki(params: dict[str, Any]) -> float | None:
         else params.get("i_max_a")
     )
     return None if prad is None else float(prad)
+
+
+#: Dane materiałowe i cieplne gałęzi przepisywane z tabliczki pod TĄ SAMĄ nazwą (liczby).
+_POLA_TABLICZKI_LICZBOWE: tuple[str, ...] = (
+    "cross_section_mm2",
+    # F-K1 faza 3: dane cieplne ŻYŁY FAZOWEJ (IEC 60949).
+    "jth_1s_a_per_mm2",
+    "ith_1s_a",
+)
+#: Jw. — dane żyły powrotnej (tylko kabel; P0.6 G-05: reaktancja żyły powrotnej PE/PEN).
+_POLA_TABLICZKI_LICZBOWE_KABLA: tuple[str, ...] = (
+    "return_conductor_cross_section_mm2",
+    "return_conductor_r_ohm_per_km_20c",
+    "return_conductor_x_ohm_per_km",
+    "return_conductor_jth_1s_a_per_mm2",
+    "return_conductor_ith_1s_a",
+)
+
+
+def pola_tabliczki_galezi(
+    materialized: dict[str, Any], *, pola_kabla: bool
+) -> dict[str, float | int | str]:
+    """Dane materiałowe i cieplne gałęzi wynikające z tabliczki katalogu.
+
+    JEDNO źródło dla obu dróg materializacji gałęzi: operacji domenowych
+    (``domain_operations._apply_materialized_branch_fields``) i uzupełnienia na granicy ENM
+    (``complete_branch_catalog_materialization``). Karta EWALUATORY-ZIEMNOZWARCIOWE: uzupełnienie
+    przepisywało wyłącznie część pól — gałąź uzupełniona na granicy (np. połówka odcinka po
+    wstawieniu łącznika sekcyjnego przed tą kartą) traciła parę temperatur, izolację i odniesienie
+    danych cieplnych, więc zwarcie minimalne liczyło jej rezystancję w innej temperaturze niż
+    identyczny kabel zmaterializowany operacją, a linia napowietrzna traciła przekrój, materiał
+    i wytrzymałość cieplną żyły. ``pola_kabla`` — dane żyły powrotnej, liczba żył i izolacja
+    (pola wyłącznie kabla; linia ich nie ma).
+    """
+    pola: dict[str, float | int | str] = {}
+    klucze = _POLA_TABLICZKI_LICZBOWE + (_POLA_TABLICZKI_LICZBOWE_KABLA if pola_kabla else ())
+    for key in klucze:
+        value = materialized.get(key)
+        if value is not None:
+            pola[key] = float(value)
+    if pola_kabla:
+        number_of_cores = materialized.get("number_of_cores")
+        if number_of_cores is not None:
+            pola["number_of_cores"] = int(number_of_cores)
+    for key in ("conductor_material", *(("return_conductor_material",) if pola_kabla else ())):
+        value = materialized.get(key)
+        if isinstance(value, str) and value.strip():
+            pola[key] = value.strip().upper()
+    # Para temperatur uzasadniająca k (F-K1 faza 6) i temperaturę rezystancji zwarcia minimalnego.
+    temperatura_robocza = materialized.get("max_temperature_c")
+    if temperatura_robocza is not None:
+        pola["operating_temperature_c"] = float(temperatura_robocza)
+    temperatura_zwarciowa = materialized.get("short_circuit_temperature_c")
+    if temperatura_zwarciowa is not None:
+        pola["short_circuit_temperature_c"] = float(temperatura_zwarciowa)
+    if pola_kabla:
+        izolacja = materialized.get("insulation_type")
+        if isinstance(izolacja, str) and izolacja.strip():
+            pola["insulation"] = izolacja.strip().upper()
+    # F-K1 faza 7: odniesienie normowe danych cieplnych — pierwszeństwo ma odniesienie
+    # DEDYKOWANE cieplu (linie napowietrzne), potem metadana jakości całego rekordu (kable).
+    for klucz_zrodla in ("thermal_source_reference", "source_reference"):
+        zrodlo = materialized.get(klucz_zrodla)
+        if isinstance(zrodlo, str) and zrodlo.strip():
+            pola["thermal_source_ref"] = zrodlo.strip()
+            break
+    return pola
+
+
+def _pola_tabliczki_aktualne(
+    branch: Cable | OverheadLine, materialized: dict[str, Any], existing: dict[str, Any]
+) -> bool:
+    """Czy dane materiałowe i cieplne gałęzi równają się tabliczce (albo są wartością
+    projektanta). TEN SAM predykat co zapis w `_apply_materialized_branch_values`."""
+    pola_kabla = isinstance(branch, Cable)
+    poprzednie = pola_tabliczki_galezi(existing, pola_kabla=pola_kabla)
+    for key, expected in pola_tabliczki_galezi(materialized, pola_kabla=pola_kabla).items():
+        actual = getattr(branch, key, None)
+        if actual != expected and not wartosc_projektanta(actual, poprzednie.get(key)):
+            return False
+    return True
 
 
 def _apply_materialized_branch_values(
@@ -568,32 +653,14 @@ def _apply_materialized_branch_values(
     ):
         branch.rating = BranchRating(in_a=float(rated_current_a))
 
-    if isinstance(branch, Cable):
-        for key in (
-            "cross_section_mm2",
-            "return_conductor_cross_section_mm2",
-            "return_conductor_r_ohm_per_km_20c",
-            # Karta P0.6 (G-05): reaktancja zyly powrotnej — ten sam kanal
-            # zastosowania materializacji co rezystancja powyzej.
-            "return_conductor_x_ohm_per_km",
-            "return_conductor_jth_1s_a_per_mm2",
-            "return_conductor_ith_1s_a",
-            # F-K1 faza 3: dane cieplne ZYLY FAZOWEJ.
-            "jth_1s_a_per_mm2",
-            "ith_1s_a",
-        ):
-            value = materialized.get(key)
-            if value is not None and not _projektanta(key):
-                setattr(branch, key, float(value))
-
-        number_of_cores = materialized.get("number_of_cores")
-        if number_of_cores is not None and not _projektanta("number_of_cores"):
-            branch.number_of_cores = int(number_of_cores)
-
-        for key in ("conductor_material", "return_conductor_material"):
-            value = materialized.get(key)
-            if isinstance(value, str) and value.strip() and not _projektanta(key):
-                setattr(branch, key, value.strip().upper())
+    # Dane materiałowe i cieplne — ta sama tabliczka i ten sam zapis co operacje domenowe
+    # (`pola_tabliczki_galezi`); wartość projektanta (różna od poprzedniej tabliczki) zostaje —
+    # ten sam predykat co `_pola_tabliczki_aktualne` (wejście uzupełnienia).
+    pola_kabla = isinstance(branch, Cable)
+    poprzednie = pola_tabliczki_galezi(tabliczka, pola_kabla=pola_kabla)
+    for key, value in pola_tabliczki_galezi(materialized, pola_kabla=pola_kabla).items():
+        if not wartosc_projektanta(getattr(branch, key, None), poprzednie.get(key)):
+            setattr(branch, key, value)
 
 
 def complete_station_loads_from_nn_feeders(

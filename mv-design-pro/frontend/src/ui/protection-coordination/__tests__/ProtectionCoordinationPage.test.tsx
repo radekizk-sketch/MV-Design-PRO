@@ -13,7 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../app-state/store';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
@@ -21,6 +22,7 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { ProtectionCoordinationPage } from '../ProtectionCoordinationPage';
 import type { CoordinationResult } from '../types';
 import { LABELS } from '../types';
+import { rekordyZiemnozwarciowe } from '../../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 import wynikSceny from '../../../harness-fixtures/generated/koordynacja_scena_wynik.json';
 
 const fetchSC = vi.fn();
@@ -279,5 +281,36 @@ describe('wynik i odmowy', () => {
     for (const c of WYNIK.sensitivity_checks) {
       expect(czulosc).toHaveTextContent(c.notes_pl);
     }
+  });
+
+  // Karta EWALUATORY-ZIEMNOZWARCIOWE: zakładka zwarć doziemnych czyta pole `ziemnozwarciowe`
+  // PRAWDZIWEGO wyniku koordynacji (ten sam ewaluator co bieg oceny zabezpieczeń). Klik natywny.
+  it('zakładka zwarć doziemnych: liczba w zakładce, wiersz każdego rekordu, odmowa prowadzi do nastaw', async () => {
+    const user = userEvent.setup();
+    zBiegami();
+    await uruchom();
+    const rekordy = rekordyZiemnozwarciowe(WYNIK.ziemnozwarciowe);
+    expect(rekordy.length).toBeGreaterThan(0);
+    const zakladka = await screen.findByTestId('tab-ziemne');
+    expect(zakladka).toHaveTextContent(LABELS.tabs.ziemne);
+    expect(zakladka).toHaveTextContent(String(rekordy.length));
+    await user.click(zakladka);
+    const tabela = screen.getByTestId('coordination-ziemne');
+    const wiersze = within(tabela).getAllByTestId('coordination-ziemne-wiersz');
+    expect(wiersze.map((w) => w.dataset.kryterium)).toEqual(rekordy.map((r) => r.kryterium));
+    wiersze.forEach((w, i) => expect(w).toHaveTextContent(rekordy[i].zdanie_pl));
+    const uzupelnij = within(tabela).getAllByTestId('coordination-ziemne-uzupelnij');
+    expect(uzupelnij.length).toBe(rekordy.filter((r) => (r.braki ?? []).length > 0).length);
+    await user.click(uzupelnij[0]);
+    expect(openRouteSurface).toHaveBeenCalledWith('E-27');
+  });
+
+  it('wynik bez pola ziemnozwarciowego (sieć bez funkcji doziemnych) — uczciwy stan zerowy zakładki', async () => {
+    const user = userEvent.setup();
+    zBiegami();
+    getResult.mockResolvedValue({ ...WYNIK, ziemnozwarciowe: undefined });
+    await uruchom();
+    await user.click(await screen.findByTestId('tab-ziemne'));
+    expect(screen.getByTestId('coordination-ziemne-brak')).toBeInTheDocument();
   });
 });
