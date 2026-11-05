@@ -2118,7 +2118,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wytrzymalosci aparatury zapisanej konfiguracji (`device_withstand`, `i_th_1s_ka`,
     # `i_peak_calculated_ka`, `i_thermal_calculated_ka`, `t_clearing_s`). Dane rozszerzen
     # stacji solver czyta wylacznie z modelu sieci. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4481." in wyjscie, wyjscie
+    # Ta sama karta, próg 87T z profilu operatora (2026-11-05): 4481 -> 4484 — POMIAR
+    # `contract_fields()` na `b7413792c` (`git archive`: 4481) i na drzewie karty (4484).
+    # Roznica zbiorow +3, -0: `prog_87t_sn_transformatora` (`NcRfgProfile` — rekord limitu
+    # z podstawa operatora), `prog_87t` i `profil_operatora_pl` (`WejscieGotowosciDer` — prog
+    # i nazwa operatora profilu wytworcy dla reguly 87T). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4484." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

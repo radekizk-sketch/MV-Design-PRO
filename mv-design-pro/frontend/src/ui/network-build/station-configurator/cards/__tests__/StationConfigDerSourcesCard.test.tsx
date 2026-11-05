@@ -5,7 +5,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { StationConfigDerSourcesCard } from '../StationConfigDerSourcesCard';
+import { KOLUMNY_UKLADOW_OZE, StationConfigDerSourcesCard } from '../StationConfigDerSourcesCard';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -134,6 +134,45 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
     expect(screen.getByTestId('der-block-transformer-der_1').textContent).toContain(
       'TR blokowy 1250 kVA Dyn11',
     );
+  });
+
+  it('widok wierszowy: każde pole wiersza niesie etykietę z tego samego źródła co nagłówek', () => {
+    // Poniżej 720 px kontenera (`zrodlaOze.css`) nagłówek tabeli znika, a wiersz staje się
+    // kartą — etykieta pola MUSI być tą samą nazwą co kolumna (jedno źródło
+    // `KOLUMNY_UKLADOW_OZE`), a akcje zostają w wierszu (zapytanie CSS nie działa w jsdom,
+    // układ przy szerokości kontenera mierzy test e2e układu konfiguratora).
+    render(
+      <StationConfigDerSourcesCard
+        stationId="station_1"
+        ders={[makeDer({ nominal_power_kw: 1000 })]}
+        onOpenDer={vi.fn()}
+        onShowOnSld={vi.fn()}
+        onDetachDer={vi.fn()}
+      />,
+    );
+    const naglowki = Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent);
+    expect(naglowki).toEqual(Object.values(KOLUMNY_UKLADOW_OZE));
+    const komorki = Array.from(screen.getByTestId('der-row-der_1').querySelectorAll('td'));
+    expect(komorki).toHaveLength(naglowki.length);
+    const etykiety = komorki.map(
+      (td) => td.querySelector('.mvd-zrodla-oze__etykieta')?.textContent ?? null,
+    );
+    // Nazwa jest nagłówkiem karty, akcje — jej ostatnim wierszem: bez etykiety pola.
+    expect(etykiety).toEqual([
+      null,
+      KOLUMNY_UKLADOW_OZE.rodzaj,
+      KOLUMNY_UKLADOW_OZE.punkt,
+      KOLUMNY_UKLADOW_OZE.moc,
+      KOLUMNY_UKLADOW_OZE.napiecie,
+      KOLUMNY_UKLADOW_OZE.profil,
+      KOLUMNY_UKLADOW_OZE.konfiguracja,
+      null,
+    ]);
+    expect(screen.getByTestId('der-power-der_1')).toHaveTextContent('1000');
+    const akcje = screen.getByTestId('der-actions-der_1');
+    for (const id of ['der-action-open-der_1', 'der-action-sld-der_1', 'der-action-detach-der_1']) {
+      expect(akcje.contains(screen.getByTestId(id))).toBe(true);
+    }
   });
 
   it('pokazuje liczniki PV/BESS/FW w nagłówku', () => {

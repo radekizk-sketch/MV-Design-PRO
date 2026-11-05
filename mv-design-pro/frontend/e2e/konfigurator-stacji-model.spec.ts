@@ -40,6 +40,28 @@ const MOTYWY = [
   { klucz: 'ciemny', theme: 'dark_scada' as const },
   { klucz: 'jasny', theme: 'light_technical' as const },
 ] as const;
+/**
+ * Szerokości inspektora: domyślna (360 px), granice przeciągania (340 i 420 px) i tryb
+ * szeroki (560 px) — `ui2/shell/useShellStore.ts` (RIGHT_MIN/RIGHT_MAX/RIGHT_WIDE).
+ * Ustawiane natywnie: klawiszami uchwytu inspektora i przyciskiem trybu szerokiego.
+ */
+const SZEROKOSCI_INSPEKTORA = ['domyslna', 'min', 'max', 'szeroki'] as const;
+type SzerokoscInspektora = (typeof SZEROKOSCI_INSPEKTORA)[number];
+
+async function ustawSzerokoscInspektora(page: Page, szerokosc: SzerokoscInspektora): Promise<void> {
+  if (szerokosc === 'domyslna') return;
+  if (szerokosc === 'szeroki') {
+    await page.getByTestId('mvd-inspector-szeroki').click();
+    await expect(page.getByTestId('mvd-inspector')).toHaveAttribute('data-szeroki', 'true');
+    return;
+  }
+  const uchwyt = page.getByTestId('mvd-handle-right');
+  await uchwyt.focus();
+  // Krok klawisza 16 px; pięć naciśnięć dociąga do granicy przedziału 340–420 px.
+  for (let i = 0; i < 5; i += 1) {
+    await uchwyt.press(szerokosc === 'min' ? 'ArrowRight' : 'ArrowLeft');
+  }
+}
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
@@ -199,6 +221,9 @@ async function otworzKonfigurator(
   okno: { width: number; height: number } = OKNA[0],
 ): Promise<void> {
   await page.addInitScript((dane) => {
+    // Układ powłoki (szerokość inspektora) zawsze domyślny na wejściu — test układu ustawia
+    // szerokość natywnie po wejściu (`ustawSzerokoscInspektora`).
+    localStorage.removeItem('mvd-shell-ui-local');
     localStorage.setItem(
       'mv-design-app-state',
       JSON.stringify({
@@ -421,7 +446,7 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
     page,
     request,
   }) => {
-    test.setTimeout(420000);
+    test.setTimeout(1500000);
     mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
     const k = await zbudujProjekt(request, 'E2E Układ konfiguratora');
     const szynaNn = k.migawka.buses.find(
@@ -448,80 +473,117 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
 
     for (const okno of OKNA) {
       for (const motyw of MOTYWY) {
-        await otworzKonfigurator(page, k, okno);
-        await ustawMotyw(page, motyw.theme);
-        await przejdzDoKarty(page, 'der-sources');
-        const wiersz = page.getByTestId(`der-row-${magazyn!.ref_id}`);
-        await expect(wiersz).toBeVisible({ timeout: 20000 });
-        // Kadr PRZED asercjami: przy regresji układu (asercje miękkie niżej) bieg i tak
-        // zostawia komplet zrzutów okno × motyw do porównania przed/po (B-02).
-        await wiersz.scrollIntoViewIfNeeded();
-        await page.screenshot({
-          path: resolve(
-            KATALOG_ZRZUTOW,
-            `konfigurator-oze-${okno.width}x${okno.height}-${motyw.klucz}.png`,
-          ),
-        });
+        for (const szerokosc of SZEROKOSCI_INSPEKTORA) {
+          await otworzKonfigurator(page, k, okno);
+          await ustawMotyw(page, motyw.theme);
+          await ustawSzerokoscInspektora(page, szerokosc);
+          await przejdzDoKarty(page, 'der-sources');
+          const wiersz = page.getByTestId(`der-row-${magazyn!.ref_id}`);
+          await expect(wiersz).toBeVisible({ timeout: 20000 });
+          const kadr = `${okno.width}×${okno.height} ${motyw.klucz} inspektor ${szerokosc}`;
+          // Kadr PRZED asercjami: przy regresji układu (asercje miękkie niżej) bieg i tak
+          // zostawia komplet zrzutów okno × motyw × szerokość do porównania przed/po (B-02).
+          await wiersz.scrollIntoViewIfNeeded();
+          await page.screenshot({
+            path: resolve(
+              KATALOG_ZRZUTOW,
+              szerokosc === 'domyslna'
+                ? `konfigurator-oze-${okno.width}x${okno.height}-${motyw.klucz}.png`
+                : `konfigurator-oze-${okno.width}x${okno.height}-${motyw.klucz}-inspektor-${szerokosc}.png`,
+            ),
+          });
 
-        // (1) Każdy obszar przewijania inspektora, który faktycznie przewija treść w pionie,
-        //     kończy się nad paskiem stanu (dolna krawędź ≤ górnej krawędzi paska).
-        const pomiar = await page.evaluate(() => {
-          const pasek = document.querySelector('[data-testid="mvd-statusbar"]')
-            ?? document.querySelector('.mvd-statusbar');
-          const inspektor = document.querySelector('[data-testid="mvd-inspector"]');
-          if (!pasek || !inspektor) return { pasekGora: NaN, obszary: [] as { opis: string; dol: number }[] };
-          const obszary = [inspektor, ...Array.from(inspektor.querySelectorAll('*'))]
-            .filter((el) => {
-              const styl = getComputedStyle(el);
-              const przewijalny = styl.overflowY === 'auto' || styl.overflowY === 'scroll';
-              // Obszary inspektora mierzone zawsze; pozostałe — gdy faktycznie przewijają treść.
-              const staly = ['mvd-inspector-tresc', 'inspektor-panel-nad-oknem'].includes(
-                el.getAttribute('data-testid') ?? '',
-              );
-              return przewijalny && (staly || el.scrollHeight > el.clientHeight + 1);
-            })
-            .map((el) => ({
-              opis: `${el.tagName}#${el.getAttribute('data-testid') ?? ''}.${(el.getAttribute('class') ?? '').slice(0, 60)}`,
-              dol: el.getBoundingClientRect().bottom,
-            }));
-          return { pasekGora: pasek.getBoundingClientRect().top, obszary };
-        });
-        expect.soft(Number.isFinite(pomiar.pasekGora), 'pasek stanu i inspektor na ekranie').toBe(true);
-        expect.soft(
-          pomiar.obszary.some((o) => o.opis.includes('#mvd-inspector-tresc')),
-          'obszar przewijania inspektora zmierzony',
-        ).toBe(true);
-        for (const obszar of pomiar.obszary) {
+          // (0) Tabela układów bez przewijania w poziomie: ani tabela, ani obszar treści
+          //     inspektora nie są szersze od swojego kadru; kolumna mocy i akcji w całości
+          //     w kadrze tabeli (bez przewinięcia poziomego).
+          const poziom = await page.evaluate((ref) => {
+            const tabela = document.querySelector('[data-testid="der-sources-table"]') as HTMLElement | null;
+            const tresc = document.querySelector('[data-testid="mvd-inspector-tresc"]') as HTMLElement | null;
+            const inspektor = document.querySelector('[data-testid="mvd-inspector"]') as HTMLElement | null;
+            const moc = document.querySelector(`[data-testid="der-power-${ref}"]`);
+            const akcje = document.querySelector(`[data-testid="der-actions-${ref}"]`);
+            if (!tabela || !tresc || !inspektor || !moc || !akcje) return null;
+            const kadrTabeli = tabela.getBoundingClientRect();
+            const wKadrze = (el: Element) => {
+              const r = el.getBoundingClientRect();
+              return r.width > 0 && r.left >= kadrTabeli.left - 0.5 && r.right <= kadrTabeli.right + 0.5;
+            };
+            return {
+              szerokoscInspektora: Math.round(inspektor.getBoundingClientRect().width),
+              tabelaNadmiar: tabela.scrollWidth - tabela.clientWidth,
+              trescNadmiar: tresc.scrollWidth - tresc.clientWidth,
+              mocWKadrze: wKadrze(moc),
+              akcjeWKadrze: wKadrze(akcje),
+            };
+          }, magazyn!.ref_id);
+          expect.soft(poziom, `${kadr}: tabela, moc i akcje na ekranie`).not.toBeNull();
+          if (poziom) {
+            expect.soft(poziom.tabelaNadmiar, `${kadr} (${poziom.szerokoscInspektora} px): tabela bez przewijania w poziomie`).toBeLessThanOrEqual(1);
+            expect.soft(poziom.trescNadmiar, `${kadr} (${poziom.szerokoscInspektora} px): inspektor bez przewijania w poziomie`).toBeLessThanOrEqual(1);
+            expect.soft(poziom.mocWKadrze, `${kadr} (${poziom.szerokoscInspektora} px): kolumna mocy w kadrze`).toBe(true);
+            expect.soft(poziom.akcjeWKadrze, `${kadr} (${poziom.szerokoscInspektora} px): kolumna akcji w kadrze`).toBe(true);
+          }
+
+          // (1) Każdy obszar przewijania inspektora, który faktycznie przewija treść w pionie,
+          //     kończy się nad paskiem stanu (dolna krawędź ≤ górnej krawędzi paska).
+          const pomiar = await page.evaluate(() => {
+            const pasek = document.querySelector('[data-testid="mvd-statusbar"]')
+              ?? document.querySelector('.mvd-statusbar');
+            const inspektor = document.querySelector('[data-testid="mvd-inspector"]');
+            if (!pasek || !inspektor) return { pasekGora: NaN, obszary: [] as { opis: string; dol: number }[] };
+            const obszary = [inspektor, ...Array.from(inspektor.querySelectorAll('*'))]
+              .filter((el) => {
+                const styl = getComputedStyle(el);
+                const przewijalny = styl.overflowY === 'auto' || styl.overflowY === 'scroll';
+                // Obszary inspektora mierzone zawsze; pozostałe — gdy faktycznie przewijają treść.
+                const staly = ['mvd-inspector-tresc', 'inspektor-panel-nad-oknem'].includes(
+                  el.getAttribute('data-testid') ?? '',
+                );
+                return przewijalny && (staly || el.scrollHeight > el.clientHeight + 1);
+              })
+              .map((el) => ({
+                opis: `${el.tagName}#${el.getAttribute('data-testid') ?? ''}.${(el.getAttribute('class') ?? '').slice(0, 60)}`,
+                dol: el.getBoundingClientRect().bottom,
+              }));
+            return { pasekGora: pasek.getBoundingClientRect().top, obszary };
+          });
+          expect.soft(Number.isFinite(pomiar.pasekGora), 'pasek stanu i inspektor na ekranie').toBe(true);
           expect.soft(
-            obszar.dol,
-            `${okno.width}×${okno.height} ${motyw.klucz}: ${obszar.opis} kończy się pod paskiem stanu`,
-          ).toBeLessThanOrEqual(pomiar.pasekGora + 0.5);
-        }
+            pomiar.obszary.some((o) => o.opis.includes('#mvd-inspector-tresc')),
+            'obszar przewijania inspektora zmierzony',
+          ).toBe(true);
+          for (const obszar of pomiar.obszary) {
+            expect.soft(
+              obszar.dol,
+              `${okno.width}×${okno.height} ${motyw.klucz}: ${obszar.opis} kończy się pod paskiem stanu`,
+            ).toBeLessThanOrEqual(pomiar.pasekGora + 0.5);
+          }
 
-        // (2) Akcja wiersza po przewinięciu: cała w inspektorze i trafiana natywnym klikiem
-        //     (punkt środka należy do przycisku, nie do paska stanu ani sąsiedniej warstwy).
-        const akcja = page.getByTestId(`der-action-detach-${magazyn!.ref_id}`);
-        await akcja.scrollIntoViewIfNeeded();
-        const trafienie = await akcja.evaluate((el) => {
-          const r = el.getBoundingClientRect();
-          const ins = document.querySelector('[data-testid="mvd-inspector"]')!.getBoundingClientRect();
-          const cel = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-          return {
-            wInspektorze: r.left >= ins.left && r.right <= ins.right && r.top >= ins.top && r.bottom <= ins.bottom,
-            szerokosc: r.width,
-            trafia: Boolean(cel && (cel === el || el.contains(cel))),
-          };
-        });
-        expect.soft(trafienie.szerokosc, 'akcja wiersza ma szerokość').toBeGreaterThan(0);
-        expect.soft(trafienie.wInspektorze, `${okno.width}×${okno.height}: akcja wiersza w inspektorze`).toBe(true);
-        expect.soft(trafienie.trafia, `${okno.width}×${okno.height}: środek akcji trafia w przycisk`).toBe(true);
-        // Natywny klik tylko, gdy punkt środka trafia w przycisk — inaczej klik zawisłby na
-        // limicie czasu, a naruszenie jest już zapisane asercją miękką wyżej.
-        if (trafienie.trafia) {
-          await akcja.click();
-          await expect(page.getByTestId('der-detach-confirm')).toBeVisible();
-          await page.getByTestId('der-detach-cancel').click();
-          await expect(page.getByTestId('der-detach-confirm')).toHaveCount(0);
+          // (2) Akcja wiersza po przewinięciu: cała w inspektorze i trafiana natywnym klikiem
+          //     (punkt środka należy do przycisku, nie do paska stanu ani sąsiedniej warstwy).
+          const akcja = page.getByTestId(`der-action-detach-${magazyn!.ref_id}`);
+          await akcja.scrollIntoViewIfNeeded();
+          const trafienie = await akcja.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const ins = document.querySelector('[data-testid="mvd-inspector"]')!.getBoundingClientRect();
+            const cel = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return {
+              wInspektorze: r.left >= ins.left && r.right <= ins.right && r.top >= ins.top && r.bottom <= ins.bottom,
+              szerokosc: r.width,
+              trafia: Boolean(cel && (cel === el || el.contains(cel))),
+            };
+          });
+          expect.soft(trafienie.szerokosc, 'akcja wiersza ma szerokość').toBeGreaterThan(0);
+          expect.soft(trafienie.wInspektorze, `${okno.width}×${okno.height}: akcja wiersza w inspektorze`).toBe(true);
+          expect.soft(trafienie.trafia, `${okno.width}×${okno.height}: środek akcji trafia w przycisk`).toBe(true);
+          // Natywny klik tylko, gdy punkt środka trafia w przycisk — inaczej klik zawisłby na
+          // limicie czasu, a naruszenie jest już zapisane asercją miękką wyżej.
+          if (trafienie.trafia) {
+            await akcja.click();
+            await expect(page.getByTestId('der-detach-confirm')).toBeVisible();
+            await page.getByTestId('der-detach-cancel').click();
+            await expect(page.getByTestId('der-detach-confirm')).toHaveCount(0);
+          }
         }
       }
     }

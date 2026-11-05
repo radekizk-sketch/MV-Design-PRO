@@ -129,22 +129,16 @@ def katalog(tmp_path: Path) -> Path:
 def _edytuj(sciezka: Path, zmiana: Callable[[dict[str, Any]], None]) -> None:
     dane = yaml.safe_load(sciezka.read_text(encoding="utf-8"))
     zmiana(dane)
-    sciezka.write_text(
-        yaml.safe_dump(dane, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )
+    sciezka.write_text(yaml.safe_dump(dane, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
 def _zloz(katalog: Path, operator_id: str = "pse") -> NcRfgProfile:
     """Złożenie profilu z kopii katalogu — ta sama funkcja, co profil produkcyjny."""
-    return modul_loadera._zloz_profil(
-        operator_id, katalog / "warstwy", katalog / "operatorzy"
-    )
+    return modul_loadera._zloz_profil(operator_id, katalog / "warstwy", katalog / "operatorzy")
 
 
 def _surowe(plik: str) -> dict[str, Any]:
-    dane: dict[str, Any] = yaml.safe_load(
-        (_KATALOG_PROFILU / plik).read_text(encoding="utf-8")
-    )
+    dane: dict[str, Any] = yaml.safe_load((_KATALOG_PROFILU / plik).read_text(encoding="utf-8"))
     return dane
 
 
@@ -154,9 +148,7 @@ def _podstawy(wezel: Any, sciezka: str = "") -> Iterator[tuple[str, dict[str, An
         if "rodzaj" in wezel:
             yield sciezka, wezel
         for klucz, wartosc in wezel.items():
-            yield from _podstawy(
-                wartosc, f"{sciezka}.{klucz}" if sciezka else str(klucz)
-            )
+            yield from _podstawy(wartosc, f"{sciezka}.{klucz}" if sciezka else str(klucz))
     elif isinstance(wezel, list | tuple):
         for indeks, wartosc in enumerate(wezel):
             yield from _podstawy(wartosc, f"{sciezka}.{indeks}")
@@ -168,9 +160,7 @@ def _dokument(status: str, *, wydanie: str | None = "1") -> DokumentWarstwy:
     )
 
 
-def _podstawa_osd(
-    status: StatusZrodla, jednostka: str | None = "pkt 1"
-) -> PodstawaWymagania:
+def _podstawa_osd(status: StatusZrodla, jednostka: str | None = "pkt 1") -> PodstawaWymagania:
     return PodstawaWymagania(
         rodzaj="OSD",
         dokument="IRiESD testowa",
@@ -202,27 +192,18 @@ class TestWarstwyIPodstawy:
         assert not hasattr(modul_loadera, "ZrodloWartosci")
         assert get_args(StatusZrodla) == get_args(StanZrodla)
         for pole in ("zrodlo", "pokrycie_zrodlo"):
-            assert (
-                WymaganieRegulacyjne.model_fields[pole].annotation is PodstawaWymagania
-            )
-        assert (
-            NcRfgProfile.model_fields["klasyfikacja_zrodlo"].annotation
-            is PodstawaWymagania
-        )
+            assert WymaganieRegulacyjne.model_fields[pole].annotation is PodstawaWymagania
+        assert NcRfgProfile.model_fields["klasyfikacja_zrodlo"].annotation is PodstawaWymagania
 
     @pytest.mark.parametrize("operator_id", OPERATORZY)
-    def test_kazda_podstawa_ma_dokument_i_rodzaj_zgodny_z_warstwa(
-        self, operator_id: str
-    ) -> None:
+    def test_kazda_podstawa_ma_dokument_i_rodzaj_zgodny_z_warstwa(self, operator_id: str) -> None:
         """Każde wystąpienie `rodzaj` w zrzucie profilu: niepusty dokument, a dokument należy
         do warstwy, której rodzaj jest równy `rodzaj` (magazyny i OSD dzielą rodzaj OSD).
         """
         profil = load_nc_rfg_profile(operator_id)
         tytuly: dict[str, set[str]] = {}
         for warstwa in profil.warstwy:
-            tytuly.setdefault(RODZAJ_OCZEKIWANY[warstwa.warstwa], set()).add(
-                warstwa.tytul
-            )
+            tytuly.setdefault(RODZAJ_OCZEKIWANY[warstwa.warstwa], set()).add(warstwa.tytul)
         podstawy = list(_podstawy(profil.model_dump()))
         assert len(podstawy) >= 2 * len(profil.wymagania)
         sciezki = {sciezka for sciezka, _ in podstawy}
@@ -286,9 +267,7 @@ class TestWarstwyIPodstawy:
             "operatorzy/pse.yaml",
         ],
     )
-    def test_warstwa_bez_sekcji_dokument_odrzucona(
-        self, katalog: Path, plik: str
-    ) -> None:
+    def test_warstwa_bez_sekcji_dokument_odrzucona(self, katalog: Path, plik: str) -> None:
         _edytuj(katalog / plik, lambda d: d.pop("dokument"))
         with pytest.raises(ValueError, match="dokument"):
             _zloz(katalog)
@@ -347,12 +326,8 @@ class TestStanZrodla:
     def test_najslabszy_stan(self, stany: list[StatusZrodla], oczekiwany: str) -> None:
         assert najslabszy_stan(stany) == oczekiwany
 
-    @pytest.mark.parametrize(
-        "stan_dokumentu", ["ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE"]
-    )
-    @pytest.mark.parametrize(
-        "stan_grupy", [None, "ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE"]
-    )
+    @pytest.mark.parametrize("stan_dokumentu", ["ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE"])
+    @pytest.mark.parametrize("stan_grupy", [None, "ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE"])
     def test_stan_podstawy_to_najslabszy_z_grupy_i_dokumentu(
         self, stan_dokumentu: StatusZrodla, stan_grupy: StatusZrodla | None
     ) -> None:
@@ -366,9 +341,7 @@ class TestStanZrodla:
         skladniki = [stan_dokumentu] + ([stan_grupy] if stan_grupy else [])
         assert podstawa.status == max(skladniki, key=_RANGA_STANU.__getitem__)
 
-    @pytest.mark.parametrize(
-        "warstwa", [w for w in KOLEJNOSC_OCZEKIWANA if w != "NIEUSTALONA"]
-    )
+    @pytest.mark.parametrize("warstwa", [w for w in KOLEJNOSC_OCZEKIWANA if w != "NIEUSTALONA"])
     @pytest.mark.parametrize("stan_dokumentu", ["ZWERYFIKOWANE", "WSKAZANE"])
     @pytest.mark.parametrize("stan_grupy", [None, "ZWERYFIKOWANE", "WSKAZANE"])
     def test_bez_jednostki_redakcyjnej_nigdy_wskazane(
@@ -393,9 +366,7 @@ class TestStanZrodla:
 
     @pytest.mark.parametrize("warstwa", KOLEJNOSC_OCZEKIWANA)
     def test_rodzaj_podstawy_z_warstwy(self, warstwa: str) -> None:
-        podstawa = modul_loadera._zrodlo(
-            warstwa, _dokument("NIEUSTALONE", wydanie=None)
-        )
+        podstawa = modul_loadera._zrodlo(warstwa, _dokument("NIEUSTALONE", wydanie=None))
         assert podstawa.rodzaj == RODZAJ_OCZEKIWANY[warstwa]
         assert podstawa.status == "NIEUSTALONE"
 
@@ -422,9 +393,7 @@ class TestStanZrodla:
         _edytuj(katalog / "warstwy" / "wipwc.yaml", pokrycie_wskazane)
         profil = _zloz(katalog)
         assert profil.klasyfikacja_zrodlo.status == "NIEUSTALONE"
-        assert "brak jednostki redakcyjnej" in (
-            profil.klasyfikacja_zrodlo.uwagi_pl or ""
-        )
+        assert "brak jednostki redakcyjnej" in (profil.klasyfikacja_zrodlo.uwagi_pl or "")
         for wymaganie in profil.wymagania:
             assert wymaganie.pokrycie_zrodlo.status == "NIEUSTALONE"
 
@@ -537,16 +506,12 @@ class TestZlozenieWarstw:
         "naruszenie",
         ["prog_ponizej", "prog_powyzej", "statyzm_ponizej", "statyzm_powyzej"],
     )
-    def test_granice_lfsm_o(
-        self, katalog: Path, zrodlo_parametru: str, naruszenie: str
-    ) -> None:
+    def test_granice_lfsm_o(self, katalog: Path, zrodlo_parametru: str, naruszenie: str) -> None:
         """Źródło parametru × strona granicy: próg LFSM-O poza [min; max] Hz albo statyzm poza
         [min; max] % (granice z warstwy NC RfG) → ValueError."""
         granice = load_nc_rfg_profile("pse").lfsm_o_granice
         f_n = load_nc_rfg_profile("pse").czestotliwosc_znamionowa_hz
-        odpowiedz = dict(
-            _surowe("warstwy/zastane.yaml")["parametry"]["frequency_response"]
-        )
+        odpowiedz = dict(_surowe("warstwy/zastane.yaml")["parametry"]["frequency_response"])
         if naruszenie == "prog_ponizej":
             odpowiedz["dead_band_hz"] = (granice.prog_hz_min - f_n) - 0.01
         elif naruszenie == "prog_powyzej":
@@ -656,9 +621,7 @@ class TestKlasyfikacja:
         assert wynik.podstawa.jednostka_redakcyjna is None
         assert wynik.podstawa.uwagi_pl == UWAGA_PROGOW_WOS
         for operator_id in OPERATORZY:
-            assert (
-                load_nc_rfg_profile(operator_id).klasyfikacja_zrodlo == wynik.podstawa
-            )
+            assert load_nc_rfg_profile(operator_id).klasyfikacja_zrodlo == wynik.podstawa
 
     @pytest.mark.parametrize(
         ("p_max_kw", "napiecie_kv", "powod"),
@@ -702,9 +665,7 @@ class TestKlasyfikacja:
             ),
         ],
     )
-    def test_powod_nazywa_regule(
-        self, p_max_kw: float, napiecie_kv: float, powod: str
-    ) -> None:
+    def test_powod_nazywa_regule(self, p_max_kw: float, napiecie_kv: float, powod: str) -> None:
         """Powód nazywa regułę, która zadecydowała; zapis liczby dokładny (bez zaokrąglenia do
         progu na granicy)."""
         assert klasyfikacja_modulu(p_max_kw, napiecie_kv).powod_pl == powod
@@ -720,9 +681,7 @@ class TestKlasyfikacja:
 
     @pytest.mark.parametrize("nazwa", ["p_max_kw", "napiecie_kv"])
     @pytest.mark.parametrize("wartosc", [math.nan, math.inf, -1.0])
-    def test_wejscie_nieskonczone_albo_ujemne_odrzucone(
-        self, nazwa: str, wartosc: float
-    ) -> None:
+    def test_wejscie_nieskonczone_albo_ujemne_odrzucone(self, nazwa: str, wartosc: float) -> None:
         argumenty = {"p_max_kw": 5.0, "napiecie_kv": 0.4, nazwa: wartosc}
         with pytest.raises(ValueError, match=nazwa):
             klasyfikacja_modulu(**argumenty)
@@ -731,16 +690,12 @@ class TestKlasyfikacja:
         assert prog_minimalny_modulu_kw() == klasyfikacja_modulu(1.0, 0.4).prog_min_kw
 
     @pytest.mark.parametrize("operator_id", OPERATORZY)
-    def test_klasy_modulow_profilu_zgodne_z_klasyfikacja(
-        self, operator_id: str
-    ) -> None:
+    def test_klasy_modulow_profilu_zgodne_z_klasyfikacja(self, operator_id: str) -> None:
         """Opis klas w profilu i funkcja klasyfikacji czytają te same progi (predykaty parami)."""
         for klasa in load_nc_rfg_profile(operator_id).module_types:
             assert klasyfikuj_modul(klasa.threshold_kw_min, 15.0) == klasa.id
             if klasa.threshold_kw_max is not None:
-                assert (
-                    klasyfikuj_modul(_ponizej(klasa.threshold_kw_max), 15.0) == klasa.id
-                )
+                assert klasyfikuj_modul(_ponizej(klasa.threshold_kw_max), 15.0) == klasa.id
 
 
 # ---------------------------------------------------------------------------
@@ -753,9 +708,9 @@ _WPISY_SUROWE: dict[str, dict[str, Any]] = {
     for plik in ("warstwy/nc_rfg.yaml", "warstwy/zastane.yaml", "warstwy/magazyny.yaml")
     for wpis in _surowe(plik).get("wymagania") or []
 }
-_POKRYCIE_SUROWE: dict[str, list[str]] = _surowe("warstwy/wipwc.yaml")[
-    "pokrycie_certyfikatem"
-]["wymagania"]
+_POKRYCIE_SUROWE: dict[str, list[str]] = _surowe("warstwy/wipwc.yaml")["pokrycie_certyfikatem"][
+    "wymagania"
+]
 
 
 def _sposob_z_danych_surowych(
@@ -788,20 +743,14 @@ class TestWipwc:
     def test_wersje_wykazu_zgodne_ze_snapshotem(self) -> None:
         """Wersje i daty publikacji DOKŁADNIE ze snapshotu; wydanie i adres jak w manifeście."""
         manifest = get_ptpiree_catalog_manifest()
-        z_manifestu = {
-            z["wipwc_version"]: z["publication_date"] for z in manifest["sources"]
-        }
-        z_profilu = {
-            w.wersja: w.data_publikacji.isoformat() for w in _PROFIL_PSE.wipwc.wersje
-        }
+        z_manifestu = {z["wipwc_version"]: z["publication_date"] for z in manifest["sources"]}
+        z_profilu = {w.wersja: w.data_publikacji.isoformat() for w in _PROFIL_PSE.wipwc.wersje}
         assert z_profilu == z_manifestu
         dokument = _PROFIL_PSE.wersja_warstwy("WIPWC", None)
         assert dokument.wydanie == manifest["current_wipwc_version"]
         assert dokument.adres == manifest["source_page_url"]
         assert dokument.status == "WSKAZANE"
-        biezaca = next(
-            w for w in _PROFIL_PSE.wipwc.wersje if w.wersja == dokument.wydanie
-        )
+        biezaca = next(w for w in _PROFIL_PSE.wipwc.wersje if w.wersja == dokument.wydanie)
         assert biezaca.akceptowana_od is not None
         assert biezaca.akceptowana_od.isoformat() == manifest["accepted_from"]
         assert dokument.obowiazuje_od == biezaca.akceptowana_od
@@ -924,9 +873,7 @@ class TestWipwc:
         wymaganie = _PROFIL_PSE.wymaganie(identyfikator)
         assert wymaganie.sposob_wykazania(typ, technologia, certyfikat) == oczekiwany
 
-    def test_pokrycie_dla_nieistniejacego_wymagania_odrzucone(
-        self, katalog: Path
-    ) -> None:
+    def test_pokrycie_dla_nieistniejacego_wymagania_odrzucone(self, katalog: Path) -> None:
         def dodaj(d: dict[str, Any]) -> None:
             d["pokrycie_certyfikatem"]["wymagania"]["RFG_99_9"] = ["A"]
 
@@ -950,18 +897,14 @@ class TestWipwc:
 
 class TestMagazyny:
     @pytest.mark.parametrize("operator_id", OPERATORZY)
-    def test_zadne_wymaganie_nc_rfg_nie_dotyczy_magazynu(
-        self, operator_id: str
-    ) -> None:
+    def test_zadne_wymaganie_nc_rfg_nie_dotyczy_magazynu(self, operator_id: str) -> None:
         """Operator × wymaganie × typ × certyfikat: magazyn (art. 3 ust. 2 lit. d) → NIE_DOTYCZY."""
         for wymaganie in load_nc_rfg_profile(operator_id).wymagania:
             assert "MAGAZYN" not in wymaganie.technologie
             for typ in ("A", "B", "C", "D"):
                 assert not wymaganie.dotyczy(typ, "MAGAZYN")
                 for certyfikat in (True, False):
-                    assert wymaganie.sposob_wykazania(typ, "MAGAZYN", certyfikat) == (
-                        "NIE_DOTYCZY"
-                    )
+                    assert wymaganie.sposob_wykazania(typ, "MAGAZYN", certyfikat) == ("NIE_DOTYCZY")
 
     @pytest.mark.parametrize("operator_id", OPERATORZY)
     def test_warstwa_magazynow_obecna_nieustalona_pusta(self, operator_id: str) -> None:
@@ -1145,9 +1088,7 @@ class TestProgWymogu87T:
             _zloz(katalog)
 
     @pytest.mark.parametrize("wartosc", [0.0, -5.0, math.inf, "1600", True])
-    def test_wartosc_spoza_kontraktu_odrzucona(
-        self, katalog: Path, wartosc: Any
-    ) -> None:
+    def test_wartosc_spoza_kontraktu_odrzucona(self, katalog: Path, wartosc: Any) -> None:
         self._z_progiem(katalog, wartosc)
         with pytest.raises(ValueError, match="próg 87T"):
             _zloz(katalog)
@@ -1219,9 +1160,7 @@ class TestBankNastaw:
         with pytest.raises(ValidationError, match=komunikat):
             PozycjaBankuNastaw(**dane, zrodlo=_podstawa_osd("WSKAZANE"))
 
-    def test_pozycja_w_pliku_operatora_bez_podstawy_odrzucona(
-        self, katalog: Path
-    ) -> None:
+    def test_pozycja_w_pliku_operatora_bez_podstawy_odrzucona(self, katalog: Path) -> None:
         """Dokument operatora NIEUSTALONE → pozycja z jednostką i tak nie ma podstawy."""
 
         def dodaj(d: dict[str, Any]) -> None:
@@ -1244,9 +1183,7 @@ class TestBankNastaw:
         assert bank.pozycje[0].zrodlo.jednostka_redakcyjna == "pkt testowy"
         assert bank.status == "NIEUSTALONE"
 
-    def test_pozycja_z_dokumentem_wskazanym_bez_jednostki_odrzucona(
-        self, katalog: Path
-    ) -> None:
+    def test_pozycja_z_dokumentem_wskazanym_bez_jednostki_odrzucona(self, katalog: Path) -> None:
         def dodaj(d: dict[str, Any]) -> None:
             _operator_wskazany(d)
             pozycja = _pozycja_surowa()
@@ -1296,14 +1233,10 @@ class TestPrawoOperatora:
     @pytest.mark.parametrize("operator_id", OPERATORZY)
     def test_prawo_operatora_dokladnie_trzy_wymagania(self, operator_id: str) -> None:
         profil = load_nc_rfg_profile(operator_id)
-        assert {
-            w.id for w in profil.wymagania if w.prawo_operatora
-        } == WYMAGANIA_Z_PRAWEM
+        assert {w.id for w in profil.wymagania if w.prawo_operatora} == WYMAGANIA_Z_PRAWEM
 
     @pytest.mark.parametrize("operator_id", OPERATORZY)
-    def test_wykonanie_prawa_nieustalone_u_kazdego_operatora(
-        self, operator_id: str
-    ) -> None:
+    def test_wykonanie_prawa_nieustalone_u_kazdego_operatora(self, operator_id: str) -> None:
         for wymaganie in load_nc_rfg_profile(operator_id).wymagania:
             assert wymaganie.operator_skorzystal_z_prawa is None
             if wymaganie.prawo_operatora:
@@ -1397,9 +1330,7 @@ class TestPrawoOperatora:
         dane.update(
             prawo_operatora=prawo,
             operator_skorzystal_z_prawa=flaga,
-            wykonanie_prawa_zrodlo=(
-                None if podstawa is None else _podstawa_osd(podstawa)
-            ),
+            wykonanie_prawa_zrodlo=(None if podstawa is None else _podstawa_osd(podstawa)),
         )
         with pytest.raises(ValidationError, match=komunikat):
             WymaganieRegulacyjne.model_validate(dane)
@@ -1506,9 +1437,7 @@ UWAGA_BEZ_DATY = "wersja dobrana bez daty obowiązywania (nieustalona)"
 class TestWersjeWarstw:
     @pytest.mark.parametrize("operator_id", OPERATORZY)
     def test_daty_obowiazywania_nieustalone_poza_wipwc(self, operator_id: str) -> None:
-        daty = {
-            w.warstwa: w.obowiazuje_od for w in load_nc_rfg_profile(operator_id).warstwy
-        }
+        daty = {w.warstwa: w.obowiazuje_od for w in load_nc_rfg_profile(operator_id).warstwy}
         manifest = get_ptpiree_catalog_manifest()
         assert daty.pop("WIPWC") == date.fromisoformat(manifest["accepted_from"])
         assert set(daty.values()) == {None}
@@ -1520,9 +1449,7 @@ class TestWersjeWarstw:
         assert dokument.model_dump() == pozycja.model_dump(exclude={"warstwa"})
 
     @pytest.mark.parametrize("data", [date(2019, 1, 1), date(2026, 9, 23)])
-    @pytest.mark.parametrize(
-        "warstwa", [w for w in KOLEJNOSC_OCZEKIWANA if w != "WIPWC"]
-    )
+    @pytest.mark.parametrize("warstwa", [w for w in KOLEJNOSC_OCZEKIWANA if w != "WIPWC"])
     def test_data_przy_nieustalonym_obowiazywaniu_daje_uwage(
         self, warstwa: str, data: date
     ) -> None:
@@ -1540,9 +1467,7 @@ class TestWersjeWarstw:
             (date(2024, 10, 31), "NIEUSTALONE", "poprzedza obowiązywanie"),
         ],
     )
-    def test_wersja_wipwc_po_dacie(
-        self, data: date, status: str, uwaga: str | None
-    ) -> None:
+    def test_wersja_wipwc_po_dacie(self, data: date, status: str, uwaga: str | None) -> None:
         dokument = _PROFIL_PSE.wersja_warstwy("WIPWC", data)
         assert dokument.status == status
         if uwaga is None:

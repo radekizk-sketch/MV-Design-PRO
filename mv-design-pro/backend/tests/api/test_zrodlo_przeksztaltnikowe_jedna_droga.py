@@ -144,9 +144,7 @@ def _ladunek(rodzaj: str, wariant: str, proba: bool, modul: str) -> dict:
     _, pola = _ZRODLA[(rodzaj, wariant)]
     ladunek = {
         "source_technology": rodzaj,
-        "connection_variant": (
-            "block_transformer" if wariant == "dedykowany" else "nn_side"
-        ),
+        "connection_variant": ("block_transformer" if wariant == "dedykowany" else "nn_side"),
         "station_ref": "station/1",
         "source_name": f"{rodzaj} {wariant}",
         **pola,
@@ -161,9 +159,7 @@ def _ladunek(rodzaj: str, wariant: str, proba: bool, modul: str) -> dict:
 
 
 @pytest.mark.parametrize(("rodzaj", "wariant", "proba", "modul"), _ILOCZYN)
-def test_iloczyn_rodzaj_wariant_proba_modul(
-    app_client, rodzaj, wariant, proba, modul
-) -> None:
+def test_iloczyn_rodzaj_wariant_proba_modul(app_client, rodzaj, wariant, proba, modul) -> None:
     moc_tr, _ = _ZRODLA[(rodzaj, wariant)]
     _, case_id = _create_project_and_case(app_client)
     _seed_station_enm(case_id, transformer_sn_mva=moc_tr)
@@ -205,15 +201,10 @@ def test_iloczyn_rodzaj_wariant_proba_modul(
     assert "nc_rfg_module" not in generator
     if wariant == "dedykowany":
         tr = next(
-            t
-            for t in model["transformers"]
-            if t["ref_id"] == generator["blocking_transformer_ref"]
+            t for t in model["transformers"] if t["ref_id"] == generator["blocking_transformer_ref"]
         )
         assert tr["catalog_namespace"] == "TRAFO_SN_NN"
-        assert (
-            tr["catalog_ref"]
-            == _ZRODLA[(rodzaj, wariant)][1]["block_transformer_catalog_ref"]
-        )
+        assert tr["catalog_ref"] == _ZRODLA[(rodzaj, wariant)][1]["block_transformer_catalog_ref"]
         assert tr["hv_bus_ref"] == "station/1/sn_bus"
         szyna = next(b for b in model["buses"] if b["ref_id"] == tr["lv_bus_ref"])
         assert szyna["voltage_kv"] == tr["ulv_kv"] == 0.69
@@ -363,9 +354,7 @@ def test_tolerancja_nn_strony_wtornej_trafia_do_transformatora(app_client) -> No
     model = _model(app_client, case_id)
     (generator,) = model["generators"]
     tr = next(
-        t
-        for t in model["transformers"]
-        if t["ref_id"] == generator["blocking_transformer_ref"]
+        t for t in model["transformers"] if t["ref_id"] == generator["blocking_transformer_ref"]
     )
     assert tr["lv_voltage_tolerance"] == "PLUS_6"
 
@@ -496,15 +485,10 @@ def test_modul_toru_der_sn_tez_weryfikowany() -> None:
     assert _odmowa_deklaracji_modulu_ncrfg({}, 1.0, 15.0) is None
     assert _odmowa_deklaracji_modulu_ncrfg({"nc_rfg_module": "B"}, 1.0, 15.0) is None
     odmowa = _odmowa_deklaracji_modulu_ncrfg({"nc_rfg_module": "C"}, 1.0, 15.0)
-    assert (
-        odmowa is not None
-        and odmowa["error_code"] == "generator.nc_rfg_module_mismatch"
-    )
+    assert odmowa is not None and odmowa["error_code"] == "generator.nc_rfg_module_mismatch"
     # Brak napięcia punktu przyłączenia: nie ma z czym porównać — bez domysłu, bez blokady.
     assert _odmowa_deklaracji_modulu_ncrfg({"nc_rfg_module": "C"}, 1.0, None) is None
-    nieklasyfikowalny = _odmowa_deklaracji_modulu_ncrfg(
-        {"nc_rfg_module": "B"}, -1.0, 15.0
-    )
+    nieklasyfikowalny = _odmowa_deklaracji_modulu_ncrfg({"nc_rfg_module": "B"}, -1.0, 15.0)
     assert nieklasyfikowalny is not None
     assert nieklasyfikowalny["error_code"] == "generator.nc_rfg_module_unclassifiable"
 
@@ -549,9 +533,7 @@ class TestBateriaBess:
             **_ladunek(rodzaj, "nn_auto", False, "brak"),
             "battery_catalog_ref": ref,
         }
-        assert (
-            _kod(_operacja(app_client, case_id, "add_converter_source", ladunek)) == kod
-        )
+        assert _kod(_operacja(app_client, case_id, "add_converter_source", ladunek)) == kod
         assert _model(app_client, case_id)["generators"] == []
 
     def test_pominiety_nie_blokuje(self, app_client) -> None:
@@ -697,20 +679,11 @@ def test_wiazania_biale_znaki_to_brak_wyboru(app_client) -> None:
 def test_wiazania_pominiete_zostaja_null_usuwa(app_client) -> None:
     case_id, ref = _wytworca(app_client)
     assert (
-        _kod(
-            _wiazania(
-                app_client, case_id, ref, {"ct_catalog_ref": "ct_150_1_0_5_10va_abb"}
-            )
-        )
+        _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_ref": "ct_150_1_0_5_10va_abb"}))
         is None
     )
     assert (
-        _kod(
-            _wiazania(
-                app_client, case_id, ref, {"vt_catalog_ref": "vt_10kv_100v_05_abb"}
-            )
-        )
-        is None
+        _kod(_wiazania(app_client, case_id, ref, {"vt_catalog_ref": "vt_10kv_100v_05_abb"})) is None
     )
     assert _params(app_client, case_id)["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
     assert _kod(_wiazania(app_client, case_id, ref, {"ct_catalog_ref": None})) is None
@@ -743,9 +716,7 @@ def test_wiazania_odmowy(app_client) -> None:
     assert _kod(_wiazania(app_client, case_id, ref, {})) == "der_bindings.payload_empty"
 
 
-@pytest.mark.parametrize(
-    "operacja", ["add_converter_source", "set_der_catalog_bindings"]
-)
+@pytest.mark.parametrize("operacja", ["add_converter_source", "set_der_catalog_bindings"])
 @pytest.mark.parametrize("typ", ["OSError", "ValidationError"])
 def test_awaria_zapisu_modelu_jest_nazwana_i_model_bez_zmian(
     app_client, monkeypatch, operacja, typ
@@ -774,9 +745,7 @@ def test_awaria_zapisu_modelu_jest_nazwana_i_model_bez_zmian(
             {**_ladunek("PV", "nn_auto", False, "brak"), "source_name": "drugi"},
         )
     else:
-        odpowiedz = _wiazania(
-            app_client, case_id, ref, {"protection_catalog_ref": "REF-OC-200"}
-        )
+        odpowiedz = _wiazania(app_client, case_id, ref, {"protection_catalog_ref": "REF-OC-200"})
     assert _kod(odpowiedz) == "api.snapshot_validation_failed"
     monkeypatch.undo()
     assert _model(app_client, case_id) == przed
@@ -796,9 +765,7 @@ def test_awaria_zapisu_modelu_jest_nazwana_i_model_bez_zmian(
         ("FW", "nn_auto"),
     ],
 )
-def test_gotowosc_widzi_transformator_dedykowany_z_modelu(
-    app_client, rodzaj, wariant
-) -> None:
+def test_gotowosc_widzi_transformator_dedykowany_z_modelu(app_client, rodzaj, wariant) -> None:
     """Oś „aparatura" gotowości czyta pozycję katalogu transformatora dedykowanego z JEGO
     rekordu w modelu (`Transformer.catalog_ref` przez `blocking_transformer_ref`).
 
@@ -884,9 +851,7 @@ def _profil_z_progiem(prog_kva: float):
             status="WSKAZANE",
         ),
     )
-    return load_nc_rfg_profile("pse").model_copy(
-        update={"prog_87t_sn_transformatora": prog}
-    )
+    return load_nc_rfg_profile("pse").model_copy(update={"prog_87t_sn_transformatora": prog})
 
 
 @pytest.mark.parametrize(
@@ -923,13 +888,9 @@ def test_prog_87t_z_profilu_operatora_wytworcy(
         wiazania["nc_rfg_profile_ref"] = "pse"
     assert _kod(_wiazania(app_client, case_id, ref, wiazania)) is None
     if profil == "prog_ponizej_sn":
-        monkeypatch.setattr(
-            modul_api, "load_nc_rfg_profile", lambda _: _profil_z_progiem(1100.0)
-        )
+        monkeypatch.setattr(modul_api, "load_nc_rfg_profile", lambda _: _profil_z_progiem(1100.0))
     elif profil == "prog_powyzej_sn":
-        monkeypatch.setattr(
-            modul_api, "load_nc_rfg_profile", lambda _: _profil_z_progiem(2000.0)
-        )
+        monkeypatch.setattr(modul_api, "load_nc_rfg_profile", lambda _: _profil_z_progiem(2000.0))
 
     baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}"
     dobor = app_client.get(f"{baza}/protection-functions")
@@ -962,11 +923,7 @@ def test_prog_87t_profil_spoza_katalogu_nazwany() -> None:
     from api.generators import _prog_87t_operatora
 
     prog, opis = _prog_87t_operatora(
-        {
-            "materialized_params": {
-                "profiles": {"nc_rfg_profile_ref": "operator_nieznany"}
-            }
-        }
+        {"materialized_params": {"profiles": {"nc_rfg_profile_ref": "operator_nieznany"}}}
     )
     assert prog is None
     assert opis is not None and "operator_nieznany" in opis

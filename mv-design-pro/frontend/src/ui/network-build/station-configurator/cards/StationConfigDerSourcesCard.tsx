@@ -10,6 +10,8 @@
 
 import { useMemo } from 'react';
 
+import './zrodlaOze.css';
+
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
   getNcRfgOperator,
@@ -21,6 +23,32 @@ import {
 } from '../../station-der';
 
 export type AddDerKindRequest = 'PV' | 'BESS' | 'FW';
+
+/**
+ * Kolumny tabeli układów — JEDNO źródło nagłówka tabeli i etykiety pola w widoku wierszowym
+ * (`zrodlaOze.css`: poniżej 720 px szerokości kontenera wiersz staje się kartą z etykietami,
+ * żeby kolumna mocy i akcji nie wymagały przewijania w poziomie).
+ */
+export const KOLUMNY_UKLADOW_OZE = {
+  nazwa: 'Nazwa',
+  rodzaj: 'Rodzaj',
+  punkt: 'Punkt przyłączenia',
+  moc: 'Moc [kW]',
+  napiecie: 'Napięcie',
+  profil: 'Profil NC RfG',
+  konfiguracja: 'Konfiguracja',
+  akcje: 'Akcje',
+} as const;
+
+type KluczKolumny = keyof typeof KOLUMNY_UKLADOW_OZE;
+
+function EtykietaPola({ kolumna }: { kolumna: KluczKolumny }): JSX.Element {
+  return (
+    <span className="mvd-zrodla-oze__etykieta font-medium text-scada-muted">
+      {KOLUMNY_UKLADOW_OZE[kolumna]}
+    </span>
+  );
+}
 
 export interface StationConfigDerSourcesCardProps {
   /** ID stacji (z entityRef surface'u). */
@@ -177,18 +205,21 @@ export function StationConfigDerSourcesCard(
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded border border-scada-border bg-scada-surface">
-          <table className="w-full text-[11px]">
+        <div
+          data-testid="der-sources-table"
+          className="mvd-zrodla-oze rounded border border-scada-border bg-scada-surface"
+        >
+          <table className="mvd-zrodla-oze__tabela w-full text-[11px]">
             <thead className="bg-scada-panel-raised">
               <tr className="text-left text-scada-muted">
-                <th className="px-2 py-1.5 font-medium">Nazwa</th>
-                <th className="px-2 py-1.5 font-medium">Rodzaj</th>
-                <th className="px-2 py-1.5 font-medium">Punkt przyłączenia</th>
-                <th className="px-2 py-1.5 text-right font-medium">Moc [kW]</th>
-                <th className="px-2 py-1.5 font-medium">Napięcie</th>
-                <th className="px-2 py-1.5 font-medium">Profil NC RfG</th>
-                <th className="px-2 py-1.5 font-medium">Konfiguracja</th>
-                <th className="px-2 py-1.5 text-right font-medium">Akcje</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.nazwa}</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.rodzaj}</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.punkt}</th>
+                <th className="px-2 py-1.5 text-right font-medium">{KOLUMNY_UKLADOW_OZE.moc}</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.napiecie}</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.profil}</th>
+                <th className="px-2 py-1.5 font-medium">{KOLUMNY_UKLADOW_OZE.konfiguracja}</th>
+                <th className="px-2 py-1.5 text-right font-medium">{KOLUMNY_UKLADOW_OZE.akcje}</th>
               </tr>
             </thead>
             <tbody>
@@ -199,35 +230,56 @@ export function StationConfigDerSourcesCard(
                   data-der-kind={der.der_kind}
                   className="border-t border-scada-border hover:bg-scada-hover-nav"
                 >
-                  <td className="px-2 py-1.5 font-medium text-scada-text">{der.name}</td>
+                  <td className="mvd-zrodla-oze__nazwa px-2 py-1.5 font-medium text-scada-text">
+                    {der.name}
+                  </td>
                   <td className="px-2 py-1.5">
+                    <EtykietaPola kolumna="rodzaj" />
                     <span
                       className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${KIND_BADGE_COLOR[der.der_kind]}`}
                     >
                       {KIND_LABEL_PL[der.der_kind]}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-scada-muted">{connectionSidePl}</td>
-                  <td className="px-2 py-1.5 text-right text-scada-text">
-                    {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : MISSING_DASH}
+                  <td className="px-2 py-1.5 text-scada-muted">
+                    <EtykietaPola kolumna="punkt" />
+                    <span className="mvd-zrodla-oze__wartosc">{connectionSidePl}</span>
+                  </td>
+                  <td
+                    data-testid={`der-power-${der.id}`}
+                    className="px-2 py-1.5 text-right text-scada-text"
+                  >
+                    <EtykietaPola kolumna="moc" />
+                    <span className="mvd-zrodla-oze__wartosc">
+                      {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : MISSING_DASH}
+                    </span>
                   </td>
                   <td className="px-2 py-1.5 text-scada-muted">
-                    <div data-testid={`der-voltage-${der.id}`}>{voltagePl}</div>
-                    {blockTransformerPl && (
-                      <div
-                        data-testid={`der-block-transformer-${der.id}`}
-                        className="mt-0.5 text-[10px] font-semibold text-scada-text"
-                      >
-                        {blockTransformerPl}
-                      </div>
-                    )}
+                    <EtykietaPola kolumna="napiecie" />
+                    <div className="mvd-zrodla-oze__wartosc">
+                      <div data-testid={`der-voltage-${der.id}`}>{voltagePl}</div>
+                      {blockTransformerPl && (
+                        <div
+                          data-testid={`der-block-transformer-${der.id}`}
+                          className="mt-0.5 text-[10px] font-semibold text-scada-text"
+                        >
+                          {blockTransformerPl}
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-2 py-1.5 text-scada-muted">{profilePl}</td>
+                  <td className="px-2 py-1.5 text-scada-muted">
+                    <EtykietaPola kolumna="profil" />
+                    <span className="mvd-zrodla-oze__wartosc">{profilePl}</span>
+                  </td>
                   <td className={`px-2 py-1.5 ${COMPLETENESS_TONE[der.completeness]}`}>
-                    {COMPLETENESS_LABEL_PL[der.completeness]}
+                    <EtykietaPola kolumna="konfiguracja" />
+                    <span className="mvd-zrodla-oze__wartosc">
+                      {COMPLETENESS_LABEL_PL[der.completeness]}
+                    </span>
                   </td>
-                  <td className="px-2 py-1.5">
-                    <div className="flex justify-end gap-1">
+                  <td data-testid={`der-actions-${der.id}`} className="mvd-zrodla-oze__akcje px-2 py-1.5">
+                    <div className="flex flex-wrap justify-end gap-1">
                       {onOpenDer && (
                         <RowAction
                           testId={`der-action-open-${der.id}`}

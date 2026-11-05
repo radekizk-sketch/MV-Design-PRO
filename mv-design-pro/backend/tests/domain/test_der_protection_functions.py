@@ -31,9 +31,7 @@ def _dobierz(
     profil_operatora_pl: str | None = OPERATOR_TESTOWY,
 ) -> WynikDoboru:
     """Dobór z progiem 87T profilu operatora (domyślnie: profil bez progu — stan produktu)."""
-    return dobierz_funkcje(
-        f, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl
-    )
+    return dobierz_funkcje(f, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl)
 
 
 def fakty(**nadpisania) -> FaktyPolaWytworcy:
@@ -79,9 +77,7 @@ class TestRodzinaZiemnozwarciowa:
         assert "50G" not in kody and "51G" not in kody
 
     def test_przekladnik_ziemnozwarciowy_daje_rodzine_G(self) -> None:
-        kody = _dobierz(
-            fakty(zero_sequence_current_source="przekladnik_ferrantiego")
-        ).kody()
+        kody = _dobierz(fakty(zero_sequence_current_source="przekladnik_ferrantiego")).kody()
         assert "50G" in kody and "51G" in kody
         assert "50N" not in kody and "51N" not in kody
 
@@ -116,18 +112,13 @@ class TestKierunkowoscZiemnozwarciowa:
         self, tryb: str
     ) -> None:
         # Wymaganie funkcji, ktorej nie da sie zrealizowac, byloby wymaganiem na papierze.
-        wynik = _dobierz(
-            fakty(neutral_grounding_mode=tryb, zero_sequence_voltage_source="brak")
-        )
+        wynik = _dobierz(fakty(neutral_grounding_mode=tryb, zero_sequence_voltage_source="brak"))
         assert "67N" not in wynik.kody()
         assert "protection.zero_sequence_voltage_missing" in kody_otwartych(wynik)
 
     def test_siec_z_rezystorem_nie_wymusza_kierunkowosci(self) -> None:
         # Kontrola odwrotna: prad doziemny jest wtedy wymuszony i mierzalny nadpradowo.
-        assert (
-            "67N"
-            not in _dobierz(fakty(neutral_grounding_mode="resistor_grounded")).kody()
-        )
+        assert "67N" not in _dobierz(fakty(neutral_grounding_mode="resistor_grounded")).kody()
 
     def test_nieznane_uziemienie_jest_kwestia_otwarta(self) -> None:
         wynik = _dobierz(fakty(neutral_grounding_mode=None))
@@ -135,9 +126,7 @@ class TestKierunkowoscZiemnozwarciowa:
 
 
 class TestAntiIslanding:
-    @pytest.mark.parametrize(
-        "strona", ["nN", "at_zksn", "at_branch_pole", "at_cable_joint"]
-    )
+    @pytest.mark.parametrize("strona", ["nN", "at_zksn", "at_branch_pole", "at_cable_joint"])
     def test_pv_po_stronie_nn_i_przylaczen_liniowych(self, strona: str) -> None:
         kody = _dobierz(fakty(connection_side=strona)).kody()
         assert {"27", "59", "81U", "81O"}.issubset(set(kody))
@@ -207,9 +196,7 @@ class TestRoznicoweTransformatora:
             assert "Warunki przyłączenia — dokument testowy" in funkcja.podstawa_pl
         assert "protection.87t_threshold_no_basis" not in kody_otwartych(wynik)
 
-    @pytest.mark.parametrize(
-        "sn_kva", [PROG_TESTOWY_KVA - 1.0, PROG_TESTOWY_KVA, 2500.0, None]
-    )
+    @pytest.mark.parametrize("sn_kva", [PROG_TESTOWY_KVA - 1.0, PROG_TESTOWY_KVA, 2500.0, None])
     @pytest.mark.parametrize("moc_zrodla_kw", [400.0, 5000.0])
     def test_podstawa_brak_daje_brak_podstawy_z_wyjasnieniem(
         self, sn_kva: float | None, moc_zrodla_kw: float
@@ -227,17 +214,13 @@ class TestRoznicoweTransformatora:
         assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in ocena.wyjasnienie_pl.lower()
         assert "87T" not in wynik.kody()
         kwestia = next(
-            k
-            for k in wynik.kwestie_otwarte
-            if k.kod == "protection.87t_threshold_no_basis"
+            k for k in wynik.kwestie_otwarte if k.kod == "protection.87t_threshold_no_basis"
         )
         assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in kwestia.opis_pl.lower()
         assert wynik.to_dict()["oceny_progow"][0]["status_maszynowy"] == "BRAK_PODSTAWY"
 
     @pytest.mark.parametrize("sn_kva", [PROG_TESTOWY_KVA + 900.0, None])
-    def test_brak_profilu_operatora_nazwany_w_wyjasnieniu(
-        self, sn_kva: float | None
-    ) -> None:
+    def test_brak_profilu_operatora_nazwany_w_wyjasnieniu(self, sn_kva: float | None) -> None:
         wynik = _dobierz(
             fakty(
                 connection_side="dedicated_transformer",
@@ -273,9 +256,7 @@ class TestRoznicoweTransformatora:
         assert "87T" not in wynik.kody()
 
     @pytest.mark.parametrize("strona", ["SN", "nN", "at_zksn"])
-    def test_bez_transformatora_dedykowanego_nie_ma_oceny_87t(
-        self, strona: str
-    ) -> None:
+    def test_bez_transformatora_dedykowanego_nie_ma_oceny_87t(self, strona: str) -> None:
         wynik = _dobierz(
             fakty(connection_side=strona, sn_transformatora_dedykowanego_kva=2500.0),
             prog_87t=_prog_z_podstawa(),
@@ -318,9 +299,7 @@ class TestOcenaUrzadzenia:
             nazwa_urzadzenia="ABB Relion REB670",
         )
         assert ocena.pokrywa_wymagania is True  # funkcje ma…
-        assert (
-            ocena.ostrzezenia_przeznaczenia
-        )  # …ale przeznaczenie wymaga potwierdzenia
+        assert ocena.ostrzezenia_przeznaczenia  # …ale przeznaczenie wymaga potwierdzenia
         assert "87BB" in ocena.ostrzezenia_przeznaczenia[0]
         assert "różnicowe szyn" in ocena.ostrzezenia_przeznaczenia[0]
 
@@ -369,9 +348,7 @@ class TestTrybUziemieniaZModelu:
             voltage_kv=15.0,
             model="thevenin",
         )
-        assert (
-            _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) is None
-        )
+        assert _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) is None
         assert _resolve_neutral_grounding_mode(sources=[], transformers=[]) is None
 
     def test_nieznany_tryb_przechodzi_w_kwestie_otwarta_doboru(self) -> None:

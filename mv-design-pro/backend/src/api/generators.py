@@ -57,9 +57,7 @@ from werdykt.kontrakt import LimitKryterium
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
 
-def _validate_project_case_context(
-    request: Request, project_id: str, case_id: str
-) -> None:
+def _validate_project_case_context(request: Request, project_id: str, case_id: str) -> None:
     """Sprawdz, ze `case_id` istnieje w bazie i nalezy do `project_id`.
 
     CV-1-W: przypadek BEZ wiersza w bazie (`study_case is None`) jest zawsze
@@ -154,10 +152,8 @@ def _fakty_pola_wytworcy(
         # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
         # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
         neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or None,
-        zero_sequence_current_source=sciezka.get("zero_sequence_current_source")
-        or "brak",
-        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source")
-        or "brak",
+        zero_sequence_current_source=sciezka.get("zero_sequence_current_source") or "brak",
+        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source") or "brak",
     )
 
 
@@ -196,9 +192,7 @@ def _funkcje_urzadzenia(
     return None, "urządzenie spoza katalogu"
 
 
-def _prog_87t_operatora(
-    generator: dict[str, Any]
-) -> tuple[LimitKryterium | None, str | None]:
+def _prog_87t_operatora(generator: dict[str, Any]) -> tuple[LimitKryterium | None, str | None]:
     """Próg 87T i nazwa operatora z profilu NC RfG wskazanego przez wytwórcę.
 
     Jedyny dostawca progu (`NcRfgProfile.prog_87t_sn_transformatora`) dla doboru funkcji
@@ -216,9 +210,7 @@ def _prog_87t_operatora(
     return profil.prog_87t_sn_transformatora, profil.operator_name_pl
 
 
-@router.get(
-    "/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions"
-)
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
 def get_der_protection_functions(
     project_id: str,
     case_id: str,
@@ -257,22 +249,16 @@ def get_der_protection_functions(
     sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka, dane.get("transformers", []))
     prog_87t, profil_operatora_pl = _prog_87t_operatora(generator)
-    dobor = dobierz_funkcje(
-        fakty, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl
-    )
+    dobor = dobierz_funkcje(fakty, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl)
 
     protection_ref = None
     for zrodlo in (zmaterializowane, meta):
-        if isinstance(zrodlo, dict) and isinstance(
-            zrodlo.get("protection_catalog_ref"), str
-        ):
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("protection_catalog_ref"), str):
             protection_ref = zrodlo["protection_catalog_ref"]
             break
 
     funkcje_urzadzenia, nazwa_urzadzenia = _funkcje_urzadzenia(protection_ref)
-    ocena = ocen_urzadzenie(
-        dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia
-    )
+    ocena = ocen_urzadzenie(dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia)
 
     return {
         "generator_ref": generator_ref,
@@ -334,9 +320,7 @@ def get_der_readiness(
     # Liczba INNYCH wytworcow w tej samej stacji — wejscie osi selektywnosci.
     stacja = generator.get("station_ref")
     inni = sum(
-        1
-        for g in generatory
-        if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
+        1 for g in generatory if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
     )
 
     klasa_ct, zastosowanie_ct = _klasa_przekladnika_z_katalogu(generator)
@@ -361,9 +345,7 @@ def get_der_readiness(
     }
 
 
-@router.get(
-    "/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers"
-)
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers")
 def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
@@ -414,8 +396,8 @@ def get_der_instrument_transformers(
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
-    ik_ka, ip_ka, run_ref, tolerancja_robocza, dane_galezi, robocze_maszyn = (
-        _prady_zwarciowe_szyny(case_id, generator.get("bus_ref"))
+    ik_ka, ip_ka, run_ref, tolerancja_robocza, dane_galezi, robocze_maszyn = _prady_zwarciowe_szyny(
+        case_id, generator.get("bus_ref")
     )
     # Dane przyjęte Ik''/ip szyny pola: tolerancja sieci nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA),
     # linie 110 kV z wartością roboczą geometrii (karta LINIA-110) i wartości robocze parametrów
@@ -424,9 +406,7 @@ def get_der_instrument_transformers(
         (
             (
                 dana_przyjeta_tolerancji_nn(
-                    miejsce_pl=opis_elementu(
-                        dane, generator.get("bus_ref"), "szyna pola"
-                    )
+                    miejsce_pl=opis_elementu(dane, generator.get("bus_ref"), "szyna pola")
                 ),
             )
             if tolerancja_robocza
@@ -505,9 +485,7 @@ def get_der_instrument_transformers(
         **(
             {
                 "status_danych": "UNVALIDATED_INPUT",
-                "dane_przyjete": [
-                    d.model_dump(mode="json") for d in dane_przyjete_pola
-                ],
+                "dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete_pola],
             }
             if dane_przyjete_pola
             else {}
@@ -533,9 +511,7 @@ def _napiecie_szyny_v(dane: dict[str, Any], bus_ref: Any) -> float | None:
     return None
 
 
-def _prad_roboczy_pola_a(
-    generator: dict[str, Any], napiecie_v: float | None
-) -> float | None:
+def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) -> float | None:
     """Prad roboczy toru — Z SOLWERA, nie z wlasnego wzoru w warstwie API.
 
     `compute_transformer_rated_currents` jest kanonicznym dostawca przeliczenia
@@ -548,12 +524,7 @@ def _prad_roboczy_pola_a(
     )
 
     p_mw = generator.get("p_mw")
-    if (
-        not isinstance(p_mw, int | float)
-        or p_mw <= 0
-        or not napiecie_v
-        or napiecie_v <= 0
-    ):
+    if not isinstance(p_mw, int | float) or p_mw <= 0 or not napiecie_v or napiecie_v <= 0:
         return None
     napiecie_kv = v_na_kv(napiecie_v)
     wynik = compute_transformer_rated_currents(

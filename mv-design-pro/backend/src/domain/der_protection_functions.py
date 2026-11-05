@@ -54,9 +54,7 @@ from werdykt.kontrakt import (
 #: Sposob uziemienia punktu neutralnego — TEN SAM slownik co `GroundingConfig.type`
 #: (W5-A: koniec polskich literalow w kontrakcie); `None` = nieznany w modelu.
 TrybUziemienia: TypeAlias = TypPunktuNeutralnego | None
-ZrodloPraduZerowego = Literal[
-    "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
-]
+ZrodloPraduZerowego = Literal["suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"]
 ZrodloNapieciaZerowego = Literal[
     "otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone", "brak"
 ]
@@ -81,9 +79,7 @@ RodzajDer = Literal["PV", "BESS", "FW"]
 #: — kod 87T tylko jako funkcja urządzenia.
 
 #: Wyjaśnienie braku podstawy progu 87T (jedno źródło tekstu dla doboru i gotowości).
-BRAK_PODSTAWY_PROGU_87T_PL = (
-    "próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora"
-)
+BRAK_PODSTAWY_PROGU_87T_PL = "próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora"
 
 #: Przyczyna braku podstawy, gdy wytwórca nie wskazuje profilu operatora NC RfG.
 BRAK_PROFILU_OPERATORA_87T_PL = "wytwórca nie wskazuje profilu NC RfG operatora"
@@ -280,9 +276,7 @@ def ocen_prog_87t(
             f"Próg 87T w jednostce {prog.wartosc.jednostka!r} — rekord limitu musi być w kVA."
         )
     zrodlo = prog.podstawa.dokument + (
-        f", {prog.podstawa.jednostka_redakcyjna}"
-        if prog.podstawa.jednostka_redakcyjna
-        else ""
+        f", {prog.podstawa.jednostka_redakcyjna}" if prog.podstawa.jednostka_redakcyjna else ""
     )
     opis_progu = f"próg {_kva(prog.wartosc.wartosc)} ({zrodlo})"
     if sn_transformatora_kva is None:
@@ -345,8 +339,7 @@ def dobierz_funkcje(
             kod="50",
             nazwa_pl="Nadprądowe zwłoczne bezzwłoczne (I>>)",
             podstawa_pl=(
-                "Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy "
-                "(IEC 60255-151)."
+                "Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy " "(IEC 60255-151)."
             ),
             chroniony_obiekt_pl=obiekt,
             zrodlo_pomiaru_pl="przekładniki prądowe fazowe pola",
@@ -522,8 +515,7 @@ def dobierz_funkcje(
                     kod=kod,
                     nazwa_pl=nazwa,
                     podstawa_pl=(
-                        f"Ochrona przed pracą wyspową — {opis} "
-                        "(IEEE 1547 / NC RfG Art. 14)."
+                        f"Ochrona przed pracą wyspową — {opis} " "(IEEE 1547 / NC RfG Art. 14)."
                     ),
                     chroniony_obiekt_pl=obiekt,
                     zrodlo_pomiaru_pl="przekładnik napięciowy pola",
@@ -597,9 +589,7 @@ def dobierz_funkcje(
         )
     )
 
-    return WynikDoboru(
-        wymagane=wymagane, kwestie_otwarte=otwarte, oceny_progow=oceny_progow
-    )
+    return WynikDoboru(wymagane=wymagane, kwestie_otwarte=otwarte, oceny_progow=oceny_progow)
 
 
 # ---------------------------------------------------------------------------
@@ -648,9 +638,7 @@ def ocen_urzadzenie(
     """
 
     if funkcje_urzadzenia is None:
-        return OcenaUrzadzenia(
-            brakujace_funkcje=list(wymagane_kody), pokrywa_wymagania=False
-        )
+        return OcenaUrzadzenia(brakujace_funkcje=list(wymagane_kody), pokrywa_wymagania=False)
 
     dostepne = set(funkcje_urzadzenia)
     brakujace = [kod for kod in wymagane_kody if kod not in dostepne]

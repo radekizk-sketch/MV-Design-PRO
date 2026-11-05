@@ -55,9 +55,9 @@ DODATKOWE_CHRONIONE: tuple[str, ...] = (
 #: obejmuje każdy plik w nim, także nowy) + `DODATKOWE_CHRONIONE`. Partia integracji 10:
 #: dawna ręczna lista pomijała rozpływ NR/GS/FD, NC RfG z profilami, FRT/HVRT, WLS, stan
 #: fazowy SN i V12.6 — zmiana tych rdzeni przechodziła bez sankcji.
-WATCHED_PATHS: list[str] = [
-    f"backend/src/{sciezka}" for sciezka in sciezki_b01()
-] + list(DODATKOWE_CHRONIONE)
+WATCHED_PATHS: list[str] = [f"backend/src/{sciezka}" for sciezka in sciezki_b01()] + list(
+    DODATKOWE_CHRONIONE
+)
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
 # (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.

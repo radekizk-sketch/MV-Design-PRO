@@ -1,0 +1,73 @@
+/*
+ * Tabela układów PV/BESS/FW zależna od SZEROKOŚCI SWOJEGO KONTENERA (nie okna).
+ *
+ * Karta stoi w konfiguratorze stacji w obszarze roboczym i w inspektorze (340–420 px,
+ * tryb szeroki 560 px). Osiem kolumn tabeli potrzebuje ok. 720 px — przy 1280×720
+ * kolumna „Moc” i kolumna akcji wymagały przewijania w poziomie, a akcje wiersza
+ * były poza kadrem. Poniżej 720 px szerokości kontenera każdy wiersz staje się kartą:
+ * nazwa jako nagłówek, pola jako pary etykieta–wartość (etykiety z tego samego źródła co
+ * nagłówek tabeli, `KOLUMNY_UKLADOW_OZE`), akcje zawsze w ostatnim wierszu karty.
+ * Szerokość tabeli nigdy nie przekracza kontenera, więc przewijanie poziome nie jest
+ * potrzebne (asercja w `e2e/konfigurator-stacji-model.spec.ts`, test układu).
+ */
+
+.mvd-zrodla-oze {
+  container: zrodla-oze / inline-size;
+}
+
+.mvd-zrodla-oze__tabela td {
+  overflow-wrap: anywhere;
+}
+
+.mvd-zrodla-oze__etykieta {
+  display: none;
+}
+
+@container zrodla-oze (max-width: 719.98px) {
+  .mvd-zrodla-oze__tabela thead {
+    display: none;
+  }
+
+  .mvd-zrodla-oze__tabela,
+  .mvd-zrodla-oze__tabela tbody,
+  .mvd-zrodla-oze__tabela tr {
+    display: block;
+    width: 100%;
+  }
+
+  .mvd-zrodla-oze__tabela tr {
+    padding: 4px 0;
+  }
+
+  .mvd-zrodla-oze__tabela td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    text-align: right;
+  }
+
+  .mvd-zrodla-oze__etykieta {
+    display: block;
+    flex-shrink: 0;
+    text-align: left;
+  }
+
+  .mvd-zrodla-oze__wartosc {
+    min-width: 0;
+  }
+
+  .mvd-zrodla-oze__tabela td.mvd-zrodla-oze__nazwa {
+    display: block;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .mvd-zrodla-oze__tabela td.mvd-zrodla-oze__akcje {
+    display: block;
+    padding-top: 4px;
+  }
+}

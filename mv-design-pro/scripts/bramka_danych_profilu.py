@@ -163,6 +163,13 @@ CZYTELNICY: Mapping[str, Czytelnicy] = MappingProxyType(
                 "(O-30)"
             ),
         ),
+        "prog_87t_sn_transformatora": Czytelnicy(
+            opis_pl=(
+                "wymóg zabezpieczenia różnicowego 87T transformatora dedykowanego wytwórcy — "
+                "dobór funkcji zabezpieczeniowych i gotowość DER "
+                "(`domain/der_protection_functions.py::ocen_prog_87t`)"
+            )
+        ),
         "bank_nastaw": Czytelnicy(
             wymagania=("RFG_13_1B", "RFG_14_3"),
             opis_pl=(

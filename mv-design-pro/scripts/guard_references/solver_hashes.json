@@ -1,6 +1,6 @@
 {
   "catalog/profiles/nc_rfg/__init__.py": "3ca6b33dafc72c0f8aa90f5c96797a2a3674bf104adfdd717cfe9e8c2ab0201c",
-  "catalog/profiles/nc_rfg/loader.py": "e685c541ab07319154a2d383c455c5f061091f164747117fd0d9ad937d87acca",
+  "catalog/profiles/nc_rfg/loader.py": "3b20a34c8bd35ac1e5b3d3ecddabb02f852e16174167c2b438702232ce3da206",
   "catalog/profiles/nc_rfg/operatorzy/enea.yaml": "4e1410dbff4140aeb1ebc44c3dd2390b7440f45e678d1e1f99444f046d52387b",
   "catalog/profiles/nc_rfg/operatorzy/energa.yaml": "f5d4ff1ba1d29314ba080652ae454adeec08eab64bdd51ec5d0c606723a6cb34",
   "catalog/profiles/nc_rfg/operatorzy/pge.yaml": "136bac1ba3c0ba9be041d7e7cb50073f3ef149e30bcabf951ddfd9a521f8bf6f",

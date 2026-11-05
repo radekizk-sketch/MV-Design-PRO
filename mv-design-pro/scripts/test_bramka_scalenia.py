@@ -433,10 +433,21 @@ def test_wybor_vitest_bez_zmian_frontu(tmp_path: Path) -> None:
 # --- miejsce na dysku i sprzątanie (dyrektywa 2026-10-28) ----------------------------------
 
 
+class _UzycieDysku:
+    """Wolne miejsce czterokrotnie ponad próg bramki (`MIN_WOLNE_GB`)."""
+
+    def __init__(self) -> None:
+        self.free = int(bramka.MIN_WOLNE_GB * 4e9)
+
+
 def _bramka_bez_biegow(drzewo: Path, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     """Bramka na drzewie syntetycznym: zero zmian, polecenia zapisywane zamiast uruchamiane;
     „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg."""
     monkeypatch.setattr(bramka, "zmienione_pliki", lambda baza, glowa: [])
+    # Wolne miejsce hosta nie jest cechą tego testu (sprzątanie katalogów): bez podmiany
+    # wynik zależał od dysku maszyny (czerwony przy < 5 GB na /tmp). Odmowę przy braku
+    # miejsca pinuje osobny test niżej, z tą samą podmianą `shutil.disk_usage`.
+    monkeypatch.setattr(bramka.shutil, "disk_usage", lambda _k: _UzycieDysku())
     polecenia: list[list[str]] = []
 
     def uruchom(nazwa: str, polecenie: list[str], cwd: Path) -> tuple[int, float]:

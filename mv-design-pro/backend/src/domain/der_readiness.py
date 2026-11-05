@@ -286,10 +286,7 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     nc_rfg: StatusOsi = "ready" if (ma_nc_rfg and ma_lvrt and ma_hvrt) else "blocked"
 
     komplet_wejsc = (
-        sc_3f == "ready"
-        and vdrop != "blocked"
-        and nc_rfg == "ready"
-        and equipment == "ready"
+        sc_3f == "ready" and vdrop != "blocked" and nc_rfg == "ready" and equipment == "ready"
     )
     if komplet_wejsc:
         raport: StatusOsi = "ready"
@@ -331,9 +328,7 @@ def osie_gotowosci_der(we: WejscieGotowosciDer) -> list[OsGotowosci]:
     ]
 
 
-def _blokady_osi(
-    os: str, we: WejscieGotowosciDer, status: StatusOsi
-) -> list[BlokadaOsi]:
+def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[BlokadaOsi]:
     if status in ("ready", "not_applicable"):
         return []
 
@@ -372,9 +367,7 @@ def _blokady_osi(
             dodaj("der.nc_rfg.missing", "Brak profilu NC RfG operatora.", "ncrfg")
     elif os == "equipment":
         if we.device_catalog_ref is None:
-            dodaj(
-                "der.device_catalog.missing", "Brak katalogu urządzenia.", "inverters"
-            )
+            dodaj("der.device_catalog.missing", "Brak katalogu urządzenia.", "inverters")
         if (
             we.connection_side == "dedicated_transformer"
             and we.block_transformer_catalog_ref is None
@@ -386,13 +379,9 @@ def _blokady_osi(
             )
     elif os in ("protection", "protection_selectivity"):
         if we.protection_catalog_ref is None:
-            dodaj(
-                "der.protection.missing", "Brak zabezpieczenia z katalogu.", "topology"
-            )
+            dodaj("der.protection.missing", "Brak zabezpieczenia z katalogu.", "topology")
         if we.ct_catalog_ref is None or we.vt_catalog_ref is None:
-            dodaj(
-                "der.ct_vt.missing", "Brak przekładników CT/VT z katalogu.", "topology"
-            )
+            dodaj("der.ct_vt.missing", "Brak przekładników CT/VT z katalogu.", "topology")
         if we.ct_catalog_ref is not None:
             if we.ct_accuracy_class is None:
                 dodaj(
@@ -593,8 +582,7 @@ def wejscie_z_generatora(
         # Klucz kanoniczny; zastane nazwy sa przenoszone przy wczytaniu modelu
         # (automigracja), wiec regula nie musi ich znac ani powielac.
         bus_przylaczenia_ref=(
-            _tekst(zrodla, (KLUCZ_PUNKTU_PRZYLACZENIA,))
-            or (generator.get("bus_ref") or None)
+            _tekst(zrodla, (KLUCZ_PUNKTU_PRZYLACZENIA,)) or (generator.get("bus_ref") or None)
         ),
         nominal_power_kw=moc_kw,
         device_catalog_ref=(
@@ -603,9 +591,7 @@ def wejscie_z_generatora(
         block_transformer_catalog_ref=ref_katalogu_transformatora_dedykowanego(
             generator, transformatory
         ),
-        block_transformer_sn_kva=sn_transformatora_dedykowanego_kva(
-            generator, transformatory
-        ),
+        block_transformer_sn_kva=sn_transformatora_dedykowanego_kva(generator, transformatory),
         protection_catalog_ref=_tekst(zrodla, ("protection_catalog_ref",)),
         ct_catalog_ref=_tekst(zrodla, ("ct_catalog_ref",)),
         vt_catalog_ref=_tekst(zrodla, ("vt_catalog_ref",)),
@@ -633,6 +619,4 @@ def _profile_generatora(generator: dict[str, Any]) -> dict[str, Any]:
 def ref_profilu_nc_rfg(generator: dict[str, Any]) -> str | None:
     """Profil NC RfG operatora wskazany przez wytwórcę — JEDEN odczyt dla gotowości i doboru
     funkcji zabezpieczeniowych (dostawca progu 87T)."""
-    return _tekst(
-        (_profile_generatora(generator),), ("nc_rfg_profile_ref", "nc_rfg", "ncrfg")
-    )
+    return _tekst((_profile_generatora(generator),), ("nc_rfg_profile_ref", "nc_rfg", "ncrfg"))
