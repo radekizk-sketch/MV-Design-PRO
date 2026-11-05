@@ -996,11 +996,9 @@ function buildLineRunShims(
 // ---------------------------------------------------------------------------
 
 interface RowLayout {
-  /** Treść per-LOD (rysowana). */
-  readonly measureInputs: readonly StationMeasureInput[];
-  /** SCHEMAT-10 S1 (V12K-135): pełny szczegół (L2), indeksowo zgodny z
-   *  `measureInputs` — źródło PORTÓW (wejście/wyjście/odgałęzienie) na L0, żeby
-   *  symbol zbiorczy miał głowice w TYCH SAMYCH X co L1/L2 (jedna kotwica). */
+  /** SCHEMAT-10 S1 (V12K-135) + PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: wejścia pomiaru
+   *  przy pełnym szczególe (L2) — JEDNO źródło geometrii i kompozycji stacji na
+   *  każdym LOD (szczegół poziomu zdejmuje `composeRowStation`). */
   readonly geometryInputs: readonly StationMeasureInput[];
   readonly bandsResult: BandsResult;
   readonly columnsResult: ColumnsResult;
@@ -1028,11 +1026,9 @@ function stationHasTransformerFact(
 
 function buildMeasureInput(
   props: StationOnRunViewModel,
-  lod: SceneLod,
   bayDirectionCaptions: readonly (string | null)[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
 ): StationMeasureInput {
-  const includeCableAndPorts = lod === 2;
   // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ: podpis rodzaju to
   // rodzaj WYPROWADZONY z topologii jedną regułą produktu (`props.topologicalType`, adapter
   // v2 ← `ui/shared/rodzajStacji.ts`). Niezgodność z deklaracją `Substation.station_type`
@@ -1046,7 +1042,9 @@ function buildMeasureInput(
     transformerRatedKva: props.transformerRatedKva ?? null,
     stationTypeLabel: stationTypeLabelPl(props.topologicalType),
     snBays,
-    bayDirectionCaptions: includeCableAndPorts ? bayDirectionCaptions : undefined,
+    // Podpisy kierunku zawsze w pomiarze (rozstaw pól LOD-niezależny); rysuje je L2
+    // (`composeRowStation`).
+    bayDirectionCaptions,
     // F9.4 (spec §13.1 V12K-029, §7): źródła DER stacji — część kompozycji na każdym LOD
     // (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: LOD upraszcza szczegół, nie kształt).
     derSources: derSourcesByStationId.get(props.id) ?? undefined,
@@ -1094,7 +1092,6 @@ function buildRowLayout(
   lineRuns: readonly LineRunV1[],
   gpzNodeCode: string,
   cableRun: SldCableRun | undefined,
-  lod: SceneLod,
   stopNotes: string[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   firstStationEntryDescent = false,
@@ -1110,13 +1107,9 @@ function buildRowLayout(
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
   // SCHEMAT-10 S1 (V12K-135, macierz LOD §3 „jedna kotwica"): buduje zestaw
-  // wejść pomiarowych dla ZADANEGO poziomu szczegółu. Wywoływany dwukrotnie:
-  // raz dla RENDERU (poziom `lod` — treść faktycznie rysowana), raz dla
-  // GEOMETRII (zawsze L2 — kolumny/pasma/kotwice liczone przy pełnym szczególe,
-  // patrz niżej). Determinizm: te same `stationIds` w tej samej kolejności ⇒
-  // oba zestawy są indeksowo zgodne (`composeRowStation` zipuje kolumny z
-  // renderInputs po indeksie, sekcja 5/6).
-  const buildInputs = (measureLod: SceneLod, notes: string[]): StationMeasureInput[] => {
+  // wejść pomiarowych dla zadanego poziomu szczegółu (wołany dla L2 — patrz niżej).
+  // Determinizm: kolejność `stationIds` ⇒ indeksowa zgodność z kolumnami.
+  const buildInputs = (notes: string[]): StationMeasureInput[] => {
     const arr = stationIds.map((id) => {
       const props = stationById.get(id);
       if (!props) {
@@ -1127,7 +1120,7 @@ function buildRowLayout(
       }
       const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
       const captions = stationBayCaptions(props.snBays ?? [], context);
-      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId);
+      return buildMeasureInput(props, captions, derSourcesByStationId);
     });
     let valid = arr.filter((m): m is StationMeasureInput => m != null);
     // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
@@ -1146,16 +1139,16 @@ function buildRowLayout(
     return valid;
   };
 
-  // Render: treść per-LOD (stopNotes prawdziwe — ostrzeżenia typologiczne itd.).
-  const renderInputs = buildInputs(lod, stopNotes);
-  // SCHEMAT-10 S1 (V12K-135): GEOMETRIA zawsze przy pełnym szczególe (L2),
-  // niezależnie od poziomu renderu — jedna oś magistrali, jedna kolumna, jedna
-  // kotwica na L0/L1/L2 (macierz §3: „zoom = skala szczegółu, nie
-  // przemeblowanie"). Likwiduje D1 „trzy światy" na poziomie geometrii (L0
-  // liczyło kolumny z pustych pól — węższe; L1 bez podpisów/incoming — inne niż
-  // L2). stopNotes geometrii to throwaway (te same ostrzeżenia raportuje już
-  // przebieg renderu; L2==render gdy lod===2, zero podwójnej pracy).
-  const geometryInputs = lod === 2 ? renderInputs : buildInputs(2, []);
+  // SCHEMAT-10 S1 (V12K-135) + karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: JEDEN zestaw
+  // wejść pomiarowych przy pełnym szczególe (L2) — i dla geometrii (kolumny/pasma/
+  // kotwice), i dla KOMPOZYCJI stacji. Dawniej kompozycja dostawała wejścia renderu
+  // poziomu `lod` (bez podpisów kierunku na L0/L1), a `composeStation` wymiaruje
+  // rozstaw pól z tych podpisów — pola stacji przesuwały się między L1 a L2 o 32 px
+  // (pomiar 2026-11-05, `przegladGpz1s4p1st`, pole 001: x 832 → 864). Szczegół
+  // poziomu zdejmuje teraz `composeRowStation` z GOTOWEJ kompozycji (podpisy
+  // kierunku tylko na L2), a nie z wejścia pomiaru. Notatki zatrzymania zbiera ten
+  // jeden przebieg.
+  const geometryInputs = buildInputs(stopNotes);
 
   // pkt 13 (recenzja NO-GO 2026-07-17): pomiar slotów liczy TEN SAM tekst,
   // który zostanie narysowany (para końców „A ↔ B — …") — inaczej etykieta
@@ -1211,11 +1204,8 @@ function buildRowLayout(
   });
   const busAxisY = bandsResult.bands.B2.y + bandsResult.bands.B2.height - BUS_AXIS_BAND_HEIGHT;
   const blockTopY = bandsResult.bands.B4.y;
-  // SCHEMAT-10 S1: geometria (kolumny/pasma/kotwice) z L2, ale `measureInputs`
-  // zwracane to renderInputs (treść per-LOD) — composeRowStation rysuje detal
-  // poziomu w kolumnie wymiarowanej pod pełny szczegół (jedna kotwica).
-  // `geometryInputs` (pełny szczegół) wystawione dla portów L0 (patrz interfejs).
-  return { measureInputs: renderInputs, geometryInputs, bandsResult, columnsResult, busAxisY, blockTopY };
+  // Jeden zestaw wejść (pełny szczegół) dla geometrii i kompozycji — patrz wyżej.
+  return { geometryInputs, bandsResult, columnsResult, busAxisY, blockTopY };
 }
 
 /** Przesunięcie WHOLE wiersza (x,y) po zbudowaniu geometrii lokalnej (0,0) —
@@ -1728,7 +1718,12 @@ function composeRowStation(
     segments: [...segments, ...protectionSegments, ...measurementSegments],
     stationNameOwner: composition.labels.stationName,
     apparatusOwners: composition.labels.apparatus,
-    portCaptionOwners: composition.labels.portCaptions,
+    // Podpis kierunku pola (`#direction`) to szczegół L2 — zdejmowany z gotowej
+    // kompozycji, rozstaw pól zostaje ten sam na każdym LOD (patrz `buildRowLayout`).
+    portCaptionOwners:
+      lod === 2
+        ? composition.labels.portCaptions
+        : composition.labels.portCaptions.filter((c) => !c.ownerRef.endsWith('#direction')),
     derOwners: composition.labels.der,
     protectionOwners: composition.labels.protection,
     busbarOwners: composition.labels.busbar,
@@ -1800,10 +1795,20 @@ function connectViaCorridor(
  * powodów, wynik identyczny).
  */
 /** Poziom biegu otwartego ciągu głównego (wiersz 0 bez stacji): pod blokiem GPZ
- *  z odstępem 2×GRID — JEDNO źródło dla trasy biegu i kotwic punktów
- *  odgałęźnych na nim (karta SLD-SUBSTRAT, kontynuacja). */
+ *  — JEDNO źródło dla trasy biegu i kotwic punktów odgałęźnych na nim (karta
+ *  SLD-SUBSTRAT, kontynuacja).
+ *
+ *  Odstęp `OPEN_RUN_FRAME_CLEARANCE` (6×GRID) od dolnej krawędzi bloku (= ramy
+ *  strefy GPZ): przy dawnych 2×GRID poziomy bieg magistrali leżał 16 px pod ramą
+ *  i czytał się jako jej krawędź (zgłoszenie właściciela, karta PRZEGLAD-SIECI-
+ *  JEDNA-KOMPOZYCJA). Kabel schodzi z pola pionowo w dół, a poziom biegnie wyraźnie
+ *  poza strefą; wyrocznia `trunkAlongZoneFrameGaps` przypina regułę. */
+export const OPEN_RUN_FRAME_CLEARANCE = 6 * GRID;
+
+/** Podpis końca odcinka bez stacji odbiorczej (słupek terminalny §16-v3). */
+export const OPEN_TERMINAL_LABEL_TEXT = 'koniec otwarty · brak stacji odbiorczej';
 function openRunCorridorY(gpzGeometry: { readonly bbox: V3Rect }): number {
-  return snapUp(gpzGeometry.bbox.y + gpzGeometry.bbox.height) + 2 * GRID;
+  return snapUp(gpzGeometry.bbox.y + gpzGeometry.bbox.height) + OPEN_RUN_FRAME_CLEARANCE;
 }
 
 function stripTopYOf(layout: RowLayout): number {
@@ -3044,7 +3049,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // deterministyczną pozycję; sloty `resolveLabels` nie są tu potrzebne).
   const openTerminalLabels: OwnedLabel[] = [];
 
-  /** §16-v3: słupek terminalny + (L2) etykieta „koniec otwarty" na KOŃCU
+  /** §16-v3: słupek terminalny (każdy LOD) + (od L1) etykieta braku modelu na KOŃCU
    *  biegu otwartego. `horizontalRun` — orientacja OSTATNIEGO biegu trasy
    *  (słupek jest prostopadły). Punkt (endX,endY) MUSI być ostatnim
    *  wierzchołkiem kawałka z `meta.openTerminal===true` (wyrocznia
@@ -3055,7 +3060,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     endY: number,
     horizontalRun: boolean,
     lastSegmentRef: string,
-    lod2: boolean,
+    withLabel: boolean,
   ): void => {
     const tickPoints: RouteVertex[] = horizontalRun
       ? [
@@ -3070,8 +3075,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       points: tickPoints,
       meta: { kind: 'openTerminal', ownerRef: `${lastSegmentRef}#open-terminal` },
     });
-    if (lod2) {
-      const text = 'koniec otwarty';
+    if (withLabel) {
+      // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: koniec bez stacji odbiorczej to
+      // jawny BRAK MODELU, nie ozdobnik L2 — podpis od L1 mówi, czego brakuje,
+      // a trafienie (`segment-endpoint` → odcinek) otwiera menu odcinka z akcją
+      // naprawy „Zakończ odcinek stacją SN/nN" (`SldCommandService`).
+      const text = OPEN_TERMINAL_LABEL_TEXT;
       const labelClass = 't4' as const;
       const width = measureLabelWidth(text, labelClass);
       const height = labelLineHeight(labelClass);
@@ -3212,7 +3221,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       lineRuns,
       GPZ_NODE_CODE,
       mainCableRun,
-      lod,
       notes,
       derSourcesByStationId,
       entryFromAbove,
@@ -3259,12 +3267,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         lineRuns,
         GPZ_NODE_CODE,
         cableRunById.get(run.id),
-        lod,
         [],
         derSourcesByStationId,
         true,
       );
-      if (branchLayout.measureInputs.length === 0) continue; // bieg otwarty (bez stacji)
+      if (branchLayout.geometryInputs.length === 0) continue; // bieg otwarty (bez stacji)
       sheetLateralExtents.push({
         stationIndex,
         width: branchLayout.columnsResult.totalWidth,
@@ -3646,7 +3653,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     let lateralBandRightX = 0;
 
     rowLayout.columnsResult.columns.forEach((col, i) => {
-      const measureInput = rowLayout.measureInputs[i];
+      const measureInput = rowLayout.geometryInputs[i];
       const props = stationById.get(measureInput.id)!;
       const composed = composeRowStation(measureInput, props, col, rowLayout.busAxisY, rowLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
       const rowStation: RowStation = { id: measureInput.id, composed };
@@ -3742,7 +3749,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           assignedFieldRef,
           lineBayCount: lineBayRefs.length,
           port,
-          // Ten sam predykat co `buildRowLayout(...).measureInputs.length === 0`
+          // Ten sam predykat co `buildRowLayout(...).geometryInputs.length === 0`
           // (każda stacja obecna w `stationById` daje wejście pomiaru).
           otwarty: !run.stationRefs.some((id) => stationById.has(id)) && (cableRun?.segmentPaths?.length ?? 0) > 0,
         });
@@ -4145,7 +4152,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
           allRouteGeoms.push({ points });
         });
-        emitOpenTerminalTick(xEnd, belowY, true, paths[paths.length - 1].segmentRef, lod === 2);
+        emitOpenTerminalTick(xEnd, belowY, true, paths[paths.length - 1].segmentRef, lod !== 0);
         openTrunkRunReservedBottom = Math.max(...planBiegowOtwartychGpz!.values()) + OPEN_RUN_BAND_BELOW;
       } else {
         stopNotes.push(
@@ -4209,7 +4216,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
         }
         allRouteGeoms.push({ points: tailPoints });
-        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
+        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod !== 0);
       }
     }
 
@@ -4320,10 +4327,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
       const gpzBottom = snapUp(gpzGeometry!.bbox.y + gpzGeometry!.bbox.height);
       let feederLayout = buildRowLayout(
-        run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
+        run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, stopNotes, derSourcesByStationId, true,
       );
 
-      if (feederLayout.measureInputs.length === 0) {
+      if (feederLayout.geometryInputs.length === 0) {
         // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ, na poziomie
         // z planu biegów otwartych z pól GPZ (układ zagnieżdżony, zero przecięć).
         const openPaths = cableRun?.segmentPaths ?? [];
@@ -4359,7 +4366,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             });
             allRouteGeoms.push({ points });
           });
-          emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod === 2);
+          emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod !== 0);
           lateralRunIds.push(run.id);
         }
         continue;
@@ -4382,7 +4389,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
       const feederRow: RowStation[] = [];
       feederLayout.columnsResult.columns.forEach((col, i) => {
-        const measureInput = feederLayout.measureInputs[i];
+        const measureInput = feederLayout.geometryInputs[i];
         const props = stationById.get(measureInput.id)!;
         const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
         feederRow.push({ id: measureInput.id, composed });
@@ -4519,7 +4526,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
         }
         allRouteGeoms.push({ points: tailPoints });
-        emitOpenTerminalTick(xEnd, feederCorridorY, true, feederTail[feederTail.length - 1], lod === 2);
+        emitOpenTerminalTick(xEnd, feederCorridorY, true, feederTail[feederTail.length - 1], lod !== 0);
       }
       continue;
     }
@@ -4588,8 +4595,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       ];
     };
 
-    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
-    if (layout.measureInputs.length === 0) {
+    let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, stopNotes, derSourcesByStationId, true);
+    if (layout.geometryInputs.length === 0) {
       // §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1, „analogicznie
       // laterale"): odgałęzienie BEZ ŻADNEJ stacji, ale z REALNYMI segmentami
       // ENM (`start_branch_segment_sn` bez wstawionej stacji) — bieg otwarty
@@ -4631,7 +4638,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
           allRouteGeoms.push({ points });
         });
-        emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod === 2);
+        emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod !== 0);
         packer.setCursor(yEnd + OPEN_RUN_BAND_BELOW);
         lateralRunIds.push(run.id);
       }
@@ -4646,7 +4653,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // niżej). Dwuprzebiegowa kompozycja jak GPZ (pass1 lokalny → poznaj
     // entryPort.x stacji 0 → przesuń → pass2 finalny).
     const firstCol0 = layout.columnsResult.columns[0];
-    const firstProps0 = stationById.get(layout.measureInputs[0].id)!;
+    const firstProps0 = stationById.get(layout.geometryInputs[0].id)!;
     // SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): wyrównanie X lateralu (`dx`)
     // liczone z portu wejścia PEŁNEJ geometrii (głowica pola, `geometryInputs`
     // @ L2), nie z portu renderu-LOD — inaczej na L0 (symbol zbiorczy: port na
@@ -4677,9 +4684,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // (bramka `lod === 2` przy `segmentLaterals`/emisji niżej) — rezerwa pustego
     // pasa na L0/L1 jest nieszkodliwa i utrzymuje wspólną kotwicę.
     const incomingText = segmentSpanTextWithEndpoints(
-      incomingLabelText(cableRun, layout.measureInputs[0].id),
+      incomingLabelText(cableRun, layout.geometryInputs[0].id),
       trunkNodeCodeOfId(originOwnerRef ?? ''),
-      stationCodeOfId(layout.measureInputs[0].id),
+      stationCodeOfId(layout.geometryInputs[0].id),
     );
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
 
@@ -4714,7 +4721,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // z kanału w prawo — kanał i jog należą do footprintu (packer nie sadza tam sąsiada).
     const footprintLeft = Math.min(cols[0].x - 2 * GRID, channelX);
     let footprintRight = Math.max(...cols.map((c) => c.x + c.width));
-    const lastLateralId = layout.measureInputs[layout.measureInputs.length - 1].id;
+    const lastLateralId = layout.geometryInputs[layout.geometryInputs.length - 1].id;
     const tailPieceCount = openTailSegmentRefs(cableRun, lastLateralId).length;
     if (tailPieceCount > 0) {
       footprintRight = Math.max(
@@ -4739,7 +4746,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     const lateralRow: RowStation[] = [];
     layout.columnsResult.columns.forEach((col, i) => {
-      const measureInput = layout.measureInputs[i];
+      const measureInput = layout.geometryInputs[i];
       const props = stationById.get(measureInput.id)!;
       const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes, edgeDomainByRef);
       lateralRow.push({ id: measureInput.id, composed });
@@ -4981,7 +4988,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
         }
         allRouteGeoms.push({ points: tailPoints });
-        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
+        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod !== 0);
       }
     }
     } // koniec pętli odgałęzień TEGO wiersza arkusza

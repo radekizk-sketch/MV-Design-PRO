@@ -32,7 +32,8 @@ import {
   type SceneV3,
 } from '../scene/buildScene';
 import { scenyWszystkichPoziomow } from '../scene/scenaSld';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { MIN_SYMBOL_SCREEN_PX, SYMBOL_DEFS } from '../symbols/defs';
+import { najmniejszyAparatCiaglosci } from '../scene/przegladKompozycja';
 import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
@@ -88,6 +89,7 @@ import {
   cameraReducer,
   cameraViewBox,
   computeInitialCameraState,
+  lodThresholdsForMinApparatus,
   type CameraState,
   pointerDistance,
   pointerMidpoint,
@@ -2556,6 +2558,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     return scenePointToCameraWorld({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
   }, [sceneByLod, fitTargetLod]);
 
+  // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: progi LOD z NAJMNIEJSZEGO aparatu
+  // ciągłości narysowanego w scenie pełnego szczegółu (`lodThresholdsForMin
+  // Apparatus`) — scena kafli QET 48 px nie spada na przegląd przy skali, przy
+  // której każdy aparat jest na ekranie wyraźny.
+  const lodThresholds = useMemo(
+    () => lodThresholdsForMinApparatus(najmniejszyAparatCiaglosci(sceneByLod[2]), MIN_SYMBOL_SCREEN_PX),
+    [sceneByLod],
+  );
+
   const [camera, dispatch] = useReducer(
     cameraReducer,
     { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint, cameraOverride },
@@ -2563,7 +2574,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       // PROPORCJE: kadr narzucony (zrzuty/eksport) jest stanem POCZĄTKOWYM —
       // rysunek jest wtedy PLANOWANY dla tej samej skali, którą pokazuje.
       arg.cameraOverride
-      ?? computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
+      ?? computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets, lodThresholds),
   );
 
   // (k3) 'refit' PEŁNY gdy zmienia się `lodOverride` (zmienia się CEL fitu,
@@ -2579,7 +2590,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     // F12-C (E15): refit z punktem fokusu GPZ — nowy cel fitu przechodzi przez
     // tę samą semantykę kamery startowej co mount.
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, lodThresholds });
     // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
     // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
     // samym renderze co `lodOverride`.
@@ -2629,6 +2640,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         type: 'kotwicz',
         anchorByLod: kotwica.boxByLod,
         lodBboxes,
+        lodThresholds,
         viewportSize,
         safeInsets: effectiveSafeInsets,
         // k4.1: gdy poziom szczegółu jest WYMUSZONY, kotwica celuje w geometrię
@@ -2638,7 +2650,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       return;
     }
     // (3) Fallback: zachowanie sprzed karty.
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, lodThresholds });
     // Efekt reaguje WYŁĄCZNIE na zmianę migawki — kotwica jest czytana w chwili
     // wywołania (ta sama dyscyplina co `fitSignal`/`centerRequest` niżej);
     // store dostarcza migawkę i wskazanie w JEDNYM zapisie, więc para jest
@@ -2653,7 +2665,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       skippedInitialFitSignal.current = false;
       return;
     }
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, lodThresholds });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
 
@@ -2690,7 +2702,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (!zadanie) return;
     if (zadanie.zakres.cel === 'siec') {
       const trescSieci = sceneBoxToCameraWorld(contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod]);
-      dispatch({ type: 'refit', bbox: trescSieci, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+      dispatch({ type: 'refit', bbox: trescSieci, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets, lodThresholds });
       return;
     }
     const { celByLod, przeszkodyByLod, tuszEtykiet } = prostokatyZakresu(sceneByLod, zadanie.zakres, sceneBoxToCameraWorld);

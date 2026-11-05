@@ -1318,7 +1318,11 @@ export const DETALE_KAFLA_WG_LOD: Readonly<Record<0 | 1 | 2, { readonly naped: b
  */
 export function skalaZnacznikaKafla(cameraScale: number, lod: 0 | 1 | 2): number {
   if (lod === 2 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
-  const s = lod === 0 ? Math.max(cameraScale, SKALA_DOLNA_LOD1) : cameraScale;
+  // Podłoga `SKALA_DOLNA_LOD1` także na LOD1: progi LOD liczone z gabarytu aparatu
+  // sceny (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, `lodThresholdsForMinApparatus`)
+  // pozwalają scenie kafli 48 j.św. zostać na LOD1 poniżej skali 0,51 — mnożnik
+  // z samej skali przekroczyłby tam rozmiar, przy którym znacznik nie nachodzi na nóż.
+  const s = Math.max(cameraScale, SKALA_DOLNA_LOD1);
   return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * s));
 }
 

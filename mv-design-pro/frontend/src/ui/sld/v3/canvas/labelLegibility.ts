@@ -581,7 +581,13 @@ function najlepszeDopasowanie(
   const skroc = (maxWidth: number): string => {
     const zapamietane = skroconeDo.get(maxWidth);
     if (zapamietane !== undefined) return zapamietane;
-    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, wagaPisma(label), maxWidth);
+    // Nazwa tożsamości (`jestNazwaTozsamosci`) mieści się w całości albo wcale —
+    // pusty wynik to „brak miejsca na tej stronie", nigdy wielokropek.
+    const wynik = jestNazwaTozsamosci(label)
+      ? measureTextWidth(tekstBazowy, fontSize, wagaPisma(label)) <= maxWidth
+        ? tekstBazowy
+        : ''
+      : shortenPreservingIdentity(tekstBazowy, fontSize, wagaPisma(label), maxWidth);
     skroconeDo.set(maxWidth, wynik);
     return wynik;
   };
@@ -761,6 +767,27 @@ function ustapSasiadow(
 }
 
 /**
+ * Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — NAZWA (wiersz tożsamości `#name-row-0`
+ * pasma nazw stacji i GPZ) NIGDY nie jest skracana wielokropkiem: „G…1" zamiast
+ * „GPZ 1" było zgłoszeniem właściciela. Gdy pełna nazwa nie mieści się w granicy
+ * w piśmie powiększonym, pismo maleje do największego, w którym się mieści — nie
+ * niżej niż pismo naturalne klasy. W piśmie naturalnym nazwa mieści się w swojej
+ * rezerwacji z konstrukcji sceny (pasmo nazw jest mierzone tym tekstem — przypina
+ * to wyrocznia `nazwyBezWielokropkaGaps`), więc zawijanie nie jest potrzebne.
+ */
+export function jestNazwaTozsamosci(label: OwnedLabel): boolean {
+  return label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0');
+}
+
+function pismoPelnejNazwy(label: OwnedLabel, fontSize: number, granica: number): number {
+  const naturalne = LABEL_TYPOGRAPHY[label.labelClass].fontSize;
+  const szerokosc = measureTextWidth(label.text, fontSize, wagaPisma(label));
+  if (szerokosc <= granica || fontSize <= naturalne) return fontSize;
+  const dopasowane = Math.floor(((fontSize * granica) / szerokosc) * 2) / 2;
+  return Math.max(naturalne, Math.min(fontSize, dopasowane));
+}
+
+/**
  * Plan renderu etykiet sceny dla skali kamery. `obstacles` to prostokąty
  * SYMBOLI i ODCINKÓW TORU tego poziomu szczegółu (`sceneObstacleRects`,
  * `scene/buildScene.ts`) — „tor elektryczny nie znika", więc rysunek ZAWSZE
@@ -787,12 +814,9 @@ export function planSceneLabels(
         // nie mieści się we własnej rezerwacji), więc obowiązuje także tutaj —
         // inaczej ścieżka „brak wiarygodnego pomiaru" malowałaby napis poza
         // arkuszem dokładnie tak, jak robiła to ścieżka zwykła przed tą kartą.
-        const text = shortenPreservingIdentity(
-          label.text,
-          fontSize,
-          wagaPisma(label),
-          rozciagloscWzdluzTekstu(label.rect, rotated),
-        );
+        const text = jestNazwaTozsamosci(label)
+          ? label.text
+          : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), rozciagloscWzdluzTekstu(label.rect, rotated));
         return {
           label,
           index,
@@ -829,10 +853,10 @@ export function planSceneLabels(
     // wyłącznie o granicę DOLNĄ (`minReadableFontSize`), więc powiększenie
     // rosło bez sufitu i przy oddaleniu napis przygniatał symbol (pomiar
     // 2,82× / 7,50×, patrz `LabelTypography.maxEnlargement`).
-    const fontSize = czytelna
+    const fontSizeKlasy = czytelna
       ? LABEL_TYPOGRAPHY[label.labelClass].fontSize
       : enlargedFontSizeWithinProportion(label.labelClass, scale);
-    if (fontSize === null) {
+    if (fontSizeKlasy === null) {
       // Tożsamość, której nie da się narysować proporcjonalnie — uczciwy brak,
       // policzony we wskaźniku „Ukryto N opisów" (`SldCanvasV3`), a nie napis
       // wielkości trzech aparatów obok siebie.
@@ -870,8 +894,10 @@ export function planSceneLabels(
     // rozmiarze NATURALNYM — więc skracanie POWIĘKSZONEGO pisma do slotu
     // cofnęłoby całe powiększenie. Dla nich granicą zostaje dopiero
     // rozstrzyganie kolizji (razem z obrysem arkusza) niżej.
+    const nazwa = jestNazwaTozsamosci(label);
+    const fontSize = nazwa ? pismoPelnejNazwy(label, fontSizeKlasy, granicaTekstu) : fontSizeKlasy;
     const tekstBazowy =
-      !czytelna && label.ownerKind !== 'station-name'
+      nazwa || (!czytelna && label.ownerKind !== 'station-name')
         ? label.text
         : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), granicaTekstu);
     return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
@@ -886,19 +912,17 @@ export function planSceneLabels(
       // Postać celu: pismo powiększone do podłogi celu, tekst jak w gałęzi
       // powiększenia awaryjnego (pasmo nazw skracane do rezerwacji kolumny).
       const rotated = label.rotated === true;
+      const granicaCelu = label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated);
+      const nazwaCelu = jestNazwaTozsamosci(label);
+      const pismoCelu = nazwaCelu ? pismoPelnejNazwy(label, fontCelu, granicaCelu) : fontCelu;
       const tekstBazowy =
-        label.ownerKind === 'station-name'
-          ? shortenPreservingIdentity(
-              label.text,
-              fontCelu,
-              wagaPisma(label),
-              label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
-            )
+        label.ownerKind === 'station-name' && !nazwaCelu
+          ? shortenPreservingIdentity(label.text, fontCelu, wagaPisma(label), granicaCelu)
           : label.text;
       kandydaci.push({
         label,
         index,
-        fontSize: fontCelu,
+        fontSize: pismoCelu,
         enlarged: true,
         slot: label.rect,
         tekstBazowy,

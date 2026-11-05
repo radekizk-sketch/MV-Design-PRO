@@ -145,6 +145,35 @@ export interface LodThresholds {
 export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.6, l1Max: 1.2 };
 
 /**
+ * Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA — PROGI Z RZECZYWISTEGO GABARYTU APARATU.
+ *
+ * `l0Max` wyprowadzono wyżej z bramy „najmniejszy aparat ciągłości toru ma na
+ * ekranie co najmniej `MIN_SYMBOL_SCREEN_PX`" przy gabarycie 16 px świata. Scena
+ * rysowana kaflami pola SN (QET, 48 px) ma ten sam warunek spełniony przy skali
+ * trzy razy mniejszej — stała 0,6 przełączała mały model na przegląd L0, choć
+ * każdy aparat miał na ekranie > 24 px (zgłoszenie właściciela 0/10). Próg liczy
+ * się więc z NAJMNIEJSZEGO gabarytu aparatu ciągłości faktycznie narysowanego
+ * w scenie pełnego szczegółu tą samą formułą:
+ *   `l0Max = MIN_SYMBOL_SCREEN_PX / (gabaryt · (1 − margin))`,
+ * zaokrągloną w GÓRĘ do 0,1 (16 px → 0,6 = `DEFAULT_LOD_THRESHOLDS.l0Max`;
+ * 48 px → 0,2). `l1Max` (brama pisma t2) nie zależy od aparatu. Brak aparatu
+ * w scenie (`null`) ⇒ progi domyślne. Wynik nigdy nie przekracza `l1Max`.
+ */
+export function lodThresholdsForMinApparatus(
+  minApparatusWorldPx: number | null,
+  minSymbolScreenPx: number,
+  margin: number = LOD_HYSTERESIS_MARGIN,
+): LodThresholds {
+  if (minApparatusWorldPx == null || !Number.isFinite(minApparatusWorldPx) || minApparatusWorldPx <= 0) {
+    return DEFAULT_LOD_THRESHOLDS;
+  }
+  const surowy = minSymbolScreenPx / (minApparatusWorldPx * (1 - margin));
+  // Zaokrąglenie do 0,1 na liczbach całkowitych (bez błędu ułamka binarnego).
+  const l0Max = Math.min(DEFAULT_LOD_THRESHOLDS.l1Max, Math.max(1, Math.ceil(surowy * 10 - 1e-9)) / 10);
+  return l0Max === DEFAULT_LOD_THRESHOLDS.l0Max ? DEFAULT_LOD_THRESHOLDS : { l0Max, l1Max: DEFAULT_LOD_THRESHOLDS.l1Max };
+}
+
+/**
  * Margines histerezy — daje OSOBNE progi wejścia/wyjścia wokół każdej granicy
  * (spec §7 „przełączanie progami kamery, histereza"; karta S8 „osobna wartość
  * wejścia i wyjścia, żeby oscylacja zoomu na granicy nie trzepotała
@@ -319,6 +348,10 @@ export interface CameraState {
   readonly lod: SceneLod;
   readonly viewportSize: { readonly width: number; readonly height: number };
   readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+  /** Progi LOD tej sceny (`lodThresholdsForMinApparatus`); brak ⇒ domyślne.
+   *  Zachowywane przez KAŻDĄ akcję (`cameraReducer`), zmieniane tylko przez
+   *  `'refit'` z nowymi progami. */
+  readonly lodThresholds?: LodThresholds;
   /** K2: ostatni KADR (akcja `'kadruj'`), dopóki projektant nie ruszy kamery.
    *  Zmiana rozmiaru kanwy ponawia wtedy kadr na nowym viewporcie zamiast
    *  zachowywać skalę — cel kadru (stacja, pole, tor) zostaje w całości
@@ -358,6 +391,9 @@ export type CameraAction =
       readonly type: 'refit';
       readonly bbox: BoundingBox;
       readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+      /** Progi LOD nowego świata (`lodThresholdsForMinApparatus`); brak ⇒ zostają
+       *  progi stanu. */
+      readonly lodThresholds?: LodThresholds;
       readonly viewportSize: { readonly width: number; readonly height: number };
       /** F12-C (E15): środek bloku GPZ dla trybu „focus" kamery mobilnej —
        *  patrz `computeInitialCameraState`; brak/`null` = ścieżka „fit". */
@@ -375,6 +411,8 @@ export type CameraAction =
       readonly type: 'kotwicz';
       readonly anchorByLod: Readonly<Record<SceneLod, BoundingBox>>;
       readonly lodBboxes: Readonly<Record<SceneLod, BoundingBox>>;
+      /** Progi LOD zmienionego modelu (jak w `'refit'`); brak ⇒ zostają progi stanu. */
+      readonly lodThresholds?: LodThresholds;
       readonly viewportSize: { readonly width: number; readonly height: number };
       readonly safeInsets?: SafeInsets;
       /** k4.1 dla kotwicy: gdy wołający WYMUSZA poziom szczegółu
@@ -635,6 +673,7 @@ function applyAnchor(
     const nastepnyLod = lodFromScaleWithHysteresis(
       refScaleFor(skalaCelu, lod, lodBboxes),
       lod,
+      action.lodThresholds ?? progiStanu(state),
     );
     if (nastepnyLod === lod) {
       scale = skalaCelu;
@@ -910,7 +949,7 @@ function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
   for (let obrot = 0; obrot < 3; obrot += 1) {
     odwiedzone.add(lod);
     const scale = skalaKadru(anchorByLod[lod]!, viewportSize, safeInsets);
-    const surowy = lodFromScaleWithHysteresis(refScaleFor(scale, lod, lodBboxes), lod);
+    const surowy = lodFromScaleWithHysteresis(refScaleFor(scale, lod, lodBboxes), lod, progiStanu(state));
     const nastepny = przyciagnij(surowy, surowy > lod ? 'gora' : 'dol');
     if (nastepny === lod) break;
     if (odwiedzone.has(nastepny)) {
@@ -930,7 +969,30 @@ function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
   };
 }
 
+/** Progi LOD stanu kamery (brak ⇒ domyślne). */
+function progiStanu(state: CameraState): LodThresholds {
+  return state.lodThresholds ?? DEFAULT_LOD_THRESHOLDS;
+}
+
+/** Reduktor kamery. Progi LOD (`lodThresholds`) przechodzą przez KAŻDĄ akcję —
+ *  jedno miejsce, zamiast dopisywania pola w każdym literale stanu (akcja
+ *  `'refit'` może je podmienić). */
 export function cameraReducer(state: CameraState, action: CameraAction): CameraState {
+  const next = cameraReducerCore(state, action);
+  const progi =
+    action.type === 'refit' || action.type === 'kotwicz'
+      ? action.lodThresholds ?? state.lodThresholds
+      : state.lodThresholds;
+  if (next.lodThresholds === progi) return next;
+  if (progi === undefined) {
+    const { lodThresholds: _pominiete, ...bez } = next;
+    void _pominiete;
+    return bez;
+  }
+  return { ...next, lodThresholds: progi };
+}
+
+function cameraReducerCore(state: CameraState, action: CameraAction): CameraState {
   if (action.type === 'resize') {
     // K2: trwający kadr (projektant nie ruszył kamery) jest ponawiany na nowym
     // viewporcie i na nowych zasłonach — cel zostaje w całości w kadrze.
@@ -971,7 +1033,7 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
     }).transform;
     return {
       transform,
-      lod: lodFromScale(transform.scale),
+      lod: lodFromScale(transform.scale, action.lodThresholds ?? progiStanu(state)),
       viewportSize: action.viewportSize,
       lodBboxes: action.lodBboxes,
     };
@@ -986,7 +1048,7 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
   // mapowaniem LOD (natywna dla `state.lod`, bo `zoomToCursor`/`panTransform`
   // operują na transformie z poprzedniego ticku bez zmiany świata).
   const refScale = refScaleFor(transform.scale, state.lod, state.lodBboxes);
-  const nextLod = lodFromScaleWithHysteresis(refScale, state.lod);
+  const nextLod = lodFromScaleWithHysteresis(refScale, state.lod, progiStanu(state));
   if (nextLod === state.lod) {
     return withoutKadr({ ...state, transform });
   }
@@ -1038,6 +1100,8 @@ export function computeInitialCameraState(
   /** S9-8: pasy zasłonięte dokami UI — patrz `CameraAction` `'refit'`.
    *  Brak ⇒ `ZERO_INSETS` (zachowanie sprzed karty, testy kamery bez zmian). */
   safeInsets?: SafeInsets,
+  /** Progi LOD sceny (`lodThresholdsForMinApparatus`); brak ⇒ domyślne. */
+  lodThresholds?: LodThresholds,
 ): CameraState {
   const transform = initialCameraForNetwork({
     bbox,
@@ -1048,9 +1112,10 @@ export function computeInitialCameraState(
   }).transform;
   return {
     transform,
-    lod: lodFromScale(transform.scale),
+    lod: lodFromScale(transform.scale, lodThresholds),
     viewportSize,
     lodBboxes: lodBboxes ?? { 0: bbox, 1: bbox, 2: bbox },
+    ...(lodThresholds ? { lodThresholds } : {}),
   };
 }
 
