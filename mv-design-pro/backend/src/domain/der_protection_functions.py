@@ -44,7 +44,7 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     etykieta_punktu_neutralnego_pl,
 )
-from werdykt.kontrakt import LimitKryterium, StatusWerdyktu, Wielkosc
+from werdykt.kontrakt import LimitKryterium, StatusWerdyktu, Wielkosc, WyjasnienieWerdyktu
 
 #: Sposob uziemienia punktu neutralnego — TEN SAM slownik co `GroundingConfig.type`
 #: (W5-A: koniec polskich literalow w kontrakcie); `None` = nieznany w modelu.
@@ -183,7 +183,11 @@ class OcenaProguWymagania:
     przedmiot_pl: str
     wartosc: Wielkosc | None
     limit: LimitKryterium | None
-    wyjasnienie_pl: str
+    wyjasnienie: WyjasnienieWerdyktu
+
+    @property
+    def wyjasnienie_pl(self) -> str:
+        return self.wyjasnienie.zdanie_pl
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -192,6 +196,7 @@ class OcenaProguWymagania:
             "przedmiot_pl": self.przedmiot_pl,
             "wartosc": self.wartosc.model_dump(mode="json") if self.wartosc else None,
             "limit": self.limit.model_dump(mode="json") if self.limit else None,
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "wyjasnienie_pl": self.wyjasnienie_pl,
         }
 
@@ -230,11 +235,17 @@ def ocen_prog_87t(
             przedmiot_pl=przedmiot,
             wartosc=wartosc,
             limit=None,
-            wyjasnienie_pl=(
-                f"{BRAK_PODSTAWY_PROGU_87T_PL[0].upper()}{BRAK_PODSTAWY_PROGU_87T_PL[1:]} "
-                f"({opis_sn}). Wymagania "
-                "zabezpieczenia różnicowego 87T nie da się ani nałożyć, ani wykluczyć — "
-                "rozstrzygają warunki przyłączenia operatora."
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    f"{BRAK_PODSTAWY_PROGU_87T_PL[0].upper()}{BRAK_PODSTAWY_PROGU_87T_PL[1:]} "
+                    f"({opis_sn}). Wymagania zabezpieczenia różnicowego 87T nie da się ani "
+                    "nałożyć, ani wykluczyć — rozstrzygają warunki przyłączenia operatora."
+                ),
+                przyczyna_pl=BRAK_PODSTAWY_PROGU_87T_PL,
+                czego_brakuje=(
+                    "próg mocy znamionowej transformatora dla 87T z dokumentem operatora "
+                    "i jednostką redakcyjną",
+                ),
             ),
         )
     if prog.wartosc.jednostka != "kVA":
@@ -252,9 +263,13 @@ def ocen_prog_87t(
             przedmiot_pl=przedmiot,
             wartosc=None,
             limit=prog,
-            wyjasnienie_pl=(
-                f"Model nie niesie mocy znamionowej transformatora dedykowanego, więc "
-                f"warunku S_n ≥ {opis_progu} nie oceniono — wskaż transformator w modelu."
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    f"Model nie niesie mocy znamionowej transformatora dedykowanego, więc "
+                    f"warunku S_n ≥ {opis_progu} nie oceniono — wskaż transformator w modelu."
+                ),
+                przyczyna_pl="brak transformatora dedykowanego wytwórcy w modelu",
+                czego_brakuje=("moc znamionowa transformatora dedykowanego w modelu",),
             ),
         )
     if sn_transformatora_kva >= prog.wartosc.wartosc:
@@ -264,8 +279,10 @@ def ocen_prog_87t(
             przedmiot_pl=przedmiot,
             wartosc=wartosc,
             limit=prog,
-            wyjasnienie_pl=(
-                f"{opis_sn} ≥ {opis_progu} — zabezpieczenie różnicowe 87T jest wymagane."
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=(
+                    f"{opis_sn} ≥ {opis_progu} — zabezpieczenie różnicowe 87T jest wymagane."
+                ),
             ),
         )
     return OcenaProguWymagania(
@@ -274,7 +291,9 @@ def ocen_prog_87t(
         przedmiot_pl=przedmiot,
         wartosc=wartosc,
         limit=prog,
-        wyjasnienie_pl=f"{opis_sn} < {opis_progu} — wymaganie 87T nie dotyczy transformatora.",
+        wyjasnienie=WyjasnienieWerdyktu(
+            zdanie_pl=f"{opis_sn} < {opis_progu} — wymaganie 87T nie dotyczy transformatora.",
+        ),
     )
 
 
