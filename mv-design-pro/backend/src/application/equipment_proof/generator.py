@@ -112,6 +112,8 @@ class EquipmentProofGenerator:
                     "ma napięcie najwyższe sieci w tablicach IEC 60038."
                 ),
             )
+        # Napięcie najwyższe sieci wynika z napięcia znamionowego => u_n jest znane.
+        assert u_n is not None
         status = STATUS_PASS if izolacja_pokrywa_siec(device_val, u_n) else STATUS_FAIL
         return EquipmentProofCheckResult(
             name="U",

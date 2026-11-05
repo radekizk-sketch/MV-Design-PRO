@@ -1329,6 +1329,8 @@ def ocen_wytrzymalosc_aparatu(
             f"{czesc_zaliczona}"
         )
     else:
+        # Oba kryteria zaliczone => oba wykorzystania policzone.
+        assert util_dyn is not None and util_th is not None
         message = (
             f"OK: aparatura „{etykieta_pl}” wytrzymała "
             f"(wykorzystanie prądu szczytowego {format_liczba(util_dyn, miejsca=0)} %, "

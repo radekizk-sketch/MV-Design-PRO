@@ -312,6 +312,9 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             )
         )
     else:
+        # alf_wymagany policzony => prąd zwarciowy i prąd znamionowy pierwotny są znane.
+        ik_ka = tor.ik_ka
+        assert ik_ka is not None and in_a is not None
         kryteria.append(
             Kryterium(
                 kod="ct.alf_katalogowy",
@@ -321,7 +324,11 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                     "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
                 ),
                 werdykt="informacja",
-                wymagane=f"ALF ≥ {format_liczba(alf_wymagany, miejsca=1)} (Ik″ {format_liczba(tor.ik_ka, miejsca=2)} kA / In {format_liczba(in_a, miejsca=0)} A)",
+                wymagane=(
+                    f"ALF ≥ {format_liczba(alf_wymagany, miejsca=1)} "
+                    f"(Ik″ {format_liczba(ik_ka, miejsca=2)} kA / "
+                    f"In {format_liczba(in_a, miejsca=0)} A)"
+                ),
                 dostepne=f"ALF {format_liczba(alf, miejsca=0)}"
                 + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
                 komentarz_pl=(
@@ -358,6 +365,11 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
     else:
         werdykt_nasycenia = "brak_danych"
     if wynik_nasycenia.alf_efektywny is not None:
+        # Solver ustawia ALF efektywny razem z wariantem i mocą obliczeniową obwodu wtórnego.
+        assert wynik_nasycenia.wariant_alf is not None
+        assert wynik_nasycenia.moc_obliczeniowa_va is not None
+        # ALF efektywny wymaga mocy znamionowej rdzenia (ALF·(Sin + Sn)/(Sin + S2)).
+        assert obciazalnosc is not None
         dostepne_nasycenia = (
             "$ALF_{eff} = "
             f"{format_liczba(wynik_nasycenia.alf_efektywny, miejsca=1, latex=True)}$ "

@@ -192,8 +192,13 @@ def _step(symbol: str, formula_latex: str, substitution_pl: str, result_pl: str)
 _WYKLADNIK: dict[int, str] = {2: "²", 3: "³", 4: "⁴"}
 
 
-def _liczba(wartosc: float) -> str:
-    """Liczba w prozie kroku — jedyne źródło zapisu (`werdykt.format_liczba`), 6 cyfr."""
+def _liczba(wartosc: float | None) -> str:
+    """Liczba w prozie kroku — jedyne źródło zapisu (`werdykt.format_liczba`), 6 cyfr.
+
+    Krok śladu powstaje wyłącznie z policzonej wielkości; ``None`` (po `_r`) w tym miejscu
+    to błąd kodu, nie brak danych — odmowa jawna zamiast napisu „None” w podstawieniu."""
+    if wartosc is None:
+        raise ValueError("Krok śladu migotania bez policzonej wartości.")
     return format_liczba(wartosc, cyfry=6)
 
 
