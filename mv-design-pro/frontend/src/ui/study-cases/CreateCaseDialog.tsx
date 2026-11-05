@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import type {
   CreateStudyCaseRequest,
-  OperatorProfileId,
   ScInputMode,
   StudyCase,
   StudyCaseConfig,
@@ -15,7 +14,6 @@ import type {
 import {
   CONFIG_FIELD_LABELS,
   DEFAULT_STUDY_CASE_CONFIG,
-  OPERATOR_PROFILES,
 } from './types';
 import { useStudyCasesStore } from './store';
 
@@ -52,13 +50,12 @@ export function CreateCaseDialog({
       e.preventDefault();
       clearError();
 
-      // operator_profile_id + sc_input_mode (+ simplified inputs) MUSZĄ być
+      // sc_input_mode (+ simplified inputs) MUSZĄ być
       // przekazywane zawsze, niezależnie od useDefaultConfig — to świadome
       // wybory projektanta, nie szczegóły techniczne obliczeń.
       const effectiveConfig: StudyCaseConfig = useDefaultConfig
         ? {
             ...DEFAULT_STUDY_CASE_CONFIG,
-            operator_profile_id: config.operator_profile_id,
             sc_input_mode: config.sc_input_mode,
             sc_simplified_sk_mva: config.sc_simplified_sk_mva,
             sc_simplified_r_x_ratio: config.sc_simplified_r_x_ratio,
@@ -172,36 +169,6 @@ export function CreateCaseDialog({
               </label>
             </div>
 
-            <div>
-              <label
-                htmlFor="operator-profile-id"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                {CONFIG_FIELD_LABELS.operator_profile_id} *
-              </label>
-              <select
-                id="operator-profile-id"
-                data-testid="operator-profile-id"
-                value={config.operator_profile_id}
-                onChange={(e) =>
-                  setConfig((prev) => ({
-                    ...prev,
-                    operator_profile_id: e.target.value as OperatorProfileId,
-                  }))
-                }
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-              >
-                {OPERATOR_PROFILES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label_pl}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Wymagania NC RfG / IRiESD wybranego operatora wpływają na walidację
-                profili FRT, Q(U), cos φ(P) oraz krzywych zabezpieczeń.
-              </p>
-            </div>
 
             <div>
               <label

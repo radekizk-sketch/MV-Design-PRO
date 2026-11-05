@@ -54,13 +54,6 @@ class StudyCaseConfig:
     include_motor_contribution: bool = True
     include_inverter_contribution: bool = True
 
-    # Operator profile (NC RfG / IRiESD per OSD)
-    # Determines: FRT curves, Q-U envelope, cos φ(P) profile, ramp rate, dead band,
-    # frequency response thresholds. Loaded from backend/src/catalog/profiles/nc_rfg/
-    # {operator_profile_id}.yaml. Supported: pse | energa | tauron | enea | pge.
-    # Default: "enea" — per /goal V12K (ENEA Operator pierwszy w priorytecie).
-    operator_profile_id: str = "enea"
-
     # SC input mode (PLAN_E2E_INDUSTRIAL § 3.9 K3 + ENGINEER_WORKFLOW_AUDIT § 3.1)
     # "simplified" — projektant podaje tylko S″k_SN po stronie SN [MVA] + R/X
     #                (wystarczające dla typowego projektu SN, IEC 60909).
@@ -81,7 +74,6 @@ class StudyCaseConfig:
             "tolerance": self.tolerance,
             "include_motor_contribution": self.include_motor_contribution,
             "include_inverter_contribution": self.include_inverter_contribution,
-            "operator_profile_id": self.operator_profile_id,
             "sc_input_mode": self.sc_input_mode,
             "sc_simplified_sk_mva": self.sc_simplified_sk_mva,
             "sc_simplified_r_x_ratio": self.sc_simplified_r_x_ratio,
@@ -96,7 +88,6 @@ class StudyCaseConfig:
             tolerance=data.get("tolerance", 1e-6),
             include_motor_contribution=data.get("include_motor_contribution", True),
             include_inverter_contribution=data.get("include_inverter_contribution", True),
-            operator_profile_id=data.get("operator_profile_id", "enea"),
             sc_input_mode=data.get("sc_input_mode", "simplified"),
             sc_simplified_sk_mva=data.get("sc_simplified_sk_mva"),
             sc_simplified_r_x_ratio=data.get("sc_simplified_r_x_ratio", 0.1),

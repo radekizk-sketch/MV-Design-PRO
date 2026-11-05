@@ -1,7 +1,8 @@
 """Nazwana odmowa braku pakietu danych właściciela na ścieżce HTTP (karta OD-17a).
 
-Realna ścieżka użytkownika: projekt + przypadek utworzone przez API (operator przypadku
-w `config.operator_profile_id`), model w magazynie, raport zgodności referencyjnej przypadku.
+Realna ścieżka użytkownika: projekt + przypadek utworzone przez API, operator sieci ustawiony
+w MODELU operacją domenową `set_connection_conditions` (jedna dana sieci — dodatek karty
+GPZ-DANE-ANALIZ, dawniej `config.operator_profile_id` przypadku), raport zgodności referencyjnej.
 
 * raport przypadku operatora BEZ pakietu wymagań (dane P3) → 200 z rekordem `braki_pakietow`
   (kod `BRAK_PAKIETU_OSD:<operator>`), pakiet OSD innego operatora NIE jest oceniany;
@@ -20,7 +21,7 @@ from enm.store import set_enm
 from reference_engine.registry import REFERENCE_PACK_REGISTRY, pack_id_operatora
 
 
-def _przypadek(client, *, operator: str, nazwa: str) -> str:
+def _przypadek(client, *, operator: str | None, nazwa: str) -> str:
     projekt = client.post("/api/projects", json={"name": "OD-17a — test"})
     assert projekt.status_code == 201, projekt.text
     przypadek = client.post(
@@ -28,7 +29,6 @@ def _przypadek(client, *, operator: str, nazwa: str) -> str:
         json={
             "project_id": projekt.json()["id"],
             "name": nazwa,
-            "config": {"operator_profile_id": operator},
         },
     )
     assert przypadek.status_code == 201, przypadek.text
@@ -45,6 +45,18 @@ def _przypadek(client, *, operator: str, nazwa: str) -> str:
             ],
         ),
     )
+    if operator is not None:
+        operacja = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "set_connection_conditions",
+                    "payload": {"operator_sieci": operator},
+                }
+            },
+        )
+        assert operacja.status_code == 200, operacja.text
+        assert operacja.json().get("error") is None, operacja.text
     return case_id
 
 
@@ -112,3 +124,13 @@ def test_nieznany_identyfikator_pakietu_to_404_nie_brak_danych(app_client) -> No
 
 def test_obie_galezie_iloczynu_sa_cwiczone() -> None:
     assert _BEZ_PAKIETU and _Z_PAKIETEM
+
+
+def test_raport_modelu_bez_operatora_sieci_nie_zgaduje_pakietu_osd(app_client) -> None:
+    """Dawny domysł „enea” przypadku usunięty: brak operatora sieci = jawny brak danej modelu."""
+    case_id = _przypadek(app_client, operator=None, nazwa="Wariant D")
+    cialo = app_client.get(f"/api/cases/{case_id}/reference/compliance").json()
+    assert [p for p in cialo["packs"] if p["kind"] == "osd"] == []
+    assert cialo["braki_pakietow"] == []
+    assert cialo["operator_sieci"] is None
+    assert "operatora sieci" in cialo["brak_operatora_sieci_pl"]

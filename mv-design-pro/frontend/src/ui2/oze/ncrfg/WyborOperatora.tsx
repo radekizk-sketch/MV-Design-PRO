@@ -6,6 +6,12 @@
 import { opisWymaganegoWyboru, type OperatorZModelu } from './operator';
 import type { ProfilOperatoraNcRfg } from './typy';
 
+/** Dopisek operatora rozstrzygniętego przez model (profil efektywny modułów). */
+export const OPIS_Z_MODELU =
+  '(z modelu — profil NC RfG modułów: własny albo operatora sieci z warunków przyłączenia)';
+/** Dopisek profili różnych per moduł (każdy moduł oceniany wg swojego profilu). */
+export const OPIS_PER_MODUL = '(z modelu — każdy moduł oceniany wg swojego profilu NC RfG)';
+
 /** Stan odczytu katalogu operatorów — jedno źródło dla listy wyboru. */
 export type OdczytKataloguOperatorow = 'wczytywanie' | 'blad' | 'gotowy';
 
@@ -51,14 +57,27 @@ export function WyborOperatora({
   testid,
 }: WyborOperatoraProps): JSX.Element {
   const odczyt = stanOdczytuKatalogu(operatorzy, bladKatalogu);
+  const nazwaOperatora = (operatorId: string): string =>
+    operatorzy?.find((op) => op.operator_id === operatorId)?.operator_name_pl ?? operatorId;
   if (zModelu.rodzaj === 'z_modelu') {
-    const nazwa =
-      operatorzy?.find((op) => op.operator_id === zModelu.operatorId)?.operator_name_pl ??
-      zModelu.operatorId;
     return (
       <div className="mvd-oze-pole" data-testid={testid} data-zrodlo="model">
         <span>{etykieta}</span>
-        <span data-testid={`${testid}-wartosc`}>{`${nazwa} (z modelu — profil NC RfG modułów)`}</span>
+        <span data-testid={`${testid}-wartosc`}>
+          {`${nazwaOperatora(zModelu.operatorId)} ${OPIS_Z_MODELU}`}
+        </span>
+      </div>
+    );
+  }
+  if (zModelu.rodzaj === 'per_modul') {
+    // Profile efektywne różne per moduł (źródło przyłączone do sieci innego operatora):
+    // ocena przypadku idzie bez wyboru — backend ocenia każdy moduł wg jego profilu.
+    return (
+      <div className="mvd-oze-pole" data-testid={testid} data-zrodlo="model-per-modul">
+        <span>{etykieta}</span>
+        <span data-testid={`${testid}-wartosc`}>
+          {`${zModelu.operatorzy.map(nazwaOperatora).join(', ')} ${OPIS_PER_MODUL}`}
+        </span>
       </div>
     );
   }

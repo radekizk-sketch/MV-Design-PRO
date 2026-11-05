@@ -26,6 +26,7 @@ import {
   fetchAudit2CatalogSnapshot,
   fetchNcRfgOperators,
   getNcRfgOperator,
+  profilNcRfgModulu,
   selectAllDers,
   useStationDerStore,
   type NcRfgOperatorItem,
@@ -225,7 +226,7 @@ function WynikPokrycia({
 // tu już niezależnie wybieralne: backend niesie JEDNĄ parę krzywych
 // ride-through na operatora NC RfG (`GET /api/ncrfg-tests/catalog`), więc
 // `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo związane z
-// `nc_rfg_profile_ref` już przypisanym modułowi (ten sam operator) — ten
+// profilem EFEKTYWNYM modułu (własny `nc_rfg_profile_ref` albo operator sieci modelu) — ten
 // ekran je pokazuje jako dowód White Box, nie oferuje wyboru niespójnego z
 // profilem. Zmiana operatora dzieje się w kreatorze DER / formularzu PV/BESS/FW inspektora.
 // ---------------------------------------------------------------------------
@@ -271,7 +272,9 @@ function SekcjaWiazanKrzywych() {
   const pfKrzywe = katalogKrzywych.rodzaj === 'gotowe' ? katalogKrzywych.dane.pfKrzywe : [];
 
   const modul = ders.find((d) => d.id === wybranyModul) ?? null;
-  const profilRef = modul?.profiles.nc_rfg_profile_ref ?? null;
+  // Profil EFEKTYWNY modułu (własny albo operatora sieci z warunków przyłączenia — dodatek
+  // karty GPZ-DANE-ANALIZ): krzywe ride-through modułu dziedziczącego są krzywymi operatora sieci.
+  const profilRef = modul ? profilNcRfgModulu(modul).operator_id : null;
   const modulProfil = getNcRfgOperator(ncRfgOperatorzy, profilRef);
   // Krzywa ride-through modułu: odczyt katalogu w toku / nieudany ≠ „brak profilu operatora";
   // profil przypisany, lecz nieobecny w katalogu ≠ „brak profilu" (jedno źródło stanu).

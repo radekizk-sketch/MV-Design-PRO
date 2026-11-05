@@ -141,6 +141,15 @@ from .nazwy_elementow import (
     opis_bez_nazwy,
 )
 from .operacje_lacznikow import close_switch, open_switch, set_normal_open_point
+from .operator_sieci import (
+    KLUCZ_POWODU_NADPISANIA,
+    KLUCZ_PROFILU_ZRODLA,
+    nazwa_operatora_pl,
+    nazwy_operatorow_katalogu_pl,
+    operator_sieci_modelu,
+    operatorzy_katalogu,
+    wymaga_powodu_nadpisania,
+)
 from .pola import (
     dodaj_pole,
     pola_nn_stacji,
@@ -8302,6 +8311,10 @@ DER_BINDING_KEYS: tuple[str, ...] = (
 #: wartość skalarną.
 DER_PROFILE_KEYS: tuple[str, ...] = (
     "nc_rfg_profile_ref",
+    # Dodatek karty GPZ-DANE-ANALIZ: powód nadpisania operatora sieci profilem źródła
+    # (`enm.operator_sieci` — profil źródła RÓŻNY od operatora sieci wymaga powodu; para
+    # z `nc_rfg_profile_ref`: wyczyszczenie profilu czyści powód).
+    "nc_rfg_profile_powod",
     "lvrt_curve_ref",
     "hvrt_curve_ref",
     "pf_curve_ref",
@@ -8374,6 +8387,14 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
     # + IEC 61400-27 typu 1-4 wiatru — konsumowane przez solvery RMS/FRT-HVRT).
     # Dostawca nie jest metoda `katalog_biezacy()`, więc walidacja idzie
     # osobnym torem, tym samym wzorcem „jawny brak zamiast cichej zgody".
+    # Dodatek karty GPZ-DANE-ANALIZ: profil NC RfG wytwórcy ma dostawcę — katalog profili
+    # operatorów (`catalog.profiles.nc_rfg`, ta sama lista co brama operatora sieci w
+    # `set_connection_conditions`). Dotąd dowolny łańcuch przechodził do modelu, a walidator
+    # meldował go dopiero w trybie regulacji napięcia.
+    profil_ncrfg = wiazania.get(KLUCZ_PROFILU_ZRODLA)
+    if profil_ncrfg is not None and str(profil_ncrfg).strip() not in operatorzy_katalogu():
+        nieznane.append(f"{KLUCZ_PROFILU_ZRODLA}={profil_ncrfg}")
+
     dynamic_ref = wiazania.get("dynamic_model_ref")
     if dynamic_ref is not None and "dynamic_model_ref" in wiazania:
         from network_model.catalog.der_dynamic import list_all_profile_ids
@@ -8515,7 +8536,12 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "der_bindings.generator_not_found",
         )
 
-    materialized = generator.setdefault("materialized_params", {})
+    # Model dopuszcza wytwórcę bez tabliczki (`materialized_params: null` — np. źródło dodane
+    # bez karty katalogowej): `setdefault` zwracałby wtedy `None` i operacja odmawiała z
+    # komunikatem „nieoczekiwana postać” zamiast zapisać wiązanie (jak `set_load_bindings`).
+    if generator.get("materialized_params") is None:
+        generator["materialized_params"] = {}
+    materialized = generator["materialized_params"]
     if not isinstance(materialized, dict):  # pragma: no cover - obrona kontraktu
         return _error_response(
             "Parametry zmaterializowane wytwórcy mają nieoczekiwaną postać.",
@@ -8575,7 +8601,9 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             generator["modele_widmowe"] = modele.model_dump(mode="json")
 
     if obecne_profile:
-        profile = materialized.setdefault("profiles", {})
+        if materialized.get("profiles") is None:
+            materialized["profiles"] = {}
+        profile = materialized["profiles"]
         if not isinstance(profile, dict):  # pragma: no cover - obrona kontraktu
             return _error_response(
                 "Profile wytwórcy mają nieoczekiwaną postać.",
@@ -8586,6 +8614,36 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
                 profile.pop(klucz, None)
             else:
                 profile[klucz] = wartosc
+        # Dodatek karty GPZ-DANE-ANALIZ: profil NC RfG źródła dziedziczy operatora sieci;
+        # profil RÓŻNY od operatora sieci jest nadpisaniem dopuszczalnym wyłącznie z powodem.
+        # Predykat `wymaga_powodu_nadpisania` jest TYM SAMYM, którego walidator używa do
+        # ostrzeżenia rozbieżności (para wejście/wyjście z jednego źródła). Powód bez profilu
+        # nie ma przedmiotu — wyczyszczenie profilu czyści powód.
+        if KLUCZ_PROFILU_ZRODLA not in profile:
+            profile.pop(KLUCZ_POWODU_NADPISANIA, None)
+        dotyka_profilu = (
+            KLUCZ_PROFILU_ZRODLA in obecne_profile or KLUCZ_POWODU_NADPISANIA in obecne_profile
+        )
+        profil_po = profile.get(KLUCZ_PROFILU_ZRODLA)
+        powod_po = profile.get(KLUCZ_POWODU_NADPISANIA)
+        operator_sieci = operator_sieci_modelu(enm)
+        if (
+            dotyka_profilu
+            and wymaga_powodu_nadpisania(
+                profil_po.strip() if isinstance(profil_po, str) else None, operator_sieci
+            )
+            and not (isinstance(powod_po, str) and powod_po.strip())
+        ):
+            return _error_response(
+                f"Profil NC RfG {nazwa_operatora_pl(str(profil_po).strip())} wytwórcy "
+                f"{nazwa_elementu(generator, 'generators')} różni się od operatora sieci "
+                f"{nazwa_operatora_pl(str(operator_sieci))} (warunki przyłączenia) — "
+                "nadpisanie operatora sieci "
+                f"wymaga powodu w polu {pole('nc_rfg_profile_powod')} (np. przyłączenie do "
+                "sieci innego operatora), albo usuń profil wytwórcy, aby dziedziczył operatora "
+                "sieci.",
+                "der_bindings.nc_rfg_override_reason_missing",
+            )
         if not profile:
             materialized.pop("profiles", None)
 
@@ -8692,17 +8750,20 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     Dane WEJŚCIOWE projektu z dokumentu warunków przyłączeniowych (GAP B1/B2
     audytu FLOW): moc przyłączeniowa [MW], wymagany cosφ, tryb pracy przyłącza
-    (tekst z dokumentu OSD). Zapis addytywny do ``header.connection_conditions``
+    (tekst z dokumentu OSD), operator sieci (identyfikator z katalogu profili NC RfG —
+    dodatek karty GPZ-DANE-ANALIZ: jedna dana sieci, z której źródła dziedziczą profil
+    wymagań, ``enm.operator_sieci``). Zapis addytywny do ``header.connection_conditions``
     — scala pola podane w payload z istniejącym blokiem (pole ``null`` czyści
-    wartość). Walidacja zakresów jak w modelu ``ConnectionConditions``.
+    wartość). Walidacja zakresów jak w modelu ``ConnectionConditions``; operator spoza
+    katalogu profili — odmowa ``connection_conditions.operator_unknown`` (model bez zmian).
     """
-    znane_pola = ("moc_przylaczeniowa_mw", "wymagany_cos_phi", "tryb_pracy")
+    znane_pola = ("moc_przylaczeniowa_mw", "wymagany_cos_phi", "tryb_pracy", "operator_sieci")
     podane = {k: payload[k] for k in znane_pola if k in payload}
     if not podane:
         return _error_response(
             "Brak warunków przyłączenia do zapisania — uzupełnij co najmniej jedno z pól: "
-            f"{pole('moc_przylaczeniowa_mw')}, {pole('wymagany_cos_phi')} albo "
-            f"{pole('tryb_pracy')}.",
+            f"{pole('moc_przylaczeniowa_mw')}, {pole('wymagany_cos_phi')}, "
+            f"{pole('tryb_pracy')} albo {pole('operator_sieci')}.",
             "connection_conditions.fields_missing",
         )
 
@@ -8726,6 +8787,18 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "Tryb pracy przyłącza musi być tekstem z dokumentu OSD.",
             "connection_conditions.tryb_invalid",
         )
+    if "operator_sieci" in podane:
+        operator = podane["operator_sieci"]
+        if operator is not None:
+            operator = operator.strip() if isinstance(operator, str) else operator
+            if operator not in operatorzy_katalogu():
+                return _error_response(
+                    f"Operator sieci {nazwa_operatora_pl(str(operator))} nie ma profilu w "
+                    "katalogu profili NC RfG — wybierz jednego z operatorów: "
+                    f"{nazwy_operatorow_katalogu_pl()}.",
+                    "connection_conditions.operator_unknown",
+                )
+        podane["operator_sieci"] = operator
 
     new_enm = kopia_graniczna_enm(enm)
     header = new_enm.setdefault("header", {})

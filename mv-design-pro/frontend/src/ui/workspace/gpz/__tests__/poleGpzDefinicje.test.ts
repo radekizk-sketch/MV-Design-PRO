@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import {
   OPERACJA_ZAPISU_ROZDZIELNICY,
   POLA_ROZDZIELNICY_GPZ,
+  POLE_OPERATORA_SIECI,
   SCIEZKA_ZAPISU_ROZDZIELNICY,
 } from '../poleGpzDefinicje';
 
@@ -37,6 +38,16 @@ interface Tablica {
   readonly sciezka: string;
   readonly kod_bledu: string;
   readonly pola: readonly PoleTablicy[];
+  readonly pole_operatora_sieci: {
+    readonly klucz: string;
+    readonly rodzaj: string;
+    readonly nazwa_pl: string;
+    readonly operacja: string;
+    readonly sciezka_w_modelu: string;
+    readonly kod_bledu: string;
+    readonly dozwolone: readonly string[];
+    readonly konsumenci: readonly string[];
+  };
 }
 
 const SCIEZKA = path.resolve(
@@ -80,4 +91,23 @@ describe('rejestr pól rozdzielnicy GPZ — lustro jednego opisu backendu', () =
       }
     },
   );
+});
+
+describe('pole „Operator sieci” — lustro definicji backendu (warunki przyłączenia)', () => {
+  it('klucz, nazwa, pisarz, ścieżka, kod odmowy, słownik operatorów i konsumenci z backendu', () => {
+    const zrodlo = TABLICA.pole_operatora_sieci;
+    expect(POLE_OPERATORA_SIECI.klucz).toBe(zrodlo.klucz);
+    expect(POLE_OPERATORA_SIECI.rodzaj).toBe(zrodlo.rodzaj);
+    expect(POLE_OPERATORA_SIECI.etykietaPl).toBe(zrodlo.nazwa_pl);
+    expect(POLE_OPERATORA_SIECI.operacja).toBe(zrodlo.operacja);
+    expect(POLE_OPERATORA_SIECI.sciezkaWModelu).toBe(zrodlo.sciezka_w_modelu);
+    expect(POLE_OPERATORA_SIECI.kodBledu).toBe(zrodlo.kod_bledu);
+    expect([...POLE_OPERATORA_SIECI.dozwolone]).toEqual(zrodlo.dozwolone);
+    expect([...POLE_OPERATORA_SIECI.konsumenci]).toEqual(zrodlo.konsumenci);
+    expect(POLE_OPERATORA_SIECI.zrodloWartosciPl.trim().length).toBeGreaterThan(0);
+  });
+
+  it('operator sieci nie jest polem bloku rozdzielnicy sekcji (inny pisarz, inna ścieżka)', () => {
+    expect(POLA_ROZDZIELNICY_GPZ.map((p) => p.klucz as string)).not.toContain('operator_sieci');
+  });
 });

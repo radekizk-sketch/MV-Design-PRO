@@ -157,6 +157,8 @@ export interface PrzylaczenieKafel {
   wymaganyCosPhi: number | null;
   /** Tryb pracy przyłącza (tekst z dokumentu OSD); null = nie podano. */
   trybPracy: string | null;
+  /** Operator sieci (identyfikator katalogu profili NC RfG); null = nie wskazano. */
+  operatorSieci: string | null;
   /** Werdykt bilansu: generacja znamionowa > limit OSD (porównanie dwóch
    * danych WEJŚCIOWYCH — prezentacja, nie fizyka). null = brak limitu. */
   przekroczonoLimit: boolean | null;
@@ -244,6 +246,7 @@ export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKaf
     mocPrzylaczeniowaMw,
     wymaganyCosPhi: warunki?.wymagany_cos_phi ?? null,
     trybPracy: warunki?.tryb_pracy ?? null,
+    operatorSieci: warunki?.operator_sieci ?? null,
     przekroczonoLimit:
       mocPrzylaczeniowaMw === null ? null : generacjaMw > mocPrzylaczeniowaMw,
   };

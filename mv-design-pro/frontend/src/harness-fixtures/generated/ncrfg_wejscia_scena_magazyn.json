@@ -1,6 +1,7 @@
 {
   "case_id": "case-demo",
   "operator_id": "enea",
+  "zrodlo_operatora": "MODEL",
   "modules": [
     {
       "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",

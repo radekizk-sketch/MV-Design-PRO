@@ -22,6 +22,7 @@ wymagań.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Literal
 
 from application.ncrfg_compliance.model_bridge import (
     NcRfgCertyfikatOdrzucony,
@@ -43,6 +44,8 @@ from network_model.solvers.ncrfg_ptpiree import (
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu, ZrodloDanych
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+ZrodloOperatora = Literal["WYBOR_PROJEKTANTA", "MODEL"]
 
 _solver = NcRfgPtpireeSolver()
 _BRAK_CERTYFIKATOW: Mapping[str, DowodCertyfikatu] = {}
@@ -82,7 +85,13 @@ class NcRfgCaseComplianceResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     case_id: str
-    operator_id: str
+    #: Operator wspólny ocenianych modułów; ``None`` — moduły oceniane wg różnych profili
+    #: efektywnych (operator w każdym module biegu).
+    operator_id: str | None
+    #: Skąd operator (dodatek karty GPZ-DANE-ANALIZ): ``WYBOR_PROJEKTANTA`` — parametr trasy
+    #: (wszystkie moduły wobec jednego operatora); ``MODEL`` — profil efektywny każdego modułu
+    #: (``enm.operator_sieci``: własny profil źródła albo operator sieci).
+    zrodlo_operatora: ZrodloOperatora
     der_count: int
     pominiete: list[NcRfgDerPominiety]
     certyfikaty_odrzucone: list[NcRfgCertyfikatOdrzucony]
@@ -115,7 +124,12 @@ class NcRfgWejsciaPrzypadkuResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     case_id: str
-    operator_id: str
+    #: Operator wspólny wszystkich modułów; ``None`` — moduły oceniane wg różnych profili
+    #: efektywnych (``zrodlo_operatora == "MODEL"``, operator w każdym module).
+    operator_id: str | None
+    #: Skąd operator: jawny wybór projektanta (parametr trasy) albo profil efektywny modułów
+    #: modelu (``enm.operator_sieci``; dodatek karty GPZ-DANE-ANALIZ).
+    zrodlo_operatora: ZrodloOperatora
     modules: list[NcRfgPtpireeModuleInput]
     pola_z_modelu: dict[str, list[str]]
     pominiete: list[NcRfgDerPominiety]
@@ -124,13 +138,23 @@ class NcRfgWejsciaPrzypadkuResponse(BaseModel):
     def _pochodzenie_dla_kazdego_modulu(self) -> NcRfgWejsciaPrzypadkuResponse:
         if set(self.pola_z_modelu) != {m.der_ref for m in self.modules}:
             raise ValueError("Pochodzenie pól istnieje dokładnie dla modułów wejścia.")
-        if any(m.operator_id != self.operator_id for m in self.modules):
+        if self.operator_id is not None and any(
+            m.operator_id != self.operator_id for m in self.modules
+        ):
             raise ValueError("Operator modułu różni się od operatora odpowiedzi.")
         return self
 
 
+def _operator_wspolny(operatorzy: list[str], operator_id: str | None) -> str | None:
+    """Operator odpowiedzi: jawny wybór albo wspólny profil modułów (``None`` gdy różne)."""
+    if operator_id is not None:
+        return operator_id
+    unikalne = sorted(set(operatorzy))
+    return unikalne[0] if len(unikalne) == 1 else None
+
+
 def wejscia_ncrfg_przypadku(
-    enm: EnergyNetworkModel, *, operator_id: str, case_id: str
+    enm: EnergyNetworkModel, *, operator_id: str | None, case_id: str
 ) -> NcRfgWejsciaPrzypadkuResponse:
     """Wejścia solvera NC RfG wszystkich DER modelu — ten sam most co zgodność przypadku
     (``build_ncrfg_module_inputs_from_enm``). Wołający (trasa) sprawdza operatora PRZED
@@ -138,7 +162,8 @@ def wejscia_ncrfg_przypadku(
     wejscia = build_ncrfg_module_inputs_from_enm(enm, operator_id=operator_id)
     return NcRfgWejsciaPrzypadkuResponse(
         case_id=case_id,
-        operator_id=operator_id,
+        operator_id=_operator_wspolny([m.operator_id for m in wejscia.modules], operator_id),
+        zrodlo_operatora="WYBOR_PROJEKTANTA" if operator_id is not None else "MODEL",
         modules=wejscia.modules,
         pola_z_modelu=wejscia.pola_z_modelu,
         pominiete=wejscia.pominiete,
@@ -182,7 +207,7 @@ def bieg_ncrfg(
 
 
 def zgodnosc_ncrfg_przypadku(
-    enm: EnergyNetworkModel, *, operator_id: str, case_id: str
+    enm: EnergyNetworkModel, *, operator_id: str | None, case_id: str
 ) -> NcRfgCaseComplianceResponse:
     """Zgodność NC RfG WSZYSTKICH DER modelu dla wskazanego operatora.
 
@@ -207,7 +232,8 @@ def zgodnosc_ncrfg_przypadku(
         )
     return NcRfgCaseComplianceResponse(
         case_id=case_id,
-        operator_id=operator_id,
+        operator_id=_operator_wspolny([m.operator_id for m in wejscia.modules], operator_id),
+        zrodlo_operatora="WYBOR_PROJEKTANTA" if operator_id is not None else "MODEL",
         der_count=len(wejscia.modules),
         pominiete=wejscia.pominiete,
         certyfikaty_odrzucone=wejscia.certyfikaty_odrzucone,

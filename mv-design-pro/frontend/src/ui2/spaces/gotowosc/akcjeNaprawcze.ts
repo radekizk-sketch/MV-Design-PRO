@@ -262,6 +262,9 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'generator.voltage_setpoint_missing': EDYCJA,
   'generator.voltage_control_profile_missing': EDYCJA,
   'generator.voltage_control_not_permitted': EDYCJA,
+  // Dodatek karty GPZ-DANE-ANALIZ: profil źródła różny od operatora sieci — powód nadpisania
+  // albo usunięcie profilu (dziedziczenie) w parametrach TEGO generatora.
+  'generator.nc_rfg_operator_mismatch': EDYCJA,
   'generator.converter_card_missing': KATALOG,
   'generator.harmonic_spectrum_missing': KATALOG,
   'inverter.k_sc_default_forbidden': KATALOG,
@@ -331,6 +334,11 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'connection.cos_phi_required_missing': przestrzen(
     'projekt',
     'Wymagany współczynnik mocy jest warunkiem przyłączenia OSD — uzupełnia się go w kaflu ' +
+      'warunków przyłączenia na pulpicie projektu.',
+  ),
+  'connection.operator_sieci_unknown': przestrzen(
+    'projekt',
+    'Operator sieci jest warunkiem przyłączenia — wybiera się go z katalogu operatorów w kaflu ' +
       'warunków przyłączenia na pulpicie projektu.',
   ),
   'connection.power_flow_missing': przestrzen(

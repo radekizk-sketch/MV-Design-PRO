@@ -352,6 +352,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // snapshot `__tests__/fixtures/readiness_registry_snapshot.json`).
   // SOURCES (zwarcia)
   'connection.cos_phi_required_missing': 'zwarcia',
+  'connection.operator_sieci_unknown': 'zwarcia',
   'connection.power_flow_missing': 'zwarcia',
   'connection.power_limit_missing': 'zwarcia',
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
@@ -416,6 +417,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'der.dynamika_missing': 'rozplyw',
   'generator.converter_card_missing': 'rozplyw',
   'generator.harmonic_spectrum_missing': 'rozplyw',
+  'generator.nc_rfg_operator_mismatch': 'rozplyw',
   'generator.q_missing': 'rozplyw',
   'generator.voltage_control_not_permitted': 'rozplyw',
   'generator.voltage_control_profile_missing': 'rozplyw',

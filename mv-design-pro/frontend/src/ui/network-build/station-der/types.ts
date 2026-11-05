@@ -1,3 +1,4 @@
+import { profilNcRfgModulu } from './profilNcRfg';
 import type { CtClass } from './protection-catalogs';
 
 /**
@@ -160,6 +161,11 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
 export interface DerProfileSelections {
   /** Operator (PSE/Energa/Tauron/Enea/PGE) — `nc-rfg-profile-catalog`. */
   readonly nc_rfg_profile_ref: string | null;
+  /**
+   * Powód nadpisania operatora sieci profilem źródła (dodatek karty GPZ-DANE-ANALIZ) —
+   * wymagany przez backend, gdy `nc_rfg_profile_ref` różni się od operatora sieci modelu.
+   */
+  readonly nc_rfg_profile_powod: string | null;
   /** Krzywa LVRT (Low Voltage Ride Through). */
   readonly lvrt_curve_ref: string | null;
   /** Krzywa HVRT (High Voltage Ride Through). */
@@ -172,6 +178,7 @@ export interface DerProfileSelections {
 
 export const EMPTY_DER_PROFILES: DerProfileSelections = Object.freeze({
   nc_rfg_profile_ref: null,
+  nc_rfg_profile_powod: null,
   lvrt_curve_ref: null,
   hvrt_curve_ref: null,
   pf_curve_ref: null,
@@ -272,6 +279,13 @@ export interface StationDerConnection {
   readonly profiles: DerProfileSelections;
 
   /**
+   * Operator sieci MODELU (`header.connection_conditions.operator_sieci`, kopiowany przez
+   * `deryZModelu`) — źródło bez własnego profilu NC RfG dziedziczy go (`profilNcRfg.ts`).
+   * Brak pola — rekord spoza modelu (szkic kreatora przed zapisem).
+   */
+  readonly operator_sieci?: string | null;
+
+  /**
    * Moc znamionowa AC CAŁEJ pozycji w kW — tyle wnosi ten rekord do modelu.
    *
    * E21-1: operacja kanoniczna zapisuje do modelu `p_mw` = moc katalogowa jednostki
@@ -342,10 +356,12 @@ export function computeDerCompleteness(der: Pick<
   | 'profiles'
   | 'connection_voltage_kv'
   | 'sn_connection_bus_ref'
+  | 'operator_sieci'
 >): DerCompleteness {
   if (!der.bus_przylaczenia_ref) return 'no_pcc';
   if (!der.catalogs.device_catalog_ref) return 'missing_catalog';
-  if (!der.profiles.nc_rfg_profile_ref) return 'missing_profile';
+  // Profil EFEKTYWNY (dodatek GPZ-DANE-ANALIZ): własny profil albo operator sieci modelu.
+  if (profilNcRfgModulu(der).operator_id === null) return 'missing_profile';
   if (der.connection_voltage_kv == null) return 'missing_catalog';
   if (der.connection_side === 'dedicated_transformer' && !der.sn_connection_bus_ref) {
     return 'missing_catalog';

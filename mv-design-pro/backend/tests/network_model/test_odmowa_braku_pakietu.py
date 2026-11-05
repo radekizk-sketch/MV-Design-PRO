@@ -47,6 +47,7 @@ from enm.dynamika_z_katalogu import (
 )
 from enm.models import EnergyNetworkModel, ENMHeader, Generator
 from enm.odmowy_pakietow_danych import odmowa_braku_certyfikatu
+from enm.operator_sieci import BRAK_OPERATORA_SIECI_PL
 from network_model.odmowa_danych import OdmowaNazwana
 from network_model.odmowa_pakietu import (
     PAKIET_RODZAJU,
@@ -512,10 +513,14 @@ def test_p2_magazyn_wartosc_logiczna_nie_jest_dana_karty() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _model_stacji() -> EnergyNetworkModel:
+def _model_stacji(operator_sieci: str | None = None) -> EnergyNetworkModel:
+    naglowek = ENMHeader(name="od17a-osd").model_dump()
+    if operator_sieci is not None:
+        # Operator sieci = jedna dana MODELU (warunki przyłączenia), nie konfiguracja przypadku.
+        naglowek["connection_conditions"] = {"operator_sieci": operator_sieci}
     return EnergyNetworkModel.model_validate(
         {
-            "header": ENMHeader(name="od17a-osd").model_dump(),
+            "header": naglowek,
             "buses": [{"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": 15.0}],
             "substations": [
                 {"ref_id": "ST1", "name": "Stacja", "station_type": "mv_lv", "bus_refs": ["BUS_SN"]}
@@ -526,7 +531,9 @@ def _model_stacji() -> EnergyNetworkModel:
 
 @pytest.mark.parametrize("operator", list_available_operators())
 def test_p3_raport_przypadku_dla_kazdego_operatora(operator: str) -> None:
-    raport = evaluate_enm(_model_stacji(), operator_przypadku=operator, nazwa_przypadku="Wariant A")
+    raport = evaluate_enm(_model_stacji(operator), nazwa_przypadku="Wariant A")
+    assert raport.operator_sieci == operator
+    assert raport.brak_operatora_sieci_pl is None
     osd_w_raporcie = [p.pack_id for p in raport.packs if p.kind == "osd"]
     ma_pakiet = pack_id_operatora(operator) in REFERENCE_PACK_REGISTRY
     if ma_pakiet:
@@ -569,9 +576,21 @@ def test_p3_raport_bez_kontekstu_przypadku_ocenia_caly_rejestr() -> None:
     assert raport.braki_pakietow == []
 
 
-def test_p3_raport_przypadku_bez_nazwy_to_blad_programu() -> None:
-    with pytest.raises(ValueError):
-        evaluate_enm(_model_stacji(), operator_przypadku="energa")
+def test_p3_raport_przypadku_bez_operatora_sieci_nazywa_brak_modelu() -> None:
+    """Model bez operatora sieci: żaden pakiet OSD (bez domysłu operatora), jawny brak."""
+    raport = evaluate_enm(_model_stacji(), nazwa_przypadku="Wariant A")
+    assert [p for p in raport.packs if p.kind == "osd"] == []
+    assert {p.kind for p in raport.packs} >= {"norm", "manufacturer"}
+    assert raport.braki_pakietow == []
+    assert raport.operator_sieci is None
+    assert raport.brak_operatora_sieci_pl == BRAK_OPERATORA_SIECI_PL
+
+
+def test_p3_raport_bez_kontekstu_przypadku_nie_niesie_operatora() -> None:
+    """Rejestr bez kontekstu przypadku ocenia wszystkie pakiety niezależnie od operatora."""
+    raport = evaluate_enm(_model_stacji("energa"))
+    assert [p.pack_id for p in raport.packs] == sorted(REFERENCE_PACK_REGISTRY)
+    assert raport.operator_sieci is None and raport.brak_operatora_sieci_pl is None
 
 
 def test_generator_modelu_jako_obiekt_i_slownik_daje_te_sama_odmowe() -> None:

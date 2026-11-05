@@ -239,6 +239,24 @@ describe('buildAggregatedReadiness — wiersze z polskimi labelami', () => {
     expect(qu?.blockers[0].target_tab).toBe('ncrfg');
   });
 
+  // Dodatek karty GPZ-DANE-ANALIZ — profil EFEKTYWNY (iloczyn: profil własny {brak, jest} ×
+  // operator sieci modelu {brak, jest}): źródło bez profilu dziedziczy operatora sieci.
+  it.each([
+    ['brak profilu, brak operatora sieci', null, null, 'blocked'],
+    ['brak profilu, operator sieci w modelu (dziedziczenie)', null, 'enea', 'ready'],
+    ['profil własny, brak operatora sieci', 'pse', null, 'ready'],
+    ['profil własny różny od operatora sieci (nadpisanie)', 'pse', 'enea', 'ready'],
+  ] as const)('oś NC RfG — %s', (_opis, profil, operatorSieci, oczekiwany) => {
+    const der = makeDer({
+      profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: profil },
+      operator_sieci: operatorSieci,
+    });
+    const rows = buildAggregatedReadiness(der);
+    const qu = rows.find((r) => r.axis === 'q_u');
+    expect(qu?.status === 'blocked').toBe(oczekiwany === 'blocked');
+    if (oczekiwany === 'blocked') expect(qu?.blockers[0].target_tab).toBe('ncrfg');
+  });
+
   it('FW (E-23) target_screen mapowany poprawnie', () => {
     const der = makeDer({ der_kind: 'FW', catalogs: { ...EMPTY_DER_CATALOGS } });
     const rows = buildAggregatedReadiness(der);

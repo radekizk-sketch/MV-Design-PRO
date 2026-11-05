@@ -24,7 +24,10 @@ pilnuje, że nowe pole kontraktu solvera nie zostanie pominięte milcząco):
                             ``MAGAZYN`` — magazyn poza rozporządzeniem 2016/631, O-28)
 - ``module_family``      ← ``"PPM"`` — każdy typ przekształtnikowy jest modułem parku energii;
                             generator synchroniczny (``SyPGM``) jest poza klasą DER tego mostu
-- ``operator_id``        ← parametr trasy (wybór projektanta)
+- ``operator_id``        ← parametr trasy (jawny wybór projektanta — ocena „co-jeśli” wobec
+                            jednego operatora) ALBO profil EFEKTYWNY modułu
+                            (``enm.operator_sieci.efektywny_profil_ncrfg``: własny profil
+                            źródła albo operator sieci z warunków przyłączenia)
 - ``p_max_kw``           ← ``|generator.p_mw|`` → kW (moc zmaterializowana, z liczbą
                             jednostek); ``<= 0`` → DER pominięty z powodem ``brak_mocy``
 - ``p_min_kw``           ← ``generator.deklaracje_modulu.p_min_kw`` (deklaracja modułu ze
@@ -98,6 +101,7 @@ from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
 from enm.nazwy_elementow import nazwa_elementu, nazwa_nadana_pozycji_katalogu
 from enm.odmowy_pakietow_danych import odmowa_braku_certyfikatu
+from enm.operator_sieci import efektywny_profil_ncrfg, operator_sieci_modelu
 from network_model.catalog.mv_ptpiree_catalog import (
     certyfikat_niewskazany,
     get_all_ptpiree_generator_certificates,
@@ -109,7 +113,7 @@ from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
 from pydantic import BaseModel
 from werdykt.kontrakt import PodstawaWymagania
 
-PowodPominieciaDer = Literal["brak_mocy", "brak_napiecia"]
+PowodPominieciaDer = Literal["brak_mocy", "brak_napiecia", "brak_profilu_operatora"]
 
 #: Jedno zrodlo prawdy predykatu DER: enm/models.py (obok Literalu gen_type).
 _INVERTER_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
@@ -130,6 +134,13 @@ _POWOD_POMINIECIA_PL: dict[PowodPominieciaDer, str] = {
     "brak_mocy": "Moc czynna modułu w modelu nie jest dodatnia — solver nie ma czego klasyfikować.",
     "brak_napiecia": (
         "Szyna przyłączenia modułu nie istnieje w modelu albo nie ma napięcia znamionowego."
+    ),
+    # Dodatek karty GPZ-DANE-ANALIZ: ocena bez jawnego wyboru operatora bierze profil
+    # EFEKTYWNY modułu (`enm.operator_sieci`); moduł bez własnego profilu w modelu bez
+    # operatora sieci nie ma podstawy oceny — nazwany brak, nigdy profil domyślny.
+    "brak_profilu_operatora": (
+        "Moduł nie wskazuje profilu NC RfG, a model nie ma operatora sieci w warunkach "
+        "przyłączenia — wskaż operatora sieci albo profil modułu."
     ),
 }
 
@@ -477,8 +488,9 @@ def build_ncrfg_module_input_from_generator(
     )
 
 
-#: Pola wejścia, których wartość NIGDY nie pochodzi z modelu: operator to wybór projektanta
-#: (parametr trasy), rodzina modułu to stała mostu (``"PPM"``).
+#: Pola wejścia spoza pochodzenia „z modelu” formularza: operator ma własne rozstrzygnięcie
+#: (jawny wybór projektanta albo profil efektywny modułu — ``enm.operator_sieci``, pokazywane
+#: przy wyborze operatora, nie przy polu modułu), rodzina modułu to stała mostu (``"PPM"``).
 POLA_WEJSCIA_SPOZA_MODELU: frozenset[str] = frozenset({"operator_id", "module_family"})
 
 
@@ -506,7 +518,7 @@ def pola_wejscia_z_modelu(generator: Generator, wejscie: NcRfgPtpireeModuleInput
 
 
 def build_ncrfg_module_inputs_from_enm(
-    enm: EnergyNetworkModel, *, operator_id: str
+    enm: EnergyNetworkModel, *, operator_id: str | None = None
 ) -> WejsciaZgodnosciZModelu:
     """Wszystkie źródła przekształtnikowe (DER) modelu jako wejścia solvera NC RfG + dowody
     certyfikatu wyprowadzone z tabliczek po stronie serwera.
@@ -515,8 +527,14 @@ def build_ncrfg_module_inputs_from_enm(
     bez szyny z napięciem NIE jest fabrykowany — trafia do ``pominiete`` z nazwanym powodem
     (ten sam słownik co blokada modułu w macierzy frontendu). Nieznany operator —
     ``FileNotFoundError`` z loadera profilu (wołający sprawdza operatora wcześniej).
+
+    ``operator_id`` ``None`` (dodatek karty GPZ-DANE-ANALIZ): każdy moduł oceniany wg profilu
+    EFEKTYWNEGO (``enm.operator_sieci``) — Bank Nastaw, rejestr WiPWC i wymagania z profilu
+    modułu; moduł bez profilu efektywnego trafia do ``pominiete`` z powodem
+    ``brak_profilu_operatora``. Jawny ``operator_id`` ocenia WSZYSTKIE moduły wobec tego
+    operatora (wybór projektanta), jak dotąd.
     """
-    profil = load_nc_rfg_profile(operator_id)
+    operator_sieci = operator_sieci_modelu(enm)
     bus_voltage = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
     modules: list[NcRfgPtpireeModuleInput] = []
     pola_z_modelu: dict[str, list[str]] = {}
@@ -528,14 +546,22 @@ def build_ncrfg_module_inputs_from_enm(
         if generator.gen_type not in _INVERTER_GEN_TYPES:
             continue
         voltage_kv = bus_voltage.get(generator.bus_ref)
+        operator_modulu = (
+            operator_id
+            if operator_id is not None
+            else efektywny_profil_ncrfg(generator, operator_sieci).operator_id
+        )
         powod: PowodPominieciaDer
         if abs(generator.p_mw) <= 0:
             powod = "brak_mocy"
         elif voltage_kv is None or voltage_kv <= 0:
             powod = "brak_napiecia"
+        elif operator_modulu is None:
+            powod = "brak_profilu_operatora"
         else:
+            profil = load_nc_rfg_profile(operator_modulu)
             wejscie = build_ncrfg_module_input_from_generator(
-                generator, voltage_kv=voltage_kv, operator_id=operator_id
+                generator, voltage_kv=voltage_kv, operator_id=operator_modulu
             )
             modules.append(wejscie)
             pola_z_modelu[generator.ref_id] = pola_wejscia_z_modelu(generator, wejscie)

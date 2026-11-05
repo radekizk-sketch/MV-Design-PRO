@@ -563,15 +563,20 @@ def compute_variant_hash(variant_payload: dict[str, Any]) -> str:
 #: (hash z obiektu) i `hash_migawki_enm` (hash ze slownika `model_dump`): oba
 #: odciski musza byc rowne co do bitu dla tej samej tresci (przypiete testem
 #: `tests/enm/test_scenariusze.py::test_hash_migawki_rowny_hashowi_modelu`).
+#: TREŚĆ modelu poza hashem — dane wejściowe, których zmiana JEST zmianą modelu (nowa rewizja,
+#: wpis dziennika, nieaktualność wyników z koperty rewizji), choć nie przestawia odcisku.
+#: Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane w warstwie interpretacji — nie
+#: przez solver; od dodatku GPZ-DANE-ANALIZ także operator sieci, z którego źródła dziedziczą
+#: profil NC RfG): deklaracja pola w ENMHeader (naprawa defektu utrwalania, karta POMIAR-RODZAJ)
+#: nie może przestawić odcisków istniejących modeli. JEDNA lista dla wykluczenia z hasha i dla
+#: porównania treści w magazynie (`enm.store` — zapis „równoważny" po samym haszu gubił edycję
+#: tych pól: defekt naprawiony w dodatku GPZ-DANE-ANALIZ, predykat parami).
+POLA_NAGLOWKA_TRESCI_POZA_HASHEM = ("connection_conditions",)
 _POLA_NAGLOWKA_POZA_HASHEM = (
     "updated_at",
     "created_at",
     "hash_sha256",
-    # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane w warstwie
-    # interpretacji — nie przez solver). Wykluczone jak pozostałe pola zmienne
-    # nagłówka: deklaracja pola w ENMHeader (naprawa defektu utrwalania, karta
-    # POMIAR-RODZAJ) nie może przestawić odcisków istniejących modeli.
-    "connection_conditions",
+    *POLA_NAGLOWKA_TRESCI_POZA_HASHEM,
 )
 
 

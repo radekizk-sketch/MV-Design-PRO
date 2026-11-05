@@ -74,7 +74,6 @@ const configFixture: StudyCaseConfig = {
   tolerance: 1e-6,
   include_motor_contribution: true,
   include_inverter_contribution: true,
-  operator_profile_id: 'enea',
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
   sc_simplified_r_x_ratio: 0.1,

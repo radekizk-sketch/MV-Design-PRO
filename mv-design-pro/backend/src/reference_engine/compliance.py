@@ -19,6 +19,7 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
+from enm.operator_sieci import BRAK_OPERATORA_SIECI_PL, operator_sieci_modelu
 from enm.pola import czy_pole_nn, pola_sn_stacji, poziom_pol
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.slownik_komunikatow import opis_obiektu
@@ -728,7 +729,6 @@ def evaluate_enm(
     enm: EnergyNetworkModel,
     pack_ids: list[str] | None = None,
     *,
-    operator_przypadku: str | None = None,
     nazwa_przypadku: str | None = None,
 ) -> ReferenceComplianceReport:
     """Raport zgodności referencyjnej + Reference Score (spec §7/§8).
@@ -737,32 +737,33 @@ def evaluate_enm(
     pkt 8 dyrektywy). Deterministyczny: sortowanie pakietów po `pack_id`,
     sprawdzeń po (element_ref, rule_code, message_pl).
 
-    Karta OD-17a: raport PRZYPADKU (`operator_przypadku` z `StudyCaseConfig.
-    operator_profile_id`, `nazwa_przypadku` — nazwa przypadku) ocenia pakiety norm
-    i producentów rejestru oraz WYŁĄCZNIE pakiet OSD operatora przypadku — standard innego
-    operatora nie jest podstawą oceny projektu przyłączanego do tej sieci. Rejestr bez
-    pakietu tego operatora ⇒ nazwana odmowa w `braki_pakietow` (kod
-    `BRAK_PAKIETU_OSD:<operator>`), nigdy cichy brak pakietu OSD w raporcie. Jawna lista
+    Karta OD-17a: raport PRZYPADKU (`nazwa_przypadku` podana — nazwa przypadku) ocenia
+    pakiety norm i producentów rejestru oraz WYŁĄCZNIE pakiet OSD operatora sieci modelu
+    (`ConnectionConditions.operator_sieci`, jedna dana modelu — `enm.operator_sieci`) —
+    standard innego operatora nie jest podstawą oceny projektu przyłączanego do tej sieci.
+    Rejestr bez pakietu tego operatora ⇒ nazwana odmowa w `braki_pakietow` (kod
+    `BRAK_PAKIETU_OSD:<operator>`), nigdy cichy brak pakietu OSD w raporcie. Model bez
+    operatora sieci ⇒ żaden pakiet OSD nie jest oceniany, a raport niesie
+    `brak_operatora_sieci_pl` (brak danej MODELU — jawny, nie domysł operatora). Jawna lista
     `pack_ids` ocenia dokładnie wskazane pakiety (wołający sprawdził je wcześniej).
     """
     braki: list[RekordBrakuPakietu] = []
+    operator_sieci = operator_sieci_modelu(enm)
+    raport_przypadku = pack_ids is None and nazwa_przypadku is not None
     if pack_ids is not None:
         packs = sorted(
             (get_reference_pack(pack_id) for pack_id in pack_ids),
             key=lambda p: p.pack_id,
         )
-    elif operator_przypadku is None:
+    elif nazwa_przypadku is None:
         packs = list_reference_packs()
     else:
-        if nazwa_przypadku is None:
-            raise ValueError(
-                "Raport przypadku wymaga nazwy przypadku (treść odmowy braku pakietu)."
-            )
         packs = [p for p in list_reference_packs() if p.kind != "osd"]
-        try:
-            packs.append(pakiet_osd_operatora(operator_przypadku, nazwa_przypadku=nazwa_przypadku))
-        except OdmowaBrakuPakietuDanych as odmowa:
-            braki.append(odmowa.rekord())
+        if operator_sieci is not None:
+            try:
+                packs.append(pakiet_osd_operatora(operator_sieci, nazwa_przypadku=nazwa_przypadku))
+            except OdmowaBrakuPakietuDanych as odmowa:
+                braki.append(odmowa.rekord())
         packs.sort(key=lambda p: p.pack_id)
 
     substations_by_ref = {s.ref_id: s for s in enm.substations}
@@ -791,4 +792,11 @@ def evaluate_enm(
                 checks=checks,
             )
         )
-    return ReferenceComplianceReport(packs=reports, braki_pakietow=braki)
+    return ReferenceComplianceReport(
+        packs=reports,
+        braki_pakietow=braki,
+        operator_sieci=operator_sieci if raport_przypadku else None,
+        brak_operatora_sieci_pl=(
+            BRAK_OPERATORA_SIECI_PL if raport_przypadku and operator_sieci is None else None
+        ),
+    )

@@ -42,7 +42,7 @@ import {
   OpisDokumentuWarstwy,
   SekcjaModuluDokumentu,
 } from '../ncrfg/komponenty';
-import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
+import { operatorDokumentu, operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
 import type { BrakiWniosku, WidokWniosku, ZadanieWniosku } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
@@ -89,7 +89,8 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
 
   // Operator (profil wymagań NC RfG) — z modelu albo jawny wybór (wspólny store z macierzą).
   const ders = useStationDerStore((state) => selectAllDers(state));
-  const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
+  // Wniosek jest adresowany do JEDNEGO operatora — profile różne per moduł wymagają wyboru.
+  const zModelu = useMemo(() => operatorDokumentu(operatorZModelu(ders)), [ders]);
   const katalog = useNcRfgStore((s) => s.katalog);
   const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
   const operatorWybor = useNcRfgStore((s) => s.operatorWybor);

@@ -103,6 +103,14 @@ export const PULPIT_STRINGS = {
   osdLimit: 'Moc przyłączeniowa (OSD)',
   osdCosPhi: 'Wymagany cosφ (OSD)',
   osdTrybPracy: 'Tryb pracy przyłącza',
+  // Dodatek karty GPZ-DANE-ANALIZ: operator sieci — jedna dana modelu, z której źródła bez
+  // własnego profilu dziedziczą profil wymagań NC RfG (backend `enm.operator_sieci`).
+  osdOperatorSieci: 'Operator sieci',
+  osdFormOperatorBrak: '— nie wskazano —',
+  osdFormOperatorKatalog: '— odczyt katalogu operatorów… —',
+  osdFormOperatorOpis:
+    'Źródła bez własnego profilu NC RfG są oceniane wg profilu tego operatora; standard ' +
+    'operatora (pakiet OSD) wybiera raport zgodności referencyjnej.',
   osdBrak: 'Warunków przyłączenia OSD nie podano.',
   osdUzupelnij: 'Uzupełnij warunki OSD',
   osdWerdyktOk: 'w limicie OSD',

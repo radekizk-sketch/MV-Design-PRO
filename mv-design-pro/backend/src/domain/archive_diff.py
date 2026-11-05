@@ -404,6 +404,7 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "moc_przylaczeniowa_mw": "Moc przyłączeniowa [MW]",
     "wymagany_cos_phi": "Wymagany cos φ",
     "tryb_pracy": "Tryb pracy",
+    "operator_sieci": "Operator sieci",
     "enm_hash": "Odcisk modelu sieci",
     "archive_hash": "Odcisk archiwum",
     "run_id": "Identyfikator przebiegu",

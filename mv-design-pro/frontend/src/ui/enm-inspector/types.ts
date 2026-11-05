@@ -183,9 +183,16 @@ export interface ReferenceComplianceReport {
   packs: ReferencePackComplianceReport[];
   /**
    * Pakiety wymagań, których ocena przypadku wymaga, a rejestr ich nie ma
-   * (dziś: pakiet operatora wskazanego w przypadku) — karta OD-17a.
+   * (dziś: pakiet operatora sieci modelu) — karta OD-17a.
    */
   braki_pakietow?: RekordBrakuPakietu[];
+  /**
+   * Operator sieci modelu (warunki przyłączenia), którego pakiet OSD raport ocenia — dodatek
+   * karty GPZ-DANE-ANALIZ; `null` — model nie wskazuje operatora.
+   */
+  operator_sieci?: string | null;
+  /** Zdanie backendu, gdy model nie wskazuje operatora sieci (pakiet OSD nie jest oceniany). */
+  brak_operatora_sieci_pl?: string | null;
 }
 
 export const REFERENCE_PACK_KIND_LABELS_PL: Record<ReferencePackKind, string> = {

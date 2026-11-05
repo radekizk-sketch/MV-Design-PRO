@@ -42,6 +42,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
+from enm.operator_sieci import operator_sieci_modelu
 from enm.pola import ref_pola_wytworcy
 from enm.slownik_komunikatow import opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
@@ -191,6 +192,9 @@ class DerCatalogBindingsRequest(BaseModel):
     vt_catalog_ref: str | None = None
     dynamic_model_ref: str | None = None
     nc_rfg_profile_ref: str | None = None
+    #: Dodatek karty GPZ-DANE-ANALIZ: powód nadpisania operatora sieci profilem wytwórcy
+    #: (wymagany, gdy `nc_rfg_profile_ref` różni się od operatora sieci modelu).
+    nc_rfg_profile_powod: str | None = None
     lvrt_curve_ref: str | None = None
     hvrt_curve_ref: str | None = None
     pf_curve_ref: str | None = None
@@ -206,6 +210,7 @@ class DerCatalogBindingsRequest(BaseModel):
         "vt_catalog_ref",
         "dynamic_model_ref",
         "nc_rfg_profile_ref",
+        "nc_rfg_profile_powod",
         "lvrt_curve_ref",
         "hvrt_curve_ref",
         "pf_curve_ref",
@@ -1053,6 +1058,7 @@ def get_der_readiness(
         other_ders_in_station=inni,
         ct_accuracy_class=klasa_ct,
         ct_application=zastosowanie_ct,
+        operator_sieci=operator_sieci_modelu(enm),
     )
     macierz = macierz_gotowosci_der(wejscie)
     osie = osie_gotowosci_der(wejscie)

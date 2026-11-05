@@ -101,14 +101,14 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
     expect(wywolania.filter((w) => w.sciezka.includes('/compliance'))).toHaveLength(0);
   });
 
-  it('ocena wczytana sama: przypadek i operator z modelu w zapytaniu; bez biegu „co-jeśli"', async () => {
+  it('ocena wczytana sama: przypadek w ścieżce, operator rozstrzyga model (zapytanie bez operatora); bez biegu „co-jeśli"', async () => {
     const wywolania = trasy();
     render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
     const zapytania = wywolania.filter((w) => w.sciezka === SCIEZKA_OCENY);
     expect(zapytania).toHaveLength(1);
-    expect([...zapytania[0].zapytanie.keys()]).toEqual(['operator_id']);
-    expect(zapytania[0].zapytanie.get('operator_id')).toBe(zgodnoscFixture().operator_id);
+    // Backend ocenia każdy moduł wg profilu efektywnego (własny albo operatora sieci).
+    expect([...zapytania[0].zapytanie.keys()]).toEqual([]);
     expect(wywolania.filter((w) => w.sciezka === '/api/ncrfg-tests/run')).toHaveLength(0);
     expect(screen.getByTestId('mvd-oze-pulpit-zrodlo-oceny')).toHaveTextContent(PULPIT_STRINGS.zrodloOceny);
   });
@@ -227,10 +227,37 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
 });
 
 describe('operator — z modelu albo jawny wybór (nigdy domyślny)', () => {
-  it('różne profile modułów → ocena czeka na jawny wybór; wybór trafia do zapytania', async () => {
+  it('różne profile modułów → ocena per moduł bez wyboru (fakt modelu), zapytanie bez operatora', async () => {
     const wywolania = trasy();
     useStationDerStore.setState({
       ders: { [BESS.id]: BESS, [PV.id]: { ...PV, profiles: { ...PV.profiles, nc_rfg_profile_ref: 'pse' } } },
+    });
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
+    expect(await screen.findByTestId('mvd-oze-pulpit-operator')).toHaveAttribute('data-zrodlo', 'model-per-modul');
+    expect(screen.queryByTestId('mvd-oze-pulpit-operator-wybor')).toBeNull();
+    await ocenaWczytana();
+    const zapytanie = wywolania.find((w) => w.sciezka === SCIEZKA_OCENY)!;
+    expect(zapytanie.zapytanie.has('operator_id')).toBe(false);
+  });
+
+  it('moduły bez profilu dziedziczą operatora sieci → operator z modelu, zapytanie bez operatora', async () => {
+    const wywolania = trasy();
+    const bezProfilu = <T extends typeof BESS>(d: T): T => ({
+      ...d,
+      profiles: { ...d.profiles, nc_rfg_profile_ref: null },
+      operator_sieci: 'enea',
+    });
+    useStationDerStore.setState({ ders: { [BESS.id]: bezProfilu(BESS), [PV.id]: bezProfilu(PV) } });
+    render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
+    expect(await screen.findByTestId('mvd-oze-pulpit-operator')).toHaveAttribute('data-zrodlo', 'model');
+    await ocenaWczytana();
+    expect(wywolania.find((w) => w.sciezka === SCIEZKA_OCENY)!.zapytanie.has('operator_id')).toBe(false);
+  });
+
+  it('moduł bez profilu i bez operatora sieci → ocena czeka na jawny wybór; wybór trafia do zapytania', async () => {
+    const wywolania = trasy();
+    useStationDerStore.setState({
+      ders: { [BESS.id]: BESS, [PV.id]: { ...PV, profiles: { ...PV.profiles, nc_rfg_profile_ref: null } } },
     });
     const uzytkownik = userEvent.setup();
     render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);

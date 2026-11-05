@@ -1,46 +1,33 @@
 """
-Tests for P0.9 StudyCaseConfig extensions (V12K-014 operator profile + sc_input_mode toggle).
+Tests for P0.9 StudyCaseConfig extensions (sc_input_mode toggle; operator moved to the model).
 
 Verifies the domain.study_case.StudyCaseConfig class (the parallel
 domain.study_case_engine module and its tests were removed CV-3.2 — dead code,
 0 importers in src; semantics live in enm/scenariusze.py::OperatingScenario).
 
 Scope:
-- Default values per /goal V12K (ENEA Operator + simplified SC mode)
+- Operator sieci NIE jest konfiguracją przypadku (dana modelu, dodatek GPZ-DANE-ANALIZ)
 - Round-trip serialization (to_dict + from_dict)
 - Backward-compat with legacy data (older study case JSON without new fields)
-- All 5 operator profiles supported
 - SC input mode toggle (simplified | advanced)
 """
 
 from domain.study_case import StudyCaseConfig
 
 
-class TestOperatorProfileDefaults:
-    """P0.9a — operator_profile_id default ENEA per /goal V12K."""
+class TestOperatorNieJestKonfiguracjaPrzypadku:
+    """Dodatek karty GPZ-DANE-ANALIZ: operator sieci jest JEDNĄ daną MODELU
+    (`header.connection_conditions.operator_sieci`), nie konfiguracją przypadku — dawne
+    `operator_profile_id` (domyślnie „enea", domysł) usunięte bez warstwy zgodności."""
 
-    def test_default_operator_is_enea(self) -> None:
+    def test_konfiguracja_nie_niesie_operatora(self) -> None:
         cfg = StudyCaseConfig()
-        assert cfg.operator_profile_id == "enea"
+        assert not hasattr(cfg, "operator_profile_id")
+        assert "operator_profile_id" not in cfg.to_dict()
 
-    def test_dict_serialization_includes_operator(self) -> None:
-        cfg = StudyCaseConfig()
-        d = cfg.to_dict()
-        assert "operator_profile_id" in d
-        assert d["operator_profile_id"] == "enea"
-
-    def test_round_trip_preserves_operator(self) -> None:
-        for op in ("pse", "energa", "tauron", "enea", "pge"):
-            cfg = StudyCaseConfig(operator_profile_id=op)
-            d = cfg.to_dict()
-            restored = StudyCaseConfig.from_dict(d)
-            assert restored.operator_profile_id == op
-
-    def test_legacy_dict_falls_back_to_enea(self) -> None:
-        """Backward-compat: legacy study case JSON without operator_profile_id."""
-        legacy = {"base_mva": 100.0}
-        cfg = StudyCaseConfig.from_dict(legacy)
-        assert cfg.operator_profile_id == "enea"
+    def test_zapisany_dawny_klucz_nie_wraca_do_konfiguracji(self) -> None:
+        cfg = StudyCaseConfig.from_dict({"base_mva": 100.0, "operator_profile_id": "pse"})
+        assert "operator_profile_id" not in cfg.to_dict()
 
 
 class TestScInputModeDefaults:
@@ -88,7 +75,6 @@ class TestCombined:
 
     def test_full_default_config(self) -> None:
         cfg = StudyCaseConfig()
-        assert cfg.operator_profile_id == "enea"
         assert cfg.sc_input_mode == "simplified"
         assert cfg.sc_simplified_sk_mva is None
         assert cfg.sc_simplified_r_x_ratio == 0.1
@@ -98,14 +84,12 @@ class TestCombined:
 
     def test_full_round_trip_all_p09_fields(self) -> None:
         cfg = StudyCaseConfig(
-            operator_profile_id="tauron",
             sc_input_mode="simplified",
             sc_simplified_sk_mva=400.0,
             sc_simplified_r_x_ratio=0.12,
         )
         d = cfg.to_dict()
         restored = StudyCaseConfig.from_dict(d)
-        assert restored.operator_profile_id == "tauron"
         assert restored.sc_input_mode == "simplified"
         assert restored.sc_simplified_sk_mva == 400.0
         assert restored.sc_simplified_r_x_ratio == 0.12

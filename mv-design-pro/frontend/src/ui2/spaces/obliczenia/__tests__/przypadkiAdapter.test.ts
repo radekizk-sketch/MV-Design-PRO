@@ -11,6 +11,7 @@ vi.mock('../../../../ui/study-cases/api', () => ({
 }));
 
 import * as api from '../../../../ui/study-cases/api';
+import { CONFIG_FIELD_LABELS } from '../../../../ui/study-cases/types';
 import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import {
@@ -60,7 +61,10 @@ describe('rozniceKonfiguracji — tabela różnic', () => {
       studyCaseFixture('K1', 'A'),
       studyCaseFixture('K2', 'B'),
     ]);
-    expect(wiersze.length).toBeGreaterThanOrEqual(9);
+    // Wiersz na KAŻDE pole konfiguracji przypadku (etykiety kontraktu); operator sieci nie jest
+    // konfiguracją przypadku — jest daną modelu (warunki przyłączenia, karta GPZ-DANE-ANALIZ).
+    expect(wiersze.map((w) => w.pole)).toEqual(Object.keys(CONFIG_FIELD_LABELS));
+    expect(wiersze.map((w) => w.pole as string)).not.toContain('operator_profile_id');
     expect(wiersze.every((w) => !w.rozne)).toBe(true);
   });
 

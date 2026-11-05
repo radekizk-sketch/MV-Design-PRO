@@ -35,6 +35,7 @@ from typing import Any, Literal
 from enm.migrations.punkt_przylaczenia_der import (
     KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
 )
+from enm.operator_sieci import efektywny_profil_ncrfg
 from network_model.pochodne import mw_na_kw
 
 StatusOsi = Literal["ready", "partial", "blocked", "not_applicable"]
@@ -474,6 +475,7 @@ def wejscie_z_generatora(
     other_ders_in_station: int = 0,
     ct_accuracy_class: str | None = None,
     ct_application: Literal["protection", "metering", "dual"] | None = None,
+    operator_sieci: str | None = None,
 ) -> WejscieGotowosciDer:
     """Znormalizuj generator ENM do wejscia reguly.
 
@@ -520,7 +522,10 @@ def wejscie_z_generatora(
         dynamic_model_ref=_tekst(zrodla, ("dynamic_model_ref",)),
         ct_accuracy_class=ct_accuracy_class,
         ct_application=ct_application,
-        nc_rfg_profile_ref=_tekst((profile,), ("nc_rfg_profile_ref", "nc_rfg", "ncrfg")),
+        # Dodatek karty GPZ-DANE-ANALIZ: profil EFEKTYWNY z jednego miejsca rozstrzygania
+        # (`enm.operator_sieci`) — własny profil źródła albo operator sieci modelu. Dawny
+        # odczyt aliasów `nc_rfg`/`ncrfg` i `meta.profiles` (zero pisarzy w `src/`) usunięty.
+        nc_rfg_profile_ref=efektywny_profil_ncrfg(generator, operator_sieci).operator_id,
         lvrt_curve_ref=_tekst((profile,), ("lvrt_curve_ref", "lvrt")),
         hvrt_curve_ref=_tekst((profile,), ("hvrt_curve_ref", "hvrt")),
         other_ders_in_station=other_ders_in_station,

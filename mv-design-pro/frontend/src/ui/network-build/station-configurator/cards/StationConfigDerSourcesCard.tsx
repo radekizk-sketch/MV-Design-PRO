@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
   getNcRfgOperator,
+  profilNcRfgModulu,
   getConnectionSideLabelPl,
   getBlockTransformer,
   type BlockTransformerItem,
@@ -95,7 +96,8 @@ function buildRow(
   // Karta FAB-K: napięcie WYŁĄCZNIE z modelu (`connection_voltage_kv`) — dawny
   // `voltage_level_ref` (osobna referencja katalogu poziomów) był fantomem.
   const voltageKv = der.connection_voltage_kv ?? null;
-  const profile = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
+  // Profil EFEKTYWNY (własny albo operatora sieci modelu — dodatek karty GPZ-DANE-ANALIZ).
+  const profile = getNcRfgOperator(ncRfgOperators, profilNcRfgModulu(der).operator_id);
   const blockTransformer = getBlockTransformer(
     blockTransformers,
     der.catalogs.block_transformer_catalog_ref,

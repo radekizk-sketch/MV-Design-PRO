@@ -258,6 +258,7 @@
   "header": {
     "connection_conditions": {
       "moc_przylaczeniowa_mw": 2.0,
+      "operator_sieci": null,
       "tryb_pracy": "praca równoległa z siecią",
       "wymagany_cos_phi": 0.95
     },

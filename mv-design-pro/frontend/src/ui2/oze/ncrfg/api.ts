@@ -120,15 +120,27 @@ export async function uruchomBiegNcRfg(zadanie: ZadanieBieguNcRfg): Promise<Bieg
   return response.json() as Promise<BiegNcRfg>;
 }
 
-/** Zgodność WSZYSTKICH DER przypadku liczona z zatwierdzonego modelu (dowód certyfikatu z serwera). */
+/**
+ * Adres trasy przypadku z operatorem: jawny wybór projektanta w zapytaniu (`operator_id`)
+ * albo `null` — bez parametru, każdy moduł oceniany wg profilu efektywnego z modelu (backend
+ * `enm.operator_sieci`: własny profil źródła albo operator sieci z warunków przyłączenia).
+ */
+function adresPrzypadku(caseId: string, trasa: string, operatorId: string | null): string {
+  const baza = `/api/ncrfg-tests/cases/${encodeURIComponent(caseId)}/${trasa}`;
+  return operatorId === null
+    ? baza
+    : `${baza}?${new URLSearchParams({ operator_id: operatorId }).toString()}`;
+}
+
+/**
+ * Zgodność WSZYSTKICH DER przypadku liczona z zatwierdzonego modelu (dowód certyfikatu z
+ * serwera). `operatorId === null` — operator z modelu (profil efektywny każdego modułu).
+ */
 export function pobierzZgodnoscPrzypadkuNcRfg(
   caseId: string,
-  operatorId: string,
+  operatorId: string | null,
 ): Promise<ZgodnoscPrzypadkuNcRfg> {
-  return pobierzJson<ZgodnoscPrzypadkuNcRfg>(
-    `/api/ncrfg-tests/cases/${encodeURIComponent(caseId)}/compliance?` +
-      new URLSearchParams({ operator_id: operatorId }).toString(),
-  );
+  return pobierzJson<ZgodnoscPrzypadkuNcRfg>(adresPrzypadku(caseId, 'compliance', operatorId));
 }
 
 /**
@@ -138,12 +150,9 @@ export function pobierzZgodnoscPrzypadkuNcRfg(
  */
 export function pobierzWejsciaPrzypadkuNcRfg(
   caseId: string,
-  operatorId: string,
+  operatorId: string | null,
 ): Promise<WejsciaPrzypadkuNcRfg> {
-  return pobierzJson<WejsciaPrzypadkuNcRfg>(
-    `/api/ncrfg-tests/cases/${encodeURIComponent(caseId)}/wejscia?` +
-      new URLSearchParams({ operator_id: operatorId }).toString(),
-  );
+  return pobierzJson<WejsciaPrzypadkuNcRfg>(adresPrzypadku(caseId, 'wejscia', operatorId));
 }
 
 // =============================================================================

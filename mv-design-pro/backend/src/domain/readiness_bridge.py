@@ -92,6 +92,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # tryb niedopuszczony (ten sam warunek co bramka kreatora OZE, `enm/validator.py`).
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
+    # Dodatek karty GPZ-DANE-ANALIZ: profil NC RfG źródła różny od operatora sieci
+    # (nadpisanie — `enm/operator_sieci.py`) == ten sam fakt w kanonie gotowości.
+    "generators.nc_rfg_operator_mismatch": "generator.nc_rfg_operator_mismatch",
+    "connection.operator_sieci_unknown": "connection.operator_sieci_unknown",
     # Karta W3-I (§0.15 karty konwergencji fizyki): „generator przekształtnikowy
     # nie ma referencji katalogowej" == ten sam fakt, który gotowość zwarciowa
     # zgłasza jako `inverter.k_sc_missing` (`application/calculation_readiness/

@@ -391,7 +391,11 @@ export type WynikWejscia =
  * przez most albo bez wejścia modelu) NIE trafia do biegu; pole spoza ograniczeń kontraktu
  * blokuje żądanie z nazwanym błędem pola (backend odrzuciłby je 422).
  */
-export function zbudujWejscieModulu(opis: OpisModulu, operatorId: string): WynikWejscia {
+/**
+ * `operatorId` — jawny wybór projektanta albo `null`: operator modułu z wejścia modelu (profil
+ * efektywny modułu z mostu backendu — własny profil źródła albo operator sieci).
+ */
+export function zbudujWejscieModulu(opis: OpisModulu, operatorId: string | null): WynikWejscia {
   const model = opis.wejscieModelu;
   if (opis.oczekiwanie !== null) return { stan: 'oczekiwanie', oczekiwanie: opis.oczekiwanie };
   if (opis.powodBlokady !== null || model === null) {
@@ -422,7 +426,7 @@ export function zbudujWejscieModulu(opis: OpisModulu, operatorId: string): Wynik
       der_name: model.der_name,
       der_kind: model.der_kind,
       module_family: model.module_family,
-      operator_id: operatorId,
+      operator_id: operatorId ?? model.operator_id,
       p_max_kw: model.p_max_kw,
       voltage_kv: model.voltage_kv,
       modul_istniejacy: modulIstniejacyZeStanu(f.modulIstniejacy),

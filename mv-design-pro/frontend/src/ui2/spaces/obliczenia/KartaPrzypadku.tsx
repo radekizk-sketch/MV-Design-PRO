@@ -46,7 +46,6 @@ const POLA_OPCJE: Array<keyof StudyCaseConfig> = [
   'include_motor_contribution',
   'include_inverter_contribution',
 ];
-const POLA_OPERATOR: Array<keyof StudyCaseConfig> = ['operator_profile_id'];
 
 interface KartaPrzypadkuProps {
   przypadek: StudyCase | null;
@@ -134,7 +133,6 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
       <SekcjaKonfiguracji tytul={T.sekcjaZwarcia} pola={POLA_ZWARCIA} config={config} />
       <SekcjaKonfiguracji tytul={T.sekcjaRozplyw} pola={POLA_ROZPLYW} config={config} />
       <SekcjaKonfiguracji tytul={T.sekcjaOpcje} pola={POLA_OPCJE} config={config} />
-      <SekcjaKonfiguracji tytul={T.sekcjaOperator} pola={POLA_OPERATOR} config={config} />
     </article>
   );
 }

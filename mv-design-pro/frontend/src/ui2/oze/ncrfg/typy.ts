@@ -45,7 +45,14 @@ export type Technologia = 'PPM' | 'SPGM' | 'MAGAZYN';
 /** `contracts.ZrodloDanych`. */
 export type ZrodloDanych = 'ZATWIERDZONY_MODEL' | 'ZADANIE_KLIENTA';
 /** `model_bridge.PowodPominieciaDer`. */
-export type PowodPominieciaDer = 'brak_mocy' | 'brak_napiecia';
+export type PowodPominieciaDer = 'brak_mocy' | 'brak_napiecia' | 'brak_profilu_operatora';
+
+/**
+ * `bieg.ZrodloOperatora` — skąd operator oceny: jawny wybór projektanta (parametr trasy,
+ * wszystkie moduły wobec jednego operatora) albo profil efektywny każdego modułu z modelu
+ * (własny profil źródła albo operator sieci z warunków przyłączenia).
+ */
+export type ZrodloOperatora = 'WYBOR_PROJEKTANTA' | 'MODEL';
 /**
  * `contracts.PtpireeVerdict` — enum WEWNĘTRZNY testu (filtry/sortowanie backendu), wyprowadzany
  * z `ocena.status_maszynowy`. Interfejs go nie pokazuje: etykieta i semantyka są w `ocena`.
@@ -369,7 +376,9 @@ export interface CertyfikatOdrzucony {
  */
 export interface WejsciaPrzypadkuNcRfg {
   readonly case_id: string;
-  readonly operator_id: string;
+  /** Operator wspólny modułów; `null` — moduły wg różnych profili efektywnych (w module). */
+  readonly operator_id: string | null;
+  readonly zrodlo_operatora: ZrodloOperatora;
   readonly modules: readonly WejscieModuluNcRfg[];
   readonly pola_z_modelu: Readonly<Record<string, readonly (keyof WejscieModuluNcRfg)[]>>;
   readonly pominiete: readonly DerPominiety[];
@@ -378,7 +387,9 @@ export interface WejsciaPrzypadkuNcRfg {
 /** `bieg.NcRfgCaseComplianceResponse` — `bieg === null` dokładnie wtedy, gdy `der_count === 0`. */
 export interface ZgodnoscPrzypadkuNcRfg {
   readonly case_id: string;
-  readonly operator_id: string;
+  /** Operator wspólny modułów; `null` — moduły wg różnych profili efektywnych (w module). */
+  readonly operator_id: string | null;
+  readonly zrodlo_operatora: ZrodloOperatora;
   readonly der_count: number;
   readonly pominiete: readonly DerPominiety[];
   readonly certyfikaty_odrzucone: readonly CertyfikatOdrzucony[];

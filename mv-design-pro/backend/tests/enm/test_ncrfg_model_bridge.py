@@ -773,6 +773,7 @@ def test_compliance_endpoint_runs_from_model_with_run_contract() -> None:
         assert set(body) == {
             "case_id",
             "operator_id",
+            "zrodlo_operatora",
             "der_count",
             "pominiete",
             "certyfikaty_odrzucone",
@@ -832,6 +833,7 @@ def test_compliance_endpoint_zero_der_returns_no_run() -> None:
         assert resp.json() == {
             "case_id": case_id,
             "operator_id": _OPERATOR,
+            "zrodlo_operatora": "WYBOR_PROJEKTANTA",
             "der_count": 0,
             "pominiete": [],
             "certyfikaty_odrzucone": [],
@@ -883,7 +885,14 @@ def test_wejscia_endpoint_niesie_wejscia_mostu_i_pochodzenie() -> None:
         )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert set(body) == {"case_id", "operator_id", "modules", "pola_z_modelu", "pominiete"}
+    assert set(body) == {
+        "case_id",
+        "operator_id",
+        "zrodlo_operatora",
+        "modules",
+        "pola_z_modelu",
+        "pominiete",
+    }
     assert (body["case_id"], body["operator_id"]) == (case_id, _OPERATOR)
     most = build_ncrfg_module_inputs_from_enm(enm, operator_id=_OPERATOR)
     assert body["modules"] == [m.model_dump(mode="json") for m in most.modules]
@@ -931,6 +940,7 @@ def test_wejscia_endpoint_zero_der_i_nieznany_operator() -> None:
     assert pusty.json() == {
         "case_id": case_id,
         "operator_id": _OPERATOR,
+        "zrodlo_operatora": "WYBOR_PROJEKTANTA",
         "modules": [],
         "pola_z_modelu": {},
         "pominiete": [],

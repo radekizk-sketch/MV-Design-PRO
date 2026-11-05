@@ -92,9 +92,18 @@ def klasyfikuj_modul_ncrfg(p_max_kw: float, napiecie_kv: float) -> dict[str, Any
     return klasyfikacja.model_dump(mode="json")
 
 
+def _wymagaj_znanego_operatora(operator_id: str | None) -> None:
+    """404 dla jawnie wskazanego operatora spoza katalogu profili; brak = operator z modelu."""
+    if operator_id is not None and operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+
+
 @router.get("/cases/{case_id}/compliance", response_model=NcRfgCaseComplianceResponse)
 def run_ncrfg_compliance_from_model(
-    case_id: UUID, klucz: KluczTwin, operator_id: str
+    case_id: UUID, klucz: KluczTwin, operator_id: str | None = None
 ) -> NcRfgCaseComplianceResponse:
     """Zgodność NC RfG WSZYSTKICH źródeł przekształtnikowych przypadku liczona Z MODELU.
 
@@ -102,28 +111,22 @@ def run_ncrfg_compliance_from_model(
     certyfikatu urządzeń z zatwierdzonego modelu (zero fabrykacji: brak danej = ocena
     niewykonana z nazwanym brakiem), solver PTPiREE liczy rekordy testów, ocena wymagań —
     rekordy per wymaganie profilu. Uczciwy stan zerowy: brak źródeł → ``der_count == 0``,
-    ``bieg = None``. 404: nieznany operator.
+    ``bieg = None``. 404: nieznany operator. Bez ``operator_id`` każdy moduł oceniany wg
+    profilu efektywnego z modelu (``enm.operator_sieci``); z ``operator_id`` — wszystkie
+    moduły wobec wskazanego operatora (jawny wybór projektanta).
     """
-    if operator_id not in set(list_available_operators()):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Nieznany operator NC RfG: {operator_id}.",
-        )
+    _wymagaj_znanego_operatora(operator_id)
     return zgodnosc_ncrfg_przypadku(get_enm(klucz), operator_id=operator_id, case_id=str(case_id))
 
 
 @router.get("/cases/{case_id}/wejscia", response_model=NcRfgWejsciaPrzypadkuResponse)
 def get_ncrfg_module_inputs_from_model(
-    case_id: UUID, klucz: KluczTwin, operator_id: str
+    case_id: UUID, klucz: KluczTwin, operator_id: str | None = None
 ) -> NcRfgWejsciaPrzypadkuResponse:
     """Wejścia modułów NC RfG złożone z ZATWIERDZONEGO MODELU przypadku mostem
     ``model_bridge`` (te same, które ocenia ``/compliance``) — formularz wstępny biegu
-    „co-jeśli" macierzy. 404: nieznany operator."""
-    if operator_id not in set(list_available_operators()):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Nieznany operator NC RfG: {operator_id}.",
-        )
+    „co-jeśli" macierzy. 404: nieznany operator; brak ``operator_id`` — profil efektywny."""
+    _wymagaj_znanego_operatora(operator_id)
     return wejscia_ncrfg_przypadku(get_enm(klucz), operator_id=operator_id, case_id=str(case_id))
 
 

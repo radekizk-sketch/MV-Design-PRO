@@ -213,5 +213,26 @@
         "luk_elektryczny"
       ]
     }
-  ]
+  ],
+  "pole_operatora_sieci": {
+    "klucz": "operator_sieci",
+    "rodzaj": "slownik",
+    "nazwa_pl": "Operator sieci",
+    "operacja": "set_connection_conditions",
+    "sciezka_w_modelu": "header.connection_conditions.operator_sieci",
+    "kod_bledu": "connection_conditions.operator_unknown",
+    "dozwolone": [
+      "enea",
+      "energa",
+      "pge",
+      "pse",
+      "tauron"
+    ],
+    "konsumenci": [
+      "zgodnosc_nc_rfg",
+      "gotowosc_der",
+      "regulacja_napiecia",
+      "zgodnosc_referencyjna"
+    ]
+  }
 }

@@ -11,6 +11,8 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import * as studyCasesApi from '../../../../ui/study-cases/api';
+import { useNcRfgStore } from '../../../oze/ncRfgStore';
+import { katalogFixture } from '../../../oze/macierz/__tests__/fixtures';
 import {
   snapshotFixture,
   readinessZBlokadami,
@@ -304,6 +306,68 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
 
     expect(screen.getByTestId('pulpit-osd-blad')).toHaveTextContent('cosφ');
     expect(executeDomainOperation).not.toHaveBeenCalled();
+  });
+
+  // Dodatek karty GPZ-DANE-ANALIZ: operator sieci — jedna dana modelu z katalogu profili NC RfG.
+  // Iloczyn cech: operator w modelu (brak / podany) × akcja (wybór / wyczyszczenie / bez zmiany).
+  describe('operator sieci (warunki przyłączenia)', () => {
+    beforeEach(() => {
+      useNcRfgStore.setState({ katalog: katalogFixture(), bladKatalogu: null });
+    });
+
+    it('model z operatorem sieci → wiersz z nazwą operatora z katalogu (nie identyfikator)', () => {
+      const snap = snapshotFixture();
+      snap.header.connection_conditions = { operator_sieci: 'pse' };
+      useSnapshotStore.setState({ snapshot: snap });
+      render(<PulpitProjektu {...props()} />);
+      const nazwa = katalogFixture().operators.find((op) => op.operator_id === 'pse')!.operator_name_pl;
+      expect(screen.getByTestId('pulpit-osd-operator-sieci')).toHaveTextContent(nazwa);
+      expect(screen.queryByTestId('pulpit-osd-nie-podano')).not.toBeInTheDocument();
+    });
+
+    it('wybór operatora z listy katalogu (natywny wybór) → `operator_sieci` w operacji domenowej', async () => {
+      const executeDomainOperation = vi.fn().mockResolvedValue({ error: null, snapshot: snapshotFixture() });
+      useSnapshotStore.setState({ executeDomainOperation } as never);
+      useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+      const user = userEvent.setup();
+      render(<PulpitProjektu {...props()} />);
+      await user.click(screen.getByTestId('pulpit-osd-uzupelnij'));
+      const lista = screen.getByTestId('pulpit-osd-operator') as HTMLSelectElement;
+      expect([...lista.options].map((o) => o.value)).toEqual([
+        '',
+        ...katalogFixture().operators.map((op) => op.operator_id),
+      ]);
+      await user.selectOptions(lista, 'enea');
+      await user.click(screen.getByTestId('pulpit-osd-zapisz'));
+      await waitFor(() =>
+        expect(executeDomainOperation).toHaveBeenCalledWith('case-1', 'set_connection_conditions', {
+          operator_sieci: 'enea',
+        }),
+      );
+    });
+
+    it('wyczyszczenie operatora zapisanego w modelu → `operator_sieci: null`; bez zmiany → odmowa „puste"', async () => {
+      const snap = snapshotFixture();
+      snap.header.connection_conditions = { operator_sieci: 'enea' };
+      const executeDomainOperation = vi.fn().mockResolvedValue({ error: null, snapshot: snap });
+      useSnapshotStore.setState({ snapshot: snap, executeDomainOperation } as never);
+      useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+      const user = userEvent.setup();
+      render(<PulpitProjektu {...props()} />);
+      await user.click(screen.getByTestId('pulpit-osd-uzupelnij'));
+      const lista = screen.getByTestId('pulpit-osd-operator') as HTMLSelectElement;
+      expect(lista.value).toBe('enea');
+      await user.click(screen.getByTestId('pulpit-osd-zapisz'));
+      expect(screen.getByTestId('pulpit-osd-blad')).toHaveTextContent(PULPIT_STRINGS.osdFormBladPuste);
+      expect(executeDomainOperation).not.toHaveBeenCalled();
+      await user.selectOptions(lista, '');
+      await user.click(screen.getByTestId('pulpit-osd-zapisz'));
+      await waitFor(() =>
+        expect(executeDomainOperation).toHaveBeenCalledWith('case-1', 'set_connection_conditions', {
+          operator_sieci: null,
+        }),
+      );
+    });
   });
 
   it('lista przypadków: wiersze ze study-cases', () => {

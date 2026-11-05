@@ -3650,6 +3650,17 @@
       ],
       "title": "Lvrt Curve Ref"
      },
+     "nc_rfg_profile_powod": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nc Rfg Profile Powod"
+     },
      "nc_rfg_profile_ref": {
       "anyOf": [
        {
@@ -7529,8 +7540,15 @@
       "type": "integer"
      },
      "operator_id": {
-      "title": "Operator Id",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operator Id"
      },
      "pominiete": {
       "items": {
@@ -7538,11 +7556,20 @@
       },
       "title": "Pominiete",
       "type": "array"
+     },
+     "zrodlo_operatora": {
+      "enum": [
+       "WYBOR_PROJEKTANTA",
+       "MODEL"
+      ],
+      "title": "Zrodlo Operatora",
+      "type": "string"
      }
     },
     "required": [
      "case_id",
      "operator_id",
+     "zrodlo_operatora",
      "der_count",
      "pominiete",
      "certyfikaty_odrzucone",
@@ -7603,7 +7630,8 @@
      "powod": {
       "enum": [
        "brak_mocy",
-       "brak_napiecia"
+       "brak_napiecia",
+       "brak_profilu_operatora"
       ],
       "title": "Powod",
       "type": "string"
@@ -8431,8 +8459,15 @@
       "type": "array"
      },
      "operator_id": {
-      "title": "Operator Id",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operator Id"
      },
      "pola_z_modelu": {
       "additionalProperties": {
@@ -8450,11 +8485,20 @@
       },
       "title": "Pominiete",
       "type": "array"
+     },
+     "zrodlo_operatora": {
+      "enum": [
+       "WYBOR_PROJEKTANTA",
+       "MODEL"
+      ],
+      "title": "Zrodlo Operatora",
+      "type": "string"
      }
     },
     "required": [
      "case_id",
      "operator_id",
+     "zrodlo_operatora",
      "modules",
      "pola_z_modelu",
      "pominiete"
@@ -21275,7 +21319,7 @@
   },
   "/api/cases/{case_id}/reference/compliance": {
    "get": {
-    "description": "Raport zgodności referencyjnej + Reference Score dla ENM case'a.\n\nKarta OD-17a: bez ``?packs=`` raport ocenia pakiety norm i producentów oraz pakiet\noperatora wskazanego w przypadku; brak pakietu tego operatora = rekord w\n``braki_pakietow``. Jawne żądanie pakietu operatora, którego rejestr nie ma → 422\n(nazwana odmowa ``BRAK_PAKIETU_OSD:<operator>``); nieznany identyfikator → 404.",
+    "description": "Raport zgodności referencyjnej + Reference Score dla ENM case'a.\n\nKarta OD-17a: bez ``?packs=`` raport ocenia pakiety norm i producentów oraz pakiet\noperatora sieci modelu; brak pakietu tego operatora = rekord w\n``braki_pakietow``. Jawne żądanie pakietu operatora, którego rejestr nie ma → 422\n(nazwana odmowa ``BRAK_PAKIETU_OSD:<operator>``); nieznany identyfikator → 404.",
     "operationId": "get_reference_compliance_api_cases__case_id__reference_compliance_get",
     "parameters": [
      {
@@ -25448,7 +25492,7 @@
   },
   "/api/ncrfg-tests/cases/{case_id}/compliance": {
    "get": {
-    "description": "Zgodność NC RfG WSZYSTKICH źródeł przekształtnikowych przypadku liczona Z MODELU.\n\nMost ``application/ncrfg_compliance/model_bridge.py`` buduje wejścia solvera i dowody\ncertyfikatu urządzeń z zatwierdzonego modelu (zero fabrykacji: brak danej = ocena\nniewykonana z nazwanym brakiem), solver PTPiREE liczy rekordy testów, ocena wymagań —\nrekordy per wymaganie profilu. Uczciwy stan zerowy: brak źródeł → ``der_count == 0``,\n``bieg = None``. 404: nieznany operator.",
+    "description": "Zgodność NC RfG WSZYSTKICH źródeł przekształtnikowych przypadku liczona Z MODELU.\n\nMost ``application/ncrfg_compliance/model_bridge.py`` buduje wejścia solvera i dowody\ncertyfikatu urządzeń z zatwierdzonego modelu (zero fabrykacji: brak danej = ocena\nniewykonana z nazwanym brakiem), solver PTPiREE liczy rekordy testów, ocena wymagań —\nrekordy per wymaganie profilu. Uczciwy stan zerowy: brak źródeł → ``der_count == 0``,\n``bieg = None``. 404: nieznany operator. Bez ``operator_id`` każdy moduł oceniany wg\nprofilu efektywnego z modelu (``enm.operator_sieci``); z ``operator_id`` — wszystkie\nmoduły wobec wskazanego operatora (jawny wybór projektanta).",
     "operationId": "run_ncrfg_compliance_from_model_api_ncrfg_tests_cases__case_id__compliance_get",
     "parameters": [
      {
@@ -25463,10 +25507,17 @@
      {
       "in": "query",
       "name": "operator_id",
-      "required": true,
+      "required": false,
       "schema": {
-       "title": "Operator Id",
-       "type": "string"
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Operator Id"
       }
      }
     ],
@@ -25500,7 +25551,7 @@
   },
   "/api/ncrfg-tests/cases/{case_id}/wejscia": {
    "get": {
-    "description": "Wejścia modułów NC RfG złożone z ZATWIERDZONEGO MODELU przypadku mostem\n``model_bridge`` (te same, które ocenia ``/compliance``) — formularz wstępny biegu\n„co-jeśli\" macierzy. 404: nieznany operator.",
+    "description": "Wejścia modułów NC RfG złożone z ZATWIERDZONEGO MODELU przypadku mostem\n``model_bridge`` (te same, które ocenia ``/compliance``) — formularz wstępny biegu\n„co-jeśli\" macierzy. 404: nieznany operator; brak ``operator_id`` — profil efektywny.",
     "operationId": "get_ncrfg_module_inputs_from_model_api_ncrfg_tests_cases__case_id__wejscia_get",
     "parameters": [
      {
@@ -25515,10 +25566,17 @@
      {
       "in": "query",
       "name": "operator_id",
-      "required": true,
+      "required": false,
       "schema": {
-       "title": "Operator Id",
-       "type": "string"
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Operator Id"
       }
      }
     ],

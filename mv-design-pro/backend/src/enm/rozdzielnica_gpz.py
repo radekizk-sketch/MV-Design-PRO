@@ -376,6 +376,9 @@ def eksport_parytetu_rozdzielnicy() -> dict[str, Any]:
 
     Deterministyczna (kolejność opisu pól, potem pól słownikowych); każde pole niesie klucz
     modelu, nazwę, jednostkę, zakres z podstawą albo słownik oraz analizy-konsumentów."""
+    # Import w funkcji: `enm.operator_sieci` importuje `enm.models`, które importuje ten moduł.
+    from enm.operator_sieci import opis_pola_operatora_sieci
+
     pola: list[dict[str, Any]] = []
     for opis in OPISY_POL_ROZDZIELNICY:
         pola.append(
@@ -416,4 +419,7 @@ def eksport_parytetu_rozdzielnicy() -> dict[str, Any]:
         "sciezka": SCIEZKA_ZAPISU_ROZDZIELNICY,
         "kod_bledu": KOD_BLEDU_ROZDZIELNICY,
         "pola": pola,
+        # Dodatek karty GPZ-DANE-ANALIZ: operator sieci — jedna dana modelu na poziomie sieci
+        # (warunki przyłączenia), pole konfiguratora GPZ „Operator sieci”.
+        "pole_operatora_sieci": opis_pola_operatora_sieci(),
     }

@@ -157,6 +157,9 @@ export const MACIERZ_STRINGS = {
     'Brak danych: napięcie przyłączenia. Uzupełnij poziom napięcia szyny przyłączenia w karcie źródła — moduł nie zostanie objęty biegiem bez tej danej.',
   brakMocy:
     'Brak danych: moc znamionowa. Wybierz urządzenie z katalogu — moduł nie zostanie objęty biegiem bez tej danej.',
+  brakProfiluOperatora:
+    'Brak danych: profil NC RfG. Wskaż operatora sieci w warunkach przyłączenia projektu albo ' +
+    'profil operatora w karcie źródła — moduł nie zostanie objęty biegiem bez tej danej.',
   brakWejsciaModelu:
     'Brak danych modułu z zatwierdzonego modelu przypadku (przypadek albo operator niewybrane, ' +
     'albo model przypadku nie obejmuje tego źródła) — formularz biegu startuje wyłącznie z ' +
@@ -213,6 +216,7 @@ export const OPISY_OCZEKIWANIA: Readonly<Record<OczekiwanieWejsc, string>> = {
 export const ETYKIETY_BLOKADY: Readonly<Record<PowodBlokady, string>> = {
   brak_napiecia: 'brak danych: napięcie przyłączenia',
   brak_mocy: 'brak danych: moc znamionowa',
+  brak_profilu_operatora: 'brak danych: profil NC RfG (operator sieci)',
   brak_wejscia_modelu: 'brak danych modułu z modelu przypadku',
 };
 

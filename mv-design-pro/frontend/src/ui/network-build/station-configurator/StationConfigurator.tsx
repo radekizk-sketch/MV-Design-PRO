@@ -48,6 +48,7 @@ import {
 } from './cards/StationConfigReadinessCard';
 import type { MeasurementRow } from './przekladnikiStacji';
 import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
+import { profilNcRfgModulu } from '../station-der/profilNcRfg';
 import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { wielkoscPl } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';
@@ -782,7 +783,8 @@ function StationPowerQualityPanel({
   const derBezMocy = ders.filter((der) => der.nominal_power_kw === null).length;
   const totalDerKw = ders.reduce((sum, der) => sum + (der.nominal_power_kw ?? 0), 0);
   const totalLoadMw = loads.reduce((sum, load) => sum + load.pMw, 0);
-  const profiles = new Set(ders.map((der) => der.profiles.nc_rfg_profile_ref).filter(Boolean));
+  // Profil EFEKTYWNY modułu (własny albo operatora sieci modelu — dodatek karty GPZ-DANE-ANALIZ).
+  const profiles = new Set(ders.map((der) => profilNcRfgModulu(der).operator_id).filter(Boolean));
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
@@ -833,7 +835,7 @@ function StationNcRfgPanel({
                 <div className="mt-1 grid gap-1 text-scada-muted md:grid-cols-3">
                   <span>Rodzaj: {der.der_kind}</span>
                   <span>PCC: {der.connection_side}</span>
-                  <span>Profil: {der.profiles.nc_rfg_profile_ref ?? 'operator'}</span>
+                  <span>Profil: {profilNcRfgModulu(der).operator_id ?? 'brak profilu NC RfG'}</span>
                 </div>
               </div>
             ))}

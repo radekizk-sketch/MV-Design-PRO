@@ -232,6 +232,13 @@ class ConnectionConditions(BaseModel):
     moc_przylaczeniowa_mw: float | None = Field(default=None, gt=0)
     wymagany_cos_phi: float | None = Field(default=None, gt=0, le=1)
     tryb_pracy: str | None = None
+    operator_sieci: str | None = None
+    """Operator sieci (OSD/OSP), do której przyłączany jest projekt — identyfikator z katalogu
+    profili NC RfG (warstwa OSD, ``catalog.profiles.nc_rfg.list_available_operators``).
+    JEDNA dana modelu na poziomie sieci (decyzja architekta, dodatek karty GPZ-DANE-ANALIZ):
+    źródło bez własnego profilu NC RfG dziedziczy profil tego operatora, raport zgodności
+    referencyjnej ocenia pakiet OSD tego operatora. Rozstrzyganie: ``enm.operator_sieci``.
+    Pisarz: ``set_connection_conditions`` (tylko operator istniejący w katalogu profili)."""
 
 
 class ENMHeader(BaseModel):

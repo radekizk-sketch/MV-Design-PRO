@@ -1,0 +1,324 @@
+{
+  "przypadki": [
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": null,
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": null,
+        "zrodlo": "BRAK",
+        "operator_sieci": null,
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": null,
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": null,
+        "zrodlo": "BRAK",
+        "operator_sieci": null,
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": null,
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "OPERATOR_SIECI",
+        "operator_sieci": "enea",
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": null,
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "OPERATOR_SIECI",
+        "operator_sieci": "enea",
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": null,
+        "zrodlo": "BRAK",
+        "operator_sieci": null,
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": null,
+        "zrodlo": "BRAK",
+        "operator_sieci": null,
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "OPERATOR_SIECI",
+        "operator_sieci": "enea",
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "OPERATOR_SIECI",
+        "operator_sieci": "enea",
+        "profil_zrodla": null,
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "enea",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "enea",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "enea",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "enea",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "  enea  ",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "  enea  ",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "  enea  ",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "  enea  ",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "enea",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "enea",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "pse",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "pse",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "pse",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "pse",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": null
+      },
+      "wynik": {
+        "operator_id": "pse",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": null,
+        "profil_zrodla": "pse",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": false,
+        "nadpisanie_bez_powodu": false
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "pse",
+        "nc_rfg_profile_powod": null,
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "pse",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "pse",
+        "powod_nadpisania_pl": null,
+        "nadpisanie": true,
+        "nadpisanie_bez_powodu": true
+      }
+    },
+    {
+      "wejscie": {
+        "nc_rfg_profile_ref": "pse",
+        "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV PSE",
+        "operator_sieci": "enea"
+      },
+      "wynik": {
+        "operator_id": "pse",
+        "zrodlo": "PROFIL_ZRODLA",
+        "operator_sieci": "enea",
+        "profil_zrodla": "pse",
+        "powod_nadpisania_pl": "Przyłączenie do sieci 110 kV PSE",
+        "nadpisanie": true,
+        "nadpisanie_bez_powodu": false
+      }
+    }
+  ]
+}

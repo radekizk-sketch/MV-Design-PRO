@@ -71,6 +71,7 @@ import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
 import { useAudit2CatalogSnapshot } from './station-der/audit2-hooks';
+import { efektywnyProfilNcRfg } from './station-der/profilNcRfg';
 import type { PfCurveItem } from './station-der/audit2-api';
 import {
   formatDerDynamicProfileLabelPl,
@@ -1619,7 +1620,12 @@ function buildAdvancedConverterSections(
   const protectionIntent = generatorProtectionIntent(generator);
   const protectionAssignment = findGeneratorProtection(snapshot, generatorRef);
   const protectionMeta = valueAsRecord(protectionAssignment?.meta) ?? {};
-  const ncRfgRef = generatorProfileRef(generator, 'nc_rfg_profile_ref');
+  // Profil EFEKTYWNY (własny albo operatora sieci z warunków przyłączenia — dodatek karty
+  // GPZ-DANE-ANALIZ): ten sam, wg którego backend ocenia źródło.
+  const ncRfgRef = efektywnyProfilNcRfg(
+    generatorProfileRef(generator, 'nc_rfg_profile_ref'),
+    snapshot?.header?.connection_conditions?.operator_sieci,
+  ).operator_id;
   const lvrtRef = generatorProfileRef(generator, 'lvrt_curve_ref');
   const hvrtRef = generatorProfileRef(generator, 'hvrt_curve_ref');
   const pfCurveRef = generatorProfileRef(generator, 'pf_curve_ref');

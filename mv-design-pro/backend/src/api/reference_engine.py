@@ -61,15 +61,14 @@ def get_reference_compliance(
     """Raport zgodności referencyjnej + Reference Score dla ENM case'a.
 
     Karta OD-17a: bez ``?packs=`` raport ocenia pakiety norm i producentów oraz pakiet
-    operatora wskazanego w przypadku; brak pakietu tego operatora = rekord w
+    operatora sieci modelu; brak pakietu tego operatora = rekord w
     ``braki_pakietow``. Jawne żądanie pakietu operatora, którego rejestr nie ma → 422
     (nazwana odmowa ``BRAK_PAKIETU_OSD:<operator>``); nieznany identyfikator → 404.
     """
     enm = _get_enm(klucz)
-    # Operator (`StudyCaseConfig.operator_profile_id`) i nazwa przypadku z bazy żądania.
-    przypadek = przypadek_z_bazy(case_id, request.app.state.uow_factory)
-    operator = przypadek.config.operator_profile_id
-    nazwa_przypadku = przypadek.name
+    # Nazwa przypadku z bazy żądania; operator sieci czyta silnik z MODELU
+    # (`ConnectionConditions.operator_sieci` — jedna dana, nie konfiguracja przypadku).
+    nazwa_przypadku = przypadek_z_bazy(case_id, request.app.state.uow_factory).name
     pack_ids: list[str] | None = None
     if packs:
         pack_ids = [p.strip() for p in packs.split(",") if p.strip()]
@@ -80,5 +79,5 @@ def get_reference_compliance(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         report = evaluate_enm(enm, pack_ids=pack_ids)
     else:
-        report = evaluate_enm(enm, operator_przypadku=operator, nazwa_przypadku=nazwa_przypadku)
+        report = evaluate_enm(enm, nazwa_przypadku=nazwa_przypadku)
     return report.model_dump(mode="json")

@@ -26,6 +26,7 @@ import {
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { efektywnyProfilNcRfg } from '../../../ui/network-build/station-der/profilNcRfg';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -354,9 +355,16 @@ export function KreatorZrodlaOze() {
       cancelled = true;
     };
   }, [potrzebujeKatalNcRfgRegulacji]);
+  // Dodatek karty GPZ-DANE-ANALIZ: profil EFEKTYWNY — własny profil źródła albo operator
+  // sieci modelu (ta sama reguła co bramka walidatora `generators.voltage_control_*`).
+  const operatorSieciModelu = snapshot?.header?.connection_conditions?.operator_sieci ?? null;
   const profilNcRfgRegulacja = useMemo(
-    () => getNcRfgOperator(ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref),
-    [ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref],
+    () =>
+      getNcRfgOperator(
+        ncRfgOperatorzyRegulacja,
+        efektywnyProfilNcRfg(dane.nc_rfg_profile_ref, operatorSieciModelu).operator_id,
+      ),
+    [ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref, operatorSieciModelu],
   );
   // Dopuszczalność trybu REGULACJA_NAPIECIA jest ZNANA wyłącznie, gdy katalog operatorów
   // NC RfG jest pobrany I profil wybrany; katalog w trakcie pobierania, błąd pobrania

@@ -27,13 +27,14 @@ export type StanZgodnosciPrzekrojowej =
  */
 export function rozwiazStanZgodnosciPrzekrojowej(params: {
   readonly caseId: string | null;
-  readonly operatorId: string | null;
+  /** `null` — operator z modelu (profil efektywny modułów); `undefined` — brak operatora. */
+  readonly operatorId: string | null | undefined;
   readonly ladowanie: boolean;
   readonly blad: string | null;
   readonly wynik: ZgodnoscPrzypadkuNcRfg | null;
 }): StanZgodnosciPrzekrojowej {
   if (!params.caseId) return 'brak_przypadku';
-  if (!params.operatorId) return 'brak_operatora';
+  if (params.operatorId === undefined) return 'brak_operatora';
   if (params.blad) return 'blad';
   if (params.ladowanie || !params.wynik) return 'ladowanie';
   if (params.wynik.der_count === 0 && params.wynik.pominiete.length === 0) return 'brak_der';

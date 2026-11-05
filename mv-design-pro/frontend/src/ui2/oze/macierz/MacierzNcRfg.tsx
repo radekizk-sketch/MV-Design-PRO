@@ -30,7 +30,12 @@ import {
   type FormatDokumentu,
 } from '../ncrfg/api';
 import { ListaRekordowWymagan, NaglowekModuluNcRfg, OpisDokumentuWarstwy } from '../ncrfg/komponenty';
-import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
+import {
+  operatorDokumentu,
+  operatorEfektywny,
+  operatorZapytaniaOceny,
+  operatorZModelu,
+} from '../ncrfg/operator';
 import type {
   BrakiCertyfikatu,
   WejscieModuluNcRfg,
@@ -119,7 +124,12 @@ export function MacierzNcRfg({
   const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
-  const operatorId = operatorEfektywny(zModelu, operatorWybor);
+  // Ocena (wejścia, zgodność przekrojowa, bieg „co-jeśli"): `null` — operator z modelu (backend
+  // ocenia każdy moduł wg profilu efektywnego), `undefined` — wymagany wybór projektanta.
+  const operatorOceny = operatorZapytaniaOceny(zModelu, operatorWybor);
+  // Certyfikat jest adresowany do JEDNEGO operatora — profile różne per moduł wymagają wyboru.
+  const zModeluDokumentu = operatorDokumentu(zModelu);
+  const operatorCertyfikatu = operatorEfektywny(zModeluDokumentu, operatorWybor);
 
   // Formularz wstępny biegu „co-jeśli" = wejścia modułów złożone z ZATWIERDZONEGO modelu
   // przypadku przez most backendu (jeden odczyt; klient niczego z modelu nie wyprowadza sam).
@@ -152,13 +162,13 @@ export function MacierzNcRfg({
   useEffect(() => {
     setFormularze({});
     setBledy({});
-    if (aktywnyPrzypadek === null || operatorId === null) {
+    if (aktywnyPrzypadek === null || operatorOceny === undefined) {
       setStanWejsc({ stan: 'brak' });
       return;
     }
     let aktualny = true;
     setStanWejsc({ stan: 'wczytywanie' });
-    pobierzWejsciaPrzypadkuNcRfg(aktywnyPrzypadek, operatorId).then(
+    pobierzWejsciaPrzypadkuNcRfg(aktywnyPrzypadek, operatorOceny).then(
       (wejscia) => {
         if (aktualny) setStanWejsc({ stan: 'gotowe', wejscia });
       },
@@ -174,7 +184,7 @@ export function MacierzNcRfg({
     return () => {
       aktualny = false;
     };
-  }, [aktywnyPrzypadek, operatorId, stanModulow]);
+  }, [aktywnyPrzypadek, operatorOceny, stanModulow]);
 
   useEffect(() => {
     if (!wybranyModul && opisyBazowe[0]) setWybranyModul(opisyBazowe[0].derRef);
@@ -229,7 +239,7 @@ export function MacierzNcRfg({
       ? MACIERZ_STRINGS.brakModulow
       : aktywnyPrzypadek === null
         ? MACIERZ_STRINGS.brakPrzypadkuWejsc
-        : operatorId === null
+        : operatorOceny === undefined
           ? MACIERZ_STRINGS.brakOperatora
           : stanWejsc.stan === 'wczytywanie'
             ? MACIERZ_STRINGS.wczytywanieWejsc
@@ -251,11 +261,11 @@ export function MacierzNcRfg({
   };
 
   const przeprowadz = async (): Promise<void> => {
-    if (operatorId === null) return;
+    if (operatorOceny === undefined) return;
     const wejscia: WejscieModuluNcRfg[] = [];
     const noweBledy: Record<string, BledyFormularza> = {};
     for (const opis of gotoweDoBiegu) {
-      const wynikWejscia = zbudujWejscieModulu(opis, operatorId);
+      const wynikWejscia = zbudujWejscieModulu(opis, operatorOceny);
       if (wynikWejscia.stan === 'ok') wejscia.push(wynikWejscia.wejscie);
       else if (wynikWejscia.stan === 'blad') noweBledy[opis.derRef] = wynikWejscia.bledy;
     }
@@ -271,14 +281,14 @@ export function MacierzNcRfg({
   const modulyZBledem = opisy.filter((o) => o.derRef in bledy).map((o) => o.nazwa);
 
   // Certyfikat — WYŁĄCZNIE z zatwierdzonego modelu przypadku (case_id) i operatora.
-  const certyfikatDostepny = aktywnyPrzypadek !== null && operatorId !== null;
+  const certyfikatDostepny = aktywnyPrzypadek !== null && operatorCertyfikatu !== null;
 
   const zadanieCertyfikatu = (): ZadanieCertyfikatu | null => {
-    if (operatorId === null) return null;
+    if (operatorCertyfikatu === null) return null;
     return zbudujZadanieCertyfikatu({
       nazwaProjektu,
       nazwaPrzypadku,
-      operatorId,
+      operatorId: operatorCertyfikatu,
       nazwaZastepcza: MACIERZ_STRINGS.projektBezNazwy,
     });
   };
@@ -354,7 +364,7 @@ export function MacierzNcRfg({
         <div className="mvd-oze-head-akcje">
           <div className="mvd-oze-pola">
             <WyborOperatora
-              zModelu={zModelu}
+              zModelu={zModeluDokumentu}
               operatorzy={katalog?.operators ?? null}
               bladKatalogu={bladKatalogu}
               wybor={operatorWybor}
@@ -437,7 +447,7 @@ export function MacierzNcRfg({
 
       <SekcjaZgodnosciPrzekrojowej
         caseId={aktywnyPrzypadek}
-        operatorId={operatorId}
+        operatorId={operatorOceny}
         nazwyModulow={nazwyModulow}
         szczegolyAudytowe={szczegolyAudytowe}
         onWybierzModul={(derRef) => {

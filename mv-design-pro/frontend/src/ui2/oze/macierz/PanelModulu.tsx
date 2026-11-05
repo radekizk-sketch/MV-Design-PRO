@@ -119,6 +119,7 @@ export function PanelModulu({
 const OPIS_BLOKADY: Readonly<Record<PowodBlokady, string>> = {
   brak_napiecia: MACIERZ_STRINGS.brakNapiecia,
   brak_mocy: MACIERZ_STRINGS.brakMocy,
+  brak_profilu_operatora: MACIERZ_STRINGS.brakProfiluOperatora,
   brak_wejscia_modelu: MACIERZ_STRINGS.brakWejsciaModelu,
 };
 

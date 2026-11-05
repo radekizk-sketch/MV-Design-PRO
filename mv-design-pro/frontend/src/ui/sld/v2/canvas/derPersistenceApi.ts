@@ -154,6 +154,8 @@ export interface DerCatalogBindingsRequest {
   readonly vt_catalog_ref?: string | null;
   readonly dynamic_model_ref?: string | null;
   readonly nc_rfg_profile_ref?: string | null;
+  /** Powód nadpisania operatora sieci profilem źródła (backend wymaga przy rozbieżności). */
+  readonly nc_rfg_profile_powod?: string | null;
   readonly lvrt_curve_ref?: string | null;
   readonly hvrt_curve_ref?: string | null;
   readonly pf_curve_ref?: string | null;

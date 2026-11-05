@@ -30,7 +30,7 @@ import { opisyModulow } from '../macierz';
 import { MACIERZ_STRINGS } from '../macierz/strings';
 import { pobierzZgodnoscPrzypadkuNcRfg } from '../ncrfg/api';
 import { OpisDokumentuWarstwy } from '../ncrfg/komponenty';
-import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
+import { operatorZapytaniaOceny, operatorZModelu } from '../ncrfg/operator';
 import type { ZgodnoscPrzypadkuNcRfg } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
@@ -124,7 +124,9 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
   };
 
   const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
-  const operatorId = operatorEfektywny(zModelu, operatorWybor);
+  // `null` — operator z modelu (backend ocenia każdy moduł wg profilu efektywnego: własny profil
+  // źródła albo operator sieci), `string` — jawny wybór, `undefined` — wymagany wybór.
+  const operatorId = operatorZapytaniaOceny(zModelu, operatorWybor);
 
   useEffect(() => {
     void zaladujKatalog();
@@ -135,7 +137,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
   }, [opisy, wybranyModul]);
 
   const zaladujOcene = useCallback(async (): Promise<void> => {
-    if (!caseId || operatorId === null) return;
+    if (!caseId || operatorId === undefined) return;
     // Odpowiedź spóźniona (po zmianie przypadku/operatora albo nowszym odświeżeniu) nie
     // nadpisuje stanu bieżącego zapytania.
     const numer = ++numerZapytania.current;
@@ -161,7 +163,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
   }, [zaladujOcene]);
 
   const stanOceny = stanOcenyModelu(
-    Boolean(caseId) && operatorId !== null,
+    Boolean(caseId) && operatorId !== undefined,
     zgodnosc !== null,
     bladOceny !== null,
   );
@@ -178,7 +180,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
       ? PULPIT_STRINGS.brakModulow
       : !caseId
         ? PULPIT_STRINGS.brakPrzypadku
-        : operatorId === null
+        : operatorId === undefined
           ? MACIERZ_STRINGS.brakOperatora
           : ladowanie
             ? PULPIT_STRINGS.wTrakcie

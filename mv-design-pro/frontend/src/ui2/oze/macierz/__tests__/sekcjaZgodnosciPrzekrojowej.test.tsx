@@ -28,7 +28,7 @@ afterEach(() => {
 describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
   it.each([
     ['brak przypadku', null, 'enea', 'mvd-oze-zgodnosc-przekrojowa-brak-przypadku'],
-    ['brak operatora', 'case-demo', null, 'mvd-oze-zgodnosc-przekrojowa-brak-operatora'],
+    ['brak operatora', 'case-demo', undefined, 'mvd-oze-zgodnosc-przekrojowa-brak-operatora'],
   ] as const)('%s → komunikat, zero zapytań, odświeżenie nieaktywne', (_opis, caseId, operatorId, testid) => {
     const wywolania = trasa(() => odpowiedzJson(200, zgodnoscFixture()));
     render(<SekcjaZgodnosciPrzekrojowej caseId={caseId} operatorId={operatorId} nazwyModulow={{}} szczegolyAudytowe={false} />);
@@ -39,7 +39,7 @@ describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
 
   it('model bez DER → komunikat „brak źródła"', async () => {
     trasa(() =>
-      odpowiedzJson(200, { case_id: 'c', operator_id: 'enea', der_count: 0, pominiete: [], certyfikaty_odrzucone: [], bieg: null }),
+      odpowiedzJson(200, { case_id: 'c', operator_id: 'enea', zrodlo_operatora: 'MODEL', der_count: 0, pominiete: [], certyfikaty_odrzucone: [], bieg: null }),
     );
     render(<SekcjaZgodnosciPrzekrojowej caseId="c" operatorId="enea" nazwyModulow={{}} szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-brak-der')).toHaveTextContent(
@@ -113,6 +113,20 @@ describe('interakcje natywne', () => {
     rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="pse" nazwyModulow={{}} szczegolyAudytowe={false} />);
     await waitFor(() => expect(wywolania).toHaveLength(3));
     expect(wywolania.map((w) => w.zapytanie.get('operator_id'))).toEqual(['enea', 'enea', 'pse']);
+  });
+
+  it('operator z modelu (null): zapytanie BEZ operator_id — backend ocenia moduł wg profilu efektywnego', async () => {
+    const wywolania = trasa(() => odpowiedzJson(200, zgodnoscFixture()));
+    const { rerender } = render(
+      <SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId={null} nazwyModulow={{}} szczegolyAudytowe={false} />,
+    );
+    expect(await screen.findByTestId('mvd-oze-zgodnosc-przekrojowa-moduly')).toBeInTheDocument();
+    expect(wywolania).toHaveLength(1);
+    expect(wywolania[0].zapytanie.has('operator_id')).toBe(false);
+    // Jawny wybór projektanta zastępuje rozstrzygnięcie modelu — ponowne zapytanie z operatorem.
+    rerender(<SekcjaZgodnosciPrzekrojowej caseId="case-demo" operatorId="pse" nazwyModulow={{}} szczegolyAudytowe={false} />);
+    await waitFor(() => expect(wywolania).toHaveLength(2));
+    expect(wywolania[1].zapytanie.get('operator_id')).toBe('pse');
   });
 
   it('„Pokaż w macierzy" tylko dla modułów znanych macierzy; klik woła onWybierzModul(der_ref)', async () => {

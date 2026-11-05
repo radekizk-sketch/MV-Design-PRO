@@ -40,7 +40,7 @@ from enm.dziennik_zmian import (
     wyczysc_dziennik,
 )
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
-from enm.hash import compute_enm_hash, hash_migawki_enm
+from enm.hash import POLA_NAGLOWKA_TRESCI_POZA_HASHEM, compute_enm_hash, hash_migawki_enm
 from enm.migrations.field_specs_promocja import migruj as promuj_pola_do_bays
 from enm.migrations.field_specs_promocja import wymaga_migracji as niesie_dawne_wpisy_pol
 from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
@@ -401,6 +401,11 @@ def set_enm(
         return _set_enm_pod_blokada(klucz, enm, zrodlo_zmiany=zrodlo_zmiany)
 
 
+def _tresc_naglowka_poza_hashem(enm: EnergyNetworkModel) -> dict[str, Any]:
+    """Treść nagłówka wykluczona z hasha, a będąca daną modelu (porównanie równoważności)."""
+    return enm.header.model_dump(mode="json", include=set(POLA_NAGLOWKA_TRESCI_POZA_HASHEM))
+
+
 def _set_enm_pod_blokada(
     klucz: str,
     enm: EnergyNetworkModel,
@@ -423,7 +428,18 @@ def _set_enm_pod_blokada(
             update={"header": enm.header.model_copy(deep=True)}
         )
         same_revision_candidate.header.revision = existing.header.revision
-        if compute_enm_hash(same_revision_candidate) == existing.header.hash_sha256:
+        # Równoważność = ten sam hash ORAZ ta sama treść nagłówka spoza hasha
+        # (`POLA_NAGLOWKA_TRESCI_POZA_HASHEM`). Sam hash nie wystarcza: zmiana warunków
+        # przyłączenia (operator sieci, moc przyłączeniowa) nie przestawia odcisku, więc
+        # porównanie po samym haszu zwracało stary model i GUBIŁO zapis operacji
+        # `set_connection_conditions` przy odpowiedzi 200 (dodatek GPZ-DANE-ANALIZ).
+        if compute_enm_hash(
+            same_revision_candidate
+        ) == existing.header.hash_sha256 and _tresc_naglowka_poza_hashem(
+            enm
+        ) == _tresc_naglowka_poza_hashem(
+            existing
+        ):
             _persist_enm(klucz, existing)
             # CV-2: rewizja biezaca ma miec migawke takze wtedy, gdy trafila na
             # nosnik bez podniesienia numeru (model domyslny utworzony w pamieci,
@@ -762,10 +778,21 @@ def hash_tresci_modelu(enm: EnergyNetworkModel) -> str:
     kandydata „przy rewizji poprzednika"). Do porownania modeli z ROZNYCH
     przypadkow (rozne liczniki rewizji) potrzebny jest hasz tresci: ta sama siec
     o tej samej nazwie = ten sam hasz, niezaleznie od tego, ile razy ja zapisano.
+
+    Treść nagłówka spoza odcisku (`POLA_NAGLOWKA_TRESCI_POZA_HASHEM` — warunki przyłączenia,
+    operator sieci) WCHODZI do hasza treści, gdy jest podana: migracja klucza uznawała dwa
+    modele różniące się tylko warunkami przyłączenia za IDENTYCZNE i gubiła dane jednego z
+    nich (ta sama klasa defektu co równoważność zapisu w `_set_enm_pod_blokada`, dodatek
+    GPZ-DANE-ANALIZ). Model bez tych danych ma hasz treści bez zmian.
     """
     kandydat = enm.model_copy(update={"header": enm.header.model_copy(deep=True)})
     kandydat.header.revision = 0
-    return compute_enm_hash(kandydat)
+    odcisk = compute_enm_hash(kandydat)
+    tresc = {k: v for k, v in _tresc_naglowka_poza_hashem(enm).items() if v is not None}
+    if not tresc:
+        return odcisk
+    kanon = json.dumps({"odcisk": odcisk, "naglowek": tresc}, sort_keys=True, ensure_ascii=False)
+    return sha256(kanon.encode("utf-8")).hexdigest()
 
 
 def _katalog_legacy() -> Path:

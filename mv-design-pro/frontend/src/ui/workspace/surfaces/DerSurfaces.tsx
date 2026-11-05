@@ -38,6 +38,7 @@ import {
   getBlockTransformer,
   getDerDynamicProfile,
   getNcRfgOperator,
+  profilNcRfgModulu,
   getSnConnectionPointKindLabelPl,
   selectAllDers,
   selectDerById,
@@ -287,6 +288,9 @@ function buildDerFromGenerator(
     ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
   const ncRfgRef = stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']);
+  // Operator sieci modelu (warunki przyłączenia) — źródło bez profilu go dziedziczy (dodatek karty
+  // GPZ-DANE-ANALIZ; ten sam rekord co `zModelu.ts::deryZModelu`).
+  const operatorSieci = snapshot?.header?.connection_conditions?.operator_sieci?.trim() || null;
   // Moc z modelu to moc CAŁEJ pozycji (operacja zapisuje moc katalogową × liczba sztuk).
   const nominalPowerKw = typeof generator.p_mw === 'number' ? Math.round(generator.p_mw * 1000) : null;
   // Liczba jednostek — dana modelu (`quantity`), do tej pory na ekran NIE DOCHODZILA,
@@ -336,6 +340,7 @@ function buildDerFromGenerator(
     sn_connection_bus_ref: snConnectionBusRef,
     sn_connection_point_kind: snConnectionPointKind,
     connection_voltage_kv: connectionVoltageKv,
+    operator_sieci: operatorSieci,
     catalogs: {
       ...EMPTY_DER_CATALOGS,
       device_catalog_ref: catalogRef,
@@ -354,6 +359,7 @@ function buildDerFromGenerator(
     profiles: {
       ...EMPTY_DER_PROFILES,
       nc_rfg_profile_ref: ncRfgRef,
+      nc_rfg_profile_powod: stringFromRecord(profiles, ['nc_rfg_profile_powod']),
       lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
       hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
       pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
@@ -374,6 +380,7 @@ function buildDerFromGenerator(
         device_catalog_ref: catalogRef,
       },
       profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: ncRfgRef },
+      operator_sieci: operatorSieci,
       connection_voltage_kv: connectionVoltageKv,
       sn_connection_bus_ref: snConnectionBusRef,
     }),
@@ -767,7 +774,8 @@ function buildDerCards(
     converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType,
     moduleTypeOpis,
   } = katalogi;
-  const ncRfg = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
+  // Profil EFEKTYWNY (własny albo operatora sieci) — ten sam, wg którego backend ocenia moduł.
+  const ncRfg = getNcRfgOperator(ncRfgOperators, profilNcRfgModulu(der).operator_id);
   const inverter = findConverter(der, converters);
   // Graniczny prąd zwarciowy falownika (karta K-Q): katalog mirrorowy NIE niesie
   // już tej liczby, bo podaje ją wyłącznie karta katalogowa konkretnego wyrobu,
@@ -1499,8 +1507,8 @@ function DerSurfaceShell({
           <DerKpi
             label="Profil NC RfG"
             value={
-              der.profiles.nc_rfg_profile_ref
-                ? cleanCatalogText(getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref)?.operator_name_pl ?? MISSING_DASH)
+              profilNcRfgModulu(der).operator_id
+                ? cleanCatalogText(getNcRfgOperator(ncRfgOperators, profilNcRfgModulu(der).operator_id)?.operator_name_pl ?? MISSING_DASH)
                 : MISSING_DASH
             }
           />

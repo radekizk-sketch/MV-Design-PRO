@@ -27,7 +27,11 @@ export interface SekcjaZgodnosciPrzekrojowejProps {
   /** Aktywny przypadek; `null` = brak (uczciwy stan zerowy, zero zapytania). */
   readonly caseId: string | null;
   /** Operator (profil wymagań) — z modelu albo jawny wybór; `null` = jeszcze niewybrany. */
-  readonly operatorId: string | null;
+  /**
+   * Operator zapytania oceny (`ncrfg/operator.ts::operatorZapytaniaOceny`): `null` — z modelu
+   * (backend ocenia każdy moduł wg profilu efektywnego), `undefined` — brak operatora.
+   */
+  readonly operatorId: string | null | undefined;
   /** der_ref → nazwa wyświetlana, z tego samego źródła co kolumny macierzy obok. */
   readonly nazwyModulow: Readonly<Record<string, string>>;
   /** Tryb ekspercki — odciski biegu w informacjach audytowych. */
@@ -51,7 +55,7 @@ export function SekcjaZgodnosciPrzekrojowej({
   const [blad, setBlad] = useState<string | null>(null);
 
   const zaladuj = useCallback(async (): Promise<void> => {
-    if (!caseId || !operatorId) return;
+    if (!caseId || operatorId === undefined) return;
     setLadowanie(true);
     setBlad(null);
     try {

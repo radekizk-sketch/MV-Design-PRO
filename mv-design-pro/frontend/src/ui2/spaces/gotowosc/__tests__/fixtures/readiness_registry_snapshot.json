@@ -343,6 +343,15 @@
     },
     {
       "area": "SOURCES",
+      "code": "connection.operator_sieci_unknown",
+      "fix_navigation": {
+        "focus": "operator_sieci",
+        "panel": "projekt",
+        "tab": "przylaczenie"
+      }
+    },
+    {
+      "area": "SOURCES",
       "code": "connection.power_flow_missing",
       "fix_navigation": {
         "panel": "analizy",
@@ -622,6 +631,15 @@
       "fix_navigation": {
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "GENERATORS",
+      "code": "generator.nc_rfg_operator_mismatch",
+      "fix_navigation": {
+        "focus": "nc_rfg_profile_powod",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1556,7 +1574,7 @@
       }
     }
   ],
-  "count": 182,
+  "count": 184,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1719,6 +1737,8 @@
     "W046": "station.bkr_unbalance_ct_missing",
     "W047": "station.bkr_discharge_vt_missing",
     "W048": "station.bkr_transformer_trip_incomplete",
+    "connection.operator_sieci_unknown": "connection.operator_sieci_unknown",
+    "generators.nc_rfg_operator_mismatch": "generator.nc_rfg_operator_mismatch",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

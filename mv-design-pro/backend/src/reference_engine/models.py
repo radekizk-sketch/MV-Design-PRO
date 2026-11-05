@@ -202,3 +202,8 @@ class ReferenceComplianceReport(BaseModel):
 
     packs: list[PackComplianceReport] = Field(default_factory=list)
     braki_pakietow: list[RekordBrakuPakietu] = Field(default_factory=list)
+    #: Addytywne (dodatek operatora sieci): operator sieci modelu, którego pakiet OSD wybrał
+    #: raport przypadku (``ConnectionConditions.operator_sieci``); ``None`` poza raportem
+    #: przypadku albo przy modelu bez operatora — wtedy ``brak_operatora_sieci_pl`` nazywa brak.
+    operator_sieci: str | None = None
+    brak_operatora_sieci_pl: str | None = None

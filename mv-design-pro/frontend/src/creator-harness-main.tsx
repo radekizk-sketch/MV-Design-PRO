@@ -1333,8 +1333,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       ...wejsciaSceny.modules.map((modul) => modul.der_ref),
       ...wejsciaSceny.pominiete.map((der) => der.der_ref),
     ].sort();
+    // Dodatek karty GPZ-DANE-ANALIZ: fixtura policzona ścieżką MODELU (profil efektywny modułów)
+    // odpowiada zapytaniu BEZ operatora; fixtura jawnego wyboru — zapytaniu z tym operatorem.
     const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
-    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== wejsciaSceny.operator_id) {
+    const operatorFixtury =
+      wejsciaSceny.zrodlo_operatora === 'MODEL' ? null : wejsciaSceny.operator_id;
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== operatorFixtury) {
       return new Response(
         JSON.stringify({
           detail:
@@ -1368,7 +1372,9 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       .map((modul) => `${modul.der_ref}|${modul.p_max_kw}|${modul.voltage_kv}`)
       .sort();
     const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
-    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== zgodnoscSceny.operator_id) {
+    const operatorFixtury =
+      zgodnoscSceny.zrodlo_operatora === 'MODEL' ? null : zgodnoscSceny.operator_id;
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== operatorFixtury) {
       return new Response(
         JSON.stringify({
           detail:

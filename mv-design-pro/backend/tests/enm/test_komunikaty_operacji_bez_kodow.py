@@ -266,6 +266,8 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ZakresModulu("enm/katalog_projektu.py"),
     ZakresModulu("enm/katalog_projektu_karty.py"),
     ZakresModulu("enm/deklaracje_modulu.py"),
+    # Dodatek GPZ-DANE-ANALIZ: wyjaśnienie pochodzenia profilu NC RfG i brak operatora sieci.
+    ZakresModulu("enm/operator_sieci.py"),
     ZakresModulu("enm/nastawy_modulu.py"),
     ZakresModulu("enm/load_zip_model.py"),
     ZakresModulu("enm/der_sn_validation.py"),

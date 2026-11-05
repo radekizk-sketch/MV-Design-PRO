@@ -202,3 +202,45 @@ export const POLA_ROZDZIELNICY_GPZ: readonly DefinicjaPolaRozdzielnicy[] = [
     konsumenci: [W, L],
   },
 ];
+
+/** Analiza czytająca operatora sieci (identyfikatory backendu `KONSUMENCI_OPERATORA_SIECI`). */
+export type KonsumentOperatoraSieci =
+  | 'zgodnosc_nc_rfg'
+  | 'gotowosc_der'
+  | 'regulacja_napiecia'
+  | 'zgodnosc_referencyjna';
+
+/**
+ * Pole „Operator sieci” konfiguratora GPZ (dodatek karty GPZ-DANE-ANALIZ). Operator sieci jest
+ * JEDNĄ daną modelu na poziomie sieci — warunki przyłączenia (`header.connection_conditions`),
+ * pisarz `set_connection_conditions`. Profil NC RfG źródła bez własnego profilu dziedziczy
+ * operatora sieci (`enm/operator_sieci.py::efektywny_profil_ncrfg`, lustro
+ * `station-der/profilNcRfg.ts`). Słownik zamknięty = operatorzy katalogu profili NC RfG; lustro
+ * bloku `pole_operatora_sieci` tablicy parytetu (przypina `__tests__/poleGpzDefinicje.test.ts`).
+ */
+export interface DefinicjaPolaOperatoraSieci {
+  readonly klucz: 'operator_sieci';
+  readonly rodzaj: 'slownik';
+  readonly etykietaPl: string;
+  readonly operacja: 'set_connection_conditions';
+  readonly sciezkaWModelu: 'header.connection_conditions.operator_sieci';
+  readonly kodBledu: 'connection_conditions.operator_unknown';
+  readonly dozwolone: readonly string[];
+  readonly zrodloWartosciPl: string;
+  readonly konsumenci: readonly KonsumentOperatoraSieci[];
+}
+
+export const POLE_OPERATORA_SIECI: DefinicjaPolaOperatoraSieci = {
+  klucz: 'operator_sieci',
+  rodzaj: 'slownik',
+  etykietaPl: 'Operator sieci',
+  operacja: 'set_connection_conditions',
+  sciezkaWModelu: 'header.connection_conditions.operator_sieci',
+  kodBledu: 'connection_conditions.operator_unknown',
+  dozwolone: ['enea', 'energa', 'pge', 'pse', 'tauron'],
+  zrodloWartosciPl:
+    'warunki przyłączenia wydane przez operatora sieci, do której przyłączony jest GPZ; ' +
+    'pusty — standard operatora (pakiet OSD) nie jest oceniany, a źródło bez własnego ' +
+    'profilu NC RfG nie ma profilu wymagań',
+  konsumenci: ['zgodnosc_nc_rfg', 'gotowosc_der', 'regulacja_napiecia', 'zgodnosc_referencyjna'],
+};

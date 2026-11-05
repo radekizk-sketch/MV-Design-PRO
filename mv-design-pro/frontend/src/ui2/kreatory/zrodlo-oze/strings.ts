@@ -208,6 +208,15 @@ export const OZE_STRINGS = {
     + 'częstotliwościową P(f).',
   zgodnoscProfil: 'Profil wymagań operatora',
   zgodnoscProfilPlaceholder: '— wybierz profil operatora —',
+  // Dodatek karty GPZ-DANE-ANALIZ: źródło bez własnego profilu dziedziczy operatora sieci
+  // (warunki przyłączenia projektu); własny profil różny od niego wymaga powodu.
+  zgodnoscProfilDziedziczy: (nazwa: string) => `— dziedziczy operatora sieci: ${nazwa} —`,
+  zgodnoscPowod: 'Powód nadpisania operatora sieci',
+  zgodnoscPowodPlaceholder: 'np. przyłączenie do sieci 110 kV operatora systemu przesyłowego',
+  zgodnoscPowodPomoc:
+    'Profil źródła różni się od operatora sieci z warunków przyłączenia — podaj, dlaczego '
+    + 'źródło ma być oceniane wg wymagań innego operatora. Bez powodu model nie przyjmie '
+    + 'nadpisania.',
   zgodnoscProfilPomoc:
     'Zestaw wymagań ogólnego stosowania operatora (moduły A–D). Wybór profilu zawęża '
     + 'listę krzywych granicznych do wymagań tego operatora.',

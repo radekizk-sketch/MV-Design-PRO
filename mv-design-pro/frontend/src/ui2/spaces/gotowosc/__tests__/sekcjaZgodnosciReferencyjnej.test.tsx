@@ -315,3 +315,27 @@ describe('SekcjaZgodnosciReferencyjnej — brak pakietu operatora przypadku (kar
     expect(screen.queryByTestId('mvd-braki-pakietow')).not.toBeInTheDocument();
   });
 });
+
+describe('SekcjaZgodnosciReferencyjnej — model bez operatora sieci (dodatek karty GPZ-DANE-ANALIZ)', () => {
+  // Zdanie 1:1 z backendu (`enm/operator_sieci.py::BRAK_OPERATORA_SIECI_PL`).
+  const BRAK =
+    'Model nie wskazuje operatora sieci — standard operatora (pakiet OSD) nie jest oceniany. ' +
+    'Wskaż operatora sieci w warunkach przyłączenia projektu.';
+
+  it.each([
+    ['z pakietami', [pack()]],
+    ['bez pakietów', []],
+  ] as const)('raport %s: zdanie o braku operatora sieci widoczne, bez listy odmów pakietów', async (_opis, packs) => {
+    mockFetchOk({ ...raport([...packs]), operator_sieci: null, brak_operatora_sieci_pl: BRAK });
+    render(<SekcjaZgodnosciReferencyjnej />);
+    expect(await screen.findByTestId('mvd-brak-operatora-sieci')).toHaveTextContent(BRAK);
+    expect(screen.queryByTestId('mvd-brak-pakietu-BRAK_PAKIETU_OSD')).not.toBeInTheDocument();
+  });
+
+  it('operator sieci wskazany: brak zdania o braku operatora', async () => {
+    mockFetchOk({ ...raport([pack()]), operator_sieci: 'enea', brak_operatora_sieci_pl: null });
+    render(<SekcjaZgodnosciReferencyjnej />);
+    await screen.findByTestId('mvd-ref-tabela');
+    expect(screen.queryByTestId('mvd-brak-operatora-sieci')).not.toBeInTheDocument();
+  });
+});

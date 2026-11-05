@@ -11,12 +11,10 @@
  */
 
 import type {
-  OperatorProfileId,
   ScInputMode,
   StudyCaseConfig,
   StudyCaseResultStatus,
 } from '../../../ui/study-cases/types';
-import { OPERATOR_PROFILES } from '../../../ui/study-cases/types';
 
 export const PRZYPADKI_STRINGS = {
   // Nagłówek przestrzeni
@@ -73,7 +71,6 @@ export const PRZYPADKI_STRINGS = {
   sekcjaZwarcia: 'Parametry zwarciowe',
   sekcjaRozplyw: 'Parametry rozpływu mocy',
   sekcjaOpcje: 'Opcje analizy',
-  sekcjaOperator: 'Profil operatora (OSD)',
   kolParametr: 'Parametr',
 
   // Założenia — współczynnik c i czas t_k NIE są parametrami przypadku (karta
@@ -143,11 +140,6 @@ export function formatLiczba(n: number): string {
   return String(n);
 }
 
-/** Etykieta PL profilu operatora (OSD) z tablicy `OPERATOR_PROFILES` (types.ts:28). */
-export function etykietaOperatora(id: OperatorProfileId): string {
-  return OPERATOR_PROFILES.find((p) => p.id === id)?.label_pl ?? id;
-}
-
 /**
  * Formatuje wartość pojedynczego pola konfiguracji na PL (bez snake_case na
  * pierwszym planie). Czysta funkcja — używana przez kartę i porównanie.
@@ -160,8 +152,6 @@ export function formatWartoscKonfiguracji(
     case 'include_motor_contribution':
     case 'include_inverter_contribution':
       return wartosc ? PRZYPADKI_STRINGS.tak : PRZYPADKI_STRINGS.nie;
-    case 'operator_profile_id':
-      return etykietaOperatora(wartosc as OperatorProfileId);
     case 'sc_input_mode':
       return SC_INPUT_MODE_LABEL[wartosc as ScInputMode];
     case 'sc_simplified_sk_mva':

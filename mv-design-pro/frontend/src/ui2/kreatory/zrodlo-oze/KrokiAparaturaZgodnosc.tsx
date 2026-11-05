@@ -39,8 +39,11 @@ import {
   KreatorSiatka,
   PanelTeorii,
   PoleKatalogu,
+  PoleTekstowe,
   type StatusPobrania,
 } from '../rama';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { efektywnyProfilNcRfg } from '../../../ui/network-build/station-der/profilNcRfg';
 import { OZE_STRINGS as T } from './strings';
 import type { OzeFormData } from './zrodloOzeModel';
 
@@ -222,7 +225,24 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
     };
   }, []);
 
-  const profil = getNcRfgOperator(ncRfgOperatorzy, dane.nc_rfg_profile_ref);
+  // Operator sieci MODELU (warunki przyłączenia) — źródło bez własnego profilu go dziedziczy.
+  const operatorSieci = useSnapshotStore(
+    (s) => s.snapshot?.header?.connection_conditions?.operator_sieci ?? null,
+  );
+  const efektywny = efektywnyProfilNcRfg(dane.nc_rfg_profile_ref, operatorSieci);
+  const profil = getNcRfgOperator(ncRfgOperatorzy, efektywny.operator_id);
+  // Źródło dziedziczące operatora sieci: krzywe graniczne tego operatora (ten sam stan modułu
+  // co jawny wybór operatora sieci); jawny profil źródła ustawia je w `wybierzProfil`.
+  useEffect(() => {
+    if (dane.nc_rfg_profile_ref === null && operatorSieci !== null && dane.lvrt_curve_ref === null) {
+      zmien('lvrt_curve_ref', operatorSieci);
+      zmien('hvrt_curve_ref', operatorSieci);
+    }
+  }, [dane.nc_rfg_profile_ref, dane.lvrt_curve_ref, operatorSieci, zmien]);
+  const nazwaOperatoraSieci =
+    operatorSieci === null
+      ? null
+      : (getNcRfgOperator(ncRfgOperatorzy, operatorSieci)?.operator_name_pl ?? operatorSieci);
   // Błędy danych modułu NC RfG liczone TĄ SAMĄ funkcją co walidacja zapisu kreatora.
   const wynikDanychModulu = zbudujPolaNcRfgGeneratora(dane.dane_modulu_ncrfg);
   const bledyDanychModulu = wynikDanychModulu.stan === 'blad' ? wynikDanychModulu.bledy : {};
@@ -244,8 +264,12 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
   // niespójną z profilem.
   const wybierzProfil = (ref: string | null) => {
     zmien('nc_rfg_profile_ref', ref);
-    zmien('lvrt_curve_ref', ref);
-    zmien('hvrt_curve_ref', ref);
+    // Krzywe = operator profilu EFEKTYWNEGO (własny albo dziedziczony z sieci) — dziedziczenie
+    // daje ten sam stan modułu co jawny wybór operatora sieci.
+    const operatorKrzywych = efektywnyProfilNcRfg(ref, operatorSieci).operator_id;
+    zmien('lvrt_curve_ref', operatorKrzywych);
+    zmien('hvrt_curve_ref', operatorKrzywych);
+    if (!efektywnyProfilNcRfg(ref, operatorSieci).nadpisanie) zmien('nc_rfg_profile_powod', null);
     // Nastawa P(f) NIE jest zawężana profilem operatora — patrz nota nad
     // `opcjePf`. Zmiana profilu nie czyści więc tego wyboru.
   };
@@ -259,12 +283,27 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
         onZmiana={wybierzProfil}
         opcje={opcjeProfili}
         status={status}
-        placeholder={T.zgodnoscProfilPlaceholder}
+        placeholder={
+          nazwaOperatoraSieci !== null
+            ? T.zgodnoscProfilDziedziczy(nazwaOperatoraSieci)
+            : T.zgodnoscProfilPlaceholder
+        }
         komunikatBledu={bladKatalogu ?? undefined}
         pomoc={T.zgodnoscProfilPomoc}
         testid={`${testid}-profil`}
       />
-      {dane.nc_rfg_profile_ref ? (
+      {efektywny.nadpisanie ? (
+        <PoleTekstowe
+          etykieta={T.zgodnoscPowod}
+          wartosc={dane.nc_rfg_profile_powod ?? ''}
+          onZmiana={(v) => zmien('nc_rfg_profile_powod', v === '' ? null : v)}
+          placeholder={T.zgodnoscPowodPlaceholder}
+          wymagane
+          pomoc={T.zgodnoscPowodPomoc}
+          testid={`${testid}-powod`}
+        />
+      ) : null}
+      {efektywny.operator_id ? (
         <>
           <KreatorSiatka kolumny={2}>
             <div>

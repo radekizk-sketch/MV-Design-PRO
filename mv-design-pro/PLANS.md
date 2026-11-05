@@ -1617,7 +1617,11 @@ Zrealizowane w jednym dniu (**20 commitów po cleanupie** — sprint kontynuowan
   `StudyCaseConfig.operator_profile_id` (default ENEA) + `sc_input_mode` toggle
   simplified/advanced. Frontend UI + backend `SimplifiedGridSource` propagacja do
   `ShortCircuitPayload.simplified_grid_source`. 11/11 new backend integration tests
-  (commits `49909d8`, `087b54c`, `0a7fa8c`)
+  (commits `49909d8`, `087b54c`, `0a7fa8c`). **Korekta (karta GPZ-DANE-ANALIZ, dodatek
+  operatora sieci):** `operator_profile_id` przypadku SKASOWANE (domyślne „enea” było domysłem
+  i drugą prawdą) — operator sieci jest jedną daną modelu `header.connection_conditions.
+  operator_sieci` (pisarz `set_connection_conditions`), profil NC RfG źródła go dziedziczy
+  (`enm/operator_sieci.py::efektywny_profil_ncrfg`).
 - [x] **P0.4 VDROP + Earthing proof packs** — standalone packs wrappers nad
   ProofGenerator. `packs/vdrop.py` + `packs/earthing_ground_fault_sn.py`. 12 testów,
   279/279 proof_engine PASS. 8 pakietów dowodów łącznie (commit `beac74d`)

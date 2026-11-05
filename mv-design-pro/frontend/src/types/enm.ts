@@ -168,6 +168,11 @@ export interface ConnectionConditions {
   moc_przylaczeniowa_mw?: number | null;
   wymagany_cos_phi?: number | null;
   tryb_pracy?: string | null;
+  /**
+   * Operator sieci (identyfikator z katalogu profili NC RfG) — jedna dana sieci, z której
+   * źródła bez własnego profilu dziedziczą profil wymagań NC RfG (backend `enm.operator_sieci`).
+   */
+  operator_sieci?: string | null;
 }
 
 export interface ENMHeader {

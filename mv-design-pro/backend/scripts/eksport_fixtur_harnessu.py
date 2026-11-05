@@ -207,6 +207,7 @@ from enm.models import (  # noqa: E402
     Generator,
     TapChanger,
 )
+from enm.operator_sieci import efektywny_profil_ncrfg  # noqa: E402
 from enm.pola import ref_pola_wytworcy  # noqa: E402
 from enm.scenariusze import (  # noqa: E402
     OperatingScenario,
@@ -709,8 +710,10 @@ def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
     (`zgodnosc_ncrfg_przypadku`: most model → wejście solvera + solver kanoniczny
     `NcRfgPtpireeSolver` + koperta dowodowa S-1), którą woła trasa
     `api/ncrfg_ptpiree_tests.py::run_ncrfg_compliance_from_model` (karta S-3)."""
+    # Dodatek GPZ-DANE-ANALIZ: ekran pyta BEZ operatora, gdy model rozstrzyga profil modułów
+    # (każdy moduł oceniany wg profilu efektywnego — `enm.operator_sieci`).
     return zgodnosc_ncrfg_przypadku(
-        enm_sceny_macierz(), operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
+        enm_sceny_macierz(), operator_id=None, case_id=CASE_ID_HARNESSU
     ).model_dump(mode="json")
 
 
@@ -780,6 +783,41 @@ def krzywe_konwertery_scen() -> list[dict[str, Any]]:
     return rekordy
 
 
+#: Iloczyn cech parytetu profilu efektywnego (dodatek karty GPZ-DANE-ANALIZ): profil własny
+#: źródła (brak / pusty / zgodny / różny / z białymi znakami) × operator sieci (brak / podany)
+#: × powód nadpisania (brak / podany).
+_PROFILE_WLASNE_PARYTETU: tuple[str | None, ...] = (None, "", "enea", "  enea  ", "pse")
+_OPERATORZY_SIECI_PARYTETU: tuple[str | None, ...] = (None, "enea")
+_POWODY_PARYTETU: tuple[str | None, ...] = (None, "Przyłączenie do sieci 110 kV PSE")
+
+
+def ncrfg_profil_efektywny_parytet() -> dict[str, Any]:
+    """Tabela parytetu `enm.operator_sieci.efektywny_profil_ncrfg` na iloczynie cech — JEDNA
+    reguła backendu, której frontowe lustro (`station-der/profilNcRfg.ts`, projekcja modułów
+    `deryZModelu`) musi dawać te same wyniki (test frontu czyta tę tabelę)."""
+    przypadki: list[dict[str, Any]] = []
+    for wlasny in _PROFILE_WLASNE_PARYTETU:
+        for operator_sieci in _OPERATORZY_SIECI_PARYTETU:
+            for powod in _POWODY_PARYTETU:
+                profile: dict[str, Any] = {}
+                if wlasny is not None:
+                    profile["nc_rfg_profile_ref"] = wlasny
+                if powod is not None:
+                    profile["nc_rfg_profile_powod"] = powod
+                generator = {"materialized_params": {"profiles": profile}}
+                przypadki.append(
+                    {
+                        "wejscie": {
+                            "nc_rfg_profile_ref": wlasny,
+                            "nc_rfg_profile_powod": powod,
+                            "operator_sieci": operator_sieci,
+                        },
+                        "wynik": efektywny_profil_ncrfg(generator, operator_sieci).to_dict(),
+                    }
+                )
+    return {"przypadki": przypadki}
+
+
 def ncrfg_katalog() -> dict[str, Any]:
     """Odpowiedź `GET /api/ncrfg-tests/catalog` — TA SAMA funkcja trasy
     (`get_ncrfg_test_catalog`): wersja procedury (obiekt warstwy), profile operatorów
@@ -791,9 +829,7 @@ def ncrfg_katalog() -> dict[str, Any]:
 def _wejscia_sceny(enm: EnergyNetworkModel) -> NcRfgWejsciaPrzypadkuResponse:
     """Wejścia modułów sceny z modelu — TA SAMA funkcja co trasa
     `api/ncrfg_ptpiree_tests.py::get_ncrfg_module_inputs_from_model` (most `model_bridge`)."""
-    return wejscia_ncrfg_przypadku(
-        enm, operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
-    )
+    return wejscia_ncrfg_przypadku(enm, operator_id=None, case_id=CASE_ID_HARNESSU)
 
 
 def ncrfg_wejscia_scena_macierz() -> dict[str, Any]:
@@ -894,7 +930,7 @@ def ncrfg_zgodnosc_przekrojowa_scena_magazyn() -> dict[str, Any]:
     """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/compliance` sceny `certyfikat`/`wniosek`
     — ta sama funkcja co scena `macierz` (`zgodnosc_ncrfg_przypadku`)."""
     return zgodnosc_ncrfg_przypadku(
-        enm_sceny_magazyn(), operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
+        enm_sceny_magazyn(), operator_id=None, case_id=CASE_ID_HARNESSU
     ).model_dump(mode="json")
 
 
@@ -5335,6 +5371,7 @@ FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
     "macierz_scena_migawka": macierz_scena_migawka,
     "ncrfg_katalog": ncrfg_katalog,
+    "ncrfg_profil_efektywny_parytet": ncrfg_profil_efektywny_parytet,
     "krzywe_pokrycie_scena_pv": krzywe_pokrycie_scena_pv,
     "krzywe_pokrycie_scena_bez_krzywej": krzywe_pokrycie_scena_bez_krzywej,
     "krzywe_pokrycie_scena_magazyn": krzywe_pokrycie_scena_magazyn,

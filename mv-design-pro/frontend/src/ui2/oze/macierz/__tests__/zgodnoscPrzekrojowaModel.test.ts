@@ -1,6 +1,7 @@
 /**
  * Stan zerowy sekcji „Zgodność przypadku" (karta AB-1a Pakiet D2 §3) — iloczyn cech
- * przypadek × operator × błąd × ładowanie × wynik (DER objęte / pominięte / brak).
+ * przypadek × operator (jawny / z modelu = `null` / nierozstrzygnięty = `undefined`) × błąd ×
+ * ładowanie × wynik (DER objęte / pominięte / brak).
  * Kolejność pierwszeństwa: brak przypadku › brak operatora › błąd › ładowanie › brak DER › gotowe.
  */
 
@@ -13,6 +14,7 @@ import { zgodnoscFixture } from './fixtures';
 const PUSTY: ZgodnoscPrzypadkuNcRfg = {
   case_id: 'c',
   operator_id: 'enea',
+  zrodlo_operatora: 'MODEL',
   der_count: 0,
   pominiete: [],
   certyfikaty_odrzucone: [],
@@ -26,8 +28,10 @@ const POMINIETY: ZgodnoscPrzypadkuNcRfg = {
 describe('rozwiazStanZgodnosciPrzekrojowej', () => {
   const baza = { caseId: 'c', operatorId: 'enea', ladowanie: false, blad: null, wynik: zgodnoscFixture() };
   it.each([
-    ['brak przypadku ma pierwszeństwo nad wszystkim', { ...baza, caseId: null, operatorId: null, blad: 'x' }, 'brak_przypadku'],
-    ['brak operatora (nie zgadujemy profilu)', { ...baza, operatorId: null, blad: 'x' }, 'brak_operatora'],
+    ['brak przypadku ma pierwszeństwo nad wszystkim', { ...baza, caseId: null, operatorId: undefined, blad: 'x' }, 'brak_przypadku'],
+    ['brak operatora (nie zgadujemy profilu)', { ...baza, operatorId: undefined, blad: 'x' }, 'brak_operatora'],
+    ['operator z modelu (profil efektywny modułów) to nie brak operatora', { ...baza, operatorId: null }, 'gotowe'],
+    ['operator z modelu + błąd → błąd', { ...baza, operatorId: null, blad: 'x' }, 'blad'],
     ['błąd ma pierwszeństwo nad ładowaniem i wynikiem', { ...baza, blad: 'x', ladowanie: true }, 'blad'],
     ['ładowanie trwa', { ...baza, ladowanie: true }, 'ladowanie'],
     ['wynik jeszcze nie przyszedł', { ...baza, wynik: null }, 'ladowanie'],

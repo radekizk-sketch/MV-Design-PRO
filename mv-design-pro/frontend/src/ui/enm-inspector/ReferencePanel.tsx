@@ -121,6 +121,7 @@ export function ReferencePanel({ caseId }: ReferencePanelProps) {
       </p>
       <BrakiPakietowDanych
         braki={report.braki_pakietow}
+        brakOperatoraSieci={report.brak_operatora_sieci_pl}
         klasa="mb-2 list-none text-[11px] text-amber-700"
       />
       <table className="w-full text-xs" data-testid="reference-score-table">

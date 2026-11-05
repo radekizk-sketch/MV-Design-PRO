@@ -1,6 +1,7 @@
 {
   "case_id": "case-demo",
   "operator_id": "enea",
+  "zrodlo_operatora": "MODEL",
   "der_count": 1,
   "pominiete": [],
   "certyfikaty_odrzucone": [],

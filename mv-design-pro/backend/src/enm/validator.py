@@ -72,6 +72,14 @@ from .models import (
     SwitchBranch,
     Transformer,
 )
+from .operator_sieci import (
+    efektywny_profil_ncrfg,
+    nazwa_operatora_pl,
+    nazwy_operatorow_katalogu_pl,
+    operator_sieci_modelu,
+    operatorzy_katalogu,
+    zrodla_ncrfg,
+)
 from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
@@ -987,6 +995,73 @@ class ENMValidator:
                     )
                 )
 
+        operator_sieci = operator_sieci_modelu(enm)
+        # connection.operator_sieci_unknown (dodatek karty GPZ-DANE-ANALIZ): operator sieci spoza
+        # katalogu profili NC RfG (model wczytany z archiwum/importu z pominięciem pisarza
+        # `set_connection_conditions`, który takiej wartości nie przyjmuje). Bez tej blokady
+        # profil dziedziczony przez źródła i pakiet OSD raportu wskazywałyby nieistniejący profil.
+        if operator_sieci is not None and operator_sieci not in operatorzy_katalogu():
+            issues.append(
+                ValidationIssue(
+                    code="connection.operator_sieci_unknown",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Operator sieci {nazwa_operatora_pl(operator_sieci)} w warunkach "
+                        "przyłączenia nie występuje "
+                        "w katalogu profili NC RfG — źródła dziedziczące profil operatora sieci "
+                        "nie mają podstawy oceny."
+                    ),
+                    element_refs=[],
+                    wizard_step_hint="K1",
+                    suggested_fix=(
+                        f"Wybierz operatora sieci z katalogu w polu {pole('operator_sieci')} "
+                        f"({nazwy_operatorow_katalogu_pl()})."
+                    ),
+                    # Naprawa nie jest edycją elementu: kafel warunków przyłączenia pulpitu
+                    # projektu (`fix_navigation` kodu kanonu).
+                    fix_action=None,
+                )
+            )
+
+        # generators.nc_rfg_operator_mismatch (dodatek karty GPZ-DANE-ANALIZ): profil NC RfG
+        # źródła różny od operatora sieci jest NADPISANIEM — dopuszczalnym (np. przyłączenie do
+        # sieci innego operatora), ale jawnie zgłaszanym z wyjaśnieniem i powodem. Ten sam
+        # predykat co pisarz wiązań (`wymaga_powodu_nadpisania`), który bez powodu odmawia.
+        for gen in zrodla_ncrfg(enm.generators):
+            efektywny = efektywny_profil_ncrfg(gen, operator_sieci)
+            if not efektywny.nadpisanie:
+                continue
+            powod = (
+                f"powód podany przez projektanta: {efektywny.powod_nadpisania_pl}"
+                if efektywny.powod_nadpisania_pl is not None
+                else "powodu nie podano (operator sieci ustawiono po wyborze profilu źródła)"
+            )
+            issues.append(
+                ValidationIssue(
+                    code="generators.nc_rfg_operator_mismatch",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{opis_obiektu(gen, 'Generator')} jest oceniany wg profilu NC RfG "
+                        f"operatora {nazwa_operatora_pl(str(efektywny.operator_id))}, a "
+                        "operatorem sieci w warunkach przyłączenia jest "
+                        f"{nazwa_operatora_pl(str(operator_sieci))} — {powod}."
+                    ),
+                    element_refs=[gen.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        f"Potwierdź przyłączenie do sieci innego operatora w polu "
+                        f"{pole('nc_rfg_profile_powod')} albo usuń profil źródła, aby "
+                        f"dziedziczył operatora sieci: {opis_obiektu(gen, 'generator')}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=gen.ref_id,
+                        modal_type="GeneratorModal",
+                        payload_hint={"required": "nc_rfg_profile_powod"},
+                    ),
+                )
+            )
+
         # generators.voltage_control_profile_missing / generators.voltage_control_not_permitted
         # (domknięcie CV-4.1b przy odbiorze, 2026-09-05): kreator OZE bramkuje tryb
         # REGULACJA_NAPIECIA profilem NC RfG operatora (`reactive_power.
@@ -1018,12 +1093,10 @@ class ENMValidator:
             # (IEEE/CIGRE) — wymaganie go tam byłoby fabrykacją zgodności bez treści.
             if gen.gen_type == "synchronous":
                 continue
-            materialized = getattr(gen, "materialized_params", None) or {}
-            profile = materialized.get("profiles") if isinstance(materialized, dict) else None
-            profile_ref_raw = (
-                profile.get("nc_rfg_profile_ref") if isinstance(profile, dict) else None
-            )
-            profile_ref = str(profile_ref_raw or "").strip()
+            # Dodatek karty GPZ-DANE-ANALIZ: profil EFEKTYWNY — własny profil źródła albo
+            # operator sieci z warunków przyłączenia (`enm.operator_sieci`, jedno miejsce
+            # rozstrzygania; źródło bez profilu dziedziczy operatora sieci).
+            profile_ref = efektywny_profil_ncrfg(gen, operator_sieci).operator_id or ""
             fix_action = FixAction(
                 action_type="OPEN_MODAL",
                 element_ref=gen.ref_id,

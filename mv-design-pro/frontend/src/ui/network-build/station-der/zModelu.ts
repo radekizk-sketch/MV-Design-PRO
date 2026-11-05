@@ -84,6 +84,8 @@ export const DER_MATERIALIZED_BINDING_KEYS = [
  */
 export const DER_MATERIALIZED_PROFILE_KEYS = [
   'nc_rfg_profile_ref',
+  // Dodatek karty GPZ-DANE-ANALIZ: powód nadpisania operatora sieci profilem źródła.
+  'nc_rfg_profile_powod',
   'lvrt_curve_ref',
   'hvrt_curve_ref',
   'pf_curve_ref',
@@ -356,6 +358,7 @@ function derZGeneratora(
     connection_voltage_kv: connectionVoltageKv,
     catalogs,
     profiles,
+    operator_sieci: readString(snapshot.header?.connection_conditions?.operator_sieci),
     nominal_power_kw: Math.round(generator.p_mw * 1000),
     // Liczba jednostek z modelu (`quantity`) — bez niej moc grupy i moc jednostki
     // sa nierozroznialne (audyt E-21 pkt P2). Zapisywane przez `add_converter_source`
@@ -368,6 +371,7 @@ function derZGeneratora(
       profiles,
       connection_voltage_kv: connectionVoltageKv,
       sn_connection_bus_ref: snConnectionBusRef,
+      operator_sieci: readString(snapshot.header?.connection_conditions?.operator_sieci),
     }),
     readiness: { ...EMPTY_DER_READINESS },
     created_at: timestamp,

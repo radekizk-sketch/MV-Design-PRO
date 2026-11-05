@@ -37,8 +37,8 @@ FIELD_PROFILE_PACK_ID = "iec62271"
 #: Pakiet operatora systemu dystrybucyjnego ma identyfikator ``osd_<operator>``, gdzie
 #: ``<operator>`` należy do JEDYNEJ listy operatorów produktu — warstw operatorskich profilu
 #: NC RfG (``catalog.profiles.nc_rfg.list_available_operators``; ten sam identyfikator niesie
-#: ``StudyCaseConfig.operator_profile_id``). Karta OD-17a: to jedno odwzorowanie wybiera pakiet
-#: przypadku i rozpoznaje brak pakietu operatora (dane P3 właściciela).
+#: ``ConnectionConditions.operator_sieci`` modelu — jedna dana operatora sieci). Karta OD-17a: to
+#: jedno odwzorowanie wybiera pakiet przypadku i rozpoznaje brak pakietu operatora (dane P3).
 PREFIKS_PAKIETU_OSD = "osd_"
 
 

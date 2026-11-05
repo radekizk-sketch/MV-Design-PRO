@@ -167,6 +167,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "n_parallel": "Liczba torów równoległych",  # odcinek-nn/strings.ts nParallel
     "nastawy_zabezpieczen": "Nastawy zabezpieczeń modułu (koordynacja statyczna)",  # ui2/oze/ncrfg/strings.ts nastawyTytul
     "nc_rfg_profile_ref": "Profil wymagań operatora",  # zrodlo-oze/strings.ts zgodnoscProfil
+    "nc_rfg_profile_powod": "Powód nadpisania operatora sieci",  # zrodlo-oze/strings.ts zgodnoscPowod
+    "operator_sieci": "Operator sieci",  # ui2/spaces/projekt/strings.ts osdOperatorSieci
     "p_min_kw": "Moc minimalna [kW]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "p_recovery_time_s": "Czas odbudowy mocy czynnej po zwarciu [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_WEJSCIA
     "update_element_parameters:parameters": "Klucz",  # edycja-parametrow/strings.ts klucz

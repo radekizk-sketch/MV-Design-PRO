@@ -17,25 +17,6 @@ export type StudyCaseResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
  * Supported operator profiles (NC RfG / IRiESD per OSD).
  * Source of truth: backend/src/catalog/profiles/nc_rfg/{id}.yaml
  */
-export type OperatorProfileId = 'enea' | 'energa' | 'pge' | 'pse' | 'tauron';
-
-/**
- * Operator profile metadata (UI-visible labels).
- * Reflects YAML profiles in backend/src/catalog/profiles/nc_rfg/.
- * For full narrative wymagań IRiESD: REQUIRES_SOURCE (vendor documentation,
- * not fabricated — see V12K-014 ENEA narrative blocker).
- */
-export const OPERATOR_PROFILES: Array<{
-  id: OperatorProfileId;
-  label_pl: string;
-}> = [
-  { id: 'enea', label_pl: 'ENEA Operator (domyślny)' },
-  { id: 'energa', label_pl: 'Energa Operator' },
-  { id: 'pge', label_pl: 'PGE Dystrybucja' },
-  { id: 'pse', label_pl: 'PSE (operator przesyłowy)' },
-  { id: 'tauron', label_pl: 'Tauron Dystrybucja' },
-];
-
 /**
  * SC parameter input mode (PLAN_E2E_INDUSTRIAL § 3.9 K3 + ENGINEER_WORKFLOW_AUDIT § 3.1).
  * - 'simplified': projektant podaje tylko S″k_SN [MVA] + R/X (wystarczy dla typowego SN)
@@ -58,9 +39,8 @@ export interface StudyCaseConfig {
   include_motor_contribution: boolean;
   include_inverter_contribution: boolean;
 
-  // Operator profile (NC RfG / IRiESD per OSD)
-  // Default: 'enea' per /goal V12K (ENEA Operator first in priority)
-  operator_profile_id: OperatorProfileId;
+  // Operator sieci NIE jest konfiguracją przypadku: jedna dana MODELU
+  // (`header.connection_conditions.operator_sieci`, kafel warunków przyłączenia).
 
   // SC input mode toggle
   // Default: 'simplified' — uproszczona ścieżka dla typowego projektu SN
@@ -177,7 +157,6 @@ export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
   tolerance: 1e-6,
   include_motor_contribution: true,
   include_inverter_contribution: true,
-  operator_profile_id: 'enea',
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
   sc_simplified_r_x_ratio: 0.1,
@@ -210,7 +189,6 @@ export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
   tolerance: 'Tolerancja zbieżności',
   include_motor_contribution: 'Wkład silników',
   include_inverter_contribution: 'Wkład inwerterów',
-  operator_profile_id: 'Operator (OSD)',
   sc_input_mode: 'Parametry zwarciowe (tryb)',
   sc_simplified_sk_mva: 'Moc zwarciowa S″k po stronie SN [MVA]',
   sc_simplified_r_x_ratio: 'R/X po stronie SN',

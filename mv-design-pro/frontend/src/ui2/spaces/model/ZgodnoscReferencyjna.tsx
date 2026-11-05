@@ -173,7 +173,7 @@ export function ZgodnoscReferencyjna({
         </p>
       ) : (
         <>
-          <BrakiPakietowDanych braki={raport?.braki_pakietow} />
+          <BrakiPakietowDanych braki={raport?.braki_pakietow} brakOperatoraSieci={raport?.brak_operatora_sieci_pl} />
           {pakietyElementu.length === 0 ? (
             <p className="mvd-zgodnosc-nota" data-testid="mvd-zgodnosc-brak-sprawdzen">
               {T.brakSprawdzen}

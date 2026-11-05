@@ -193,6 +193,8 @@ export interface OzeFormData {
   // K9-A O4 (krok „Zgodność przyłączeniowa"): profile NC RfG — podsłownik
   // profili wytwórcy w modelu.
   nc_rfg_profile_ref: string | null;
+  /** Powód nadpisania operatora sieci profilem źródła (`profiles.nc_rfg_profile_powod`). */
+  nc_rfg_profile_powod: string | null;
   lvrt_curve_ref: string | null;
   hvrt_curve_ref: string | null;
   pf_curve_ref: string | null;
@@ -241,6 +243,7 @@ export const DANE_DOMYSLNE: OzeFormData = {
   protection_catalog_ref: null,
   dynamic_model_ref: null,
   nc_rfg_profile_ref: null,
+  nc_rfg_profile_powod: null,
   lvrt_curve_ref: null,
   hvrt_curve_ref: null,
   pf_curve_ref: null,
@@ -528,6 +531,10 @@ export function zbudujWiazaniaDer(data: OzeFormData): DerCatalogBindingsRequest 
       : {}),
     ...(data.dynamic_model_ref?.trim() ? { dynamic_model_ref: data.dynamic_model_ref.trim() } : {}),
     ...(data.nc_rfg_profile_ref?.trim() ? { nc_rfg_profile_ref: data.nc_rfg_profile_ref.trim() } : {}),
+    // Powód ma sens wyłącznie przy własnym profilu (backend czyści go bez profilu).
+    ...(data.nc_rfg_profile_ref?.trim() && data.nc_rfg_profile_powod?.trim()
+      ? { nc_rfg_profile_powod: data.nc_rfg_profile_powod.trim() }
+      : {}),
     ...(data.lvrt_curve_ref?.trim() ? { lvrt_curve_ref: data.lvrt_curve_ref.trim() } : {}),
     ...(data.hvrt_curve_ref?.trim() ? { hvrt_curve_ref: data.hvrt_curve_ref.trim() } : {}),
     ...(data.pf_curve_ref?.trim() ? { pf_curve_ref: data.pf_curve_ref.trim() } : {}),

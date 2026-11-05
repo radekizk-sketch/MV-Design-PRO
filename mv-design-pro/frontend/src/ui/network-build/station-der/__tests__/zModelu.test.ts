@@ -102,6 +102,21 @@ function rekordLokalny(over: Partial<StationDerConnection> = {}): StationDerConn
   } as StationDerConnection;
 }
 
+describe('deryZModelu — operator sieci z warunków przyłączenia (dodatek karty GPZ-DANE-ANALIZ)', () => {
+  it.each([
+    ['model bez warunków przyłączenia', undefined, null],
+    ['warunki bez operatora', {}, null],
+    ['operator sieci w modelu', { operator_sieci: 'enea' }, 'enea'],
+  ] as const)('%s → rekord niesie operator_sieci=%s', (_opis, warunki, oczekiwany) => {
+    const snap = migawka({ generators: [generatorPv()] } as Partial<EnergyNetworkModel>);
+    const zWarunkami = warunki === undefined
+      ? snap
+      : ({ ...snap, header: { ...snap.header, connection_conditions: warunki } } as EnergyNetworkModel);
+    const [der] = deryZModelu(zWarunkami, 'p');
+    expect(der.operator_sieci ?? null).toBe(oczekiwany);
+  });
+});
+
 describe('deryZModelu — odwzorowanie migawki na rekordy warsztatu', () => {
   it('generator z jawną referencją stacji: tożsamość, moc i napięcie SZYNY z modelu', () => {
     const dery = deryZModelu(migawka({ generators: [generatorPv()] as never }), 'projekt-1');
@@ -324,6 +339,7 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
     ]);
     expect(DER_MATERIALIZED_PROFILE_KEYS).toEqual([
       'nc_rfg_profile_ref',
+      'nc_rfg_profile_powod',
       'lvrt_curve_ref',
       'hvrt_curve_ref',
       'pf_curve_ref',
@@ -340,6 +356,7 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
     vt_catalog_ref: 'vt_10kv_100v_05_abb',
     dynamic_model_ref: 'default_pv_gfl',
     nc_rfg_profile_ref: 'pse',
+    nc_rfg_profile_powod: 'Przyłączenie do sieci 110 kV operatora systemu przesyłowego',
     lvrt_curve_ref: 'lvrt_pse_b',
     hvrt_curve_ref: 'hvrt_pse_b',
     pf_curve_ref: 'pf_pse_2024',

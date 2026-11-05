@@ -1,29 +1,65 @@
 /**
- * Operator (profil wymagań NC RfG) — nigdy zgadywany (karta AB-1a Pakiet D2 §5).
- * Iloczyn cech: liczba modułów (0 / 1 / wiele) × profil (brak / pusty / ten sam / różne)
- * × jawny wybór (brak / jest) oraz kontrolka wyboru (natywne `userEvent`).
+ * Operator (profil wymagań NC RfG) — nigdy zgadywany (karta AB-1a Pakiet D2 §5; dodatek karty
+ * GPZ-DANE-ANALIZ — operator sieci jest jedną daną modelu, profil modułu jest efektywny).
+ * Iloczyn cech: liczba modułów (0 / 1 / wiele) × profil własny (brak / pusty / ten sam / różne)
+ * × operator sieci (brak / jest) × dokument formalny (ocena / certyfikat-wniosek) × jawny wybór
+ * (brak / jest) oraz kontrolka wyboru (natywne `userEvent`).
  */
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { operatorEfektywny, operatorZModelu } from '../operator';
+import {
+  operatorDokumentu,
+  operatorEfektywny,
+  operatorZapytaniaOceny,
+  operatorZModelu,
+  type OperatorZModelu,
+} from '../operator';
 import type { ProfilOperatoraNcRfg } from '../typy';
-import { ETYKIETY_ODCZYTU_KATALOGU, WyborOperatora } from '../WyborOperatora';
+import { ETYKIETY_ODCZYTU_KATALOGU, OPIS_PER_MODUL, WyborOperatora } from '../WyborOperatora';
 
-const modul = (profil: string | null) => ({ profiles: { nc_rfg_profile_ref: profil } });
+const modul = (profil: string | null, operatorSieci?: string | null) => ({
+  profiles: { nc_rfg_profile_ref: profil },
+  operator_sieci: operatorSieci,
+});
 
-describe('operatorZModelu', () => {
+describe('operatorZModelu — profil efektywny modułów', () => {
   it.each([
     ['brak modułów', [], { rodzaj: 'wymaga_wyboru', powod: 'brak_modulow' }],
     ['jeden moduł z profilem', [modul('enea')], { rodzaj: 'z_modelu', operatorId: 'enea' }],
     ['wiele modułów, ten sam profil', [modul('enea'), modul(' enea ')], { rodzaj: 'z_modelu', operatorId: 'enea' }],
-    ['wiele modułów, różne profile', [modul('enea'), modul('pse')], { rodzaj: 'wymaga_wyboru', powod: 'rozni_operatorzy' }],
-    ['moduł bez profilu', [modul('enea'), modul(null)], { rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' }],
+    ['wiele modułów, różne profile', [modul('enea'), modul('pse')], { rodzaj: 'per_modul', operatorzy: ['enea', 'pse'] }],
+    ['moduł bez profilu, brak operatora sieci', [modul('enea'), modul(null)], { rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' }],
     ['moduł z pustym profilem', [modul('   ')], { rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' }],
+    ['moduły bez profilu dziedziczą operatora sieci', [modul(null, 'enea'), modul('  ', 'enea')], { rodzaj: 'z_modelu', operatorId: 'enea' }],
+    ['dziedziczenie + profil zgodny z operatorem sieci', [modul(null, 'enea'), modul('enea', 'enea')], { rodzaj: 'z_modelu', operatorId: 'enea' }],
+    ['dziedziczenie + nadpisanie innym operatorem', [modul(null, 'enea'), modul('pse', 'enea')], { rodzaj: 'per_modul', operatorzy: ['enea', 'pse'] }],
   ] as const)('%s', (_opis, moduly, oczekiwane) => {
     expect(operatorZModelu(moduly)).toEqual(oczekiwane);
+  });
+});
+
+describe('operatorZapytaniaOceny i operatorDokumentu — ocena z modelu, dokument do jednego operatora', () => {
+  const Z_MODELU: OperatorZModelu = { rodzaj: 'z_modelu', operatorId: 'enea' };
+  const PER_MODUL: OperatorZModelu = { rodzaj: 'per_modul', operatorzy: ['enea', 'pse'] };
+  const WYBOR: OperatorZModelu = { rodzaj: 'wymaga_wyboru', powod: 'brak_profilu' };
+  it.each([
+    ['z modelu, bez wyboru', Z_MODELU, null, null],
+    ['z modelu, wybór ignorowany', Z_MODELU, 'pse', null],
+    ['per moduł, bez wyboru — backend ocenia moduł wg profilu', PER_MODUL, null, null],
+    ['wymaga wyboru, bez wyboru — zapytanie wstrzymane', WYBOR, null, undefined],
+    ['wymaga wyboru, wybór trafia do zapytania', WYBOR, 'pse', 'pse'],
+  ] as const)('ocena: %s', (_opis, zModelu, wybor, oczekiwany) => {
+    expect(operatorZapytaniaOceny(zModelu, wybor)).toBe(oczekiwany);
+  });
+  it('dokument: per moduł wymaga jawnego wyboru (różni operatorzy), pozostałe bez zmian', () => {
+    expect(operatorDokumentu(PER_MODUL)).toEqual({ rodzaj: 'wymaga_wyboru', powod: 'rozni_operatorzy' });
+    expect(operatorDokumentu(Z_MODELU)).toBe(Z_MODELU);
+    expect(operatorDokumentu(WYBOR)).toBe(WYBOR);
+    expect(operatorEfektywny(operatorDokumentu(PER_MODUL), null)).toBeNull();
+    expect(operatorEfektywny(operatorDokumentu(PER_MODUL), 'pse')).toBe('pse');
   });
 });
 
@@ -61,6 +97,23 @@ describe('WyborOperatora', () => {
     expect(screen.queryByTestId('op-wybor')).toBeNull();
   });
 
+  it('profile per moduł: pokazane jako fakt modelu (nazwy z katalogu), bez pola wyboru', () => {
+    render(
+      <WyborOperatora
+        zModelu={{ rodzaj: 'per_modul', operatorzy: ['enea', 'pse'] }}
+        operatorzy={OPERATORZY}
+        bladKatalogu={null}
+        wybor={null}
+        onWybor={vi.fn()}
+        etykieta="Operator"
+        testid="op"
+      />,
+    );
+    expect(screen.getByTestId('op')).toHaveAttribute('data-zrodlo', 'model-per-modul');
+    expect(screen.getByTestId('op-wartosc')).toHaveTextContent(`Enea Operator, PSE ${OPIS_PER_MODUL}`);
+    expect(screen.queryByTestId('op-wybor')).toBeNull();
+  });
+
   it('wymagany wybór: pole bez wartości domyślnej, natywny wybór i wycofanie wyboru', async () => {
     const onWybor = vi.fn();
     const uzytkownik = userEvent.setup();
@@ -77,7 +130,7 @@ describe('WyborOperatora', () => {
     );
     const pole = screen.getByTestId('op-wybor') as HTMLSelectElement;
     expect(pole.value).toBe('');
-    expect(screen.getByText(/wskazują różnych operatorów/)).toBeInTheDocument();
+    expect(screen.getByText(/profile różnych operatorów/)).toBeInTheDocument();
     await uzytkownik.selectOptions(pole, 'pse');
     expect(onWybor).toHaveBeenLastCalledWith('pse');
     await uzytkownik.selectOptions(pole, '');

@@ -40,10 +40,17 @@ type OdpowiedzCertyfikatu = 'widok' | 'braki' | 'blad';
  * Odpowiedź `GET …/wejscia` dla operatora z zapytania: wejścia mostu policzone dla operatora
  * sceny, z operatorem zapytania (most przepisuje go do każdego modułu 1:1).
  */
-function wejsciaDlaOperatora(wejscia: WejsciaPrzypadkuNcRfg, operatorId: string): WejsciaPrzypadkuNcRfg {
+/**
+ * Atrapa `GET …/wejscia` wierna backendowi: bez `operator_id` — wejścia z MODELU (każdy moduł wg
+ * profilu efektywnego, jak policzył backend w fiksturze); z jawnym operatorem — wszystkie moduły
+ * wobec wyboru projektanta.
+ */
+function wejsciaDlaOperatora(wejscia: WejsciaPrzypadkuNcRfg, operatorId: string | null): WejsciaPrzypadkuNcRfg {
+  if (operatorId === null) return wejscia;
   return {
     ...wejscia,
     operator_id: operatorId,
+    zrodlo_operatora: 'WYBOR_PROJEKTANTA',
     modules: wejscia.modules.map((modul) => ({ ...modul, operator_id: operatorId })),
   };
 }
@@ -73,7 +80,7 @@ function trasy(
         const gotowe = await wejscia;
         return gotowe === 'blad'
           ? odpowiedzJson(404, { detail: 'Przypadek nie ma dokumentu ENM.' })
-          : odpowiedzJson(200, wejsciaDlaOperatora(gotowe, w.zapytanie.get('operator_id') ?? ''));
+          : odpowiedzJson(200, wejsciaDlaOperatora(gotowe, w.zapytanie.get('operator_id')));
       },
     },
     { metoda: 'POST', sciezka: '/api/ncrfg-tests/run', odpowiedz: () => odpowiedzJson(200, biegFixture()) },
@@ -333,7 +340,8 @@ describe('formularz wstępny z wejść modelu (`GET …/wejscia`) — luka §5.3
     expect(await screen.findByTestId('mvd-oze-param-droop_percent')).toHaveValue(String(pv.droop_percent));
     const zapytanie = wywolania.find((w) => w.sciezka.endsWith('/wejscia'))!;
     expect(zapytanie.sciezka).toBe('/api/ncrfg-tests/cases/case-demo/wejscia');
-    expect(zapytanie.zapytanie.get('operator_id')).toBe('enea');
+    // Operator rozstrzyga model (profil efektywny modułów) — zapytanie bez operatora.
+    expect(zapytanie.zapytanie.has('operator_id')).toBe(false);
     const pole = (nazwa: string) => screen.getByTestId(`mvd-oze-param-${nazwa}`).closest('label')!;
     expect(pole('droop_percent')).toHaveTextContent(MACIERZ_STRINGS_POCHODZENIE.model);
     expect(pole('dead_band_hz')).toHaveTextContent(MACIERZ_STRINGS_POCHODZENIE.model);
@@ -370,20 +378,63 @@ describe('formularz wstępny z wejść modelu (`GET …/wejscia`) — luka §5.3
 });
 
 describe('operator — z modelu albo jawny wybór, nigdy domyślny', () => {
-  it('moduły z różnymi profilami → pole wyboru bez wartości, bieg zablokowany do wyboru', async () => {
+  it('moduły z różnymi profilami → ocena per moduł bez wyboru; certyfikat czeka na jawny wybór operatora', async () => {
+    const [bess, pv] = deryScenyMacierz();
+    const wejscia = wejsciaFixture();
+    // Backend (ścieżka modelu) ocenia każdy moduł wg jego profilu efektywnego.
+    const wywolania = trasy('widok', {
+      ...wejscia,
+      operator_id: null,
+      modules: wejscia.modules.map((m) => (m.der_ref === pv.id ? { ...m, operator_id: 'pse' } : m)),
+    });
+    zasiejModuly([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: 'pse' } }]);
+    useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
+    const uzytkownik = userEvent.setup();
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
+    const wybor = (await screen.findByTestId('mvd-oze-operator-wybor')) as HTMLSelectElement;
+    await waitFor(() => expect(wybor).toBeEnabled());
+    expect(wybor.value).toBe('');
+    expect(screen.getByTestId('mvd-oze-certyfikat-przycisk')).toBeDisabled();
+    await przeprowadzBieg(uzytkownik);
+    const [bieg] = wywolaniaPost(wywolania, '/api/ncrfg-tests/run');
+    const operatorzy = (bieg.cialo as { modules: { der_ref: string; operator_id: string }[] }).modules;
+    expect(Object.fromEntries(operatorzy.map((m) => [m.der_ref, m.operator_id]))).toEqual({
+      [bess.id]: 'enea',
+      [pv.id]: 'pse',
+    });
+    expect(wywolania.filter((w) => w.sciezka.endsWith('/wejscia')).every((w) => !w.zapytanie.has('operator_id'))).toBe(true);
+    await uzytkownik.selectOptions(wybor, 'pse');
+    await waitFor(() => expect(screen.getByTestId('mvd-oze-certyfikat-przycisk')).toBeEnabled());
+  });
+
+  it('moduły bez profilu dziedziczą operatora sieci modelu → operator z modelu, bez pola wyboru', async () => {
+    const wywolania = trasy();
+    zasiejModuly(
+      deryScenyMacierz().map((d) => ({ ...d, profiles: { ...d.profiles, nc_rfg_profile_ref: null }, operator_sieci: 'enea' })),
+    );
+    render(<MacierzNcRfg szczegolyAudytowe={false} />);
+    expect(await screen.findByTestId('mvd-oze-operator')).toHaveAttribute('data-zrodlo', 'model');
+    expect(screen.queryByTestId('mvd-oze-operator-wybor')).toBeNull();
+    await waitFor(() => expect(wywolania.some((w) => w.sciezka.endsWith('/wejscia'))).toBe(true));
+    expect(wywolania.find((w) => w.sciezka.endsWith('/wejscia'))!.zapytanie.has('operator_id')).toBe(false);
+  });
+
+  it('moduł bez profilu i model bez operatora sieci → pole wyboru bez wartości, bieg zablokowany do wyboru', async () => {
     const wywolania = trasy();
     const [bess, pv] = deryScenyMacierz();
-    zasiejModuly([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: 'pse' } }]);
+    zasiejModuly([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: null } }]);
     const uzytkownik = userEvent.setup();
     render(<MacierzNcRfg szczegolyAudytowe={false} />);
     const wybor = (await screen.findByTestId('mvd-oze-operator-wybor')) as HTMLSelectElement;
     await waitFor(() => expect(wybor).toBeEnabled());
     expect(wybor.value).toBe('');
     expect(screen.getByTestId('mvd-oze-przeprowadz')).toBeDisabled();
+    expect(wywolania.some((w) => w.sciezka.endsWith('/wejscia'))).toBe(false);
     await uzytkownik.selectOptions(wybor, 'pse');
     await przeprowadzBieg(uzytkownik);
     const [bieg] = wywolaniaPost(wywolania, '/api/ncrfg-tests/run');
     expect((bieg.cialo as { modules: { operator_id: string }[] }).modules.map((m) => m.operator_id)).toEqual(['pse', 'pse']);
+    expect(wywolania.find((w) => w.sciezka.endsWith('/wejscia'))!.zapytanie.get('operator_id')).toBe('pse');
   });
 });
 
@@ -451,7 +502,7 @@ describe('metadane biegu — tylko w informacjach audytowych trybu eksperckiego'
 });
 
 describe('zgodność przypadku (zatwierdzony model) obok macierzy', () => {
-  it('z przypadkiem i operatorem z modelu: zapytanie z operator_id, dowód PV z wykazu (numer, WiPWC)', async () => {
+  it('z przypadkiem i operatorem z modelu: zapytanie bez operator_id (profil efektywny), dowód PV z wykazu (numer, WiPWC)', async () => {
     const wywolania = trasy();
     useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
     render(<MacierzNcRfg szczegolyAudytowe={false} />);
@@ -462,7 +513,7 @@ describe('zgodność przypadku (zatwierdzony model) obok macierzy', () => {
       pv.dowod_certyfikatu!.numer_dokumentu,
     );
     const zapytanie = wywolania.find((w) => w.sciezka.endsWith('/compliance'))!;
-    expect(zapytanie.zapytanie.get('operator_id')).toBe('enea');
+    expect(zapytanie.zapytanie.has('operator_id')).toBe(false);
   });
 });
 

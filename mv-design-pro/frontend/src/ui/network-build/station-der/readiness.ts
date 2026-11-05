@@ -13,6 +13,7 @@
  *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
+import { profilNcRfgModulu } from './profilNcRfg';
 import { isCtClassValidForProtection, type CtClass } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
@@ -96,14 +97,14 @@ export const READINESS_AXIS_LABELS_PL: Record<keyof DerReadinessMatrix, string> 
  *    zwarć z udziałem ziemi — kompletność Z₀ sieci jest bramką MODELU, złożoną
  *    osobno przez `zlozZBramkaModelu`, nie osią per-DER).
  *  - VDROP: device_catalog_ref + bus_przylaczenia_ref + nominal_power_kw.
- *  - Q_U: nc_rfg_profile_ref.
+ *  - Q_U: profil NC RfG EFEKTYWNY (własny `nc_rfg_profile_ref` albo operator sieci modelu).
  *  - EQUIPMENT: device_catalog_ref + (block_transformer_catalog_ref jeśli
  *    dedicated_transformer).
  *  - PROTECTION: protection_catalog_ref + ct_catalog_ref + vt_catalog_ref.
  *  - PROTECTION_SELECTIVITY: protection + ≥1 inny DER w tej samej stacji.
- *  - FRT: nc_rfg_profile_ref + lvrt_curve_ref + dynamic_model_ref (Naprawa A.5).
- *  - HVRT: nc_rfg_profile_ref + hvrt_curve_ref + dynamic_model_ref.
- *  - NC_RFG: nc_rfg_profile_ref + lvrt_curve_ref + hvrt_curve_ref.
+ *  - FRT: profil NC RfG efektywny + lvrt_curve_ref + dynamic_model_ref (Naprawa A.5).
+ *  - HVRT: profil NC RfG efektywny + hvrt_curve_ref + dynamic_model_ref.
+ *  - NC_RFG: profil NC RfG efektywny + lvrt_curve_ref + hvrt_curve_ref.
  *  - REPORT_OSD/TECHNICAL: pełna kompletność (wszystkie powyższe ≥ partial).
  *
  * Uwaga: jeśli connection_side jest pozastacjonarne (at_zksn / at_branch_pole /
@@ -143,7 +144,8 @@ export function computeDerReadinessMatrix(
   const otherDers = context?.otherDersInStation ?? 0;
   const hasDevice = der.catalogs.device_catalog_ref !== null;
   const hasPcc = der.bus_przylaczenia_ref !== null;
-  const hasNcRfg = der.profiles.nc_rfg_profile_ref !== null;
+  // Profil EFEKTYWNY (dodatek GPZ-DANE-ANALIZ): własny profil albo operator sieci modelu.
+  const hasNcRfg = profilNcRfgModulu(der).operator_id !== null;
   const hasLvrt = der.profiles.lvrt_curve_ref !== null;
   const hasHvrt = der.profiles.hvrt_curve_ref !== null;
   const hasProtection = der.catalogs.protection_catalog_ref !== null;
@@ -345,7 +347,7 @@ function buildBlockersForAxis(
       }
       break;
     case 'q_u':
-      if (!der.profiles.nc_rfg_profile_ref) {
+      if (profilNcRfgModulu(der).operator_id === null) {
         blockers.push({
           code: 'der.nc_rfg.missing',
           message_pl: 'Brak profilu NC RfG operatora.',
@@ -478,7 +480,7 @@ function buildBlockersForAxis(
       }
       break;
     case 'frt':
-      if (!der.profiles.nc_rfg_profile_ref) {
+      if (profilNcRfgModulu(der).operator_id === null) {
         blockers.push({
           code: 'der.nc_rfg.missing',
           message_pl: 'Brak profilu NC RfG (LVRT wymaga operatora).',
@@ -509,7 +511,7 @@ function buildBlockersForAxis(
       }
       break;
     case 'nc_rfg':
-      if (!der.profiles.nc_rfg_profile_ref) {
+      if (profilNcRfgModulu(der).operator_id === null) {
         blockers.push({
           code: 'der.nc_rfg.missing',
           message_pl: 'Brak profilu NC RfG operatora.',

@@ -63,13 +63,15 @@ describe('KartaPrzypadku — karta z konfiguracją', () => {
     expect(screen.queryByTestId('mvd-karta-zalozenie-laczenia')).toBeNull();
   });
 
-  it('renderuje sekcje konfiguracji (zwarcia, rozpływ, opcje, operator)', () => {
+  // Operator sieci nie jest konfiguracją przypadku (jedna dana modelu — kafel warunków
+  // przyłączenia), więc karta przypadku nie ma sekcji operatora.
+  it('renderuje sekcje konfiguracji (zwarcia, rozpływ, opcje) bez sekcji operatora', () => {
     render(
       <KartaPrzypadku przypadek={studyCaseFixture('K1', 'A')} ladowanie={false} blad={null} />,
     );
     expect(screen.getByRole('region', { name: T.sekcjaZwarcia })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: T.sekcjaRozplyw })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: T.sekcjaOpcje })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: T.sekcjaOperator })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Profil operatora (OSD)' })).toBeNull();
   });
 });

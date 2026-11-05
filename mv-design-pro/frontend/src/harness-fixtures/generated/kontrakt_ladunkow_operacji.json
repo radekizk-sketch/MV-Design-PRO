@@ -1704,6 +1704,7 @@
     "set_connection_conditions": {
       "pola": [
         "moc_przylaczeniowa_mw",
+        "operator_sieci",
         "tryb_pracy",
         "wymagany_cos_phi"
       ],
@@ -1718,6 +1719,7 @@
         "hvrt_curve_ref",
         "karty_widmowe_ref",
         "lvrt_curve_ref",
+        "nc_rfg_profile_powod",
         "nc_rfg_profile_ref",
         "pf_curve_ref",
         "protection_catalog_ref",

@@ -4,6 +4,8 @@
  * przyłączenia), warunki OSD z nagłówka modelu (moc przyłączeniowa / cosφ /
  * tryb pracy — operacja `set_connection_conditions`) oraz bilans mocy
  * ZNAMIONOWEJ (generacja vs obciążenie) z werdyktem względem limitu OSD.
+ * Operator sieci (dodatek karty GPZ-DANE-ANALIZ) — jedna dana modelu wybierana z katalogu
+ * profili NC RfG; źródła bez własnego profilu dziedziczą go (backend `enm.operator_sieci`).
  *
  * Dane z `mapujPrzylaczenie` (pulpitAdapter, rollup read-only). Zero fizyki
  * (sumy znamionowe i porównanie z limitem = projekcja danych WEJŚCIOWYCH, nie
@@ -15,12 +17,13 @@
  * formularza; zagnieżdżanie button-w-button jest niedozwolone w HTML.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Kafel, KafelWiersz, Tag } from './Kafel';
 import { PULPIT_STRINGS, fmtLiczbaPL } from './strings';
 import type { PrzylaczenieKafel } from './pulpitAdapter';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { useNcRfgStore } from '../../oze/ncRfgStore';
 
 /** Parsuje liczbę z pola formularza (przecinek PL dozwolony); '' → null. */
 function parsujLiczbe(tekst: string): number | null {
@@ -30,13 +33,29 @@ function parsujLiczbe(tekst: string): number | null {
   return Number.isFinite(n) ? n : Number.NaN;
 }
 
-function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
+function FormularzWarunkowOsd({
+  operatorSieci,
+  onZamknij,
+}: {
+  /** Operator sieci zapisany w modelu (`null` — nie wskazano); punkt startowy listy. */
+  operatorSieci: string | null;
+  onZamknij: () => void;
+}) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  // Lista operatorów = katalog profili NC RfG backendu (ta sama lista, którą waliduje
+  // `set_connection_conditions`) — zero listy zaszytej we froncie.
+  const katalog = useNcRfgStore((s) => s.katalog);
+  const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
   const [moc, setMoc] = useState('');
   const [cosPhi, setCosPhi] = useState('');
   const [tryb, setTryb] = useState('');
+  const [operator, setOperator] = useState(operatorSieci ?? '');
   const [blad, setBlad] = useState<string | null>(null);
+
+  useEffect(() => {
+    void zaladujKatalog();
+  }, [zaladujKatalog]);
 
   const onZapisz = async () => {
     if (!activeCaseId) {
@@ -54,7 +73,8 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
       setBlad(PULPIT_STRINGS.osdFormBladCosPhi);
       return;
     }
-    if (mocN === null && cosN === null && trybT === '') {
+    const operatorZmieniony = operator !== (operatorSieci ?? '');
+    if (mocN === null && cosN === null && trybT === '' && !operatorZmieniony) {
       setBlad(PULPIT_STRINGS.osdFormBladPuste);
       return;
     }
@@ -63,6 +83,8 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
     if (mocN !== null) payload.moc_przylaczeniowa_mw = mocN;
     if (cosN !== null) payload.wymagany_cos_phi = cosN;
     if (trybT !== '') payload.tryb_pracy = trybT;
+    // `null` czyści operatora sieci w modelu (źródła bez własnego profilu tracą profil).
+    if (operatorZmieniony) payload.operator_sieci = operator === '' ? null : operator;
     const response = await executeDomainOperation(
       activeCaseId,
       'set_connection_conditions',
@@ -110,6 +132,26 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
           data-testid="pulpit-osd-tryb"
         />
       </label>
+      <label className="mvd-kafel-form-pole">
+        <span>{PULPIT_STRINGS.osdOperatorSieci}</span>
+        <select
+          value={operator}
+          onChange={(e) => setOperator(e.target.value)}
+          disabled={katalog === null}
+          aria-busy={katalog === null}
+          data-testid="pulpit-osd-operator"
+          title={PULPIT_STRINGS.osdFormOperatorOpis}
+        >
+          <option value="">
+            {katalog === null ? PULPIT_STRINGS.osdFormOperatorKatalog : PULPIT_STRINGS.osdFormOperatorBrak}
+          </option>
+          {(katalog?.operators ?? []).map((op) => (
+            <option key={op.operator_id} value={op.operator_id}>
+              {op.operator_name_pl}
+            </option>
+          ))}
+        </select>
+      </label>
       {blad && (
         <p className="mvd-kafel-form-blad" role="alert" data-testid="pulpit-osd-blad">
           {blad}
@@ -135,8 +177,23 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
 export function KafelPrzylaczenia({ dane }: { dane: PrzylaczenieKafel }) {
   const glowne = dane.zrodlaSieciowe[0] ?? null;
   const [formOtwarty, setFormOtwarty] = useState(false);
+  const katalogNcRfg = useNcRfgStore((s) => s.katalog);
+  const zaladujKatalogNcRfg = useNcRfgStore((s) => s.zaladujKatalog);
+  // Nazwa operatora sieci pochodzi z katalogu profili (identyfikator nie jest tekstem dla
+  // projektanta) — katalog wczytywany, gdy model wskazuje operatora.
+  useEffect(() => {
+    if (dane.operatorSieci !== null) void zaladujKatalogNcRfg();
+  }, [dane.operatorSieci, zaladujKatalogNcRfg]);
   const maWarunkiOsd =
-    dane.mocPrzylaczeniowaMw !== null || dane.wymaganyCosPhi !== null || dane.trybPracy !== null;
+    dane.mocPrzylaczeniowaMw !== null ||
+    dane.wymaganyCosPhi !== null ||
+    dane.trybPracy !== null ||
+    dane.operatorSieci !== null;
+  const nazwaOperatoraSieci =
+    dane.operatorSieci === null
+      ? null
+      : (katalogNcRfg?.operators.find((op) => op.operator_id === dane.operatorSieci)
+          ?.operator_name_pl ?? dane.operatorSieci);
 
   return (
     <Kafel tytul={PULPIT_STRINGS.przylaczenieTytul} ariaLabel={PULPIT_STRINGS.przylaczenieTytul}>
@@ -218,6 +275,11 @@ export function KafelPrzylaczenia({ dane }: { dane: PrzylaczenieKafel }) {
                 <span>{dane.trybPracy}</span>
               </KafelWiersz>
             )}
+            {nazwaOperatoraSieci !== null && (
+              <KafelWiersz etykieta={PULPIT_STRINGS.osdOperatorSieci}>
+                <span data-testid="pulpit-osd-operator-sieci">{nazwaOperatoraSieci}</span>
+              </KafelWiersz>
+            )}
           </>
         ) : (
           <p className="mvd-kafel-uwaga" data-testid="pulpit-osd-nie-podano">
@@ -254,7 +316,10 @@ export function KafelPrzylaczenia({ dane }: { dane: PrzylaczenieKafel }) {
       </div>
 
       {formOtwarty ? (
-        <FormularzWarunkowOsd onZamknij={() => setFormOtwarty(false)} />
+        <FormularzWarunkowOsd
+          operatorSieci={dane.operatorSieci}
+          onZamknij={() => setFormOtwarty(false)}
+        />
       ) : (
         <button
           type="button"

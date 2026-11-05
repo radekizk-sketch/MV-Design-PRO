@@ -539,6 +539,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "hvrt_curve_ref",
             "karty_widmowe_ref",
             "lvrt_curve_ref",
+            "nc_rfg_profile_powod",
             "nc_rfg_profile_ref",
             "pf_curve_ref",
             "protection_catalog_ref",
@@ -677,11 +678,15 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "set_connection_conditions": OperationSpec(
         canonical_name="set_connection_conditions",
         category=OperationCategory.UNIVERSAL,
-        description_pl="Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy)",
+        description_pl=(
+            "Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy, "
+            "operator sieci)"
+        ),
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
             "moc_przylaczeniowa_mw",
+            "operator_sieci",
             "tryb_pracy",
             "wymagany_cos_phi",
         ),
@@ -2517,6 +2522,26 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "nc_rfg_profile_ref"},
     ),
+    # Dodatek karty GPZ-DANE-ANALIZ: operator sieci jest jedną daną modelu
+    # (`header.connection_conditions.operator_sieci`); profil NC RfG źródła różny od niego
+    # jest nadpisaniem (przyłączenie do sieci innego operatora) — ocena NC RfG tego źródła
+    # idzie wg profilu źródła, więc projektant musi to widzieć. Emiter: `enm/validator.py`
+    # (`generators.nc_rfg_operator_mismatch`, predykat `enm.operator_sieci`).
+    "generator.nc_rfg_operator_mismatch": ReadinessCodeSpec(
+        code="generator.nc_rfg_operator_mismatch",
+        area=ReadinessArea.GENERATORS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Profil NC RfG źródła różni się od operatora sieci w warunkach przyłączenia — "
+            "źródło jest oceniane wg profilu innego operatora"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "nc_rfg_profile_powod",
+        },
+    ),
     "generator.voltage_control_not_permitted": ReadinessCodeSpec(
         code="generator.voltage_control_not_permitted",
         area=ReadinessArea.GENERATORS,
@@ -2794,6 +2819,23 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # Warunki przyłączenia OSD jako kryterium (karta F-K2, znalezisko Z2 audytu FLOW).
     # Moc przyłączeniowa i wymagany cosφ z dokumentu OSD są danymi WEJŚCIOWYMI projektu;
     # bez nich ocena punktu przyłączenia jest NIESPRAWDZONA, a nie spełniona.
+    # Dodatek karty GPZ-DANE-ANALIZ: operator sieci spoza katalogu profili NC RfG (model
+    # wczytany z pominięciem pisarza `set_connection_conditions`). Emiter: `enm/validator.py`.
+    "connection.operator_sieci_unknown": ReadinessCodeSpec(
+        code="connection.operator_sieci_unknown",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Operator sieci w warunkach przyłączenia nie występuje w katalogu profili NC RfG — "
+            "wybierz operatora z katalogu"
+        ),
+        fix_navigation={
+            "panel": "projekt",
+            "tab": "przylaczenie",
+            "focus": "operator_sieci",
+        },
+    ),
     "connection.power_limit_missing": ReadinessCodeSpec(
         code="connection.power_limit_missing",
         area=ReadinessArea.SOURCES,

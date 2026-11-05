@@ -371,6 +371,7 @@ def test_der_binding_profile_keys_pin_parytet_fe_be() -> None:
     )
     assert DER_PROFILE_KEYS == (
         "nc_rfg_profile_ref",
+        "nc_rfg_profile_powod",
         "lvrt_curve_ref",
         "hvrt_curve_ref",
         "pf_curve_ref",
@@ -390,10 +391,19 @@ _WARTOSC_DLA_KLUCZA: dict[str, str | list[str]] = {
     "vt_catalog_ref": "vt_10kv_100v_05_abb",
     "dynamic_model_ref": "default_pv_gfl",
     "nc_rfg_profile_ref": "pse",
+    "nc_rfg_profile_powod": "Przyłączenie do sieci 110 kV operatora systemu przesyłowego",
     "lvrt_curve_ref": "lvrt_pse_b",
     "hvrt_curve_ref": "hvrt_pse_b",
     "pf_curve_ref": "pf_pse_2024",
     "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
+}
+
+
+#: Klucze sparowane: powód nadpisania operatora sieci nie ma przedmiotu bez profilu źródła
+#: (pisarz czyści powód, gdy profilu nie ma — `enm.operator_sieci`), więc zapis/wyczyszczenie
+#: powodu ćwiczy się przy obecnym profilu.
+_KLUCZE_TOWARZYSZACE: dict[str, dict[str, str]] = {
+    "nc_rfg_profile_powod": {"nc_rfg_profile_ref": "pse"},
 }
 
 
@@ -422,7 +432,9 @@ def test_round_trip_zapis_klucza(klucz: str) -> None:
     ta sama ścieżka, którą czyta front (`derZGeneratora`) po GET snapshotu.
     """
     wartosc = _WARTOSC_DLA_KLUCZA[klucz]
-    wynik = _wykonaj({"generator_ref": "gen_pv_1", klucz: wartosc})
+    wynik = _wykonaj(
+        {"generator_ref": "gen_pv_1", **_KLUCZE_TOWARZYSZACE.get(klucz, {}), klucz: wartosc}
+    )
 
     assert wynik.get("error") is None, f"zapis klucza {klucz} odrzucony: {wynik.get('error')}"
     assert _wartosc_wynikowa(wynik, klucz) == wartosc
@@ -440,7 +452,8 @@ def test_round_trip_wyczyszczenie_klucza(klucz: str) -> None:
     enm = _enm_z_wytworca()
     if klucz in DER_PROFILE_KEYS:
         enm["generators"][0]["materialized_params"]["profiles"] = {
-            klucz: _WARTOSC_DLA_KLUCZA[klucz]
+            **_KLUCZE_TOWARZYSZACE.get(klucz, {}),
+            klucz: _WARTOSC_DLA_KLUCZA[klucz],
         }
     else:
         enm["generators"][0]["materialized_params"][klucz] = _WARTOSC_DLA_KLUCZA[klucz]
