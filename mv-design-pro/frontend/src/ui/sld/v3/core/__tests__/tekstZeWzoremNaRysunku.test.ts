@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Etykieta rysunku SLD z wzorem `$…$` (karta UX-04/ZU, punkt 2) — pomiar, zawijanie i skrót
  * liczą ODCZYT wzoru (`tekstBezWzorow`), a wzór jest wyrazem niepodzielnym. Iloczyn cech:

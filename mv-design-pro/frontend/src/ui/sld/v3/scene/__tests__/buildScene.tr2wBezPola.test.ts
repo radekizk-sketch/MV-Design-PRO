@@ -280,9 +280,15 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
   //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
   //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (karta UX-04/ZU, punkt 2 — symbole etykiet rysunku jako wzory
+  // `$…$`, `304ae743f`; pin poprawiony 2026-11-05 w następcy punktu 4). DOWÓD: sonda
+  // podmieniająca tekst każdej etykiety na jej odczyt (`tekstBezWzorow`) daje DOKŁADNIE
+  // poprzednie odciski (L1 8f135f30…, L2 6de64cfc…) — geometria, położenia etykiet i zbiór
+  // etykiet bez zmian; różnią się wyłącznie teksty „$u_{k}$ 11% · $P_{k}$ 120 kW",
+  // „$S_{k}''$ 3000 MVA · 110 kV" i (L2) „… · $U_{n}$=20 kV · l = 40 m".
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '8f135f305dd1d8a38421e664f4c320c8',
-    2: '6de64cfc159da38853215a96aaf0f5d0',
+    1: '4cb0397a11165fc008104bbbda5030b1',
+    2: '6a731eeed8e60da2ffbc33d4fe142c7f',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

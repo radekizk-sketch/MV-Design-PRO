@@ -196,7 +196,10 @@ test.describe('dowody-ncrfg:screenshot', () => {
       // OTWARTY ślad testu (Wzór → Dane → Podstawienie → Wynik → jednostki).
       await page.getByTestId('mvd-oze-slad-przelacz').click();
       const kroki = page.getByTestId('mvd-oze-slad-kroki');
-      await expect(kroki).toContainText('t_odb ≤ t_odb,wym');
+      // Wzór kroku renderowany KaTeX-em z pola LaTeX (rejestr `wzory_sladu`), nie tekstem
+      // „t_odb ≤ t_odb,wym" silnika.
+      await expect(kroki.locator('[data-latex^="t_{odb} \\\\le t_{odb,wym}"]').first()).toBeVisible();
+      await expect(kroki).not.toContainText('t_odb ≤ t_odb,wym');
       // Weryfikacja jednostek: zdanie słowami + algebra jednostek wzorem KaTeX
       // (rejestr `jednostki_sladu` katalogu) — surowe „s − s = s." nie trafia na ekran.
       const jednostki = kroki

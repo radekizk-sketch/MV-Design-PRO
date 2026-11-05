@@ -437,7 +437,7 @@ class ReactiveAdequacyBuilder:
         white_box = (
             WhiteBoxStep(
                 symbol="ΣQ_zrodla",
-                formula_latex=r"\sum Q_{źródła} = \sum_i Q_{akt,i}",
+                formula_latex=r"\sum Q_{\text{źródła}} = \sum_i Q_{akt,i}",
                 substitution_pl=(
                     f"moc bierna generowana (+) = {q_gen} Mvar; moc bierna pobierana (−) = "
                     f"{q_abs} Mvar; netto = {net_source} Mvar"

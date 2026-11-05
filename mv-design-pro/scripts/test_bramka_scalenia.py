@@ -433,10 +433,22 @@ def test_wybor_vitest_bez_zmian_frontu(tmp_path: Path) -> None:
 # --- miejsce na dysku i sprzątanie (dyrektywa 2026-10-28) ----------------------------------
 
 
+class _DyskZZapasem:
+    """Wynik `shutil.disk_usage` z wolnym miejscem daleko ponad próg bramki."""
+
+    free = int(1e12)
+
+
 def _bramka_bez_biegow(drzewo: Path, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     """Bramka na drzewie syntetycznym: zero zmian, polecenia zapisywane zamiast uruchamiane;
     „pytest” tworzy plik w `--basetemp`, tak jak prawdziwy bieg."""
     monkeypatch.setattr(bramka, "zmienione_pliki", lambda baza, glowa: [])
+    # Drzewo syntetyczne nie zapisuje katalogów bazowych pytest, więc progu wolnego miejsca nie
+    # sprawdza się tu na REALNYM dysku maszyny — inaczej wynik zależał od zajętości `/tmp` przez
+    # inne biegi (pomiar 2026-11-05: 3,6 GB < 5 GB → `main` = 2). Dysk zastępczy ma zapas
+    # ponad próg; próg sam ma test `test_bramka_odmawia_startu_przy_braku_miejsca`, który
+    # nadpisuje ten dysk swoim.
+    monkeypatch.setattr(bramka.shutil, "disk_usage", lambda _k: _DyskZZapasem())
     polecenia: list[list[str]] = []
 
     def uruchom(nazwa: str, polecenie: list[str], cwd: Path) -> tuple[int, float]:

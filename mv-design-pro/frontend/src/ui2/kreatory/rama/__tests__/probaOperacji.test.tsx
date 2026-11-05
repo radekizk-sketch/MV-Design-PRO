@@ -18,6 +18,15 @@ import { useProbaOperacji, type StanProbyOperacji } from '../probaOperacji';
 
 const fetchMock = vi.fn();
 
+/**
+ * Limit oczekiwania na werdykt próby. Próba startuje po `ZWLOKA_PROBY_MS` (300 ms) od ostatniej
+ * zmiany ładunku, a domyślny limit `waitFor` to 1000 ms — w pełnym biegu vitest pod obciążeniem
+ * maszyny (pomiar 2026-11-05: przypadek „odmowa w odpowiedzi 200” utknął w stanie
+ * „sprawdzanie”) zegar planisty przekraczał ten zapas. Limit jawny, z zapasem na obciążenie;
+ * asercje bez zmian.
+ */
+const OCZEKIWANIE = { timeout: 5000 } as const;
+
 function odpowiedz(status: number, tresc: unknown): Response {
   return new Response(JSON.stringify(tresc), {
     status,
@@ -48,7 +57,7 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
     fetchMock.mockResolvedValue(odpowiedz(200, { dry_run: true, preview: { created_refs: ['g1'] } }));
     const { result } = renderHook(() => useProbaOperacji('case-1', 'add_generator_sn', LADUNEK));
     expect(result.current).toEqual({ stan: 'sprawdzanie' });
-    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }));
+    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }), OCZEKIWANIE);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe(domainOpsEndpoint('case-1'));
     const cialo = cialoWywolania(0) as { operation: { name: string; payload: Record<string, unknown> } };
@@ -88,7 +97,7 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
   ])('%s → stan próby i komunikat backendu bez tłumaczenia', async (_nazwa, wynik, oczekiwany) => {
     fetchMock.mockImplementation(wynik);
     const { result } = renderHook(() => useProbaOperacji('case-1', 'add_generator_sn', LADUNEK));
-    await waitFor(() => expect(result.current).toEqual(oczekiwany));
+    await waitFor(() => expect(result.current).toEqual(oczekiwany), OCZEKIWANIE);
 
     // Prezentacja: wiersz gotowości nigdy „kompletne” bez przyjęcia, komunikat niesie treść backendu.
     const wiersz = wierszProby(result.current);
@@ -120,7 +129,7 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
       ({ ladunek }) => useProbaOperacji('case-1', 'add_generator_sn', ladunek),
       { initialProps: { ladunek: { ...LADUNEK } as Record<string, unknown> } },
     );
-    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }));
+    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }), OCZEKIWANIE);
     rerender({ ladunek: JSON.parse(JSON.stringify(LADUNEK)) as Record<string, unknown> });
     await new Promise((r) => setTimeout(r, 400));
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -144,13 +153,15 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
       ({ ladunek }) => useProbaOperacji('case-1', 'add_generator_sn', ladunek),
       { initialProps: { ladunek: LADUNEK as Record<string, unknown> } },
     );
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), OCZEKIWANIE);
     rerender({ ladunek: { ...LADUNEK, p_mw: 9 } });
     expect(result.current).toEqual({ stan: 'sprawdzanie' });
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), OCZEKIWANIE);
     zwolnijPierwsza(odpowiedz(200, { dry_run: true }));
-    await waitFor(() =>
-      expect(result.current).toEqual({ stan: 'odrzucona', komunikat: 'Odmowa drugiego ładunku.', kod: 'x.y' }),
+    await waitFor(
+      () =>
+        expect(result.current).toEqual({ stan: 'odrzucona', komunikat: 'Odmowa drugiego ładunku.', kod: 'x.y' }),
+      OCZEKIWANIE,
     );
     expect((cialoWywolania(1) as { operation: { payload: { p_mw: number } } }).operation.payload.p_mw).toBe(9);
   });
@@ -158,7 +169,7 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
   it('próba przyjęta: wiersz „kompletne” i komunikat statusu (nie alert)', async () => {
     fetchMock.mockResolvedValue(odpowiedz(200, { dry_run: true }));
     const { result } = renderHook(() => useProbaOperacji('case-1', 'add_generator_sn', LADUNEK));
-    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }));
+    await waitFor(() => expect(result.current).toEqual({ stan: 'przyjeta' }), OCZEKIWANIE);
     expect(wierszProby(result.current)).toEqual({ etykieta: 'Kontrola modelu', stan: 'kompletne', wartosc: 'Przyjęta' });
     render(<KontrolaPrzedZapisem proba={result.current} testid="proba" />);
     expect(screen.getByTestId('proba')).toHaveAttribute('role', 'status');

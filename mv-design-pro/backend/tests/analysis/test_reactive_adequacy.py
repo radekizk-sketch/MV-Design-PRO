@@ -663,6 +663,15 @@ def test_weryfikacja_jednostek_zdanie_i_wzor_parami() -> None:
         assert latex.count("{") == latex.count("}"), latex
 
 
+def test_wzory_krokow_bez_liter_spoza_ascii_w_trybie_matematycznym() -> None:
+    """KaTeX w trybie ścisłym odrzuca literę spoza ASCII w trybie matematycznym (`Q_{źródła}`
+    — fixtura harnessu `pulpit_oze_scena_adekwatnosc_q.json`); słowo idzie w `\\text{…}`."""
+    for krok in _kroki_wszystkich_sekcji():
+        for latex in (krok.formula_latex, krok.unit_check_latex or ""):
+            matematyka = re.sub(r"\\text\{[^}]*\}", "", latex)
+            assert matematyka.isascii(), (krok.symbol, latex)
+
+
 def test_serializer_niesie_wzor_weryfikacji_jednostek() -> None:
     from analysis.reactive_adequacy.serializer import white_box_to_dict
 

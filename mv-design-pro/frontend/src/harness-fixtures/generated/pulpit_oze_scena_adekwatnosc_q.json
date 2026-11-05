@@ -86,7 +86,7 @@
     "white_box": [
       {
         "symbol": "ΣQ_zrodla",
-        "formula_latex": "\\sum Q_{źródła} = \\sum_i Q_{akt,i}",
+        "formula_latex": "\\sum Q_{\\text{źródła}} = \\sum_i Q_{akt,i}",
         "substitution_pl": "moc bierna generowana (+) = 0.0 Mvar; moc bierna pobierana (−) = 0.64 Mvar; netto = -0.64 Mvar",
         "result_pl": "suma mocy biernej źródeł (netto) = -0.64 Mvar",
         "unit_check_pl": "Zgodność jednostek: suma mocy biernych w megawarach jest mocą bierną w megawarach; wartość dodatnia oznacza generację, ujemna — absorpcję.",

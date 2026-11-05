@@ -123,6 +123,8 @@ describe('W3 §7 — etykieta techniczna L2 z realnych danych katalogu/ENM', () 
     // Napięcie znamionowe z katalogu (fixtura: voltage_rating_kv=20) przed
     // długością. S9-8: człon jest OZNACZONY („Un="), żeby nie dało się go
     // pomylić z napięciem pracy sieci — intencja asercji bez zmian.
-    expect(spanTexts.some((t) => /· Un=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
+    // Karta UX-04/ZU pkt 2: oznaczenie napięcia znamionowego jest wzorem `$U_{n}$`
+    // (`formatRatedVoltageKv`), renderowanym na rysunku przez TekstSvgZWzorami.
+    expect(spanTexts.some((t) => /· \$U_\{n\}\$=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
   });
 });

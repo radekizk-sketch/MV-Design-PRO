@@ -13,7 +13,7 @@ import { PULPIT_STRINGS } from '../strings';
 
 const KROK_BACKENDU = {
   symbol: 'ΣQ_zrodla',
-  formula_latex: '\\sum Q_{źródła} = \\sum_i Q_{akt,i}',
+  formula_latex: '\\sum Q_{\\text{źródła}} = \\sum_i Q_{akt,i}',
   substitution_pl: '$Q_{\\mathrm{gen}}$ = 1,2 Mvar',
   result_pl: 'netto 1,2 Mvar',
 };

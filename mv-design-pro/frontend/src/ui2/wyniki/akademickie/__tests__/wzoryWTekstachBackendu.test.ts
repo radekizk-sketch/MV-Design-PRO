@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Wzory osadzone w tekstach backendu dla okna „Analizy specjalistyczne” składają się w KaTeX
  * bez błędu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5).
