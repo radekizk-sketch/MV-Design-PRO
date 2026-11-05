@@ -4,12 +4,12 @@
       "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
       "Każdy odcinek liczony przy prądzie roboczym podanym dla TEGO odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
       "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
-      "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków."
+      "Jedno napięcie międzyfazowe ciągu dla wszystkich odcinków."
     ],
     "delta_u_pct": 0.529108588017,
     "delta_u_v": 79.3662882025,
     "dlugosc_m": 500.0,
-    "formula_ref": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100",
+    "formula_ref": "$\\Delta U_{\\mathrm{ciągu}} = \\sum_i \\Delta U_i$; $\\Delta U_{\\mathrm{ciągu}}\\% = \\Delta U_{\\mathrm{ciągu}} / U \\cdot 100$",
     "liczba_odcinkow": 1
   },
   "ocena_ciagu": {
@@ -100,7 +100,7 @@
     "slad": [
       {
         "krok": "magistrala-sn:ciag:spadek-napiecia",
-        "opis_pl": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100; odcinek 1: I = 400 A, L = 0,5 km, R = 0,103 Ω, X = 0,0535 Ω, cosφ = 0,95, ΔU = 79,37 V (0,5291 %); suma ΔU = 79,37 V",
+        "opis_pl": "$\\Delta U_{\\mathrm{ciągu}} = \\sum_i \\Delta U_i$; $\\Delta U_{\\mathrm{ciągu}}\\% = \\Delta U_{\\mathrm{ciągu}} / U \\cdot 100$; odcinek 1: I = 400 A, L = 0,5 km, R = 0,103 Ω, X = 0,0535 Ω, cosφ = 0,95, ΔU = 79,37 V (0,5291 %); suma ΔU = 79,37 V",
         "run_id": null,
         "wersja_silnika": null
       }
@@ -243,7 +243,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-1:obciazalnosc",
-          "opis_pl": "I_B = 400 A (projektant); I_z = 310 A (karta katalogowa, warunki odniesienia producenta)",
+          "opis_pl": "prąd roboczy 400 A (projektant); obciążalność 310 A (karta katalogowa, warunki odniesienia producenta)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -383,7 +383,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-1:spadek-napiecia",
-          "opis_pl": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ); odcinek 1: I = 400 A, L = 0,5 km, R = 0,103 Ω, X = 0,0535 Ω, cosφ = 0,95, ΔU = 79,37 V (0,5291 %)",
+          "opis_pl": "$\\Delta U = \\sqrt{3} \\cdot I \\cdot (s_P \\cdot R \\cos\\varphi + s_Q \\cdot X \\sin\\varphi)$; odcinek 1: I = 400 A, L = 0,5 km, R = 0,103 Ω, X = 0,0535 Ω, cosφ = 0,95, ΔU = 79,37 V (0,5291 %)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -440,19 +440,19 @@
   ],
   "spadek_odcinka": {
     "assumptions": [
-      "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-      "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
-      "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-      "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-      "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
-      "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-      "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe)."
+      "Układ trójfazowy symetryczny; współczynnik linii $\\sqrt{3}$.",
+      "$\\sin\\varphi = \\sqrt{1 - \\cos^2\\varphi}$; znak składowej biernej z charakteru mocy biernej.",
+      "$s_P = +1$ dla odbioru, $-1$ dla generacji (moc czynna).",
+      "$s_Q = +1$ dla poboru mocy biernej (indukcyjny), $-1$ dla oddawania mocy biernej (pojemnościowy).",
+      "$\\Delta U > 0$ — spadek napięcia; $\\Delta U < 0$ — WZROST (typowy przy generacji).",
+      "$R = r' \\cdot L$, $X = x' \\cdot L$ (impedancja odcinka z wartości jednostkowych).",
+      "$\\Delta U\\% = \\Delta U / U \\cdot 100$ ($U$ — napięcie międzyfazowe linii)."
     ],
     "delta_u_pct": 0.529108588017,
     "delta_u_reactive_v": 11.5738195942,
     "delta_u_resistive_v": 67.7924686082,
     "delta_u_v": 79.3662882025,
-    "formula_ref": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)",
+    "formula_ref": "$\\Delta U = \\sqrt{3} \\cdot I \\cdot (s_P \\cdot R \\cos\\varphi + s_Q \\cdot X \\sin\\varphi)$",
     "prad_obliczeniowy_a": 400.0,
     "prad_z_obciazalnosci": false,
     "r_total_ohm": 0.103,

@@ -1342,10 +1342,10 @@
   },
   "tozsamosc": {
     "odcisk_migawki": "b736370af9a6d50bac27843e408968fefa049d0270c209d1093e4a2f03aa6209",
-    "odcisk_punktu_pracy": "3640bd7f490cd4ea038d1a2e978b0b531fdef53c2078c4e288484aa4d5ab8e8a",
+    "odcisk_punktu_pracy": "d51a578a2b194abe014ec7d2c0a1d189a61ec3bcee1cc1211d911ac0470d1a95",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "2e0676fcfb26412d2f386a95755bb88a5e48708b074017ecc737cafdb2937e6d",
+    "odcisk_implementacji": "362464c43bf4d19101367a38446b7ccc9873877afcafd5a7f8cef809202c4407",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -1384,7 +1384,7 @@
     "W chwili każdego zdarzenia wynik niesie dwie próbki: przed naniesieniem zdarzeń tej chwili i po zdarzeniach z jedną ponowną inicjalizacją algebry sieci; częstotliwość szyny w obu jest niedostępna (chwila nieciągłości).",
     "Obszar beznapięciowy (wyspa, w której żadne urządzenie nie wnosi prądu) ma napięcie dokładnie zerowe, a jego odbiory nie pobierają prądu — obwód bez drogi do źródła nie przewodzi; odcięte szyny i odbiory wymienia każde wykonane zdarzenie.",
     "Punkt pracy pochodzi z biegu rozpływu na tej samej migawce efektywnej (zero płaskiego startu).",
-    "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model podaje obliczeniom zwarciowym (Z_Q wg IEC 60909).",
+    "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model podaje obliczeniom zwarciowym (impedancja zasilania wg IEC 60909).",
     "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji zastępczej łącznika — tak samo jak w rozpływie mocy.",
     "Parametry dynamiczne wytwórcy „Blok PV”: profil typowy normy (IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21).",
     "Model dynamiczny odbioru „Odbiór” (napięcie przejścia do stałej impedancji, pomiar częstotliwości): profil typowy normy (IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego))."
@@ -3495,7 +3495,7 @@
       "W chwili każdego zdarzenia wynik niesie dwie próbki: przed naniesieniem zdarzeń tej chwili i po zdarzeniach z jedną ponowną inicjalizacją algebry sieci; częstotliwość szyny w obu jest niedostępna (chwila nieciągłości).",
       "Obszar beznapięciowy (wyspa, w której żadne urządzenie nie wnosi prądu) ma napięcie dokładnie zerowe, a jego odbiory nie pobierają prądu — obwód bez drogi do źródła nie przewodzi; odcięte szyny i odbiory wymienia każde wykonane zdarzenie.",
       "Punkt pracy pochodzi z biegu rozpływu na tej samej migawce efektywnej (zero płaskiego startu).",
-      "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model podaje obliczeniom zwarciowym (Z_Q wg IEC 60909).",
+      "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model podaje obliczeniom zwarciowym (impedancja zasilania wg IEC 60909).",
       "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji zastępczej łącznika — tak samo jak w rozpływie mocy.",
       "Parametry dynamiczne wytwórcy „Blok PV”: profil typowy normy (IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21).",
       "Model dynamiczny odbioru „Odbiór” (napięcie przejścia do stałej impedancji, pomiar częstotliwości): profil typowy normy (IEEE Std 2781-2022 (modelowanie obciążeń w symulacjach systemu elektroenergetycznego))."
@@ -3777,7 +3777,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "ee5ef9a7b547f573e284341386519f66a3be212f31051f8b5dfc320fecdb8798",
-      "result_hash": "5ad72ffa5127ebabcf04c500e961bd6eea388a1ef020e5d37dd8b6a2af3114da",
+      "result_hash": "be8d79521e99df4e39f32be5f3b70078a3db863db45ce858d9d1ac0ab1c0178c",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -3788,7 +3788,7 @@
       "catalog_materialization_status": "materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+      "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

@@ -16,7 +16,7 @@
     "pn_mw": 2.0,
     "q_wymagane_min_mvar": -0.66,
     "q_wymagane_max_mvar": 0.66,
-    "opis": "Prostokątne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+    "opis": "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
   },
   "punkty": [
     {
@@ -98,7 +98,7 @@
         "wartosc": -0.26,
         "jednostka": "Mvar"
       },
-      "punkt_krytyczny_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "punkt_krytyczny_pl": "P = 2 MW, strona dolna (minimalna moc bierna): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
       "chwila_s": null,
       "metoda": "DEKLARACJA"
     },
@@ -127,7 +127,7 @@
         "jednostka": "Mvar"
       },
       "definicja_latex": "\\Delta x = x - x_{\\lim}",
-      "punkt_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "punkt_pl": "P = 2 MW, strona dolna (minimalna moc bierna): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
       "skala": null,
       "skala_rodzaj": null,
       "wzgledny": null,

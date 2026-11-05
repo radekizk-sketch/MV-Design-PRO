@@ -29,10 +29,10 @@
           "info_pl": null,
           "white_box": [
             {
-              "symbol": "P_st,i",
+              "symbol": "Pst,i",
               "formula_latex": "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-              "substitution_pl": "P_st_i = 0.3 · 0.215 / 37.996 MVA",
-              "result_pl": "P_st_i = 0.001698"
+              "substitution_pl": "Pst,i = 0,3 · 0,215 / 37,996 MVA",
+              "result_pl": "Pst,i = 0,001698"
             }
           ],
           "gen_name": "Farma PV"
@@ -53,22 +53,22 @@
       ],
       "white_box": [
         {
-          "symbol": "P_st",
+          "symbol": "Pst",
           "formula_latex": "P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3",
-          "substitution_pl": "P_st = (0.001698^3)^(1/3)",
-          "result_pl": "P_st = 0.001698"
+          "substitution_pl": "Pst = pierwiastek stopnia 3 z sumy 0,001698³",
+          "result_pl": "Pst = 0,001698"
         },
         {
-          "symbol": "P_lt",
+          "symbol": "Plt",
           "formula_latex": "P_{lt} = P_{st}",
-          "substitution_pl": "P_lt = P_st = 0.001698 (emisja ciągła, założenie konserwatywne)",
-          "result_pl": "P_lt = 0.001698"
+          "substitution_pl": "Plt = Pst = 0,001698 (emisja ciągła, założenie konserwatywne)",
+          "result_pl": "Plt = 0,001698"
         },
         {
           "symbol": "d",
           "formula_latex": "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-          "substitution_pl": "d = 1 · 0.215 / 37.996 · 100 %",
-          "result_pl": "d = 0.565849 %"
+          "substitution_pl": "d = 1 · 0,215 / 37,996 · 100 %",
+          "result_pl": "d = 0,565849 %"
         }
       ],
       "bus_name": "Pole PV nN"

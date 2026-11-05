@@ -29,11 +29,11 @@
       "why_pl": "Obciążenie 724,92 % przekracza limit 100,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "tekst": "Wzór: obciążenie = max(|$I_{od}$| / $I_{r,od}$; |$I_{do}$| / $I_{r,do}$) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0,1758 kA, |I_do| = 6,5919 kA (wynik rozpływu), I_r,od = 0,0242 kA, I_r,do = 0,9093 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
+          "tekst": "Dane: |$I_{od}$| = 0,1758 kA, |$I_{do}$| = 6,5919 kA (wynik rozpływu), $I_{r,od}$ = 0,0242 kA, $I_{r,do}$ = 0,9093 kA ($S_n$ i $U_n$ strony transformatora); decyduje zacisk początkowy",
           "latex": null
         },
         {
@@ -63,11 +63,11 @@
       "why_pl": "Obciążenie 160,00 % przekracza limit 100,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "tekst": "Wzór: obciążenie = max(|$I_{od}$| / $I_{r,od}$; |$I_{do}$| / $I_{r,do}$) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0,3360 kA, |I_do| = 0,3360 kA (wynik rozpływu), I_r,od = 0,2100 kA, I_r,do = 0,2100 kA (obciążalność gałęzi); decyduje zacisk końcowy",
+          "tekst": "Dane: |$I_{od}$| = 0,3360 kA, |$I_{do}$| = 0,3360 kA (wynik rozpływu), $I_{r,od}$ = 0,2100 kA, $I_{r,do}$ = 0,2100 kA (obciążalność gałęzi); decyduje zacisk końcowy",
           "latex": null
         },
         {
@@ -97,11 +97,11 @@
       "why_pl": "Odchylenie napięcia 25,17 % przekracza limit 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "tekst": "Wzór: odchylenie = |U − $U_n$| / $U_n$ · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 0,2993 kV (wynik rozpływu), U_n = 0,4000 kV",
+          "tekst": "Dane: U = 0,2993 kV (wynik rozpływu), $U_n$ = 0,4000 kV",
           "latex": null
         },
         {
@@ -131,11 +131,11 @@
       "why_pl": "cosφ = 0,873 — bilans mocy biernej na granicy akceptowalności.",
       "white_box": [
         {
-          "tekst": "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
+          "tekst": "Wzór: tgφ = |$Q_{bil} / P_{bil}$|; cosφ = cos(arctg(tgφ))",
           "latex": "\\cos\\varphi = \\cos\\!\\left(\\arctan\\left|\\frac{Q_{\\text{slack}}}{P_{\\text{slack}}}\\right|\\right)"
         },
         {
-          "tekst": "Dane: Q_bil = 0,064088 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
+          "tekst": "Dane: $Q_{bil}$ = 0,064088 j.w., $P_{bil}$ = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
           "latex": null
         },
         {
@@ -165,11 +165,11 @@
       "why_pl": "Odchylenie napięcia 7,99 % zbliża się do limitu 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "tekst": "Wzór: odchylenie = |U − $U_n$| / $U_n$ · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 13,8018 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "tekst": "Dane: U = 13,8018 kV (wynik rozpływu), $U_n$ = 15,0000 kV",
           "latex": null
         },
         {
@@ -199,11 +199,11 @@
       "why_pl": "Straty sieciowe 6,06 % zbliża się do limitu 10,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: straty = |P_strat / P_bil| · 100 %",
+          "tekst": "Wzór: straty = |$P_{strat} / P_{bil}$| · 100 %",
           "latex": "\\Delta P\\% = \\left|\\frac{P_{\\text{strat}}}{P_{\\text{slack}}}\\right| \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: P_strat = 0,006961 j.w., P_bil = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
+          "tekst": "Dane: $P_{strat}$ = 0,006961 j.w., $P_{bil}$ = 0,114962 j.w. (wynik rozpływu, węzeł bilansujący)",
           "latex": null
         },
         {
@@ -233,11 +233,11 @@
       "why_pl": "Odchylenie napięcia 3,15 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "tekst": "Wzór: odchylenie = |U − $U_n$| / $U_n$ · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 14,5282 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "tekst": "Dane: U = 14,5282 kV (wynik rozpływu), $U_n$ = 15,0000 kV",
           "latex": null
         },
         {
@@ -267,11 +267,11 @@
       "why_pl": "Odchylenie napięcia 3,14 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "tekst": "Wzór: odchylenie = |U − $U_n$| / $U_n$ · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 14,5283 kV (wynik rozpływu), U_n = 15,0000 kV",
+          "tekst": "Dane: U = 14,5283 kV (wynik rozpływu), $U_n$ = 15,0000 kV",
           "latex": null
         },
         {
@@ -301,11 +301,11 @@
       "why_pl": "Odchylenie napięcia 0,00 % poniżej limitu 5,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: odchylenie = |U − U_n| / U_n · 100 %",
+          "tekst": "Wzór: odchylenie = |U − $U_n$| / $U_n$ · 100 %",
           "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: U = 110,0000 kV (wynik rozpływu), U_n = 110,0000 kV",
+          "tekst": "Dane: U = 110,0000 kV (wynik rozpływu), $U_n$ = 110,0000 kV",
           "latex": null
         },
         {
@@ -335,11 +335,11 @@
       "why_pl": "Obciążenie 52,65 % poniżej limitu 80,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "tekst": "Wzór: obciążenie = max(|$I_{od}$| / $I_{r,od}$; |$I_{do}$| / $I_{r,do}$) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0,0691 kA, |I_do| = 0,5066 kA (wynik rozpływu), I_r,od = 0,1312 kA, I_r,do = 0,9623 kA (S_n i U_n strony transformatora); decyduje zacisk początkowy",
+          "tekst": "Dane: |$I_{od}$| = 0,0691 kA, |$I_{do}$| = 0,5066 kA (wynik rozpływu), $I_{r,od}$ = 0,1312 kA, $I_{r,do}$ = 0,9623 kA ($S_n$ i $U_n$ strony transformatora); decyduje zacisk początkowy",
           "latex": null
         },
         {
@@ -369,11 +369,11 @@
       "why_pl": "Obciążenie 0,21 % poniżej limitu 80,0 %.",
       "white_box": [
         {
-          "tekst": "Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+          "tekst": "Wzór: obciążenie = max(|$I_{od}$| / $I_{r,od}$; |$I_{do}$| / $I_{r,do}$) · 100 %",
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0,0005 kA, |I_do| = 0,0006 kA (wynik rozpływu), I_r,od = 0,2800 kA, I_r,do = 0,2800 kA (obciążalność gałęzi); decyduje zacisk końcowy",
+          "tekst": "Dane: |$I_{od}$| = 0,0005 kA, |$I_{do}$| = 0,0006 kA (wynik rozpływu), $I_{r,od}$ = 0,2800 kA, $I_{r,do}$ = 0,2800 kA (obciążalność gałęzi); decyduje zacisk końcowy",
           "latex": null
         },
         {

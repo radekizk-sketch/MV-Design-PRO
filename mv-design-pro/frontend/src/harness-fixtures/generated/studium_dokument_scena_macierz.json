@@ -127,7 +127,7 @@
               "wartosc": -0.02795,
               "jednostka": "Mvar"
             },
-            "punkt_krytyczny_pl": "P = 0,215 MW, strona dolna (Q_min): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)",
+            "punkt_krytyczny_pl": "P = 0,215 MW, strona dolna (minimalna moc bierna): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)",
             "chwila_s": null,
             "metoda": "DEKLARACJA"
           },
@@ -156,7 +156,7 @@
               "jednostka": "Mvar"
             },
             "definicja_latex": "\\Delta x = x - x_{\\lim}",
-            "punkt_pl": "P = 0,215 MW, strona dolna (Q_min): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)",
+            "punkt_pl": "P = 0,215 MW, strona dolna (minimalna moc bierna): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)",
             "skala": null,
             "skala_rodzaj": null,
             "wzgledny": null,
@@ -180,7 +180,7 @@
             "semantyka": "ostrzegawcza"
           },
           "wyjasnienie": {
-            "zdanie_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu (Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): najmniejszy zapas pokrycia wymaganego zakresu mocy biernej w punktach krzywej producenta: −0,02795 Mvar wobec wymaganych ≥ 0 Mvar wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines −0,02795 Mvar, punkt: P = 0,215 MW, strona dolna (Q_min): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)).",
+            "zdanie_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu (Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): najmniejszy zapas pokrycia wymaganego zakresu mocy biernej w punktach krzywej producenta: −0,02795 Mvar wobec wymaganych ≥ 0 Mvar wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines −0,02795 Mvar, punkt: P = 0,215 MW, strona dolna (minimalna moc bierna): producent −0,043 Mvar … 0,043 Mvar, wymagane −0,07095 Mvar … 0,07095 Mvar; punkty niepokryte: 1 z 4 (P = 0,215 MW: Q −0,043 Mvar … 0,043 Mvar, deficyt 0,02795 Mvar)).",
             "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
             "czego_brakuje": [
               "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."
@@ -251,7 +251,7 @@
         },
         "podstawa_pl": "dokument: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”; wydanie: 2018; jednostka redakcyjna: nie wskazano; rodzaj: wymogi ogólnego stosowania (WOS); stan źródła: nieustalone; uwagi: wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
       },
-      "odcisk_sekcji_sha256": "d5af25d74a13792ff63b4bbea94cd45a0463b0b06869b2920a5ad455c56671fe"
+      "odcisk_sekcji_sha256": "ab5dc76689bc785f89fc7855eb6c52e41ef1d8ef0a97118f01146c9ea849b2fb"
     }
   ],
   "podsumowanie": [
@@ -273,7 +273,7 @@
     "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy przyłączalnej i napięcia węzła wariantu."
   ],
   "odciski_sekcji_sha256": {
-    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "d5af25d74a13792ff63b4bbea94cd45a0463b0b06869b2920a5ad455c56671fe",
+    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "ab5dc76689bc785f89fc7855eb6c52e41ef1d8ef0a97118f01146c9ea849b2fb",
     "zalozenia": "6872d8f007514cad6440a41f8c16851978c0bd63736785249dc75bab8c4f3ea2",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },

@@ -42,7 +42,7 @@
           "reporting_status_pl": "nieraportowalny",
           "proof_status_pl": "częściowy",
           "reporting_limitations_pl": [
-            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
           ],
           "non_physical_reason": "fault.zero_sequence_outside_iec60909",
           "brak_wyniku_zerowego": {
@@ -50,7 +50,7 @@
             "kod": "fault.zero_sequence_outside_iec60909",
             "status": "NIE_DOTYCZY",
             "wyjasnienie": {
-              "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+              "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
               "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
               "czego_brakuje": [],
               "zastrzezenia": []
@@ -90,7 +90,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "Ic = √3·15 kV·0,000245 S = 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -125,7 +125,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+                "substitution": "U₀ = 8660,25 V; Ub = 15000,00 V; Uc = 15000,00 V",
                 "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8660.254,
@@ -180,7 +180,7 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$"
         }
       ],
       "siec_zerowa": [
@@ -256,7 +256,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -264,7 +264,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "ZT0 = 0.0048 + j0.109895 pu (na moc znamionową 25 MVA); ZT0 = 0.0192 + j0.439581 pu (na moc bazową 100 MVA)",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -304,7 +304,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN, Z = ZT0 + 3·ZN,GN + 3·ZN,DN. Bocznik do ziemi po stronie GN albo DN: Z = ZT0 + 3·ZN tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -418,7 +418,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "d30e792d26e633747fe07ef003eae85eb2b30d8d1eb9ab98921ff815bddaf8b8",
-          "result_hash": "806b896de8840dcbc676ef1a4302cbbde2ebfb423809281082875125679de262",
+          "result_hash": "5ceccfd5f9fa72e33b023643e32ebdee4376562eacba19122c629ff0bc06ac87",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -429,7 +429,7 @@
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -774,7 +774,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "d30e792d26e633747fe07ef003eae85eb2b30d8d1eb9ab98921ff815bddaf8b8",
-          "result_hash": "806b896de8840dcbc676ef1a4302cbbde2ebfb423809281082875125679de262",
+          "result_hash": "5ceccfd5f9fa72e33b023643e32ebdee4376562eacba19122c629ff0bc06ac87",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -785,7 +785,7 @@
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -1243,7 +1243,7 @@
           "reporting_status_pl": "nieraportowalny",
           "proof_status_pl": "częściowy",
           "reporting_limitations_pl": [
-            "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym √(I_w² + (I_C − I_L)²), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+            "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym (pierwiastek z sumy kwadratów składowej czynnej i różnicy prądu pojemnościowego i prądu dławika), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
           ],
           "non_physical_reason": "fault.zero_sequence_outside_iec60909",
           "brak_wyniku_zerowego": {
@@ -1251,7 +1251,7 @@
             "kod": "fault.zero_sequence_outside_iec60909",
             "status": "NIE_DOTYCZY",
             "wyjasnienie": {
-              "zdanie_pl": "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym √(I_w² + (I_C − I_L)²), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+              "zdanie_pl": "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym (pierwiastek z sumy kwadratów składowej czynnej i różnicy prądu pojemnościowego i prądu dławika), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
               "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
               "czego_brakuje": [],
               "zastrzezenia": []
@@ -1292,7 +1292,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "Ic = √3·15 kV·0,000245 S = 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -1318,7 +1318,7 @@
                     }
                   ]
                 },
-                "substitution": "I_N = 0,5516 − j97,7396 A",
+                "substitution": "IN = 0,5516 − j97,7396 A",
                 "substitution_latex": "I_N = 0{,}5516 - j\\,97{,}7396\\ \\mathrm{A}",
                 "result": {
                   "i_w_a": 0.5516,
@@ -1354,7 +1354,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+                "substitution": "U₀ = 8660,25 V; Ub = 15000,00 V; Uc = 15000,00 V",
                 "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8660.254,
@@ -1372,7 +1372,7 @@
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
@@ -1381,19 +1381,19 @@
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:3e3756d9dae1a7395ad7ada37b677b79d319cf42149f10ee01919bf47c2bf0d4",
+          "proof_ref": "proof:short-circuit:e2ac76aed92960bf2377beba84456781a1bff37476b281266cf68755a2903e43",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:3e3756d9dae1a7395ad7ada37b677b79d319cf42149f10ee01919bf47c2bf0d4",
+            "proof_ref": "proof:short-circuit:e2ac76aed92960bf2377beba84456781a1bff37476b281266cf68755a2903e43",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [],
@@ -1428,7 +1428,7 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$"
         }
       ],
       "siec_zerowa": [
@@ -1491,7 +1491,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
@@ -1499,7 +1499,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "dlawik.i_min_a",
@@ -1527,7 +1527,7 @@
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 0 + j86.6025 Ω; Z_N(AWSC załączona) = 0 + j86.6025 Ω; Z0,ZU(spoczynek) = 1.5 + j265.808 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 0 + j86.6025 Ω, przy załączonej automatyce wymuszania składowej czynnej 0 + j86.6025 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 1.5 + j265.808 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -1590,7 +1590,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -1598,7 +1598,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "ZT0 = 0.0048 + j0.109895 pu (na moc znamionową 25 MVA); ZT0 = 0.0192 + j0.439581 pu (na moc bazową 100 MVA)",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -1638,7 +1638,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN, Z = ZT0 + 3·ZN,GN + 3·ZN,DN. Bocznik do ziemi po stronie GN albo DN: Z = ZT0 + 3·ZN tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -1714,7 +1714,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -1723,7 +1723,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -1733,7 +1733,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+        "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -1759,14 +1759,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d"
+          "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
-          "enm_hash": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
-          "enm_snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+          "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
+          "enm_hash": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
+          "enm_snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -1776,19 +1776,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "f0c21527bb2944afda860878820961c327b85376b62ab33b0cb780fe5136c4df",
-          "result_hash": "3e2f1e6ac5a2abae828810645a8288bf6998720c7cbabdf69e8af301608f5e1f",
+          "input_hash": "0f6322b9af08891f0ef5fd54c03191bb86ac7fb5f0bbb391d0ea6d7e52f22e5d",
+          "result_hash": "a3793c22e90a9311609501f049748949e484e30dcdff9ceecb9dfd4764eb12ed",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+          "catalog_snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -1821,8 +1821,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-kompensowany",
-      "snapshot_id": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
-      "input_hash": "f0c21527bb2944afda860878820961c327b85376b62ab33b0cb780fe5136c4df",
+      "snapshot_id": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
+      "input_hash": "0f6322b9af08891f0ef5fd54c03191bb86ac7fb5f0bbb391d0ea6d7e52f22e5d",
       "white_box_trace": [],
       "selection_index": {},
       "catalog_context": [
@@ -2089,7 +2089,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+        "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -2115,14 +2115,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d"
+          "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
-          "enm_hash": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
-          "enm_snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+          "snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
+          "enm_hash": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
+          "enm_snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -2132,19 +2132,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "f0c21527bb2944afda860878820961c327b85376b62ab33b0cb780fe5136c4df",
-          "result_hash": "3e2f1e6ac5a2abae828810645a8288bf6998720c7cbabdf69e8af301608f5e1f",
+          "input_hash": "0f6322b9af08891f0ef5fd54c03191bb86ac7fb5f0bbb391d0ea6d7e52f22e5d",
+          "result_hash": "a3793c22e90a9311609501f049748949e484e30dcdff9ceecb9dfd4764eb12ed",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+          "catalog_snapshot_ref": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -2471,7 +2471,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d",
+          "hash_sha256": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -2696,11 +2696,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -2731,7 +2731,7 @@
           }
         ]
       },
-      "snapshot_id": "0d1f7683478a9670dd5e193e17923bd3d88129f183531325a8b01cb46075903d"
+      "snapshot_id": "4062b3806e2005a2c92e17c89d43675d00e5b228f0c21f58f198331bfd9311ca"
     }
   },
   "rezystor": {
@@ -2779,7 +2779,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -2788,7 +2788,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -2797,7 +2797,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω"
               },
-              "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "$R = U_n / (\\sqrt{3} \\cdot I_n)$ — rezystancja wyznaczona z prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ],
@@ -2873,7 +2873,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "Ic = √3·15 kV·0,000245 S = 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -2899,7 +2899,7 @@
                     }
                   ]
                 },
-                "substitution": "I_N = 197,3113 − j9,0096 A",
+                "substitution": "IN = 197,3113 − j9,0096 A",
                 "substitution_latex": "I_N = 197{,}3113 - j\\,9{,}0096\\ \\mathrm{A}",
                 "result": {
                   "i_w_a": 197.3113,
@@ -2943,7 +2943,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8650,66 V; U_b = 14883,63 V; U_c = 15090,73 V",
+                "substitution": "U₀ = 8650,66 V; Ub = 14883,63 V; Uc = 15090,73 V",
                 "substitution_latex": "U_0 = 8650{,}66\\ \\mathrm{V};\\quad U_b = 14883{,}63\\ \\mathrm{V};\\quad U_c = 15090{,}73\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8650.6583,
@@ -2961,7 +2961,7 @@
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
@@ -2970,7 +2970,7 @@
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
@@ -2979,19 +2979,19 @@
                   "wartosc": 43.3,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "$R = U_n / (\\sqrt{3} \\cdot I_n)$ — rezystancja wyznaczona z prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+            "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -3035,7 +3035,7 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$"
         }
       ],
       "siec_zerowa": [
@@ -3098,7 +3098,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
@@ -3106,7 +3106,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "rezystor.r_ohm",
@@ -3114,7 +3114,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f"
+                "podstawa_pl": "$R = U_n / (\\sqrt{3} \\cdot I_n)$ — rezystancja wyznaczona z prądu znamionowego przy pełnym napięciu fazowym"
               },
               {
                 "nazwa": "rezystor.i_n_a",
@@ -3126,7 +3126,7 @@
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 43.3 + j0 Ω; Z_N(AWSC załączona) = 43.3 + j0 Ω; Z0,ZU(spoczynek) = 131.4 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 43.3 + j0 Ω, przy załączonej automatyce wymuszania składowej czynnej 43.3 + j0 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 131.4 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -3234,7 +3234,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -3242,7 +3242,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "ZT0 = 0.0048 + j0.109895 pu (na moc znamionową 25 MVA); ZT0 = 0.0192 + j0.439581 pu (na moc bazową 100 MVA)",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -3282,7 +3282,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN, Z = ZT0 + 3·ZN,GN + 3·ZN,DN. Bocznik do ziemi po stronie GN albo DN: Z = ZT0 + 3·ZN tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -3358,7 +3358,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -3367,7 +3367,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -3376,7 +3376,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω"
               },
-              "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "$R = U_n / (\\sqrt{3} \\cdot I_n)$ — rezystancja wyznaczona z prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -3405,7 +3405,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+        "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -3431,14 +3431,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983"
+          "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
-          "enm_hash": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
-          "enm_snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+          "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
+          "enm_hash": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
+          "enm_snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -3448,19 +3448,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "6ed3edb65a24199ffb2c7ad24bd6c313289fa72d295656dc846c2447e01b675e",
-          "result_hash": "21d8ee8027432f128bd9d20eb805836f79c32d0c94722e0a63c7d8616821b0d6",
+          "input_hash": "a1a1e0823e0aa6b77ea203b111314a53d7b8764004c1b49f6add35a188e57405",
+          "result_hash": "7751a23779c5f285eb735eb93332acd2f6595a8c80336d1fd776cd29c4142249",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+          "catalog_snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -3493,8 +3493,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-rezystor",
-      "snapshot_id": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
-      "input_hash": "6ed3edb65a24199ffb2c7ad24bd6c313289fa72d295656dc846c2447e01b675e",
+      "snapshot_id": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
+      "input_hash": "a1a1e0823e0aa6b77ea203b111314a53d7b8764004c1b49f6add35a188e57405",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -3528,7 +3528,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3569,13 +3569,13 @@
           "result": {
             "pominieta_susceptancja_suma_s": 0.00024504422698
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia (współczynnik napięciowy c razy napięcie znamionowe przez √3) w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (impedancja przeciwna równa zgodnej) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
           "step": 2,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3633,7 +3633,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3675,7 +3675,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3716,7 +3716,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3756,7 +3756,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3796,7 +3796,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3848,7 +3848,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3889,7 +3889,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3929,7 +3929,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:f288c7e183ab3f4ed392376c690172e51213742bc3351d89ff950ad464e0bf5a",
+          "proof_ref": "proof:short-circuit:55241e76672a5a47505a17a210be62ce8fa7f87737b259f0203ec2eb533dd6e7",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4219,7 +4219,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+        "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -4245,14 +4245,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983"
+          "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
-          "enm_hash": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
-          "enm_snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+          "snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
+          "enm_hash": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
+          "enm_snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -4262,19 +4262,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "6ed3edb65a24199ffb2c7ad24bd6c313289fa72d295656dc846c2447e01b675e",
-          "result_hash": "21d8ee8027432f128bd9d20eb805836f79c32d0c94722e0a63c7d8616821b0d6",
+          "input_hash": "a1a1e0823e0aa6b77ea203b111314a53d7b8764004c1b49f6add35a188e57405",
+          "result_hash": "7751a23779c5f285eb735eb93332acd2f6595a8c80336d1fd776cd29c4142249",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+          "catalog_snapshot_ref": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -4601,7 +4601,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983",
+          "hash_sha256": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -4801,11 +4801,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -4836,7 +4836,7 @@
                 "u_n_kv": 15.0,
                 "wartosci_robocze": {
                   "i_n_a": "założenie robocze: prąd znamionowy rezystora sieci kablowej (§16 s. 29 nie podaje wartości) — do potwierdzenia analizą przepięć i działania zabezpieczeń ziemnozwarciowych",
-                  "r_ohm": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f",
+                  "r_ohm": "$R = U_n / (\\sqrt{3} \\cdot I_n)$ — rezystancja wyznaczona z prądu znamionowego przy pełnym napięciu fazowym",
                   "t_s": "założenie robocze: dopuszczalny czas przepływu prądu znamionowego 10 s — do potwierdzenia kartą producenta"
                 }
               },
@@ -4856,7 +4856,7 @@
           }
         ]
       },
-      "snapshot_id": "3af409828b9e4eee7628f00223012a3441935f562a3a5800ec265d2e94be8983"
+      "snapshot_id": "cbecd0482777d2b6170585fc76f9ae1805a681a452d83d50c4bea43c17a6fab1"
     }
   },
   "bezposrednie": {
@@ -4904,7 +4904,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -4913,7 +4913,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ],
@@ -5000,7 +5000,7 @@
                   "z_f_ohm": null,
                   "ikss_iec_a": 3456.1058
                 },
-                "substitution": "|Z_1 + Z_2 + Z_0 + 3Z_f| = |1,6055 + j8,1117| Ω; I″k1 = 3456,1058 A (rdzeń IEC 60909)",
+                "substitution": "|Z₁ + Z₂ + Z₀ + 3·Zf| = |1,6055 + j8,1117| Ω; I″k1 = 3456,1058 A (rdzeń IEC 60909)",
                 "substitution_latex": "\\left|Z_1 + Z_2 + Z_0 + 3 Z_f\\right| = \\left|1{,}6055 + j\\,8{,}1117\\right|\\ \\Omega;\\quad I''_{k1} = 3456{,}1058\\ \\mathrm{A}",
                 "result": {
                   "prad_a": 3456.1058,
@@ -5027,7 +5027,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 6486,76 V; U_b = 11984,96 V; U_c = 12578,23 V",
+                "substitution": "U₀ = 6486,76 V; Ub = 11984,96 V; Uc = 12578,23 V",
                 "substitution_latex": "U_0 = 6486{,}76\\ \\mathrm{V};\\quad U_b = 11984{,}96\\ \\mathrm{V};\\quad U_c = 12578{,}23\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 6486.7593,
@@ -5045,7 +5045,7 @@
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
@@ -5054,19 +5054,19 @@
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+            "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -5110,7 +5110,7 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$"
         }
       ],
       "siec_zerowa": [
@@ -5173,7 +5173,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
@@ -5181,11 +5181,11 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 0 + j0 Ω; Z_N(AWSC załączona) = 0 + j0 Ω; Z0,ZU(spoczynek) = 1.5 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 0 + j0 Ω, przy załączonej automatyce wymuszania składowej czynnej 0 + j0 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 1.5 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -5293,7 +5293,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -5301,7 +5301,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "ZT0 = 0.0048 + j0.109895 pu (na moc znamionową 25 MVA); ZT0 = 0.0192 + j0.439581 pu (na moc bazową 100 MVA)",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -5341,7 +5341,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN, Z = ZT0 + 3·ZN,GN + 3·ZN,DN. Bocznik do ziemi po stronie GN albo DN: Z = ZT0 + 3·ZN tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -5417,7 +5417,7 @@
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -5426,7 +5426,7 @@
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -5455,7 +5455,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+        "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -5481,14 +5481,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce"
+          "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
-          "enm_hash": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
-          "enm_snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+          "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
+          "enm_hash": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
+          "enm_snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -5498,19 +5498,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "1576485fa109dc418d51c39c621da9ae3da94994a59ea1e7f75f6ac0eef48bdc",
-          "result_hash": "066a9b3dfb62d05800704b76efc0b11db58741ddcc2e76953d48326b9bac5ced",
+          "input_hash": "ab48b179002480c0abc556d8062f9da08cf48451f880dc333edc53f29eeb3dbf",
+          "result_hash": "f1d8d7061fc9fe7780e25b8e5cbe3a00494aaa30713aadc194c556eaccf0acd3",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+          "catalog_snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -5543,8 +5543,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-bezposrednie",
-      "snapshot_id": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
-      "input_hash": "1576485fa109dc418d51c39c621da9ae3da94994a59ea1e7f75f6ac0eef48bdc",
+      "snapshot_id": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
+      "input_hash": "ab48b179002480c0abc556d8062f9da08cf48451f880dc333edc53f29eeb3dbf",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -5578,7 +5578,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5619,13 +5619,13 @@
           "result": {
             "pominieta_susceptancja_suma_s": 0.00024504422698
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia (współczynnik napięciowy c razy napięcie znamionowe przez √3) w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (impedancja przeciwna równa zgodnej) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
           "step": 2,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5683,7 +5683,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5725,7 +5725,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5766,7 +5766,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5806,7 +5806,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5846,7 +5846,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5898,7 +5898,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5939,7 +5939,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5979,7 +5979,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:b2bc986bbab2ce340c3a9f6bd564c4849c7e309ba9353ce2ca5a98bcbdf14d56",
+          "proof_ref": "proof:short-circuit:e00477a3e620c115bd14e657309af564753e8f213bfc8f6a276b590977f124c9",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6269,7 +6269,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+        "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -6295,14 +6295,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce"
+          "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
-          "enm_hash": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
-          "enm_snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+          "snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
+          "enm_hash": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
+          "enm_snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -6312,19 +6312,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "1576485fa109dc418d51c39c621da9ae3da94994a59ea1e7f75f6ac0eef48bdc",
-          "result_hash": "066a9b3dfb62d05800704b76efc0b11db58741ddcc2e76953d48326b9bac5ced",
+          "input_hash": "ab48b179002480c0abc556d8062f9da08cf48451f880dc333edc53f29eeb3dbf",
+          "result_hash": "f1d8d7061fc9fe7780e25b8e5cbe3a00494aaa30713aadc194c556eaccf0acd3",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+          "catalog_snapshot_ref": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
           "catalog_materialization_ref": "catalog-materialization:2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_hash": "2389046798c78934e6a429c1272be56d310d9c156e35811959f5aa6e758a0322",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+          "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -6651,7 +6651,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce",
+          "hash_sha256": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -6851,11 +6851,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -6886,7 +6886,7 @@
           }
         ]
       },
-      "snapshot_id": "84842031c6a57887c16aea6a71f75cd8b1d44f9ac3507761c6c9ab751ebf1dce"
+      "snapshot_id": "a402c64321148f554b66adba6a622638cf927626c82894a232b12e73af57175e"
     }
   }
 }

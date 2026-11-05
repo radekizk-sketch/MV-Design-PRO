@@ -32,7 +32,7 @@
       "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
       "catalog_status": "REFERENCYJNY_V1",
       "contract_version": "2.0",
-      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
+      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów do 150 A, 20 kA/1 s dla 200–1000 A, 25 kA/1 s od 1200 A); prąd dynamiczny wyprowadzany normowo (2,5 prądu cieplnego), współczynnik bezpieczeństwa przyrządu wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
     },
     "wynik": {
       "kryteria": [
@@ -52,8 +52,8 @@
           "nazwa_pl": "Wykorzystanie przekładni",
           "podstawa_pl": "Przy bardzo niskim wykorzystaniu zakresu rośnie błąd względny pomiaru (praktyka projektowa, nie wymaganie normy).",
           "werdykt": "informacja",
-          "wymagane": "≥ 20% prądu pierwotnego",
-          "dostepne": "19%",
+          "wymagane": "≥ 20 % prądu pierwotnego",
+          "dostepne": "19 %",
           "komentarz_pl": "Rozważ przekładnik o niższym prądzie pierwotnym.",
           "kody_gotowosci": [],
           "slad": []
@@ -74,7 +74,7 @@
           "nazwa_pl": "ALF katalogowy wobec prądu zwarciowego",
           "podstawa_pl": "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
           "werdykt": "informacja",
-          "wymagane": "ALF ≥ 45.2 (Ik″ 9.04 kA / In 200 A)",
+          "wymagane": "ALF ≥ 45,2 (Ik″ 9,04 kA / In 200 A)",
           "dostepne": "ALF 10",
           "komentarz_pl": "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego (S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, nie ten warunek konieczny.",
           "kody_gotowosci": [],
@@ -83,9 +83,9 @@
         {
           "kod": "ct.alf",
           "nazwa_pl": "Nasycenie rdzenia (bilans mocy wtórnej)",
-          "podstawa_pl": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+          "podstawa_pl": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
           "werdykt": "brak_danych",
-          "wymagane": "ALF_eff ≥ 45.2",
+          "wymagane": "$ALF_{eff} \\ge 45{,}2$",
           "dostepne": null,
           "komentarz_pl": "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej",
           "kody_gotowosci": [

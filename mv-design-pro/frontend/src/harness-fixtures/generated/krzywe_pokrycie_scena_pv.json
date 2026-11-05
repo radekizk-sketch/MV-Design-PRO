@@ -16,7 +16,7 @@
     "pn_mw": 3.15,
     "q_wymagane_min_mvar": -1.0395,
     "q_wymagane_max_mvar": 1.0395,
-    "opis": "Prostokątne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+    "opis": "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
   },
   "punkty": [
     {
@@ -98,7 +98,7 @@
         "wartosc": -0.4095,
         "jednostka": "Mvar"
       },
-      "punkt_krytyczny_pl": "P = 3,15 MW, strona dolna (Q_min): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)",
+      "punkt_krytyczny_pl": "P = 3,15 MW, strona dolna (minimalna moc bierna): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)",
       "chwila_s": null,
       "metoda": "DEKLARACJA"
     },
@@ -127,7 +127,7 @@
         "jednostka": "Mvar"
       },
       "definicja_latex": "\\Delta x = x - x_{\\lim}",
-      "punkt_pl": "P = 3,15 MW, strona dolna (Q_min): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)",
+      "punkt_pl": "P = 3,15 MW, strona dolna (minimalna moc bierna): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)",
       "skala": null,
       "skala_rodzaj": null,
       "wzgledny": null,
@@ -151,7 +151,7 @@
       "semantyka": "ostrzegawcza"
     },
     "wyjasnienie": {
-      "zdanie_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu (Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): najmniejszy zapas pokrycia wymaganego zakresu mocy biernej w punktach krzywej producenta: −0,4095 Mvar wobec wymaganych ≥ 0 Mvar wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines −0,4095 Mvar, punkt: P = 3,15 MW, strona dolna (Q_min): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)).",
+      "zdanie_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu (Karta falownika central PV Sungrow SG3150U-MV 3.15 MW / 0.69 kV) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): najmniejszy zapas pokrycia wymaganego zakresu mocy biernej w punktach krzywej producenta: −0,4095 Mvar wobec wymaganych ≥ 0 Mvar wg „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (margines −0,4095 Mvar, punkt: P = 3,15 MW, strona dolna (minimalna moc bierna): producent −0,63 Mvar … 0,63 Mvar, wymagane −1,04 Mvar … 1,04 Mvar; punkty niepokryte: 1 z 4 (P = 3,15 MW: Q −0,63 Mvar … 0,63 Mvar, deficyt 0,4095 Mvar)).",
       "przyczyna_pl": "podstawa limitu „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”",
       "czego_brakuje": [
         "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony)."

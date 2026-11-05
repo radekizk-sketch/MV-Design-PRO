@@ -1532,7 +1532,7 @@
         "re": 0.0985086818308,
         "im": 0.985086818308
       },
-      "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+      "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$"
     }
   ],
   "zalozenia": [
@@ -1780,7 +1780,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "3a5578325d742c35a77bd09a24edf02d1eae4c461f9fae6df625119bb459668b",
-      "result_hash": "4cef5c06996172cfe6a3c19b30c6bfff2292df44053fcf52e852a07155422207",
+      "result_hash": "8040adb75f33e69962cea53f4d9c3b9d0f6b413eaf20ba4aa82e22f0e644b34c",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -1791,7 +1791,7 @@
       "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+      "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

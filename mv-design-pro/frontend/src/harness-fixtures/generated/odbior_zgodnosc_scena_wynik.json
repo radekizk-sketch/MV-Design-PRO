@@ -42,7 +42,7 @@
       "odchylka_bezwzgledna": 1.1,
       "odchylka_pct": 1.0,
       "slad_pl": [
-        "Model U = u · U_n (napięcie względne · znamionowe) = 1.000000 × 110.000000 = 110.000000 kV",
+        "Model: napięcie względne razy napięcie znamionowe = 1.000000 × 110.000000 = 110.000000 kV",
         "Pomiar U = 111.100000 kV",
         "Odchyłka = pomiar − model = 1.100000 kV (1.000000%)",
         "Tolerancja = ±5.000000%",

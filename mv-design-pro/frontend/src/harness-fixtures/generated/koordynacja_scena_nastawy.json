@@ -69,13 +69,13 @@
           "substitution": "0.0 + 0.3"
         },
         {
-          "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
+          "formula": "k_{cz} = I_{k2,\\min,\\mathrm{end}} / I_{>}",
           "inputs": {
             "I_k2_min_end_A": 6744.23205606,
             "I_setting_A": 27.6
           },
           "passed": true,
-          "requirement": "k_cz >= 1.5",
+          "requirement": "k_{cz} \\geq 1{,}5",
           "result": {
             "sensitivity_ratio": 244.19
           },
@@ -141,7 +141,8 @@
             "I_th_dop_A": 50445.7
           },
           "step": "Warunek wytrzymałości cieplnej I>>",
-          "substitution": "(120.0 * 94.0) / (1.1 * sqrt(0.05))"
+          "substitution": "(120 · 94) / (1,1 · √0,05)",
+          "substitution_latex": "(120 \\cdot 94) / (1{,}1 \\cdot \\sqrt{0{,}05})"
         },
         {
           "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
@@ -170,7 +171,7 @@
         }
       ],
       "validation_notes": [
-        "Brak dopuszczalnego zakresu nastaw I>>: I_min_sel = 10261 A > min(I_max_th, I_max_cz) = 6642 A"
+        "Brak dopuszczalnego zakresu nastaw I>>: minimalna nastawa z warunku selektywności 10261 A > mniejsza z granic cieplnej i czułościowej 6642 A"
       ]
     },
     "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L",
@@ -182,8 +183,8 @@
       "limiting_criterion_max": "sensitivity",
       "limiting_criterion_min": "selectivity",
       "recommendations_pl": [
-        "Okno nastaw jest sprzeczne (I_min = 10.26 kA > I_max = 6.64 kA).",
-        "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (next_bus_id)."
+        "Okno nastaw jest sprzeczne (dolna granica 10.26 kA > górna granica 6.64 kA).",
+        "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (next_bus_id)."
       ],
       "trace": [
         {
@@ -224,7 +225,7 @@
       "total_fault_time_s": 0.6,
       "trace": [
         {
-          "formula": "t_{total} = t_{trip} + t_{SPZ,pause} + t_{trip}",
+          "formula": "t_{\\mathrm{total}} = t_{\\mathrm{trip}} + t_{\\mathrm{SPZ,pause}} + t_{\\mathrm{trip}}",
           "inputs": {
             "i_instantaneous_setting_a": 10261.4,
             "t_spz_pause_s": 0.5,
@@ -275,7 +276,8 @@
             "I_th_dop_A": 18544.2
           },
           "step": "Obliczenie dopuszczalnego prądu cieplnego",
-          "substitution": "120.0 * 94.0 / sqrt(0.370)"
+          "substitution": "120 · 94 / √0,37",
+          "substitution_latex": "120 \\cdot 94 / \\sqrt{0{,}37}"
         },
         {
           "formula": "I_{k,max} \\leq I_{th,dop}",

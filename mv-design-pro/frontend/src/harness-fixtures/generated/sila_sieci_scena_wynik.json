@@ -55,7 +55,7 @@
       {
         "symbol": "WSCR",
         "formula_latex": "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
-        "substitution_pl": "licznik Σ(S_sc·S_n) = 8.1691 MVA²; (Σ S_n)² = 0.0462 MVA²",
+        "substitution_pl": "licznik Σ(Ssc·Sn) = 8.1691 MVA²; (Σ Sn)² = 0.0462 MVA²",
         "result_pl": "WSCR = 176.7254 (–), n = 1"
       }
     ]

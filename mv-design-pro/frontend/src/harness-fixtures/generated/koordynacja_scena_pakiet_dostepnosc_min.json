@@ -1,6 +1,6 @@
 {
   "dostepny": false,
   "linie": [],
-  "powod_pl": "Ten przebieg nie jest biegiem scenariusza MAKSYMALNEGO — pakiet nastaw wymaga kotwicy z gałęzi maksymalnej (c_max per węzeł, IEC 60909-0 tabela 1); gałąź minimalną serwer dolicza sam scenariuszem MIN. Uruchom zwarcie trójfazowe scenariusza MAX.",
+  "powod_pl": "Ten przebieg nie jest biegiem scenariusza MAKSYMALNEGO — pakiet nastaw wymaga kotwicy z gałęzi maksymalnej ($c_{max}$ per węzeł, IEC 60909-0 tabela 1); gałąź minimalną serwer dolicza sam scenariuszem MIN. Uruchom zwarcie trójfazowe scenariusza MAX.",
   "run_id": "run-sc-scena-koordynacja-min"
 }

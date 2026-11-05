@@ -1532,16 +1532,16 @@
         "re": 0.0985086818308,
         "im": 0.985086818308
       },
-      "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+      "formula": "$Z_Q = c \\cdot U_{nQ}^2 / S''_{kQ}$ (IEC 60909-0:2016 §6.2.1 wzór 6; $c = c_{\\max}$); $X_Q = Z_Q / \\sqrt{1 + (R/X)^2}$; $R_Q = X_Q \\cdot (R/X)$",
       "zalozenie": "source.sk_min_missing",
-      "zalozenie_opis": "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax)."
+      "zalozenie_opis": "Brak minimalnej mocy (prądu) zwarciowej sieci zasilającej: impedancja sieci z danych maksymalnych, współczynnik napięciowy minimalny tylko w źródle napięciowym — prąd minimalny to prąd maksymalny przeskalowany ilorazem współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń (impedancja minimalna sieci nie mniejsza od maksymalnej)."
     }
   ],
   "zalozenia": [
     {
       "code": "source.sk_min_missing",
       "element_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/source/main",
-      "message_pl": "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).",
+      "message_pl": "Brak minimalnej mocy (prądu) zwarciowej sieci zasilającej: impedancja sieci z danych maksymalnych, współczynnik napięciowy minimalny tylko w źródle napięciowym — prąd minimalny to prąd maksymalny przeskalowany ilorazem współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń (impedancja minimalna sieci nie mniejsza od maksymalnej).",
       "scenariusz": "MIN"
     },
     {
@@ -1788,7 +1788,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "81338f1cf8fe17b289e121c7e9ee212cf0a15e05e38afa48315849b45ee4e7bd",
-      "result_hash": "24e32440fc9f742ff5e71984bbd914fbb7cbe2418ae8fda7cc846209f80dc233",
+      "result_hash": "fe9b02ad2729b5bdbcad69e264c109730ea955cb6a915d7fc2916d6947ceaf00",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -1799,7 +1799,7 @@
       "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33",
+      "catalog_fingerprint": "b909ca188a45d166ce8e52f2a61b4cb695393b21f467ed2710d215f3c119faba",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

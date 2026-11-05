@@ -16,7 +16,7 @@
     "pn_mw": 0.5,
     "q_wymagane_min_mvar": -0.165,
     "q_wymagane_max_mvar": 0.165,
-    "opis": "Prostokątne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+    "opis": "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
   },
   "punkty": [],
   "ocena": {

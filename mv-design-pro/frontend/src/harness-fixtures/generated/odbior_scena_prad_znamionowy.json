@@ -1,10 +1,10 @@
 {
   "apparent_power_kva": 53.7634408602,
   "assumptions": [
-    "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-    "S_n = P / cosφ (moc pozorna z mocy czynnej).",
-    "I = S_n / (√3 · U_linii) (U_linii miedzyfazowe)."
+    "Układ trójfazowy symetryczny; współczynnik linii $\\sqrt{3}$.",
+    "$S_n = P / \\cos\\varphi$ (moc pozorna z mocy czynnej).",
+    "$I = S_n / (\\sqrt{3} \\cdot U)$ ($U$ — napięcie międzyfazowe linii)."
   ],
-  "formula_ref": "I = S_n / (√3·U);  S_n = P / cosφ",
+  "formula_ref": "$I = S_n / (\\sqrt{3} \\cdot U)$; $S_n = P / \\cos\\varphi$",
   "rated_current_a": 77.600842633
 }

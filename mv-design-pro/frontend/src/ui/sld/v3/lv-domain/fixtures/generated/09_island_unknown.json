@@ -1430,7 +1430,7 @@
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "3ab3b50c6765bf597315d1b393a87f649e459043232afcbe7dcc2bd935526a61",
+  "projection_hash": "be09191128489fafed24b0212301db75ad95beada08d56954c67c37eb9084c62",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1522,7 +1522,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.124025813,
                         "r_total_ohm": 0.122687387,
@@ -1537,7 +1537,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 1955.13423,
                       "ik_min_a": 1768.93097,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.124025813
@@ -1618,7 +1618,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0105206308,
                         "r_total_ohm": 0.00268738725,
@@ -1633,7 +1633,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23048.7238,
                       "ik_min_a": 20853.6073,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105206308
@@ -1718,7 +1718,7 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                     "result": {
                       "magnitude_ohm": 0.190754888,
                       "r_total_ohm": 0.189887387,
@@ -1733,7 +1733,7 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 1271.19738,
                     "ik_min_a": 1150.13096,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.190754888
@@ -1754,15 +1754,15 @@
                 "ia_wymagane_a": 250.0,
                 "ik1_min_a": 1150.13096,
                 "margines": 4.60052384,
-                "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=1150.1 A ≥ Ia=250.0 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "pasmo_u0": "powyżej 120 V do 230 V",
+                "przyczyna_pl": "Prąd zwarcia jednofazowego minimalny 1150 A ≥ prąd zadziałania wymagany 250 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (< 0,1 s) — krótszy od czasu wymaganego 0,4 s z Tab. 41.1 (odbiorczy, pasmo napięcia fazowego powyżej 120 V do 230 V), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
-                    "pasmo_u0": "120<U0<=230",
+                    "pasmo_u0": "powyżej 120 V do 230 V",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma U0). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
                     "step": "tabela_czasow_41_1",
@@ -1773,14 +1773,14 @@
                     "ia_a": 250.0,
                     "in_a": 25.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zadziałania wymagany: górna granica pasma wyzwalania magnetycznego razy prąd znamionowy (IEC 60898-1)",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 250.0,
                     "ik1_min_a": 1150.13096,
                     "margines": 4.60052384,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "prąd zwarcia ≥ prąd zadziałania wymagany ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, < 0,1 s, krócej niż czas wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -1856,7 +1856,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.266374066,
                         "r_total_ohm": 0.264567387,
@@ -1871,7 +1871,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 910.325532,
                       "ik_min_a": 823.627862,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.266374066
@@ -1952,7 +1952,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0770704565,
                         "r_total_ohm": 0.0735673873,
@@ -1967,7 +1967,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 3146.30436,
                       "ik_min_a": 2846.65632,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0770704565
@@ -2048,7 +2048,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0105206308,
                         "r_total_ohm": 0.00268738725,
@@ -2063,7 +2063,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23048.7238,
                       "ik_min_a": 20853.6073,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105206308
@@ -2144,7 +2144,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0770704565,
                         "r_total_ohm": 0.0735673873,
@@ -2159,7 +2159,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 3146.30436,
                       "ik_min_a": 2846.65632,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0770704565
@@ -2244,7 +2244,7 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                     "result": {
                       "magnitude_ohm": 0.412384872,
                       "r_total_ohm": 0.411220187,
@@ -2259,7 +2259,7 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 588.011659,
                     "ik_min_a": 532.010549,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.412384872
@@ -2280,15 +2280,15 @@
                 "ia_wymagane_a": 1250.0,
                 "ik1_min_a": 532.010549,
                 "margines": 0.425608439,
-                "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=532.0 A < Ia=1250.0 A (MCB C 125 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230).",
+                "pasmo_u0": "powyżej 120 V do 230 V",
+                "przyczyna_pl": "Prąd zwarcia jednofazowego minimalny 532 A < prąd zadziałania wymagany 1250 A (MCB C 125 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie wymaganym 5 s z Tab. 41.1 (rozdzielczy, pasmo napięcia fazowego powyżej 120 V do 230 V).",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "nie spełnia",
                 "t_wymagany_s": 5.0,
                 "white_box_trace": [
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
-                    "pasmo_u0": "120<U0<=230",
+                    "pasmo_u0": "powyżej 120 V do 230 V",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
@@ -2299,14 +2299,14 @@
                     "ia_a": 1250.0,
                     "in_a": 125.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zadziałania wymagany: górna granica pasma wyzwalania magnetycznego razy prąd znamionowy (IEC 60898-1)",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 1250.0,
                     "ik1_min_a": 532.010549,
                     "margines": 0.425608439,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "prąd zwarcia ≥ prąd zadziałania wymagany ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, < 0,1 s, krócej niż czas wymagany z Tab. 41.1)",
                     "result": "nie spełnia",
                     "step": "werdykt"
                   }
@@ -2382,7 +2382,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0564543807,
                         "r_total_ohm": 0.0539673873,
@@ -2397,7 +2397,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4295.27541,
                       "ik_min_a": 3886.20156,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0564543807
@@ -2478,7 +2478,7 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                       "result": {
                         "magnitude_ohm": 0.0105206308,
                         "r_total_ohm": 0.00268738725,
@@ -2493,7 +2493,7 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23048.7238,
                       "ik_min_a": 20853.6073,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105206308
@@ -2578,7 +2578,7 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "$Z_{\\mathrm{loop}} = \\sum_i (R_i + j X_i)$",
                     "result": {
                       "magnitude_ohm": 0.0843284829,
                       "r_total_ohm": 0.0826841873,
@@ -2593,7 +2593,7 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2875.50665,
                     "ik_min_a": 2601.64887,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "$I_k = c \\cdot U_n / |Z_{\\mathrm{loop}}|$",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.0843284829
@@ -2614,15 +2614,15 @@
                 "ia_wymagane_a": 1000.0,
                 "ik1_min_a": 2601.64887,
                 "margines": 2.60164887,
-                "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.6 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "pasmo_u0": "powyżej 120 V do 230 V",
+                "przyczyna_pl": "Prąd zwarcia jednofazowego minimalny 2602 A ≥ prąd zadziałania wymagany 1000 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (< 0,1 s) — krótszy od czasu wymaganego 5 s z Tab. 41.1 (rozdzielczy, pasmo napięcia fazowego powyżej 120 V do 230 V), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
                 "t_wymagany_s": 5.0,
                 "white_box_trace": [
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
-                    "pasmo_u0": "120<U0<=230",
+                    "pasmo_u0": "powyżej 120 V do 230 V",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
@@ -2633,14 +2633,14 @@
                     "ia_a": 1000.0,
                     "in_a": 100.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zadziałania wymagany: górna granica pasma wyzwalania magnetycznego razy prąd znamionowy (IEC 60898-1)",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 1000.0,
                     "ik1_min_a": 2601.64887,
                     "margines": 2.60164887,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "prąd zwarcia ≥ prąd zadziałania wymagany ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, < 0,1 s, krócej niż czas wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }

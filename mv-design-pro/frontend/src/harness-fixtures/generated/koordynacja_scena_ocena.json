@@ -34,7 +34,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.3721151642,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -194,8 +194,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8623.26909853,
-          "Is_a": 240.0,
           "M": 35.9302879105,
           "M_do_B": 1.0742595271,
           "TMS": 0.3,
@@ -206,6 +204,8 @@
           "mianownik": 0.0742595271,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8623.2691 / 240.0000 = 35.930288; M^0.02 = 35.930288^0.02 = 1.0742595271; denom = 1.0742595271 - 1 = 0.0742595271; t_base = 0.14 / 0.0742595271 = 1.885280 s; t = 0.3 * 1.885280 = 0.565584 s",
+          "prad_pierwotny_a": 8623.26909853,
+          "prog_pierwotny_a": 240.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -216,8 +216,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8623.26909853,
-          "Is_a": 2400.0,
           "M": 3.5930287911,
           "M_do_B": 0.0,
           "TMS": null,
@@ -228,6 +226,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.4",
+          "prad_pierwotny_a": 8623.26909853,
+          "prog_pierwotny_a": 2400.0,
           "stale": null,
           "t_s": 0.4,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -273,7 +273,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.6132821438,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -433,8 +433,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8767.96928629,
-          "Is_a": 240.0,
           "M": 36.5332053596,
           "M_do_B": 1.074617121,
           "TMS": 0.3,
@@ -445,6 +443,8 @@
           "mianownik": 0.074617121,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8767.9693 / 240.0000 = 36.533205; M^0.02 = 36.533205^0.02 = 1.0746171210; denom = 1.0746171210 - 1 = 0.0746171210; t_base = 0.14 / 0.0746171210 = 1.876245 s; t = 0.3 * 1.876245 = 0.562873 s",
+          "prad_pierwotny_a": 8767.96928629,
+          "prog_pierwotny_a": 240.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -455,8 +455,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8767.96928629,
-          "Is_a": 2400.0,
           "M": 3.653320536,
           "M_do_B": 0.0,
           "TMS": null,
@@ -467,6 +465,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.4",
+          "prad_pierwotny_a": 8767.96928629,
+          "prog_pierwotny_a": 2400.0,
           "stale": null,
           "t_s": 0.4,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -512,7 +512,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.2518893087,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -672,8 +672,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8551.13358524,
-          "Is_a": 240.0,
           "M": 35.6297232718,
           "M_do_B": 1.0740790581,
           "TMS": 0.3,
@@ -684,6 +682,8 @@
           "mianownik": 0.0740790581,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8551.1336 / 240.0000 = 35.629723; M^0.02 = 35.629723^0.02 = 1.0740790581; denom = 1.0740790581 - 1 = 0.0740790581; t_base = 0.14 / 0.0740790581 = 1.889873 s; t = 0.3 * 1.889873 = 0.566962 s",
+          "prad_pierwotny_a": 8551.13358524,
+          "prog_pierwotny_a": 240.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -694,8 +694,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8551.13358524,
-          "Is_a": 2400.0,
           "M": 3.5629723272,
           "M_do_B": 0.0,
           "TMS": null,
@@ -706,6 +704,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.4",
+          "prad_pierwotny_a": 8551.13358524,
+          "prog_pierwotny_a": 2400.0,
           "stale": null,
           "t_s": 0.4,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -751,7 +751,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 15.0959390814,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -911,8 +911,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 9057.56344885,
-          "Is_a": 240.0,
           "M": 37.7398477035,
           "M_do_B": 1.07531574,
           "TMS": 0.3,
@@ -923,6 +921,8 @@
           "mianownik": 0.07531574,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 9057.5634 / 240.0000 = 37.739848; M^0.02 = 37.739848^0.02 = 1.0753157400; denom = 1.0753157400 - 1 = 0.0753157400; t_base = 0.14 / 0.0753157400 = 1.858841 s; t = 0.3 * 1.858841 = 0.557652 s",
+          "prad_pierwotny_a": 9057.56344885,
+          "prog_pierwotny_a": 240.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -933,8 +933,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 9057.56344885,
-          "Is_a": 2400.0,
           "M": 3.7739847704,
           "M_do_B": 0.0,
           "TMS": null,
@@ -945,6 +943,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.4",
+          "prad_pierwotny_a": 9057.56344885,
+          "prog_pierwotny_a": 2400.0,
           "stale": null,
           "t_s": 0.4,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -990,7 +990,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.3721151642,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -1150,8 +1150,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8623.26909853,
-          "Is_a": 180.0,
           "M": 47.9070505474,
           "M_do_B": 1.0804582468,
           "TMS": 0.1,
@@ -1162,6 +1160,8 @@
           "mianownik": 0.0804582468,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8623.2691 / 180.0000 = 47.907051; M^0.02 = 47.907051^0.02 = 1.0804582468; denom = 1.0804582468 - 1 = 0.0804582468; t_base = 0.14 / 0.0804582468 = 1.740033 s; t = 0.1 * 1.740033 = 0.174003 s",
+          "prad_pierwotny_a": 8623.26909853,
+          "prog_pierwotny_a": 180.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -1172,8 +1172,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8623.26909853,
-          "Is_a": 1800.0,
           "M": 4.7907050547,
           "M_do_B": 0.0,
           "TMS": null,
@@ -1184,6 +1182,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.1",
+          "prad_pierwotny_a": 8623.26909853,
+          "prog_pierwotny_a": 1800.0,
           "stale": null,
           "t_s": 0.1,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -1229,7 +1229,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.6132821438,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -1389,8 +1389,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8767.96928629,
-          "Is_a": 180.0,
           "M": 48.7109404794,
           "M_do_B": 1.0808179041,
           "TMS": 0.1,
@@ -1401,6 +1399,8 @@
           "mianownik": 0.0808179041,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8767.9693 / 180.0000 = 48.710940; M^0.02 = 48.710940^0.02 = 1.0808179041; denom = 1.0808179041 - 1 = 0.0808179041; t_base = 0.14 / 0.0808179041 = 1.732289 s; t = 0.1 * 1.732289 = 0.173229 s",
+          "prad_pierwotny_a": 8767.96928629,
+          "prog_pierwotny_a": 180.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -1411,8 +1411,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8767.96928629,
-          "Is_a": 1800.0,
           "M": 4.8710940479,
           "M_do_B": 0.0,
           "TMS": null,
@@ -1423,6 +1421,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.1",
+          "prad_pierwotny_a": 8767.96928629,
+          "prog_pierwotny_a": 1800.0,
           "stale": null,
           "t_s": 0.1,
           "wzor_latex": "t = \\mathrm{TMS}",
@@ -1468,7 +1468,7 @@
         "alf_efektywny": null,
         "alf_wymagany": 14.2518893087,
         "assumptions": [],
-        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "formula_ref": "$S_{2,obl} = S_{aparatów} + I_{2n}^2 \\cdot R_p$; $ALF_{eff} = ALF \\cdot (S_n + S_w) / (S_{2,obl} + S_w)$",
         "granica_nasycenia_a": null,
         "moc_obliczeniowa_va": null,
         "moc_wewnetrzna_va": null,
@@ -1628,8 +1628,6 @@
       "stopien_decydujacy": "overcurrent_50",
       "stopnie": [
         {
-          "I_a": 8551.13358524,
-          "Is_a": 180.0,
           "M": 47.5062976958,
           "M_do_B": 1.0802767364,
           "TMS": 0.1,
@@ -1640,6 +1638,8 @@
           "mianownik": 0.0802767364,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "M = 8551.1336 / 180.0000 = 47.506298; M^0.02 = 47.506298^0.02 = 1.0802767364; denom = 1.0802767364 - 1 = 0.0802767364; t_base = 0.14 / 0.0802767364 = 1.743967 s; t = 0.1 * 1.743967 = 0.174397 s",
+          "prad_pierwotny_a": 8551.13358524,
+          "prog_pierwotny_a": 180.0,
           "stale": {
             "A": 0.14,
             "B": 0.02
@@ -1650,8 +1650,6 @@
           "zwloka_s": null
         },
         {
-          "I_a": 8551.13358524,
-          "Is_a": 1800.0,
           "M": 4.7506297696,
           "M_do_B": 0.0,
           "TMS": null,
@@ -1662,6 +1660,8 @@
           "mianownik": 0.0,
           "norma": "IEC 60255-151:2009",
           "podstawienie": "t = 0.1",
+          "prad_pierwotny_a": 8551.13358524,
+          "prog_pierwotny_a": 1800.0,
           "stale": null,
           "t_s": 0.1,
           "wzor_latex": "t = \\mathrm{TMS}",

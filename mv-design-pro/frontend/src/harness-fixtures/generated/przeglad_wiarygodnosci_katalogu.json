@@ -33,7 +33,7 @@
           "kod": "KAT-W-003",
           "policzone": 24,
           "pominiete": 26,
-          "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
+          "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez prądu wyłączalnego albo bez prądu krótkotrwałego wytrzymywanego w karcie katalogowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -194,7 +194,7 @@
     },
     {
       "rodzina": "pv-inverter",
-      "powod": "Przekształtnik PV: udział zwarciowy k_sc jest bramką TWARDĄ (KAT-T-003); brak k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
+      "powod": "Przekształtnik PV: udział zwarciowy jest bramką TWARDĄ (KAT-T-003); brak udziału zwarciowego jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
     },
     {
       "rodzina": "shunt-capacitor",
@@ -228,7 +228,7 @@
   "reguly": [
     {
       "kod": "KAT-W-001",
-      "nazwa": "R0 >= R1 przewodu",
+      "nazwa": "Rezystancja zerowa nie mniejsza od zgodnej przewodu",
       "podstawa": "Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
       "uzasadnienie": "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym R0 jest zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord spoza dotychczasowego zbioru."
     },
@@ -240,13 +240,13 @@
     },
     {
       "kod": "KAT-W-003",
-      "nazwa": "Icw <= Icu aparatu SN",
+      "nazwa": "Prąd krótkotrwały nie większy od wyłączalnego aparatu SN",
       "podstawa": "IEC 62271-100 — Icw i Icu są ODDZIELNYMI wielkościami znamionowymi",
       "uzasadnienie": "Prąd krótkotrwały wytrzymywany (przewodzenie bez uszkodzenia) i zdolność wyłączania (przerwanie prądu) to różne zdolności, znamionowane osobno. Globalna nierówność po całej rodzinie aparatów SN nie ma podstawy normowej i mogłaby odrzucić poprawny rekord aparatu, dla którego norma tej relacji nie narzuca."
     },
     {
       "kod": "KAT-W-004",
-      "nazwa": "Icw <= Icu aparatu nN",
+      "nazwa": "Prąd krótkotrwały nie większy od wyłączalnego aparatu nN",
       "podstawa": "IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
       "uzasadnienie": "Norma definiuje Ics JAWNIE jako procent Icu (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno (§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno wyłącznie dla tego samego wariantu, napięcia i czasu."
     },
@@ -254,7 +254,7 @@
       "kod": "KAT-W-005",
       "nazwa": "0 < R/X < 1 umowy równoważnej sieci",
       "podstawa": "Typowa charakterystyka równoważnika sieci SN (silnie indukcyjna)",
-      "uzasadnienie": "Równoważnik sieci SN jest zwykle silnie indukcyjny, ale równoważnik rezystancyjny albo specjalnie zdefiniowany może mieć R/X >= 1. Ograniczenie należy do zakresu produktu, nie do fizyki — a dopóki zakres nie jest zadeklarowany, twarda bramka jest nieuzasadniona."
+      "uzasadnienie": "Równoważnik sieci SN jest zwykle silnie indukcyjny, ale równoważnik rezystancyjny albo specjalnie zdefiniowany może mieć R/X ≥ 1. Ograniczenie należy do zakresu produktu, nie do fizyki — a dopóki zakres nie jest zadeklarowany, twarda bramka jest nieuzasadniona."
     },
     {
       "kod": "KAT-W-006",

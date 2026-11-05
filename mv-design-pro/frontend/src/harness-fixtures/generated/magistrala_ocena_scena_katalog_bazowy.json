@@ -4,12 +4,12 @@
       "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
       "Każdy odcinek liczony przy prądzie roboczym podanym dla TEGO odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
       "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
-      "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków."
+      "Jedno napięcie międzyfazowe ciągu dla wszystkich odcinków."
     ],
     "delta_u_pct": 2.04049584399,
     "delta_u_v": 306.074376599,
     "dlugosc_m": 2500.0,
-    "formula_ref": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100",
+    "formula_ref": "$\\Delta U_{\\mathrm{ciągu}} = \\sum_i \\Delta U_i$; $\\Delta U_{\\mathrm{ciągu}}\\% = \\Delta U_{\\mathrm{ciągu}} / U \\cdot 100$",
     "liczba_odcinkow": 1
   },
   "ocena_ciagu": {
@@ -111,7 +111,7 @@
     "slad": [
       {
         "krok": "magistrala-sn:ciag:spadek-napiecia",
-        "opis_pl": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100; odcinek 1: I = 255 A, L = 2,5 km, R = 0,6325 Ω, X = 0,295 Ω, cosφ = 0,95, ΔU = 306,1 V (2,04 %); suma ΔU = 306,1 V",
+        "opis_pl": "$\\Delta U_{\\mathrm{ciągu}} = \\sum_i \\Delta U_i$; $\\Delta U_{\\mathrm{ciągu}}\\% = \\Delta U_{\\mathrm{ciągu}} / U \\cdot 100$; odcinek 1: I = 255 A, L = 2,5 km, R = 0,6325 Ω, X = 0,295 Ω, cosφ = 0,95, ΔU = 306,1 V (2,04 %); suma ΔU = 306,1 V",
         "run_id": null,
         "wersja_silnika": null
       }
@@ -241,7 +241,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-1:obciazalnosc",
-          "opis_pl": "I_B = niepodany (projektant); I_z = 255 A (karta katalogowa, warunki odniesienia producenta)",
+          "opis_pl": "prąd roboczy niepodany (projektant); obciążalność 255 A (karta katalogowa, warunki odniesienia producenta)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -260,15 +260,15 @@
         "czego_brakuje": [
           "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
           "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „IEC 60502-2 / IEC 60949 / matryca bazowych kabli SN 12/20 kV MV-DESIGN-PRO” (katalog producenta) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: rekord katalogowy „Kabel EPR Al 1×120 mm²” ma status weryfikacji „częściowo zweryfikowany” — obciążalność nie jest przeniesiona z zweryfikowanej karty producenta).",
-          "prąd roboczy odcinka I_B — bez niego nie ma czego porównać z obciążalnością"
+          "prąd roboczy odcinka — bez niego nie ma czego porównać z obciążalnością"
         ],
-        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (prąd roboczy odcinka I_B — bez niego nie ma czego porównać z obciążalnością)",
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (prąd roboczy odcinka — bez niego nie ma czego porównać z obciążalnością)",
         "zastrzezenia": [
           "Podstawa „N SEP-E-004 Elektroenergetyczne i sygnalizacyjne linie kablowe — Projektowanie i budowa (dobór przekroju na obciążalność długotrwałą)” (norma): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie i jednostka redakcyjna nieustalone w rejestrze podstaw).",
           "Podstawa „IEC 60502-2 / IEC 60949 / matryca bazowych kabli SN 12/20 kV MV-DESIGN-PRO” (katalog producenta): stan źródła „nieustalone” — pochodzenie wartości nieustalone (rekord katalogowy „Kabel EPR Al 1×120 mm²” ma status weryfikacji „częściowo zweryfikowany” — obciążalność nie jest przeniesiona z zweryfikowanej karty producenta).",
           "Zakres ważności: Obciążalność długotrwała kabla z karty katalogowej w warunkach odniesienia producenta. Obciążalność przyjęta dla WARUNKÓW KATALOGOWYCH (bez korekty ułożenia); w rzeczywistej trasie może być mniejsza. Podstawa wartości: Obciążalność znamionowa z karty katalogowej producenta (warunki odniesienia) — wynik nie obejmuje: warunki ułożenia trasy (rezystywność cieplna i temperatura gruntu, głębokość, grupowanie kabli) — kreator ich nie zna, obciążalność nie jest korygowana; obciążenie cykliczne i przeciążenia krótkotrwałe; wytrzymałość cieplna zwarciowa (ocenia ją bieg zwarciowy)."
         ],
-        "zdanie_pl": "Prąd roboczy odcinka nie przekracza obciążalności długotrwałej typu kabla albo przewodu (Odcinek 1 magistrali SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (prąd roboczy odcinka I_B — bez niego nie ma czego porównać z obciążalnością). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        "zdanie_pl": "Prąd roboczy odcinka nie przekracza obciążalności długotrwałej typu kabla albo przewodu (Odcinek 1 magistrali SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (prąd roboczy odcinka — bez niego nie ma czego porównać z obciążalnością). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
       },
       "wynik": null,
       "zakres_waznosci": {
@@ -386,7 +386,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-1:spadek-napiecia",
-          "opis_pl": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ); odcinek 1: I = 255 A, L = 2,5 km, R = 0,6325 Ω, X = 0,295 Ω, cosφ = 0,95, ΔU = 306,1 V (2,04 %)",
+          "opis_pl": "$\\Delta U = \\sqrt{3} \\cdot I \\cdot (s_P \\cdot R \\cos\\varphi + s_Q \\cdot X \\sin\\varphi)$; odcinek 1: I = 255 A, L = 2,5 km, R = 0,6325 Ω, X = 0,295 Ω, cosφ = 0,95, ΔU = 306,1 V (2,04 %)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -444,19 +444,19 @@
   ],
   "spadek_odcinka": {
     "assumptions": [
-      "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-      "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
-      "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-      "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-      "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
-      "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-      "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe)."
+      "Układ trójfazowy symetryczny; współczynnik linii $\\sqrt{3}$.",
+      "$\\sin\\varphi = \\sqrt{1 - \\cos^2\\varphi}$; znak składowej biernej z charakteru mocy biernej.",
+      "$s_P = +1$ dla odbioru, $-1$ dla generacji (moc czynna).",
+      "$s_Q = +1$ dla poboru mocy biernej (indukcyjny), $-1$ dla oddawania mocy biernej (pojemnościowy).",
+      "$\\Delta U > 0$ — spadek napięcia; $\\Delta U < 0$ — WZROST (typowy przy generacji).",
+      "$R = r' \\cdot L$, $X = x' \\cdot L$ (impedancja odcinka z wartości jednostkowych).",
+      "$\\Delta U\\% = \\Delta U / U \\cdot 100$ ($U$ — napięcie międzyfazowe linii)."
     ],
     "delta_u_pct": 2.04049584399,
     "delta_u_reactive_v": 40.6841392045,
     "delta_u_resistive_v": 265.390237394,
     "delta_u_v": 306.074376599,
-    "formula_ref": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)",
+    "formula_ref": "$\\Delta U = \\sqrt{3} \\cdot I \\cdot (s_P \\cdot R \\cos\\varphi + s_Q \\cdot X \\sin\\varphi)$",
     "prad_obliczeniowy_a": 255.0,
     "prad_z_obciazalnosci": true,
     "r_total_ohm": 0.6325,
