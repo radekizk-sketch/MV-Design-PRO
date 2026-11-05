@@ -3788,6 +3788,7 @@
         "p0_kw": 25.0,
         "parameter_source": "CATALOG",
         "pk_kw": 120.0,
+        "r0_ohm": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/wn_sn",
         "sn_mva": 25.0,
         "source_mode": "KATALOG",
@@ -3802,7 +3803,8 @@
         "uhv_kv": 110.0,
         "uk_percent": 11.0,
         "ulv_kv": 15.0,
-        "vector_group": "Yd11"
+        "vector_group": "Yd11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -3841,6 +3843,7 @@
         "p0_kw": 25.0,
         "parameter_source": "CATALOG",
         "pk_kw": 120.0,
+        "r0_ohm": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/wn_sn",
         "sn_mva": 25.0,
         "source_mode": "KATALOG",
@@ -3855,7 +3858,8 @@
         "uhv_kv": 110.0,
         "uk_percent": 11.0,
         "ulv_kv": 15.0,
-        "vector_group": "Yd11"
+        "vector_group": "Yd11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -3879,11 +3883,17 @@
           "i0_percent": 2.5,
           "p0_kw": 0.3,
           "pk_kw": 2.15,
+          "r0_ohm": 0.636905831706,
           "rated_power_mva": 0.1,
           "uk_percent": 4.0,
           "vector_group": "ZNyn11",
           "voltage_hv_kv": 15.0,
-          "voltage_lv_kv": 0.4
+          "voltage_lv_kv": 0.4,
+          "wartosci_robocze": {
+            "r0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: |Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje",
+            "x0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: |Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje"
+          },
+          "x0_ohm": 3.18452915853
         },
         "meta": {
           "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
@@ -3910,6 +3920,7 @@
         "p0_kw": 0.3,
         "parameter_source": "CATALOG",
         "pk_kw": 2.15,
+        "r0_ohm": 0.636905831706,
         "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/zu_transformer",
         "sn_mva": 0.1,
         "source_mode": "KATALOG",
@@ -3924,7 +3935,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 4.0,
         "ulv_kv": 0.4,
-        "vector_group": "ZNyn11"
+        "vector_group": "ZNyn11",
+        "x0_ohm": 3.18452915853
       }
     ]
   }

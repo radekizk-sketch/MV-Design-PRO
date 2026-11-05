@@ -107,7 +107,7 @@ _ROLA_W_ETYKIECIE = (
     r"|źródłowe\s+(?:SN|PV|BESS|FW|OZE)|odpływowe(?!\s+nN\b)|dopływowe"
     r"|wejściowe|wyjściowe|zasilające|(?:OZE|DER|PV|BESS|FW)(?!\s+nN\b)"
     r"|źródła\s+(?:PV|BESS|FW)|przyłączeniowe\s+(?:OZE|PV|BESS|FW|SN)"
-    r"|baterii\s+kondensatorów)\b"
+    r"|baterii\s+kondensatorów|zespołu\s+uziemiającego)\b"
 )
 #: Określenia, które zostawiają literał etykietą (nie zdaniem): poziom napięcia SN, rodzaj
 #: sprzęgła, rezerwa, rozliczenie (samo „nN” wskazuje pole rozdzielnicy nN — nie określenie).

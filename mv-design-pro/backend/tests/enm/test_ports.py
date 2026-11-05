@@ -437,7 +437,8 @@ def test_bay_template_registry_has_base_and_gpz_line_templates() -> None:
     # wysuwny) dołączyło do dziesięciu szablonów bazowych; pole pomiaru napięcia szyn GPZ
     # wg ENEA Z.17 (s.97 — źródło napięcia zerowego 3U₀ obwodami „Z, Zz" dla 67N pól
     # liniowych, decyzja właściciela 2026-10-29 pkt 3–4) jest dwudziestym; karta
-    # POLA-GPZ-SZABLONY dołącza trzy pola GPZ ze źródła ENEA (Z.7 s.86, Z.12 s.92, Z.16 s.96).
+    # POLA-GPZ-SZABLONY dołącza trzy pola GPZ ze źródła ENEA (Z.7 s.86, Z.12 s.92, Z.16 s.96)
+    # i trzy warianty pola zespołu uziemiającego (Z.13 s.93, Z.14 s.94, Z.15 s.95).
     from network_model.catalog.bay_templates import (
         BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
         BAY_TEMPLATE_REGISTRY,
@@ -446,7 +447,7 @@ def test_bay_template_registry_has_base_and_gpz_line_templates() -> None:
     )
 
     assert len(BAY_TEMPLATES_GPZ_LINE) == 9
-    assert len(BAY_TEMPLATE_REGISTRY) == 10 + 9 + 1 + 3
+    assert len(BAY_TEMPLATE_REGISTRY) == 10 + 9 + 1 + 3 + 3
     templates = list_bay_templates()
     assert {t.template_id for t in templates} == {
         "bay_template_line_in",
@@ -464,6 +465,9 @@ def test_bay_template_registry_has_base_and_gpz_line_templates() -> None:
         "bay_template_gpz_transformator_sn_enea_z7",
         "bay_template_gpz_lacznik_szyn_enea_z12",
         "bay_template_gpz_bateria_kondensatorow_enea_z16",
+        "bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+        "bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
+        "bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15",
     }
 
 

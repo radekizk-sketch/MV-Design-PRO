@@ -31,6 +31,7 @@ from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
 from network_model.catalog.obwody_wtorne_pola import (
     POLA_POWIAZAN_APARATU,
     RODZAJ_APARATU_WEJSCIA,
+    RODZAJE_WEJSCIA_POZA_POLEM,
     ObwodyWtornePola,
     powiazania_aparatow_pola,
 )
@@ -174,6 +175,10 @@ def _oczekiwane(
             if p.funkcja not in pola["funkcje_eaz_wylaczajace"]:
                 pola["funkcje_eaz_wylaczajace"].append(p.funkcja)
         for w in p.wejscia:
+            if w.rodzaj in RODZAJE_WEJSCIA_POZA_POLEM:
+                # Przekładnik w gałęzi rezystora punktu neutralnego (Z.14, Z.15) leży poza celą
+                # pola — nie ma aparatu pola do związania.
+                continue
             if w.aparat is not None and rodzaj.get(w.aparat) == RODZAJ_APARATU_WEJSCIA[w.rodzaj]:
                 pola = wynik[w.aparat]
                 pola.setdefault("funkcje_eaz_zasilane", [])
@@ -218,6 +223,11 @@ def test_powiazania_aparatow_wg_wzorca_i_predykat_parami_z_odczytem(szablon_id: 
             continue
         for w in p.wejscia:
             if w.aparat is None:
+                continue
+            if w.rodzaj in RODZAJE_WEJSCIA_POZA_POLEM:
+                # Odczyt opisuje przekładnik z nośnika punktu neutralnego, nigdy „brak aparatu".
+                opis = _opis_wejscia(w, aparaty)
+                assert "poza polem" in opis and "brak aparatu" not in opis, (droga, opis)
                 continue
             brak = "brak aparatu w polu" in _opis_wejscia(w, aparaty)
             zasilane = (aparaty.get(w.aparat) or {}).get("funkcje_eaz_zasilane") or []

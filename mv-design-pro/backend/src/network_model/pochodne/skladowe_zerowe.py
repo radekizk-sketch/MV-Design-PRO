@@ -51,3 +51,34 @@ def reaktancja_dlawika_dostrojonego_ohm(
     X_N = 1 / (3·B_0·(1 + v)) [Ω]. Wołający podaje B_0 > 0 i v > −1.
     """
     return 1.0 / (3.0 * susceptancja_zerowa_sieci_s * (1.0 + rozstrojenie))
+
+
+#: Prąd znamionowy punktu neutralnego transformatora uziemiającego przyjęty do wartości roboczej
+#: Z0 [A]: górna granica zakresu dławika gaszącego „minimum 40 - 400 A” (ENEA Operator, Stacje
+#: 110 kV, Zeszyt 1, wersja 02.2023 – 2, §16 s.29) — zespół dobrany na połączoną sieć sekcji A+B.
+PRAD_PUNKTU_NEUTRALNEGO_ROBOCZY_A = 400.0
+#: Spadek napięcia na impedancji zerowej uzwojenia zygzakowego przy tym prądzie, ułamek napięcia
+#: fazowego — założenie inżynierskie (transformator uziemiający dobiera się tak, by jego Z0 była
+#: małą częścią impedancji drogi zerowej; IEC 60076-6 każe Z0 podać na tabliczce, wartości nie
+#: narzuca).
+SPADEK_NA_Z0_ZYGZAKA_ROBOCZY = 0.05
+#: Stosunek X0/R0 uzwojenia zygzakowego (miedź, rozproszenie między półuzwojeniami jednej
+#: kolumny) — założenie inżynierskie.
+X_DO_R_Z0_ZYGZAKA_ROBOCZY = 5.0
+
+
+def impedancja_zerowa_zygzaka_robocza_ohm(u_kv: float) -> complex:
+    """Wartość ROBOCZA impedancji zerowej na fazę uzwojenia zygzakowego [Ω] na napięciu U [kV].
+
+    Prąd w punkcie neutralnym I_N = 3·I_0 dzieli się po równo na trzy fazy, więc spadek na Z_0
+    fazy wynosi I_0·Z_0 = (I_N/3)·Z_0. Warunek spadku s·U_f przy I_N daje
+    |Z_0| = 3·s·U_f / I_N, U_f = U/√3; R_0 = |Z_0|/√(1 + (X/R)²), X_0 = (X/R)·R_0.
+    Liczbowo (s = 0,05; I_N = 400 A; X/R = 5): 15 kV → |Z_0| = 3,248 Ω (R_0 0,637, X_0 3,184);
+    20 kV → |Z_0| = 4,330 Ω (R_0 0,849, X_0 4,246). Dla porównania wzór u_k pozycji 100 kVA
+    (u_k 4 %) dawał 0,04·15²/0,1 = 90 Ω — rząd wielkości za dużo, bo u_k opisuje uzwojenie
+    potrzeb własnych, nie drogę zerową zygzaka.
+    """
+    u_f_v = u_kv * 1000.0 / math.sqrt(3.0)
+    z_abs = 3.0 * SPADEK_NA_Z0_ZYGZAKA_ROBOCZY * u_f_v / PRAD_PUNKTU_NEUTRALNEGO_ROBOCZY_A
+    r0 = z_abs / math.sqrt(1.0 + X_DO_R_Z0_ZYGZAKA_ROBOCZY * X_DO_R_Z0_ZYGZAKA_ROBOCZY)
+    return complex(r0, X_DO_R_Z0_ZYGZAKA_ROBOCZY * r0)

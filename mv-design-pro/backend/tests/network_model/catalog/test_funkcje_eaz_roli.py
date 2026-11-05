@@ -80,3 +80,14 @@ def test_endpoint_odczytu_zwraca_kazda_role_modelu_z_tego_samego_zrodla() -> Non
     for rola, kody in odczyt.items():
         assert kody == funkcje_eaz_roli(rola), rola
         assert "67N" not in kody, rola
+
+
+def test_zestaw_roli_zu_to_czesc_wspolna_wariantow_zespolu() -> None:
+    """Rola ZU bez wariantu czyta zestaw wspólny wszystkich wariantów Z.13–Z.15 — żadna
+    funkcja jednego wariantu (SPZ 79 z Z.15) nie trafia do odczytu roli."""
+    from network_model.catalog.bay_templates import SZABLON_WARIANTU_ZESPOLU
+
+    wspolne = set.intersection(*(set(s.funkcje_eaz) for s in SZABLON_WARIANTU_ZESPOLU.values()))
+    assert set(funkcje_eaz_roli("ZU")) == wspolne
+    assert "79" not in funkcje_eaz_roli("ZU")
+    assert "79" in SZABLON_WARIANTU_ZESPOLU["Z15"].funkcje_eaz

@@ -88,7 +88,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "lv_voltage_tolerance",
         ),
         "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
-        "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+        # + karta POLA-GPZ-SZABLONY: impedancja zerowa uzwojenia zygzakowego (test odcisku:
+        # `tests/enm/test_hash_w5_uziemienie.py` — postać sprzed karty bez tych pól).
+        "transformers": ("lv_earthing_system", "lv_voltage_tolerance", "r0_ohm", "x0_ohm"),
         # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
         # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
         # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).

@@ -1276,6 +1276,7 @@
       "p0_kw": 3.0,
       "parameter_source": "CATALOG",
       "pk_kw": 21.0,
+      "r0_ohm": null,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/transformer",
       "sn_mva": 2.0,
       "source_mode": "KATALOG",
@@ -1288,7 +1289,8 @@
       "uhv_kv": 15.0,
       "uk_percent": 6.0,
       "ulv_kv": 0.4,
-      "vector_group": "Dyn11"
+      "vector_group": "Dyn11",
+      "x0_ohm": null
     }
   ]
 }

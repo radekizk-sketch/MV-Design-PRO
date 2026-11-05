@@ -444,6 +444,9 @@ export interface Transformer extends ENMElement {
   p0_kw?: number | null;
   i0_percent?: number | null;
   vector_group?: string | null;
+  /** Impedancja zerowa na fazę uzwojenia zygzakowego [Ω] (transformator uziemiający ZNyn11). */
+  r0_ohm?: number | null;
+  x0_ohm?: number | null;
   hv_neutral?: GroundingConfig | null;
   lv_neutral?: GroundingConfig | null;
   /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */

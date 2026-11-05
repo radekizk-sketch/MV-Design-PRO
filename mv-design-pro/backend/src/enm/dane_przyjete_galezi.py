@@ -8,8 +8,10 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   i Z′0 policzonymi z wartością roboczą geometrii; wpływa na KAŻDY rodzaj zwarcia w wyspie
   obliczeniowej węzła (składowa spójna grafu po gałęziach, transformatorach i łącznikach);
 * ``branch.z0_wartosc_robocza`` (ten moduł) — linia albo kabel SN z R′0/X′0 z założenia
-  katalogu (``wartosci_robocze`` pozycji); wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G)
-  w składowej spójnej SIECI ZEROWEJ węzła (``enm.mapping.skladowe_sieci_zerowej``);
+  katalogu (``wartosci_robocze`` pozycji), a także transformator z uzwojeniem zygzakowym
+  (transformator uziemiający ZNyn11, karta POLA-GPZ-SZABLONY) z R0/X0 na fazę z założenia
+  katalogu; wpływa WYŁĄCZNIE na zwarcia doziemne (1F, 2F+G) w składowej spójnej SIECI ZEROWEJ
+  węzła (``enm.mapping.skladowe_sieci_zerowej``);
 * ``shunt.parametry_robocze`` (``enm.bateria_kondensatorow``, karta UX-04/POLE-BKR-MODEL) —
   element poprzeczny, nie gałąź, ale ten sam mechanizm danych przyjętych: bateria kondensatorów
   z układem połączeń (albo liczbą stopni gwiazdy uziemionej) z wartości roboczej; w biegu
@@ -26,14 +28,18 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from network_model.catalog.wartosci_robocze import dana_przyjeta_z0, pola_z0_robocze
+from network_model.catalog.wartosci_robocze import (
+    POLA_IMPEDANCJI_ZEROWEJ_TRANSFORMATORA,
+    dana_przyjeta_z0,
+    pola_z0_robocze,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
 
 from .bateria_kondensatorow import KOD_BATERIA_PARAMETRY_ROBOCZE
 from .mapping import map_enm_to_network_graph, ref_to_graph_id, skladowe_sieci_zerowej
-from .models import Cable, EnergyNetworkModel, OverheadLine
+from .models import Cable, EnergyNetworkModel, OverheadLine, Transformer
 from .nazwy_elementow import nazwa_elementu
 from .parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
 
@@ -50,11 +56,19 @@ KOD_Z0_ROBOCZE = "branch.z0_wartosc_robocza"
 _KLUCZ_SKLADNIKOW_Z0 = "skladniki_z0"
 
 _POLA_Z0 = {"r0_ohm_per_km", "x0_ohm_per_km"}
+_POLA_Z0_TRANSFORMATORA = {pole for pole, _ in POLA_IMPEDANCJI_ZEROWEJ_TRANSFORMATORA}
+
+#: Rodzaj elementu z Z0 roboczym → (kolekcja ENM, jednostka danej, miejsce zmiany wartości).
+_OPIS_ELEMENTU_Z0: dict[type, tuple[str, str, str]] = {
+    Cable: ("branches", "Ω/km", "odcinka"),
+    OverheadLine: ("branches", "Ω/km", "odcinka"),
+    Transformer: ("transformers", "Ω", "transformatora"),
+}
 
 
 def galezie_z0_robocze(
     enm: EnergyNetworkModel,
-) -> list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]]:
+) -> list[tuple[Cable | OverheadLine | Transformer, tuple[tuple[str, str, str, float], ...]]]:
     """Załączone linie i kable, których R′0/X′0 są wartością roboczą katalogu (kolejność ref_id).
 
     JEDNO źródło zbioru dla założeń biegów (zwarcie doziemne, rozpływ niesymetryczny) i dla
@@ -62,7 +76,9 @@ def galezie_z0_robocze(
     katalogu oznaczyła pole, a projektant go nie zmienił. Gałąź otwarta nie wchodzi do sieci
     zerowej (``_assemble_zero_sequence_y0``), więc nie daje założenia.
     """
-    wynik: list[tuple[Cable | OverheadLine, tuple[tuple[str, str, str, float], ...]]] = []
+    wynik: list[
+        tuple[Cable | OverheadLine | Transformer, tuple[tuple[str, str, str, float], ...]]
+    ] = []
     for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
         if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
             continue
@@ -71,6 +87,17 @@ def galezie_z0_robocze(
         )
         if pola:
             wynik.append((galaz, pola))
+    # Transformator z uzwojeniem zygzakowym: R0/X0 na fazę z wartości roboczej katalogu (ten sam
+    # predykat pola — oznaczenie pozycji i brak wartości projektanta). Gałąź transformatora nie
+    # ma stanu łącznika; wyłączenie z grafu rozstrzyga `_galaz_w_grafie`.
+    for transformator in sorted(enm.transformers, key=lambda t: t.ref_id):
+        pola = pola_z0_robocze(
+            transformator.materialized_params,
+            transformator.model_dump(mode="json", include=_POLA_Z0_TRANSFORMATORA),
+            POLA_IMPEDANCJI_ZEROWEJ_TRANSFORMATORA,
+        )
+        if pola:
+            wynik.append((transformator, pola))
     return wynik
 
 
@@ -87,10 +114,16 @@ def zalozenia_z0_galezi(
     for galaz, pola in galezie_z0_robocze(enm):
         if dozwolone is not None and galaz.ref_id not in dozwolone:
             continue
-        nazwa = nazwa_elementu(galaz, "branches")
+        kolekcja, jednostka, element_pl = _OPIS_ELEMENTU_Z0[type(galaz)]
+        nazwa = nazwa_elementu(galaz, kolekcja)
         przyjete = [
             dana_przyjeta_z0(
-                etykieta=etykieta, zalozenie=zalozenie, wartosc=wartosc, miejsce_pl=nazwa
+                etykieta=etykieta,
+                zalozenie=zalozenie,
+                wartosc=wartosc,
+                miejsce_pl=nazwa,
+                jednostka=jednostka,
+                element_pl=element_pl,
             )
             for _, etykieta, zalozenie, wartosc in pola
         ]
@@ -102,7 +135,7 @@ def zalozenia_z0_galezi(
                 "message_pl": (
                     f"{nazwa}: {etykiety} z wartości roboczej katalogu — "
                     + "; ".join(f"{zalozenie}" for _, _, zalozenie, _ in pola)
-                    + f". Zmień wartość: {etykiety} w parametrach odcinka."
+                    + f". Zmień wartość: {etykiety} w parametrach {element_pl}."
                 ),
                 **({"scenariusz": scenario} if scenario is not None else {}),
                 "parametr": pola[0][0],
@@ -114,6 +147,8 @@ def zalozenia_z0_galezi(
                         "zalozenie": zalozenie,
                         "wartosc": wartosc,
                         "nazwa": nazwa,
+                        "jednostka": jednostka,
+                        "element_pl": element_pl,
                     }
                     for pole, etykieta, zalozenie, wartosc in pola
                 ],
@@ -137,7 +172,7 @@ def _galaz_w_grafie(graph: NetworkGraph, element_ref: object) -> str | None:
 def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Dane przyjęte Z0 jednej składowej sieci zerowej: jedna na (pole, założenie, wartość)
     z listą gałęzi — rozmiar wiersza rośnie z liczbą TYPÓW katalogu, nie odcinków."""
-    grupy: dict[tuple[str, str, str, float], list[str]] = {}
+    grupy: dict[tuple[str, str, str, float, str, str], list[str]] = {}
     for zalozenie in zalozenia_z0:
         for skladnik in zalozenie.get(_KLUCZ_SKLADNIKOW_Z0) or ():
             klucz = (
@@ -145,6 +180,8 @@ def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, 
                 str(skladnik["etykieta"]),
                 str(skladnik["zalozenie"]),
                 float(skladnik["wartosc"]),
+                str(skladnik["jednostka"]),
+                str(skladnik["element_pl"]),
             )
             grupy.setdefault(klucz, []).append(str(skladnik["nazwa"]))
     return [
@@ -153,8 +190,10 @@ def _dane_z0_skladowej(zalozenia_z0: list[Mapping[str, Any]]) -> list[dict[str, 
             zalozenie=zalozenie,
             wartosc=wartosc,
             miejsce_pl=", ".join(sorted(nazwy)),
+            jednostka=jednostka,
+            element_pl=element_pl,
         ).model_dump(mode="json")
-        for (_, etykieta, zalozenie, wartosc), nazwy in sorted(grupy.items())
+        for (_, etykieta, zalozenie, wartosc, jednostka, element_pl), nazwy in sorted(grupy.items())
     ]
 
 

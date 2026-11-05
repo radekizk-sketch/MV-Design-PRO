@@ -129,6 +129,7 @@ from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .wartosci_projektanta import blad_wartosci_projektanta_elementu, rodzina_generatora
 from .zajetosc_pol import zajetosc_pol
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+from .zespol_uziemiajacy import zrodla_dawcy_zespolu
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
@@ -1458,7 +1459,12 @@ class ENMValidator:
                     )
 
         # W002: Brak Z₀ źródła — predykat `dane_zerowe` z `enm/zrodlo_zwarcie.py` (K7).
+        # Źródło-dawca punktu neutralnego pola ZU (karta POLA-GPZ-SZABLONY) nie ma drogi zerowej
+        # z założenia — sieć uziemia transformator ZNyn11 zespołu (`zrodla_dawcy_zespolu`).
+        dawcy_zespolu = zrodla_dawcy_zespolu(enm)
         for source in enm.sources:
+            if source.ref_id in dawcy_zespolu:
+                continue
             if not dane_zwarciowe_zrodla(source).z0:
                 issues.append(
                     ValidationIssue(

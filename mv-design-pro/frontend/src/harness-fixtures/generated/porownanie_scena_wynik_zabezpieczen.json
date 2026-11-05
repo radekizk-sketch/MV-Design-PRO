@@ -259,11 +259,11 @@
     "input_hash": "ec8e04588954c6c18f805749d86bb84ecf0fb64b5efe8da8c9ca5ad90c084c7f",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "f8b38918bb72b2fae5d19e123037fbed88d1c479102d9f8caa329af29448d96d",
+      "catalog_fingerprint": "b4af91ae954a74923c7f239828c15379a8889ff4c63e127554e66781a938daed",
       "model_revision": 2,
       "options_hash": "ec8e04588954c6c18f805749d86bb84ecf0fb64b5efe8da8c9ca5ad90c084c7f",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "a51564021b2e5ac0d7b69b563977d77713c33ba5190da93d986b33812e862211",
+      "semantic_fingerprint": "1e5c6d1c5ecdb8e16e6e387dd8078552261226e7ff191ae453450dfe8d8f6aab",
       "snapshot_hash": "c487d6e946e25453f32977306abf4b0878410648130629392cefe57c28751f2b",
       "wersja": 1
     }
@@ -276,11 +276,11 @@
     "input_hash": "5fab0b0a007b3fa13621520cfece3adb42b50faef807bdc570e9b550794d36cf",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "f8b38918bb72b2fae5d19e123037fbed88d1c479102d9f8caa329af29448d96d",
+      "catalog_fingerprint": "b4af91ae954a74923c7f239828c15379a8889ff4c63e127554e66781a938daed",
       "model_revision": 4,
       "options_hash": "5fab0b0a007b3fa13621520cfece3adb42b50faef807bdc570e9b550794d36cf",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "4c9c7d14a93e33fcd4697a5b4929e13dc8988cfff68627ed6db86b10c7fbfec6",
+      "semantic_fingerprint": "a97f7203c09d78e00f7f1eb45d106ef89371e637d904603d245894e752b2d5b4",
       "snapshot_hash": "db3307fcc78ac43ee1a2fdc0b367f28bd8604c4bd9ff3e641095ef96e0cd5da5",
       "wersja": 1
     }

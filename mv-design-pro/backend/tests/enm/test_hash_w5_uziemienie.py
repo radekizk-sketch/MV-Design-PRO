@@ -107,6 +107,9 @@ def _postac_sprzed_karty(model: EnergyNetworkModel) -> dict:
         zrodlo["c_min"] = None
     for transformator in dane["transformers"]:
         transformator.pop("lv_voltage_tolerance", None)
+        # Karta POLA-GPZ-SZABLONY (późniejsza): impedancja zerowa uzwojenia zygzakowego.
+        transformator.pop("r0_ohm", None)
+        transformator.pop("x0_ohm", None)
     return dane
 
 

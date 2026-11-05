@@ -85,7 +85,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
     # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
-    "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+    # + karta POLA-GPZ-SZABLONY: impedancja zerowa uzwojenia zygzakowego (`None` = transformator
+    # bez zygzaka — każdy transformator sprzed karty; podana zmienia drogę zerową, więc odcisk).
+    "transformers": ("lv_earthing_system", "lv_voltage_tolerance", "r0_ohm", "x0_ohm"),
     # + karta LINIA-110: geometria słupa linii 110 kV i proweniencja parametrów z geometrii
     # (`None` = linia bez obliczenia z geometrii — każda linia SN sprzed karty).
     # + W5-C: pozycja normalna łącznika (punkt normalnie otwarty). `None` =

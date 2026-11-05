@@ -44,7 +44,8 @@ TYPOSZEREG (225 rekordow, pomiar 2026-10-15):
 import math
 from typing import Any
 
-from network_model.pochodne import kva_na_mva
+from network_model.catalog.wartosci_robocze import ZALOZENIE_Z0_ZYGZAKA
+from network_model.pochodne import impedancja_zerowa_zygzaka_robocza_ohm, kva_na_mva
 
 #: Znacznik noty pozycji, ktorej straty przekraczaja pulap Tier 2 rozporzadzenia (UE)
 #: 548/2014 w brzmieniu (UE) 2019/1783 (jedno zrodlo prawdy dla danych i testu pary
@@ -1176,6 +1177,13 @@ def rodzaj_izolacji_transformatora(cooling_class: str | None) -> str | None:
     return None
 
 
+def objety_tier2(params: dict[str, Any]) -> bool:
+    """Czy pozycja podlega wymaganiom Tier 2: rozporządzenie (UE) 548/2014 art. 1 ust. 2 wyłącza
+    transformatory uziemiające (trójfazowe, przeznaczone do utworzenia punktu neutralnego sieci) —
+    rozpoznawane po uzwojeniu zygzakowym strony GN grupy połączeń (ZN…, IEC 60076-6)."""
+    return not str(params.get("vector_group") or "").startswith("Z")
+
+
 def pulap_strat_tier2_w(rodzaj: str, moc_kva: float) -> tuple[float, float] | None:
     """Pulap (Pk, P0) [W] wg tab. I.1/I.2 Tier 2 dla mocy z zakresu tabeli.
 
@@ -1434,13 +1442,18 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
 # 100 kVA”. Standard nie podaje u_k ani strat — pozycja przyjmuje u_k, P_k, P0, i0 pozycji
 # 100 kVA Dyn11 tego samego napiecia (ABB RESIBLOC, wyzej) jako WARTOSC ROBOCZA (ZASADA NR 4);
 # rozporzadzenie UE 548/2014 art. 1 ust. 2 wylacza transformatory uziemiajace z wymagan Tier 2.
-# Impedancja zerowa uzwojenia zygzak w modelu ENM = impedancja rozproszenia (u_k na S_n,
-# `enm.zero_sequence_transformer`) — producent podaje Z_0 osobno; pozycje producenta dopisuje sie
-# osobnym rekordem z karty.
+# Impedancja zerowa uzwojenia zygzakowego (decyzja architekta karty POLA-GPZ-SZABLONY): jawny
+# parametr R0/X0 na faze po stronie SN (IEC 60076-6; dane producenta), NIE u_k — u_k pozycji
+# 100 kVA opisuje pare uzwojen SN–0,4 kV i dawalo Z0 = 0,04·15²/0,1 = 90 Ω zamiast pojedynczych
+# omow (zanizony prad ziemnozwarciowy). Wartosc robocza z jednego zrodla
+# (`pochodne.skladowe_zerowe.impedancja_zerowa_zygzaka_robocza_ohm`: 15 kV → 0,637 + j3,185 Ω,
+# 20 kV → 0,849 + j4,246 Ω), oznaczona w `wartosci_robocze` (jakosc ESTIMATED, dana przyjeta
+# biegu doziemnego). Pozycje producenta dopisuje sie osobnym rekordem z karty.
 
 _ZRODLO_ZESZYTU_1_P16 = (
-    "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: "
-    "grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA"
+    "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja "
+    "02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne "
+    "400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium"
 )
 
 
@@ -1450,6 +1463,7 @@ def _transformator_uziemiajacy(hv_kv: float) -> dict[str, Any]:
         for r in TRANSFORMER_SN_NN_15_04_DYN11 + TRANSFORMER_SN_NN_20_04_DYN11
         if r["id"] == f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11"
     )["params"]
+    z0_zygzaka = impedancja_zerowa_zygzaka_robocza_ohm(hv_kv)
     return {
         "id": f"tu-sn-nn-{hv_kv:g}-04-100kva-znyn11",
         "name": f"Transformator uziemiający {hv_kv:g}/0,4 kV ZNyn11 · 100 kVA",
@@ -1469,14 +1483,23 @@ def _transformator_uziemiajacy(hv_kv: float) -> dict[str, Any]:
             "standard": "ENEA Zeszyt 1 §16",
             "verification_status": "NIEWERYFIKOWANY",
             "catalog_status": "REFERENCYJNY_V1",
-            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16} || u_k, P_k, P0, i0: pozycja "
+            "r0_ohm": z0_zygzaka.real,
+            "x0_ohm": z0_zygzaka.imag,
+            "wartosci_robocze": {
+                "r0_ohm": ZALOZENIE_Z0_ZYGZAKA,
+                "x0_ohm": ZALOZENIE_Z0_ZYGZAKA,
+            },
+            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16}; u_k, P_k, P0, i0: pozycja "
             f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11",
             "contract_version": "2.0",
             "verification_note": (
                 "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie "
                 "egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc "
                 "uzwojenia potrzeb własnych z §16 Zeszytu 1; u_k, P_k, P0, i0 — wartość robocza "
-                "z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje)."
+                "z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje); "
+                "impedancja zerowa R0/X0 na fazę po stronie SN — wartość robocza (założenie "
+                "inżynierskie, `wartosci_robocze`). Rozporządzenie UE 548/2014 art. 1 ust. 2 "
+                "wyłącza transformatory uziemiające z wymagań Tier 2."
             ),
         },
     }

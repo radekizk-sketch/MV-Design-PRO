@@ -221,6 +221,37 @@ ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR = (
     "81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e"
 )
 _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
+#: Karta POLA-GPZ-SZABLONY (2026-11-05): przekładniki prądowe typu ogólnego OSD pól GPZ (Z.7 s.86,
+#: Z.12 s.92 — po cztery przekładnie; Z.13 s.93; Z.16 s.96), dwa transformatory uziemiające
+#: ZNyn11 (§16 s.29–30) i trzy pola typu transformatora — impedancja zerowa uzwojenia
+#: zygzakowego R0/X0 z mapą wartości roboczych (`None` w każdej pozycji bez zygzaka). Dowód liść
+#: po liściu (zrzut bazy `9dafb6083` vs drzewo karty): różnią się WYŁĄCZNIE te liście.
+POZYCJE_POL_GPZ: dict[str, tuple[str, ...]] = {
+    "ct_types": tuple(
+        f"ct_typ_ogolny_osd_{p}_z{z}"
+        for z, przekladnie in (
+            ("7", ("800_5_5_5_5", "1000_5_5_5_5", "1200_5_5_5_5", "1600_5_5_5_5")),
+            ("12", ("800_5_5", "1000_5_5", "1200_5_5", "1600_5_5")),
+            ("13", ("100_5",)),
+            ("16", ("100_5_5_5",)),
+        )
+        for p in przekladnie
+    ),
+    "transformer_types": ("tu-sn-nn-15-04-100kva-znyn11", "tu-sn-nn-20-04-100kva-znyn11"),
+}
+POLA_Z0_ZYGZAKA_TYPU = ("r0_ohm", "x0_ohm", "wartosci_robocze")
+
+
+def _cofnij_karte_pol_gpz(zrzut: dict[str, object]) -> None:
+    """Cofa zmiany karty POLA-GPZ-SZABLONY w zrzucie (pozycje i pola typu transformatora)."""
+    for przestrzen, identyfikatory in POZYCJE_POL_GPZ.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    for postac in zrzut["transformer_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_Z0_ZYGZAKA_TYPU:
+            assert postac.pop(nazwa) is None, postac["id"]
+
+
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -298,6 +329,10 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    # Karta POLA-GPZ-SZABLONY: cofnięcie jej pozycji i pól typu daje odcisk sprzed karty.
+    zrzut_karty = copy.deepcopy(zrzut)
+    assert _odcisk_zrzutu(zrzut_karty) != ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    _cofnij_karte_pol_gpz(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
     # Scalenie kart UX-04/POLE-LINIOWE-WZORZEC i UX-04/POLE-BKR-MODEL: rozłączne zmiany katalogu,
     # dowód obiema drogami. Droga A — cofnięcie baterii BKR daje odcisk karty pola liniowego.

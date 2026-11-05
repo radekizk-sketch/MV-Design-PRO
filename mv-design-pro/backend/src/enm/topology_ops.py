@@ -637,6 +637,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "p0_kw",
             "i0_percent",
             "vector_group",
+            "r0_ohm",
+            "x0_ohm",
             "hv_neutral",
             "lv_neutral",
             "lv_earthing_system",

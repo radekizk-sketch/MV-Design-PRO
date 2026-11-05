@@ -213,13 +213,22 @@ def przenies_uziemienie_na_zespol(
         susceptancja_zerowa_wyspy_s(enm, bus_ref),
     )
     transformator[NOSNIK_TRANSFORMATORA] = cfg
+    dane_zerowe_zrodla: dict[str, Any] = {}
     if zrodlo is not None:
         zrodlo[NOSNIK_ZRODLA] = {"type": "isolated"}
+        # Dane składowej zerowej równoważnika (Z0 widziana z szyn SN — z uziemieniem, które
+        # właśnie przeszło na zespół) schodzą ze źródła razem z opisem: zostawione dawałyby
+        # DRUGĄ drogę zerową obok zygzaka. Wracają przy oddaniu (para przeniesienia).
+        for klucz in POLA_ZEROWE_ZRODLA:
+            if zrodlo.get(klucz) is not None:
+                dane_zerowe_zrodla[klucz] = zrodlo[klucz]
+                zrodlo[klucz] = None
     transformator.setdefault("meta", {})[ZAPIS_ZESPOLU] = {
         "bay_ref": bay_ref,
         "wariant": wariant,
         "zrodlo_ref": zrodlo.get("ref_id") if zrodlo else None,
         "dane_przyjete": przyjete,
+        **({"dane_zerowe_zrodla": dane_zerowe_zrodla} if dane_zerowe_zrodla else {}),
     }
     return None
 
@@ -229,6 +238,24 @@ def zapis_zespolu(transformator: dict[str, Any]) -> dict[str, Any] | None:
     meta = transformator.get("meta")
     zapis = meta.get(ZAPIS_ZESPOLU) if isinstance(meta, dict) else None
     return zapis if isinstance(zapis, dict) else None
+
+
+#: Dane składowej zerowej równoważnika sieci (`Source`) — schodzą ze źródła-dawcy przy
+#: przeniesieniu punktu neutralnego i wracają przy oddaniu (jedna lista dla obu stron pary).
+POLA_ZEROWE_ZRODLA: tuple[str, ...] = ("r0_ohm", "x0_ohm", "z0_z1_ratio")
+
+
+def zrodla_dawcy_zespolu(enm: EnergyNetworkModel) -> frozenset[str]:
+    """Źródła, których punkt neutralny przeniesiono na transformator uziemiający pola ZU (zapis
+    pary ``ZAPIS_ZESPOLU``). Równoważnik takiego źródła nie ma drogi zerowej z założenia (sieć
+    uziemia zespół), więc brak jego R0/X0 nie jest brakiem danych zwarcia doziemnego —
+    JEDNO źródło dla walidatora (W002) i par przeniesienia/oddania."""
+    dawcy: set[str] = set()
+    for transformator in enm.transformers:
+        zapis = (transformator.meta or {}).get(ZAPIS_ZESPOLU)
+        if isinstance(zapis, dict) and zapis.get("zrodlo_ref"):
+            dawcy.add(str(zapis["zrodlo_ref"]))
+    return frozenset(dawcy)
 
 
 def oddaj_uziemienie_zrodlu(enm: dict[str, Any], transformator: dict[str, Any]) -> str | None:
@@ -251,6 +278,9 @@ def oddaj_uziemienie_zrodlu(enm: dict[str, Any], transformator: dict[str, Any]) 
     # Nośnik wraca taki, jaki jest (także niekompletny — brak wartości nazywa walidator E-W5-01).
     cfg = copy.deepcopy(transformator.get(NOSNIK_TRANSFORMATORA))
     zrodlo[NOSNIK_ZRODLA] = cfg
+    for klucz, wartosc in (zapis.get("dane_zerowe_zrodla") or {}).items():
+        if klucz in POLA_ZEROWE_ZRODLA:
+            zrodlo[klucz] = wartosc
     return str(zrodlo["ref_id"])
 
 

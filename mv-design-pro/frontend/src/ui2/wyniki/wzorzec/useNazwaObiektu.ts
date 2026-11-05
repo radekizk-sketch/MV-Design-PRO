@@ -166,6 +166,9 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   pv_inverter: 'falownik PV',
   wind_inverter: 'falownik wiatrowy',
   block_transformer: 'transformator blokowy',
+  // Pole zespołu uziemiającego (szyna potrzeb własnych i transformator uziemiający ZNyn11).
+  zu_bus_nn: 'szyna potrzeb własnych zespołu uziemiającego',
+  zu_transformer: 'transformator uziemiający',
   // Kopie elementów rozdzielnicy nN (operacja kopiowania odpływu).
   copy_bus: 'kopia szyny',
   copy_branch: 'kopia gałęzi',

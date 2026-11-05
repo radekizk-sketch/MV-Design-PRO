@@ -1695,6 +1695,12 @@ SZABLON_KANONICZNY_ROLI: dict[str, BayTemplate] = {
     "COUPLER": BAY_TEMPLATE_COUPLER,
     "MEASUREMENT": BAY_TEMPLATE_MEASUREMENT,
     "OZE": BAY_TEMPLATE_DER_PV,
+    # Pole zespołu uziemiającego: pole tworzone operacją dostaje zawsze szablon WARIANTU (wskazany
+    # albo z opisu uziemienia źródła wyspy — `enm.zespol_uziemiajacy`), więc ten wpis służy
+    # wyłącznie odczytowi zestawu roli bez wariantu. Z.13 (s.93) niesie zestaw WSPÓLNY wszystkich
+    # wariantów Z.13–Z.15 (SPZ 79 transformatora uziemiającego jest tylko na Z.15 i przychodzi
+    # z szablonu wariantu) — przypina `tests/network_model/catalog/test_funkcje_eaz_roli.py`.
+    "ZU": BAY_TEMPLATE_GPZ_ZESPOL_UZIEMIAJACY_Z13,
 }
 
 

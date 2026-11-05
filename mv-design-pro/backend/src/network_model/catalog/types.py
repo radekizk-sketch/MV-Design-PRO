@@ -1671,9 +1671,25 @@ class TransformerType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    # Karta POLA-GPZ-SZABLONY (decyzja architekta, impedancja zerowa ZNyn11): impedancja zerowa
+    # NA FAZĘ uzwojenia zygzakowego [Ω], widziana z jego zacisków (strona GN dla ZN, strona DN
+    # dla zn) — IEC 60076-6 (transformatory uziemiające) każe ją podać osobno, bo u_k opisuje
+    # parę uzwojeń GN–DN, nie drogę zerową zygzaka. `None` = pozycja bez uzwojenia zygzakowego
+    # albo bez tej danej; klucze w `to_dict` WYŁĄCZNIE, gdy podane (odcisk pozostałych pozycji
+    # bez zmian). Pochodzenie wartości roboczej: `wartosci_robocze` (zasada nr 4).
+    r0_ohm: float | None = None
+    x0_ohm: float | None = None
+    # `None` (nie pusta krotka) = brak wartości roboczych: postać kanoniczna odcisku pomija
+    # `None`, więc pozycje bez Z0 zygzaka haszują jak przed kartą.
+    wartosci_robocze: tuple[tuple[str, str], ...] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
+        z0_zygzaka: dict[str, Any] = {}
+        if self.r0_ohm is not None or self.x0_ohm is not None:
+            z0_zygzaka = {"r0_ohm": self.r0_ohm, "x0_ohm": self.x0_ohm}
+        if self.wartosci_robocze:
+            z0_zygzaka[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU] = dict(self.wartosci_robocze)
         return {
             "id": self.id,
             "name": self.name,
@@ -1690,6 +1706,7 @@ class TransformerType:
             "tap_min": self.tap_min,
             "tap_max": self.tap_max,
             "tap_step_percent": self.tap_step_percent,
+            **z0_zygzaka,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1722,6 +1739,9 @@ class TransformerType:
             tap_min=wymagany_int(data, "tap_min", context="TransformerType"),
             tap_max=wymagany_int(data, "tap_max", context="TransformerType"),
             tap_step_percent=wymagany_float(data, "tap_step_percent", context="TransformerType"),
+            r0_ohm=float(data["r0_ohm"]) if data.get("r0_ohm") is not None else None,
+            x0_ohm=float(data["x0_ohm"]) if data.get("x0_ohm") is not None else None,
+            wartosci_robocze=wartosci_robocze_z_danych(data) or None,
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog transformatorów MV-DESIGN-PRO / PN-EN 60076",
@@ -4888,7 +4908,13 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             # Bez niego gałąź magnesująca nie miała danych źródłowych z katalogu.
             "i0_percent",
             "vector_group",
+            # Impedancja zerowa uzwojenia zygzakowego (transformator uziemiający ZNyn11) i znacznik
+            # wartości roboczej — addytywnie, wyłącznie dla pozycji, które je niosą.
+            "r0_ohm",
+            "x0_ohm",
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=("r0_ohm", "x0_ohm", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
         ui_fields=(
             ("rated_power_mva", "Sn [MVA]", "MVA"),
             ("uk_percent", "uk%", "%"),

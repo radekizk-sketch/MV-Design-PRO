@@ -43,6 +43,7 @@ from network_model.pochodne.skladowe_symetryczne import (
 from network_model.pochodne.skladowe_zerowe import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
+    impedancja_zerowa_zygzaka_robocza_ohm,
     reaktancja_dlawika_dostrojonego_ohm,
 )
 from network_model.pochodne.wielkosci_pochodne import (
@@ -80,6 +81,7 @@ from network_model.pochodne.wielkosci_pochodne import (
 )
 
 __all__ = [
+    "impedancja_zerowa_zygzaka_robocza_ohm",
     "a_na_ka",
     "calka_joule_ka2s",
     "czlon_wykladniczy_kappa",

@@ -3418,6 +3418,10 @@ def _apply_materialized_transformer_fields(
         "tap_min": "tap_min",
         "tap_max": "tap_max",
         "tap_step_percent": "tap_step_percent",
+        # Impedancja zerowa uzwojenia zygzakowego (pozycje ZNyn11) — wyłącznie gdy pozycja ją
+        # niesie (`pola_opcjonalne` kontraktu TRAFO_SN_NN).
+        "r0_ohm": "r0_ohm",
+        "x0_ohm": "x0_ohm",
     }
     for source_key, target_key in field_mapping.items():
         if materialized_params.get(source_key) is not None:
@@ -10910,6 +10914,10 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "p0_kw",
                 "i0_percent",
                 "vector_group",
+                # Impedancja zerowa uzwojenia zygzakowego — wartość projektanta zastępuje
+                # wartość roboczą katalogu (zasada nr 4 pkt 3).
+                "r0_ohm",
+                "x0_ohm",
                 "hv_neutral",
                 "lv_neutral",
                 "lv_earthing_system",

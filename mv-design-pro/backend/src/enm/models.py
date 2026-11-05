@@ -555,6 +555,14 @@ class Transformer(ENMElement):
     vector_group: str | None = None
     hv_neutral: GroundingConfig | None = None
     lv_neutral: GroundingConfig | None = None
+    # Karta POLA-GPZ-SZABLONY (decyzja architekta): impedancja zerowa NA FAZĘ uzwojenia
+    # zygzakowego [Ω], widziana z jego zacisków (strona GN dla ZN, strona DN dla zn; IEC 60076-6).
+    # Jedyny nośnik drogi zerowej zygzaka w `enm.zero_sequence_transformer` (u_k opisuje parę
+    # uzwojeń, nie drogę zerową). Z katalogu (`materialized_params`, wartość robocza oznaczona
+    # w `wartosci_robocze`) albo od projektanta; `None` = transformator bez zygzaka. Podana dla
+    # grupy bez uzwojenia zygzakowego = odmowa walidacji (kontrolka bez skutku byłaby fantomem).
+    r0_ohm: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
+    x0_ohm: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
     # W5-A §1 p. 2: układ sieci nN zasilanej z tego transformatora — pole
     # TYPOWANE w miejsce dawnego klucza meta stacji z układem nN (skasowane z
     # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
@@ -585,6 +593,18 @@ class Transformer(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+
+    @model_validator(mode="after")
+    def _z0_tylko_dla_zygzaka(self) -> Transformer:
+        if (self.r0_ohm is not None or self.x0_ohm is not None) and "z" not in (
+            self.vector_group or ""
+        ).lower():
+            raise ValueError(
+                "Impedancja zerowa R0/X0 transformatora dotyczy wyłącznie uzwojenia "
+                "zygzakowego (grupa połączeń z literą Z albo z) — grupa "
+                f"„{self.vector_group or 'nieokreślona'}” go nie ma."
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
