@@ -603,7 +603,7 @@ class TestInspectorCounterfactualView:
 
         # Pierwszy wiersz powinien byc Q_cmd
         q_row = cf_table.rows[0]
-        assert q_row.name == "Q_cmd"
+        assert q_row.name == "Moc bierna zadana"
         assert q_row.unit == "Mvar"
 
     def test_counterfactual_delta_values(self, qu_counterfactual_proof: ProofDocument):

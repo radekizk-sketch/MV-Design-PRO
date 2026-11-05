@@ -45,7 +45,7 @@ describe('tolerancja napięcia sieci nN — słownik frontu = backend', () => {
       expect(tabela).not.toBeNull();
       const [cMax, cMin] = [Number(tabela?.[1]), Number(tabela?.[2])];
       expect(ETYKIETA_PL_TOLERANCJI_NN[tolerancja]).toBe(
-        `${etykieta?.[1]} (c_max ${fmtPL(cMax)}; c_min ${fmtPL(cMin)})`,
+        `${etykieta?.[1]} (współczynnik napięciowy maksymalny ${fmtPL(cMax)}, minimalny ${fmtPL(cMin)})`,
       );
     },
   );

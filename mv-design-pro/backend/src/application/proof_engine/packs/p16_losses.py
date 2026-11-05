@@ -60,6 +60,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU
+from werdykt.zapis_latex import ZapisLatex
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -541,7 +542,7 @@ class P16LossesProof:
         )
 
         if len(data.branches) > 5:
-            substitution = (
+            substitution: ZapisLatex = (
                 f"P_{{losses,total}} = \\sum_{{ij}} P_{{loss,ij}} = "
                 f"{computed_total:.4f} \\text{{ MW}} "
                 f"\\text{{ ({len(data.branches)} gałęzi)}}"

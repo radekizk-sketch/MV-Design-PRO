@@ -15,6 +15,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from werdykt.zapis_latex import ZapisLatex
+
 
 @dataclass(frozen=True)
 class ValueView:
@@ -30,7 +32,7 @@ class ValueView:
         alias_pl: Opcjonalny alias semantyczny (polski termin techniczny)
     """
 
-    symbol: str
+    symbol: ZapisLatex
     value: str  # Sformatowana wartosc
     raw_value: float | complex | str
     unit: str
@@ -110,7 +112,7 @@ class StepView:
     substitution_latex: str
     result: ValueView
     unit_check: UnitCheckView
-    source_keys: dict[str, str] = field(default_factory=dict)
+    source_keys: dict[ZapisLatex, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         # Sortowanie input_values alfabetycznie po symbol (determinizm)

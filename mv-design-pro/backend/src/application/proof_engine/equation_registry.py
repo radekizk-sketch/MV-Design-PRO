@@ -340,7 +340,7 @@ EQ_SC3F_006 = EquationDefinition(
         ),
     ),
     unit_derivation="— · — · kA = kA",
-    notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
+    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_007 = EquationDefinition(
@@ -369,7 +369,7 @@ EQ_SC3F_007 = EquationDefinition(
         ),
     ),
     unit_derivation="kV · kA = MVA",
-    notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
+    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_008 = EquationDefinition(
@@ -404,7 +404,7 @@ EQ_SC3F_008 = EquationDefinition(
         ),
     ),
     unit_derivation="kA · — = kA",
-    notes="AUDIT: c NIE występuje (używa I_k'' które już zawiera c).",
+    notes="AUDIT: c NIE występuje (używa $I_k''$ które już zawiera c).",
 )
 
 EQ_SC3F_008a = EquationDefinition(
@@ -443,7 +443,7 @@ EQ_SC3F_011 = EquationDefinition(
     equation_id="EQ_SC3F_011",
     name_pl="Współczynnik zanikania μ (składowa AC) maszyny",
     standard_ref=(
-        f"{NORMA_KRZYWYCH_ZANIKU['mu']} (krzywe μ w węzłach t_min; między węzłami "
+        f"{NORMA_KRZYWYCH_ZANIKU['mu']} (krzywe μ w węzłach $t_{{min}}$; między węzłami "
         f"{podstawa_reguly('mu', REGULA_INTERPOLACJA).skrot_pl})"
     ),
     latex=(
@@ -475,17 +475,17 @@ EQ_SC3F_011 = EquationDefinition(
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            description_pl="Minimalny czas zwłoki $t_{min} = t_b$ punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Krzywe normy w węzłach t_min "
-    "0.02 / 0.05 / 0.10 / ≥0.25 s (μ_i = a_i + b_i·e^(−c_i·I_k''/I_r), przycięte do [0; 1]); "
-    "t_min w węźle → krzywa węzła, t_min pomiędzy węzłami t_1 < t_min < t_2 → interpolacja "
+    notes="μ = 1 dla $I_k''/I_r \\leq  2$ (z dala od generatora). Krzywe normy w węzłach $t_{min}$ "
+    "0,02 / 0,05 / 0,10 / ≥0,25 s ($\\mu_i = a_i + b_i$·e^(−$c_i\\cdot I_k''/I_r$), przycięte do [0; 1]); "
+    "$t_{min}$ w węźle → krzywa węzła, $t_{min}$ pomiędzy węzłami $t_1 < t_{min} < t_2$ → interpolacja "
     "liniowa wartości krzywych obu węzłów ("
     + podstawa_reguly("mu", REGULA_INTERPOLACJA).opis_pl
-    + "), t_min < 0.02 s → krzywa 0.02 s (interpretacja inżynierska), t_min > 0.25 s → "
+    + "), $t_{min} < 0{,}02$ s → krzywa 0,02 s (interpretacja inżynierska), $t_{min} > 0{,}25$ s → "
     "krzywa 0.25 s. Wydanie: " + UWAGA_WYDANIA_NORMY_KRZYWYCH + ". AUDIT: c NIE występuje.",
 )
 
@@ -493,7 +493,7 @@ EQ_SC3F_012 = EquationDefinition(
     equation_id="EQ_SC3F_012",
     name_pl="Współczynnik zanikania q maszyny asynchronicznej",
     standard_ref=(
-        f"{NORMA_KRZYWYCH_ZANIKU['q']} (krzywe q w węzłach t_min; między węzłami "
+        f"{NORMA_KRZYWYCH_ZANIKU['q']} (krzywe q w węzłach $t_{{min}}$; między węzłami "
         f"{podstawa_reguly('q', REGULA_INTERPOLACJA).skrot_pl})"
     ),
     latex=(
@@ -510,18 +510,18 @@ EQ_SC3F_012 = EquationDefinition(
         SymbolDefinition(
             symbol="m",
             unit="MW",
-            description_pl="Moc czynna na parę biegunów (P_rM / p)",
+            description_pl="Moc czynna na parę biegunów ($P_{rM}$ / p)",
             mapping_key="p_per_pole_mw",
         ),
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            description_pl="Minimalny czas zwłoki $t_{min} = t_b$ punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="q ∈ [0; 1]; krzywe normy w węzłach t_min, ten sam algorytm węzeł / interpolacja "
+    notes="q ∈ [0; 1]; krzywe normy w węzłach $t_{min}$, ten sam algorytm węzeł / interpolacja "
     "liniowa / zakres co μ, ale inna podstawa interpolacji: "
     + podstawa_reguly("q", REGULA_INTERPOLACJA).opis_pl
     + ". Dla maszyn synchronicznych q = 1 (brak dodatkowego zaniku). Wydanie: "
@@ -562,7 +562,7 @@ EQ_SC3F_013 = EquationDefinition(
     ),
     unit_derivation="— · — · kA = kA",
     notes="Prąd wyłączeniowy maszyny do doboru zdolności łączeniowej aparatury. "
-    "AUDIT: c NIE występuje (I_k'' już zawiera c).",
+    "AUDIT: c NIE występuje ($I_k''$ już zawiera c).",
 )
 
 # --- Pełny bilans punktu zwarcia: I_b, i_DC(t_b) oraz I²t ---------------------------------
@@ -573,7 +573,7 @@ EQ_SC3F_013 = EquationDefinition(
 # niesymetrycznym normy i został usunięty. Składowa nieokresowa — osobne EQ_SC3F_020.
 EQ_SC3F_014 = EquationDefinition(
     equation_id="EQ_SC3F_014",
-    name_pl="Prąd wyłączeniowy symetryczny I_b",
+    name_pl="Prąd wyłączeniowy symetryczny $I_b$",
     standard_ref="IEC 60909-0:2016 rozdz. 9 (eq. 75 i 76)",
     latex=(
         r"I_b = I_k'' - \sum_m \frac{\Delta U''_m}{c\,U_n/\sqrt{3}}"
@@ -601,7 +601,7 @@ EQ_SC3F_014 = EquationDefinition(
         SymbolDefinition(
             symbol="\\mu_m",
             unit="—",
-            description_pl="Współczynnik zaniku składowej okresowej maszyny przy t_min = t_b",
+            description_pl="Współczynnik zaniku składowej okresowej maszyny przy $t_{min} = t_b$",
             mapping_key="mu_factor",
         ),
         SymbolDefinition(
@@ -622,23 +622,23 @@ EQ_SC3F_014 = EquationDefinition(
     ),
     unit_derivation="kA − — · — · kA = kA",
     notes="Bez maszyn wirujących (zwarcie odległe od generatora, także z udziałem źródeł "
-    "przekształtnikowych — źródeł prądowych bez zaniku) suma jest pusta i I_b = I_k''. "
-    "Dla maszyny na zaciskach zwarcia ΔU''/(c·U_n/√3) = 1 i wzór daje μ·q·I_k,m'' "
-    "(EQ_SC3F_013). Zwarcia niesymetryczne: I_b = I_k''. Wartość I_b czytana z FROZEN wyniku "
+    "przekształtnikowych — źródeł prądowych bez zaniku) suma jest pusta i $I_b = I_k''$. "
+    "Dla maszyny na zaciskach zwarcia ΔU''/(c·$U_n$/√3) = 1 i wzór daje μ·q·$I_{k,m}''$ "
+    "(EQ_SC3F_013). Zwarcia niesymetryczne: $I_b = I_k''$. Wartość $I_b$ czytana z FROZEN wyniku "
     "solvera (ib_a, ślad Ib) — proof engine nie liczy fizyki. AUDIT: c występuje wyłącznie "
-    "jako normalizacja ΔU'' (współczynnik bezwymiarowy z solvera), I_k'' już zawiera c.",
+    "jako normalizacja ΔU'' (współczynnik bezwymiarowy z solvera), $I_k''$ już zawiera c.",
 )
 
 EQ_SC3F_020 = EquationDefinition(
     equation_id="EQ_SC3F_020",
-    name_pl="Składowa nieokresowa prądu zwarciowego i_DC w chwili t_b",
+    name_pl="Składowa nieokresowa prądu zwarciowego $i_{DC}$ w chwili $t_b$",
     standard_ref="IEC 60909-0:2016 rozdz. 10 (eq. 64)",
     latex=r"i_{DC} = \sqrt{2} \cdot I_k'' \cdot e^{-2 \pi f \, t_b \, R/X}",
     symbols=(
         SymbolDefinition(
             symbol="i_{DC}",
             unit="kA",
-            description_pl="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+            description_pl="Składowa nieokresowa prądu zwarciowego w chwili $t_b$",
             mapping_key="i_dc_ka",
         ),
         SymbolDefinition(
@@ -654,7 +654,7 @@ EQ_SC3F_020 = EquationDefinition(
             symbol="t_b",
             unit="s",
             description_pl=(
-                "Czas wyłączenia t_min — najkrótszy czas zadziałania zabezpieczenia + czas "
+                "Czas wyłączenia $t_{min}$ — najkrótszy czas zadziałania zabezpieczenia + czas "
                 "własny wyłącznika"
             ),
             mapping_key="tb_s",
@@ -667,9 +667,9 @@ EQ_SC3F_020 = EquationDefinition(
         ),
     ),
     unit_derivation="kA · — = kA",
-    notes="f = 50 Hz. Wielkości (wykładnik, współczynnik zaniku, i_DC) czytane ze śladu "
+    notes="f = 50 Hz. Wielkości (wykładnik, współczynnik zaniku, $i_{DC}$) czytane ze śladu "
     "solvera (klucz iDC) — proof engine nie liczy fizyki. Niesymetryczny prąd wyłączeniowy "
-    "I_b,asym = √(I_b² + i_DC²). AUDIT: c NIE występuje (I_k'' już zawiera c).",
+    "$I_{b,asym}$ = √($I_b^2 + i_{DC}^2$). AUDIT: c NIE występuje ($I_k''$ już zawiera c).",
 )
 
 EQ_SC3F_015 = EquationDefinition(
@@ -681,7 +681,7 @@ EQ_SC3F_015 = EquationDefinition(
         SymbolDefinition(
             symbol="I^2t",
             unit="kA²s",
-            description_pl="Energia cieplna zwarcia (całka Joule'a z definicji I_th)",
+            description_pl="Energia cieplna zwarcia (całka Joule'a z definicji $I_{th}$)",
             mapping_key="i2t_ka2s",
         ),
         SymbolDefinition(
@@ -698,7 +698,7 @@ EQ_SC3F_015 = EquationDefinition(
         ),
     ),
     unit_derivation="kA² · s = kA²s",
-    notes="Krok formatujący wielkości już obecne w dowodzie (I_th, t_k) — definicja prądu "
+    notes="Krok formatujący wielkości już obecne w dowodzie ($I_{th}$, $t_k$) — definicja prądu "
     "zastępczego cieplnego (IEC 60909-0 § 12). Spójny z projekcją kanoniczną wierszy "
     "wyników (i2t_ka2s w pełnym bilansie F1). AUDIT: c NIE występuje.",
 )
@@ -737,7 +737,7 @@ EQ_SC3F_016 = EquationDefinition(
         ),
     ),
     unit_derivation="Ω + Ω = Ω",
-    notes="Z_f w każdej fazie zwarcia trójfazowego; R_f ≥ 0, X_f ≥ 0. Prąd przez Z_f jest "
+    notes="$Z_f$ w każdej fazie zwarcia trójfazowego; $R_f \\geq  0$, $X_f \\geq  0$. Prąd przez $Z_f$ jest "
     "poza zakresem IEC 60909 i nie jest podstawą doboru wytrzymałości zwarciowej. "
     "AUDIT: c NIE występuje.",
 )
@@ -775,7 +775,7 @@ EQ_SC3F_017 = EquationDefinition(
     ),
     unit_derivation="kV / Ω = kA",
     notes="AUDIT: c występuje WYŁĄCZNIE w tym równaniu wariantu z impedancją przejścia "
-    "(Anti-Double-Counting: wariant Z_f).",
+    "(Anti-Double-Counting: wariant $Z_f$).",
 )
 
 EQ_SC3F_018 = EquationDefinition(
@@ -804,7 +804,7 @@ EQ_SC3F_018 = EquationDefinition(
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="R_k/X_k pełnej pętli z Z_f (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
+    notes="$R_k/X_k$ pełnej pętli z $Z_f$ (kontrakt OD-14 §2). AUDIT: c NIE występuje.",
 )
 
 
@@ -1025,20 +1025,20 @@ EQ_VDROP_007 = EquationDefinition(
     notes=(
         "KARTA PODSTAWA-VDROP (2026-08-12). ΔU_total^{kV} to SUMA spadków "
         "odcinkowych w jednostkach bezwzględnych (łańcuch EQ_VDROP_001..006 "
-        "TEGO SAMEGO dowodu, każdy odcinek przeliczony przez WŁASNE U_n) — "
+        "TEGO SAMEGO dowodu, każdy odcinek przeliczony przez WŁASNE $U_n$) — "
         "NIE wynik biegu, bo podstawienie wyniku biegu tutaj byłoby dowodzeniem "
-        "cyrkularnym. Do 2026-08-12 równanie mnożyło U_source przez "
-        "(1 − ΔU_total%/100): ΔU_total% jest odniesione do U_n, więc gdy "
-        "U_source ≠ U_n, krok mieszał dwie różne podstawy odniesienia. ZMIERZONE "
-        "na sieci 110/15 kV (U_początku = 14,7984 kV, ΔU_total = 6,3574 %): "
+        "cyrkularnym. Do 2026-08-12 równanie mnożyło $U_{source}$ przez "
+        "(1 − ΔU_total%/100): ΔU_total% jest odniesione do $U_n$, więc gdy "
+        "$U_{source}$ ≠ $U_n$, krok mieszał dwie różne podstawy odniesienia. ZMIERZONE "
+        "na sieci 110/15 kV ($U_{początku} = 14{,}7984$ kV, ΔU_total = 6,3574 %): "
         "stara forma dawała 13,8576 kV wobec 13,8452 kV z biegu — 12,44 V "
         "rozjazdu. Nowa forma daje 13,8448 kV — 0,375 V rozjazdu wobec biegu "
-        "(REZYDUALNE — przybliżenie ΔU = (R·P+X·Q)/U_n² pomija składową "
+        "(REZYDUALNE — przybliżenie ΔU = (R·P+X·Q)/$U_n^2$ pomija składową "
         "poprzeczną, którą rozpływ zna dokładnie; ten sam rząd wielkości co pin "
         "ΔU w tests/api/test_pakiet_dowodowy_biegu.py, bo to ALGEBRAICZNIE "
         "TA SAMA różnica — patrz test "
         "test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_"
-        "podstawa_vdrop). Na sieci z U_source = U_n obie formy dają identyczny "
+        "podstawa_vdrop). Na sieci z $U_{source} = U_n$ obie formy dają identyczny "
         "wynik (0,00 V różnicy) — patrz application/solvers/"
         "voltage_drop_binding.py. Odejmowanie w kV usuwa mieszanie podstaw z "
         "konstrukcji: obie strony równania są już w tej samej jednostce."
@@ -1075,9 +1075,9 @@ EQ_VDROP_010 = EquationDefinition(
         "KARTA P0.5b (2026-08-13, N-D6 + uzgodnienie U4). Transformator NIE JEST "
         "odcinkiem w sensie VDROP — RODZAJE_ODCINKA (`voltage_drop_binding.py`) "
         "wyklucza go od początku istnienia tego modułu, bo zmienia napięcie "
-        "przekładnią, nie spadkiem wzdłużnym; wzór ΔU=(R·P+X·Q)/U_n² NIE MA "
+        "przekładnią, nie spadkiem wzdłużnym; wzór ΔU=(R·P+X·Q)/$U_n^2$ NIE MA "
         "zastosowania. Ten krok NIE liczy fizyki transformatora — nazywa jawnie "
-        "zmianę podstawy napięcia, czytając U_1/U_2 z JUŻ ROZWIĄZANEGO rozpływu "
+        "zmianę podstawy napięcia, czytając $U_1/U_2$ z JUŻ ROZWIĄZANEGO rozpływu "
         "(fizyka transformatora policzona przez solver PF, poza domeną VDROP). "
         "To NIE jest cyrkularność zakazana kartą PODSTAWA-VDROP: tamten zakaz "
         "dotyczy PODMIANY ΔU odcinka linii/kabla (który VDROP rości sobie prawo "
@@ -1392,7 +1392,7 @@ EQ_LC_003 = EquationDefinition(
         ),
     ),
     unit_derivation="100 · kA / kA = %",
-    notes="I_n przeliczany z A na kA dla spójności jednostek.",
+    notes="$I_n$ przeliczany z A na kA dla spójności jednostek.",
 )
 
 EQ_LC_004 = EquationDefinition(
@@ -1642,14 +1642,12 @@ EQ_LVCV_004 = EquationDefinition(
     ),
     unit_derivation="kA ≥ kA",
     notes=(
-        "KARTA P0.10, rozstrzygnięcie rundy 5b (docs/nn/UZGODNIENIA_WATKOW_2026-08-13.md): "
-        "DWA RÓŻNE zdania inżynierskie, NIGDY jedno pole. Kombinacja aparat+wkładka "
-        "(rozłącznik bezpiecznikowy nN) dostaje zdanie o `conditional_sc_current_ka` "
-        "(prąd warunkowy KOMBINACJI, ważny wyłącznie z wkładką); goły aparat (MCB: "
-        "`icn_ka` IEC 60898-1; MCCB: `i_cu_ka` IEC 60947) dostaje zdanie o WŁASNEJ "
-        "zdolności — dla rozłącznika bezpiecznikowego BEZ wkładki albo dla rodzaju "
-        "aparatu bez własnej zdolności ta druga sentencja jest jawnie NIE_DOTYCZY, "
-        "nie fikcyjnym zerem."
+        "Dwa różne zdania inżynierskie, nigdy jedno pole. Kombinacja aparatu z wkładką "
+        "(rozłącznik bezpiecznikowy nN) dostaje zdanie o prądzie warunkowym kombinacji, "
+        "ważnym wyłącznie z wkładką; aparat bez wkładki (wyłącznik nadprądowy — IEC 60898-1, "
+        "wyłącznik kompaktowy — IEC 60947-2) dostaje zdanie o własnej zdolności wyłączania. "
+        "Dla rozłącznika bezpiecznikowego bez wkładki albo aparatu bez własnej zdolności "
+        "druga ocena jest jawnie oznaczona jako nie dotyczy, nie fikcyjnym zerem."
     ),
 )
 
@@ -1662,7 +1660,7 @@ EQ_LVCV_005 = EquationDefinition(
         SymbolDefinition(
             symbol="\\int i^{2}\\,dt",
             unit="A²s",
-            description_pl="Energia zwarciowa rzeczywista (I_th² · t)",
+            description_pl="Energia zwarciowa rzeczywista ($I_{th}^2$ · t)",
             mapping_key="i2t_a2s",
         ),
         SymbolDefinition(
@@ -1697,7 +1695,7 @@ EQ_LVCV_005 = EquationDefinition(
 EQ_LVCV_006 = EquationDefinition(
     equation_id="EQ_LVCV_006",
     name_pl="Prąd zwarcia minimalnego z pętli",
-    standard_ref="IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
+    standard_ref="IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 ($c_{min}$)",
     latex=r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
     symbols=(
         SymbolDefinition(
@@ -1753,7 +1751,7 @@ EQ_LVCV_007 = EquationDefinition(
         SymbolDefinition(
             symbol="I_a",
             unit="A",
-            description_pl="Prąd zapewniający zadziałanie zabezpieczenia w czasie t_wym",
+            description_pl="Prąd zapewniający zadziałanie zabezpieczenia w czasie $t_{wym}$",
             mapping_key="ia_wymagane_a",
         ),
         SymbolDefinition(
@@ -1763,7 +1761,7 @@ EQ_LVCV_007 = EquationDefinition(
             mapping_key="t_wymagany_s",
         ),
     ),
-    unit_derivation="A ≥ A (przy dowiedzionym t ≤ t_wym)",
+    unit_derivation="A ≥ A (przy dowiedzionym t ≤ $t_{wym}$)",
     notes=(
         "REUSE `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
         "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche PASS bez danych; "
@@ -1784,7 +1782,7 @@ EQ_LVCV_007 = EquationDefinition(
 EQ_LVCV_008 = EquationDefinition(
     equation_id="EQ_LVCV_008",
     name_pl="Prąd zwarcia doziemnego w układzie TT",
-    standard_ref="IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+    standard_ref="IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 ($c_{min}$)",
     latex=r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad "
     r"Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
     symbols=(
@@ -1809,7 +1807,7 @@ EQ_LVCV_008 = EquationDefinition(
         SymbolDefinition(
             symbol="Z_s",
             unit="Ω",
-            description_pl="Moduł impedancji pętli doziemnej (upstream SN + TR + żyła fazowa + R_B + R_A)",
+            description_pl="Moduł impedancji pętli doziemnej (upstream SN + TR + żyła fazowa + $R_B + R_A$)",
             mapping_key="z_loop_magnitude_ohm",
         ),
         SymbolDefinition(
@@ -1836,7 +1834,7 @@ EQ_LVCV_008 = EquationDefinition(
 EQ_LVCV_009 = EquationDefinition(
     equation_id="EQ_LVCV_009",
     name_pl="Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
-    standard_ref="IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+    standard_ref="IEC 60364-4-41 §411.5.3 (TT: $R_A\\cdot I_{\\Delta n}$) / §411.6.2 (IT: $R_A\\cdot I_d$)",
     latex=r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
     symbols=(
         SymbolDefinition(
@@ -1871,8 +1869,8 @@ EQ_LVCV_009 = EquationDefinition(
     ),
     unit_derivation="Ω · A = V",
     notes=(
-        "Wartość U_dotyk liczy solver (`petla_zwarcia_tt_it`, krok `napiecie_dotykowe_rcd` / "
-        "`napiecie_dotykowe_pierwszego_zwarcia_it`). Limit U_L NIE jest w repozytorium — "
+        "Wartość $U_{dotyk}$ liczy solver (`petla_zwarcia_tt_it`, krok `napiecie_dotykowe_rcd` / "
+        "`napiecie_dotykowe_pierwszego_zwarcia_it`). Limit $U_L$ NIE jest w repozytorium — "
         "kryterium `swz.tt.napiecie_dotykowe` / `swz.it.pierwsze_zwarcie` ma status "
         "BRAK_PODSTAWY z kodem `swz.limit_tt_it_brak_tekstu_normy`; żadnej liczby z pamięci."
     ),
@@ -1913,7 +1911,7 @@ EQ_LVCV_010 = EquationDefinition(
     unit_derivation="(1/s) · F · V = A",
     notes=(
         "REUSE `network_model.solvers.petla_zwarcia_tt_it.oblicz_petle_it` (krok "
-        "`pojemnosc_doziemna_sieci_it`, `prad_pierwszego_zwarcia_it`). Susceptancja b_0 "
+        "`pojemnosc_doziemna_sieci_it`, `prad_pierwszego_zwarcia_it`). Susceptancja $b_0$ "
         "odcinków z modelu (pole b0_siemens_per_km) — brak = odmowa nazwana, nie domysł."
     ),
 )
@@ -1933,7 +1931,7 @@ EQ_LVCV_011 = EquationDefinition(
         SymbolDefinition(
             symbol="c",
             unit="—",
-            description_pl="Współczynnik napięciowy (c_min dla wartości minimalnej)",
+            description_pl="Współczynnik napięciowy ($c_{min}$ dla wartości minimalnej)",
             mapping_key="c_min",
         ),
         SymbolDefinition(
@@ -2471,7 +2469,7 @@ EQ_QU_004 = EquationDefinition(
 
 EQ_QU_005 = EquationDefinition(
     equation_id="EQ_QU_005",
-    name_pl="Wpływ Q_cmd na napięcie U (referencja VDROP)",
+    name_pl="Wpływ $Q_{cmd}$ na napięcie U (referencja VDROP)",
     standard_ref="Q(U) regulation → VDROP link",
     latex=(r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"),
     symbols=(
@@ -2503,7 +2501,7 @@ EQ_QU_005 = EquationDefinition(
     unit_derivation="Mvar → % → kV (VDROP link)",
     notes=(
         "LINK-ONLY: Referencja do istniejących równań VDROP. "
-        "Q_cmd wpływa na ΔU_X przez EQ_VDROP_004: ΔU_X = (X·Q)/U_n²·100%. "
+        "$Q_{cmd}$ wpływa na ΔU_X przez EQ_VDROP_004: ΔU_X = (X·Q)/$U_n^2$·100%. "
         "NIE DUPLIKUJE wzorów — tylko pokazuje zależność."
     ),
 )
@@ -2763,7 +2761,7 @@ EQ_SC1_006 = EquationDefinition(
         ),
     ),
     unit_derivation="kV / Ω = kA",
-    notes="Stosować zgodnie z typem zwarcia oraz impedancją Z_k z EQ_SC1_003/004/005.",
+    notes="Stosować zgodnie z typem zwarcia oraz impedancją $Z_k$ z EQ_SC1_003/004/005.",
 )
 
 EQ_SC1_007 = EquationDefinition(
@@ -2888,18 +2886,18 @@ EQ_SC1_009 = EquationDefinition(
         SymbolDefinition(
             symbol="R_k",
             unit="Ω",
-            description_pl="Rezystancja zastępcza Z_k",
+            description_pl="Rezystancja zastępcza $Z_k$",
             mapping_key="r_equiv_ohm",
         ),
         SymbolDefinition(
             symbol="X_k",
             unit="Ω",
-            description_pl="Reaktancja zastępcza Z_k",
+            description_pl="Reaktancja zastępcza $Z_k$",
             mapping_key="x_equiv_ohm",
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="κ obliczane z R/X impedancji zastępczej Z_k. Identyczny wzór jak dla 3F.",
+    notes="κ obliczane z R/X impedancji zastępczej $Z_k$. Identyczny wzór jak dla 3F.",
 )
 
 EQ_SC1_010 = EquationDefinition(
@@ -2933,7 +2931,7 @@ EQ_SC1_010 = EquationDefinition(
 
 EQ_SC1_011 = EquationDefinition(
     equation_id="EQ_SC1_011",
-    name_pl="Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
+    name_pl="Prąd cieplny równoważny $I_{th}$ (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.8 eq. (102)",
     latex=r"I_{th} = I_k'' \cdot \sqrt{m + n}",
     symbols=(
@@ -2964,14 +2962,14 @@ EQ_SC1_011 = EquationDefinition(
     ),
     unit_derivation="kA · — = kA",
     notes=(
-        "Prąd cieplny równoważny I_th dla doboru aparatury. "
+        "Prąd cieplny równoważny $I_{th}$ dla doboru aparatury. "
         "m = 1, n = 0 w uproszczeniu (zwarcie odległe od generatora)."
     ),
 )
 
 EQ_SC1_012 = EquationDefinition(
     equation_id="EQ_SC1_012",
-    name_pl="Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
+    name_pl="Prąd dynamiczny $I_{dyn}$ (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.3.1.1",
     latex=r"I_{dyn} = i_p",
     symbols=(
@@ -2989,7 +2987,7 @@ EQ_SC1_012 = EquationDefinition(
         ),
     ),
     unit_derivation="kA = kA",
-    notes="I_dyn = i_p. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
+    notes="$I_{dyn} = i_p$. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
 )
 
 
@@ -3037,7 +3035,7 @@ EQ_SC1_013 = EquationDefinition(
         ),
     ),
     unit_derivation="Ω + Ω + Ω + Ω = Ω",
-    notes="Zwarcie jednofazowe doziemne przez impedancję przejścia Z_f (w torze zerowym 3·Z_f).",
+    notes="Zwarcie jednofazowe doziemne przez impedancję przejścia $Z_f$ (w torze zerowym 3·$Z_f$).",
 )
 
 EQ_SC1_014 = EquationDefinition(
@@ -3072,7 +3070,7 @@ EQ_SC1_014 = EquationDefinition(
         ),
     ),
     unit_derivation="Ω + Ω + Ω = Ω",
-    notes="Zwarcie dwufazowe przez impedancję przejścia Z_f między fazami zwarcia.",
+    notes="Zwarcie dwufazowe przez impedancję przejścia $Z_f$ między fazami zwarcia.",
 )
 
 EQ_SC1_015 = EquationDefinition(
@@ -3113,8 +3111,8 @@ EQ_SC1_015 = EquationDefinition(
         ),
     ),
     unit_derivation="Ω + (Ω·Ω)/(Ω+Ω) = Ω",
-    notes="Zwarcie dwufazowe doziemne przez impedancję przejścia Z_f w torze do ziemi. "
-    "Warunek |I_k(Z_f)| ≤ |I_k(0)| NIE wynika tu z algebry (Z_f w gałęzi równoległej).",
+    notes="Zwarcie dwufazowe doziemne przez impedancję przejścia $Z_f$ w torze do ziemi. "
+    "Warunek |$I_k$($Z_f$)| ≤ |$I_k$(0)| NIE wynika tu z algebry ($Z_f$ w gałęzi równoległej).",
 )
 
 EQ_SC1_016 = EquationDefinition(
@@ -3181,7 +3179,7 @@ EQ_SC1_016 = EquationDefinition(
         ),
     ),
     unit_derivation="kV / Ω = kA",
-    notes="Stosować z impedancją Z_k z EQ_SC1_013/014/015 (pętla z impedancją przejścia).",
+    notes="Stosować z impedancją $Z_k$ z EQ_SC1_013/014/015 (pętla z impedancją przejścia).",
 )
 
 

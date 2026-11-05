@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from application.proof_engine.types import UnitCheckResult
+from werdykt.zapis_latex import ZapisLatex
 
 
 @dataclass(frozen=True)
@@ -128,309 +129,250 @@ class UnitVerifier:
         # SC3F
         "EQ_SC3F_001": {
             "rule": "— · kV = kV",
-            "inputs": {"c": "—", "U_n": "kV"},
             "output": "kV",
         },
         "EQ_SC3F_002": {
             "rule": "kV² / MVA = Ω",
-            "inputs": {"c": "—", "U_n": "kV", "S_kQ''": "MVA"},
             "output": "Ω",
         },
         "EQ_SC3F_003": {
             "rule": "Ω + Ω + Ω = Ω",
-            "inputs": {"Z_Q": "Ω", "Z_T": "Ω", "Z_L": "Ω"},
             "output": "Ω",
         },
         "EQ_SC3F_004": {
             "rule": "kV / Ω = kA",
-            "inputs": {"c": "—", "U_n": "kV", "Z_th": "Ω"},
             "output": "kA",
         },
         "EQ_SC3F_005": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"R_th": "Ω", "X_th": "Ω"},
             "output": "—",
         },
         "EQ_SC3F_006": {
             "rule": "— · — · kA = kA",
-            "inputs": {"κ": "—", "I_k''": "kA"},
             "output": "kA",
         },
         "EQ_SC3F_007": {
             "rule": "kV · kA = MVA",
-            "inputs": {"U_n": "kV", "I_k''": "kA"},
             "output": "MVA",
         },
         "EQ_SC3F_008": {
             "rule": "kA · — = kA",
-            "inputs": {"I_k''": "kA", "m": "—", "n": "—"},
             "output": "kA",
         },
         "EQ_SC3F_008a": {
             "rule": "kA = kA",
-            "inputs": {"i_p": "kA"},
             "output": "kA",
         },
         # Maszyny wirujące — prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 rozdz. 9)
         "EQ_SC3F_011": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"I_k''": "kA", "I_r": "kA", "t_min": "s"},
             "output": "—",
         },
         "EQ_SC3F_012": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"m": "MW", "t_min": "s"},
             "output": "—",
         },
         "EQ_SC3F_013": {
             "rule": "— · — · kA = kA",
-            "inputs": {"μ": "—", "q": "—", "I_k''": "kA"},
             "output": "kA",
         },
         # Pełny bilans punktu zwarcia: I_b, i_DC(t_b) oraz I²t (karta SC-IB-ITH-ZRODLA)
         "EQ_SC3F_014": {
             "rule": "kA − — · — · kA = kA",
-            "inputs": {"I_k''": "kA", "I''_{k,m}": "kA", "μ": "—", "q": "—", "ΔU''": "—"},
             "output": "kA",
         },
         "EQ_SC3F_020": {
             "rule": "kA · — = kA",
-            "inputs": {"I_k''": "kA", "t_b": "s", "R/X": "—"},
             "output": "kA",
         },
         "EQ_SC3F_015": {
             "rule": "kA² · s = kA²s",
-            "inputs": {"I_th": "kA", "t_k": "s"},
             "output": "kA²s",
         },
         # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10)
         "EQ_SC3F_016": {
             "rule": "Ω + Ω = Ω",
-            "inputs": {"Z_th": "Ω", "Z_f": "Ω"},
             "output": "Ω",
         },
         "EQ_SC3F_017": {
             "rule": "kV / Ω = kA",
-            "inputs": {"c": "—", "U_n": "kV", "Z_k": "Ω"},
             "output": "kA",
         },
         "EQ_SC3F_018": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"R_k": "Ω", "X_k": "Ω"},
             "output": "—",
         },
         # SC1 Post-Fault (§4.1)
         "EQ_SC1_001": {
             "rule": "Ω = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_002": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {},
             "output": "—",
         },
         "EQ_SC1_003": {
             "rule": "Ω + Ω + Ω = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_004": {
             "rule": "Ω + Ω = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_005": {
             "rule": "Ω + (Ω·Ω)/(Ω+Ω) = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_006": {
             "rule": "kV / Ω = kA",
-            "inputs": {"U_f": "kV", "Z_k": "Ω"},
             "output": "kA",
         },
         "EQ_SC1_007": {
             "rule": "kA = kA",
-            "inputs": {"I_0": "kA", "I_1": "kA", "I_2": "kA"},
             "output": "kA",
         },
         "EQ_SC1_008": {
             "rule": "kV / Ω = kA",
-            "inputs": {"c": "—", "U_n": "kV", "Z_k": "Ω"},
             "output": "kA",
         },
         "EQ_SC1_013": {
             "rule": "Ω + Ω + Ω + Ω = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω", "Z_f": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_014": {
             "rule": "Ω + Ω + Ω = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_f": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_015": {
             "rule": "Ω + (Ω·Ω)/(Ω+Ω) = Ω",
-            "inputs": {"Z_1": "Ω", "Z_2": "Ω", "Z_0": "Ω", "Z_f": "Ω"},
             "output": "Ω",
         },
         "EQ_SC1_016": {
             "rule": "kV / Ω = kA",
-            "inputs": {"U_f": "kV", "Z_k": "Ω"},
             "output": "kA",
         },
         "EQ_SC1_009": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"R_k": "Ω", "X_k": "Ω"},
             "output": "—",
         },
         "EQ_SC1_010": {
             "rule": "— · — · kA = kA",
-            "inputs": {"κ": "—", "I_k''": "kA"},
             "output": "kA",
         },
         "EQ_SC1_011": {
             "rule": "kA · — = kA",
-            "inputs": {"I_k''": "kA", "m": "—", "n": "—"},
             "output": "kA",
         },
         "EQ_SC1_012": {
             "rule": "kA = kA",
-            "inputs": {"i_p": "kA"},
             "output": "kA",
         },
         # VDROP
         "EQ_VDROP_001": {
             "rule": "Ω/km · km = Ω",
-            "inputs": {"r": "Ω/km", "l": "km"},
             "output": "Ω",
         },
         "EQ_VDROP_002": {
             "rule": "Ω/km · km = Ω",
-            "inputs": {"x": "Ω/km", "l": "km"},
             "output": "Ω",
         },
         "EQ_VDROP_003": {
             "rule": "(Ω · MW) / kV² = %",
-            "inputs": {"R": "Ω", "P": "MW", "U_n": "kV"},
             "output": "%",
         },
         "EQ_VDROP_004": {
             "rule": "(Ω · Mvar) / kV² = %",
-            "inputs": {"X": "Ω", "Q": "Mvar", "U_n": "kV"},
             "output": "%",
         },
         "EQ_VDROP_005": {
             "rule": "% + % = %",
-            "inputs": {"ΔU_R": "%", "ΔU_X": "%"},
             "output": "%",
         },
         "EQ_VDROP_006": {
             "rule": "Σ % = %",
-            "inputs": {"ΔU_i": "%"},
             "output": "%",
         },
         "EQ_VDROP_007": {
             # Karta PODSTAWA-VDROP (2026-08-12): odjęcie w kV zamiast mnożenia
             # przez ułamek odniesiony do U_n — obie strony w tej samej podstawie.
             "rule": "kV - kV = kV",
-            "inputs": {"U_{source}": "kV", "ΔU_{total}^{kV}": "kV"},
             "output": "kV",
         },
         "EQ_VDROP_010": {
             # Karta P0.5b (2026-08-13): granica transformatora na łańcuchu VDROP —
             # U_1/U_2 z rozwiązania rozpływu, obie strony w kV.
             "rule": "kV - kV = kV",
-            "inputs": {"U_{1}": "kV", "U_{2}": "kV"},
             "output": "kV",
         },
         # P32: Load Flow & Voltage
         "EQ_LF_001": {
             "rule": "MW² + Mvar² = MVA² → MVA",
-            "inputs": {"P": "MW", "Q": "Mvar"},
             "output": "MVA",
         },
         "EQ_LF_002": {
             "rule": "MVA / kV = kA",
-            "inputs": {"S": "MVA", "U_{LL}": "kV"},
             "output": "kA",
         },
         "EQ_LF_003": {
             "rule": "Ω · MW / kV = kV",
-            "inputs": {"R": "Ω", "P": "MW", "U_n": "kV"},
             "output": "kV",
         },
         "EQ_LF_004": {
             "rule": "Ω · Mvar / kV = kV",
-            "inputs": {"X": "Ω", "Q": "Mvar", "U_n": "kV"},
             "output": "kV",
         },
         "EQ_LF_005": {
             "rule": "kV + kV = kV",
-            "inputs": {"ΔU_R": "kV", "ΔU_X": "kV"},
             "output": "kV",
         },
         "EQ_LF_006": {
             "rule": "kV / kV = p.u.",
-            "inputs": {"U": "kV", "U_n": "kV"},
             "output": "p.u.",
         },
         "EQ_LF_007": {
             "rule": "kV / kV = %",
-            "inputs": {"U": "kV", "U_n": "kV"},
             "output": "%",
         },
         # P15: Load Currents & Overload
         "EQ_LC_001": {
             "rule": "MW² + Mvar² = MVA² → MVA",
-            "inputs": {"P": "MW", "Q": "Mvar"},
             "output": "MVA",
         },
         "EQ_LC_002": {
             "rule": "MVA / kV = kA",
-            "inputs": {"S": "MVA", "U_{LL}": "kV"},
             "output": "kA",
         },
         "EQ_LC_003": {
             "rule": "100 · kA / kA = %",
-            "inputs": {"I": "kA", "I_n": "kA"},
             "output": "%",
         },
         "EQ_LC_004": {
             "rule": "100 · (kA / kA - 1) = %",
-            "inputs": {"I_n": "kA", "I": "kA"},
             "output": "%",
         },
         "EQ_LC_005": {
             "rule": "100 · MVA / MVA = %",
-            "inputs": {"S": "MVA", "S_n": "MVA"},
             "output": "%",
         },
         "EQ_LC_006": {
             "rule": "100 · (MVA / MVA - 1) = %",
-            "inputs": {"S_n": "MVA", "S": "MVA"},
             "output": "%",
         },
         # P17: Losses Energy Profile
         "EQ_LE_001": {
             "rule": "h - h = h",
-            "inputs": {"t_i": "h", "t_{i-1}": "h"},
             "output": "h",
         },
         "EQ_LE_002": {
             "rule": "kW · h = kWh",
-            "inputs": {"P_{loss,i}": "kW", "Δt_i": "h"},
             "output": "kWh",
         },
         "EQ_LE_003": {
             "rule": "Σ kWh = kWh",
-            "inputs": {"E_i": "kWh"},
             "output": "kWh",
         },
         "EQ_LE_004": {
             "rule": "kW · h = kWh",
-            "inputs": {"P_{loss}": "kW", "t": "h"},
             "output": "kWh",
         },
     }
@@ -444,7 +386,7 @@ class UnitVerifier:
     def verify_equation(
         cls,
         equation_id: str,
-        input_units: dict[str, str],
+        input_units: dict[ZapisLatex, str],
         expected_output_unit: str,
     ) -> UnitCheckResult:
         """
@@ -507,7 +449,7 @@ class UnitVerifier:
     def verify_step(
         cls,
         equation_id: str,
-        inputs: list[tuple[str, str]],  # [(symbol, unit), ...]
+        inputs: list[tuple[ZapisLatex, str]],  # [(symbol, unit), ...]
         result_unit: str,
     ) -> UnitCheckResult:
         """

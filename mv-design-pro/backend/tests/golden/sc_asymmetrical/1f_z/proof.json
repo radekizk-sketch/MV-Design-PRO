@@ -265,7 +265,7 @@
         "equation_id": "EQ_SC1_006",
         "latex": "\\begin{aligned}\\text{1F–Z:} \\quad & I_1 = I_2 = I_0 = \\frac{U_f}{Z_k} \\\\\\text{2F:} \\quad & I_1 = \\frac{U_f}{Z_k}, \\quad I_2 = -I_1, \\quad I_0 = 0 \\\\\\text{2F–Z:} \\quad & I_1 = \\frac{U_f}{Z_k}, \\quadI_2 = -\\frac{Z_0}{Z_2 + Z_0} I_1, \\quadI_0 = -\\frac{Z_2}{Z_2 + Z_0} I_1\\end{aligned}",
         "name_pl": "Wyznaczenie prądów składowych I₁, I₂, I₀",
-        "notes": "Stosować zgodnie z typem zwarcia oraz impedancją Z_k z EQ_SC1_003/004/005.",
+        "notes": "Stosować zgodnie z typem zwarcia oraz impedancją $Z_k$ z EQ_SC1_003/004/005.",
         "standard_ref": "IEC 60909-0:2016 Annex B",
         "symbols": [
           {
@@ -581,7 +581,7 @@
         "equation_id": "EQ_SC1_009",
         "latex": "\\kappa = 1{,}02 + 0{,}98 \\cdot e^{-3 \\cdot R_k / X_k}",
         "name_pl": "Współczynnik udaru κ (zwarcie asymetryczne)",
-        "notes": "κ obliczane z R/X impedancji zastępczej Z_k. Identyczny wzór jak dla 3F.",
+        "notes": "κ obliczane z R/X impedancji zastępczej $Z_k$. Identyczny wzór jak dla 3F.",
         "standard_ref": "IEC 60909-0:2016 § 4.3.1.1 eq. (56)",
         "symbols": [
           {
@@ -591,13 +591,13 @@
             "unit": "—"
           },
           {
-            "description_pl": "Rezystancja zastępcza Z_k",
+            "description_pl": "Rezystancja zastępcza $Z_k$",
             "mapping_key": "r_equiv_ohm",
             "symbol": "R_k",
             "unit": "Ω"
           },
           {
-            "description_pl": "Reaktancja zastępcza Z_k",
+            "description_pl": "Reaktancja zastępcza $Z_k$",
             "mapping_key": "x_equiv_ohm",
             "symbol": "X_k",
             "unit": "Ω"
@@ -724,8 +724,8 @@
       "equation": {
         "equation_id": "EQ_SC1_012",
         "latex": "I_{dyn} = i_p",
-        "name_pl": "Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
-        "notes": "I_dyn = i_p. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
+        "name_pl": "Prąd dynamiczny $I_{dyn}$ (zwarcie asymetryczne)",
+        "notes": "$I_{dyn} = i_p$. Obowiązkowy wynik do doboru aparatury (wytrzymałość dynamiczna).",
         "standard_ref": "IEC 60909-0:2016 § 4.3.1.1",
         "symbols": [
           {
@@ -766,7 +766,7 @@
       "step_id": "SC1_STEP_009",
       "step_number": 9,
       "substitution_latex": "I_{dyn} = i_p = 10.4553\\,\\text{kA}",
-      "title_pl": "Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
+      "title_pl": "Prąd dynamiczny $I_{dyn}$ (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kA = kA ✓",
@@ -781,8 +781,8 @@
       "equation": {
         "equation_id": "EQ_SC1_011",
         "latex": "I_{th} = I_k'' \\cdot \\sqrt{m + n}",
-        "name_pl": "Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
-        "notes": "Prąd cieplny równoważny I_th dla doboru aparatury. m = 1, n = 0 w uproszczeniu (zwarcie odległe od generatora).",
+        "name_pl": "Prąd cieplny równoważny $I_{th}$ (zwarcie asymetryczne)",
+        "notes": "Prąd cieplny równoważny $I_{th}$ dla doboru aparatury. m = 1, n = 0 w uproszczeniu (zwarcie odległe od generatora).",
         "standard_ref": "IEC 60909-0:2016 § 4.8 eq. (102)",
         "symbols": [
           {
@@ -851,7 +851,7 @@
       "step_id": "SC1_STEP_010",
       "step_number": 10,
       "substitution_latex": "I_{th} = 5.6374 \\cdot \\sqrt{0.0086 + 1.0000} = 5.6374 \\cdot 1.0043 = 5.6615\\,\\text{kA}",
-      "title_pl": "Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
+      "title_pl": "Prąd cieplny równoważny $I_{th}$ (zwarcie asymetryczne)",
       "unit_check": {
         "computed_unit": "kA",
         "derivation": "kA · — = kA ✓",

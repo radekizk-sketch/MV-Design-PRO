@@ -238,7 +238,7 @@ class TestSC3FProofGenerator:
         assert any("κ" in t or "kappa" in t or "współczynnik udaru" in t for t in step_titles)
         assert any("i_p" in t or "prąd udarowy" in t for t in step_titles)
         assert any("i_dyn" in t or "prąd dynamiczny" in t for t in step_titles)
-        assert any("prąd wyłączeniowy symetryczny i_b" in t for t in step_titles)
+        assert any("prąd wyłączeniowy symetryczny $i_b$" in t for t in step_titles)
         assert any("i_th" in t or "prąd cieplny" in t for t in step_titles)
         assert any("energia cieplna" in t for t in step_titles)
         assert any("s_k''" in t or "moc zwarciowa" in t for t in step_titles)

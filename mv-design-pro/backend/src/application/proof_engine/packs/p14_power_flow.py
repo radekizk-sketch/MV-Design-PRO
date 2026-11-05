@@ -48,6 +48,7 @@ from application.proof_engine.types import (
     ProofValue,
     UnitCheckResult,
 )
+from werdykt.zapis_latex import ZapisLatex
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -277,7 +278,7 @@ class P14PowerFlowProof:
         if data.v_min_pu < 0.9 or data.v_max_pu > 1.1:
             warnings.append(
                 f"Napięcia poza typowym zakresem: "
-                f"U_min={data.v_min_pu:.4f} p.u., U_max={data.v_max_pu:.4f} p.u."
+                f"$U_{{min}}$={data.v_min_pu:.4f} p.u., $U_{{max}}$={data.v_max_pu:.4f} p.u."
             )
 
         # Build summary
@@ -618,7 +619,7 @@ class P14PowerFlowProof:
             "w typowym paśmie 0,9–1,1 p.u." if in_range else "poza typowym pasmem 0,9–1,1 p.u."
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"U_{{min}} = {data.v_min_pu:.4f} \\text{{ p.u.}}, \\quad "
             f"U_{{max}} = {data.v_max_pu:.4f} \\text{{ p.u.}} \\quad "
             f"\\Rightarrow \\text{{{polozenie}}}"

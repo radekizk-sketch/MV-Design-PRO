@@ -430,7 +430,7 @@ class ProofInspector:
             delta_q = kr["delta_q_cmd"].value
             rows.append(
                 CounterfactualRow(
-                    name="Q_cmd",
+                    name="Moc bierna zadana",
                     symbol_latex=r"Q_{cmd}",
                     unit="Mvar",
                     value_a=float(q_a) if isinstance(q_a, int | float) else 0.0,

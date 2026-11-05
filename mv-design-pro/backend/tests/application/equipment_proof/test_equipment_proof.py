@@ -148,9 +148,16 @@ def test_equipment_proof_ith_equal_times_unchanged():
     check = _find_check(bundle, "Ith")
 
     assert check.status == "PASS"
-    assert "I_th aparatu 20.0000 kA wobec wartości wymaganej 18.0000 kA" in check.message_pl
+    assert (
+        "Prąd znamionowy krótkotrwały wytrzymywany aparatu 20 kA wobec wartości wymaganej 18 kA"
+        in check.message_pl
+    )
     # Krok wywodu: równanie prądowe (nie energetyczne).
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s
+        for s in bundle.proof_document.steps
+        if s.title_pl == "Sprawdzenie wytrzymałości zwarciowej cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006"
 
 
@@ -162,13 +169,17 @@ def test_equipment_proof_ith_time_mismatch_i2t_pass():
 
     # Ith_req²·tk = 18²·1 = 324 kA²s ≤ Ith²·t_th = 30²·0,5 = 450 kA²s → PASS.
     assert check.status == "PASS"
-    assert "I²t" in check.message_pl
-    assert "324.0000" in check.message_pl
-    assert "450.0000" in check.message_pl
-    assert any("I²t wymagane" in note for note in check.notes)
-    assert any("I²t aparatu" in note for note in check.notes)
+    assert "Całka Joule'a" in check.message_pl
+    assert "324 kA²s" in check.message_pl
+    assert "450 kA²s" in check.message_pl
+    assert any("Całka Joule'a wymagana" in note for note in check.notes)
+    assert any("Całka Joule'a aparatu" in note for note in check.notes)
     # Krok wywodu: równanie energetyczne z jawnym podstawieniem.
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s
+        for s in bundle.proof_document.steps
+        if s.title_pl == "Sprawdzenie wytrzymałości zwarciowej cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006b"
     assert "324.0000" in step.substitution_latex
     assert "450.0000" in step.substitution_latex
@@ -183,7 +194,7 @@ def test_equipment_proof_ith_time_mismatch_i2t_fail():
     check = _find_check(bundle, "Ith")
 
     assert check.status == "FAIL"
-    assert "I²t" in check.message_pl
+    assert "Całka Joule'a" in check.message_pl
     assert bundle.result.overall_status == "FAIL"
     assert "Ith" in bundle.result.failed_checks
 
@@ -206,7 +217,11 @@ def test_equipment_proof_ith_krotszy_czas_zwarcia_porownuje_prad_wprost(
 
     assert check.status == status
     assert "I²t" not in check.message_pl
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s
+        for s in bundle.proof_document.steps
+        if s.title_pl == "Sprawdzenie wytrzymałości zwarciowej cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006"
 
 
@@ -368,10 +383,10 @@ def _input_wylaczania(u_kv: float | None, ib_ka: float | None) -> EquipmentProof
         (12.0, 21.0, "FAIL", "ib_ka", 21.0, "IEC 62271-100"),
         # Karta TB-WARTOSC-ROBOCZA: t_b jest rozstrzygany w każdym punkcie, więc brak I_b to
         # wyłącznie zapis bez pola (wiersz bez solvera) — brak podstawy, nigdy podmiana na I″k.
-        (12.0, None, "FAIL", "ib_ka", None, "nie niosą prądu wyłączeniowego I_b"),
+        (12.0, None, "FAIL", "ib_ka", None, "nie niosą prądu wyłączeniowego symetrycznego"),
         (0.4, 18.0, "FAIL", "ikss_ka", 22.0, "spodziewanego prądu zwarciowego początkowego"),
         (0.4, 21.0, "FAIL", "ikss_ka", 22.0, "IEC 60947-2"),
-        (0.4, None, "FAIL", "ikss_ka", 22.0, "22.0000 kA"),
+        (0.4, None, "FAIL", "ikss_ka", 22.0, "22 kA"),
         (None, 18.0, "FAIL", "ib_ka", None, "Brak podstawy"),
         (None, None, "FAIL", "ib_ka", None, "Brak podstawy"),
     ],
@@ -409,7 +424,9 @@ def test_icu_wielkosc_kryterium_wg_pasma_napiecia(
 def test_icu_sn_uwagi_niosa_tb_i_skladowa_nieokresowa() -> None:
     check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(12.0, 18.0)), "Icu")
     (uwaga,) = check.notes
-    assert uwaga.startswith("t_b = 0,1 s; składowa nieokresowa i_DC(t_b) = 9,0000 kA")
+    assert uwaga.startswith(
+        "Czas wyłączenia zwarcia 0,1 s; składowa nieokresowa prądu w chwili wyłączenia 9 kA"
+    )
     assert "porównania z nią nie wystawiono" in uwaga
 
 
@@ -417,7 +434,7 @@ def test_icu_sn_zapis_bez_tb_uwaga_o_braku_tb() -> None:
     """Zapis bez I_b i t_b (wiersz bez solvera) — uwaga mówi, czego brakuje; dawnego kodu
     blokady `fault.czas_tb_brak` już nie ma (karta TB-WARTOSC-ROBOCZA)."""
     check = _find_check(EquipmentProofGenerator.generate(_input_wylaczania(12.0, None)), "Icu")
-    assert check.notes == ("Wielkości biegu nie niosą czasu wyłączenia t_b punktu zwarcia.",)
+    assert check.notes == ("Wielkości biegu nie niosą czasu wyłączenia zwarcia w punkcie zwarcia.",)
     assert not any("czas_tb_brak" in uwaga for uwaga in check.notes)
 
 
@@ -461,7 +478,7 @@ def test_icu_sn_uwagi_pochodzenie_tb_x_udzial_maszyn(wariant: str, maszyny: bool
         "Icu",
     )
     assert check.status == "PASS"
-    assert check.notes[0].startswith("t_b = 0,1 s; składowa nieokresowa i_DC(t_b)")
+    assert check.notes[0].startswith("Czas wyłączenia zwarcia 0,1 s; składowa nieokresowa")
     if zrodlo is None:
         assert len(check.notes) == 1
         return
@@ -512,27 +529,37 @@ def test_znacznik_bezpiecznika_nie_zmienia_odcisku_innych_aparatow() -> None:
 @pytest.mark.parametrize(
     ("nazwa", "zmiana", "status", "fragmenty"),
     [
-        ("U", {"u_m_kv": 17.5}, "PASS", ("U_m aparatu 17.5000 kV", "17.5000 kV", "U_n = 15")),
+        (
+            "U",
+            {"u_m_kv": 17.5},
+            "PASS",
+            ("Napięcie znamionowe izolacji aparatu 17,5 kV", "17,5 kV", "znamionowym 15 kV"),
+        ),
         # Komórka dyskryminująca: U_m równe U_n sieci (15 kV) nie pokrywa U_s = 17,5 kV.
-        ("U", {"u_m_kv": 15.0}, "FAIL", ("U_m aparatu 15.0000 kV", "17.5000 kV", "U_n = 15")),
+        (
+            "U",
+            {"u_m_kv": 15.0},
+            "FAIL",
+            ("Napięcie znamionowe izolacji aparatu 15 kV", "17,5 kV", "znamionowym 15 kV"),
+        ),
         # Punkt SN — znamię wyłącznika SN nazwane I_sc (IEC 62271-100), nie I_cu (nN).
-        ("Icu", {"i_cu_ka": 20.0}, "PASS", ("I_sc aparatu", "20.0000 kA", "15.5000 kA")),
-        ("Icu", {"i_cu_ka": 10.0}, "FAIL", ("I_sc aparatu", "10.0000 kA", "15.5000 kA")),
-        ("Idyn", {"i_dyn_ka": 50.0}, "PASS", ("I_dyn aparatu 50.0000 kA", "40.0000 kA")),
-        ("Idyn", {"i_dyn_ka": 30.0}, "FAIL", ("I_dyn aparatu 30.0000 kA", "40.0000 kA")),
-        ("Ith", {"i_th_ka": 20.0}, "PASS", ("I_th aparatu 20.0000 kA", "18.0000 kA")),
-        ("Ith", {"i_th_ka": 15.0}, "FAIL", ("I_th aparatu 15.0000 kA", "18.0000 kA")),
+        ("Icu", {"i_cu_ka": 20.0}, "PASS", ("znamionowy prąd wyłączalny", "20 kA", "15,5 kA")),
+        ("Icu", {"i_cu_ka": 10.0}, "FAIL", ("znamionowy prąd wyłączalny", "10 kA", "15,5 kA")),
+        ("Idyn", {"i_dyn_ka": 50.0}, "PASS", ("szczytowy wytrzymywany aparatu 50 kA", "40 kA")),
+        ("Idyn", {"i_dyn_ka": 30.0}, "FAIL", ("szczytowy wytrzymywany aparatu 30 kA", "40 kA")),
+        ("Ith", {"i_th_ka": 20.0}, "PASS", ("krótkotrwały wytrzymywany aparatu 20 kA", "18 kA")),
+        ("Ith", {"i_th_ka": 15.0}, "FAIL", ("krótkotrwały wytrzymywany aparatu 15 kA", "18 kA")),
         (
             "Ith",
             {"i_th_ka": 30.0, "t_th_s": 0.5},
             "PASS",
-            ("I²t aparatu 450.0000 kA²s", "324.0000 kA²s"),
+            ("Całka Joule'a aparatu 450 kA²s", "324 kA²s"),
         ),
         (
             "Ith",
             {"i_th_ka": 20.0, "t_th_s": 0.5},
             "FAIL",
-            ("I²t aparatu 200.0000 kA²s", "324.0000 kA²s"),
+            ("Całka Joule'a aparatu 200 kA²s", "324 kA²s"),
         ),
     ],
 )

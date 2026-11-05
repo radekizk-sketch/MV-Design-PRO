@@ -119,3 +119,36 @@ describe('KrokDowodu — powiązanie krok → element (magistrala zdarzeń)', ()
     ).toBeInTheDocument();
   });
 });
+
+// Karta PROZA-BEZ-SYMBOLI-ASCII: proza kroku (tytuł, podstawienie prozą, uwagi) niesie symbol
+// wielkości jako segment `$…$` — ekran składa go KaTeX-em (`TekstZWzorami`), nigdy nie pokazuje
+// zapisu ASCII ani znaku dolara. Iloczyn: {tytuł · podstawienie prozą · uwagi} × {z segmentem
+// wzoru · bez segmentu}.
+describe('KrokDowodu — proza z symbolami jako wzory', () => {
+  const pola = [
+    { pole: 'tytul', selektor: '.mvd-dowod-krok-tytul' },
+    { pole: 'podstawienieTekst', selektor: '[data-testid="mvd-dowod-pole-podstawienie-tekst"]' },
+    { pole: 'uwagi', selektor: '[data-testid="mvd-dowod-pole-uwagi"]' },
+  ] as const;
+  for (const { pole, selektor } of pola) {
+    for (const zWzorem of [true, false]) {
+      it(`${pole} × ${zWzorem ? 'z segmentem $…$' : 'bez segmentu'}`, () => {
+        const tekst = zWzorem
+          ? "Prąd zwarciowy początkowy $I_k''$ w punkcie zwarcia"
+          : 'Prąd zwarciowy początkowy w punkcie zwarcia';
+        const krok = { ...model()[3], [pole]: tekst };
+        const { container } = render(<KrokDowodu krok={krok} szczegolyAudytowe={false} />);
+        const wezel = container.querySelector(selektor);
+        expect(wezel).not.toBeNull();
+        expect(wezel?.textContent).not.toContain('$');
+        expect(wezel?.textContent).toContain('Prąd zwarciowy początkowy');
+        const wzor = wezel?.querySelector('[data-latex]');
+        if (zWzorem) {
+          expect(wzor?.getAttribute('data-latex')).toBe("$I_k''$");
+        } else {
+          expect(wzor).toBeNull();
+        }
+      });
+    }
+  }
+});

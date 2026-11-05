@@ -100,6 +100,8 @@ from network_model.solvers.cable_ampacity_derating import (
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
+from werdykt import format_liczba
+from werdykt.zapis_latex import ZapisLatex
 
 # =============================================================================
 # Rodzaje urządzenia chroniącego obwód — namespace'y katalogu nN (P0.2/P0.7)
@@ -274,7 +276,7 @@ class LVCircuitVerificationInput:
 # =============================================================================
 
 
-def _pv(symbol: str, value: float | str, unit: str, source_key: str) -> ProofValue:
+def _pv(symbol: ZapisLatex, value: float | str, unit: str, source_key: str) -> ProofValue:
     if isinstance(value, str):
         return ProofValue(
             symbol=symbol, value=value, unit=unit, formatted=value, source_key=source_key
@@ -296,11 +298,13 @@ def _eq(
     )
 
 
-def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
+def _sym(symbol: ZapisLatex, unit: str, desc: str, key: str) -> SymbolDefinition:
     return SymbolDefinition(symbol=symbol, unit=unit, description_pl=desc, mapping_key=key)
 
 
-def _uc(expected: str, computed: str, derivation: str = "", passed: bool = True) -> UnitCheckResult:
+def _uc(
+    expected: str, computed: str, derivation: ZapisLatex = "", passed: bool = True
+) -> UnitCheckResult:
     return UnitCheckResult(
         passed=passed, expected_unit=expected, computed_unit=computed, derivation=derivation
     )
@@ -390,10 +394,11 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         kombinacja_status = STATUS_SPELNIA if kombinacja_spelnia_bool else STATUS_NIE_SPELNIA
         kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
         zdanie_kombinacja = (
-            f"Kombinacja rozłącznik+wkładka: prąd warunkowy Icond="
-            f"{urzadzenie.conditional_sc_current_ka:g} kA "
-            f"{'>=' if kombinacja_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {kombinacja_status} (IEC 60947, prąd warunkowy kombinacji)."
+            "Kombinacja rozłącznika z wkładką: prąd warunkowy zwarciowy "
+            f"{format_liczba(urzadzenie.conditional_sc_current_ka)} kA "
+            f"{'nie mniejszy' if kombinacja_spelnia_bool else 'mniejszy'} od maksymalnego "
+            f"prądu zwarciowego początkowego {format_liczba(ik_max_ka)} kA w punkcie zabudowy "
+            "(IEC 60947, prąd warunkowy kombinacji)."
         )
 
     # --- zdanie gołego aparatu ---
@@ -429,10 +434,10 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         goly_status = STATUS_SPELNIA if goly_spelnia_bool else STATUS_NIE_SPELNIA
         goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
         zdanie_goly = (
-            f"Goły aparat ({urzadzenie.kind}): własna zdolność {etykieta}="
-            f"{urzadzenie.wlasna_zdolnosc_ka:g} kA "
-            f"{'>=' if goly_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {goly_status}."
+            f"Aparat bez wkładki ({urzadzenie.kind}): własna zdolność {etykieta} "
+            f"{format_liczba(urzadzenie.wlasna_zdolnosc_ka)} kA "
+            f"{'nie mniejsza' if goly_spelnia_bool else 'mniejsza'} od maksymalnego prądu "
+            f"zwarciowego początkowego {format_liczba(ik_max_ka)} kA w punkcie zabudowy."
         )
 
     return ZdolnoscWylaczaniaDwaZdania(
@@ -460,7 +465,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
         "EQ_LVCV_006",
         r"I_{k1,min} = \frac{c_{min} \cdot U_0}{|Z_{loop}|}",
         "Prąd zwarcia minimalnego z pętli",
-        "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 (c_min)",
+        "IEC 60364-4-41 §411.4.4 / IEC 60909-0 §5.3.2 ($c_{min}$)",
         [
             _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
             _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
@@ -503,7 +508,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
         "IEC 60364-4-41 Tab. 41.1 (G-D3)",
         [
             _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-            _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
+            _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie $t_{wym}$", "ia_wymagane_a"),
             _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
         ],
     )
@@ -573,7 +578,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             "EQ_LVCV_008",
             r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
             "Prąd zwarcia doziemnego w układzie TT",
-            "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+            "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 ($c_{min}$)",
             [
                 _sym("I_d", "A", "Prąd zwarcia doziemnego (L–PE przez uziomy)", "ik1_min_a"),
                 _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
@@ -632,7 +637,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             or tt.u_ll_v is None
         ):
             raise OdmowaDanychError(
-                "Wynik pętli doziemnej IT bez prądu pierwszego zwarcia, pojemności C_e, "
+                "Wynik pętli doziemnej IT bez prądu pierwszego zwarcia, pojemności $C_e$, "
                 "częstotliwości albo napięcia międzyprzewodowego — pakiet nie cytuje zera."
             )
         i_d1 = tt.i_d_pierwsze_zwarcie_a
@@ -699,7 +704,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
         "EQ_LVCV_009",
         r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
         "Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
-        "IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+        "IEC 60364-4-41 §411.5.3 (TT: $R_A\\cdot I_{\\Delta n}$) / §411.6.2 (IT: $R_A\\cdot I_d$)",
         [
             _sym("U_{dotyk}", "V", "Napięcie dotykowe na uziomie instalacji", "u_dotyk_v"),
             _sym("R_A", "Ω", "Rezystancja uziomu instalacji odbiorczej", "r_a_ohm"),

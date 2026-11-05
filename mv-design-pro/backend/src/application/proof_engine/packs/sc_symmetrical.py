@@ -151,7 +151,7 @@ class SC3FProofPack:
         if result.m_factor is None or result.n_factor is None:
             raise AssertionError(
                 "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
-                "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
+                "policzył $I_{th}$ — dowodu prądu cieplnego zastępczego nie da się złożyć."
             )
         m_factor = float(result.m_factor)
         n_factor = float(result.n_factor)

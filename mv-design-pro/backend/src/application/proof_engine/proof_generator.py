@@ -123,6 +123,8 @@ from network_model.solvers.short_circuit_asymmetrical_quantities import (
     SC1AsymmetricalQuantities,
     normalize_sc1_fault_type,
 )
+from werdykt import format_liczba
+from werdykt.zapis_latex import ZapisLatex
 
 if TYPE_CHECKING:
     from network_model.catalog import CatalogRepository
@@ -211,7 +213,7 @@ class SC3FInput:
     def __post_init__(self) -> None:
         if (self.z_f_ohm is None) != (self.z_petli_ohm is None):
             raise AssertionError(
-                "SC3FInput: impedancja przejścia Z_f i impedancja pętli Z_k występują "
+                "SC3FInput: impedancja przejścia i impedancja pętli zwarcia występują "
                 "wyłącznie razem (dowód zwarcia przez impedancję przejścia)."
             )
 
@@ -243,7 +245,7 @@ class SC3FInput:
         if result.m_factor is None or result.n_factor is None:
             raise AssertionError(
                 "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
-                "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
+                "policzył prąd cieplny zastępczy — dowodu tego prądu nie da się złożyć."
             )
         m_factor = float(result.m_factor)
         n_factor = float(result.n_factor)
@@ -464,7 +466,8 @@ def ostrzezenie_poza_zakresem_iec60909(z_f_ohm: complex) -> str:
     oceniony (zakres IEC 60909) i do czego nie wolno go użyć (SI-117).
     """
     return (
-        f"Zwarcie przez impedancję przejścia Z_f = {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
+        f"Zwarcie przez impedancję przejścia {format_liczba(z_f_ohm.real)} + "
+        f"j{format_liczba(z_f_ohm.imag)} Ω "
         "— wynik poza zakresem IEC 60909-0 (norma definiuje prąd zwarcia metalicznego). "
         "Nie jest podstawą doboru aparatury, wytrzymałości zwarciowej, nastaw zabezpieczeń "
         "nadprądowych, koordynacji, dowodu regulacyjnego ani analizy łuku elektrycznego."
@@ -828,7 +831,8 @@ class ProofGenerator:
         ostrzezenia_tb: list[str] = []
         if data.tb_zrodlo is not None and data.tb_zrodlo.get("wartosc_robocza"):
             ostrzezenia_tb.append(
-                "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
+                "Prąd wyłączeniowy symetryczny i składową nieokresową policzono przy czasie "
+                "wyłączenia będącym wartością roboczą "
                 f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
             )
         # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim — jedno zdanie z solvera.
@@ -1033,8 +1037,8 @@ class ProofGenerator:
             )
         if quantities.z_f_ohm != data.z_f_ohm:
             raise AssertionError(
-                "SC1Input.quantities policzone dla innej impedancji przejścia Z_f niż ta, "
-                "której dotyczy dowód (karta OD-14: jedna prawda Z_f wyniku i dowodu)."
+                "SC1Input.quantities policzone dla innej impedancji przejścia niż ta, "
+                "której dotyczy dowód (jedna prawda impedancji przejścia wyniku i dowodu)."
             )
 
         z_equiv = quantities.z_equiv_ohm
@@ -1351,7 +1355,7 @@ class ProofGenerator:
             ProofValue.create("I_k''", ikss_ka, "kA", "ikss_ka"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"i_p = {kappa:.4f} \\cdot \\sqrt{{2}} \\cdot {ikss_ka:.4f} = "
             f"{kappa:.4f} \\cdot {sqrt2:.4f} \\cdot {ikss_ka:.4f} = "
             f"{ip_ka:.4f}\\,\\text{{kA}}"
@@ -1389,7 +1393,7 @@ class ProofGenerator:
 
         input_values = (ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),)
 
-        substitution = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
+        substitution: ZapisLatex = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
 
         result = ProofValue.create("I_{dyn}", idyn_ka, "kA", "idyn_ka")
         unit_check = UnitVerifier.verify_equation(
@@ -1430,7 +1434,7 @@ class ProofGenerator:
             ProofValue.create("n", n_factor, "—", "n_factor"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"I_{{th}} = {ikss_ka:.4f} \\cdot \\sqrt{{{m_factor:.4f} + {n_factor:.4f}}} = "
             f"{ikss_ka:.4f} \\cdot {sqrt_mn:.4f} = {ith_ka:.4f}\\,\\text{{kA}}"
         )
@@ -1486,7 +1490,7 @@ class ProofGenerator:
             ProofValue.create("Z_0", z0, "Ω", "z0_ohm"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"Z_1 = {cls._format_complex_latex(z1, 'Ω')}, \\quad "
             f"Z_2 = {cls._format_complex_latex(z2, 'Ω')}, \\quad "
             f"Z_0 = {cls._format_complex_latex(z0, 'Ω')}"
@@ -1561,7 +1565,7 @@ class ProofGenerator:
 
         input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
-            substitution = (
+            substitution: ZapisLatex = (
                 f"Z_k = {cls._format_complex_latex(z1, 'Ω')} + "
                 f"{cls._format_complex_latex(z2, 'Ω')} + "
                 f"{cls._format_complex_latex(z0, 'Ω')} = "
@@ -1573,7 +1577,7 @@ class ProofGenerator:
                 ProofValue.create("Z_2", z2, "Ω", "z2_ohm"),
                 ProofValue.create("Z_0", z0, "Ω", "z0_ohm"),
             )
-            source_keys = {
+            source_keys: dict[ZapisLatex, str] = {
                 "Z_k": "z_equiv_ohm",
                 "Z_1": "z1_ohm",
                 "Z_2": "z2_ohm",
@@ -1662,7 +1666,7 @@ class ProofGenerator:
             input_values = (*input_values, ProofValue.create("Z_f", z_f, "Ω", "z_f_ohm"))
 
         if fault_type == "SC1FZ":
-            substitution = (
+            substitution: ZapisLatex = (
                 f"I_1 = I_2 = I_0 = {u_prefault_kv:.4f} / "
                 f"{cls._format_complex_latex(z_equiv, 'Ω')} = "
                 f"{cls._format_complex_latex(i1, 'kA')}"
@@ -1750,11 +1754,16 @@ class ProofGenerator:
             raise AssertionError(f"Brak definicji równania {equation_id}")
         f = cls._format_complex_latex
         if equation_id == "EQ_SC1_013":
-            substitution = (
+            substitution: ZapisLatex = (
                 f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z0, 'Ω')} + 3 \\cdot ({f(z_f, 'Ω')}) "
                 f"= {f(z_equiv, 'Ω')}"
             )
-            input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
+            input_symbols: list[tuple[ZapisLatex, str]] = [
+                ("Z_1", "Ω"),
+                ("Z_2", "Ω"),
+                ("Z_0", "Ω"),
+                ("Z_f", "Ω"),
+            ]
         elif equation_id == "EQ_SC1_014":
             substitution = f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z_f, 'Ω')} = {f(z_equiv, 'Ω')}"
             input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_f", "Ω")]
@@ -1768,13 +1777,20 @@ class ProofGenerator:
             input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
         else:
             raise AssertionError(f"Równanie {equation_id} nie jest pętlą z impedancją przejścia")
-        wartosci = {"Z_1": z1, "Z_2": z2, "Z_0": z0, "Z_f": z_f}
-        klucze = {"Z_1": "z1_ohm", "Z_2": "z2_ohm", "Z_0": "z0_ohm", "Z_f": "z_f_ohm"}
+        wartosci: dict[ZapisLatex, complex] = {"Z_1": z1, "Z_2": z2, "Z_0": z0, "Z_f": z_f}
+        klucze: dict[ZapisLatex, str] = {
+            "Z_1": "z1_ohm",
+            "Z_2": "z2_ohm",
+            "Z_0": "z0_ohm",
+            "Z_f": "z_f_ohm",
+        }
         input_values = tuple(
             ProofValue.create(symbol, wartosci[symbol], "Ω", klucze[symbol])
             for symbol, _ in input_symbols
         )
-        source_keys = {"Z_k": "z_equiv_ohm"} | {s: klucze[s] for s, _ in input_symbols}
+        source_keys: dict[ZapisLatex, str] = {"Z_k": "z_equiv_ohm"} | {
+            s: klucze[s] for s, _ in input_symbols
+        }
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC1", step_number),
             step_number=step_number,
@@ -1808,7 +1824,7 @@ class ProofGenerator:
             ProofValue.create("a", a_operator, "—", "a_operator"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"I_a = I_0 + I_1 + I_2 = {cls._format_complex_latex(ia, 'kA')}, \\quad "
             f"I_b = I_0 + a^2 I_1 + a I_2 = {cls._format_complex_latex(ib, 'kA')}, \\quad "
             f"I_c = I_0 + a I_1 + a^2 I_2 = {cls._format_complex_latex(ic, 'kA')}"
@@ -1856,7 +1872,7 @@ class ProofGenerator:
 
         input_values = (ProofValue.create("Z_{th}", z_thevenin_ohm, "Ω", "z_thevenin_ohm"),)
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"Z_{{th}} = {r_th:.4f} + j{x_th:.4f}\\,\\Omega, "
             f"\\quad |Z_{{th}}| = {z_abs:.4f}\\,\\Omega"
         )
@@ -1900,7 +1916,7 @@ class ProofGenerator:
         równanie EQ_SC3F_017 (jedyne miejsce c w wariancie z Z_f).
         """
         equation = EQ_SC3F_017 if impedancja_przejscia else EQ_SC3F_004
-        symbol_z = "Z_k" if impedancja_przejscia else "Z_th"
+        symbol_z: ZapisLatex = "Z_k" if impedancja_przejscia else "Z_th"
         klucz_z = "z_petli_ohm" if impedancja_przejscia else "z_thevenin_ohm"
 
         sqrt3 = SQRT3
@@ -1966,7 +1982,7 @@ class ProofGenerator:
             ProofValue.create("Z_{th}", z_thevenin_ohm, "Ω", "z_thevenin_ohm"),
             ProofValue.create("Z_f", z_f_ohm, "Ω", "z_f_ohm"),
         )
-        substitution = (
+        substitution: ZapisLatex = (
             f"Z_k = {cls._format_complex_latex(z_thevenin_ohm, 'Ω')} + "
             f"{cls._format_complex_latex(z_f_ohm, 'Ω')} = "
             f"{cls._format_complex_latex(z_petli_ohm, 'Ω')}, "
@@ -1997,7 +2013,7 @@ class ProofGenerator:
     # --- Maszyny wirujące: zanik prądu wyłączeniowego μ / q / i_b (rozdz. 9) ---------
     @staticmethod
     def _podstawienie_wezla_krzywej(
-        slad: SladKrzywejZaniku, wezel: WezelKrzywejZaniku, symbol: str
+        slad: SladKrzywejZaniku, wezel: WezelKrzywejZaniku, symbol: ZapisLatex
     ) -> str:
         """Podstawienie krzywej jednego węzła normy — liczby wyłącznie ze śladu solvera."""
         if slad.wielkosc == "mu":
@@ -2133,7 +2149,7 @@ class ProofGenerator:
         equation = EQ_SC3F_013
         ikss_p = a_na_ka(machine.ikss_partial_a)
         ib = a_na_ka(machine.ib_a)
-        substitution = (
+        substitution: ZapisLatex = (
             f"i_b = {mu:.4f} \\cdot {q:.4f} \\cdot {ikss_p:.4f} = " f"{ib:.4f}\\,\\text{{kA}}"
         )
         return ProofStep(
@@ -2175,6 +2191,8 @@ class ProofGenerator:
         stosunek, z którego solver policzył κ biegu z Z_f.
         """
         equation = EQ_SC3F_018 if impedancja_przejscia else EQ_SC3F_005
+        symbol_r: ZapisLatex
+        symbol_x: ZapisLatex
         symbol_r, symbol_x = ("R_k", "X_k") if impedancja_przejscia else ("R_th", "X_th")
         klucz_r, klucz_x = (
             ("r_petli_ohm", "x_petli_ohm")
@@ -2237,7 +2255,7 @@ class ProofGenerator:
             ProofValue.create("I_k''", ikss_ka, "kA", "ikss_ka"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"i_p = {kappa:.4f} \\cdot \\sqrt{{2}} \\cdot {ikss_ka:.4f} = "
             f"{kappa:.4f} \\cdot {sqrt2:.4f} \\cdot {ikss_ka:.4f} = "
             f"{ip_ka:.4f}\\,\\text{{kA}}"
@@ -2275,7 +2293,7 @@ class ProofGenerator:
 
         input_values = (ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),)
 
-        substitution = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
+        substitution: ZapisLatex = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
 
         result = ProofValue.create("I_{dyn}", idyn_ka, "kA", "idyn_ka")
 
@@ -2327,7 +2345,9 @@ class ProofGenerator:
                 f"{a_na_ka(float(m['ikss_czesciowy_a'])):.4f}"
                 for m in maszyny
             )
-            substitution = f"I_b = {ikss_ka:.4f} - {skladniki} = {ib_ka:.4f}\\,\\text{{kA}}"
+            substitution: ZapisLatex = (
+                f"I_b = {ikss_ka:.4f} - {skladniki} = {ib_ka:.4f}\\,\\text{{kA}}"
+            )
         elif przypadek == "zwarcie_niesymetryczne":
             substitution = (
                 f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}} \\quad "
@@ -2473,7 +2493,7 @@ class ProofGenerator:
             ProofValue.create("n", n_factor, "—", "n_factor"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"I_{{th}} = {ikss_ka:.4f} \\cdot \\sqrt{{{m_factor:.4f} + {n_factor:.4f}}} = "
             f"{ikss_ka:.4f} \\cdot {sqrt_mn:.4f} = {ith_ka:.4f}\\,\\text{{kA}}"
         )
@@ -3491,7 +3511,9 @@ class ProofGenerator:
                 t_prev = sorted_points[idx - 1].t_h
                 t_curr = sorted_points[idx].t_h
                 if t_curr <= t_prev:
-                    raise ValueError("Czasy t_h muszą być ściśle rosnące bez duplikatów.")
+                    raise ValueError(
+                        "Chwile profilu strat muszą być ściśle rosnące, bez powtórzeń."
+                    )
 
                 delta_t = t_curr - t_prev
                 p_loss = sorted_points[idx].p_loss_kw
@@ -3653,7 +3675,9 @@ class ProofGenerator:
             ProofValue.create("\\Delta t_i", delta_t, "h", "delta_t_h"),
         )
 
-        substitution = f"E_i = {p_loss:.4f}\\cdot {delta_t:.4f} = {e_i:.4f}\\,\\text{{kWh}}"
+        substitution: ZapisLatex = (
+            f"E_i = {p_loss:.4f}\\cdot {delta_t:.4f} = {e_i:.4f}\\,\\text{{kWh}}"
+        )
 
         result = ProofValue.create("E_i", e_i, "kWh", "e_i_kwh")
 
@@ -3733,7 +3757,7 @@ class ProofGenerator:
             ProofValue.create("t", duration_h, "h", "t_h"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"E_{{loss}} = {p_loss:.4f}\\cdot {duration_h:.4f} = {e_loss:.4f}\\,\\text{{kWh}}"
         )
 
@@ -3794,7 +3818,7 @@ class ProofGenerator:
         if data.u_ll_kv is None:
             raise ValueError("Brak napięcia międzyfazowego u_ll_kv.")
         if data.p_mw is None or data.q_mvar is None:
-            raise ValueError("Brak mocy czynnej/biernej p_mw/q_mvar.")
+            raise ValueError("Brak mocy czynnej albo biernej odbioru.")
 
         s_mva = math.sqrt(data.p_mw**2 + data.q_mvar**2)
 
@@ -4006,7 +4030,7 @@ class ProofGenerator:
         key_results: dict[str, ProofValue] = {}
         counterfactual_diff: dict[str, ProofValue] = {}
 
-        def _add_pair(key: str, symbol: str) -> None:
+        def _add_pair(key: str, symbol: ZapisLatex) -> None:
             val_a = proof_a.summary.key_results.get(key)
             val_b = proof_b.summary.key_results.get(key)
             if not val_a or not val_b:
@@ -4058,7 +4082,7 @@ class ProofGenerator:
 
     @staticmethod
     def _proof_value_from_maybe_string(
-        symbol: str,
+        symbol: ZapisLatex,
         value: float | str,
         unit: str,
         source_key: str,
@@ -4077,7 +4101,7 @@ class ProofGenerator:
     @staticmethod
     def _clone_proof_value(
         value: ProofValue,
-        symbol: str,
+        symbol: ZapisLatex,
         source_key: str,
     ) -> ProofValue:
         if isinstance(value.value, str):
@@ -4095,7 +4119,7 @@ class ProofGenerator:
     def _numeric_diff_value(
         value_a: float | str,
         value_b: float | str,
-        symbol: str,
+        symbol: ZapisLatex,
         unit: str,
         source_key: str,
     ) -> ProofValue | None:
@@ -4528,7 +4552,7 @@ class ProofGenerator:
         )
 
     @staticmethod
-    def _status_value(symbol: str, status: str, source_key: str) -> ProofValue:
+    def _status_value(symbol: ZapisLatex, status: str, source_key: str) -> ProofValue:
         return ProofValue(
             symbol=symbol,
             value=status,
@@ -4539,7 +4563,7 @@ class ProofGenerator:
 
     @staticmethod
     def _value_or_missing(
-        symbol: str,
+        symbol: ZapisLatex,
         value: float | None,
         unit: str,
         source_key: str,
@@ -4835,7 +4859,7 @@ class ProofGenerator:
 
         # Jawne wskazanie gałęzi deadband
         if deadband_branch == "above":
-            branch_text = f"\\Delta U = {delta_u_kv:.4f} > U_{{dead}} = {u_dead_kv:.4f}"
+            branch_text: ZapisLatex = f"\\Delta U = {delta_u_kv:.4f} > U_{{dead}} = {u_dead_kv:.4f}"
             calc_text = f"s(U) = {delta_u_kv:.4f} - {u_dead_kv:.4f} = {s_u_kv:.4f}\\,\\text{{kV}}"
         elif deadband_branch == "below":
             branch_text = f"\\Delta U = {delta_u_kv:.4f} < -U_{{dead}} = -{u_dead_kv:.4f}"
@@ -4888,7 +4912,7 @@ class ProofGenerator:
             ProofValue.create("s(U)", s_u_kv, "kV", "s_u_kv"),
         )
 
-        substitution = (
+        substitution: ZapisLatex = (
             f"Q_{{raw}} = {k_q_mvar_per_kv:.4f} \\cdot {s_u_kv:.4f} = "
             f"{q_raw_mvar:.4f}\\,\\text{{Mvar}}"
         )
@@ -4991,7 +5015,7 @@ class ProofGenerator:
         input_values = (ProofValue.create("Q_{cmd}", q_cmd_mvar, "Mvar", "q_cmd_mvar"),)
 
         # Prezentacja wyników VDROP (read-only, nie obliczamy)
-        substitution = (
+        substitution: ZapisLatex = (
             f"Q_{{cmd}} = {q_cmd_mvar:.4f}\\,\\text{{Mvar}} "
             f"\\xrightarrow{{\\text{{EQ\\_VDROP\\_004}}}} "
             f"\\Delta U_X = {delta_u_x_percent:.4f}\\% "

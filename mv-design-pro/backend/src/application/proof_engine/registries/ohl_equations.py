@@ -11,9 +11,10 @@ LaTeX każdego równania jest TEN SAM co ``KrokSladu.wzor_latex`` kroku solvera 
 from __future__ import annotations
 
 from application.proof_engine.types import EquationDefinition, SymbolDefinition
+from werdykt.zapis_latex import ZapisLatex
 
 
-def _s(symbol: str, unit: str, opis: str, klucz: str) -> SymbolDefinition:
+def _s(symbol: ZapisLatex, unit: str, opis: str, klucz: str) -> SymbolDefinition:
     return SymbolDefinition(symbol=symbol, unit=unit, description_pl=opis, mapping_key=klucz)
 
 
@@ -38,7 +39,7 @@ EQ_OHL_001 = EquationDefinition(
 EQ_OHL_002 = EquationDefinition(
     equation_id="EQ_OHL_002",
     name_pl="Rezystancja fazy w temperaturze przewodu",
-    standard_ref="IEC 60909-0:2016, wzór R_L(θ_e)",
+    standard_ref="IEC 60909-0:2016, wzór $R_L$($\\theta_e$)",
     latex=r"R'_{\theta} = R'_{20}\,[1 + \alpha(\theta - 20\ ^{\circ}\text{C})]",
     symbols=(
         _s(r"R'_{\theta}", "Ω/km", "Rezystancja w temperaturze przewodu", "ohl_r_theta"),

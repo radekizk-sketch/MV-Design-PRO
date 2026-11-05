@@ -14,6 +14,8 @@ from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
+from werdykt.zapis_latex import ZapisLatex
+
 
 class ProofType(StrEnum):
     """Typ dowodu matematycznego."""
@@ -88,27 +90,27 @@ SEMANTIC_ALIASES: dict[str, SemanticAlias] = {
     "ikss_ka": SemanticAlias(
         alias_pl="prąd wyłączalny",
         target_key="ikss_ka",
-        notes="I_k'' wg IEC 60909",
+        notes="$I_k''$ wg IEC 60909",
     ),
     "ip_ka": SemanticAlias(
         alias_pl="prąd udarowy",
         target_key="ip_ka",
-        notes="i_p wg IEC 60909",
+        notes="$i_p$ wg IEC 60909",
     ),
     "ith_ka": SemanticAlias(
         alias_pl="prąd cieplny",
         target_key="ith_ka",
-        notes="I_th wg IEC 60909",
+        notes="$I_{th}$ wg IEC 60909",
     ),
     "idyn_ka": SemanticAlias(
         alias_pl="prąd dynamiczny",
         target_key="idyn_ka",
-        notes="I_dyn; jeśli brak, używa ip_ka jako proxy (BINDING: I_dyn = i_p)",
+        notes="$I_{dyn}$; jeśli brak, używa ip_ka jako proxy (BINDING: $I_{dyn} = i_p$)",
     ),
     "sk_mva": SemanticAlias(
         alias_pl="moc zwarciowa",
         target_key="sk_mva",
-        notes="S_k'' wg IEC 60909",
+        notes="$S_k''$ wg IEC 60909",
     ),
 }
 
@@ -125,7 +127,7 @@ class SymbolDefinition:
         mapping_key: Literalny klucz w intermediate_values lub output_results
     """
 
-    symbol: str
+    symbol: ZapisLatex
     unit: str
     description_pl: str
     mapping_key: str
@@ -155,7 +157,7 @@ class EquationDefinition:
     """
 
     equation_id: str
-    latex: str
+    latex: ZapisLatex
     name_pl: str
     standard_ref: str
     symbols: tuple[SymbolDefinition, ...]
@@ -198,7 +200,7 @@ class ProofValue:
         source_key: Klucz w trace/result (np. "ikss_ka")
     """
 
-    symbol: str
+    symbol: ZapisLatex
     value: float | complex | str
     unit: str
     formatted: str
@@ -245,7 +247,7 @@ class ProofValue:
     @classmethod
     def create(
         cls,
-        symbol: str,
+        symbol: ZapisLatex,
         value: float | complex,
         unit: str,
         source_key: str,
@@ -278,8 +280,8 @@ class UnitCheckResult:
     passed: bool
     expected_unit: str
     computed_unit: str
-    input_units: dict[str, str] = field(default_factory=dict)
-    derivation: str = ""
+    input_units: dict[ZapisLatex, str] = field(default_factory=dict)
+    derivation: ZapisLatex = ""
 
     def __hash__(self) -> int:
         return hash(
@@ -329,7 +331,7 @@ class ProofStep:
     substitution_latex: str
     result: ProofValue
     unit_check: UnitCheckResult
-    source_keys: dict[str, str] = field(default_factory=dict)
+    source_keys: dict[ZapisLatex, str] = field(default_factory=dict)
 
     def __hash__(self) -> int:
         return hash(

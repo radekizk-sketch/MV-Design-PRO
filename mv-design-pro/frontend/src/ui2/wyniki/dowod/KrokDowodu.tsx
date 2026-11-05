@@ -16,6 +16,7 @@
 import { TRACE_FIELD_LABELS } from '../../../ui/results-inspector/types';
 import { MathBlock } from '../../../ui/proof';
 import { emituj } from '../../events';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { InformacjeAudytowe, useNazwaObiektu } from '../wzorzec';
 import type { WierszInformacjiAudytowych } from '../wzorzec';
 import { DOWOD_STRINGS } from './strings';
@@ -107,7 +108,9 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
         <span className="mvd-dowod-krok-numer mvd-num" aria-hidden="true">
           {krok.numer}
         </span>
-        <h3 className="mvd-dowod-krok-tytul">{krok.tytul}</h3>
+        <h3 className="mvd-dowod-krok-tytul">
+          <TekstZWzorami tekst={krok.tytul} />
+        </h3>
         {krok.elementId && (
           <button
             type="button"
@@ -152,7 +155,9 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
       {!krok.podstawienie && krok.podstawienieTekst && (
         <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-podstawienie-tekst">
           <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.substitution}</h4>
-          <p className="mvd-dowod-uwagi">{krok.podstawienieTekst}</p>
+          <p className="mvd-dowod-uwagi">
+            <TekstZWzorami tekst={krok.podstawienieTekst} />
+          </p>
         </section>
       )}
 
@@ -168,7 +173,9 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
       {uwagiNaPierwszymPlanie && (
         <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-uwagi">
           <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.notes}</h4>
-          <p className="mvd-dowod-uwagi">{uwagiNaPierwszymPlanie}</p>
+          <p className="mvd-dowod-uwagi">
+            <TekstZWzorami tekst={uwagiNaPierwszymPlanie} />
+          </p>
         </section>
       )}
 

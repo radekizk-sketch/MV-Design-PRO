@@ -13,10 +13,18 @@ Generuje dokumenty LaTeX z ProofDocument:
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
+
+from werdykt.zapis_latex import ZapisLatex
 
 if TYPE_CHECKING:
     from application.proof_engine.types import ProofDocument, ProofStep, ProofValue
+
+
+#: Segment wzoru w prozie (`$…$`) — ta sama konwencja co `TekstZWzorami` ekranu
+#: (`ui2/kreatory/rama/tekstZWzorami.tsx`) i `SEGMENT_WZORU_RE` strażnika `ui_math_guard`.
+_SEGMENT_WZORU = re.compile(r"(\$[^$]+\$)")
 
 
 class LaTeXRenderer:
@@ -89,7 +97,7 @@ class LaTeXRenderer:
     def _render_title(cls, doc: ProofDocument) -> str:
         """Renderuje nagłówek dokumentu."""
         return rf"""
-\title{{{doc.title_pl}}}
+\title{{{cls._proza(doc.title_pl)}}}
 \author{{MV-DESIGN-PRO}}
 \date{{{doc.created_at.strftime('%Y-%m-%d %H:%M:%S')}}}
 """
@@ -119,7 +127,7 @@ class LaTeXRenderer:
             lines.append(cls._math_block(f"c = {h.voltage_factor:.4f}"))
         if h.voltage_factor_zrodlo:
             lines.append(
-                rf"  \item Podstawa współczynnika c: {cls._escape(h.voltage_factor_zrodlo)}"
+                rf"  \item Podstawa współczynnika c: {cls._proza(h.voltage_factor_zrodlo)}"
             )
         if h.source_bus:
             lines.append(rf"  \item Szyna źródłowa: {cls._escape(h.source_bus)}")
@@ -143,7 +151,7 @@ class LaTeXRenderer:
     def _render_step(cls, step: ProofStep) -> str:
         """Renderuje pojedynczy krok dowodu."""
         parts = [
-            rf"\subsection{{Krok {step.step_number}: {cls._escape(step.title_pl)}}}",
+            rf"\subsection{{Krok {step.step_number}: {cls._proza(step.title_pl)}}}",
             "",
             r"\textbf{Wzór:}",
             cls._math_block(step.equation.latex.strip()),
@@ -248,7 +256,7 @@ class LaTeXRenderer:
             lines.append(r"\textbf{Ostrzeżenia:}")
             lines.append(r"\begin{itemize}")
             for warning in doc.summary.warnings:
-                lines.append(rf"  \item {cls._escape(warning)}")
+                lines.append(rf"  \item {cls._proza(warning)}")
             lines.append(r"\end{itemize}")
 
         return "\n".join(lines)
@@ -522,7 +530,7 @@ class LaTeXRenderer:
 
         rows: list[tuple[str, str, str, str]] = []
 
-        def _add_row(key: str, label: str, unit: str) -> None:
+        def _add_row(key: str, label: ZapisLatex, unit: str) -> None:
             key_a = f"{key}_a"
             key_b = f"{key}_b"
             key_d = f"delta_{key}"
@@ -530,7 +538,7 @@ class LaTeXRenderer:
                 a_val = cls._format_numeric_value(kr[key_a].value)
                 b_val = cls._format_numeric_value(kr[key_b].value)
                 d_val = cls._format_numeric_value(diff[key_d].value)
-                rows.append((f"{label} [{unit}]", a_val, b_val, d_val))
+                rows.append((f"${label}$ [{cls._escape(unit)}]", a_val, b_val, d_val))
 
         _add_row("s_mva", "S", "MVA")
         _add_row("i_ka", "I", "kA")
@@ -540,7 +548,7 @@ class LaTeXRenderer:
         _add_row("m_s_percent", "m_S", "%")
 
         lines = [
-            r"\textbf{Porównanie scenariuszy A vs B (P15):}",
+            r"\textbf{Porównanie scenariuszy A i B:}",
             "",
             r"\begin{center}",
             r"\begin{tabular}{lccc}",
@@ -619,6 +627,15 @@ class LaTeXRenderer:
     def _math_block(latex: str) -> str:
         """Opakowuje LaTeX w blok $$...$$."""
         return f"$$\n{latex}\n$$"
+
+    @classmethod
+    def _proza(cls, text: str) -> str:
+        """Proza z symbolami jako segmentami ``$…$``: tekst poza segmentem jest escapowany,
+        segment trafia do LaTeX-a jako wzór w linii (symbol składany, nie pokazywany ASCII)."""
+        return "".join(
+            czesc if indeks % 2 == 1 else cls._escape(czesc)
+            for indeks, czesc in enumerate(_SEGMENT_WZORU.split(text))
+        )
 
     @classmethod
     def _escape(cls, text: str) -> str:

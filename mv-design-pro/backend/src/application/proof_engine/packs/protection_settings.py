@@ -45,6 +45,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from werdykt import DanaPrzyjeta
+from werdykt.zapis_latex import ZapisLatex
 
 
 @dataclass
@@ -106,7 +107,7 @@ class ProtectionSettingsProofResult:
         }
 
 
-def _pv(symbol: str, value: float, unit: str, source_key: str) -> ProofValue:
+def _pv(symbol: ZapisLatex, value: float, unit: str, source_key: str) -> ProofValue:
     """Shorthand to create a ProofValue with auto-formatting."""
     return ProofValue.create(
         symbol=symbol, value=value, unit=unit, source_key=source_key, precision=4
@@ -130,7 +131,7 @@ def _eq(
     )
 
 
-def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
+def _sym(symbol: ZapisLatex, unit: str, desc: str, key: str) -> SymbolDefinition:
     """Shorthand to create a SymbolDefinition."""
     return SymbolDefinition(
         symbol=symbol,

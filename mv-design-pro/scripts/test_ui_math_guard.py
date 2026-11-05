@@ -211,14 +211,22 @@ def test_skanuj_py_stala_kodu_a_symbol_w_prozie(
     assert bool(wyniki) is trafienie
 
 
-def test_proza_aparatury_pol_jest_w_skanie() -> None:
-    """Moduły prozy pokazywanej w szczegółach aparatury pól są skanowane (karta KD6)."""
-    wzgledne = {p.relative_to(guard.BACKEND_SRC).as_posix() for p in guard.BACKEND_PLIKI}
+def test_skan_backendu_obejmuje_cale_src() -> None:
+    """Skan backendu to CAŁE `backend/src` (karta PROZA-BEZ-SYMBOLI-ASCII) — także moduły prozy
+    aparatury pól (karta KD6) i rdzenie B-01; żadnej listy plików wyłączonych."""
+    wzgledne = {p.relative_to(guard.BACKEND_SRC).as_posix() for p in guard.pliki_backendu()}
+    wszystkie = {
+        p.relative_to(guard.BACKEND_SRC).as_posix()
+        for p in guard.BACKEND_SRC.rglob("*.py")
+        if "__pycache__" not in p.parts
+    }
+    assert wzgledne == wszystkie
     assert {
         "application/analyses/wytrzymalosc_aparatury_pol.py",
         "application/equipment_proof/wielkosc_wylaczania.py",
         "application/analyses/protection/czas_wylaczenia_pola.py",
         "network_model/core/czas_wylaczenia.py",
+        "network_model/solvers/short_circuit_iec60909.py",
     } <= wzgledne
 
 
@@ -311,12 +319,14 @@ def test_wyjatki_znane_wylaczaja_trafienie_z_pin(monkeypatch, tmp_path: Path) ->
     frontend_ui2.mkdir(parents=True)
     plik = frontend_ui2 / "Plik.tsx"
     plik.write_text("const opis = 'U_dot <= U_dot,dop';\n", encoding="utf-8")
-    backend_plik = tmp_path / "backend.py"
-    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    backend_src = tmp_path / "backend" / "src"
+    backend_src.mkdir(parents=True)
+    (backend_src / "modul.py").write_text("wartosc = 1\n", encoding="utf-8")
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset({("frontend/src/ui2/Plik.tsx", 1)}))
     monkeypatch.setattr(guard, "PIN", 0)
 
@@ -334,11 +344,11 @@ def test_main_zwraca_1_gdy_brak_katalogu_frontendowego(monkeypatch, tmp_path: Pa
     assert guard.main() == 1
 
 
-def test_main_zwraca_1_gdy_brak_pliku_backendowego(monkeypatch, tmp_path: Path) -> None:
+def test_main_zwraca_1_gdy_brak_katalogu_backendu(monkeypatch, tmp_path: Path) -> None:
     frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
     frontend_ui2.mkdir(parents=True)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", (tmp_path / "nigdy.py",))
+    monkeypatch.setattr(guard, "BACKEND_SRC", tmp_path / "nigdy")
 
     assert guard.main() == 1
 
@@ -348,12 +358,14 @@ def test_main_zwraca_1_gdy_pin_przekroczony(monkeypatch, tmp_path: Path) -> None
     frontend_ui2.mkdir(parents=True)
     plik = frontend_ui2 / "Plik.tsx"
     plik.write_text("const opis = 'U_dot <= U_dot,dop';\n", encoding="utf-8")
-    backend_plik = tmp_path / "backend.py"
-    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    backend_src = tmp_path / "backend" / "src"
+    backend_src.mkdir(parents=True)
+    (backend_src / "modul.py").write_text("wartosc = 1\n", encoding="utf-8")
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
 
@@ -365,12 +377,14 @@ def test_main_zwraca_0_gdy_pin_dotrzymany(monkeypatch, tmp_path: Path) -> None:
     frontend_ui2.mkdir(parents=True)
     plik = frontend_ui2 / "Plik.tsx"
     plik.write_text("const opis = 'zwykly tekst bez ASCII-matematyki';\n", encoding="utf-8")
-    backend_plik = tmp_path / "backend.py"
-    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    backend_src = tmp_path / "backend" / "src"
+    backend_src.mkdir(parents=True)
+    (backend_src / "modul.py").write_text("wartosc = 1\n", encoding="utf-8")
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
 
@@ -383,12 +397,14 @@ def test_main_pomija_pliki_z_wylaczonych_wzorcow(monkeypatch, tmp_path: Path) ->
     katalog_testow.mkdir(parents=True)
     plik = katalog_testow / "fixture.test.tsx"
     plik.write_text("const opis = 'U_dot <= U_dot,dop';\n", encoding="utf-8")
-    backend_plik = tmp_path / "backend.py"
-    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    backend_src = tmp_path / "backend" / "src"
+    backend_src.mkdir(parents=True)
+    (backend_src / "modul.py").write_text("wartosc = 1\n", encoding="utf-8")
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
 
@@ -546,14 +562,17 @@ def test_iniekcja_golego_indeksu_w_kopii_realnego_modulu_czerwieni_main(
     frontend_ui2.mkdir(parents=True)
     kopia_ts = frontend_ui2 / "strings.ts"
     kopia_ts.write_text(zrodlo_ts.read_text(encoding="utf-8"), encoding="utf-8")
+    backend_src = tmp_path / "backend" / "src"
     kopie_py = []
-    for zrodlo_py in guard.BACKEND_PLIKI:
-        kopia = tmp_path / zrodlo_py.name
-        kopia.write_text(zrodlo_py.read_text(encoding="utf-8"), encoding="utf-8")
+    for wzgledna in ("application/analyses/v126_katalog.py",):
+        kopia = backend_src / wzgledna
+        kopia.parent.mkdir(parents=True)
+        kopia.write_text((guard.BACKEND_SRC / wzgledna).read_text(encoding="utf-8"), encoding="utf-8")
         kopie_py.append(kopia)
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
-    monkeypatch.setattr(guard, "BACKEND_PLIKI", tuple(kopie_py))
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "PINY_BACKENDU", {})
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
     assert guard.main() == 0
@@ -587,3 +606,166 @@ if __name__ == "__main__":
     import pytest
 
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+# ---------------------------------------------------------------------------
+# Karta PROZA-BEZ-SYMBOLI-ASCII: skan całego `backend/src`, pola wzorów z adnotacji
+# `ZapisLatex`, identyfikatory z mocy składni i zapadka per plik.
+# ---------------------------------------------------------------------------
+
+_MODUL_TYPOW = (
+    "from dataclasses import dataclass\n"
+    "from werdykt.zapis_latex import ZapisLatex\n"
+    "@dataclass\n"
+    "class Wielkosc:\n"
+    "    symbol: ZapisLatex\n"
+    "    opis: str\n"
+    "    klucze: dict[ZapisLatex, str]\n"
+    "    @classmethod\n"
+    "    def create(cls, symbol: ZapisLatex, opis: str) -> 'Wielkosc':\n"
+    "        return cls(symbol, opis, {})\n"
+)
+
+
+def _src_z_modulami(monkeypatch, tmp_path: Path, **moduly: str) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    for nazwa, tresc in moduly.items():
+        (src / f"{nazwa}.py").write_text(tresc, encoding="utf-8")
+    monkeypatch.setattr(guard, "BACKEND_SRC", src)
+    return src
+
+
+@pytest.mark.parametrize(
+    ("wywolanie", "trafienia"),
+    [
+        # pole ZapisLatex: pozycyjnie, nazwanie, przez metodę klasy — wzór, nie proza
+        ("Wielkosc('I_k', 'prąd', {})", 0),
+        ("Wielkosc(symbol='I_k', opis='prąd', klucze={})", 0),
+        ("Wielkosc.create('I_k', 'prąd')", 0),
+        # pole prozy (`opis`) z gołym symbolem — trafienie, niezależnie od sposobu przekazania
+        ("Wielkosc('I_k', 'prąd I_k', {})", 1),
+        ("Wielkosc.create(symbol='I_k', opis='prąd I_k')", 1),
+        # dict[ZapisLatex, str]: klucze są wzorami, wartości prozą
+        ("Wielkosc('I_k', 'prąd', {'I_k': 'ikss_ka'})", 0),
+        ("Wielkosc('I_k', 'prąd', {'I_k': 'prąd I_b'})", 1),
+        ("Wielkosc('I_k', 'prąd', {'I_k': 'a'} | {'Z_f': 'b'})", 0),
+        ("Wielkosc('I_k', 'prąd', {**({'Z_f': 'b'} if x else {})})", 0),
+    ],
+)
+def test_adnotacja_zapis_latex_z_innego_modulu(
+    monkeypatch, tmp_path: Path, wywolanie: str, trafienia: int
+) -> None:
+    """Iloczyn: {pole wzoru · pole prozy · klucze/wartości słownika wzorów} × {pozycyjnie ·
+    nazwanie · metoda klasy · złożenie słowników} — sygnatura z INNEGO modułu (indeks całego
+    `backend/src`)."""
+    src = _src_z_modulami(
+        monkeypatch,
+        tmp_path,
+        typy=_MODUL_TYPOW,
+        uzycie=f"from typy import Wielkosc\nx = 1\nw = {wywolanie}\n",
+    )
+    assert len(guard.skanuj_py(src / "uzycie.py")) == trafienia
+
+
+@pytest.mark.parametrize(
+    ("kod", "trafienia"),
+    [
+        # zmienna z adnotacją przed rozgałęzieniem — każde przypisanie niesie wzór
+        ("def f(a):\n    s: ZapisLatex\n    if a:\n        s = 'I_k'\n    else:\n        s = 'I_b'\n", 0),
+        ("def f(a):\n    s = 'I_k'\n", 1),
+        # krotka celów: wszystkie z adnotacją — wzór; jeden bez — proza
+        ("def f():\n    r: ZapisLatex\n    x: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 0),
+        ("def f():\n    r: ZapisLatex\n    r, x = ('R_k', 'X_k')\n", 2),
+        # wartość zwracana funkcji `-> ZapisLatex`; zagnieżdżona funkcja ma własny typ zwrotu
+        ("def f() -> ZapisLatex:\n    return 'I_k'\n", 0),
+        ("def f() -> ZapisLatex:\n    def g() -> str:\n        return 'prąd I_k'\n    return 'I_k'\n", 1),
+        # parametr funkcji zagnieżdżonej i wartość domyślna parametru
+        ("def f():\n    def g(s: ZapisLatex) -> None: ...\n    g('I_k')\n", 0),
+        ("def f(s: ZapisLatex = 'I_k') -> None: ...\n", 0),
+        ("def f(s: str = 'I_k') -> None: ...\n", 1),
+    ],
+)
+def test_adnotacja_zapis_latex_zmiennych_i_zwrotu(
+    monkeypatch, tmp_path: Path, kod: str, trafienia: int
+) -> None:
+    src = _src_z_modulami(
+        monkeypatch, tmp_path, modul="from werdykt.zapis_latex import ZapisLatex\n" + kod
+    )
+    assert len(guard.skanuj_py(src / "modul.py")) == trafienia
+
+
+@pytest.mark.parametrize(
+    ("kod", "trafienia"),
+    [
+        ("x = d['I_k']\n", 0),
+        ("x = d.get('I_k')\n", 0),
+        ("x = a == 'Q_max'\n", 0),
+        ("x = a in ('I_k', 'I_b')\n", 0),
+        ("x = getattr(o, 'I_k')\n", 0),
+        # ten sam napis jako argument zwykłego wywołania albo wartość słownika — proza; klucz
+        # zwykłego słownika też (bywa nagłówkiem kolumny eksportu) — wyłącza go tylko adnotacja
+        ("x = print('I_k')\n", 1),
+        ("x = {'I_k': 'prąd I_k'}\n", 2),
+    ],
+)
+def test_identyfikator_z_mocy_skladni(monkeypatch, tmp_path: Path, kod: str, trafienia: int) -> None:
+    src = _src_z_modulami(monkeypatch, tmp_path, modul=kod)
+    assert len(guard.skanuj_py(src / "modul.py")) == trafienia
+
+
+@pytest.mark.parametrize(
+    ("literal", "trafienie"),
+    [
+        ("'Energia $I_{th}^2 \\\\cdot t$ zwarcia'", False),
+        ("'Energia I^2 zwarcia'", True),
+        ("'Wzór $a * b$ w segmencie'", False),
+        ("'Iloczyn a * b w prozie'", True),
+    ],
+)
+def test_wzorce_skladni_sprawdzane_na_prozie_poza_segmentem(
+    tmp_path: Path, literal: str, trafienie: bool
+) -> None:
+    plik = tmp_path / "przyklad.py"
+    plik.write_text(f"wartosc = {literal}\n", encoding="utf-8")
+    assert bool(guard.skanuj_py(plik)) is trafienie
+
+
+@pytest.mark.parametrize(
+    ("piny", "oczekiwany_kod", "znacznik"),
+    [
+        ({"modul.py": 1}, 0, None),
+        ({}, 1, "[ui-math-nowe]"),
+        ({"modul.py": 2}, 1, "[ui-math-pin-nieaktualny]"),
+        ({"modul.py": 1, "nie_ma.py": 3}, 1, "[ui-math-pin-osierocony]"),
+    ],
+)
+def test_zapadka_backendu_per_plik_w_obie_strony(
+    monkeypatch, tmp_path: Path, capsys, piny: dict[str, int], oczekiwany_kod: int, znacznik
+) -> None:
+    """Zapadka per plik: pomiar = pin (zielono); nowe trafienie, pin zawyżony i wpis osierocony
+    — każde czerwieni strażnika z nazwanym powodem."""
+    frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
+    frontend_ui2.mkdir(parents=True)
+    _src_z_modulami(monkeypatch, tmp_path, modul="x = 'prąd I_k w punkcie'\n")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
+    monkeypatch.setattr(guard, "PINY_BACKENDU", piny)
+    assert guard.main() == oczekiwany_kod
+    if znacznik is not None:
+        assert znacznik in capsys.readouterr().out
+
+
+def test_piny_backendu_rdzeni_b01_oznaczone_i_w_pomiarze() -> None:
+    """Każdy wpis zapadki leży w `backend/src`; rdzenie B-01 nie są wyłączone ze skanu —
+    ich trafienia stoją w pinach jawnie (do decyzji architekta), a nie poza pomiarem."""
+    from rdzenie_b01 import jest_rdzeniem_b01
+
+    pomiar = guard.zmierz_backend()
+    assert guard.problemy_pinow_backendu(pomiar) == []
+    for wzgledna in guard.PINY_BACKENDU:
+        assert (guard.BACKEND_SRC / wzgledna).is_file()
+    assert any(jest_rdzeniem_b01(w) for w in guard.PINY_BACKENDU) == any(
+        jest_rdzeniem_b01(w) for w in pomiar
+    )
