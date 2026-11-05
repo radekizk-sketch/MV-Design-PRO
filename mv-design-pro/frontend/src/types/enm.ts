@@ -1277,7 +1277,7 @@ import type {
   FixActionSurfaceDescriptor,
   WizardSurfaceStepId,
 } from './fixActionSurface';
-import type { SemanticIssue } from './domainOps';
+import type { AuditEntry, SemanticIssue } from './domainOps';
 
 // ---------------------------------------------------------------------------
 // Bay canonical model V10 (read-model contract)
@@ -2418,7 +2418,7 @@ export interface DomainOpResponseV1 {
   fix_actions: FixAction[];
   changes: ChangesInfo;
   selection_hint: SelectionHint | null;
-  audit_trail: unknown[];
+  audit_trail: AuditEntry[];
   domain_events: DomainEvent[];
   materialized_params: MaterializedParams;
   layout: LayoutInfo;

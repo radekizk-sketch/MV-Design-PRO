@@ -218,7 +218,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl=(
             "Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny "
-            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym"
+            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym; "
+            "odcinek bez wolnego pola dostaje nowe pole liniowe utworzone w tej operacji"
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("element_ref",),
@@ -2044,6 +2045,21 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Element jest przyłączony do szyny głównej stacji z pominięciem pola "
             "rozdzielnicy — aparat pola nie leży w jego torze prądowym"
+        ),
+        fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
+    ),
+    # INSPEKTOR-POLA-DOMKNIECIE: odcinek SN na szynie sekcji stacji bez pola liniowego — brak
+    # aparatu i zabezpieczenia w torze odcinka (`enm/zajetosc_pol.py::odcinki_bez_pola`,
+    # walidator W049). Ostrzeżenie: aparat pola ma impedancję zerową, więc rozpływ i zwarcia są
+    # policzone poprawnie; akcja naprawcza tworzy pole liniowe i przepina na nie odcinek.
+    "station.segment_without_field": ReadinessCodeSpec(
+        code="station.segment_without_field",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Odcinek SN jest przyłączony do szyny sekcji stacji bez pola liniowego — w jego "
+            "torze nie ma aparatu łączeniowego ani zabezpieczenia pola"
         ),
         fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
     ),

@@ -36,7 +36,7 @@ import { publicBusName } from '../shared/enmVisibility';
 import { identyfikatorGrafu } from './identyfikatorGrafu';
 import { executeDomainOp } from './domainApi';
 import { notify } from '../notifications/store';
-import { getOperationSuccessMessage } from './operationSuccessMessages';
+import { getOperationSuccessMessage, komunikatSukcesuZPolami } from './operationSuccessMessages';
 
 // ---------------------------------------------------------------------------
 // State
@@ -482,7 +482,12 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       // Centralny toast sukcesu — jeden punkt dla WSZYSTKICH operacji domenowych
       // (kryt. #2: każda akcja ma feedback sukcesu). Operacje ciche (refresh/undo)
       // pomijane przez getOperationSuccessMessage.
-      const successMessage = opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName);
+      // Pole liniowe utworzone przez operację (karta INSPEKTOR-POLA-DOMKNIECIE) — zdanie backendu
+      // dopisane do potwierdzenia, także przy komunikacie wołającego.
+      const successMessage = komunikatSukcesuZPolami(
+        opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName),
+        response,
+      );
       if (successMessage) {
         notify(successMessage, 'success');
       }

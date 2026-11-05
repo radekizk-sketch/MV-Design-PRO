@@ -1468,7 +1468,7 @@ z odcinkiem z pola GPZ) — 5 sekcji, karta 783 px (zasilanie 5 kolumn i wiersz 
 karta pola GPZ: tabela aparatów 4 kolumny bez przewijania przy 420 px i przy 340 px (wysokość
 92 px w obu), 1 kliknięcie z wiersza do karty aparatu z typem katalogowym. Zrzuty
 `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed: te same ścieżki
-w `3975ecb15`), nowe `gpz-pole-aparaty-{ciemny,jasny}.png` (inspektor 340 px) i odświeżone
+w `3975ecb15`), nowe `gpz-pole-aparaty-{420,340}-{ciemny,jasny}.png` (inspektor 420 px i 340 px) i odświeżone
 `k6-stacja-*`, `k6-pole-*`; materiał B-02, bez werdyktu.
 
 **Commit 16 (2026-11-05) — INSPEKTOR-POLA-DOMKNIECIE: opis bez powtórzeń, jedno źródło
@@ -1509,6 +1509,41 @@ karta: nazwa × rola × rodzaj stacji × numer; panel: natywny klik w kanwę →
 zabezpieczenie” → `add_relay` z `bay_ref`; 7 iniekcji czerwonych. Punkt 2 karty (odcinek bez
 wskazania pola tworzy pole, reguła walidatora) — NIE wykonany w tym commicie; inwentarz i sonda
 w meldunku wykonawcy.
+
+**Commit 17 (2026-11-05) — INSPEKTOR-POLA-DOMKNIECIE punkt 2: odcinek z szyny sekcji zawsze
+przez pole liniowe.** Decyzja architekta: odcinek SN przyłączany do szyny sekcji bez wskazania
+pola przechodzi przez wolne pole liniowe tej szyny, a bez wolnego pola (brak pól albo wszystkie
+zajęte) przez pole utworzone w tej samej operacji, wyposażone jak pole wzorcowe sekcji (kopia
+aparatu wzorca: OUT, FEEDER, IN; w GPZ kanon pól GPZ). Odmowa tylko z przyczyny modelowej:
+`branch_connection.gpz_line_fields_exhausted` (limit pól sekcji GPZ) i
+`field.auto_field_section_unknown` (sekcja GPZ nieopisana w modelu). Jeden predykat
+`enm/zajetosc_pol.py` (`szyny_sekcji_sn`, `odcinki_bez_pola`, reguła R1 zajętości rozszerzona
+o `meta.target_bay_ref`) czytany przez operacje, `tor_pola` (reguła N1) i walidator. Nowa
+reguła W049 / `station.segment_without_field` (WARNING, obszar STATIONS; aparat pola ma
+impedancję zerową, więc rozpływ i zwarcia są poprawne — błędny jest tor aparatu: SLD,
+selektywność, dobór; parytet z W042, który zostaje regułą transformatora), akcja naprawcza
+`przepnij_element_na_pole` — bez wolnego pola tworzy pole. Zdarzenie `LINE_FIELD_CREATED`
+z wpisem `audit_trail` dopisywanym do potwierdzenia operacji na froncie. Inwentarz klasy:
+`continue_trunk_segment_sn`, `start_branch_segment_sn`, `connect_secondary_ring_sn` (oba końce),
+`przepnij_element_na_pole` — naprawione; `insert_station_on_segment_sn`,
+`append_station_on_endpoint` i szablony stacji (przez `insert_station`) już przyłączały przez pole
+(POLA-W-TORZE); import XLSX buduje sieć operacjami domenowymi (`enm/kompilator_grafu.py`);
+archiwum i modele zastane nie są migrowane — W049 wskazuje odcinek, przepięcie tworzy pole;
+szyna spoza rozdzielnicy stacji zostaje przyłączeniem wprost (punkt sieci, nie rozdzielnica).
+Sonda rozpływu i I″k na 5 rodzajach × 4 stanach × 3 operacjach: tam, gdzie pole było, wyniki
+identyczne co do bitu (różnica migawki w pierścieniach z GPZ i stacji: brak
+`assigned_corridor_ref` dopisywanego dawniej przez samonaprawę alokatora pól GPZ); tam, gdzie
+pole powstało, względem kabla wprost na szynie dU ≤ 6,1·10⁻⁸ kV i dI″k ≤ 2,9·10⁻¹¹ A (łącznik
+o impedancji zerowej, różnica z kolejności węzłów w iteracji NR, poniżej tolerancji 10⁻⁸ p.u.).
+Testy: `tests/enm/test_odcinek_bez_pola.py` (operacja × rodzaj stacji × stan pól × sekcja,
+determinizm, odmowy, model zastany z parytetem predykat–walidator–tor_pola). Iniekcje czerwone:
+predykat lokalny w kontynuacji (16), brak pola w stacji (27), brak pierwszego pola GPZ (16),
+walidator z własnym warunkiem (12), front bez zdania o polu (2).
+Znaleziska uboczne naprawione: spec `e2e/gpz-sekcje-szyn.spec.ts` mierzył wąski inspektor
+jako 420 px (zmiana motywu przy zrzutach zabierała fokus z uchwytu, klawisz nie zwężał panelu) —
+fokus przed każdym przebiegiem i asercja 340 px; osierocone zrzuty bez szerokości w nazwie
+usunięte; typ `audit_trail` odpowiedzi operacji (`unknown[]` → `AuditEntry[]`); błąd typu
+w teście tabel karty technicznej (bramka typów poza zasięgiem 1 → 0).
 ---
 
 ## LICZBY-PL

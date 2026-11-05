@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **174** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **175** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -162,6 +162,7 @@ Wszystkie **174** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
 | `station.line_field_multiple_segments` | STATIONS | 3 | BLOCKER | Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek | panel: `inspector`, tab: `pola` |
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | panel: `inspector`, tab: `pola` |
+| `station.segment_without_field` | STATIONS | 3 | WARNING | Odcinek SN jest przyłączony do szyny sekcji stacji bez pola liniowego — w jego torze nie ma aparatu łączeniowego ani zabezpieczenia pola | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `transformer.bay_missing` | STATIONS | 3 | WARNING | Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN | panel: `inspector`, tab: `pola` |
 | `station.nn_outgoing_min_1` | STATIONS | 4 | WARNING | Stacja powinna mieć co najmniej 1 odpływ nN | panel: `inspector`, tab: `nn`, modal: `add_nn_outgoing` |
 | `oze.bess_no_transformer` | GENERATORS | 1 | BLOCKER | Źródło BESS nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora) | panel: `inspector`, tab: `transformator`, modal: `MODAL_WSTAW_STACJE_SN_NN_WARIANT_2` |
@@ -238,20 +239,20 @@ Wszystkie **174** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 106 |
-| WARNING | 60 |
+| WARNING | 61 |
 | INFO | 8 |
-| **Razem** | **174** |
+| **Razem** | **175** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
 | CATALOGS | 53 |
-| STATIONS | 27 |
+| STATIONS | 28 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 29 |
-| **Razem** | **174** |
+| **Razem** | **175** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

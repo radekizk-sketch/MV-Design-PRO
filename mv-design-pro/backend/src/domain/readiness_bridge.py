@@ -55,6 +55,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Element przyłączony do szyny głównej stacji z pominięciem pola" == ten sam warunek
     # (jedno źródło predykatu `enm/tor_pola.py::naruszenia_zasady_toru`, karta POLA-W-TORZE).
     "W042": "station.element_bypasses_field",
+    # „Odcinek SN na szynie sekcji stacji bez pola" == ten sam warunek (jedno źródło predykatu
+    # `enm/zajetosc_pol.py::odcinki_bez_pola`, karta INSPEKTOR-POLA-DOMKNIECIE).
+    "W049": "station.segment_without_field",
     # „Deklaracja rodzaju stacji niezgodna z topologią" == ten sam warunek (jedno źródło
     # `enm/rodzaj_stacji.py`, karta ETYKIETA-STACJI-PRZELOTOWEJ).
     "W043": "station.kind_mismatch",
@@ -360,6 +363,7 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "station.nn_outgoing_min_1": "Brak emitera: liczba odpływów nN nie jest sprawdzana.",
     "station.required_field_missing": "Emiter przez odwzorowanie kodu walidatora E021.",
     "station.line_field_multiple_segments": "Emiter przez odwzorowanie kodu walidatora E022.",
+    "station.segment_without_field": "Emiter przez odwzorowanie kodu walidatora W049.",
     "station.type_invalid": "Brak emitera: typ stacji walidowany kontraktem operacji, nie kodem gotowości.",
     "study_case.missing_base_snapshot": "Brak emitera: warunek pilnowany wyjątkiem warstwy przypadku.",
     "transformer.connection_missing": "Brak emitera: połączenie transformatora walidowane kontraktem operacji.",

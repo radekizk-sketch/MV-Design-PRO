@@ -262,18 +262,20 @@ test('Sekcje szyn GPZ — tabela w karcie technicznej i „Konfiguruj GPZ” na 
   expect(await tabelaAparatow.locator('thead th').allTextContents()).toEqual(['Aparat', 'Uᵣ [kV]', 'Iᵣ [A]', 'Iₖ [kA]']);
   await expect(karta.getByTestId('inspektor-karta-tabela-aparaty-podpis')).toHaveCount(0);
   const uchwyt = page.getByTestId('mvd-handle-right');
-  await uchwyt.focus();
   const szerokoscInspektora = async () => Math.round((await inspektor.boundingBox())!.width);
   // Szerokość 420 px (strzałka w lewo poszerza do granicy) i najwęższy inspektor (strzałka
   // w prawo do granicy) — w obu tabela aparatów bez przewijania, liczby w jednej linii.
   for (const [klawisz, nazwa] of [['ArrowLeft', 'szeroki'], ['ArrowRight', 'waski']] as const) {
+    // Fokus na uchwycie przed każdym przebiegiem — zmiana motywu przy zrzutach poprzedniego
+    // przebiegu zabiera fokus, a bez niego klawisz nie zwęża inspektora (dawny pomiar 420/420).
+    await uchwyt.focus();
     for (let i = 0; i < 20; i += 1) {
       const przed = await szerokoscInspektora();
       await page.keyboard.press(klawisz);
       if ((await szerokoscInspektora()) === przed) break;
     }
     const szer = await szerokoscInspektora();
-    if (nazwa === 'szeroki') expect(szer).toBe(420);
+    expect(szer).toBe(nazwa === 'szeroki' ? 420 : 340);
     pomiar[`szerokosc_inspektora_${nazwa}_px`] = szer;
     const obszar = karta.getByTestId('inspektor-karta-tabela-aparaty-przewijanie');
     const wymiary = await obszar.evaluate((el) => ({ widoczna: el.clientWidth, tresc: el.scrollWidth }));

@@ -16,11 +16,14 @@ Ten moduł jest jedynym miejscem, które mówi:
     `przepnij_element_na_pole` na zacisk wskazanego pola.
 
 Reguła naruszenia (wyłącznie z JAWNYCH danych modelu, bez domysłu):
-  N1 odcinek terenowy SN (kabel, linia) z końcem na szynie głównej stacji, która ma pola SN
-     z WŁASNYM zaciskiem. Pole, które mu służy: dla końca `to` odcinka (odcinek dochodzi do
-     stacji — kierunek ENM `from` = strona zasilania) pierwsze WOLNE pole roli `IN` tej szyny,
-     dla końca `from` (odcinek wychodzi ze stacji) pierwsze WOLNE pole roli `OUT`, a przy jego
-     braku `FEEDER`. Brak wolnego pola = naruszenie bez wskazania pola (akcja: dodaj pole).
+  N1 koniec odcinka terenowego SN (kabel, linia) na szynie sekcji SN stacji, którego nie
+     przyłącza żadne pole — JEDEN predykat `enm.zajetosc_pol.odcinki_bez_pola` (ten sam czytają
+     operacje domenowe, które przyłączają odcinek przez pole albo tworzą pole). Pole, które mu
+     służy: dla końca `to` odcinka (odcinek dochodzi do stacji — kierunek ENM `from` = strona
+     zasilania) pierwsze WOLNE pole roli `IN` tej szyny, a przy jego braku pole liniowe `OUT`
+     albo `FEEDER`; dla końca `from` (odcinek wychodzi ze stacji) pierwsze WOLNE pole roli
+     `OUT`, a przy jego braku `FEEDER`. Brak wolnego pola = naruszenie bez wskazania pola
+     (akcja naprawcza tworzy pole liniowe). Walidator zgłasza N1 kodem `W049`, N2 kodem `W042`.
   N2 transformator ze stroną górną na szynie głównej stacji, która ma pole roli `TR` z własnym
      zaciskiem. Pole, które mu służy: pole TR, którego `equipment_refs` wskazuje transformator,
      inaczej pierwsze WOLNE pole TR tej szyny.
@@ -48,7 +51,13 @@ from typing import Any
 
 from .models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol, zacisk_pola
-from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
+from .zajetosc_pol import (
+    TYPY_ODCINKA_TERENOWEGO,
+    OdcinekBezPola,
+    ZajetoscPola,
+    odcinki_bez_pola,
+    zajetosc_pol,
+)
 
 #: Rola pola (`Bay.bay_role`), na którego zacisku kończy się połówka odcinka od strony zasilania.
 ROLA_POLA_WE = "IN"
@@ -66,8 +75,13 @@ KOD_KANONICZNY_ELEMENT_OMIJA_POLE = "station.element_bypasses_field"
 #: Operacja domenowa akcji naprawczej: przepięcie elementu na zacisk pola.
 OPERACJA_PRZEPIECIA = "przepnij_element_na_pole"
 
-#: Role pól, którym może służyć koniec odcinka dochodzący do stacji (`to`) i wychodzący (`from`).
-ROLE_KONCA_DOCHODZACEGO: tuple[str, ...] = (ROLA_POLA_WE,)
+#: Role pól, którym może służyć koniec odcinka dochodzący do stacji (`to`) i wychodzący (`from`),
+#: w kolejności preferencji. Koniec dochodzący kończy się najpierw na polu wejściowym (połówka
+#: odcinka od strony zasilania), a gdy go brak — na polu liniowym wyjściowym albo odgałęźnym:
+#: kabel zamykający pierścień dochodzi do stacji przez pole liniowe, a kierunek ENM odcinka
+#: (`from` → `to`) nie wyznacza roli pola po stronie stacji (operacja domykania pierścienia
+#: przyłącza oba końce przez pola liniowe `OUT`/`FEEDER`).
+ROLE_KONCA_DOCHODZACEGO: tuple[str, ...] = (ROLA_POLA_WE, "OUT", "FEEDER")
 ROLE_KONCA_WYCHODZACEGO: tuple[str, ...] = (ROLA_POLA_WY, ROLA_POLA_ODG)
 
 
@@ -247,28 +261,72 @@ def wolne_pole_szyny(
     )
 
 
+def _wolne_pole_odcinka(
+    enm: Mapping[str, Any],
+    stacja_ref: str,
+    szyna: str,
+    role: tuple[str, ...],
+    elementy_na_szynach: Mapping[str, set[str]],
+    zajete_zaciski: set[str],
+    zajetosc: Mapping[str, ZajetoscPola],
+    poziom: PoziomPol,
+) -> Mapping[str, Any] | None:
+    """Pole, przez które może przejść koniec odcinka leżący na szynie sekcji bez pola: pierwsze
+    WOLNE pole SN tej szyny z `role` (kolejność ról, potem danych). Pole jest wolne, gdy
+    `enm.zajetosc_pol` nie widzi na nim odcinka ani korytarza, a pole z własnym zaciskiem
+    dodatkowo, gdy zacisk nie niesie żadnego elementu mocy."""
+    pola_szyny = [
+        rekord
+        for rekord in pola_stacji(enm, stacja_ref)
+        if _napis(_atrybut(rekord, "bus_ref")) == szyna and not czy_pole_nn(enm, rekord, poziom)
+    ]
+    for rola in role:
+        for spec in pola_szyny:
+            if str(spec.get("bay_role") or "").upper() != rola:
+                continue
+            # Zajętość pola z JEDNEGO źródła (`enm.zajetosc_pol`: odcinek fizycznie albo korytarz
+            # przydzielony deklaratywnie) — ta sama, którą sprawdza przepięcie; pole z zaciskiem
+            # dodatkowo nie może nieść na zacisku żadnego elementu mocy.
+            stan = zajetosc.get(str(spec.get("ref_id") or ""))
+            if stan is not None and stan.zajete:
+                continue
+            zacisk = _napis(zacisk_pola(spec))
+            if zacisk and zacisk != szyna:
+                if elementy_na_szynach.get(zacisk) or zacisk in zajete_zaciski:
+                    continue
+                return spec
+            if f"{szyna}#{spec.get('ref_id')}" in zajete_zaciski:
+                continue
+            return spec
+    return None
+
+
 def _naruszenia_stacji(
     enm: Mapping[str, Any],
     stacja: Mapping[str, Any],
-    galezie: list[Mapping[str, Any]],
     transformatory: list[Mapping[str, Any]],
     elementy_na_szynach: Mapping[str, set[str]],
     poziom: PoziomPol,
+    odcinki: list[OdcinekBezPola],
+    galezie_wg_ref: Mapping[str, Mapping[str, Any]],
+    zajetosc: Mapping[str, ZajetoscPola],
 ) -> list[NaruszenieToru]:
     station_ref = _napis(stacja.get("ref_id")) or ""
     szyny_glowne = {s for s in (stacja.get("bus_refs") or []) if _napis(s)}
     pola_szyny = _pola_z_zaciskiem_wg_szyny(enm, station_ref, poziom)
     wynik: list[NaruszenieToru] = []
-    if not pola_szyny:
-        return wynik
     zajete_zaciski: set[str] = set()
 
     def zapisz(
         element: Mapping[str, Any], rodzaj: str, szyna: str, spec: Mapping[str, Any] | None
     ) -> None:
-        zacisk = str(zacisk_pola(spec)) if spec is not None else None
-        if zacisk:
-            zajete_zaciski.add(zacisk)
+        zacisk = _napis(zacisk_pola(spec)) if spec is not None else None
+        if spec is not None:
+            # Pole wskazane jednemu elementowi nie jest wolne dla następnego (pole bez zacisku
+            # zaznaczone parą szyna#pole — jego punkt przyłączenia to szyna, wspólna dla wielu).
+            zajete_zaciski.add(
+                zacisk if zacisk and zacisk != szyna else f"{szyna}#{spec.get('ref_id')}"
+            )
         wynik.append(
             NaruszenieToru(
                 station_ref=station_ref,
@@ -282,18 +340,25 @@ def _naruszenia_stacji(
             )
         )
 
-    # N1: odcinki terenowe na szynie głównej stacji z polami liniowymi.
-    for galaz in galezie:
-        if galaz.get("type") not in TYPY_ODCINKA_TERENOWEGO:
+    # N1: koniec odcinka terenowego na szynie sekcji SN bez pola — JEDEN predykat
+    # `enm.zajetosc_pol.odcinki_bez_pola` (ten sam, który czytają operacje domenowe).
+    for odcinek in odcinki:
+        if odcinek.station_ref != station_ref:
             continue
-        for koniec, role in (
-            ("to_bus_ref", ROLE_KONCA_DOCHODZACEGO),
-            ("from_bus_ref", ROLE_KONCA_WYCHODZACEGO),
-        ):
-            szyna = _napis(galaz.get(koniec))
-            if szyna and szyna in szyny_glowne and szyna in pola_szyny:
-                pole = _wolne_pole(pola_szyny[szyna], role, elementy_na_szynach, zajete_zaciski)
-                zapisz(galaz, "odcinek", szyna, pole)
+        role = (
+            ROLE_KONCA_DOCHODZACEGO if odcinek.koniec == "to_bus_ref" else ROLE_KONCA_WYCHODZACEGO
+        )
+        pole = _wolne_pole_odcinka(
+            enm,
+            station_ref,
+            odcinek.szyna_ref,
+            role,
+            elementy_na_szynach,
+            zajete_zaciski,
+            zajetosc,
+            poziom,
+        )
+        zapisz(galezie_wg_ref[odcinek.branch_ref], "odcinek", odcinek.szyna_ref, pole)
     # N2: strona górna transformatora na szynie głównej stacji z polem TR.
     for transformator in transformatory:
         szyna = _napis(transformator.get("hv_bus_ref"))
@@ -324,10 +389,13 @@ def _naruszenia_stacji(
 def naruszenia_zasady_toru(enm: Mapping[str, Any]) -> list[NaruszenieToru]:
     """Elementy omijające pole, które im służy (reguły N1, N2 z opisu modułu), deterministycznie."""
     elementy_na_szynach = elementy_mocy_na_szynach(enm)
-    galezie = sorted(
-        (g for g in enm.get("branches") or [] if isinstance(g, Mapping)),
-        key=lambda g: str(g.get("ref_id") or ""),
-    )
+    galezie_wg_ref = {
+        str(g.get("ref_id")): g
+        for g in enm.get("branches") or []
+        if isinstance(g, Mapping) and g.get("ref_id")
+    }
+    odcinki = odcinki_bez_pola(enm)
+    zajetosc = zajetosc_pol(enm)
     transformatory = sorted(
         (t for t in enm.get("transformers") or [] if isinstance(t, Mapping)),
         key=lambda t: str(t.get("ref_id") or ""),
@@ -339,7 +407,16 @@ def naruszenia_zasady_toru(enm: Mapping[str, Any]) -> list[NaruszenieToru]:
         key=lambda s: str(s.get("ref_id") or ""),
     ):
         wynik.extend(
-            _naruszenia_stacji(enm, stacja, galezie, transformatory, elementy_na_szynach, poziom)
+            _naruszenia_stacji(
+                enm,
+                stacja,
+                transformatory,
+                elementy_na_szynach,
+                poziom,
+                odcinki,
+                galezie_wg_ref,
+                zajetosc,
+            )
         )
     wynik.sort(key=lambda n: (n.station_ref, n.rodzaj_elementu, n.element_ref, n.szyna_ref))
     return wynik

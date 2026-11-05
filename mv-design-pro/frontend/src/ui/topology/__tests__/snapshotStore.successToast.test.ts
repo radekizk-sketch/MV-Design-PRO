@@ -93,6 +93,39 @@ describe('snapshotStore central success toast', () => {
     else expect(sukcesy).toEqual([oczekiwany]);
   });
 
+  // INSPEKTOR-POLA-DOMKNIECIE: operacja przyłączająca odcinek do szyny sekcji bez wolnego pola
+  // tworzy pole — zdanie backendu (`audit_trail` przy zdarzeniu LINE_FIELD_CREATED) trafia do
+  // potwierdzenia. Iloczyn: {pole utworzone, pole istniejące, wpis audytu bez zdarzenia} ×
+  // {komunikat centralny, komunikat wołającego}.
+  const ZDANIE = 'Utworzono nowe pole liniowe „Pole odgałęźne 7” w stacji „Lipowa”.';
+  it.each([
+    ['utworzone', undefined, `Przedłużono magistralę SN ${ZDANIE}`],
+    ['utworzone', 'Dodano odcinek.', `Dodano odcinek. ${ZDANIE}`],
+    ['istniejace', undefined, 'Przedłużono magistralę SN'],
+    ['audyt_bez_zdarzenia', undefined, 'Przedłużono magistralę SN'],
+  ] as const)('pole %s × komunikat %s → %s', async (stan, komunikat, oczekiwany) => {
+    const odpowiedz = successResponse();
+    if (stan !== 'istniejace') {
+      odpowiedz.audit_trail = [{ step: 1, action: ZDANIE, element_id: 'stn/x/sn_field/006', detail: '' }];
+    }
+    if (stan === 'utworzone') {
+      odpowiedz.domain_events = [
+        { event_seq: 1, event_type: 'LINE_FIELD_CREATED', element_id: 'stn/x/sn_field/006', detail: '' },
+      ];
+    }
+    mockedExecuteDomainOp.mockResolvedValue(odpowiedz);
+    await useSnapshotStore
+      .getState()
+      .executeDomainOperation(
+        'case-1',
+        'continue_trunk_segment_sn',
+        {},
+        komunikat ? { komunikatSukcesuPl: komunikat } : undefined,
+      );
+    const sukcesy = mockedNotify.mock.calls.filter((c) => c[1] === 'success').map((c) => c[0]);
+    expect(sukcesy).toEqual([oczekiwany]);
+  });
+
   it('NIE emituje toast sukcesu gdy operacja zwraca error', async () => {
     mockedExecuteDomainOp.mockResolvedValue(errorResponse());
     await useSnapshotStore.getState().executeDomainOperation('case-1', 'add_sn_bay', {});

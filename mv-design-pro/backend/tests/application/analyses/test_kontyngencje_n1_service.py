@@ -958,8 +958,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `kryteria_pominiete`; `ranking.definicja_pl`: „identyfikatorze elementu” zamiast klucza
     # `element_ref`) i `input_hash`, który obejmuje `kryteria`. Enumeracja kontyngencji,
     # dotkliwości i ranking identyczne.
+    # 2026-11-05 (karta INSPEKTOR-POLA-DOMKNIECIE, odcinek przyłączony bez pola): gn01 bez
+    # zmiany, gn03 00d06959… → abe8e8f6…. Pełne widoki z kodu bazy `0b8a59b38` i po karcie
+    # porównane liść po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Jedyna różnica modelu wejściowego: kabel zamykający pierścień na szynie sekcji GPZ bez
+    # aparatury pól niesie `meta.origin_bay_ref` przydzielonego pola liniowego GPZ (dawniej pole
+    # przydzielano, ale nic go z odcinkiem nie wiązało — odcinek wisiał na szynie bez pola).
+    # Enumeracja kontyngencji, dotkliwości, odbiory bez zasilania i ranking identyczne.
     "gn01_promieniowa": "edf27ae6a435d418994340f39b96b06504f13bec1a5dad13a508fa1a5891924a",
-    "gn03_pierscien": "00d06959d23b1179cb2fe507a9cdc4b54647bec4398abc43e83d7aa55846c4b9",
+    "gn03_pierscien": "abe8e8f6b022e89a63063b5bbf09861cc7557834cc5cd92044d15dac5b3424ab",
 }
 
 

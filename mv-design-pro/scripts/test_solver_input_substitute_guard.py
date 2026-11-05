@@ -2063,7 +2063,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # profilu (`snapshot_id`, `issues`, `content_hash`) zyja w innych kontraktach — nazwy w
     # zbiorze bez zmian. Plik `domain/readiness.py` zostaje (typy kwestii gotowosci) — liczba
     # plikow bez zmian. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4388." in wyjscie, wyjscie
+    # INSPEKTOR-POLA-DOMKNIECIE punkt 2 (2026-11-05): 4388 -> 4391 — POMIAR `contract_fields()`
+    # na HEAD karty `0b8a59b38` (`git archive`: 4388, pin zgodny) i na drzewie karty (4391).
+    # Roznica zbiorow +3, -0: `koniec` (`enm.zajetosc_pol.OdcinekBezPola` — koniec odcinka bez
+    # pola), `punkt` i `nowe_elementy` (`_PrzylaczeniePrzezPole` w `enm/domain_operations.py` —
+    # punkt przylaczenia i elementy pola utworzonego w operacji). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4391." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

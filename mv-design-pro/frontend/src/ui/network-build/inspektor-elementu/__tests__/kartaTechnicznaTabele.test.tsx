@@ -136,7 +136,7 @@ describe('wiersz tabeli × kolumny scalone', () => {
     expect(komorki.map((k) => Number(k.getAttribute('colspan') ?? '1'))).toEqual(rozpietosci);
     // Nazwa pola raz — rola nie stoi drugi raz w wierszu, gdy scalona.
     const tekst = screen.getByTestId('inspektor-karta-wiersz-pola_sn').textContent ?? '';
-    expect(tekst.split('Pole liniowe wejściowe').length - 1).toBe(polaczone?.includes('rola') ? 1 : 2);
+    expect(tekst.split('Pole liniowe wejściowe').length - 1).toBe((polaczone as readonly string[] | undefined)?.includes('rola') ? 1 : 2);
   });
 });
 

@@ -2712,6 +2712,20 @@
         }
       }
     },
+    "src/harness-fixtures/generated/glowice_kablowe_pol_gpz.json": {
+      "/snapshot": {
+        "stn/298177b52cf4013c836740b86946c50f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 4,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 4 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": false
+        }
+      }
+    },
     "src/harness-fixtures/generated/koordynacja_scena_migawka.json": {
       "": {
         "stn/01bb98b8035012aa5698e4fc47869f83/station": {
