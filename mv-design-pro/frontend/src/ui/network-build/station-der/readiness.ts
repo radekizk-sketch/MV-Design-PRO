@@ -9,7 +9,12 @@
  *
  * Naprawy z drugiego audytu eksperckiego:
  *  - eng.5: CT klasa 5P/10P wymagana dla zabezpieczeń (IEC 61869-2)
- *  - eng.6: CT dwurdzeniowy (5P + 0,5) wymagany dla 87T (różnicowe transformatora)
+ *  - eng.6 (87T → CT dwurdzeniowy) NIE jest regułą tego lustra: wymaganie 87T rozstrzyga
+ *    backend wobec MOCY ZNAMIONOWEJ TRANSFORMATORA dedykowanego (`domain/
+ *    der_protection_functions.py::ocen_prog_87t`), a próg nie ma podstawy w profilach
+ *    operatorów — status BRAK_PODSTAWY pokazuje dobór funkcji zabezpieczeniowych, a gotowość
+ *    nie wymyśla blokady (dawna stała 1600 kW porównywała moc ŹRÓDŁA, karta
+ *    JEDNA-SCIEZKA-EDYCJI cz. 4). Parytet z regułą backendu: `der_readiness_parity_v1.json`.
  *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
@@ -129,13 +134,6 @@ function ctKlasaZDanej(der: StationDerConnection): CtClass | null {
   return der.ct_accuracy_class ?? null;
 }
 
-/** Zastosowanie przekładnika (zabezpieczenia / pomiar / dwurdzeniowy) — jak wyżej. */
-function ctZastosowanieZDanej(
-  der: StationDerConnection,
-): 'protection' | 'metering' | 'dual' | null {
-  return der.ct_application ?? null;
-}
-
 export function computeDerReadinessMatrix(
   der: StationDerConnection,
   context?: { readonly otherDersInStation?: number },
@@ -175,13 +173,6 @@ export function computeDerReadinessMatrix(
   // niegotowa w milczeniu.
   const ctKlasa = ctKlasaZDanej(der);
   const ctValidForProtection = ctKlasa !== null && isCtClassValidForProtection(ctKlasa);
-  // Naprawa eng.6: CT dual-core wymagany jeśli mamy dedicated_transformer
-  // o mocy ≥ 1.6 MVA (próg dla 87T per IEC 60255-13). Dual-core = klasa 5P/10P
-  // + 0,5/0,2 łączone (oznaczone application='dual' w katalogu CT).
-  const requires87T =
-    der.connection_side === 'dedicated_transformer' &&
-    (der.nominal_power_kw ?? 0) >= 1600;
-  const ctIsDualCore = ctZastosowanieZDanej(der) === 'dual';
   // Naprawa eng.11: anti-islanding (27/59/81U/81O) — egzekwowane przez
   // buildBlockersForAxis dla protection axis (po nN/ZK/słupie/mufie).
 
@@ -218,8 +209,6 @@ export function computeDerReadinessMatrix(
     if (!hasProtection || !hasCtVt) return 'partial';
     // eng.5: CT klasa musi być zabezpieczeniowa (5P/10P).
     if (!ctValidForProtection) return 'partial';
-    // eng.6: jeśli DER po dedicated_transformer ≥ 1.6 MVA, wymagany dual-core CT.
-    if (requires87T && !ctIsDualCore) return 'partial';
     // eng.11: anti-islanding — sprawdzane jako dodatkowy warunek
     // (sygnalizujemy 'partial' jeśli brak antyislandowych funkcji 27/59/81U/81O).
     // Tę walidację rozszerza buildBlockersForAxis poniżej.
@@ -426,26 +415,6 @@ function buildBlockersForAxis(
             target_screen: derKindToScreen(der.der_kind),
             target_tab: 'topology',
           });
-        }
-      }
-      // Naprawa eng.6: 87T wymaga CT dual-core dla transformatora ≥ 1.6 MVA.
-      if (
-        der.connection_side === 'dedicated_transformer' &&
-        (der.nominal_power_kw ?? 0) >= 1600
-      ) {
-        if (der.catalogs.ct_catalog_ref) {
-          const zastosowanie = ctZastosowanieZDanej(der);
-          if (zastosowanie !== null && zastosowanie !== 'dual') {
-            blockers.push({
-              code: 'der.ct_87t_dual_core.required',
-              message_pl:
-                `Transformator dedykowany ≥ 1,6 MVA wymaga zabezpieczenia różnicowego 87T `
-                + `(IEC 60255-13). Wybierz przekładnik dwurdzeniowy (5P + 0,5 łączony).`,
-              object_ref: der.id,
-              target_screen: derKindToScreen(der.der_kind),
-              target_tab: 'topology',
-            });
-          }
         }
       }
       // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie/odgałęzieniu.

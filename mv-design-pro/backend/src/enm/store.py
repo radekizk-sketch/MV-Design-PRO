@@ -407,7 +407,13 @@ def _set_enm_pod_blokada(
     *,
     zrodlo_zmiany: ZrodloZmiany | None,
 ) -> EnergyNetworkModel:
-    enm, _ = complete_catalog_defaults(enm)
+    # JEDNO przygotowanie modelu dla wejścia i wyjścia magazynu (karta JEDNA-SCIEZKA-EDYCJI
+    # cz. 4): zapis stosuje TĘ SAMĄ sekwencję co odczyt (`przygotuj_model_po_odczycie`),
+    # więc zapisany model jest jej punktem stałym. Dawniej zapis wykonywał wyłącznie
+    # uzupełnienia katalogowe — operacja pola nN zostawiała promocję pola do aparatu
+    # i szyny odpływu następnemu odczytowi, który zapisywał DRUGĄ rewizję bez operacji
+    # w dzienniku (pin: `tests/api/test_jedna_rewizja_na_operacje.py`).
+    enm, _ = przygotuj_model_po_odczycie(enm)
     existing = _enm_store.get(klucz)
     if existing is not None:
         # KOPIA TYLKO NAGŁÓWKA (karta S9-9). Kandydat służy WYŁĄCZNIE do policzenia

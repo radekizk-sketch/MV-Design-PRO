@@ -93,8 +93,9 @@ class TestKatalogReferencyjny:
         assert all(t["accuracy_limit_factor"] is None for t in pomiarowe)
 
     def test_ZADEN_typ_katalogu_nie_jest_dwurdzeniowy(self) -> None:
-        # Warunek 87T (IEC 60255-13, transformator dedykowany ≥ 1,6 MVA) wymaga
-        # przekładnika DWURDZENIOWEGO. Katalog referencyjny takiego typu NIE MA i nie
+        # Wymaganie 87T (gdy próg mocy znamionowej transformatora dedykowanego ma
+        # podstawę — `der_protection_functions.ocen_prog_87t`) oznacza przekładnik
+        # DWURDZENIOWY. Katalog referencyjny takiego typu NIE MA i nie
         # wolno go dopisać z domysłu — to dana konstrukcyjna producenta. Ten test pilnuje
         # granicy: dopóki jest zielony, warunek 87T pozostaje nierozstrzygalny UCZCIWIE,
         # a nie dlatego, że ktoś zapomniał wypełnić pole.

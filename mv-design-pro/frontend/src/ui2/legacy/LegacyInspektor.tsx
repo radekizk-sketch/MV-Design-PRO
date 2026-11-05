@@ -43,10 +43,13 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
     if (!panelNadOknem) return <WorkspaceSurfaceRouter region="panel" />;
     return (
       // Jedno przewijanie: sekcje obiektu i okno techniczne mają naturalną wysokość
-      // (kolumna flex ściskałaby okno pod paskiem przy 900 px wysokości ekranu).
+      // (kolumna flex ściskałaby okno pod paskiem przy 900 px wysokości ekranu). Okno
+      // dostaje wysokość treści — wypełnienie rodzica dawałoby drugi obszar przewijania
+      // wysoki na cały inspektor i przesunięty o sekcje obiektu, czyli kończący się pod
+      // paskiem stanu (pilnuje `e2e/konfigurator-stacji-model.spec.ts`, układ).
       <div className="h-full min-h-0 overflow-y-auto" data-testid="inspektor-panel-nad-oknem">
         <PanelElementuKanwy stan={panelNadOknem} />
-        <WorkspaceSurfaceRouter region="panel" />
+        <WorkspaceSurfaceRouter region="panel" wysokosc="naturalna" />
       </div>
     );
   }

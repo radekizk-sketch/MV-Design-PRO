@@ -26,6 +26,7 @@ from domain.der_readiness import (
     macierz_gotowosci_der,
     osie_gotowosci_der,
     podsumuj_gotowosc,
+    sn_transformatora_dedykowanego_kva,
     wejscie_z_generatora,
 )
 from domain.dobor_przekladnika import (
@@ -107,6 +108,7 @@ def _validate_project_case_context(request: Request, project_id: str, case_id: s
 def _fakty_pola_wytworcy(
     generator: dict[str, Any],
     sciezka_zwarcia: dict[str, Any] | None,
+    transformatory: list[dict[str, Any]],
 ) -> FaktyPolaWytworcy:
     """Zloz fakty o polu wytworcy z modelu — bez ani jednej wartosci domyslnej.
 
@@ -140,6 +142,10 @@ def _fakty_pola_wytworcy(
         der_kind=rodzaj,  # type: ignore[arg-type]
         connection_side=strona,
         nominal_power_kw=(mw_na_kw(p_mw) if isinstance(p_mw, int | float) else None),
+        # Podmiot kryterium 87T: transformator dedykowany z modelu (nie moc źródła).
+        sn_transformatora_dedykowanego_kva=sn_transformatora_dedykowanego_kva(
+            generator, transformatory
+        ),
         # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
         # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
         neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or None,
@@ -215,7 +221,7 @@ def get_der_protection_functions(
     bay_ref = ref_pola_wytworcy(generator)
 
     sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref)
-    fakty = _fakty_pola_wytworcy(generator, sciezka)
+    fakty = _fakty_pola_wytworcy(generator, sciezka, dane.get("transformers", []))
     dobor = dobierz_funkcje(fakty)
 
     protection_ref = None

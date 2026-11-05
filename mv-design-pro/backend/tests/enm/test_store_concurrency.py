@@ -159,21 +159,15 @@ def _rownolegle(zadania: list[Any]) -> list[BaseException]:
 
 class TestWyscigZastosowaniaSzablonu:
     def test_cztery_rownolegle_zastosowania_daja_cztery_stacje(self) -> None:
-        """4 watki x `apply` na jednym przypadku: +4 stacje, rewizja +8, zero bledow.
+        """4 watki x `apply` na jednym przypadku: +4 stacje, rewizja +4, zero bledow.
 
-        P0.1 nN (karta P0.1, LV-INV-12): `apply_template_to_case` zaczyna od
-        `get_enm`, ktory TERAZ TAKZE promuje pola nN (`bays`) -> realne elementy
-        (`enm/migrations/promocja_aparatow_nn.py`), a promocja MUTUJE model i
-        podbija rewizje jak kazda inna automigracja (ten sam wzorzec co migracja
-        punktu przylaczenia — `enm/store.py::_get_enm_pod_blokada`). Szablon zawsze
-        zostawia po sobie nN-owe „field spec" do promocji, wiec kazde z 4 zastosowan
-        (poza pierwszym, ktore nie zastaje niczego do promocji) na starcie promuje
-        ODPLYWY POPRZEDNIEGO zastosowania (+1 rewizja), a WLASNE zapisuje wlasnym
-        `set_enm` (+1 rewizja) — i ostatnie zastosowanie zostawia WLASNE odplywy
-        niepromowane az do koncowego odczytu ponizej. Stad 2 rewizje na zastosowanie
-        (4 wlasne zapisy + 3 promocje miedzy watkami + 1 promocja przy koncowym
-        odczycie = 8), a NIE 1:1 — liczba STACJI (fizyczny skutek, ktory ten test
-        bramkuje wobec defektu D4) zostaje +4, bez zmian.
+        Jedno zastosowanie szablonu = jedna rewizja. Dawniej (P0.1 nN) bylo ich DWIE:
+        szablon zostawial pola nN do promocji (`enm/migrations/promocja_aparatow_nn.py`),
+        ktora wykonywal dopiero NASTEPNY odczyt i zapisywal ja osobna rewizja bez
+        operacji w dzienniku. Karta JEDNA-SCIEZKA-EDYCJI cz. 4 usunela te druga rewizje
+        u zrodla: `set_enm` przygotowuje model ta sama sekwencja co odczyt, wiec model
+        zapisany przez szablon jest juz promowany. Liczba STACJI (fizyczny skutek, ktory
+        ten test bramkuje wobec defektu D4) zostaje +4.
         """
         szablon = get_template(SZABLON)
         assert szablon is not None
@@ -213,7 +207,7 @@ class TestWyscigZastosowaniaSzablonu:
             "Rownolegle zastosowania zgubily stacje: "
             f"{len(model_po.substations)} zamiast {stacje_przed + 4}"
         )
-        assert model_po.header.revision == rewizja_przed + 2 * len(segmenty)
+        assert model_po.header.revision == rewizja_przed + len(segmenty)
 
         brakujace = [
             wynik["station_ref"] for wynik in wyniki if wynik["station_ref"] not in stacje_po
@@ -229,7 +223,7 @@ class TestWyscigZastosowaniaSzablonu:
         Rewizja bez wpisu czyni te odpowiedz niemozliwa, wiec kazda rewizja modelu
         musi miec dokladnie jeden wpis — NIEZALEZNIE od PRZYCZYNY rewizji (wlasny
         zapis szablonu czy automigracja promocji nN uruchomiona przy odczycie, P0.1
-        nN, patrz uzasadnienie `2 * len(segmenty)` w
+        nN — od karty JEDNA-SCIEZKA-EDYCJI cz. 4 wykonywana juz w samym `set_enm`, patrz
         `test_cztery_rownolegle_zastosowania_daja_cztery_stacje` wyzej): kazda z nich
         idzie przez `set_enm`, wiec kazda dostaje wpis.
         """
@@ -257,7 +251,7 @@ class TestWyscigZastosowaniaSzablonu:
         assert bledy == []
 
         rewizja_po = get_enm(case_key).header.revision
-        assert rewizja_po == rewizja_przed + 2 * len(segmenty)
+        assert rewizja_po == rewizja_przed + len(segmenty)
         rewizje_w_dzienniku = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
         oczekiwane = _oczekiwane_rewizje(rewizje_przed, rewizja_przed, rewizja_po)
         assert rewizje_w_dzienniku == oczekiwane, (
@@ -474,9 +468,17 @@ class TestWycofanieNieudanegoZapisu:
             )
         ]
         zapisany = set_enm(case_key, model, zrodlo_zmiany=ZrodloZmiany(operacja="add_sn_bay"))
-        # Bez `get_enm` w tym miejscu: odczyt sam uruchomilby automigracje i zapisal
-        # juz zmigrowany model, wiec badany scenariusz (zastany klucz na dysku)
-        # przestalby istniec.
+        # Zapis zastany: `set_enm` przygotowuje model ta sama sekwencja co odczyt (karta
+        # JEDNA-SCIEZKA-EDYCJI cz. 4), wiec dzisiejszy kod zastanego klucza na dysk nie
+        # zapisze. Plik starszego kodu odtwarzamy wprost na nosniku: klucz kanoniczny
+        # z powrotem pod nazwa zastana. Bez `get_enm` w tym miejscu: odczyt sam
+        # uruchomilby automigracje i zapisal juz zmigrowany model, wiec badany scenariusz
+        # (zastany klucz na dysku) przestalby istniec.
+        sciezka = store._case_path(case_key)
+        plik = json.loads(sciezka.read_text(encoding="utf-8"))
+        meta = plik["snapshot"]["generators"][0]["meta"]
+        meta["pcc_ref"] = meta.pop("bus_przylaczenia_ref")
+        sciezka.write_text(json.dumps(plik, ensure_ascii=False), encoding="utf-8")
         rewizja_przed = zapisany.header.revision
         bajty_przed = store._case_path(case_key).read_bytes()
         rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]

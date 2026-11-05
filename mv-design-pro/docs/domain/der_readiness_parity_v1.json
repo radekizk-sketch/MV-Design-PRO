@@ -157,13 +157,14 @@
       "kody_blokad": { "equipment": ["der.dedicated_trafo.missing"] }
     },
     {
-      "nazwa": "87T wg IEC 60255-13 — transformator dedykowany 2,5 MVA bez rdzenia podwojnego",
+      "nazwa": "87T — transformator dedykowany 2,5 MVA, zrodlo 1 MW, rdzen pojedynczy: prog 87T bez podstawy, blokady brak",
       "wejscie": {
         "der_id": "DER-7",
         "der_kind": "PV",
         "connection_side": "dedicated_transformer",
         "bus_przylaczenia_ref": "BUS-SN-1",
-        "nominal_power_kw": 2500.0,
+        "nominal_power_kw": 1000.0,
+        "block_transformer_sn_kva": 2500.0,
         "device_catalog_ref": "pv_inv_sma_2500",
         "block_transformer_catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
         "protection_catalog_ref": "ABB_REB670",
@@ -173,8 +174,8 @@
         "ct_application": "protection",
         "other_ders_in_station": 1
       },
-      "oczekiwane": { "protection": "partial" },
-      "kody_blokad": { "protection": ["der.ct_87t_dual_core.required"] }
+      "oczekiwane": { "protection": "ready" },
+      "kody_blokad": { "protection": [] }
     },
     {
       "nazwa": "anti-islanding — PV po stronie nN bez zabezpieczen (IEEE 1547 / NC RfG Art. 14)",

@@ -14,7 +14,6 @@ from __future__ import annotations
 import pytest
 from domain.der_readiness import (
     OSIE_GOTOWOSCI,
-    PROG_87T_KW,
     WejscieGotowosciDer,
     klasa_ct_jest_zabezpieczeniowa,
     macierz_gotowosci_der,
@@ -167,34 +166,88 @@ class TestTransformatorDedykowany:
         assert macierz_gotowosci_der(wejscie)["equipment"] == "partial"
         assert "der.dedicated_trafo.missing" in kody(osie_gotowosci_der(wejscie), "equipment")
 
-    def test_87t_wymaga_przekladnika_dwurdzeniowego_powyzej_progu(self) -> None:
-        # IEC 60255-13: transformator dedykowany ≥ 1,6 MVA → zabezpieczenie roznicowe.
+    @pytest.mark.parametrize("sn_kva", [1000.0, 1600.0, 2500.0, None])
+    @pytest.mark.parametrize("moc_zrodla_kw", [400.0, 5000.0])
+    def test_bez_podstawy_progu_87t_nie_ma_blokady_dwurdzeniowej(
+        self, sn_kva: float | None, moc_zrodla_kw: float
+    ) -> None:
+        # Podmiot: S_n transformatora (nie moc źródła); próg 87T nie ma podstawy w repo
+        # (`der_protection_functions.PROG_WYMAGANIA_87T is None`), więc wymaganie nie
+        # powstaje — BRAK_PODSTAWY nazywa dobór funkcji, gotowość nie wymyśla blokady.
         wejscie = we(
             connection_side="dedicated_transformer",
-            nominal_power_kw=PROG_87T_KW,
-            block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
-            ct_application="protection",
-        )
-        assert macierz_gotowosci_der(wejscie)["protection"] == "partial"
-        assert "der.ct_87t_dual_core.required" in kody(osie_gotowosci_der(wejscie), "protection")
-
-    def test_ponizej_progu_87t_nie_jest_wymagane(self) -> None:
-        wejscie = we(
-            connection_side="dedicated_transformer",
-            nominal_power_kw=PROG_87T_KW - 1,
+            nominal_power_kw=moc_zrodla_kw,
+            block_transformer_sn_kva=sn_kva,
             block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="protection",
         )
         assert macierz_gotowosci_der(wejscie)["protection"] == "ready"
+        assert "der.ct_87t_dual_core.required" not in kody(
+            osie_gotowosci_der(wejscie), "protection"
+        )
 
-    def test_87t_z_przekladnikiem_dwurdzeniowym_przechodzi(self) -> None:
+    @pytest.mark.parametrize(
+        ("sn_kva", "moc_zrodla_kw", "blokada"),
+        [(1599.0, 5000.0, False), (1600.0, 400.0, True), (2500.0, 400.0, True)],
+    )
+    def test_z_podstawa_progu_blokada_wynika_z_s_n_transformatora(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sn_kva: float,
+        moc_zrodla_kw: float,
+        blokada: bool,
+    ) -> None:
+        import domain.der_protection_functions as dobor
+        from werdykt.kontrakt import LimitKryterium, PodstawaWymagania, Wielkosc
+
+        prog = LimitKryterium(
+            wartosc=Wielkosc(wartosc=1600.0, jednostka="kVA"),
+            podstawa=PodstawaWymagania(
+                rodzaj="OSD",
+                dokument="Warunki przyłączenia — dokument testowy",
+                wydanie="wydanie testowe",
+                jednostka_redakcyjna="pkt 4.2 (test)",
+                status="WSKAZANE",
+            ),
+        )
+        # Domyślny próg predykatu wiązany przy definicji — podmiana przez `__defaults__`
+        # ćwiczy produkcyjną ścieżkę gotowości (`_wymaga_87t` woła predykat bez progu).
+        monkeypatch.setattr(dobor.ocen_prog_87t, "__defaults__", (prog,))
         wejscie = we(
             connection_side="dedicated_transformer",
-            nominal_power_kw=2500.0,
+            nominal_power_kw=moc_zrodla_kw,
+            block_transformer_sn_kva=sn_kva,
+            block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
+            ct_application="protection",
+        )
+        kody_ochrony = kody(osie_gotowosci_der(wejscie), "protection")
+        assert ("der.ct_87t_dual_core.required" in kody_ochrony) is blokada
+        assert macierz_gotowosci_der(wejscie)["protection"] == ("partial" if blokada else "ready")
+        dwurdzeniowy = we(
+            connection_side="dedicated_transformer",
+            nominal_power_kw=moc_zrodla_kw,
+            block_transformer_sn_kva=sn_kva,
             block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="dual",
         )
-        assert macierz_gotowosci_der(wejscie)["protection"] == "ready"
+        assert macierz_gotowosci_der(dwurdzeniowy)["protection"] == "ready"
+
+    def test_s_n_czytane_z_elementu_transformatora_modelu(self) -> None:
+        generator = {
+            "ref_id": "g1",
+            "gen_type": "pv_inverter",
+            "p_mw": 5.0,
+            "connection_variant": "block_transformer",
+            "blocking_transformer_ref": "tr-blok",
+        }
+        transformatory = [
+            {"ref_id": "inny", "sn_mva": 0.63},
+            {"ref_id": "tr-blok", "sn_mva": 2.5, "catalog_ref": "tr-x"},
+        ]
+        wejscie = wejscie_z_generatora(generator, transformatory=transformatory)
+        assert wejscie.block_transformer_sn_kva == 2500.0
+        assert wejscie.nominal_power_kw == 5000.0
+        assert wejscie_z_generatora(generator).block_transformer_sn_kva is None
 
 
 class TestAntiIslanding:

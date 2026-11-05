@@ -9,10 +9,14 @@ from __future__ import annotations
 
 import pytest
 from domain.der_protection_functions import (
+    BRAK_PODSTAWY_PROGU_87T_PL,
+    PROG_WYMAGANIA_87T,
     FaktyPolaWytworcy,
     dobierz_funkcje,
+    ocen_prog_87t,
     ocen_urzadzenie,
 )
+from werdykt.kontrakt import LimitKryterium, PodstawaWymagania, Wielkosc
 
 
 def fakty(**nadpisania) -> FaktyPolaWytworcy:
@@ -119,18 +123,115 @@ class TestAntiIslanding:
         assert "27" not in dobierz_funkcje(fakty(connection_side="SN")).kody()
 
 
-class TestRoznicoweTransformatora:
-    def test_transformator_dedykowany_powyzej_progu_wymaga_87T(self) -> None:
-        kody = dobierz_funkcje(
-            fakty(connection_side="dedicated_transformer", nominal_power_kw=2500.0)
-        ).kody()
-        assert "87T" in kody
+#: Rekord limitu Z PODSTAWĄ — wyłącznie do ćwiczenia gałęzi „podstawa jest" predykatu. W repo
+#: podstawy progu 87T nie ma (`PROG_WYMAGANIA_87T is None`), więc ta wartość NIE jest progiem
+#: produktu; to dana testu (dokument i jednostka redakcyjna są jawnie testowe).
+PROG_TESTOWY_KVA = 1600.0
 
-    def test_ponizej_progu_87T_nie_jest_wymagane(self) -> None:
-        kody = dobierz_funkcje(
-            fakty(connection_side="dedicated_transformer", nominal_power_kw=1000.0)
-        ).kody()
-        assert "87T" not in kody
+
+def _prog_z_podstawa(wartosc_kva: float = PROG_TESTOWY_KVA) -> LimitKryterium:
+    return LimitKryterium(
+        wartosc=Wielkosc(wartosc=wartosc_kva, jednostka="kVA"),
+        podstawa=PodstawaWymagania(
+            rodzaj="OSD",
+            dokument="Warunki przyłączenia — dokument testowy",
+            wydanie="wydanie testowe",
+            jednostka_redakcyjna="pkt 4.2 (test)",
+            status="WSKAZANE",
+        ),
+    )
+
+
+class TestRoznicoweTransformatora:
+    """Iloczyn cech: S_n {poniżej, równe, powyżej progu} × podstawa {jest, brak} × moc
+    źródła RÓŻNA od S_n (źródło po przeciwnej stronie progu niż transformator — gdyby
+    predykat porównywał moc źródła, wynik by się odwrócił)."""
+
+    @pytest.mark.parametrize(
+        ("sn_kva", "moc_zrodla_kw", "oczekiwany"),
+        [
+            (PROG_TESTOWY_KVA - 1.0, 5000.0, "NIE_DOTYCZY"),
+            (PROG_TESTOWY_KVA, 400.0, "SPELNIA"),
+            (PROG_TESTOWY_KVA + 900.0, 400.0, "SPELNIA"),
+        ],
+    )
+    def test_podstawa_jest_rozstrzyga_s_n_transformatora(
+        self, sn_kva: float, moc_zrodla_kw: float, oczekiwany: str
+    ) -> None:
+        wynik = dobierz_funkcje(
+            fakty(
+                connection_side="dedicated_transformer",
+                nominal_power_kw=moc_zrodla_kw,
+                sn_transformatora_dedykowanego_kva=sn_kva,
+            ),
+            prog_87t=_prog_z_podstawa(),
+        )
+        (ocena,) = wynik.oceny_progow
+        assert ocena.status_maszynowy == oczekiwany
+        assert ocena.wartosc is not None and ocena.wartosc.wartosc == sn_kva
+        assert ocena.wartosc.jednostka == "kVA"
+        assert ocena.limit is not None
+        assert ocena.limit.podstawa.jednostka_redakcyjna == "pkt 4.2 (test)"
+        assert ocena.wyjasnienie_pl.strip()
+        assert ("87T" in wynik.kody()) is (oczekiwany == "SPELNIA")
+        if oczekiwany == "SPELNIA":
+            funkcja = next(f for f in wynik.wymagane if f.kod == "87T")
+            assert "Warunki przyłączenia — dokument testowy" in funkcja.podstawa_pl
+        assert "protection.87t_threshold_no_basis" not in kody_otwartych(wynik)
+
+    @pytest.mark.parametrize("sn_kva", [PROG_TESTOWY_KVA - 1.0, PROG_TESTOWY_KVA, 2500.0, None])
+    @pytest.mark.parametrize("moc_zrodla_kw", [400.0, 5000.0])
+    def test_podstawa_brak_daje_brak_podstawy_z_wyjasnieniem(
+        self, sn_kva: float | None, moc_zrodla_kw: float
+    ) -> None:
+        wynik = dobierz_funkcje(
+            fakty(
+                connection_side="dedicated_transformer",
+                nominal_power_kw=moc_zrodla_kw,
+                sn_transformatora_dedykowanego_kva=sn_kva,
+            )
+        )
+        (ocena,) = wynik.oceny_progow
+        assert ocena.status_maszynowy == "BRAK_PODSTAWY"
+        assert ocena.limit is None
+        assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in ocena.wyjasnienie_pl.lower()
+        assert "87T" not in wynik.kody()
+        kwestia = next(
+            k for k in wynik.kwestie_otwarte if k.kod == "protection.87t_threshold_no_basis"
+        )
+        assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in kwestia.opis_pl.lower()
+        assert wynik.to_dict()["oceny_progow"][0]["status_maszynowy"] == "BRAK_PODSTAWY"
+
+    def test_produkt_nie_ma_progu_87t_bez_podstawy(self) -> None:
+        # Deklaracja modułu („podstawy nie ma") przypięta: liczba bez źródła nie wraca.
+        assert PROG_WYMAGANIA_87T is None
+
+    def test_podstawa_jest_bez_s_n_w_modelu_nie_oceniono(self) -> None:
+        wynik = dobierz_funkcje(
+            fakty(connection_side="dedicated_transformer", nominal_power_kw=5000.0),
+            prog_87t=_prog_z_podstawa(),
+        )
+        (ocena,) = wynik.oceny_progow
+        assert ocena.status_maszynowy == "NIE_OCENIONO"
+        assert "protection.87t_transformer_rating_missing" in kody_otwartych(wynik)
+        assert "87T" not in wynik.kody()
+
+    @pytest.mark.parametrize("strona", ["SN", "nN", "at_zksn"])
+    def test_bez_transformatora_dedykowanego_nie_ma_oceny_87t(self, strona: str) -> None:
+        wynik = dobierz_funkcje(
+            fakty(connection_side=strona, sn_transformatora_dedykowanego_kva=2500.0),
+            prog_87t=_prog_z_podstawa(),
+        )
+        assert wynik.oceny_progow == []
+        assert "87T" not in wynik.kody()
+
+    def test_prog_w_innej_jednostce_jest_odrzucony(self) -> None:
+        prog = LimitKryterium(
+            wartosc=Wielkosc(wartosc=1.6, jednostka="MVA"),
+            podstawa=_prog_z_podstawa().podstawa,
+        )
+        with pytest.raises(ValueError, match="kVA"):
+            ocen_prog_87t(2500.0, prog)
 
 
 class TestGranicaWiedzy:

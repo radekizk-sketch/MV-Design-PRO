@@ -147,6 +147,14 @@ import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
+  /**
+   * Wysokość okna technicznego. `wypelnij` (domyślnie): okno wypełnia rodzica i przewija
+   * treść we własnym obszarze. `naturalna`: okno ma wysokość treści — gdy stoi pod
+   * sekcjami obiektu w JEDNYM przewijaniu inspektora (`LegacyInspektor`). Wypełnienie
+   * w tym miejscu dawało okno o wysokości całego inspektora PRZESUNIĘTE o sekcje obiektu,
+   * więc dół wewnętrznych obszarów przewijania wypadał pod paskiem stanu.
+   */
+  wysokosc?: 'wypelnij' | 'naturalna';
 }
 
 // SurfaceBreadcrumbs moved to SurfaceBreadcrumbs.tsx
@@ -2887,7 +2895,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   return null;
 }
 
-export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) {
+export function WorkspaceSurfaceRouter({
+  region,
+  wysokosc = 'wypelnij',
+}: WorkspaceSurfaceRouterProps) {
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   // Karta K8: bieg oglądany z magazynu kontekstu wyniku — jedyne źródło wyboru biegu.
   const contextualRunId = useRunIdOgladany();
@@ -2917,7 +2928,11 @@ export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) 
     && Boolean(selectedElement);
 
   return (
-    <div data-testid={`workspace-surface-${region}`} className="flex h-full min-h-0 flex-col bg-slate-50">
+    <div
+      data-testid={`workspace-surface-${region}`}
+      data-wysokosc={wysokosc}
+      className={`flex flex-col bg-slate-50 ${wysokosc === 'wypelnij' ? 'h-full min-h-0' : ''}`}
+    >
       <SurfaceHeader surface={activeSurface} />
       {showContextualProof && (
         <ElementCalculationProofPanel
@@ -2927,7 +2942,9 @@ export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) 
           className="border-b border-slate-200 bg-white px-4 py-3"
         />
       )}
-      <div className="min-h-0 flex-1 overflow-auto p-4">{renderSurfaceBody(activeSurface)}</div>
+      <div className={wysokosc === 'wypelnij' ? 'min-h-0 flex-1 overflow-auto p-4' : 'p-4'}>
+        {renderSurfaceBody(activeSurface)}
+      </div>
     </div>
   );
 }

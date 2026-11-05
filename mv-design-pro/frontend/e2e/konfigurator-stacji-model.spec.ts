@@ -18,7 +18,28 @@
  * sama droga, którą odtwarza odświeżenie strony po kliknięciu stacji na schemacie.
  */
 
+import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+
+import { katalogZrzutow } from './katalogZrzutow';
+import { ustawMotyw } from './siecKadrowStacji';
+
+const KATALOG_ZRZUTOW = katalogZrzutow(
+  resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'uiux', 'zrzuty', 'konfigurator-stacji-inspektor'),
+);
+
+/** Ekran stanowiska minimalny (1280×720) i pełny (1920×1080). */
+const OKNA = [
+  { width: 1280, height: 720 },
+  { width: 1920, height: 1080 },
+] as const;
+const MOTYWY = [
+  { klucz: 'ciemny', theme: 'dark_scada' as const },
+  { klucz: 'jasny', theme: 'light_technical' as const },
+] as const;
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
@@ -166,7 +187,11 @@ function poleStacji(migawka: Migawka, stacjaRef: string, rola: string): Pole {
 }
 
 /** Zimne wejście do aplikacji z kontekstem projektu i przypadku; konfigurator stacji z adresu. */
-async function otworzKonfigurator(page: Page, k: Kontekst): Promise<void> {
+async function otworzKonfigurator(
+  page: Page,
+  k: Kontekst,
+  okno: { width: number; height: number } = OKNA[0],
+): Promise<void> {
   await page.addInitScript((dane) => {
     localStorage.setItem(
       'mv-design-app-state',
@@ -188,10 +213,9 @@ async function otworzKonfigurator(page: Page, k: Kontekst): Promise<void> {
       }),
     );
   }, { pid: k.pid, projektNazwa: k.projektNazwa, caseId: k.caseId });
-  // Ekran stanowiska projektanta (jak w specach zrzutowych). Przy 1280×720 konfigurator
-  // w wąskim inspektorze przycina wiersz źródła pod paskiem stanu — zgłoszone do oceny
-  // wizualnej (B-02) ze zrzutem, nie maskowane wymuszonym klikiem.
-  await page.setViewportSize({ width: 1600, height: 900 });
+  // Domyślnie najmniejszy ekran stanowiska (1280×720): konfigurator w wąskim inspektorze
+  // musi tam dać natywny dostęp do każdego wiersza karty (test układu niżej).
+  await page.setViewportSize(okno);
   await page.goto(
     // Zaznaczenie z adresu wymaga trzech parametrów (`sel`, `type`, `name`) — ten sam zapis,
     // który aplikacja kładzie w adresie po kliknięciu stacji (`urlState.ts::
@@ -384,5 +408,114 @@ test.describe('Konfigurator stacji — jedna ścieżka edycji (model sieci)', ()
     await przejdzDoKarty(page, 'bays');
     await page.getByTestId(`bay-fuse-select-${poleTr.ref_id}`).selectOption('');
     await expect.poll(wkladkaWModelu, { timeout: 20000 }).toBeNull();
+  });
+  test('układ: obszar przewijania inspektora kończy się nad paskiem stanu, wiersz źródła klikalny', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(420000);
+    mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
+    const k = await zbudujProjekt(request, 'E2E Układ konfiguratora');
+    const szynaNn = k.migawka.buses.find(
+      (b) => (k.stacja.bus_refs ?? []).includes(b.ref_id) && b.voltage_kv < 1.0,
+    );
+    expect(szynaNn, 'szyna nN stacji').toBeTruthy();
+    const poMagazynie = await operacja(request, k.caseId, 'add_converter_source', {
+      source_technology: 'BESS',
+      connection_variant: 'nn_side',
+      station_ref: k.stacja.ref_id,
+      bus_nn_ref: szynaNn!.ref_id,
+      source_name: 'Magazyn układu',
+      bess_mode: 'DWUKIERUNKOWY',
+      power_setpoint_mw: 0.01,
+      catalog_binding: {
+        catalog_namespace: 'ZRODLO_NN_BESS',
+        catalog_item_id: 'conv-bess-nn-0p5mw-0p4kv',
+        catalog_item_version: '2024.1',
+      },
+      source_field: { field_name: 'Pole magazynu układu', source_field_kind: 'BESS' },
+    });
+    const magazyn = poMagazynie.generators.find((g) => g.name === 'Magazyn układu');
+    expect(magazyn, 'magazyn w modelu').toBeTruthy();
+
+    for (const okno of OKNA) {
+      for (const motyw of MOTYWY) {
+        await otworzKonfigurator(page, k, okno);
+        await ustawMotyw(page, motyw.theme);
+        await przejdzDoKarty(page, 'der-sources');
+        const wiersz = page.getByTestId(`der-row-${magazyn!.ref_id}`);
+        await expect(wiersz).toBeVisible({ timeout: 20000 });
+        // Kadr PRZED asercjami: przy regresji układu (asercje miękkie niżej) bieg i tak
+        // zostawia komplet zrzutów okno × motyw do porównania przed/po (B-02).
+        await wiersz.scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: resolve(
+            KATALOG_ZRZUTOW,
+            `konfigurator-oze-${okno.width}x${okno.height}-${motyw.klucz}.png`,
+          ),
+        });
+
+        // (1) Każdy obszar przewijania inspektora, który faktycznie przewija treść w pionie,
+        //     kończy się nad paskiem stanu (dolna krawędź ≤ górnej krawędzi paska).
+        const pomiar = await page.evaluate(() => {
+          const pasek = document.querySelector('[data-testid="mvd-statusbar"]')
+            ?? document.querySelector('.mvd-statusbar');
+          const inspektor = document.querySelector('[data-testid="mvd-inspector"]');
+          if (!pasek || !inspektor) return { pasekGora: NaN, obszary: [] as { opis: string; dol: number }[] };
+          const obszary = [inspektor, ...Array.from(inspektor.querySelectorAll('*'))]
+            .filter((el) => {
+              const styl = getComputedStyle(el);
+              const przewijalny = styl.overflowY === 'auto' || styl.overflowY === 'scroll';
+              // Obszary inspektora mierzone zawsze; pozostałe — gdy faktycznie przewijają treść.
+              const staly = ['mvd-inspector-tresc', 'inspektor-panel-nad-oknem'].includes(
+                el.getAttribute('data-testid') ?? '',
+              );
+              return przewijalny && (staly || el.scrollHeight > el.clientHeight + 1);
+            })
+            .map((el) => ({
+              opis: `${el.tagName}#${el.getAttribute('data-testid') ?? ''}.${(el.getAttribute('class') ?? '').slice(0, 60)}`,
+              dol: el.getBoundingClientRect().bottom,
+            }));
+          return { pasekGora: pasek.getBoundingClientRect().top, obszary };
+        });
+        expect.soft(Number.isFinite(pomiar.pasekGora), 'pasek stanu i inspektor na ekranie').toBe(true);
+        expect.soft(
+          pomiar.obszary.some((o) => o.opis.includes('#mvd-inspector-tresc')),
+          'obszar przewijania inspektora zmierzony',
+        ).toBe(true);
+        for (const obszar of pomiar.obszary) {
+          expect.soft(
+            obszar.dol,
+            `${okno.width}×${okno.height} ${motyw.klucz}: ${obszar.opis} kończy się pod paskiem stanu`,
+          ).toBeLessThanOrEqual(pomiar.pasekGora + 0.5);
+        }
+
+        // (2) Akcja wiersza po przewinięciu: cała w inspektorze i trafiana natywnym klikiem
+        //     (punkt środka należy do przycisku, nie do paska stanu ani sąsiedniej warstwy).
+        const akcja = page.getByTestId(`der-action-detach-${magazyn!.ref_id}`);
+        await akcja.scrollIntoViewIfNeeded();
+        const trafienie = await akcja.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const ins = document.querySelector('[data-testid="mvd-inspector"]')!.getBoundingClientRect();
+          const cel = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return {
+            wInspektorze: r.left >= ins.left && r.right <= ins.right && r.top >= ins.top && r.bottom <= ins.bottom,
+            szerokosc: r.width,
+            trafia: Boolean(cel && (cel === el || el.contains(cel))),
+          };
+        });
+        expect.soft(trafienie.szerokosc, 'akcja wiersza ma szerokość').toBeGreaterThan(0);
+        expect.soft(trafienie.wInspektorze, `${okno.width}×${okno.height}: akcja wiersza w inspektorze`).toBe(true);
+        expect.soft(trafienie.trafia, `${okno.width}×${okno.height}: środek akcji trafia w przycisk`).toBe(true);
+        // Natywny klik tylko, gdy punkt środka trafia w przycisk — inaczej klik zawisłby na
+        // limicie czasu, a naruszenie jest już zapisane asercją miękką wyżej.
+        if (trafienie.trafia) {
+          await akcja.click();
+          await expect(page.getByTestId('der-detach-confirm')).toBeVisible();
+          await page.getByTestId('der-detach-cancel').click();
+          await expect(page.getByTestId('der-detach-confirm')).toHaveCount(0);
+        }
+      }
+    }
   });
 });

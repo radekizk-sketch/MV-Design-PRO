@@ -9,6 +9,8 @@
 
 import { useState, type ReactNode } from 'react';
 
+import './stationConfigurator.css';
+
 import {
   StationConfigBasicCard,
   type StationConfigBasicCardProps,
@@ -228,7 +230,10 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
   const progressLabel = `${activeStep.n} / ${STEPS.length}`;
 
   return (
-    <div data-testid="station-configurator" className="flex h-full min-h-0 flex-col bg-scada-panel text-scada-text">
+    <div
+      data-testid="station-configurator"
+      className="mvd-konfigurator-stacji flex h-full min-h-0 flex-col bg-scada-panel text-scada-text"
+    >
       <header className="shrink-0 border-b border-scada-border bg-scada-surface px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded border border-scada-border bg-scada-panel-raised text-[11px] font-black tracking-wider text-scada-sn">
@@ -258,12 +263,12 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="mvd-konfigurator-stacji__korpus min-h-0 flex-1">
         <nav
           data-testid="station-config-nav"
           role="tablist"
           aria-label="Przepływ konfiguracji stacji"
-          className="w-[250px] shrink-0 overflow-y-auto border-r border-scada-border bg-scada-surface py-2"
+          className="mvd-konfigurator-stacji__kroki bg-scada-surface py-2"
         >
           <StationStepNav activeCard={activeCard} onSelect={setActiveCard} />
         </nav>
@@ -368,9 +373,9 @@ function StationStepNav({
         lastGroup = step.group;
         const style = GROUP_STYLE[step.group];
         return (
-          <div key={step.id}>
+          <div key={step.id} className="mvd-konfigurator-stacji__krok">
             {showGroup && (
-              <div className={`px-4 pb-1 pt-3 text-[9px] font-black uppercase tracking-[0.18em] ${style.text}`}>
+              <div className={`mvd-konfigurator-stacji__grupa px-4 pb-1 pt-3 text-[9px] font-black uppercase tracking-[0.18em] ${style.text}`}>
                 {step.group}
               </div>
             )}
@@ -401,7 +406,9 @@ function StationStepNav({
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-[12px] font-semibold">{step.label}</span>
-                <span className="mt-0.5 block text-[10px] leading-snug text-scada-muted">{step.sub}</span>
+                <span className="mvd-konfigurator-stacji__opis-kroku mt-0.5 block text-[10px] leading-snug text-scada-muted">
+                  {step.sub}
+                </span>
               </span>
             </button>
           </div>

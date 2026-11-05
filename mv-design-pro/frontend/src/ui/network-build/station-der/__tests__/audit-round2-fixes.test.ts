@@ -109,66 +109,34 @@ describe('eng.5 — CT klasa musi być zabezpieczeniowa (5P/10P)', () => {
 });
 
 // =============================================================================
-// Pakiet C — eng.6 (87T dual-core dla transformatora ≥ 1.6 MVA)
+// Pakiet C — eng.6 (87T): wymaganie rozstrzyga backend wobec S_n transformatora
 // =============================================================================
 
-describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)', () => {
-  it('Transformator dedykowany 2500 kW + CT pojedynczy → protection partial', () => {
+describe('eng.6 — 87T nie jest regułą lustra gotowości (próg bez podstawy)', () => {
+  // Dawna reguła porównywała MOC ŹRÓDŁA z 1600 kW bez podstawy (błąd podmiotu). Wymaganie
+  // 87T ocenia backend wobec mocy znamionowej TRANSFORMATORA dedykowanego
+  // (`der_protection_functions.ocen_prog_87t`); próg nie ma podstawy w profilach operatorów,
+  // więc BRAK_PODSTAWY pokazuje dobór funkcji, a gotowość nie zgłasza blokady.
+  it.each([
+    [2500, 'protection', 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter'],
+    [2500, 'dual', 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter'],
+    [1000, 'protection', 'tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy'],
+  ] as const)('moc źródła %s kW, rdzeń %s → protection ready, bez blokady 87T', (moc, rdzen, trafo) => {
     const der = makeDer({
       connection_side: 'dedicated_transformer',
       transformer_ref: 'tr_dedicated_test',
-      nominal_power_kw: 2500, // ≥ 1600
+      nominal_power_kw: moc,
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        block_transformer_catalog_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
+        block_transformer_catalog_ref: trafo,
       },
       ct_accuracy_class: '5P20',
-      ct_application: 'protection', // rdzen POJEDYNCZY zabezpieczeniowy
+      ct_application: rdzen,
     });
-    const matrix = computeDerReadinessMatrix(der);
-    expect(matrix.protection).toBe('partial');
-
-    const aggregated = buildAggregatedReadiness(der);
-    const protectionAxis = aggregated.find((a) => a.axis === 'protection');
-    expect(protectionAxis?.blockers.some((b) => b.code === 'der.ct_87t_dual_core.required')).toBe(true);
-  });
-
-  it('Transformator dedykowany 2500 kW + CT dwurdzeniowy → protection ready', () => {
-    const der = makeDer({
-      connection_side: 'dedicated_transformer',
-      transformer_ref: 'tr_dedicated_test',
-      nominal_power_kw: 2500,
-      catalogs: {
-        ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_dwurdzeniowy_z_karty_producenta',
-        block_transformer_catalog_ref: 'tr-sn-nn-15-0p69-2p5mva-dyn11-inverter',
-      },
-      ct_accuracy_class: '5P20',
-      // Rdzen PODWOJNY jako DANA producenta. Katalog referencyjny nie ma dzis takiego
-      // typu (pomiar V12K-239: 12 typow, zero dwurdzeniowych — test w backendzie pilnuje
-      // tej granicy), wiec ten test opisuje warunek 87T po uzupelnieniu katalogu.
-      ct_application: 'dual',
-    });
-    const matrix = computeDerReadinessMatrix(der);
-    expect(matrix.protection).toBe('ready');
-  });
-
-  it('Mały transformator (1000 kW < 1600) NIE wymaga 87T', () => {
-    const der = makeDer({
-      connection_side: 'dedicated_transformer',
-      transformer_ref: 'tr_dedicated_test',
-      nominal_power_kw: 1000, // < 1600
-      catalogs: {
-        ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        block_transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy',
-      },
-      ct_accuracy_class: '5P20',
-      ct_application: 'protection', // rdzen pojedynczy
-    });
-    const matrix = computeDerReadinessMatrix(der);
-    expect(matrix.protection).toBe('ready');
+    expect(computeDerReadinessMatrix(der).protection).toBe('ready');
+    const protectionAxis = buildAggregatedReadiness(der).find((a) => a.axis === 'protection');
+    expect(protectionAxis?.blockers.some((b) => b.code === 'der.ct_87t_dual_core.required')).toBe(false);
   });
 });
 

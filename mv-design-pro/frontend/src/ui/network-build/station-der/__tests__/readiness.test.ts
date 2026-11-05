@@ -475,36 +475,25 @@ describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu
     expect(kody).not.toContain('der.ct_class.unresolved');
   });
 
-  it('warunek 87T czyta zastosowanie z DANEJ, a brak danej nie udaje spelnienia', () => {
-    // Transformator dedykowany 2 MVA wymaga rdzenia podwójnego (IEC 60255-13).
-    // Rdzeń podany jako pojedynczy → wymaganie zgłoszone; rdzeń nieznany → NIE
-    // zgłaszamy fałszywego naruszenia, bo braku danej nie wolno czytać jako „nie dual".
-    const zPojedynczym = derZCt({
-      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
-      ct_accuracy_class: '5P10', ct_application: 'protection',
-    });
-    const bezDanej = derZCt({
-      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
-      ct_accuracy_class: '5P10',
-    });
-
-    const kodyPojedynczy = (buildAggregatedReadiness(zPojedynczym)
-      .find((a) => a.axis === 'protection')?.blockers ?? []).map((b) => b.code);
-    const kodyBezDanej = (buildAggregatedReadiness(bezDanej)
-      .find((a) => a.axis === 'protection')?.blockers ?? []).map((b) => b.code);
-
-    expect(kodyPojedynczy).toContain('der.ct_87t_dual_core.required');
-    expect(kodyBezDanej).not.toContain('der.ct_87t_dual_core.required');
-  });
-
-  it('rdzen podwojny podany jako dana spelnia warunek 87T', () => {
-    const der = derZCt({
-      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
-      ct_accuracy_class: '5P10', ct_application: 'dual',
-    });
-    const kody = (buildAggregatedReadiness(der).find((a) => a.axis === 'protection')?.blockers ?? [])
-      .map((b) => b.code);
-
-    expect(kody).not.toContain('der.ct_87t_dual_core.required');
-  });
+  it.each([
+    [400, 'protection'],
+    [2000, 'protection'],
+    [2000, 'dual'],
+    [5000, undefined],
+  ] as const)(
+    'lustro gotowości nie wymyśla blokady 87T (moc źródła %s kW, rdzeń %s)',
+    (moc, rdzen) => {
+      // Wymaganie 87T rozstrzyga backend wobec S_n TRANSFORMATORA (nie mocy źródła), a próg
+      // nie ma podstawy w profilach operatorów — BRAK_PODSTAWY pokazuje dobór funkcji
+      // (`der_protection_functions.ocen_prog_87t`). Dawna stała 1600 kW porównywała moc
+      // źródła; żadna moc źródła ani rodzaj rdzenia nie może tu zrodzić blokady 87T.
+      const der = derZCt({
+        connection_side: 'dedicated_transformer', nominal_power_kw: moc,
+        ct_accuracy_class: '5P10', ...(rdzen ? { ct_application: rdzen } : {}),
+      });
+      const kody = (buildAggregatedReadiness(der).find((a) => a.axis === 'protection')?.blockers ?? [])
+        .map((b) => b.code);
+      expect(kody).not.toContain('der.ct_87t_dual_core.required');
+    },
+  );
 });

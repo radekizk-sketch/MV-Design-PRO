@@ -644,6 +644,7 @@ def test_konsumenci_czytaja_jedna_prawde(wariant: str, uklad: tuple[int, str, st
         fakty = _fakty_pola_wytworcy(
             {"ref_id": "pv-1", "gen_type": "pv_inverter", "p_mw": 1.0},
             _sciezka_zwarcia_dla_pola(enm, pole.ref_id),
+            [],
         )
         assert fakty.neutral_grounding_mode == oczekiwany_typ
 

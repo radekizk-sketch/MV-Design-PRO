@@ -1,0 +1,56 @@
+/*
+ * Układ konfiguratora stacji SN/nN zależny od SZEROKOŚCI JEGO KONTENERA (nie okna).
+ *
+ * Konfigurator stoi w dwóch miejscach: w obszarze roboczym (szeroko) i w inspektorze
+ * (340–560 px). Pionowa lista kroków ma 250 px — w inspektorze zostawiała treści kroku
+ * kilkanaście pikseli, więc wiersze kart (np. źródła OZE) były nieosiągalne. Poniżej
+ * 640 px szerokości kontenera lista kroków staje się poziomym paskiem zakładek nad
+ * treścią, a treść dostaje pełną szerokość.
+ */
+
+.mvd-konfigurator-stacji {
+  container: konfigurator-stacji / inline-size;
+}
+
+.mvd-konfigurator-stacji__korpus {
+  display: flex;
+  flex-direction: row;
+}
+
+.mvd-konfigurator-stacji__kroki {
+  width: 250px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--mvd-line);
+}
+
+@container konfigurator-stacji (max-width: 639.98px) {
+  .mvd-konfigurator-stacji__korpus {
+    flex-direction: column;
+  }
+
+  .mvd-konfigurator-stacji__kroki {
+    display: flex;
+    width: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--mvd-line);
+  }
+
+  .mvd-konfigurator-stacji__grupa {
+    display: none;
+  }
+
+  .mvd-konfigurator-stacji__krok {
+    flex-shrink: 0;
+  }
+
+  .mvd-konfigurator-stacji__krok > button {
+    white-space: nowrap;
+  }
+
+  .mvd-konfigurator-stacji__opis-kroku {
+    display: none;
+  }
+}

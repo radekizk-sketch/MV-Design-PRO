@@ -33,6 +33,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from domain.der_protection_functions import ocen_prog_87t
 from enm.migrations.punkt_przylaczenia_der import (
     KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
 )
@@ -79,15 +80,21 @@ ETYKIETY_OSI_PL: dict[str, str] = {
     "report_technical": "Raport techniczny",
 }
 
-# Prog mocy transformatora dedykowanego, powyzej ktorego wymagane jest zabezpieczenie
-# roznicowe 87T (IEC 60255-13) — a wiec przekladnik DWURDZENIOWY.
-PROG_87T_KW = 1600.0
+# Wymaganie 87T (a wiec przekladnik DWURDZENIOWY) rozstrzyga JEDEN predykat doboru funkcji
+# zabezpieczeniowych — `domain.der_protection_functions.ocen_prog_87t` — wobec MOCY
+# ZNAMIONOWEJ TRANSFORMATORA dedykowanego (dawniej: moc zrodla wobec stalej 1600 kW bez
+# podstawy; karta JEDNA-SCIEZKA-EDYCJI cz. 4). Bez podstawy progu wymaganie nie powstaje.
 
 _EKRAN_DLA_RODZAJU: dict[str, str] = {"PV": "E-21", "BESS": "E-22", "FW": "E-23"}
 
 _STRONY_WYMAGAJACE_ANTI_ISLANDING: frozenset[str] = frozenset(
     {"nN", "at_zksn", "at_branch_pole", "at_cable_joint"}
 )
+
+
+def _wymaga_87t(we: WejscieGotowosciDer) -> bool:
+    """87T wymagane wyłącznie przy progu z podstawą i S_n transformatora ≥ próg."""
+    return ocen_prog_87t(we.block_transformer_sn_kva).status_maszynowy == "SPELNIA"
 
 
 def klasa_ct_jest_zabezpieczeniowa(klasa: str) -> bool:
@@ -117,6 +124,8 @@ class WejscieGotowosciDer:
     # produkcyjne. Rownolegle pole `transformer_catalog_ref` bylo widmem: kontrakt je
     # deklarowal, nikt nie zapisywal, a regula gotowosci wlasnie je czytala.
     block_transformer_catalog_ref: str | None = None
+    #: Moc znamionowa transformatora dedykowanego z elementu modelu — podmiot kryterium 87T.
+    block_transformer_sn_kva: float | None = None
     protection_catalog_ref: str | None = None
     ct_catalog_ref: str | None = None
     vt_catalog_ref: str | None = None
@@ -191,7 +200,7 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     ct_klasa_ok = we.ct_accuracy_class is not None and klasa_ct_jest_zabezpieczeniowa(
         we.ct_accuracy_class
     )
-    wymaga_87t = trafo_dedykowany and (we.nominal_power_kw or 0.0) >= PROG_87T_KW
+    wymaga_87t = trafo_dedykowany and _wymaga_87t(we)
     ct_dwurdzeniowy = we.ct_application == "dual"
 
     sc_3f: StatusOsi = "ready" if (ma_urzadzenie and ma_przylacze) else "blocked"
@@ -376,15 +385,15 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
                 )
         if (
             we.connection_side == "dedicated_transformer"
-            and (we.nominal_power_kw or 0.0) >= PROG_87T_KW
+            and _wymaga_87t(we)
             and we.ct_catalog_ref is not None
             and we.ct_application is not None
             and we.ct_application != "dual"
         ):
             dodaj(
                 "der.ct_87t_dual_core.required",
-                "Transformator dedykowany ≥ 1,6 MVA wymaga zabezpieczenia różnicowego 87T "
-                "(IEC 60255-13). Wybierz przekładnik dwurdzeniowy (5P + 0,5 łączony).",
+                f"{ocen_prog_87t(we.block_transformer_sn_kva).wyjasnienie_pl} "
+                "Wybierz przekładnik dwurdzeniowy (5P + 0,5 łączony).",
                 "topology",
             )
         if (
@@ -491,6 +500,27 @@ def ref_katalogu_transformatora_dedykowanego(
     return None
 
 
+def sn_transformatora_dedykowanego_kva(
+    generator: dict[str, Any], transformatory: Sequence[dict[str, Any]]
+) -> float | None:
+    """Moc znamionowa transformatora dedykowanego wytwórcy [kVA] — z elementu modelu.
+
+    Ten sam element co `ref_katalogu_transformatora_dedykowanego` (wskazanie
+    `blocking_transformer_ref`); brak wskazania, elementu albo mocy = brak.
+    """
+
+    ref = generator.get("blocking_transformer_ref")
+    if not isinstance(ref, str) or not ref.strip():
+        return None
+    for transformator in transformatory:
+        if transformator.get("ref_id") == ref:
+            sn_mva = transformator.get("sn_mva")
+            if isinstance(sn_mva, int | float) and not isinstance(sn_mva, bool):
+                return round(mw_na_kw(float(sn_mva)), 6)
+            return None
+    return None
+
+
 def wejscie_z_generatora(
     generator: dict[str, Any],
     *,
@@ -540,6 +570,7 @@ def wejscie_z_generatora(
         block_transformer_catalog_ref=ref_katalogu_transformatora_dedykowanego(
             generator, transformatory
         ),
+        block_transformer_sn_kva=sn_transformatora_dedykowanego_kva(generator, transformatory),
         protection_catalog_ref=_tekst(zrodla, ("protection_catalog_ref",)),
         ct_catalog_ref=_tekst(zrodla, ("ct_catalog_ref",)),
         vt_catalog_ref=_tekst(zrodla, ("vt_catalog_ref",)),
