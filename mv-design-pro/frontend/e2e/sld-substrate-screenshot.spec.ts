@@ -104,13 +104,14 @@ test.describe('sld:substrate:screenshot', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // LOD demonstration (M-08 readability fix): L0 = readable blocks, L2 = detail.
+  // LOD demonstration — karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (odwraca M-08 na
+  // polecenie właściciela, ocena przeglądu 0/10): L0 rysuje TĘ SAMĄ kompozycję
+  // stacji co L2 (te same aparaty w tych samych miejscach), zdejmuje tylko szczegół.
   // ---------------------------------------------------------------------------
 
-  test('substrate-53s L0 overview (readable blocks) — save PNG', async ({ page }) => {
+  test('substrate-53s L0 overview (ta sama kompozycja co L2) — save PNG', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
-    // ?lod=0 forces overview level → stations render as readable BLOCKS
-    // (name + readiness), no micro-apparatus clutter (the density fix).
+    // ?lod=0 wymusza poziom przeglądu — ta sama kompozycja, bez szczegółu.
     await page.goto(`${HARNESS_URL}?lod=0`);
 
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
@@ -125,7 +126,7 @@ test.describe('sld:substrate:screenshot', () => {
     // renderuje GPZ jako PEŁNY blok rozdzielni (kolumna WN DS/CB/CT + pole
     // liniowe SN) także w widoku planu — intencja M-08 („zero mikro-aparatury")
     // dotyczy STACJI ciągów, nie dominanty GPZ.
-    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
+    const blocks = await page.locator('[data-symbol-canon$="Collapsed"]').count();
     // `data-symbol-canon` żyje na glifie, `data-testid` na wrapperze symbolu
     // — wykluczenie GPZ liczone arytmetycznie (total − potomkowie wrapperów
     // gpz-canonical-*), bo CSS :not() nie sięga przodka.
@@ -134,22 +135,11 @@ test.describe('sld:substrate:screenshot', () => {
     // Poza licznikiem także LEGENDA arkusza (glify wzorcowe „Wyłącznik"/
     // „Odłącznik" w ramce IEC — nie są aparaturą sieci).
     //
-    // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12; ta sama KLASA co
-    // `sld-pa-powerflow-tor.spec.ts` N-1 — dwie RÓWNOLEGŁE rodziny testidów
-    // GPZ): wykluczenie znało wyłącznie starszy wrapper `gpz-canonical-*`.
-    // Blok GPZ ZWINIĘTY na L0 (`buildScene.ts` ~L2548-2559, symbol
-    // „aparat ciągłości" pola odejściowego) renderuje wyłącznik pod TESTIDEM
-    // `sld-v3-l0-gpz-bay-*` — INNĄ rodziną (ten sam glif co reszta bloku
-    // zwiniętego GPZ, `sld-v3-l0-gpz-*`), więc dawne wykluczenie go nie
-    // łapało i liczyło jako „aparaturę stacji" (regres testu, nie produktu:
-    // gramatyka L0 §21/F13.1 od początku zakładała PEŁNY blok rozdzielni GPZ
-    // — kolumna WN + pole liniowe — na każdym poziomie szczegółu).
     // `closest()` obejmuje SAM element i przodków jedną asercją.
     const apparatusExcluded = await page.locator(APPARATUS).evaluateAll((nodes) =>
       nodes.filter(
         (n) =>
           n.closest('[data-testid^="gpz-canonical-"]') != null
-          || n.closest('[data-testid^="sld-v3-l0-gpz-"]') != null
           || n.closest('[data-testid="sld-sheet-legend"]') != null,
       ).length,
     );
@@ -162,10 +152,22 @@ test.describe('sld:substrate:screenshot', () => {
     await page.screenshot({ path: l0Path, fullPage: false });
     console.log(`Saved: ${l0Path}`);
 
-    // L0 must render blocks and (near-)zero mini-RMU apparatus across the network.
-    expect(blocks).toBeGreaterThanOrEqual(50);
-    expect(detail).toBe(0);
+    // Zero bloków zwiniętych; aparatura stacji na L0 == aparatura na L2 (jedna
+    // kompozycja — liczona tą samą regułą po przejściu harnessu na ?lod=2).
+    expect(blocks).toBe(0);
+    expect(detail).toBeGreaterThan(0);
     expect(fs.existsSync(l0Path)).toBe(true);
+    await page.goto(`${HARNESS_URL}?lod=2`);
+    await expect(page.locator('[data-testid="sld-harness-root"]').first()).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
+    await page.waitForTimeout(900);
+    const detailL2 = await page.locator(APPARATUS).evaluateAll((nodes) =>
+      nodes.filter(
+        (n) =>
+          n.closest('[data-testid^="gpz-canonical-"]') == null
+          && n.closest('[data-testid="sld-sheet-legend"]') == null,
+      ).length,
+    );
+    expect(detail).toBe(detailL2);
   });
 
   test('substrate-53s L2 detail (zoomed apparatus) — save PNG', async ({ page }) => {
@@ -182,7 +184,7 @@ test.describe('sld:substrate:screenshot', () => {
     await expect(canvas).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(900);
 
-    const blocks = await page.locator('[data-symbol-canon="stationCollapsed"]').count();
+    const blocks = await page.locator('[data-symbol-canon$="Collapsed"]').count();
     const detail = await page.locator('[data-symbol-canon="breaker"], [data-symbol-canon="disconnector"]').count();
     const lodAttr = await canvas.getAttribute('data-scene-lod');
     console.log(`L2: blocks=${blocks} aparatura=${detail} data-scene-lod=${lodAttr}`);

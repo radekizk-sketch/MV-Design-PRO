@@ -76,7 +76,7 @@ function renderCanvasLod(lod: 0 | 1 | 2, opcje: string, file: string): void {
 }
 
 // --- (1) Wszystkie LOD pełnej sieci -----------------------------------------
-renderCanvasLod(0, 'histereza LOD (S8) · sylwetka stacji mini-RMU · rozdzielnia sieciowa/GPZ · tor mocy z wagą', 'ocena-l0');
+renderCanvasLod(0, 'histereza LOD (S8) · jedna kompozycja stacji i GPZ · tor mocy z wagą', 'ocena-l0');
 renderCanvasLod(1, 'histereza LOD · rozwinięcie pól/aparatów · kropki połączeń węzłowych (IEC 60617)', 'ocena-l1');
 renderCanvasLod(2, 'pełne pola i aparaty · oznaczenia z danych · CT/VT · podwarstwy L2-A/B/C/D', 'ocena-l2');
 

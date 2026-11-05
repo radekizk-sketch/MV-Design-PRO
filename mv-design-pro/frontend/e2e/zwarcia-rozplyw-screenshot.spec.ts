@@ -173,9 +173,9 @@ test.describe('zwarcia-schemat:screenshot', () => {
       page.on('pageerror', (err) => consoleErrors.push(`PAGEERROR: ${err.message}`));
 
       await page.setViewportSize({ width: 1440, height: 900 });
-      // `lod=0` wymuszony: znacznik pulse dopasowuje się do symbolu STACJI
-      // (`stationCollapsed`), obecnego WYŁĄCZNIE na LOD 0 (na LOD 1/2 stacja
-      // rozwija się w aparaturę — zweryfikowane sondą na realnej scenie).
+      // `lod=0` wymuszony (przegląd). Znacznik pulse stacji stoi na środku jej
+      // szyny SN — ta sama kompozycja na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-
+      // KOMPOZYCJA, `computeFaultPointMarkerPlacement`).
       await page.goto(
         `${SCREENSHOT_HARNESS_URL}?fixture=gpzFeeder&overlay=faultflow&lod=0&theme=${theme}`,
         { waitUntil: 'domcontentloaded', timeout: 40000 },

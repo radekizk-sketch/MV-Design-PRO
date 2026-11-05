@@ -97,7 +97,6 @@ import {
   sceneObstacleRects,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { rectWithinSheet, sheetSizeFor } from '../src/ui/sld/v3/sheet/outline.ts';
-import { CONTINUITY_APPARATUS_SYMBOL_IDS } from '../src/ui/sld/v3/symbols/defs.ts';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -128,11 +127,7 @@ import { symbolePolaBezDanych } from '../src/ui/sld/v3/compose/apparatusSequence
 import { FIELD_ROLE } from '../src/ui/sld/v2/domain/apparatusContracts.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
-import {
-  miniRmuPathContinuityGaps,
-  miniRmuMarkerSpacingGaps,
-  transformerInteriorHeightRatio,
-} from '../src/ui/sld/v3/symbols/miniRmuGrammar.ts';
+import { pozycjeKompozycjiGaps, przegladSceneGaps } from '../src/ui/sld/v3/scene/przegladKompozycja.ts';
 import {
   busBandClearanceGaps,
   crossingBusGaps,
@@ -400,8 +395,8 @@ const EXPECTED_STATION_COUNT = 53;
 // WŁASNEGO wiersza pasma B2 (`stationBusbarLabelHeight`, `layout/measure.ts`)
 // nad podpisem kierunku pola, doliczanego JEDNOLICIE do KAŻDEGO wiersza
 // stacji z ≥1 polem SN (`composeStation` rysuje szynę/etykietę TYLKO gdy
-// `snBays` niepuste — L0 nie niesie `snBays` z konstrukcji, kolaps do
-// `stationCollapsed`, więc L0 BEZ zmian). Świadome odstępstwo od reguły
+// `snBays` niepuste — od karty PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA także na L0,
+// który rysuje tę samą kompozycję). Świadome odstępstwo od reguły
 // „nie-rosnąca" (jak F9.10 — czytelność/zero-anonimowej-treści ma
 // pierwszeństwo, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM"): ZERO
 // nowych kolizji jakiegokolwiek rodzaju na fixturze referencyjnej po tej
@@ -1026,32 +1021,6 @@ check(
   sourceKindSymbolsAreInjective(),
 );
 
-// SCHEMAT-10 GS-2 (V12K-137, `GRAMATYKA_MINI_RMU_2026-07` reguły 2–4, 5–7, 10,
-// 12): gramatyka konstrukcyjna sylwetki mini-RMU jest WŁAŚCIWOŚCIĄ GLOBALNĄ
-// (stałe `MINI_RMU`, `symbols/miniRmuGrammar.ts`) — nie zależy od fixtury/sceny.
-line('');
-line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne — poza pętlą LOD) ===');
-{
-  const contGaps = miniRmuPathContinuityGaps();
-  check(
-    'mini_rmu_path_continuity_probe (reguły 2–4): szyna SN na wylot port W↔E przez enklozurę (tor ciągły, glif = fragment toru)',
-    contGaps.length === 0,
-    contGaps.length ? contGaps.join(' | ') : 'ciągłość toru zachowana',
-  );
-  const spGaps = miniRmuMarkerSpacingGaps();
-  check(
-    'mini_rmu_marker_spacing_probe (reguły 5–7, 10): markery wewnątrz enklozury, rozłączne, kanał routingu x=24 czysty',
-    spGaps.length === 0,
-    spGaps.length ? spGaps.join(' | ') : 'kotwice/odstępy zachowane',
-  );
-  const trRatio = transformerInteriorHeightRatio();
-  check(
-    'mini_rmu_transformer_proportion_probe (reguła 12): TR uzupełniający — ≤0,5 wysokości wnętrza',
-    trRatio <= 0.5,
-    `udział=${trRatio.toFixed(4)}`,
-  );
-}
-
 // F10.2 (spec §19.3, V12K-034) + karta ETYKIETA-STACJI-PRZELOTOWEJ:
 // station_type_topology_probe — (a) podpis rodzaju KAŻDEJ stacji na scenie == rodzaj
 // wyprowadzony z topologii JEDNĄ regułą produktu (`ui/shared/rodzajStacji.ts`, lustro
@@ -1189,8 +1158,8 @@ for (const lod of LODS) {
 
   // -- §19.1 (F10.2, V12K-035) apparatus_identifier_probe --------------------
   // Wyrocznia idzie na L2, bo tam identyfikatory są RYSOWANE. Warunek był dotąd
-  // `lod !== 0` i dobrany do tego, gdzie istnieją SYMBOLE aparatów (L0 =
-  // stationCollapsed, zero aparatów) — a mierzy ETYKIETY tych symboli. Rozjazd
+  // `lod !== 0` i dobrany do tego, gdzie istniały SYMBOLE aparatów (dawny L0 =
+  // blok zwinięty stacji, zero aparatów) — a mierzy ETYKIETY tych symboli. Rozjazd
   // ujawnił audyt powykonawczy SLD (V12K-212): kontrakt LOD §6 przypisuje
   // identyfikatory aparatów do pełnego detalu, więc od tej zmiany L1 ich nie ma
   // i probe raportował 0 etykiet wobec 395 aparatów. Intencja §19.1 zostaje bez
@@ -1263,9 +1232,9 @@ for (const lod of LODS) {
   }
 
   // -- §18.4 (F10.3, D2-4) busbar_label_probe --------------------------------
-  // Szyna SN istnieje WYŁĄCZNIE na lod>=1 (L0 = stationCollapsed, zero pól/
-  // szyn — ta sama gałąź co apparatus_identifier_probe wyżej).
-  if (lod !== 0) {
+  // Szyna SN i jej etykieta istnieją na KAŻDYM LOD — jedna kompozycja stacji
+  // (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA; dawniej L0 był blokiem zwiniętym).
+  {
     const busGaps = busbarLabelGaps(scene);
     check(
       'busbar_label_probe (§18.4 a-b): każda szyna SN (stacji „#sn-bus", sekcji GPZ „#bus-primary") ma DOKŁADNIE JEDNĄ etykietę napięcie+sekcja o poprawnym formacie',
@@ -1534,10 +1503,8 @@ for (const lod of LODS) {
   );
 
   // -- §21 (F13.1, D3-1/D3-2): GPZ jako dominanta WN/SN ----------------------
-  // V12K-293 (KD-5) + KD-7 poz. 5: helpery §21 same czytają SCENĘ
-  // (`gpzBlockCollapsed`) — scena ze zwiniętym blokiem nie wymaga kolumny WN
-  // ani dominanty, ale rysunek ROZWINIĘTY podlega §21 na KAŻDYM poziomie LOD.
-  // Dlatego sondy biegną bezwarunkowo; na L0 dodatkowo sonda kanonu zwinięcia.
+  // Jedna kompozycja GPZ na każdym LOD (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA) —
+  // §21 obowiązuje na KAŻDYM poziomie bez zwolnień, sondy biegną bezwarunkowo.
   {
     const hvGaps = gpzHvColumnGaps(scene, enm);
     check(
@@ -1552,29 +1519,18 @@ for (const lod of LODS) {
       `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
     );
   }
-  if (lod === 0) {
-    const gpzInFull = buildSceneV3(enm, 1).symbols.some(
-      (s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'),
-    );
-    const collapsedCount = scene.symbols.filter((s) => s.symbolId === 'gpzCollapsed').length;
-    const internalExtra = scene.symbols.filter(
-      (s) =>
-        (s.meta?.ownerRef ?? '').startsWith('gpz/') &&
-        s.symbolId !== 'gpzCollapsed' &&
-        s.symbolId !== 'gridSource' &&
-        // GEOMETRIA-STACJI (§0 pkt 4): aparat ciągłości pola L0 pochodzi z rekordu modelu
-        // (zbiór `CONTINUITY_APPARATUS_SYMBOL_IDS` — to samo źródło co kompozycja L0
-        // w `buildScene.ts`), a pole bez rekordów rysuje sylwetkę `bayNoEquipment`.
-        // Dawniej sonda wpuszczała wyłącznie `breaker`, bo L0 dorysowywał wyłącznik
-        // z konwencji roli niezależnie od danych pola (fabrykacja aparatu).
-        !CONTINUITY_APPARATUS_SYMBOL_IDS.includes(s.symbolId) &&
-        s.symbolId !== 'bayNoEquipment',
-    );
+  // -- PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: jedna kompozycja GPZ i stacji na każdym LOD --
+  // Zastępuje dawną sondę zwinięcia GPZ (§21.3 „L0 rysuje GPZ ZWINIĘTY"): blok
+  // zwinięty skasowano, bo dawał drugą reprezentację z innymi pozycjami pól.
+  {
+    const zwiniete = scene.symbols.filter((s) => String(s.symbolId).endsWith('Collapsed')).length;
+    const pozycje =
+      lod === 0 ? pozycjeKompozycjiGaps({ 0: scene, 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) }) : [];
+    const przeglad = przegladSceneGaps(scene);
     check(
-      'gpz_collapsed_probe (§21.3, V12K-293): L0 rysuje GPZ ZWINIĘTY — dokładnie jeden gpzCollapsed (gdy pełny detal niesie pasmo gpz/), a poza nim wyłącznie glif źródła i aparaty ciągłości pól',
-      (!gpzInFull && collapsedCount === 0) ||
-        (gpzInFull && collapsedCount === 1 && internalExtra.length === 0),
-      `gpz_w_pelnym_detalu=${gpzInFull} zwiniete=${collapsedCount} wewnetrzne_nadmiarowe=${internalExtra.length}${internalExtra.length ? ' np. ' + JSON.stringify(internalExtra[0]?.symbolId) : ''}`,
+      'jedna_kompozycja_probe (PRZEGLAD-SIECI): zero bloków zwiniętych; pozycje pól i aparatów ciągłości L0=L1=L2; zejścia sekcji równe; rama GPZ obejmuje treść bez nadmiaru; magistrala nie biegnie krawędzią ramy; każdy koniec toru z portem/słupkiem/podpisem braku; nazwy bez wielokropka',
+      zwiniete === 0 && pozycje.length === 0 && przeglad.length === 0,
+      `zwiniete=${zwiniete} pozycje=${pozycje.length} luki=${przeglad.length}${przeglad.length ? ' np. ' + przeglad[0].opis : pozycje.length ? ' np. ' + pozycje[0].opis : ''}`,
     );
   }
 
@@ -1994,7 +1950,7 @@ for (const lod of LODS) {
   // -- §11.3 port_probe (F9.7, pierwsze wpięcie do accept:sld-v3) -----------
   const endpointGaps = sceneSegmentEndpointGaps(scene);
   check(
-    'port_probe (§11.3): 100% końców odcinków sceny to port symbolu, dotyk innego odcinka, lub (L0) środek stationCollapsed',
+    'port_probe (§11.3): 100% końców odcinków sceny to port symbolu albo dotyk innego odcinka',
     allSceneSegmentEndpointsAnchored(scene) && endpointGaps.length === 0,
     `luki=${endpointGaps.length}`,
   );
@@ -2095,31 +2051,29 @@ for (const lod of LODS) {
       !causeLengthGatePasses(sabotagedBreakdown, 'rezerwacja-kanalu'),
     );
   }
-  // -- SCHEMAT-10 S7-P4 + GS-1 (V12K-137, recenzja §9 P0 pkt 3, DOMKNIĘCIE GAP
-  // §10.4): CZYTELNOŚĆ L0 na widoku całości — zbiór §3 „nigdy nie znika" (tor
-  // mocy z wagą, tożsamość stacji, źródło) ROZSZERZONY o TYP STACJI · TR ·
-  // MARKER DER · STAN NO (sylwetka mini-RMU niesie `meta.stationGlyph`). Bramka
-  // WYŁĄCZNIE na L0 (semantyka „Przegląd sieci").
+  // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 3): CZYTELNOŚĆ L0 na widoku
+  // całości — zbiór §3 „nigdy nie znika" (tor mocy z wagą, tożsamość stacji i GPZ,
+  // źródło). Typ stacji, TR, DER i NO niesie na L0 ta sama kompozycja co L1/L2
+  // (karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA). Bramka WYŁĄCZNIE na L0.
   if (lod === 0) {
     const l0Gaps = lod0ReadabilityGaps(scene);
     check(
-      'lod0_readability_probe (S7-P4 §9 P0 pkt 3 + GS-1 §10.4): tor mocy(waga) + tożsamość + źródło + typ/TR/DER/NO sylwetki rozpoznawalne na L0',
+      'lod0_readability_probe (S7-P4 §9 P0 pkt 3): tor mocy(waga) + tożsamość stacji i GPZ + źródło rozpoznawalne na L0',
       allLod0ElementsReadable(scene),
       l0Gaps.length === 0
-        ? 'zbiór §3 „nigdy nie znika" (z rozszerzeniem GS-1) obecny na L0'
+        ? 'zbiór §3 „nigdy nie znika" obecny na L0'
         : `luki=${l0Gaps.length}: ${l0Gaps.slice(0, 5).map((g) => `${g.element}: ${g.reason}`).join(' | ')}`,
     );
-    // Test negatywny (GS-1): usunięcie podsumowania sylwetki (`meta.stationGlyph`)
-    // MUSI dać lukę „sylwetka stacji" — dowód, że rozszerzenie §10.4 gryzie.
+    // Test negatywny: zdjęcie nazwy jednej stacji MUSI dać lukę „tożsamość stacji".
+    const pierwszaNazwa = scene.labels.find((l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('stn/'));
+    const bazaNazwy = pierwszaNazwa ? pierwszaNazwa.ownerRef.split('/').slice(0, 2).join('/') : null;
     const sabotaged = {
       ...scene,
-      symbols: scene.symbols.map((s) =>
-        s.symbolId === 'stationCollapsed' ? { ...s, meta: { ...s.meta, stationGlyph: undefined } } : s,
-      ),
+      labels: scene.labels.filter((l) => !(bazaNazwy && l.ownerKind === 'station-name' && l.ownerRef.startsWith(`${bazaNazwy}/`))),
     };
     check(
-      'lod0_readability_probe (GS-1, test negatywny — dowód, że wyrocznia gryzie): sylwetka bez typ/TR/DER/NO MUSI dać lukę',
-      lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'sylwetka stacji') && !allLod0ElementsReadable(sabotaged),
+      'lod0_readability_probe (test negatywny — dowód, że wyrocznia gryzie): stacja bez nazwy MUSI dać lukę',
+      bazaNazwy !== null && lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'tożsamość stacji') && !allLod0ElementsReadable(sabotaged),
     );
   }
 

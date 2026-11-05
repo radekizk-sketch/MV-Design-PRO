@@ -236,9 +236,9 @@ async function openSldWithActiveCase(
   // dopasowuje kamerę do treści przy starcie; przy DOMYŚLNYM viewporcie
   // Playwrighta (1280×720, `playwright.config.ts`) ta MAŁA sieć referencyjna
   // (GPZ + 1 stacja) mieści się w kadrze przy skali odpowiadającej L0
-  // („Przegląd sieci" — stacja/GPZ jako symbol ZBIORCZY, `stationCollapsed`/
-  // `gpzCollapsed`; zero aparatury pola, w tym `transformer2W`, w scenie tego
-  // LOD — `buildMeasureInput`, `SldCanvasV3.tsx`). Pomiar: identyczna sieć,
+  // („Przegląd sieci" — przed kartą PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA stacja/GPZ
+  // były tam symbolem ZBIORCZYM bez aparatury pola; dziś L0 rysuje tę samą
+  // kompozycję, a viewport nadal wpływa na poziom szczegółu). Pomiar: identyczna sieć,
   // identyczna sekwencja kliknięć, RÓŻNI się WYŁĄCZNIE viewport — 1280×720 daje
   // legendę (6) bez `transformer2W`/pól SN, 1600×900 daje legendę (13) z pełną
   // aparaturą. Pozostałe specy potrzebujące szczegółu pola (np. `kd8-motyw-

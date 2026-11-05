@@ -245,17 +245,25 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
   }
   await expect(canvas).toHaveAttribute('data-scene-lod', '0');
 
-  // (2) KLIK NATYWNY w blok GPZ ⇒ rozwinięcie układu.
-  const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-    has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-  });
-  await expect(wezelBloku).toHaveCount(1);
-  const box = await wezelBloku.boundingBox();
+  // (2) Jedna kompozycja GPZ na każdym poziomie (karta PRZEGLAD-SIECI-JEDNA-
+  // KOMPOZYCJA): transformator GPZ jest na przeglądzie. Przybliżenie kółkiem nad
+  // nim (natywnie) do poziomu szczegółu, potem klik NATYWNY ⇒ selekcja.
+  const transformatorGpz = symbole.locator('[data-symbol-canon="transformer2W"]').first();
+  await expect(transformatorGpz).toBeVisible();
+  const trBox = await transformatorGpz.boundingBox();
+  expect(trBox).not.toBeNull();
+  await page.mouse.move(trBox!.x + trBox!.width / 2, trBox!.y + trBox!.height / 2);
+  for (let krok = 0; krok < 16 && poziom === '0'; krok++) {
+    await page.mouse.wheel(0, -200);
+    await page.waitForTimeout(150);
+    poziom = await canvas.getAttribute('data-scene-lod');
+  }
+  await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
+  const box = await transformatorGpz.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.waitForTimeout(1000);
-  await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
-  await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+  await expect(transformatorGpz).toBeVisible();
   // Zdjęcie selekcji realną ścieżką (K11-A): jeden Escape zdejmuje selekcję
   // (UI-02b: klik nie otwiera już panelu szczegółów nad kanwą). Selekcja musi
   // zniknąć — od karty K2 „Dopasuj widok" kadruje zakres pracy (zaznaczenie),

@@ -5,7 +5,7 @@
  * `sldSubstrate52s` (53 stacje):
  *   - zoom-in  (s5-zoom-1..3): L0 „Przegląd sieci" → L1 „Widok operatorski" →
  *     L2 „Stacje i aparatura" — okno kadru ZACIEŚNIA się wokół stacji-celu,
- *     szczegół ROŚNIE (sylwetka mini-RMU → aparaty → aparaty+szyna+podpisy);
+ *     szczegół ROŚNIE na tej samej kompozycji (aparaty → +role pól → +podpisy i kody);
  *   - zoom-out (s5-zoom-4..6): L2 → L1 → L0 — powrót, okno się ROZSZERZA.
  * Cel = pierwsza stacja magistrali z TR i DER ZA TR (PV na szynie nN) — realny
  * przypadek „TR+DER za TR" (nie syntetyk).

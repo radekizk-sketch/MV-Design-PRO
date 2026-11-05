@@ -224,16 +224,25 @@ test.describe('kd11:zrzuty', () => {
       }
       await expect(canvas).toHaveAttribute('data-scene-lod', '0');
 
-      // (2) KLIK NATYWNY w blok GPZ ⇒ rozwinięcie układu; selekcja zdjęta.
-      const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-        has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-      });
-      await expect(wezelBloku).toHaveCount(1);
-      const box = await wezelBloku.boundingBox();
+      // (2) Jedna kompozycja GPZ na każdym poziomie (karta PRZEGLAD-SIECI-JEDNA-
+      // KOMPOZYCJA): transformator GPZ jest na przeglądzie. Przybliżenie kółkiem
+      // nad nim (natywnie) do poziomu szczegółu, klik NATYWNY ⇒ selekcja; zdjęta niżej.
+      const transformatorGpz = symbole.locator('[data-symbol-canon="transformer2W"]').first();
+      await expect(transformatorGpz).toBeVisible();
+      const trBox = await transformatorGpz.boundingBox();
+      expect(trBox).not.toBeNull();
+      await page.mouse.move(trBox!.x + trBox!.width / 2, trBox!.y + trBox!.height / 2);
+      for (let krok = 0; krok < 16 && poziom === '0'; krok++) {
+        await page.mouse.wheel(0, -200);
+        await page.waitForTimeout(150);
+        poziom = await canvas.getAttribute('data-scene-lod');
+      }
+      await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
+      const box = await transformatorGpz.boundingBox();
       expect(box).not.toBeNull();
       await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
       await page.waitForTimeout(1200);
-      await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+      await expect(transformatorGpz).toBeVisible();
       // Zdjęcie selekcji realną ścieżką (K11-A): jeden Escape zdejmuje selekcję
       // (UI-02b: klik nie otwiera już panelu szczegółów nad kanwą). Selekcja musi
       // zniknąć — od karty K2 „Dopasuj widok" kadruje zakres pracy (zaznaczenie),
@@ -266,13 +275,11 @@ test.describe('kd11:zrzuty', () => {
 
       // (5) KADR PRZYBLIŻONY — kółkiem NAD BLOKIEM GPZ, aż do pełnego poziomu
       // szczegółu; wtedy dane szczegółowe (parametry, adnotacje) wracają.
-      // Kotwica kursora: transformator GPZ, gdy rysowany na tym poziomie
-      // szczegółu; na przeglądzie — zwinięty blok GPZ; w ostateczności środek.
+      // Kotwica kursora: transformator GPZ (ta sama kompozycja na każdym LOD);
+      // w ostateczności środek.
       const kotwica = (await symbole.locator('[data-symbol-canon="transformer2W"]').count()) > 0
         ? symbole.locator('[data-symbol-canon="transformer2W"]').first()
-        : (await symbole.locator('[data-symbol-canon="gpzCollapsed"]').count()) > 0
-          ? symbole.locator('[data-symbol-canon="gpzCollapsed"]').first()
-          : null;
+        : null;
       const gpzBox = kotwica ? await kotwica.boundingBox() : null;
       const kursor = gpzBox
         ? { x: gpzBox.x + gpzBox.width / 2, y: gpzBox.y + gpzBox.height / 2 }

@@ -83,17 +83,14 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run src/ui/sld/v3/canvas/__tests__/minSymbolSize.contract.test.ts --reporter=verbose
 
-      # KD-5: zwinięcie bloku GPZ na poziomie przeglądowym L0 — jeden symbol,
-      # zero geometrii pól wewnętrznych, zachowana ciągłość toru i kotwica
-      # świata; z sekcją regresji wstrzykniętej (kontrakt musi gryźć).
-      - name: Run SLD v3 collapsed GPZ block contract tests (KD-5)
+      # PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA (następca KD-5): jedna kompozycja GPZ
+      # i stacji na każdym LOD — pozycje pól L0=L1=L2, równe zejścia, rama GPZ
+      # ⊆ treść + margines, magistrala nie wzdłuż ramy, końce torów, nazwy bez
+      # wielokropka, kadr po dopasowaniu i progi LOD z gabarytu aparatu;
+      # iloczyn fikstura × LOD z iniekcjami (kontrakt musi gryźć).
+      - name: Run SLD v3 single composition overview contract tests
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v3/scene/__tests__/buildScene.gpzCollapsed.test.ts --reporter=verbose
-
-      # KD-5: rozwinięcie bloku klikiem — próg LOD i realna ścieżka kliku.
-      - name: Run SLD v3 collapsed GPZ expand contract tests (KD-5)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/v3/canvas/__tests__/gpzCollapsedExpand.test.tsx --reporter=verbose
+        run: npx vitest run src/ui/sld/v3/scene/__tests__/przegladKompozycja.test.ts --reporter=verbose
 
       # KD-7: kontrakt kadru — cała rysowana treść (symbole, tory i PODPISY)
       # mieści się w kadrze z pełnym marginesem fitu, a cel fitu żyje w świecie

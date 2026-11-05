@@ -96,11 +96,13 @@ test.describe('lv-portal:screenshot — projekcja SN z portalem domeny nN', () =
       });
     }
 
-    test(`L0 — blok zwinięty (bez zacisku i portalu — wejście dwuklikiem) — motyw ${theme} — save PNG`, async ({ page }) => {
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: L0 rysuje tę samą kompozycję stacji
+    // co L1/L2 — zacisk nN i portal są na przeglądzie (dawny blok zwinięty skasowany).
+    test(`L0 — ta sama kompozycja stacji z portalem nN — motyw ${theme} — save PNG`, async ({ page }) => {
       const consoleErrors = await gotoHarness(page, 0, theme);
       if (consoleErrors.length > 0) console.log(`Console errors L0 (${theme}): ${consoleErrors.join('\n')}`);
-      await expect(page.locator('[data-symbol-canon="lvPortal"]')).toHaveCount(0);
-      await expect(page.locator('[data-symbol-canon="stationCollapsed"]').first()).toBeVisible();
+      await expect(page.locator('[data-symbol-canon="lvPortal"]').first()).toBeVisible();
+      await expect(page.locator('[data-symbol-canon$="Collapsed"]')).toHaveCount(0);
       const outPath = path.join(OUTPUT_DIR, `lv_portal_sn_lod0_${theme}.png`);
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: outPath, fullPage: false });

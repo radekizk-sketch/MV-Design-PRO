@@ -731,9 +731,10 @@ python scripts/smoke_local.sh                     # Local smoke test
   - `sld/v2/__tests__/{ViewportController,LodPolicy}.test.ts` (StationInternalView.test.tsx
     usunięty w `08ccf7c9`, renderers.test.tsx razem z martwymi rendererami v2 2026-10-21; martwy krok workflowa zdjęty 2026-09-02 — M0-1, pilnuje `verification_phantom_paths_guard`)
   - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
-  - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
+  - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,przegladKompozycja,busbarLabelClearance}.test.ts`
   - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
-    oraz `gpzCollapsedExpand.test.tsx`
+    (`buildScene.gpzCollapsed` i `gpzCollapsedExpand` skasowane razem z blokiem zwiniętym GPZ —
+    karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA, następca: `przegladKompozycja.test.ts`)
   - `sld/v3/layout/__tests__/sheetRows.test.ts` · `sld/v3/theme/__tests__/palette.test.ts`
   - SLD v3 render-odbiór acceptance: `npm run accept:sld-v3`
 - Critical E2E (real backend): `e2e/critical-run-flow.spec.ts` via `npm run test:e2e:real`

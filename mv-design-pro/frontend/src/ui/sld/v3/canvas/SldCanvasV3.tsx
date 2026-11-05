@@ -1312,6 +1312,19 @@ export function computeFaultPointMarkerPlacement(
     const b = points[bestIndex + 1];
     return { ownerRef: faultPointMarkerRef, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   }
+  // Ref STACJI (`stn/<id>`): stacja nie ma własnego symbolu — ani na L0 (karta
+  // PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA skasowała blok zwinięty, który go niósł), ani
+  // na L1/L2, gdzie znacznik dotąd znikał. Zwarcie w stacji to zwarcie na jej
+  // szynie SN — znacznik stoi na środku PIERWSZEGO odcinka szyny tej stacji
+  // (`meta.kind === 'bus'`, ref `stn/<id>/…`), w kolejności sceny (determinizm).
+  for (const segment of scene.segments) {
+    if (segment.meta?.kind !== 'bus') continue;
+    const ref = segment.meta.ownerRef ?? '';
+    if (!ref.startsWith(`${faultPointMarkerRef}/`) || ref.endsWith('#lv-bus')) continue;
+    const [a, b] = [segment.points[0], segment.points[segment.points.length - 1]];
+    if (!a || !b) continue;
+    return { ownerRef: faultPointMarkerRef, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
   return null;
 }
 

@@ -16,7 +16,7 @@
  * browser's layout of the committed >=52-station substrate fixture.
  *
  * Harness: e2e/sld-substrate-screenshot.spec.ts pattern.
- * Blocks: queryable via `[data-testid^="sld-v2-station-overview-block-"]`.
+ * Blocks: union of rendered station symbols (`data-owner-ref` `stn/<id>/…`).
  */
 import { test, expect } from '@playwright/test';
 import { adresHarnessu } from './adresHarnessu';
@@ -52,33 +52,43 @@ test.describe('sld:M-02:l0-overlap (render-based)', () => {
     // Let auto-fit + viewport transform settle before measuring.
     await page.waitForTimeout(900);
 
-    // v3 (adaptacja po F12-C): blok L0 = glif `stationCollapsed` (kontur
-    // kwadratu stacji, spec §3/F6b) — dawny testid sld-v2-station-overview-block-*
-    // zniknął z kasacją renderu v2. Legenda arkusza wyłączona (glif wzorcowy).
-    const blockLocator = page.locator(
-      'xpath=//*[@data-symbol-canon="stationCollapsed"][not(ancestor::*[@data-testid="sld-sheet-legend"])]',
+    // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: na L0 stacja nie jest już glifem
+    // zbiorczym — rysuje się ta sama kompozycja co na L1/L2. „Blok stacji" to
+    // więc OBWIEDNIA wszystkich narysowanych symboli stacji (`data-owner-ref`
+    // `stn/<id>/…`), mierzona przez przeglądarkę. Intencja M-02 bez zmian: bloki
+    // stacji na przeglądzie nie nachodzą na siebie. Legenda arkusza wyłączona.
+    const symbole = page.locator(
+      'xpath=//*[@data-symbol-canon][starts-with(@data-owner-ref,"stn/")][not(ancestor::*[@data-testid="sld-sheet-legend"])]',
     );
-    const count = await blockLocator.count();
-    // Sanity: the substrate must render its full station set as L0 blocks.
-    expect(count, 'expected >=50 L0 station blocks on the substrate').toBeGreaterThanOrEqual(50);
-
-    // Read the ACTUAL rendered bounding box of every block (getBoundingClientRect
-    // via Playwright). These sizes/positions are produced by the browser, not by
-    // any literal in this test.
-    const boxes: Box[] = [];
-    for (let i = 0; i < count; i += 1) {
-      const el = blockLocator.nth(i);
-      const testId = await el.getAttribute('data-testid');
-      const bb = await el.boundingBox();
-      if (!bb) continue;
-      boxes.push({
-        id: (testId ?? `block-${i}`).replace('sld-v2-station-overview-block-', ''),
-        x: bb.x,
-        y: bb.y,
-        width: bb.width,
-        height: bb.height,
+    const pomiary = await symbole.evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { ref: el.getAttribute('data-owner-ref') ?? '', x: r.x, y: r.y, w: r.width, h: r.height };
+      }),
+    );
+    const wgStacji = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
+    for (const p of pomiary) {
+      const czesci = p.ref.replace(/#.*$/, '').split('/');
+      const baza = `${czesci[0]}/${czesci[1]}`;
+      const b = wgStacji.get(baza) ?? { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+      wgStacji.set(baza, {
+        minX: Math.min(b.minX, p.x),
+        minY: Math.min(b.minY, p.y),
+        maxX: Math.max(b.maxX, p.x + p.w),
+        maxY: Math.max(b.maxY, p.y + p.h),
       });
     }
+    const count = wgStacji.size;
+    // Sanity: the substrate must render its full station set on L0.
+    expect(count, 'expected >=50 L0 station blocks on the substrate').toBeGreaterThanOrEqual(50);
+
+    const boxes: Box[] = [...wgStacji.entries()].map(([id, b]) => ({
+      id,
+      x: b.minX,
+      y: b.minY,
+      width: b.maxX - b.minX,
+      height: b.maxY - b.minY,
+    }));
 
     expect(boxes.length, 'every block must yield a rendered bounding box').toBe(count);
 

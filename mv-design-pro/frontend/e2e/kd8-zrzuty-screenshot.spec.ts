@@ -195,16 +195,16 @@ test.describe('kd8:zrzuty', () => {
   });
 
   for (const { id, mode, jasny } of THEMES) {
-    test(`motyw ${id}: przegląd, rozwinięcie GPZ i konfigurator z blokadą`, async ({ page, request }) => {
+    test(`motyw ${id}: przegląd, szczegół GPZ i konfigurator z blokadą`, async ({ page, request }) => {
       test.setTimeout(300000);
       const scena = await zbudujScene(request);
       await otworzSchemat(page, scena, mode);
 
       const canvas = page.locator('svg[data-testid="sld-canvas-v3"]');
       const symbole = page.locator('[data-testid="sld-v3-symbols"]');
-      const wezelBloku = symbole.locator('g[data-element-kind="station"]', {
-        has: page.locator('[data-symbol-canon="gpzCollapsed"]'),
-      });
+      // Karta PRZEGLAD-SIECI-JEDNA-KOMPOZYCJA: GPZ ma JEDNĄ kompozycję na każdym
+      // poziomie — na przeglądzie widać ten sam transformator co w szczególe.
+      const transformatorGpz = symbole.locator('[data-symbol-canon="transformer2W"]').first();
 
       // Zrzut ma DOKUMENTOWAĆ naprawę — potwierdzamy ją miarą przed zapisem.
       const jasnosc = await jasnoscKanwy(page);
@@ -225,18 +225,24 @@ test.describe('kd8:zrzuty', () => {
         poziom = await canvas.getAttribute('data-scene-lod');
       }
       await expect(canvas).toHaveAttribute('data-scene-lod', '0');
-      await expect(wezelBloku).toHaveCount(1);
+      await expect(transformatorGpz).toBeVisible();
       await page.waitForTimeout(300);
       await bramkaTresciMatematycznej(page);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-l0-${id}.png`) });
 
-      // (2) Klik NATYWNY w blok ⇒ rozwinięcie + selekcja (panele elementu).
-      const box = await wezelBloku.boundingBox();
+      // (2) Przybliżenie kółkiem (natywnie) do poziomu szczegółu, potem klik
+      // NATYWNY w transformator GPZ ⇒ selekcja (panele elementu).
+      for (let krok = 0; krok < 16 && poziom === '0'; krok++) {
+        await page.mouse.wheel(0, -200);
+        await page.waitForTimeout(150);
+        poziom = await canvas.getAttribute('data-scene-lod');
+      }
+      await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
+      const box = await transformatorGpz.boundingBox();
       expect(box).not.toBeNull();
       await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
       await page.waitForTimeout(1200);
-      await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
-      await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+      await expect(transformatorGpz).toBeVisible();
 
       // (3) Konfigurator stacji z komunikatem BLOKADY — kadr z panelami.
       const blokada = page.getByTestId('station-network-action-blockers');
