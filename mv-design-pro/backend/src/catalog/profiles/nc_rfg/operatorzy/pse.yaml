@@ -40,6 +40,13 @@ bank_nastaw:
     nastawy zabezpieczeń modułów wymagane przez operatora nie są udokumentowane w repozytorium
     (OD-21)
   pozycje: []
+# `prog_87t_sn_transformatora` (karta JEDNA-SCIEZKA-EDYCJI): moc znamionowa transformatora
+# dedykowanego wytwórcy, od której operator wymaga zabezpieczenia różnicowego 87T —
+# `{wartosc_kva, jednostka_redakcyjna, status, uwagi_pl}` dokumentu operatora albo `null`.
+# Wartość `null`: dokument operatora nie jest w repozytorium i progu nie wskazano (IEC 60255-13
+# jest normą wyrobu przekaźnika różnicowego i nie określa mocy transformatora). Liczba bez
+# podstawy jest odrzucana przy wczytaniu profilu.
+prog_87t_sn_transformatora: null
 wykonanie_prawa:
   status: NIEUSTALONE
   uwagi_pl: >-

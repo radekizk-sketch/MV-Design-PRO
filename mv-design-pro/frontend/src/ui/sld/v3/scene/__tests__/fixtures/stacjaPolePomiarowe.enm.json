@@ -818,9 +818,9 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "405237099ab4409f2963cfe72fc979848718eef4d761d4dc97dfce74f07fb49c",
+      "hash_sha256": "88def8f8d2187a8bf93419b4fed3d409f38cc633b11cd7cda3f59021d909caec",
       "name": "Stacja z polem pomiarowym",
-      "revision": 5,
+      "revision": 4,
       "updated_at": "2026-09-25T00:00:00Z"
     },
     "junctions": [],

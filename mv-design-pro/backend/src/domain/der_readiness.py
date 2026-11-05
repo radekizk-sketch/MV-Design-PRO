@@ -5,7 +5,7 @@ DLACZEGO TEN MODUL POWSTAL (karta F-K8 faza 2, krok 3). Ocena gotowosci wytworcy
 (`frontend/src/ui/network-build/station-der/readiness.ts`, 726 linii). Skutki byly
 dokladnie takie, jakich kanon zabrania:
 
-  * regula inzynierska (IEC 61869-2 dla klasy przekladnika, IEC 60255-13 dla 87T,
+  * regula inzynierska (IEC 61869-2 dla klasy przekladnika, wymog 87T wobec progu operatora,
     IEC 60909-3 dla skladowej zerowej) mieszkala w warstwie prezentacji,
   * kazdy inny konsument tej wiedzy — raport, eksport, API — musialby ja powielic,
     a powielona regula rozjezdza sie z oryginalem (precedens V12K-243: trzy oceny
@@ -33,11 +33,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from domain.der_protection_functions import ocen_prog_87t
+from domain.der_protection_functions import OcenaProguWymagania, ocen_prog_87t
 from enm.migrations.punkt_przylaczenia_der import (
     KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
 )
 from network_model.pochodne import mw_na_kw
+from werdykt.kontrakt import LimitKryterium
 
 StatusOsi = Literal["ready", "partial", "blocked", "not_applicable"]
 StronaPrzylaczenia = Literal[
@@ -92,9 +93,18 @@ _STRONY_WYMAGAJACE_ANTI_ISLANDING: frozenset[str] = frozenset(
 )
 
 
+def _ocena_87t(we: WejscieGotowosciDer) -> OcenaProguWymagania:
+    """Ocena wymogu 87T wobec progu z profilu operatora wytwórcy (jeden predykat doboru)."""
+    return ocen_prog_87t(
+        we.block_transformer_sn_kva,
+        we.prog_87t,
+        profil_operatora_pl=we.profil_operatora_pl,
+    )
+
+
 def _wymaga_87t(we: WejscieGotowosciDer) -> bool:
     """87T wymagane wyłącznie przy progu z podstawą i S_n transformatora ≥ próg."""
-    return ocen_prog_87t(we.block_transformer_sn_kva).status_maszynowy == "SPELNIA"
+    return _ocena_87t(we).status_maszynowy == "SPELNIA"
 
 
 def klasa_ct_jest_zabezpieczeniowa(klasa: str) -> bool:
@@ -138,6 +148,11 @@ class WejscieGotowosciDer:
     lvrt_curve_ref: str | None = None
     hvrt_curve_ref: str | None = None
     other_ders_in_station: int = 0
+    #: Próg 87T z profilu NC RfG operatora wskazanego przez `nc_rfg_profile_ref`
+    #: (`NcRfgProfile.prog_87t_sn_transformatora`) i nazwa operatora tego profilu —
+    #: `None` = profil nie wskazany albo bez progu (wymaganie 87T: BRAK_PODSTAWY).
+    prog_87t: LimitKryterium | None = None
+    profil_operatora_pl: str | None = None
 
 
 @dataclass(frozen=True)
@@ -271,7 +286,10 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     nc_rfg: StatusOsi = "ready" if (ma_nc_rfg and ma_lvrt and ma_hvrt) else "blocked"
 
     komplet_wejsc = (
-        sc_3f == "ready" and vdrop != "blocked" and nc_rfg == "ready" and equipment == "ready"
+        sc_3f == "ready"
+        and vdrop != "blocked"
+        and nc_rfg == "ready"
+        and equipment == "ready"
     )
     if komplet_wejsc:
         raport: StatusOsi = "ready"
@@ -313,7 +331,9 @@ def osie_gotowosci_der(we: WejscieGotowosciDer) -> list[OsGotowosci]:
     ]
 
 
-def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[BlokadaOsi]:
+def _blokady_osi(
+    os: str, we: WejscieGotowosciDer, status: StatusOsi
+) -> list[BlokadaOsi]:
     if status in ("ready", "not_applicable"):
         return []
 
@@ -352,7 +372,9 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
             dodaj("der.nc_rfg.missing", "Brak profilu NC RfG operatora.", "ncrfg")
     elif os == "equipment":
         if we.device_catalog_ref is None:
-            dodaj("der.device_catalog.missing", "Brak katalogu urządzenia.", "inverters")
+            dodaj(
+                "der.device_catalog.missing", "Brak katalogu urządzenia.", "inverters"
+            )
         if (
             we.connection_side == "dedicated_transformer"
             and we.block_transformer_catalog_ref is None
@@ -364,9 +386,13 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
             )
     elif os in ("protection", "protection_selectivity"):
         if we.protection_catalog_ref is None:
-            dodaj("der.protection.missing", "Brak zabezpieczenia z katalogu.", "topology")
+            dodaj(
+                "der.protection.missing", "Brak zabezpieczenia z katalogu.", "topology"
+            )
         if we.ct_catalog_ref is None or we.vt_catalog_ref is None:
-            dodaj("der.ct_vt.missing", "Brak przekładników CT/VT z katalogu.", "topology")
+            dodaj(
+                "der.ct_vt.missing", "Brak przekładników CT/VT z katalogu.", "topology"
+            )
         if we.ct_catalog_ref is not None:
             if we.ct_accuracy_class is None:
                 dodaj(
@@ -392,7 +418,7 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
         ):
             dodaj(
                 "der.ct_87t_dual_core.required",
-                f"{ocen_prog_87t(we.block_transformer_sn_kva).wyjasnienie_pl} "
+                f"{_ocena_87t(we).wyjasnienie_pl} "
                 "Wybierz przekładnik dwurdzeniowy (5P + 0,5 łączony).",
                 "topology",
             )
@@ -410,7 +436,11 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
             )
     elif os == "frt":
         if we.nc_rfg_profile_ref is None:
-            dodaj("der.nc_rfg.missing", "Brak profilu NC RfG (LVRT wymaga operatora).", "ncrfg")
+            dodaj(
+                "der.nc_rfg.missing",
+                "Brak profilu NC RfG (LVRT wymaga operatora).",
+                "ncrfg",
+            )
         if we.lvrt_curve_ref is None:
             dodaj("der.lvrt.missing", "Brak krzywej LVRT z katalogu.", "frt-hvrt")
     elif os == "hvrt":
@@ -528,6 +558,8 @@ def wejscie_z_generatora(
     other_ders_in_station: int = 0,
     ct_accuracy_class: str | None = None,
     ct_application: Literal["protection", "metering", "dual"] | None = None,
+    prog_87t: LimitKryterium | None,
+    profil_operatora_pl: str | None,
 ) -> WejscieGotowosciDer:
     """Znormalizuj generator ENM do wejscia reguly.
 
@@ -543,7 +575,7 @@ def wejscie_z_generatora(
     zmaterializowane = _slownik(generator.get("materialized_params"))
     meta = _slownik(generator.get("meta"))
     zrodla = (zmaterializowane, meta)
-    profile = {**_slownik(meta.get("profiles")), **_slownik(zmaterializowane.get("profiles"))}
+    profile = _profile_generatora(generator)
 
     wariant = generator.get("connection_variant")
     strona = _STRONA_Z_WARIANTU.get(wariant, "nN") if isinstance(wariant, str) else "nN"
@@ -561,7 +593,8 @@ def wejscie_z_generatora(
         # Klucz kanoniczny; zastane nazwy sa przenoszone przy wczytaniu modelu
         # (automigracja), wiec regula nie musi ich znac ani powielac.
         bus_przylaczenia_ref=(
-            _tekst(zrodla, (KLUCZ_PUNKTU_PRZYLACZENIA,)) or (generator.get("bus_ref") or None)
+            _tekst(zrodla, (KLUCZ_PUNKTU_PRZYLACZENIA,))
+            or (generator.get("bus_ref") or None)
         ),
         nominal_power_kw=moc_kw,
         device_catalog_ref=(
@@ -570,15 +603,36 @@ def wejscie_z_generatora(
         block_transformer_catalog_ref=ref_katalogu_transformatora_dedykowanego(
             generator, transformatory
         ),
-        block_transformer_sn_kva=sn_transformatora_dedykowanego_kva(generator, transformatory),
+        block_transformer_sn_kva=sn_transformatora_dedykowanego_kva(
+            generator, transformatory
+        ),
         protection_catalog_ref=_tekst(zrodla, ("protection_catalog_ref",)),
         ct_catalog_ref=_tekst(zrodla, ("ct_catalog_ref",)),
         vt_catalog_ref=_tekst(zrodla, ("vt_catalog_ref",)),
         dynamic_model_ref=_tekst(zrodla, ("dynamic_model_ref",)),
         ct_accuracy_class=ct_accuracy_class,
         ct_application=ct_application,
-        nc_rfg_profile_ref=_tekst((profile,), ("nc_rfg_profile_ref", "nc_rfg", "ncrfg")),
+        nc_rfg_profile_ref=ref_profilu_nc_rfg(generator),
         lvrt_curve_ref=_tekst((profile,), ("lvrt_curve_ref", "lvrt")),
         hvrt_curve_ref=_tekst((profile,), ("hvrt_curve_ref", "hvrt")),
         other_ders_in_station=other_ders_in_station,
+        prog_87t=prog_87t,
+        profil_operatora_pl=profil_operatora_pl,
+    )
+
+
+def _profile_generatora(generator: dict[str, Any]) -> dict[str, Any]:
+    zmaterializowane = _slownik(generator.get("materialized_params"))
+    meta = _slownik(generator.get("meta"))
+    return {
+        **_slownik(meta.get("profiles")),
+        **_slownik(zmaterializowane.get("profiles")),
+    }
+
+
+def ref_profilu_nc_rfg(generator: dict[str, Any]) -> str | None:
+    """Profil NC RfG operatora wskazany przez wytwórcę — JEDEN odczyt dla gotowości i doboru
+    funkcji zabezpieczeniowych (dostawca progu 87T)."""
+    return _tekst(
+        (_profile_generatora(generator),), ("nc_rfg_profile_ref", "nc_rfg", "ncrfg")
     )

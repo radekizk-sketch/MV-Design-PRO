@@ -13,9 +13,35 @@
         "skutek_pl": "Bez napięcia polaryzującego funkcja 67N jest niewykonalna — uzupełnij tor napięciowy albo udokumentuj inne kryterium."
       },
       {
+        "kod": "protection.87t_threshold_no_basis",
+        "opis_pl": "Próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora PSE — Polskie Sieci Elektroenergetyczne (S_n transformatora = 2500 kVA). Wymagania zabezpieczenia różnicowego 87T nie da się ani nałożyć, ani wykluczyć — rozstrzygają warunki przyłączenia operatora.",
+        "skutek_pl": "Rozstrzygnij potrzebę zabezpieczenia różnicowego 87T według warunków przyłączenia operatora i dopisz ją w projekcie zabezpieczeń."
+      },
+      {
         "kod": "protection.osd_requirements_not_modelled",
         "opis_pl": "Model nie niesie wymagań zabezpieczeniowych operatora sieci (warunki przyłączenia). Funkcje wymagane wyłącznie decyzją OSD — w szczególności 78 (kryterium skokowej zmiany wektora) — nie są tu wyprowadzane.",
         "skutek_pl": "Zweryfikuj listę z warunkami przyłączenia; jeśli OSD wymaga funkcji spoza tego zestawu, dopisz ją w projekcie zabezpieczeń."
+      }
+    ],
+    "oceny_progow": [
+      {
+        "kod_funkcji": "87T",
+        "limit": null,
+        "przedmiot_pl": "transformator dedykowany wytwórcy",
+        "status_maszynowy": "BRAK_PODSTAWY",
+        "wartosc": {
+          "jednostka": "kVA",
+          "wartosc": 2500.0
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "próg mocy znamionowej transformatora dla 87T z dokumentem operatora i jednostką redakcyjną"
+          ],
+          "przyczyna_pl": "próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora",
+          "zastrzezenia": [],
+          "zdanie_pl": "Próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora PSE — Polskie Sieci Elektroenergetyczne (S_n transformatora = 2500 kVA). Wymagania zabezpieczenia różnicowego 87T nie da się ani nałożyć, ani wykluczyć — rozstrzygają warunki przyłączenia operatora."
+        },
+        "wyjasnienie_pl": "Próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora PSE — Polskie Sieci Elektroenergetyczne (S_n transformatora = 2500 kVA). Wymagania zabezpieczenia różnicowego 87T nie da się ani nałożyć, ani wykluczyć — rozstrzygają warunki przyłączenia operatora."
       }
     ],
     "wymagane": [

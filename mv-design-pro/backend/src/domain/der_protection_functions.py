@@ -44,20 +44,29 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     etykieta_punktu_neutralnego_pl,
 )
-from werdykt.kontrakt import LimitKryterium, StatusWerdyktu, Wielkosc, WyjasnienieWerdyktu
+from werdykt.kontrakt import (
+    LimitKryterium,
+    StatusWerdyktu,
+    Wielkosc,
+    WyjasnienieWerdyktu,
+)
 
 #: Sposob uziemienia punktu neutralnego — TEN SAM slownik co `GroundingConfig.type`
 #: (W5-A: koniec polskich literalow w kontrakcie); `None` = nieznany w modelu.
 TrybUziemienia: TypeAlias = TypPunktuNeutralnego | None
-ZrodloPraduZerowego = Literal["suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"]
+ZrodloPraduZerowego = Literal[
+    "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
+]
 ZrodloNapieciaZerowego = Literal[
     "otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone", "brak"
 ]
 RodzajDer = Literal["PV", "BESS", "FW"]
 
 #: Próg mocy znamionowej transformatora dedykowanego, od którego wymagane jest zabezpieczenie
-#: różnicowe 87T — REKORD LIMITU z podstawą (dokument, jednostka redakcyjna, stan źródła) albo
-#: ``None``, gdy podstawy nie ma.
+#: różnicowe 87T, ma JEDNEGO dostawcę: profil NC RfG operatora wskazany przez wytwórcę
+#: (`NcRfgProfile.prog_87t_sn_transformatora` — rekord limitu z podstawą albo ``None``).
+#: Moduł nie niesie własnej stałej: wołający podaje próg z profilu, a brak profilu albo progu
+#: daje BRAK_PODSTAWY z wyjaśnieniem.
 #:
 #: POMIAR (karta JEDNA-SCIEZKA-EDYCJI cz. 4). Dawna stała 1600 kW porównywała z progiem MOC
 #: ŹRÓDŁA (błąd podmiotu — kryterium dotyczy transformatora, którego zabezpieczenie oceniamy)
@@ -65,16 +74,19 @@ RodzajDer = Literal["PV", "BESS", "FW"]
 #: z charakterystyką stabilizowaną i NIE określa mocy transformatora, od której 87T jest
 #: wymagane. Przeszukane źródła progu: profile operatorów NC RfG
 #: (`catalog/profiles/nc_rfg/operatorzy/{enea,energa,pge,pse,tauron}.yaml` i warstwy) — brak
-#: wymagań funkcji zabezpieczeniowych i progu mocy transformatora; `docs/**` — wartość
-#: 1,6 MVA występuje wyłącznie jako opis tej stałej (rejestr konfliktów V12K-246, audyt E13
-#: eng.6), bez dokumentu operatora ani normy; katalog urządzeń zabezpieczeniowych
-#: (`application/analyses/protection/catalog`) — kod 87T tylko jako funkcja urządzenia.
-#: Podstawy nie ma, więc wymaganie 87T ma status BRAK_PODSTAWY z wyjaśnieniem — liczba nie
-#: jest wymyślana ani zostawiana bez źródła.
-PROG_WYMAGANIA_87T: LimitKryterium | None = None
+#: wymagań funkcji zabezpieczeniowych i progu mocy transformatora (każdy profil ma jawne
+#: `prog_87t_sn_transformatora: null`); `docs/**` — wartość 1,6 MVA występowała wyłącznie
+#: jako opis tej stałej (rejestr konfliktów V12K-246, skorygowany), bez dokumentu operatora
+#: ani normy; katalog urządzeń zabezpieczeniowych (`application/analyses/protection/catalog`)
+#: — kod 87T tylko jako funkcja urządzenia.
 
 #: Wyjaśnienie braku podstawy progu 87T (jedno źródło tekstu dla doboru i gotowości).
-BRAK_PODSTAWY_PROGU_87T_PL = "próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora"
+BRAK_PODSTAWY_PROGU_87T_PL = (
+    "próg wymagania 87T nie ma potwierdzonej podstawy w profilu operatora"
+)
+
+#: Przyczyna braku podstawy, gdy wytwórca nie wskazuje profilu operatora NC RfG.
+BRAK_PROFILU_OPERATORA_87T_PL = "wytwórca nie wskazuje profilu NC RfG operatora"
 
 #: Sieci o MALYM pradzie doziemnym (`UZIEMIENIA_MALOPRADOWE` z rdzenia uziemienia):
 #: kryterium nadpradowe bez kierunkowosci bywa w nich nieskuteczne, bo prad zwarcia
@@ -207,14 +219,18 @@ def _kva(wartosc: float) -> str:
 
 def ocen_prog_87t(
     sn_transformatora_kva: float | None,
-    prog: LimitKryterium | None = PROG_WYMAGANIA_87T,
+    prog: LimitKryterium | None,
+    *,
+    profil_operatora_pl: str | None,
 ) -> OcenaProguWymagania:
     """Wymaganie 87T wobec transformatora dedykowanego — JEDEN predykat doboru i gotowości.
 
     Podmiotem kryterium jest MOC ZNAMIONOWA TRANSFORMATORA (S_n elementu modelu
     wskazanego przez `blocking_transformer_ref`), nie moc źródła: zabezpieczenie różnicowe
-    chroni transformator. Próg przychodzi jako rekord limitu z podstawą; bez podstawy
-    wynik to BRAK_PODSTAWY niezależnie od S_n.
+    chroni transformator. Próg przychodzi z profilu operatora (`profil_operatora_pl` —
+    nazwa operatora profilu wskazanego przez wytwórcę, ``None`` = profilu nie wskazano) jako
+    rekord limitu z podstawą; bez profilu albo bez progu w profilu wynik to BRAK_PODSTAWY
+    niezależnie od S_n.
     """
 
     przedmiot = "transformator dedykowany wytwórcy"
@@ -229,6 +245,18 @@ def ocen_prog_87t(
         else "moc znamionowa transformatora nieznana"
     )
     if prog is None or prog.wartosc is None:
+        if profil_operatora_pl is None:
+            przyczyna = BRAK_PROFILU_OPERATORA_87T_PL
+            zdanie = (
+                f"{BRAK_PODSTAWY_PROGU_87T_PL[0].upper()}{BRAK_PODSTAWY_PROGU_87T_PL[1:]}: "
+                f"{przyczyna} ({opis_sn})."
+            )
+        else:
+            przyczyna = BRAK_PODSTAWY_PROGU_87T_PL
+            zdanie = (
+                f"{BRAK_PODSTAWY_PROGU_87T_PL[0].upper()}{BRAK_PODSTAWY_PROGU_87T_PL[1:]} "
+                f"{profil_operatora_pl} ({opis_sn})."
+            )
         return OcenaProguWymagania(
             kod_funkcji="87T",
             status_maszynowy="BRAK_PODSTAWY",
@@ -237,11 +265,10 @@ def ocen_prog_87t(
             limit=None,
             wyjasnienie=WyjasnienieWerdyktu(
                 zdanie_pl=(
-                    f"{BRAK_PODSTAWY_PROGU_87T_PL[0].upper()}{BRAK_PODSTAWY_PROGU_87T_PL[1:]} "
-                    f"({opis_sn}). Wymagania zabezpieczenia różnicowego 87T nie da się ani "
+                    f"{zdanie} Wymagania zabezpieczenia różnicowego 87T nie da się ani "
                     "nałożyć, ani wykluczyć — rozstrzygają warunki przyłączenia operatora."
                 ),
-                przyczyna_pl=BRAK_PODSTAWY_PROGU_87T_PL,
+                przyczyna_pl=przyczyna,
                 czego_brakuje=(
                     "próg mocy znamionowej transformatora dla 87T z dokumentem operatora "
                     "i jednostką redakcyjną",
@@ -253,7 +280,9 @@ def ocen_prog_87t(
             f"Próg 87T w jednostce {prog.wartosc.jednostka!r} — rekord limitu musi być w kVA."
         )
     zrodlo = prog.podstawa.dokument + (
-        f", {prog.podstawa.jednostka_redakcyjna}" if prog.podstawa.jednostka_redakcyjna else ""
+        f", {prog.podstawa.jednostka_redakcyjna}"
+        if prog.podstawa.jednostka_redakcyjna
+        else ""
     )
     opis_progu = f"próg {_kva(prog.wartosc.wartosc)} ({zrodlo})"
     if sn_transformatora_kva is None:
@@ -300,7 +329,8 @@ def ocen_prog_87t(
 def dobierz_funkcje(
     fakty: FaktyPolaWytworcy,
     *,
-    prog_87t: LimitKryterium | None = PROG_WYMAGANIA_87T,
+    prog_87t: LimitKryterium | None,
+    profil_operatora_pl: str | None,
 ) -> WynikDoboru:
     """Zestaw funkcji wymaganych dla pola wytworcy — wyprowadzony z faktow o obiekcie."""
 
@@ -315,7 +345,8 @@ def dobierz_funkcje(
             kod="50",
             nazwa_pl="Nadprądowe zwłoczne bezzwłoczne (I>>)",
             podstawa_pl=(
-                "Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy " "(IEC 60255-151)."
+                "Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy "
+                "(IEC 60255-151)."
             ),
             chroniony_obiekt_pl=obiekt,
             zrodlo_pomiaru_pl="przekładniki prądowe fazowe pola",
@@ -476,7 +507,10 @@ def dobierz_funkcje(
         )
 
     # --- Anti-islanding (praca wyspowa) ---------------------------------------------
-    if fakty.connection_side in STRONY_ANTI_ISLANDING and fakty.der_kind in ("PV", "FW"):
+    if fakty.connection_side in STRONY_ANTI_ISLANDING and fakty.der_kind in (
+        "PV",
+        "FW",
+    ):
         for kod, nazwa, opis in (
             ("27", "Podnapięciowe", "zanik napięcia sieci"),
             ("59", "Nadnapięciowe", "wzrost napięcia przy pracy wyspowej"),
@@ -488,7 +522,8 @@ def dobierz_funkcje(
                     kod=kod,
                     nazwa_pl=nazwa,
                     podstawa_pl=(
-                        f"Ochrona przed pracą wyspową — {opis} " "(IEEE 1547 / NC RfG Art. 14)."
+                        f"Ochrona przed pracą wyspową — {opis} "
+                        "(IEEE 1547 / NC RfG Art. 14)."
                     ),
                     chroniony_obiekt_pl=obiekt,
                     zrodlo_pomiaru_pl="przekładnik napięciowy pola",
@@ -501,7 +536,11 @@ def dobierz_funkcje(
     # Prog jest rekordem limitu z podstawa; bez podstawy wymaganie zostaje nazwanym
     # brakiem (BRAK_PODSTAWY), a nie cichym „niewymagane" (`ocen_prog_87t`).
     if fakty.connection_side == "dedicated_transformer":
-        ocena_87t = ocen_prog_87t(fakty.sn_transformatora_dedykowanego_kva, prog_87t)
+        ocena_87t = ocen_prog_87t(
+            fakty.sn_transformatora_dedykowanego_kva,
+            prog_87t,
+            profil_operatora_pl=profil_operatora_pl,
+        )
         oceny_progow.append(ocena_87t)
         if ocena_87t.status_maszynowy == "SPELNIA" and ocena_87t.limit is not None:
             wymagane.append(
@@ -558,7 +597,9 @@ def dobierz_funkcje(
         )
     )
 
-    return WynikDoboru(wymagane=wymagane, kwestie_otwarte=otwarte, oceny_progow=oceny_progow)
+    return WynikDoboru(
+        wymagane=wymagane, kwestie_otwarte=otwarte, oceny_progow=oceny_progow
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -607,7 +648,9 @@ def ocen_urzadzenie(
     """
 
     if funkcje_urzadzenia is None:
-        return OcenaUrzadzenia(brakujace_funkcje=list(wymagane_kody), pokrywa_wymagania=False)
+        return OcenaUrzadzenia(
+            brakujace_funkcje=list(wymagane_kody), pokrywa_wymagania=False
+        )
 
     dostepne = set(funkcje_urzadzenia)
     brakujace = [kod for kod in wymagane_kody if kod not in dostepne]

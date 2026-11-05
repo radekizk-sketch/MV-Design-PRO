@@ -1230,9 +1230,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "15ab9e76bc10a9aceb148ca31e38ef7d73b0052c00c485d22b4b14ff44d94856",
+    "hash_sha256": "b1cb6d94ae90150bbf522c996b336e3837e1399b9890598a60fa6374f2ab8f29",
     "name": "Sieć toku pracy dynamiki",
-    "revision": 2,
+    "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],

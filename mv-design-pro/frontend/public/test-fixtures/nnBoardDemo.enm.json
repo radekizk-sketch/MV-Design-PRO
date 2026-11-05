@@ -2597,9 +2597,9 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "fff3bf42edc430786f8278ad2b4b76e1c65e0402d4daa0d3687fa143eff76a74",
+      "hash_sha256": "2ef1aca053b656d2d6c3e9865d4ff4f7d79550f2e8081b1c252cdb6b9ca18cfa",
       "name": "Stacja z rozdzielnicą nN",
-      "revision": 41,
+      "revision": 26,
       "updated_at": "2026-09-25T00:00:00Z"
     },
     "junctions": [],

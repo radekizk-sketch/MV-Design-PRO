@@ -17,6 +17,7 @@ from uuid import UUID
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
 from application.field_read_model import droga_doziemna_pola
+from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from domain.der_protection_functions import (
     FaktyPolaWytworcy,
     dobierz_funkcje,
@@ -26,6 +27,7 @@ from domain.der_readiness import (
     macierz_gotowosci_der,
     osie_gotowosci_der,
     podsumuj_gotowosc,
+    ref_profilu_nc_rfg,
     sn_transformatora_dedykowanego_kva,
     wejscie_z_generatora,
 )
@@ -50,11 +52,14 @@ from network_model.catalog.wartosci_robocze import (
 from network_model.pochodne import kv_na_v, mw_na_kw, v_na_kv
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from werdykt import DanaPrzyjeta
+from werdykt.kontrakt import LimitKryterium
 
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
 
-def _validate_project_case_context(request: Request, project_id: str, case_id: str) -> None:
+def _validate_project_case_context(
+    request: Request, project_id: str, case_id: str
+) -> None:
     """Sprawdz, ze `case_id` istnieje w bazie i nalezy do `project_id`.
 
     CV-1-W: przypadek BEZ wiersza w bazie (`study_case is None`) jest zawsze
@@ -149,8 +154,10 @@ def _fakty_pola_wytworcy(
         # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
         # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
         neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or None,
-        zero_sequence_current_source=sciezka.get("zero_sequence_current_source") or "brak",
-        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source") or "brak",
+        zero_sequence_current_source=sciezka.get("zero_sequence_current_source")
+        or "brak",
+        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source")
+        or "brak",
     )
 
 
@@ -166,7 +173,9 @@ def _sciezka_zwarcia_dla_pola(
     return droga.model_dump(mode="json") if droga is not None else None
 
 
-def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | None, str]:
+def _funkcje_urzadzenia(
+    protection_ref: str | None,
+) -> tuple[tuple[str, ...] | None, str]:
     """Funkcje deklarowane przez wybrane urzadzenie + jego nazwa do komunikatu."""
     if not protection_ref:
         return None, "wybrane urządzenie"
@@ -180,11 +189,36 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
             nazwa = " ".join(czesci_nazwy).strip()
             # Nazwa urządzenia z katalogu (producent + model); identyfikator pozycji
             # katalogu nie jest nazwą (karta #144).
-            return tuple(urzadzenie.functions_supported), nazwa or "urządzenie bez oznaczenia"
+            return (
+                tuple(urzadzenie.functions_supported),
+                nazwa or "urządzenie bez oznaczenia",
+            )
     return None, "urządzenie spoza katalogu"
 
 
-@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
+def _prog_87t_operatora(
+    generator: dict[str, Any]
+) -> tuple[LimitKryterium | None, str | None]:
+    """Próg 87T i nazwa operatora z profilu NC RfG wskazanego przez wytwórcę.
+
+    Jedyny dostawca progu (`NcRfgProfile.prog_87t_sn_transformatora`) dla doboru funkcji
+    zabezpieczeniowych i gotowości DER. Profil niewskazany → ``(None, None)``; profil spoza
+    katalogu operatorów → ``(None, opis)`` — w obu przypadkach wymaganie 87T ma status
+    BRAK_PODSTAWY z wyjaśnieniem, nigdy cichy próg.
+    """
+    ref = ref_profilu_nc_rfg(generator)
+    if ref is None:
+        return None, None
+    try:
+        profil = load_nc_rfg_profile(ref)
+    except FileNotFoundError:
+        return None, f"„{ref}” (profilu nie ma w katalogu operatorów)"
+    return profil.prog_87t_sn_transformatora, profil.operator_name_pl
+
+
+@router.get(
+    "/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions"
+)
 def get_der_protection_functions(
     project_id: str,
     case_id: str,
@@ -222,16 +256,23 @@ def get_der_protection_functions(
 
     sciezka = _sciezka_zwarcia_dla_pola(enm, bay_ref)
     fakty = _fakty_pola_wytworcy(generator, sciezka, dane.get("transformers", []))
-    dobor = dobierz_funkcje(fakty)
+    prog_87t, profil_operatora_pl = _prog_87t_operatora(generator)
+    dobor = dobierz_funkcje(
+        fakty, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl
+    )
 
     protection_ref = None
     for zrodlo in (zmaterializowane, meta):
-        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("protection_catalog_ref"), str):
+        if isinstance(zrodlo, dict) and isinstance(
+            zrodlo.get("protection_catalog_ref"), str
+        ):
             protection_ref = zrodlo["protection_catalog_ref"]
             break
 
     funkcje_urzadzenia, nazwa_urzadzenia = _funkcje_urzadzenia(protection_ref)
-    ocena = ocen_urzadzenie(dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia)
+    ocena = ocen_urzadzenie(
+        dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia
+    )
 
     return {
         "generator_ref": generator_ref,
@@ -293,16 +334,21 @@ def get_der_readiness(
     # Liczba INNYCH wytworcow w tej samej stacji — wejscie osi selektywnosci.
     stacja = generator.get("station_ref")
     inni = sum(
-        1 for g in generatory if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
+        1
+        for g in generatory
+        if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
     )
 
     klasa_ct, zastosowanie_ct = _klasa_przekladnika_z_katalogu(generator)
+    prog_87t, profil_operatora_pl = _prog_87t_operatora(generator)
     wejscie = wejscie_z_generatora(
         generator,
         transformatory=dane.get("transformers", []),
         other_ders_in_station=inni,
         ct_accuracy_class=klasa_ct,
         ct_application=zastosowanie_ct,
+        prog_87t=prog_87t,
+        profil_operatora_pl=profil_operatora_pl,
     )
     macierz = macierz_gotowosci_der(wejscie)
     osie = osie_gotowosci_der(wejscie)
@@ -315,7 +361,9 @@ def get_der_readiness(
     }
 
 
-@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers")
+@router.get(
+    "/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers"
+)
 def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
@@ -366,8 +414,8 @@ def get_der_instrument_transformers(
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
-    ik_ka, ip_ka, run_ref, tolerancja_robocza, dane_galezi, robocze_maszyn = _prady_zwarciowe_szyny(
-        case_id, generator.get("bus_ref")
+    ik_ka, ip_ka, run_ref, tolerancja_robocza, dane_galezi, robocze_maszyn = (
+        _prady_zwarciowe_szyny(case_id, generator.get("bus_ref"))
     )
     # Dane przyjęte Ik''/ip szyny pola: tolerancja sieci nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA),
     # linie 110 kV z wartością roboczą geometrii (karta LINIA-110) i wartości robocze parametrów
@@ -376,7 +424,9 @@ def get_der_instrument_transformers(
         (
             (
                 dana_przyjeta_tolerancji_nn(
-                    miejsce_pl=opis_elementu(dane, generator.get("bus_ref"), "szyna pola")
+                    miejsce_pl=opis_elementu(
+                        dane, generator.get("bus_ref"), "szyna pola"
+                    )
                 ),
             )
             if tolerancja_robocza
@@ -455,7 +505,9 @@ def get_der_instrument_transformers(
         **(
             {
                 "status_danych": "UNVALIDATED_INPUT",
-                "dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete_pola],
+                "dane_przyjete": [
+                    d.model_dump(mode="json") for d in dane_przyjete_pola
+                ],
             }
             if dane_przyjete_pola
             else {}
@@ -481,7 +533,9 @@ def _napiecie_szyny_v(dane: dict[str, Any], bus_ref: Any) -> float | None:
     return None
 
 
-def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) -> float | None:
+def _prad_roboczy_pola_a(
+    generator: dict[str, Any], napiecie_v: float | None
+) -> float | None:
     """Prad roboczy toru — Z SOLWERA, nie z wlasnego wzoru w warstwie API.
 
     `compute_transformer_rated_currents` jest kanonicznym dostawca przeliczenia
@@ -494,7 +548,12 @@ def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) ->
     )
 
     p_mw = generator.get("p_mw")
-    if not isinstance(p_mw, int | float) or p_mw <= 0 or not napiecie_v or napiecie_v <= 0:
+    if (
+        not isinstance(p_mw, int | float)
+        or p_mw <= 0
+        or not napiecie_v
+        or napiecie_v <= 0
+    ):
         return None
     napiecie_kv = v_na_kv(napiecie_v)
     wynik = compute_transformer_rated_currents(
@@ -507,10 +566,13 @@ def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) ->
     return wynik.primary_current_a
 
 
-def _prady_zwarciowe_szyny(
-    case_id: str, bus_ref: Any
-) -> tuple[
-    float | None, float | None, str | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]
+def _prady_zwarciowe_szyny(case_id: str, bus_ref: Any) -> tuple[
+    float | None,
+    float | None,
+    str | None,
+    bool,
+    tuple[DanaPrzyjeta, ...],
+    list[dict[str, Any]],
 ]:
     """Ik'', ip, przebieg, znacznik wartości roboczej tolerancji sieci nN (karta
     TOLERANCJA-NN-WARTOSC-ROBOCZA), dane przyjęte gałęzi z wartością roboczą impedancji

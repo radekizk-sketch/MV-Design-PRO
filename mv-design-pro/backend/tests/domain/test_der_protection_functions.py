@@ -10,13 +10,30 @@ from __future__ import annotations
 import pytest
 from domain.der_protection_functions import (
     BRAK_PODSTAWY_PROGU_87T_PL,
-    PROG_WYMAGANIA_87T,
+    BRAK_PROFILU_OPERATORA_87T_PL,
     FaktyPolaWytworcy,
+    WynikDoboru,
     dobierz_funkcje,
     ocen_prog_87t,
     ocen_urzadzenie,
 )
 from werdykt.kontrakt import LimitKryterium, PodstawaWymagania, Wielkosc
+
+#: Nazwa operatora profilu testowego (dostawca progu 87T w produkcie: profil NC RfG
+#: wskazany przez wytwórcę — `api.generators._prog_87t_operatora`).
+OPERATOR_TESTOWY = "Operator testowy"
+
+
+def _dobierz(
+    f: FaktyPolaWytworcy,
+    *,
+    prog_87t: LimitKryterium | None = None,
+    profil_operatora_pl: str | None = OPERATOR_TESTOWY,
+) -> WynikDoboru:
+    """Dobór z progiem 87T profilu operatora (domyślnie: profil bez progu — stan produktu)."""
+    return dobierz_funkcje(
+        f, prog_87t=prog_87t, profil_operatora_pl=profil_operatora_pl
+    )
 
 
 def fakty(**nadpisania) -> FaktyPolaWytworcy:
@@ -40,13 +57,13 @@ def kody_otwartych(wynik) -> list[str]:
 
 class TestPodstawaPola:
     def test_zwarcia_miedzyfazowe_zawsze_wymagane(self) -> None:
-        kody = dobierz_funkcje(fakty()).kody()
+        kody = _dobierz(fakty()).kody()
         assert "50" in kody and "51" in kody
 
     def test_kazda_funkcja_niesie_UZASADNIENIE_a_nie_sam_kod(self) -> None:
         # Sedno pkt P7: lista kodow bez podstawy, chronionego obiektu i zrodla pomiaru
         # nie jest projektem zabezpieczen.
-        for funkcja in dobierz_funkcje(fakty()).wymagane:
+        for funkcja in _dobierz(fakty()).wymagane:
             assert funkcja.nazwa_pl.strip()
             assert funkcja.podstawa_pl.strip()
             assert funkcja.chroniony_obiekt_pl.strip()
@@ -57,24 +74,28 @@ class TestRodzinaZiemnozwarciowa:
     """50N/51N i 50G/51G to DWA ROZNE tory pomiarowe — nigdy oba naraz."""
 
     def test_suma_pradow_fazowych_daje_rodzine_N(self) -> None:
-        kody = dobierz_funkcje(fakty(zero_sequence_current_source="suma_ct")).kody()
+        kody = _dobierz(fakty(zero_sequence_current_source="suma_ct")).kody()
         assert "50N" in kody and "51N" in kody
         assert "50G" not in kody and "51G" not in kody
 
     def test_przekladnik_ziemnozwarciowy_daje_rodzine_G(self) -> None:
-        kody = dobierz_funkcje(fakty(zero_sequence_current_source="przekladnik_ferrantiego")).kody()
+        kody = _dobierz(
+            fakty(zero_sequence_current_source="przekladnik_ferrantiego")
+        ).kody()
         assert "50G" in kody and "51G" in kody
         assert "50N" not in kody and "51N" not in kody
 
     def test_brak_toru_pradowego_NIE_daje_zadnej_funkcji_ziemnozwarciowej_ale_NAZYWA_powod(
         self,
     ) -> None:
-        wynik = dobierz_funkcje(fakty(zero_sequence_current_source="brak"))
+        wynik = _dobierz(fakty(zero_sequence_current_source="brak"))
         assert not [k for k in wynik.kody() if k.endswith(("N", "G")) and k != "67N"]
         assert "protection.earth_current_source_missing" in kody_otwartych(wynik)
 
-    def test_zrodlo_zewnetrzne_jest_kwestia_otwarta_a_nie_domyslna_rodzina(self) -> None:
-        wynik = dobierz_funkcje(fakty(zero_sequence_current_source="zewnetrzne"))
+    def test_zrodlo_zewnetrzne_jest_kwestia_otwarta_a_nie_domyslna_rodzina(
+        self,
+    ) -> None:
+        wynik = _dobierz(fakty(zero_sequence_current_source="zewnetrzne"))
         assert "50N" not in wynik.kody() and "50G" not in wynik.kody()
         assert "protection.earth_current_source_external" in kody_otwartych(wynik)
 
@@ -82,8 +103,11 @@ class TestRodzinaZiemnozwarciowa:
 class TestKierunkowoscZiemnozwarciowa:
     @pytest.mark.parametrize("tryb", ["isolated", "petersen_coil"])
     def test_siec_maloparadowa_z_torem_napieciowym_wymaga_67N(self, tryb: str) -> None:
-        wynik = dobierz_funkcje(
-            fakty(neutral_grounding_mode=tryb, zero_sequence_voltage_source="otwarty_trojkat_vt")
+        wynik = _dobierz(
+            fakty(
+                neutral_grounding_mode=tryb,
+                zero_sequence_voltage_source="otwarty_trojkat_vt",
+            )
         )
         assert "67N" in wynik.kody()
 
@@ -92,7 +116,7 @@ class TestKierunkowoscZiemnozwarciowa:
         self, tryb: str
     ) -> None:
         # Wymaganie funkcji, ktorej nie da sie zrealizowac, byloby wymaganiem na papierze.
-        wynik = dobierz_funkcje(
+        wynik = _dobierz(
             fakty(neutral_grounding_mode=tryb, zero_sequence_voltage_source="brak")
         )
         assert "67N" not in wynik.kody()
@@ -101,31 +125,35 @@ class TestKierunkowoscZiemnozwarciowa:
     def test_siec_z_rezystorem_nie_wymusza_kierunkowosci(self) -> None:
         # Kontrola odwrotna: prad doziemny jest wtedy wymuszony i mierzalny nadpradowo.
         assert (
-            "67N" not in dobierz_funkcje(fakty(neutral_grounding_mode="resistor_grounded")).kody()
+            "67N"
+            not in _dobierz(fakty(neutral_grounding_mode="resistor_grounded")).kody()
         )
 
     def test_nieznane_uziemienie_jest_kwestia_otwarta(self) -> None:
-        wynik = dobierz_funkcje(fakty(neutral_grounding_mode=None))
+        wynik = _dobierz(fakty(neutral_grounding_mode=None))
         assert "protection.neutral_grounding_unknown" in kody_otwartych(wynik)
 
 
 class TestAntiIslanding:
-    @pytest.mark.parametrize("strona", ["nN", "at_zksn", "at_branch_pole", "at_cable_joint"])
+    @pytest.mark.parametrize(
+        "strona", ["nN", "at_zksn", "at_branch_pole", "at_cable_joint"]
+    )
     def test_pv_po_stronie_nn_i_przylaczen_liniowych(self, strona: str) -> None:
-        kody = dobierz_funkcje(fakty(connection_side=strona)).kody()
+        kody = _dobierz(fakty(connection_side=strona)).kody()
         assert {"27", "59", "81U", "81O"}.issubset(set(kody))
 
     def test_magazyn_energii_nie_dostaje_tego_zestawu_automatycznie(self) -> None:
-        kody = dobierz_funkcje(fakty(der_kind="BESS", connection_side="nN")).kody()
+        kody = _dobierz(fakty(der_kind="BESS", connection_side="nN")).kody()
         assert "81U" not in kody
 
     def test_wytworca_po_stronie_sn_nie_dostaje_zestawu_anty_wyspowego(self) -> None:
-        assert "27" not in dobierz_funkcje(fakty(connection_side="SN")).kody()
+        assert "27" not in _dobierz(fakty(connection_side="SN")).kody()
 
 
-#: Rekord limitu Z PODSTAWĄ — wyłącznie do ćwiczenia gałęzi „podstawa jest" predykatu. W repo
-#: podstawy progu 87T nie ma (`PROG_WYMAGANIA_87T is None`), więc ta wartość NIE jest progiem
-#: produktu; to dana testu (dokument i jednostka redakcyjna są jawnie testowe).
+#: Rekord limitu Z PODSTAWĄ — wyłącznie do ćwiczenia gałęzi „podstawa jest" predykatu. Żaden
+#: profil operatora w repo nie niesie progu 87T (`prog_87t_sn_transformatora: null`, test
+#: `tests/catalog/test_profil_nc_rfg_warstwy.py::TestProgWymogu87T`), więc ta wartość NIE jest
+#: progiem produktu; to dana testu (dokument i jednostka redakcyjna są jawnie testowe).
 PROG_TESTOWY_KVA = 1600.0
 
 
@@ -158,7 +186,7 @@ class TestRoznicoweTransformatora:
     def test_podstawa_jest_rozstrzyga_s_n_transformatora(
         self, sn_kva: float, moc_zrodla_kw: float, oczekiwany: str
     ) -> None:
-        wynik = dobierz_funkcje(
+        wynik = _dobierz(
             fakty(
                 connection_side="dedicated_transformer",
                 nominal_power_kw=moc_zrodla_kw,
@@ -179,12 +207,14 @@ class TestRoznicoweTransformatora:
             assert "Warunki przyłączenia — dokument testowy" in funkcja.podstawa_pl
         assert "protection.87t_threshold_no_basis" not in kody_otwartych(wynik)
 
-    @pytest.mark.parametrize("sn_kva", [PROG_TESTOWY_KVA - 1.0, PROG_TESTOWY_KVA, 2500.0, None])
+    @pytest.mark.parametrize(
+        "sn_kva", [PROG_TESTOWY_KVA - 1.0, PROG_TESTOWY_KVA, 2500.0, None]
+    )
     @pytest.mark.parametrize("moc_zrodla_kw", [400.0, 5000.0])
     def test_podstawa_brak_daje_brak_podstawy_z_wyjasnieniem(
         self, sn_kva: float | None, moc_zrodla_kw: float
     ) -> None:
-        wynik = dobierz_funkcje(
+        wynik = _dobierz(
             fakty(
                 connection_side="dedicated_transformer",
                 nominal_power_kw=moc_zrodla_kw,
@@ -197,17 +227,43 @@ class TestRoznicoweTransformatora:
         assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in ocena.wyjasnienie_pl.lower()
         assert "87T" not in wynik.kody()
         kwestia = next(
-            k for k in wynik.kwestie_otwarte if k.kod == "protection.87t_threshold_no_basis"
+            k
+            for k in wynik.kwestie_otwarte
+            if k.kod == "protection.87t_threshold_no_basis"
         )
         assert BRAK_PODSTAWY_PROGU_87T_PL.lower() in kwestia.opis_pl.lower()
         assert wynik.to_dict()["oceny_progow"][0]["status_maszynowy"] == "BRAK_PODSTAWY"
 
-    def test_produkt_nie_ma_progu_87t_bez_podstawy(self) -> None:
-        # Deklaracja modułu („podstawy nie ma") przypięta: liczba bez źródła nie wraca.
-        assert PROG_WYMAGANIA_87T is None
+    @pytest.mark.parametrize("sn_kva", [PROG_TESTOWY_KVA + 900.0, None])
+    def test_brak_profilu_operatora_nazwany_w_wyjasnieniu(
+        self, sn_kva: float | None
+    ) -> None:
+        wynik = _dobierz(
+            fakty(
+                connection_side="dedicated_transformer",
+                sn_transformatora_dedykowanego_kva=sn_kva,
+            ),
+            profil_operatora_pl=None,
+        )
+        (ocena,) = wynik.oceny_progow
+        assert ocena.status_maszynowy == "BRAK_PODSTAWY"
+        assert ocena.wyjasnienie.przyczyna_pl == BRAK_PROFILU_OPERATORA_87T_PL
+        assert BRAK_PROFILU_OPERATORA_87T_PL in ocena.wyjasnienie_pl
+        assert "87T" not in wynik.kody()
+
+    def test_profil_bez_progu_nazwany_w_wyjasnieniu(self) -> None:
+        wynik = _dobierz(
+            fakty(
+                connection_side="dedicated_transformer",
+                sn_transformatora_dedykowanego_kva=2500.0,
+            )
+        )
+        (ocena,) = wynik.oceny_progow
+        assert ocena.wyjasnienie.przyczyna_pl == BRAK_PODSTAWY_PROGU_87T_PL
+        assert OPERATOR_TESTOWY in ocena.wyjasnienie_pl
 
     def test_podstawa_jest_bez_s_n_w_modelu_nie_oceniono(self) -> None:
-        wynik = dobierz_funkcje(
+        wynik = _dobierz(
             fakty(connection_side="dedicated_transformer", nominal_power_kw=5000.0),
             prog_87t=_prog_z_podstawa(),
         )
@@ -217,8 +273,10 @@ class TestRoznicoweTransformatora:
         assert "87T" not in wynik.kody()
 
     @pytest.mark.parametrize("strona", ["SN", "nN", "at_zksn"])
-    def test_bez_transformatora_dedykowanego_nie_ma_oceny_87t(self, strona: str) -> None:
-        wynik = dobierz_funkcje(
+    def test_bez_transformatora_dedykowanego_nie_ma_oceny_87t(
+        self, strona: str
+    ) -> None:
+        wynik = _dobierz(
             fakty(connection_side=strona, sn_transformatora_dedykowanego_kva=2500.0),
             prog_87t=_prog_z_podstawa(),
         )
@@ -231,14 +289,14 @@ class TestRoznicoweTransformatora:
             podstawa=_prog_z_podstawa().podstawa,
         )
         with pytest.raises(ValueError, match="kVA"):
-            ocen_prog_87t(2500.0, prog)
+            ocen_prog_87t(2500.0, prog, profil_operatora_pl=OPERATOR_TESTOWY)
 
 
 class TestGranicaWiedzy:
     def test_wymagania_operatora_sa_NAZWANE_jako_niemodelowane(self) -> None:
         # Profile NC RfG nie niosa kodow ANSI, wiec funkcje wymagane decyzja OSD (78)
         # nie moga byc stad wyprowadzone — cisza wygladalaby jak „niewymagane".
-        wynik = dobierz_funkcje(fakty())
+        wynik = _dobierz(fakty())
         assert "78" not in wynik.kody()
         assert "protection.osd_requirements_not_modelled" in kody_otwartych(wynik)
 
@@ -255,20 +313,28 @@ class TestOcenaUrzadzenia:
         # Dokladnie przypadek ABB REB670: katalog niesie `87BB`, a walidacja wiazan
         # sprawdzala wylacznie istnienie referencji.
         ocena = ocen_urzadzenie(
-            ["50", "51"], ("87BB", "50BF", "50", "51"), nazwa_urzadzenia="ABB Relion REB670"
+            ["50", "51"],
+            ("87BB", "50BF", "50", "51"),
+            nazwa_urzadzenia="ABB Relion REB670",
         )
         assert ocena.pokrywa_wymagania is True  # funkcje ma…
-        assert ocena.ostrzezenia_przeznaczenia  # …ale przeznaczenie wymaga potwierdzenia
+        assert (
+            ocena.ostrzezenia_przeznaczenia
+        )  # …ale przeznaczenie wymaga potwierdzenia
         assert "87BB" in ocena.ostrzezenia_przeznaczenia[0]
         assert "różnicowe szyn" in ocena.ostrzezenia_przeznaczenia[0]
 
-    def test_brak_funkcji_i_niezgodnosc_przeznaczenia_to_DWA_ROZNE_werdykty(self) -> None:
+    def test_brak_funkcji_i_niezgodnosc_przeznaczenia_to_DWA_ROZNE_werdykty(
+        self,
+    ) -> None:
         ocena = ocen_urzadzenie(["50", "51", "67N"], ("87BB", "50", "51"))
         assert ocena.brakujace_funkcje == ["67N"]
         assert ocena.ostrzezenia_przeznaczenia
         assert ocena.pokrywa_wymagania is False
 
-    def test_aparat_polowy_bez_funkcji_innej_strefy_przechodzi_bez_ostrzezenia(self) -> None:
+    def test_aparat_polowy_bez_funkcji_innej_strefy_przechodzi_bez_ostrzezenia(
+        self,
+    ) -> None:
         ocena = ocen_urzadzenie(["50", "51"], ("50", "51", "51N", "67"))
         assert ocena.ostrzezenia_przeznaczenia == []
         assert ocena.pokrywa_wymagania is True
@@ -283,7 +349,9 @@ class TestTrybUziemieniaZModelu:
     """V12K-246 / W5-A: brak danych o punkcie neutralnym to ``None`` (nie literał „nieznany"
     ani domysł) — jeden słownik `GroundingConfig.type`, brak nazwany wprost."""
 
-    def test_brak_danych_o_neutralnym_daje_nieznany_a_nie_bezposrednie_uziemienie(self) -> None:
+    def test_brak_danych_o_neutralnym_daje_nieznany_a_nie_bezposrednie_uziemienie(
+        self,
+    ) -> None:
         # POMIAR PRZED NAPRAWA: `_resolve_neutral_grounding_mode` zwracalo
         # „bezposrednio_uziemiony", gdy na szynie bylo jakiekolwiek zrodlo, a zaden
         # transformator nie niosl danych o punkcie neutralnym. Obecnosc zrodla NIE MOWI
@@ -301,12 +369,14 @@ class TestTrybUziemieniaZModelu:
             voltage_kv=15.0,
             model="thevenin",
         )
-        assert _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) is None
+        assert (
+            _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) is None
+        )
         assert _resolve_neutral_grounding_mode(sources=[], transformers=[]) is None
 
     def test_nieznany_tryb_przechodzi_w_kwestie_otwarta_doboru(self) -> None:
         # Lancuch: model nie wie -> regula NAZYWA brak zamiast wybrac za projektanta.
-        wynik = dobierz_funkcje(fakty(neutral_grounding_mode=None))
+        wynik = _dobierz(fakty(neutral_grounding_mode=None))
         assert "protection.neutral_grounding_unknown" in kody_otwartych(wynik)
         assert "67N" not in wynik.kody()
 
@@ -320,7 +390,7 @@ class TestEtykietaChronionegoObiektu:
     funkcji zabezpieczeniowej to szum, a nie informacja."""
 
     def test_etykieta_uzywa_nazwy_wytworcy(self) -> None:
-        wynik = dobierz_funkcje(fakty(der_nazwa="Farma PV 1 MW"))
+        wynik = _dobierz(fakty(der_nazwa="Farma PV 1 MW"))
         assert wynik.wymagane
         for funkcja in wynik.wymagane:
             assert "Farma PV 1 MW" in funkcja.chroniony_obiekt_pl
@@ -331,7 +401,7 @@ class TestEtykietaChronionegoObiektu:
         z REFERENCJĄ („uczciwiej pokazać identyfikator"). Rozstrzygnięcie karty: brak
         nazwy to polski opis rodzaju od wołającego (`nazwa_elementu` — „Generator bez
         nazwy"), identyfikator nigdy nie trafia do opisu chronionego obiektu."""
-        wynik = dobierz_funkcje(fakty(der_nazwa="Generator bez nazwy"))
+        wynik = _dobierz(fakty(der_nazwa="Generator bez nazwy"))
         assert wynik.wymagane
         for funkcja in wynik.wymagane:
             assert funkcja.chroniony_obiekt_pl == "pole wytwórcy Generator bez nazwy"

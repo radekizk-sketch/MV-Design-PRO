@@ -942,8 +942,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       der_kind: 'PV',
       name: 'PV z przekładnikiem',
       // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
-      // 2500 kW nie uruchamiała REGUŁY 87T (`dedicated_transformer` ≥ 1,6 MVA,
-      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie odczyt klasy CT).
+      // rekord nie podlegał regule 87T transformatora dedykowanego (próg S_n z profilu
+      // operatora, eng.6), której ten test nie dotyczy (sprawdza wyłącznie odczyt klasy CT).
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
@@ -987,8 +987,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       der_kind: 'PV',
       name: 'PV z przekładnikiem spoza katalogu',
       // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
-      // 2500 kW nie uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
-      // eng.6), której ten test nie dotyczy.
+      // rekord nie podlegał regule 87T transformatora dedykowanego (próg S_n z profilu
+      // operatora, eng.6), której ten test nie dotyczy.
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
@@ -1107,8 +1107,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       der_kind: 'PV',
       name: 'PV do wyboru CT',
       // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
-      // 2500 kW nie uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
-      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie zapis wiązania).
+      // rekord nie podlegał regule 87T transformatora dedykowanego (próg S_n z profilu
+      // operatora, eng.6), której ten test nie dotyczy (sprawdza wyłącznie zapis wiązania).
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
@@ -1185,8 +1185,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       der_kind: 'PV',
       name: 'PV bez przekładnika prądowego',
       // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, ŻEBY moc
-      // 2500 kW NIE uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
-      // eng.6, wymaga CT dual-core) — ten test dowodzi werdyktu KLASY CT
+      // rekord NIE podlegał regule 87T transformatora dedykowanego (próg S_n z profilu
+      // operatora, eng.6, wymaga CT dual-core) — ten test dowodzi werdyktu KLASY CT
       // (5P10, pojedynczy rdzeń zabezpieczeniowy), a `dedicated_transformer`
       // zmieniłby oczekiwany werdykt na 'partial' z INNEGO powodu (87T), łamiąc
       // intencję testu.

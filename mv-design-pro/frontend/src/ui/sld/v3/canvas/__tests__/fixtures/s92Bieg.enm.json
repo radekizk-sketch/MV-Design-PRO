@@ -1590,9 +1590,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "e1efedb62f1e39e9ed8d060cb2195562051f0a1760a32b0722d8efa05d4b56b0",
+    "hash_sha256": "ab21c0dc9b0b6d37b69b24881b6241ab591934963051abecbe278e81ebefd245",
     "name": "Bieg na schemacie",
-    "revision": 6,
+    "revision": 5,
     "updated_at": "2026-09-25T00:00:00Z"
   },
   "junctions": [],

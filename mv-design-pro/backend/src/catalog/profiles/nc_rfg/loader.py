@@ -48,7 +48,15 @@ from typing import Any, Literal, Self, TypeAlias, get_args
 import yaml
 from network_model.pochodne.jednostki import kw_na_mw
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, model_validator
-from werdykt.kontrakt import Jednostka, PodstawaWymagania, RodzajPodstawy, StanZrodla, Tekst
+from werdykt.kontrakt import (
+    Jednostka,
+    LimitKryterium,
+    PodstawaWymagania,
+    RodzajPodstawy,
+    StanZrodla,
+    Tekst,
+    Wielkosc,
+)
 
 PROFILE_DIR = Path(__file__).parent
 _KATALOG_WARSTW = PROFILE_DIR / "warstwy"
@@ -247,7 +255,8 @@ class RejestrCertyfikatow(_Zamrozony):
 
 class WykazWipwc(_Zamrozony):
     """Warstwa WiPWC w profilu: wersje wykazu i wskazanie rejestru (reguła pokrycia żyje w
-    wymaganiach — ``WymaganieRegulacyjne.certyfikat_pokrywa_typy`` i ``pokrycie_zrodlo``)."""
+    wymaganiach — ``WymaganieRegulacyjne.certyfikat_pokrywa_typy`` i ``pokrycie_zrodlo``).
+    """
 
     wersje: tuple[WersjaWykazuWipwc, ...]
     rejestr: RejestrCertyfikatow
@@ -291,7 +300,9 @@ class KlasyfikacjaModulu(_Zamrozony):
     @model_validator(mode="after")
     def _komplet_progow(self) -> Self:
         if set(self.progi_kw) != set(get_args(TypModuluZProgiem)):
-            raise ValueError(f"Klasyfikacja: niekompletne progi {sorted(self.progi_kw)}.")
+            raise ValueError(
+                f"Klasyfikacja: niekompletne progi {sorted(self.progi_kw)}."
+            )
         return self
 
 
@@ -368,7 +379,9 @@ class NcRfgVoltageLevels(_Zamrozony):
         for nazwa, punkty in (("LVRT", self.lvrt), ("HVRT", self.hvrt)):
             czasy = [p.time_s for p in punkty]
             if any(b <= a for a, b in zip(czasy, czasy[1:], strict=False)):
-                raise ValueError(f"Obwiednia {nazwa}: czasy punktów muszą rosnąć ściśle ({czasy}).")
+                raise ValueError(
+                    f"Obwiednia {nazwa}: czasy punktów muszą rosnąć ściśle ({czasy})."
+                )
         return self
 
 
@@ -529,9 +542,12 @@ class WymaganieRegulacyjne(_Zamrozony):
             )
         for test_id in self.testy:
             if not _kanon_testu(test_id):
-                raise ValueError(f"Wymaganie {self.id}: identyfikator testu {test_id!r} spoza Tnn.")
+                raise ValueError(
+                    f"Wymaganie {self.id}: identyfikator testu {test_id!r} spoza Tnn."
+                )
         if not self.prawo_operatora and (
-            self.operator_skorzystal_z_prawa is not None or self.wykonanie_prawa_zrodlo is not None
+            self.operator_skorzystal_z_prawa is not None
+            or self.wykonanie_prawa_zrodlo is not None
         ):
             raise ValueError(
                 f"Wymaganie {self.id}: wykonanie prawa operatora dla wymagania, wobec którego "
@@ -605,6 +621,12 @@ class NcRfgProfile(_Zamrozony):
     wipwc: WykazWipwc
     bank_nastaw: BankNastaw
     wymagania: tuple[WymaganieRegulacyjne, ...]
+    #: Próg mocy znamionowej transformatora dedykowanego wytwórcy, od którego operator wymaga
+    #: zabezpieczenia różnicowego 87T — rekord limitu z podstawą (dokument, jednostka
+    #: redakcyjna, stan źródła) albo ``None``, gdy dokument operatora takiego progu nie podaje
+    #: albo nie jest w repozytorium. Czyta go dobór funkcji zabezpieczeniowych
+    #: (`domain.der_protection_functions.ocen_prog_87t`).
+    prog_87t_sn_transformatora: LimitKryterium | None = None
 
     @model_validator(mode="after")
     def _kolejnosc_warstw(self) -> Self:
@@ -625,7 +647,9 @@ class NcRfgProfile(_Zamrozony):
         """Wymagania wykazywane danym testem procedury (może być ich kilka albo żadne)."""
         return tuple(w for w in self.wymagania if test_id in w.testy)
 
-    def wersja_warstwy(self, warstwa: WarstwaNormatywna, data: date | None) -> DokumentWarstwy:
+    def wersja_warstwy(
+        self, warstwa: WarstwaNormatywna, data: date | None
+    ) -> DokumentWarstwy:
         """Wersja dokumentu warstwy obowiązująca w dniu ``data`` (plan AB O-31).
 
         Profil niesie dziś JEDNĄ wersję na warstwę — funkcja ją zwraca; wersje kolejnych
@@ -636,7 +660,9 @@ class NcRfgProfile(_Zamrozony):
         Warstwa OSD to dokument operatora tego profilu.
         """
         if isinstance(data, datetime):
-            raise TypeError("Resolver wersji warstw przyjmuje datę (date), nie znacznik czasu.")
+            raise TypeError(
+                "Resolver wersji warstw przyjmuje datę (date), nie znacznik czasu."
+            )
         for pozycja in self.warstwy:
             if pozycja.warstwa == warstwa:
                 break
@@ -681,7 +707,9 @@ def _czytaj_warstwe(sciezka: Path, warstwa: WarstwaNormatywna) -> dict[str, Any]
 
 def _dokument(dane: dict[str, Any], plik: str) -> DokumentWarstwy:
     if "dokument" not in dane:
-        raise ValueError(f"Warstwa {plik}: brak sekcji `dokument` (proweniencja jest wymagana).")
+        raise ValueError(
+            f"Warstwa {plik}: brak sekcji `dokument` (proweniencja jest wymagana)."
+        )
     return DokumentWarstwy.model_validate(dane["dokument"])
 
 
@@ -704,8 +732,14 @@ def _zrodlo(
     trafiają do każdej podstawy tej warstwy.
     """
     if status is not None and status not in _KOLEJNOSC_STANOW:
-        raise ValueError(f"Stan źródła {status!r} spoza słownika {list(_KOLEJNOSC_STANOW)}.")
-    stan = dokument.status if status is None else najslabszy_stan([status, dokument.status])
+        raise ValueError(
+            f"Stan źródła {status!r} spoza słownika {list(_KOLEJNOSC_STANOW)}."
+        )
+    stan = (
+        dokument.status
+        if status is None
+        else najslabszy_stan([status, dokument.status])
+    )
     uwaga_braku = None
     if jednostka_redakcyjna is None and stan != "NIEUSTALONE":
         stan = "NIEUSTALONE"
@@ -785,7 +819,11 @@ def _progi_klas(katalog_warstw: Path) -> _ProgiKlas:
     progi = wos["progi_klas"]
     podstawa_granic = _zrodlo_sekcji("NC_RFG", dok_nc, granice)
     a_min = float(granice["a_min_kw"])
-    b_od, c_od, d_od = (float(progi["b_od_kw"]), float(progi["c_od_kw"]), float(progi["d_od_kw"]))
+    b_od, c_od, d_od = (
+        float(progi["b_od_kw"]),
+        float(progi["c_od_kw"]),
+        float(progi["d_od_kw"]),
+    )
     if not a_min < b_od < c_od < d_od:
         raise ValueError(
             f"Progi klas WOS niespójne: wymagane {a_min} < B {b_od} < C {c_od} < D {d_od} kW."
@@ -822,14 +860,19 @@ def _liczba(wartosc: float) -> str:
     return tekst.replace(".", ",")
 
 
-def _klasyfikacja(progi: _ProgiKlas, p_max_kw: float, napiecie_kv: float) -> KlasyfikacjaModulu:
+def _klasyfikacja(
+    progi: _ProgiKlas, p_max_kw: float, napiecie_kv: float
+) -> KlasyfikacjaModulu:
     for nazwa, wartosc in (("p_max_kw", p_max_kw), ("napiecie_kv", napiecie_kv)):
         if not math.isfinite(wartosc) or wartosc < 0.0:
             raise ValueError(
                 f"Klasyfikacja modułu: {nazwa} = {wartosc!r} — wymagana liczba skończona ≥ 0."
             )
     p, u = _liczba(p_max_kw), _liczba(napiecie_kv)
-    a, b, c, d = (_liczba(x) for x in (progi.a_min_kw, progi.b_od_kw, progi.c_od_kw, progi.d_od_kw))
+    a, b, c, d = (
+        _liczba(x)
+        for x in (progi.a_min_kw, progi.b_od_kw, progi.c_od_kw, progi.d_od_kw)
+    )
     u_d = _liczba(progi.napiecie_d_kv)
     przy_napieciu = f"przy napięciu przyłączenia {u} kV < {u_d} kV"
     modul: TypModulu | None
@@ -899,7 +942,8 @@ def klasyfikuj_modul(p_max_kw: float, napiecie_kv: float) -> TypModulu | None:
 
 def prog_minimalny_modulu_kw() -> float:
     """Próg istotności modułu (dolny próg typu A z warstwy NC RfG) — do komunikatów o module
-    poniżej progu istotności art. 5 ust. 2 lit. a (wymagania NC RfG nie mają zastosowania)."""
+    poniżej progu istotności art. 5 ust. 2 lit. a (wymagania NC RfG nie mają zastosowania).
+    """
     return _progi_klas(_KATALOG_WARSTW).a_min_kw
 
 
@@ -955,7 +999,9 @@ def _parametr(
     dok_zastane: DokumentWarstwy,
 ) -> tuple[dict[str, Any], PodstawaWymagania]:
     """Wartość grupy parametrów wg pierwszeństwa OSD > WOS > zastane, z podstawą warstwy."""
-    kandydaci: tuple[tuple[WarstwaNormatywna, dict[str, Any], DokumentWarstwy, str | None], ...] = (
+    kandydaci: tuple[
+        tuple[WarstwaNormatywna, dict[str, Any], DokumentWarstwy, str | None], ...
+    ] = (
         ("OSD", osd.get("nadpisania") or {}, dok_osd, "nadpisanie operatora"),
         ("WOS", wos.get("parametry") or {}, dok_wos, None),
     )
@@ -995,7 +1041,9 @@ def _wykaz_wipwc(wipwc: dict[str, Any], dok_wipwc: DokumentWarstwy) -> WykazWipw
             f"akceptacji wykazu {biezaca.wersja} ({biezaca.akceptowana_od})."
         )
     if not (_KATALOG_ZRODEL / wykaz.rejestr.plik).is_file():
-        raise ValueError(f"Warstwa WiPWC: wskazany rejestr {wykaz.rejestr.plik!r} nie istnieje.")
+        raise ValueError(
+            f"Warstwa WiPWC: wskazany rejestr {wykaz.rejestr.plik!r} nie istnieje."
+        )
     return wykaz
 
 
@@ -1080,7 +1128,9 @@ def _wymagania(
             )
     identyfikatory = [w.id for w in wynik]
     if len(identyfikatory) != len(set(identyfikatory)):
-        raise ValueError(f"Katalog wymagań: zdublowane identyfikatory {identyfikatory}.")
+        raise ValueError(
+            f"Katalog wymagań: zdublowane identyfikatory {identyfikatory}."
+        )
     nieznane_pokrycie = sorted(set(pokrycie_typy) - set(identyfikatory))
     if nieznane_pokrycie:
         raise ValueError(
@@ -1123,7 +1173,9 @@ def _program_badan(
             )
         scenariusze.append(scenariusz)
     return ProgramBadan(
-        status=sekcja["status"], uwagi_pl=sekcja.get("uwagi_pl"), scenariusze=tuple(scenariusze)
+        status=sekcja["status"],
+        uwagi_pl=sekcja.get("uwagi_pl"),
+        scenariusze=tuple(scenariusze),
     )
 
 
@@ -1142,6 +1194,51 @@ def _bank_nastaw(osd: dict[str, Any], dok_osd: DokumentWarstwy) -> BankNastaw:
             )
             for wpis in sekcja.get("pozycje") or []
         ),
+    )
+
+
+#: Przedmiot progu 87T — zakres stosowalności rekordu limitu.
+ZAKRES_PROGU_87T_PL = "moc znamionowa transformatora dedykowanego wytwórcy"
+
+
+def _prog_87t(
+    osd: dict[str, Any], dok_osd: DokumentWarstwy, plik: str
+) -> LimitKryterium | None:
+    """Próg S_n transformatora dla wymogu 87T z warstwy operatora — wyłącznie z podstawą.
+
+    Klucz ``prog_87t_sn_transformatora`` jest obowiązkowy w pliku operatora: ``null`` mówi
+    jawnie, że podstawy progu nie ma (brak klucza to błąd pliku, nie domyślne „brak").
+    Wartość z podstawą ``NIEUSTALONE`` jest odrzucana — liczba bez dokumentu i jednostki
+    redakcyjnej nie jest progiem (ta sama reguła co Bank Nastaw).
+    """
+    if "prog_87t_sn_transformatora" not in osd:
+        raise ValueError(
+            f"Plik {plik}: brak obowiązkowego klucza `prog_87t_sn_transformatora`."
+        )
+    sekcja = osd["prog_87t_sn_transformatora"]
+    if sekcja is None:
+        return None
+    if not isinstance(sekcja, dict):
+        raise ValueError(
+            f"Plik {plik}: `prog_87t_sn_transformatora` musi być słownikiem albo null."
+        )
+    wartosc = sekcja.get("wartosc_kva")
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        raise ValueError(f"Plik {plik}: próg 87T wymaga liczby `wartosc_kva`.")
+    if not math.isfinite(wartosc) or wartosc <= 0.0:
+        raise ValueError(
+            f"Plik {plik}: próg 87T {wartosc!r} kVA musi być dodatni i skończony."
+        )
+    podstawa = _zrodlo_sekcji("OSD", dok_osd, sekcja)
+    if podstawa.status == "NIEUSTALONE":
+        raise ValueError(
+            f"Plik {plik}: próg 87T bez podstawy (stan NIEUSTALONE) — brak podstawy zapisuje "
+            "się jako null, nie jako liczbę."
+        )
+    return LimitKryterium(
+        wartosc=Wielkosc(wartosc=float(wartosc), jednostka="kVA"),
+        podstawa=podstawa,
+        zakres_stosowalnosci_pl=ZAKRES_PROGU_87T_PL,
     )
 
 
@@ -1173,7 +1270,9 @@ def _zloz_profil(
         )
     for sekcja in ("bank_nastaw", "wykonanie_prawa"):
         if sekcja not in osd:
-            raise ValueError(f"Plik {sciezka.name}: brak obowiązkowej sekcji `{sekcja}`.")
+            raise ValueError(
+                f"Plik {sciezka.name}: brak obowiązkowej sekcji `{sekcja}`."
+            )
     warstwy = _warstwy_wspolne(katalog_warstw)
     nc, wos, procedura, wipwc, magazyny, zastane = (
         warstwy["nc_rfg"],
@@ -1205,7 +1304,9 @@ def _zloz_profil(
     ):
         nieznane = sorted(set(grupy) - grupy_znane)
         if nieznane:
-            raise ValueError(f"Profil {operator_id}: {opis} — nieznane grupy {nieznane}.")
+            raise ValueError(
+                f"Profil {operator_id}: {opis} — nieznane grupy {nieznane}."
+            )
 
     def parametr(nazwa: str) -> tuple[dict[str, Any], PodstawaWymagania]:
         return _parametr(nazwa, osd, dok_osd, wos, dok_wos, zastane, dok_zast)
@@ -1232,7 +1333,11 @@ def _zloz_profil(
             f"Profil {operator_id}: próg LFSM-O {prog_lfsm:.3f} Hz poza granicami NC RfG "
             f"[{lfsm_o.prog_hz_min}, {lfsm_o.prog_hz_max}] Hz."
         )
-    if not lfsm_o.statyzm_pct_min <= odpowiedz_f.pf_droop_percent <= lfsm_o.statyzm_pct_max:
+    if (
+        not lfsm_o.statyzm_pct_min
+        <= odpowiedz_f.pf_droop_percent
+        <= lfsm_o.statyzm_pct_max
+    ):
         raise ValueError(
             f"Profil {operator_id}: statyzm LFSM-O {odpowiedz_f.pf_droop_percent} % poza "
             f"granicami NC RfG [{lfsm_o.statyzm_pct_min}, {lfsm_o.statyzm_pct_max}] %."
@@ -1251,7 +1356,8 @@ def _zloz_profil(
         "voltage_level_pl": osd["voltage_level_pl"],
         "last_revision": str(osd["last_revision"]),
         "warstwy": [
-            WarstwaProfilu(warstwa=w, **dokumenty[w].model_dump()) for w in KOLEJNOSC_WARSTW
+            WarstwaProfilu(warstwa=w, **dokumenty[w].model_dump())
+            for w in KOLEJNOSC_WARSTW
         ],
         "czestotliwosc_znamionowa_hz": f_n,
         "module_types": list(_module_types(progi)),
@@ -1295,6 +1401,7 @@ def _zloz_profil(
         "wipwc": _wykaz_wipwc(wipwc, dokumenty["WIPWC"]),
         "bank_nastaw": _bank_nastaw(osd, dok_osd),
         "wymagania": list(wymagania),
+        "prog_87t_sn_transformatora": _prog_87t(osd, dok_osd, sciezka.name),
     }
     wersja = " · ".join(
         [

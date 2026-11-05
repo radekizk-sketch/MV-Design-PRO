@@ -791,6 +791,11 @@ Front podejmuje więc decyzje inżynierskie:
 - wymóg przekładnika klasy zabezpieczeniowej 5P/10P (IEC 61869-2);
 - wymóg funkcji przeciw pracy wyspowej (27/59/81U/81O) dla źródła po stronie nN.
 
+> Stan 2026-11-05 (karta JEDNA-SCIEZKA-EDYCJI): stała `PROG_87T_KW` i reguła frontu 87T usunięte;
+> próg 87T nie miał podstawy (IEC 60255-13 nie określa mocy transformatora) — jedynym dostawcą
+> progu S_n transformatora jest profil NC RfG operatora (`prog_87t_sn_transformatora`, dziś
+> `null` we wszystkich profilach, status BRAK_PODSTAWY). Opis niżej jest stanem sprzed naprawy.
+
 Te same reguły ma backend — `backend/src/domain/der_protection_functions.py` (`PROG_87T_KW = 1600.0`,
 :58; warunek :338). Dwa źródła tej samej reguły, a do tego w obu miejscach brak danej rozstrzyga
 po cichu:

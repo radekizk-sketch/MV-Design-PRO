@@ -19,8 +19,17 @@ from domain.der_readiness import (
     macierz_gotowosci_der,
     osie_gotowosci_der,
     podsumuj_gotowosc,
-    wejscie_z_generatora,
 )
+from domain.der_readiness import (
+    wejscie_z_generatora as _wejscie_z_generatora,
+)
+
+
+def wejscie_z_generatora(generator: dict, **kw) -> WejscieGotowosciDer:
+    """Mapowanie generatora bez progu 87T profilu (stan produktu: żaden profil go nie niesie)."""
+    kw.setdefault("prog_87t", None)
+    kw.setdefault("profil_operatora_pl", None)
+    return _wejscie_z_generatora(generator, **kw)
 
 
 def we(**nadpisania) -> WejscieGotowosciDer:
@@ -98,7 +107,11 @@ class TestZwarciaNiesymetryczne:
         # Iloczyn cech (KLASA NIE INSTANCJA pkt 2): urządzenie kompletne,
         # urządzenie bez katalogu, urządzenie bez PCC — SC1F/SC2FG muszą
         # zgadzać się z SC3F/SC2F w KAŻDYM z tych stanów, nie tylko w jednym.
-        for nadpisania in ({}, {"device_catalog_ref": None}, {"bus_przylaczenia_ref": None}):
+        for nadpisania in (
+            {},
+            {"device_catalog_ref": None},
+            {"bus_przylaczenia_ref": None},
+        ):
             macierz = macierz_gotowosci_der(we(**nadpisania))
             assert macierz["sc_1f"] == macierz["sc_3f"], nadpisania
             assert macierz["sc_2fg"] == macierz["sc_2f"] == macierz["sc_3f"], nadpisania
@@ -171,8 +184,8 @@ class TestTransformatorDedykowany:
     def test_bez_podstawy_progu_87t_nie_ma_blokady_dwurdzeniowej(
         self, sn_kva: float | None, moc_zrodla_kw: float
     ) -> None:
-        # Podmiot: S_n transformatora (nie moc źródła); próg 87T nie ma podstawy w repo
-        # (`der_protection_functions.PROG_WYMAGANIA_87T is None`), więc wymaganie nie
+        # Podmiot: S_n transformatora (nie moc źródła); żaden profil operatora nie niesie
+        # progu 87T z podstawą (`prog_87t_sn_transformatora: null`), więc wymaganie nie
         # powstaje — BRAK_PODSTAWY nazywa dobór funkcji, gotowość nie wymyśla blokady.
         wejscie = we(
             connection_side="dedicated_transformer",
@@ -192,12 +205,10 @@ class TestTransformatorDedykowany:
     )
     def test_z_podstawa_progu_blokada_wynika_z_s_n_transformatora(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         sn_kva: float,
         moc_zrodla_kw: float,
         blokada: bool,
     ) -> None:
-        import domain.der_protection_functions as dobor
         from werdykt.kontrakt import LimitKryterium, PodstawaWymagania, Wielkosc
 
         prog = LimitKryterium(
@@ -210,15 +221,16 @@ class TestTransformatorDedykowany:
                 status="WSKAZANE",
             ),
         )
-        # Domyślny próg predykatu wiązany przy definicji — podmiana przez `__defaults__`
-        # ćwiczy produkcyjną ścieżkę gotowości (`_wymaga_87t` woła predykat bez progu).
-        monkeypatch.setattr(dobor.ocen_prog_87t, "__defaults__", (prog,))
+        # Próg z profilu operatora wytwórcy — ta sama droga co końcówka gotowości
+        # (`api.generators._prog_87t_operatora` → `wejscie_z_generatora(prog_87t=...)`).
+        z_profilu = {"prog_87t": prog, "profil_operatora_pl": "Operator testowy"}
         wejscie = we(
             connection_side="dedicated_transformer",
             nominal_power_kw=moc_zrodla_kw,
             block_transformer_sn_kva=sn_kva,
             block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="protection",
+            **z_profilu,
         )
         kody_ochrony = kody(osie_gotowosci_der(wejscie), "protection")
         assert ("der.ct_87t_dual_core.required" in kody_ochrony) is blokada
@@ -229,8 +241,17 @@ class TestTransformatorDedykowany:
             block_transformer_sn_kva=sn_kva,
             block_transformer_catalog_ref="tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
             ct_application="dual",
+            **z_profilu,
         )
         assert macierz_gotowosci_der(dwurdzeniowy)["protection"] == "ready"
+        if blokada:
+            blok = next(
+                b
+                for o in osie_gotowosci_der(wejscie)
+                for b in o.blockers
+                if b.code == "der.ct_87t_dual_core.required"
+            )
+            assert "Warunki przyłączenia — dokument testowy, pkt 4.2 (test)" in blok.message_pl
 
     def test_s_n_czytane_z_elementu_transformatora_modelu(self) -> None:
         generator = {
@@ -312,7 +333,10 @@ class TestMapowanieZGeneratora:
         wejscie = wejscie_z_generatora(
             generator,
             transformatory=[
-                {"ref_id": "tr-ded-1", "catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy"}
+                {
+                    "ref_id": "tr-ded-1",
+                    "catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11-tier2-suchy",
+                }
             ],
             ct_accuracy_class="5P10",
             ct_application="protection",
@@ -338,10 +362,19 @@ class TestMapowanieZGeneratora:
                 [{"ref_id": "tr-x", "catalog_ref": "tr-x"}],
             ),
             # Wskazanie elementu, którego nie ma w modelu.
-            ({"blocking_transformer_ref": "tr-brak"}, [{"ref_id": "tr-1", "catalog_ref": "x"}]),
+            (
+                {"blocking_transformer_ref": "tr-brak"},
+                [{"ref_id": "tr-1", "catalog_ref": "x"}],
+            ),
             # Element bez pozycji katalogu (wpisany ręcznie) albo z pustą referencją.
-            ({"blocking_transformer_ref": "tr-1"}, [{"ref_id": "tr-1", "catalog_ref": None}]),
-            ({"blocking_transformer_ref": "tr-1"}, [{"ref_id": "tr-1", "catalog_ref": "  "}]),
+            (
+                {"blocking_transformer_ref": "tr-1"},
+                [{"ref_id": "tr-1", "catalog_ref": None}],
+            ),
+            (
+                {"blocking_transformer_ref": "tr-1"},
+                [{"ref_id": "tr-1", "catalog_ref": "  "}],
+            ),
         ],
     )
     def test_pozycja_transformatora_dedykowanego_tylko_z_elementu_modelu(
@@ -355,7 +388,11 @@ class TestMapowanieZGeneratora:
 
     def test_pusty_lancuch_to_BRAK_a_nie_wartosc(self) -> None:
         wejscie = wejscie_z_generatora(
-            {"ref_id": "gen-2", "gen_type": "bess", "materialized_params": {"ct_catalog_ref": "  "}}
+            {
+                "ref_id": "gen-2",
+                "gen_type": "bess",
+                "materialized_params": {"ct_catalog_ref": "  "},
+            }
         )
         assert wejscie.ct_catalog_ref is None
         assert wejscie.der_kind == "BESS"

@@ -1724,9 +1724,9 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "b45d1fa18f6a67bf71971104b7b6fbc162c316e71dfe8db815b784f1ad354713",
+      "hash_sha256": "6450f95888372965f56e79157629f6f8049e9c83a7ccbceb31cf90be2eeef18e",
       "name": "Stacja z pomiarem za ZKSN",
-      "revision": 6,
+      "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"
     },
     "junctions": [],

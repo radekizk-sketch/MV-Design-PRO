@@ -55,13 +55,28 @@ DODATKOWE_CHRONIONE: tuple[str, ...] = (
 #: obejmuje każdy plik w nim, także nowy) + `DODATKOWE_CHRONIONE`. Partia integracji 10:
 #: dawna ręczna lista pomijała rozpływ NR/GS/FD, NC RfG z profilami, FRT/HVRT, WLS, stan
 #: fazowy SN i V12.6 — zmiana tych rdzeni przechodziła bez sankcji.
-WATCHED_PATHS: list[str] = [f"backend/src/{sciezka}" for sciezka in sciezki_b01()] + list(
-    DODATKOWE_CHRONIONE
-)
+WATCHED_PATHS: list[str] = [
+    f"backend/src/{sciezka}" for sciezka in sciezki_b01()
+] + list(DODATKOWE_CHRONIONE)
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
 # (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.
 SANCTIONED_CHANGES = {
+    "backend/src/catalog/profiles/nc_rfg/": (
+        "Zgoda B-01 architekta (karta JEDNA-SCIEZKA-EDYCJI, V12K-246 skorygowany): ADDYTYWNE, "
+        "opcjonalne pole profilu `NcRfgProfile.prog_87t_sn_transformatora` (rekord limitu "
+        "z dokumentem, jednostka redakcyjna i stanem zrodla; liczba bez podstawy odrzucana przy "
+        "wczytaniu) - jedyny dostawca progu S_n transformatora dla wymogu 87T "
+        "(`domain.der_protection_functions.ocen_prog_87t`). We wszystkich pieciu plikach "
+        "operatorow jawne `prog_87t_sn_transformatora: null` (podstawy nie znaleziono; "
+        "IEC 60255-13 nie okresla mocy transformatora). Zero zmian liczb profilu i wynikow; "
+        "zmienia sie tylko `skrot_profilu` (nowy klucz w zrzucie): enea 94119f64518fce06 -> "
+        "10c1e757bd2dcb66, energa 5c3bfa7be8cb2a32 -> 3200d2a0f5c11ee0, pge a809e4c800e9e009 "
+        "-> e227631290775cda, pse 4f02e8569509dfed -> dfe74adc7ba49729, tauron "
+        "6770958c659884c1 -> f94e97704c90e6aa; w atrapach harnessu NC RfG zmieniaja sie "
+        "wylacznie `profile_hash`, ten skrot w `report_pl` i `deterministic_hash`. "
+        "Wpis do usuniecia po scaleniu do main."
+    ),
     "backend/src/network_model/solvers/short_circuit_iec60909.py": (
         "V12K-120: FIX pre-existing (wymiar wektora iniekcji w "
         "_build_branch_contributions_for_inverters dla scalonych wezlow) "
