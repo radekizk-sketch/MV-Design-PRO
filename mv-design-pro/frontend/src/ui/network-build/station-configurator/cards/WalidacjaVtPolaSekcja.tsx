@@ -30,6 +30,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
 import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/audit2-api';
+import { nazwaKatalogowa } from '../../../shared/nazwaKatalogowa';
 
 /** Stacja projektu, której model niesie uziemienie sieci SN pól. */
 export interface KontekstUziemieniaStacji {
@@ -207,7 +208,7 @@ export function WalidacjaVtPolaSekcja({
         >
           <span className="font-mono-eng">{wiersz.bayDesignation}</span>
           {' · '}
-          {wiersz.nazwaTypu ?? 'typ spoza katalogu'}
+          {wiersz.nazwaTypu ? nazwaKatalogowa(wiersz.nazwaTypu) : 'typ spoza katalogu'}
           {wiersz.wspolczynnik !== null && ` · F_v = ${wiersz.wspolczynnik}`}
           {' — '}
           {wiersz.ok === true ? 'zgodny z siecią o tym sposobie uziemienia' : wiersz.komunikat}

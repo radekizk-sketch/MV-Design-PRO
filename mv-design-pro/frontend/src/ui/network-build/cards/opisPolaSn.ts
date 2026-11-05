@@ -29,6 +29,7 @@ import type {
 } from '../../../types/enm';
 import { NAZWA_RODZAJU_APARATU_PL, type RodzajAparatuPolaSn } from '../../field/wyposazeniePola';
 import { kodFunkcjiZabezpieczenia } from '../../shared/etykietyZabezpieczen';
+import { nazwaKatalogowa } from '../../shared/nazwaKatalogowa';
 
 /** Sekcja rozdzielnicy w opisie sprzęgła: szyna sekcji i jej nazwa. */
 export interface SekcjaOpisu {
@@ -235,14 +236,15 @@ export function tekstAparatu(
   nazwyKatalogu: ReadonlyMap<string, string>,
 ): string {
   const rodzaj = NAZWA_RODZAJU_APARATU_PL[aparat.rodzaj];
-  const nazwa = aparat.catalogRef ? nazwyKatalogu.get(aparat.catalogRef) : undefined;
+  const nazwaZKatalogu = aparat.catalogRef ? nazwyKatalogu.get(aparat.catalogRef) : undefined;
+  const nazwa = nazwaZKatalogu ? nazwaKatalogowa(nazwaZKatalogu) : undefined;
   const opis = aparat.catalogRef
     ? nazwa
       ? `Aparat: ${nazwa}`
       : `Aparat: ${rodzaj} z katalogu`
     : `Aparat: ${rodzaj} — wartość robocza bez pozycji katalogowej`;
   const rodzina = pole.switchgear_family_ref ? nazwyKatalogu.get(pole.switchgear_family_ref) : undefined;
-  return rodzina ? `${opis} · rozdzielnica ${rodzina}` : opis;
+  return rodzina ? `${opis} · rozdzielnica ${nazwaKatalogowa(rodzina)}` : opis;
 }
 
 export const TEKST_BRAKU_APARATU = 'Aparat nieprzypisany';

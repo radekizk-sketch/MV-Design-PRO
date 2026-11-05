@@ -99,6 +99,7 @@ import {
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
+import { nazwaKatalogowa } from '../shared/nazwaKatalogowa';
 
 // =============================================================================
 // Types
@@ -179,7 +180,7 @@ function buildBayCatalogSection(
       value: 'Szablon wskazany w modelu nie występuje w katalogu.',
     });
   } else if (szablon) {
-    const nazwa = [szablon.template_name_pl, szablon.template_code].filter(Boolean).join(' · ');
+    const nazwa = nazwaKatalogowa([szablon.template_name_pl, szablon.template_code].filter(Boolean).join(' · '));
     fields.push(
       { key: 'template_name', label: 'Szablon pola producenta', value: nazwa || null, source: 'catalog' },
       { key: 'template_kind', label: 'Rodzaj pola katalogowego', value: bayKindLabelPl(szablon.bay_kind), source: 'catalog' },
@@ -212,7 +213,7 @@ function buildBayCatalogSection(
     const producent = producenci.find((entry) => entry.manufacturer_ref === rodzina.manufacturer_ref);
     const powod = powodBlokadyRodzinyPl(rodzina);
     fields.push(
-      { key: 'family_name', label: 'Rodzina rozdzielnicy', value: rodzina.family_name, source: 'catalog' },
+      { key: 'family_name', label: 'Rodzina rozdzielnicy', value: nazwaKatalogowa(rodzina.family_name), source: 'catalog' },
       { key: 'manufacturer', label: 'Producent', value: producent?.name ?? rodzina.manufacturer_ref, source: 'catalog' },
       {
         key: 'construction',

@@ -42,6 +42,7 @@ import {
   RODZAJE_KATALOGOWE_APARATU,
   RODZAJE_Z_GALEZIA,
   RODZAJE_Z_ROLA_UZIEMIENIA,
+  opisStanuWyposazenia,
   STAN_DANYCH_WYPOSAZENIA_PL,
   UMIEJSCOWIENIA,
   UMIEJSCOWIENIE_PL,
@@ -55,6 +56,7 @@ import {
   type WierszAparatu,
 } from './wyposazeniePola';
 import type { DomainOpResponseV1 } from '../../types/enm';
+import { nazwaKatalogowa } from '../shared/nazwaKatalogowa';
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
@@ -211,7 +213,12 @@ export function EdytorWyposazeniaPola({
         Wyposażenie pola (aparaty pierwotne)
       </h3>
       <p data-testid="wyposazenie-pola-stan" data-stan={stanDanych ?? ''} className="mt-1 text-scada-text">
-        {stanDanych ? STAN_DANYCH_WYPOSAZENIA_PL[stanDanych] : 'Stan danych wyposażenia nieznany — brak modelu odczytu pola.'}
+        {stanDanych
+          ? opisStanuWyposazenia(
+              stanDanych,
+              lacznikiPola.map((l) => l.name || 'łącznik bez nazwy'),
+            )
+          : 'Stan danych wyposażenia nieznany — brak modelu odczytu pola.'}
       </p>
       <ListaDanychPrzyjetych dane={danePrzyjete} testid="wyposazenie-pola-dane-przyjete" />
       {wynik ? (
@@ -307,7 +314,7 @@ export function EdytorWyposazeniaPola({
                         <option value="">— pozycja katalogowa —</option>
                         {pozycje.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name}
+                            {nazwaKatalogowa(p.name)}
                           </option>
                         ))}
                       </select>
@@ -394,7 +401,7 @@ export function EdytorWyposazeniaPola({
                 </option>
                 {szablonyPola.map((s) => (
                   <option key={s.template_ref} value={s.template_ref}>
-                    {s.template_name_pl ?? s.template_ref}
+                    {s.template_name_pl ? nazwaKatalogowa(s.template_name_pl) : s.template_ref}
                   </option>
                 ))}
               </select>

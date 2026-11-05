@@ -113,8 +113,24 @@ export const UMIEJSCOWIENIA: readonly BayPrimaryPlacement[] = [
 export const STAN_DANYCH_WYPOSAZENIA_PL: Readonly<Record<StanDanychWyposazenia, string>> = {
   MODEL: 'Dane z katalogu — każdy aparat ma pozycję katalogową',
   PROPOZYCJA: 'Propozycja — część aparatów to wartości robocze (jakość: szacowana)',
-  BRAK_DANYCH: 'Brak danych — pole nie ma aparatów w modelu',
+  BRAK_DANYCH: 'Lista aparatów pola niezadeklarowana',
 };
+
+/**
+ * Opis stanu wyposażenia na karcie pola. Stan `BRAK_DANYCH` dotyczy WYŁĄCZNIE listy aparatów
+ * pierwotnych pola (`Bay.primary_devices`) — łączniki pola (gałęzie z `Bay.equipment_refs`) mogą
+ * w modelu istnieć i są wtedy nazwane, żeby opis nie twierdził, że pole „nie ma aparatów”.
+ */
+export function opisStanuWyposazenia(
+  stan: StanDanychWyposazenia,
+  nazwyLacznikowPola: readonly string[],
+): string {
+  if (stan !== 'BRAK_DANYCH') return STAN_DANYCH_WYPOSAZENIA_PL[stan];
+  if (nazwyLacznikowPola.length === 0) {
+    return `${STAN_DANYCH_WYPOSAZENIA_PL.BRAK_DANYCH} — pole nie ma też łączników w modelu; zadeklaruj wyposażenie.`;
+  }
+  return `${STAN_DANYCH_WYPOSAZENIA_PL.BRAK_DANYCH} — łączniki pola w modelu: ${nazwyLacznikowPola.join(', ')}; zadeklaruj wyposażenie, aby przypisać aparaty i pozycje katalogowe.`;
+}
 
 /** Wiersz formularza trybu „z katalogu" (puste napisy = pole niewypełnione). */
 export interface WierszAparatu {

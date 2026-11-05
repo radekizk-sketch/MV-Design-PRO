@@ -20,6 +20,7 @@ import { fetchVtTypes } from '../../../catalog/api';
 import type { VTCatalogType } from '../../../catalog/types';
 import { WalidacjaVtPolaSekcja, type KontekstUziemieniaStacji } from './WalidacjaVtPolaSekcja';
 import { WalidacjaWytrzymalosciAparaturySekcja } from './WalidacjaWytrzymalosciAparaturySekcja';
+import { nazwaKatalogowa } from '../../../shared/nazwaKatalogowa';
 
 export interface ProtectionRow {
   readonly relayId: string;
@@ -70,6 +71,10 @@ export function StationConfigProtectionCard(
   const [typyVt, setTypyVt] = useState<readonly VTCatalogType[] | null>(null);
   // Katalog potrzebny do wyboru (edycja) albo do NAZWY wybranego przekładnika (odczyt) — w UI
   // nie ma identyfikatorów katalogu.
+  const nazwaVt = (ref: string): string | undefined => {
+    const typ = (typyVt ?? []).find((v) => v.id === ref);
+    return typ ? nazwaKatalogowa(typ.name) : undefined;
+  };
   const potrzebnyKatalogVt = Boolean(onChangeVt) || relays.some((r) => Boolean(r.vtCatalogRef));
   useEffect(() => {
     if (!potrzebnyKatalogVt) return;
@@ -136,14 +141,14 @@ export function StationConfigProtectionCard(
                         <option value="">bez przekładnika napięciowego</option>
                         {(typyVt ?? []).map((v) => (
                           <option key={v.id} value={v.id}>
-                            {v.name}
+                            {nazwaKatalogowa(v.name)}
                           </option>
                         ))}
                       </select>
                     ) : (
                       <span className="text-[10px] text-scada-muted">
                         {r.vtCatalogRef
-                          ? (typyVt ?? []).find((v) => v.id === r.vtCatalogRef)?.name
+                          ? nazwaVt(r.vtCatalogRef)
                             ?? (typyVt === null ? 'przekładnik z katalogu' : 'pozycja spoza katalogu przekładników')
                           : 'bez przekładnika napięciowego'}
                       </span>

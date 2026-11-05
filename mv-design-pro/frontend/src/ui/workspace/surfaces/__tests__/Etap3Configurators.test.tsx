@@ -496,7 +496,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       otworz('transformer');
       const wybor = screen.getByTestId('gpz-transformer-select-gpz/tr1') as HTMLSelectElement;
       await waitFor(() =>
-        expect(within(wybor).getByRole('option', { name: 'TR 110/15 kV 25 MVA Yd11' })).toBeInTheDocument(),
+        expect(within(wybor).getByRole('option', { name: 'TR 110/15\u00a0kV 25\u00a0MVA Yd11' })).toBeInTheDocument(),
       );
       // Typ 110/20 kV i transformator SN/nN nie należą do listy szyn 15 kV.
       expect(

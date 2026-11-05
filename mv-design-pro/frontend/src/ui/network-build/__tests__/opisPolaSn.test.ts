@@ -140,10 +140,10 @@ describe('aparat główny pola', () => {
   });
 
   it.each([
-    [{ rodzaj: 'CB', catalogRef: 'vd4' }, {}, 'Aparat: ABB VD4 17,5 kV 630 A'],
+    [{ rodzaj: 'CB', catalogRef: 'vd4' }, {}, 'Aparat: ABB VD4 17,5\u00a0kV 630\u00a0A'],
     [{ rodzaj: 'CB', catalogRef: 'nieznany' }, {}, 'Aparat: wyłącznik z katalogu'],
     [{ rodzaj: 'LOAD_SWITCH', catalogRef: null }, {}, 'Aparat: rozłącznik — wartość robocza bez pozycji katalogowej'],
-    [{ rodzaj: 'CB', catalogRef: 'vd4' }, { switchgear_family_ref: 'rodzina' }, 'Aparat: ABB VD4 17,5 kV 630 A · rozdzielnica ABB UniGear ZS1'],
+    [{ rodzaj: 'CB', catalogRef: 'vd4' }, { switchgear_family_ref: 'rodzina' }, 'Aparat: ABB VD4 17,5\u00a0kV 630\u00a0A · rozdzielnica ABB UniGear ZS1'],
   ] as const)('tekst aparatu %o (%o) → %s', (aparat, nadpisz, tekst) => {
     const t = tekstAparatu(aparat, pole('pole-a', 'OUT', nadpisz), nazwy);
     expect(t).toBe(tekst);
@@ -151,12 +151,20 @@ describe('aparat główny pola', () => {
     expect(t).not.toMatch(/nieznany|rodzina\b/);
   });
 
+  it('nazwa aparatu i rodziny: liczba z jednostką połączona spacją twardą (bez łamania „630 / A”)', () => {
+    const t = tekstAparatu({ rodzaj: 'CB', catalogRef: 'vd4' }, pole('pole-a', 'OUT', { switchgear_family_ref: 'rodzina' }), new Map([
+      ['vd4', 'ABB VD4 17.5 kV 630 A'],
+      ['rodzina', 'UniGear 24 kV'],
+    ]));
+    expect(t).toBe('Aparat: ABB VD4 17.5\u00a0kV 630\u00a0A · rozdzielnica UniGear 24\u00a0kV');
+  });
+
   it('pozycja aparatu: nieodczytany = bez akcji, brak = „Aparat nieprzypisany”, wartość robocza = brak z akcją, katalog = bez akcji', () => {
     const fokus = (urz: never[] | null) => pozycjeOpisuPola(model(), P, urz, nazwy).find((p) => p.fokus === 'aparat');
     expect(fokus(null)).toEqual({ fokus: 'aparat', tekst: 'Aparat: model pola w odczycie', brak: false });
     expect(fokus([])).toEqual({ fokus: 'aparat', tekst: 'Aparat nieprzypisany', brak: true });
     expect(fokus([u('CB')])?.brak).toBe(true);
-    expect(fokus([u('CB', 'vd4')])).toEqual({ fokus: 'aparat', tekst: 'Aparat: ABB VD4 17,5 kV 630 A', brak: false });
+    expect(fokus([u('CB', 'vd4')])).toEqual({ fokus: 'aparat', tekst: 'Aparat: ABB VD4 17,5\u00a0kV 630\u00a0A', brak: false });
   });
 });
 

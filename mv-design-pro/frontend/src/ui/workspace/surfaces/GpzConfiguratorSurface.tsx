@@ -17,6 +17,7 @@ import {
   KOMUNIKAT_STOSUNKU_RX_MIN,
   stosunekRxPoprawny,
 } from '../../../ui2/model/stosunekRxZrodla';
+import { bezLamaniaLiczbyIJednostki, nazwaKatalogowa } from '../../shared/nazwaKatalogowa';
 
 /**
  * Konfigurator GPZ 110/SN (ekran E-10) — JEDYNY edytor GPZ (karta KATALOG-PRZEJECIE-PR,
@@ -76,7 +77,7 @@ export function opcjeTransformatorowWn(
 ): OpcjaTransformatoraWn[] {
   return typy
     .filter((typ) => pasmoNapieciowe(typ.voltage_hv_kv) === 'WN')
-    .map((typ) => ({ id: typ.id, label: typ.name, voltageHvKv: typ.voltage_hv_kv, voltageLvKv: typ.voltage_lv_kv }))
+    .map((typ) => ({ id: typ.id, label: nazwaKatalogowa(typ.name), voltageHvKv: typ.voltage_hv_kv, voltageLvKv: typ.voltage_lv_kv }))
     .sort((a, b) => a.label.localeCompare(b.label, 'pl') || a.id.localeCompare(b.id));
 }
 
@@ -139,7 +140,9 @@ function liczba(wartosc: number | null | undefined, brak: string, jednostka = ''
   while (miejsca < maks && Math.abs(wartosc * 10 ** miejsca - Math.round(wartosc * 10 ** miejsca)) > 1e-9) {
     miejsca += 1;
   }
-  return formatPolishValue(wartosc, { decimals: miejsca, ...(jednostka ? { unit: jednostka } : {}) });
+  return bezLamaniaLiczbyIJednostki(
+    formatPolishValue(wartosc, { decimals: miejsca, ...(jednostka ? { unit: jednostka } : {}) }),
+  );
 }
 
 /** Wiersz danych sieci zasilającej: pole źródła, etykieta, jednostka, reguła poprawności. */
@@ -520,7 +523,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     const wartosc = transformator.catalog_ref ?? '';
                     const opcjeZWartoscia =
                       wartosc && !opcje.some((opcja) => opcja.id === wartosc)
-                        ? [...opcje, { id: wartosc, label: `${wartosc} (spoza listy 110/SN)`, voltageHvKv: transformator.uhv_kv, voltageLvKv: transformator.ulv_kv }]
+                        ? [...opcje, { id: wartosc, label: 'pozycja katalogu spoza listy 110/SN', voltageHvKv: transformator.uhv_kv, voltageLvKv: transformator.ulv_kv }]
                         : opcje;
                     return (
                       <tr

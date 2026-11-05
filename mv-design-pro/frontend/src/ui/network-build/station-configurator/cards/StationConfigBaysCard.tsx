@@ -13,6 +13,7 @@
 
 import type { HvFuseItem } from '../../station-der/audit2-api';
 import { fieldRoleLabelPl } from '../../../sld/v2/station-rozdzielnia/contract';
+import { nazwaKatalogowa } from '../../../shared/nazwaKatalogowa';
 
 export interface StationConfigBayRow {
   readonly bayId: string;
@@ -120,7 +121,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                   ) : b.hvFuseCatalogRef ? (() => {
                     const fuse = hvFuses.find((f) => f.id === b.hvFuseCatalogRef);
                     return fuse ? (
-                      <span className="flex flex-col" title={fuse.label_pl}>
+                      <span className="flex flex-col" title={nazwaKatalogowa(fuse.label_pl)}>
                         <span className="font-mono text-scada-text">
                           {fuse.nominal_voltage_kv}kV/{fuse.nominal_current_a}A · {fuse.class.replace('_', '-')}
                         </span>

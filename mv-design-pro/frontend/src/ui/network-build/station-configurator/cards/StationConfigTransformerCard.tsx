@@ -15,6 +15,7 @@ import {
   selectTapChangersForTransformer,
 } from '../../station-der/catalogs';
 import type { TapChangerItem } from '../../station-der/audit2-api';
+import { bezLamaniaLiczbyIJednostki, nazwaKatalogowa } from '../../../shared/nazwaKatalogowa';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
@@ -97,7 +98,9 @@ function selectTapChangersForTransformerByVoltage(
 
 function optionLabel(option: StationTransformerCatalogOption): string {
   const kva = Math.round(option.ratedPowerMva * 1000).toLocaleString('pl-PL');
-  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, uk ${option.ukPercent}%`;
+  return bezLamaniaLiczbyIJednostki(
+    `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, uk ${option.ukPercent}%`,
+  );
 }
 
 export function StationConfigTransformerCard(
@@ -195,7 +198,7 @@ export function StationConfigTransformerCard(
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
                     {tr.catalogRef ? (
                       <span className="rounded border border-status-ok/40 bg-emerald-950/30 px-2 py-1 text-status-ok">
-                        katalog: {selectedCatalog?.name ?? tr.catalogRef}
+                        katalog: {selectedCatalog ? nazwaKatalogowa(selectedCatalog.name) : 'pozycja spoza listy katalogu'}
                       </span>
                     ) : recommendedCatalog ? (
                       <button
@@ -204,7 +207,7 @@ export function StationConfigTransformerCard(
                         onClick={() => onChange?.(tr.transformerId, { catalogRef: recommendedCatalog.id })}
                         className="rounded border border-sygnal-ok px-2 py-1 font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo"
                       >
-                        Zastosuj rekomendację: {recommendedCatalog.name}
+                        Zastosuj rekomendację: {nazwaKatalogowa(recommendedCatalog.name)}
                       </button>
                     ) : null}
                     {selectedCatalog && !selectedCatalog.adequatePower && (
@@ -320,7 +323,7 @@ export function StationConfigTransformerCard(
                   <option value="">— wybierz z katalogu —</option>
                   {selectTapChangersForTransformerByVoltage(tapChangers, tr.uhvKv, tr.ulvKv).map((tc) => (
                     <option key={tc.id} value={tc.id}>
-                      {tc.label_pl}
+                      {nazwaKatalogowa(tc.label_pl)}
                     </option>
                   ))}
                 </select>

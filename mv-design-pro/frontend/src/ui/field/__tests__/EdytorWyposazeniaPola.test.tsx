@@ -325,3 +325,46 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
     expect(await screen.findByTestId('wyposazenie-pola-blad-katalogu')).toHaveTextContent('Katalog niedostępny');
   });
 });
+
+describe('EdytorWyposazeniaPola — opis stanu wyposażenia × łączniki pola w modelu', () => {
+  // Stan BRAK_DANYCH dotyczy listy aparatów pola (`primary_devices`), nie łączników modelu:
+  // opis nie może twierdzić „pole nie ma aparatów”, gdy w modelu stoi wyłącznik tego pola.
+  const przypadki: Array<['MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH', boolean]> = [];
+  for (const stan of ['MODEL', 'PROPOZYCJA', 'BRAK_DANYCH'] as const) {
+    for (const zLacznikami of [true, false]) przypadki.push([stan, zLacznikami]);
+  }
+  it.each(przypadki)('stan %s × łączniki pola w modelu: %s', (stan, zLacznikami) => {
+    const bay = pole({
+      ref_id: 'pole-opis',
+      bay_role: 'OUT',
+      bus_ref: 'szyna-sn',
+      equipment_refs: zLacznikami ? ['q1', 'kab'] : ['kab'],
+      primary_devices: [],
+    });
+    render(
+      <EdytorWyposazeniaPola
+        bay={bay}
+        snapshot={MIGAWKA}
+        stanDanych={stan}
+        danePrzyjete={[]}
+        activeCaseId="case-1"
+        executeDomainOperation={vi.fn() as never}
+      />,
+    );
+    const tekst = screen.getByTestId('wyposazenie-pola-stan').textContent ?? '';
+    expect(tekst).not.toMatch(/^Brak danych/);
+    expect(tekst).not.toContain('pole nie ma aparatów');
+    if (stan !== 'BRAK_DANYCH') {
+      expect(tekst).not.toContain('niezadeklarowana');
+      return;
+    }
+    expect(tekst).toContain('Lista aparatów pola niezadeklarowana');
+    expect(tekst).toContain('zadeklaruj wyposażenie');
+    if (zLacznikami) {
+      expect(tekst).toContain('łączniki pola w modelu: Q1');
+      expect(tekst).not.toContain('Kabel');
+    } else {
+      expect(tekst).toContain('pole nie ma też łączników w modelu');
+    }
+  });
+});

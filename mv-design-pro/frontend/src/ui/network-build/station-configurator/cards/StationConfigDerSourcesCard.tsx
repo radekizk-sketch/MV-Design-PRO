@@ -18,6 +18,7 @@ import {
   type NcRfgOperatorItem,
   type StationDerConnection,
 } from '../../station-der';
+import { bezLamaniaLiczbyIJednostki } from '../../../shared/nazwaKatalogowa';
 
 export type AddDerKindRequest = 'PV' | 'BESS' | 'FW';
 
@@ -100,11 +101,13 @@ function buildRow(
     der.catalogs.block_transformer_catalog_ref,
   );
   const blockTransformerPl = blockTransformer
-    ? `TR blokowy ${blockTransformer.sn_kva.toLocaleString('pl-PL')} kVA ${blockTransformer.vector_group}`
+    ? bezLamaniaLiczbyIJednostki(
+        `TR blokowy ${blockTransformer.sn_kva.toLocaleString('pl-PL')} kVA ${blockTransformer.vector_group}`,
+      )
     : null;
-  const voltagePl = blockTransformer
+  const voltagePl = bezLamaniaLiczbyIJednostki(blockTransformer
     ? `${blockTransformer.hv_kv.toLocaleString('pl-PL')}/${blockTransformer.lv_kv.toLocaleString('pl-PL')} kV`
-    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : 'napięcie przyłączenia nieustalone w modelu';
+    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : 'napięcie przyłączenia nieustalone w modelu');
   return {
     der,
     connectionSidePl: getConnectionSideLabelPl(der.connection_side),
