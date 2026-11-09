@@ -37,3 +37,15 @@ jobs:
         run: uv tool install "graphifyy==0.9.104"
       - name: Graphify local code-only and three smoke probes
         run: bash mv-design-pro/scripts/graphify_local.sh
+      - name: Archive interactive graph for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphify-local-graph
+          path: |
+            graphify-out/graph.html
+            graphify-out/GRAPH_REPORT.md
+            mv-design-pro/graphify-out/graph.html
+            mv-design-pro/graphify-out/GRAPH_REPORT.md
+          if-no-files-found: warn
+          retention-days: 3
