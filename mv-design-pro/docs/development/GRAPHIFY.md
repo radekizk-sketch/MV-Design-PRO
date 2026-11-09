@@ -21,15 +21,15 @@ bash mv-design-pro/scripts/graphify_local.sh
 ```
 
 Skrypt analizuje **tylko kod** katalogu `mv-design-pro/`, z `--code-only`
-i `--backend none`. Wymusza `GRAPHIFY_BACKEND=none` nawet przy obecności
+oraz `GRAPHIFY_BACKEND=none` nawet przy obecności
 kluczy API w powłoce. Dane dokumentacji, PDF-y, obrazy i schematy nie trafiają
 do etapu semantycznego LLM. Nie używaj trybu Cloud ani opcji `--deep`,
 `--backend claude` i automatycznego dołączania dokumentów bez osobnej decyzji.
 Komunikaty zapytań nie są zapisywane przez Graphify
 (`GRAPHIFY_QUERY_LOG_DISABLE=1` w skrypcie).
 
-Oczekiwane lokalne pliki: `graphify-out/graph.json`,
-`graphify-out/GRAPH_REPORT.md`, `graphify-out/graph.html`.
+Oczekiwane lokalne pliki: `mv-design-pro/graphify-out/graph.json`,
+`mv-design-pro/graphify-out/GRAPH_REPORT.md`, `mv-design-pro/graphify-out/graph.html`.
 Artefakty są ignorowane przez Git; nie należy ich dodawać do PR.
 Jeśli Graphify zapisze je pod `mv-design-pro/graphify-out/`, ten katalog
 również jest ignorowany.
