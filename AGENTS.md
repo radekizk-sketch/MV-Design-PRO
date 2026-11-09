@@ -233,3 +233,12 @@ Stop implementation and ask for architectural review when:
 - Preserve unrelated user changes.
 - Prefer small, focused commits and PRs.
 - Branch naming in this environment should use `codex/` unless the user asks otherwise.
+
+## Graphify — opcjonalna orientacja w kodzie
+
+Przy złożonych zmianach, jeśli istnieje **aktualny** lokalny `graphify-out/graph.json`,
+można rozpocząć od `graphify query`, `graphify explain` lub `graphify path`.
+Zawsze potwierdzaj wyniki w kodzie, dokumentach kanonicznych i testach; graf
+nie zastępuje reguł projektu ani `rg`. Brak grafu nie blokuje pracy agenta.
+Analiza wyłącznie lokalna i kodowa, bez Graphify Cloud, usług LLM i `--strict`.
+Procedura: `mv-design-pro/docs/development/GRAPHIFY.md`.
