@@ -1118,3 +1118,13 @@ bramki bezpieczeństwa) albo gdy hierarchia nie rozstrzyga — wtedy pytasz wła
 | Check docs guard | `cd mv-design-pro && python scripts/docs_guard.py` |
 | Start dev servers | `cd mv-design-pro && docker-compose up -d` |
 | Build frontend | `cd mv-design-pro/frontend && npm run build` |
+
+## Graphify — pomocnicza mapa zależności (lokalnie)
+
+Gdy istnieje aktualny `graphify-out/graph.json`, przed zmianami przekrojowymi
+wykorzystaj `graphify query` / `graphify explain` / `graphify path` do
+orientacji w modułach. Wszystkie wnioski zweryfikuj w kodzie i kanonicznych
+kontraktach; wyniki grafu nie stanowią dowodu poprawności modelu ani fizyki.
+Nie wymagaj grafu, gdy go nie ma lub jest nieaktualny. Nie blokuj istniejących
+narzędzi przeszukiwania. Domyślnie wyłącznie lokalny AST, bez LLM, Cloud,
+hooków blokujących i `--strict`. Instrukcja: `mv-design-pro/docs/development/GRAPHIFY.md`.
