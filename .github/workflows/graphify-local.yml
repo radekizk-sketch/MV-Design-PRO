@@ -1,0 +1,39 @@
+name: Graphify local AST smoke
+
+on:
+  pull_request:
+    paths:
+      - ".graphifyrc"
+      - ".gitignore"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "mv-design-pro/scripts/graphify_local.sh"
+      - "mv-design-pro/scripts/graphify_smoke.py"
+      - "mv-design-pro/docs/development/GRAPHIFY.md"
+      - ".github/workflows/graphify-local.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  graphify-local:
+    name: Graphify — lokalny AST i trzy sondy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRAPHIFY_BACKEND: none
+      GRAPHIFY_QUERY_LOG_DISABLE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install pinned Graphify CLI
+        run: uv tool install "graphifyy==0.9.104"
+      - name: Graphify local code-only and three smoke probes
+        run: bash mv-design-pro/scripts/graphify_local.sh
