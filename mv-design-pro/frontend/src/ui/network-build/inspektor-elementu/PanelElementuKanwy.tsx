@@ -28,6 +28,7 @@ import { SEKCJE_MENU_SLD, type SldMenuAction } from '../../sld/v2/command/SldCom
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
+import { rodzajObokNazwy } from '../../shared/opisBezPowtorzen';
 import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
 
 const STYL_SEKCJI = {
@@ -322,16 +323,23 @@ export function PanelElementuKanwy({
         .filter((czesc): czesc is string => Boolean(czesc))
         .join(' › ')
     : '';
+  // Nagłówek jak wiersz drzewa projektu: rodzaj obok nazwy tylko wtedy, gdy nazwa go nie niesie
+  // („Pole: Pole odgałęźne 3”, „Stacja odgałęźna: Stacja Odgałęźna” mówiły dwa razy to samo) —
+  // jedna reguła `rodzajObokNazwy` dla drzewa i nagłówka.
+  const nazwaElementu = dane ? karta?.nazwa ?? etykietaElementuKanwy(dane) : '';
+  const rodzajElementu = dane ? rodzajObokNazwy(nazwaElementu, karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')) : undefined;
   return (
     <div data-testid="inspektor-element-kanwy" data-rodzaj={dane?.kind ?? ''} data-element-id={dane?.elementId ?? ''}>
       {dane && (
         <div className="flex flex-col gap-0.5 border-b px-4 py-2" style={STYL_SEKCJI} data-testid="inspektor-element-kontekst">
           <span>
-            <span data-testid="inspektor-element-rodzaj" style={{ color: 'var(--mvd-muted)' }}>
-              {karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}
-            </span>
-            <span style={{ color: 'var(--mvd-muted)' }}>: </span>
-            <span data-testid="inspektor-element-etykieta" className="font-semibold">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
+            {rodzajElementu && (
+              <>
+                <span data-testid="inspektor-element-rodzaj" style={{ color: 'var(--mvd-muted)' }}>{rodzajElementu}</span>
+                <span style={{ color: 'var(--mvd-muted)' }}>: </span>
+              </>
+            )}
+            <span data-testid="inspektor-element-etykieta" className="font-semibold">{nazwaElementu}</span>
           </span>
           {kontekstStacji && <span data-testid="inspektor-element-sciezka" style={{ color: 'var(--mvd-muted)' }}>{kontekstStacji}</span>}
           {dane.globalId && (
@@ -342,7 +350,11 @@ export function PanelElementuKanwy({
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
       {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} onOtworz={stan.otworzAparat} onAkcja={stan.wykonajAkcjeWiersza} />}
       {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
-      {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
+      {/* Pole bez żadnego łącznika w modelu (karta pola „bez aparatu głównego”) nie dostaje sekcji
+       *  stanu — „brak stanu w modelu” czytałoby się jak luka danych aparatu, którego nie ma. */}
+      {dane?.kind === 'apparatus' && (dane.apparatusState || karta?.rodzaj !== 'pole') && (
+        <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />
+      )}
       {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}
       {konfiguracja && (
         <div className="border-b px-4 py-3" style={STYL_SEKCJI}>

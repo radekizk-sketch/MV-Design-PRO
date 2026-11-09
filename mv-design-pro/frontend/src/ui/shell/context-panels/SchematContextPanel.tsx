@@ -25,6 +25,7 @@ import {
   type WorkspaceSurfaceCode,
 } from '../../workspace/types';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
+import { rodzajObokNazwy } from '../../shared/opisBezPowtorzen';
 
 type RowState = 'ok' | 'warn' | 'danger' | 'group';
 
@@ -666,7 +667,10 @@ function buildSection(
       return {
         id,
         label,
-        meta: meta?.(item),
+        // Rodzaj obok nazwy tylko wtedy, gdy nazwa go nie niesie („Stacja Odgałęźna · stacja
+        // odgałęźna” mówiło dwa razy to samo i ucinało oba człony w wąskim panelu) — ta sama
+        // reguła co komórki karty K6 i nagłówek inspektora (`opisBezPowtorzen`).
+        meta: rodzajObokNazwy(label, meta?.(item)),
         state: blockerRefs.has(id) ? 'warn' : 'ok',
         indent: 1,
         target: target(item, label),

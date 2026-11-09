@@ -58,3 +58,15 @@ export function opisBezPowtorzen(argumenty: {
   if (nazwaZaczynaSieOpisem(reszta, rodzaj)) return reszta;
   return `${rodzaj} · ${reszta}`;
 }
+
+/**
+ * Rodzaj pokazywany OBOK nazwy (drzewo projektu, nagłówek inspektora): `null`, gdy nazwa zaczyna
+ * się rodzajem na granicy słowa, bez wielkości liter („Stacja Odgałęźna” przy rodzaju „stacja
+ * odgałęźna”, „Pole odgałęźne 3” przy rodzaju „Pole”) — wtedy rodzaj czytelnik już ma i drugi raz
+ * zabierałby miejsce nazwie. W pozostałych przypadkach rodzaj bez zmian.
+ */
+export function rodzajObokNazwy(nazwa: string | null | undefined, rodzaj: string | null | undefined): string | undefined {
+  const r = (rodzaj ?? '').trim();
+  if (!r) return undefined;
+  return nazwaZaczynaSieOpisem(nazwa, r) ? undefined : r;
+}

@@ -1,0 +1,575 @@
+diff --git a/mv-design-pro/frontend/scripts/sld_v3_acceptance.mjs b/mv-design-pro/frontend/scripts/sld_v3_acceptance.mjs
+index f93f3db07..34219ebab 100644
+--- a/mv-design-pro/frontend/scripts/sld_v3_acceptance.mjs
++++ b/mv-design-pro/frontend/scripts/sld_v3_acceptance.mjs
+@@ -604,7 +604,14 @@ const EXPECTED_STATION_COUNT = 53;
+ // nowymi identyfikatorami (487 ziaren, odwzorowanie 1:1 po pozycji, 0 konfliktów) =
+ // 21576/44352/44352 = fikstura nowa. Ta sama topologia, inna kolejność remisu
+ // `id.localeCompare` (precedens SLD-SUBSTRAT wyżej).
+-const VERTICAL_LENGTH_BASELINE = { 0: 21576, 1: 44352, 2: 44352 };
++// SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): 21576/44352/44352 → 22232/46912/46912 (+656 / +2560
++// / +2560 = 41 / 160 pionów × 16) — ŚWIADOME PODNIESIENIE: korytarz międzystacyjny zszedł
++// z `stripTopY + GRID` na `stripTopY + 3×GRID` (`buildScene.ts` `TRUNK_CORRIDOR_SUBLEVEL`),
++// strefa B4/B5 urosła o te same 2×GRID (`DESCENT_STRIP_HEIGHT` 6 → 8×GRID). Przyczyna (uwaga
++// audytowa właściciela): odejście odgałęzienia (`stripTopY`) i kabel ciągu (korytarz) biegły
++// 8 j.św. od siebie i czytały się jak jeden tor. Czytelność przed minimalizacją pionów
++// (spec §15.1 „ograniczenie MIĘKKIE", precedens F9.10/F10.3).
++const VERTICAL_LENGTH_BASELINE = { 0: 22232, 1: 46912, 2: 46912 };
+ 
+ /**
+  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
+@@ -661,10 +668,14 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
+   // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
+   // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
+   // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
+-  0: { footprint: 32, 'rezerwacja-kanalu': 21248, 'jog-trasy': 88, 'slupek-terminalny': 208 },
++  // SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): „rezerwacja-kanalu" 21248/42048/42048 →
++  // 21904/44592/44592 (piony przez strefę B4/B5 dłuższe o 16, atrybucja przy
++  // `VERTICAL_LENGTH_BASELINE`); L1/L2 „jog-trasy" 160 → 176 (jog kabla GPZ→S01 do korytarza
++  // leżącego 16 niżej). L0 jog bez zmian (L0 nie ma korytarza sub-poziomu — oś szyny).
++  0: { footprint: 32, 'rezerwacja-kanalu': 21904, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
+-  1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+-  2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
++  1: { footprint: 1936, 'rezerwacja-kanalu': 44592, 'jog-trasy': 176, 'slupek-terminalny': 208 },
++  2: { footprint: 1936, 'rezerwacja-kanalu': 44592, 'jog-trasy': 176, 'slupek-terminalny': 208 },
+ };
+ 
+ /**
+@@ -1563,13 +1574,29 @@ for (const lod of LODS) {
+   }
+ 
+   // -- §22.1 (F13.2, D3-3/D3-5): fizyka obrazu — skrzyżowania i kropki -------
++  // SLD-CZYTELNOSC-INSPEKTOR (2026-11-09, uwaga audytowa właściciela): kropka = wyłącznie
++  // realny węzeł MODELU; samo zetknięcie geometrii nie tworzy połączenia. Węzeł T rozcina kabel
++  // tylko wtedy, gdy oba kable mają wspólny węzeł (`kableZeWspolnymWezlem`, `buildScene.ts`);
++  // skrzyżowanie dwóch obwodów bez wspólnego węzła ZOSTAJE skrzyżowaniem z mostkiem półłukowym
++  // (pion przeskakuje poziom). Na fixturze referencyjnej dawne „0 sn×sn" oznaczało 18 kropek
++  // łączących kabel ciągu z odgałęzieniem innego pola za wyłącznikami obu pól (L2).
+   const crossings = interiorCrossings(scene.segments);
+   const snCrossings = crossings.filter((c) => !c.involvesBus);
+   const busCrossGaps = crossingBusGaps(scene.segments);
++  const galezieWgRef = new Map((enm.branches ?? []).map((b) => [b.ref_id, b]));
++  const wezlyKabla = (ref) => {
++    const b = galezieWgRef.get((ref ?? '').replace(/#.*$/, ''));
++    return b ? [b.from_bus_ref, b.to_bus_ref] : null;
++  };
++  const skrzyzowaniaZeWspolnymWezlem = snCrossings.filter((c) => {
++    const h = wezlyKabla(c.hOwnerRef);
++    const v = wezlyKabla(c.vOwnerRef);
++    return !h || !v || h.some((r) => v.includes(r));
++  });
+   check(
+-    'crossing_probe (§22.1, węzeł T, V12K-137): TWARDE ZERO przecięć toru mocy — 0 sn×sn (Rodziny A/B rozcięte węzłem T, styk końcem + kropka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany). Mostek półłukowy dopuszczalny WYŁĄCZNIE dla dowiedzionych nieredukowalnych (na fixturze referencyjnej: brak)',
+-    snCrossings.length === 0 && busCrossGaps.length === 0,
+-    `przecięcia_sn×sn=${snCrossings.length} przecięcia_z_szyną=${busCrossGaps.length}`,
++    'crossing_probe (§22.1 × SLD-CZYTELNOSC-INSPEKTOR): skrzyżowanie toru mocy WYŁĄCZNIE między kablami bez wspólnego węzła modelu (mostek = brak połączenia); kable ze wspólnym węzłem rozcięte węzłem T z kropką; 0 z SZYNĄ (mostek na szynie zakazany)',
++    skrzyzowaniaZeWspolnymWezlem.length === 0 && busCrossGaps.length === 0,
++    `przecięcia_sn×sn=${snCrossings.length} ze_wspólnym_węzłem=${skrzyzowaniaZeWspolnymWezlem.length} przecięcia_z_szyną=${busCrossGaps.length}`,
+   );
+   const dotGaps = junctionDotGaps(scene, SYMBOL_DEFS);
+   check(
+@@ -2764,8 +2791,11 @@ line('=== menu_subject_probe (S9-5): menu zależne od trafionego obiektu ===');
+     for (const akcja of akcjeRejestru.filter((a) => isTrunkContinuationAction(a.id))) {
+       // Aparat: głowica kablowa (jedyny aparat, z którego ciąg w ogóle wychodzi) —
+       // inaczej wcześniejsza bramka rodzaju aparatu zasłoniłaby bramkę startu.
++      // Bramka rodzaju aparatu czyta dziś `aparatWyprowadzaCiag` (rozstrzygnięcie z sekwencji
++      // rysunku pola, nie z nazwy rodzaju) — dawny klucz `apparatusKind` nie istnieje w kontekście
++      // menu, więc sonda mierzyła bramkę rodzaju zamiast bramki startu (FAIL zastany, 2026-11-09).
+       const pozycja = getMenuActions(menuKind, {
+-        apparatusKind: 'cable_head',
++        aparatWyprowadzaCiag: true,
+         trunkStartAvailable: { [akcja.id]: false },
+       })
+         .find((a) => a.id === akcja.id);
+diff --git a/mv-design-pro/frontend/src/ui/sld/shared/__tests__/stanRuchowyAparatuInspektor.test.tsx b/mv-design-pro/frontend/src/ui/sld/shared/__tests__/stanRuchowyAparatuInspektor.test.tsx
+index e548a18e7..5acd438ef 100644
+--- a/mv-design-pro/frontend/src/ui/sld/shared/__tests__/stanRuchowyAparatuInspektor.test.tsx
++++ b/mv-design-pro/frontend/src/ui/sld/shared/__tests__/stanRuchowyAparatuInspektor.test.tsx
+@@ -283,3 +283,26 @@ describe('inspektor — render sekcji stanu bez fabrykacji', () => {
+     });
+   }
+ });
++
++describe('pole wskazane własnym refem — położenie aparatu głównego jak w tabeli pól karty stacji (SLD-CZYTELNOSC-INSPEKTOR)', () => {
++  // Klik w sylwetkę pola wolnego (`bayReserve`) albo w pole z drzewa daje selekcję z refem POLA.
++  // Karta stacji pokazywała wtedy w kolumnie „Stan” „zamknięty” (aparat główny z `equipment_refs`),
++  // a sekcja stanu tego samego pola — „brak stanu w modelu” (pomiar 2026-11-09, sieć kadrów stacji).
++  // Iloczyn: status gałęzi {closed, open, brak} × pole {z gałęzią łączeniową, bez żadnego łącznika}.
++  for (const status of ['closed', 'open', 'brak'] as const) {
++    it(`gałąź aparatu głównego ${status}: ref pola → ten sam stan co ref gałęzi`, () => {
++      const snapshot = snapshotZPolem('brak', { actual_state: 'otwarty' });
++      const galaz = snapshot.branches.find((b) => b.ref_id === 'cb-1') as { status?: string };
++      if (status === 'brak') delete galaz.status;
++      else galaz.status = status;
++      expect(polozenie(snapshot, 'bay-1')).toBe(polozenie(snapshot, 'cb-1'));
++      expect(polozenie(snapshot, 'bay-1')).toBe(status === 'brak' ? 'unknown' : status);
++    });
++  }
++
++  it('pole bez żadnego łącznika w modelu: brak stanu (bez agregatu, bez wartości zastępczej)', () => {
++    const snapshot = snapshotZPolem('brak', { actual_state: 'otwarty' });
++    snapshot.bays = snapshot.bays!.map((b) => (b.ref_id === 'bay-1' ? { ...b, equipment_refs: [] } : b));
++    expect(polozenie(snapshot, 'bay-1')).toBeUndefined();
++  });
++});
+diff --git a/mv-design-pro/frontend/src/ui/sld/shared/daneElementuKanwy.ts b/mv-design-pro/frontend/src/ui/sld/shared/daneElementuKanwy.ts
+index 91d14f2fb..edff3563a 100644
+--- a/mv-design-pro/frontend/src/ui/sld/shared/daneElementuKanwy.ts
++++ b/mv-design-pro/frontend/src/ui/sld/shared/daneElementuKanwy.ts
+@@ -38,6 +38,7 @@ import {
+ import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
+ import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
+ import type { PreviewElementKind } from '../v3/compose/preview';
++import { refAparatuGlownegoPola } from './kartaTechnicznaElementu';
+ import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
+ import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
+ 
+@@ -482,14 +483,21 @@ export function buildDaneElementuStacji(
+     // koloru stanu, więc i inspektor nie przypisuje mu agregatu pola (do karty symbol stosu
+     // z konwencji brał agregat roli — rysunek i inspektor pokazywały stan aparatu, którego
+     // model nie zawiera). Łącznik TORU ciągu (gałąź poza polem stacji) → `status` gałęzi.
++    // Ref samego pola przy polu Z aparatem głównym w modelu (klik w sylwetkę pola wolnego albo
++    // w pole z drzewa) → położenie TEGO aparatu: ten sam wybór co kolumna „Stan” tabeli pól
++    // karty stacji (`refAparatuGlownegoPola`), więc karta pola i karta stacji nie mogą się
++    // rozjechać („brak stanu w modelu” obok „zamknięty” w tabeli — pomiar 2026-11-09).
++    const aparatGlownyPola = poleTrafione && poleTrafione.ref_id === id ? refAparatuGlownegoPola(snapshot, poleTrafione) : null;
+     const polozenie = !poleTrafione
+       ? stanLacznikaToruZModelu(id, galezieWgRef)
+       : poleTrafione.ref_id !== id
+         ? stanLacznikaPolaZModelu(id, poleTrafione, galezieWgRef)
+-        : undefined;
++        : aparatGlownyPola
++          ? stanLacznikaPolaZModelu(aparatGlownyPola, poleTrafione, galezieWgRef)
++          : undefined;
+     let rekord: BaySwitchState | null = null;
+     for (const bay of snapshot.bays ?? []) {
+-      rekord = rekordStanuAparatu(bay, id);
++      rekord = rekordStanuAparatu(bay, aparatGlownyPola ?? id);
+       if (rekord) break;
+     }
+     if (polozenie !== undefined || rekord) {
+diff --git a/mv-design-pro/frontend/src/ui/sld/shared/kartaTechnicznaElementu.ts b/mv-design-pro/frontend/src/ui/sld/shared/kartaTechnicznaElementu.ts
+index e782db573..b340730ff 100644
+--- a/mv-design-pro/frontend/src/ui/sld/shared/kartaTechnicznaElementu.ts
++++ b/mv-design-pro/frontend/src/ui/sld/shared/kartaTechnicznaElementu.ts
+@@ -649,6 +649,16 @@ function identyfikacjaAparatuPola(a: AparatPola, bay: Bay | null): string {
+   return opisBezPowtorzen({ rodzaj: a.rodzajPl, nazwa: publicTechnicalLabel(a.galaz.name, a.rodzajPl), nadrzedne: [nazwaPola(bay)] });
+ }
+ 
++/**
++ * Aparat główny pola z modelu — TEN SAM wybór, który tabela pól karty stacji pokazuje w kolumnie
++ * „Stan” (`aparatGlowny` nad rekordami `primary_devices` i gałęziami `equipment_refs`). Jedno
++ * źródło dla inspektora wskazanego pola (`daneElementuKanwy`): `null`, gdy pole nie ma żadnego
++ * łącznika w modelu (sylwetka „brak danych wyposażenia pola”).
++ */
++export function refAparatuGlownegoPola(model: EnergyNetworkModel, bay: Bay): string | null {
++  return aparatGlowny(aparatyPola(indeks(model), bay))?.ref ?? null;
++}
++
+ function aparatGlowny(aparaty: readonly AparatPola[]): AparatPola | null {
+   let najlepszy: AparatPola | null = null;
+   for (const a of aparaty) {
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/export/__tests__/eksportDokumentu.test.ts b/mv-design-pro/frontend/src/ui/sld/v3/export/__tests__/eksportDokumentu.test.ts
+index adfb97d78..c45e0e97e 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/export/__tests__/eksportDokumentu.test.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/export/__tests__/eksportDokumentu.test.ts
+@@ -221,6 +221,27 @@ describe('S9-6 · konwerter markupu na prymitywy', () => {
+     expect(krzywa.points).toHaveLength(9); // punkt startowy + 8 odcinków
+     expect(parsePathData('M 8 8 q 5 2.5 0 5')).toEqual(parsePathData('M 8 8 q 5 2.5 0 5'));
+   });
++
++  // SLD-CZYTELNOSC-INSPEKTOR: mostek skrzyżowania bez połączenia (`polylinePathWithBridges`,
++  // półłuk `A4,4`) musi przejść do DXF/PDF — do tej karty parser rzucał „nieobsługiwana komenda
++  // ścieżki A", bo każde przecięcie wnętrz zamieniano w węzeł T i łuk nigdy nie trafiał do eksportu.
++  it('parser ścieżek spłaszcza łuk mostka (A) deterministycznie: punkty leżą na okręgu, koniec dokładny, bez skrótu „na wprost”', () => {
++    const d = 'M100,0 L100,20 A4,4 0 0,1 100,28 L100,60';
++    const [pion] = parsePathData(d);
++    expect(pion.points[0]).toEqual({ x: 100, y: 0 });
++    expect(pion.points[pion.points.length - 1]).toEqual({ x: 100, y: 60 });
++    // 8 cięciw łuku między (100,20) i (100,28): środek (100,24), promień 4.
++    const luk = pion.points.slice(2, 10);
++    expect(luk).toHaveLength(8);
++    for (const p of luk) expect(Math.hypot(p.x - 100, p.y - 24)).toBeCloseTo(4, 6);
++    // Zwrot `sweep=1` (pion w dół): łuk po PRAWEJ stronie pionu, żaden punkt nie leży na osi x=100
++    // poza końcem — mostek jest odchyleniem, nie odcinkiem prostym udającym łuk.
++    expect(luk.slice(0, 7).every((p) => p.x > 100)).toBe(true);
++    expect(luk[7]).toEqual({ x: 100, y: 28 });
++    expect(parsePathData(d)).toEqual(parsePathData(d));
++    // Względna postać `a` daje ten sam łuk.
++    expect(parsePathData('M100,0 L100,20 a4,4 0 0,1 0,8 L100,60')).toEqual(pion ? parsePathData(d) : []);
++  });
+ });
+ 
+ describe('S9-6 · DXF: struktura pliku i bramka pustych encji', () => {
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/export/svgPrimitives.ts b/mv-design-pro/frontend/src/ui/sld/v3/export/svgPrimitives.ts
+index b700492bb..eee2bb689 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/export/svgPrimitives.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/export/svgPrimitives.ts
+@@ -196,7 +196,7 @@ function parseDash(raw: string | null): readonly number[] | null {
+ 
+ /** Parser `d` — zwraca listę PODŚCIEŻEK (każda: punkty + czy zamknięta). */
+ export function parsePathData(d: string): readonly { readonly points: readonly ExportPoint[]; readonly closed: boolean }[] {
+-  const tokens = d.match(/[MmLlHhVvZzQqCc]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];
++  const tokens = d.match(/[MmLlHhVvZzQqCcAa]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];
+   const subpaths: { points: ExportPoint[]; closed: boolean }[] = [];
+   let current: { points: ExportPoint[]; closed: boolean } | null = null;
+   let x = 0;
+@@ -222,6 +222,55 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
+       current.points.push({ x, y });
+     }
+   };
++  const flattenArc = (rx: number, ry: number, rotationDeg: number, largeArc: boolean, sweep: boolean, end: ExportPoint): void => {
++    const p0 = { x, y };
++    if (rx === 0 || ry === 0 || (p0.x === end.x && p0.y === end.y)) {
++      // SVG §F.6.2: promień zerowy = odcinek prosty; punkty tożsame = łuk pomijany.
++      if (!(p0.x === end.x && p0.y === end.y)) {
++        x = end.x;
++        y = end.y;
++        push();
++      }
++      return;
++    }
++    const phi = (rotationDeg * Math.PI) / 180;
++    const cosPhi = Math.cos(phi);
++    const sinPhi = Math.sin(phi);
++    const dx2 = (p0.x - end.x) / 2;
++    const dy2 = (p0.y - end.y) / 2;
++    const x1p = cosPhi * dx2 + sinPhi * dy2;
++    const y1p = -sinPhi * dx2 + cosPhi * dy2;
++    // Korekta promieni za małych na połączenie punktów (§F.6.6).
++    const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
++    const kx = lambda > 1 ? rx * Math.sqrt(lambda) : rx;
++    const ky = lambda > 1 ? ry * Math.sqrt(lambda) : ry;
++    const licznik = Math.max(0, kx * kx * ky * ky - kx * kx * y1p * y1p - ky * ky * x1p * x1p);
++    const mianownik = kx * kx * y1p * y1p + ky * ky * x1p * x1p;
++    const wspolczynnik = (largeArc === sweep ? -1 : 1) * Math.sqrt(mianownik === 0 ? 0 : licznik / mianownik);
++    const cxp = (wspolczynnik * kx * y1p) / ky;
++    const cyp = (-wspolczynnik * ky * x1p) / kx;
++    const cx = cosPhi * cxp - sinPhi * cyp + (p0.x + end.x) / 2;
++    const cy = sinPhi * cxp + cosPhi * cyp + (p0.y + end.y) / 2;
++    const kat = (ux: number, uy: number, vx: number, vy: number): number => {
++      const dot = ux * vx + uy * vy;
++      const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
++      const a = Math.acos(Math.max(-1, Math.min(1, len === 0 ? 1 : dot / len)));
++      return ux * vy - uy * vx < 0 ? -a : a;
++    };
++    const theta1 = kat(1, 0, (x1p - cxp) / kx, (y1p - cyp) / ky);
++    let dTheta = kat((x1p - cxp) / kx, (y1p - cyp) / ky, (-x1p - cxp) / kx, (-y1p - cyp) / ky);
++    if (!sweep && dTheta > 0) dTheta -= 2 * Math.PI;
++    else if (sweep && dTheta < 0) dTheta += 2 * Math.PI;
++    for (let step = 1; step <= BEZIER_SEGMENTS; step += 1) {
++      const t = theta1 + (dTheta * step) / BEZIER_SEGMENTS;
++      const px = kx * Math.cos(t);
++      const py = ky * Math.sin(t);
++      x = step === BEZIER_SEGMENTS ? end.x : cosPhi * px - sinPhi * py + cx;
++      y = step === BEZIER_SEGMENTS ? end.y : sinPhi * px + cosPhi * py + cy;
++      push();
++    }
++  };
++
+   const flattenBezier = (control: readonly ExportPoint[], end: ExportPoint): void => {
+     const p0 = { x, y };
+     for (let step = 1; step <= BEZIER_SEGMENTS; step += 1) {
+@@ -245,7 +294,7 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
+ 
+   while (index < tokens.length) {
+     const token = tokens[index];
+-    if (/^[MmLlHhVvZzQqCc]$/.test(token)) {
++    if (/^[MmLlHhVvZzQqCcAa]$/.test(token)) {
+       command = token;
+       index += 1;
+     } else if (command === '') {
+@@ -318,6 +367,25 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
+         flattenBezier([c1, c2], end);
+         break;
+       }
++      case 'A':
++      case 'a': {
++        // Łuk eliptyczny (SVG 1.1 §F.6.5, parametryzacja przez środek) — spłaszczany na
++        // `BEZIER_SEGMENTS` cięciw jak Q/C. Na torze mocy rysuje go WYŁĄCZNIE mostek
++        // skrzyżowania bez połączenia (`scene/crossings.ts` `polylinePathWithBridges`,
++        // półłuk o promieniu GRID/2); do karty SLD-CZYTELNOSC-INSPEKTOR eksport nigdy go nie
++        // spotykał, bo każde przecięcie wnętrz zamieniano w węzeł T — teraz skrzyżowanie dwóch
++        // kabli bez wspólnego węzła zostaje skrzyżowaniem, więc DXF/PDF muszą nieść mostek.
++        const rxRaw = nextNumber();
++        const ryRaw = nextNumber();
++        const rotationDeg = nextNumber();
++        const largeArc = nextNumber() !== 0;
++        const sweep = nextNumber() !== 0;
++        const ex = nextNumber();
++        const ey = nextNumber();
++        const end = command === 'A' ? { x: ex, y: ey } : { x: x + ex, y: y + ey };
++        flattenArc(Math.abs(rxRaw), Math.abs(ryRaw), rotationDeg, largeArc, sweep, end);
++        break;
++      }
+       case 'Z':
+       case 'z': {
+         if (current) current.closed = true;
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/layout/bands.ts b/mv-design-pro/frontend/src/ui/sld/v3/layout/bands.ts
+index 0eafbe1eb..ccdf649ed 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/layout/bands.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/layout/bands.ts
+@@ -114,7 +114,12 @@ export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
+ // F9.3/F6e -- kolizje z treścią pasma nazw); (c) zmniejszenie akcentu do
+ // 16px -- łamie literę §14.4 („WYRAŹNIE większy węzeł" niż `junction`
+ // bazowy 16×16 -- 16px byłby RÓWNY, nie większy).
+-export const DESCENT_STRIP_HEIGHT = 6 * GRID;
++// SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): korytarz międzystacyjny zszedł z `stripTopY + GRID` na
++// `stripTopY + 3×GRID` (`buildScene.ts` `TRUNK_CORRIDOR_SUBLEVEL` — rozsunięcie odpływów), więc
++// rezerwacja rośnie o te same 2×GRID: akcent `[B5.y−32, B5.y]` = `[stripTopY+32, stripTopY+64]`,
++// podejście pod blokiem `stripTopY+32` — styk krawędzi akcentu z podejściem był kolizją przy
++// 7×GRID, stąd 8×GRID (ten sam rachunek co wyżej, przesunięty o 2×GRID).
++export const DESCENT_STRIP_HEIGHT = 8 * GRID;
+ 
+ /**
+  * Wysokości zawartości JEDNEJ stacji/kolumny — wejście `computeBands` (spec
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts
+index 0a6400b10..8c7418c8f 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts
+@@ -31,6 +31,7 @@ import { SHEET_MAX_ASPECT } from '../../layout/sheetRows';
+ import { computeInitialCameraState, boundingBoxOfRect } from '../../canvas/camera';
+ import { screenToWorld } from '../../../v2/viewport/ViewportController';
+ import { SYMBOL_DEFS } from '../../symbols/defs';
++import { interiorCrossings } from '../crossings';
+ import { appendUnitToTrunk, loadEnm, sceneSignature } from './syntheticNetworks';
+ 
+ const here = dirname(fileURLToPath(import.meta.url));
+@@ -272,6 +273,31 @@ describe('S9-1 — stabilność wierszy arkusza przy edycji', () => {
+   });
+ });
+ 
++
++/**
++ * SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): skrzyżowanie toru mocy jest dopuszczalne WYŁĄCZNIE
++ * między dwoma kablami, które w modelu NIE mają wspólnego węzła — wtedy to przelot bez
++ * połączenia z mostkiem §22.1. Kable ze wspólnym węzłem rozcina węzeł T (kropka), a szyna nie
++ * bierze udziału w żadnym skrzyżowaniu. Do tej karty każde przecięcie wnętrz zamieniano w węzeł T
++ * (zero skrzyżowań = zero uczciwości o połączeniu), więc dawna asercja `crossingCount = 0`
++ * pinowała kropki łączące obwody bez wspólnego węzła.
++ */
++function skrzyzowaniaTylkoBezWspolnegoWezla(enm: EnergyNetworkModel, lod: 0 | 1 | 2): void {
++  const scene = buildSceneV3(enm, lod);
++  const galezie = new Map(enm.branches.map((b) => [b.ref_id, b]));
++  const wezly = (ref: string | undefined) => {
++    const b = galezie.get((ref ?? '').replace(/#.*$/, ''));
++    return b ? [b.from_bus_ref, b.to_bus_ref] : null;
++  };
++  for (const c of interiorCrossings(scene.segments)) {
++    expect(c.involvesBus, `LOD ${lod}: skrzyżowanie (${c.x}, ${c.y}) z szyną`).toBe(false);
++    const h = wezly(c.hOwnerRef);
++    const v = wezly(c.vOwnerRef);
++    expect(h && v, `LOD ${lod}: skrzyżowanie (${c.x}, ${c.y}) kabli spoza modelu ${c.hOwnerRef} × ${c.vOwnerRef}`).toBeTruthy();
++    expect(h!.some((r) => v!.includes(r)), `LOD ${lod}: skrzyżowanie (${c.x}, ${c.y}) kabli ze wspólnym węzłem — powinien być węzeł T`).toBe(false);
++  }
++}
++
+ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
+   it('dwa biegi budowy dają BAJTOWO tę samą scenę (podpis symboli + tras + etykiet) na każdym LOD', () => {
+     for (const enm of [siecReferencyjna, dlugiCiag]) {
+@@ -288,7 +314,7 @@ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
+       // wolny od skrzyżowań". Bez tej asercji zdanie byłoby obietnicą bez
+       // testu — a przy 4 złamaniach arkusza łącznik przecina najwięcej
+       // potencjalnych torów ze wszystkich tras sceny.
+-      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
++      skrzyzowaniaTylkoBezWspolnegoWezla(dlugiCiag, lod);
+       expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
+       expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
+       expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
+@@ -299,7 +325,7 @@ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
+   it('SIEĆ REFERENCYJNA: zero-defekt na każdym LOD (ten sam zestaw miar, druga klasa topologii)', () => {
+     for (const lod of LODS) {
+       const m = layoutMetricsReport(buildSceneV3(siecReferencyjna, lod));
+-      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
++      skrzyzowaniaTylkoBezWspolnegoWezla(siecReferencyjna, lod);
+       expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
+       expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
+       expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts
+index f47e4333f..e900f9c9d 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.test.ts
+@@ -1249,9 +1249,18 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
+     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
+     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
+     // `id.localeCompare`, nie trasowanie.
+-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
+-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
+-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
++    // SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): 23168/46400/46400 → 23824/48960/48960
++    // (+656 / +2560 / +2560 = 41 / 160 pionów × 16 j.św.) — ŚWIADOME PODNIESIENIE: korytarz
++    // międzystacyjny zszedł z `stripTopY + GRID` na `stripTopY + 3×GRID` (`TRUNK_CORRIDOR_SUBLEVEL`),
++    // a strefa rozdzielająca B4/B5 urosła o te same 2×GRID (`DESCENT_STRIP_HEIGHT` 6 → 8×GRID),
++    // więc każdy pion przechodzący przez strefę (zejścia do korytarza, zejścia odgałęzień,
++    // łączniki wierszy) jest dłuższy o 16. Przyczyna (uwaga audytowa właściciela): odejście
++    // odgałęzienia (`stripTopY`) i kabel ciągu (korytarz) biegły 8 j.św. od siebie i czytały się
++    // jak jeden tor. Czytelność ma pierwszeństwo przed minimalizacją pionów (spec §15.1 „redukcja
++    // jest ograniczeniem MIĘKKIM", precedens F9.10/F10.3).
++    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23824);
++    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(48960);
++    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(48960);
+   });
+ });
+ 
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.tr2wBezPola.test.ts b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.tr2wBezPola.test.ts
+index 37a5dcdf1..0bd089ac6 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.tr2wBezPola.test.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/buildScene.tr2wBezPola.test.ts
+@@ -279,9 +279,13 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu',
+   //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
+   //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
+   //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
++  //  · SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): korytarz międzystacyjny `stripTopY + 3×GRID`
++  //    (dawniej `+ GRID`) i strefa B4/B5 8×GRID (dawniej 6×GRID) — kabel GPZ→S01 jedzie 16 j.św.
++  //    niżej, pasmo nazw stacji i wszystko pod blokiem 16 niżej; blok stacji, pola, aparaty
++  //    i transformator bez zmian (`blockTopY` nietknięty).
+   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
+-    1: '8f135f305dd1d8a38421e664f4c320c8',
+-    2: '6de64cfc159da38853215a96aaf0f5d0',
++    1: '0050934fce740c539c4cc672d141a7ac',
++    2: '57afdba6678c722349e75cab1f5baf12',
+   };
+   for (const lod of [1, 2] as const) {
+     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/crossings.test.ts b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/crossings.test.ts
+index 8488edfb3..5a7716fce 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/crossings.test.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/scene/__tests__/crossings.test.ts
+@@ -63,11 +63,32 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
+     // rozcina kabel POZIOMY w punkcie styku pionu zejścia (`resolveTeeJunctions`,
+     // `buildScene.ts`), zamieniając każde przecięcie wnętrza na T-węzeł z kropką
+     // (spec §22.1 „skrzyżowanie ≠ połączenie"). `interiorCrossings` sn×sn → 0.
++    //
++    // SLD-CZYTELNOSC-INSPEKTOR (uwaga audytowa właściciela 2026-11-09): węzeł T powstaje
++    // WYŁĄCZNIE tam, gdzie oba kable mają w modelu wspólny węzeł (`kableZeWspolnymWezlem`,
++    // `buildScene.ts`). Na tej fiksturze wszystkie 18 dawnych „węzłów T” to pion odgałęzienia
++    // z pola odgałęźnego stacji przecinający kabel ciągu wyprowadzony z INNEGO pola — kable bez
++    // wspólnego węzła (sonda 2026-11-09: 18/18 par `terminal/001→terminal/000` × odgałęzienie
++    // z własnego pola). Kropka w takim punkcie łączyła na rysunku dwa obwody za wyłącznikami
++    // obu pól — kłamstwo o połączeniu. Zostają SKRZYŻOWANIAMI z mostkiem §22.1 (pion
++    // przeskakuje poziom, `polylinePathWithBridges`); „żadne z szyną" bez zmian.
+     const scene = buildSceneV3(enm, 2);
+     const crossings = interiorCrossings(scene.segments);
+-    expect(crossings.filter((c) => !c.involvesBus)).toHaveLength(0);
+-    expect(crossings).toHaveLength(0);
++    expect(crossings.filter((c) => c.involvesBus)).toHaveLength(0);
+     expect(crossingBusGaps(scene.segments)).toHaveLength(0);
++    const galezie = new Map(enm.branches.map((b) => [b.ref_id, b]));
++    const wezly = (ref: string | undefined) => {
++      const b = galezie.get((ref ?? '').replace(/#.*$/, ''));
++      return b ? [b.from_bus_ref, b.to_bus_ref] : null;
++    };
++    expect(crossings).toHaveLength(18);
++    for (const c of crossings) {
++      const h = wezly(c.hOwnerRef);
++      const v = wezly(c.vOwnerRef);
++      expect(h, `kabel poziomy ${c.hOwnerRef} w modelu`).not.toBeNull();
++      expect(v, `kabel pionowy ${c.vOwnerRef} w modelu`).not.toBeNull();
++      expect(h!.some((r) => v!.includes(r)), `skrzyżowanie (${c.x}, ${c.y}) bez wspólnego węzła`).toBe(false);
++    }
+   });
+ 
+   it('determinizm: dwa wywołania dają identyczny JSON, posortowany po (y,x)', () => {
+@@ -169,8 +190,12 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w
+     // pakuje pasma odgałęzień w innej kolejności (precedens SLD-SUBSTRAT). DOWÓD 2×2 (sonda
+     // karty): STARA treść fikstury z SAMYMI nowymi identyfikatorami daje 18 węzłów T, nowy
+     // kod na starej fiksturze — 21; luki kropka⇔węzeł = 0 we wszystkich czterech.
++    // SLD-CZYTELNOSC-INSPEKTOR (2026-11-09): 18 → 0 węzłów T — każdy z 18 dawnych węzłów łączył
++    // dwa kable BEZ wspólnego węzła modelu (test „TWARDE ZERO” wyżej pinuje ich 18 jako
++    // skrzyżowania z mostkiem). Kropki zostają wyłącznie na odczepach lateralnych pól (dane
++    // odgałęzienia) — niezmiennik kropka ⇔ realny węzeł bez zmian.
+     const teeNodes = externalBranchNodes(scene.segments);
+-    expect(teeNodes).toHaveLength(18);
++    expect(teeNodes).toHaveLength(0);
+     // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
+     // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
+     // kropkę w scenie produkcyjnej — dług W1b zamknięty.
+@@ -182,8 +207,8 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w
+     // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
+     // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
+     const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
+-    expect(dotsAtTee).toHaveLength(18);
+-    expect(dots).toHaveLength(18 + lateralNodes.length);
++    expect(dotsAtTee).toHaveLength(0);
++    expect(dots).toHaveLength(lateralNodes.length);
+     // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
+     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
+   });
+diff --git a/mv-design-pro/frontend/src/ui/sld/v3/scene/buildScene.ts b/mv-design-pro/frontend/src/ui/sld/v3/scene/buildScene.ts
+index 9e41af829..2f587ee27 100644
+--- a/mv-design-pro/frontend/src/ui/sld/v3/scene/buildScene.ts
++++ b/mv-design-pro/frontend/src/ui/sld/v3/scene/buildScene.ts
+@@ -419,6 +419,17 @@ const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
+  *  „dwa zejścia w tej samej szczelinie" — rozsunięcie w ramach szczeliny). */
+ const LATERAL_CHANNEL_STEP = GRID;
+ 
++/**
++ * SLD-CZYTELNOSC-INSPEKTOR (uwaga audytowa właściciela 2026-11-09 „poziome odpływy prowadzone
++ * niemal jeden na drugim”): odstęp sub-poziomu korytarza MIĘDZYSTACYJNEGO (kabel głowica→głowica
++ * ciągu) od sub-poziomu odejścia lateralu z pola odgałęźnego (`stripTopY`). Do tej karty `GRID`
++ * (8 j.św.) — na kadrze stacji przy skali ≈1 dwa niezależne obwody biegły 8 px od siebie i
++ * czytały się jak jeden tor. Teraz 3×GRID; strefa rozdzielająca B4/B5 (`DESCENT_STRIP_HEIGHT`,
++ * `layout/bands.ts`) jest o tyle samo wyższa, więc podejście pod blokiem (`+ GRID`) i akcent
++ * węzła rozgałęzienia zachowują dotychczasowe prześwity (rachunek przy `DESCENT_STRIP_HEIGHT`).
++ */
++const TRUNK_CORRIDOR_SUBLEVEL = 3 * GRID;
++
+ /** S9-1: lewy margines arkusza dla wierszy `k > 0` (wiersz 0 zaczyna się za
+  *  blokiem GPZ). Musi być ≥ 2×GRID, bo rynna zejścia łącznika biegnie
+  *  `2×GRID` NA LEWO od kolumny 0 — przy zerowym marginesie świat wyszedłby
+@@ -875,8 +886,34 @@ interface TeeJunctionResult {
+   readonly dots: readonly RouteVertex[];
+ }
+ 
+-function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionResult {
+-  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus);
++/**
++ * SLD-CZYTELNOSC-INSPEKTOR (uwaga audytowa właściciela 2026-11-09): przecięcie wnętrza pionu
++ * zejścia odgałęzienia z poziomym biegiem kabla jest WĘZŁEM T tylko wtedy, gdy oba kable mają
++ * w modelu WSPÓLNY WĘZEŁ (ten sam `from_bus_ref`/`to_bus_ref`) — wtedy pion schodzi z biegu tego
++ * samego potencjału. Dwa kable bez wspólnego węzła (odgałęzienie z pola odgałęźnego stacji
++ * krzyżujące ciąg wyprowadzony z pola liniowego tej samej stacji — sieć kadrów stacji, pomiar
++ * 2026-11-09: kropka w punkcie (1608, 512) łączyła „Odcinek 1 (2)” z „Odgałęzieniem 1” za
++ * wyłącznikami obu pól) są SKRZYŻOWANIEM bez połączenia: zostają w `interiorCrossings`, a pion
++ * dostaje mostek §22.1 w renderze. Kabel bez rekordu w modelu (ref złożony, np. `#descent`)
++ * zachowuje dotychczasową regułę (węzeł T), bo o jego potencjale scena nie wie nic więcej.
++ */
++function kableZeWspolnymWezlem(snapshot: EnergyNetworkModel): (a: string | undefined, b: string | undefined) => boolean {
++  const wezly = new Map<string, readonly string[]>();
++  for (const br of snapshot.branches ?? []) wezly.set(br.ref_id, [br.from_bus_ref, br.to_bus_ref].filter((r): r is string => !!r));
++  const bazowy = (ref: string | undefined): string | undefined => ref?.replace(/#.*$/, '');
++  return (a, b) => {
++    const wa = wezly.get(bazowy(a) ?? '');
++    const wb = wezly.get(bazowy(b) ?? '');
++    if (!wa || !wb) return true;
++    return wa.some((r) => wb.includes(r));
++  };
++}
++
++function resolveTeeJunctions(
++  segments: readonly PreviewSegment[],
++  wspolnyWezel: (a: string | undefined, b: string | undefined) => boolean = () => true,
++): TeeJunctionResult {
++  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus && wspolnyWezel(c.hOwnerRef, c.vOwnerRef));
+   if (crossings.length === 0) return { segments, dots: [] };
+   const cutsBySeg = new Map<number, RouteVertex[]>();
+   const dotKeys = new Set<string>();
+@@ -1924,7 +1961,7 @@ function stripTopYOf(layout: RowLayout): number {
+  * się (co router już wspiera, `route.ts` `classifyRouteNodes`).
+  */
+ function trunkCorridorYOf(layout: RowLayout): number {
+-  return stripTopYOf(layout) + GRID;
++  return stripTopYOf(layout) + TRUNK_CORRIDOR_SUBLEVEL;
+ }
+ 
+ /**
+@@ -5471,7 +5508,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
+   // lateralnych (styk KOŃCEM zamiast przecięcia wnętrza) + kropka węzłowa.
+   // `interiorCrossings` sn×sn → 0; piony/poziomy/załamania NIEZMIENIONE
+   // (rozcięcie współliniowe), elektryka niezmieniona (ten sam `ownerRef`).
+-  const tee = resolveTeeJunctions(allSegments);
++  const tee = resolveTeeJunctions(allSegments, kableZeWspolnymWezlem(snapshot));
+   if (tee.dots.length > 0) {
+     allSegments.length = 0;
+     allSegments.push(...tee.segments);

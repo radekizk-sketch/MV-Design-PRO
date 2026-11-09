@@ -39,7 +39,7 @@ import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -193,7 +193,11 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
     expect(uchwyt, 'uchwyt trafienia sylwetki').not.toBeNull();
     fireEvent.click(uchwyt!);
     expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([symbol.meta!.ownerRef]);
-    expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(BRAK_POLOZENIA_W_MODELU);
+    // SLD-CZYTELNOSC-INSPEKTOR: pole bez żadnego łącznika w modelu nie dostaje sekcji stanu
+    // (pięć wierszy „brak” czytało się jak luka danych aparatu, którego nie ma — §10 kontraktu
+    // prezentacji: bez sekcji bez treści); intencja bez zmian — żadnego położenia w inspektorze.
+    expect(screen.queryByTestId('inspektor-stan-aparatu')).toBeNull();
+    expect(screen.queryByTestId('inspektor-aparat-stan')).toBeNull();
   });
 
   it('pokrycie iloczynu: każdy blok i każda rola wystąpiły, a stany zamknięty/otwarty/nieustalony — każdy', () => {
