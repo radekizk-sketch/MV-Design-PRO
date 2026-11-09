@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { nazwaZaczynaSieOpisem, opisBezPowtorzen } from '../opisBezPowtorzen';
+import { nazwaZaczynaSieOpisem, opisBezPowtorzen, rodzajObokNazwy } from '../opisBezPowtorzen';
 
 describe('nazwaZaczynaSieOpisem', () => {
   it.each([
@@ -46,5 +46,21 @@ describe('opisBezPowtorzen', () => {
     ['Wyłącznik', 'Q5', [null], 'Wyłącznik · Q5'],
   ] as const)('%s + „%s” (nadrzędne %j) → „%s”', (rodzaj, nazwa, nadrzedne, oczekiwane) => {
     expect(opisBezPowtorzen({ rodzaj, nazwa, nadrzedne })).toBe(oczekiwane);
+  });
+});
+
+describe('rodzajObokNazwy — rodzaj obok nazwy tylko, gdy nazwa go nie niesie', () => {
+  it.each([
+    ['Stacja Odgałęźna', 'stacja odgałęźna', undefined],
+    ['Pole odgałęźne 3', 'Pole', undefined],
+    ['GPZ 15 kV', 'GPZ', undefined],
+    ['Stacja T1', 'stacja odgałęźna', 'stacja odgałęźna'],
+    ['Odcinek 1', 'Odcinek kablowy SN', 'Odcinek kablowy SN'],
+    ['Polesie 2', 'Pole', 'Pole'],
+    ['S02', 'stacja sekcyjna', 'stacja sekcyjna'],
+    ['Stacja Odgałęźna', '', undefined],
+    ['', 'Pole', 'Pole'],
+  ])('nazwa „%s” × rodzaj „%s” → %s', (nazwa, rodzaj, oczekiwany) => {
+    expect(rodzajObokNazwy(nazwa, rodzaj)).toBe(oczekiwany);
   });
 });

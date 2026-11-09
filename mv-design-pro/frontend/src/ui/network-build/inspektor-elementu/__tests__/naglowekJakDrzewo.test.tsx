@@ -76,3 +76,42 @@ describe.each(WARIANTY)('nagłówek inspektora = drzewo projektu: $nazwa', (wari
     expect((within(panel).getByTestId('inspektor-element-rodzaj').textContent ?? '').toLowerCase()).toBe(rodzajDrzewa.toLowerCase());
   });
 });
+
+// SLD-CZYTELNOSC-INSPEKTOR: nazwa zaczynająca się rodzajem („Stacja odgałęźna Zachód” przy rodzaju
+// „stacja odgałęźna”) niesie rodzaj sama — drzewo i nagłówek nie powtarzają go obok nazwy
+// (`rodzajObokNazwy`), a parytet drzewo = nagłówek zostaje: oba bez rodzaju.
+it('nazwa zaczynająca się rodzajem: drzewo i nagłówek bez powtórzonego rodzaju', () => {
+  const enm = model();
+  const stacje = enm.substations as unknown as Array<Record<string, unknown>>;
+  // Rodzaj stacji 1 odczytany z drzewa PRZED zmianą nazwy (rodzaj wynika z topologii, nie z nazwy).
+  act(() => useSnapshotStore.setState({ snapshot: enm }));
+  const pierwszy = render(
+    <>
+      <SchematContextPanel />
+      <InspektorKanwyTestowy />
+    </>,
+  );
+  const ref = String(stacje[1].ref_id);
+  const [, rodzajPrzed] = Array.from(screen.getByTestId(`model-tree-row-${ref}`).querySelectorAll('span.truncate')).map((s) => s.textContent ?? '');
+  expect(rodzajPrzed, 'stacja 1 ma rodzaj w drzewie').toBeTruthy();
+  pierwszy.unmount();
+  useSnapshotStore.getState().reset();
+
+  const zmieniony = JSON.parse(JSON.stringify(enm)) as EnergyNetworkModel;
+  const nazwa = `${rodzajPrzed.charAt(0).toUpperCase()}${rodzajPrzed.slice(1)} Zachód`;
+  (zmieniony.substations as unknown as Array<Record<string, unknown>>)[1].name = nazwa;
+  act(() => useSnapshotStore.setState({ snapshot: zmieniony }));
+  render(
+    <>
+      <SchematContextPanel />
+      <InspektorKanwyTestowy />
+    </>,
+  );
+  const wiersz = screen.getByTestId(`model-tree-row-${ref}`);
+  const czesci = Array.from(wiersz.querySelectorAll('span.truncate')).map((s) => s.textContent ?? '');
+  expect(czesci).toEqual([nazwa]);
+  fireEvent.click(wiersz);
+  const panel = screen.getByTestId('inspektor-element-kanwy');
+  expect(within(panel).getByTestId('inspektor-element-etykieta').textContent).toBe(nazwa);
+  expect(within(panel).queryByTestId('inspektor-element-rodzaj')).toBeNull();
+});
