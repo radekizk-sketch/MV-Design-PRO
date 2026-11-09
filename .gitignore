@@ -113,3 +113,6 @@ mv-design-pro/docs/audit/visual/ocena_seria.html
 # Ta sama zasada, co wyżej: w repo trzymamy generator, nie jego wydruk. Reguła brakowała
 # od V12K-259 — plik był nietrackowany tylko dlatego, że nikt go nie dodał.
 mv-design-pro/docs/audit/visual/galeria_ekranow.html
+
+# Lokalny graf architektury Graphify — regenerowalny, bez publikacji w repo.
+graphify-out/
