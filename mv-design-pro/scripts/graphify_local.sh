@@ -15,7 +15,7 @@ export GRAPHIFY_BACKEND=none
 export GRAPHIFY_QUERY_LOG_DISABLE=1
 
 # Wersja bez rozszerzenia semantycznego: tylko kod lokalny (AST).
-graphify extract mv-design-pro --code-only --backend none
+graphify extract mv-design-pro --code-only
 
 GRAPH_FILE="graphify-out/graph.json"
 if [[ ! -s "$GRAPH_FILE" && -s "mv-design-pro/graphify-out/graph.json" ]]; then
