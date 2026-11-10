@@ -315,3 +315,82 @@ export function pobierzOceneWydanPrzypadkuNcRfg(
       new URLSearchParams({ operator_id: operatorId }),
   );
 }
+
+
+// =============================================================================
+// P1: dowody urządzeń i lista dokumentów odbiorowych — WYŁĄCZNIE read-only
+// =============================================================================
+
+export interface PrzegladUrzadzenia {
+  readonly der_ref: string;
+  readonly status: 'ODRZUCONO' | 'NIE_OCENIONO' | 'WYMAGA_POTWIERDZENIA' | 'PODSTAWA_WSTEPNA';
+  readonly kod: string;
+  readonly powody_pl: readonly string[];
+  readonly rekord_wykazu: string | null;
+  readonly wersja_wipwc: string | null;
+  readonly wersja_wos: string | null;
+  readonly data_oceny: string;
+  readonly akceptacja_operatora: false;
+}
+
+export interface PrzegladCertyfikatow {
+  readonly case_id: string;
+  readonly operator_id: string;
+  readonly data_oceny: string;
+  readonly rejestr: {
+    readonly stan: string;
+    readonly data_sprawdzenia: string;
+    readonly ostrzezenie_pl: string;
+  };
+  readonly urzadzenia: readonly PrzegladUrzadzenia[];
+  readonly status_formalny: string;
+}
+
+export interface DokumentOdbiorowyNcrfg {
+  readonly kod: string;
+  readonly tytul_pl: string;
+  readonly etap: string;
+  readonly wymagane_w_typowej_procedurze: boolean;
+  readonly uwagi_pl: string;
+  readonly formularz_url: string;
+  readonly stan: string;
+}
+
+export interface PlanDokumentacjiNcrfg {
+  readonly typ_mwe: string;
+  readonly dokumenty: readonly DokumentOdbiorowyNcrfg[];
+  readonly luki: readonly string[];
+  readonly formalnie_zaakceptowane: false;
+  readonly powod_pl: string;
+}
+
+export interface DossierPrzygotowawczeNcrfg {
+  readonly case_id: string;
+  readonly operator_id: string;
+  readonly wyniki: readonly {
+    readonly der_ref: string;
+    readonly status?: string;
+    readonly powod_pl?: string;
+    readonly plan?: PlanDokumentacjiNcrfg;
+  }[];
+  readonly status: string;
+}
+
+/** Ocena w jawnie wybranym dniu, bez zgadywania ważności certyfikatu. */
+export function pobierzPrzegladCertyfikatowNcRfg(
+  caseId: string, operatorId: string, dataOceny: string,
+): Promise<PrzegladCertyfikatow> {
+  return pobierzJson<PrzegladCertyfikatow>(
+    '/api/ncrfg-tests/cases/' + encodeURIComponent(caseId) + '/przeglad-certyfikatow?' +
+      new URLSearchParams({ operator_id: operatorId, data_oceny: dataOceny }),
+  );
+}
+
+export function pobierzDossierPrzygotowawczeNcRfg(
+  caseId: string, operatorId: string,
+): Promise<DossierPrzygotowawczeNcrfg> {
+  return pobierzJson<DossierPrzygotowawczeNcrfg>(
+    '/api/ncrfg-tests/cases/' + encodeURIComponent(caseId) + '/dossier-przygotowawcze?' +
+      new URLSearchParams({ operator_id: operatorId }),
+  );
+}
