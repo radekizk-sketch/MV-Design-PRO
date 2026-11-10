@@ -25,6 +25,10 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.source_audit import (
+    audyt_zrodel,
+    blokery_aktywacji_podstaw,
+)
 from application.ncrfg_compliance.certificate_review import (
     ocen_stan_rejestru,
     oceny_certyfikatow_przypadku,
@@ -211,6 +215,7 @@ def ocen_wydania_z_modelu(
         wyniki.append({
             "der_ref": modul.der_ref, "typ": typ,
             "ocena": ocena.model_dump(mode="json"),
+            "blokery_aktywacji": list(blokery_aktywacji_podstaw(operator_id, ocena)),
         })
     return {
         "case_id": str(case_id),
@@ -309,3 +314,15 @@ def dossier_przygotowawcze_ncrfg(
         "pominiete": [p.model_dump(mode="json") for p in wejscia.pominiete],
         "status": "LISTA_KONTROLNA_BEZ_FORMALNEJ_AKCEPTACJI",
     }
+
+
+
+@router.get("/audyt-zrodel")
+def audyt_zrodel_ncrfg(operator_id: str) -> dict[str, Any]:
+    """P0 kontrola kompletu zatwierdzonych źródeł bez tworzenia nowego Werdyktu."""
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    return audyt_zrodel(operator_id)
