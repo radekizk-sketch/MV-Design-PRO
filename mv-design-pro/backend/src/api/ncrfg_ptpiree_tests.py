@@ -25,6 +25,9 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.wipwc13_certificate_rules import (
+    TypMwe, Rodzina, zasady_wipwc13, agreguj_zakres_badan,
+)
 from application.ncrfg_compliance.bank_nastaw_pl import (
     TypUrzadzenia, bank_nastaw, bank_nastaw_dla_przypadku,
 )
@@ -387,3 +390,16 @@ def bank_nastaw_z_modelu(
     result = bank_nastaw_dla_przypadku(get_enm(klucz), operator_id=operator_id)
     result["case_id"] = str(case_id)
     return result
+
+
+
+@router.get("/wipwc13-reguly-certyfikatow")
+def wi_pwc13_reguly_certyfikatow(typ: TypMwe, rodzina: Rodzina) -> dict[str, Any]:
+    """Oryginalne §5/6 WiPWC1.3; cert wymagany/optional/niedopuszczalny."""
+    return zasady_wipwc13(typ, rodzina).model_dump(mode="json")
+
+
+@router.get("/wipwc13-polaczone-obowiazki")
+def wi_pwc13_polaczone_obowiazki(typ: TypMwe, rodzina: Rodzina) -> dict[str, Any]:
+    """Certyfikat WiPWC1.3 × test PTPiREE3.0 (bez fizycznego wykonania)."""
+    return agreguj_zakres_badan(typ, rodzina)

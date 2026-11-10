@@ -1,0 +1,421 @@
+{
+  "schema": "wipwc13_cert_rules.v1",
+  "document": "PTPiREE Warunki i procedury wykorzystania certyfikatów 1.3",
+  "published": "2024-10-01",
+  "effective_from": "2024-11-01",
+  "source_url": "https://ptpiree.pl/wp-content/uploads/2024/12/wipwc_2024_10_01-1.pdf",
+  "source_pages": {
+    "PPM": 13,
+    "SYPGM": 8
+  },
+  "limitation": "Ścieżki certyfikatowe nie zastępują wymaganych prób na miejscu instalacji i nie oznaczają automatycznie zgodności PGM. Przejście wymaga właściwej daty, WOS, certyfikowanego zakresu, aktualności i zatwierdzonych badań.",
+  "rule_names": {
+    "CERT_REQUIRED": "Certyfikat wymagany do wykazania wskazanej zdolności; próby miejscowe nadal możliwe/obowiązkowe wg Procedury.",
+    "CERT_OPTIONAL": "Certyfikat może zastąpić dopuszczone próby/symulacje, ale nie konieczne próby na miejscu.",
+    "NO_CERT_SUBSTITUTION": "Certyfikat nie może zastąpić wymaganej próby lub symulacji.",
+    "NOT_APPLICABLE": "Wymóg nie ma zastosowania do tej klasy PGM według tej tabeli."
+  },
+  "rules": [
+    {
+      "family": "PPM",
+      "ability": "LFSM_O",
+      "clause": "6.1",
+      "printed_page": 13,
+      "types": {
+        "A": "CERT_REQUIRED",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "LFSM_U",
+      "clause": "6.2",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "FSM",
+      "clause": "6.3",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "FREQUENCY_RESTORATION",
+      "clause": "6.4",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "ACTIVE_POWER_CONTROL",
+      "clause": "6.5",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "VOLTAGE_CONTROL",
+      "clause": "6.6",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "REACTIVE_POWER_CONTROL",
+      "clause": "6.7",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "POWER_FACTOR_CONTROL",
+      "clause": "6.8",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "FAST_FAULT_CURRENT",
+      "clause": "6.9",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "FRT",
+      "clause": "6.10",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "POST_FAULT_RECOVERY",
+      "clause": "6.11",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "ISLAND_OPERATION",
+      "clause": "6.12",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "REACTIVE_CAPABILITY",
+      "clause": "6.13",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "FREQUENCY_RANGE",
+      "clause": "6.14",
+      "printed_page": 13,
+      "types": {
+        "A": "CERT_REQUIRED",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "ROCOF",
+      "clause": "6.15",
+      "printed_page": 13,
+      "types": {
+        "A": "CERT_REQUIRED",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "STOP_GENERATION",
+      "clause": "6.16",
+      "printed_page": 13,
+      "types": {
+        "A": "CERT_OPTIONAL",
+        "B": "CERT_OPTIONAL",
+        "C": "NOT_APPLICABLE",
+        "D": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "family": "PPM",
+      "ability": "REDUCE_GENERATION",
+      "clause": "6.17",
+      "printed_page": 13,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_OPTIONAL",
+        "C": "NOT_APPLICABLE",
+        "D": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "LFSM_O",
+      "clause": "5.1",
+      "printed_page": 8,
+      "types": {
+        "A": "CERT_OPTIONAL",
+        "B": "CERT_OPTIONAL",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "LFSM_U",
+      "clause": "5.2",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FSM",
+      "clause": "5.3",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FREQUENCY_RESTORATION",
+      "clause": "5.4",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "BLACK_START",
+      "clause": "5.5",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "HOUSE_LOAD_OPERATION",
+      "clause": "5.6",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "REACTIVE_CAPABILITY",
+      "clause": "5.7",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_OPTIONAL",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FRT",
+      "clause": "5.8",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_OPTIONAL",
+        "C": "CERT_OPTIONAL",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "POST_FAULT_RECOVERY",
+      "clause": "5.9",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NO_CERT_SUBSTITUTION",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "ISLAND_OPERATION",
+      "clause": "5.10",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NO_CERT_SUBSTITUTION",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "OSCILLATION_DAMPING",
+      "clause": "5.11",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "NOT_APPLICABLE",
+        "C": "NOT_APPLICABLE",
+        "D": "NO_CERT_SUBSTITUTION"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FREQUENCY_RANGE",
+      "clause": "5.12",
+      "printed_page": 8,
+      "types": {
+        "A": "CERT_REQUIRED",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "ROCOF",
+      "clause": "5.13",
+      "printed_page": 8,
+      "types": {
+        "A": "CERT_REQUIRED",
+        "B": "CERT_REQUIRED",
+        "C": "CERT_REQUIRED",
+        "D": "CERT_REQUIRED"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "STOP_GENERATION",
+      "clause": "5.14",
+      "printed_page": 8,
+      "types": {
+        "A": "CERT_OPTIONAL",
+        "B": "CERT_OPTIONAL",
+        "C": "NOT_APPLICABLE",
+        "D": "NOT_APPLICABLE"
+      }
+    },
+    {
+      "family": "SYPGM",
+      "ability": "REDUCE_GENERATION",
+      "clause": "5.15",
+      "printed_page": 8,
+      "types": {
+        "A": "NOT_APPLICABLE",
+        "B": "CERT_OPTIONAL",
+        "C": "NOT_APPLICABLE",
+        "D": "NOT_APPLICABLE"
+      }
+    }
+  ],
+  "special_cases": [
+    {
+      "rule": "PPM_LFSM_O_CONTROL_CHAIN",
+      "clause": "6.1",
+      "printed_page": 14,
+      "scope": "PPM_ALL",
+      "power_plant_controller_requires_site_test": true,
+      "device_only_cert_no_site_test_if_function_exclusively_certified_component": true
+    }
+  ],
+  "validity": {
+    "clause": "9.1, 9.2, 10.2, 10.3",
+    "printed_page": 22,
+    "max_years_from_issue": 5,
+    "old_scheme_12_accepted_until": "2026-12-31",
+    "mandatory_13_from": "2027-01-01"
+  }
+}
