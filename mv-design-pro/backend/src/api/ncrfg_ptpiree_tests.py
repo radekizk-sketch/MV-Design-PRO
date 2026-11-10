@@ -25,6 +25,7 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.requirement_gaps import analiza_brakow_przypadku
 from application.ncrfg_compliance.wipwc13_certificate_rules import (
     TypMwe, Rodzina, zasady_wipwc13, agreguj_zakres_badan,
 )
@@ -403,3 +404,31 @@ def wi_pwc13_reguly_certyfikatow(typ: TypMwe, rodzina: Rodzina) -> dict[str, Any
 def wi_pwc13_polaczone_obowiazki(typ: TypMwe, rodzina: Rodzina) -> dict[str, Any]:
     """Certyfikat WiPWC1.3 × test PTPiREE3.0 (bez fizycznego wykonania)."""
     return agreguj_zakres_badan(typ, rodzina)
+
+
+
+@router.get("/cases/{case_id}/luki-dowodowe")
+def ncrfg_zrodlowe_luki_dowodowe(
+    case_id: UUID,
+    klucz: KluczTwin,
+    operator_id: str,
+    data_oceny: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+) -> dict[str, Any]:
+    """Jeden ENM i źródłowa macierz WiPWC/PTPiREE; brak automatycznych PASS."""
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    try:
+        kiedy = date.fromisoformat(data_oceny)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Data oceny musi być istniejącą datą RRRR-MM-DD.",
+        ) from exc
+    result = analiza_brakow_przypadku(
+        get_enm(klucz), operator_id=operator_id, data_oceny=kiedy,
+    )
+    result["case_id"]=str(case_id)
+    return result
