@@ -22,6 +22,7 @@ from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from pydantic import BaseModel, Field, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
+from .wydarzenia_regulacyjne import WydarzeniaRegulacyjne
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
 from .uziemienie import migruj_uziemienie_slownika
@@ -775,6 +776,9 @@ class Generator(ENMElement):
     profilu regulacyjnego (WOS, procedura PTPiREE, WiPWC, IRiESD) wybiera wydanie
     obowiązujące w tym dniu. `None` — data nieustalona (wersja dobrana bez daty, z uwagą).
     """
+
+    wydarzenia_regulacyjne: WydarzeniaRegulacyjne | None = None
+    """Źródłowo potwierdzone daty WOS/WiPWC/PTPiREE (bez zastępowania datą umowy)."""
 
     nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
     """
