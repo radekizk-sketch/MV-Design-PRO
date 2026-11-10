@@ -25,6 +25,9 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.test_execution_readiness import (
+    PrzygotowanieBadania, audyt_przygotowania,
+)
 from application.ncrfg_compliance.wipwc13_certificate_audit import (
     MetadaneCertyfikatu, audyt_certyfikatu,
 )
@@ -467,3 +470,10 @@ def kontrola_wipwc13_dokumentu_cert(
 def bank_nastaw_techniczny_podstawy(wariant: TypUrzadzenia) -> dict[str, Any]:
     """Wartości referencyjne Bank Nastaw 1.1, bez wstrzyknięcia do solvera."""
     return charakterystyki_banku(wariant)
+
+
+
+@router.post("/kontrola-gotowosci-do-badan-v3")
+def kontrola_gotowosci_ptpiree3(dane: PrzygotowanieBadania) -> dict[str, Any]:
+    """PTPiREE 3.0: termin/14 dni/zgoda OSD/PCC/netto-brutto, nie wynik próby."""
+    return audyt_przygotowania(dane)
