@@ -1,0 +1,153 @@
+{
+  "schema": "bank_nastaw_pl.v1",
+  "dokument": "PTPiREE Bank Nastaw dla Polski - zbiór nastaw i kryteriów zabezpieczeniowych oraz parametrów charakterystyk regulacyjnych dla MWE typu A i B",
+  "wersja": "1.1",
+  "data_publikacji": "2024-10-01",
+  "obowiazuje_od": "2024-11-01",
+  "source_url": "https://ptpiree.pl/wp-content/uploads/2024/12/bn_2024_10_01-1.pdf",
+  "source_proweniencja": "PTPiREE WiPWC 1.3 załącznik Bank Nastaw, sekcja typu A i B przyłączonego do sieci SN",
+  "jednostki_uwagi": "Typ A odnosi wartości do ULN (1.1 Un=253 V przy 230 V fazowym). Typ B SN w jednostkach względnych; napięcia należy indywidualnie skoordynować z granicami i funkcją FRT na właściwym PCC.",
+  "installation_claim": "REFERENCE_ONLY_OPERATOR_SITE_CONFIRMATION_REQUIRED",
+  "profiles": [
+    {
+      "id": "A_NN",
+      "typ": "A",
+      "voltage_class": "NN",
+      "pdf_page": 2,
+      "ustawienia": [
+        {
+          "id": "U_LT",
+          "wartosc": 0.85,
+          "jednostka": "pu",
+          "czas_s": 1.2,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 2
+        },
+        {
+          "id": "U_GT_1",
+          "wartosc": 1.1,
+          "jednostka": "pu",
+          "czas_s": 3,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 2
+        },
+        {
+          "id": "U_GT_2",
+          "wartosc": 1.15,
+          "jednostka": "pu",
+          "czas_s": 0.1,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 2
+        },
+        {
+          "id": "F_LT",
+          "wartosc": 47.5,
+          "jednostka": "Hz",
+          "czas_s": 1,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 2
+        },
+        {
+          "id": "F_GT",
+          "wartosc": 51.5,
+          "jednostka": "Hz",
+          "czas_s": 0.3,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 2
+        },
+        {
+          "id": "ROCOF",
+          "wartosc": 2.5,
+          "jednostka": "Hz/s",
+          "czas_s": 0.5,
+          "tryb_czasu": "CZAS_MAKSYMALNY",
+          "pdf_page": 2
+        }
+      ],
+      "parametry_dodatkowe": [
+        {
+          "id": "LFSM_O_THRESHOLD",
+          "wartosc": 50.2,
+          "jednostka": "Hz",
+          "pdf_page": 3
+        },
+        {
+          "id": "LFSM_O_DROOP",
+          "wartosc": 5,
+          "jednostka": "%",
+          "pdf_page": 3
+        }
+      ]
+    },
+    {
+      "id": "B_SN",
+      "typ": "B",
+      "voltage_class": "SN",
+      "pdf_page": 13,
+      "ustawienia": [
+        {
+          "id": "U_LT",
+          "wartosc": 0.8,
+          "jednostka": "pu",
+          "czas_s": 3,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 13
+        },
+        {
+          "id": "U_GT_1",
+          "wartosc": 1.1,
+          "jednostka": "pu",
+          "czas_s": 3,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 13
+        },
+        {
+          "id": "U_GT_2",
+          "wartosc": 1.15,
+          "jednostka": "pu",
+          "czas_s": 0.1,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 13
+        },
+        {
+          "id": "F_LT",
+          "wartosc": 47.5,
+          "jednostka": "Hz",
+          "czas_s": 1,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 13
+        },
+        {
+          "id": "F_GT",
+          "wartosc": 51.5,
+          "jednostka": "Hz",
+          "czas_s": 0.3,
+          "tryb_czasu": "ZWLOKA",
+          "pdf_page": 13
+        },
+        {
+          "id": "ROCOF",
+          "wartosc": 2,
+          "jednostka": "Hz/s",
+          "czas_s": 0.2,
+          "tryb_czasu": "CZAS_MAKSYMALNY",
+          "pdf_page": 13
+        }
+      ],
+      "parametry_dodatkowe": [
+        {
+          "id": "LFSM_O_THRESHOLD",
+          "wartosc": 50.2,
+          "jednostka": "Hz",
+          "pdf_page": 14
+        },
+        {
+          "id": "LFSM_O_DROOP",
+          "wartosc": 5,
+          "jednostka": "%",
+          "pdf_page": 14
+        }
+      ]
+    }
+  ]
+}

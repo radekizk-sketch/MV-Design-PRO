@@ -25,6 +25,9 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.bank_nastaw_pl import (
+    TypUrzadzenia, bank_nastaw, bank_nastaw_dla_przypadku,
+)
 from application.ncrfg_compliance.test_scope import (
     RodzinaPgm, TypPgm, zakres_badan, zakres_badan_z_modelu,
 )
@@ -360,5 +363,27 @@ def ptpiree_v3_zakres_z_modelu(
     result = zakres_badan_z_modelu(
         get_enm(klucz), operator_id=operator_id
     )
+    result["case_id"] = str(case_id)
+    return result
+
+
+
+@router.get("/bank-nastaw-pl")
+def bank_nastaw_ptpiree(wariant: TypUrzadzenia) -> dict[str, Any]:
+    """Źródłowy Bank Nastaw WiPWC1.3 (PL v1.1) — bez automatycznej konfiguracji."""
+    return bank_nastaw(wariant).model_dump(mode="json")
+
+
+@router.get("/cases/{case_id}/bank-nastaw-pl")
+def bank_nastaw_z_modelu(
+    case_id: UUID, klucz: KluczTwin, operator_id: str
+) -> dict[str, Any]:
+    """Dobór referencyjnego profilu A nn lub B SN, nigdy nastaw zaakceptowanych przez OSD."""
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    result = bank_nastaw_dla_przypadku(get_enm(klucz), operator_id=operator_id)
     result["case_id"] = str(case_id)
     return result
