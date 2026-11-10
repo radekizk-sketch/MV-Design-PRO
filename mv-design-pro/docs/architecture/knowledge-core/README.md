@@ -32,6 +32,10 @@ System ma dawać **cytowalną odpowiedź na pytanie**, **deterministycznie dobra
 | [07-MAPA-ZRODEL-I-ODNIESIEN.md](07-MAPA-ZRODEL-I-ODNIESIEN.md) | Pochodzenie ustaleń, wersje, ścieżki repo, ryzyka normowe, źródła publiczne |
 | [08-MACIERZ-KONTRAKTOW-MODULOW.md](08-MACIERZ-KONTRAKTOW-MODULOW.md) | Typowane wejścia/wyjścia, jednostki i kryteria per 24 odbiorców norm |
 | [09-UX-WORKFLOW.md](09-UX-WORKFLOW.md) | Interfejs bazy, importer, recenzje, podstawa obliczeń, migracja projektu i dowody UX |
+| [10-NC-RFG-WOS-WIPWC.md](10-NC-RFG-WOS-WIPWC.md) | Nowy audyt: NC RfG, WOS2019/2025, WiPWC 1.2/1.3, daty i kontekst przyłączeniowy |
+| [11-CERTYFIKATY-I-WYKAZ-URZADZEN.md](11-CERTYFIKATY-I-WYKAZ-URZADZEN.md) | Certyfikaty, PTPiREE, producent/model/firmware, akredytacja i ważność akceptacji |
+| [12-PROGRAMY-TESTOW-I-ODBIOR.md](12-PROGRAMY-TESTOW-I-ODBIOR.md) | Procedura PTPiREE 3.0, programy badań, symulacje, pomiary i dokumenty DI/PGMD/EON/ION/LON/FON |
+| [13-BRAKI-REGULACYJNE-I-PRIORYTETY.md](13-BRAKI-REGULACYJNE-I-PRIORYTETY.md) | Rejestr krytycznych luk, FAT/SAT, magazyny, jakość dowodów i priorytetowa roadmapa |
 
 ## Potwierdzony punkt wejścia — stan main
 
@@ -81,3 +85,10 @@ Dokumentacja w repo ma własne źródła prawdy: PRODUCT_CAPABILITY_CONSTITUTION
 ## Punkt końcowy
 
 Autor specyfikacji nie implementował kodu ani nie przeprowadził testów wykonawczych. Przyjęcie do realizacji wymaga zatwierdzonej decyzji architektonicznej, recenzji normowej i planu migracji z dowodami. Czytanie tego PR ma pozwolić Opus/Fable podważyć dowolne rozwiązanie, jeśli repo lub norma dowodzi jego niepoprawności.
+
+
+## Audyt uzupełniający NC RfG / WOS / certyfikaty (2026-11-10)
+
+Zakres dokumentacji EKC rozszerzono o pliki 10–13 po ponownym sprawdzeniu aktualnych stron URE, PSE, PTPiREE i ENEA oraz stanu istniejącego kodu. Potwierdzone ryzyka wdrożeniowe: warstwa WOS w main wskazuje wydanie 2018, mimo że WOS2025 ma odrębny zakres dat; warstwa WiPWC wskazuje snapshoty wykazu z maja 2026, gdy źródła publiczne pokazują nowsze; procedura PTPiREE ma określoną wersję 3.0, lecz brak w repo pełnych zweryfikowanych programów i wartości testowych, a profil ENEA nie posiada zweryfikowanej bieżącej podstawy. Zob. szczegółowo 10–13. **Nie uznawać certyfikacji urządzeń ani odbioru modułu za wykonaną funkcję produkcyjną na podstawie samego istnienia 20 testów.**
+
+Dla wykonawcy Opus/Fable: obowiązkowo przeczytać 10–13 przed decyzją ADR i rozszerzyć rejestr ryzyk G0. Najpierw sprawdzić, które luki są rzeczywiście otwarte w aktualnym main, a następnie wybrać minimalne pionowe poprawki istniejących siedmiu warstw i modelu dowodowego; nie tworzyć alternatywnego resolvera WOS, rejestru urządzeń ani nowego Werdyktu.
