@@ -31,20 +31,25 @@ def test_nowe_pola_none_nie_zmieniaja_zamrozonego_hashu() -> None:
 
 def test_zrodlo_zdarzenia_jest_w_modelu_i_zmienia_hash() -> None:
     old = _model()
-    new = _model(wydarzenia_regulacyjne=WydarzeniaRegulacyjne(
+    data = old.model_dump(mode="json")
+    data["generators"][0]["wydarzenia_regulacyjne"] = WydarzeniaRegulacyjne(
         data_wydania_warunkow="2026-01-01",
         zrodlo_pl="warunki przyłączenia W/42",
-    ))
+    ).model_dump(mode="json")
+    new = EnergyNetworkModel.model_validate(data)
     assert compute_enm_hash(old) != compute_enm_hash(new)
+    assert compute_input_hash(old) != compute_input_hash(new)
 
 
 def test_firmware_jest_oddzielnym_dowodem_od_katalogu() -> None:
     old = _model()
-    new = _model(dowod_konfiguracji_urzadzenia=DowodKonfiguracjiUrzadzenia(
+    data = old.model_dump(mode="json")
+    data["generators"][0]["dowod_konfiguracji_urzadzenia"] = DowodKonfiguracjiUrzadzenia(
         wersja_oprogramowania="1.2.3",
         identyfikator_protokolu="SAT/1",
         zrodlo_pl="protokół rozruchu",
-    ))
+    ).model_dump(mode="json")
+    new = EnergyNetworkModel.model_validate(data)
     assert compute_enm_hash(old) != compute_enm_hash(new)
     assert new.generators[0].dowod_konfiguracji_urzadzenia.wersja_oprogramowania == "1.2.3"
 
