@@ -92,6 +92,47 @@ function trasy(
           ? odpowiedzJson(404, { detail: 'Przypadek nie ma dokumentu ENM.' })
           : odpowiedzJson(200, wejsciaDlaOperatora(wejscia, w.zapytanie.get('operator_id') ?? '')),
     },
+
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/przeglad-certyfikatow$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea', data_oceny: '2026-11-10',
+        rejestr: {
+          stan: 'STARSZY_NIZ_OBSERWACJA',
+          data_sprawdzenia: '2026-11-10',
+          ostrzezenie_pl: 'Historyczny wykaz',
+        },
+        urzadzenia: [{
+          der_ref: 'pv-1', status: 'NIE_OCENIONO', kod: 'SNAPSHOT_NIEAKTUALNY',
+          powody_pl: ['Źródło wymaga potwierdzenia.'],
+          rekord_wykazu: null, wersja_wipwc: null, wersja_wos: null,
+          data_oceny: '2026-11-10', akceptacja_operatora: false,
+        }],
+        status_formalny: 'NIE_WYDANO_CERTYFIKATU_ANI_ZGODY_OPERATORA',
+      }),
+    },
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/dossier-przygotowawcze$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea',
+        wyniki: [{
+          der_ref: 'pv-1',
+          plan: {
+            typ_mwe: 'B', dokumenty: [{
+              kod: 'PGMD', tytul_pl: 'Dokument modułu wytwarzania energii',
+              etap: 'procedura B/C', wymagane_w_typowej_procedurze: true,
+              uwagi_pl: '', formularz_url: 'https://example.org',
+              stan: 'BRAK_DOWODU_OPERATORA',
+            }],
+            luki: ['Brak decyzji OSD'], formalnie_zaakceptowane: false,
+            powod_pl: 'Nie jest to pozwolenie operatora.',
+          },
+        }],
+        status: 'LISTA_KONTROLNA_BEZ_FORMALNEJ_AKCEPTACJI',
+      }),
+    },
     { metoda: 'POST', sciezka: '/api/ncrfg-tests/run', odpowiedz: () => odpowiedzJson(200, biegFixture()) },
     {
       metoda: 'GET',
@@ -561,5 +602,21 @@ describe('źródła WOS/PTPiREE — tylko odczyt bez fałszywego certyfikatu', (
       .toHaveTextContent('Podstawy niekompletne'));
     expect(within(panel).getByText(/NC RfG/)).toBeInTheDocument();
     expect(within(panel).getByText(/Wymagane uzupełnienia źródeł/)).toBeInTheDocument();
+  });
+});
+
+
+describe('P1 — certyfikat urządzenia i dokumentacja bez fikcyjnego odbioru', () => {
+  it('odczytuje status wykazu i pozwala obejrzeć listę dokumentów', async () => {
+    trasy();
+    const uzytkownik = userEvent.setup();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-dowody-przylaczeniowe');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-dowody-rejestr'))
+      .toHaveTextContent('STARSZY_NIZ_OBSERWACJA'));
+    expect(within(panel).getByText(/SNAPSHOT_NIEAKTUALNY/)).toBeInTheDocument();
+    await uzytkownik.click(within(panel).getByText('Wzory dokumentów do przygotowania'));
+    expect(within(panel).getByText(/PGMD/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Nie jest to pozwolenie operatora/)).toBeInTheDocument();
   });
 });
