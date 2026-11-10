@@ -20,11 +20,14 @@ Warstwa API: walidacja wejścia, mapowanie błędów na 404/422 i delegacja do
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.wipwc13_certificate_audit import (
+    MetadaneCertyfikatu, audyt_certyfikatu,
+)
 from application.ncrfg_compliance.requirement_gaps import analiza_brakow_przypadku
 from application.ncrfg_compliance.wipwc13_certificate_rules import (
     TypMwe, Rodzina, zasady_wipwc13, agreguj_zakres_badan,
@@ -61,7 +64,9 @@ from catalog.profiles.nc_rfg import (
     load_nc_rfg_profile,
 )
 from enm.store import get_enm
+from enm.deklaracje_modulu import DataUmowy
 from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel
 from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
@@ -432,3 +437,25 @@ def ncrfg_zrodlowe_luki_dowodowe(
     )
     result["case_id"]=str(case_id)
     return result
+
+
+
+class WniosekKontroliCertyfikatu(BaseModel):
+    """Tylko opis dokumentu poddawanego kontroli, nie formalna weryfikacja."""
+    dokument: MetadaneCertyfikatu
+    typ_mwe: Literal["A","B","C","D"]
+    wersja_wipwc: Literal["1.2","1.3"]
+    data_oceny: DataUmowy
+
+
+@router.post("/kontrola-dokumentu-certyfikatu")
+def kontrola_wipwc13_dokumentu_cert(
+    zadanie: WniosekKontroliCertyfikatu,
+) -> dict[str, Any]:
+    """WiPWC13 Annex1 a-v + §9/10, bez danych binarnych i bez decyzji OSD."""
+    return audyt_certyfikatu(
+        zadanie.dokument,
+        typ=zadanie.typ_mwe,
+        wersja=zadanie.wersja_wipwc,
+        data_oceny=zadanie.data_oceny,
+    )
