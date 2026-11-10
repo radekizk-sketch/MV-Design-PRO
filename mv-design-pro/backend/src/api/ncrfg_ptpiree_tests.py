@@ -186,6 +186,14 @@ def ocen_wydania_z_modelu(
     generatory = {generator.ref_id: generator for generator in enm.generators}
     wyniki: list[dict[str, Any]] = []
     for modul in wejscia.modules:
+        if modul.der_kind == "BESS":
+            wyniki.append({
+                "der_ref": modul.der_ref, "typ": None,
+                "status": "NIE_DOTYCZY_NC_RFG_MAGAZYN",
+                "powod_pl": "Samodzielny magazyn poza NC RfG; zastosować krajowe "
+                            "wymagania magazynowe i warunki przyłączenia.",
+            })
+            continue
         typ = klasyfikacja_modulu(modul.p_max_kw, modul.voltage_kv).modul
         generator = generatory[modul.der_ref]
         if typ is None:
@@ -274,6 +282,14 @@ def dossier_przygotowawcze_ncrfg(
     )
     wynik: list[dict[str, Any]] = []
     for mod in wejscia.modules:
+        if mod.der_kind == "BESS":
+            wynik.append({
+                "der_ref": mod.der_ref,
+                "status": "NIE_DOTYCZY_NC_RFG_MAGAZYN",
+                "powod_pl": "Samodzielny magazyn: procedura MEE i krajowe warunki "
+                            "przyłączenia wymagają odrębnej podstawy.",
+            })
+            continue
         typ = klasyfikacja_modulu(mod.p_max_kw, mod.voltage_kv).modul
         if typ is None:
             wynik.append({
