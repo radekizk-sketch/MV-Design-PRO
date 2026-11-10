@@ -24,6 +24,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from application.ncrfg_compliance.dossier import plan_dossier
 from application.ncrfg_compliance.certificate_review import (
     ocen_stan_rejestru,
     oceny_certyfikatow_przypadku,
@@ -251,3 +252,44 @@ def przeglad_certyfikatow_z_modelu(
     )
     wynik["case_id"] = str(case_id)
     return wynik
+
+
+
+@router.get("/cases/{case_id}/dossier-przygotowawcze")
+def dossier_przygotowawcze_ncrfg(
+    case_id: UUID, klucz: KluczTwin, operator_id: str,
+) -> dict[str, Any]:
+    """Dobiera WZORY dokumentów z klasyfikacji zatwierdzonego ENM.
+
+    Nie generuje formalnych oświadczeń/wniosków, nie jest pozwoleniem OSD.
+    Mikroinstalacja typu A bez danych kwalifikacyjnych ma warunkowy dokument DI.
+    """
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    wejscia = wejscia_ncrfg_przypadku(
+        get_enm(klucz), operator_id=operator_id, case_id=str(case_id)
+    )
+    wynik: list[dict[str, Any]] = []
+    for mod in wejscia.modules:
+        typ = klasyfikacja_modulu(mod.p_max_kw, mod.voltage_kv).modul
+        if typ is None:
+            wynik.append({
+                "der_ref": mod.der_ref,
+                "status": "NIE_DOTYCZY_NC_RFG",
+                "powod_pl": "Brak kwalifikacji do typu MWE w tej ocenie.",
+            })
+            continue
+        plan = plan_dossier(typ, operator_id=operator_id)
+        wynik.append({
+            "der_ref": mod.der_ref,
+            "plan": plan.model_dump(mode="json"),
+        })
+    return {
+        "case_id": str(case_id), "operator_id": operator_id,
+        "wyniki": wynik,
+        "pominiete": [p.model_dump(mode="json") for p in wejscia.pominiete],
+        "status": "LISTA_KONTROLNA_BEZ_FORMALNEJ_AKCEPTACJI",
+    }
