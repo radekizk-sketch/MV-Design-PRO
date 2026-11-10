@@ -255,3 +255,63 @@ export async function pobierzPlikWniosku(
   if (!response.ok) throw await bladWniosku(url, response);
   return response.blob();
 }
+
+
+// =============================================================================
+// P0/P1: źródłowy audyt WOS, PTPiREE i certyfikatów (bez drugiego Werdyktu)
+// =============================================================================
+
+export interface BlokerRegulacyjny {
+  readonly kod: string;
+  readonly opis_pl: string;
+}
+
+export interface AudytZrodelNcRfg {
+  readonly operator_id: string;
+  readonly profil: string;
+  readonly blokery: readonly BlokerRegulacyjny[];
+  readonly gotowosc_do_formalnego_potwierdzenia_zgodnosci: boolean;
+  readonly uwaga: string;
+}
+
+export interface WydanieWgZdarzen {
+  readonly status: string;
+  readonly wydanie: string | null;
+  readonly powod_pl: string;
+  readonly dane_brakujace: readonly string[];
+}
+
+export interface OcenaWydanModulu {
+  readonly der_ref: string;
+  readonly typ: string | null;
+  readonly status?: string;
+  readonly powod_pl?: string;
+  readonly ocena?: {
+    readonly wos: WydanieWgZdarzen;
+    readonly ptpiree: WydanieWgZdarzen;
+    readonly nie_aktywowane_w_solverze: boolean;
+  };
+  readonly blokery_aktywacji?: readonly string[];
+}
+
+export interface AudytWydanPrzypadkuNcRfg {
+  readonly case_id: string;
+  readonly operator_id: string;
+  readonly wyniki: readonly OcenaWydanModulu[];
+}
+
+export function pobierzAudytZrodelNcRfg(operatorId: string): Promise<AudytZrodelNcRfg> {
+  return pobierzJson<AudytZrodelNcRfg>(
+    '/api/ncrfg-tests/audyt-zrodel?' + new URLSearchParams({ operator_id: operatorId }),
+  );
+}
+
+export function pobierzOceneWydanPrzypadkuNcRfg(
+  caseId: string,
+  operatorId: string,
+): Promise<AudytWydanPrzypadkuNcRfg> {
+  return pobierzJson<AudytWydanPrzypadkuNcRfg>(
+    '/api/ncrfg-tests/cases/' + encodeURIComponent(caseId) + '/ocena-wydan?' +
+      new URLSearchParams({ operator_id: operatorId }),
+  );
+}
