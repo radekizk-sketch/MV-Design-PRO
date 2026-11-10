@@ -30,6 +30,8 @@ System ma dawać **cytowalną odpowiedź na pytanie**, **deterministycznie dobra
 | [05-MIGRACJA-ROADMAPA-ODBIOR.md](05-MIGRACJA-ROADMAPA-ODBIOR.md) | Audyt stanu, migracja #493/#521, fazy, testy, dowody, failure modes |
 | [06-KONTRAKT-DLA-OPUS-FABLE.md](06-KONTRAKT-DLA-OPUS-FABLE.md) | Misja i zakres autonomii recenzenta/wykonawcy, decyzje, stop conditions, DoD |
 | [07-MAPA-ZRODEL-I-ODNIESIEN.md](07-MAPA-ZRODEL-I-ODNIESIEN.md) | Pochodzenie ustaleń, wersje, ścieżki repo, ryzyka normowe, źródła publiczne |
+| [08-MACIERZ-KONTRAKTOW-MODULOW.md](08-MACIERZ-KONTRAKTOW-MODULOW.md) | Typowane wejścia/wyjścia, jednostki i kryteria per 24 odbiorców norm |
+| [09-UX-WORKFLOW.md](09-UX-WORKFLOW.md) | Interfejs bazy, importer, recenzje, podstawa obliczeń, migracja projektu i dowody UX |
 
 ## Potwierdzony punkt wejścia — stan main
 
