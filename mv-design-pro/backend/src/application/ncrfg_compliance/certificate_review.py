@@ -152,6 +152,13 @@ def oceny_certyfikatow_przypadku(
     stan_rejestru = ocen_stan_rejestru()
     wynik: list[OcenaUrzadzenia] = []
     for mod in wejscia.modules:
+        if mod.der_kind == "BESS":
+            wynik.append(_odmowa(
+                mod.der_ref, data_oceny, "NIE_DOTYCZY_NC_RFG_MAGAZYN",
+                "Samodzielny magazyn energii: odrębne wymagania i dowody "
+                "krajowe, bez automatycznego stosowania WiPWC dla PGM.",
+            ))
+            continue
         generator = po_ref[mod.der_ref]
         tabliczka = generator.materialized_params or {}
         dostepny = weryfikacja_certyfikatu(
