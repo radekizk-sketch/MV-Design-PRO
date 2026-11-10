@@ -23,6 +23,10 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from application.ncrfg_compliance.regulatory_effectivity import (
+    WejscieOcenyPodstaw,
+    ocen_podstawy,
+)
 from application.ncrfg_compliance import (
     NcRfgCaseComplianceResponse,
     NcRfgPtpireeRunResponse,
@@ -142,3 +146,66 @@ def run_ncrfg_ptpiree_tests(request: NcRfgPtpireeRunRequest) -> NcRfgPtpireeRunR
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/ocena-wydan")
+def ocen_wydania_ncrfg(wejscie: WejscieOcenyPodstaw) -> dict[str, Any]:
+    """Odczyt datowej stosowalności WOS/PTPiREE — bez wpływu na solver.
+
+    Przy wejściu od klienta to WYŁĄCZNIE analiza projektu, nie formalny
+    dowód, certyfikat ani modyfikacja zatwierdzonego przypadku.
+    """
+    return ocen_podstawy(wejscie).model_dump(mode="json")
+
+
+@router.get("/cases/{case_id}/ocena-wydan")
+def ocen_wydania_z_modelu(
+    case_id: UUID, klucz: KluczTwin, operator_id: str
+) -> dict[str, Any]:
+    """Wybór wydania WOS i procedury na źródłowo udokumentowanych zdarzeniach ENM.
+
+    Korzysta z tego SAMEGO mostu i klasyfikacji modułu co biegi NC RfG.
+    Brak wydarzeń lub brak klasy -> NIEUSTALONE, a nie obliczeniowy PASS.
+    Nie przełącza profilu istniejącego solvera, służy do migracji i audytu.
+    """
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    enm = get_enm(klucz)
+    wejscia = wejscia_ncrfg_przypadku(
+        enm, operator_id=operator_id, case_id=str(case_id)
+    )
+    generatory = {generator.ref_id: generator for generator in enm.generators}
+    wyniki: list[dict[str, Any]] = []
+    for modul in wejscia.modules:
+        typ = klasyfikacja_modulu(modul.p_max_kw, modul.voltage_kv).modul
+        generator = generatory[modul.der_ref]
+        if typ is None:
+            wyniki.append({
+                "der_ref": modul.der_ref, "typ": None,
+                "status": "NIE_DOTYCZY",
+                "powod_pl": "Moduł poniżej progu kwalifikacji NC RfG.",
+            })
+            continue
+        ocena = ocen_podstawy(WejscieOcenyPodstaw(
+            typ_mwe=typ,
+            modul_istniejacy=generator.modul_istniejacy,
+            wydarzenia=generator.wydarzenia_regulacyjne,
+        ))
+        wyniki.append({
+            "der_ref": modul.der_ref, "typ": typ,
+            "ocena": ocena.model_dump(mode="json"),
+        })
+    return {
+        "case_id": str(case_id),
+        "operator_id": operator_id,
+        "source": "ZATWIERDZONY_MODEL",
+        "wyniki": wyniki,
+        "pominiete": [p.model_dump(mode="json") for p in wejscia.pominiete],
+        "proweniencja": (
+            "To odczyt podstaw źródłowych; aktywacja WOS 2025 w profilu "
+            "NC RfG i kompletna certyfikacja wymagają osobnej migracji release."
+        ),
+    }
