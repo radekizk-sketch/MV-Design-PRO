@@ -34,6 +34,7 @@ from application.ncrfg_compliance.wipwc13_certificate_rules import (
 )
 from application.ncrfg_compliance.bank_nastaw_pl import (
     TypUrzadzenia, bank_nastaw, bank_nastaw_dla_przypadku,
+    charakterystyki_banku,
 )
 from application.ncrfg_compliance.test_scope import (
     RodzinaPgm, TypPgm, zakres_badan, zakres_badan_z_modelu,
@@ -459,3 +460,10 @@ def kontrola_wipwc13_dokumentu_cert(
         wersja=zadanie.wersja_wipwc,
         data_oceny=zadanie.data_oceny,
     )
+
+
+
+@router.get("/bank-nastaw-pl-charakterystyki")
+def bank_nastaw_techniczny_podstawy(wariant: TypUrzadzenia) -> dict[str, Any]:
+    """Wartości referencyjne Bank Nastaw 1.1, bez wstrzyknięcia do solvera."""
+    return charakterystyki_banku(wariant)

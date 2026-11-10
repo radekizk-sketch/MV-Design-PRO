@@ -149,5 +149,128 @@
         }
       ]
     }
-  ]
+  ],
+  "techniczne_warianty": {
+    "A_NN": {
+      "reference": "Bank Nastaw dla Polski 1.1",
+      "notes": "Pierwotnie dla A nn, Pn nominalna i PD projektowana moc czynna, Q znak wg źródła. Nie jest to WOS2025.",
+      "sections": [
+        {
+          "id": "LFSM_O",
+          "pdf_page": 3,
+          "frequency_threshold_hz": 50.2,
+          "droop_pct": 5,
+          "p_reference": "P rzeczywista w chwili osiągnięcia progu"
+        },
+        {
+          "id": "P_FREQ_REDUCTION",
+          "pdf_page": 3,
+          "frequency_start_hz": 49,
+          "p_reduction_pct_pmax_per_hz": 2
+        },
+        {
+          "id": "QU",
+          "pdf_page": 4,
+          "variant": "trzyfazowa",
+          "u_min_pu": 0.92,
+          "u_prog1_pu": 0.94,
+          "u_prog2_pu": 1.06,
+          "u_max_pu": 1.08,
+          "max_q_pobor_in_Pd": -0.4843,
+          "max_q_gen_in_Pd": 0.4843,
+          "droop": 2.222,
+          "point_of_measurement": "zaciski generatora",
+          "additional": "opisana względem cosφ 0,9 przy nominalnej projektowanej mocy czynnej PD"
+        }
+      ]
+    },
+    "B_SN": {
+      "reference": "Bank Nastaw dla Polski 1.1, typ B przyłączony do SN",
+      "notes": "Zależność od indywidualnego WOS i warunków operatora. Q(U) i zdolność Q na PCC wymagają potwierdzonej obwiedni i warunków sieci.",
+      "sections": [
+        {
+          "id": "LFSM_O",
+          "pdf_page": 14,
+          "frequency_threshold_hz": 50.2,
+          "droop_pct": 5,
+          "p_reference": "P rzeczywista w chwili osiągnięcia progu"
+        },
+        {
+          "id": "P_FREQ_REDUCTION",
+          "pdf_page": 14,
+          "frequency_start_hz": 49,
+          "p_reduction_pct_pmax_per_hz": 2
+        },
+        {
+          "id": "FRT_PROFILE",
+          "pdf_page": 15,
+          "u_ret_pu": 0.05,
+          "t_clear_s": 0.25,
+          "u_clear_pu": 0.05,
+          "t_rec1_s": 0.25,
+          "u_rec1_pu": 0.05,
+          "t_rec2_s": 0.25,
+          "u_rec2_pu": 0.85,
+          "t_rec3_s": 2.5,
+          "note": "Parametry charakterystyki wymaganego pozostawania w pracy; nie jest to symulacja ani zestaw testów laboratoryjnych."
+        },
+        {
+          "id": "FAULT_REACTIVE_CURRENT",
+          "pdf_page": 16,
+          "k1_default": 2,
+          "k2_default": 2,
+          "k1_range": [
+            2,
+            6
+          ],
+          "k2_range": [
+            2,
+            6
+          ],
+          "k_step": 0.5,
+          "u_trigger_default_pu": 0.85,
+          "u_trigger_range_pu": [
+            0.8,
+            1
+          ],
+          "delta_iq1_formula": "Delta_IQ1 = K1 * Delta_U1, Delta_U1 = (U1 - mean(U1_before_1min))/Un, gdy U1 < Utrigger; w przeciwnym razie 0",
+          "delta_iq2_formula": "Delta_IQ2 = K2 * Delta_U2, Delta_U2 = (U2 - mean(U2_before_1min))/Un",
+          "response_time_max_ms": 30,
+          "settle_time_max_ms": 60,
+          "tolerance_minus_pct": -10,
+          "tolerance_plus_pct": 20,
+          "reactive_priority": true,
+          "maximum_phase_current_not_exceeded": true,
+          "less_than_0_15_un_current_support_requirement": false,
+          "note": "Nie wnioskować znaku Q i IQ bez spójnej konwencji składowych i kierunku iniekcji. Zależność wyłącznie źródłowa, nie solver."
+        },
+        {
+          "id": "ACTIVE_POWER_RECOVERY",
+          "pdf_page": 18,
+          "voltage_recovery_start_pu": 0.9,
+          "max_time_after_fault_s": 5,
+          "p_recovery_fraction_of_pre_fault": 0.9,
+          "tolerance_error_pct": 10,
+          "primary_energy_available_condition": true,
+          "undamped_oscillations_prohibited": true
+        },
+        {
+          "id": "RECONNECTION",
+          "pdf_page": 18,
+          "frequency_min_hz": 49,
+          "frequency_max_hz": 50.05,
+          "voltage_condition": "napięcie w PCC w przedziale dopuszczalnym wg aktualnego prawa",
+          "min_stable_time_s": 60
+        },
+        {
+          "id": "REACTIVE_CAPABILITY_PCC",
+          "pdf_page": 19,
+          "below_p_fraction_full_available_q": 0.1,
+          "reactive_compensation_at_zero_p_required": true,
+          "data_points_status": "NIEUSTALONE_BEZ_ANALIZY_RYSUNKU",
+          "note": "Obwiednia P-Q/U-Q pokazana graficznie; brak potwierdzonych współrzędnych z rysunku, nie interpolować."
+        }
+      ]
+    }
+  }
 }

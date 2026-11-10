@@ -114,3 +114,28 @@ def bank_nastaw_dla_przypadku(enm: "EnergyNetworkModel", *, operator_id: str) ->
         "wyniki": entries,
         "status_formalny": "NIE_ZATWIERDZONO_NASTAW",
     }
+
+
+
+def charakterystyki_banku(wariant: TypUrzadzenia) -> dict[str, Any]:
+    """Charakterystyki referencyjne z Banku 1.1; nie zmienia nastaw instalacji.
+
+    Tylko B SN zawiera FRT i prąd bierny zwarciowy, a A nn oddzielne Q(U).
+    NIE zaświadcza zgodności WOS2025 ani nie uruchamia solvera dynamiki.
+    """
+    source=_source()
+    char=source.get("techniczne_warianty",{}).get(wariant)
+    if char is None:
+        raise ValueError(f"Brak technicznych charakterystyk dla {wariant}.")
+    return {
+        "wariant":wariant,
+        "wydanie":source["wersja"],
+        "data_obowiazywania":source["obowiazuje_od"],
+        "zrodlo_url":source["source_url"],
+        "zrodlo_tytul":char["reference"],
+        "zrodlo_uwagi":char["notes"],
+        "charakterystyki":char["sections"],
+        "status":"REFERENCJA_TECHNICZNA_BEZ_ZATWIERDZENIA_OD_OPERATORA",
+        "wos_2025_przejete":False,
+        "wynik_badania":"NIE_OCENIONO",
+    }
