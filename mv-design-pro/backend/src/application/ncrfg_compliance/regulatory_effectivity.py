@@ -90,6 +90,11 @@ def wybierz_wos(
 ) -> OcenaWydania:
     """Ocena źródła stosowalności, nie wstrzyknięcie liczb do profilu NC RfG."""
     e = wydarzenia or WydarzeniaRegulacyjne()
+    if modul_istniejacy is None:
+        return _brak(
+            "Nie ustalono, czy MWE jest nowy czy istniejący w rozumieniu art. 4 NC RfG.",
+            URL_URE, "modul_istniejacy"
+        )
     if modul_istniejacy is True:
         if typ in ("C", "D"):
             if e.znaczna_zmiana_umowy is True:
