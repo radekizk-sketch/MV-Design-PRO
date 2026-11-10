@@ -5,6 +5,8 @@ do WOS/IRiESD/PTPiREE. Odczytuje faktyczny stan profilu i lokalnego wykazu.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 
 from .certificate_review import ocen_stan_rejestru

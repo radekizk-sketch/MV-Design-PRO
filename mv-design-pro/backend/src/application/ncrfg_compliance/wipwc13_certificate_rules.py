@@ -7,12 +7,11 @@ właściciela: test_scope.py.
 from __future__ import annotations
 
 import json
-from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 TypMwe = Literal["A", "B", "C", "D"]
 Rodzina = Literal["PPM", "SYPGM"]
@@ -32,6 +31,7 @@ class WymogCertyfikatu(BaseModel):
     opis_pl: str
     podstawa_url: str = URL
     wymaga_certyfikatu: bool
+    # Bezwarunkowe zwolnienie z prób miejscowych jest zabronione.
     mozna_zastapic_test: bool
 
 
@@ -76,7 +76,7 @@ def zasady_wipwc13(typ: TypMwe, rodzina: Rodzina) -> ZasadyCertyfikacji:
             zdolnosc=x["ability"], status=state, klauzula=x["clause"],
             pdf_strona=x["printed_page"], opis_pl=data["rule_names"][state],
             wymaga_certyfikatu=state=="CERT_REQUIRED",
-            mozna_zastapic_test=state in ("CERT_REQUIRED", "CERT_OPTIONAL")
+            mozna_zastapic_test=False
         ))
     return ZasadyCertyfikacji(typ_mwe=typ, rodzina=rodzina, reguly=tuple(result))
 

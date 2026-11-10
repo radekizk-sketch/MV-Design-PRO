@@ -86,7 +86,6 @@ def analiza_brakow_przypadku(
         )
         cert = cert_map.get(module.der_ref)
         cert_status = str(cert.get("status")) if cert else "NIE_OCENIONO"
-        verified_cert = False
         # certificate_review intentionally never claims verified issuer / operator acceptance.
         # Do not turn a tentative match into formal proof.
         rows: list[dict[str, Any]]=[]

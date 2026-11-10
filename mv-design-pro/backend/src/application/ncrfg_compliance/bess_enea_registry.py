@@ -7,7 +7,7 @@ odrębnym terminom; nie przenosić wymagań certyfikacji MWE na BESS.
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, model_validator
 from enm.deklaracje_modulu import DataUmowy

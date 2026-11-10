@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 TypPgm = Literal["A", "B", "C", "D"]
 RodzinaPgm = Literal["SYPGM", "PPM", "OFFSHORE_PPM"]
@@ -99,7 +99,6 @@ def zakres_badan_z_modelu(
     własny w tej funkcji nie wydaje pozytywnego Werdyktu.
     """
     from catalog.profiles.nc_rfg import klasyfikacja_modulu
-    from enm.models import EnergyNetworkModel
     from .bieg import wejscia_ncrfg_przypadku
     from .regulatory_effectivity import wybierz_procedure
 
