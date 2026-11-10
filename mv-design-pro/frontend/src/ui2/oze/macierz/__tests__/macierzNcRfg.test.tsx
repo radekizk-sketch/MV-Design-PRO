@@ -54,6 +54,36 @@ function trasy(
 ) {
   return atrapaSieci([
     { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+
+    {
+      metoda: 'GET',
+      sciezka: '/api/ncrfg-tests/audyt-zrodel',
+      odpowiedz: () => odpowiedzJson(200, {
+        operator_id: 'enea',
+        profil: 'fixture',
+        gotowosc_do_formalnego_potwierdzenia_zgodnosci: false,
+        blokery: [{ kod: 'WOS_2025_NIE_W_PROFILU', opis_pl: 'WOS 2025: brak zatwierdzonej podstawy.' }],
+        uwaga: 'Stan źródeł nie jest potwierdzeniem zgodności.',
+      }),
+    },
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/ocena-wydan$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea',
+        wyniki: [
+          { der_ref: 'pv-1', typ: 'B',
+            ocena: {
+              wos: { status: 'USTALONO', wydanie: '2025', powod_pl: 'data warunków',
+                     dane_brakujace: [] },
+              ptpiree: { status: 'USTALONO', wydanie: '3.0', powod_pl: 'data oświadczenia',
+                        dane_brakujace: [] },
+              nie_aktywowane_w_solverze: true,
+            },
+            blokery_aktywacji: ['WOS_WYDANIE_NIEZGODNE_Z_AKTYWNYM_PROFILEM'] },
+        ],
+      }),
+    },
     {
       metoda: 'GET',
       sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/wejscia$/,
@@ -518,5 +548,18 @@ describe('stan oceny FRT z okna falownika (zapis w store)', () => {
     expect(frt.querySelector('[data-semantyka]')).toBeNull();
     // Moduł bez zapisanego stanu nie dostaje wiersza FRT (zero atrapy).
     expect(screen.queryByTestId(`mvd-oze-frt-hvrt-${pv.id}`)).not.toBeInTheDocument();
+  });
+});
+
+
+describe('źródła WOS/PTPiREE — tylko odczyt bez fałszywego certyfikatu', () => {
+  it('pokazuje braki podstaw i nie utożsamia rozpoznanego WOS z aktywnym profilem', async () => {
+    trasy();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-podstawy-regulacyjne');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-podstawy-stan'))
+      .toHaveTextContent('Podstawy niekompletne'));
+    expect(within(panel).getByText(/NC RfG/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Wymagane uzupełnienia źródeł/)).toBeInTheDocument();
   });
 });
