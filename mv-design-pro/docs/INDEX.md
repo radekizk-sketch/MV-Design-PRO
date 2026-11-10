@@ -218,3 +218,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Do
 - [audit/archive/CANONICAL_COMPLIANCE_2026-01.md](./audit/archive/CANONICAL_COMPLIANCE_2026-01.md) [archiwum] - checklista zgodności, migawka audytu 2026-01 (poza Document Hierarchy), zarchiwizowana 2026-09-09 (karta ARCHIWUM-CANONICAL-COMPLIANCE)
 - [archive/README.md](./archive/README.md) [historyczne]
 - [archive/](./archive/) [historyczne]
+
+## Warsztat wielośrodowiskowy — materiał do recenzji
+
+- [Scalona wizja warsztatu MV-DESIGN-PRO](./research/warsztat-wielosrodowiskowy/WIZJA_WARSZTAT_WIELOSRODOWISKOWY_MV-DESIGN-PRO_SCALONA.md) — 43 karty funkcji, 22 przepływy, cztery środowiska i sześć osi przypadku; rekonstrukcja, ocena wskazanej rewizji repo i propozycja mapowania do PLANS.md. Materiał projektowy, nie kanon ani odbiór wdrożenia. Statusy i kolejność prac pozostają w PLANS.md, część A §C.
