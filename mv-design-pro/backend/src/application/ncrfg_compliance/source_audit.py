@@ -104,7 +104,7 @@ def blokery_aktywacji_podstaw(
             layer for layer in profile.warstwy if layer.warstwa == "WOS"
         ).wydanie
         if selected != current:
-            reasons.append("WOS_WYDANIE_NIEZGODNE_Z_AKTYWNYM_PROF ILEM".replace(" ", ""))
+            reasons.append("WOS_WYDANIE_NIEZGODNE_Z_AKTYWNYM_PROFILEM")
     if ocena.ptpiree.wydanie is None:
         reasons.append("PTPIREE_WERSJA_NIEUSTALONA")
     return tuple(dict.fromkeys(reasons))
