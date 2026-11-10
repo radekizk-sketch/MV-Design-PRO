@@ -107,6 +107,7 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "modele_widmowe",
         "modul_istniejacy",
         "data_umowy_przylaczeniowej",
+        "wydarzenia_regulacyjne",
         "nastawy_zabezpieczen",
         "deklaracje_modulu",
     ),
