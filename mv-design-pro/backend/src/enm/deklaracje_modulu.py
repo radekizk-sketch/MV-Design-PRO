@@ -149,6 +149,7 @@ POLA_NC_RFG_GENERATORA: tuple[str, ...] = (
     "modul_istniejacy",
     "data_umowy_przylaczeniowej",
     "wydarzenia_regulacyjne",
+    "dowod_konfiguracji_urzadzenia",
     "nastawy_zabezpieczen",
     "deklaracje_modulu",
 )
@@ -197,6 +198,12 @@ def pola_nc_rfg_generatora(
                 pola[klucz] = WydarzeniaRegulacyjne.model_validate(wartosc).model_dump(
                     mode="json", exclude_none=True
                 )
+            elif klucz == "dowod_konfiguracji_urzadzenia":
+                from .dowody_urzadzenia import DowodKonfiguracjiUrzadzenia
+
+                pola[klucz] = DowodKonfiguracjiUrzadzenia.model_validate(wartosc).model_dump(
+                    mode="json", exclude_none=True
+                )
             elif klucz == "nastawy_zabezpieczen":
                 pola[klucz] = NastawyZabezpieczenModulu.model_validate(wartosc).model_dump(
                     mode="json", exclude_none=True
@@ -209,6 +216,7 @@ def pola_nc_rfg_generatora(
             kody = {
                 "data_umowy_przylaczeniowej": "generator.data_umowy_invalid",
                 "wydarzenia_regulacyjne": "generator.wydarzenia_regulacyjne_invalid",
+                "dowod_konfiguracji_urzadzenia": "generator.dowod_konfiguracji_invalid",
                 "nastawy_zabezpieczen": "generator.nastawy_zabezpieczen_invalid",
                 "deklaracje_modulu": "generator.deklaracje_modulu_invalid",
             }
