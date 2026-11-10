@@ -41,19 +41,19 @@ def test_wos_a_or_2027() -> None:
         "A", ev(
             data_wydania_warunkow="2026-12-31",
             data_zgloszenia_przylaczenia="2027-01-01",
-        )
+        ), modul_istniejacy=False
     ).wydanie == "2025"
     assert wybierz_wos(
         "A", ev(
             data_wydania_warunkow="2026-12-31",
             data_zgloszenia_przylaczenia="2026-12-31",
-        )
+        ), modul_istniejacy=False
     ).wydanie == "2018"
 
 
 def test_wos_a_missing_other_event_cannot_assume_2018() -> None:
     result = wybierz_wos(
-        "A", ev(data_wydania_warunkow="2026-12-31")
+        "A", ev(data_wydania_warunkow="2026-12-31"), modul_istniejacy=False
     )
     assert result.status == "NIEUSTALONE"
     assert "data_zgloszenia_przylaczenia" in result.dane_brakujace
@@ -145,3 +145,14 @@ def test_regulatory_diagnostic_is_explicitly_not_solver_activation() -> None:
     assert result.wos.wydanie == "2025"
     assert result.ptpiree.wydanie == "3.0"
     assert result.nie_aktywowane_w_solverze
+
+
+
+def test_unknown_legal_existing_status_is_not_assumed_new() -> None:
+    result = wybierz_wos(
+        "B", ev(data_wydania_warunkow="2026-05-01"),
+        modul_istniejacy=None,
+    )
+    assert result.status == "NIEUSTALONE"
+    assert result.wydanie is None
+    assert "modul_istniejacy" in result.dane_brakujace
