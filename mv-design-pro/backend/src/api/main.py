@@ -10,6 +10,7 @@ from api.analysis_runs import router as analysis_runs_router
 from api.archive_diff import router as archive_diff_router
 from api.audit2_catalogs import router as audit2_catalogs_router
 from api.audit2_station_config import router as audit2_station_config_router
+from api.bess_enea_registry import router as bess_enea_registry_router
 from api.batch_execution import router as batch_execution_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
@@ -190,6 +191,7 @@ app.include_router(execution_runs_router)
 # Karta BATCH-ROUTER: serie przebiegów nad scenariuszami zwarciowymi
 # (tor kanoniczny — te same biegi, co pojedyncze uruchomienie scenariusza).
 app.include_router(batch_execution_router)
+app.include_router(bess_enea_registry_router)
 app.include_router(v126_academic_router)
 app.include_router(result_contract_v1_router)
 app.include_router(fault_loop_router)
