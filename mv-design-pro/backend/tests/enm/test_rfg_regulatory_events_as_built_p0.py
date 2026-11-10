@@ -6,7 +6,6 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from api.generators import DerGeneratorCreateRequest
 from enm.deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from enm.dowody_urzadzenia import DowodKonfiguracjiUrzadzenia
 from enm.hash import compute_enm_hash, compute_input_hash, hash_migawki_enm
