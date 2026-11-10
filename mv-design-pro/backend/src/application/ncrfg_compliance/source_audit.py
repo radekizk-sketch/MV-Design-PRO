@@ -5,8 +5,6 @@ do WOS/IRiESD/PTPiREE. Odczytuje faktyczny stan profilu i lokalnego wykazu.
 """
 from __future__ import annotations
 
-from typing import Any
-
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 
 from .certificate_review import ocen_stan_rejestru
@@ -19,7 +17,6 @@ def audyt_zrodel(operator_id: str) -> dict[str, Any]:
         layer.warstwa: layer for layer in profile.warstwy
     }
     wos = layers["WOS"]
-    ptpiree = layers["PROCEDURA_PTPIREE"]
     osd = layers["OSD"]
     wipwc = layers["WIPWC"]
     rejestr = ocen_stan_rejestru()
