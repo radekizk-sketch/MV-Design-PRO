@@ -25,7 +25,9 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
-from application.ncrfg_compliance.test_scope import RodzinaPgm, TypPgm, zakres_badan
+from application.ncrfg_compliance.test_scope import (
+    RodzinaPgm, TypPgm, zakres_badan, zakres_badan_z_modelu,
+)
 from application.ncrfg_compliance.source_audit import (
     audyt_zrodel,
     blokery_aktywacji_podstaw,
@@ -338,3 +340,25 @@ def ptpiree_v3_zakres_badan(typ: TypPgm, rodzina: RodzinaPgm) -> dict[str, Any]:
     i właściwej wersji procedury. To jawne zapytanie katalogowe.
     """
     return zakres_badan(typ, rodzina).model_dump(mode="json")
+
+
+
+@router.get("/cases/{case_id}/zakres-badan-v3")
+def ptpiree_v3_zakres_z_modelu(
+    case_id: UUID, klucz: KluczTwin, operator_id: str
+) -> dict[str, Any]:
+    """Program testów wynikający z zatwierdzonego ENM i oświadczenia PTPiREE 3.0.
+
+    Zwraca wyłącznie plan koniecznych prób. NIE wykonuje prób i NIE zwraca
+    zgodności dla projektów bez skutecznie określonej wersji procedury.
+    """
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    result = zakres_badan_z_modelu(
+        get_enm(klucz), operator_id=operator_id
+    )
+    result["case_id"] = str(case_id)
+    return result

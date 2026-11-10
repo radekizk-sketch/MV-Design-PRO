@@ -85,3 +85,77 @@ def zakres_badan(typ: TypPgm, rodzina: RodzinaPgm) -> ZakresBadanPGM:
             ),
         ))
     return ZakresBadanPGM(typ=typ, rodzina=rodzina, punkty=tuple(result))
+
+
+
+def zakres_badan_z_modelu(
+    enm: "EnergyNetworkModel",
+    *,
+    operator_id: str,
+) -> dict[str, Any]:
+    """Wyłącznie dla PGM z proceduralnie ustaloną wersją 3.0.
+
+    Jest to wspólny ENM/model_bridge i centralna klasyfikacja; żaden test
+    własny w tej funkcji nie wydaje pozytywnego Werdyktu.
+    """
+    from catalog.profiles.nc_rfg import klasyfikacja_modulu
+    from enm.models import EnergyNetworkModel
+    from .bieg import wejscia_ncrfg_przypadku
+    from .regulatory_effectivity import wybierz_procedure
+
+    model = wejscia_ncrfg_przypadku(
+        enm, operator_id=operator_id, case_id="zakres-badan-ptpiree"
+    )
+    generators = {g.ref_id: g for g in enm.generators}
+    results: list[dict[str, Any]] = []
+    for mod in model.modules:
+        if mod.der_kind == "BESS":
+            results.append({
+                "der_ref": mod.der_ref,
+                "status": "POZA_NC_RFG_MAGAZYN",
+                "podstawa_pl": "Samodzielny BESS — wymogi krajowe i warunki przyłączenia.",
+            })
+            continue
+        typ = klasyfikacja_modulu(mod.p_max_kw, mod.voltage_kv).modul
+        if typ is None:
+            results.append({
+                "der_ref": mod.der_ref,
+                "status": "PONIZEJ_PROGU_NC_RFG",
+            })
+            continue
+        gen = generators[mod.der_ref]
+        procedure = wybierz_procedure(typ, gen.wydarzenia_regulacyjne)
+        if procedure.status != "USTALONO" or procedure.wydanie != "3.0":
+            results.append({
+                "der_ref": mod.der_ref, "typ": typ,
+                "status": "NIEUSTALONA_PODSTAWA_PROGRAMU_BADAN",
+                "przyczyna_pl": procedure.powod_pl,
+                "brakujace": list(procedure.dane_brakujace),
+            })
+            continue
+        # Tylko po stronie istniejącego model_bridge PPM — SyPGM w odrębnym
+        # rejestrze z powodu braku synchronicznego generatora w tej ścieżce.
+        if mod.module_family != "PPM":
+            results.append({
+                "der_ref": mod.der_ref, "typ": typ,
+                "status": "RODZINA_NIEOBSLUGIWANA",
+            })
+            continue
+        table = zakres_badan(typ, "PPM")
+        results.append({
+            "der_ref": mod.der_ref, "typ": typ,
+            "status": "ZAKRES_TESTOW_NIE_ICH_WYKONANIE",
+            "zrodlo": table.podstawa,
+            "punkty": [x.model_dump(mode="json") for x in table.punkty],
+            "ostrzegam": (
+                "Brak zweryfikowanego programu ramowego i wyników wykonanych "
+                "prób w tej odpowiedzi; wykluczone formalne SPEŁNIA."
+            ),
+        })
+    return {
+        "operator_id": operator_id,
+        "wersja_procedury_tabeli": "3.0",
+        "wyniki": results,
+        "pominiete": [p.model_dump(mode="json") for p in model.pominiete],
+        "wynik_formalny": "NIE_OCENIONO",
+    }
