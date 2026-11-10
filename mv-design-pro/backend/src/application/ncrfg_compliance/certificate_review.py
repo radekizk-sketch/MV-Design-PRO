@@ -20,7 +20,7 @@ from network_model.catalog.mv_ptpiree_catalog import (
     get_ptpiree_catalog_manifest,
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import DowodCertyfikatu
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from .model_bridge import weryfikacja_certyfikatu
 from .regulatory_effectivity import wybierz_wos
@@ -81,7 +81,6 @@ def ocen_stan_rejestru() -> StanRejestru:
         x["wipwc_version"] for x in obs["sources"]
         if x["wipwc_version"] not in w_repo
     )
-    stan: StanRejestru.model_fields["stan"].annotation
     if starsze:
         stan = "STARSZY_NIZ_OBSERWACJA"
     elif brak:
@@ -216,7 +215,6 @@ def oceny_certyfikatow_przypadku(
                 cert=cert,
             ))
             continue
-        typ = mod.module_family
         # Typ PGM oraz WOS wybiera istniejąca funkcja z profilu, nie nowa klasyfikacja.
         from catalog.profiles.nc_rfg import klasyfikacja_modulu
         typ_pgm = klasyfikacja_modulu(mod.p_max_kw, mod.voltage_kv).modul
