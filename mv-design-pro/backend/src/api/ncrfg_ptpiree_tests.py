@@ -25,6 +25,7 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.ncrfg_compliance.dossier import plan_dossier
+from application.ncrfg_compliance.test_scope import RodzinaPgm, TypPgm, zakres_badan
 from application.ncrfg_compliance.source_audit import (
     audyt_zrodel,
     blokery_aktywacji_podstaw,
@@ -326,3 +327,14 @@ def audyt_zrodel_ncrfg(operator_id: str) -> dict[str, Any]:
             detail=f"Nieznany operator NC RfG: {operator_id}.",
         )
     return audyt_zrodel(operator_id)
+
+
+
+@router.get("/zakres-badan-v3")
+def ptpiree_v3_zakres_badan(typ: TypPgm, rodzina: RodzinaPgm) -> dict[str, Any]:
+    """Tabela 1, rozdział 4, PTPiREE v3.0 — zakres testów, NIE wyniki.
+
+    Nie stosować do projektu, dla którego nie ustalono daty oświadczenia
+    i właściwej wersji procedury. To jawne zapytanie katalogowe.
+    """
+    return zakres_badan(typ, rodzina).model_dump(mode="json")

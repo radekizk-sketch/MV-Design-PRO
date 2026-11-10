@@ -1,0 +1,341 @@
+{
+  "schema": "ptpiree_v3_scope.v1",
+  "document": "PTPiREE Procedura testowania modułów wytwarzania energii v3.0",
+  "published_at": "2025-12-15",
+  "valid_from": "2026-01-01",
+  "source_url": "https://ptpiree.pl/wp-content/uploads/2025/12/Procedura-testowania_wer_3.0.pdf",
+  "source_anchors": [
+    "rozdzial 4, tabela 1, strona drukowana 5",
+    "rozdzial 4, tabela 1, strona drukowana 6"
+  ],
+  "meaning": "Matryca zakresu testów według PTPiREE v3.0. NIE są to wyniki testów ani automatyczne pełne wymagania NC RfG. Warunki szczegółowe i kryteria liczbowe pochodzą z programów ramowych i z WOS właściwego projektu.",
+  "statuses_description": {
+    "NONE": "Brak takiej próby w tabeli 1; nie oznacza brak ogólnego wymogu NC RfG.",
+    "TEST": "Test zgodności wymagany według tabeli 1.",
+    "CERT_IF_AB": "Test zgodności w przypadku braku odpowiedniego certyfikatu; autentyczność i pokrycie certyfikatu muszą być dowiedzione.",
+    "TEST_OR_STATEMENT": "Test zgodności lub oświadczenie o szybkiej resynchronizacji zgodnie z tabelą.",
+    "CONDITIONAL_WOS2018_P20": "W tabeli 1 PTPiREE 3.0 gwiazdka: SyPGM o Pmax >= 20 MW zgodnie z WOS2018; przypadek WOS2025 wymaga osobnej weryfikacji.",
+    "CONDITIONAL_OPERATOR": "Test, gdy zdolność jest wymagana odpowiednią specyfikacją operatora."
+  },
+  "entries": [
+    {
+      "family": "SYPGM",
+      "ability": "LFSM_O",
+      "statuses": {
+        "A": "CERT_IF_AB",
+        "B": "CERT_IF_AB",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "LFSM_U",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FSM",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "FREQUENCY_RESTORATION",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "HOUSE_LOAD_OPERATION",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST_OR_STATEMENT",
+        "D": "TEST_OR_STATEMENT"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "REACTIVE_CAPABILITY",
+      "statuses": {
+        "A": "NONE",
+        "B": "CERT_IF_AB",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "SYPGM",
+      "ability": "OSCILLATION_DAMPING",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "NONE",
+        "D": "CONDITIONAL_WOS2018_P20"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "LFSM_O",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "LFSM_U",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "FSM",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "ACTIVE_POWER_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "VOLTAGE_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "REACTIVE_POWER_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 5
+    },
+    {
+      "family": "PPM",
+      "ability": "POWER_FACTOR_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "PPM",
+      "ability": "REACTIVE_CAPABILITY",
+      "statuses": {
+        "A": "NONE",
+        "B": "TEST",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "LFSM_O",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "LFSM_U",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "FSM",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "ACTIVE_POWER_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "VOLTAGE_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "REACTIVE_POWER_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "OFFSHORE_PPM",
+      "ability": "POWER_FACTOR_CONTROL",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "P_MAX",
+      "statuses": {
+        "A": "NONE",
+        "B": "TEST",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "P_MIN",
+      "statuses": {
+        "A": "NONE",
+        "B": "TEST",
+        "C": "TEST",
+        "D": "TEST"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "ISLAND_OPERATION",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "CONDITIONAL_OPERATOR",
+        "D": "CONDITIONAL_OPERATOR"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "BLACK_START",
+      "statuses": {
+        "A": "NONE",
+        "B": "NONE",
+        "C": "CONDITIONAL_OPERATOR",
+        "D": "CONDITIONAL_OPERATOR"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "ACTIVE_POWER_CONTROL_ADDITIONAL",
+      "statuses": {
+        "A": "NONE",
+        "B": "TEST",
+        "C": "NONE",
+        "D": "NONE"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "STOP_GENERATION",
+      "statuses": {
+        "A": "CERT_IF_AB",
+        "B": "CERT_IF_AB",
+        "C": "NONE",
+        "D": "NONE"
+      },
+      "pdf_page": 6
+    },
+    {
+      "family": "ALL",
+      "ability": "REDUCE_GENERATION",
+      "statuses": {
+        "A": "NONE",
+        "B": "CERT_IF_AB",
+        "C": "NONE",
+        "D": "NONE"
+      },
+      "pdf_page": 6
+    }
+  ]
+}
