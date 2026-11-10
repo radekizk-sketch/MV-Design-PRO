@@ -37,6 +37,8 @@ from enm.deklaracje_modulu import (
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash, compute_input_hash, hash_migawki_enm
 from enm.models import EnergyNetworkModel, Generator
+from enm.wydarzenia_regulacyjne import WydarzeniaRegulacyjne
+from enm.dowody_urzadzenia import DowodKonfiguracjiUrzadzenia
 from enm.nastawy_modulu import POLA_NASTAW, NastawyZabezpieczenModulu
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeModuleInput, NcRfgPtpireeRunRequest
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
@@ -167,6 +169,16 @@ _WARTOSCI: dict[str, tuple[Any, Any, str]] = {
     # pole: (wartość poprawna w ładunku, wartość spoza kontraktu, kod błędu)
     "modul_istniejacy": (False, "tak", "generator.modul_istniejacy_invalid"),
     "data_umowy_przylaczeniowej": ("2025-03-01", "01.03.2025", "generator.data_umowy_invalid"),
+    "wydarzenia_regulacyjne": (
+        {"data_wydania_warunkow": "2026-01-01", "zrodlo_pl": "warunki przyłączenia W/1"},
+        {"data_wydania_warunkow": "2026-01-01"},
+        "generator.wydarzenia_regulacyjne_invalid",
+    ),
+    "dowod_konfiguracji_urzadzenia": (
+        {"wersja_oprogramowania": "3.0.0", "zrodlo_pl": "protokół SAT/1"},
+        {"wersja_oprogramowania": "3.0.0"},
+        "generator.dowod_konfiguracji_invalid",
+    ),
     "nastawy_zabezpieczen": (
         {"u_min_pu": 0.8, "u_min_czas_s": 0.2, "zrodlo_pl": "karta nastaw"},
         {"u_min_pu": 0.8},
@@ -181,6 +193,12 @@ _WARTOSCI: dict[str, tuple[Any, Any, str]] = {
 _OCZEKIWANE_W_MODELU: dict[str, Any] = {
     "modul_istniejacy": False,
     "data_umowy_przylaczeniowej": date(2025, 3, 1),
+    "wydarzenia_regulacyjne": WydarzeniaRegulacyjne(
+        data_wydania_warunkow="2026-01-01", zrodlo_pl="warunki przyłączenia W/1"
+    ),
+    "dowod_konfiguracji_urzadzenia": DowodKonfiguracjiUrzadzenia(
+        wersja_oprogramowania="3.0.0", zrodlo_pl="protokół SAT/1"
+    ),
     "nastawy_zabezpieczen": NastawyZabezpieczenModulu(
         u_min_pu=0.8, u_min_czas_s=0.2, zrodlo_pl="karta nastaw"
     ),
