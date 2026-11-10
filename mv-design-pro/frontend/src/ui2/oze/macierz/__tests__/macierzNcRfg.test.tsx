@@ -659,8 +659,8 @@ describe('WiPWC × PTPiREE — normatywna macierz dowodów', () => {
     await waitFor(() => expect(within(panel).getByTestId('mvd-oze-dowody-rejestr')).toBeInTheDocument());
     await user.click(within(panel).getByText('Wymogi i brakujące dowody WiPWC / PTPiREE'));
     const matrix = within(panel).getByTestId('mvd-oze-macierz-obowiazkow');
-    expect(within(matrix).getByText('BRAK_ZWERYFIKOWANEGO_CERTYFIKATU')).toBeInTheDocument();
-    expect(within(matrix).getByText('BRAK_PROTOKOLU_PROBY')).toBeInTheDocument();
+    expect(within(matrix).getByText('Brak zweryfikowanego certyfikatu')).toBeInTheDocument();
+    expect(within(matrix).getByText('Brak protokołu badania')).toBeInTheDocument();
     expect(within(matrix).getByText('WOS: 2025, procedura: 3.0.')).toBeInTheDocument();
   });
 });

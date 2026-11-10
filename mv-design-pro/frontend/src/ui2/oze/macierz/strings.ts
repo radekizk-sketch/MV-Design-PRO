@@ -87,11 +87,11 @@ export const MACIERZ_STRINGS = {
   brakWyniku: 'brak wyniku',
 
   // Certyfikat zgodności (z zatwierdzonego modelu przypadku)
-  certyfikatPrzycisk: 'Certyfikat zgodności',
+  certyfikatPrzycisk: 'Raport oceny NC RfG',
   certyfikatTytulNieaktywny:
     'Certyfikat powstaje z zatwierdzonego modelu aktywnego przypadku — wybierz przypadek i operatora.',
   certyfikatTytulAktywny: 'Zbuduj certyfikat zgodności z zatwierdzonego modelu przypadku',
-  certyfikatNaglowek: 'Certyfikat zgodności NC RfG',
+  certyfikatNaglowek: 'Raport oceny NC RfG — nie certyfikat urządzenia',
   certyfikatProjekt: 'Projekt',
   certyfikatPrzypadek: 'Przypadek',
   certyfikatProcedura: 'Procedura',
@@ -228,3 +228,32 @@ export function opiszMetryke(value: unknown): string {
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
+
+
+// Kody OBOWIĄZKÓW normatywnych, nie Werdyktu. Tylko etykiety prezentacji.
+export const ETYKIETY_WIPWC_OBOWIAZKOW: Readonly<Record<string, string>> = {
+  CERT_REQUIRED: 'Certyfikat wymagany',
+  CERT_OPTIONAL: 'Certyfikat dopuszczony warunkowo',
+  NO_CERT_SUBSTITUTION: 'Certyfikat nie zastępuje próby',
+  NOT_APPLICABLE: 'Nie dotyczy wg tabeli WiPWC',
+  POZA_TABELA_CERTYFIKATOW: 'Poza tabelą certyfikatów',
+};
+
+export const ETYKIETY_PTPIREE_ZAKRESU: Readonly<Record<string, string>> = {
+  TEST: 'Badanie wymagane',
+  NONE: 'Brak próby w tabeli (nie brak wymogu)',
+  CERT_IF_AB: 'Próba przy braku odpowiedniego certyfikatu',
+  TEST_OR_STATEMENT: 'Próba lub dopuszczone oświadczenie',
+  CONDITIONAL_OPERATOR: 'Warunkowo — decyzja operatora',
+  CONDITIONAL_WOS2018_P20: 'Warunkowo — WOS 2018 i moc maksymalna',
+  BRAK_POTWIERDZONEJ_METODY: 'Brak potwierdzonej podstawy prób',
+};
+
+export const ETYKIETY_DOWODU_NCRFG: Readonly<Record<string, string>> = {
+  BRAK_ZWERYFIKOWANEGO_CERTYFIKATU: 'Brak zweryfikowanego certyfikatu',
+  BRAK_PROTOKOLU_PROBY: 'Brak protokołu badania',
+  BRAK_PROTOKOLU_LUB_CERTYFIKATU: 'Brak protokołu albo dopuszczalnego certyfikatu',
+  ZAKRES_WYMAGA_POTWIERDZENIA_OSD: 'Wymaga decyzji operatora',
+  NIE_OCENIONO_INNE_DOWODY: 'Nie oceniono pozostałych dowodów',
+  POZA_ZAKRESEM_TABEL: 'Poza zakresem tych tabel',
+};

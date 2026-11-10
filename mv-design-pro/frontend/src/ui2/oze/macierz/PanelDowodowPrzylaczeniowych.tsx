@@ -4,6 +4,8 @@
  */
 import { useEffect, useState } from 'react';
 
+import { ETYKIETY_WIPWC_OBOWIAZKOW, ETYKIETY_PTPIREE_ZAKRESU, ETYKIETY_DOWODU_NCRFG } from './strings';
+
 import {
   pobierzPrzegladCertyfikatowNcRfg,
   pobierzDossierPrzygotowawczeNcRfg,
@@ -139,15 +141,29 @@ export function PanelDowodowPrzylaczeniowych({ operatorId, caseId }: Props): JSX
                         <th>Certyfikat WiPWC</th>
                         <th>Próba PTPiREE</th>
                         <th>Dowód</th>
+                        <th>Podstawa</th>
                       </tr>
                     </thead>
                     <tbody>
                       {m.wymagania.map((w) => (
                         <tr key={w.zdolnosc}>
                           <td>{w.zdolnosc}</td>
-                          <td>{w.wipwc}</td>
-                          <td>{w.test_wg_ptpiree_3}</td>
-                          <td>{w.status_wykazania}</td>
+                          <td>{ETYKIETY_WIPWC_OBOWIAZKOW[w.wipwc] ?? w.wipwc}</td>
+                          <td>{ETYKIETY_PTPIREE_ZAKRESU[w.test_wg_ptpiree_3] ?? w.test_wg_ptpiree_3}</td>
+                          <td>{ETYKIETY_DOWODU_NCRFG[w.status_wykazania] ?? w.status_wykazania}</td>
+                          <td>
+                            {w.wipwc_zrodlo ? (
+                              <a href={w.wipwc_zrodlo} target="_blank" rel="noopener noreferrer"
+                                 title={'WiPWC 1.3 §' + (w.wipwc_klauzula ?? '')}>
+                                WiPWC §{w.wipwc_klauzula ?? '?'}
+                              </a>
+                            ) : null}
+                            {w.test_zrodlo ? (
+                              <a href={w.test_zrodlo} target="_blank" rel="noopener noreferrer">
+                                PTPiREE 3.0
+                              </a>
+                            ) : null}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
