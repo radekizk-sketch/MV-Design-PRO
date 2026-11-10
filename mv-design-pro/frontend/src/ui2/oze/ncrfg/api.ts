@@ -394,3 +394,50 @@ export function pobierzDossierPrzygotowawczeNcRfg(
       new URLSearchParams({ operator_id: operatorId }),
   );
 }
+
+
+// =============================================================================
+// Macierz normatywnych obowiązków WiPWC1.3 × PTPiREE3.0 — per model ENM
+// =============================================================================
+
+export interface ObowiazekDowodowyWipwc {
+  readonly zdolnosc: string;
+  readonly wipwc: string;
+  readonly cert_status_z_wykazu: string;
+  readonly test_wg_ptpiree_3: string;
+  readonly wipwc_zrodlo?: string;
+  readonly wipwc_klauzula?: string;
+  readonly test_zrodlo?: string | null;
+  readonly status_wykazania: string;
+}
+
+export interface LukiDowodoweModuluNcRfg {
+  readonly der_ref: string;
+  readonly typ?: string;
+  readonly rodzina?: string;
+  readonly stan?: string;
+  readonly status?: string;
+  readonly wos_wybrany?: string | null;
+  readonly ptpiree_wybrana?: string | null;
+  readonly wymagania: readonly ObowiazekDowodowyWipwc[];
+  readonly braki: readonly string[];
+  readonly dokumenty?: readonly string[];
+}
+
+export interface LukiDowodowePrzypadkuNcRfg {
+  readonly case_id: string;
+  readonly operator_id: string;
+  readonly data_oceny: string;
+  readonly wyniki: readonly LukiDowodoweModuluNcRfg[];
+  readonly gotowosc_zgodnosci: false;
+  readonly reason: string;
+}
+
+export function pobierzLukiDowodoweNcRfg(
+  caseId: string, operatorId: string, dataOceny: string,
+): Promise<LukiDowodowePrzypadkuNcRfg> {
+  return pobierzJson<LukiDowodowePrzypadkuNcRfg>(
+    '/api/ncrfg-tests/cases/' + encodeURIComponent(caseId) + '/luki-dowodowe?' +
+      new URLSearchParams({ operator_id: operatorId, data_oceny: dataOceny }),
+  );
+}

@@ -133,6 +133,34 @@ function trasy(
         status: 'LISTA_KONTROLNA_BEZ_FORMALNEJ_AKCEPTACJI',
       }),
     },
+
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/luki-dowodowe$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea', data_oceny: '2026-11-10',
+        gotowosc_zgodnosci: false,
+        reason: 'Nie wykazano zgodności formalnej.',
+        wyniki: [{
+          der_ref: 'pv-1', typ: 'B', rodzina: 'PPM',
+          wos_wybrany: '2025', ptpiree_wybrana: '3.0',
+          stan: 'BRAK_PELNEGO_DOWODU',
+          braki: ['BRAK_ZWERYFIKOWANYCH_PARAMETROW_WOS2025'],
+          wymagania: [
+            { zdolnosc: 'LFSM_O', wipwc: 'CERT_REQUIRED',
+              cert_status_z_wykazu: 'NIE_OCENIONO',
+              test_wg_ptpiree_3: 'NONE',
+              status_wykazania: 'BRAK_ZWERYFIKOWANEGO_CERTYFIKATU' },
+            { zdolnosc: 'REACTIVE_CAPABILITY', wipwc: 'NOT_APPLICABLE',
+              cert_status_z_wykazu: 'NIE_OCENIONO',
+              test_wg_ptpiree_3: 'TEST',
+              status_wykazania: 'BRAK_PROTOKOLU_PROBY' },
+          ],
+          dokumenty: ['PGMD'],
+        }],
+      }),
+    },
+
     { metoda: 'POST', sciezka: '/api/ncrfg-tests/run', odpowiedz: () => odpowiedzJson(200, biegFixture()) },
     {
       metoda: 'GET',
@@ -618,5 +646,21 @@ describe('P1 — certyfikat urządzenia i dokumentacja bez fikcyjnego odbioru', 
     await uzytkownik.click(within(panel).getByText('Wzory dokumentów do przygotowania'));
     expect(within(panel).getByText(/PGMD/)).toBeInTheDocument();
     expect(within(panel).getByText(/Nie jest to pozwolenie operatora/)).toBeInTheDocument();
+  });
+});
+
+
+describe('WiPWC × PTPiREE — normatywna macierz dowodów', () => {
+  it('odróżnia obowiązek certyfikatu od próby i pokazuje brak formalnego dowodu', async () => {
+    trasy();
+    const user = userEvent.setup();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-dowody-przylaczeniowe');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-dowody-rejestr')).toBeInTheDocument());
+    await user.click(within(panel).getByText('Wymogi i brakujące dowody WiPWC / PTPiREE'));
+    const matrix = within(panel).getByTestId('mvd-oze-macierz-obowiazkow');
+    expect(within(matrix).getByText('BRAK_ZWERYFIKOWANEGO_CERTYFIKATU')).toBeInTheDocument();
+    expect(within(matrix).getByText('BRAK_PROTOKOLU_PROBY')).toBeInTheDocument();
+    expect(within(matrix).getByText('WOS: 2025, procedura: 3.0.')).toBeInTheDocument();
   });
 });

@@ -7,7 +7,9 @@ import { useEffect, useState } from 'react';
 import {
   pobierzPrzegladCertyfikatowNcRfg,
   pobierzDossierPrzygotowawczeNcRfg,
+  pobierzLukiDowodoweNcRfg,
   type DossierPrzygotowawczeNcrfg,
+  type LukiDowodowePrzypadkuNcRfg,
   type PrzegladCertyfikatow,
 } from '../ncrfg/api';
 
@@ -31,6 +33,7 @@ type Wynik =
       readonly stan: 'gotowe';
       readonly certyfikaty: PrzegladCertyfikatow;
       readonly dossier: DossierPrzygotowawczeNcrfg;
+      readonly luki: LukiDowodowePrzypadkuNcRfg;
     };
 
 export function PanelDowodowPrzylaczeniowych({ operatorId, caseId }: Props): JSX.Element {
@@ -47,9 +50,10 @@ export function PanelDowodowPrzylaczeniowych({ operatorId, caseId }: Props): JSX
     Promise.all([
       pobierzPrzegladCertyfikatowNcRfg(caseId, operatorId, dataOceny),
       pobierzDossierPrzygotowawczeNcRfg(caseId, operatorId),
+      pobierzLukiDowodoweNcRfg(caseId, operatorId, dataOceny),
     ]).then(
-      ([certyfikaty, dossier]) => {
-        if (aktywne) setWynik({ stan: 'gotowe', certyfikaty, dossier });
+      ([certyfikaty, dossier, luki]) => {
+        if (aktywne) setWynik({ stan: 'gotowe', certyfikaty, dossier, luki });
       },
       (error: unknown) => {
         if (aktywne) setWynik({
@@ -105,6 +109,53 @@ export function PanelDowodowPrzylaczeniowych({ operatorId, caseId }: Props): JSX
               ))}
             </ul>
           )}
+
+          <details data-testid="mvd-oze-macierz-obowiazkow">
+            <summary>Wymogi i brakujące dowody WiPWC / PTPiREE</summary>
+            <p>
+              Wykazano tylko podstawę i rodzaj dowodu; bez potwierdzenia certyfikatu,
+              ukończenia badań ani akceptacji operatora.
+            </p>
+            {wynik.luki.wyniki.map((m) => (
+              <section key={m.der_ref} className="mvd-oze-panel-blok">
+                <h5>{m.der_ref} — {m.typ ?? m.status ?? 'nieustalony'}</h5>
+                <p>
+                  WOS: {m.wos_wybrany ?? 'nieustalony'},
+                  procedura: {m.ptpiree_wybrana ?? 'nieustalona'}.
+                </p>
+                {m.braki.length > 0 ? (
+                  <details>
+                    <summary>Braki źródłowe ({m.braki.length})</summary>
+                    <ul className="mvd-oze-lista">
+                      {m.braki.map((brak) => <li key={brak}>{brak}</li>)}
+                    </ul>
+                  </details>
+                ) : null}
+                {m.wymagania.length > 0 ? (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Wymagana zdolność</th>
+                        <th>Certyfikat WiPWC</th>
+                        <th>Próba PTPiREE</th>
+                        <th>Dowód</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {m.wymagania.map((w) => (
+                        <tr key={w.zdolnosc}>
+                          <td>{w.zdolnosc}</td>
+                          <td>{w.wipwc}</td>
+                          <td>{w.test_wg_ptpiree_3}</td>
+                          <td>{w.status_wykazania}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : null}
+              </section>
+            ))}
+          </details>
           <details>
             <summary>Wzory dokumentów do przygotowania</summary>
             {wynik.dossier.wyniki.map((item) => (
