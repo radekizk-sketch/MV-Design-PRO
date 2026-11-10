@@ -121,3 +121,35 @@ END MISSION
 ## 11. Final principle
 
 This is an outcome-and-evidence contract, not micro-management. Next model should be free to deliver a simpler architecture if it demonstrates all acceptance invariants with less maintenance, lower runtime risk and robust migration.
+
+
+## 12. OBOWIĄZKOWY ANEKS DO MISJI (2026-11-10): NC RfG, WOS2025, WiPWC, certyfikaty, odbiór
+
+Przed decyzją ADR koniecznie przeczytaj dokumenty 10-NC-RFG-WOS-WIPWC.md, 11-CERTYFIKATY-I-WYKAZ-URZADZEN.md, 12-PROGRAMY-TESTOW-I-ODBIOR.md i 13-BRAKI-REGULACYJNE-I-PRIORYTETY.md. W przeciwieństwie do ogólnego opisu OZE w 02, nowe materiały powstały po sprawdzeniu aktualnych źródeł URE/PSE/PTPiREE/ENEA i rzeczywistych plików kodu.
+
+### P0 — pytania, których nie wolno pominąć
+
+1. Dlaczego wos.yaml wskazuje 2018 mimo WOS2025? Jak dodać równoległe edycje z wyborem przez zdarzenie (typ PGM, data warunków/zgłoszenia i zmiana znaczna), nie zmieniając historycznych wyników?
+2. Czy wipwc.yaml i ptpiree_wykaz_snapshot.json niosą najnowsze aktualne wpisy i jak rejestrować wersje 1.2/1.3 z aktualizacją publikacji 2026-10-26/2026-11-06? Nie wykrywać „zniknięcia urządzenia” z niekompletnego źródła.
+3. Jak wybrać Procedurę testowania v3.0 na podstawie konkretnego zdarzenia (odpowiednie oświadczenie po 2026-01-01), zamiast z daty umowy lub obecnego zegara?
+4. Jak zatwierdzić rzeczywiste kryteria dla 20 T01–T20 i kompletny program badań skoro procedura_ptpiree.yaml zawiera NIEUSTALONE i scenariusze=[]? Bez aktywowania domniemanych progów.
+5. Jak rozróżnić: certyfikat urządzenia, obecność wpisu w wykazie, zakres modelu/firmware i typu PGM, okno akceptacji, potwierdzenie zdolności całego PGM, przyjęcie PGMD/pozwolenie operatora?
+6. Jak wykorzystać istniejący model_bridge, DowodCertyfikatu, siedem warstw, engine T01–T20, Werdykt i OZE API zamiast dublować je w EKC?
+7. Czy aktualny produkt nie sugeruje, że własny dokument „certyfikat zgodności” ma status certyfikatu akredytowanej jednostki? Oceń nazwę UI, stopień dowodowości i format raportu.
+8. Jak klasyfikować BESS samodzielny vs PV+BESS, nie narzucając samodzielnemu magazynowi NC RfG bez podstawy, a zarazem nie pomijając IRiESD i warunków przyłączenia?
+9. Jak wpiąć DI/PGMD/EON/ION/LON/FON z rzeczywistymi wzorami ENEA, etapami i dowodami — bez podszywania się pod decyzję operatora?
+10. Jaki minimalny komplet schematów i testów da realny end-to-end: type B 499 kW, urządzenie z konkretnym firmware i certyfikatem, WOS wg daty warunków, WiPWC wg daty akceptacji, wymogi i dowody, program LFSM/Q(U), PGMD?
+
+### Kryterium odrzucenia
+
+Odrzuć nową architekturę, która tworzy drugi resolver norm RfG, kopiuje snapshot PTPiREE do plików EKC, akceptuje certyfikaty na podstawie stringowego podobieństwa modelu bez firmware/zakresu lub udaje, że symulacja z danych zadeklarowanych zastępuje rzeczywisty certyfikat albo test terenowy. Ocenę źródła trzymaj w EKC, przebieg kryteriów i werdykt w istniejącym module NC RfG.
+
+### Zalecany minimalny audyt dowodowy
+
+- WOS2019/WOS2025 i granice 2025-12-01 oraz 2027-01-01.
+- WiPWC1.2/1.3 i termin 2026-12-31, także wyjątki z listy.
+- PTPiREE Procedura 3.0 od 2026-01-01, pełne programy ramowe i acceptance criteria.
+- ENEA IRiESD wydanie bieżące oraz dokumenty PGMD/DI/EON/ION/LON/FON.
+- Spójność certificate issuer, accreditation, model+firmware, type A/B/C/D, WOS edition, list snapshot, per-record acceptance.
+- NC RfG scope dla samodzielnego BESS i warunków dla hybrydy, przy oddzielnym national storage profile.
+- Werdykt test proof quality on cases: test-only, cert-only, mixed evidence and missing data.
