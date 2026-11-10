@@ -1,0 +1,19 @@
+{
+  "schema": "ptpiree_official_source_observations/v1",
+  "checked_at": "2026-11-10",
+  "source_page_url": "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/",
+  "sources": [
+    {
+      "wipwc_version": "1.2",
+      "publication_date": "2026-10-26",
+      "acceptance_limit": "2026-12-31"
+    },
+    {
+      "wipwc_version": "1.3",
+      "publication_date": "2026-11-06",
+      "accepted_from": "2024-11-01"
+    }
+  ],
+  "source_use": "METADATA_ONLY_NOT_IMPORTED_REGISTRY",
+  "limitations": "To wyłącznie obserwacja oficjalnej strony. Nie stanowi zweryfikowanego nowego snapshotu rekordów urządzeń ani dowodu ich certyfikacji."
+}
