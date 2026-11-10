@@ -19,10 +19,15 @@ Warstwa API: walidacja wejścia, mapowanie błędów na 404/422 i delegacja do
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from application.ncrfg_compliance.certificate_review import (
+    ocen_stan_rejestru,
+    oceny_certyfikatow_przypadku,
+)
 from application.ncrfg_compliance.regulatory_effectivity import (
     WejscieOcenyPodstaw,
     ocen_podstawy,
@@ -41,7 +46,7 @@ from catalog.profiles.nc_rfg import (
     load_nc_rfg_profile,
 )
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
@@ -209,3 +214,40 @@ def ocen_wydania_z_modelu(
             "NC RfG i kompletna certyfikacja wymagają osobnej migracji release."
         ),
     }
+
+
+
+@router.get("/stan-wykazu")
+def stan_aktualnosci_wykazu() -> dict[str, Any]:
+    """Kontrola snapshotu, bez pobierania licencjonowanego wykazu online."""
+    return ocen_stan_rejestru().model_dump(mode="json")
+
+
+@router.get("/cases/{case_id}/przeglad-certyfikatow")
+def przeglad_certyfikatow_z_modelu(
+    case_id: UUID,
+    klucz: KluczTwin,
+    operator_id: str,
+    data_oceny: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+) -> dict[str, Any]:
+    """Read-only; data oceny jawna, źródło wyłącznie zatwierdzony ENM i rejestr PTPiREE.
+
+    Nie jest wydaniem certyfikatu, zgodą ENEA ani automatycznym wpisem do Werdyktu.
+    """
+    if operator_id not in set(list_available_operators()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nieznany operator NC RfG: {operator_id}.",
+        )
+    try:
+        kiedy = date.fromisoformat(data_oceny)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Data oceny musi być istniejącą datą RRRR-MM-DD.",
+        ) from exc
+    wynik = oceny_certyfikatow_przypadku(
+        get_enm(klucz), operator_id=operator_id, data_oceny=kiedy
+    )
+    wynik["case_id"] = str(case_id)
+    return wynik
