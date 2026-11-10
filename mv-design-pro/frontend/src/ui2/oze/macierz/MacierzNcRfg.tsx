@@ -43,6 +43,7 @@ import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
 import { PanelPodstawRegulacyjnych } from './PanelPodstawRegulacyjnych';
+import { PanelDowodowPrzylaczeniowych } from './PanelDowodowPrzylaczeniowych';
 import { PodgladCertyfikatu } from './PodgladCertyfikatu';
 import { SekcjaZgodnosciPrzekrojowej } from './SekcjaZgodnosciPrzekrojowej';
 import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from './SzczegolWerdyktu';
@@ -419,6 +420,7 @@ export function MacierzNcRfg({
       </header>
 
       <PanelPodstawRegulacyjnych operatorId={operatorId} caseId={aktywnyPrzypadek} />
+      <PanelDowodowPrzylaczeniowych operatorId={operatorId} caseId={aktywnyPrzypadek} />
 
       <p className="mvd-oze-info mvd-oze-opis-biegu" data-testid="mvd-oze-opis-biegu">
         {MACIERZ_STRINGS.opisBiegu}
