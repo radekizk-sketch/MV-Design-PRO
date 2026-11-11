@@ -29,6 +29,7 @@ import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe'
 import { wierszeRodzin } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 import { TabelaOcenyZiemnozwarciowej } from '../../ui2/wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
 import { useEdycjaWymaganEaz } from '../../ui2/wyniki/koordynacja/wymaganiaPrzypadku';
+import { KOORDYNACJA_STRINGS } from '../../ui2/wyniki/koordynacja/strings';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
@@ -44,7 +45,15 @@ import { TccInterpretationPanel } from './TccInterpretationPanel';
 import { useAppStateStore } from '../app-state/store';
 import { useBiegiKoordynacji, type BiegiKoordynacji } from './biegiKoordynacji';
 
-type TabId = 'summary' | 'sensitivity' | 'selectivity' | 'overload' | 'ziemne' | 'tcc' | 'trace';
+type TabId =
+  | 'summary'
+  | 'nadpradowe'
+  | 'sensitivity'
+  | 'selectivity'
+  | 'overload'
+  | 'ziemne'
+  | 'tcc'
+  | 'trace';
 
 // =============================================================================
 // Kontekst
@@ -307,6 +316,7 @@ function TabNavigation({
 }) {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: 'summary', label: LABELS.tabs.summary },
+    { id: 'nadpradowe', label: LABELS.tabs.nadpradowe, count: wierszeRodzin(result.nadpradowe).length },
     { id: 'sensitivity', label: LABELS.tabs.sensitivity, count: result.sensitivity_checks.length },
     { id: 'selectivity', label: LABELS.tabs.selectivity, count: result.selectivity_checks.length },
     { id: 'overload', label: LABELS.tabs.overload, count: result.overload_checks.length },
@@ -461,6 +471,23 @@ export function ProtectionCoordinationPage() {
                     devices={result.devices}
                     onRowClick={doEdycjiNastaw}
                   />
+                )}
+                {activeTab === 'nadpradowe' && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    {/* Ten sam wzorzec wiersza rodziny co zwarcia doziemne (rejestr rodzin). */}
+                    <TabelaOcenyZiemnozwarciowej
+                      wynik={result.nadpradowe}
+                      bezNaglowka
+                      tekstBraku={KOORDYNACJA_STRINGS.nadpradoweBrak}
+                      onUzupelnij={(cel) =>
+                        openRouteSurface('E-27', {
+                          entityRef: cel.urzadzenieRef,
+                          payload: { funkcja_ref: cel.funkcjaRef },
+                        })
+                      }
+                      testid="coordination-nadpradowe"
+                    />
+                  </div>
                 )}
                 {activeTab === 'ziemne' && (
                   <div className="rounded-lg border border-slate-200 bg-white p-4">

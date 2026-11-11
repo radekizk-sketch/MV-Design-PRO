@@ -218,6 +218,9 @@ export interface CoordinationResult {
   odmowy_par: OdmowaPary[];
   /** Funkcje ziemnozwarciowe i uziemienia stacji (ta sama ocena co bieg oceny zabezpieczeń). */
   ziemnozwarciowe?: WynikOcenyZiemnozwarciowej | null;
+  /** Rodzina nadprądowa 51/50 rejestru rodzin — wiersze w tym samym kształcie co
+   *  `ziemnozwarciowe` (backend `rodzina_nadpradowa.wiersze_nadpradowe`). */
+  nadpradowe?: WynikOcenyZiemnozwarciowej | null;
   pf_run_id?: string | null;
   sc_run_id?: string | null;
   sc_run_id_min?: string | null;
@@ -434,6 +437,7 @@ export const LABELS = {
     sensitivity: 'Czułość',
     selectivity: 'Selektywność',
     overload: 'Przeciążalność',
+    nadpradowe: 'Nadprądowe 51/50',
     ziemne: 'Zwarcia doziemne',
     tcc: 'Wykres TCC',
     trace: 'Ślad obliczeń',

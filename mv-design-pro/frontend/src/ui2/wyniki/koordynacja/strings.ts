@@ -207,6 +207,8 @@ export const KOORDYNACJA_STRINGS = {
   ziemneSzczegolyZwin: 'Zwiń',
   ziemneSzczegolyOpis: 'Szczegóły obliczeń: wykres, wzory, dane przyjęte i wyjaśnienie werdyktu',
   ziemneWymagane: 'Wymagane',
+  nadpradoweBrak:
+    'Brak zabezpieczeń nadprądowych fazowych (51, 50) w wyniku koordynacji — dodaj sterownik z funkcją I> albo I>> w polu.',
   ziemneBezOgraniczenia: 'bez ograniczenia',
   ziemneZrodlaWymagan: 'Źródła wymagań',
   ziemneKolSymbol: 'Wielkość',

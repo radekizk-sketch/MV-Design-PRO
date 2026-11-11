@@ -24,6 +24,7 @@ import type { CoordinationResult } from '../types';
 import { LABELS } from '../types';
 import { wierszeRodzin } from '../../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 import wynikSceny from '../../../harness-fixtures/generated/koordynacja_scena_wynik.json';
+import { formatWgJednostki } from '../../shared/formatPolishValue';
 
 const fetchSC = vi.fn();
 const runAnalysis = vi.fn();
@@ -349,6 +350,40 @@ describe('wynik i odmowy', () => {
     expect(runAnalysis.mock.calls[1]).toEqual(runAnalysis.mock.calls[0]);
     expect(await screen.findByTestId('coordination-ziemne')).toBeInTheDocument();
     expect(screen.getByTestId('coordination-ziemne-wymaganie-k_c')).toHaveValue('2');
+  });
+
+  // Rodzina nadprądowa 51/50 (rejestr rodzin): wiersz każdego urządzenia, kolumny z rejestru
+  // w kolejności deklaracji, liczby z wyniku backendu (formatter tabeli rodzin), „Uzupełnij”
+  // przy urządzeniu bez nastaw otwiera kartę nastaw. Iloczyn: {urządzenie pełne, z odmową}.
+  it('zakładka nadprądowa 51/50: kolumny rejestru, liczby wyniku, „Uzupełnij” przy braku nastaw', async () => {
+    const user = userEvent.setup();
+    zBiegami();
+    await uruchom();
+    const wiersze = wierszeRodzin(WYNIK.nadpradowe);
+    expect(wiersze.length).toBeGreaterThan(0);
+    const zakladka = await screen.findByTestId('tab-nadpradowe');
+    expect(zakladka).toHaveTextContent(String(wiersze.length));
+    await user.click(zakladka);
+    const tabela = screen.getByTestId('coordination-nadpradowe');
+    const rodzina = WYNIK.nadpradowe!.rodziny![0];
+    const naglowki = within(tabela).getAllByRole('columnheader').map((th) => th.dataset.kolumna).filter(Boolean);
+    expect(naglowki).toEqual(rodzina.kolumny.map((k) => k.klucz));
+    const widoczne = within(tabela).getAllByTestId('coordination-nadpradowe-wiersz');
+    expect(widoczne.map((w) => w.dataset.urzadzenie)).toEqual(wiersze.map((w) => w.urzadzenie_ref));
+    const pelny = wiersze.find((w) => w.braki.length === 0)!;
+    const el = widoczne.find((w) => w.dataset.urzadzenie === pelny.urzadzenie_ref)!;
+    expect(el.dataset.status).toBe(pelny.stan);
+    const kc = within(el).getByTestId('coordination-nadpradowe-k_c');
+    expect(kc).toHaveTextContent(formatWgJednostki(pelny.wartosci.k_c.wartosc, '1'));
+    expect(kc).toHaveAttribute('data-spelnia', String(pelny.wartosci.k_c.spelnia));
+    const zOdmowa = wiersze.find((w) => w.braki.length > 0)!;
+    const uzupelnij = within(tabela).getAllByTestId('coordination-nadpradowe-uzupelnij');
+    expect(uzupelnij).toHaveLength(wiersze.filter((w) => w.braki.length > 0).length);
+    await user.click(uzupelnij[0]);
+    expect(openRouteSurface).toHaveBeenCalledWith('E-27', {
+      entityRef: zOdmowa.urzadzenie_ref,
+      payload: { funkcja_ref: zOdmowa.funkcja_ref },
+    });
   });
 
   it('wynik bez pola ziemnozwarciowego (sieć bez funkcji doziemnych) — uczciwy stan zerowy zakładki', async () => {

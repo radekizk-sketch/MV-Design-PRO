@@ -445,6 +445,7 @@ export function TabelaOcenyZiemnozwarciowej({
   edycjaWymagan,
   testid = 'mvd-ocena-ziemnozwarciowa',
   bezNaglowka = false,
+  tekstBraku = T.ziemneBrak,
 }: {
   wynik: WynikOcenyZiemnozwarciowej | null | undefined;
   /** Zawężenie do jednego sterownika (karta nastaw); brak — wszystkie wiersze i uziemienia. */
@@ -455,6 +456,8 @@ export function TabelaOcenyZiemnozwarciowej({
   edycjaWymagan?: EdycjaWymagan;
   testid?: string;
   bezNaglowka?: boolean;
+  /** Stan zerowy (rodzina nadprądowa ma własne zdanie braku wierszy). */
+  tekstBraku?: string;
 }) {
   const wiersze = wierszeRodzin(wynik, urzadzenieRef);
   const uziemienia = urzadzenieRef === undefined ? (wynik?.wiersze_uziemien ?? []) : [];
@@ -465,7 +468,7 @@ export function TabelaOcenyZiemnozwarciowej({
     return (
       <div className="mvd-eaz" data-testid={testid}>
         {bezNaglowka ? null : <h4>{T.ziemneTytul}</h4>}
-        <p data-testid={`${testid}-brak`}>{T.ziemneBrak}</p>
+        <p data-testid={`${testid}-brak`}>{tekstBraku}</p>
       </div>
     );
   }
