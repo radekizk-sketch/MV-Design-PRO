@@ -14,7 +14,12 @@
  *     inspektor daje „Pokaż na schemacie" → „Wróć do: Model sieci — Właściwości" →
  *     ta sama zakładka, ten sam tryb drzewa, węzeł zaznaczony i widoczny bez ponownego
  *     rozwijania.
- *  4. Pułapka z `pulapka-nawigacji-po-biegu.spec.ts` nie wraca: na schemacie nic nie
+ *  4. JEDEN CEL, JEDNA IDENTYFIKACJA (karta INSPEKTOR-I-NAWIGACJA pkt 6): po każdym wejściu,
+ *     także po oknie obserwacji, karta inspektora niesie ref celu (`data-element-ref`), a jej
+ *     stacja nadrzędna (`data-stacja-nazwa`, z rekordów modelu) jest stacją okruszków kadru.
+ *     Wcześniejsza wersja specu sprawdzała tylko przestrzeń i powrót — przeszła mimo
+ *     inspektora pokazującego obiekt poprzedniego wejścia (test maskujący, Zero-Debt pkt 5).
+ *  5. Pułapka z `pulapka-nawigacji-po-biegu.spec.ts` nie wraca: na schemacie nic nie
  *     wraca samo (2,5 s obserwacji przed klikiem „Wróć do"), a po powrocie nic nie
  *     przenosi samo na schemat.
  *
@@ -52,6 +57,20 @@ const przestrzen = (page: Page, nazwa: RegExp): Locator => page.getByRole('butto
 async function naSchemacie(page: Page): Promise<void> {
   await expect(przestrzen(page, /^Schemat \(SLD\) \d$/)).toHaveAttribute('aria-current', 'page', { timeout: 20000 });
   await expect(page.getByTestId('sld-canvas-v3')).toBeVisible({ timeout: 30000 });
+}
+
+/**
+ * Zgodność celu po wejściu (po oknie obserwacji — późne przywrócenie selekcji z adresu
+ * też jest łapane): ref karty inspektora = ref celu, stacja nadrzędna karty = stacja
+ * okruszków kadru schematu.
+ */
+async function zgodnyCel(page: Page, ref: string): Promise<void> {
+  await page.waitForTimeout(OBSERWACJA_MS);
+  const karta = page.getByTestId('inspektor-karta');
+  await expect(karta).toHaveAttribute('data-element-ref', ref, { timeout: 20000 });
+  const stacja = await karta.getAttribute('data-stacja-nazwa');
+  expect(stacja, `stacja nadrzędna celu ${ref}`).toBeTruthy();
+  await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText(stacja!);
 }
 
 /** „Wróć do: <ekran>" po obserwacji, że schemat nie odchodzi sam (pułapka W-3). */
@@ -129,8 +148,10 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     const tekstPunktu = await wiersze.nth(indeksPunktu).textContent();
     await expect(pokazZwarcie).toHaveText('Pokaż na schemacie');
     expect((await pokazZwarcie.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+    const refPunktu = (await pokazZwarcie.getAttribute('data-element-ref'))!;
     await pokazZwarcie.click();
     await naSchemacie(page);
+    await zgodnyCel(page, refPunktu);
     await zrzut(page, 'z-wynikow-zwarc', motyw.klucz);
     await wrocDo(page, 'Wyniki — Zwarcia');
     await expect(page.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
@@ -151,6 +172,7 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     const idProblemu = await problem.getAttribute('data-testid');
     await problem.locator('.mvd-problem-select').click();
     await naSchemacie(page);
+    await zgodnyCel(page, idProblemu!.replace('mvd-problem-W043-', ''));
     await zrzut(page, 'z-gotowosci', motyw.klucz);
     await wrocDo(page, 'Gotowość');
     await expect(page.getByTestId('mvd-gotowosc-panel')).toBeVisible({ timeout: 30000 });
@@ -180,9 +202,14 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await expect(pokazZInspektora).toBeVisible({ timeout: 20000 });
     await zrzut(page, 'drzewo-zaznaczenie', motyw.klucz);
     // Klawiatura: fokus na akcji i Enter (akcja jest natywnym przyciskiem).
+    const refWezla = (await page
+      .getByTestId('mvd-inspektor-pokaz-na-schemacie')
+      .getByRole('button', { name: 'Pokaż na schemacie' })
+      .getAttribute('data-element-ref'))!;
     await pokazZInspektora.focus();
     await page.keyboard.press('Enter');
     await naSchemacie(page);
+    await zgodnyCel(page, refWezla);
     await zrzut(page, 'z-drzewa', motyw.klucz);
     await wrocDo(page, 'Model sieci — Właściwości');
     await expect(page.getByTestId('mvd-model-zakladka-wlasciwosci')).toHaveAttribute('aria-selected', 'true');

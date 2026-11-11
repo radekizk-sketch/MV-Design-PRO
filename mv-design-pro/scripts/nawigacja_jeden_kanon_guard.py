@@ -360,6 +360,11 @@ DEFINICJA_REJESTRACJI = re.compile(r"\bfunction\s+useRejestracjaKanwySchematu\s*
 #: Infrastruktura testow (`src/test/`) rejestruje montaz kanwy TA SAMA funkcja co
 #: produkcja (pomocnik `schematTestowy.ts`) — to nie druga sciezka montazu.
 KATALOG_INFRASTRUKTURY_TESTOW = FRONTEND_SRC / "test"
+#: Karta INSPEKTOR-I-NAWIGACJA, defekt P0 (a): adres przejscia z aplikacji niosl `sel=`
+#: poprzedniej selekcji. Jedyny zapis hasha przez aplikacje — `nawigujHashAplikacji`
+#: w `urlState.ts` (tozsamosc biezacej selekcji przed nawigacja).
+PLIK_ADRESU = FRONTEND_SRC / "ui" / "navigation" / "urlState.ts"
+ZAPIS_HASHA = re.compile(r"\blocation\.hash\s*=(?!=)")
 
 
 def regula_g_jedna_droga_na_schemat() -> list[str]:
@@ -396,6 +401,12 @@ def regula_g_jedna_droga_na_schemat() -> list[str]:
                 naruszenia.append(
                     f"[schemat-gole-wskazanie] {miejsce} centerSldOnElement() poza "
                     "zaznaczElementModelu.ts — uzyj jednej drogi wejscia na schemat"
+                )
+            if ZAPIS_HASHA.search(linia) and sciezka != PLIK_ADRESU:
+                naruszenia.append(
+                    f"[schemat-zapis-adresu] {miejsce} window.location.hash = poza "
+                    "nawigujHashAplikacji — adres przejscia poniesie stara selekcje, "
+                    "a popstate przywroci ja do inspektora"
                 )
             if MONTAZ_KANWY.search(linia) and sciezka != PLIK_KANWY:
                 naruszenia.append(

@@ -2,6 +2,7 @@ import {
   ANALYSIS_ROUTE_DEFAULT_TAB,
   type AnalysisRouteTabId,
 } from '../workspace/types';
+import { nawigujHashAplikacji } from './urlState';
 
 export type { AnalysisRouteTabId } from '../workspace/types';
 
@@ -111,11 +112,6 @@ interface RouteContextOptions {
   snapshotId?: string | null;
 }
 
-function getHashParams(hash: string): URLSearchParams {
-  const queryIndex = hash.indexOf('?');
-  return new URLSearchParams(queryIndex >= 0 ? hash.slice(queryIndex + 1) : '');
-}
-
 function getRouteHashOnly(hash: string): string {
   const queryIndex = hash.indexOf('?');
   return queryIndex >= 0 ? hash.slice(0, queryIndex) : hash;
@@ -131,18 +127,10 @@ export function resolveAnalysisRouteAliasTab(hash: string): AnalysisRouteTabId |
   return ANALYSIS_ROUTE_ALIASES[cleanHash] ?? null;
 }
 
-function buildHashWithParams(hash: string, mutate?: (params: URLSearchParams) => void): string {
-  const params = typeof window === 'undefined' ? new URLSearchParams() : getHashParams(window.location.hash);
-  mutate?.(params);
-  const query = params.toString();
-  return query ? `${hash}?${query}` : hash;
-}
-
 function navigateToHash(hash: string, mutate?: (params: URLSearchParams) => void): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.location.hash = buildHashWithParams(hash, (params) => {
+  // Jedyny zapis adresu przez aplikację (`nawigujHashAplikacji`): tożsamość bieżącej selekcji
+  // w adresie przed nawigacją (karta INSPEKTOR-I-NAWIGACJA, defekt P0 (a)).
+  nawigujHashAplikacji(hash, (params) => {
     if (hash !== ROUTES.ANALYSIS.hash) {
       params.delete('tab');
     }

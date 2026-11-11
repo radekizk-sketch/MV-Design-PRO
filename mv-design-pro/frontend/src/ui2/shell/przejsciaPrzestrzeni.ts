@@ -17,7 +17,7 @@
 import { useAppStateStore } from '../../ui/app-state';
 import {
   getCurrentHashRoute,
-  getCurrentSearchParams,
+  nawigujHashAplikacji,
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToSld,
@@ -34,8 +34,7 @@ import { useShellStore } from './useShellStore';
  * kontekst (`#?run=…`), co `getCurrentHashRoute` czyta jako „brak trasy".
  */
 function wyczyscTraseZachowujacKontekst(): void {
-  const zapytanie = getCurrentSearchParams().toString();
-  window.location.hash = zapytanie ? `?${zapytanie}` : '';
+  nawigujHashAplikacji('');
 }
 
 /**

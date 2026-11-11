@@ -15,6 +15,7 @@
 
 import type { ElementType, SelectedElement } from '../types';
 import { isConnectionNodeLikeId } from '../common/connectionNode';
+import { useSelectionStore } from '../selection/store';
 
 /**
  * URL parameter keys for selection state.
@@ -200,6 +201,51 @@ export function decodeSelectionFromParams(
     ...(semanticEngineeringRole ? { semanticEngineeringRole } : {}),
     ...(semanticHash ? { semanticHash } : {}),
   };
+}
+
+/** Klucze tożsamości selekcji w adresie — jeden wykaz dla zapisu i dla zastąpienia. */
+const KLUCZE_SELEKCJI = [
+  URL_PARAMS.SELECTION_ID,
+  URL_PARAMS.SELECTION_TYPE,
+  URL_PARAMS.SELECTION_NAME,
+  URL_PARAMS.SEMANTIC_ELEMENT_KIND,
+  URL_PARAMS.SEMANTIC_ENGINEERING_ROLE,
+  URL_PARAMS.SEMANTIC_HASH,
+] as const;
+
+/** Zastępuje w `params` tożsamość selekcji tożsamością BIEŻĄCEJ selekcji (store selekcji). */
+function zTozsamosciaBiezacejSelekcji(params: URLSearchParams): URLSearchParams {
+  for (const klucz of KLUCZE_SELEKCJI) params.delete(klucz);
+  const biezaca = useSelectionStore.getState().selectedElement;
+  for (const [klucz, wartosc] of encodeSelectionToParams(biezaca).entries()) params.set(klucz, wartosc);
+  return params;
+}
+
+/**
+ * JEDYNY zapis trasy hasha przez APLIKACJĘ (przejście przestrzeni, trasa ekranu, powrót
+ * „Wróć do", menu). Karta INSPEKTOR-I-NAWIGACJA, defekt P0 (a): adres budowany z BIEŻĄCYCH
+ * parametrów niósł `sel=` POPRZEDNIEJ selekcji — nową selekcję dopisuje do adresu dopiero
+ * efekt `useUrlSelectionSync` (po renderze), a zmiana hasha wywołuje `popstate`, którego
+ * obsługa przywracała selekcję z adresu. Wynik: kadr na nowym celu, inspektor na starym.
+ * Tu adres dostaje tożsamość bieżącej selekcji ZANIM nastąpi nawigacja, więc `popstate`
+ * z przejścia aplikacji czyta ten sam obiekt; prawdziwe wstecz/dalej przeglądarki czyta wpis
+ * historii i nadal przywraca selekcję z adresu.
+ *
+ * `trasa` — sama trasa (`#sld`) albo pełny hash z parametrami (`#analysis?run=…`): parametry
+ * pełnego hasha zastępują bieżące. `zmien` (opcjonalnie) działa PO tożsamości selekcji, więc
+ * jawny kontekst trasy (`selectionId` → `sel`) ma pierwszeństwo.
+ */
+export function nawigujHashAplikacji(trasa: string, zmien?: (params: URLSearchParams) => void): void {
+  if (typeof window === 'undefined') return;
+  const indeks = trasa.indexOf('?');
+  const samaTrasa = indeks === -1 ? trasa : trasa.slice(0, indeks);
+  const params = zTozsamosciaBiezacejSelekcji(
+    indeks === -1 ? getCurrentSearchParams() : new URLSearchParams(trasa.slice(indeks + 1)),
+  );
+  zmien?.(params);
+  const zapytanie = params.toString();
+  const cel = zapytanie ? `${samaTrasa}?${zapytanie}` : samaTrasa;
+  if (window.location.hash.replace(/^#/, '') !== cel.replace(/^#/, '')) window.location.hash = cel;
 }
 
 /**

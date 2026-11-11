@@ -146,6 +146,7 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "PLIK_STORE_SELEKCJI", src / "ui" / "selection" / "store.ts")
     monkeypatch.setattr(guard, "KATALOG_INFRASTRUKTURY_TESTOW", src / "test")
     monkeypatch.setattr(guard, "KATALOG_UI2", src / "ui2")
+    monkeypatch.setattr(guard, "PLIK_ADRESU", src / "ui" / "navigation" / "urlState.ts")
     monkeypatch.setattr(
         guard,
         "SCIEZKA_REJESTRU_OBSZAROW",
@@ -606,3 +607,35 @@ def test_regula_g_przepuszcza_wybor_przez_powrot(tmp_path, monkeypatch) -> None:
 
 def test_guard_zielony_na_repozytorium() -> None:
     assert guard.main() == 0
+
+
+def test_regula_g_przepuszcza_zapis_hasha_w_jedynej_funkcji(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "navigation" / "urlState.ts").write_text(
+        "export function nawigujHashAplikacji(t: string) { window.location.hash = t; }\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert not any("[schemat-zapis-adresu]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_zapis_hasha_poza_jedyna_funkcja(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Menu.tsx").write_text(
+        "export function idz() { window.location.hash = '#sld'; }\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    naruszenia = guard.regula_g_jedna_droga_na_schemat()
+    assert any("[schemat-zapis-adresu]" in w and "Menu.tsx:1" in w for w in naruszenia)
+
+
+def test_regula_g_porownanie_hasha_nie_jest_zapisem(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Czyt.tsx").write_text(
+        "export const czy = window.location.hash === '#sld';\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert not any("[schemat-zapis-adresu]" in w for w in guard.regula_g_jedna_droga_na_schemat())

@@ -35,6 +35,7 @@ export {
   decodeSelectionFromParams,
   getCurrentSearchParams,
   getCurrentHashRoute,
+  nawigujHashAplikacji,
   updateUrlWithSelection,
   readSelectionFromUrl,
   clearSelectionFromUrl,

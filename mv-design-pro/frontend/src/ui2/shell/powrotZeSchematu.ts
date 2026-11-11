@@ -25,6 +25,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { create } from 'zustand';
 
 import { przejdzDoPrzestrzeni } from './przejsciaPrzestrzeni';
+import { nawigujHashAplikacji } from '../../ui/navigation';
 import { SPACES, type SpaceId } from './spaces';
 import { useShellStore } from './useShellStore';
 
@@ -246,7 +247,9 @@ export function wrocDoEkranu(): void {
     doOdebrania: Object.keys(stany).length > 0 ? stany : null,
   });
   if (wpis.przestrzen !== useShellStore.getState().activeSpace) przejdzDoPrzestrzeni(wpis.przestrzen);
-  if (typeof window !== 'undefined' && window.location.hash !== wpis.hash) window.location.hash = wpis.hash;
+  // Adres ekranu źródłowego z tożsamością BIEŻĄCEJ selekcji (ten sam obiekt zostaje
+  // zaznaczony po powrocie) — jedyny zapis adresu przez aplikację.
+  nawigujHashAplikacji(wpis.hash);
   przywroc?.();
   przywrocPrzewiniecia(wpis.przewiniecia);
 }

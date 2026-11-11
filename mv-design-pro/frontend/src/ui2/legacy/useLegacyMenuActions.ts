@@ -13,7 +13,7 @@ import { useCallback } from 'react';
 import { useAppStateStore } from '../../ui/app-state';
 import {
   ROUTES,
-  getCurrentSearchParams,
+  nawigujHashAplikacji,
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToCatalog,
@@ -21,6 +21,7 @@ import {
   navigateToVariants,
 } from '../../ui/navigation';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
+import { useSelectionStore } from '../../ui/selection/store';
 import { useShellStore } from '../shell/useShellStore';
 import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { REPORT_SURFACE_SCREEN_CODE } from '../../ui/workspace/types';
@@ -31,11 +32,10 @@ function openSldOverlayFromCurrentContext(): void {
     return;
   }
 
-  const params = getCurrentSearchParams();
-  params.set('overlay', '1');
-  params.set('legend', '1');
-  const query = params.toString();
-  window.location.hash = query ? `${ROUTES.SLD.hash}?${query}` : ROUTES.SLD.hash;
+  nawigujHashAplikacji(ROUTES.SLD.hash, (params) => {
+    params.set('overlay', '1');
+    params.set('legend', '1');
+  });
 }
 
 export interface PozycjaMenuLegacy {
@@ -94,7 +94,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         navigateToCaseConfig({ caseId: activeCaseId });
         break;
       case 'sld-view':
-        window.location.hash = ROUTES.SLD_VIEW.hash;
+        nawigujHashAplikacji(ROUTES.SLD_VIEW.hash);
         break;
       case 'catalog':
         navigateToCatalog();
@@ -117,16 +117,21 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
       case 'export':
         // D1: obszar RAPORTY_UZASADNIENIA wynika z trasy `#report` (most obszarow),
         // ktora ustawia `navigateToReport` na koncu tej galezi.
-        openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
-          entityRef: getCurrentSearchParams().get('sel'),
-          subjectKind: 'report',
-          subjectRef: runIdOgladany,
-          payload: {
-            runId: runIdOgladany,
-            selectedName: getCurrentSearchParams().get('name'),
-            selectedType: getCurrentSearchParams().get('type'),
-          },
-        });
+        {
+          // Tożsamość zaznaczenia ze store'u selekcji, nie z adresu (adres bywa
+          // o krok za selekcją — karta INSPEKTOR-I-NAWIGACJA, defekt P0 (a)).
+          const zaznaczony = useSelectionStore.getState().selectedElement;
+          openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+            entityRef: zaznaczony?.id ?? null,
+            subjectKind: 'report',
+            subjectRef: runIdOgladany,
+            payload: {
+              runId: runIdOgladany,
+              selectedName: zaznaczony?.name ?? null,
+              selectedType: zaznaczony?.type ?? null,
+            },
+          });
+        }
         navigateToReport({ runId: runIdOgladany });
         break;
       case 'variants':

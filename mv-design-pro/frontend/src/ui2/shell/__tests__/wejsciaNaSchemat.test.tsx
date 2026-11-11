@@ -182,7 +182,10 @@ describe('Jedna droga „Pokaż na schemacie": wejście × rodzaj elementu × ka
         // „Wróć do" przywraca ekran źródłowy; zaznaczenie zostaje (ten sam wiersz).
         wrocDoEkranu();
         expect(useShellStore.getState().activeSpace).toBe(przestrzenPrzed);
-        expect(window.location.hash).toBe('#wyniki-test');
+        // Trasa ekranu źródłowego; adres niesie tożsamość BIEŻĄCEJ selekcji (ten sam obiekt
+        // zostaje zaznaczony — `nawigujHashAplikacji`, karta INSPEKTOR-I-NAWIGACJA).
+        expect(window.location.hash.split('?')[0]).toBe('#wyniki-test');
+        expect(new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('sel')).toBe(element.id);
         expect(useSelectionStore.getState().selectedElement?.id).toBe(element.id);
         expect(usePowrotZeSchematu.getState().wpis).toBeNull();
       } else {

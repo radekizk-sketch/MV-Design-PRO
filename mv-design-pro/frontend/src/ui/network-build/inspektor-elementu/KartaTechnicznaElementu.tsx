@@ -366,7 +366,14 @@ export function KartaTechnicznaElementu({
   readonly sekcjaWyrozniona?: string | null;
 }): JSX.Element {
   return (
-    <div className="mvd-kt" data-testid="inspektor-karta" data-rodzaj-karty={karta.rodzaj}>
+    <div
+      className="mvd-kt"
+      data-testid="inspektor-karta"
+      data-rodzaj-karty={karta.rodzaj}
+      data-element-ref={karta.elementRef}
+      data-stacja-ref={karta.stacjaRef ?? undefined}
+      data-stacja-nazwa={karta.stacjaNazwa ?? undefined}
+    >
       {karta.sekcje.map((s) => (
         <Sekcja
           key={s.id}

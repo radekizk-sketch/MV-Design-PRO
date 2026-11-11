@@ -65,7 +65,7 @@ import {
 } from '../../shared/publicTechnicalLabels';
 import { pola, polaNnStacji, polaSnStacji, stacjaPola, zaciskPola } from '../../shared/polaStacji';
 import { podpisStacjiPl, rodzajStacji, TYPY_STACJI_BEZ_RODZAJU } from '../../shared/rodzajStacji';
-import { szynyStacji } from '../../shared/szynyStacji';
+import { stacjaSzyn, szynyStacji } from '../../shared/szynyStacji';
 import { nazwaZaczynaSieOpisem, opisBezPowtorzen } from '../../shared/opisBezPowtorzen';
 import {
   AKCJA_DODANIA_ZABEZPIECZENIA_PL,
@@ -237,8 +237,18 @@ export interface KartaTechniczna {
   readonly rodzajPl: string;
   readonly nazwa: string;
   readonly elementRef: string;
+  /**
+   * Stacja nadrzędna obiektu (ref modelu) i jej nazwa jak w drzewie — `null` dla obiektu poza
+   * stacją (odcinek trasy, punkt odgałęźny). Karta INSPEKTOR-I-NAWIGACJA pkt 6: identyfikacja
+   * celu (element + stacja nadrzędna) zgodna z kadrem i okruszkami schematu.
+   */
+  readonly stacjaRef: string | null;
+  readonly stacjaNazwa: string | null;
   readonly sekcje: readonly SekcjaKarty[];
 }
+
+/** Karta przed przypisaniem stacji nadrzędnej (budowniczowie per rodzaj). */
+type KartaRodzaju = Omit<KartaTechniczna, 'stacjaRef' | 'stacjaNazwa'>;
 
 /** Pozycje katalogów potrzebne karcie (nazwa typu, zdolność wyłączalna aparatu, nazwa szablonu
  *  pola i rodziny rozdzielnicy). Brak katalogu (błąd pobrania) = puste mapy — karta pokazuje
@@ -538,6 +548,8 @@ interface IndeksModelu {
   readonly transformatory: ReadonlyMap<string, Transformer>;
   readonly stacje: ReadonlyMap<string, Substation>;
   readonly polaWgRef: ReadonlyMap<string, Bay>;
+  /** Szyna → stacja (jedna reguła przynależności, lustro backendu — `stacjaSzyn`). */
+  readonly stacjaSzyny: ReadonlyMap<string, string>;
 }
 
 const PAMIEC_INDEKSU = new WeakMap<EnergyNetworkModel, IndeksModelu>();
@@ -560,6 +572,7 @@ function indeks(model: EnergyNetworkModel): IndeksModelu {
     transformatory: wgRef(model.transformers),
     stacje: wgRef(model.substations),
     polaWgRef: new Map(pola(model).map((b) => [b.ref_id, b])),
+    stacjaSzyny: stacjaSzyn(model),
   };
   PAMIEC_INDEKSU.set(model, wynik);
   return wynik;
@@ -1045,7 +1058,7 @@ function sekcjaZasilaniaGpz(ix: IndeksModelu, stacja: Substation, szynyWlasne: R
   };
 }
 
-function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKarty): KartaTechniczna {
+function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKarty): KartaRodzaju {
   const model = ix.model;
   const tozsamosc = stationPublicIdentity(model, stacja);
   const rodzajPl = podpisStacjiPl(model, stacja);
@@ -1337,7 +1350,7 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty 
   };
 }
 
-function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTechniczna {
+function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaRodzaju {
   const aparaty = aparatyPola(ix, bay);
   const zacisk = zaciskPola(bay);
   const odcinki = zacisk ? odcinkiPrzySzynach(ix, new Set([zacisk])).map(({ galaz }) => `${nazwaGalezi(ix, galaz)} · ${typOdcinka(galaz) ?? RODZAJ_GALEZI_PL[galaz.type]} · ${dlugoscOdcinka(galaz) ?? 'bez długości'}`) : [];
@@ -1460,7 +1473,7 @@ function kartaAparatu(
   bay: Bay | null,
   katalogi: KatalogiKarty,
   globalId: string | null,
-): KartaTechniczna {
+): KartaRodzaju {
   const zn = znamionaAparatu(aparat, katalogi);
   const rola = rolaRekordu(aparat);
   // Aparat pola: opis bez powtórzeń (rodzaj raz, bez nazwy pola, którą karta podaje w wierszu
@@ -1567,7 +1580,7 @@ function sekcjaCzasuWylaczenia(galaz: SwitchBranch | FuseBranch): SekcjaKarty {
   };
 }
 
-function kartaTransformatora(ix: IndeksModelu, tr: Transformer, katalogi: KatalogiKarty): KartaTechniczna {
+function kartaTransformatora(ix: IndeksModelu, tr: Transformer, katalogi: KatalogiKarty): KartaRodzaju {
   const blokowy = transformatorBlokowyDer(tr, refyTransformatorowBlokowych(ix.model));
   const meta = rekord(tr.meta);
   const gpz = typeof meta?.visual_role === 'string' && meta.visual_role.startsWith('GPZ');
@@ -1606,7 +1619,7 @@ function kartaTransformatora(ix: IndeksModelu, tr: Transformer, katalogi: Katalo
   };
 }
 
-function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
+function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaRodzaju {
   const odcinek = galaz.type === 'cable' || galaz.type === 'line_overhead' ? galaz : null;
   const mp = galaz.materialized_params ?? null;
   const stacjaKonca = (ref: string): string | null => {
@@ -1744,7 +1757,7 @@ function sekcjaZabezpieczeniaZrodla(ix: IndeksModelu, g: Generator): SekcjaKarty
   };
 }
 
-function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): KartaTechniczna {
+function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): KartaRodzaju {
   const meta = rekord(g.meta) ?? {};
   const mp = g.materialized_params ?? null;
   const blokowy = g.connection_variant === 'block_transformer' || g.connection_variant === 'DEDICATED_MV_CONNECTION';
@@ -1835,7 +1848,7 @@ function modelZastepczyPl(model: unknown): string | null {
     : 'model zastępczy spoza słownika aplikacji';
 }
 
-function kartaSieci(ix: IndeksModelu, s: Source, katalogi: KatalogiKarty): KartaTechniczna {
+function kartaSieci(ix: IndeksModelu, s: Source, katalogi: KatalogiKarty): KartaRodzaju {
   const z = (k: string) => nadpisanie(s, k);
   const stacja = s.substation_ref ? ix.stacje.get(s.substation_ref) ?? null : null;
   const sekcjaGpz = stacja
@@ -1894,14 +1907,9 @@ function kartaSieci(ix: IndeksModelu, s: Source, katalogi: KatalogiKarty): Karta
   };
 }
 
-function kartaSzyny(ix: IndeksModelu, bus: Bus): KartaTechniczna {
-  let stacja: Substation | null = null;
-  for (const s of ix.model.substations ?? []) {
-    if (szynyStacji(ix.model, s).has(bus.ref_id)) {
-      stacja = s;
-      break;
-    }
-  }
+function kartaSzyny(ix: IndeksModelu, bus: Bus): KartaRodzaju {
+  const stacjaRef = ix.stacjaSzyny.get(bus.ref_id);
+  const stacja = stacjaRef ? ix.stacje.get(stacjaRef) ?? null : null;
   const polaSzyny = pola(ix.model).filter((b) => b.bus_ref === bus.ref_id).map((b) => nazwaPola(b) ?? 'Pole');
   const galezie = (ix.model.branches ?? [])
     .filter((g) => g.from_bus_ref === bus.ref_id || g.to_bus_ref === bus.ref_id)
@@ -1945,7 +1953,61 @@ export function buildKartaTechniczna(
 ): KartaTechniczna | null {
   if (!snapshot || !dane?.elementId) return null;
   const ix = indeks(snapshot);
+  const karta = kartaRodzaju(ix, dane, katalogi);
+  if (!karta) return null;
+  const stacjaRef = stacjaNadrzedna(ix, karta);
+  const stacja = stacjaRef ? ix.stacje.get(stacjaRef) : undefined;
+  return {
+    ...karta,
+    stacjaRef: stacja ? stacja.ref_id : null,
+    stacjaNazwa: stacja ? nazwaStacjiJakWDrzewie(ix.model, stacja) : null,
+  };
+}
+
+/**
+ * Stacja nadrzędna obiektu karty — z rekordów modelu (pole → `substation_ref`, transformator →
+ * `transformer_refs` stacji, źródło → `substation_ref`/`station_ref`), a dla obiektu
+ * przyłączonego do szyny — reguła przynależności szyny (`stacjaSzyn`). Bez zgadywania po nazwie.
+ */
+function stacjaNadrzedna(ix: IndeksModelu, karta: KartaRodzaju): string | null {
+  const ref = karta.elementRef;
+  const zSzyny = (szyna: string | null | undefined): string | null => (szyna ? ix.stacjaSzyny.get(szyna) ?? null : null);
+  switch (karta.rodzaj) {
+    case 'stacja':
+      return ix.stacje.get(ref)?.ref_id ?? null;
+    case 'pole':
+      return ix.polaWgRef.get(ref)?.substation_ref ?? null;
+    case 'aparat': {
+      for (const pole of pola(ix.model)) {
+        if (pole.ref_id === ref || (pole.equipment_refs ?? []).includes(ref)) return pole.substation_ref ?? null;
+      }
+      const galaz = ix.galezie.get(ref);
+      return galaz ? zSzyny(galaz.from_bus_ref) ?? zSzyny(galaz.to_bus_ref) : null;
+    }
+    case 'transformator': {
+      const tr = ix.transformatory.get(ref);
+      const wlasciciel = (ix.model.substations ?? []).find((st) => (st.transformer_refs ?? []).includes(tr?.ref_id ?? ref));
+      return wlasciciel?.ref_id ?? (tr ? zSzyny(tr.hv_bus_ref) ?? zSzyny(tr.lv_bus_ref) : null);
+    }
+    case 'zrodlo': {
+      const g = (ix.model.generators ?? []).find((x) => x.ref_id === ref || x.id === ref);
+      return g ? g.station_ref ?? zSzyny(g.bus_ref) : null;
+    }
+    case 'siec_zasilajaca': {
+      const z = (ix.model.sources ?? []).find((x) => x.ref_id === ref || x.id === ref);
+      return z ? z.substation_ref ?? zSzyny(z.bus_ref) : null;
+    }
+    case 'szyna':
+      return zSzyny(ref);
+    default:
+      return null;
+  }
+}
+
+function kartaRodzaju(ix: IndeksModelu, dane: DaneElementuKanwy, katalogi: KatalogiKarty): KartaRodzaju | null {
+  const snapshot = ix.model;
   const ref = dane.elementId;
+  if (!ref) return null;
   switch (dane.kind) {
     case 'station': {
       const stacja = ix.stacje.get(ref);
