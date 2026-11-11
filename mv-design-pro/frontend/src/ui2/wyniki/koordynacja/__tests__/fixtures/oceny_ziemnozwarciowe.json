@@ -1380,12 +1380,12 @@
             "obwiednia": null,
             "pasmo": null,
             "podstawa": {
-              "dokument": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
+              "dokument": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza)",
               "jednostka_redakcyjna": "wymagane k_b = 1,2",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
               "uwagi_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
-              "wydanie": "wartość robocza oceny zabezpieczeń ziemnozwarciowych"
+              "wydanie": "wartość robocza oceny zabezpieczeń"
             },
             "wartosc": {
               "jednostka": "1",
@@ -1417,12 +1417,12 @@
             "wartosc": null
           },
           "podstawa": {
-            "dokument": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
+            "dokument": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza)",
             "jednostka_redakcyjna": "wymagane k_b = 1,2",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
             "uwagi_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
-            "wydanie": "wartość robocza oceny zabezpieczeń ziemnozwarciowych"
+            "wydanie": "wartość robocza oceny zabezpieczeń"
           },
           "powody_niepelnosci": [
             "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
@@ -1460,7 +1460,7 @@
             "czego_brakuje": [],
             "przyczyna_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem nie osiąga wartości granicznej o 1,027 (zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3)",
             "zastrzezenia": [
-              "Podstawa „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)”, wydanie wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)”, wydanie wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 3) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 1) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -1470,7 +1470,7 @@
               "Dana przyjęta bez walidacji: wymagany k_b funkcji Io> (51N) = 1,2, jakość danej: oszacowane — IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
               "Zakres ważności: Zwarcie jednofazowe z ziemią w węzłach sieci SN, stan ustalony, napięcie przed zwarciem c·U_n/√3 (c = 1,1, IEC 60909-0 tabela 1) — wynik nie obejmuje: zwarcie przez rezystancję przejścia R_F > 0 (zwarcia wysokooporowe); konduktancja upływu linii i kabli G0 (pominięta); błędy przekładników toru 3I0 i 3U0 (przekładniki idealne); stany przejściowe zapłonu i gaszenia łuku; czas własny wyłącznika i przekaźnika poza zwłoką nastawy; zadziałanie funkcji nadprądowych fazowych (50/51) przy zwarciu doziemnym — ocenia je ocena nadprądowa przy zwarciach IEC 60909."
             ],
-            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
+            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
           },
           "wynik": {
             "chwila_s": null,
@@ -1505,7 +1505,7 @@
         "status": "NIE_SPELNIA",
         "urzadzenie_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
         "wynik_pl": "0,173",
-        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
+        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,173 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)” (margines −1,027, punkt: zwarcie poza polem w punkcie Zacisk końcowy Kabel pola 3, względnie −85,58 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -2413,7 +2413,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -2900,7 +2900,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -3029,7 +3029,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -3515,7 +3515,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -3644,7 +3644,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -4130,7 +4130,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -4312,7 +4312,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -4501,6 +4501,26 @@
         "stan_pl": "zweryfikowano ze źródłem ENEA",
         "symbol": "U₀>",
         "wartosc": 20.0
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe (51, 50): najmniejszy prąd zwarcia w strefie wobec progu najczulszego stopnia",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe: próg stopnia zwłocznego wobec największego prądu obciążenia (odstrojenie od obciążenia)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
       },
       {
         "jednostka": "s",
@@ -5905,12 +5925,12 @@
             "obwiednia": null,
             "pasmo": null,
             "podstawa": {
-              "dokument": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
+              "dokument": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza)",
               "jednostka_redakcyjna": "wymagane k_b = 1,2",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
               "uwagi_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
-              "wydanie": "wartość robocza oceny zabezpieczeń ziemnozwarciowych"
+              "wydanie": "wartość robocza oceny zabezpieczeń"
             },
             "wartosc": {
               "jednostka": "1",
@@ -5942,12 +5962,12 @@
             "wartosc": null
           },
           "podstawa": {
-            "dokument": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
+            "dokument": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza)",
             "jednostka_redakcyjna": "wymagane k_b = 1,2",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
             "uwagi_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
-            "wydanie": "wartość robocza oceny zabezpieczeń ziemnozwarciowych"
+            "wydanie": "wartość robocza oceny zabezpieczeń"
           },
           "powody_niepelnosci": [
             "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
@@ -5985,7 +6005,7 @@
             "czego_brakuje": [],
             "przyczyna_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem nie osiąga wartości granicznej o 1,022 (zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe)",
             "zastrzezenia": [
-              "Podstawa „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)”, wydanie wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)”, wydanie wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 1) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 2) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
@@ -5995,7 +6015,7 @@
               "Dana przyjęta bez walidacji: wymagany k_b funkcji Io> (51N) = 1,2, jakość danej: oszacowane — IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
               "Zakres ważności: Zwarcie jednofazowe z ziemią w węzłach sieci SN, stan ustalony, napięcie przed zwarciem c·U_n/√3 (c = 1,1, IEC 60909-0 tabela 1) — wynik nie obejmuje: zwarcie przez rezystancję przejścia R_F > 0 (zwarcia wysokooporowe); konduktancja upływu linii i kabli G0 (pominięta); błędy przekładników toru 3I0 i 3U0 (przekładniki idealne); stany przejściowe zapłonu i gaszenia łuku; czas własny wyłącznika i przekaźnika poza zwłoką nastawy; zadziałanie funkcji nadprądowych fazowych (50/51) przy zwarciu doziemnym — ocenia je ocena nadprądowa przy zwarciach IEC 60909."
             ],
-            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
+            "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
           },
           "wynik": {
             "chwila_s": null,
@@ -6030,7 +6050,7 @@
         "status": "NIE_SPELNIA",
         "urzadzenie_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
         "wynik_pl": "0,1784",
-        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
+        "zdanie_pl": "współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: k_b nie mniejszy niż wymagany (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Współczynnik bezpieczeństwa nastawy wobec doziemienia poza polem: 0,1784 wobec wymaganych ≥ 1,2 wg wymagane k_b = 1,2 „Założenie inżynierskie oceny zabezpieczeń (wartość robocza)” (margines −1,022, punkt: zwarcie poza polem w punkcie Zacisk odpływowy Pole pomiarowe, względnie −85,13 % wartości granicznej)."
       }
     ],
     "odmowy": [
@@ -7052,7 +7072,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -7539,7 +7559,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -7668,7 +7688,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -8154,7 +8174,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -8283,7 +8303,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -8769,7 +8789,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -8951,7 +8971,7 @@
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
             "wartosc": 1.2,
-            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza), wartość robocza oceny zabezpieczeń ziemnozwarciowych, wymagane k_b = 1,2"
+            "zrodlo_pl": "Założenie inżynierskie oceny zabezpieczeń (wartość robocza), wartość robocza oceny zabezpieczeń, wymagane k_b = 1,2"
           },
           "k_c": {
             "przyjete": false,
@@ -9138,6 +9158,26 @@
         "stan_pl": "zweryfikowano ze źródłem ENEA",
         "symbol": "U₀>",
         "wartosc": 20.0
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe (51, 50): najmniejszy prąd zwarcia w strefie wobec progu najczulszego stopnia",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe: próg stopnia zwłocznego wobec największego prądu obciążenia (odstrojenie od obciążenia)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
       },
       {
         "jednostka": "s",

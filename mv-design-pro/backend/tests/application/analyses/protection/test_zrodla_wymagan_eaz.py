@@ -51,6 +51,9 @@ TABELA: tuple[tuple[str, float | None, str, str], ...] = (
     ("u0_prog.rezystor", 10.0, "ENEA_ZWERYFIKOWANE", "pkt II.4.5.4.1.5 ppkt 1 (s. 51)"),
     ("u0_prog.izolowany", 15.0, "ENEA_ZWERYFIKOWANE", "pkt II.4.5.4.1.5 ppkt 2 (s. 51)"),
     ("u0_prog.kompensowany", 20.0, "ENEA_ZWERYFIKOWANE", "pkt II.4.5.4.1.5 ppkt 3 (s. 51)"),
+    # Rodzina nadprądowa 50/51: założenia projektu — wymaganie ENEA niesprawdzone z treścią.
+    ("k_c.nadpradowe", 1.5, "ZALOZENIE_INZYNIERSKIE", "niesprawdzone z treścią dokumentu"),
+    ("k_b.nadpradowe", 1.2, "ZALOZENIE_INZYNIERSKIE", "niesprawdzone z treścią dokumentu"),
     ("delta_t", None, "NIEZWERYFIKOWANE", "pkt II.4.5.1.8"),
     ("u_tp", None, "NIEZWERYFIKOWANE", "PN-EN 50522:2011, rysunek 4 i pkt 5.4.3"),
 )

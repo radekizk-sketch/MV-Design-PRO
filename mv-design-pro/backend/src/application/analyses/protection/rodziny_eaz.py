@@ -54,7 +54,7 @@ class KolumnaRodziny:
 
 @dataclass(frozen=True)
 class RodzinaEaz:
-    id: RodzinaZiemnozwarciowa
+    id: str
     nazwa_pl: str
     kody: tuple[str, ...]
     kolumny: tuple[KolumnaRodziny, ...]
@@ -195,10 +195,56 @@ RODZINA_KODU: dict[str, RodzinaZiemnozwarciowa] = {
     kod: rodzina.id for rodzina in RODZINY_EAZ.values() for kod in rodzina.kody
 }
 
+#: Rodzina nadprądowa fazowa (50/51) — ten sam wzorzec wiersza co rodziny ziemnozwarciowe
+#: (ekran koordynacji E-28, karta nastaw, raport), własny zestaw kolumn. Wiersz = jedno
+#: urządzenie: progi stopni z nastaw, czułość z biegu MINIMALNEGO, odstrojenie od obciążenia
+#: z biegu rozpływu, stopniowanie z biegu MAKSYMALNEGO (``rodzina_nadpradowa``).
+RODZINA_NADPRADOWA = RodzinaEaz(
+    "NADPRADOWE",
+    "Nadprądowe fazowe (51, 50)",
+    ("51", "50"),
+    (
+        KolumnaRodziny("prog_i1", "I> [A]", "próg stopnia zwłocznego 51 (strona pierwotna)"),
+        KolumnaRodziny("prog_i2", "I>> [A]", "próg stopnia bezzwłocznego 50 (strona pierwotna)"),
+        KolumnaRodziny(
+            "ik_min",
+            "I″k,min [A]",
+            "najmniejszy prąd przekaźnika przy zwarciu w strefie (bieg zwarciowy minimalny)",
+        ),
+        KolumnaRodziny(
+            "k_c",
+            "k_c",
+            "współczynnik czułości: I″k,min / próg najczulszego stopnia",
+        ),
+        KolumnaRodziny(
+            "i_obc",
+            "I_obc,max [A]",
+            "największy prąd obciążenia wyłącznika pola (bieg rozpływu mocy)",
+        ),
+        KolumnaRodziny(
+            "k_b",
+            "k_b",
+            "współczynnik odstrojenia od obciążenia: próg stopnia zwłocznego / I_obc,max",
+        ),
+        KolumnaRodziny("t", "t [s]", "czas zadziałania przy I″k,min (punkt decydujący czułości)"),
+        KolumnaRodziny(
+            "charakterystyka", "charakterystyka", "charakterystyka czasowa stopnia decydującego"
+        ),
+        KolumnaRodziny(
+            "delta_t",
+            "Δt [s]",
+            "najmniejszy odstęp czasowy wobec zabezpieczenia nadrzędnego (bieg maksymalny)",
+        ),
+    ),
+)
 
-def sprawdz_wartosci_wiersza(rodzina: RodzinaZiemnozwarciowa, klucze: set[str]) -> None:
+#: Wszystkie rodziny rejestru (ziemnozwarciowe i nadprądowa) — identyfikator → rodzina.
+REJESTR_RODZIN: dict[str, RodzinaEaz] = {**RODZINY_EAZ, "NADPRADOWE": RODZINA_NADPRADOWA}
+
+
+def sprawdz_wartosci_wiersza(rodzina: str, klucze: set[str]) -> None:
     """Wiersz niesie wyłącznie wartości kolumn swojej rodziny."""
-    dozwolone = {k.klucz for k in RODZINY_EAZ[rodzina].kolumny}
+    dozwolone = {k.klucz for k in REJESTR_RODZIN[rodzina].kolumny}
     nadmiar = klucze - dozwolone
     assert not nadmiar, f"Wartości spoza kolumn rodziny {rodzina}: {sorted(nadmiar)}"
 
@@ -376,6 +422,28 @@ ZRODLA_WYMAGAN_EAZ: tuple[ZrodloWymagania, ...] = (
         _pkt("pkt II.4.5.4.1.5 ppkt 3 (s. 51)"),
     ),
     ZrodloWymagania(
+        "k_c.nadpradowe",
+        "k_c",
+        "zabezpieczenia nadprądowe fazowe (51, 50): najmniejszy prąd zwarcia w strefie wobec "
+        "progu najczulszego stopnia",
+        1.5,
+        "1",
+        "ZALOZENIE_INZYNIERSKIE",
+        "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla "
+        "zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+    ),
+    ZrodloWymagania(
+        "k_b.nadpradowe",
+        "k_b",
+        "zabezpieczenia nadprądowe fazowe: próg stopnia zwłocznego wobec największego prądu "
+        "obciążenia (odstrojenie od obciążenia)",
+        1.2,
+        "1",
+        "ZALOZENIE_INZYNIERSKIE",
+        "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla "
+        "zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+    ),
+    ZrodloWymagania(
         "delta_t",
         "Δt",
         "odstęp czasowy stopniowania: czas własny wyłącznika + wybieg przekaźnika + zapas "
@@ -477,8 +545,8 @@ def _z_tabeli(klucz: str) -> WymaganieWspolczynnika:
         wartosc=z.wartosc,
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
-            dokument="Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
-            wydanie="wartość robocza oceny zabezpieczeń ziemnozwarciowych",
+            dokument="Założenie inżynierskie oceny zabezpieczeń (wartość robocza)",
+            wydanie="wartość robocza oceny zabezpieczeń",
             jednostka_redakcyjna=f"wymagane {z.symbol} = {liczba_pl(z.wartosc)}",
             status="WSKAZANE",
             uwagi_pl=z.opis_pl,
@@ -486,6 +554,33 @@ def _z_tabeli(klucz: str) -> WymaganieWspolczynnika:
         przyjete=True,
         uzasadnienie_pl=z.opis_pl,
         stan=z.stan,
+    )
+
+
+def wymaganie_nadpradowe(klucz: str, wartosc: float, *, zrodlo_pl: str) -> WymaganieWspolczynnika:
+    """Wymaganie rodziny 50/51 (``k_c.nadpradowe``, ``k_b.nadpradowe``): wartość kryteriów
+    koordynacji równa tabeli — wiersz tabeli bez zmian; inna (kryteria podane w żądaniu
+    koordynacji) — wartość projektanta z nazwanym źródłem (nie udaje tabeli ani ENEA)."""
+    z = _ZRODLO[klucz]
+    if wartosc == z.wartosc:
+        return _z_tabeli(klucz)
+    return _wartosc_projektanta(z.symbol, wartosc, zrodlo_pl)
+
+
+def _wartosc_projektanta(symbol: str, wartosc: float, zrodlo_pl: str) -> WymaganieWspolczynnika:
+    return WymaganieWspolczynnika(
+        symbol=symbol,
+        wartosc=wartosc,
+        podstawa=PodstawaWymagania(
+            rodzaj="ZALOZENIE_PROJEKTOWE",
+            dokument=f"Wymaganie podane przez projektanta — {zrodlo_pl}",
+            wydanie=zrodlo_pl,
+            jednostka_redakcyjna=f"wymagane {symbol} = {liczba_pl(wartosc)}",
+            status="WSKAZANE",
+        ),
+        przyjete=False,
+        uzasadnienie_pl=f"wartość podana przez projektanta ({zrodlo_pl})",
+        stan="WARTOSC_PROJEKTANTA",
     )
 
 

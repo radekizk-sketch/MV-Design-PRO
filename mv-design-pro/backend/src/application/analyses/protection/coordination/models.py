@@ -16,6 +16,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.protection.ocena_nadpradowa import WynikOceny
+from application.analyses.protection.rodziny_eaz import zrodlo_wymagania
+
+_K_C_NADPRADOWE = float(zrodlo_wymagania("k_c.nadpradowe").wartosc or 0.0)
+_K_B_NADPRADOWE = float(zrodlo_wymagania("k_b.nadpradowe").wartosc or 0.0)
 
 
 @dataclass(frozen=True)
@@ -32,8 +36,10 @@ class CoordinationConfig:
     breaker_time_s: float = 0.05
     relay_overtravel_s: float = 0.05
     safety_factor_s: float = 0.1
-    sensitivity_ratio_required: float = 1.5
-    overload_ratio_required: float = 1.2
+    # Wartości domyślne z JEDNEJ tabeli źródeł wymagań (rodzina 50/51 rejestru rodzin) — ta sama
+    # liczba w sprawdzeniach koordynacji, wierszach rodziny i tabeli źródeł.
+    sensitivity_ratio_required: float = _K_C_NADPRADOWE
+    overload_ratio_required: float = _K_B_NADPRADOWE
 
     def get_minimum_grading_margin_s(self) -> float:
         """Najmniejszy odstęp czasowy selektywności (CTI) [s]."""
@@ -191,6 +197,9 @@ class CoordinationAnalysisResult:
     #: ocena zabezpieczeń ziemnozwarciowych (czułość, selektywność, stopniowanie) i uziemień
     #: stacji z biegu maksymalnego — ``WynikOcenyZiemnozwarciowej.to_dict()``
     ziemnozwarciowe: dict[str, Any] | None = None
+    #: rodzina nadprądowa 50/51 rejestru rodzin — wiersze z rekordami werdyktu
+    #: (``rodzina_nadpradowa.wiersze_nadpradowe``; kształt pola ``ziemnozwarciowe``)
+    nadpradowe: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -213,4 +222,5 @@ class CoordinationAnalysisResult:
             "sc_run_id_min": self.sc_run_id_min,
             "created_at": self.created_at.isoformat(),
             "ziemnozwarciowe": self.ziemnozwarciowe,
+            "nadpradowe": self.nadpradowe,
         }

@@ -27,6 +27,7 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_NADPRADOWYCH_PL,
     NAGLOWEK_ODMOW_URZADZEN_PL,
     NAGLOWEK_WARUNKOW_67N_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
@@ -42,6 +43,7 @@ from network_model.reporting.protection_tcc_presentation import (
     nazwy_urzadzen,
     powod_braku_pl,
     rekordy_ziemnozwarciowe,
+    tabela_rodziny_nadpradowej,
     uzasadnienia_sprawdzen,
     wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
@@ -50,6 +52,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_zrodel_wymagan,
     zdania_funkcji_nieocenianych,
     zdania_odmow_urzadzen,
+    zdania_rodziny_nadpradowej,
     zdanie_ziemnozwarciowe,
 )
 
@@ -390,6 +393,22 @@ def export_protection_coordination_to_docx(
             "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
             style="No Spacing",
         )
+    # Rodzina nadprądowa 50/51 — ten sam wiersz co ekran i PDF (warstwa prezentacji).
+    naglowki_oc, wiersze_oc = tabela_rodziny_nadpradowej(result.get("nadpradowe"))
+    if wiersze_oc:
+        doc.add_heading(NAGLOWEK_NADPRADOWYCH_PL, level=2)
+        tabela_oc = doc.add_table(rows=1, cols=len(naglowki_oc))
+        tabela_oc.style = "Table Grid"
+        for i, h in enumerate(naglowki_oc):
+            tabela_oc.rows[0].cells[i].text = h
+            tabela_oc.rows[0].cells[i].paragraphs[0].runs[0].bold = True
+        for wiersz_oc in wiersze_oc:
+            komorki_oc = tabela_oc.add_row().cells
+            for i, wartosc in enumerate(wiersz_oc):
+                komorki_oc[i].text = wartosc
+        for zdanie in zdania_rodziny_nadpradowej(result.get("nadpradowe")):
+            doc.add_paragraph(zdanie, style="No Spacing")
+
     # Warunki 67N i źródła wymagań — te same wiersze co PDF i ekran (warstwa prezentacji).
     ziemne = result.get("ziemnozwarciowe")
     for naglowek, kolumny, wiersze_tab in (

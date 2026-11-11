@@ -335,6 +335,50 @@ def wiersze_warunkow_67n(ziemne: dict[str, Any] | None) -> list[tuple[str, ...]]
     return wynik
 
 
+#: Rodzina nadprądowa 50/51 (pole ``nadpradowe`` wyniku koordynacji) — kolumny z rejestru rodzin
+#: (``rodziny_eaz.RODZINA_NADPRADOWA``), ten sam wiersz co tabela rodziny na ekranie.
+NAGLOWEK_NADPRADOWYCH_PL = "Zabezpieczenia nadprądowe fazowe (51, 50) — rodzina w rejestrze"
+
+
+def _komorka_rodziny(komorka: dict[str, Any] | None) -> str:
+    if not komorka:
+        return NIE_DOTYCZY
+    if komorka.get("wartosc") is not None:
+        return liczba_pl(float(komorka["wartosc"]))
+    return str(komorka.get("tekst") or NIE_DOTYCZY)
+
+
+def tabela_rodziny_nadpradowej(
+    nadpradowe: dict[str, Any] | None,
+) -> tuple[tuple[str, ...], list[tuple[str, ...]]]:
+    """(nagłówki, wiersze) tabeli rodziny 50/51: zabezpieczenie, kolumny rodziny w kolejności
+    deklaracji (nagłówek z jednostką z rejestru), ocena z etykiety rekordu werdyktu."""
+    if not nadpradowe or not nadpradowe.get("rodziny"):
+        return (), []
+    kolumny = nadpradowe["rodziny"][0]["kolumny"]
+    naglowki = ("Zabezpieczenie", *(k["naglowek_pl"] for k in kolumny), "Ocena")
+    wiersze = [
+        (
+            str(w["pole_pl"] or w["sterownik_pl"]),
+            *(_komorka_rodziny(w["wartosci"].get(k["klucz"])) for k in kolumny),
+            str(w["etykieta"]["etykieta_pl"]),
+        )
+        for w in nadpradowe.get("wiersze") or []
+    ]
+    return naglowki, wiersze
+
+
+def zdania_rodziny_nadpradowej(nadpradowe: dict[str, Any] | None) -> list[str]:
+    """Zdania wyjaśnienia rekordów rodziny 50/51 (oceny i odmowy) — ten sam zapis co sekcja
+    ziemnozwarciowa (``zdanie_ziemnozwarciowe``)."""
+    if not nadpradowe:
+        return []
+    return [
+        zdanie_ziemnozwarciowe(r)
+        for r in [*nadpradowe.get("oceny", []), *nadpradowe.get("odmowy", [])]
+    ]
+
+
 #: Tabela źródeł wymagań (``zrodla_wymagan`` wyniku — jedna tabela ``ZRODLA_WYMAGAN_EAZ``):
 #: wartość, stan źródła (ENEA zweryfikowane / założenie / niezweryfikowane) i odwołanie.
 NAGLOWEK_ZRODEL_WYMAGAN_PL = "Źródła wymagań zabezpieczeń ziemnozwarciowych"

@@ -13885,6 +13885,26 @@
         "wartosc": 20.0
       },
       {
+        "jednostka": "1",
+        "klucz": "k_c.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe (51, 50): najmniejszy prąd zwarcia w strefie wobec progu najczulszego stopnia",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b.nadpradowe",
+        "odwolanie_pl": "założenie inżynierskie projektu (wartość robocza) — wymaganie IRiESD ENEA dla zabezpieczeń nadprądowych niesprawdzone z treścią dokumentu",
+        "opis_pl": "zabezpieczenia nadprądowe fazowe: próg stopnia zwłocznego wobec największego prądu obciążenia (odstrojenie od obciążenia)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
+      },
+      {
         "jednostka": "s",
         "klucz": "delta_t",
         "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",

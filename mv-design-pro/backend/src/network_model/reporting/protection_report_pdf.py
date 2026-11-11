@@ -27,6 +27,7 @@ from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+    NAGLOWEK_NADPRADOWYCH_PL,
     NAGLOWEK_ODMOW_URZADZEN_PL,
     NAGLOWEK_WARUNKOW_67N_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
@@ -42,6 +43,7 @@ from network_model.reporting.protection_tcc_presentation import (
     nazwy_urzadzen,
     powod_braku_pl,
     rekordy_ziemnozwarciowe,
+    tabela_rodziny_nadpradowej,
     uzasadnienia_sprawdzen,
     wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
@@ -50,6 +52,7 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersze_zrodel_wymagan,
     zdania_funkcji_nieocenianych,
     zdania_odmow_urzadzen,
+    zdania_rodziny_nadpradowej,
     zdanie_ziemnozwarciowe,
 )
 
@@ -519,6 +522,24 @@ def export_protection_coordination_to_pdf(
             "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
         )
         y -= line_height
+    # Rodzina nadprądowa 50/51 — ten sam wiersz co ekran i DOCX (warstwa prezentacji).
+    naglowki_oc, wiersze_oc = tabela_rodziny_nadpradowej(result.get("nadpradowe"))
+    if wiersze_oc:
+        y -= section_spacing / 2
+        y = check_page_break(20 * mm)
+        draw_text(NAGLOWEK_NADPRADOWYCH_PL, left_margin, font_size=11, bold=True)
+        y -= 2 * mm
+        szer = [34 * mm] + [14 * mm] * (len(naglowki_oc) - 2) + [22 * mm]
+        draw_table_row(list(naglowki_oc), szer, left_margin, bold=True, font_size=6)
+        for wiersz_oc in wiersze_oc:
+            draw_table_row(list(wiersz_oc), szer, left_margin, font_size=6)
+        for zdanie in zdania_rodziny_nadpradowej(result.get("nadpradowe")):
+            for fragment in textwrap.wrap(zdanie, width=110):
+                y = check_page_break(line_height)
+                c.setFont("DejaVuSans-Oblique", 8)
+                c.drawString(left_margin + 4 * mm, y, fragment)
+                y -= line_height
+
     # Warunki 67N i źródła wymagań — te same wiersze co DOCX i ekran (warstwa prezentacji).
     ziemne = result.get("ziemnozwarciowe")
     for naglowek, kolumny, szerokosci, wiersze_tab in (

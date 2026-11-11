@@ -31,6 +31,7 @@ from application.analyses.protection.ocena_nadpradowa import (
     StrefaUrzadzenia,
     prad_roboczy_przekaznika,
 )
+from application.analyses.protection.rodzina_nadpradowa import wiersze_nadpradowe
 from application.autorytet_biegu_zwarciowego import (
     BiegNiemiarodajnyError,
     wejscie_koordynacji_z_biegow,
@@ -205,7 +206,11 @@ def koordynacja_z_biegow(
         pf_run_id=str(pf_run_id) if pf_run_id else None,
     )
     wynik = OvercurrentCoordinationAnalyzer(config=config).analyze(wejscie)
-    return replace(wynik, ziemnozwarciowe=ziemne.to_dict())
+    return replace(
+        wynik,
+        ziemnozwarciowe=ziemne.to_dict(),
+        nadpradowe=wiersze_nadpradowe(model=model, wynik=wynik, ocena_max=ocena_max, config=config),
+    )
 
 
 __all__ = ["BiegNiemiarodajnyError", "OdmowaKoordynacji", "koordynacja_z_biegow"]
