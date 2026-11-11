@@ -4,7 +4,7 @@
  * Playwrighta w żywej aplikacji, bez zdarzeń syntetycznych i bez wymuszania stanu sklepów).
  *
  * Co spec dowodzi (kryteria ukończenia karty, pkt 3–5):
- *  1. Wyniki zwarć: wybrany DRUGI punkt zwarcia → „Pokaż na schemacie" → przestrzeń
+ *  1. Wyniki zwarć: wybrany punkt zwarcia INNY niż pierwszy → „Pokaż na schemacie" → przestrzeń
  *     „Schemat", „Wróć do: Wyniki — Zwarcia" w pasku narzędzi → klik → ta sama zakładka
  *     i TEN SAM wybrany wiersz (nie pierwszy, jak przy ponownym montażu bez powrotu).
  *  2. Gotowość: fraza filtra wpisana NAZWĄ stacji → „Pokaż na schemacie" problemu →
@@ -116,10 +116,17 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await expect(ekranZwarc).toBeVisible({ timeout: 60000 });
     const wiersze = ekranZwarc.getByTestId('mvd-wyn-tabela').first().getByTestId('mvd-wyn-wiersz');
     await expect.poll(() => wiersze.count(), { timeout: 30000 }).toBeGreaterThanOrEqual(2);
-    await wiersze.nth(1).click();
-    await expect(wiersze.nth(1)).toHaveAttribute('aria-selected', 'true');
-    const tekstPunktu = await wiersze.nth(1).textContent();
+    // Punkt NIE pierwszy (stan różny od domyślnego) i obecny na schemacie: punkt zwarcia
+    // na szynie pomocniczej (zacisk odgałęzienia, nienarysowany) nie ma akcji — uczciwie.
     const pokazZwarcie = page.getByTestId('mvd-zwarcia-pokaz-sld');
+    let indeksPunktu = -1;
+    for (let i = 1; i < (await wiersze.count()) && indeksPunktu < 0; i += 1) {
+      await wiersze.nth(i).click();
+      await expect(wiersze.nth(i)).toHaveAttribute('aria-selected', 'true');
+      if ((await pokazZwarcie.count()) > 0) indeksPunktu = i;
+    }
+    expect(indeksPunktu, 'punkt zwarcia (nie pierwszy) obecny na schemacie').toBeGreaterThan(0);
+    const tekstPunktu = await wiersze.nth(indeksPunktu).textContent();
     await expect(pokazZwarcie).toHaveText('Pokaż na schemacie');
     expect((await pokazZwarcie.boundingBox())!.height).toBeGreaterThanOrEqual(24);
     await pokazZwarcie.click();
@@ -128,8 +135,8 @@ test('wejście na schemat z trzech ekranów i „Wróć do" w tym samym stanie (
     await wrocDo(page, 'Wyniki — Zwarcia');
     await expect(page.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
     const wierszePo = page.getByTestId('mvd-zwarcia-ekran').getByTestId('mvd-wyn-tabela').first().getByTestId('mvd-wyn-wiersz');
-    await expect(wierszePo.nth(1)).toHaveAttribute('aria-selected', 'true', { timeout: 30000 });
-    await expect(wierszePo.nth(1)).toHaveText(tekstPunktu ?? '');
+    await expect(wierszePo.nth(indeksPunktu)).toHaveAttribute('aria-selected', 'true', { timeout: 30000 });
+    await expect(wierszePo.nth(indeksPunktu)).toHaveText(tekstPunktu ?? '');
     await zostajePo(page, /^Wyniki i dowody \d$/);
     await zrzut(page, 'powrot-do-wynikow-zwarc', motyw.klucz);
 

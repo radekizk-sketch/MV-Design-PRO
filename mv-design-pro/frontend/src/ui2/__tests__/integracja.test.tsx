@@ -179,7 +179,9 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
 
     // Grupy startują zwinięte — rozwiń „Magistrala (od GPZ)" chevronem, potem kliknij węzeł.
     fireEvent.click(screen.getByTestId('mvd-tree-chevron-magistrala'));
-    const wezel = screen.getByText('GPZ');
+    // Etykieta węzła = nazwa obiektu z migawki (most nazw), nie identyfikator `GPZ`;
+    // przed klikiem nazwa występuje wyłącznie w drzewie (inspektor jeszcze pusty).
+    const wezel = screen.getByText('GPZ Przykładowo');
     fireEvent.click(wezel);
 
     expect(odebrane.some((z) => z.obiektId === 'GPZ' && z.zrodlo === 'drzewo-kontekstowe')).toBe(true);
